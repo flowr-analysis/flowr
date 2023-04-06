@@ -1,0 +1,16 @@
+{
+  "name": "flowr",
+  "version": "0.0.1",
+  "description": "Program Slicer and Analyzer for R Programs",
+  "main": "index.js",
+  "scripts": {
+    "run": "tsc && node dist/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Florian Sihler",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.0.3"
+  }
+}

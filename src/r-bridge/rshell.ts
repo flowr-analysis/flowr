@@ -26,9 +26,9 @@ export class RShellSession {
   private readonly session: ChildProcessWithoutNullStreams
 
   /**
-     *
-     * @param pathToRExecutable
-     */
+   *
+   * @param pathToRExecutable
+   */
   public constructor (pathToRExecutable = 'R') {
     this.pathToRExecutable = pathToRExecutable
 

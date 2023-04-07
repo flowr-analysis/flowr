@@ -1,7 +1,7 @@
-import {Rshell} from "./r-bridge/rshell";
+import { RShellSession } from './r-bridge/rshell'
 
-console.log("Hello World");
+console.log('Hello World')
 
-const executor = new Rshell();
+const executor = new RShellSession()
 
-executor.sendCommand("print('Hello World')");
+executor.sendCommand("print('Hello World')")

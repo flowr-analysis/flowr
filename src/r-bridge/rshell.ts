@@ -77,4 +77,14 @@ export class RShellSession {
   public clearEnvironment (): void {
     this.sendCommand('rm(list=ls())')
   }
+
+  /**
+   * close the current R session, makes the object invalid (can no longer be reopened etc.)
+   * TODO: find nice structure for this
+   *
+   * @return true if the kll succeeds, false otherwise
+   */
+  public close (): boolean {
+    return this.session.kill()
+  }
 }

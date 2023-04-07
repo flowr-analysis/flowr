@@ -41,11 +41,10 @@ export class RShellSession {
       windowsHide: true
     })
 
-    this.setupRSession()
+    this.setupRSessionLoggers()
   }
 
-  private setupRSession (): void {
-    // TODO: in the future we want to access them
+  private setupRSessionLoggers (): void {
     this.session.stdout.on('data', (data: string) => {
       this.log.info(`< ${data}`)
     })
@@ -55,6 +54,13 @@ export class RShellSession {
     this.session.on('close', (code: number) => {
       this.log.info(`child process exited with code ${code}`)
     })
+  }
+
+  /**
+   * register a new handler to deal with data received from stdout
+   */
+  public onData (callback: (data: any) => void): void {
+    this.session.stdout.on('data', data => { callback(data.toString()) })
   }
 
   /**

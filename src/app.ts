@@ -2,6 +2,10 @@ import { retrieveAstFromRCode } from './r-bridge/parse'
 
 console.log('Hello World')
 
-void retrieveAstFromRCode('test/testfiles/example.R').then(xml => {
+void retrieveAstFromRCode({
+  request: 'file',
+  content: 'test/testfiles/example.R',
+  attachSourceInformation: true
+}).then(xml => {
   console.log(xml)
 })

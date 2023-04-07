@@ -2,7 +2,7 @@
 message_file = ARGV[0]
 message = File.read(message_file)
 
-$regex = /(feat|test|lint|refactor|ci|git||special|doc|log|ts|fix)(-fix)?: .+/
+$regex = /(feat|test|lint|refactor|ci|git|special|doc|log|ts|fix)(-fix)?: .+/
 
 if !$regex.match(message)
   puts "[POLICY] Your message is not formatted correctly. Respect the regex: '#{$regex}'!"

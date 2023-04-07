@@ -15,7 +15,7 @@ export interface RShellOptions extends MergeableRecord {
 }
 
 export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
-  sessionName: 'default RShellSession',
+  sessionName: 'default',
   pathToRExecutable: 'R',
   commandLineOptions: ['--vanilla', '--no-echo'],
   cwd: process.cwd()
@@ -52,7 +52,7 @@ export class RShellSession {
       this.log.error(`< ${data}`)
     })
     this.session.on('close', (code: number) => {
-      this.log.info(`${this.options.sessionName} exited with code ${code}`)
+      this.log.info(`"${this.options.sessionName}" session exited with code ${code}`)
     })
   }
 

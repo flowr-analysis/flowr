@@ -1,6 +1,7 @@
 // TODO: global entrypoint for configuration of the parser and all components
 
 import { RShellSession } from './rshell'
+import * as xml2js from 'xml2js'
 
 /**
  * Provides the capability to parse R files using the R parser.
@@ -23,4 +24,13 @@ export async function retrieveXmlFromRCode (filename: string): Promise<string> {
     // TODO: allow to configure timeout
     setTimeout(() => { reject(new Error('timeout')) }, 5000)
   }).finally(() => { session.close() })
+}
+
+// TODO: type ast etc
+/**
+ * uses {@link #retrieveXmlFromRCode} and returns the nicely formatted object-AST
+ */
+export async function retrieveAstFromRCode (filename: string): Promise<object> {
+  const xml = await retrieveXmlFromRCode(filename)
+  return xml2js.parseStringPromise(xml, { validator: undefined /* TODO */ })
 }

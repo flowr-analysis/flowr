@@ -1,6 +1,7 @@
 import { RShellSession } from '../src/r-bridge/rshell'
 import { assert } from 'chai'
 import { valueToR } from '../src/r-bridge/r-lang'
+import { type Test } from 'mocha'
 
 describe('R-Bridge', () => {
   describe('r language utilities', () => {
@@ -26,8 +27,18 @@ describe('R-Bridge', () => {
     // TODO: maybe just use beforeEach and afterEach to provide?
     const sessionIt = (msg: string, fn: (session: RShellSession, done: Mocha.Done) => void): void => {
       it(msg, done => {
-        const session = new RShellSession()
-        fn(session, (err?: any) => { session.close(); done(err) })
+        let session: RShellSession | null = null
+        session = new RShellSession()
+        try {
+          fn(session, err => {
+            done(err)
+            session?.close()
+          })
+        } catch (e) {
+          // ensure we close the session in error cases too
+          session?.close()
+          throw e
+        }
       })
     }
     sessionIt('0. test that we can create a connection to R', (session, done) => {
@@ -38,7 +49,8 @@ describe('R-Bridge', () => {
     })
     sessionIt('let R make an addition', (session, done) => {
       session.onData(data => {
-        assert.equal(data, '[1] 2\n')
+        // newline break is to be more robust against R versions
+        assert.match(data, /\[1][\n ]2\n/)
         done()
       })
       session.sendCommand('1 + 1')

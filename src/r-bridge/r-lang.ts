@@ -2,9 +2,12 @@
  * transforms a value to something R can understand (e.g., booleans to TRUE/FALSE)
  */
 export function valueToR (value: any): string {
-  if (typeof value === 'string') {
+  if (typeof value === 'undefined') {
+    return 'NA'
+  } else if (typeof value === 'string') {
     return `"${value}"`
   } else if (typeof value === 'number') {
+    // TODO: deal with infinity and NaN
     return value.toString()
   } else if (typeof value === 'boolean') {
     return value ? 'TRUE' : 'FALSE'
@@ -18,5 +21,6 @@ export function valueToR (value: any): string {
       .join(', ')
     return `list(${obj})`
   }
+  // TODO: bigint function
   throw new Error(`cannot convert value of type ${typeof value} to R code`)
 }

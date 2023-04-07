@@ -6,9 +6,9 @@ export function isObjectOrArray (item: unknown): boolean {
 }
 
 // TODO: maybe improve this in the future?
-type MergeableRecord = Record<string, unknown>
-type MergeableArray = unknown[]
-type Mergeable = MergeableRecord | MergeableArray
+export type MergeableRecord = Record<string, unknown>
+export type MergeableArray = unknown[]
+export type Mergeable = MergeableRecord | MergeableArray
 
 /**
  * given two objects deeply merges them, if an object is an array it will merge the array values!
@@ -16,7 +16,10 @@ type Mergeable = MergeableRecord | MergeableArray
  *
  * TODO: set etc. support in the future? => merge type class like?
  */
-export function deepMergeObject (base: Mergeable, addon: Mergeable): Mergeable {
+export function deepMergeObject<T extends Mergeable> (base: T, addon?: Partial<T>): T
+export function deepMergeObject (base: Mergeable, addon: Mergeable): Mergeable
+export function deepMergeObject (base?: Mergeable, addon?: Mergeable): Mergeable | undefined
+export function deepMergeObject (base?: Mergeable, addon?: Mergeable): Mergeable | undefined {
   assertSameType(base, addon)
   if (base === undefined || base === null) {
     return addon

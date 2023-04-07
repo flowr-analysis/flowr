@@ -1,18 +1,19 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'child_process'
-import * as path from 'node:path'
+import { deepMergeObject, type MergeableRecord } from '../util/objects'
 
 /**
  * Configuration of an {@link RShellSession} instance.
+ * See {@link DEFAULT_R_SHELL_OPTIONS} for the default values used by {@link RShellSession}.
  */
-export interface RShellOptions {
-  readonly pathToRExecutable: path.ParsedPath
-  /** passed along to the {@link RShellOptions#pathToRExecutable pathToRExecutable} as command line options. */
+export interface RShellOptions extends MergeableRecord {
+  // TODO: maybe sanitizer in the future?
+  readonly pathToRExecutable: string
   readonly commandLineOptions: readonly string[]
   readonly cwd: string
 }
 
 export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
-  pathToRExecutable: path.parse('R'),
+  pathToRExecutable: 'R',
   commandLineOptions: ['--vanilla', '--no-echo'],
   cwd: process.cwd()
 } as const
@@ -22,18 +23,14 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
  * You can configure it by {@link RShellOptions}.
  */
 export class RShellSession {
-  private readonly pathToRExecutable: string
+  private readonly options: RShellOptions
   private readonly session: ChildProcessWithoutNullStreams
 
-  /**
-   *
-   * @param pathToRExecutable
-   */
-  public constructor (pathToRExecutable = 'R') {
-    this.pathToRExecutable = pathToRExecutable
+  public constructor (options?: Partial<RShellOptions>) {
+    this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
 
     // initialize the given session
-    this.session = spawn(this.pathToRExecutable, ['--vanilla', '--no-echo'], {
+    this.session = spawn(this.options.pathToRExecutable, this.options.commandLineOptions, {
       cwd: process.cwd(),
       windowsHide: true
     })
@@ -53,13 +50,16 @@ export class RShellSession {
     })
   }
 
+  /**
+   * sends the given command directly to the current R session
+   */
   public sendCommand (command: string): void {
     this.session.stdin.write(`${command}\n`)
   }
 
   /**
-     * clears the R environment using the `rm` command.
-     */
+   * clears the R environment using the `rm` command.
+   */
   public clearEnvironment (): void {
     this.sendCommand('rm(list=ls())')
   }

@@ -3,7 +3,6 @@
     "esModuleInterop": true,
     "target": "es6",
     "moduleResolution": "node",
-    "inlineSourceMap": true,
     "sourceMap": true,
     "outDir": "./dist/",
     "strict": true

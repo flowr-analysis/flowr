@@ -1,7 +1,7 @@
-import { RShellSession } from './r-bridge/rshell'
+import { retrieveXmlFromRCode } from './r-bridge/parse'
 
 console.log('Hello World')
 
-const executor = new RShellSession()
-
-executor.sendCommand("print('Hello World')")
+void retrieveXmlFromRCode('test/testfiles/example.R').then(xml => {
+  console.log('got', xml)
+})

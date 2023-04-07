@@ -52,7 +52,7 @@ export class RShellSession {
       this.log.error(`< ${data}`)
     })
     this.session.on('close', (code: number) => {
-      this.log.info(`child process exited with code ${code}`)
+      this.log.info(`${this.options.sessionName} exited with code ${code}`)
     })
   }
 
@@ -69,6 +69,17 @@ export class RShellSession {
   public sendCommand (command: string): void {
     this.log.info(`> ${command}`)
     this.session.stdin.write(`${command}\n`)
+  }
+
+  /**
+   * execute multiple commands in order
+   *
+   * @see sendCommand
+   */
+  public sendCommands (...commands: string[]): void {
+    for (const element of commands) {
+      this.sendCommand(element)
+    }
   }
 
   /**

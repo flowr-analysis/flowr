@@ -31,8 +31,8 @@ describe('R-Bridge', () => {
         session = new RShellSession()
         try {
           fn(session, err => {
-            done(err)
             session?.close()
+            done(err)
           })
         } catch (e) {
           // ensure we close the session in error cases too

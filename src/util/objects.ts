@@ -22,8 +22,9 @@ export function deepMergeObject (base: Mergeable, addon: Mergeable): Mergeable {
     return addon
   } else if (addon === undefined || addon === null) {
     return base
-  } else if (!isObjectOrArray(base) || !isObjectOrArray(addon)) { // overwrite
-    return addon
+  } else if (!isObjectOrArray(base) || !isObjectOrArray(addon)) {
+    // this case should be guarded by type guards, but in case we do not know
+    throw new Error('illegal types for deepMergeObject!')
   }
 
   const result = Object.assign({}, base) as MergeableRecord
@@ -36,8 +37,9 @@ export function deepMergeObject (base: Mergeable, addon: Mergeable): Mergeable {
   } else if (baseIsArray && addonIsArray) {
     return [...base, ...addon]
   } else {
-    throw new Error('Cannot merge array with object!')
+    throw new Error('cannot merge object with array!')
   }
+
   return result
 }
 

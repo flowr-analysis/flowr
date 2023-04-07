@@ -4,65 +4,70 @@ import { deepMergeObject, isObjectOrArray } from '../src/util/objects'
 describe('Objects', () => {
   describe('isObjectOrArray', () => {
     const positive = (a: any, msg: string): void => {
-      assert.isTrue(isObjectOrArray(a), `must hold for ${msg}`)
+      it(msg, () => { assert.isTrue(isObjectOrArray(a)) })
     }
     const negative = (a: any, msg: string): void => {
-      assert.isFalse(isObjectOrArray(a), `${msg} is not considered an object`)
+      it(msg, () => { assert.isFalse(isObjectOrArray(a), `${msg} is not considered an object`) })
     }
 
-    it('return true for all kinds of objects', () => {
+    describe('return true for objects', () => {
+      positive({}, 'null')
       positive({}, 'empty object')
       positive({ a: 'x', b: 0 }, 'non-empty object')
     })
-    it('return true for all kinds of arrays', () => {
+    describe('return true for arrays', () => {
       positive([], 'empty array')
       positive([1, 2, 3], 'non-empty array')
     })
 
-    it('return false for strings, numbers, and others ', () => {
+    describe('return false for neither objects nor arrays', () => {
       negative(true, 'a boolean')
       negative('hello', 'a string')
       negative(42, 'a number')
+      negative(undefined, 'undefined')
     })
   })
 
   describe('deepMergeObject', () => {
-    const merged = (a: any, b: any, expected: any, msg?: string): void => {
-      assert.deepEqual(deepMergeObject(a, b), expected, `${msg ?? ''} (${JSON.stringify(a)} & ${JSON.stringify(b)})`)
+    const merged = (a: any, b: any, expected: any, msg: string): void => {
+      it(msg, () => {
+        assert.deepEqual(deepMergeObject(a, b), expected, `${JSON.stringify(a)} & ${JSON.stringify(b)}`)
+      })
     }
-    const throws = (a: any, b: any, msg?: string): void => {
-      assert.throws(() => deepMergeObject(a, b), Error, undefined, msg)
+    const throws = (a: any, b: any, msg: string): void => {
+      it(msg, () => {
+        assert.throws(() => deepMergeObject(a, b), Error, undefined, msg)
+      })
     }
     describe('objects only', () => {
       describe('with empty', () => {
         for (const empty of [null, undefined, {}]) {
           const emptyStr = JSON.stringify(empty)
           describe(`using ${emptyStr}`, () => {
-            it(`two ${emptyStr} objects`, () => {
-              merged(empty, empty, empty)
-            })
+            merged(empty, empty, empty, `two ${emptyStr} objects`)
             for (const obj of [{ a: 1 }, { a: 1, b: 2 }, { a: 1, b: 2, c: { d: 3, e: 4 } }]) {
-              it(JSON.stringify(obj), () => {
-                merged(obj, empty, obj, 'left-hand')
-                merged(empty, obj, obj, 'right-hand')
+              describe(JSON.stringify(obj), () => {
+                merged(obj, empty, obj, 'obj with empty')
+                merged(empty, obj, obj, 'empty with obj')
               })
             }
           })
         }
       })
-      it('two non-empty (including overwrite)', () => {
-        merged({ a: 3 }, { b: 4 }, { a: 3, b: 4 })
-        merged({ a: 3, b: 4 }, { b: 5 }, { a: 3, b: 5 }, 'overwrite b')
-        merged({ a: 3, b: { c: 4, d: 5 } }, { b: { c: 42 } }, { a: 3, b: { c: 42, d: 5 } }, 'overwrite nested c')
-        merged({ a: 3, b: { c: 4, d: 5 } }, { b: { e: 6 } }, { a: 3, b: { c: 4, d: 5, e: 6 } }, 'nested e')
-        merged({ a: 3, b: { c: 4, d: 5, e: {} } }, { b: { e: { f: 6 } } }, { a: 3, b: { c: 4, d: 5, e: { f: 6 } } }, 'double nested f')
+      describe('two non-empty (including overwrite)', () => {
+        merged({ a: 3 }, { b: 4 }, { a: 3, b: 4 }, 'two disjoint objects')
+        merged({ a: 3, b: 4 }, { b: 5 }, { a: 3, b: 5 }, 'overwrite values (b)')
+        merged({ a: 3, b: { c: 4, d: 5 } }, { b: { c: 42 } }, { a: 3, b: { c: 42, d: 5 } }, 'overwrite nested (c)')
+        merged({ a: 3, b: { c: 4, d: 5 } }, { b: { e: 6 } }, { a: 3, b: { c: 4, d: 5, e: 6 } }, 'join nested (e)')
+        merged({ a: 3, b: { c: 4, d: 5, e: {} } }, { b: { e: { f: 6 } } }, { a: 3, b: { c: 4, d: 5, e: { f: 6 } } }, 'double nested objects (f)')
       })
-      it('allow null', () => {
-        merged({ a: 3, b: null }, { b: { c: 42 } }, { a: 3, b: { c: 42 } })
-        merged({ a: 3, b: { c: 4, d: 5 } }, { b: { e: 6 } }, { a: 3, b: { c: 4, d: 5, e: 6 } }, 'nested e')
+      describe('allow null', () => {
+        merged({ a: 3, b: null }, { b: { c: 42 } }, { a: 3, b: { c: 42 } }, 'overwrite null with object (b)')
+        merged({ b: { c: 42 } }, { a: 3, b: null }, { a: 3, b: { c: 42 } }, 'keep object with null (b)')
       })
-      it('error if incompatible', () => {
+      describe('error if incompatible', () => {
         throws({ a: 3 }, { a: { b: 3 } }, 'literal with object')
+        throws({ a: 3 }, { a: { b: 3 } }, 'array with object')
         throws({ a: { b: null } }, { a: { b: 3 } }, 'null obj with literal')
       })
     })
@@ -71,23 +76,39 @@ describe('Objects', () => {
         for (const empty of [null, undefined, []]) {
           const emptyStr = JSON.stringify(empty)
           describe(`using ${emptyStr}`, () => {
-            it(`two ${emptyStr} arrays`, () => {
-              merged(empty, empty, empty)
-            })
-            for (const obj of [[1], [1, 2], [1, 2, 3]]) {
-              it(JSON.stringify(obj), () => {
-                merged(obj, empty, obj, 'left-hand')
-                merged(empty, obj, obj, 'right-hand')
+            merged(empty, empty, empty, `two ${emptyStr} arrays`)
+            for (const arr of [[1], [1, 2], [1, 2, 3]]) {
+              describe(JSON.stringify(arr), () => {
+                merged(arr, empty, arr, 'arr with empty')
+                merged(empty, arr, arr, 'empty with arr')
               })
             }
           })
         }
       })
-      it('two non-empty (no overwrite)', () => {
-        merged([3], [4], [3, 4])
-        merged([3, 4], [5], [3, 4, 5])
+      describe('two non-empty (no overwrite)', () => {
+        merged([3], [4], [3, 4], 'two disjoint arrays')
+        merged([3, 4], [5], [3, 4, 5], 'no overwrite for multiple elements')
+        merged([3, 4], [4], [3, 4, 4], 'keep dupslicates')
         merged([1, [3, 4]], [2, [5]], [1, [3, 4], 2, [5]], 'do not merge nested arrays')
         merged([{ a: 3 }, 2], [{ a: 4 }], [{ a: 3 }, 2, { a: 4 }], 'do not merge nested objects')
+      })
+    })
+    describe('mixed objects and arrays', () => {
+      merged({ a: 3, b: [4, 5] }, { b: [4] }, { a: 3, b: [4, 5, 4] }, 'merge arrays in objects')
+      merged({ a: 3, b: { c: 5, d: { e: 6, f: [4, 5] }, g: [-1, 0] } },
+        { x: 5, b: { c: 6, d: { f: [3], y: 9 }, g: [1], h: [4] } },
+        { a: 3, b: { c: 6, d: { e: 6, f: [4, 5, 3], y: 9 }, g: [-1, 0, 1], h: [4] }, x: 5 }, 'merge deeply nested objects')
+      describe('error if incompatible', () => {
+        throws({ a: 3 }, [3], 'object with array')
+        throws([3], { a: 3 }, 'array with object')
+        throws({ a: { b: null } }, { a: { b: 3 } }, 'object of array with arrays of object')
+      })
+      describe('forced illegal to test robustness against type-lies', () => {
+        // @ts-expect-error we want to test against type-lies
+        throws(3 as object, 4 as object, 'lied numbers as objects')
+        // @ts-expect-error like before, we guard against type-lies
+        throws(true as boolean[], true as boolean[], 'lied booleans as arrays')
       })
     })
   })

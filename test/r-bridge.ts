@@ -104,7 +104,7 @@ describe('R-Bridge', () => {
             }
             done()
           })
-        }).timeout(min2ms(60))
+        }).timeout(min2ms(15))
       })
     })
   })

@@ -4,6 +4,7 @@ import { valueToR } from '../src/r-bridge/lang'
 import { it } from 'mocha'
 import { min2ms } from '../src/util/time'
 import * as fs from 'fs'
+import { randomString } from '../src/util/random'
 
 // TODO: improve tests for shell so i can use await etc :C
 describe('R-Bridge', () => {
@@ -66,11 +67,15 @@ describe('R-Bridge', () => {
         done()
       })
     })
-    withShell('1. let R make an addition', (shell, done) => {
-      void shell.sendCommandWithOutput('1 + 1').then(lines => {
-        assert.equal(lines.length, 1)
-        assert.equal(lines[0], '[1] 2')
-        done()
+    describe('1. let R make an addition', () => {
+      [true, false].forEach((trimOutput, i) => {
+        withShell(`${i + 1}. let R make an addition (${trimOutput ? 'with' : 'without'} trimming)`, (shell, done) => {
+          void shell.sendCommandWithOutput('1 + 1', { automaticallyTrimOutput: trimOutput }).then(lines => {
+            assert.equal(lines.length, 1)
+            assert.equal(lines[0], '[1] 2')
+            done()
+          })
+        })
       })
     })
     withShell('2. keep context of previous commands', (shell, done) => {
@@ -100,21 +105,49 @@ describe('R-Bridge', () => {
         })
       })
       withShell('4.1 is installed', (shell, done) => {
+        // of course someone could remove the packages in that instant, but for testing it should be fine
         void shell.allInstalledPackages().then(installed => {
-          installed.forEach(nameOfInstalledPackage => {
-            void shell.isPackageInstalled(nameOfInstalledPackage).then(isInstalled => {
-              assert.isTrue(isInstalled, `package ${nameOfInstalledPackage} should be installed due to allInstalledPackages`)
-              done()
+          // we fold so that we have no listener leak when waiting o R
+          void installed.reduce(async (t, nameOfInstalledPackage) => {
+            await t.then(() => {
+              void shell.isPackageInstalled(nameOfInstalledPackage).then(isInstalled => {
+                assert.isTrue(isInstalled, `package ${nameOfInstalledPackage} should be installed due to allInstalledPackages`)
+              })
             })
+          }, Promise.resolve()).then(() => { done() })
+        })
+      })
+      withShell('4.2 is not installed', (shell, done) => {
+        // TODO URGENT: generate new unknown packages
+        void shell.allInstalledPackages().then(installed => {
+          let unknownPackageName: string
+          do {
+            unknownPackageName = randomString(10)
+          }
+          while (installed.includes(unknownPackageName))
+          void shell.isPackageInstalled(unknownPackageName).then(isInstalled => {
+            assert.isFalse(isInstalled, `package ${unknownPackageName} should not be installed`)
+            done()
           })
         })
       })
     })
-    describe('6. install a package', () => {
-      // multiple packages to avoid the chance of them being preinstalled?
+    describe('5. install a package', () => {
+      withShell('5.0 try to install a package that is already installed', (shell, done) => {
+        void shell.allInstalledPackages().then(([nameOfInstalledPackage]) => {
+          void shell.ensurePackageInstalled(nameOfInstalledPackage, false).then(returnedPkg => {
+            assert.equal(returnedPkg.packageName, nameOfInstalledPackage)
+            assert.equal(returnedPkg.tempdir, undefined)
+            done()
+          })
+        })
+      })
+
+      // multiple packages to avoid the chance of them being preinstalled
       // TODO: use withr to not install on host system and to allow this to work even without force?
-      ['xmlparsedata', 'glue'].forEach((pkg, i) => {
-        withShell(`6.${i + 1} install ${pkg}`, (shell, done) => {
+      const i = 1
+      for (const pkg of ['xmlparsedata', 'glue']) { // we use for instead of foreach to avoid index syntax issues
+        withShell(`5.${i + 1} install ${pkg}`, (shell, done) => {
           void shell.ensurePackageInstalled(pkg, true).then(returnedPkg => {
             assert.equal(returnedPkg.packageName, pkg)
             // clean up the temporary directory
@@ -124,6 +157,15 @@ describe('R-Bridge', () => {
             done()
           })
         }).timeout(min2ms(15))
+      }
+    })
+    withShell('7 send multiple commands', (shell, done) => {
+      shell.sendCommands('a <- 1', 'b <- 2', 'c <- a + b')
+
+      void shell.sendCommandWithOutput('c').then(lines => {
+        assert.equal(lines.length, 1)
+        assert.equal(lines[0], '[1] 3')
+        done()
       })
     })
   })

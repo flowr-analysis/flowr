@@ -87,6 +87,9 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
  * RShell represents an interactive session with the R interpreter.
  * You can configure it by {@link RShellOptions}.
  *
+ * At the moment we are using a live R session (and not networking etc.) to communicate with R easily,
+ * which allows us to install packages etc. However, this might and probably will change in the future (leaving this
+ * as a legacy mode :D)
  * TODO: in the future real language bindings like rpy2? but for ts?
  */
 export class RShell {
@@ -112,7 +115,7 @@ export class RShell {
    */
   // TODO: rename to execute or so?
   public sendCommand(command: string): void {
-    this.log.info(`> ${command}`)
+    this.log.trace(`> ${command}`)
     this._sendCommand(command)
   }
 
@@ -125,8 +128,7 @@ export class RShell {
    */
   public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
     const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig)
-    this.log.info(`> ${command}`)
-    // TODO: allow to configure timeout, etc.
+    this.log.trace(`> ${command}`)
     const output = await this.session.collectLinesUntil(config.from, {
       predicate: data => data === config.postamble,
       includeInResult: config.keepPostamble // we do not want the postamble
@@ -266,13 +268,13 @@ class RShellSession {
 
   private setupRSessionLoggers(): void {
     this.bareSession.stdout.on('data', (data: Buffer) => {
-      this.log.silly(`< ${data.toString()}`)
+      this.log.trace(`< ${data.toString()}`)
     })
     this.bareSession.stderr.on('data', (data: string) => {
       this.log.warn(`< ${data}`)
     })
     this.bareSession.on('close', (code: number) => {
-      this.log.debug(`session exited with code ${code}`)
+      this.log.trace(`session exited with code ${code}`)
     })
   }
 
@@ -282,10 +284,6 @@ class RShellSession {
 
   public writeLine(data: string): void {
     this.write(`${data}${this.options.eol}`)
-  }
-
-  public onLine(selector: OutputStreamSelector, callback: (data: string) => void): void {
-    this.on(selector, 'line', callback)
   }
 
   private on(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
@@ -339,7 +337,7 @@ class RShellSession {
           timer = makeTimer()
         }
       }
-      this.onLine(from, handler)
+      this.on(from, 'line', handler)
       action?.()
     }).finally(() => {
       this.removeListener(from, 'line', handler)

@@ -286,6 +286,10 @@ class RShellSession {
     this.write(`${data}${this.options.eol}`)
   }
 
+  public onLine(from: OutputStreamSelector, listener: (line: string) => void): void {
+    this.on(from, 'line', listener)
+  }
+
   private on(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
     const both = from === 'both'
     if (both || from === 'stdout') {

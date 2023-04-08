@@ -21,6 +21,6 @@ export function valueToR (value: any): string {
       .join(', ')
     return `list(${obj})`
   }
-  // TODO: bigint function
+  // TODO: bigint, function, ...
   throw new Error(`cannot convert value of type ${typeof value} to R code`)
 }

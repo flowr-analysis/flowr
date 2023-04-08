@@ -2,13 +2,13 @@ import { RShell } from '../src/r-bridge/shell'
 import { assert } from 'chai'
 import { valueToR } from '../src/r-bridge/lang'
 import { it } from 'mocha'
-import { min2ms } from '../src/util/time'
 import * as fs from 'fs'
 import { randomString } from '../src/util/random'
+import { retrieveAstFromRCode } from '../src/r-bridge/parse'
 
 // TODO: improve tests for shell so i can use await etc :C
 describe('R-Bridge', () => {
-  describe('r language utilities', () => {
+  describe('R language utilities', () => {
     describe('TS value to R', () => {
       it('undefined', () => {
         assert.equal(valueToR(undefined), 'NA')
@@ -156,7 +156,7 @@ describe('R-Bridge', () => {
             }
             done()
           })
-        }).timeout(min2ms(15))
+        }).timeout('15min')
       }
     })
     withShell('7 send multiple commands', (shell, done) => {
@@ -168,5 +168,12 @@ describe('R-Bridge', () => {
         done()
       })
     })
+  })
+
+  describe('Retrieve AST from R', () => {
+    it('0. retrieve ast of literal', async () => {
+      const ast = await retrieveAstFromRCode({ request: 'text', content: '1', attachSourceInformation: true })
+      console.log(ast)
+    }).timeout('15min')
   })
 })

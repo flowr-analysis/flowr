@@ -23,11 +23,11 @@ type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseReq
  * Provides the capability to parse R files/R code using the R parser.
  * Depends on {@link RShell} to provide a connection to R.
  */
-export async function retrieveXmlFromRCode(req: RParseRequest): Promise<string> {
+export async function retrieveXmlFromRCode(request: RParseRequest): Promise<string> {
   const shell = new RShell()
 
   // first of all we ensure, that we have xmlparsedata and load it
-  await shell.ensurePackageInstalled('xmlparsedata')
+  const { tempdir } = await shell.ensurePackageInstalled('xmlparsedata')
 
   return await new Promise<string>((resolve, reject) => {
     // TODO: allow to configure timeout
@@ -42,9 +42,10 @@ export async function retrieveXmlFromRCode(req: RParseRequest): Promise<string> 
     // TODO: consider xml_parse_token_map
     // TODO: remove the tempdir used?
 
-    shell.sendCommands('library(xmlparsedata)',
-      `parsed <- parse(${req.request} = "${req.content}", keep.source = ${valueToR(req.attachSourceInformation)})`,
-      `output <- xmlparsedata::xml_parse_data(parsed, includeText = ${valueToR(req.attachSourceInformation)})`,
+    const libLoc = tempdir === undefined ? '' : `, lib.loc="${tempdir}"`
+    shell.sendCommands(`library(xmlparsedata${libLoc})`,
+      `parsed <- parse(${request.request} = "${request.content}", keep.source = ${valueToR(request.attachSourceInformation)})`,
+      `output <- xmlparsedata::xml_parse_data(parsed, includeText = ${valueToR(request.attachSourceInformation)})`,
       'cat(output)'
     )
   }).finally(() => { shell.close() })
@@ -54,7 +55,7 @@ export async function retrieveXmlFromRCode(req: RParseRequest): Promise<string> 
 /**
  * uses {@link #retrieveXmlFromRCode} and returns the nicely formatted object-AST
  */
-export async function retrieveAstFromRCode(filename: RParseRequest): Promise<object> {
-  const xml = await retrieveXmlFromRCode(filename)
+export async function retrieveAstFromRCode(request: RParseRequest): Promise<object> {
+  const xml = await retrieveXmlFromRCode(request)
   return await xml2js.parseStringPromise(xml, { validator: undefined /* TODO */ })
 }

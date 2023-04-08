@@ -22,37 +22,37 @@ describe('R-Bridge', () => {
     })
   })
 
-  describe('shell session', () => {
+  describe('shell shell', () => {
     // TODO: maybe just use beforeEach and afterEach to provide?
-    const sessionIt = (msg: string, fn: (session: RShell, done: Mocha.Done) => void): void => {
+    const withShell = (msg: string, fn: (shell: RShell, done: Mocha.Done) => void): void => {
       it(msg, done => {
-        let session: RShell | null = null
-        session = new RShell()
+        let shell: RShell | null = null
+        shell = new RShell()
         try {
-          fn(session, err => {
-            session?.close()
+          fn(shell, err => {
+            shell?.close()
             done(err)
           })
         } catch (e) {
-          // ensure we close the session in error cases too
-          session?.close()
+          // ensure we close the shell in error cases too
+          shell?.close()
           throw e
         }
       })
     }
-    sessionIt('0. test that we can create a connection to R', (session, done) => {
+    withShell('0. test that we can create a connection to R', (shell, done) => {
       assert.doesNotThrow(() => {
-        session.clearEnvironment()
+        shell.clearEnvironment()
         done()
       })
     })
-    sessionIt('let R make an addition', (session, done) => {
-      session.onData(data => {
+    withShell('1. let\'s R make an addition', (shell, done) => {
+      shell.session.onLine('stdout', line => {
         // newline break is to be more robust against R versions
-        assert.match(data, /\[1][\n ]2\n/)
+        assert.equal(line, '[1] 2')
         done()
       })
-      session.sendCommand('1 + 1')
+      shell.sendCommand('1 + 1')
     })
   })
 })

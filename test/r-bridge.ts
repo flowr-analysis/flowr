@@ -5,6 +5,7 @@ import { it } from 'mocha'
 import { min2ms } from '../src/util/time'
 import * as fs from 'fs'
 
+// TODO: improve tests for shell so i can use await etc :C
 describe('R-Bridge', () => {
   describe('r language utilities', () => {
     describe('TS value to R', () => {
@@ -41,7 +42,7 @@ describe('R-Bridge', () => {
     })
   })
 
-  describe('shell shell', () => {
+  describe('RShell sessions', () => {
     // TODO: maybe just use beforeEach and afterEach to provide? or better test structure?
     const withShell = (msg: string, fn: (shell: RShell, done: Mocha.Done) => void): Mocha.Test => {
       return it(msg, done => {
@@ -84,18 +85,36 @@ describe('R-Bridge', () => {
       shell.continueOnError() // we will produce an error!
       shell.sendCommand('a <- 1 + 1')
       shell.clearEnvironment()
-      void shell.sendCommandWithOutput('a', 'stderr').then(lines => {
+      void shell.sendCommandWithOutput('a', { from: 'stderr' }).then(lines => {
         assert.equal(lines.length, 1)
         // just await an error
         assert.match(lines[0], /^.*Error.*a/)
         done()
       })
     })
-    describe('4. install a package', () => {
+    describe('4. test if a package is already installed', () => {
+      withShell('4.0 retrieve all installed packages', (shell, done) => {
+        void shell.allInstalledPackages().then(got => {
+          assert.isTrue(got.includes('base'), `base should be installed, but got: "${JSON.stringify(got)}"`)
+          done()
+        })
+      })
+      withShell('4.1 is installed', (shell, done) => {
+        void shell.allInstalledPackages().then(installed => {
+          installed.forEach(nameOfInstalledPackage => {
+            void shell.isPackageInstalled(nameOfInstalledPackage).then(isInstalled => {
+              assert.isTrue(isInstalled, `package ${nameOfInstalledPackage} should be installed due to allInstalledPackages`)
+              done()
+            })
+          })
+        })
+      })
+    })
+    describe('6. install a package', () => {
       // multiple packages to avoid the chance of them being preinstalled?
       // TODO: use withr to not install on host system and to allow this to work even without force?
       ['xmlparsedata', 'glue'].forEach((pkg, i) => {
-        withShell(`4.${i + 1} install ${pkg}`, (shell, done) => {
+        withShell(`6.${i + 1} install ${pkg}`, (shell, done) => {
           void shell.ensurePackageInstalled(pkg, true).then(returnedPkg => {
             assert.equal(returnedPkg.packageName, pkg)
             // clean up the temporary directory

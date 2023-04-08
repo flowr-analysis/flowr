@@ -25,6 +25,37 @@ interface CollectorUntil extends MergeableRecord {
   includeInResult: boolean
 }
 
+/**
+ * Configuration for the internal output collector used by the {@link RShell}
+ * The defaults are configured with {@link DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION}
+ */
+interface OutputCollectorConfiguration extends MergeableRecord {
+  /** the streams to use to collect the output from */
+  from: OutputStreamSelector
+  /**
+   * a string marker to signal that the command was executed successfully.
+   * must not appear as a standalone line in the output. this is our hacky way of ensuring that we are done.
+   */
+  postamble: string
+  /** internal timeout configuration to use (see {@link CollectorTimeout}) */
+  timeout: CollectorTimeout
+  /** should the postamble be included in the result? */
+  keepPostamble: boolean
+  /** automatically trim all lines in the output (useful to ignore trailing whitespace etc.) */
+  automaticallyTrimOutput: boolean
+}
+
+export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguration = {
+  from: 'stdout',
+  postamble: `🐧${'-'.repeat(27)}🐧`,
+  timeout: {
+    // TODO: allow to configure such things in a configuration file?
+    ms: 10_000,
+    resetOnNewData: true
+  },
+  keepPostamble: false,
+  automaticallyTrimOutput: true
+}
 // TODO: doc
 export interface RShellSessionOptions extends MergeableRecord {
   readonly pathToRExecutable: string
@@ -88,29 +119,31 @@ export class RShell {
   /**
    * Send a command and collect the output
    *
-   * @param command   the R command to execute (similar to {@link sendCommand})
-   * @param from      the streams to use to collect the output from
-   * @param postamble a string marker to signal that the command was executed successfully.
-   *                  must not appear as a standalone line in the output. this is our hacky way of ensuring that we are done.
+   * @param command     the R command to execute (similar to {@link sendCommand})
+   * @param addonConfig further configuration on how and what to collect: see {@link OutputCollectorConfiguration},
+   *                    defaults are set in {@link DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION}
    */
-  public async sendCommandWithOutput(command: string, from: OutputStreamSelector = 'stdout', postamble = `🐧${'-'.repeat(27)}🐧`): Promise<string[]> {
+  public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
+    const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig)
     this.log.info(`> ${command}`)
     // TODO: allow to configure timeout, etc.
-    return await this.session.collectLinesUntil(from, {
-      predicate: data => data === postamble,
-      includeInResult: false // we do not want the postamble
-    }, {
-      ms: 10_000,
-      resetOnNewData: true
-    }, () => {
+    const output = await this.session.collectLinesUntil(config.from, {
+      predicate: data => data === config.postamble,
+      includeInResult: config.keepPostamble // we do not want the postamble
+    }, config.timeout, () => {
       this._sendCommand(command)
       // TODO: in the future use sync redirect? or pipes with automatic wrapping?
-      if (from === 'stderr') {
-        this._sendCommand(`cat("${postamble}${this.options.eol}", file=stderr())`)
+      if (config.from === 'stderr') {
+        this._sendCommand(`cat("${config.postamble}${this.options.eol}", file=stderr())`)
       } else {
-        this._sendCommand(`cat("${postamble}${this.options.eol}")`)
+        this._sendCommand(`cat("${config.postamble}${this.options.eol}")`)
       }
     })
+    if (config.automaticallyTrimOutput) {
+      return output.map(line => line.trim())
+    } else {
+      return output
+    }
   }
 
   /**
@@ -144,9 +177,17 @@ export class RShell {
   /**
    * checks if a given package is already installed on the system!
    */
-  public async isInstalled(packageName: string): Promise<boolean> {
-    const result = await this.sendCommandWithOutput(`is.element("${packageName}", installed.packages()[,1])`)
+  public async isPackageInstalled(packageName: string): Promise<boolean> {
+    this.log.debug(`checking if package "${packageName}" is installed`)
+    const result = await this.sendCommandWithOutput(
+      `cat(paste0(is.element("${packageName}", installed.packages()[,1])),"${this.options.eol}")`)
     return result.length === 1 && result[0] === valueToR(true)
+  }
+
+  public async allInstalledPackages(): Promise<string[]> {
+    this.log.debug('getting all installed packages')
+    const [packages] = await this.sendCommandWithOutput(`cat(paste0(installed.packages()[,1], collapse=","),"${this.options.eol}")`)
+    return packages.split(',')
   }
 
   // TODO: sync variant
@@ -164,7 +205,7 @@ export class RShell {
     /** the temporary directory used for the installation, undefined if none was used */
     tempdir?: string
   }> {
-    if (!force && await this.isInstalled(packageName)) {
+    if (!force && await this.isPackageInstalled(packageName)) {
       this.log.info(`package "${packageName}" is already installed`)
       return { packageName }
     }

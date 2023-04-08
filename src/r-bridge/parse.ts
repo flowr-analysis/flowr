@@ -1,8 +1,8 @@
 // TODO: global entrypoint for configuration of the parser and all components
 
-import { RShellSession } from './rshell'
+import { RShell } from './shell'
 import * as xml2js from 'xml2js'
-import { valueToR } from './r-lang'
+import { valueToR } from './lang'
 
 interface RParseRequestFromFile {
   request: 'file'
@@ -21,33 +21,39 @@ type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseReq
 
 /**
  * Provides the capability to parse R files/R code using the R parser.
- * Depends on {@link RShellSession} to provide a connection to R.
+ * Depends on {@link RShell} to provide a connection to R.
  */
-export async function retrieveXmlFromRCode (req: RParseRequest): Promise<string> {
-  const session = new RShellSession()
+export async function retrieveXmlFromRCode(req: RParseRequest): Promise<string> {
+  const shell = new RShell()
+
+  // first of all we ensure, that we have xmlparsedata and load it
+  await shell.ensurePackageInstalled('xmlparsedata')
 
   return await new Promise<string>((resolve, reject) => {
     // TODO: allow to configure timeout
+
     const timer = setTimeout(() => { reject(new Error('timeout')) }, 5000)
 
-    session.onData(data => {
+    // TODO: collect until end of xml?
+    shell.session.onLine('stdout', data => {
       clearTimeout(timer)
       resolve(data.toString())
     })
+    // TODO: consider xml_parse_token_map
 
-    session.sendCommands('require(xmlparsedata)',
-        `parsed <- parse(${req.request} = "${req.content}", keep.source = ${valueToR(req.attachSourceInformation)})`,
-        `output <- xmlparsedata::xml_parse_data(parsed, includeText = ${valueToR(req.attachSourceInformation)})`,
-        'cat(output)'
+    shell.sendCommands(
+      `parsed <- parse(${req.request} = "${req.content}", keep.source = ${valueToR(req.attachSourceInformation)})`,
+      `output <- xmlparsedata::xml_parse_data(parsed, includeText = ${valueToR(req.attachSourceInformation)})`,
+      'cat(output)'
     )
-  }).finally(() => { session.close() })
+  }).finally(() => { shell.close() })
 }
 
 // TODO: type ast etc
 /**
  * uses {@link #retrieveXmlFromRCode} and returns the nicely formatted object-AST
  */
-export async function retrieveAstFromRCode (filename: RParseRequest): Promise<object> {
+export async function retrieveAstFromRCode(filename: RParseRequest): Promise<object> {
   const xml = await retrieveXmlFromRCode(filename)
   return await xml2js.parseStringPromise(xml, { validator: undefined /* TODO */ })
 }

@@ -1,7 +1,6 @@
-import { RShellSession } from '../src/r-bridge/rshell'
+import { RShell } from '../src/r-bridge/shell'
 import { assert } from 'chai'
-import { valueToR } from '../src/r-bridge/r-lang'
-import { type Test } from 'mocha'
+import { valueToR } from '../src/r-bridge/lang'
 
 describe('R-Bridge', () => {
   describe('r language utilities', () => {
@@ -25,10 +24,10 @@ describe('R-Bridge', () => {
 
   describe('shell session', () => {
     // TODO: maybe just use beforeEach and afterEach to provide?
-    const sessionIt = (msg: string, fn: (session: RShellSession, done: Mocha.Done) => void): void => {
+    const sessionIt = (msg: string, fn: (session: RShell, done: Mocha.Done) => void): void => {
       it(msg, done => {
-        let session: RShellSession | null = null
-        session = new RShellSession()
+        let session: RShell | null = null
+        session = new RShell()
         try {
           fn(session, err => {
             session?.close()

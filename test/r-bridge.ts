@@ -23,7 +23,7 @@ describe('R-Bridge', () => {
   })
 
   describe('shell shell', () => {
-    // TODO: maybe just use beforeEach and afterEach to provide?
+    // TODO: maybe just use beforeEach and afterEach to provide? or better trest structure?
     const withShell = (msg: string, fn: (shell: RShell, done: Mocha.Done) => void): void => {
       it(msg, done => {
         let shell: RShell | null = null
@@ -46,13 +46,12 @@ describe('R-Bridge', () => {
         done()
       })
     })
-    withShell('1. let\'s R make an addition', (shell, done) => {
-      shell.session.onLine('stdout', line => {
-        // newline break is to be more robust against R versions
-        assert.equal(line, '[1] 2')
+    withShell('1. let R make an addition', (shell, done) => {
+      void shell.sendCommandWithOutput('1 + 1').then(lines => {
+        assert.equal(lines.length, 1)
+        assert.equal(lines[0], '[1] 2')
         done()
       })
-      shell.sendCommand('1 + 1')
     })
   })
 })

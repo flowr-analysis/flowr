@@ -4,6 +4,27 @@ import { type ILogObj, Logger } from 'tslog'
 import { EOL } from 'os'
 import * as readline from 'node:readline'
 
+export type OutputStreamSelector = 'stdout' | 'stderr' | 'both'
+export type ExclusiveOutputStream = Exclude<OutputStreamSelector, 'both'>
+
+interface CollectorTimeout extends MergeableRecord {
+  /**
+   * number of milliseconds to wait for the collection to finish
+   */
+  ms: number
+  /**
+   * if true, the timeout will reset whenever we receive new data
+   */
+  resetOnNewData: boolean
+  // errorOnTimeout: boolean // TODO: maybe needed in the future as a "greedy" variant?
+}
+
+interface CollectorUntil extends MergeableRecord {
+  predicate: (data: string) => boolean
+  includeInResult: boolean
+}
+
+// TODO: doc
 export interface RShellSessionOptions extends MergeableRecord {
   readonly pathToRExecutable: string
   readonly commandLineOptions: readonly string[]
@@ -63,6 +84,29 @@ export class RShell {
   }
 
   /**
+   * Send a command and collect the output
+   *
+   * @param command   the R command to execute (similar to {@link sendCommand})
+   * @param from      the streams to use to collect the output from
+   * @param postamble a string marker to signal that the command was executed successfully.
+   *                  must not appear as a standalone line in the output. this is our hacky way of ensuring that we are done.
+   */
+  public async sendCommandWithOutput(command: string, from: OutputStreamSelector = 'stdout', postamble = `🐧${'-'.repeat(27)}🐧`): Promise<string[]> {
+    this.log.info(`> ${command}`)
+    // TODO: allow to configure timeout, etc.
+    return await this.session.collectLinesUntil(from, {
+      predicate: data => data === postamble,
+      includeInResult: false // we do not want the postamble
+    }, {
+      ms: 10_000,
+      resetOnNewData: true
+    }, () => {
+      this._sendCommand(command)
+      this._sendCommand(`cat("${postamble}${this.options.eol}")`)
+    })
+  }
+
+  /**
    * execute multiple commands in order
    *
    * @see sendCommand
@@ -87,7 +131,10 @@ export class RShell {
   public async ensurePackageInstalled(packageName: string): Promise<string> {
     const successfulDone = new RegExp(`.*DONE *\\(${packageName}\\)`)
 
-    await this.session.collectLinesUntil('both', data => successfulDone.test(data), {
+    await this.session.collectLinesUntil('both', {
+      predicate: data => successfulDone.test(data),
+      includeInResult: false
+    }, {
       ms: 10_000,
       resetOnNewData: true
     }, () => {
@@ -109,21 +156,6 @@ export class RShell {
   public close(): boolean {
     return this.session.end()
   }
-}
-
-export type OutputStreamSelector = 'stdout' | 'stderr' | 'both'
-export type ExclusiveOutputStream = Exclude<OutputStreamSelector, 'both'>
-
-export interface CollectorTimeout extends MergeableRecord {
-  /**
-   * number of milliseconds to wait for the collection to finish
-   */
-  ms: number
-  /**
-   * if true, the timeout will reset whenever we receive new data
-   */
-  resetOnNewData: boolean
-  // errorOnTimeout: boolean // TODO: maybe needed in the future as a "greedy" variant?
 }
 
 /**
@@ -203,7 +235,7 @@ class RShellSession {
    * @timeout configuration for how and when to timeout
    * @action event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
    */
-  public async collectLinesUntil(from: OutputStreamSelector, until: ((data: string) => boolean), timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
+  public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
     const result: string[] = []
     let handler: (data: string) => void
 
@@ -212,8 +244,11 @@ class RShellSession {
       let timer = makeTimer()
 
       handler = (data: string): void => {
-        result.push(data)
-        if (until(data)) {
+        const end = until.predicate(data)
+        if (!end || until.includeInResult) {
+          result.push(data)
+        }
+        if (end) {
           clearTimeout(timer)
           resolve(result)
         } else if (timeout.resetOnNewData) {

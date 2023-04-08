@@ -40,8 +40,9 @@ export async function retrieveXmlFromRCode(req: RParseRequest): Promise<string> 
       resolve(data.toString())
     })
     // TODO: consider xml_parse_token_map
+    // TODO: remove the tempdir used?
 
-    shell.sendCommands(
+    shell.sendCommands('library(xmlparsedata)',
       `parsed <- parse(${req.request} = "${req.content}", keep.source = ${valueToR(req.attachSourceInformation)})`,
       `output <- xmlparsedata::xml_parse_data(parsed, includeText = ${valueToR(req.attachSourceInformation)})`,
       'cat(output)'

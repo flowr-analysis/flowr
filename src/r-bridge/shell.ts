@@ -3,6 +3,7 @@ import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, Logger } from 'tslog'
 import { EOL } from 'os'
 import * as readline from 'node:readline'
+import { valueToR } from './lang'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both'
 export type ExclusiveOutputStream = Exclude<OutputStreamSelector, 'both'>
@@ -78,6 +79,7 @@ export class RShell {
    * sends the given command directly to the current R session
    * will not do anything to alter input markers!
    */
+  // TODO: rename to execute or so?
   public sendCommand(command: string): void {
     this.log.info(`> ${command}`)
     this._sendCommand(command)
@@ -102,7 +104,12 @@ export class RShell {
       resetOnNewData: true
     }, () => {
       this._sendCommand(command)
-      this._sendCommand(`cat("${postamble}${this.options.eol}")`)
+      // TODO: in the future use sync redirect? or pipes with automatic wrapping?
+      if (from === 'stderr') {
+        this._sendCommand(`cat("${postamble}${this.options.eol}", file=stderr())`)
+      } else {
+        this._sendCommand(`cat("${postamble}${this.options.eol}")`)
+      }
     })
   }
 
@@ -121,14 +128,53 @@ export class RShell {
    * clears the R environment using the `rm` command.
    */
   public clearEnvironment(): void {
-    this.sendCommand('rm(list=ls())')
+    this.log.debug('clearing environment')
+    this._sendCommand('rm(list=ls())')
   }
 
-  // TODO: sync variant TODO: returns the loaded library or fails with error
+  /**
+   * usually R will stop execution on errors, with this the R session will try to
+   * continue working!
+   */
+  public continueOnError(): void {
+    this.log.info('continue in case of Errors')
+    this._sendCommand('options(error=function() {})')
+  }
+
+  /**
+   * checks if a given package is already installed on the system!
+   */
+  public async isInstalled(packageName: string): Promise<boolean> {
+    const result = await this.sendCommandWithOutput(`is.element("${packageName}", installed.packages()[,1])`)
+    return result.length === 1 && result[0] === valueToR(true)
+  }
+
+  // TODO: sync variant
   // TODO: allow to configure repos etc.
   // TODO: parser for errors
-  // TODO: better name as we have to load at the same time!
-  public async ensurePackageInstalled(packageName: string): Promise<string> {
+  // TODO: bioconductor support?
+  /**
+   * installs the package using a temporary location
+   *
+   * @param packageName the package to install
+   * @param force       if true, the package will be installed no if it is already on the system and ready to be loaded
+   */
+  public async ensurePackageInstalled(packageName: string, force = false): Promise<{
+    packageName: string
+    /** the temporary directory used for the installation, undefined if none was used */
+    tempdir?: string
+  }> {
+    if (!force && await this.isInstalled(packageName)) {
+      this.log.info(`package "${packageName}" is already installed`)
+      return { packageName }
+    }
+
+    // obtain a temporary directory
+    this.sendCommand('temp <- tempdir()')
+    const [tempdir] = await this.sendCommandWithOutput(`cat(temp, "${this.options.eol}")`)
+
+    this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
+
     const successfulDone = new RegExp(`.*DONE *\\(${packageName}\\)`)
 
     await this.session.collectLinesUntil('both', {
@@ -138,14 +184,10 @@ export class RShell {
       ms: 10_000,
       resetOnNewData: true
     }, () => {
-      this.sendCommand(`
-        if(!require(${packageName})) {
-          temp <- tempdir()
-          install.packages("${packageName}",repos="http://cran.us.r-project.org", quiet=FALSE, lib=temp)
-          library("${packageName}", lib.loc=temp)
-        }`)
+      // the else branch is a cheesy way to work even if the package is already installed!
+      this.sendCommand(`install.packages("${packageName}",repos="http://cran.us.r-project.org", quiet=FALSE, lib=temp)`)
     })
-    return packageName
+    return { packageName, tempdir }
   }
 
   /**
@@ -183,13 +225,13 @@ class RShellSession {
 
   private setupRSessionLoggers(): void {
     this.bareSession.stdout.on('data', (data: Buffer) => {
-      this.log.info(`< ${data.toString()}`)
+      this.log.silly(`< ${data.toString()}`)
     })
     this.bareSession.stderr.on('data', (data: string) => {
-      this.log.error(`< ${data}`)
+      this.log.warn(`< ${data}`)
     })
     this.bareSession.on('close', (code: number) => {
-      this.log.info(`session exited with code ${code}`)
+      this.log.debug(`session exited with code ${code}`)
     })
   }
 

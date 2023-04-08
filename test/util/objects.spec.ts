@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import { deepMergeObject, isObjectOrArray } from '../src/util/objects'
+import { deepMergeObject, isObjectOrArray } from '../../src/util/objects'
 
 describe('Objects', () => {
   describe('isObjectOrArray', () => {

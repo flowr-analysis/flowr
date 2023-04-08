@@ -173,7 +173,7 @@ describe('R-Bridge', () => {
   describe('Retrieve AST from R', () => {
     it('0. retrieve ast of literal', async () => {
       const ast = await retrieveAstFromRCode({ request: 'text', content: '1', attachSourceInformation: true })
-      console.log(ast)
+      console.log(JSON.stringify(ast, null, 2))
     }).timeout('15min')
   })
 })

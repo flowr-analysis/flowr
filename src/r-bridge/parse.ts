@@ -3,6 +3,7 @@
 import { RShell } from './shell'
 import * as xml2js from 'xml2js'
 import { valueToR } from './lang'
+import { EOL } from 'os'
 
 interface RParseRequestFromFile {
   request: 'file'
@@ -26,29 +27,22 @@ type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseReq
 export async function retrieveXmlFromRCode(request: RParseRequest): Promise<string> {
   const shell = new RShell()
 
-  // first of all we ensure, that we have xmlparsedata and load it
-  const { tempdir } = await shell.ensurePackageInstalled('xmlparsedata')
-
-  return await new Promise<string>((resolve, reject) => {
-    // TODO: allow to configure timeout
-
-    const timer = setTimeout(() => { reject(new Error('timeout')) }, 5000)
-
-    // TODO: collect until end of xml?
-    shell.session.onLine('stdout', data => {
-      clearTimeout(timer)
-      resolve(data.toString())
-    })
-    // TODO: consider xml_parse_token_map
-    // TODO: remove the tempdir used?
+  try {
+    // first of all we ensure, that we have xmlparsedata and load it
+    const { tempdir } = await shell.ensurePackageInstalled('xmlparsedata')
 
     const libLoc = tempdir === undefined ? '' : `, lib.loc="${tempdir}"`
     shell.sendCommands(`library(xmlparsedata${libLoc})`,
       `parsed <- parse(${request.request} = "${request.content}", keep.source = ${valueToR(request.attachSourceInformation)})`,
-      `output <- xmlparsedata::xml_parse_data(parsed, includeText = ${valueToR(request.attachSourceInformation)})`,
-      'cat(output)'
+      `output <- xmlparsedata::xml_parse_data(parsed, includeText = ${valueToR(request.attachSourceInformation)}, pretty = FALSE)`
     )
-  }).finally(() => { shell.close() })
+    const xml = await shell.sendCommandWithOutput('cat(output)')
+
+    // TODO: keep configuration consistent
+    return xml.join(EOL)
+  } finally {
+    shell.close()
+  }
 }
 
 // TODO: type ast etc
@@ -57,5 +51,5 @@ export async function retrieveXmlFromRCode(request: RParseRequest): Promise<stri
  */
 export async function retrieveAstFromRCode(request: RParseRequest): Promise<object> {
   const xml = await retrieveXmlFromRCode(request)
-  return await xml2js.parseStringPromise(xml, { validator: undefined /* TODO */ })
+  return await xml2js.parseStringPromise(xml, { /* TODO: validator: undefined */ })
 }

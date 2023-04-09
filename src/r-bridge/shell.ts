@@ -204,12 +204,14 @@ export class RShell {
    */
   public async ensurePackageInstalled(packageName: string, force = false): Promise<{
     packageName: string
+    packageExistedAlready: boolean
     /** the temporary directory used for the installation, undefined if none was used */
-    tempdir?: string
+    libraryLocation?: string
   }> {
-    if (!force && await this.isPackageInstalled(packageName)) {
+    const packageExistedAlready = await this.isPackageInstalled(packageName)
+    if (!force && packageExistedAlready) {
       this.log.info(`package "${packageName}" is already installed`)
-      return { packageName }
+      return { packageName, packageExistedAlready: true }
     }
 
     // obtain a temporary directory
@@ -230,7 +232,7 @@ export class RShell {
       // the else branch is a cheesy way to work even if the package is already installed!
       this.sendCommand(`install.packages("${packageName}",repos="http://cran.us.r-project.org", quiet=FALSE, lib=temp)`)
     })
-    return { packageName, tempdir }
+    return { packageName, libraryLocation: tempdir, packageExistedAlready }
   }
 
   /**

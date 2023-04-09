@@ -24,14 +24,11 @@ type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseReq
  * Provides the capability to parse R files/R code using the R parser.
  * Depends on {@link RShell} to provide a connection to R.
  */
-export async function retrieveXmlFromRCode(request: RParseRequest): Promise<string> {
-  const shell = new RShell()
-
+export async function retrieveXmlFromRCode(request: RParseRequest, shell = new RShell()): Promise<string> {
   try {
-    // first of all we ensure, that we have xmlparsedata and load it
-    const { tempdir } = await shell.ensurePackageInstalled('xmlparsedata')
+    const { libraryLocation } = await shell.ensurePackageInstalled('xmlparsedata')
 
-    const libLoc = tempdir === undefined ? '' : `, lib.loc="${tempdir}"`
+    const libLoc = libraryLocation === undefined ? '' : `, lib.loc="${libraryLocation}"`
     shell.sendCommands(`library(xmlparsedata${libLoc})`,
       `parsed <- parse(${request.request} = "${request.content}", keep.source = ${valueToR(request.attachSourceInformation)})`,
       `output <- xmlparsedata::xml_parse_data(parsed, includeText = ${valueToR(request.attachSourceInformation)}, pretty = FALSE)`
@@ -49,7 +46,7 @@ export async function retrieveXmlFromRCode(request: RParseRequest): Promise<stri
 /**
  * uses {@link #retrieveXmlFromRCode} and returns the nicely formatted object-AST
  */
-export async function retrieveAstFromRCode(request: RParseRequest): Promise<object> {
-  const xml = await retrieveXmlFromRCode(request)
+export async function retrieveAstFromRCode(request: RParseRequest, shell = new RShell()): Promise<object> {
+  const xml = await retrieveXmlFromRCode(request, shell)
   return await xml2js.parseStringPromise(xml, { /* TODO: validator: undefined */ })
 }

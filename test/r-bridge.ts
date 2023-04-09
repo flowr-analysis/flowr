@@ -137,7 +137,7 @@ describe('R-Bridge', () => {
         void shell.allInstalledPackages().then(([nameOfInstalledPackage]) => {
           void shell.ensurePackageInstalled(nameOfInstalledPackage, false).then(returnedPkg => {
             assert.equal(returnedPkg.packageName, nameOfInstalledPackage)
-            assert.equal(returnedPkg.tempdir, undefined)
+            assert.equal(returnedPkg.libraryLocation, undefined)
             done()
           })
         })
@@ -151,8 +151,8 @@ describe('R-Bridge', () => {
           void shell.ensurePackageInstalled(pkg, true).then(returnedPkg => {
             assert.equal(returnedPkg.packageName, pkg)
             // clean up the temporary directory
-            if (returnedPkg.tempdir !== undefined) {
-              fs.rmSync(returnedPkg.tempdir, { recursive: true, force: true })
+            if (returnedPkg.libraryLocation !== undefined) {
+              fs.rmSync(returnedPkg.libraryLocation, { recursive: true, force: true })
             }
             done()
           })

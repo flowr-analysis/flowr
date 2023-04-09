@@ -102,8 +102,9 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
   }
 
   private revertTokenReplacement(token: string): string {
-    log.debug(`reverting token ${token} to ${this.config.tokenMap?.[token] ?? token} (tokenMap: ${JSON.stringify(this.config.tokenMap)})`)
-    return this.config.tokenMap?.[token] ?? token
+    const result = this.config.tokenMap?.[token] ?? token
+    log.debug(`reverting ${token}=>${result}`)
+    return result
   }
 
   // TODO: make isolateMarker more performant
@@ -131,8 +132,10 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
 
     // TODO: if any has a semicolon we must respect that and split to expr list
     // TODO: improve with error message
-    const special = this.isolateMarker(mappedWithName, n => Lang.ArithmeticOperators.includes(n), Lang.ArithmeticOperators.join(', '))
 
+    const special = this.isolateMarker(mappedWithName, n => {
+      return Lang.ArithmeticOperators.includes(n)
+    }, Lang.ArithmeticOperators.join(', '))
     if (special !== undefined) {
       return [this.parseArithmeticOp(special)]
     }
@@ -214,8 +217,8 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     const [lhs] = this.parseBasedOnType([special.others[0].content])
     const [rhs] = this.parseBasedOnType([special.others[1].content])
 
-    const { location, content } = this.retrieveMetaStructure(special.marker)
-    return { type: Lang.Type.BinaryOp, location, content, lhs, rhs, op: special.marker.name }
+    const { location } = this.retrieveMetaStructure(special.marker.content)
+    return { type: Lang.Type.BinaryOp, location, lhs, rhs, op: special.marker.name }
   }
 }
 

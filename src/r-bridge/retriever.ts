@@ -50,16 +50,29 @@ export async function retrieveAstFromRCode(request: RParseRequest, tokenMap: Rec
   return await parse(xml, tokenMap)
 }
 
+function startAndEndsWith(str: string, quote: string): boolean {
+  return str.startsWith(quote) && str.endsWith(quote)
+}
+
+function removeTokenMapQuotationMarks(str: string): string {
+  if (startAndEndsWith(str, "'") || startAndEndsWith(str, '"')) {
+    return str.slice(1, -1)
+  } else {
+    return str
+  }
+}
+
 export async function getStoredTokenMap(shell: RShell): Promise<Record<string, string>> {
   await shell.ensurePackageInstalled('xmlparsedata', false)
   // we invert the token map to get a mapping back from the replacement
   const parsed = parseCSV(await shell.sendCommandWithOutput(
-    '(function() { x <- xmlparsedata::xml_parse_token_map; x <- setNames(names(x),x); write.table(x,sep=",", col.names=FALSE) })()'
+    'write.table(xmlparsedata::xml_parse_token_map,sep=",", col.names=FALSE)'
   ))
 
   if (parsed.some(s => s.length !== 2)) {
     throw new Error(`Expected two columns in token map, but got ${JSON.stringify(parsed)}`)
   }
 
-  return parsed.reduce<Record<string, string>>((acc, [key, value]) => { acc[key] = value; return acc }, {})
+  // we swap key and value to get the other direction, furthermore we remove quotes from keys if they are quoted
+  return parsed.reduce<Record<string, string>>((acc, [key, value]) => { acc[value] = removeTokenMapQuotationMarks(key); return acc }, {})
 }

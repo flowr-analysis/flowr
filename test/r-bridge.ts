@@ -206,7 +206,33 @@ describe('R-Bridge', () => {
       type: Lang.Type.Expr,
       content: '1 + 1',
       location: Lang.rangeFrom(1, 1, 1, 5),
-      children: []
+      children: [
+        {
+          type: Lang.Type.BinaryOp,
+          op: '+',
+          location: Lang.rangeFrom(1, 3, 1, 3), // TODO fix this and merge with surrounding expr? everywhere?
+          lhs: {
+            type: Lang.Type.Expr,
+            content: '1',
+            location: Lang.rangeFrom(1, 1, 1, 1),
+            children: [{
+              type: Lang.Type.Number,
+              location: Lang.rangeFrom(1, 1, 1, 1),
+              content: 1
+            }]
+          },
+          rhs: {
+            type: Lang.Type.Expr,
+            content: '1',
+            location: Lang.rangeFrom(1, 5, 1, 5),
+            children: [{
+              type: Lang.Type.Number,
+              location: Lang.rangeFrom(1, 5, 1, 5),
+              content: 1
+            }]
+          }
+        }
+      ]
     }))
   })
 })

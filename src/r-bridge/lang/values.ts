@@ -1,3 +1,5 @@
+import { parse } from 'csv-parse/sync'
+
 /**
  * transforms a value to something R can understand (e.g., booleans to TRUE/FALSE)
  */
@@ -23,4 +25,9 @@ export function valueToR (value: any): string {
   }
   // TODO: bigint, function, ...
   throw new Error(`cannot convert value of type ${typeof value} to R code`)
+}
+
+export function parseCSV(lines: string[]): string[][] {
+  // TODO: make this scalable?
+  return parse(lines.join('\n'), { skipEmptyLines: true })
 }

@@ -93,7 +93,8 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
  * TODO: in the future real language bindings like rpy2? but for ts?
  */
 export class RShell {
-  private readonly options: RShellOptions
+  // TODO: deep readonly?
+  public readonly options: Readonly<RShellOptions>
   public readonly session: RShellSession
   private readonly log: Logger<ILogObj>
 
@@ -119,6 +120,7 @@ export class RShell {
     this._sendCommand(command)
   }
 
+  // TODO: general varRead which uses r to serialize
   /**
    * Send a command and collect the output
    *
@@ -210,9 +212,10 @@ export class RShell {
    * installs the package using a temporary location
    *
    * @param packageName the package to install
+   * @param autoload    if true, the package will be loaded after installation
    * @param force       if true, the package will be installed no if it is already on the system and ready to be loaded
    */
-  public async ensurePackageInstalled(packageName: string, force = false): Promise<{
+  public async ensurePackageInstalled(packageName: string, autoload = false, force = false): Promise<{
     packageName: string
     packageExistedAlready: boolean
     /** the temporary directory used for the installation, undefined if none was used */
@@ -221,12 +224,15 @@ export class RShell {
     const packageExistedAlready = await this.isPackageInstalled(packageName)
     if (!force && packageExistedAlready) {
       this.log.info(`package "${packageName}" is already installed`)
+      if (autoload) {
+        this.sendCommand(`library(${valueToR(packageName)})`)
+      }
       return { packageName, packageExistedAlready: true }
     }
 
     // obtain a temporary directory
     this.sendCommand('temp <- tempdir()')
-    const [tempdir] = await this.sendCommandWithOutput(`cat(temp, "${this.options.eol}")`)
+    const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${valueToR(this.options.eol)})`)
 
     this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
 
@@ -240,8 +246,11 @@ export class RShell {
       resetOnNewData: true
     }, () => {
       // the else branch is a cheesy way to work even if the package is already installed!
-      this.sendCommand(`install.packages("${packageName}",repos="http://cran.us.r-project.org", quiet=FALSE, lib=temp)`)
+      this.sendCommand(`install.packages(${valueToR(packageName)},repos="http://cran.us.r-project.org", quiet=FALSE, lib=temp)`)
     })
+    if (autoload) {
+      this.sendCommand(`library(${valueToR(packageName)}, lib.loc=${valueToR(tempdir)})`)
+    }
     return { packageName, libraryLocation: tempdir, packageExistedAlready }
   }
 

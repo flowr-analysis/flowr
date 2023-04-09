@@ -1,10 +1,12 @@
 import { RShell } from '../src/r-bridge/shell'
 import { assert } from 'chai'
-import { valueToR } from '../src/r-bridge/lang/values'
+import { parseCSV, valueToR } from '../src/r-bridge/lang/values'
 import { it } from 'mocha'
 import * as fs from 'fs'
 import { randomString } from '../src/util/random'
-import { retrieveAstFromRCode } from '../src/r-bridge/retriever'
+import { getStoredTokenMap, retrieveAstFromRCode } from '../src/r-bridge/retriever'
+import * as Lang from '../src/r-bridge/lang/ast/model'
+import { Type } from '../src/r-bridge/lang/ast/model'
 
 // TODO: improve tests for shell so i can use await etc :C
 describe('R-Bridge', () => {
@@ -135,7 +137,7 @@ describe('R-Bridge', () => {
     describe('5. install a package', () => {
       withShell('5.0 try to install a package that is already installed', (shell, done) => {
         void shell.allInstalledPackages().then(([nameOfInstalledPackage]) => {
-          void shell.ensurePackageInstalled(nameOfInstalledPackage, false).then(returnedPkg => {
+          void shell.ensurePackageInstalled(nameOfInstalledPackage, false, false).then(returnedPkg => {
             assert.equal(returnedPkg.packageName, nameOfInstalledPackage)
             assert.equal(returnedPkg.libraryLocation, undefined)
             done()
@@ -148,7 +150,7 @@ describe('R-Bridge', () => {
       const i = 1
       for (const pkg of ['xmlparsedata', 'glue']) { // we use for instead of foreach to avoid index syntax issues
         withShell(`5.${i + 1} install ${pkg}`, (shell, done) => {
-          void shell.ensurePackageInstalled(pkg, true).then(returnedPkg => {
+          void shell.ensurePackageInstalled(pkg, false, true).then(returnedPkg => {
             assert.equal(returnedPkg.packageName, pkg)
             // clean up the temporary directory
             if (returnedPkg.libraryLocation !== undefined) {
@@ -170,22 +172,41 @@ describe('R-Bridge', () => {
     })
   })
 
+  // TODO: allow to specify where to install packages to so we can minimize installation to one temp directory
   describe('Retrieve AST from R', () => {
-    let shell: RShell
-    before(async function () {
-      this.timeout('10min')
-      shell = new RShell()
-      // this way we probably do not have to reinstall even if we launch from WebStorm
-      shell.tryToInjectHomeLibPath()
-      await shell.ensurePackageInstalled('xmlparsedata')
-    })
+    const assertAst = (msg: string, input: string, expected: Lang.RExprList): Mocha.Test => {
+      return it(msg, async () => {
+        const shell = new RShell()
+        // this way we probably do not have to reinstall even if we launch from WebStorm
+        shell.tryToInjectHomeLibPath()
+        await shell.ensurePackageInstalled('xmlparsedata')
+        const defaultTokenMap = await getStoredTokenMap(shell)
 
-    after(() => { shell.close() })
-    beforeEach(() => { shell.clearEnvironment() })
+        after(() => { shell.close() })
+        const ast = await retrieveAstFromRCode({ request: 'text', content: input, attachSourceInformation: true }, defaultTokenMap, shell)
+        assert.deepStrictEqual(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
+      }).timeout('15min') /* retrieval downtime */
+    }
+    const exprList = (...children: Lang.RExpr[]): Lang.RExprList => {
+      return { type: Lang.Type.ExprList, children }
+    }
 
-    it('0. retrieve ast of literal', async () => {
-      const ast = await retrieveAstFromRCode({ request: 'text', content: '1', attachSourceInformation: true }, shell)
-      console.log(JSON.stringify(ast, null, 2))
-    }).timeout('5min')
+    assertAst('0. retrieve ast of literal', '1', exprList({
+      type: Lang.Type.Expr,
+      content: '1',
+      location: Lang.rangeFrom(1, 1, 1, 1),
+      children: [{
+        type: Lang.Type.Number,
+        location: Lang.rangeFrom(1, 1, 1, 1),
+        content: 1
+      }]
+    }))
+
+    assertAst('1. retrieve ast of simple expression', '1 + 1', exprList({
+      type: Lang.Type.Expr,
+      content: '1 + 1',
+      location: Lang.rangeFrom(1, 1, 1, 5),
+      children: []
+    }))
   })
 })

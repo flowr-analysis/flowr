@@ -1,24 +1,27 @@
 import { deepMergeObject, type MergeableRecord } from '../../../util/objects'
 import * as xml2js from 'xml2js'
 import { Logger } from 'tslog'
-import { type Base, type RNode, type RExprList, Type } from './model'
+import * as Lang from './model'
+import { rangeFrom } from './model'
 
 const log = new Logger({ name: 'ast' })
 
-interface AstParser<Target extends Base> {
+interface AstParser<Target extends Lang.Base> {
   parse: (xmlString: string) => Promise<Target>
 }
 
 interface XmlParserConfig extends MergeableRecord {
   attributeName: string
-  childrenName: string
   contentName: string
+  childrenName: string
+  // Mapping from xml tag name to the real operation of the node
+  tokenMap?: Record<string, string /* TODO: change this to OP enum or so */>
 }
 
 const DEFAULT_XML_PARSER_CONFIG: XmlParserConfig = {
-  attributeName: 'attributes',
-  childrenName: 'children',
-  contentName: 'content'
+  attributeName: '@attributes',
+  contentName: '@content',
+  childrenName: '@children'
 }
 
 class XmlParseError extends Error {
@@ -29,84 +32,194 @@ class XmlParseError extends Error {
 }
 
 type XmlBasedJson = Record<string, any>
+interface NamedXmlBasedJson { name: string, content: XmlBasedJson }
 
-function getKeyGuarded(obj: XmlBasedJson, key: string): any {
+function getKeysGuarded(obj: XmlBasedJson, key: string): any
+function getKeysGuarded(obj: XmlBasedJson, ...key: string[]): Record<string, any>
+function getKeysGuarded(obj: XmlBasedJson, ...key: string[]): (Record<string, any> | string) {
   const keys = Object.keys(obj)
-  if (!keys.includes(key)) {
-    throw new XmlParseError(`expected obj to have key ${Type.ExprList}, yet received ${JSON.stringify(obj)}`)
+
+  const check = (key: string): any => {
+    if (!keys.includes(key)) {
+      throw new XmlParseError(`expected obj to have key ${key}, yet received ${JSON.stringify(obj)}`)
+    }
+    return obj[key]
   }
-  return obj[key]
+
+  if (key.length === 1) {
+    return check(key[0])
+  } else {
+    return key.reduce<Record<string, any>>((acc, key) => {
+      acc[key] = check(key)
+      return acc
+    }, {})
+  }
 }
 
-class XmlBasedAstParser implements AstParser<RExprList> {
+function extractRange(ast: XmlBasedJson): Lang.Range {
+  const { line1, col1, line2, col2 } = getKeysGuarded(ast, 'line1', 'col1', 'line2', 'col2')
+  return rangeFrom(line1, col1, line2, col2)
+}
+
+class XmlBasedAstParser implements AstParser<Lang.RExprList> {
   private objectRoot: undefined | XmlBasedJson
   private readonly config: XmlParserConfig
 
   constructor(config?: Partial<XmlParserConfig>) {
     this.config = deepMergeObject(DEFAULT_XML_PARSER_CONFIG, config)
+    log.debug(`config for xml parser: ${JSON.stringify(this.config)}`)
   }
 
-  public async parse(xmlString: string): Promise<RExprList> {
+  public async parse(xmlString: string): Promise<Lang.RExprList> {
     this.objectRoot = await this.parseToObj(xmlString) as XmlBasedJson
 
-    return this.foldRootObjToAst(this.objectRoot)
+    return this.parseRootObjToAst(this.objectRoot)
   }
 
   private async parseToObj(xmlString: string): Promise<object> {
     return await xml2js.parseStringPromise(xmlString, {
       attrkey: this.config.attributeName,
       charkey: this.config.contentName,
-      explicitChildren: true,
       childkey: this.config.childrenName,
       charsAsChildren: false,
-      explicitRoot: true,
+      explicitChildren: true,
+      // we need this for semicolons etc, while we keep the old broken components we ignore them completely
+      preserveChildrenOrder: true,
+      normalize: true,
       strict: true
     })
   }
 
-  private foldRootObjToAst(obj: XmlBasedJson): RExprList {
-    const exprList = getKeyGuarded(obj, Type.ExprList)
-    const children = this.retrieveChildren(exprList)
+  private parseRootObjToAst(obj: XmlBasedJson): Lang.RExprList {
+    const exprContent = getKeysGuarded(obj, Lang.Type.ExprList)
+    this.assureName(exprContent, Lang.Type.ExprList)
+
+    const children = getKeysGuarded(exprContent, this.config.childrenName)
+
+    // const children = this.retrieveChildren(exprList)
     // TODO: at total object in any case of error?
-    return { type: Type.ExprList, children: this.foldChildrenToAst(children) }
+    return { type: Lang.Type.ExprList, children: this.parseBasedOnType(children) }
   }
 
-  private retrieveChildren(obj: XmlBasedJson): object {
-    const children = getKeyGuarded(obj, this.config.childrenName)
-    if (Array.isArray(children)) {
-      throw new XmlParseError(`needed key "${this.config.childrenName}" to yield an object for the children, but received ${JSON.stringify(children)} from ${JSON.stringify(obj)}`)
+  private revertTokenReplacement(token: string): string {
+    log.debug(`reverting token ${token} to ${this.config.tokenMap?.[token] ?? token} (tokenMap: ${JSON.stringify(this.config.tokenMap)})`)
+    return this.config.tokenMap?.[token] ?? token
+  }
+
+  // TODO: make isolateMarker more performant
+  private isolateMarker(obj: NamedXmlBasedJson[], predicate: (name: string) => boolean, multipleErrorMessage: string): {
+    readonly marker: NamedXmlBasedJson
+    readonly others: NamedXmlBasedJson[]
+  } | undefined {
+    let marker: NamedXmlBasedJson | undefined
+    for (const elem of obj) {
+      if (predicate(elem.name)) {
+        if (marker !== undefined) {
+          throw new XmlParseError(`found multiple markers for ${multipleErrorMessage} in ${JSON.stringify(obj)}`)
+        }
+        marker = elem
+      }
     }
-    return children
-  }
-
-  private parseChildren(obj: object): RNode[] {
-    const children = Object.entries(obj).map(([key, value]) => this.foldChildToAst(key, value))
-    return children
-  }
-
-  /*  else if (Array.isArray(obj)) {
-        return XmlBasedAstParser.foldArrayToAst(obj)
-      } */
-  private foldExprToAst(obj: object | null, idx: number): RNode {
-    if (obj === null) {
-      return XmlBasedAstParser.foldIllegalNull(obj, `@${idx} of parent!`)
+    if (marker === undefined) {
+      return undefined
     }
-    console.log(idx, JSON.stringify(obj))
-    return (null as unknown) as RNode
+    return { marker, others: obj.filter((elem) => elem !== marker) }
   }
 
-  private static foldIllegalNull(obj: null, msg: string): any {
-    throw new XmlParseError(`encountered null at ${JSON.stringify(obj)} (${msg})`)
+  private parseBasedOnType(obj: XmlBasedJson[]): Lang.RNode[] {
+    const mappedWithName: NamedXmlBasedJson[] = obj.map((content) => ({ name: this.getName(content), content }))
+
+    // TODO: if any has a semicolon we must respect that and split to expr list
+    // TODO: improve with error message
+    const special = this.isolateMarker(mappedWithName, n => Lang.ArithmeticOperators.includes(n), Lang.ArithmeticOperators.join(', '))
+
+    if (special !== undefined) {
+      return [this.parseArithmeticOp(special)]
+    }
+
+    // otherwise perform default parsing
+    const parsedNodes: Lang.RNode[] = []
+    // used to indicate the new root node of this set of nodes
+    // TODO: refactor?
+    for (const elem of mappedWithName) {
+      // TODO: configure #name
+      if (elem.name === Lang.Type.Expr) {
+        parsedNodes.push(this.parseExpr(elem.content))
+      } else if (elem.name === Lang.Type.Number) {
+        parsedNodes.push(this.parseNumber(elem.content))
+      } else {
+        throw new XmlParseError(`unknown type ${elem.name}`)
+      }
+    }
+    return parsedNodes
   }
 
-  private foldArrayToAst(obj: object[]): RNode {
-    const children = obj.map(this.foldExprToAst)
-    // TODO: default parse for semicolon etc.
-    return { type: Type.Expr, location: { start: { line: 0, column: 0 }, end: { line: 0, column: 0 } }, children: [] }
+  private assureName(obj: XmlBasedJson, expectedName: string): void {
+    // TODO: allow us to configure the name?
+    const name = this.getName(obj)
+    if (name !== expectedName) {
+      throw new XmlParseError(`expected name to be ${expectedName}, yet received ${name} for ${JSON.stringify(obj)}`)
+    }
+  }
+
+  private getName(content: XmlBasedJson): string {
+    return this.revertTokenReplacement(getKeysGuarded(content, '#name') as string)
+  }
+
+  private objectWithArrUnwrap(obj: XmlBasedJson): XmlBasedJson {
+    if (Array.isArray(obj)) {
+      if (obj.length !== 1) {
+        throw new XmlParseError(`expected only one element in the wrapped array, yet received ${JSON.stringify(obj)}`)
+      }
+      return obj[0]
+    } else if (typeof obj === 'object') {
+      return obj
+    } else {
+      throw new XmlParseError(`expected array or object, yet received ${JSON.stringify(obj)}`)
+    }
+  }
+
+  private parseExpr(obj: XmlBasedJson): Lang.RExpr {
+    log.debug(`trying to parse expr ${JSON.stringify(obj)}`)
+    const { unwrappedObj, content, location } = this.retrieveMetaStructure(obj)
+    const children = this.parseBasedOnType(getKeysGuarded(unwrappedObj, this.config.childrenName))
+    return { type: Lang.Type.Expr, location, content, children }
+  }
+
+  private retrieveMetaStructure(obj: XmlBasedJson): {
+    unwrappedObj: XmlBasedJson
+    location: Lang.Range
+    content: string
+  } {
+    const unwrappedObj = this.objectWithArrUnwrap(obj)
+    const core = getKeysGuarded(unwrappedObj, this.config.contentName, this.config.attributeName)
+    const location = extractRange(core[this.config.attributeName])
+    const content = core[this.config.contentName]
+    return { unwrappedObj, location, content }
+  }
+
+  private parseNumber(obj: XmlBasedJson): Lang.RNumber {
+    log.debug(`trying to parse number ${JSON.stringify(obj)}`)
+    const { location, content } = this.retrieveMetaStructure(obj)
+    // TODO: need to parse R numbers to TS numbers
+    return { type: Lang.Type.Number, location, content: Number(content) }
+  }
+
+  private parseArithmeticOp(special: { marker: NamedXmlBasedJson, others: NamedXmlBasedJson[] }): Lang.RBinaryOp {
+    log.debug(`trying to parse arithmetic op ${JSON.stringify(special)}`)
+    if (special.others.length !== 2) {
+      throw new XmlParseError(`expected exactly two children for arithmetic op (lhs & rhs), yet received ${JSON.stringify(special)}`)
+    }
+    // TODO: guard against lengths etc?
+    const [lhs] = this.parseBasedOnType([special.others[0].content])
+    const [rhs] = this.parseBasedOnType([special.others[1].content])
+
+    const { location, content } = this.retrieveMetaStructure(special.marker)
+    return { type: Lang.Type.BinaryOp, location, content, lhs, rhs, op: special.marker.name }
   }
 }
 
-export async function parse(xmlString: string): Promise<RExprList> {
-  const parser = new XmlBasedAstParser()
+export async function parse(xmlString: string, tokenMap: XmlParserConfig['tokenMap']): Promise<Lang.RExprList> {
+  const parser = new XmlBasedAstParser({ tokenMap })
   return await parser.parse(xmlString)
 }

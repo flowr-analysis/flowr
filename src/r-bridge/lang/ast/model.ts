@@ -5,8 +5,16 @@ export enum Type {
   Expr = 'expr',
   Symbol = 'SYMBOL',
   Number = 'NUM_CONST',
-  Assignment = 'assignment'
+  Assignment = 'assignment',
+  BinaryOp = 'binaryop'
 }
+
+export const ArithmeticOperators: readonly string[] = ['+', '-', '*', '/', '^', '%%', '%/%']
+export const ComparisonOperators: readonly string[] = ['==', '!=', '<', '>', '<=', '>=']
+export const LogicalOperators: readonly string[] = ['&', '&&', '|', '||', '!']
+
+export const Operators = [...ArithmeticOperators, ...ComparisonOperators, ...LogicalOperators] as const
+export type Operator = typeof Operators[number]
 
 export interface Base extends MergeableRecord {
   type: Type
@@ -27,9 +35,16 @@ interface Position {
   column: number
 }
 
-interface Range {
+export interface Range {
   start: Position
   end: Position
+}
+
+export function rangeFrom(line1: number | string, col1: number | string, line2: number | string, col2: number | string): Range {
+  return {
+    start: { line: Number(line1), column: Number(col1) },
+    end: { line: Number(line2), column: Number(col2) }
+  }
 }
 
 interface Location {
@@ -42,6 +57,7 @@ export interface RExprList extends WithChildren<RNode> {
 
 export interface RExpr extends WithChildren<RNode>, Location {
   readonly type: Type.Expr
+  content?: string
 }
 
 export interface RSymbol extends Leaf, Location {
@@ -61,8 +77,15 @@ export interface RAssignment extends Base, Location {
   rhs: RExpr
 }
 
-// by default we do not consider exprlist to be part of the internal structure
-export type RNode = RExpr | RSymbol | RNumber | RAssignment
-export type RAnyNode = RNode | RExprList
+export interface RBinaryOp extends Base, Location {
+  readonly type: Type.BinaryOp
+  // TODO: others?
+  op: string
+  lhs: RNode
+  rhs: RNode
+}
+
+// by default, we do not consider exprlist to be part of the internal structure
+export type RNode = RExprList | RExpr | RSymbol | RNumber | RBinaryOp | RAssignment
 
 export const ALL_VALID_TYPES = Object.values(Type)

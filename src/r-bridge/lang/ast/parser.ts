@@ -1,8 +1,7 @@
 import { deepMergeObject, type MergeableRecord } from '../../../util/objects'
 import * as xml2js from 'xml2js'
 import { Logger } from 'tslog'
-import { type Base, type RNode, type RExpr, type RExprList, Type } from './model'
-import Keys = Chai.Keys
+import { type Base, type RNode, type RExprList, Type } from './model'
 
 const log = new Logger({ name: 'ast' })
 
@@ -57,6 +56,7 @@ class XmlBasedAstParser implements AstParser<RExprList> {
     return await xml2js.parseStringPromise(xmlString, {
       attrkey: this.config.attributeName,
       charkey: this.config.contentName,
+      explicitChildren: true,
       childkey: this.config.childrenName,
       charsAsChildren: false,
       explicitRoot: true,
@@ -66,16 +66,21 @@ class XmlBasedAstParser implements AstParser<RExprList> {
 
   private foldRootObjToAst(obj: XmlBasedJson): RExprList {
     const exprList = getKeyGuarded(obj, Type.ExprList)
-    const children = this.retrieveChildrenArray(exprList)
+    const children = this.retrieveChildren(exprList)
     // TODO: at total object in any case of error?
-    return { type: Type.ExprList, children: children.map(this.foldExprToAst) }
+    return { type: Type.ExprList, children: this.foldChildrenToAst(children) }
   }
 
-  private retrieveChildrenArray(obj: XmlBasedJson): RNode[] {
+  private retrieveChildren(obj: XmlBasedJson): object {
     const children = getKeyGuarded(obj, this.config.childrenName)
-    if (!Array.isArray(children)) {
-      throw new XmlParseError(`needed ${JSON.stringify(obj)} to yield an array for children ${this.config.childrenName}, but received ${JSON.stringify(children)}`)
+    if (Array.isArray(children)) {
+      throw new XmlParseError(`needed key "${this.config.childrenName}" to yield an object for the children, but received ${JSON.stringify(children)} from ${JSON.stringify(obj)}`)
     }
+    return children
+  }
+
+  private parseChildren(obj: object): RNode[] {
+    const children = Object.entries(obj).map(([key, value]) => this.foldChildToAst(key, value))
     return children
   }
 

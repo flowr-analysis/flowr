@@ -4,7 +4,7 @@ import { valueToR } from '../src/r-bridge/lang/values'
 import { it } from 'mocha'
 import * as fs from 'fs'
 import { randomString } from '../src/util/random'
-import { retrieveAstFromRCode } from '../src/r-bridge/parse'
+import { retrieveAstFromRCode } from '../src/r-bridge/retriever'
 
 // TODO: improve tests for shell so i can use await etc :C
 describe('R-Bridge', () => {
@@ -175,6 +175,8 @@ describe('R-Bridge', () => {
     before(async function () {
       this.timeout('10min')
       shell = new RShell()
+      // this way we probably do not have to reinstall even if we launch from WebStorm
+      shell.tryToInjectHomeLibPath()
       await shell.ensurePackageInstalled('xmlparsedata')
     })
 

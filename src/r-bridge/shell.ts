@@ -176,6 +176,16 @@ export class RShell {
     this._sendCommand('options(error=function() {})')
   }
 
+  public injectLibPaths(...paths: string[]): void {
+    this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
+    this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(valueToR).join(',')}))`)
+  }
+
+  // TODO: this is really hacky
+  public tryToInjectHomeLibPath(): void {
+    this.injectLibPaths('~/.r-libs')
+  }
+
   /**
    * checks if a given package is already installed on the system!
    */

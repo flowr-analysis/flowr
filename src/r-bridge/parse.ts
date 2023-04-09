@@ -1,9 +1,9 @@
 // TODO: global entrypoint for configuration of the parser and all components
 
 import { RShell } from './shell'
-import * as xml2js from 'xml2js'
-import { valueToR } from './lang'
+import { valueToR } from './lang/values'
 import { EOL } from 'os'
+import { parse } from './lang/ast/parser'
 
 interface RParseRequestFromFile {
   request: 'file'
@@ -48,5 +48,5 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell = new R
  */
 export async function retrieveAstFromRCode(request: RParseRequest, shell = new RShell()): Promise<object> {
   const xml = await retrieveXmlFromRCode(request, shell)
-  return await xml2js.parseStringPromise(xml, { /* TODO: validator: undefined */ })
+  return await parse(xml)
 }

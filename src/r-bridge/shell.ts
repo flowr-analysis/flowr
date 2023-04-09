@@ -3,7 +3,7 @@ import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, Logger } from 'tslog'
 import { EOL } from 'os'
 import * as readline from 'node:readline'
-import { valueToR } from './lang'
+import { valueToR } from './lang/values'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both'
 export type ExclusiveOutputStream = Exclude<OutputStreamSelector, 'both'>
@@ -323,7 +323,7 @@ class RShellSession {
     let handler: (data: string) => void
 
     return await new Promise<string[]>((resolve, reject) => {
-      const makeTimer = (): NodeJS.Timeout => setTimeout(() => { reject(new Error(`timeout reached (${JSON.stringify(result)})`)) }, timeout.ms)
+      const makeTimer = (): NodeJS.Timeout => setTimeout(() => { reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`)) }, timeout.ms)
       let timer = makeTimer()
 
       handler = (data: string): void => {

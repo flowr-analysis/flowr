@@ -1,6 +1,6 @@
 import { RShell } from '../src/r-bridge/shell'
 import { assert } from 'chai'
-import { valueToR } from '../src/r-bridge/lang'
+import { valueToR } from '../src/r-bridge/lang/values'
 import { it } from 'mocha'
 import * as fs from 'fs'
 import { randomString } from '../src/util/random'
@@ -171,9 +171,19 @@ describe('R-Bridge', () => {
   })
 
   describe('Retrieve AST from R', () => {
+    let shell: RShell
+    before(async function () {
+      this.timeout('10min')
+      shell = new RShell()
+      await shell.ensurePackageInstalled('xmlparsedata')
+    })
+
+    after(() => { shell.close() })
+    beforeEach(() => { shell.clearEnvironment() })
+
     it('0. retrieve ast of literal', async () => {
-      const ast = await retrieveAstFromRCode({ request: 'text', content: '1', attachSourceInformation: true })
+      const ast = await retrieveAstFromRCode({ request: 'text', content: '1', attachSourceInformation: true }, shell)
       console.log(JSON.stringify(ast, null, 2))
-    }).timeout('15min')
+    }).timeout('5min')
   })
 })

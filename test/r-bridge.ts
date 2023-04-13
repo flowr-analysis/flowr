@@ -1,12 +1,11 @@
 import { RShell } from '../src/r-bridge/shell'
 import { assert } from 'chai'
-import { parseCSV, valueToR } from '../src/r-bridge/lang/values'
+import { valueToR } from '../src/r-bridge/lang/values'
 import { it } from 'mocha'
 import * as fs from 'fs'
 import { randomString } from '../src/util/random'
 import { getStoredTokenMap, retrieveAstFromRCode } from '../src/r-bridge/retriever'
 import * as Lang from '../src/r-bridge/lang/ast/model'
-import { Type } from '../src/r-bridge/lang/ast/model'
 
 // TODO: improve tests for shell so i can use await etc :C
 describe('R-Bridge', () => {

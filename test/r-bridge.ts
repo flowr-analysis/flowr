@@ -13,16 +13,21 @@ const hasNetworkConnection = async (): Promise<boolean> => await dns.resolve('go
 /** Automatically skip a suite if no internet connection is available */
 const suiteRequiresNetworkConnection = (): void => {
   before(async function() {
-    if (!await hasNetworkConnection()) { this.skip() }
+    if (!await hasNetworkConnection()) {
+      console.warn('Skipping suite because no internet connection is available')
+      this.skip()
+    }
   })
 }
 
 /** Automatically skip a test if no internet connection is available */
 const testRequiresNetworkConnection = async (test: Mocha.Context): Promise<void> => {
-  if (!await hasNetworkConnection()) { test.skip() }
+  if (!await hasNetworkConnection()) {
+    console.warn('Skipping test because no internet connection is available')
+    test.skip()
+  }
 }
 
-// TODO: improve tests for shell so i can use await etc :C
 describe('R-Bridge', () => {
   describe('R language utilities', () => {
     describe('TS value to R', () => {

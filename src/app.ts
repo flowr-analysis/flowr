@@ -20,7 +20,8 @@ async function fun(): Promise<void> {
     void retrieveAstFromRCode({
       request: 'text',
       content: answer,
-      attachSourceInformation: true
+      attachSourceInformation: true,
+      ensurePackageInstalled: true
     }, tokenMap as Record<string, string>, shell).then(async json => {
       console.log(JSON.stringify(json))
       await fun()

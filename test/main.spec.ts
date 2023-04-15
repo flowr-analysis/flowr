@@ -4,6 +4,8 @@ import { log, LogLevel } from '../src/util/log'
 
 before(() => {
   log.updateSettings(logger => {
-    logger.settings.minLevel = LogLevel.error
+    if (!process.argv.includes('--test-with-logs')) {
+      logger.settings.minLevel = LogLevel.error
+    }
   })
 })

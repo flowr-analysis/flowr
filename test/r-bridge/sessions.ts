@@ -6,7 +6,8 @@ import { randomString } from '../../src/util/random'
 import { testRequiresNetworkConnection } from './network-helper'
 
 export function sessionsSpec(): void {
-  describe('RShell sessions', () => {
+  describe('RShell sessions', function () {
+    this.slow('500ms') // some respect for the r shell :/
     const withShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
       return it(msg, async function (): Promise<void> {
         let shell: RShell | null = null

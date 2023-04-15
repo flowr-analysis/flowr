@@ -8,6 +8,7 @@ import { getStoredTokenMap, retrieveAstFromRCode } from '../../../src/r-bridge/r
 export function simpleAstParsingSpec(): void {
   const assertAst = (msg: string, input: string, expected: Lang.RExprList): Mocha.Test => {
     return it(msg, async function () {
+      this.slow('500ms')
       const shell = new RShell()
       // this way we probably do not have to reinstall even if we launch from WebStorm
       shell.tryToInjectHomeLibPath()

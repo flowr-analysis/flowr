@@ -1,5 +1,8 @@
 import { type MergeableRecord } from '../../../util/objects'
 
+/**
+ * Represents the types known by R (i.e., it may contain more or others than the ones we use)
+ */
 export enum Type {
   ExprList = 'exprlist',
   Expr = 'expr',
@@ -55,11 +58,6 @@ export interface RExprList extends WithChildren<RNode> {
   readonly type: Type.ExprList
 }
 
-export interface RExpr extends WithChildren<RNode>, Location {
-  readonly type: Type.Expr
-  content?: string
-}
-
 export interface RSymbol extends Leaf, Location {
   readonly type: Type.Symbol
   content: string
@@ -73,8 +71,8 @@ export interface RNumber extends Leaf, Location {
 export interface RAssignment extends Base, Location {
   readonly type: Type.Assignment
   op: '=' | '<-' | '<<-' | '->' | '->>'
-  lhs: RExpr
-  rhs: RExpr
+  lhs: RSingleNode
+  rhs: RSingleNode
 }
 
 export interface RBinaryOp extends Base, Location {
@@ -85,7 +83,7 @@ export interface RBinaryOp extends Base, Location {
   rhs: RNode
 }
 
-// by default, we do not consider exprlist to be part of the internal structure
-export type RNode = RExprList | RExpr | RSymbol | RNumber | RBinaryOp | RAssignment
+export type RSingleNode = RSymbol | RNumber | RBinaryOp | RAssignment
+export type RNode = RExprList | RSingleNode
 
 export const ALL_VALID_TYPES = Object.values(Type)

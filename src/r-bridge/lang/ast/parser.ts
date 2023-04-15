@@ -182,11 +182,18 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     }
   }
 
-  private parseExpr(obj: XmlBasedJson): Lang.RExpr {
+  /**
+   * Returns an ExprList if there are multiple children, otherwise returns the single child directly with no expr wrapper
+   */
+  private parseExpr(obj: XmlBasedJson): Lang.RNode {
     log.debug(`trying to parse expr ${JSON.stringify(obj)}`)
     const { unwrappedObj, content, location } = this.retrieveMetaStructure(obj)
     const children = this.parseBasedOnType(getKeysGuarded(unwrappedObj, this.config.childrenName))
-    return { type: Lang.Type.Expr, location, content, children }
+    if (children.length === 1) {
+      return children[0]
+    } else {
+      return { type: Lang.Type.ExprList, location, content, children }
+    }
   }
 
   private retrieveMetaStructure(obj: XmlBasedJson): {

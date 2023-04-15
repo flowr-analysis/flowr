@@ -184,52 +184,33 @@ describe('R-Bridge', () => {
         assert.deepStrictEqual(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
       }).timeout('15min') /* retrieval downtime */
     }
-    const exprList = (...children: Lang.RExpr[]): Lang.RExprList => {
+    const exprList = (...children: Lang.RNode[]): Lang.RExprList => {
       return { type: Lang.Type.ExprList, children }
     }
 
     assertAst('0. retrieve ast of literal', '1', exprList({
-      type: Lang.Type.Expr,
-      content: '1',
+      type: Lang.Type.Number,
       location: Lang.rangeFrom(1, 1, 1, 1),
-      children: [{
-        type: Lang.Type.Number,
-        location: Lang.rangeFrom(1, 1, 1, 1),
-        content: 1
-      }]
+      content: 1
     }))
 
-    assertAst('1. retrieve ast of simple expression', '1 + 1', exprList({
-      type: Lang.Type.Expr,
-      content: '1 + 1',
-      location: Lang.rangeFrom(1, 1, 1, 5),
-      children: [
-        {
-          type: Lang.Type.BinaryOp,
-          op: '+',
-          location: Lang.rangeFrom(1, 3, 1, 3), // TODO fix this and merge with surrounding expr? everywhere?
-          lhs: {
-            type: Lang.Type.Expr,
-            content: '1',
-            location: Lang.rangeFrom(1, 1, 1, 1),
-            children: [{
-              type: Lang.Type.Number,
-              location: Lang.rangeFrom(1, 1, 1, 1),
-              content: 1
-            }]
-          },
-          rhs: {
-            type: Lang.Type.Expr,
-            content: '1',
-            location: Lang.rangeFrom(1, 5, 1, 5),
-            children: [{
-              type: Lang.Type.Number,
-              location: Lang.rangeFrom(1, 5, 1, 5),
-              content: 1
-            }]
-          }
+    assertAst('1. retrieve ast of simple expression', '1 + 1', exprList(
+      {
+        type: Lang.Type.BinaryOp,
+        op: '+',
+        location: Lang.rangeFrom(1, 3, 1, 3),
+        lhs: {
+          type: Lang.Type.Number,
+          location: Lang.rangeFrom(1, 1, 1, 1),
+          content: 1
+        },
+        rhs: {
+          type: Lang.Type.Number,
+          location: Lang.rangeFrom(1, 5, 1, 5),
+          content: 1
         }
-      ]
-    }))
+      }
+    )
+    )
   })
 })

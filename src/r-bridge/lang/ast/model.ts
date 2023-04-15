@@ -8,6 +8,7 @@ export enum Type {
   Expr = 'expr',
   Symbol = 'SYMBOL',
   Number = 'NUM_CONST',
+  String = 'STR_CONST',
   Assignment = 'assignment',
   BinaryOp = 'binaryop'
 }
@@ -68,6 +69,13 @@ export interface RNumber extends Leaf, Location {
   content: number
 }
 
+export interface RString extends Leaf, Location {
+  readonly type: Type.String
+  // from the R-language definition a string is either delimited by a pair of single or double quotes
+  quotes: '"' | "'"
+  content: string
+}
+
 export interface RAssignment extends Base, Location {
   readonly type: Type.Assignment
   op: '=' | '<-' | '<<-' | '->' | '->>'
@@ -83,7 +91,7 @@ export interface RBinaryOp extends Base, Location {
   rhs: RNode
 }
 
-export type RSingleNode = RSymbol | RNumber | RBinaryOp | RAssignment
+export type RSingleNode = RSymbol | RNumber | RString | RBinaryOp | RAssignment
 export type RNode = RExprList | RSingleNode
 
 export const ALL_VALID_TYPES = Object.values(Type)

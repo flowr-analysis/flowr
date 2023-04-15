@@ -150,6 +150,8 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
         parsedNodes.push(this.parseExpr(elem.content))
       } else if (elem.name === Lang.Type.Number) {
         parsedNodes.push(this.parseNumber(elem.content))
+      } else if (elem.name === Lang.Type.String) {
+        parsedNodes.push(this.parseString(elem.content))
       } else {
         throw new XmlParseError(`unknown type ${elem.name}`)
       }
@@ -213,6 +215,16 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     const { location, content } = this.retrieveMetaStructure(obj)
     // TODO: need to parse R numbers to TS numbers
     return { type: Lang.Type.Number, location, content: Number(content) }
+  }
+
+  private parseString(obj: XmlBasedJson): Lang.RString {
+    astLogger.debug(`trying to parse string ${JSON.stringify(obj)}`)
+    const { location, content } = this.retrieveMetaStructure(obj)
+    const quotes = content[0]
+    if (quotes !== '"' && quotes !== "'") {
+      throw new XmlParseError(`expected string to start with a known quote (' or "), yet received ${content}`)
+    }
+    return { type: Lang.Type.String, location, content: content.slice(1, content.length - 1), quotes }
   }
 
   private parseArithmeticOp(special: { marker: NamedXmlBasedJson, others: NamedXmlBasedJson[] }): Lang.RBinaryOp {

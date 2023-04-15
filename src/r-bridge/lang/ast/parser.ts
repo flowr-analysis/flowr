@@ -3,6 +3,7 @@ import * as xml2js from 'xml2js'
 import * as Lang from './model'
 import { rangeFrom } from './model'
 import { log } from '../../../util/log'
+import { boolean2ts, isBoolean } from '../values'
 
 const astLogger = log.getSubLogger({ name: 'ast' })
 
@@ -210,11 +211,15 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     return { unwrappedObj, location, content }
   }
 
-  private parseNumber(obj: XmlBasedJson): Lang.RNumber {
+  private parseNumber(obj: XmlBasedJson): Lang.RNumber | Lang.RBoolean {
     astLogger.debug(`trying to parse number ${JSON.stringify(obj)}`)
     const { location, content } = this.retrieveMetaStructure(obj)
-    // TODO: need to parse R numbers to TS numbers
-    return { type: Lang.Type.Number, location, content: Number(content) }
+    if (isBoolean(content)) {
+      return { type: Lang.Type.Boolean, location, content: boolean2ts(content) }
+    } else {
+      // TODO: need to parse R numbers to TS numbers
+      return { type: Lang.Type.Number, location, content: Number(content) }
+    }
   }
 
   private parseString(obj: XmlBasedJson): Lang.RString {

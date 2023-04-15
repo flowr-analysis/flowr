@@ -3,7 +3,7 @@ import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, type Logger } from 'tslog'
 import { EOL } from 'os'
 import * as readline from 'node:readline'
-import { valueToR } from './lang/values'
+import { ts2r } from './lang/values'
 import { log } from '../util/log'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both'
@@ -180,7 +180,7 @@ export class RShell {
 
   public injectLibPaths(...paths: string[]): void {
     this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
-    this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(valueToR).join(',')}))`)
+    this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
   }
 
   // TODO: this is really hacky
@@ -195,7 +195,7 @@ export class RShell {
     this.log.debug(`checking if package "${packageName}" is installed`)
     const result = await this.sendCommandWithOutput(
       `cat(paste0(is.element("${packageName}", installed.packages()[,1])),"${this.options.eol}")`)
-    return result.length === 1 && result[0] === valueToR(true)
+    return result.length === 1 && result[0] === ts2r(true)
   }
 
   public async allInstalledPackages(): Promise<string[]> {
@@ -225,14 +225,14 @@ export class RShell {
     if (!force && packageExistedAlready) {
       this.log.info(`package "${packageName}" is already installed`)
       if (autoload) {
-        this.sendCommand(`library(${valueToR(packageName)})`)
+        this.sendCommand(`library(${ts2r(packageName)})`)
       }
       return { packageName, packageExistedAlready: true }
     }
 
     // obtain a temporary directory
     this.sendCommand('temp <- tempdir()')
-    const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${valueToR(this.options.eol)})`)
+    const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${ts2r(this.options.eol)})`)
 
     this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
 
@@ -246,10 +246,10 @@ export class RShell {
       resetOnNewData: true
     }, () => {
       // the else branch is a cheesy way to work even if the package is already installed!
-      this.sendCommand(`install.packages(${valueToR(packageName)},repos="http://cran.us.r-project.org", quiet=FALSE, lib=temp)`)
+      this.sendCommand(`install.packages(${ts2r(packageName)},repos="http://cran.us.r-project.org", quiet=FALSE, lib=temp)`)
     })
     if (autoload) {
-      this.sendCommand(`library(${valueToR(packageName)}, lib.loc=${valueToR(tempdir)})`)
+      this.sendCommand(`library(${ts2r(packageName)}, lib.loc=${ts2r(tempdir)})`)
     }
     return { packageName, libraryLocation: tempdir, packageExistedAlready }
   }

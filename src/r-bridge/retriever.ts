@@ -1,7 +1,7 @@
 // TODO: global entrypoint for configuration of the parser and all components
 
 import { RShell } from './shell'
-import { parseCSV, valueToR } from './lang/values'
+import { parseCSV, ts2r } from './lang/values'
 import { parse } from './lang/ast/parser'
 import { type RExprList } from './lang/ast/model'
 
@@ -29,11 +29,11 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell = new R
     await shell.ensurePackageInstalled('xmlparsedata', true)
 
     shell.sendCommands(
-      `parsed <- parse(${request.request} = ${JSON.stringify(request.content)}, keep.source = ${valueToR(request.attachSourceInformation)})`,
-      `output <- xmlparsedata::xml_parse_data(parsed, includeText = ${valueToR(request.attachSourceInformation)}, pretty = FALSE)`
+      `parsed <- parse(${request.request} = ${JSON.stringify(request.content)}, keep.source = ${ts2r(request.attachSourceInformation)})`,
+      `output <- xmlparsedata::xml_parse_data(parsed, includeText = ${ts2r(request.attachSourceInformation)}, pretty = FALSE)`
     )
     // TODO: let commands produce output by cat wrapper/shell.command creator to abstract from this?
-    const xml = await shell.sendCommandWithOutput(`cat(output,${valueToR(shell.options.eol)})`)
+    const xml = await shell.sendCommandWithOutput(`cat(output,${ts2r(shell.options.eol)})`)
 
     return xml.join(shell.options.eol)
   } finally {

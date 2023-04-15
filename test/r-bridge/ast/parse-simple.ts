@@ -6,12 +6,26 @@ const exprList = (...children: Lang.RNode[]): Lang.RExprList => {
 }
 
 describe('0. parse simple values', () => {
-  assertAst('0.1 literal', '1', exprList({
-    type: Lang.Type.Number,
-    location: Lang.rangeFrom(1, 1, 1, 1),
-    content: 1
+  // all examples are based on the R language def (Draft of 2023-03-15, 10.3.1)
+  // TODO: integer constants
+  describe('0.1 numbers', () => {
+    for (const number of [{ val: 1, str: '1' }, { val: 10, str: '10' }, { val: 0.1, str: '0.1' },
+      { val: 0.2, str: '0.2' }, { val: 1e-7, str: '1e-7' }, { val: 1.2e7, str: '1.2e7' }, { val: 0xAF12, str: '0xAF12' }
+      /* { val: (1 * 16 + 1 / 16) * 2 ^ 1, str: '0x1.1p1' }, { val: (1 * 16 + 1 / 16) * 2 ^ 1, str: '0x1.1P1' } */]) {
+      assertAst(number.str, number.str, exprList({
+        type: Lang.Type.Number,
+        location: Lang.rangeFrom(1, 1, 1, number.str.length),
+        content: number.val
+      }))
+    }
+  })
+  assertAst('string', '"hi"', exprList({
+    type: Lang.Type.String,
+    location: Lang.rangeFrom(1, 1, 1, 4),
+    quotes: '"',
+    content: 'hi'
   }))
-  assertAst('0.2 string', '"hi"', exprList({
+  assertAst('boolean', 'TRUE', exprList({
     type: Lang.Type.String,
     location: Lang.rangeFrom(1, 1, 1, 4),
     quotes: '"',

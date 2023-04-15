@@ -7,7 +7,8 @@ export enum Type {
   ExprList = 'exprlist',
   Expr = 'expr',
   Symbol = 'SYMBOL',
-  Number = 'NUM_CONST',
+  Boolean = 'boolean', /* will be represented as a number in R */
+  Number = 'NUM_CONST', // TODO: support negative numbers
   String = 'STR_CONST',
   Assignment = 'assignment',
   BinaryOp = 'binaryop'
@@ -59,14 +60,19 @@ export interface RExprList extends WithChildren<RNode> {
   readonly type: Type.ExprList
 }
 
-export interface RSymbol extends Leaf, Location {
+export interface RSymbol<T extends string = string> extends Leaf, Location {
   readonly type: Type.Symbol
-  content: string
+  content: T
 }
 
 export interface RNumber extends Leaf, Location {
   readonly type: Type.Number
   content: number
+}
+
+export interface RBoolean extends Leaf, Location {
+  readonly type: Type.Boolean
+  content: boolean
 }
 
 export interface RString extends Leaf, Location {
@@ -91,7 +97,9 @@ export interface RBinaryOp extends Base, Location {
   rhs: RNode
 }
 
-export type RSingleNode = RSymbol | RNumber | RString | RBinaryOp | RAssignment
+export type RConstant = RNumber | RString | RBoolean | RSymbol<'NULL' | 'NA'>
+
+export type RSingleNode = RSymbol | RConstant | RBinaryOp | RAssignment
 export type RNode = RExprList | RSingleNode
 
 export const ALL_VALID_TYPES = Object.values(Type)

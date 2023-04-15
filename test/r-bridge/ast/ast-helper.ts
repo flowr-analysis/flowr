@@ -5,8 +5,23 @@ import { testRequiresNetworkConnection } from '../network-helper'
 import { getStoredTokenMap, retrieveAstFromRCode } from '../../../src/r-bridge/retriever'
 import { assert } from 'chai'
 
+let defaultTokenMap: Record<string, string>
+
+// we want the token map only once (to speed up tests)!
+before(async () => {
+  const shell = new RShell()
+  try {
+    shell.tryToInjectHomeLibPath()
+    await shell.ensurePackageInstalled('xmlparsedata')
+    defaultTokenMap = await getStoredTokenMap(shell)
+  } finally {
+    shell.close()
+  }
+})
+
 /**
  * Produces a new test with the given name. It parses the `input` with R and checks the resulting ast against `expected`.
+ * // TODO: allow to reuse shell?
  */
 export const assertAst = (name: string, input: string, expected: Lang.RExprList): Mocha.Test => {
   return it(name, async function () {
@@ -19,7 +34,6 @@ export const assertAst = (name: string, input: string, expected: Lang.RExprList)
       await testRequiresNetworkConnection(this)
     }
     await shell.ensurePackageInstalled('xmlparsedata')
-    const defaultTokenMap = await getStoredTokenMap(shell)
 
     after(() => { shell.close() })
     const ast = await retrieveAstFromRCode({ request: 'text', content: input, attachSourceInformation: true }, defaultTokenMap, shell)

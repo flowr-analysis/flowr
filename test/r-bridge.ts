@@ -156,7 +156,7 @@ describe('R-Bridge', () => {
         }).timeout('15min')
       }
     })
-    withShell('7 send multiple commands', async shell => {
+    withShell('6. send multiple commands', async shell => {
       shell.sendCommands('a <- 1', 'b <- 2', 'c <- a + b')
 
       const lines = await shell.sendCommandWithOutput('c')

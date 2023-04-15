@@ -6,6 +6,21 @@ import * as fs from 'fs'
 import { randomString } from '../src/util/random'
 import { getStoredTokenMap, retrieveAstFromRCode } from '../src/r-bridge/retriever'
 import * as Lang from '../src/r-bridge/lang/ast/model'
+import * as dns from 'dns/promises'
+
+// based on https://stackoverflow.com/a/63756303
+const hasNetworkConnection = async (): Promise<boolean> => await dns.resolve('google.com').catch(() => {}) !== null
+/** Automatically skip a suite if no internet connection is available */
+const suiteRequiresNetworkConnection = (): void => {
+  before(async function() {
+    if (!await hasNetworkConnection()) { this.skip() }
+  })
+}
+
+/** Automatically skip a test if no internet connection is available */
+const testRequiresNetworkConnection = async (test: Mocha.Context): Promise<void> => {
+  if (!await hasNetworkConnection()) { test.skip() }
+}
 
 // TODO: improve tests for shell so i can use await etc :C
 describe('R-Bridge', () => {
@@ -46,48 +61,39 @@ describe('R-Bridge', () => {
 
   describe('RShell sessions', () => {
     // TODO: maybe just use beforeEach and afterEach to provide? or better test structure?
-    const withShell = (msg: string, fn: (shell: RShell, done: Mocha.Done) => void): Mocha.Test => {
-      return it(msg, done => {
+    const withShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
+      return it(msg, async function (): Promise<void> {
         let shell: RShell | null = null
         shell = new RShell()
         try {
-          fn(shell, err => {
-            shell?.close()
-            done(err)
-          })
-        } catch (e) {
+          await fn(shell, this)
+        } finally {
           // ensure we close the shell in error cases too
           shell?.close()
-          throw e
         }
       })
     }
-    withShell('0. test that we can create a connection to R', (shell, done) => {
+    withShell('0. test that we can create a connection to R', shell => {
       assert.doesNotThrow(() => {
         shell.clearEnvironment()
-        done()
       })
     })
     describe('1. let R make an addition', () => {
       [true, false].forEach((trimOutput, i) => {
-        withShell(`${i + 1}. let R make an addition (${trimOutput ? 'with' : 'without'} trimming)`, (shell, done) => {
-          void shell.sendCommandWithOutput('1 + 1', { automaticallyTrimOutput: trimOutput }).then(lines => {
-            assert.equal(lines.length, 1)
-            assert.equal(lines[0], '[1] 2')
-            done()
-          })
+        withShell(`${i + 1}. let R make an addition (${trimOutput ? 'with' : 'without'} trimming)`, async shell => {
+          const lines = await shell.sendCommandWithOutput('1 + 1', { automaticallyTrimOutput: trimOutput })
+          assert.equal(lines.length, 1)
+          assert.equal(lines[0], '[1] 2')
         })
       })
     })
-    withShell('2. keep context of previous commands', (shell, done) => {
+    withShell('2. keep context of previous commands', async shell => {
       shell.sendCommand('a <- 1 + 1')
-      void shell.sendCommandWithOutput('a').then(lines => {
-        assert.equal(lines.length, 1)
-        assert.equal(lines[0], '[1] 2')
-        done()
-      })
+      const lines = await shell.sendCommandWithOutput('a')
+      assert.equal(lines.length, 1)
+      assert.equal(lines[0], '[1] 2')
     })
-    withShell('3. clear environment should remove variable information', (shell, done) => {
+    withShell('3. clear environment should remove variable information', async shell => {
       shell.continueOnError() // we will produce an error!
       shell.sendCommand('a <- 1 + 1')
       shell.clearEnvironment()
@@ -95,79 +101,62 @@ describe('R-Bridge', () => {
         assert.equal(lines.length, 1)
         // just await an error
         assert.match(lines[0], /^.*Error.*a/)
-        done()
       })
     })
     describe('4. test if a package is already installed', () => {
-      withShell('4.0 retrieve all installed packages', (shell, done) => {
-        void shell.allInstalledPackages().then(got => {
-          assert.isTrue(got.includes('base'), `base should be installed, but got: "${JSON.stringify(got)}"`)
-          done()
-        })
+      withShell('4.0 retrieve all installed packages', async shell => {
+        const installed = await shell.allInstalledPackages()
+        assert.isTrue(installed.includes('base'), `base should be installed, but got: "${JSON.stringify(installed)}"`)
       })
-      withShell('4.1 is installed', (shell, done) => {
+      withShell('4.1 is installed', async shell => {
         // of course someone could remove the packages in that instant, but for testing it should be fine
-        void shell.allInstalledPackages().then(installed => {
-          // we fold so that we have no listener leak when waiting o R
-          void installed.reduce(async (t, nameOfInstalledPackage) => {
-            await t.then(() => {
-              void shell.isPackageInstalled(nameOfInstalledPackage).then(isInstalled => {
-                assert.isTrue(isInstalled, `package ${nameOfInstalledPackage} should be installed due to allInstalledPackages`)
-              })
-            })
-          }, Promise.resolve()).then(() => { done() })
-        })
+        const installed = await shell.allInstalledPackages()
+
+        for (const nameOfInstalledPackage of installed) {
+          const isInstalled = await shell.isPackageInstalled(nameOfInstalledPackage)
+          assert.isTrue(isInstalled, `package ${nameOfInstalledPackage} should be installed due to allInstalledPackages`)
+        }
       })
-      withShell('4.2 is not installed', (shell, done) => {
-        // TODO URGENT: generate new unknown packages
-        void shell.allInstalledPackages().then(installed => {
-          let unknownPackageName: string
-          do {
-            unknownPackageName = randomString(10)
-          }
-          while (installed.includes(unknownPackageName))
-          void shell.isPackageInstalled(unknownPackageName).then(isInstalled => {
-            assert.isFalse(isInstalled, `package ${unknownPackageName} should not be installed`)
-            done()
-          })
-        })
+      withShell('4.2 is not installed', async shell => {
+        const installed = await shell.allInstalledPackages()
+        let unknownPackageName: string
+        do {
+          unknownPackageName = randomString(10)
+        }
+        while (installed.includes(unknownPackageName))
+        const isInstalled = await shell.isPackageInstalled(unknownPackageName)
+        assert.isFalse(isInstalled, `package ${unknownPackageName} should not be installed`)
       })
     })
     describe('5. install a package', () => {
-      withShell('5.0 try to install a package that is already installed', (shell, done) => {
-        void shell.allInstalledPackages().then(([nameOfInstalledPackage]) => {
-          void shell.ensurePackageInstalled(nameOfInstalledPackage, false, false).then(returnedPkg => {
-            assert.equal(returnedPkg.packageName, nameOfInstalledPackage)
-            assert.equal(returnedPkg.libraryLocation, undefined)
-            done()
-          })
-        })
+      withShell('5.0 try to install a package that is already installed', async shell => {
+        const [nameOfInstalledPackage] = await shell.allInstalledPackages()
+        const pkgLoadInfo = await shell.ensurePackageInstalled(nameOfInstalledPackage, false, false)
+        assert.equal(pkgLoadInfo.packageName, nameOfInstalledPackage)
+        assert.equal(pkgLoadInfo.libraryLocation, undefined)
       })
 
       // multiple packages to avoid the chance of them being preinstalled
       // TODO: use withr to not install on host system and to allow this to work even without force?
       const i = 1
       for (const pkg of ['xmlparsedata', 'glue']) { // we use for instead of foreach to avoid index syntax issues
-        withShell(`5.${i + 1} install ${pkg}`, (shell, done) => {
-          void shell.ensurePackageInstalled(pkg, false, true).then(returnedPkg => {
-            assert.equal(returnedPkg.packageName, pkg)
-            // clean up the temporary directory
-            if (returnedPkg.libraryLocation !== undefined) {
-              fs.rmSync(returnedPkg.libraryLocation, { recursive: true, force: true })
-            }
-            done()
-          })
+        withShell(`5.${i + 1} install ${pkg}`, async function (shell, test) {
+          await testRequiresNetworkConnection(test)
+          const pkgLoadInfo = await shell.ensurePackageInstalled(pkg, false, true)
+          assert.equal(pkgLoadInfo.packageName, pkg)
+          // clean up the temporary directory
+          if (pkgLoadInfo.libraryLocation !== undefined) {
+            fs.rmSync(pkgLoadInfo.libraryLocation, { recursive: true, force: true })
+          }
         }).timeout('15min')
       }
     })
-    withShell('7 send multiple commands', (shell, done) => {
+    withShell('7 send multiple commands', async shell => {
       shell.sendCommands('a <- 1', 'b <- 2', 'c <- a + b')
 
-      void shell.sendCommandWithOutput('c').then(lines => {
-        assert.equal(lines.length, 1)
-        assert.equal(lines[0], '[1] 3')
-        done()
-      })
+      const lines = await shell.sendCommandWithOutput('c')
+      assert.equal(lines.length, 1)
+      assert.equal(lines[0], '[1] 3')
     })
   })
 
@@ -178,6 +167,10 @@ describe('R-Bridge', () => {
         const shell = new RShell()
         // this way we probably do not have to reinstall even if we launch from WebStorm
         shell.tryToInjectHomeLibPath()
+        if (!await shell.isPackageInstalled('xmlparsedata')) {
+          // if we do not have it, we need to install!
+          suiteRequiresNetworkConnection()
+        }
         await shell.ensurePackageInstalled('xmlparsedata')
         const defaultTokenMap = await getStoredTokenMap(shell)
 

@@ -29,7 +29,7 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell = new R
     await shell.ensurePackageInstalled('xmlparsedata', true)
 
     shell.sendCommands(
-      `parsed <- parse(${request.request} = ${valueToR(request.content)}, keep.source = ${valueToR(request.attachSourceInformation)})`,
+      `parsed <- parse(${request.request} = ${JSON.stringify(request.content)}, keep.source = ${valueToR(request.attachSourceInformation)})`,
       `output <- xmlparsedata::xml_parse_data(parsed, includeText = ${valueToR(request.attachSourceInformation)}, pretty = FALSE)`
     )
     // TODO: let commands produce output by cat wrapper/shell.command creator to abstract from this?

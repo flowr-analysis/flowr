@@ -168,13 +168,13 @@ describe('R-Bridge', () => {
   // TODO: allow to specify where to install packages to so we can minimize installation to one temp directory
   describe('Retrieve AST from R', () => {
     const assertAst = (msg: string, input: string, expected: Lang.RExprList): Mocha.Test => {
-      return it(msg, async () => {
+      return it(msg, async function () {
         const shell = new RShell()
         // this way we probably do not have to reinstall even if we launch from WebStorm
         shell.tryToInjectHomeLibPath()
         if (!await shell.isPackageInstalled('xmlparsedata')) {
           // if we do not have it, we need to install!
-          suiteRequiresNetworkConnection()
+          await testRequiresNetworkConnection(this)
         }
         await shell.ensurePackageInstalled('xmlparsedata')
         const defaultTokenMap = await getStoredTokenMap(shell)

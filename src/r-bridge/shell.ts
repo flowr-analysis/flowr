@@ -1,9 +1,10 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'child_process'
 import { deepMergeObject, type MergeableRecord } from '../util/objects'
-import { type ILogObj, Logger } from 'tslog'
+import { type ILogObj, type Logger } from 'tslog'
 import { EOL } from 'os'
 import * as readline from 'node:readline'
 import { valueToR } from './lang/values'
+import { log } from '../util/log'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both'
 export type ExclusiveOutputStream = Exclude<OutputStreamSelector, 'both'>
@@ -100,8 +101,7 @@ export class RShell {
 
   public constructor(options?: Partial<RShellOptions>) {
     this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
-    // TODO: allow to configure loggers more globally, bt right now i want to get this working
-    this.log = new Logger({ name: this.options.sessionName, type: 'pretty' })
+    this.log = log.getSubLogger({ name: this.options.sessionName })
 
     this.session = new RShellSession(this.options, this.log)
   }

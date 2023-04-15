@@ -1,8 +1,11 @@
 import { getStoredTokenMap, retrieveAstFromRCode } from './r-bridge/retriever'
 import * as readline from 'readline'
 import { RShell } from './r-bridge/shell'
+import { log } from './util/log'
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true })
+
+log.logToFile()
 
 const shell = new RShell()
 shell.tryToInjectHomeLibPath()

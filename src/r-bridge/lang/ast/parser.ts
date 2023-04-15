@@ -1,10 +1,10 @@
 import { deepMergeObject, type MergeableRecord } from '../../../util/objects'
 import * as xml2js from 'xml2js'
-import { Logger } from 'tslog'
 import * as Lang from './model'
 import { rangeFrom } from './model'
+import { log } from '../../../util/log'
 
-const log = new Logger({ name: 'ast' })
+const astLogger = log.getSubLogger({ name: 'ast' })
 
 interface AstParser<Target extends Lang.Base> {
   parse: (xmlString: string) => Promise<Target>
@@ -67,7 +67,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
 
   constructor(config?: Partial<XmlParserConfig>) {
     this.config = deepMergeObject(DEFAULT_XML_PARSER_CONFIG, config)
-    log.debug(`config for xml parser: ${JSON.stringify(this.config)}`)
+    astLogger.debug(`config for xml parser: ${JSON.stringify(this.config)}`)
   }
 
   public async parse(xmlString: string): Promise<Lang.RExprList> {
@@ -103,7 +103,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
 
   private revertTokenReplacement(token: string): string {
     const result = this.config.tokenMap?.[token] ?? token
-    log.debug(`reverting ${token}=>${result}`)
+    astLogger.debug(`reverting ${token}=>${result}`)
     return result
   }
 
@@ -186,7 +186,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
    * Returns an ExprList if there are multiple children, otherwise returns the single child directly with no expr wrapper
    */
   private parseExpr(obj: XmlBasedJson): Lang.RNode {
-    log.debug(`trying to parse expr ${JSON.stringify(obj)}`)
+    astLogger.debug(`trying to parse expr ${JSON.stringify(obj)}`)
     const { unwrappedObj, content, location } = this.retrieveMetaStructure(obj)
     const children = this.parseBasedOnType(getKeysGuarded(unwrappedObj, this.config.childrenName))
     if (children.length === 1) {
@@ -209,14 +209,14 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
   }
 
   private parseNumber(obj: XmlBasedJson): Lang.RNumber {
-    log.debug(`trying to parse number ${JSON.stringify(obj)}`)
+    astLogger.debug(`trying to parse number ${JSON.stringify(obj)}`)
     const { location, content } = this.retrieveMetaStructure(obj)
     // TODO: need to parse R numbers to TS numbers
     return { type: Lang.Type.Number, location, content: Number(content) }
   }
 
   private parseArithmeticOp(special: { marker: NamedXmlBasedJson, others: NamedXmlBasedJson[] }): Lang.RBinaryOp {
-    log.debug(`trying to parse arithmetic op ${JSON.stringify(special)}`)
+    astLogger.debug(`trying to parse arithmetic op ${JSON.stringify(special)}`)
     if (special.others.length !== 2) {
       throw new XmlParseError(`expected exactly two children for arithmetic op (lhs & rhs), yet received ${JSON.stringify(special)}`)
     }

@@ -2,7 +2,7 @@ import { assert } from 'chai'
 import fs from 'fs'
 import { randomString } from '../../src/util/random'
 import { testRequiresNetworkConnection } from './helper/network'
-import { testWithShell } from './helper/shell'
+import { describeSession, testWithShell } from './helper/shell'
 
 describe('RShell sessions', function () {
   this.slow('500ms') // some respect for the r shell :/
@@ -36,27 +36,28 @@ describe('RShell sessions', function () {
       assert.match(lines[0], /^.*Error.*a/)
     })
   })
-  describe('4. test if a package is already installed', () => {
-    testWithShell('4.0 retrieve all installed packages', async shell => {
-      const installed = await shell.allInstalledPackages()
+  describeSession('4. test if a package is already installed', shell => {
+    let installed: string[]
+    before(async() => {
+      installed = await shell.allInstalledPackages()
+    })
+    it('4.0 retrieve all installed packages', async () => {
       assert.isTrue(installed.includes('base'), `base should be installed, but got: "${JSON.stringify(installed)}"`)
     })
-    testWithShell('4.1 is installed', async shell => {
+    it('4.1 is installed', async () => {
       // of course someone could remove the packages in that instant, but for testing it should be fine
-      const installed = await shell.allInstalledPackages()
-
       for (const nameOfInstalledPackage of installed) {
         const isInstalled = await shell.isPackageInstalled(nameOfInstalledPackage)
         assert.isTrue(isInstalled, `package ${nameOfInstalledPackage} should be installed due to allInstalledPackages`)
       }
     })
-    testWithShell('4.2 is not installed', async shell => {
-      const installed = await shell.allInstalledPackages()
+    it('4.2 is not installed', async () => {
       let unknownPackageName: string
       do {
         unknownPackageName = randomString(10)
       }
       while (installed.includes(unknownPackageName))
+
       const isInstalled = await shell.isPackageInstalled(unknownPackageName)
       assert.isFalse(isInstalled, `package ${unknownPackageName} should not be installed`)
     })

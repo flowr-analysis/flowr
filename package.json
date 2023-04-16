@@ -7,7 +7,8 @@
     "main": "ts-node src/app.ts",
     "build": "tsc",
     "doc": "typedoc --entryPointStrategy expand --out doc src",
-    "test": "nyc --no-clean --silent mocha --require ts-node/register --timeout 10000 \"test/**/*.spec.ts\" --reporter mocha-multi-reporters --reporter-options configFile=mocha-config.json"
+    "test": "nyc --no-clean --silent mocha --require ts-node/register --timeout 10000 \"test/**/*.spec.ts\" --reporter mocha-multi-reporters --reporter-options configFile=mocha-config.json",
+    "test-full": "npm run test -- --test-installation"
   },
   "keywords": [],
   "author": "Florian Sihler",

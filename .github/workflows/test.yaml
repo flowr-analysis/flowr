@@ -26,4 +26,4 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Run Tests
-        run: npm test -- --test-with-logs --test-installation
+        run: npm run test-full -- --verbose

@@ -3,6 +3,7 @@ import fs from 'fs'
 import { randomString } from '../../src/util/random'
 import { testRequiresNetworkConnection } from './helper/network'
 import { describeSession, testWithShell } from './helper/shell'
+import { RUN_INSTALLATION_TESTS } from '../main.spec'
 
 describe('RShell sessions', function () {
   this.slow('500ms') // some respect for the r shell :/
@@ -72,18 +73,7 @@ describe('RShell sessions', function () {
 
     // multiple packages to avoid the chance of them being preinstalled
     // TODO: use withr to not install on host system and to allow this to work even without force?
-    const i = 1
-    for (const pkg of ['xmlparsedata', 'glue']) { // we use for instead of foreach to avoid index syntax issues
-      testWithShell(`5.${i + 1} install ${pkg}`, async function (shell, test) {
-        await testRequiresNetworkConnection(test)
-        const pkgLoadInfo = await shell.ensurePackageInstalled(pkg, false, true)
-        assert.equal(pkgLoadInfo.packageName, pkg)
-        // clean up the temporary directory
-        if (pkgLoadInfo.libraryLocation !== undefined) {
-          fs.rmSync(pkgLoadInfo.libraryLocation, { recursive: true, force: true })
-        }
-      }).timeout('15min')
-    }
+    installationTestSpec()
   })
   testWithShell('6. send multiple commands', async shell => {
     shell.sendCommands('a <- 1', 'b <- 2', 'c <- a + b')
@@ -92,6 +82,23 @@ describe('RShell sessions', function () {
     assert.equal(lines.length, 1)
     assert.equal(lines[0], '[1] 3')
   })
-}
+})
 
-)
+function installationTestSpec(): void {
+  const i = 1
+  for (const pkg of ['xmlparsedata', 'glue']) { // we use for instead of foreach to avoid index syntax issues
+    testWithShell(`5.${i + 1} install ${pkg}`, async function (shell, test) {
+      if (!RUN_INSTALLATION_TESTS) {
+        console.warn('skipping installation test (set RUN_INSTALLATION_TESTS to run it)')
+        test.skip()
+      }
+      await testRequiresNetworkConnection(test)
+      const pkgLoadInfo = await shell.ensurePackageInstalled(pkg, false, true)
+      assert.equal(pkgLoadInfo.packageName, pkg)
+      // clean up the temporary directory
+      if (pkgLoadInfo.libraryLocation !== undefined) {
+        fs.rmSync(pkgLoadInfo.libraryLocation, { recursive: true, force: true })
+      }
+    }).timeout('15min')
+  }
+}

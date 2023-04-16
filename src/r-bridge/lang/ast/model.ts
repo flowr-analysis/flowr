@@ -13,7 +13,10 @@ export enum Type {
   Number = 'NUM_CONST', // TODO: support negative numbers
   String = 'STR_CONST',
   Assignment = 'assignment',
-  BinaryOp = 'binaryop'
+  BinaryOp = 'binaryop',
+  // parens will be removed and dealt with as precedences/arguments automatically
+  ParenLeft = '(',
+  ParenRight = ')',
 }
 
 export const ArithmeticOperators: readonly string[] = ['+', '-', '*', '/', '^', '%%', '%/%']

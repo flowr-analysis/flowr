@@ -147,7 +147,9 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     // TODO: refactor?
     for (const elem of mappedWithName) {
       // TODO: configure #name
-      if (elem.name === Lang.Type.Expr) {
+      if (elem.name === Lang.Type.ParenLeft || elem.name === Lang.Type.ParenRight) {
+        log.debug(`skipping parenthesis information for ${JSON.stringify(elem)}`)
+      } else if (elem.name === Lang.Type.Expr) {
         parsedNodes.push(this.parseExpr(elem.content))
       } else if (elem.name === Lang.Type.Number) {
         parsedNodes.push(this.parseNumber(elem.content))

@@ -9,7 +9,7 @@ describe('Model specific tests', () => {
     })
     const assertMerged = (ranges: Lang.Range[], expected: Lang.Range, message: string = ''): void => {
       it(JSON.stringify(ranges), () => {
-        assert.deepEqual(mergeRanges(...ranges), expected, `${message}`)
+        assert.deepStrictEqual(mergeRanges(...ranges), expected, `${message}`)
       })
     }
     describe('one ranges always returns the same', () => {

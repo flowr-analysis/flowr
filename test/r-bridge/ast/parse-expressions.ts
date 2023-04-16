@@ -32,34 +32,39 @@ describe('1. Parse simple expressions', () => {
           return
         }
 
-        const nestedInput = `1 ${op} 1 ${op} 42`
-        assertAst(nestedInput, shell, nestedInput, exprList(
-          {
-            type: Lang.Type.BinaryOp,
-            op,
-            location: Lang.rangeFrom(1, 7 + opOffset, 1, 7 + 2 * opOffset),
-            lhs: {
+        for (const defaultPrec of [ // offsets encode additional shifts by parenthesis
+          { input: `1 ${op} 1 ${op} 42`, offsetL: 0, offsetC: 0, offsetR: 0 },
+          { input: `(1 ${op} 1) ${op} 42`, offsetL: 1, offsetC: 2, offsetR: 2 },
+          { input: `(1 ${op} 1) ${op} (42)`, offsetL: 1, offsetC: 2, offsetR: 3 }
+        ]) {
+          assertAst(defaultPrec.input, shell, defaultPrec.input, exprList(
+            {
               type: Lang.Type.BinaryOp,
               op,
-              location: Lang.rangeFrom(1, 3, 1, 3 + opOffset),
+              location: Lang.rangeFrom(1, 7 + opOffset + defaultPrec.offsetC, 1, 7 + 2 * opOffset + defaultPrec.offsetC),
               lhs: {
-                type: Lang.Type.Number,
-                location: Lang.rangeFrom(1, 1, 1, 1),
-                content: numVal(1)
+                type: Lang.Type.BinaryOp,
+                op,
+                location: Lang.rangeFrom(1, 3 + defaultPrec.offsetL, 1, 3 + opOffset + defaultPrec.offsetL),
+                lhs: {
+                  type: Lang.Type.Number,
+                  location: Lang.rangeFrom(1, 1 + defaultPrec.offsetL, 1, 1 + defaultPrec.offsetL),
+                  content: numVal(1)
+                },
+                rhs: {
+                  type: Lang.Type.Number,
+                  location: Lang.rangeFrom(1, 5 + opOffset + defaultPrec.offsetL, 1, 5 + opOffset + defaultPrec.offsetL),
+                  content: numVal(1)
+                }
               },
               rhs: {
                 type: Lang.Type.Number,
-                location: Lang.rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
-                content: numVal(1)
+                location: Lang.rangeFrom(1, 9 + 2 * opOffset + defaultPrec.offsetR, 1, 10 + 2 * opOffset + defaultPrec.offsetR),
+                content: numVal(42)
               }
-            },
-            rhs: {
-              type: Lang.Type.Number,
-              location: Lang.rangeFrom(1, 9 + 2 * opOffset, 1, 10 + 2 * opOffset),
-              content: numVal(42)
             }
-          }
-        ))
+          ))
+        }
 
         const invertedPrecedenceInput = `1 ${op} (1 ${op} 42)`
         assertAst(invertedPrecedenceInput, shell, invertedPrecedenceInput, exprList(

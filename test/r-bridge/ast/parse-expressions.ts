@@ -4,11 +4,10 @@ import { exprList, numVal } from '../helper/ast-builder'
 
 describeSession('1. Parse simple expressions', shell => {
   assertAst('1.1 simple addition', shell, '1 + 1', exprList(
-    Lang.rangeFrom(1, 1, 1, 5),
     {
       type: Lang.Type.BinaryOp,
       op: '+',
-      location: Lang.rangeFrom(1, 1, 1, 5),
+      location: Lang.rangeFrom(1, 3, 1, 3),
       lhs: {
         type: Lang.Type.Number,
         location: Lang.rangeFrom(1, 1, 1, 1),

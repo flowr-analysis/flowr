@@ -99,7 +99,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     const parsedChildren = this.parseBasedOnType(children)
 
     // TODO: at total object in any case of error?
-    return { type: Lang.Type.ExprList, children: parsedChildren, location: mergeRanges(...parsedChildren.map(c => c.location)) }
+    return { type: Lang.Type.ExprList, children: parsedChildren }
   }
 
   private revertTokenReplacement(token: string): string {
@@ -248,7 +248,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     const [rhs] = this.parseBasedOnType([special.others[1].content])
 
     const { location } = this.retrieveMetaStructure(special.marker.content)
-    return { type: Lang.Type.BinaryOp, location: mergeRanges(location, lhs.location, rhs.location), lhs, rhs, op: special.marker.name }
+    return { type: Lang.Type.BinaryOp, location, lhs, rhs, op: special.marker.name }
   }
 }
 

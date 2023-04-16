@@ -66,7 +66,7 @@ interface Location {
   location: Range
 }
 
-export interface RExprList extends WithChildren<RNode>, Location {
+export interface RExprList extends WithChildren<RNode> {
   readonly type: Type.ExprList
 }
 

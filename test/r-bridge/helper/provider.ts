@@ -1,5 +1,5 @@
 // all examples are based on the R language def (Draft of 2023-03-15, 10.3.1)
-import { type RNumberValue } from '../../../src/r-bridge/lang/values'
+import { type RNumberValue, type RStringValue } from '../../../src/r-bridge/lang/values'
 
 // maps a string to the expected R number parse value // TODO: test automatically against what R produces?
 export const RNumberPool: Array<{ val: RNumberValue, str: string }> = [
@@ -33,4 +33,42 @@ export const RNumberPool: Array<{ val: RNumberValue, str: string }> = [
   { str: '2i', val: { num: 2, complexNumber: true, markedAsInt: false } },
   { str: '4.1i', val: { num: 4.1, complexNumber: true, markedAsInt: false } },
   { str: '1e-2i', val: { num: 0.01, complexNumber: true, markedAsInt: false } }
+]
+
+// TODO: deal with errors in case of "Hell\0o"
+export const RStringPool: Array<{ val: RStringValue, str: string }> = [
+  // the default block
+  { str: '""', val: { str: '', quotes: '"' } },
+  { str: "''", val: { str: '', quotes: "'" } },
+  { str: '"a"', val: { str: 'a', quotes: '"' } },
+  { str: "'a'", val: { str: 'a', quotes: "'" } },
+  { str: "'Hi'", val: { str: 'Hi', quotes: "'" } },
+  // the quotes block
+  { str: '"\'"', val: { str: "'", quotes: '"' } },
+  { str: '\'"\'', val: { str: '"', quotes: "'" } },
+  { str: '\'a"b\'', val: { str: 'a"b', quotes: "'" } },
+  // the escaped quotes block
+  { str: '"a\\"b"', val: { str: 'a\\"b', quotes: '"' } },
+  { str: '\'a\\\'b\'', val: { str: "a\\'b", quotes: "'" } },
+  // keep non-lifted escapes
+  { str: '\'a\\"b\'', val: { str: 'a\\"b', quotes: "'" } },
+  { str: "\"a\\'b\"", val: { str: 'a\\\'b', quotes: '"' } },
+  // embedded comments block
+  { str: '"a#b"', val: { str: 'a#b', quotes: '"' } },
+  { str: '"a # comment"', val: { str: 'a # comment', quotes: '"' } },
+  // the advanced escape blocks (TODO: we need them expanded in the future)
+  { str: '"\\n"', val: { str: '\\n', quotes: '"' } }, // newline
+  { str: '"\\r"', val: { str: '\\r', quotes: '"' } }, // carriage return
+  { str: '"\\t"', val: { str: '\\t', quotes: '"' } }, // horizontal tab
+  { str: '"\\b"', val: { str: '\\b', quotes: '"' } }, // backspace
+  { str: '"\\a"', val: { str: '\\a', quotes: '"' } }, // bell (\u0007)
+  { str: '"\\f"', val: { str: '\\f', quotes: '"' } }, // form feed
+  { str: '"\\v"', val: { str: '\\v', quotes: '"' } }, // vertical tab
+  { str: '"\\\\"', val: { str: '\\\\', quotes: '"' } }, // backslash
+  { str: '"\\123"', val: { str: '\\123', quotes: '"' } }, // octal (\x53)
+  { str: '"\\xAA"', val: { str: '\\xAA', quotes: '"' } }, // hex
+  { str: '"\\uAFFE"', val: { str: '\\uAFFE', quotes: '"' } }, // unicode 1
+  { str: '"\\u{AFFE}"', val: { str: '\\u{AFFE}', quotes: '"' } }, // unicode 2
+  { str: '"\\u10AFFE"', val: { str: '\\u10AFFE', quotes: '"' } }, // unicode 3
+  { str: '"\\u{10AFFE}"', val: { str: '\\u{10AFFE}', quotes: '"' } } // unicode 4
 ]

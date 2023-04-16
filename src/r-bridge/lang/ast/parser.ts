@@ -3,7 +3,7 @@ import * as xml2js from 'xml2js'
 import * as Lang from './model'
 import { rangeFrom } from './model'
 import { log } from '../../../util/log'
-import { boolean2ts, isBoolean, number2ts } from '../values'
+import { boolean2ts, isBoolean, number2ts, string2ts } from '../values'
 
 const astLogger = log.getSubLogger({ name: 'ast' })
 
@@ -225,11 +225,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
   private parseString(obj: XmlBasedJson): Lang.RString {
     astLogger.debug(`trying to parse string ${JSON.stringify(obj)}`)
     const { location, content } = this.retrieveMetaStructure(obj)
-    const quotes = content[0]
-    if (quotes !== '"' && quotes !== "'") {
-      throw new XmlParseError(`expected string to start with a known quote (' or "), yet received ${content}`)
-    }
-    return { type: Lang.Type.String, location, content: content.slice(1, -1), quotes }
+    return { type: Lang.Type.String, location, content: string2ts(content) }
   }
 
   private parseArithmeticOp(special: { marker: NamedXmlBasedJson, others: NamedXmlBasedJson[] }): Lang.RBinaryOp {

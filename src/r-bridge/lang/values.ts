@@ -1,5 +1,12 @@
 import { parse } from 'csv-parse/sync'
 
+class ValueConversionError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ValueConversionError'
+  }
+}
+
 /**
  * transforms a value to something R can understand (e.g., booleans to TRUE/FALSE)
  */
@@ -24,7 +31,7 @@ export function ts2r (value: any): string {
     return `list(${obj})`
   }
   // TODO: bigint, function, ...
-  throw new Error(`cannot convert value of type ${typeof value} to R code`)
+  throw new ValueConversionError(`cannot convert value of type ${typeof value} to R code`)
 }
 
 const RTrue = 'TRUE'
@@ -40,7 +47,7 @@ export function boolean2ts (value: string): boolean {
   } else if (value === RFalse) {
     return false
   }
-  throw new Error(`value ${value} is not a legal R boolean`)
+  throw new ValueConversionError(`value ${value} is not a legal R boolean`)
 }
 const RNumHexFloatRegex = /^\s*0x(?<intpart>[0-9a-f]+)?(\.(?<floatpart>[0-9a-f]*))?p(?<exp>-?\d+)\s*$/
 
@@ -85,6 +92,24 @@ export function number2ts(value: string): RNumberValue {
     return { num: (base + floatSuffix) * Math.pow(2, exponent), complexNumber, markedAsInt }
   }
 }
+
+export interface RStringValue {
+  str: string
+  // from the R-language definition a string is either delimited by a pair of single or double quotes
+  quotes: '"' | "'"
+}
+
+export function string2ts(value: string): RStringValue {
+  if (value.length < 2) {
+    throw new ValueConversionError(`cannot parse string '${value}' as it is too short`)
+  }
+  const quotes = value[0]
+  if (quotes !== '"' && quotes !== "'") {
+    throw new ValueConversionError(`expected string to start with a known quote (' or "), yet received ${value}`)
+  }
+  return { str: value.slice(1, -1), quotes }
+}
+
 export function parseCSV(lines: string[]): string[][] {
   // TODO: make this scalable?
   return parse(lines.join('\n'), { skipEmptyLines: true })

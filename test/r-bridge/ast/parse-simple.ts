@@ -20,8 +20,10 @@ describeSession('0. parse simple values', shell => {
   assertAst('string', shell, '"hi"', exprList({
     type: Lang.Type.String,
     location: Lang.rangeFrom(1, 1, 1, 4),
-    quotes: '"',
-    content: 'hi'
+    content: {
+      str: 'hi',
+      quotes: '"'
+    }
   }))
   assertAst('boolean', shell, 'TRUE', exprList({
     type: Lang.Type.Boolean,

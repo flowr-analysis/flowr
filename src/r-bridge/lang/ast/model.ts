@@ -1,5 +1,5 @@
 import { type MergeableRecord } from '../../../util/objects'
-import { type RNumberValue } from '../values'
+import { type RNumberValue, type RStringValue } from '../values'
 
 /**
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
@@ -80,9 +80,7 @@ export interface RLogical extends Leaf, Location {
 
 export interface RString extends Leaf, Location {
   readonly type: Type.String
-  // from the R-language definition a string is either delimited by a pair of single or double quotes
-  quotes: '"' | "'"
-  content: string
+  content: RStringValue
 }
 
 export interface RAssignment extends Base, Location {

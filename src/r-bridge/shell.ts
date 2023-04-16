@@ -204,7 +204,6 @@ export class RShell {
     return packages.split(',')
   }
 
-  // TODO: sync variant
   // TODO: allow to configure repos etc.
   // TODO: parser for errors
   // TODO: bioconductor support?

@@ -32,7 +32,7 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
   })
 }
 
-export const describeSession = (name: string, fn: (shell: RShell) => void, ...packages: string[]): Mocha.Suite => {
+export const describeSession = (name: string, fn: (shell: RShell) => void, packages: string[] = ['xmlparsedata']): Mocha.Suite => {
   return describe(name, function () {
     this.slow('500ms') // allow for shell mechanics
     const shell = new RShell()

@@ -1,4 +1,5 @@
 import { type MergeableRecord } from '../../../util/objects'
+import { type RNumberValue } from '../values'
 
 /**
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
@@ -23,6 +24,7 @@ export type Operator = typeof Operators[number]
 
 export interface Base extends MergeableRecord {
   type: Type
+  // TODO: lexeme: string
 }
 
 // TODO: deep readonly variant
@@ -67,7 +69,7 @@ export interface RSymbol<T extends string = string> extends Leaf, Location {
 
 export interface RNumber extends Leaf, Location {
   readonly type: Type.Number
-  content: number
+  content: RNumberValue
 }
 
 export interface RBoolean extends Leaf, Location {

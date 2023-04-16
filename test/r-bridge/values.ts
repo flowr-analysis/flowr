@@ -1,6 +1,7 @@
 import { it } from 'mocha'
 import { assert } from 'chai'
-import { boolean2ts, isBoolean, ts2r } from '../../src/r-bridge/lang/values'
+import { boolean2ts, isBoolean, number2ts, ts2r } from '../../src/r-bridge/lang/values'
+import { RNumberPool } from './helper/provider'
 
 describe('Bidirectional Value Translation', () => {
   describe('TS value to R', () => {
@@ -72,6 +73,13 @@ describe('Bidirectional Value Translation', () => {
           assert.throw(() => boolean2ts('x'), Error)
         })
       })
+    })
+    describe('numbers', () => {
+      for (const number of RNumberPool) {
+        it(`${number.str} => ${number.val.num}`, () => {
+          assert.deepEqual(number2ts(number.str), number.val)
+        })
+      }
     })
   })
 })

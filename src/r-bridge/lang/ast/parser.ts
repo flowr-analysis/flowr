@@ -3,7 +3,7 @@ import * as xml2js from 'xml2js'
 import * as Lang from './model'
 import { rangeFrom } from './model'
 import { log } from '../../../util/log'
-import { boolean2ts, isBoolean } from '../values'
+import { boolean2ts, isBoolean, number2ts } from '../values'
 
 const astLogger = log.getSubLogger({ name: 'ast' })
 
@@ -218,7 +218,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
       return { type: Lang.Type.Boolean, location, content: boolean2ts(content) }
     } else {
       // TODO: need to parse R numbers to TS numbers
-      return { type: Lang.Type.Number, location, content: Number(content) }
+      return { type: Lang.Type.Number, location, content: number2ts(content) }
     }
   }
 
@@ -229,7 +229,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     if (quotes !== '"' && quotes !== "'") {
       throw new XmlParseError(`expected string to start with a known quote (' or "), yet received ${content}`)
     }
-    return { type: Lang.Type.String, location, content: content.slice(1, content.length - 1), quotes }
+    return { type: Lang.Type.String, location, content: content.slice(1, -1), quotes }
   }
 
   private parseArithmeticOp(special: { marker: NamedXmlBasedJson, others: NamedXmlBasedJson[] }): Lang.RBinaryOp {

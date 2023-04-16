@@ -24,10 +24,9 @@ describeSession('0. parse simple values', shell => {
     content: 'hi'
   }))
   assertAst('boolean', shell, 'TRUE', exprList({
-    type: Lang.Type.String,
+    type: Lang.Type.Boolean,
     location: Lang.rangeFrom(1, 1, 1, 4),
-    quotes: '"',
-    content: 'hi'
+    content: true
   }))
 })
 

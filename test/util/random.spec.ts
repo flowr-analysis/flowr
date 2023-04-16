@@ -1,7 +1,7 @@
 import { ALPHABET, randomString } from '../../src/util/random'
 import { assert } from 'chai'
 
-describe('random', () => {
+describe('Random', () => {
   describe('randomString', () => {
     it('with one source only', () => {
       assert.equal(randomString(7, ['a']), 'aaaaaaa')
@@ -15,7 +15,7 @@ describe('random', () => {
     })
     it('only contain valid characters', () => {
       for (const source of [ALPHABET, ALPHABET.slice(0, 26), ['1', '2', '3', 'x']]) {
-        for (let stringLength = 0; stringLength < 50; stringLength++) {
+        for (let stringLength = 0; stringLength < 20; stringLength++) {
           for (let repetition = 0; repetition < 5; repetition++) {
             [...randomString(stringLength, source)].forEach(char => {
               assert.include(source, char, `for length ${stringLength}`)

@@ -1,7 +1,7 @@
 import { deepMergeObject, type MergeableRecord } from '../../../util/objects'
 import * as xml2js from 'xml2js'
 import * as Lang from './model'
-import { rangeFrom, type RSymbol } from './model'
+import { mergeRanges, rangeFrom, type RSymbol } from './model'
 import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
 
@@ -84,7 +84,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
       childkey: this.config.childrenName,
       charsAsChildren: false,
       explicitChildren: true,
-      // we need this for semicolons etc, while we keep the old broken components we ignore them completely
+      // we need this for semicolons etc., while we keep the old broken components we ignore them completely
       preserveChildrenOrder: true,
       normalize: true,
       strict: true
@@ -96,10 +96,10 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     this.assureName(exprContent, Lang.Type.ExprList)
 
     const children = getKeysGuarded(exprContent, this.config.childrenName)
+    const parsedChildren = this.parseBasedOnType(children)
 
-    // const children = this.retrieveChildren(exprList)
     // TODO: at total object in any case of error?
-    return { type: Lang.Type.ExprList, children: this.parseBasedOnType(children) }
+    return { type: Lang.Type.ExprList, children: parsedChildren, location: mergeRanges(...parsedChildren.map(c => c.location)) }
   }
 
   private revertTokenReplacement(token: string): string {
@@ -248,7 +248,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     const [rhs] = this.parseBasedOnType([special.others[1].content])
 
     const { location } = this.retrieveMetaStructure(special.marker.content)
-    return { type: Lang.Type.BinaryOp, location, lhs, rhs, op: special.marker.name }
+    return { type: Lang.Type.BinaryOp, location: mergeRanges(location, lhs.location, rhs.location), lhs, rhs, op: special.marker.name }
   }
 }
 

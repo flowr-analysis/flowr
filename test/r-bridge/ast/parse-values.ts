@@ -6,18 +6,20 @@ import { exprList } from '../helper/ast-builder'
 describeSession('0. parse values', shell => {
   describe('0.1 numbers', () => {
     for (const number of RNumberPool) {
-      assertAst(number.str, shell, number.str, exprList({
+      const range = Lang.rangeFrom(1, 1, 1, number.str.length)
+      assertAst(number.str, shell, number.str, exprList(range, {
         type: Lang.Type.Number,
-        location: Lang.rangeFrom(1, 1, 1, number.str.length),
+        location: range,
         content: number.val
       }))
     }
   })
   describe('0.2 strings', () => {
     for (const string of RStringPool) {
-      assertAst(string.str, shell, string.str, exprList({
+      const range = Lang.rangeFrom(1, 1, 1, string.str.length)
+      assertAst(string.str, shell, string.str, exprList(range, {
         type: Lang.Type.String,
-        location: Lang.rangeFrom(1, 1, 1, string.str.length),
+        location: range,
         content: string.val
       })
       )
@@ -25,15 +27,16 @@ describeSession('0. parse values', shell => {
   })
   describe('0.3 symbols', () => {
     for (const symbol of RSymbolPool) {
-      assertAst(symbol.str, shell, symbol.str, exprList({
+      const range = Lang.rangeFrom(1, 1, 1, symbol.str.length)
+      assertAst(symbol.str, shell, symbol.str, exprList(range, {
         type: Lang.Type.Symbol,
-        location: Lang.rangeFrom(1, 1, 1, symbol.str.length),
+        location: range,
         content: symbol.val
       })
       )
     }
   })
-  assertAst('boolean', shell, 'TRUE', exprList({
+  assertAst('boolean', shell, 'TRUE', exprList(Lang.rangeFrom(1, 1, 1, 4), {
     type: Lang.Type.Boolean,
     location: Lang.rangeFrom(1, 1, 1, 4),
     content: true

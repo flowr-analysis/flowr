@@ -55,11 +55,18 @@ export function rangeFrom(line1: number | string, col1: number | string, line2: 
   }
 }
 
+export function mergeRanges(...rs: Range[]): Range {
+  return {
+    start: rs.reduce((acc, r) => acc.line < r.start.line || (acc.line === r.start.line && acc.column < r.start.column) ? acc : r.start, rs[0].start),
+    end: rs.reduce((acc, r) => acc.line > r.end.line || (acc.line === r.end.line && acc.column > r.end.column) ? acc : r.end, rs[0].end)
+  }
+}
+
 interface Location {
   location: Range
 }
 
-export interface RExprList extends WithChildren<RNode> {
+export interface RExprList extends WithChildren<RNode>, Location {
   readonly type: Type.ExprList
 }
 

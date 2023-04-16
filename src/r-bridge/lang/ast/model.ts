@@ -67,12 +67,13 @@ export interface RSymbol<T extends string = string> extends Leaf, Location {
   content: T
 }
 
+/** includes numeric, integer, and complex */
 export interface RNumber extends Leaf, Location {
   readonly type: Type.Number
   content: RNumberValue
 }
 
-export interface RBoolean extends Leaf, Location {
+export interface RLogical extends Leaf, Location {
   readonly type: Type.Boolean
   content: boolean
 }
@@ -99,7 +100,8 @@ export interface RBinaryOp extends Base, Location {
   rhs: RNode
 }
 
-export type RConstant = RNumber | RString | RBoolean | RSymbol<'NULL' | 'NA'>
+// TODO: special constants
+export type RConstant = RNumber | RString | RLogical | RSymbol<'NULL' | 'NA'>
 
 export type RSingleNode = RSymbol | RConstant | RBinaryOp | RAssignment
 export type RNode = RExprList | RSingleNode

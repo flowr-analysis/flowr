@@ -211,7 +211,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     return { unwrappedObj, location, content }
   }
 
-  private parseNumber(obj: XmlBasedJson): Lang.RNumber | Lang.RBoolean {
+  private parseNumber(obj: XmlBasedJson): Lang.RNumber | Lang.RLogical {
     astLogger.debug(`trying to parse number ${JSON.stringify(obj)}`)
     const { location, content } = this.retrieveMetaStructure(obj)
     if (isBoolean(content)) {

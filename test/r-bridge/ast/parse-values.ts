@@ -4,7 +4,6 @@ import { RNumberPool, RStringPool, RSymbolPool } from '../helper/provider'
 import { exprList } from '../helper/ast-builder'
 
 describeSession('0. parse values', shell => {
-  // TODO: integer constants
   describe('0.1 numbers', () => {
     for (const number of RNumberPool) {
       assertAst(number.str, shell, number.str, exprList({

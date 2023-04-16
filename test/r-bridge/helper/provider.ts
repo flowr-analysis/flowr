@@ -1,7 +1,7 @@
 // all examples are based on the R language def (Draft of 2023-03-15, 10.3.1)
 import { RNa, RNull, type RNumberValue, type RStringValue } from '../../../src/r-bridge/lang/values'
 
-// maps a string to the expected R number parse value // TODO: test automatically against what R produces?
+// maps a string to the expected R number parse value
 export const RNumberPool: Array<{ val: RNumberValue, str: string }> = [
   // the default block
   { str: '1', val: { num: 1, complexNumber: false, markedAsInt: false } },
@@ -28,7 +28,6 @@ export const RNumberPool: Array<{ val: RNumberValue, str: string }> = [
   { str: '0x10L', val: { num: 16, complexNumber: false, markedAsInt: true } },
   { str: '1000000L', val: { num: 1000000, complexNumber: false, markedAsInt: true } },
   { str: '1e6L', val: { num: 1000000, complexNumber: false, markedAsInt: true } },
-  // TODO: deal with warning messages issued?
   { str: '1.L', val: { num: 1, complexNumber: false, markedAsInt: true } },
   { str: '1.1L', val: { num: 1.1, complexNumber: false, markedAsInt: true } },
   { str: '1e-3L', val: { num: 0.001, complexNumber: false, markedAsInt: true } },

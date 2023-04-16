@@ -1,5 +1,5 @@
 import { type MergeableRecord } from '../../../util/objects'
-import { type RNumberValue, type RStringValue } from '../values'
+import { type RNa, type RNumberValue, type RStringValue } from '../values'
 
 /**
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
@@ -9,6 +9,7 @@ export enum Type {
   Expr = 'expr',
   Symbol = 'SYMBOL',
   Boolean = 'boolean', /* will be represented as a number in R */
+  Null = 'NULL_CONST', /* this will be a symbol for us */
   Number = 'NUM_CONST', // TODO: support negative numbers
   String = 'STR_CONST',
   Assignment = 'assignment',
@@ -99,7 +100,7 @@ export interface RBinaryOp extends Base, Location {
 }
 
 // TODO: special constants
-export type RConstant = RNumber | RString | RLogical | RSymbol<'NULL' | 'NA'>
+export type RConstant = RNumber | RString | RLogical | RSymbol<'NULL' | typeof RNa>
 
 export type RSingleNode = RSymbol | RConstant | RBinaryOp | RAssignment
 export type RNode = RExprList | RSingleNode

@@ -1,5 +1,5 @@
 // all examples are based on the R language def (Draft of 2023-03-15, 10.3.1)
-import { type RNumberValue, type RStringValue } from '../../../src/r-bridge/lang/values'
+import { RNa, RNull, type RNumberValue, type RStringValue } from '../../../src/r-bridge/lang/values'
 
 // maps a string to the expected R number parse value // TODO: test automatically against what R produces?
 export const RNumberPool: Array<{ val: RNumberValue, str: string }> = [
@@ -11,6 +11,9 @@ export const RNumberPool: Array<{ val: RNumberValue, str: string }> = [
   { str: '1e-7', val: { num: 1e-7, complexNumber: false, markedAsInt: false } },
   { str: '1.2e7', val: { num: 1.2e7, complexNumber: false, markedAsInt: false } },
   { str: '0xAF12', val: { num: 0xAF12, complexNumber: false, markedAsInt: false } },
+  // The special block
+  { str: 'Inf', val: { num: Infinity, complexNumber: false, markedAsInt: false } },
+  { str: 'NaN', val: { num: NaN, complexNumber: false, markedAsInt: false } },
   // floating hex notation
   { str: '0x0p0', val: { num: 0, complexNumber: false, markedAsInt: false } },
   { str: '0x1.1p1', val: { num: (1 * 1 + 1 / 16) * (2 ** 1), complexNumber: false, markedAsInt: false } },
@@ -69,6 +72,11 @@ export const RStringPool: Array<{ val: RStringValue, str: string }> = [
   { str: '"\\xAA"', val: { str: '\\xAA', quotes: '"' } }, // hex
   { str: '"\\uAFFE"', val: { str: '\\uAFFE', quotes: '"' } }, // unicode 1
   { str: '"\\u{AFFE}"', val: { str: '\\u{AFFE}', quotes: '"' } }, // unicode 2
-  { str: '"\\u10AFFE"', val: { str: '\\u10AFFE', quotes: '"' } }, // unicode 3
-  { str: '"\\u{10AFFE}"', val: { str: '\\u{10AFFE}', quotes: '"' } } // unicode 4
+  { str: '"\\U10AFFE"', val: { str: '\\U10AFFE', quotes: '"' } }, // unicode 3
+  { str: '"\\U{10AFFE}"', val: { str: '\\U{10AFFE}', quotes: '"' } } // unicode 4
+]
+
+export const RSymbolPool: Array<{ val: string, str: string }> = [
+  { str: 'NA', val: RNa },
+  { str: 'NULL', val: RNull }
 ]

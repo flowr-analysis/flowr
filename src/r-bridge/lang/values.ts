@@ -58,6 +58,7 @@ function getDecimalPlacesWithRadix(floatpart: string, radix: number): number {
 
 export const RImaginaryMarker = 'i'
 export const RIntegerMarker = 'L'
+export const RInf = 'Inf'
 
 export interface RNumberValue {
   num: number
@@ -70,7 +71,7 @@ export interface RNumberValue {
 export function number2ts(value: string): RNumberValue {
   // TODO: check for legality? even though R should have done that already
 
-  // check for hexadecmial number with floating point addon which is supported by R but not by JS :/
+  // check for hexadecimal number with floating point addon which is supported by R but not by JS :/
   let lcValue = value.toLowerCase()
   /* both checks are case-sensitive! */
   const last = value[value.length - 1]
@@ -79,6 +80,10 @@ export function number2ts(value: string): RNumberValue {
 
   if (markedAsInt || complexNumber) {
     lcValue = lcValue.slice(0, -1)
+  }
+
+  if (value === RInf) {
+    return { num: Infinity, complexNumber, markedAsInt }
   }
 
   const floatHex = lcValue.match(RNumHexFloatRegex)
@@ -108,6 +113,17 @@ export function string2ts(value: string): RStringValue {
     throw new ValueConversionError(`expected string to start with a known quote (' or "), yet received ${value}`)
   }
   return { str: value.slice(1, -1), quotes }
+}
+
+export const RNa = 'NA'
+export const RNull = 'NULL'
+
+export function isNA(value: string): value is (typeof RNa) {
+  return value === RNa
+}
+
+export function isNull(value: string): value is (typeof RNull) {
+  return value === RNull
 }
 
 export function parseCSV(lines: string[]): string[][] {

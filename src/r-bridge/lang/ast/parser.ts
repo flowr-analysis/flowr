@@ -1,9 +1,9 @@
 import { deepMergeObject, type MergeableRecord } from '../../../util/objects'
 import * as xml2js from 'xml2js'
 import * as Lang from './model'
-import { rangeFrom } from './model'
+import { rangeFrom, type RSymbol } from './model'
 import { log } from '../../../util/log'
-import { boolean2ts, isBoolean, number2ts, string2ts } from '../values'
+import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
 
 const astLogger = log.getSubLogger({ name: 'ast' })
 
@@ -153,6 +153,8 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
         parsedNodes.push(this.parseNumber(elem.content))
       } else if (elem.name === Lang.Type.String) {
         parsedNodes.push(this.parseString(elem.content))
+      } else if (elem.name === Lang.Type.Null) {
+        parsedNodes.push(this.parseSymbol(elem.content))
       } else {
         throw new XmlParseError(`unknown type ${elem.name}`)
       }
@@ -211,10 +213,12 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     return { unwrappedObj, location, content }
   }
 
-  private parseNumber(obj: XmlBasedJson): Lang.RNumber | Lang.RLogical {
+  private parseNumber(obj: XmlBasedJson): Lang.RNumber | Lang.RLogical | RSymbol<typeof RNa> {
     astLogger.debug(`trying to parse number ${JSON.stringify(obj)}`)
     const { location, content } = this.retrieveMetaStructure(obj)
-    if (isBoolean(content)) {
+    if (isNA(content)) { /* the special symbol */
+      return { type: Lang.Type.Symbol, location, content }
+    } else if (isBoolean(content)) {
       return { type: Lang.Type.Boolean, location, content: boolean2ts(content) }
     } else {
       // TODO: need to parse R numbers to TS numbers
@@ -226,6 +230,12 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     astLogger.debug(`trying to parse string ${JSON.stringify(obj)}`)
     const { location, content } = this.retrieveMetaStructure(obj)
     return { type: Lang.Type.String, location, content: string2ts(content) }
+  }
+
+  private parseSymbol(obj: XmlBasedJson): Lang.RSymbol {
+    astLogger.debug(`trying to parse symbol ${JSON.stringify(obj)}`)
+    const { location, content } = this.retrieveMetaStructure(obj)
+    return { type: Lang.Type.Symbol, location, content }
   }
 
   private parseArithmeticOp(special: { marker: NamedXmlBasedJson, others: NamedXmlBasedJson[] }): Lang.RBinaryOp {

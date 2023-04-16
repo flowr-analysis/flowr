@@ -1,6 +1,6 @@
 import * as Lang from '../../../src/r-bridge/lang/ast/model'
 import { assertAst, describeSession } from '../helper/shell'
-import { RNumberPool } from '../helper/provider'
+import { RNumberPool, RStringPool, RSymbolPool } from '../helper/provider'
 
 const exprList = (...children: Lang.RNode[]): Lang.RExprList => {
   return { type: Lang.Type.ExprList, children }
@@ -17,14 +17,26 @@ describeSession('0. parse simple values', shell => {
       }))
     }
   })
-  assertAst('string', shell, '"hi"', exprList({
-    type: Lang.Type.String,
-    location: Lang.rangeFrom(1, 1, 1, 4),
-    content: {
-      str: 'hi',
-      quotes: '"'
+  describe('0.2 strings', () => {
+    for (const string of RStringPool) {
+      assertAst(string.str, shell, string.str, exprList({
+        type: Lang.Type.String,
+        location: Lang.rangeFrom(1, 1, 1, string.str.length),
+        content: string.val
+      })
+      )
     }
-  }))
+  })
+  describe('0.3 symbols', () => {
+    for (const symbol of RSymbolPool) {
+      assertAst(symbol.str, shell, symbol.str, exprList({
+        type: Lang.Type.Symbol,
+        location: Lang.rangeFrom(1, 1, 1, symbol.str.length),
+        content: symbol.val
+      })
+      )
+    }
+  })
   assertAst('boolean', shell, 'TRUE', exprList({
     type: Lang.Type.Boolean,
     location: Lang.rangeFrom(1, 1, 1, 4),

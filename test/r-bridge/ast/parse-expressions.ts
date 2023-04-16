@@ -4,8 +4,9 @@ import { exprList, numVal } from '../helper/ast-builder'
 
 describe('1. Parse simple expressions', () => {
   describeSession('1.1 arithmetic operations', shell => {
-    // TODO: %%, %/%, ... "SPECIAL"
-    for (const op of ['+', '-', '*', '/', '^']) {
+    // we make %in% a comparison
+    // TODO: other valid %x% operators?
+    for (const op of ['+', '-', '*', '/', '^', '%%', '%/%', '%*%', '%o%', '%x%']) {
       describe(op, () => {
         const simpleInput = `1 ${op} 1`
         const opOffset = op.length - 1

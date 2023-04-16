@@ -109,23 +109,30 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
   }
 
   // TODO: make isolateMarker more performant
-  private isolateMarker(obj: NamedXmlBasedJson[], predicate: (name: string) => boolean, multipleErrorMessage: string): {
-    readonly marker: NamedXmlBasedJson
-    readonly others: NamedXmlBasedJson[]
-  } | undefined {
+  private isolateMarker<T>(obj: NamedXmlBasedJson[], predicate: (name: string) => {
+    predicateResult: boolean
+    extraInformation: T
+  }, multipleErrorMessage: string): {
+      readonly marker: NamedXmlBasedJson
+      readonly others: NamedXmlBasedJson[]
+      readonly extraInformation: T | undefined
+    } | undefined {
     let marker: NamedXmlBasedJson | undefined
+    let extraInformation: T | undefined
     for (const elem of obj) {
-      if (predicate(elem.name)) {
+      const res = predicate(elem.name)
+      if (res.predicateResult) {
         if (marker !== undefined) {
           throw new XmlParseError(`found multiple markers for ${multipleErrorMessage} in ${JSON.stringify(obj)}`)
         }
         marker = elem
+        extraInformation = res.extraInformation
       }
     }
     if (marker === undefined) {
       return undefined
     }
-    return { marker, others: obj.filter((elem) => elem !== marker) }
+    return { marker, others: obj.filter((elem) => elem !== marker), extraInformation }
   }
 
   private parseBasedOnType(obj: XmlBasedJson[]): Lang.RNode[] {
@@ -134,11 +141,22 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     // TODO: if any has a semicolon we must respect that and split to expr list
     // TODO: improve with error message
 
-    const special = this.isolateMarker(mappedWithName, n => {
-      return Lang.ArithmeticOperators.includes(n)
+    const special = this.isolateMarker<'arithmetic' | 'special'>(mappedWithName, n => {
+      const arith = Lang.ArithmeticOperators.includes(n)
+      const special = Lang.Type.Special === n
+
+      return {
+        predicateResult: arith || special,
+        extraInformation: arith ? 'arithmetic' : 'special'
+      }
     }, Lang.ArithmeticOperators.join(', '))
     if (special !== undefined) {
-      return [this.parseArithmeticOp(special)]
+      switch (special.extraInformation) {
+        case 'arithmetic':
+          return [this.parseArithmeticOp(special)]
+        case 'special':
+          return [this.parseSpecialOp(special)]
+      }
     }
 
     // otherwise perform default parsing
@@ -251,6 +269,21 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
 
     const { location } = this.retrieveMetaStructure(special.marker.content)
     return { type: Lang.Type.BinaryOp, location, lhs, rhs, op: special.marker.name }
+  }
+
+  private parseSpecialOp(special: { marker: NamedXmlBasedJson, others: NamedXmlBasedJson[] }): Lang.RBinaryOp {
+    astLogger.debug(`trying to parse special op ${JSON.stringify(special)}`)
+    // TODO: fix this based on special
+    if (special.others.length !== 2) {
+      throw new XmlParseError(`expected exactly two children for special op (lhs & rhs), yet received ${JSON.stringify(special)}`)
+    }
+    // TODO: guard against lengths etc?
+    const [lhs] = this.parseBasedOnType([special.others[0].content])
+    const [rhs] = this.parseBasedOnType([special.others[1].content])
+
+    const { location, content: op } = this.retrieveMetaStructure(special.marker.content)
+    // TODO: assert exists
+    return { type: Lang.Type.BinaryOp, location, lhs, rhs, op }
   }
 }
 

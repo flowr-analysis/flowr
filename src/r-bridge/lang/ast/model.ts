@@ -8,22 +8,28 @@ export enum Type {
   ExprList = 'exprlist',
   Expr = 'expr',
   Symbol = 'SYMBOL',
-  Boolean = 'boolean', /* will be represented as a number in R */
-  Null = 'NULL_CONST', /* this will be a symbol for us */
+  /* will be represented as a number in R */
+  Boolean = 'boolean',
+  /* this will be a symbol for us */
+  Null = 'NULL_CONST',
   Number = 'NUM_CONST', // TODO: support negative numbers
   String = 'STR_CONST',
   Assignment = 'assignment',
   BinaryOp = 'binaryop',
+  /* can be special operators like %*% or %o% */
+  Special = 'SPECIAL',
   // parens will be removed and dealt with as precedences/arguments automatically
   ParenLeft = '(',
   ParenRight = ')',
 }
 
-export const ArithmeticOperators: readonly string[] = ['+', '-', '*', '/', '^', '%%', '%/%']
+export const ArithmeticOperators: readonly string[] = ['+', '-', '*', '/', '^']
 export const ComparisonOperators: readonly string[] = ['==', '!=', '<', '>', '<=', '>=']
 export const LogicalOperators: readonly string[] = ['&', '&&', '|', '||', '!']
 
-export const Operators = [...ArithmeticOperators, ...ComparisonOperators, ...LogicalOperators] as const
+export const SpecialOperators: readonly string[] = ['%o%', '%*%', '%/%', '%in%', '%%']
+
+export const Operators = [...ArithmeticOperators, ...ComparisonOperators, ...LogicalOperators, ...SpecialOperators] as const
 export type Operator = typeof Operators[number]
 
 export interface Base extends MergeableRecord {

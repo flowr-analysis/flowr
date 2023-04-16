@@ -104,6 +104,11 @@ export interface RStringValue {
   quotes: '"' | "'"
 }
 
+/**
+ * Convert a valid R string into a {@link RStringValue}.
+ *
+ * @throws {@link ValueConversionError} if the string has an unknown starting quote
+ */
 export function string2ts(value: string): RStringValue {
   if (value.length < 2) {
     throw new ValueConversionError(`cannot parse string '${value}' as it is too short`)
@@ -120,10 +125,6 @@ export const RNull = 'NULL'
 
 export function isNA(value: string): value is (typeof RNa) {
   return value === RNa
-}
-
-export function isNull(value: string): value is (typeof RNull) {
-  return value === RNull
 }
 
 export function parseCSV(lines: string[]): string[][] {

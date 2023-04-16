@@ -82,6 +82,13 @@ describe('Bidirectional Value Translation', () => {
       }
     })
     describe('strings', () => {
+      it('deny string which is too short to have both quotes', () => {
+        assert.throws(() => string2ts(''), Error)
+        assert.throws(() => string2ts('"'), Error)
+      })
+      it('deny wrongly quoted strings', () => {
+        assert.throws(() => string2ts('abc'), Error)
+      })
       for (const string of RStringPool) {
         it(`${string.str} => ${string.val.str}`, () => {
           assert.deepEqual(string2ts(string.str), string.val)

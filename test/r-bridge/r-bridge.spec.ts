@@ -3,10 +3,12 @@ describe('R-Bridge', () => {
     require('./values')
   })
 
+  require('./model')
   require('./sessions')
 
   // TODO: allow to specify where to install packages to so we can minimize installation to one temp directory
   describe('Retrieve AST from R', () => {
     require('./ast/parse-values')
+    require('./ast/parse-expressions')
   })
 })

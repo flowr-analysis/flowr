@@ -40,11 +40,11 @@ export const describeSession = (name: string, fn: (shell: RShell) => void, ...pa
     before(async () => {
       shell.tryToInjectHomeLibPath()
       for (const pkg of packages) {
-        if (await shell.isPackageInstalled(pkg)) {
+        if (!await shell.isPackageInstalled(pkg)) {
           // TODO: only check this once? network should not be expected to break during tests
           await testRequiresNetworkConnection(this.ctx)
-          await shell.ensurePackageInstalled(pkg)
         }
+        await shell.ensurePackageInstalled(pkg, true)
       }
     })
     fn(shell)

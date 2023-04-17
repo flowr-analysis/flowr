@@ -1,7 +1,7 @@
 import { deepMergeObject, type MergeableRecord } from '../../../util/objects'
 import * as xml2js from 'xml2js'
 import * as Lang from './model'
-import { compareRanges, rangeFrom, type RBinaryOpFlavor, type RNode, type RSymbol } from './model'
+import { AssignmentsRAst, compareRanges, rangeFrom, type RBinaryOpFlavor, type RNode, type RSymbol } from './model'
 import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
 
@@ -149,53 +149,67 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
   }
 
   private parseBasedOnType(obj: XmlBasedJson[]): Lang.RNode[] {
+    if (obj.length === 0) {
+      log.warn('no children received, skipping')
+      return []
+    }
+    // TODO: if any has a semicolon we must respect that and split to expr list
+
     const mappedWithName: NamedXmlBasedJson[] = obj.map((content) => ({ name: this.getName(content), content }))
 
-    // TODO: if any has a semicolon we must respect that and split to expr list
-    // TODO: improve with error message
-
-    const special = isolateMarkerInNamedXmlBasedJson<'arithmetic' | 'logical' | 'comparison' | 'special' | undefined>(mappedWithName, n => {
-      if (Lang.ArithmeticOperatorsRAst.includes(n)) {
-        return { predicateResult: true, extraInformation: 'arithmetic' }
-      } else if (Lang.LogicalOperatorsRAst.includes(n)) {
-        return { predicateResult: true, extraInformation: 'logical' }
-      } else if (Lang.ComparisonOperatorsRAst.includes(n)) {
-        return { predicateResult: true, extraInformation: 'comparison' }
-      } else if (Lang.Type.Special === n) {
-        return { predicateResult: true, extraInformation: 'special' }
-      } else {
-        return { predicateResult: false, extraInformation: undefined }
-      }
-    }, Lang.ArithmeticOperators.join(', '))
-    if (special !== undefined) {
-      const info = special.extraInformation
-      if (info === undefined) {
-        throw new XmlParseError(`unexpected undefined extra information for special operator ${JSON.stringify(special)}`)
-      }
-      return [this.parseBinaryOp(info, special)]
+    // TODO: improve with error message and ensure no semicolon
+    if (mappedWithName.length === 1) {
+      const parsed = this.parseOneElementBasedOnType(mappedWithName[0])
+      return parsed === undefined ? [] : [parsed]
+    } else if (mappedWithName.length === 3) { /* TODO: unary ops for == 2 */
+      return [this.parseBinaryStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2])]
     }
 
     // otherwise perform default parsing
     const parsedNodes: Lang.RNode[] = []
     // used to indicate the new root node of this set of nodes
     // TODO: refactor?
+    // TODO: allow to configure #name
     for (const elem of mappedWithName) {
-      // TODO: configure #name
-      if (elem.name === Lang.Type.ParenLeft || elem.name === Lang.Type.ParenRight) {
-        log.debug(`skipping parenthesis information for ${JSON.stringify(elem)}`)
-      } else if (elem.name === Lang.Type.Expr) {
-        parsedNodes.push(this.parseExpr(elem.content))
-      } else if (elem.name === Lang.Type.Number) {
-        parsedNodes.push(this.parseNumber(elem.content))
-      } else if (elem.name === Lang.Type.String) {
-        parsedNodes.push(this.parseString(elem.content))
-      } else if (elem.name === Lang.Type.Null) {
-        parsedNodes.push(this.parseSymbol(elem.content))
-      } else {
-        throw new XmlParseError(`unknown type ${elem.name}`)
+      const retrieved = this.parseOneElementBasedOnType(elem)
+      if (retrieved !== undefined) {
+        parsedNodes.push(retrieved)
       }
     }
     return parsedNodes
+  }
+
+  /**
+   * parses a single structure in the ast based on its type
+   *
+   * @return nothing if no parse result is to be produced (i.e., if it is skipped)
+   */
+  private parseOneElementBasedOnType(elem: NamedXmlBasedJson): Lang.RNode | undefined {
+    switch (elem.name) {
+      case Lang.Type.ParenLeft:
+      case Lang.Type.ParenRight:
+        log.debug(`skipping parenthesis information for ${JSON.stringify(elem)}`)
+        return undefined
+      case Lang.Type.Expr:
+        return this.parseExpr(elem.content)
+      case Lang.Type.Number:
+        return this.parseNumber(elem.content)
+      case Lang.Type.String:
+        return this.parseString(elem.content)
+      case Lang.Type.Null:
+        return this.parseSymbol(elem.content)
+      default:
+        throw new XmlParseError(`unknown type ${elem.name}`)
+    }
+  }
+
+  private parseBinaryStructure(lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RNode {
+    console.log('bin for', op.name)
+    /* if (Lang.AssignmentsRAst.includes(op.name)) {
+      return this.parseAssignment(lhs, op, rhs)
+    } */
+    // TODO: identify op name correctly
+    return this.parseBinaryOp(op.name as any, lhs, op, rhs)
   }
 
   private ensureChildrenAreLhsAndRhsOrdered(first: XmlBasedJson, second: XmlBasedJson): void {
@@ -282,38 +296,34 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     return { type: Lang.Type.Symbol, location, content, lexeme: content }
   }
 
-  public parseBinaryOp(flavor: 'arithmetic', opStructure: IsolatedMarker): Lang.RArithmeticOp
-  public parseBinaryOp(flavor: 'logical', opStructure: IsolatedMarker): Lang.RLogicalOp
-  public parseBinaryOp(flavor: 'comparison', opStructure: IsolatedMarker): Lang.RComparisonOp
-  public parseBinaryOp(flavor: 'special', opStructure: IsolatedMarker): Lang.RBinaryOp
-  public parseBinaryOp(flavor: RBinaryOpFlavor | 'special', opStructure: IsolatedMarker): Lang.RBinaryOp
-  public parseBinaryOp(flavor: RBinaryOpFlavor | 'special', opStructure: IsolatedMarker): Lang.RBinaryOp {
-    astLogger.debug(`trying to parse ${flavor} op as binary op ${JSON.stringify(opStructure)}`)
-    if (opStructure.others.length !== 2) {
-      throw new XmlParseError(`expected exactly two children for ${flavor} as binary op (lhs & rhs), yet received ${JSON.stringify(opStructure)}`)
+  public parseBinaryOp(flavor: RBinaryOpFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RBinaryOp {
+    astLogger.debug(`trying to parse ${flavor} op as binary op ${JSON.stringify([lhs, op, rhs])}`)
+
+    this.ensureChildrenAreLhsAndRhsOrdered(lhs.content, rhs.content)
+    const parsedLhs = this.parseOneElementBasedOnType(lhs)
+    const parsedRhs = this.parseOneElementBasedOnType(rhs)
+
+    if (parsedLhs === undefined || parsedRhs === undefined) {
+      throw new XmlParseError(`unexpected one-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, op, rhs])}`)
     }
 
-    this.ensureChildrenAreLhsAndRhsOrdered(opStructure.others[0].content, opStructure.others[1].content)
-    const [lhs] = this.parseBasedOnType([opStructure.others[0].content])
-    const [rhs] = this.parseBasedOnType([opStructure.others[1].content])
+    const operationName = this.retrieveOpName(op)
 
-    const op = this.retrieveOpFromMarker(flavor, opStructure)
-
-    const { location, content } = this.retrieveMetaStructure(opStructure.marker.content)
+    const { location, content } = this.retrieveMetaStructure(op.content)
 
     if (flavor === 'special') {
-      flavor = identifySpecialOp(content, lhs, rhs)
+      flavor = identifySpecialOp(content, parsedLhs, parsedRhs)
     }
 
     // TODO: assert exists as known operator
-    return { type: Lang.Type.BinaryOp, flavor, location, lhs, rhs, op, lexeme: content }
+    return { type: Lang.Type.BinaryOp, flavor, location, lhs: parsedLhs, rhs: parsedRhs, op: operationName, lexeme: content }
   }
 
-  private retrieveOpFromMarker(flavor: RBinaryOpFlavor | 'special', opStructure: IsolatedMarker): string {
+  private retrieveOpName(op: NamedXmlBasedJson): string {
     /*
      * only real arithmetic ops have their operation as their own name, the others identify via content
      */
-    return opStructure.marker.content[this.config.contentName]
+    return op.content[this.config.contentName]
   }
 }
 

@@ -4,7 +4,7 @@ import { exprList, numVal } from '../../helper/ast-builder'
 import { RArithmeticBinaryOpPool, RLogicalBinaryOpPool } from '../../helper/provider'
 import { type RShell } from '../../../../src/r-bridge/shell'
 
-describe('1. Parse simple expressions', () => {
+describe('1. Parse simple operations', () => {
   let idx = 0
   for (const opSuite of [{ label: 'arithmetic', pool: RArithmeticBinaryOpPool }, { label: 'logical', pool: RLogicalBinaryOpPool }]) {
     describeSession(`1.${++idx} ${opSuite.label} operations`, shell => {

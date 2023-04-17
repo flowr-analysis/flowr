@@ -10,6 +10,6 @@ describe('R-Bridge', () => {
   // TODO: allow to specify where to install packages to so we can minimize installation to one temp directory
   describe('Retrieve AST from R', () => {
     require('./lang/ast/parse-values')
-    require('./lang/ast/parse-expressions')
+    require('./lang/ast/parse-operations')
   })
 })

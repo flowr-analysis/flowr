@@ -70,36 +70,36 @@ function describePrecedenceTestsForOp(op: { flavor: 'arithmetic', str: string } 
       return
     }
 
-    for (const defaultPrec of [ // offsets encode additional shifts by parenthesis
+    for (const defaultPrecedence of [ // offsets encode additional shifts by parenthesis
       { input: `1 ${op.str} 1 ${op.str} 42`, offsetL: 0, offsetC: 0, offsetR: 0 },
       { input: `(1 ${op.str} 1) ${op.str} 42`, offsetL: 1, offsetC: 2, offsetR: 2 },
       { input: `(1 ${op.str} 1) ${op.str} (42)`, offsetL: 1, offsetC: 2, offsetR: 3 }
     ]) {
-      assertAst(defaultPrec.input, shell, defaultPrec.input, exprList(
+      assertAst(defaultPrecedence.input, shell, defaultPrecedence.input, exprList(
         {
           type: Lang.Type.BinaryOp,
           op: op.str,
           flavor: op.flavor,
-          location: Lang.rangeFrom(1, 7 + opOffset + defaultPrec.offsetC, 1, 7 + 2 * opOffset + defaultPrec.offsetC),
+          location: Lang.rangeFrom(1, 7 + opOffset + defaultPrecedence.offsetC, 1, 7 + 2 * opOffset + defaultPrecedence.offsetC),
           lhs: {
             type: Lang.Type.BinaryOp,
             op: op.str,
             flavor: op.flavor,
-            location: Lang.rangeFrom(1, 3 + defaultPrec.offsetL, 1, 3 + opOffset + defaultPrec.offsetL),
+            location: Lang.rangeFrom(1, 3 + defaultPrecedence.offsetL, 1, 3 + opOffset + defaultPrecedence.offsetL),
             lhs: {
               type: Lang.Type.Number,
-              location: Lang.rangeFrom(1, 1 + defaultPrec.offsetL, 1, 1 + defaultPrec.offsetL),
+              location: Lang.rangeFrom(1, 1 + defaultPrecedence.offsetL, 1, 1 + defaultPrecedence.offsetL),
               content: numVal(1)
             },
             rhs: {
               type: Lang.Type.Number,
-              location: Lang.rangeFrom(1, 5 + opOffset + defaultPrec.offsetL, 1, 5 + opOffset + defaultPrec.offsetL),
+              location: Lang.rangeFrom(1, 5 + opOffset + defaultPrecedence.offsetL, 1, 5 + opOffset + defaultPrecedence.offsetL),
               content: numVal(1)
             }
           },
           rhs: {
             type: Lang.Type.Number,
-            location: Lang.rangeFrom(1, 9 + 2 * opOffset + defaultPrec.offsetR, 1, 10 + 2 * opOffset + defaultPrec.offsetR),
+            location: Lang.rangeFrom(1, 9 + 2 * opOffset + defaultPrecedence.offsetR, 1, 10 + 2 * opOffset + defaultPrecedence.offsetR),
             content: numVal(42)
           }
         }

@@ -1,4 +1,5 @@
 // all examples are based on the R language def (Draft of 2023-03-15, 10.3.1)
+import * as Lang from '../../../src/r-bridge/lang/ast/model'
 import { RNa, RNull, type RNumberValue, type RStringValue } from '../../../src/r-bridge/lang/values'
 
 // maps a string to the expected R number parse value
@@ -80,22 +81,8 @@ export const RSymbolPool: Array<{ val: string, str: string }> = [
   { str: 'NULL', val: RNull }
 ]
 
-export const RArithmeticOpPool: Array<{ flavor: 'arithmetic', str: string }> = [
-  { str: '+', flavor: 'arithmetic' },
-  { str: '-', flavor: 'arithmetic' },
-  { str: '*', flavor: 'arithmetic' },
-  { str: '/', flavor: 'arithmetic' },
-  { str: '^', flavor: 'arithmetic' },
-  { str: '%%', flavor: 'arithmetic' },
-  { str: '%/%', flavor: 'arithmetic' },
-  { str: '%*%', flavor: 'arithmetic' },
-  { str: '%o%', flavor: 'arithmetic' },
-  { str: '%x%', flavor: 'arithmetic' }
-]
+export const RArithmeticOpPool: Array<{ flavor: 'arithmetic', str: string }> =
+    Lang.ArithmeticOperators.map((op) => ({ str: op, flavor: 'arithmetic' }))
 
-export const RLogicalOpPool: Array<{ flavor: 'logical', str: string }> = [
-  { str: '&', flavor: 'logical' },
-  { str: '&&', flavor: 'logical' },
-  { str: '||', flavor: 'logical' },
-  { str: '|', flavor: 'logical' }
-]
+export const RLogicalOpPool: Array<{ flavor: 'logical', str: string }> =
+  Lang.LogicalOperators.map((op) => ({ str: op, flavor: 'logical' }))

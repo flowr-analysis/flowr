@@ -11,6 +11,7 @@ describe('Constant Parsing', () => {
         assertAst(number.str, shell, number.str, exprList({
           type: Lang.Type.Number,
           location: range,
+          lexeme: number.str,
           content: number.val
         }))
       }
@@ -21,6 +22,7 @@ describe('Constant Parsing', () => {
         assertAst(string.str, shell, string.str, exprList({
           type: Lang.Type.String,
           location: range,
+          lexeme: string.str,
           content: string.val
         })
         )
@@ -32,6 +34,7 @@ describe('Constant Parsing', () => {
         assertAst(symbol.str, shell, symbol.str, exprList({
           type: Lang.Type.Symbol,
           location: range,
+          lexeme: symbol.str,
           content: symbol.val
         })
         )
@@ -40,6 +43,7 @@ describe('Constant Parsing', () => {
     assertAst('boolean', shell, 'TRUE', exprList({
       type: Lang.Type.Boolean,
       location: Lang.rangeFrom(1, 1, 1, 4),
+      lexeme: 'TRUE',
       content: true
     }))
   })

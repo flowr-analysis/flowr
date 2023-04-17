@@ -1,5 +1,6 @@
 import { type MergeableRecord } from '../../../util/objects'
 import { type RNa, type RNull, type RNumberValue, type RStringValue } from '../values'
+import { BiMap } from '../../../util/bimap'
 
 /**
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
@@ -23,26 +24,54 @@ export enum Type {
   ParenRight = ')',
 }
 
-export const ArithmeticOperators: readonly string[] = ['+', '-', '*', '/', '^']
-export const ComparisonOperators: readonly string[] = ['==', '!=', '<', '>', '<=', '>=']
-export const LogicalOperators: readonly string[] = ['&', '&&', '|', '||', '!']
+type RToInternalMapping = BiMap<string, string>
 
-export const SpecialOperators: readonly string[] = ['%o%', '%*%', '%/%', '%in%', '%%']
+export const ArithmeticOperators: readonly string[] = ['+', '-', '*', '/', '^', '**', '%/%', '%*%', '%o%', '%x%'] as const
+// '**' will be treated as '^'
+export const ArithmeticOperatorsR: readonly string[] = ArithmeticOperators.filter(op => op !== '**')
 
-export const Operators = [...ArithmeticOperators, ...ComparisonOperators, ...LogicalOperators, ...SpecialOperators] as const
+// arithmetic operations are mapped 1:1 (specials with % are treated differently anyway)
+export const ArithmeticOperatorsMapping: RToInternalMapping = new BiMap(ArithmeticOperators.map(op => [op, op === '**' ? '^' : op]))
+
+export const ComparisonOperatorsMapping: RToInternalMapping = new BiMap(Object.entries({
+  EQ: '==',
+  NE: '!=',
+  LT: '<',
+  GT: '>',
+  LE: '<=',
+  GE: '>='
+}))
+
+export const ComparisonOperatorsR: readonly string[] = [...ComparisonOperatorsMapping.keys()]
+export const ComparisonOperators: readonly string[] = [...ComparisonOperatorsMapping.values()]
+
+export const LogicalOperatorsMapping: RToInternalMapping = new BiMap(Object.entries({
+  AND2: '&&',
+  AND: '&',
+  OR2: '||',
+  OR: '|',
+  NOT: '!',
+  IN: '%in%'
+}))
+
+export const LogicalOperatorsR: readonly string[] = [...LogicalOperatorsMapping.keys()]
+export const LogicalOperators: readonly string[] = [...LogicalOperatorsMapping.values()]
+
+export const Operators = [...ArithmeticOperators, ...ComparisonOperators, ...LogicalOperators] as const
 export type Operator = typeof Operators[number]
 
-export interface Base extends MergeableRecord {
+export interface Base<LexemeType = string> extends MergeableRecord {
   type: Type
-  // TODO: lexeme: string
+  /** the original string retrieved from R, can be used for further identification */
+  lexeme: LexemeType
 }
 
 // TODO: deep readonly variant
-interface WithChildren<Children extends Base> extends Base {
+interface WithChildren<Children extends Base<string | undefined>> {
   children: Children[]
 }
 
-interface Leaf extends Base {
+interface Leaf<LexemeType = string> extends Base<LexemeType> {
 
 }
 
@@ -95,7 +124,7 @@ interface Location {
   location: Range
 }
 
-export interface RExprList extends WithChildren<RNode> {
+export interface RExprList extends WithChildren<RNode>, Base<string | undefined> {
   readonly type: Type.ExprList
 }
 

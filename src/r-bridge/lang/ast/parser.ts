@@ -4,11 +4,10 @@ import * as Lang from './model'
 import { compareRanges, rangeFrom, type RBinaryOpFlavor, type RNode, type RSymbol } from './model'
 import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
-import { assertUnreachable } from '../../../util/assert'
 
 const astLogger = log.getSubLogger({ name: 'ast' })
 
-interface AstParser<Target extends Lang.Base> {
+interface AstParser<Target extends Lang.Base<string | undefined>> {
   parse: (xmlString: string) => Promise<Target>
 }
 
@@ -66,8 +65,14 @@ function extractRange(ast: XmlBasedJson): Lang.Range {
 export interface IsolatedMarker { marker: NamedXmlBasedJson, others: NamedXmlBasedJson[] }
 
 function identifySpecialOp(name: string, lhs: RNode, rhs: RNode): RBinaryOpFlavor {
-  // TODO: are there others?
-  return 'arithmetic'
+  if (Lang.ComparisonOperatorsR.includes(name)) {
+    return 'comparison'
+  } else if (Lang.LogicalOperatorsR.includes(name)) {
+    return 'logical'
+  } else {
+    // TODO: others?
+    return 'arithmetic'
+  }
 }
 
 class XmlBasedAstParser implements AstParser<Lang.RExprList> {
@@ -107,7 +112,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     const parsedChildren = this.parseBasedOnType(children)
 
     // TODO: at total object in any case of error?
-    return { type: Lang.Type.ExprList, children: parsedChildren }
+    return { type: Lang.Type.ExprList, children: parsedChildren, lexeme: undefined }
   }
 
   private revertTokenReplacement(token: string): string {
@@ -150,11 +155,11 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     // TODO: improve with error message
 
     const special = this.isolateMarker<'arithmetic' | 'logical' | 'comparison' | 'special' | undefined>(mappedWithName, n => {
-      if (Lang.ArithmeticOperators.includes(n)) {
+      if (Lang.ArithmeticOperatorsR.includes(n)) {
         return { predicateResult: true, extraInformation: 'arithmetic' }
-      } else if (['AND', 'OR', 'AND2', 'OR2'].includes(n)) { // TODO: order/structure the ops
+      } else if (Lang.LogicalOperatorsR.includes(n)) {
         return { predicateResult: true, extraInformation: 'logical' }
-      } else if (['EQ', 'NE', 'LT', 'LE', 'GT', 'GE'].includes(n)) {
+      } else if (Lang.ComparisonOperatorsR.includes(n)) {
         return { predicateResult: true, extraInformation: 'comparison' }
       } else if (Lang.Type.Special === n) {
         return { predicateResult: true, extraInformation: 'special' }
@@ -236,7 +241,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     if (children.length === 1) {
       return children[0]
     } else {
-      return { type: Lang.Type.ExprList, location, content, children }
+      return { type: Lang.Type.ExprList, location, content, children, lexeme: undefined }
     }
   }
 
@@ -255,26 +260,26 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
   private parseNumber(obj: XmlBasedJson): Lang.RNumber | Lang.RLogical | RSymbol<typeof RNa> {
     astLogger.debug(`trying to parse number ${JSON.stringify(obj)}`)
     const { location, content } = this.retrieveMetaStructure(obj)
+    const common = { location, lexeme: content }
     if (isNA(content)) { /* the special symbol */
-      return { type: Lang.Type.Symbol, location, content }
+      return { ...common, type: Lang.Type.Symbol, content }
     } else if (isBoolean(content)) {
-      return { type: Lang.Type.Boolean, location, content: boolean2ts(content) }
+      return { ...common, type: Lang.Type.Boolean, content: boolean2ts(content) }
     } else {
-      // TODO: need to parse R numbers to TS numbers
-      return { type: Lang.Type.Number, location, content: number2ts(content) }
+      return { ...common, type: Lang.Type.Number, content: number2ts(content) }
     }
   }
 
   private parseString(obj: XmlBasedJson): Lang.RString {
     astLogger.debug(`trying to parse string ${JSON.stringify(obj)}`)
     const { location, content } = this.retrieveMetaStructure(obj)
-    return { type: Lang.Type.String, location, content: string2ts(content) }
+    return { type: Lang.Type.String, location, content: string2ts(content), lexeme: content }
   }
 
   private parseSymbol(obj: XmlBasedJson): Lang.RSymbol {
     astLogger.debug(`trying to parse symbol ${JSON.stringify(obj)}`)
     const { location, content } = this.retrieveMetaStructure(obj)
-    return { type: Lang.Type.Symbol, location, content }
+    return { type: Lang.Type.Symbol, location, content, lexeme: content }
   }
 
   public parseBinaryOp(flavor: 'arithmetic', opStructure: IsolatedMarker): Lang.RArithmeticOp
@@ -298,14 +303,15 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
       flavor = identifySpecialOp(opStructure.marker.name, lhs, rhs)
     }
 
-    const { location } = this.retrieveMetaStructure(opStructure.marker.content)
+    const { location, content } = this.retrieveMetaStructure(opStructure.marker.content)
 
     // TODO: assert exists as known operator
-    return { type: Lang.Type.BinaryOp, flavor, location, lhs, rhs, op }
+    return { type: Lang.Type.BinaryOp, flavor, location, lhs, rhs, op, lexeme: content }
   }
 
   private retrieveOpFromMarker(flavor: RBinaryOpFlavor | 'special', opStructure: IsolatedMarker): string {
-    /* only real arithmetic ops have their operation as their own name, the others identify via content */
+    /*
+     * only real arithmetic ops have their operation as their own name, the others identify via content */
     if (flavor === 'arithmetic') {
       return opStructure.marker.name
     } else {

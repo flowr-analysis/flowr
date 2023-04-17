@@ -81,8 +81,8 @@ export const RSymbolPool: Array<{ val: string, str: string }> = [
   { str: 'NULL', val: RNull }
 ]
 
-export const RArithmeticOpPool: Array<{ flavor: 'arithmetic', str: string }> =
-    Lang.ArithmeticOperators.map((op) => ({ str: op, flavor: 'arithmetic' }))
+export const RArithmeticOpPool: Array<{ flavor: 'arithmetic', str: string, convertedOp: string }> =
+    [...Lang.ArithmeticOperatorsMapping.entries()].map(([op, convertedOp]) => ({ str: op, flavor: 'arithmetic', convertedOp }))
 
-export const RLogicalOpPool: Array<{ flavor: 'logical', str: string }> =
-  Lang.LogicalOperators.map((op) => ({ str: op, flavor: 'logical' }))
+export const RLogicalOpPool: Array<{ flavor: 'logical', str: string, convertedOp: string }> =
+  [...Lang.LogicalOperatorsMapping.entries()].map(([op, convertedOp]) => ({ str: op, flavor: 'logical', convertedOp }))

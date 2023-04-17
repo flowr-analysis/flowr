@@ -1,6 +1,6 @@
 import { type MergeableRecord } from '../../../util/objects'
 import { type RNa, type RNull, type RNumberValue, type RStringValue } from '../values'
-import { BiMap } from '../../../util/bimap'
+import { type BiMap } from '../../../util/bimap'
 
 /**
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
@@ -26,36 +26,72 @@ export enum Type {
 
 type RToInternalMapping = BiMap<string, string>
 
-export const ArithmeticOperators: readonly string[] = ['+', '-', '*', '/', '^', '**', '%/%', '%*%', '%o%', '%x%'] as const
+export type StringUsedInRCode = string
+export enum OperatorArity {
+  Unary = 1,
+  Binary = 2,
+  Both = 3
+}
+
+export type OperatorFlavor = 'arithmetic' | 'comparison' | 'logical'
+export type OperatorFlavorInAst = OperatorFlavor | 'special'
+export type OperatorWrittenAs = 'infix' | 'prefix'
+export type OperatorUsedAs = 'assignment' | 'operation' | 'access'
+export type OperatorName = string
+
+export interface OperatorInformationValue extends MergeableRecord {
+  name: OperatorName
+  stringUsedInRAst: string
+  stringUsedInternally: string
+  // precedence: number // handled by R
+  flavorInRAst: OperatorFlavorInAst
+  flavor: OperatorFlavor
+  writtenAs: OperatorWrittenAs
+  arity: OperatorArity
+  usedAs: OperatorUsedAs
+}
+
+// TODO: remove flavor separation and use only one (no special)
+// TODO: make it complete
+/* eslint-disable */
+export const OperatorDatabase: Record<StringUsedInRCode, OperatorInformationValue> & MergeableRecord = {
+  '+':    { name: 'addition or unary +',          stringUsedInRAst: '+',    stringUsedInternally: '+',    flavorInRAst: 'arithmetic', flavor: 'arithmetic', writtenAs: 'infix', arity:  OperatorArity.Both,   usedAs: 'operation' },
+  '-':    { name: 'subtraction or unary -',       stringUsedInRAst: '-',    stringUsedInternally: '-',    flavorInRAst: 'arithmetic', flavor: 'arithmetic', writtenAs: 'infix', arity:  OperatorArity.Both,   usedAs: 'operation' },
+  '*':    { name: 'multiplication',               stringUsedInRAst: '*',    stringUsedInternally: '*',    flavorInRAst: 'arithmetic', flavor: 'arithmetic', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '/':    { name: 'division',                     stringUsedInRAst: '/',    stringUsedInternally: '/',    flavorInRAst: 'arithmetic', flavor: 'arithmetic', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '^':    { name: 'exponentiation',               stringUsedInRAst: '^',    stringUsedInternally: '^',    flavorInRAst: 'arithmetic', flavor: 'arithmetic', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '**':   { name: 'alternative exponentiation',   stringUsedInRAst: '^' /* no error it does this */,    stringUsedInternally: '**',   flavorInRAst: 'arithmetic', flavor: 'arithmetic', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%%':   { name: 'modulus',                      stringUsedInRAst: '%%',   stringUsedInternally: '%%',   flavorInRAst: 'special',    flavor: 'arithmetic', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%/%':  { name: 'integer division',             stringUsedInRAst: '%/%',  stringUsedInternally: '%/%',  flavorInRAst: 'special',    flavor: 'arithmetic', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%*%':  { name: 'matrix product',               stringUsedInRAst: '%*%',  stringUsedInternally: '%*%',  flavorInRAst: 'special',    flavor: 'arithmetic', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%o%':  { name: 'outer product',                stringUsedInRAst: '%o%',  stringUsedInternally: '%o%',  flavorInRAst: 'special',    flavor: 'arithmetic', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%x%':  { name: 'kronecker product',            stringUsedInRAst: '%x%',  stringUsedInternally: '%x%',  flavorInRAst: 'special',    flavor: 'arithmetic', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '==':   { name: 'equal to',                     stringUsedInRAst: 'EQ',   stringUsedInternally: '==',   flavorInRAst: 'comparison', flavor: 'comparison', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '!=':   { name: 'not equal to',                 stringUsedInRAst: 'NE',   stringUsedInternally: '!=',   flavorInRAst: 'comparison', flavor: 'comparison', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '>':    { name: 'greater than',                 stringUsedInRAst: 'GT',   stringUsedInternally: '>',    flavorInRAst: 'comparison', flavor: 'comparison', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '>=':   { name: 'greater than or equal to',     stringUsedInRAst: 'GE',   stringUsedInternally: '>=',   flavorInRAst: 'comparison', flavor: 'comparison', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '<':    { name: 'less than',                    stringUsedInRAst: 'LT',   stringUsedInternally: '<',    flavorInRAst: 'comparison', flavor: 'comparison', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '<=':   { name: 'less than or equal to',        stringUsedInRAst: 'LE',   stringUsedInternally: '<=',   flavorInRAst: 'comparison', flavor: 'comparison', writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '&':    { name: 'logical and (vectorized)',     stringUsedInRAst: 'AND',  stringUsedInternally: '&',    flavorInRAst: 'logical',    flavor: 'logical',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '&&':   { name: 'logical and (non-vectorized)', stringUsedInRAst: 'AND2', stringUsedInternally: '&&',   flavorInRAst: 'logical',    flavor: 'logical',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '|':    { name: 'logical or (vectorized)',      stringUsedInRAst: 'OR',   stringUsedInternally: '|',    flavorInRAst: 'logical',    flavor: 'logical',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '||':   { name: 'logical or (not-vectorized)',  stringUsedInRAst: 'OR2',  stringUsedInternally: '||',   flavorInRAst: 'logical',    flavor: 'logical',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '!':    { name: 'unary not',                    stringUsedInRAst: 'NOT',  stringUsedInternally: '!',    flavorInRAst: 'logical',    flavor: 'logical',    writtenAs: 'prefix', arity: OperatorArity.Unary,  usedAs: 'operation' },
+  '%in%': { name: 'matching operator',            stringUsedInRAst: '%in%', stringUsedInternally: '%in%', flavorInRAst: 'special',    flavor: 'logical',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+}
+/* eslint-enable */
+
+export const ArithmeticOperators: readonly string[] = Object.keys(OperatorDatabase).filter(op => OperatorDatabase[op].flavor === 'arithmetic')
 // '**' will be treated as '^'
-export const ArithmeticOperatorsR: readonly string[] = ArithmeticOperators.filter(op => op !== '**')
+export const ArithmeticOperatorsRAst: readonly string[] = ArithmeticOperators.map(op => OperatorDatabase[op].stringUsedInRAst)
 
-// arithmetic operations are mapped 1:1 (specials with % are treated differently anyway)
-export const ArithmeticOperatorsMapping: RToInternalMapping = new BiMap(ArithmeticOperators.map(op => [op, op === '**' ? '^' : op]))
+export const ComparisonOperators: readonly string[] = Object.keys(OperatorDatabase).filter(op => OperatorDatabase[op].flavor === 'comparison')
 
-export const ComparisonOperatorsMapping: RToInternalMapping = new BiMap(Object.entries({
-  EQ: '==',
-  NE: '!=',
-  LT: '<',
-  GT: '>',
-  LE: '<=',
-  GE: '>='
-}))
+export const ComparisonOperatorsRAst: readonly string[] = ComparisonOperators.map(op => OperatorDatabase[op].stringUsedInRAst)
 
-export const ComparisonOperatorsR: readonly string[] = [...ComparisonOperatorsMapping.keys()]
-export const ComparisonOperators: readonly string[] = [...ComparisonOperatorsMapping.values()]
+export const LogicalOperators: readonly string[] = Object.keys(OperatorDatabase).filter(op => OperatorDatabase[op].flavor === 'logical')
 
-export const LogicalOperatorsMapping: RToInternalMapping = new BiMap(Object.entries({
-  AND2: '&&',
-  AND: '&',
-  OR2: '||',
-  OR: '|',
-  NOT: '!',
-  IN: '%in%'
-}))
-
-export const LogicalOperatorsR: readonly string[] = [...LogicalOperatorsMapping.keys()]
-export const LogicalOperators: readonly string[] = [...LogicalOperatorsMapping.values()]
+export const LogicalOperatorsRAst: readonly string[] = LogicalOperators.map(op => OperatorDatabase[op].stringUsedInRAst)
 
 export const Operators = [...ArithmeticOperators, ...ComparisonOperators, ...LogicalOperators] as const
 export type Operator = typeof Operators[number]

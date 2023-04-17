@@ -35,6 +35,32 @@ class XmlParseError extends Error {
 type XmlBasedJson = Record<string, any>
 interface NamedXmlBasedJson { name: string, content: XmlBasedJson }
 
+export function isolateMarkerInNamedXmlBasedJson<T>(obj: NamedXmlBasedJson[], predicate: (name: string, content: XmlBasedJson) => {
+  predicateResult: boolean
+  extraInformation: T
+}, multipleErrorMessage: string): {
+    readonly marker: NamedXmlBasedJson
+    readonly others: NamedXmlBasedJson[]
+    readonly extraInformation: T | undefined
+  } | undefined {
+  let marker: NamedXmlBasedJson | undefined
+  let extraInformation: T | undefined
+  for (const elem of obj) {
+    const res = predicate(elem.name, elem.content)
+    if (res.predicateResult) {
+      if (marker !== undefined) {
+        throw new XmlParseError(`found multiple markers for ${multipleErrorMessage} in ${JSON.stringify(obj)}`)
+      }
+      marker = elem
+      extraInformation = res.extraInformation
+    }
+  }
+  if (marker === undefined) {
+    return undefined
+  }
+  return { marker, others: obj.filter((elem) => elem !== marker), extraInformation }
+}
+
 function getKeysGuarded(obj: XmlBasedJson, key: string): any
 function getKeysGuarded(obj: XmlBasedJson, ...key: string[]): Record<string, any>
 function getKeysGuarded(obj: XmlBasedJson, ...key: string[]): (Record<string, any> | string) {
@@ -65,7 +91,7 @@ function extractRange(ast: XmlBasedJson): Lang.Range {
 export interface IsolatedMarker { marker: NamedXmlBasedJson, others: NamedXmlBasedJson[] }
 
 function identifySpecialOp(name: string, lhs: RNode, rhs: RNode): RBinaryOpFlavor {
-  if (Lang.ComparisonOperatorsR.includes(name)) {
+  if (Lang.ComparisonOperatorsRAst.includes(name)) {
     return 'comparison'
   } else if (Lang.LogicalOperatorsR.includes(name)) {
     return 'logical'
@@ -121,33 +147,6 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     return result
   }
 
-  // TODO: make isolateMarker more performant
-  private isolateMarker<T>(obj: NamedXmlBasedJson[], predicate: (name: string) => {
-    predicateResult: boolean
-    extraInformation: T
-  }, multipleErrorMessage: string): {
-      readonly marker: NamedXmlBasedJson
-      readonly others: NamedXmlBasedJson[]
-      readonly extraInformation: T | undefined
-    } | undefined {
-    let marker: NamedXmlBasedJson | undefined
-    let extraInformation: T | undefined
-    for (const elem of obj) {
-      const res = predicate(elem.name)
-      if (res.predicateResult) {
-        if (marker !== undefined) {
-          throw new XmlParseError(`found multiple markers for ${multipleErrorMessage} in ${JSON.stringify(obj)}`)
-        }
-        marker = elem
-        extraInformation = res.extraInformation
-      }
-    }
-    if (marker === undefined) {
-      return undefined
-    }
-    return { marker, others: obj.filter((elem) => elem !== marker), extraInformation }
-  }
-
   private parseBasedOnType(obj: XmlBasedJson[]): Lang.RNode[] {
     const mappedWithName: NamedXmlBasedJson[] = obj.map((content) => ({ name: this.getName(content), content }))
 
@@ -155,11 +154,11 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     // TODO: improve with error message
 
     const special = this.isolateMarker<'arithmetic' | 'logical' | 'comparison' | 'special' | undefined>(mappedWithName, n => {
-      if (Lang.ArithmeticOperatorsR.includes(n)) {
+      if (Lang.ArithmeticOperatorsRAst.includes(n)) {
         return { predicateResult: true, extraInformation: 'arithmetic' }
       } else if (Lang.LogicalOperatorsR.includes(n)) {
         return { predicateResult: true, extraInformation: 'logical' }
-      } else if (Lang.ComparisonOperatorsR.includes(n)) {
+      } else if (Lang.ComparisonOperatorsRAst.includes(n)) {
         return { predicateResult: true, extraInformation: 'comparison' }
       } else if (Lang.Type.Special === n) {
         return { predicateResult: true, extraInformation: 'special' }

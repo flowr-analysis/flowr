@@ -1,7 +1,13 @@
 import { deepMergeObject, type MergeableRecord } from '../../../util/objects'
 import * as xml2js from 'xml2js'
 import * as Lang from './model'
-import { AssignmentsRAst, compareRanges, rangeFrom, type RBinaryOpFlavor, type RNode, type RSymbol } from './model'
+import {
+  compareRanges,
+  type OperatorFlavor,
+  rangeFrom,
+  type RNode,
+  type RSymbol
+} from './model'
 import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
 
@@ -90,8 +96,7 @@ function extractRange(ast: XmlBasedJson): Lang.Range {
 
 export interface IsolatedMarker { marker: NamedXmlBasedJson, others: NamedXmlBasedJson[] }
 
-function identifySpecialOp(content: string, lhs: RNode, rhs: RNode): RBinaryOpFlavor {
-  console.log(content)
+function identifySpecialOp(content: string, lhs: RNode, rhs: RNode): OperatorFlavor {
   if (Lang.ComparisonOperatorsRAst.includes(content)) {
     return 'comparison'
   } else if (Lang.LogicalOperatorsRAst.includes(content)) {
@@ -162,7 +167,10 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
       const parsed = this.parseOneElementBasedOnType(mappedWithName[0])
       return parsed === undefined ? [] : [parsed]
     } else if (mappedWithName.length === 3) { /* TODO: unary ops for == 2 */
-      return [this.parseBinaryStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2])]
+      const binary = this.parseBinaryStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2])
+      if (binary !== 'no binary structure') {
+        return [binary]
+      }
     }
 
     // otherwise perform default parsing
@@ -191,11 +199,14 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
         log.debug(`skipping parenthesis information for ${JSON.stringify(elem)}`)
         return undefined
       case Lang.Type.Expr:
+      case Lang.Type.ExprHelpAssignWrapper:
         return this.parseExpr(elem.content)
       case Lang.Type.Number:
         return this.parseNumber(elem.content)
       case Lang.Type.String:
         return this.parseString(elem.content)
+      case Lang.Type.Symbol:
+        return this.parseSymbol(elem.content)
       case Lang.Type.Null:
         return this.parseSymbol(elem.content)
       default:
@@ -203,13 +214,24 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     }
   }
 
-  private parseBinaryStructure(lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RNode {
-    console.log('bin for', op.name)
-    /* if (Lang.AssignmentsRAst.includes(op.name)) {
-      return this.parseAssignment(lhs, op, rhs)
-    } */
+  private parseBinaryStructure(lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RNode | 'no binary structure' {
+    log.trace(`binary op for ${lhs.name} [${op.name}] ${rhs.name}`)
+    let flavor: OperatorFlavor | 'special'
+    if (Lang.ArithmeticOperatorsRAst.includes(op.name)) {
+      flavor = 'arithmetic'
+    } else if (Lang.ComparisonOperatorsRAst.includes(op.name)) {
+      flavor = 'comparison'
+    } else if (Lang.LogicalOperatorsRAst.includes(op.name)) {
+      flavor = 'logical'
+    } else if (Lang.AssignmentsRAst.includes(op.name)) {
+      flavor = 'assignment'
+    } else if (Lang.Type.Special === op.name) {
+      flavor = 'special'
+    } else {
+      return 'no binary structure'
+    }
     // TODO: identify op name correctly
-    return this.parseBinaryOp(op.name as any, lhs, op, rhs)
+    return this.parseBinaryOp(flavor, lhs, op, rhs)
   }
 
   private ensureChildrenAreLhsAndRhsOrdered(first: XmlBasedJson, second: XmlBasedJson): void {
@@ -296,7 +318,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     return { type: Lang.Type.Symbol, location, content, lexeme: content }
   }
 
-  public parseBinaryOp(flavor: RBinaryOpFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RBinaryOp {
+  public parseBinaryOp(flavor: OperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RBinaryOp {
     astLogger.debug(`trying to parse ${flavor} op as binary op ${JSON.stringify([lhs, op, rhs])}`)
 
     this.ensureChildrenAreLhsAndRhsOrdered(lhs.content, rhs.content)

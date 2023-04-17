@@ -1,5 +1,5 @@
 import { assertAst, describeSession } from '../../helper/shell'
-import * as Lang from '../../../../src/r-bridge/lang/ast/model'
+import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
 import { exprList, numVal } from '../../helper/ast-builder'
 import { RArithmeticBinaryOpPool, RLogicalBinaryOpPool } from '../../helper/provider'
 import { type RShell } from '../../../../src/r-bridge/shell'

@@ -4,7 +4,7 @@ import { randomString } from '../../src/util/random'
 import { testRequiresNetworkConnection } from './helper/network'
 import { describeSession, testWithShell } from './helper/shell'
 import { isInstallTest } from '../main.spec'
-import { parseCSV } from '../../src/r-bridge/lang/values'
+import { parseCSV } from '../../src/r-bridge/lang:4.x/values'
 import { log, LogLevel } from '../../src/util/log'
 
 describe('RShell sessions', function () {

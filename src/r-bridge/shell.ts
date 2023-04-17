@@ -3,7 +3,7 @@ import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, type Logger } from 'tslog'
 import { EOL } from 'os'
 import * as readline from 'node:readline'
-import { ts2r } from './lang/values'
+import { ts2r } from './lang:4.x/values'
 import { log } from '../util/log'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both'

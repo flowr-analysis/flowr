@@ -1,9 +1,9 @@
 // TODO: global entrypoint for configuration of the parser and all components
 
 import { type RShell } from './shell'
-import { parseCSV, ts2r } from './lang/values'
-import { parse } from './lang/ast/parser'
-import { type RExprList } from './lang/ast/model'
+import { parseCSV, ts2r } from './lang:4.x/values'
+import { parse } from './lang:4.x/ast/parser'
+import { type RExprList } from './lang:4.x/ast/model'
 import { startAndEndsWith } from '../util/strings'
 
 interface RParseRequestFromFile {

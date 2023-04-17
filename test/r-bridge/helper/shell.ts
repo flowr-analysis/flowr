@@ -1,4 +1,4 @@
-import type * as Lang from '../../../src/r-bridge/lang/ast/model'
+import type * as Lang from '../../../src/r-bridge/lang:4.x/ast/model'
 import { it } from 'mocha'
 import { RShell } from '../../../src/r-bridge/shell'
 import { testRequiresNetworkConnection } from './network'

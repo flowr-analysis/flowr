@@ -17,8 +17,8 @@ export const RNumberPool: Array<{ val: RNumberValue, str: string }> = [
   { str: 'NaN', val: { num: NaN, complexNumber: false, markedAsInt: false } },
   // floating hex notation
   { str: '0x0p0', val: { num: 0, complexNumber: false, markedAsInt: false } },
-  { str: '0x1.1p1', val: { num: (1 * 1 + 1 / 16) * (2 ** 1), complexNumber: false, markedAsInt: false } },
-  { str: '0x1.1P1', val: { num: (1 * 1 + 1 / 16) * (2 ** 1), complexNumber: false, markedAsInt: false } },
+  { str: '0x1.1p1', val: { num: (1 + 1 / 16) * (2 ** 1), complexNumber: false, markedAsInt: false } },
+  { str: '0x1.1P1', val: { num: (1 + 1 / 16) * (2 ** 1), complexNumber: false, markedAsInt: false } },
   { str: '0xAF.FEp42', val: { num: (10 * 16 + 15 + 15 / 16 + 14 / (16 ** 2)) * (2 ** 42), complexNumber: false, markedAsInt: false } },
   { str: '0x.1p42', val: { num: (1 / 16) * (2 ** 42), complexNumber: false, markedAsInt: false } },
   { str: '0x.p10', val: { num: 0, complexNumber: false, markedAsInt: false } },

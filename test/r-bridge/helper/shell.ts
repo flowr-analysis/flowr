@@ -22,8 +22,8 @@ before(async () => {
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
   return it(msg, async function (): Promise<void> {
     let shell: RShell | null = null
-    shell = new RShell()
     try {
+      shell = new RShell()
       await fn(shell, this)
     } finally {
       // ensure we close the shell in error cases too

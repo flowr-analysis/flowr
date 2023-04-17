@@ -7,8 +7,6 @@ import { ts2r } from './lang:4.x/values'
 import { log } from '../util/log'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both'
-export type ExclusiveOutputStream = Exclude<OutputStreamSelector, 'both'>
-
 interface CollectorTimeout extends MergeableRecord {
   /**
    * number of milliseconds to wait for the collection to finish

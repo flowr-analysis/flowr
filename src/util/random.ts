@@ -2,7 +2,7 @@ export const ALPHABET_LOWERCASE = [...'abcdefghijklmnopqrstuvwxyz'] as const
 export const ALPHABET_UPPERCASE = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'] as const
 export const ALPHABET = [...ALPHABET_LOWERCASE, ...ALPHABET_UPPERCASE] as const
 
-// we could do this with type guards etc. but this way it is easier to read i guess
+// we could do this with type guards etc. but this way it is easier to read I guess
 function isPositiveFiniteInteger(length: number): boolean {
   return !isFinite(length) || length < 0 || length !== Math.floor(length)
 }

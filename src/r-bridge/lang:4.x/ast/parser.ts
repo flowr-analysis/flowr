@@ -35,32 +35,6 @@ class XmlParseError extends Error {
 type XmlBasedJson = Record<string, any>
 interface NamedXmlBasedJson { name: string, content: XmlBasedJson }
 
-export function isolateMarkerInNamedXmlBasedJson<T>(obj: NamedXmlBasedJson[], predicate: (name: string, content: XmlBasedJson) => {
-  predicateResult: boolean
-  extraInformation: T
-}, multipleErrorMessage: string): {
-    readonly marker: NamedXmlBasedJson
-    readonly others: NamedXmlBasedJson[]
-    readonly extraInformation: T | undefined
-  } | undefined {
-  let marker: NamedXmlBasedJson | undefined
-  let extraInformation: T | undefined
-  for (const elem of obj) {
-    const res = predicate(elem.name, elem.content)
-    if (res.predicateResult) {
-      if (marker !== undefined) {
-        throw new XmlParseError(`found multiple markers for ${multipleErrorMessage} in ${JSON.stringify(obj)}`)
-      }
-      marker = elem
-      extraInformation = res.extraInformation
-    }
-  }
-  if (marker === undefined) {
-    return undefined
-  }
-  return { marker, others: obj.filter((elem) => elem !== marker), extraInformation }
-}
-
 function getKeysGuarded(obj: XmlBasedJson, key: string): any
 function getKeysGuarded(obj: XmlBasedJson, ...key: string[]): Record<string, any>
 function getKeysGuarded(obj: XmlBasedJson, ...key: string[]): (Record<string, any> | string) {
@@ -87,8 +61,6 @@ function extractRange(ast: XmlBasedJson): Lang.Range {
   const { line1, col1, line2, col2 } = getKeysGuarded(ast, 'line1', 'col1', 'line2', 'col2')
   return rangeFrom(line1, col1, line2, col2)
 }
-
-export interface IsolatedMarker { marker: NamedXmlBasedJson, others: NamedXmlBasedJson[] }
 
 function identifySpecialOp(content: string, lhs: RNode, rhs: RNode): OperatorFlavor {
   if (Lang.ComparisonOperatorsRAst.includes(content)) {

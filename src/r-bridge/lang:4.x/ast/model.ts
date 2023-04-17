@@ -1,6 +1,5 @@
 import { type MergeableRecord } from '../../../util/objects'
 import { type RNa, type RNull, type RNumberValue, type RStringValue } from '../values'
-import { type BiMap } from '../../../util/bimap'
 
 /**
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
@@ -31,9 +30,6 @@ export enum Type {
   If = 'IF',
   Else = 'ELSE'
 }
-
-type RToInternalMapping = BiMap<string, string>
-
 export type StringUsedInRCode = string
 export enum OperatorArity {
   Unary = 1,

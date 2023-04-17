@@ -1,4 +1,5 @@
 doc/
+*-flowr.log.*
 
 ### VisualStudioCode template
 .vscode/*

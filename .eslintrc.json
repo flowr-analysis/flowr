@@ -1,16 +1,21 @@
 {
     "env": {
-        "browser": true,
-        "es2021": true
+        "browser": false,
+        "node": true,
+        "es2022": true
     },
     "extends": "standard-with-typescript",
-    "overrides": [
-    ],
+    "overrides": [],
     "parserOptions": {
         "ecmaVersion": "latest",
         "sourceType": "module",
         "project": "./tsconfig.json"
     },
     "rules": {
+        "indent": [
+            "error", 2, {"FunctionDeclaration": {"parameters": "first"},
+                "SwitchCase": 1
+            }],
+        "@typescript-eslint/space-before-function-paren": "off"
     }
 }

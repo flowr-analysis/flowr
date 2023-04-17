@@ -7,7 +7,8 @@
     "main": "ts-node src/app.ts",
     "build": "tsc",
     "doc": "typedoc --entryPointStrategy expand --out doc src",
-    "test": "nyc --no-clean --silent mocha --require ts-node/register --timeout 10000 \"test/**/*.ts\" --reporter mocha-multi-reporters --reporter-options configFile=mocha-config.json"
+    "test": "nyc --no-clean --silent mocha --require ts-node/register --timeout 10000 \"test/**/*.spec.ts\" --reporter mocha-multi-reporters --reporter-options configFile=mocha-config.json",
+    "test-full": "npm run test -- --test-installation"
   },
   "keywords": [],
   "author": "Florian Sihler",
@@ -15,8 +16,10 @@
   "devDependencies": {
     "@types/chai": "^4.3.4",
     "@types/mocha": "^10.0.1",
+    "@types/xml2js": "^0.4.11",
     "@typescript-eslint/eslint-plugin": "^5.57.1",
     "chai": "^4.3.7",
+    "csv-parse": "^5.3.6",
     "eslint": "^8.37.0",
     "eslint-config-standard-with-typescript": "^34.0.1",
     "eslint-plugin-import": "^2.27.5",
@@ -25,9 +28,11 @@
     "mocha": "^10.2.0",
     "mocha-multi-reporters": "^1.5.1",
     "nyc": "^15.1.0",
+    "rotating-file-stream": "^3.1.0",
     "ts-node": "^10.9.1",
     "tslog": "^4.8.2",
     "typedoc": "^0.23.28",
-    "typescript": "^5.0.3"
+    "typescript": "^5.0.3",
+    "xml2js": "^0.5.0"
   }
 }

@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import { deepMergeObject, isObjectOrArray } from '../src/util/objects'
+import { deepMergeObject, isObjectOrArray } from '../../src/util/objects'
 
 describe('Objects', () => {
   describe('isObjectOrArray', () => {
@@ -31,7 +31,7 @@ describe('Objects', () => {
   describe('deepMergeObject', () => {
     const merged = (a: any, b: any, expected: any, msg: string): void => {
       it(msg, () => {
-        assert.deepEqual(deepMergeObject(a, b), expected, `${JSON.stringify(a)} & ${JSON.stringify(b)}`)
+        assert.deepStrictEqual(deepMergeObject(a, b), expected, `${JSON.stringify(a)} & ${JSON.stringify(b)}`)
       })
     }
     const throws = (a: any, b: any, msg: string): void => {

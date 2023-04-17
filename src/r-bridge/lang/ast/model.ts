@@ -58,6 +58,7 @@ export interface Range {
 }
 
 export function rangeFrom(line1: number | string, col1: number | string, line2: number | string, col2: number | string): Range {
+  // TODO: do we have to ensure ordering?
   return {
     start: { line: Number(line1), column: Number(col1) },
     end: { line: Number(line2), column: Number(col2) }
@@ -72,6 +73,21 @@ export function mergeRanges(...rs: Range[]): Range {
   return {
     start: rs.reduce((acc, r) => acc.line < r.start.line || (acc.line === r.start.line && acc.column < r.start.column) ? acc : r.start, rs[0].start),
     end: rs.reduce((acc, r) => acc.line > r.end.line || (acc.line === r.end.line && acc.column > r.end.column) ? acc : r.end, rs[0].end)
+  }
+}
+
+/**
+ * @return > 0 if r1 > r2, < 0 if r1 < r2, 0 if r1 === r2
+ */
+export function compareRanges(r1: Range, r2: Range): number {
+  if (r1.start.line !== r2.start.line) {
+    return r1.start.line - r2.start.line
+  } else if (r1.start.column !== r2.start.column) {
+    return r1.start.column - r2.start.column
+  } else if (r1.end.line !== r2.end.line) {
+    return r1.end.line - r2.end.line
+  } else {
+    return r1.end.column - r2.end.column
   }
 }
 
@@ -111,9 +127,11 @@ export interface RAssignment extends Base, Location {
   rhs: RSingleNode
 }
 
+export type RBinaryOpFlavor = 'arithmetic' | 'comparison' | 'logical'
+
 export interface RBinaryOp extends Base, Location {
   readonly type: Type.BinaryOp
-  readonly flavor: 'arithmetic' | 'comparison' | 'logical'
+  readonly flavor: RBinaryOpFlavor
   // TODO: others?
   op: string
   lhs: RNode

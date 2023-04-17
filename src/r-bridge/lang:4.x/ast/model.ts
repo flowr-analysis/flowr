@@ -108,13 +108,15 @@ export const AssignmentsRAst: readonly string[] = Assignments.map(op => Operator
 export const Operators = [...ArithmeticOperators, ...ComparisonOperators, ...LogicalOperators] as const
 export type Operator = typeof Operators[number]
 
-export type WithInfo<Info> = Info extends undefined ? { info?: Info } : { info: Info }
+enum NoInfoPhantom {}
+
+export type WithInfo<Info> = (Info extends NoInfoPhantom ? { info?: Info } : { info: Info }) & MergeableRecord
 
 /**
  * @typeParam Info - can be used to store additional information about the node
  */
 // @ts-expect-error WithInfo<Info> works, but typescript does not know that :/
-export interface Base<Info = undefined, LexemeType = string> extends WithInfo<Info>, MergeableRecord {
+export interface Base<Info = NoInfoPhantom, LexemeType = string> extends WithInfo<Info>, MergeableRecord {
   type: Type
   /** the original string retrieved from R, can be used for further identification */
   lexeme: LexemeType
@@ -124,7 +126,7 @@ interface WithChildren<Info, Children extends Base<Info, string | undefined>> {
   children: Children[]
 }
 
-interface Leaf<Info = undefined, LexemeType = string> extends Base<Info, LexemeType> {
+interface Leaf<Info = NoInfoPhantom, LexemeType = string> extends Base<Info, LexemeType> {
 }
 
 // xmlparsedata uses its own start and end only to break ties and calculates them on max col width approximation
@@ -184,35 +186,35 @@ interface Location {
   location: Range
 }
 
-export interface RExprList<Info = undefined> extends WithChildren<Info, RNode<Info>>, Base<Info, string | undefined>, Partial<Location> {
+export interface RExprList<Info = NoInfoPhantom> extends WithChildren<Info, RNode<Info>>, Base<Info, string | undefined>, Partial<Location> {
   readonly type: Type.ExprList
   readonly content?: string
 }
 
-export interface RSymbol<Info = undefined, T extends string = string> extends Leaf<Info>, Location {
+export interface RSymbol<Info = NoInfoPhantom, T extends string = string> extends Leaf<Info>, Location {
   readonly type: Type.Symbol
   content: T
 }
 
 /** includes numeric, integer, and complex */
-export interface RNumber<Info = undefined> extends Leaf<Info>, Location {
+export interface RNumber<Info = NoInfoPhantom> extends Leaf<Info>, Location {
   readonly type: Type.Number
   content: RNumberValue
 }
 
 export type RLogicalValue = boolean
 
-export interface RLogical<Info = undefined> extends Leaf<Info>, Location {
+export interface RLogical<Info = NoInfoPhantom> extends Leaf<Info>, Location {
   readonly type: Type.Logical
   content: RLogicalValue
 }
 
-export interface RString<Info = undefined> extends Leaf<Info>, Location {
+export interface RString<Info = NoInfoPhantom> extends Leaf<Info>, Location {
   readonly type: Type.String
   content: RStringValue
 }
 
-export interface RBinaryOp<Info = undefined> extends Base<Info>, Location {
+export interface RBinaryOp<Info = NoInfoPhantom> extends Base<Info>, Location {
   readonly type: Type.BinaryOp
   readonly flavor: OperatorFlavor
   // TODO: others?
@@ -221,23 +223,23 @@ export interface RBinaryOp<Info = undefined> extends Base<Info>, Location {
   rhs: RNode<Info>
 }
 
-export interface RLogicalOp<Info = undefined> extends RBinaryOp<Info> {
+export interface RLogicalOp<Info = NoInfoPhantom> extends RBinaryOp<Info> {
   flavor: 'logical'
 }
 
-export interface RArithmeticOp<Info = undefined> extends RBinaryOp<Info> {
+export interface RArithmeticOp<Info = NoInfoPhantom> extends RBinaryOp<Info> {
   flavor: 'arithmetic'
 }
 
-export interface RComparisonOp<Info = undefined> extends RBinaryOp<Info> {
+export interface RComparisonOp<Info = NoInfoPhantom> extends RBinaryOp<Info> {
   flavor: 'comparison'
 }
 
-export interface RAssignmentOp<Info = undefined> extends RBinaryOp<Info> {
+export interface RAssignmentOp<Info = NoInfoPhantom> extends RBinaryOp<Info> {
   flavor: 'assignment'
 }
 
-export interface RIfThenElse<Info = undefined> extends Base<Info>, Location {
+export interface RIfThenElse<Info = NoInfoPhantom> extends Base<Info>, Location {
   readonly type: Type.If
   condition: RNode<Info>
   then: RNode<Info>
@@ -248,6 +250,6 @@ export interface RIfThenElse<Info = undefined> extends Base<Info>, Location {
 export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
 
 export type RSingleNode<Info> = RSymbol<Info> | RConstant<Info>
-export type RNode<Info = undefined> = RExprList<Info> | RIfThenElse<Info> | RBinaryOp<Info> | RSingleNode<Info>
+export type RNode<Info = NoInfoPhantom> = RExprList<Info> | RIfThenElse<Info> | RBinaryOp<Info> | RSingleNode<Info>
 
 export const ALL_VALID_TYPES = Object.values(Type)

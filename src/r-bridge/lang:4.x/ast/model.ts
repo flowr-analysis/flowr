@@ -184,8 +184,9 @@ interface Location {
   location: Range
 }
 
-export interface RExprList extends WithChildren<RNode>, Base<string | undefined> {
+export interface RExprList extends WithChildren<RNode>, Base<string | undefined>, Partial<Location> {
   readonly type: Type.ExprList
+  readonly content?: string
 }
 
 export interface RSymbol<T extends string = string> extends Leaf, Location {

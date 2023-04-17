@@ -1,13 +1,7 @@
 import { deepMergeObject, type MergeableRecord } from '../../../util/objects'
 import * as xml2js from 'xml2js'
 import * as Lang from './model'
-import {
-  compareRanges,
-  type OperatorFlavor,
-  rangeFrom,
-  type RNode,
-  type RSymbol
-} from './model'
+import { compareRanges, type OperatorFlavor, rangeFrom, type RIfThenElse, type RNode, type RSymbol } from './model'
 import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
 
@@ -171,6 +165,11 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
       if (binary !== 'no binary structure') {
         return [binary]
       }
+    } else if (mappedWithName.length === 5) {
+      const ifThen = this.parseIfThenStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2], mappedWithName[3], mappedWithName[4])
+      if (ifThen !== 'no if-then') {
+        return [ifThen]
+      }
     }
 
     // otherwise perform default parsing
@@ -232,6 +231,29 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     }
     // TODO: identify op name correctly
     return this.parseBinaryOp(flavor, lhs, op, rhs)
+  }
+
+  private parseIfThenStructure(ifToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, then: NamedXmlBasedJson): RIfThenElse | 'no if-then' {
+    // TODO: guard-like syntax?
+    if (ifToken.name !== Lang.Type.If) {
+      log.debug('encountered non-if token for supposed if-then structure')
+      return 'no if-then'
+    } else if (leftParen.name !== Lang.Type.ParenLeft) {
+      throw new XmlParseError(`expected left-parenthesis for if but found ${JSON.stringify(leftParen)}`)
+    } else if (rightParen.name !== Lang.Type.ParenRight) {
+      throw new XmlParseError(`expected right-parenthesis for if but found ${JSON.stringify(rightParen)}`)
+    }
+
+    const parsedCondition = this.parseOneElementBasedOnType(condition)
+    const parsedThen = this.parseOneElementBasedOnType(then)
+
+    const { location, content } = this.retrieveMetaStructure(ifToken.content)
+
+    if (parsedCondition === undefined || parsedThen === undefined) {
+      throw new XmlParseError(`unexpected missing parts of if, received ${JSON.stringify([parsedCondition, parsedThen])} for ${JSON.stringify([ifToken, condition, then])}`)
+    }
+
+    return { type: Lang.Type.If, condition: parsedCondition, then: parsedThen, location, lexeme: content }
   }
 
   private ensureChildrenAreLhsAndRhsOrdered(first: XmlBasedJson, second: XmlBasedJson): void {
@@ -326,7 +348,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     const parsedRhs = this.parseOneElementBasedOnType(rhs)
 
     if (parsedLhs === undefined || parsedRhs === undefined) {
-      throw new XmlParseError(`unexpected one-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, op, rhs])}`)
+      throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, op, rhs])}`)
     }
 
     const operationName = this.retrieveOpName(op)

@@ -26,6 +26,7 @@ export enum Type {
   // parens will be removed and dealt with as precedences/arguments automatically
   ParenLeft = '(',
   ParenRight = ')',
+  If = 'IF'
 }
 
 type RToInternalMapping = BiMap<string, string>
@@ -218,10 +219,17 @@ export interface RComparisonOp extends RBinaryOp {
   flavor: 'comparison'
 }
 
+export interface RIfThenElse extends Base, Location {
+  readonly type: Type.If
+  condition: RNode
+  then: RNode
+  else?: RNode
+}
+
 // TODO: special constants
 export type RConstant = RNumber | RString | RLogical | RSymbol<typeof RNull | typeof RNa>
 
-export type RSingleNode = RSymbol | RConstant | RBinaryOp
-export type RNode = RExprList | RSingleNode
+export type RSingleNode = RSymbol | RConstant
+export type RNode = RExprList | RIfThenElse | RBinaryOp | RSingleNode
 
 export const ALL_VALID_TYPES = Object.values(Type)

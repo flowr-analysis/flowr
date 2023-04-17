@@ -1,6 +1,6 @@
-import { assertAst, describeSession } from '../../helper/shell'
+import { assertAst, describeSession } from '../../../helper/shell'
 import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
-import { exprList, numVal } from '../../helper/ast-builder'
+import { exprList, numVal } from '../../../helper/ast-builder'
 
 const IfThenSpacingVariants = [{
   str: 'if(TRUE)1',

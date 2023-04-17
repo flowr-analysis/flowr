@@ -1,7 +1,7 @@
 import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
-import { assertAst, describeSession } from '../../helper/shell'
-import { RNumberPool, RStringPool, RSymbolPool } from '../../helper/provider'
-import { exprList } from '../../helper/ast-builder'
+import { assertAst, describeSession } from '../../../helper/shell'
+import { RNumberPool, RStringPool, RSymbolPool } from '../../../helper/provider'
+import { exprList } from '../../../helper/ast-builder'
 
 describe('0. Constant Parsing', () => {
   describeSession('0. parse single', shell => {

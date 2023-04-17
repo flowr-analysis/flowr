@@ -1,7 +1,7 @@
 import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
 
-import { exprList, numVal } from '../../helper/ast-builder'
-import { assertAst, describeSession } from '../../helper/shell'
+import { exprList, numVal } from '../../../helper/ast-builder'
+import { assertAst, describeSession } from '../../../helper/shell'
 
 describe('99. Parse larger snippets', () => {
   describeSession('99.1 if-then, assignments, symbols, and comparisons', shell => {

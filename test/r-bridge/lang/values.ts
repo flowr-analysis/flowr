@@ -1,7 +1,7 @@
 import { it } from 'mocha'
 import { assert } from 'chai'
 import { boolean2ts, isBoolean, number2ts, string2ts, ts2r } from '../../../src/r-bridge/lang:4.x/values'
-import { RNumberPool, RStringPool } from '../helper/provider'
+import { RNumberPool, RStringPool } from '../../helper/provider'
 
 describe('Bidirectional Value Translation', () => {
   describe('TS value to R', () => {

@@ -46,7 +46,7 @@ interface OutputCollectorConfiguration extends MergeableRecord {
 
 export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguration = {
   from: 'stdout',
-  postamble: `🐧${'-'.repeat(27)}🐧`,
+  postamble: `🐧${'-'.repeat(13)}🐧`,
   timeout: {
     // TODO: allow to configure such things in a configuration file?
     ms: 10_000,

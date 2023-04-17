@@ -3,7 +3,7 @@ import { assertAst, describeSession } from '../../helper/shell'
 import { RNumberPool, RStringPool, RSymbolPool } from '../../helper/provider'
 import { exprList } from '../../helper/ast-builder'
 
-describe('Constant Parsing', () => {
+describe('0. Constant Parsing', () => {
   describeSession('0. parse single', shell => {
     describe('0.1 numbers', () => {
       for (const number of RNumberPool) {

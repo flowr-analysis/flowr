@@ -28,7 +28,8 @@ export enum Type {
   ParenRight = ')',
   BraceLeft = '{',
   BraceRight = '}',
-  If = 'IF'
+  If = 'IF',
+  Else = 'ELSE'
 }
 
 type RToInternalMapping = BiMap<string, string>
@@ -137,6 +138,7 @@ export interface Range {
   end: Position
 }
 
+// TODO: test
 export function rangeFrom(line1: number | string, col1: number | string, line2: number | string, col2: number | string): Range {
   // TODO: do we have to ensure ordering?
   return {
@@ -145,6 +147,7 @@ export function rangeFrom(line1: number | string, col1: number | string, line2: 
   }
 }
 
+// TODO: test more
 export function mergeRanges(...rs: Range[]): Range {
   if (rs.length === 0) {
     throw new Error('Cannot merge no ranges')
@@ -159,6 +162,7 @@ export function mergeRanges(...rs: Range[]): Range {
 /**
  * @return > 0 if r1 > r2, < 0 if r1 < r2, 0 if r1 === r2
  */
+// TODO: test
 export function compareRanges(r1: Range, r2: Range): number {
   if (r1.start.line !== r2.start.line) {
     return r1.start.line - r2.start.line
@@ -169,6 +173,11 @@ export function compareRanges(r1: Range, r2: Range): number {
   } else {
     return r1.end.column - r2.end.column
   }
+}
+
+// TODO: test
+export function addRanges(r1: Range, r2: Range): Range {
+  return rangeFrom(r1.start.line + r2.start.line, r1.start.column + r2.start.column, r1.end.line + r2.end.line, r1.end.column + r2.end.column)
 }
 
 interface Location {

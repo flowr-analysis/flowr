@@ -170,6 +170,11 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
       if (ifThen !== 'no if-then') {
         return [ifThen]
       }
+    } else if (mappedWithName.length === 7) {
+      const ifThenElse = this.parseIfThenElseStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2], mappedWithName[3], mappedWithName[4], mappedWithName[5], mappedWithName[6])
+      if (ifThenElse !== 'no if-then-else') {
+        return [ifThenElse]
+      }
     }
 
     // otherwise perform default parsing
@@ -258,6 +263,24 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     }
 
     return { type: Lang.Type.If, condition: parsedCondition, then: parsedThen, location, lexeme: content }
+  }
+
+  private parseIfThenElseStructure(ifToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, then: NamedXmlBasedJson, elseToken: NamedXmlBasedJson, elseBlock: NamedXmlBasedJson): RIfThenElse | 'no if-then-else' {
+    // we start by parsing a regular if-then structure
+    log.trace(`trying to parse if-then-else structure for ${JSON.stringify([ifToken, leftParen, condition, rightParen, then, elseToken, elseBlock])}`)
+    const parsedIfThen = this.parseIfThenStructure(ifToken, leftParen, condition, rightParen, then)
+    if (parsedIfThen === 'no if-then') {
+      return 'no if-then-else'
+    }
+    log.trace(`if-then part successful, now parsing else part for ${JSON.stringify([elseToken, elseBlock])}`)
+    if (elseToken.name !== Lang.Type.Else) {
+      throw new XmlParseError(`expected right-parenthesis for if but found ${JSON.stringify(rightParen)}`)
+    }
+    const parsedElse = this.parseOneElementBasedOnType(elseBlock)
+    if (parsedElse === undefined) {
+      throw new XmlParseError(`unexpected missing else-part of if-then-else, received ${JSON.stringify([parsedIfThen, parsedElse])} for ${JSON.stringify([ifToken, condition, then, elseToken, elseBlock])}`)
+    }
+    return { ...parsedIfThen, else: parsedElse }
   }
 
   private ensureChildrenAreLhsAndRhsOrdered(first: XmlBasedJson, second: XmlBasedJson): void {

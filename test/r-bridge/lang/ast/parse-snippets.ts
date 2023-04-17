@@ -73,7 +73,7 @@ max
             }
           ]
         },
-        else: {
+        otherwise: {
           type: Lang.Type.BinaryOp,
           flavor: 'assignment',
           lexeme: '->>',

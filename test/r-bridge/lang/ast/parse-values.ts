@@ -41,7 +41,7 @@ describe('0. Constant Parsing', () => {
       }
     })
     assertAst('boolean', shell, 'TRUE', exprList({
-      type: Lang.Type.Boolean,
+      type: Lang.Type.Logical,
       location: Lang.rangeFrom(1, 1, 1, 4),
       lexeme: 'TRUE',
       content: true

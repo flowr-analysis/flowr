@@ -252,7 +252,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     if (parsedElse === undefined) {
       throw new XmlParseError(`unexpected missing else-part of if-then-else, received ${JSON.stringify([parsedIfThen, parsedElse])} for ${JSON.stringify([ifToken, condition, then, elseToken, elseBlock])}`)
     }
-    return { ...parsedIfThen, else: parsedElse }
+    return { ...parsedIfThen, otherwise: parsedElse }
   }
 
   private ensureChildrenAreLhsAndRhsOrdered(first: XmlBasedJson, second: XmlBasedJson): void {
@@ -321,7 +321,7 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     if (isNA(content)) { /* the special symbol */
       return { ...common, type: Lang.Type.Symbol, content }
     } else if (isBoolean(content)) {
-      return { ...common, type: Lang.Type.Boolean, content: boolean2ts(content) }
+      return { ...common, type: Lang.Type.Logical, content: boolean2ts(content) }
     } else {
       return { ...common, type: Lang.Type.Number, content: number2ts(content) }
     }

@@ -106,7 +106,7 @@ describe('3. Parse simple constructs', () => {
             location: Lang.rangeFrom(1, 1, 1, 2),
             lexeme: 'if',
             condition: {
-              type: Lang.Type.Boolean,
+              type: Lang.Type.Logical,
               location: variant.locationTrue,
               lexeme: 'TRUE',
               content: true
@@ -140,7 +140,7 @@ describe('3. Parse simple constructs', () => {
                 location: Lang.rangeFrom(1, 1, 1, 2),
                 lexeme: 'if',
                 condition: {
-                  type: Lang.Type.Boolean,
+                  type: Lang.Type.Logical,
                   location: ifThenVariant.locationTrue,
                   lexeme: 'TRUE',
                   content: true
@@ -151,7 +151,7 @@ describe('3. Parse simple constructs', () => {
                   lexeme: thenNum,
                   content: numVal(ifThenVariant.num)
                 },
-                else: {
+                otherwise: {
                   type: Lang.Type.Number,
                   location: Lang.addRanges(elseVariant.locationElse, ifThenVariant.end),
                   lexeme: elseNum,

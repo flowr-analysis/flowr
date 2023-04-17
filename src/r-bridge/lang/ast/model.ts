@@ -1,5 +1,5 @@
 import { type MergeableRecord } from '../../../util/objects'
-import { type RNa, type RNumberValue, type RStringValue } from '../values'
+import { type RNa, type RNull, type RNumberValue, type RStringValue } from '../values'
 
 /**
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
@@ -113,14 +113,27 @@ export interface RAssignment extends Base, Location {
 
 export interface RBinaryOp extends Base, Location {
   readonly type: Type.BinaryOp
+  readonly flavor: 'arithmetic' | 'comparison' | 'logical'
   // TODO: others?
   op: string
   lhs: RNode
   rhs: RNode
 }
 
+export interface RLogicalOp extends RBinaryOp {
+  flavor: 'logical'
+}
+
+export interface RArithmeticOp extends RBinaryOp {
+  flavor: 'arithmetic'
+}
+
+export interface RComparisonOp extends RBinaryOp {
+  flavor: 'comparison'
+}
+
 // TODO: special constants
-export type RConstant = RNumber | RString | RLogical | RSymbol<'NULL' | typeof RNa>
+export type RConstant = RNumber | RString | RLogical | RSymbol<typeof RNull | typeof RNa>
 
 export type RSingleNode = RSymbol | RConstant | RBinaryOp | RAssignment
 export type RNode = RExprList | RSingleNode

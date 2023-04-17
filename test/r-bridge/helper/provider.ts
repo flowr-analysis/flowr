@@ -79,3 +79,23 @@ export const RSymbolPool: Array<{ val: string, str: string }> = [
   { str: 'NA', val: RNa },
   { str: 'NULL', val: RNull }
 ]
+
+export const RArithmeticOpPool: Array<{ flavor: 'arithmetic', str: string }> = [
+  { str: '+', flavor: 'arithmetic' },
+  { str: '-', flavor: 'arithmetic' },
+  { str: '*', flavor: 'arithmetic' },
+  { str: '/', flavor: 'arithmetic' },
+  { str: '^', flavor: 'arithmetic' },
+  { str: '%%', flavor: 'arithmetic' },
+  { str: '%/%', flavor: 'arithmetic' },
+  { str: '%*%', flavor: 'arithmetic' },
+  { str: '%o%', flavor: 'arithmetic' },
+  { str: '%x%', flavor: 'arithmetic' }
+]
+
+export const RLogicalOpPool: Array<{ flavor: 'logical', str: string }> = [
+  { str: '&', flavor: 'logical' },
+  { str: '&&', flavor: 'logical' },
+  { str: '||', flavor: 'logical' },
+  { str: '|', flavor: 'logical' }
+]

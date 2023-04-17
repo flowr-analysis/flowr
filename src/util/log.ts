@@ -19,8 +19,6 @@ class FlowrLogger extends Logger<ILogObj> {
 
   /**
    * make the logger log to a file as well
-   *
-   * TODO: include children?
    */
   public logToFile(filename = 'flowr.log', options: Options = {
     size: '10M',

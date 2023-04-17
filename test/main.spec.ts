@@ -6,6 +6,8 @@ before(() => {
   log.updateSettings(logger => {
     if (!process.argv.includes('--verbose')) {
       logger.settings.minLevel = LogLevel.error
+    } else {
+      log.logToFile()
     }
   })
 })

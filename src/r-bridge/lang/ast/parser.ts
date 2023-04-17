@@ -90,10 +90,11 @@ function extractRange(ast: XmlBasedJson): Lang.Range {
 
 export interface IsolatedMarker { marker: NamedXmlBasedJson, others: NamedXmlBasedJson[] }
 
-function identifySpecialOp(name: string, lhs: RNode, rhs: RNode): RBinaryOpFlavor {
-  if (Lang.ComparisonOperatorsRAst.includes(name)) {
+function identifySpecialOp(content: string, lhs: RNode, rhs: RNode): RBinaryOpFlavor {
+  console.log(content)
+  if (Lang.ComparisonOperatorsRAst.includes(content)) {
     return 'comparison'
-  } else if (Lang.LogicalOperatorsR.includes(name)) {
+  } else if (Lang.LogicalOperatorsRAst.includes(content)) {
     return 'logical'
   } else {
     // TODO: others?
@@ -153,10 +154,10 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
     // TODO: if any has a semicolon we must respect that and split to expr list
     // TODO: improve with error message
 
-    const special = this.isolateMarker<'arithmetic' | 'logical' | 'comparison' | 'special' | undefined>(mappedWithName, n => {
+    const special = isolateMarkerInNamedXmlBasedJson<'arithmetic' | 'logical' | 'comparison' | 'special' | undefined>(mappedWithName, n => {
       if (Lang.ArithmeticOperatorsRAst.includes(n)) {
         return { predicateResult: true, extraInformation: 'arithmetic' }
-      } else if (Lang.LogicalOperatorsR.includes(n)) {
+      } else if (Lang.LogicalOperatorsRAst.includes(n)) {
         return { predicateResult: true, extraInformation: 'logical' }
       } else if (Lang.ComparisonOperatorsRAst.includes(n)) {
         return { predicateResult: true, extraInformation: 'comparison' }
@@ -298,11 +299,11 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
 
     const op = this.retrieveOpFromMarker(flavor, opStructure)
 
-    if (flavor === 'special') {
-      flavor = identifySpecialOp(opStructure.marker.name, lhs, rhs)
-    }
-
     const { location, content } = this.retrieveMetaStructure(opStructure.marker.content)
+
+    if (flavor === 'special') {
+      flavor = identifySpecialOp(content, lhs, rhs)
+    }
 
     // TODO: assert exists as known operator
     return { type: Lang.Type.BinaryOp, flavor, location, lhs, rhs, op, lexeme: content }
@@ -310,12 +311,9 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
 
   private retrieveOpFromMarker(flavor: RBinaryOpFlavor | 'special', opStructure: IsolatedMarker): string {
     /*
-     * only real arithmetic ops have their operation as their own name, the others identify via content */
-    if (flavor === 'arithmetic') {
-      return opStructure.marker.name
-    } else {
-      return opStructure.marker.content[this.config.contentName]
-    }
+     * only real arithmetic ops have their operation as their own name, the others identify via content
+     */
+    return opStructure.marker.content[this.config.contentName]
   }
 }
 

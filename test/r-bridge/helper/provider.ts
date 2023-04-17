@@ -81,8 +81,13 @@ export const RSymbolPool: Array<{ val: string, str: string }> = [
   { str: 'NULL', val: RNull }
 ]
 
-export const RArithmeticOpPool: Array<{ flavor: 'arithmetic', str: string, convertedOp: string }> =
-    [...Lang.ArithmeticOperatorsMapping.entries()].map(([op, convertedOp]) => ({ str: op, flavor: 'arithmetic', convertedOp }))
+const canBeABinaryOp = (op: string): boolean => {
+  const arity = Lang.OperatorDatabase[op].arity
+  return arity === Lang.OperatorArity.Binary || arity === Lang.OperatorArity.Both
+}
 
-export const RLogicalOpPool: Array<{ flavor: 'logical', str: string, convertedOp: string }> =
-  [...Lang.LogicalOperatorsMapping.entries()].map(([op, convertedOp]) => ({ str: op, flavor: 'logical', convertedOp }))
+export const RArithmeticBinaryOpPool: Array<{ flavor: 'arithmetic', str: string }> =
+    Lang.ArithmeticOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'arithmetic' }))
+
+export const RLogicalBinaryOpPool: Array<{ flavor: 'logical', str: string }> =
+      Lang.LogicalOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'logical' }))

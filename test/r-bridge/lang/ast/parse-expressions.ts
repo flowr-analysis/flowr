@@ -1,21 +1,20 @@
 import { assertAst, describeSession } from '../../helper/shell'
 import * as Lang from '../../../../src/r-bridge/lang/ast/model'
 import { exprList, numVal } from '../../helper/ast-builder'
-import { RArithmeticOpPool, RLogicalOpPool } from '../../helper/provider'
+import { RArithmeticBinaryOpPool, RLogicalBinaryOpPool } from '../../helper/provider'
 import { type RShell } from '../../../../src/r-bridge/shell'
 
 describe('1. Parse simple expressions', () => {
   let idx = 0
-  for (const opSuite of [{ label: 'arithmetic', pool: RArithmeticOpPool }, { label: 'logical', pool: RLogicalOpPool }]) {
+  for (const opSuite of [{ label: 'arithmetic', pool: RArithmeticBinaryOpPool }, { label: 'logical', pool: RLogicalBinaryOpPool }]) {
     describeSession(`1.${++idx} ${opSuite.label} operations`, shell => {
       for (const op of opSuite.pool) {
-        // TODO: we make %in% a comparison
         describePrecedenceTestsForOp(op, shell)
       }
     })
   }
   describeSession(`1.${++idx} comparison operations`, shell => {
-    for (const op of ['==', '!=', '<', '>', '<=', '>=', '%in%']) {
+    for (const op of Lang.ComparisonOperators) {
       describe(op, () => {
         const simpleInput = `1 ${op} 1`
         const opOffset = op.length - 1
@@ -45,7 +44,7 @@ describe('1. Parse simple expressions', () => {
   })
 })
 
-function describePrecedenceTestsForOp(op: { flavor: 'arithmetic', str: string } | { flavor: 'logical', str: string }, shell: RShell): void {
+function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number] | typeof RLogicalBinaryOpPool[number], shell: RShell): void {
   describe(`${op.str} (${op.flavor})`, () => {
     const simpleInput = `1 ${op.str} 1`
     const opOffset = op.str.length - 1
@@ -71,16 +70,17 @@ function describePrecedenceTestsForOp(op: { flavor: 'arithmetic', str: string } 
       }
     ))
 
-    // '^' has a different behavior when nested, TODO: will be tested below
-    if (op.str === '^') {
-      return
-    }
-
-    for (const defaultPrecedence of [ // offsets encode additional shifts by parenthesis
-      { input: `1 ${op.str} 1 ${op.str} 42`, offsetL: 0, offsetC: 0, offsetR: 0 },
+    // offsets encode additional shifts by parenthesis
+    const precedenceTests = [
       { input: `(1 ${op.str} 1) ${op.str} 42`, offsetL: 1, offsetC: 2, offsetR: 2 },
       { input: `(1 ${op.str} 1) ${op.str} (42)`, offsetL: 1, offsetC: 2, offsetR: 3 }
-    ]) {
+    ]
+    // exponentiation has a different behavior when nested without braces, TODO: will be tested below
+    if (op.str !== '^' && op.str !== '**') {
+      precedenceTests.push({ input: `1 ${op.str} 1 ${op.str} 42`, offsetL: 0, offsetC: 0, offsetR: 0 })
+    }
+
+    for (const defaultPrecedence of precedenceTests) {
       assertAst(defaultPrecedence.input, shell, defaultPrecedence.input, exprList(
         {
           type: Lang.Type.BinaryOp,

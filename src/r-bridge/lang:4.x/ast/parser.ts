@@ -7,7 +7,7 @@ import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../
 
 const astLogger = log.getSubLogger({ name: 'ast' })
 
-interface AstParser<Target extends Lang.Base<string | undefined>> {
+interface AstParser<Target extends Lang.Base<undefined, string | undefined>> {
   parse: (xmlString: string) => Promise<Target>
 }
 
@@ -73,7 +73,7 @@ function identifySpecialOp(content: string, lhs: RNode, rhs: RNode): OperatorFla
   }
 }
 
-class XmlBasedAstParser implements AstParser<Lang.RExprList> {
+class XmlBasedAstParser implements AstParser<Lang.RNode> {
   private objectRoot: undefined | XmlBasedJson
   private readonly config: XmlParserConfig
 

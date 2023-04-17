@@ -26,6 +26,8 @@ export enum Type {
   // parens will be removed and dealt with as precedences/arguments automatically
   ParenLeft = '(',
   ParenRight = ')',
+  BraceLeft = '{',
+  BraceRight = '}',
   If = 'IF'
 }
 

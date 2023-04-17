@@ -197,6 +197,10 @@ class XmlBasedAstParser implements AstParser<Lang.RExprList> {
       case Lang.Type.ParenRight:
         log.debug(`skipping parenthesis information for ${JSON.stringify(elem)}`)
         return undefined
+      case Lang.Type.BraceLeft:
+      case Lang.Type.BraceRight:
+        log.debug(`skipping brace information for ${JSON.stringify(elem)}`)
+        return undefined
       case Lang.Type.Expr:
       case Lang.Type.ExprHelpAssignWrapper:
         return this.parseExpr(elem.content)

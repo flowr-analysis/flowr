@@ -1,6 +1,6 @@
 import { assert } from 'chai'
-import { mergeRanges } from '../../src/r-bridge/lang/ast/model'
-import * as Lang from '../../src/r-bridge/lang/ast/model'
+import { mergeRanges } from '../../../../src/r-bridge/lang/ast/model'
+import * as Lang from '../../../../src/r-bridge/lang/ast/model'
 
 describe('Model specific tests', () => {
   describe('mergeRanges', () => {

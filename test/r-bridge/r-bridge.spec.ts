@@ -1,14 +1,15 @@
 describe('R-Bridge', () => {
   describe('R language utilities', () => {
-    require('./values')
+    require('./lang/values')
   })
 
-  require('./model')
+  require('./lang/ast/model')
   require('./sessions')
+  require('./retriever')
 
   // TODO: allow to specify where to install packages to so we can minimize installation to one temp directory
   describe('Retrieve AST from R', () => {
-    require('./ast/parse-values')
-    require('./ast/parse-expressions')
+    require('./lang/ast/parse-values')
+    require('./lang/ast/parse-expressions')
   })
 })

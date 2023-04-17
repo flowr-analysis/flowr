@@ -4,6 +4,7 @@ import { type RShell } from './shell'
 import { parseCSV, ts2r } from './lang/values'
 import { parse } from './lang/ast/parser'
 import { type RExprList } from './lang/ast/model'
+import { startAndEndsWith } from '../util/strings'
 
 interface RParseRequestFromFile {
   request: 'file'
@@ -49,12 +50,11 @@ export async function retrieveAstFromRCode(request: RParseRequest, tokenMap: Rec
   return await parse(xml, tokenMap)
 }
 
-function startAndEndsWith(str: string, quote: string): boolean {
-  return str.startsWith(quote) && str.endsWith(quote)
-}
-
-function removeTokenMapQuotationMarks(str: string): string {
-  if (startAndEndsWith(str, "'") || startAndEndsWith(str, '"')) {
+/**
+ * If the string has (R-)quotes around it, they will be removed, otherwise the string is returned unchanged.
+ */
+export function removeTokenMapQuotationMarks(str: string): string {
+  if (str.length > 1 && (startAndEndsWith(str, "'") || startAndEndsWith(str, '"'))) {
     return str.slice(1, -1)
   } else {
     return str

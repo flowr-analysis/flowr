@@ -1,6 +1,6 @@
 import {
   type RArithmeticOp, type RAssignmentOp, type RBinaryOp,
-  type RComparisonOp, type RExprList,
+  type RComparisonOp, type RExprList, type RIfThenElse,
   type RLogical,
   type RLogicalOp,
   type RNode,
@@ -22,7 +22,7 @@ export interface FoldFunctions<Info, T> {
     foldComparisonOp: (op: RComparisonOp<Info>, lhs: T, rhs: T) => T
     foldAssignment: (op: RAssignmentOp<Info>, lhs: T, rhs: T) => T
   }
-  foldIfThenElse: (cond: T, then: T, otherwise?: T) => T
+  foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: T, then: T, otherwise?: T) => T
   foldExprList: (exprList: RExprList<Info>, expressions: T[]) => T
 }
 
@@ -43,7 +43,7 @@ export function foldAST<Info, T>(ast: RNode<Info>, folds: FoldFunctions<Info, T>
     case Lang.Type.BinaryOp:
       return foldBinaryOp(ast, folds)
     case Lang.Type.If:
-      return folds.foldIfThenElse(foldAST(ast.condition, folds), foldAST(ast.then, folds), ast.otherwise === undefined ? undefined : foldAST(ast.otherwise, folds))
+      return folds.foldIfThenElse(ast, foldAST(ast.condition, folds), foldAST(ast.then, folds), ast.otherwise === undefined ? undefined : foldAST(ast.otherwise, folds))
     case Lang.Type.ExprList:
       return folds.foldExprList(ast, ast.children.map(expr => foldAST(expr, folds)))
     default:

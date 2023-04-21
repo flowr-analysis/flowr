@@ -11,7 +11,7 @@ describe('Assign unique Ids', () => {
     }
     // decided to test with ast parsing, as we are dependent on these changes in reality
     describe('1. Single nodes (leafs)', () => {
-      const exprList = (...children: Lang.RNode[]): Lang.RExprList => ({
+      const exprList = (...children: Array<Lang.RNode<Id>>): Lang.RExprList<Id> => ({
         type: Lang.Type.ExprList,
         lexeme: undefined,
         id: '1',

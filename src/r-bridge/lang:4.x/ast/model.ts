@@ -108,27 +108,24 @@ export const AssignmentsRAst: readonly string[] = Assignments.map(op => Operator
 export const Operators = [...ArithmeticOperators, ...ComparisonOperators, ...LogicalOperators] as const
 export type Operator = typeof Operators[number]
 
-/** denote, that there is no information attached */
-export enum NoInfo {}
-
-export type WithInfo<Info> = (Info extends NoInfo ? { info?: Info } : { info: Info }) & MergeableRecord
+/** simply used as an empty interface with no information about additional decorations */
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface NoInfo {}
 
 /**
  * @typeParam Info - can be used to store additional information about the node
  */
-// @ts-expect-error WithInfo<Info> works, but typescript does not know that :/
-export interface Base<Info = NoInfo, LexemeType = string> extends WithInfo<Info>, MergeableRecord {
+export type Base<Info = NoInfo, LexemeType = string> = {
   type: Type
   /** the original string retrieved from R, can be used for further identification */
   lexeme: LexemeType
-}
+} & MergeableRecord & Info
 
 interface WithChildren<Info, Children extends Base<Info, string | undefined>> {
   children: Children[]
 }
 
-interface Leaf<Info = NoInfo, LexemeType = string> extends Base<Info, LexemeType> {
-}
+type Leaf<Info = NoInfo, LexemeType = string> = Base<Info, LexemeType>
 
 // xmlparsedata uses its own start and end only to break ties and calculates them on max col width approximation
 interface Position {
@@ -187,65 +184,65 @@ interface Location {
   location: Range
 }
 
-export interface RExprList<Info = NoInfo> extends WithChildren<Info, RNode<Info>>, Base<Info, string | undefined>, Partial<Location> {
+export type RExprList<Info = NoInfo> = {
   readonly type: Type.ExprList
   readonly content?: string
-}
+} & WithChildren<Info, RNode<Info>> & Base<Info, string | undefined> & Partial<Location>
 
-export interface RSymbol<Info = NoInfo, T extends string = string> extends Leaf<Info>, Location {
+export type RSymbol<Info = NoInfo, T extends string = string> = {
   readonly type: Type.Symbol
   content: T
-}
+} & Leaf<Info> & Location
 
 /** includes numeric, integer, and complex */
-export interface RNumber<Info = NoInfo> extends Leaf<Info>, Location {
+export type RNumber<Info = NoInfo> = {
   readonly type: Type.Number
   content: RNumberValue
-}
+} & Leaf<Info> & Location
 
 export type RLogicalValue = boolean
 
-export interface RLogical<Info = NoInfo> extends Leaf<Info>, Location {
+export type RLogical<Info = NoInfo> = {
   readonly type: Type.Logical
   content: RLogicalValue
-}
+} & Leaf<Info> & Location
 
-export interface RString<Info = NoInfo> extends Leaf<Info>, Location {
+export type RString<Info = NoInfo> = {
   readonly type: Type.String
   content: RStringValue
-}
+} & Leaf<Info> & Location
 
-export interface RBinaryOp<Info = NoInfo> extends Base<Info>, Location {
+// TODO: others?
+export type RBinaryOp<Info = NoInfo> = {
   readonly type: Type.BinaryOp
   readonly flavor: OperatorFlavor
-  // TODO: others?
   op: string
   lhs: RNode<Info>
   rhs: RNode<Info>
-}
+} & Base<Info> & Location
 
-export interface RLogicalOp<Info = NoInfo> extends RBinaryOp<Info> {
+export type RLogicalOp<Info = NoInfo> = {
   flavor: 'logical'
-}
+} & RBinaryOp<Info>
 
-export interface RArithmeticOp<Info = NoInfo> extends RBinaryOp<Info> {
+export type RArithmeticOp<Info = NoInfo> = {
   flavor: 'arithmetic'
-}
+} & RBinaryOp<Info>
 
-export interface RComparisonOp<Info = NoInfo> extends RBinaryOp<Info> {
+export type RComparisonOp<Info = NoInfo> = {
   flavor: 'comparison'
-}
+} & RBinaryOp<Info>
 
-export interface RAssignmentOp<Info = NoInfo> extends RBinaryOp<Info> {
+export type RAssignmentOp<Info = NoInfo> = {
   flavor: 'assignment'
-}
+} & RBinaryOp<Info>
 
-export interface RIfThenElse<Info = NoInfo> extends Base<Info>, Location {
+export type RIfThenElse<Info = NoInfo> = {
   readonly type: Type.If
   condition: RNode<Info>
   then: RNode<Info>
   otherwise?: RNode<Info>
-}
+} & Base<Info> & Location
 
 // TODO: special constants
 export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>

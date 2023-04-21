@@ -1,13 +1,21 @@
 import { deepMergeObject, type MergeableRecord } from '../../../util/objects'
 import * as xml2js from 'xml2js'
 import * as Lang from './model'
-import { compareRanges, type OperatorFlavor, rangeFrom, type RIfThenElse, type RNode, type RSymbol } from './model'
+import {
+  compareRanges,
+  type NoInfo,
+  type OperatorFlavor,
+  rangeFrom,
+  type RIfThenElse,
+  type RNode,
+  type RSymbol
+} from './model'
 import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
 
 const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
-interface AstParser<Target extends Lang.Base<undefined, string | undefined>> {
+interface AstParser<Target extends Lang.Base<NoInfo, string | undefined>> {
   parse: (xmlString: string) => Promise<Target>
 }
 
@@ -314,7 +322,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     return { unwrappedObj, location, content }
   }
 
-  private parseNumber(obj: XmlBasedJson): Lang.RNumber | Lang.RLogical | RSymbol<typeof RNa> {
+  private parseNumber(obj: XmlBasedJson): Lang.RNumber | Lang.RLogical | RSymbol<NoInfo, typeof RNa> {
     parseLog.debug(`trying to parse number ${JSON.stringify(obj)}`)
     const { location, content } = this.retrieveMetaStructure(obj)
     const common = { location, lexeme: content }

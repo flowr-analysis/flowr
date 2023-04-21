@@ -2,6 +2,15 @@
 import { describeSession, retrieveAst } from '../helper/shell'
 import { produceDataFlowGraph } from '../../src/dataflow/extractor'
 import { decorateWithIds } from '../../src/dataflow/id'
+import type * as Lang from '../../src/r-bridge/lang:4.x/ast/model'
+
+function formatRange(range: Lang.Range | undefined): string {
+  if (range === undefined) {
+    return '??'
+  }
+
+  return `${range.start.line}.${range.start.column}-${range.end.line}.${range.end.column}`
+}
 
 describe('Extract Dataflow Information', () => {
   describeSession('1. atomic dataflow information', (shell) => {
@@ -16,12 +25,12 @@ describe('Extract Dataflow Information', () => {
 
       // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
       console.log('flowchart LR')
-      /* dataflowGraph.nodes.forEach(node => {
-        console.log(`${node.id}([${node.name}])`)
-      }) */
+      dataflowGraph.nodes.forEach(node => {
+        console.log(`    ${node.id}(["\`${node.name} *${formatRange(dataflowIdMap.get(node.id)?.location)}*\`"])`)
+      })
       dataflowGraph.edges.forEach((targets, source) => {
         targets.forEach(target => {
-          console.log(`${source} --> ${target}`)
+          console.log(`    ${source} --> ${target}`)
         })
       })
     })

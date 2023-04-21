@@ -9,7 +9,7 @@ export type IdType = string
 export interface Id { id: IdType }
 
 /** uniquely identifies AST-Nodes */
-export type IdRNode<OtherInfo> = RNode<OtherInfo & Id> & Id
+export type IdRNode<OtherInfo> = RNode<OtherInfo & Id>
 
 // TODO: other generators?
 /**

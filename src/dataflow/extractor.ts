@@ -1,6 +1,7 @@
 import { log } from '../util/log'
 import { BiMap } from '../util/bimap'
-import { type IdRNode, type IdType } from './id'
+import { type Id, type IdRNode, type IdType } from './id'
+import { foldAST } from '../r-bridge/lang:4.x/ast/fold'
 
 const dataflowLogger = log.getSubLogger({ name: 'ast' })
 
@@ -32,6 +33,28 @@ export interface DataflowGraph {
   edges: Map<IdType, IdType[]>
 }
 
+interface FoldInfo {
+  activeNodes: IdType[] /* TODO: SET? */
+}
+
+function processUninterestingLeaf<OtherInfo>(leaf: IdRNode<OtherInfo>): FoldInfo {
+  return { activeNodes: [] }
+}
+
+function processBinaryOp<OtherInfo>(op: IdRNode<OtherInfo>, lhs: FoldInfo, rhs: FoldInfo): FoldInfo {
+  // TODO: produce edges
+  const activeNodes = [...lhs.activeNodes, ...rhs.activeNodes]
+  return { activeNodes }
+}
+
+function processIfThenElse<OtherInfo>(ifThen: IdRNode<OtherInfo>, cond: FoldInfo, then: FoldInfo, otherwise?: FoldInfo): FoldInfo {
+  return { activeNodes: [...cond.activeNodes, ...then.activeNodes, ...(otherwise?.activeNodes ?? [])] }
+}
+
+function processExprList<OtherInfo>(exprList: IdRNode<OtherInfo>, children: FoldInfo[]): FoldInfo {
+  return { activeNodes: children.flatMap(child => child.activeNodes) }
+}
+
 export function produceDataFlowGraph<OtherInfo>(ast: IdRNode<OtherInfo>): {
   dataflowIdMap: DataflowMap<OtherInfo>
   dataflowGraph: DataflowGraph
@@ -42,7 +65,26 @@ export function produceDataFlowGraph<OtherInfo>(ast: IdRNode<OtherInfo>): {
     edges: new Map<IdType, IdType[]>() // TODO: default map?
   }
 
-  // TODO: implement
+  const foldResult = foldAST<OtherInfo & Id, FoldInfo>(ast, {
+    foldNumber: processUninterestingLeaf,
+    foldString: processUninterestingLeaf,
+    foldLogical: processUninterestingLeaf,
+    // TODO: change
+    foldSymbol: processUninterestingLeaf,
+    binaryOp: {
+      foldLogicalOp: processBinaryOp,
+      foldArithmeticOp: processBinaryOp,
+      foldComparisonOp: processBinaryOp,
+      // TODO: deal with assignments
+      foldAssignment: processBinaryOp
+    },
+    foldIfThenElse: processIfThenElse,
+    foldExprList: processExprList
+  })
 
+  // TODO: process
+  dataflowLogger.warn(`remaining actives: ${JSON.stringify(foldResult)}`)
+
+  // TODO: implement
   return { dataflowIdMap, dataflowGraph }
 }

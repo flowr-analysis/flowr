@@ -109,7 +109,7 @@ export const Operators = [...ArithmeticOperators, ...ComparisonOperators, ...Log
 export type Operator = typeof Operators[number]
 
 /** denote, that there is no information attached */
-enum NoInfo {}
+export enum NoInfo {}
 
 export type WithInfo<Info> = (Info extends NoInfo ? { info?: Info } : { info: Info }) & MergeableRecord
 

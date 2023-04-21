@@ -70,3 +70,13 @@ export const assertAst = (name: string, shell: RShell, input: string, expected: 
     assert.deepStrictEqual(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
   })
 }
+
+// TODO: improve comments and structure
+/** call within describeSession */
+export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: Lang.RNode) => Lang.RNode<Decorated>, expected: Lang.RExprList<Decorated>): void {
+  it(name, async function () {
+    const baseAst = await retrieveAst(shell, input)
+    const ast = decorator(baseAst)
+    assert.deepStrictEqual(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
+  })
+}

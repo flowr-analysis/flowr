@@ -1,6 +1,7 @@
 // TODO: get def-usage for every line
 import { describeSession, retrieveAst } from '../helper/shell'
-import { decorateWithDataFlowInfo } from '../../src/dataflow/extractor'
+import { produceDataFlowGraph } from '../../src/dataflow/extractor'
+import { decorateWithIds } from '../../src/dataflow/id'
 
 describe('Extract Dataflow Information', () => {
   describeSession('1. atomic dataflow information', (shell) => {
@@ -10,7 +11,8 @@ describe('Extract Dataflow Information', () => {
         b <- a + c
         d <- a + b
       `)
-      const { decoratedAst, dataflowIdMap, dataflowGraph } = decorateWithDataFlowInfo(ast)
+      const astWithId = decorateWithIds(ast)
+      const { dataflowIdMap, dataflowGraph } = produceDataFlowGraph(astWithId)
 
       // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
       console.log('flowchart LR')

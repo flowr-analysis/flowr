@@ -5,7 +5,7 @@ import { compareRanges, type OperatorFlavor, rangeFrom, type RIfThenElse, type R
 import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
 
-const astLogger = log.getSubLogger({ name: 'ast' })
+const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
 interface AstParser<Target extends Lang.Base<undefined, string | undefined>> {
   parse: (xmlString: string) => Promise<Target>
@@ -79,7 +79,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
 
   constructor(config?: Partial<XmlParserConfig>) {
     this.config = deepMergeObject(DEFAULT_XML_PARSER_CONFIG, config)
-    astLogger.debug(`config for xml parser: ${JSON.stringify(this.config)}`)
+    parseLog.debug(`config for xml parser: ${JSON.stringify(this.config)}`)
   }
 
   public async parse(xmlString: string): Promise<Lang.RExprList> {
@@ -115,7 +115,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
 
   private revertTokenReplacement(token: string): string {
     const result = this.config.tokenMap?.[token] ?? token
-    astLogger.debug(`reverting ${token}=>${result}`)
+    parseLog.debug(`reverting ${token}=>${result}`)
     return result
   }
 
@@ -195,7 +195,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   }
 
   private parseBinaryStructure(lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RNode | 'no binary structure' {
-    log.trace(`binary op for ${lhs.name} [${op.name}] ${rhs.name}`)
+    parseLog.trace(`binary op for ${lhs.name} [${op.name}] ${rhs.name}`)
     let flavor: OperatorFlavor | 'special'
     if (Lang.ArithmeticOperatorsRAst.includes(op.name)) {
       flavor = 'arithmetic'
@@ -292,7 +292,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
    * Returns an ExprList if there are multiple children, otherwise returns the single child directly with no expr wrapper
    */
   private parseExpr(obj: XmlBasedJson): Lang.RNode {
-    astLogger.debug(`trying to parse expr ${JSON.stringify(obj)}`)
+    parseLog.debug(`trying to parse expr ${JSON.stringify(obj)}`)
     const { unwrappedObj, content, location } = this.retrieveMetaStructure(obj)
     const children = this.parseBasedOnType(getKeysGuarded(unwrappedObj, this.config.childrenName))
     if (children.length === 1) {
@@ -315,7 +315,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   }
 
   private parseNumber(obj: XmlBasedJson): Lang.RNumber | Lang.RLogical | RSymbol<typeof RNa> {
-    astLogger.debug(`trying to parse number ${JSON.stringify(obj)}`)
+    parseLog.debug(`trying to parse number ${JSON.stringify(obj)}`)
     const { location, content } = this.retrieveMetaStructure(obj)
     const common = { location, lexeme: content }
     if (isNA(content)) { /* the special symbol */
@@ -328,19 +328,19 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   }
 
   private parseString(obj: XmlBasedJson): Lang.RString {
-    astLogger.debug(`trying to parse string ${JSON.stringify(obj)}`)
+    parseLog.debug(`trying to parse string ${JSON.stringify(obj)}`)
     const { location, content } = this.retrieveMetaStructure(obj)
     return { type: Lang.Type.String, location, content: string2ts(content), lexeme: content }
   }
 
   private parseSymbol(obj: XmlBasedJson): Lang.RSymbol {
-    astLogger.debug(`trying to parse symbol ${JSON.stringify(obj)}`)
+    parseLog.debug(`trying to parse symbol ${JSON.stringify(obj)}`)
     const { location, content } = this.retrieveMetaStructure(obj)
     return { type: Lang.Type.Symbol, location, content, lexeme: content }
   }
 
   public parseBinaryOp(flavor: OperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RBinaryOp {
-    astLogger.debug(`trying to parse ${flavor} op as binary op ${JSON.stringify([lhs, op, rhs])}`)
+    parseLog.debug(`trying to parse ${flavor} op as binary op ${JSON.stringify([lhs, op, rhs])}`)
 
     this.ensureChildrenAreLhsAndRhsOrdered(lhs.content, rhs.content)
     const parsedLhs = this.parseOneElementBasedOnType(lhs)

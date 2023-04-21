@@ -1,5 +1,5 @@
 import { assertDecoratedAst, describeSession } from '../helper/shell'
-import { deterministicCountingIdGenerator, type Id, produceIds } from '../../src/dataflow/id'
+import { deterministicCountingIdGenerator, type Id, decorateWithIds } from '../../src/dataflow/id'
 import * as Lang from '../../src/r-bridge/lang:4.x/ast/model'
 import { type RExprList } from '../../src/r-bridge/lang:4.x/ast/model'
 import { numVal } from '../helper/ast-builder'
@@ -7,7 +7,7 @@ import { numVal } from '../helper/ast-builder'
 describe('Assign unique Ids', () => {
   describeSession('Testing deterministic counting Id assignment', (shell) => {
     const assertId = (name: string, input: string, expected: RExprList<Id>): void => {
-      assertDecoratedAst(name, shell, input, ast => produceIds(ast, deterministicCountingIdGenerator()), expected)
+      assertDecoratedAst(name, shell, input, ast => decorateWithIds(ast, deterministicCountingIdGenerator()), expected)
     }
     // decided to test with ast parsing, as we are dependent on these changes in reality
     describe('1. Single nodes (leafs)', () => {

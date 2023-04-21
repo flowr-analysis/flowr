@@ -5,7 +5,7 @@ import {
 } from '../r-bridge/lang:4.x/ast/model'
 import { foldAST } from '../r-bridge/lang:4.x/ast/fold'
 
-type IdType = string
+export type IdType = string
 export interface Id { id: IdType }
 
 /** uniquely identifies AST-Nodes */
@@ -28,7 +28,7 @@ export function deterministicCountingIdGenerator<OtherInfo>(): (data: RNode<Excl
  *
  * @typeParam OtherInfo the original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)
  */
-export function produceIds<OtherInfo>(ast: RNode<Exclude<OtherInfo, Id>>, getId = deterministicCountingIdGenerator<OtherInfo>()): IdRNode<OtherInfo> {
+export function decorateWithIds<OtherInfo>(ast: RNode<Exclude<OtherInfo, Id>>, getId = deterministicCountingIdGenerator<OtherInfo>()): IdRNode<OtherInfo> {
   const foldLeaf = (leaf: RNode<OtherInfo>): IdRNode<OtherInfo> => ({ ...leaf, id: getId(leaf) })
   const binaryOp = (op: RBinaryOp<OtherInfo>, lhs: IdRNode<OtherInfo>, rhs: IdRNode<OtherInfo>): IdRNode<OtherInfo> => ({ ...op, lhs, rhs, id: getId(op) })
   const foldIfThenElse = (ifThen: RNode<OtherInfo>, cond: IdRNode<OtherInfo>, then: IdRNode<OtherInfo>, otherwise?: IdRNode<OtherInfo>): IdRNode<OtherInfo> => ({ ...ifThen, cond, then, otherwise, id: getId(ifThen) })

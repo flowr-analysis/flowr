@@ -20,8 +20,9 @@ const dataflowLogger = log.getSubLogger({ name: 'ast' })
 /** used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<IdType, RNodeWithParent<OtherInfo>>
 
-// TODO: improve on the graph
-// TODO: deal with overshadowing, same names etc.
+// TODO: modify | alias | etc.
+export type DataflowGraphEdgeType = 'read' | 'defined-by'
+export interface DataflowGraphEdge { target: IdType, type: DataflowGraphEdgeType }
 
 /**
  * holds the dataflow information found within the given AST
@@ -33,7 +34,7 @@ export interface DataflowGraph {
     id: IdType
     name: string
   }>
-  edges: Map<IdType, IdType[]>
+  edges: Map<IdType, DataflowGraphEdge[]>
 }
 
 export type ScopeName = /** default R global environment */ '.GlobalEnv' | /** unspecified automatic local environment */ '<local>' | /** named environments */ string
@@ -78,12 +79,13 @@ function processBinaryOp<OtherInfo>(op: RNodeWithParent<OtherInfo>, lhs: FoldInf
 }
 
 // TODO: edge types
-function addEdge(graph: DataflowGraph, from: IdType, to: IdType): void {
+function addEdge(graph: DataflowGraph, from: IdType, to: IdType, type: DataflowGraphEdgeType): void {
   const targets = graph.edges.get(from)
+  const edge = { target: to, type }
   if (targets === undefined) {
-    graph.edges.set(from, [to])
+    graph.edges.set(from, [edge])
   } else {
-    targets.push(to)
+    targets.push(edge)
   }
 }
 
@@ -125,7 +127,7 @@ function processAssignment<OtherInfo>(info: DataflowInformation<OtherInfo>): (op
     // TODO: identify global, local etc.
     for (const writeId of write) {
       for (const readId of read) {
-        addEdge(info.dataflowGraph, writeId, readId)
+        addEdge(info.dataflowGraph, writeId, readId, 'defined-by')
       }
     }
     // TODO URGENT: keep write to
@@ -133,6 +135,7 @@ function processAssignment<OtherInfo>(info: DataflowInformation<OtherInfo>): (op
   }
 }
 
+// TODO: potential dataflow with both branches!
 function processIfThenElse<OtherInfo>(ifThen: RNodeWithParent<OtherInfo>, cond: FoldInfo, then: FoldInfo, otherwise?: FoldInfo): FoldInfo {
   return { activeNodes: [...cond.activeNodes, ...then.activeNodes, ...(otherwise?.activeNodes ?? [])], read: [...cond.read, ...then.read, ...(otherwise?.read ?? [])], writeTo: new Map([...cond.writeTo, ...then.writeTo, ...(otherwise?.writeTo ?? [])]) }
 }
@@ -175,7 +178,7 @@ function processExprList<OtherInfo>(info: DataflowInformation<OtherInfo>): (expr
           // keep it, for we have no target
           remainingRead.push(readId)
         } else {
-          addEdge(info.dataflowGraph, readId, probableTarget)
+          addEdge(info.dataflowGraph, readId, probableTarget, 'read')
         }
       }
 
@@ -201,7 +204,7 @@ export function produceDataFlowGraph<OtherInfo>(ast: RNodeWithParent<OtherInfo>)
     dataflowIdMap: new BiMap<IdType, RNodeWithParent<OtherInfo>>(),
     dataflowGraph: {
       nodes: [],
-      edges: new Map<IdType, IdType[]>() // TODO: default map?
+      edges: new Map<IdType, DataflowGraphEdge[]>() // TODO: default map?
     }
   }
 

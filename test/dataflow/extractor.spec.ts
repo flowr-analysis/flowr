@@ -18,6 +18,10 @@ describe('Extract Dataflow Information', () => {
     it('1.1 def for constant variable assignment', async () => {
       const ast = await retrieveAst(shell, `
         a <- x
+        if(m > 3) {
+          a <- 5
+        }
+        
         m <- 5
         b <- a + c
         d <- a + b
@@ -27,13 +31,14 @@ describe('Extract Dataflow Information', () => {
       const { dataflowIdMap, dataflowGraph } = produceDataFlowGraph(astWithParentIds)
 
       // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
+      // TODO: subgraphs?
       console.log('flowchart LR')
       dataflowGraph.nodes.forEach(node => {
         console.log(`    ${node.id}(["\`${node.name} *${formatRange(dataflowIdMap.get(node.id)?.location)}*\`"])`)
       })
       dataflowGraph.edges.forEach((targets, source) => {
-        targets.forEach(target => {
-          console.log(`    ${source} --> ${target}`)
+        targets.forEach(to => {
+          console.log(`    ${source} -->|"${to.type}"| ${to.target}`)
         })
       })
     })

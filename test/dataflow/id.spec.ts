@@ -7,7 +7,7 @@ import { numVal } from '../helper/ast-builder'
 describe('Assign unique Ids', () => {
   describeSession('Testing deterministic counting Id assignment', (shell) => {
     const assertId = (name: string, input: string, expected: RExprList<Id>): void => {
-      assertDecoratedAst(name, shell, input, ast => decorateWithIds(ast, deterministicCountingIdGenerator()), expected)
+      assertDecoratedAst(name, shell, input, ast => decorateWithIds(ast, deterministicCountingIdGenerator()).decoratedAst, expected)
     }
     // decided to test with ast parsing, as we are dependent on these changes in reality
     describe('1. Single nodes (leafs)', () => {

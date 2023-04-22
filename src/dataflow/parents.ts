@@ -6,7 +6,7 @@ import {
   type RSingleNode
 } from '../r-bridge/lang:4.x/ast/model'
 import { type Id, type IdRNode, type IdType } from './id'
-import { foldAST } from '../r-bridge/lang:4.x/ast/fold'
+import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
 
 export interface ParentInformation { parent: IdType | undefined }
 export type RNodeWithParent<OtherInfo> = IdRNode<OtherInfo & ParentInformation>
@@ -33,7 +33,7 @@ export function decorateWithParentInformation<OtherInfo>(ast: IdRNode<OtherInfo>
     return { ...exprList, children, parent: undefined }
   }
 
-  return foldAST(ast, {
+  return foldAst(ast, {
     foldNumber: foldLeaf,
     foldString: foldLeaf,
     foldLogical: foldLeaf,

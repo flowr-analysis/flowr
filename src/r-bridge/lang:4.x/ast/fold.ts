@@ -29,7 +29,7 @@ export interface FoldFunctions<Info, T> {
 /**
  * Folds in old functional-fashion over the AST structure
  */
-export function foldAST<Info, T>(ast: RNode<Info>, folds: FoldFunctions<Info, T>): T {
+export function foldAst<Info, T>(ast: RNode<Info>, folds: FoldFunctions<Info, T>): T {
   const type = ast.type
   switch (type) {
     case Lang.Type.Number:
@@ -43,9 +43,9 @@ export function foldAST<Info, T>(ast: RNode<Info>, folds: FoldFunctions<Info, T>
     case Lang.Type.BinaryOp:
       return foldBinaryOp(ast, folds)
     case Lang.Type.If:
-      return folds.foldIfThenElse(ast, foldAST(ast.condition, folds), foldAST(ast.then, folds), ast.otherwise === undefined ? undefined : foldAST(ast.otherwise, folds))
+      return folds.foldIfThenElse(ast, foldAst(ast.condition, folds), foldAst(ast.then, folds), ast.otherwise === undefined ? undefined : foldAst(ast.otherwise, folds))
     case Lang.Type.ExprList:
-      return folds.foldExprList(ast, ast.children.map(expr => foldAST(expr, folds)))
+      return folds.foldExprList(ast, ast.children.map(expr => foldAst(expr, folds)))
     default:
       assertUnreachable(type)
   }
@@ -54,13 +54,13 @@ export function foldAST<Info, T>(ast: RNode<Info>, folds: FoldFunctions<Info, T>
 function foldBinaryOp<Info, T>(ast: RBinaryOp<Info>, folds: FoldFunctions<Info, T>): T {
   switch (ast.flavor) {
     case 'logical':
-      return folds.binaryOp.foldLogicalOp(ast as RLogicalOp<Info>, foldAST(ast.lhs, folds), foldAST(ast.rhs, folds))
+      return folds.binaryOp.foldLogicalOp(ast as RLogicalOp<Info>, foldAst(ast.lhs, folds), foldAst(ast.rhs, folds))
     case 'arithmetic':
-      return folds.binaryOp.foldArithmeticOp(ast as RArithmeticOp<Info>, foldAST(ast.lhs, folds), foldAST(ast.rhs, folds))
+      return folds.binaryOp.foldArithmeticOp(ast as RArithmeticOp<Info>, foldAst(ast.lhs, folds), foldAst(ast.rhs, folds))
     case 'comparison':
-      return folds.binaryOp.foldComparisonOp(ast as RComparisonOp<Info>, foldAST(ast.lhs, folds), foldAST(ast.rhs, folds))
+      return folds.binaryOp.foldComparisonOp(ast as RComparisonOp<Info>, foldAst(ast.lhs, folds), foldAst(ast.rhs, folds))
     case 'assignment':
-      return folds.binaryOp.foldAssignment(ast as RAssignmentOp<Info>, foldAST(ast.lhs, folds), foldAST(ast.rhs, folds))
+      return folds.binaryOp.foldAssignment(ast as RAssignmentOp<Info>, foldAst(ast.lhs, folds), foldAst(ast.rhs, folds))
     default:
       assertUnreachable(ast.flavor)
   }

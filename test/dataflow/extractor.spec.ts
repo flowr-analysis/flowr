@@ -3,6 +3,7 @@ import { describeSession, retrieveAst } from '../helper/shell'
 import { produceDataFlowGraph } from '../../src/dataflow/extractor'
 import { decorateWithIds } from '../../src/dataflow/id'
 import type * as Lang from '../../src/r-bridge/lang:4.x/ast/model'
+import { decorateWithParentInformation } from '../../src/dataflow/parents'
 
 function formatRange(range: Lang.Range | undefined): string {
   if (range === undefined) {
@@ -17,11 +18,13 @@ describe('Extract Dataflow Information', () => {
     it('1.1 def for constant variable assignment', async () => {
       const ast = await retrieveAst(shell, `
         a <- x
+        m <- 5
         b <- a + c
         d <- a + b
       `)
       const astWithId = decorateWithIds(ast)
-      const { dataflowIdMap, dataflowGraph } = produceDataFlowGraph(astWithId)
+      const astWithParentIds = decorateWithParentInformation(astWithId.decoratedAst)
+      const { dataflowIdMap, dataflowGraph } = produceDataFlowGraph(astWithParentIds)
 
       // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
       console.log('flowchart LR')

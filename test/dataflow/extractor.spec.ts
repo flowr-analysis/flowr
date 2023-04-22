@@ -34,7 +34,7 @@ describe('Extract Dataflow Information', () => {
       // TODO: subgraphs?
       console.log('flowchart LR')
       dataflowGraph.nodes.forEach(node => {
-        console.log(`    ${node.id}(["\`${node.name} *${formatRange(dataflowIdMap.get(node.id)?.location)}*\`"])`)
+        console.log(`    ${node.id}(["\`${node.name}\n      *${formatRange(dataflowIdMap.get(node.id)?.location)}*\`"])`)
       })
       dataflowGraph.edges.forEach((targets, source) => {
         targets.forEach(to => {

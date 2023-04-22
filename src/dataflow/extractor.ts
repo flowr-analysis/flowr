@@ -11,11 +11,7 @@ const dataflowLogger = log.getSubLogger({ name: 'ast' })
 
 /**
  * The basic dataflow algorithm will work like this:
- * Folding the ast from the leaves up it will perform the following actions (and nothing for all other nodes):
- * - for every variable usage it will create a node in the dataflow graph and add it to the active set
- * - if it encounters a definition, all targeted variables will be tagged with the corresponding definition operator form {@link Assignments}
- * TODO:
- *
+ * Every node produces a dataflow graph, higher operations will be merge the graphs together
  */
 
 /** used to get an entry point for every id, after that it allows reference-chasing of the graph */
@@ -26,7 +22,11 @@ export type DataflowGraphEdgeType = 'read' | 'defined-by'
 // context -- is it always read/defined-by // TODO: loops
 export type DataflowGraphEdgeAttribute = 'always' | 'maybe'
 
-export interface DataflowGraphEdge { target: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute }
+export interface DataflowGraphEdge {
+  target:    IdType
+  type:      DataflowGraphEdgeType
+  attribute: DataflowGraphEdgeAttribute
+}
 
 /**
  * holds the dataflow information found within the given AST
@@ -35,7 +35,7 @@ export interface DataflowGraphEdge { target: IdType, type: DataflowGraphEdgeType
  */
 export interface DataflowGraph {
   nodes: Array<{
-    id: IdType
+    id:   IdType
     name: string
   }>
   edges: Map<IdType, DataflowGraphEdge[]>
@@ -47,16 +47,16 @@ export const LOCAL_SCOPE: ScopeName = '<local>'
 
 interface FoldReadWriteTarget {
   attribute: DataflowGraphEdgeAttribute
-  id: IdType
+  id:        IdType
 }
 
 interface FoldInfo {
   /** variable names that have been used without clear indication of their origin (i.e. if they will be read or written to) */
   activeNodes: IdType[]
   /** variables that have been read in the current block */
-  read: IdType[] // TODO: read from env?
+  read:        IdType[] // TODO: read from env?
   /** variables that have been written to the given scope */
-  writeTo: Map<ScopeName, FoldReadWriteTarget[]>
+  writeTo:     Map<ScopeName, FoldReadWriteTarget[]>
 }
 
 function emptyFoldInfo(): FoldInfo {
@@ -218,8 +218,8 @@ function processExprList<OtherInfo>(info: DataflowInformation<OtherInfo>): (expr
     return {
       // TODO: ensure active killed on that level?
       activeNodes: children.flatMap(child => child.activeNodes),
-      read: remainingRead,
-      writeTo: new Map(children.flatMap(child => [...child.writeTo]))
+      read:        remainingRead,
+      writeTo:     new Map(children.flatMap(child => [...child.writeTo]))
     }
   }
 }
@@ -239,19 +239,19 @@ export function produceDataFlowGraph<OtherInfo>(ast: RNodeWithParent<OtherInfo>)
   }
 
   const foldResult = foldAst<OtherInfo & Id & ParentInformation, FoldInfo>(ast, {
-    foldNumber: processUninterestingLeaf,
-    foldString: processUninterestingLeaf,
+    foldNumber:  processUninterestingLeaf,
+    foldString:  processUninterestingLeaf,
     foldLogical: processUninterestingLeaf,
-    foldSymbol: processSymbol(info),
-    binaryOp: {
-      foldLogicalOp: processBinaryOp,
+    foldSymbol:  processSymbol(info),
+    binaryOp:    {
+      foldLogicalOp:    processBinaryOp,
       foldArithmeticOp: processBinaryOp,
       foldComparisonOp: processBinaryOp,
       // TODO: deal with assignments
-      foldAssignment: processAssignment(info)
+      foldAssignment:   processAssignment(info)
     },
     foldIfThenElse: processIfThenElse,
-    foldExprList: processExprList(info)
+    foldExprList:   processExprList(info)
   })
 
   // TODO: process

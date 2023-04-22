@@ -1,21 +1,32 @@
 {
+    "root": true,
     "env": {
         "browser": false,
         "node": true,
         "es2022": true
     },
-    "extends": "standard-with-typescript",
+    "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended"
+    ],
     "overrides": [],
     "parserOptions": {
         "ecmaVersion": "latest",
         "sourceType": "module",
         "project": "./tsconfig.json"
     },
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+        "@typescript-eslint"
+    ],
     "rules": {
         "indent": [
             "error", 2, {"FunctionDeclaration": {"parameters": "first"},
                 "SwitchCase": 1
             }],
+        "@typescript-eslint/key-spacing": [
+            "error", { "align": "value" }
+        ],
         "@typescript-eslint/space-before-function-paren": "off"
     }
 }

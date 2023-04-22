@@ -1,5 +1,6 @@
 import { type MergeableRecord } from '../../../util/objects'
 import { type RNa, type RNull, type RNumberValue, type RStringValue } from '../values'
+import { guard } from '../../../util/assert'
 
 /**
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
@@ -149,9 +150,7 @@ export function rangeFrom(line1: number | string, col1: number | string, line2: 
 
 // TODO: test more
 export function mergeRanges(...rs: Range[]): Range {
-  if (rs.length === 0) {
-    throw new Error('Cannot merge no ranges')
-  }
+  guard(rs.length > 0, 'Cannot merge no ranges')
 
   return {
     start: rs.reduce((acc, r) => acc.line < r.start.line || (acc.line === r.start.line && acc.column < r.start.column) ? acc : r.start, rs[0].start),

@@ -7,3 +7,16 @@ export function assertUnreachable(x: never): never {
 export function isNotUndefined<T>(x: T | undefined): x is T {
   return x !== undefined
 }
+
+class GuardError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'GuardError'
+  }
+}
+
+export function guard(x: boolean, message: string = 'Assertion failed'): asserts x {
+  if (!x) {
+    throw new GuardError(message)
+  }
+}

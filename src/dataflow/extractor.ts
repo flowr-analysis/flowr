@@ -5,6 +5,8 @@ import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
 import { RNa, RNull } from '../r-bridge/lang:4.x/values'
 import type * as Lang from '../r-bridge/lang:4.x/ast/model'
 import { type ParentInformation, type RNodeWithParent } from './parents'
+import { type DefaultMap } from '../util/defaultmap'
+import { guard } from '../util/assert'
 
 const dataflowLogger = log.getSubLogger({ name: 'ast' })
 
@@ -22,6 +24,9 @@ export type DataflowMap<OtherInfo> = BiMap<IdType, RNodeWithParent<OtherInfo>>
 
 // TODO: modify | alias | etc.
 export type DataflowGraphEdgeType = 'read' | 'defined-by'
+// context -- is it always read/defined-by // TODO: loops
+export type DataflowGraphEdgeAttribute = 'always' | 'if-true' | 'if-false'
+
 export interface DataflowGraphEdge { target: IdType, type: DataflowGraphEdgeType }
 
 /**
@@ -41,13 +46,18 @@ export type ScopeName = /** default R global environment */ '.GlobalEnv' | /** u
 export const GLOBAL_SCOPE: ScopeName = '.GlobalEnv'
 export const LOCAL_SCOPE: ScopeName = '<local>'
 
+interface FoldReadWriteTarget {
+  attribute: DataflowGraphEdgeAttribute
+  id: IdType
+}
+
 interface FoldInfo {
-  /** variable names that have been used without clear indication of their origin */
+  /** variable names that have been used without clear indication of their origin (i.e. if they will be read or written to) */
   activeNodes: IdType[]
   /** variables that have been read in the current block */
   read: IdType[] // TODO: read from env?
   /** variables that have been written to the given scope */
-  writeTo: Map<ScopeName, IdType[]> // TODO: default map
+  writeTo: Map<ScopeName, FoldReadWriteTarget[]>
 }
 
 function emptyFoldInfo(): FoldInfo {
@@ -131,7 +141,8 @@ function processAssignment<OtherInfo>(info: DataflowInformation<OtherInfo>): (op
       }
     }
     // TODO URGENT: keep write to
-    return { activeNodes: [], read, writeTo: new Map([[global ? GLOBAL_SCOPE : LOCAL_SCOPE, write]]) }
+    const targets: FoldReadWriteTarget[] = write.map(id => ({ attribute: 'always', id }))
+    return { activeNodes: [], read, writeTo: new Map([[global ? GLOBAL_SCOPE : LOCAL_SCOPE, targets]]) }
   }
 }
 
@@ -141,17 +152,13 @@ function processIfThenElse<OtherInfo>(ifThen: RNodeWithParent<OtherInfo>, cond: 
 }
 
 function updateAllWriteTargets<OtherInfo>(currentChild: FoldInfo, info: DataflowInformation<OtherInfo>, writePointers: Map<string, IdType>): void {
-  for (const [, writeIds] of currentChild.writeTo) {
-    for (const writeId of writeIds) {
-      const mustHaveTarget = info.dataflowIdMap.get(writeId)
-      if (mustHaveTarget === undefined) {
-        throw new Error(`Could not find target for ${writeId}`)
-      }
+  for (const [, writeTargets] of currentChild.writeTo) {
+    for (const writeTarget of writeTargets) {
+      const mustHaveTarget = info.dataflowIdMap.get(writeTarget.id)
+      guard(mustHaveTarget !== undefined, `Could not find target for ${JSON.stringify(writeTarget)}`)
       const writeName = mustHaveTarget.lexeme
-      if (writeName === undefined) {
-        throw new Error(`${writeId} does not have an attached writeName`)
-      }
-      writePointers.set(writeName, writeId)
+      guard(writeName !== undefined, `${writeTarget.id} does not have an attached writeName`)
+      writePointers.set(writeName, writeTarget.id)
     }
   }
 }

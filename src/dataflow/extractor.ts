@@ -5,7 +5,6 @@ import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
 import { RNa, RNull } from '../r-bridge/lang:4.x/values'
 import type * as Lang from '../r-bridge/lang:4.x/ast/model'
 import { type ParentInformation, type RNodeWithParent } from './parents'
-import { type DefaultMap } from '../util/defaultmap'
 import { guard } from '../util/assert'
 
 const dataflowLogger = log.getSubLogger({ name: 'ast' })
@@ -25,9 +24,9 @@ export type DataflowMap<OtherInfo> = BiMap<IdType, RNodeWithParent<OtherInfo>>
 // TODO: modify | alias | etc.
 export type DataflowGraphEdgeType = 'read' | 'defined-by'
 // context -- is it always read/defined-by // TODO: loops
-export type DataflowGraphEdgeAttribute = 'always' | 'if-true' | 'if-false'
+export type DataflowGraphEdgeAttribute = 'always' | 'maybe'
 
-export interface DataflowGraphEdge { target: IdType, type: DataflowGraphEdgeType }
+export interface DataflowGraphEdge { target: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute }
 
 /**
  * holds the dataflow information found within the given AST
@@ -89,9 +88,9 @@ function processBinaryOp<OtherInfo>(op: RNodeWithParent<OtherInfo>, lhs: FoldInf
 }
 
 // TODO: edge types
-function addEdge(graph: DataflowGraph, from: IdType, to: IdType, type: DataflowGraphEdgeType): void {
+function addEdge(graph: DataflowGraph, from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): void {
   const targets = graph.edges.get(from)
-  const edge = { target: to, type }
+  const edge = { target: to, type, attribute }
   if (targets === undefined) {
     graph.edges.set(from, [edge])
   } else {
@@ -137,7 +136,8 @@ function processAssignment<OtherInfo>(info: DataflowInformation<OtherInfo>): (op
     // TODO: identify global, local etc.
     for (const writeId of write) {
       for (const readId of read) {
-        addEdge(info.dataflowGraph, writeId, readId, 'defined-by')
+        // TODO: update in if etc? => move grpahs to top and merge them here
+        addEdge(info.dataflowGraph, writeId, readId, 'defined-by', 'always')
       }
     }
     // TODO URGENT: keep write to
@@ -151,14 +151,32 @@ function processIfThenElse<OtherInfo>(ifThen: RNodeWithParent<OtherInfo>, cond: 
   return { activeNodes: [...cond.activeNodes, ...then.activeNodes, ...(otherwise?.activeNodes ?? [])], read: [...cond.read, ...then.read, ...(otherwise?.read ?? [])], writeTo: new Map([...cond.writeTo, ...then.writeTo, ...(otherwise?.writeTo ?? [])]) }
 }
 
-function updateAllWriteTargets<OtherInfo>(currentChild: FoldInfo, info: DataflowInformation<OtherInfo>, writePointers: Map<string, IdType>): void {
+// TODO: instead of maybe use nested if-then path possibilities for abstract interpretation?
+type WritePointerTargets = { type: 'always', id: IdType } | { type: 'maybe', ids: IdType[] }
+type WritePointers = Map<IdType, WritePointerTargets>
+
+// TODO: test
+function updateAllWriteTargets<OtherInfo>(currentChild: FoldInfo, info: DataflowInformation<OtherInfo>, writePointers: WritePointers): void {
   for (const [, writeTargets] of currentChild.writeTo) {
     for (const writeTarget of writeTargets) {
       const mustHaveTarget = info.dataflowIdMap.get(writeTarget.id)
       guard(mustHaveTarget !== undefined, `Could not find target for ${JSON.stringify(writeTarget)}`)
       const writeName = mustHaveTarget.lexeme
       guard(writeName !== undefined, `${writeTarget.id} does not have an attached writeName`)
-      writePointers.set(writeName, writeTarget.id)
+      // TODO: hide in merge - monoid!
+
+      const previousValue = writePointers.get(writeName)
+      if (writeTarget.attribute === 'always' && previousValue?.type !== 'maybe') { // add it as an always
+        writePointers.set(writeName, { type: 'always', id: writeTarget.id })
+      } else {
+        let newTargets
+        if (previousValue?.type === 'always') {
+          newTargets = [previousValue.id, writeTarget.id]
+        } else {
+          newTargets = [...(previousValue?.ids ?? []), writeTarget.id]
+        }
+        writePointers.set(writeName, { type: 'maybe', ids: newTargets })
+      }
     }
   }
 }
@@ -168,10 +186,11 @@ function processExprList<OtherInfo>(info: DataflowInformation<OtherInfo>): (expr
   // we assume same scope for local currently, yet we return local writes too, as a simple exprList does not act as scoping block
   // link a given name to IdTypes
   return (exprList, children) => {
-    const writePointers = new Map<string, IdType>() // TODO: keep scope for writePointers
+    // TODO: keep scope for writePointers
+    const writePointers = new Map<string, WritePointerTargets>()
     const remainingRead = []
 
-    // TODO: optimzie by linking names
+    // TODO: optimize by linking names
     for (const element of children) {
       const currentElement: FoldInfo = element
       for (const readId of currentElement.read) {
@@ -184,8 +203,12 @@ function processExprList<OtherInfo>(info: DataflowInformation<OtherInfo>): (expr
         if (probableTarget === undefined) {
           // keep it, for we have no target
           remainingRead.push(readId)
+        } else if (probableTarget.type === 'always') {
+          addEdge(info.dataflowGraph, readId, probableTarget.id, 'read', 'always')
         } else {
-          addEdge(info.dataflowGraph, readId, probableTarget, 'read')
+          for (const target of probableTarget.ids) {
+            addEdge(info.dataflowGraph, readId, target, 'read', 'maybe')
+          }
         }
       }
 

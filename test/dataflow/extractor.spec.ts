@@ -38,7 +38,7 @@ describe('Extract Dataflow Information', () => {
       })
       dataflowGraph.edges.forEach((targets, source) => {
         targets.forEach(to => {
-          console.log(`    ${source} -->|"${to.type}"| ${to.target}`)
+          console.log(`    ${source} -->|"${to.type} (${to.attribute})"| ${to.target}`)
         })
       })
     })

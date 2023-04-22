@@ -6,6 +6,13 @@ import { RNa, RNull } from '../r-bridge/lang:4.x/values'
 import type * as Lang from '../r-bridge/lang:4.x/ast/model'
 import { type ParentInformation, type RNodeWithParent } from './parents'
 import { guard } from '../util/assert'
+import {
+  DataflowGraph, DataflowGraphEdge,
+  DataflowGraphEdgeAttribute,
+  DataflowGraphEdgeType,
+  DataflowScopeName,
+  GLOBAL_SCOPE, LOCAL_SCOPE
+} from './graph'
 
 const dataflowLogger = log.getSubLogger({ name: 'ast' })
 
@@ -16,50 +23,6 @@ const dataflowLogger = log.getSubLogger({ name: 'ast' })
 
 /** used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<IdType, RNodeWithParent<OtherInfo>>
-
-// TODO: modify | alias | etc.
-export type DataflowGraphEdgeType = 'read' | 'defined-by'
-// context -- is it always read/defined-by // TODO: loops
-export type DataflowGraphEdgeAttribute = 'always' | 'maybe'
-
-export interface DataflowGraphEdge {
-  target:    IdType
-  type:      DataflowGraphEdgeType
-  attribute: DataflowGraphEdgeAttribute
-}
-
-export interface DataflowGraphNode {
-  id:   IdType
-  name: string
-}
-
-/**
- * holds the dataflow information found within the given AST
- * there is a node for every variable encountered, obeying scoping rules
- * TODO: additional information for edges
- */
-export interface DataflowGraph {
-  nodes: DataflowGraphNode[]
-  edges: Map<IdType, DataflowGraphEdge[]>
-}
-
-export function mergeDataflowGraphs(a : DataflowGraph, b: DataflowGraph): DataflowGraph {
-  // TODO: join edges
-  // TODO: check for duplicate nodes
-  // TODO: maybe switch to sets?
-  const nodes = [...a.nodes, ...b.nodes]
-  const edges = new Map([...a.edges, ...b.edges])
-
-  return { nodes, edges }
-}
-
-
-export type ScopeName = /** default R global environment */
-  '.GlobalEnv'
-  | /** unspecified automatic local environment */ '<local>'
-  | /** named environments */ string
-export const GLOBAL_SCOPE: ScopeName = '.GlobalEnv'
-export const LOCAL_SCOPE: ScopeName = '<local>'
 
 interface FoldReadWriteTarget {
   attribute: DataflowGraphEdgeAttribute
@@ -72,7 +35,7 @@ interface FoldInfo {
   /** variables that have been read in the current block */
   read:        IdType[] // TODO: read from env?
   /** variables that have been written to the given scope */
-  writeTo:     Map<ScopeName, FoldReadWriteTarget[]>
+  writeTo:     Map<DataflowScopeName, FoldReadWriteTarget[]>
 }
 
 function emptyFoldInfo (): FoldInfo {

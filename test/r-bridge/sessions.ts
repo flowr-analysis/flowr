@@ -87,7 +87,7 @@ describe('RShell sessions', function () {
 
       assert.isTrue(got.map(g => g[1]).includes(pkg), `expected package ${pkg} to be loaded, but got: ${JSON.stringify(got)}`)
     })
-    testWithShell('6.1 loadWithForceInstall', async (shell, test) => {
+    testWithShell('6.1 load with force install', async (shell, test) => {
       await testRequiresNetworkConnection(test)
       isInstallTest(test)
 

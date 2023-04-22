@@ -4,13 +4,12 @@
  * All map-related functions are based on the normal Key -> Value map
  */
 export class BiMap<K, V> implements Map<K, V> {
+  public readonly [Symbol.toStringTag]: string = 'BiMap'
+  public size = 0
   private readonly k2v = new Map<K, V>()
   private readonly v2k = new Map<V, K>()
 
-  public readonly [Symbol.toStringTag]: string = 'BiMap'
-  public size: number = 0
-
-  constructor(base?: Iterable<[K, V]>) {
+  constructor (base?: Iterable<[K, V]>) {
     if (base != null) {
       for (const [k, v] of base) {
         this.set(k, v)
@@ -18,16 +17,16 @@ export class BiMap<K, V> implements Map<K, V> {
     }
   }
 
-  public [Symbol.iterator](): IterableIterator<[K, V]> {
+  public [Symbol.iterator] (): IterableIterator<[K, V]> {
     return this.k2v[Symbol.iterator]()
   }
 
-  public clear(): void {
+  public clear (): void {
     this.k2v.clear()
     this.v2k.clear()
   }
 
-  public delete(key: K): boolean {
+  public delete (key: K): boolean {
     const value = this.k2v.get(key)
     if (value === undefined) {
       return false
@@ -37,41 +36,41 @@ export class BiMap<K, V> implements Map<K, V> {
     return true
   }
 
-  public entries(): IterableIterator<[K, V]> {
+  public entries (): IterableIterator<[K, V]> {
     return this.k2v.entries()
   }
 
-  public forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void, thisArg?: any): void {
+  public forEach (callbackfn: (value: V, key: K, map: Map<K, V>) => void, thisArg?: any): void {
     this.k2v.forEach(callbackfn, thisArg)
   }
 
-  public get(key: K): V | undefined {
+  public get (key: K): V | undefined {
     return this.k2v.get(key)
   }
 
-  public getKey(value: V): K | undefined {
+  public getKey (value: V): K | undefined {
     return this.v2k.get(value)
   }
 
-  public has(key: K): boolean {
+  public has (key: K): boolean {
     return this.k2v.has(key)
   }
 
-  public hasValue(value: V): boolean {
+  public hasValue (value: V): boolean {
     return this.v2k.has(value)
   }
 
-  public keys(): IterableIterator<K> {
+  public keys (): IterableIterator<K> {
     return this.k2v.keys()
   }
 
-  public set(key: K, value: V): this {
+  public set (key: K, value: V): this {
     this.k2v.set(key, value)
     this.v2k.set(value, key)
     return this
   }
 
-  public values(): IterableIterator<V> {
+  public values (): IterableIterator<V> {
     return this.k2v.values()
   }
 }

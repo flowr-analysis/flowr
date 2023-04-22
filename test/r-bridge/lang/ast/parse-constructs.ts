@@ -3,95 +3,95 @@ import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
 import { exprList, numVal } from '../../../helper/ast-builder'
 
 const IfThenSpacingVariants = [{
-  str: 'if(TRUE)1',
+  str:          'if(TRUE)1',
   locationTrue: Lang.rangeFrom(1, 4, 1, 7),
-  locationNum: Lang.rangeFrom(1, 9, 1, 9),
-  num: 1,
-  end: Lang.rangeFrom(1, 9, 1, 9)
+  locationNum:  Lang.rangeFrom(1, 9, 1, 9),
+  num:          1,
+  end:          Lang.rangeFrom(1, 9, 1, 9)
 },
 {
-  str: 'if(TRUE) 1',
+  str:          'if(TRUE) 1',
   locationTrue: Lang.rangeFrom(1, 4, 1, 7),
-  locationNum: Lang.rangeFrom(1, 10, 1, 10),
-  num: 1,
-  end: Lang.rangeFrom(1, 10, 1, 10)
+  locationNum:  Lang.rangeFrom(1, 10, 1, 10),
+  num:          1,
+  end:          Lang.rangeFrom(1, 10, 1, 10)
 },
 {
-  str: 'if (TRUE) 1',
+  str:          'if (TRUE) 1',
   locationTrue: Lang.rangeFrom(1, 5, 1, 8),
-  locationNum: Lang.rangeFrom(1, 11, 1, 11),
-  num: 1,
-  end: Lang.rangeFrom(1, 11, 1, 11)
+  locationNum:  Lang.rangeFrom(1, 11, 1, 11),
+  num:          1,
+  end:          Lang.rangeFrom(1, 11, 1, 11)
 },
 {
-  str: 'if     (TRUE)  42',
+  str:          'if     (TRUE)  42',
   locationTrue: Lang.rangeFrom(1, 9, 1, 12),
-  locationNum: Lang.rangeFrom(1, 16, 1, 17),
-  num: 42,
-  end: Lang.rangeFrom(1, 17, 1, 17)
+  locationNum:  Lang.rangeFrom(1, 16, 1, 17),
+  num:          42,
+  end:          Lang.rangeFrom(1, 17, 1, 17)
 },
 {
-  str: 'if\n(TRUE)1',
+  str:          'if\n(TRUE)1',
   locationTrue: Lang.rangeFrom(2, 2, 2, 5),
-  locationNum: Lang.rangeFrom(2, 7, 2, 7),
-  num: 1,
-  end: Lang.rangeFrom(2, 7, 2, 7)
+  locationNum:  Lang.rangeFrom(2, 7, 2, 7),
+  num:          1,
+  end:          Lang.rangeFrom(2, 7, 2, 7)
 },
 {
-  str: 'if(TRUE)\n1',
+  str:          'if(TRUE)\n1',
   locationTrue: Lang.rangeFrom(1, 4, 1, 7),
-  locationNum: Lang.rangeFrom(2, 1, 2, 1),
-  num: 1,
-  end: Lang.rangeFrom(2, 1, 2, 1)
+  locationNum:  Lang.rangeFrom(2, 1, 2, 1),
+  num:          1,
+  end:          Lang.rangeFrom(2, 1, 2, 1)
 },
 {
-  str: 'if\n(\nTRUE\n)\n1',
+  str:          'if\n(\nTRUE\n)\n1',
   locationTrue: Lang.rangeFrom(3, 1, 3, 4),
-  locationNum: Lang.rangeFrom(5, 1, 5, 1),
-  num: 1,
-  end: Lang.rangeFrom(5, 1, 5, 1)
+  locationNum:  Lang.rangeFrom(5, 1, 5, 1),
+  num:          1,
+  end:          Lang.rangeFrom(5, 1, 5, 1)
 }]
 
 const IfThenBraceVariants = [{
-  str: 'if(TRUE){1}',
+  str:          'if(TRUE){1}',
   locationTrue: Lang.rangeFrom(1, 4, 1, 7),
-  locationNum: Lang.rangeFrom(1, 10, 1, 10),
-  num: 1,
-  end: Lang.rangeFrom(1, 11, 1, 11)
+  locationNum:  Lang.rangeFrom(1, 10, 1, 10),
+  num:          1,
+  end:          Lang.rangeFrom(1, 11, 1, 11)
 }, {
-  str: 'if(TRUE){42}',
+  str:          'if(TRUE){42}',
   locationTrue: Lang.rangeFrom(1, 4, 1, 7),
-  locationNum: Lang.rangeFrom(1, 10, 1, 11),
-  num: 42,
-  end: Lang.rangeFrom(1, 12, 1, 12)
+  locationNum:  Lang.rangeFrom(1, 10, 1, 11),
+  num:          42,
+  end:          Lang.rangeFrom(1, 12, 1, 12)
 }, {
-  str: 'if(TRUE){{{1}}}',
+  str:          'if(TRUE){{{1}}}',
   locationTrue: Lang.rangeFrom(1, 4, 1, 7),
-  locationNum: Lang.rangeFrom(1, 12, 1, 12),
-  num: 1,
-  end: Lang.rangeFrom(1, 15, 1, 15)
+  locationNum:  Lang.rangeFrom(1, 12, 1, 12),
+  num:          1,
+  end:          Lang.rangeFrom(1, 15, 1, 15)
 }]
 
 // suffix of if-then counterparts
 const ElseSpacingVariants = [{
   /* one space/newline around is the minimum for R */
-  str: ' else 2',
+  str:          ' else 2',
   locationElse: Lang.rangeFrom(0, 7, 0, 7),
-  num: 2
+  num:          2
 }, {
-  str: ' else  2',
+  str:          ' else  2',
   locationElse: Lang.rangeFrom(0, 8, 0, 8),
-  num: 2
+  num:          2
 }]
 
 const ElseBracesVariants = [{
-  str: ' else {2}',
+  str:          ' else {2}',
   locationElse: Lang.rangeFrom(0, 8, 0, 8),
-  num: 2
+  num:          2
 }, {
-  str: ' else {{{42}}}',
+  str:          ' else {{{42}}}',
   locationElse: Lang.rangeFrom(0, 10, 0, 11),
-  num: 42
+  num:          42
 }]
 
 describe('3. Parse simple constructs', () => {
@@ -101,21 +101,21 @@ describe('3. Parse simple constructs', () => {
         for (const variant of pool.variants) {
           const strNum = `${variant.num}`
           assertAst(JSON.stringify(variant.str), shell, variant.str, exprList({
-            type: Lang.Type.If,
+            type:      Lang.Type.If,
             // TODO: maybe merge in future?
-            location: Lang.rangeFrom(1, 1, 1, 2),
-            lexeme: 'if',
+            location:  Lang.rangeFrom(1, 1, 1, 2),
+            lexeme:    'if',
             condition: {
-              type: Lang.Type.Logical,
+              type:     Lang.Type.Logical,
               location: variant.locationTrue,
-              lexeme: 'TRUE',
-              content: true
+              lexeme:   'TRUE',
+              content:  true
             },
             then: {
-              type: Lang.Type.Number,
+              type:     Lang.Type.Number,
               location: variant.locationNum,
-              lexeme: strNum,
-              content: numVal(variant.num)
+              lexeme:   strNum,
+              content:  numVal(variant.num)
             }
           }))
         }
@@ -125,7 +125,7 @@ describe('3. Parse simple constructs', () => {
   describeSession('1.2 if-then-else', shell => {
     for (const elsePool of [{ name: 'braces', variants: ElseBracesVariants }, { name: 'spacing', variants: ElseSpacingVariants }]) {
       for (const ifThenPool of [{ name: 'braces', variants: IfThenBraceVariants }, {
-        name: 'spacing',
+        name:     'spacing',
         variants: IfThenSpacingVariants
       }]) {
         describe(`if-then: ${ifThenPool.name}, else: ${elsePool.name}`, () => {
@@ -135,27 +135,27 @@ describe('3. Parse simple constructs', () => {
               const elseNum = `${elseVariant.num}`
               const input = `${ifThenVariant.str}${elseVariant.str}`
               assertAst(JSON.stringify(input), shell, input, exprList({
-                type: Lang.Type.If,
+                type:      Lang.Type.If,
                 // TODO: maybe merge in future?
-                location: Lang.rangeFrom(1, 1, 1, 2),
-                lexeme: 'if',
+                location:  Lang.rangeFrom(1, 1, 1, 2),
+                lexeme:    'if',
                 condition: {
-                  type: Lang.Type.Logical,
+                  type:     Lang.Type.Logical,
                   location: ifThenVariant.locationTrue,
-                  lexeme: 'TRUE',
-                  content: true
+                  lexeme:   'TRUE',
+                  content:  true
                 },
                 then: {
-                  type: Lang.Type.Number,
+                  type:     Lang.Type.Number,
                   location: ifThenVariant.locationNum,
-                  lexeme: thenNum,
-                  content: numVal(ifThenVariant.num)
+                  lexeme:   thenNum,
+                  content:  numVal(ifThenVariant.num)
                 },
                 otherwise: {
-                  type: Lang.Type.Number,
+                  type:     Lang.Type.Number,
                   location: Lang.addRanges(elseVariant.locationElse, ifThenVariant.end),
-                  lexeme: elseNum,
-                  content: numVal(elseVariant.num)
+                  lexeme:   elseNum,
+                  content:  numVal(elseVariant.num)
                 }
               }))
             }

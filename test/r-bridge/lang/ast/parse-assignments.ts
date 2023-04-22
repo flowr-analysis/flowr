@@ -8,22 +8,22 @@ describe('2. Parse simple assignments', () => {
     for (const op of RAssignmentOpPool) {
       const opOffset = op.str.length - 1
       assertAst(`x ${op.str} 5`, shell, `x ${op.str} 5`, exprList({
-        type: Lang.Type.BinaryOp,
+        type:     Lang.Type.BinaryOp,
         location: Lang.rangeFrom(1, 3, 1, 3 + opOffset),
-        flavor: 'assignment',
-        lexeme: op.str,
-        op: op.str,
-        lhs: {
-          type: Lang.Type.Symbol,
+        flavor:   'assignment',
+        lexeme:   op.str,
+        op:       op.str,
+        lhs:      {
+          type:     Lang.Type.Symbol,
           location: Lang.rangeFrom(1, 1, 1, 1),
-          lexeme: 'x',
-          content: 'x'
+          lexeme:   'x',
+          content:  'x'
         },
         rhs: {
-          type: Lang.Type.Number,
+          type:     Lang.Type.Number,
           location: Lang.rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
-          lexeme: '5',
-          content: numVal(5)
+          lexeme:   '5',
+          content:  numVal(5)
         }
       }))
     }

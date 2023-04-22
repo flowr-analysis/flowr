@@ -56,10 +56,10 @@ export const describeSession = (name: string, fn: (shell: RShell) => void, packa
 
 export const retrieveAst = async (shell: RShell, input: string): Promise<Lang.RExprList> => {
   return await retrieveAstFromRCode({
-    request: 'text',
-    content: input,
+    request:                 'text',
+    content:                 input,
     attachSourceInformation: true,
-    ensurePackageInstalled: false // should be called within describeSession for that!
+    ensurePackageInstalled:  false // should be called within describeSession for that!
   }, defaultTokenMap, shell)
 }
 

@@ -41,7 +41,10 @@ export interface DataflowGraph {
   edges: Map<IdType, DataflowGraphEdge[]>
 }
 
-export type ScopeName = /** default R global environment */ '.GlobalEnv' | /** unspecified automatic local environment */ '<local>' | /** named environments */ string
+export type ScopeName = /** default R global environment */
+  '.GlobalEnv'
+  | /** unspecified automatic local environment */ '<local>'
+  | /** named environments */ string
 export const GLOBAL_SCOPE: ScopeName = '.GlobalEnv'
 export const LOCAL_SCOPE: ScopeName = '<local>'
 
@@ -59,16 +62,20 @@ interface FoldInfo {
   writeTo:     Map<ScopeName, FoldReadWriteTarget[]>
 }
 
-function emptyFoldInfo(): FoldInfo {
-  return { activeNodes: [], read: [], writeTo: new Map() }
+function emptyFoldInfo (): FoldInfo {
+  return {
+    activeNodes: [],
+    read:        [],
+    writeTo:     new Map()
+  }
 }
 
-function processUninterestingLeaf<OtherInfo>(leaf: RNodeWithParent<OtherInfo>): FoldInfo {
+function processUninterestingLeaf<OtherInfo> (leaf: RNodeWithParent<OtherInfo>): FoldInfo {
   return emptyFoldInfo()
 }
 
 // TODO: is out parameter info the best choice? or should i remain with a closure? i want to reduce nesting
-function processSymbol<OtherInfo>(info: DataflowInformation<OtherInfo>): (symbol: Lang.RSymbol<OtherInfo & Id & ParentInformation>) => FoldInfo {
+function processSymbol<OtherInfo> (info: DataflowInformation<OtherInfo>): (symbol: Lang.RSymbol<OtherInfo & Id & ParentInformation>) => FoldInfo {
   // TODO: are there other built-ins?
   return symbol => {
     if (symbol.content === RNull || symbol.content === RNa) {
@@ -76,21 +83,36 @@ function processSymbol<OtherInfo>(info: DataflowInformation<OtherInfo>): (symbol
     }
     // TODO: can be replaced by id set if we have a mapping with ids
     info.dataflowIdMap.set(symbol.id, symbol)
-    info.dataflowGraph.nodes.push({ id: symbol.id, name: symbol.content })
-    return { activeNodes: [symbol.id], read: [], writeTo: new Map() }
+    info.dataflowGraph.nodes.push({
+      id:   symbol.id,
+      name: symbol.content
+    })
+    return {
+      activeNodes: [symbol.id],
+      read:        [],
+      writeTo:     new Map()
+    }
   }
 }
 
-function processBinaryOp<OtherInfo>(op: RNodeWithParent<OtherInfo>, lhs: FoldInfo, rhs: FoldInfo): FoldInfo {
+function processBinaryOp<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: FoldInfo, rhs: FoldInfo): FoldInfo {
   // TODO: produce special edges
   // TODO: fix merge of map etc.
-  return { activeNodes: [...lhs.activeNodes, ...rhs.activeNodes], read: [...lhs.read, ...rhs.read], writeTo: new Map([...lhs.writeTo, ...rhs.writeTo]) }
+  return {
+    activeNodes: [...lhs.activeNodes, ...rhs.activeNodes],
+    read:        [...lhs.read, ...rhs.read],
+    writeTo:     new Map([...lhs.writeTo, ...rhs.writeTo])
+  }
 }
 
 // TODO: edge types
-function addEdge(graph: DataflowGraph, from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): void {
+function addEdge (graph: DataflowGraph, from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): void {
   const targets = graph.edges.get(from)
-  const edge = { target: to, type, attribute }
+  const edge = {
+    target: to,
+    type,
+    attribute
+  }
   if (targets === undefined) {
     graph.edges.set(from, [edge])
   } else {
@@ -99,7 +121,7 @@ function addEdge(graph: DataflowGraph, from: IdType, to: IdType, type: DataflowG
 }
 
 // TODO: nested assignments like x <- y <- z <- 1
-function processAssignment<OtherInfo>(info: DataflowInformation<OtherInfo>): (op: RNodeWithParent<OtherInfo>, lhs: FoldInfo, rhs: FoldInfo) => FoldInfo {
+function processAssignment<OtherInfo> (info: DataflowInformation<OtherInfo>): (op: RNodeWithParent<OtherInfo>, lhs: FoldInfo, rhs: FoldInfo) => FoldInfo {
   return (op, lhs, rhs) => {
     let read: IdType[]
     let write: IdType[]
@@ -141,14 +163,25 @@ function processAssignment<OtherInfo>(info: DataflowInformation<OtherInfo>): (op
       }
     }
     // TODO URGENT: keep write to
-    const targets: FoldReadWriteTarget[] = write.map(id => ({ attribute: 'always', id }))
-    return { activeNodes: [], read, writeTo: new Map([[global ? GLOBAL_SCOPE : LOCAL_SCOPE, targets]]) }
+    const targets: FoldReadWriteTarget[] = write.map(id => ({
+      attribute: 'always',
+      id
+    }))
+    return {
+      activeNodes: [],
+      read,
+      writeTo:     new Map([[global ? GLOBAL_SCOPE : LOCAL_SCOPE, targets]])
+    }
   }
 }
 
 // TODO: potential dataflow with both branches!
-function processIfThenElse<OtherInfo>(ifThen: RNodeWithParent<OtherInfo>, cond: FoldInfo, then: FoldInfo, otherwise?: FoldInfo): FoldInfo {
-  return { activeNodes: [...cond.activeNodes, ...then.activeNodes, ...(otherwise?.activeNodes ?? [])], read: [...cond.read, ...then.read, ...(otherwise?.read ?? [])], writeTo: new Map([...cond.writeTo, ...then.writeTo, ...(otherwise?.writeTo ?? [])]) }
+function processIfThenElse<OtherInfo> (ifThen: RNodeWithParent<OtherInfo>, cond: FoldInfo, then: FoldInfo, otherwise?: FoldInfo): FoldInfo {
+  return {
+    activeNodes: [...cond.activeNodes, ...then.activeNodes, ...(otherwise?.activeNodes ?? [])],
+    read:        [...cond.read, ...then.read, ...(otherwise?.read ?? [])],
+    writeTo:     new Map([...cond.writeTo, ...then.writeTo, ...(otherwise?.writeTo ?? [])])
+  }
 }
 
 // TODO: instead of maybe use nested if-then path possibilities for abstract interpretation?
@@ -156,7 +189,7 @@ type WritePointerTargets = { type: 'always', id: IdType } | { type: 'maybe', ids
 type WritePointers = Map<IdType, WritePointerTargets>
 
 // TODO: test
-function updateAllWriteTargets<OtherInfo>(currentChild: FoldInfo, info: DataflowInformation<OtherInfo>, writePointers: WritePointers): void {
+function updateAllWriteTargets<OtherInfo> (currentChild: FoldInfo, info: DataflowInformation<OtherInfo>, writePointers: WritePointers): void {
   for (const [, writeTargets] of currentChild.writeTo) {
     for (const writeTarget of writeTargets) {
       const mustHaveTarget = info.dataflowIdMap.get(writeTarget.id)
@@ -167,7 +200,10 @@ function updateAllWriteTargets<OtherInfo>(currentChild: FoldInfo, info: Dataflow
 
       const previousValue = writePointers.get(writeName)
       if (writeTarget.attribute === 'always' && previousValue?.type !== 'maybe') { // add it as an always
-        writePointers.set(writeName, { type: 'always', id: writeTarget.id })
+        writePointers.set(writeName, {
+          type: 'always',
+          id:   writeTarget.id
+        })
       } else {
         let newTargets
         if (previousValue?.type === 'always') {
@@ -175,13 +211,16 @@ function updateAllWriteTargets<OtherInfo>(currentChild: FoldInfo, info: Dataflow
         } else {
           newTargets = [...(previousValue?.ids ?? []), writeTarget.id]
         }
-        writePointers.set(writeName, { type: 'maybe', ids: newTargets })
+        writePointers.set(writeName, {
+          type: 'maybe',
+          ids:  newTargets
+        })
       }
     }
   }
 }
 
-function processExprList<OtherInfo>(info: DataflowInformation<OtherInfo>): (exprList: RNodeWithParent<OtherInfo>, children: FoldInfo[]) => FoldInfo {
+function processExprList<OtherInfo> (info: DataflowInformation<OtherInfo>): (exprList: RNodeWithParent<OtherInfo>, children: FoldInfo[]) => FoldInfo {
   // TODO: deal with information in order + scoping when we have functions
   // we assume same scope for local currently, yet we return local writes too, as a simple exprList does not act as scoping block
   // link a given name to IdTypes
@@ -229,7 +268,7 @@ export interface DataflowInformation<OtherInfo> {
   dataflowGraph: DataflowGraph
 }
 
-export function produceDataFlowGraph<OtherInfo>(ast: RNodeWithParent<OtherInfo>): DataflowInformation<OtherInfo> {
+export function produceDataFlowGraph<OtherInfo> (ast: RNodeWithParent<OtherInfo>): DataflowInformation<OtherInfo> {
   const info = {
     dataflowIdMap: new BiMap<IdType, RNodeWithParent<OtherInfo>>(),
     dataflowGraph: {

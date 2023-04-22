@@ -1,13 +1,19 @@
 // assign each node with a unique id to simplify usage and further compares
 import {
-  type RBinaryOp, type RExprList, type RIfThenElse,
-  type RNode, type RSingleNode
+  type RBinaryOp,
+  type RExprList,
+  type RIfThenElse,
+  type RNode,
+  type RSingleNode
 } from '../r-bridge/lang:4.x/ast/model'
 import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
 import { BiMap } from '../util/bimap'
 
 export type IdType = string
-export interface Id { id: IdType }
+
+export interface Id {
+  id: IdType
+}
 
 /** uniquely identifies AST-Nodes */
 export type IdRNode<OtherInfo> = RNode<OtherInfo & Id>
@@ -18,13 +24,13 @@ export type IdGenerator<OtherInfo> = (data: RNode<Exclude<OtherInfo, Id>>) => Id
 /**
  * The simplest id generator which just increments a number on each call
  */
-export function deterministicCountingIdGenerator<OtherInfo>(): IdGenerator<OtherInfo> {
+export function deterministicCountingIdGenerator<OtherInfo> (): IdGenerator<OtherInfo> {
   let id = 0
   return () => `${id++}`
 }
 
 export interface AstWithIdInformation<OtherInfo> {
-  idMap: BiMap<IdType, IdRNode<OtherInfo>>
+  idMap:        BiMap<IdType, IdRNode<OtherInfo>>
   decoratedAst: IdRNode<OtherInfo>
 }
 
@@ -38,44 +44,65 @@ export interface AstWithIdInformation<OtherInfo> {
  *
  * TODO: add id map to more quickly access these ids in the future => make it usable for we create new nodes with parents => move to parents?
  */
-export function decorateWithIds<OtherInfo>(ast: RNode<Exclude<OtherInfo, Id>>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator<OtherInfo>()): AstWithIdInformation<OtherInfo> {
+export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator<OtherInfo>()): AstWithIdInformation<OtherInfo> {
   const idMap = new BiMap<IdType, IdRNode<OtherInfo>>()
 
   const foldLeaf = (leaf: RSingleNode<OtherInfo>): IdRNode<OtherInfo> => {
-    const newLeaf = { ...leaf, id: getId(leaf) }
+    const newLeaf = {
+      ...leaf,
+      id: getId(leaf)
+    }
     idMap.set(newLeaf.id, newLeaf)
     return newLeaf
   }
   const binaryOp = (op: RBinaryOp<OtherInfo>, lhs: IdRNode<OtherInfo>, rhs: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
-    const newOp = { ...op, lhs, rhs, id: getId(op) }
+    const newOp = {
+      ...op,
+      lhs,
+      rhs,
+      id: getId(op)
+    }
     idMap.set(newOp.id, newOp)
     return newOp
   }
   const foldIfThenElse = (ifThen: RIfThenElse<OtherInfo>, condition: IdRNode<OtherInfo>, then: IdRNode<OtherInfo>, otherwise?: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
-    const newIfThen = { ...ifThen, condition, then, otherwise, id: getId(ifThen) }
+    const newIfThen = {
+      ...ifThen,
+      condition,
+      then,
+      otherwise,
+      id: getId(ifThen)
+    }
     idMap.set(newIfThen.id, newIfThen)
     return newIfThen
   }
   const foldExprList = (exprList: RExprList<OtherInfo>, children: Array<IdRNode<OtherInfo>>): IdRNode<OtherInfo> => {
-    const newExprList = { ...exprList, children, id: getId(exprList) }
+    const newExprList = {
+      ...exprList,
+      children,
+      id: getId(exprList)
+    }
     idMap.set(newExprList.id, newExprList)
     return newExprList
   }
 
   const decoratedAst = foldAst(ast, {
-    foldNumber: foldLeaf,
-    foldString: foldLeaf,
+    foldNumber:  foldLeaf,
+    foldString:  foldLeaf,
     foldLogical: foldLeaf,
-    foldSymbol: foldLeaf,
-    binaryOp: {
-      foldLogicalOp: binaryOp,
+    foldSymbol:  foldLeaf,
+    binaryOp:    {
+      foldLogicalOp:    binaryOp,
       foldArithmeticOp: binaryOp,
       foldComparisonOp: binaryOp,
-      foldAssignment: binaryOp
+      foldAssignment:   binaryOp
     },
     foldIfThenElse,
     foldExprList
   })
 
-  return { decoratedAst, idMap }
+  return {
+    decoratedAst,
+    idMap
+  }
 }

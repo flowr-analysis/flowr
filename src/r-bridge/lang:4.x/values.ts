@@ -1,7 +1,7 @@
 import { parse } from 'csv-parse/sync'
 
 class ValueConversionError extends Error {
-  constructor(message: string) {
+  constructor (message: string) {
     super(message)
     this.name = 'ValueConversionError'
   }
@@ -37,7 +37,7 @@ export function ts2r (value: any): string {
 const RTrue = 'TRUE'
 const RFalse = 'FALSE'
 
-export function isBoolean(value: string): boolean {
+export function isBoolean (value: string): boolean {
   return value === RTrue || value === RFalse
 }
 
@@ -49,10 +49,11 @@ export function boolean2ts (value: string): boolean {
   }
   throw new ValueConversionError(`value ${value} is not a legal R boolean`)
 }
+
 const RNumHexFloatRegex = /^\s*0x(?<intpart>[0-9a-f]+)?(\.(?<floatpart>[0-9a-f]*))?p(?<exp>-?\d+)\s*$/
 
 // TODO: deal with NA etc!
-function getDecimalPlacesWithRadix(floatpart: string, radix: number): number {
+function getDecimalPlacesWithRadix (floatpart: string, radix: number): number {
   return [...floatpart].reduce((acc, c, idx) => acc + parseInt(c, radix) / (radix ** (idx + 1)), 0)
 }
 
@@ -61,14 +62,14 @@ export const RIntegerMarker = 'L'
 export const RInf = 'Inf'
 
 export interface RNumberValue {
-  num: number
+  num:           number
   /** see {@link RIntegerMarker}, still, R treats 1.1L as numeric and not especially integer */
-  markedAsInt: boolean
+  markedAsInt:   boolean
   /** see {@link RImaginaryMarker}, compound imaginary numbers are expressions in R */
   complexNumber: boolean
 }
 
-export function number2ts(value: string): RNumberValue {
+export function number2ts (value: string): RNumberValue {
   // TODO: check for legality? even though R should have done that already
 
   // check for hexadecimal number with floating point addon which is supported by R but not by JS :/
@@ -83,25 +84,41 @@ export function number2ts(value: string): RNumberValue {
   }
 
   if (value === RInf) {
-    return { num: Infinity, complexNumber, markedAsInt }
+    return {
+      num: Infinity,
+      complexNumber,
+      markedAsInt
+    }
   }
 
   const floatHex = lcValue.match(RNumHexFloatRegex)
   if (floatHex == null) {
-    return { num: Number(lcValue), complexNumber, markedAsInt }
+    return {
+      num: Number(lcValue),
+      complexNumber,
+      markedAsInt
+    }
   } else {
-    const { intpart, floatpart, exp } = floatHex.groups as { intpart: string | undefined, floatpart: string | undefined, exp: string }
+    const {
+      intpart,
+      floatpart,
+      exp
+    } = floatHex.groups as { intpart: string | undefined, floatpart: string | undefined, exp: string }
     const base = intpart === undefined ? 0 : parseInt(`${intpart}`, 16)
     const floatSuffix = floatpart === undefined ? 0 : getDecimalPlacesWithRadix(floatpart, 16)
     const exponent = parseInt(exp, 10)
-    return { num: (base + floatSuffix) * Math.pow(2, exponent), complexNumber, markedAsInt }
+    return {
+      num: (base + floatSuffix) * Math.pow(2, exponent),
+      complexNumber,
+      markedAsInt
+    }
   }
 }
 
 export interface RStringValue {
-  str: string
+  str:    string
   // from the R-language definition a string is either delimited by a pair of single or double quotes
-  quotes: '"' | "'"
+  quotes: '"' | '\''
 }
 
 /**
@@ -109,25 +126,28 @@ export interface RStringValue {
  *
  * @throws {@link ValueConversionError} if the string has an unknown starting quote
  */
-export function string2ts(value: string): RStringValue {
+export function string2ts (value: string): RStringValue {
   if (value.length < 2) {
     throw new ValueConversionError(`cannot parse string '${value}' as it is too short`)
   }
   const quotes = value[0]
-  if (quotes !== '"' && quotes !== "'") {
+  if (quotes !== '"' && quotes !== '\'') {
     throw new ValueConversionError(`expected string to start with a known quote (' or "), yet received ${value}`)
   }
-  return { str: value.slice(1, -1), quotes }
+  return {
+    str: value.slice(1, -1),
+    quotes
+  }
 }
 
 export const RNa = 'NA'
 export const RNull = 'NULL'
 
-export function isNA(value: string): value is (typeof RNa) {
+export function isNA (value: string): value is (typeof RNa) {
   return value === RNa
 }
 
-export function parseCSV(lines: string[]): string[][] {
+export function parseCSV (lines: string[]): string[][] {
   // TODO: make this scalable?
   return parse(lines.join('\n'), { skipEmptyLines: true })
 }

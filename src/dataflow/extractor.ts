@@ -11,7 +11,7 @@ const dataflowLogger = log.getSubLogger({ name: 'ast' })
 
 /**
  * The basic dataflow algorithm will work like this:
- * Every node produces a dataflow graph, higher operations will be merge the graphs together
+ * Every node produces a dataflow graph, higher operations will merge the graphs together
  */
 
 /** used to get an entry point for every id, after that it allows reference-chasing of the graph */
@@ -28,18 +28,31 @@ export interface DataflowGraphEdge {
   attribute: DataflowGraphEdgeAttribute
 }
 
+export interface DataflowGraphNode {
+  id:   IdType
+  name: string
+}
+
 /**
  * holds the dataflow information found within the given AST
  * there is a node for every variable encountered, obeying scoping rules
  * TODO: additional information for edges
  */
 export interface DataflowGraph {
-  nodes: Array<{
-    id:   IdType
-    name: string
-  }>
+  nodes: DataflowGraphNode[]
   edges: Map<IdType, DataflowGraphEdge[]>
 }
+
+export function mergeDataflowGraphs(a : DataflowGraph, b: DataflowGraph): DataflowGraph {
+  // TODO: join edges
+  // TODO: check for duplicate nodes
+  // TODO: maybe switch to sets?
+  const nodes = [...a.nodes, ...b.nodes]
+  const edges = new Map([...a.edges, ...b.edges])
+
+  return { nodes, edges }
+}
+
 
 export type ScopeName = /** default R global environment */
   '.GlobalEnv'

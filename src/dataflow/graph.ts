@@ -5,7 +5,7 @@ import { IdType } from './id'
 export type DataflowGraphEdgeType =
     | /* the edge determines that source reads target */ 'read'
     | /* the edge determines that source is defined by target */ 'defined-by'
-    // TODO: improve comments
+    // TODO: improve comments and TODO: remove them if they are linked otherwise or make ure that read-read is removed if we know a def marker for them?
     | /* the edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
     | /* the edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable */ 'same-def-def'
 

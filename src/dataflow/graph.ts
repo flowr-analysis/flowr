@@ -5,7 +5,9 @@ import { IdType } from './id'
 export type DataflowGraphEdgeType =
     | /* the edge determines that source reads target */ 'read'
     | /* the edge determines that source is defined by target */ 'defined-by'
-    | /* the edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable */ 'same'
+    // TODO: improve comments
+    | /* the edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
+    | /* the edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable */ 'same-def-def'
 
 // context -- is it always read/defined-by // TODO: loops
 export type DataflowGraphEdgeAttribute = 'always' | 'maybe'

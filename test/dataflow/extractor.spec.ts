@@ -39,7 +39,7 @@ describe('Extract Dataflow Information', () => {
       })
       dataflowGraph.edges.forEach((targets, source) => {
         targets.forEach(to => {
-          console.log(`    ${source} --${to.type === 'same' ? '-' : '>'}|"${to.type} (${to.attribute})"| ${to.target}`)
+          console.log(`    ${source} ${to.type === 'same-def-def' || to.type === 'same-read-read' ? '-.-' : '-->'}|"${to.type} (${to.attribute})"| ${to.target}`)
         })
       })
     })

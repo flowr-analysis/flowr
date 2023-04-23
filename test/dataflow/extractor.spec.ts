@@ -17,7 +17,8 @@ describe('Extract Dataflow Information', () => {
   describeSession('1. atomic dataflow information', (shell) => {
     it('1.1 def for constant variable assignment', async () => {
       const ast = await retrieveAst(shell, `
-        a <- x
+        a <- 3
+        a <- x * m
         if(m > 3) {
           a <- 5
         }
@@ -38,7 +39,7 @@ describe('Extract Dataflow Information', () => {
       })
       dataflowGraph.edges.forEach((targets, source) => {
         targets.forEach(to => {
-          console.log(`    ${source} -->|"${to.type} (${to.attribute})"| ${to.target}`)
+          console.log(`    ${source} --${to.type === 'same' ? '-' : '>'}|"${to.type} (${to.attribute})"| ${to.target}`)
         })
       })
     })

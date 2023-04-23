@@ -27,6 +27,7 @@
         "@typescript-eslint/key-spacing": [
             "error", { "align": "value" }
         ],
+        "semi": ["error", "never"],
         "@typescript-eslint/space-before-function-paren": "off"
     }
 }

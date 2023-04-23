@@ -7,17 +7,22 @@ import type * as Lang from '../r-bridge/lang:4.x/ast/model'
 import { type ParentInformation, type RNodeWithParent } from './parents'
 import { guard } from '../util/assert'
 import {
+  addEdge,
   DataflowGraph, DataflowGraphEdge,
   DataflowGraphEdgeAttribute,
   DataflowGraphEdgeType,
   DataflowScopeName,
-  GLOBAL_SCOPE, LOCAL_SCOPE
+  GLOBAL_SCOPE, LOCAL_SCOPE, mergeDataflowGraphs
 } from './graph'
+import {MergeableRecord} from "../util/objects"
+import {RNode} from "../r-bridge/lang:4.x/ast/model"
 
 const dataflowLogger = log.getSubLogger({ name: 'ast' })
 
+export type DataflowRNode<OtherInfo> = Lang.RSymbol<OtherInfo & Id & ParentInformation>
+
 /**
- * The basic dataflow algorithm will work like this:
+ * The basic dataflow algorithm will work like this: [TODO: extend :D]
  * Every node produces a dataflow graph, higher operations will merge the graphs together
  */
 
@@ -29,134 +34,142 @@ interface FoldReadWriteTarget {
   id:        IdType
 }
 
+/**
+ * during folding we consider each fold-step as a single block (e.g., a variable, a assignment, a function expression, ...)
+ * for each we hold a set of information (in(block), out(block) and unclassified references) as well as the currently produced
+ * dataflow graph.
+ * <p>
+ * These graphs will be combined using {@link #mergeDataflowGraphs} to incrementally produce the final dataflow graph.
+ */
 interface FoldInfo {
   /** variable names that have been used without clear indication of their origin (i.e. if they will be read or written to) */
   activeNodes: IdType[]
-  /** variables that have been read in the current block */
+  /** variables that have been read in the current block (i.e., in(block))*/
   read:        IdType[] // TODO: read from env?
-  /** variables that have been written to the given scope */
+  /** variables that have been written to the given scope (i.e., out(block)) */
   writeTo:     Map<DataflowScopeName, FoldReadWriteTarget[]>
+  /** the complete dataflow graph produced by the current block */
+  graph:       DataflowGraph
 }
 
+/** represents a block with all elements set to their monoid-empty values */
 function emptyFoldInfo (): FoldInfo {
   return {
     activeNodes: [],
     read:        [],
-    writeTo:     new Map()
+    writeTo:     new Map(),
+    graph:       {
+      nodes: [],
+      edges: new Map()
+    }
   }
 }
 
+// TODO: we could add these leafs in the future to get more information about constants etc?
 function processUninterestingLeaf<OtherInfo> (leaf: RNodeWithParent<OtherInfo>): FoldInfo {
   return emptyFoldInfo()
 }
 
-// TODO: is out parameter info the best choice? or should i remain with a closure? i want to reduce nesting
-function processSymbol<OtherInfo> (info: DataflowInformation<OtherInfo>): (symbol: Lang.RSymbol<OtherInfo & Id & ParentInformation>) => FoldInfo {
+// TODO: is out parameter info the best choice? or should i remain with a closure? i wanted to reduce nesting
+function processSymbol<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (symbol: DataflowRNode<OtherInfo>) => FoldInfo {
   // TODO: are there other built-ins?
   return symbol => {
     if (symbol.content === RNull || symbol.content === RNa) {
       return emptyFoldInfo()
     }
-    // TODO: can be replaced by id set if we have a mapping with ids
-    info.dataflowIdMap.set(symbol.id, symbol)
-    info.dataflowGraph.nodes.push({
+    // TODO: can be replaced by id set if we have a mapping with ids on the parented nodes
+    dataflowIdMap.set(symbol.id, symbol)
+    const node = {
       id:   symbol.id,
       name: symbol.content
-    })
+    }
     return {
       activeNodes: [symbol.id],
       read:        [],
-      writeTo:     new Map()
+      writeTo:     new Map(),
+      graph:       {
+        nodes: [node],
+        edges: new Map()
+      }
     }
   }
 }
 
-function processBinaryOp<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: FoldInfo, rhs: FoldInfo): FoldInfo {
+function processNonAssignmentBinaryOp<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: FoldInfo, rhs: FoldInfo): FoldInfo {
   // TODO: produce special edges
   // TODO: fix merge of map etc.
   return {
-    activeNodes: [...lhs.activeNodes, ...rhs.activeNodes],
-    read:        [...lhs.read, ...rhs.read],
-    writeTo:     new Map([...lhs.writeTo, ...rhs.writeTo])
+    activeNodes: [], // binary ops require reads as wihtout assignments there is no definition
+    read:        [...lhs.read, ...rhs.read, ...lhs.activeNodes, ...rhs.activeNodes],
+    // todo: there must be a more effective way than creating all of those new maps and arrays etc.
+    writeTo:     new Map([...lhs.writeTo, ...rhs.writeTo]),
+    // TODO: insert a join node?
+    graph:       mergeDataflowGraphs(lhs.graph, rhs.graph)
   }
 }
 
-// TODO: edge types
-function addEdge (graph: DataflowGraph, from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): void {
-  const targets = graph.edges.get(from)
-  const edge = {
-    target: to,
-    type,
-    attribute
+
+function identifyReadAndWriteBasedOnOp<OtherInfo>(op: RNodeWithParent<OtherInfo>, rhs: FoldInfo, lhs: FoldInfo) {
+  const read = [...lhs.read, ...rhs.read]
+  const write = [...lhs.writeTo, ...rhs.writeTo]
+
+  let source
+  let target
+  let global = false
+
+  switch (op.lexeme) {
+    case '<-':
+      [target, source] = [lhs, rhs]
+      break
+    case '<<-':
+      [target, source, global] = [lhs, rhs, true]
+      break
+    case '=': // TODO: special
+      [target, source] = [lhs, rhs]
+      break
+    case '->':
+      [target, source] = [rhs, lhs]
+      break
+    case '->>':
+      [target, source, global] = [rhs, lhs, true]
+      break
+    default:
+      throw new Error(`Unknown assignment operator ${JSON.stringify(op)}`)
   }
-  if (targets === undefined) {
-    graph.edges.set(from, [edge])
-  } else {
-    targets.push(edge)
-  }
+  const writeNodes = new Map<string, FoldReadWriteTarget[]>(
+    [...target.activeNodes].map(id => [global ? GLOBAL_SCOPE : LOCAL_SCOPE, [{attribute: 'always', id}]]))
+  return {readTargets: [...source.activeNodes, ...read], writeTargets: new Map<string, FoldReadWriteTarget[]> ([...writeNodes, ...write])}
 }
 
 // TODO: nested assignments like x <- y <- z <- 1
-function processAssignment<OtherInfo> (info: DataflowInformation<OtherInfo>): (op: RNodeWithParent<OtherInfo>, lhs: FoldInfo, rhs: FoldInfo) => FoldInfo {
-  return (op, lhs, rhs) => {
-    let read: IdType[]
-    let write: IdType[]
-    // TODO: function scope for '=' in functions
-    let global = false
-
-    switch (op.lexeme) {
-      case '<-':
-        read = rhs.activeNodes
-        write = lhs.activeNodes
-        break
-      case '<<-':
-        read = rhs.activeNodes
-        write = lhs.activeNodes
-        global = true
-        break
-      case '=':
-        read = rhs.activeNodes
-        write = lhs.activeNodes
-        // TODO: call-local
-        break
-      case '->':
-        read = lhs.activeNodes
-        write = rhs.activeNodes
-        break
-      case '->>':
-        read = lhs.activeNodes
-        write = rhs.activeNodes
-        global = true
-        break
-      default:
-        throw new Error(`Unknown assignment operator ${JSON.stringify(op)}`)
-    }
-    // TODO: identify global, local etc.
-    for (const writeId of write) {
-      for (const readId of read) {
-        // TODO: update in if etc? => move grpahs to top and merge them here
-        addEdge(info.dataflowGraph, writeId, readId, 'defined-by', 'always')
+function processAssignment<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: FoldInfo, rhs: FoldInfo): FoldInfo {
+  const { readTargets, writeTargets } = identifyReadAndWriteBasedOnOp(op,  rhs, lhs)
+  const nextGraph = mergeDataflowGraphs(lhs.graph, rhs.graph)
+  // TODO: identify global, local etc.
+  for (const [, writeTarget] of writeTargets) {
+    for (const { id: writeId } of writeTarget) {
+      for (const readId of readTargets) {
+        addEdge(nextGraph, writeId, readId, 'defined-by', 'always')
       }
     }
-    // TODO URGENT: keep write to
-    const targets: FoldReadWriteTarget[] = write.map(id => ({
-      attribute: 'always',
-      id
-    }))
-    return {
-      activeNodes: [],
-      read,
-      writeTo:     new Map([[global ? GLOBAL_SCOPE : LOCAL_SCOPE, targets]])
-    }
+  }
+  // TODO URGENT: keep write to
+  return {
+    activeNodes: [],
+    read:        readTargets,
+    writeTo:     writeTargets,
+    graph:       nextGraph
   }
 }
 
 // TODO: potential dataflow with both branches!
 function processIfThenElse<OtherInfo> (ifThen: RNodeWithParent<OtherInfo>, cond: FoldInfo, then: FoldInfo, otherwise?: FoldInfo): FoldInfo {
+  // TODO: update correctly with maybe edges
   return {
     activeNodes: [...cond.activeNodes, ...then.activeNodes, ...(otherwise?.activeNodes ?? [])],
     read:        [...cond.read, ...then.read, ...(otherwise?.read ?? [])],
-    writeTo:     new Map([...cond.writeTo, ...then.writeTo, ...(otherwise?.writeTo ?? [])])
+    writeTo:     new Map([...cond.writeTo, ...then.writeTo, ...(otherwise?.writeTo ?? [])]),
+    graph:       mergeDataflowGraphs(cond.graph, then.graph, otherwise?.graph)
   }
 }
 
@@ -165,10 +178,10 @@ type WritePointerTargets = { type: 'always', id: IdType } | { type: 'maybe', ids
 type WritePointers = Map<IdType, WritePointerTargets>
 
 // TODO: test
-function updateAllWriteTargets<OtherInfo> (currentChild: FoldInfo, info: DataflowInformation<OtherInfo>, writePointers: WritePointers): void {
+function updateAllWriteTargets<OtherInfo> (currentChild: FoldInfo, dataflowIdMap: DataflowMap<OtherInfo>, writePointers: WritePointers): void {
   for (const [, writeTargets] of currentChild.writeTo) {
     for (const writeTarget of writeTargets) {
-      const mustHaveTarget = info.dataflowIdMap.get(writeTarget.id)
+      const mustHaveTarget = dataflowIdMap.get(writeTarget.id)
       guard(mustHaveTarget !== undefined, `Could not find target for ${JSON.stringify(writeTarget)}`)
       const writeName = mustHaveTarget.lexeme
       guard(writeName !== undefined, `${writeTarget.id} does not have an attached writeName`)
@@ -196,45 +209,80 @@ function updateAllWriteTargets<OtherInfo> (currentChild: FoldInfo, info: Dataflo
   }
 }
 
-function processExprList<OtherInfo> (info: DataflowInformation<OtherInfo>): (exprList: RNodeWithParent<OtherInfo>, children: FoldInfo[]) => FoldInfo {
+function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (exprList: RNodeWithParent<OtherInfo>, children: FoldInfo[]) => FoldInfo {
   // TODO: deal with information in order + scoping when we have functions
   // we assume same scope for local currently, yet we return local writes too, as a simple exprList does not act as scoping block
   // link a given name to IdTypes
   return (exprList, children) => {
     // TODO: keep scope for writePointers
     const writePointers = new Map<string, WritePointerTargets>()
-    const remainingRead = []
+    const remainingRead =  new Map<string, IdType[]>() // name to id
 
-    // TODO: optimize by linking names
+    // TODO: this is definitely wrong
+    const nextGraph = mergeDataflowGraphs(...children.map(child => child.graph))
+
     for (const element of children) {
       const currentElement: FoldInfo = element
       for (const readId of currentElement.read) {
-        const existingRef = info.dataflowIdMap.get(readId)
+        const existingRef = dataflowIdMap.get(readId)
         const readName = existingRef?.lexeme
-        if (readName === undefined) {
-          throw new Error(`Could not find name for ${readId}`)
-        }
+        guard (readName !== undefined, `Could not find name for read variable ${readId}`)
+
         const probableTarget = writePointers.get(readName)
+        console.log("searching", readName, probableTarget)
         if (probableTarget === undefined) {
-          // keep it, for we have no target
-          remainingRead.push(readId)
+          // keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
+          if(remainingRead.has(readName)) {
+            remainingRead.get(readName)?.push(readId)
+          } else {
+            remainingRead.set(readName, [readId])
+          }
         } else if (probableTarget.type === 'always') {
-          addEdge(info.dataflowGraph, readId, probableTarget.id, 'read', 'always')
+          addEdge(nextGraph, readId, probableTarget.id, 'read', 'always')
         } else {
           for (const target of probableTarget.ids) {
-            addEdge(info.dataflowGraph, readId, target, 'read', 'maybe')
+            addEdge(nextGraph, readId, target, 'read', 'maybe')
+          }
+        }
+      }
+      // add same variable reads for deferd if they are read previously but not dependent
+      // TODO: deal with globals etc.
+      for (const [, writeIds] of currentElement.writeTo) {
+        for(const { id: writeId } of writeIds) {
+          const existingRef = dataflowIdMap.get(writeId)
+          const writeName = existingRef?.lexeme
+          guard(writeName !== undefined, `Could not find name for write variable ${writeId}`)
+          console.log('writeName', writeName, remainingRead)
+          if (remainingRead.has(writeName)) {
+            const readIds = remainingRead.get(writeName)
+            guard(readIds !== undefined, `Could not find readId for write variable ${writeId}`)
+            for(const readId of readIds) {
+              addEdge(nextGraph, readId, writeId, 'same', 'always')
+            }
+          } else if (writePointers.has(writeName)) { // write-write
+            const writePointer = writePointers.get(writeName)
+            guard(writePointer !== undefined, `Could not find writePointer for write variable ${writeId}`)
+            if (writePointer.type === 'always') {
+              addEdge(nextGraph, writePointer.id, writeId, 'same', 'always')
+            } else {
+              for (const target of writePointer.ids) {
+                addEdge(nextGraph, target, writeId, 'same', 'always')
+              }
+            }
           }
         }
       }
 
+
       // for each variable read add the closest write and if we have one, remove it from read
-      updateAllWriteTargets(currentElement, info, writePointers)
+      updateAllWriteTargets(currentElement, dataflowIdMap, writePointers)
     }
     return {
       // TODO: ensure active killed on that level?
       activeNodes: children.flatMap(child => child.activeNodes),
-      read:        remainingRead,
-      writeTo:     new Map(children.flatMap(child => [...child.writeTo]))
+      read:        [...remainingRead.values()].flatMap(i => i),
+      writeTo:     new Map(children.flatMap(child => [...child.writeTo])),
+      graph:       nextGraph
     }
   }
 }
@@ -245,33 +293,28 @@ export interface DataflowInformation<OtherInfo> {
 }
 
 export function produceDataFlowGraph<OtherInfo> (ast: RNodeWithParent<OtherInfo>): DataflowInformation<OtherInfo> {
-  const info = {
-    dataflowIdMap: new BiMap<IdType, RNodeWithParent<OtherInfo>>(),
-    dataflowGraph: {
-      nodes: [],
-      edges: new Map<IdType, DataflowGraphEdge[]>() // TODO: default map?
-    }
-  }
+  const dataflowIdMap = new BiMap<IdType, RNodeWithParent<OtherInfo>>()
+
 
   const foldResult = foldAst<OtherInfo & Id & ParentInformation, FoldInfo>(ast, {
     foldNumber:  processUninterestingLeaf,
     foldString:  processUninterestingLeaf,
     foldLogical: processUninterestingLeaf,
-    foldSymbol:  processSymbol(info),
+    foldSymbol:  processSymbol(dataflowIdMap),
     binaryOp:    {
-      foldLogicalOp:    processBinaryOp,
-      foldArithmeticOp: processBinaryOp,
-      foldComparisonOp: processBinaryOp,
+      foldLogicalOp:    processNonAssignmentBinaryOp,
+      foldArithmeticOp: processNonAssignmentBinaryOp,
+      foldComparisonOp: processNonAssignmentBinaryOp,
       // TODO: deal with assignments
-      foldAssignment:   processAssignment(info)
+      foldAssignment:   processAssignment
     },
     foldIfThenElse: processIfThenElse,
-    foldExprList:   processExprList(info)
+    foldExprList:   processExprList(dataflowIdMap)
   })
 
   // TODO: process
   dataflowLogger.warn(`remaining actives: ${JSON.stringify(foldResult)}`)
 
   // TODO: implement
-  return info
+  return { dataflowIdMap, dataflowGraph: foldResult.graph }
 }

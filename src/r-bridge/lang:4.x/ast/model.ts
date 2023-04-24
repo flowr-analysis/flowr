@@ -21,6 +21,7 @@ export enum Type {
   Number = 'NUM_CONST', // TODO: support negative numbers
   String = 'STR_CONST',
   BinaryOp = 'binaryop',
+  Comment = 'COMMENT',
   /* can be special operators like %*% or %o% */
   Special = 'SPECIAL',
   // parens will be removed and dealt with as precedences/arguments automatically

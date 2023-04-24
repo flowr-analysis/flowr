@@ -243,6 +243,9 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       case Lang.Type.BraceRight:
         log.debug(`skipping brace information for ${JSON.stringify(elem)}`)
         return undefined
+      case Lang.Type.Comment:
+        log.debug(`skipping comment information for ${JSON.stringify(elem)}`)
+        return undefined
       case Lang.Type.Expr:
       case Lang.Type.ExprHelpAssignWrapper:
         return this.parseExpr(elem.content)

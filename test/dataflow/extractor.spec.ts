@@ -75,7 +75,6 @@ describe('Extract Dataflow Information', () => {
             circularGraph.addNode('0', 'x', scope).addNode('1', 'x')
               .addEdge('0', '1', 'defined-by', 'always')
           }
-          circularGraph.addEdge('0', '1', 'same-read-read', 'always')
 
           assertDataflow(`${circularAssignment} (circular assignment)`, shell, circularAssignment, circularGraph)
         })
@@ -171,6 +170,30 @@ describe('Extract Dataflow Information', () => {
       const astWithId = decorateWithIds(ast)
       const astWithParentIds = decorateWithParentInformation(astWithId.decoratedAst)
       const { dataflowIdMap, dataflowGraph } = produceDataFlowGraph(astWithParentIds)
+
+      // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
+      console.log(graphToMermaidUrl(dataflowGraph, dataflowIdMap))
+    })
+
+    it('100. the classic', async () => {
+      const ast = await retrieveAst(shell, `
+          sum <- 0
+          product <- 1
+          w <- 7
+          N <- 10
+          
+          for (i in 1:(N-1)) {
+            sum <- sum + i + w
+            product <- product * i
+          }
+          
+          # TODO: currently not available :/
+          # cat("Sum:", sum, "\\n")
+          # cat("Product:", product, "\\n")
+      `)
+      const astWithId = decorateWithIds(ast)
+      const astWithParentIds = decorateWithParentInformation(astWithId.decoratedAst)
+      const {dataflowIdMap, dataflowGraph} = produceDataFlowGraph(astWithParentIds)
 
       // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
       console.log(graphToMermaidUrl(dataflowGraph, dataflowIdMap))

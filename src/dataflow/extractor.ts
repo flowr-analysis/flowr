@@ -192,7 +192,6 @@ function processAssignment<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: Fold
       }
     }
   }
-  // TODO URGENT: keep write to
   return {
     activeNodes: [],
     in:          readTargets,
@@ -389,7 +388,8 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
               const readIds = remainingRead.get(writeName)
               guard(readIds !== undefined, `Could not find readId for write variable ${writeId}`)
               for (const readId of readIds) {
-                nextGraph.addEdge(readId, writeId, 'same-read-read', 'always')
+                // TODO: is this really correct with write and read roles inverted?
+                nextGraph.addEdge(writeId, readId, 'defined-by', 'always')
               }
             } else if (writePointers.has(writeName)) { // write-write
               const writePointer = writePointers.get(writeName)
@@ -438,7 +438,6 @@ export function produceDataFlowGraph<OtherInfo> (ast: RNodeWithParent<OtherInfo>
       foldLogicalOp:    processNonAssignmentBinaryOp,
       foldArithmeticOp: processNonAssignmentBinaryOp,
       foldComparisonOp: processNonAssignmentBinaryOp,
-      // TODO: deal with assignments
       foldAssignment:   processAssignment
     },
     loop: {

@@ -210,7 +210,7 @@ function formatRange(range: Lang.Range | undefined): string {
 
 // TODO: subgraphs?
 export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
-  const lines = ['flowchart LR']
+  const lines = ['flowchart TD']
   for (const [id, info] of graph.entries()) {
     const def = info.definedAtPosition !== false
     lines.push(`    ${id}${def ? "[" : "([" }"\`${info.name}\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"${def ? "]" : "])" }`)

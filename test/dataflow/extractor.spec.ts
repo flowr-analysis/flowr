@@ -15,6 +15,35 @@ describe('Extract Dataflow Information', () => {
       edges: new Map<IdType, DataflowGraphEdge[]>()
     })
 
+    // TODO: these will be more interesting whenever we have more information on the edges (like modification etc.)
+    describe('2. binary operators', () => {
+      describe('2.1. addition', () => {
+        // TODO: some way to automatically retrieve the id if they are unique? || just allow to omit it?
+        assertDataflow('2.1. different variables', shell, 'x + y', {
+          nodes: [{
+            id:   '0',
+            name: 'x'
+          }, {
+            id:   '1',
+            name: 'y'
+          }],
+          edges: new Map<IdType, DataflowGraphEdge[]>()
+        })
+
+        assertDataflow('2.2. same variables', shell, 'x + x', {
+          nodes: [{
+            id:   '0',
+            name: 'x'
+          }, {
+            id:   '1',
+            name: 'x'
+          }],
+          // TODO: allow to specify same edges etc. independent of their direction
+          edges: new Map<IdType, DataflowGraphEdge[]>()
+        })
+      })
+    })
+
     it('99. def for constant variable assignment', async () => {
       const ast = await retrieveAst(shell, `
         a <- 3

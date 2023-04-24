@@ -110,7 +110,7 @@ function processNonAssignmentBinaryOp<OtherInfo> (op: RNodeWithParent<OtherInfo>
   // TODO: produce special edges
   // TODO: fix merge of map etc.
   return {
-    activeNodes: [], // binary ops require reads as wihtout assignments there is no definition
+    activeNodes: [], // binary ops require reads as without assignments there is no definition
     in:          [...lhs.in, ...rhs.in, ...lhs.activeNodes, ...rhs.activeNodes],
     // todo: there must be a more effective way than creating all of those new maps and arrays etc.
     out:         new Map([...lhs.out, ...rhs.out]),
@@ -267,7 +267,6 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
         guard (readName !== undefined, `Could not find name for read variable ${readId}`)
 
         const probableTarget = writePointers.get(readName)
-        console.log("searching", readName, probableTarget)
         if (probableTarget === undefined) {
           // keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
           if(remainingRead.has(readName)) {

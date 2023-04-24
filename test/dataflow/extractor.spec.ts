@@ -1,19 +1,21 @@
 // TODO: get def-usage for every line
 import { assertDataflow, describeSession, retrieveAst } from '../helper/shell'
 import { produceDataFlowGraph } from '../../src/dataflow/extractor'
-import { decorateWithIds, deterministicCountingIdGenerator, IdType } from '../../src/dataflow/id'
-import type * as Lang from '../../src/r-bridge/lang:4.x/ast/model'
+import { decorateWithIds } from '../../src/dataflow/id'
 import { decorateWithParentInformation } from '../../src/dataflow/parents'
-import { DataflowGraph, DataflowGraphEdge, graphToMermaidUrl } from '../../src/dataflow/graph'
-import { assert } from 'chai'
+import { DataflowGraph, graphToMermaidUrl } from '../../src/dataflow/graph'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool } from "../helper/provider"
 
 
 describe('Extract Dataflow Information', () => {
   describeSession('1. atomic dataflow information', (shell) => {
-    assertDataflow('1. simple variable', shell, 'x',
-      new DataflowGraph().addNode('0', 'x')
-    )
+    describe('0. uninteresting leafs', () => {
+      for(const input of ['42', '"test"', 'TRUE', 'NA', 'NULL']) {
+        assertDataflow(input, shell, input, new DataflowGraph())
+      }
+    })
+
+    assertDataflow('1. simple variable', shell, 'xylophon', new DataflowGraph().addNode('0', 'xylophon'))
 
     // TODO: these will be more interesting whenever we have more information on the edges (like modification etc.)
     describe('2. non-assignment binary operators', () => {
@@ -72,6 +74,7 @@ describe('Extract Dataflow Information', () => {
       }
     })
 
+    // if then else
     it('99. def for constant variable assignment', async () => {
       const ast = await retrieveAst(shell, `
         a <- 3

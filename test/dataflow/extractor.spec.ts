@@ -6,7 +6,7 @@ import type * as Lang from '../../src/r-bridge/lang:4.x/ast/model'
 import { decorateWithParentInformation } from '../../src/dataflow/parents'
 import { DataflowGraph, DataflowGraphEdge, graphToMermaidUrl } from '../../src/dataflow/graph'
 import { assert } from 'chai'
-import { RNonAssignmentBinaryOpPool } from "../helper/provider"
+import { RAssignmentOpPool, RNonAssignmentBinaryOpPool } from "../helper/provider"
 
 
 describe('Extract Dataflow Information', () => {
@@ -16,7 +16,7 @@ describe('Extract Dataflow Information', () => {
     )
 
     // TODO: these will be more interesting whenever we have more information on the edges (like modification etc.)
-    describe('2. binary operators', () => {
+    describe('2. non-assignment binary operators', () => {
       let idx = 0
       for(const opSuite of RNonAssignmentBinaryOpPool) {
         describe(`2.${++idx} ${opSuite.label}`, () => {
@@ -24,15 +24,50 @@ describe('Extract Dataflow Information', () => {
           for(const op of opSuite.pool) {
             describe(`2.${idx}.${++opIdx} ${op.str}`, () => {
               // TODO: some way to automatically retrieve the id if they are unique? || just allow to omit it?
-              assertDataflow('different variables', shell, `x ${op.str} y`,
+              const inputDifferent = `x ${op.str} y`
+              assertDataflow(`${inputDifferent} (diff. variables)`, shell, inputDifferent,
                 new DataflowGraph().addNode('0', 'x').addNode('1', 'y'))
 
-              assertDataflow('same variables', shell, `x ${op.str} x`,
+              const inputSame = `x ${op.str} x`
+              assertDataflow(`${inputSame} (same variables)`, shell, inputSame,
                 new DataflowGraph().addNode('0', 'x').addNode('1', 'x')
                   .addEdge('0', '1', 'same-read-read', 'always')
               )
             })
           }
+        })
+      }
+    })
+
+    describe('3. assignments', () => {
+      // TODO: for all assignment ops!
+      for(const op of RAssignmentOpPool) {
+        let idx = 0
+        describe(`3.${++idx} ${op.str}`, () => {
+          const constantAssignment = `x ${op.str} 5`
+          assertDataflow(`${constantAssignment} (constant assignment)`, shell, constantAssignment,
+            new DataflowGraph().addNode('0', 'x')
+          )
+
+          const variableAssignment = `x ${op.str} y`
+          const dataflowGraph = new DataflowGraph().addNode('0', 'x').addNode('1', 'y')
+          if(op.str === '->' || op.str === '->>') {
+            dataflowGraph.addEdge('1', '0', 'defined-by', 'always')
+          } else {
+            dataflowGraph.addEdge('0', '1', 'defined-by', 'always')
+          }
+          assertDataflow(`${variableAssignment} (variable assignment)`, shell, variableAssignment, dataflowGraph)
+
+          const circularAssignment = `x ${op.str} x`
+
+          const circularGraph = new DataflowGraph().addNode('0', 'x').addNode('1', 'x')
+            .addEdge('0', '1', 'same-read-read', 'always')
+          if(op.str === '->' || op.str === '->>') {
+            circularGraph.addEdge('1', '0', 'defined-by', 'always')
+          } else {
+            circularGraph.addEdge('0', '1', 'defined-by', 'always')
+          }
+          assertDataflow(`${circularAssignment} (circular assignment)`, shell, circularAssignment, circularGraph)
         })
       }
     })

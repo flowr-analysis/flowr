@@ -62,288 +62,36 @@ export interface OperatorInformationValue extends MergeableRecord {
 // TODO: make it complete
 /* eslint-disable */
 export const OperatorDatabase: Record<StringUsedInRCode, OperatorInformationValue> & MergeableRecord = {
-  '+': {
-    name:                 'addition or unary +',
-    stringUsedInRAst:     '+',
-    stringUsedInternally: '+',
-    flavorInRAst:         'arithmetic',
-    flavor:               'arithmetic',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Both,
-    usedAs:               'operation'
-  },
-  '-': {
-    name:                 'subtraction or unary -',
-    stringUsedInRAst:     '-',
-    stringUsedInternally: '-',
-    flavorInRAst:         'arithmetic',
-    flavor:               'arithmetic',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Both,
-    usedAs:               'operation'
-  },
-  '*': {
-    name:                 'multiplication',
-    stringUsedInRAst:     '*',
-    stringUsedInternally: '*',
-    flavorInRAst:         'arithmetic',
-    flavor:               'arithmetic',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '/': {
-    name:                 'division',
-    stringUsedInRAst:     '/',
-    stringUsedInternally: '/',
-    flavorInRAst:         'arithmetic',
-    flavor:               'arithmetic',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '^': {
-    name:                 'exponentiation',
-    stringUsedInRAst:     '^',
-    stringUsedInternally: '^',
-    flavorInRAst:         'arithmetic',
-    flavor:               'arithmetic',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
+  '+':    { name: 'addition or unary +',          stringUsedInRAst: '+',            stringUsedInternally: '+',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Both,   usedAs: 'operation' },
+  '-':    { name: 'subtraction or unary -',       stringUsedInRAst: '-',            stringUsedInternally: '-',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Both,   usedAs: 'operation' },
+  '*':    { name: 'multiplication',               stringUsedInRAst: '*',            stringUsedInternally: '*',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '/':    { name: 'division',                     stringUsedInRAst: '/',            stringUsedInternally: '/',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '^':    { name: 'exponentiation',               stringUsedInRAst: '^',            stringUsedInternally: '^',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
   /* no error, R uses ^ to represent ** in the AST */
-  '**':   {
-    name:                 'alternative exponentiation',
-    stringUsedInRAst:     '^',
-    stringUsedInternally: '**',
-    flavorInRAst:         'arithmetic',
-    flavor:               'arithmetic',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '%%':   {
-    name:                 'modulus',
-    stringUsedInRAst:     '%%',
-    stringUsedInternally: '%%',
-    flavorInRAst:         'special',
-    flavor:               'arithmetic',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '%/%':  {
-    name:                 'integer division',
-    stringUsedInRAst:     '%/%',
-    stringUsedInternally: '%/%',
-    flavorInRAst:         'special',
-    flavor:               'arithmetic',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '%*%':  {
-    name:                 'matrix product',
-    stringUsedInRAst:     '%*%',
-    stringUsedInternally: '%*%',
-    flavorInRAst:         'special',
-    flavor:               'arithmetic',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '%o%':  {
-    name:                 'outer product',
-    stringUsedInRAst:     '%o%',
-    stringUsedInternally: '%o%',
-    flavorInRAst:         'special',
-    flavor:               'arithmetic',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '%x%':  {
-    name:                 'kronecker product',
-    stringUsedInRAst:     '%x%',
-    stringUsedInternally: '%x%',
-    flavorInRAst:         'special',
-    flavor:               'arithmetic',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '==':   {
-    name:                 'equal to',
-    stringUsedInRAst:     'EQ',
-    stringUsedInternally: '==',
-    flavorInRAst:         'comparison',
-    flavor:               'comparison',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '!=':   {
-    name:                 'not equal to',
-    stringUsedInRAst:     'NE',
-    stringUsedInternally: '!=',
-    flavorInRAst:         'comparison',
-    flavor:               'comparison',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '>':    {
-    name:                 'greater than',
-    stringUsedInRAst:     'GT',
-    stringUsedInternally: '>',
-    flavorInRAst:         'comparison',
-    flavor:               'comparison',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '>=':   {
-    name:                 'greater than or equal to',
-    stringUsedInRAst:     'GE',
-    stringUsedInternally: '>=',
-    flavorInRAst:         'comparison',
-    flavor:               'comparison',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '<':    {
-    name:                 'less than',
-    stringUsedInRAst:     'LT',
-    stringUsedInternally: '<',
-    flavorInRAst:         'comparison',
-    flavor:               'comparison',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '<=':   {
-    name:                 'less than or equal to',
-    stringUsedInRAst:     'LE',
-    stringUsedInternally: '<=',
-    flavorInRAst:         'comparison',
-    flavor:               'comparison',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '&':    {
-    name:                 'logical and (vectorized)',
-    stringUsedInRAst:     'AND',
-    stringUsedInternally: '&',
-    flavorInRAst:         'logical',
-    flavor:               'logical',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '&&':   {
-    name:                 'logical and (non-vectorized)',
-    stringUsedInRAst:     'AND2',
-    stringUsedInternally: '&&',
-    flavorInRAst:         'logical',
-    flavor:               'logical',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '|':    {
-    name:                 'logical or (vectorized)',
-    stringUsedInRAst:     'OR',
-    stringUsedInternally: '|',
-    flavorInRAst:         'logical',
-    flavor:               'logical',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '||':   {
-    name:                 'logical or (not-vectorized)',
-    stringUsedInRAst:     'OR2',
-    stringUsedInternally: '||',
-    flavorInRAst:         'logical',
-    flavor:               'logical',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
-  '!':    {
-    name:                 'unary not',
-    stringUsedInRAst:     'NOT',
-    stringUsedInternally: '!',
-    flavorInRAst:         'logical',
-    flavor:               'logical',
-    writtenAs:            'prefix',
-    arity:                OperatorArity.Unary,
-    usedAs:               'operation'
-  },
-  '%in%': {
-    name:                 'matching operator',
-    stringUsedInRAst:     '%in%',
-    stringUsedInternally: '%in%',
-    flavorInRAst:         'special',
-    flavor:               'logical',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'operation'
-  },
+  '**':   { name: 'alternative exponentiation',   stringUsedInRAst: '^' ,           stringUsedInternally: '**',   flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%%':   { name: 'modulus',                      stringUsedInRAst: '%%',           stringUsedInternally: '%%',   flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%/%':  { name: 'integer division',             stringUsedInRAst: '%/%',          stringUsedInternally: '%/%',  flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%*%':  { name: 'matrix product',               stringUsedInRAst: '%*%',          stringUsedInternally: '%*%',  flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%o%':  { name: 'outer product',                stringUsedInRAst: '%o%',          stringUsedInternally: '%o%',  flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%x%':  { name: 'kronecker product',            stringUsedInRAst: '%x%',          stringUsedInternally: '%x%',  flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '==':   { name: 'equal to',                     stringUsedInRAst: 'EQ',           stringUsedInternally: '==',   flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '!=':   { name: 'not equal to',                 stringUsedInRAst: 'NE',           stringUsedInternally: '!=',   flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '>':    { name: 'greater than',                 stringUsedInRAst: 'GT',           stringUsedInternally: '>',    flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '>=':   { name: 'greater than or equal to',     stringUsedInRAst: 'GE',           stringUsedInternally: '>=',   flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '<':    { name: 'less than',                    stringUsedInRAst: 'LT',           stringUsedInternally: '<',    flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '<=':   { name: 'less than or equal to',        stringUsedInRAst: 'LE',           stringUsedInternally: '<=',   flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '&':    { name: 'logical and (vectorized)',     stringUsedInRAst: 'AND',          stringUsedInternally: '&',    flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '&&':   { name: 'logical and (non-vectorized)', stringUsedInRAst: 'AND2',         stringUsedInternally: '&&',   flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '|':    { name: 'logical or (vectorized)',      stringUsedInRAst: 'OR',           stringUsedInternally: '|',    flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '||':   { name: 'logical or (not-vectorized)',  stringUsedInRAst: 'OR2',          stringUsedInternally: '||',   flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '!':    { name: 'unary not',                    stringUsedInRAst: 'NOT',          stringUsedInternally: '!',    flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'prefix', arity: OperatorArity.Unary,  usedAs: 'operation' },
+  '%in%': { name: 'matching operator',            stringUsedInRAst: '%in%',         stringUsedInternally: '%in%', flavorInRAst: 'special',    flavor: 'logical',       writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
   // TODO: clean up flavor? should not be special
-  '<-':  {
-    name:                 'left assignment',
-    stringUsedInRAst:     'LEFT_ASSIGN',
-    stringUsedInternally: '<-',
-    flavorInRAst:         'special',
-    flavor:               'assignment',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'assignment'
-  },
-  '<<-': {
-    name:                 'left global assignment',
-    stringUsedInRAst:     'LEFT_ASSIGN',
-    stringUsedInternally: '<<-',
-    flavorInRAst:         'special',
-    flavor:               'assignment',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'assignment'
-  },
-  '->':  {
-    name:                 'right assignment',
-    stringUsedInRAst:     'RIGHT_ASSIGN',
-    stringUsedInternally: '->',
-    flavorInRAst:         'special',
-    flavor:               'assignment',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'assignment'
-  },
-  '->>': {
-    name:                 'right global assignment',
-    stringUsedInRAst:     'RIGHT_ASSIGN',
-    stringUsedInternally: '->>',
-    flavorInRAst:         'special',
-    flavor:               'assignment',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'assignment'
-  },
-  '=':   {
-    name:                 'equal assignment',
-    stringUsedInRAst:     'EQ_ASSIGN',
-    stringUsedInternally: '=',
-    flavorInRAst:         'special',
-    flavor:               'assignment',
-    writtenAs:            'infix',
-    arity:                OperatorArity.Binary,
-    usedAs:               'assignment'
-  }
+  '<-':   { name: 'left assignment',              stringUsedInRAst: 'LEFT_ASSIGN',  stringUsedInternally: '<-',   flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'assignment' },
+  '<<-':  { name: 'left global assignment',       stringUsedInRAst: 'LEFT_ASSIGN',  stringUsedInternally: '<<-',  flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'assignment' },
+  '->':   { name: 'right assignment',             stringUsedInRAst: 'RIGHT_ASSIGN', stringUsedInternally: '->',   flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'assignment' },
+  '->>':  { name: 'right global assignment',      stringUsedInRAst: 'RIGHT_ASSIGN', stringUsedInternally: '->>',  flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'assignment' },
+  '=':    { name: 'equal assignment',             stringUsedInRAst: 'EQ_ASSIGN',    stringUsedInternally: '=',    flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'assignment' }
 }
 /* eslint-enable */
 

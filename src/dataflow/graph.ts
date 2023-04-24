@@ -157,6 +157,26 @@ export class DataflowGraph {
     return this
   }
 
+  // TODO: diff function to get more information?
+  public equals(other: DataflowGraph): boolean {
+    if(this.graph.size !== other.graph.size) {
+      return false
+    }
+    for(const [id, info] of this.graph) {
+      const otherInfo = other.graph.get(id)
+      if(otherInfo === undefined || info.name !== otherInfo.name || info.edges.length !== otherInfo.edges.length) {
+        return false
+      }
+      for(const edge of info.edges) {
+        // TODO: improve finding edges
+        if(otherInfo.edges.find(e => e.target === edge.target && e.type === edge.type && e.attribute === edge.attribute) === undefined) {
+          return false
+        }
+      }
+    }
+    return true
+  }
+
 }
 
 function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeInfo): DataflowGraphNodeInfo {

@@ -305,7 +305,6 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
             const existingRef = dataflowIdMap.get(writeId)
             const writeName = existingRef?.lexeme
             guard(writeName !== undefined, `Could not find name for write variable ${writeId}`)
-            console.log('writeName', writeName, remainingRead)
             if (remainingRead.has(writeName)) {
               const readIds = remainingRead.get(writeName)
               guard(readIds !== undefined, `Could not find readId for write variable ${writeId}`)

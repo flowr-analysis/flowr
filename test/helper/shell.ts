@@ -4,8 +4,8 @@ import { RShell } from '../../src/r-bridge/shell'
 import { testRequiresNetworkConnection } from './network'
 import { getStoredTokenMap, retrieveAstFromRCode } from '../../src/r-bridge/retriever'
 import { assert } from 'chai'
-import { DataflowGraph, DataflowGraphEdge, graphToMermaidUrl } from '../../src/dataflow/graph'
-import { decorateWithIds, deterministicCountingIdGenerator, IdType } from '../../src/dataflow/id'
+import { DataflowGraph, graphToMermaidUrl } from '../../src/dataflow/graph'
+import { decorateWithIds, deterministicCountingIdGenerator } from '../../src/dataflow/id'
 import { decorateWithParentInformation } from '../../src/dataflow/parents'
 import { produceDataFlowGraph } from '../../src/dataflow/extractor'
 
@@ -93,9 +93,10 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
     const { dataflowIdMap, dataflowGraph } = produceDataFlowGraph(astWithParentIds)
 
     try {
-      assert.deepStrictEqual(dataflowGraph, expected)
+      assert.isTrue(expected.equals(dataflowGraph), `got: ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)},\nvs. expected: ${graphToMermaidUrl(expected, dataflowIdMap)}`)
     } catch (e) {
-      console.error('visualization: ', graphToMermaidUrl(dataflowGraph, dataflowIdMap))
+      console.error('vis-wanted:\n', graphToMermaidUrl(expected, dataflowIdMap))
+      console.error('vis-got:\n', graphToMermaidUrl(dataflowGraph, dataflowIdMap))
       throw e
     }
   })

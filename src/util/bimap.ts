@@ -22,6 +22,7 @@ export class BiMap<K, V> implements Map<K, V> {
   }
 
   public clear (): void {
+    this.size = 0
     this.k2v.clear()
     this.v2k.clear()
   }
@@ -33,6 +34,7 @@ export class BiMap<K, V> implements Map<K, V> {
     }
     this.k2v.delete(key)
     this.v2k.delete(value)
+    this.size = this.k2v.size
     return true
   }
 
@@ -67,6 +69,7 @@ export class BiMap<K, V> implements Map<K, V> {
   public set (key: K, value: V): this {
     this.k2v.set(key, value)
     this.v2k.set(value, key)
+    this.size = this.k2v.size
     return this
   }
 

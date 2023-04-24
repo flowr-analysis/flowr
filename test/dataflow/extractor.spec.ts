@@ -1,15 +1,21 @@
 // TODO: get def-usage for every line
-import { describeSession, retrieveAst } from '../helper/shell'
+import { assertDataflow, describeSession, retrieveAst } from '../helper/shell'
 import { produceDataFlowGraph } from '../../src/dataflow/extractor'
-import { decorateWithIds } from '../../src/dataflow/id'
+import { decorateWithIds, deterministicCountingIdGenerator, IdType } from '../../src/dataflow/id'
 import type * as Lang from '../../src/r-bridge/lang:4.x/ast/model'
 import { decorateWithParentInformation } from '../../src/dataflow/parents'
-import { graphToMermaidUrl } from '../../src/dataflow/graph'
+import { DataflowGraphEdge, graphToMermaidUrl } from '../../src/dataflow/graph'
+import { assert } from 'chai'
 
 
 describe('Extract Dataflow Information', () => {
   describeSession('1. atomic dataflow information', (shell) => {
-    it('1.1 def for constant variable assignment', async () => {
+    assertDataflow('1. simple variable', shell, 'x', {
+      nodes: [ { id: '0', name: 'x' } ],
+      edges: new Map<IdType, DataflowGraphEdge[]>()
+    })
+
+    it('99. def for constant variable assignment', async () => {
       const ast = await retrieveAst(shell, `
         a <- 3
         a <- x * m

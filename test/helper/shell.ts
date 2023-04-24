@@ -4,6 +4,10 @@ import { RShell } from '../../src/r-bridge/shell'
 import { testRequiresNetworkConnection } from './network'
 import { getStoredTokenMap, retrieveAstFromRCode } from '../../src/r-bridge/retriever'
 import { assert } from 'chai'
+import { DataflowGraph, DataflowGraphEdge } from '../../src/dataflow/graph'
+import { decorateWithIds, deterministicCountingIdGenerator, IdType } from '../../src/dataflow/id'
+import { decorateWithParentInformation } from '../../src/dataflow/parents'
+import { produceDataFlowGraph } from '../../src/dataflow/extractor'
 
 let defaultTokenMap: Record<string, string>
 
@@ -78,5 +82,16 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
     const baseAst = await retrieveAst(shell, input)
     const ast = decorator(baseAst)
     assert.deepStrictEqual(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
+  })
+}
+
+export const assertDataflow = (name: string, shell: RShell, input: string, expected: DataflowGraph, startIndexForDeterministicIds = 0): void => {
+  it(name, async function () {
+    const ast = await retrieveAst(shell, input)
+    const astWithId = decorateWithIds(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
+    const astWithParentIds = decorateWithParentInformation(astWithId.decoratedAst)
+    const { dataflowGraph } = produceDataFlowGraph(astWithParentIds)
+
+    assert.deepStrictEqual(dataflowGraph, expected)
   })
 }

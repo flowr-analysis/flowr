@@ -5,13 +5,14 @@ import {
   compareRanges,
   type NoInfo,
   type OperatorFlavor,
-  rangeFrom,
+  rangeFrom, RForLoop,
   type RIfThenElse,
   type RNode,
   type RSymbol
 } from './model'
 import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
+import { guard } from "../../../util/assert"
 
 const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
@@ -194,6 +195,12 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       const binary = this.parseBinaryStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2])
       if (binary !== 'no binary structure') {
         return [binary]
+      } else {
+        // TODO: maybe-monad passthrough? or just use undefined
+        const forLoop = this.parseForLoopStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2])
+        if (forLoop !== 'no for-loop') {
+          return [forLoop]
+        }
       }
     } else if (mappedWithName.length === 5) {
       const ifThen = this.parseIfThenStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2], mappedWithName[3], mappedWithName[4])
@@ -272,8 +279,60 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     return this.parseBinaryOp(flavor, lhs, op, rhs)
   }
 
+  private parseForLoopStructure (forToken: NamedXmlBasedJson, condition: NamedXmlBasedJson, body: NamedXmlBasedJson): RForLoop | 'no for-loop' {
+    // funny, for does not use top-level parenthesis
+    if (forToken.name !== Lang.Type.For) {
+      log.debug('encountered non-for token for supposed for-loop structure')
+      return 'no for-loop'
+    } else if (condition.name !== Lang.Type.ForCondition) {
+      throw new XmlParseError(`expected condition for for-loop but found ${JSON.stringify(condition)}`)
+    } else if (body.name !== Lang.Type.Expr) {
+      throw new XmlParseError(`expected expr body for for-loop but found ${JSON.stringify(body)}`)
+    }
+
+    parseLog.debug(`trying to parse for-loop with ${JSON.stringify([forToken, condition, body])}`)
+
+    const { variable: parsedVariable, vector: parsedVector } = this.parseForLoopCondition(condition.content)
+    const parseBody = this.parseOneElementBasedOnType(body)
+
+    if (parsedVariable === undefined || parsedVector === undefined || parseBody === undefined) {
+      throw new XmlParseError(`unexpected under-sided for-loop, received ${JSON.stringify([parsedVariable, parsedVariable, parseBody])} for ${JSON.stringify([forToken, condition, body])}`)
+    }
+
+    const {
+      location,
+      content
+    } = this.retrieveMetaStructure(forToken.content)
+
+    // TODO: assert exists as known operator
+    return {
+      type:     Lang.Type.For,
+      variable: parsedVariable,
+      vector:   parsedVector,
+      body:     parseBody,
+      lexeme:   content,
+      location
+    }
+  }
+
+  private parseForLoopCondition(forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined } {
+    // must have a child which is `in`, a variable on the left, and a vector on the right
+    const children: NamedXmlBasedJson[] = getKeysGuarded(forCondition, this.config.childrenName).map((content: XmlBasedJson) => ({
+      name: this.getName(content),
+      content
+    }))
+    const inPosition = children.findIndex(elem => elem.name === Lang.Type.ForIn)
+    guard(inPosition > 0 && inPosition < children.length - 1, `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`)
+    const variable = this.parseSymbol(children[inPosition - 1].content)
+    // TODO: just parse single element directly
+    const vector = this.parseBasedOnType([children[inPosition + 1].content])
+    guard(vector.length === 1, `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`)
+
+    return { variable, vector: vector[0] }
+  }
+
   private parseIfThenStructure (ifToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, then: NamedXmlBasedJson): RIfThenElse | 'no if-then' {
-    // TODO: guard-like syntax?
+    // TODO: guard-like syntax for this too?
     if (ifToken.name !== Lang.Type.If) {
       log.debug('encountered non-if token for supposed if-then structure')
       return 'no if-then'

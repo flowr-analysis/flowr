@@ -1,7 +1,7 @@
 // assign each node with a unique id to simplify usage and further compares
 import {
   type RBinaryOp,
-  type RExprList,
+  type RExprList, RForLoop,
   type RIfThenElse,
   type RNode,
   type RSingleNode
@@ -18,7 +18,7 @@ export interface Id {
 /** uniquely identifies AST-Nodes */
 export type IdRNode<OtherInfo> = RNode<OtherInfo & Id>
 
-export type IdGenerator<OtherInfo> = (data: RNode<Exclude<OtherInfo, Id>>) => IdType
+export type IdGenerator<OtherInfo> = (data: RNode<OtherInfo>) => IdType
 
 // TODO: other generators?
 /**
@@ -86,6 +86,18 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
     return newExprList
   }
 
+  const foldForLoop = (forLoop: RForLoop<OtherInfo>, variable: IdRNode<OtherInfo>, vector: IdRNode<OtherInfo>, body: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
+    const newForLoop = {
+      ...forLoop,
+      variable,
+      vector,
+      body,
+      id: getId(forLoop)
+    }
+    idMap.set(newForLoop.id, newForLoop)
+    return newForLoop
+  }
+
   const decoratedAst = foldAst(ast, {
     foldNumber:  foldLeaf,
     foldString:  foldLeaf,
@@ -96,6 +108,9 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
       foldArithmeticOp: binaryOp,
       foldComparisonOp: binaryOp,
       foldAssignment:   binaryOp
+    },
+    loop: {
+      foldForLoop
     },
     foldIfThenElse,
     foldExprList

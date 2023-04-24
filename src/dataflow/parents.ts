@@ -1,5 +1,11 @@
 // adds id-based parent information for an ast
-import { type RBinaryOp, type RExprList, type RIfThenElse, type RSingleNode } from '../r-bridge/lang:4.x/ast/model'
+import {
+  type RBinaryOp,
+  type RExprList,
+  RForLoop,
+  type RIfThenElse,
+  type RSingleNode
+} from '../r-bridge/lang:4.x/ast/model'
 import { type Id, type IdRNode, type IdType } from './id'
 import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
 
@@ -51,6 +57,19 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
     }
   }
 
+  const foldForLoop = (loop: RForLoop<OtherInfo & Id>, variable: RNodeWithParent<OtherInfo>, vector: RNodeWithParent<OtherInfo>, body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+    variable.parent = loop.id
+    vector.parent = loop.id
+    body.parent = loop.id
+    return {
+      ...loop,
+      variable,
+      vector,
+      body,
+      parent: undefined
+    }
+  }
+
   return foldAst(ast, {
     foldNumber:  foldLeaf,
     foldString:  foldLeaf,
@@ -61,6 +80,9 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
       foldArithmeticOp: binaryOp,
       foldComparisonOp: binaryOp,
       foldAssignment:   binaryOp
+    },
+    loop: {
+      foldForLoop
     },
     foldIfThenElse,
     foldExprList

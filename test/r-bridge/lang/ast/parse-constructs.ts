@@ -164,4 +164,44 @@ describe('3. Parse simple constructs', () => {
       }
     }
   })
+  // TODO: with and without braces
+  describeSession('1.3 for-loop', shell => {
+    assertAst('for(i in 1:10) 2', shell, 'for(i in 1:42)2', exprList({
+      type:     Lang.Type.For,
+      location: Lang.rangeFrom(1, 1, 1, 3),
+      lexeme:   'for',
+      variable: {
+        type:     Lang.Type.Symbol,
+        location: Lang.rangeFrom(1, 5, 1, 5),
+        lexeme:   'i',
+        content:  'i'
+      },
+      vector: {
+        type:     Lang.Type.BinaryOp,
+        flavor:   'arithmetic',
+        op:       ':',
+        location: Lang.rangeFrom(1, 11, 1, 11),
+        lexeme:   ':',
+        lhs:      {
+          type:     Lang.Type.Number,
+          location: Lang.rangeFrom(1, 10, 1, 10),
+          lexeme:   '1',
+          content:  numVal(1)
+        },
+        rhs: {
+          type:     Lang.Type.Number,
+          location: Lang.rangeFrom(1, 12, 1, 13),
+          lexeme:   '42',
+          content:  numVal(42)
+        }
+      },
+      body: {
+        type:     Lang.Type.Number,
+        location: Lang.rangeFrom(1, 15, 1, 15),
+        lexeme:   '2',
+        content:  numVal(2)
+      }
+    })
+    )
+  })
 })

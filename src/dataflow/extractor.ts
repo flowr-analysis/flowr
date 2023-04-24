@@ -188,7 +188,6 @@ function processAssignment<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: Fold
   }
 }
 
-// TODO: potential dataflow with both branches!
 function processIfThenElse<OtherInfo> (ifThen: RNodeWithParent<OtherInfo>, cond: FoldInfo, then: FoldInfo, otherwise?: FoldInfo): FoldInfo {
   // TODO: allow to also attribute in-put with amybe and always
   // again within an if-then-else we consider all actives to be read
@@ -210,6 +209,42 @@ function processIfThenElse<OtherInfo> (ifThen: RNodeWithParent<OtherInfo>, cond:
   }
 
   const nextGraph = cond.graph.mergeWith(then.graph, otherwise?.graph)
+  linkVariablesInSameScope(nextGraph, ingoing)
+
+  return {
+    activeNodes: [],
+    in:          ingoing,
+    out:         outgoing,
+    graph:       nextGraph
+  }
+}
+
+function processForLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, variable: FoldInfo, vector: FoldInfo, body: FoldInfo): FoldInfo {
+
+  // TODO: allow to also attribute in-put with amybe and always
+  // again within an if-then-else we consider all actives to be read
+  const ingoing = [...variable.in, ...vector.in, ...body.in, ...vector.activeNodes, ...body.activeNodes]
+
+  // we assign all with a maybe marker
+
+  // TODO: variable is written!
+  // TODO: ...variable.activeNodes
+  const outgoing = new Map([...variable.out])
+
+  for(const [scope, targets] of body.out) {
+    const existing = outgoing.get(scope)
+    const existingIds = existing?.flatMap(t => t.attribute === 'always' ? [t.id] : t.ids) ?? []
+    outgoing.set(scope, targets.map(t => {
+      if(t.attribute === 'always') {
+        return {attribute: 'maybe', ids: [t.id, ...existingIds]}
+      } else {
+        return t
+      }
+    }))
+  }
+
+  // TODO: scoping
+  const nextGraph = vector.graph.mergeWith(vector.graph, body.graph)
   linkVariablesInSameScope(nextGraph, ingoing)
 
   return {
@@ -366,6 +401,9 @@ export function produceDataFlowGraph<OtherInfo> (ast: RNodeWithParent<OtherInfo>
       foldComparisonOp: processNonAssignmentBinaryOp,
       // TODO: deal with assignments
       foldAssignment:   processAssignment
+    },
+    loop: {
+      foldForLoop: processForLoop,
     },
     foldIfThenElse: processIfThenElse,
     foldExprList:   processExprList(dataflowIdMap)

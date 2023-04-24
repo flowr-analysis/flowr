@@ -113,6 +113,11 @@ export class DataflowGraph {
     return this
   }
 
+  /**
+   * Will insert a new edge into the graph,
+   * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
+   * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
+   */
   public addEdge(from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): DataflowGraph {
     // sort
     if(type === 'same-read-read' || type === 'same-def-def') {
@@ -167,6 +172,7 @@ export class DataflowGraph {
       if(otherInfo === undefined || info.name !== otherInfo.name || info.edges.length !== otherInfo.edges.length) {
         return false
       }
+      // TODO: assuming that all edges are unique (which should be ensured by constructed)
       for(const edge of info.edges) {
         // TODO: improve finding edges
         if(otherInfo.edges.find(e => e.target === edge.target && e.type === edge.type && e.attribute === edge.attribute) === undefined) {

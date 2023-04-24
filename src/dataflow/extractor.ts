@@ -102,6 +102,7 @@ function processNonAssignmentBinaryOp<OtherInfo> (op: RNodeWithParent<OtherInfo>
   const ingoing = [...lhs.in, ...rhs.in, ...lhs.activeNodes, ...rhs.activeNodes]
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
   linkVariablesInSameScope(nextGraph, ingoing)
+
   return {
     activeNodes: [], // binary ops require reads as without assignments there is no definition
     in:          ingoing,
@@ -111,6 +112,7 @@ function processNonAssignmentBinaryOp<OtherInfo> (op: RNodeWithParent<OtherInfo>
   }
 }
 
+/** does not connect fully but only link so that all are connected, updates teh graph in-place */
 function linkVariablesInSameScope(graph: DataflowGraph, idPool: IdType[]): void {
   const nameIdShares = new DefaultMap<string, IdType[]>(() => [])
   idPool.forEach(id => {
@@ -121,13 +123,14 @@ function linkVariablesInSameScope(graph: DataflowGraph, idPool: IdType[]): void 
   })
 
   for (const ids of nameIdShares.values()) {
-    if (ids.length > 1) {
-      for (const id of ids) {
-        graph.addEdges(id, ids.filter(otherId => otherId !== id), 'same-read-read', 'always')
-      }
+    if (ids.length <= 1) {
+      continue
+    }
+    const base = ids[0]
+    for(let i = 1; i < ids.length; i++) {
+      graph.addEdge(base, ids[i], 'same-read-read', 'always')
     }
   }
-
 }
 
 
@@ -188,7 +191,8 @@ function processAssignment<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: Fold
 // TODO: potential dataflow with both branches!
 function processIfThenElse<OtherInfo> (ifThen: RNodeWithParent<OtherInfo>, cond: FoldInfo, then: FoldInfo, otherwise?: FoldInfo): FoldInfo {
   // TODO: allow to also attribute in-put with amybe and always
-  const ingoing = [...cond.in, ...then.in, ...(otherwise?.in ?? [])]
+  // again within an if-then-else we consider all actives to be read
+  const ingoing = [...cond.in, ...then.in, ...(otherwise?.in ?? []), ...cond.activeNodes, ...then.activeNodes, ...(otherwise?.activeNodes ?? [])]
 
   // we assign all with a maybe marker
   const outgoing = new Map([...cond.out])
@@ -205,12 +209,14 @@ function processIfThenElse<OtherInfo> (ifThen: RNodeWithParent<OtherInfo>, cond:
     }))
   }
 
+  const nextGraph = cond.graph.mergeWith(then.graph, otherwise?.graph)
+  linkVariablesInSameScope(nextGraph, ingoing)
 
   return {
-    activeNodes: [...cond.activeNodes, ...then.activeNodes, ...(otherwise?.activeNodes ?? [])],
+    activeNodes: [],
     in:          ingoing,
     out:         outgoing,
-    graph:       cond.graph.mergeWith(then.graph, otherwise?.graph)
+    graph:       nextGraph
   }
 }
 

@@ -8,7 +8,7 @@ import { RAssignmentOpPool, RNonAssignmentBinaryOpPool } from "../helper/provide
 
 
 describe('Extract Dataflow Information', () => {
-  describeSession('1. atomic dataflow information', (shell) => {
+  describeSession('A. atomic dataflow information', (shell) => {
     describe('0. uninteresting leafs', () => {
       for(const input of ['42', '"test"', 'TRUE', 'NA', 'NULL']) {
         assertDataflow(input, shell, input, new DataflowGraph())
@@ -74,7 +74,68 @@ describe('Extract Dataflow Information', () => {
       }
     })
 
-    // if then else
+    describe('4. if-then-else', () => {
+      // spacing issues etc. are dealt with within the parser, however, braces are not allowed to introduce scoping artifacts
+      let variant = 0
+      for(const b of [ { label: 'without braces', func: (x: string) => `${x}` }, { label: 'with braces', func: (x: string) => `{ ${x} }` }]) {
+        describe(`4.${++variant} Variant ${b.label}`, () => {
+          describe(`4.${variant}.1 if-then, no else`, () => {
+            assertDataflow(`4.${variant}.1.1 completely constant`, shell, `if (TRUE) ${b.func('1')}`,
+              new DataflowGraph()
+            )
+            assertDataflow(`4.${variant}.1.2 compare cond.`, shell, `if (x > 5) ${b.func('1')}`,
+              new DataflowGraph().addNode('0', 'x')
+            )
+            assertDataflow(`4.${variant}.1.3 compare cond. symbol in then`, shell, `if (x > 5) ${b.func('y')}`,
+              new DataflowGraph().addNode('0', 'x').addNode('3', 'y')
+            )
+            assertDataflow(`4.${variant}.1.4 all variables`, shell, `if (x > y) ${b.func('z')}`,
+              new DataflowGraph().addNode('0', 'x').addNode('1', 'y').addNode('3', 'z')
+            )
+            assertDataflow(`4.${variant}.1.5 all variables, some same`, shell, `if (x > y) ${b.func('x')}`,
+              new DataflowGraph().addNode('0', 'x').addNode('1', 'y').addNode('3', 'x')
+                .addEdge('0', '3', 'same-read-read', 'always')
+            )
+            assertDataflow(`4.${variant}.1.6 all same variables`, shell, `if (x > x) ${b.func('x')}`,
+              new DataflowGraph().addNode('0', 'x').addNode('1', 'x').addNode('3', 'x')
+                .addEdge('0', '1', 'same-read-read', 'always')
+              // TODO: theoretically they just have to be connected
+                .addEdge('0', '3', 'same-read-read', 'always')
+            )
+          })
+
+          describe(`4.${variant}.2 if-then, with else`, () => {
+            assertDataflow(`4.${variant}.2.1 completely constant`, shell, 'if (TRUE) { 1 } else { 2 }',
+              new DataflowGraph()
+            )
+            assertDataflow(`4.${variant}.2.2 compare cond.`, shell, 'if (x > 5) { 1 } else { 42 }',
+              new DataflowGraph().addNode('0', 'x')
+            )
+            assertDataflow(`4.${variant}.2.3 compare cond. symbol in then`, shell, 'if (x > 5) { y } else { 42 }',
+              new DataflowGraph().addNode('0', 'x').addNode('3', 'y')
+            )
+            assertDataflow(`4.${variant}.2.4 compare cond. symbol in then & else`, shell, 'if (x > 5) { y } else { z }',
+              new DataflowGraph().addNode('0', 'x').addNode('3', 'y').addNode('4', 'z')
+            )
+            assertDataflow(`4.${variant}.2.4 all variables`, shell, 'if (x > y) { z } else { a }',
+              new DataflowGraph().addNode('0', 'x').addNode('1', 'y').addNode('3', 'z').addNode('4', 'a')
+            )
+            assertDataflow(`4.${variant}.2.5 all variables, some same`, shell, 'if (y > x) { x } else { y }',
+              new DataflowGraph().addNode('0', 'y').addNode('1', 'x').addNode('3', 'x').addNode('4', 'y')
+                .addEdge('1', '3', 'same-read-read', 'always')
+                .addEdge('0', '4', 'same-read-read', 'always')
+            )
+            assertDataflow(`4.${variant}.2.6 all same variables`, shell, 'if (x > x) { x } else { x }',
+              new DataflowGraph().addNode('0', 'x').addNode('1', 'x').addNode('3', 'x').addNode('4', 'x')
+              // TODO: 0 is just hardcoded, they just have to be connected
+                .addEdge('0', '1', 'same-read-read', 'always')
+                .addEdge('0', '3', 'same-read-read', 'always')
+                .addEdge('0', '4', 'same-read-read', 'always')
+            )
+          })
+        })
+      }
+    })
     it('99. def for constant variable assignment', async () => {
       const ast = await retrieveAst(shell, `
         a <- 3
@@ -82,7 +143,7 @@ describe('Extract Dataflow Information', () => {
         if(m > 3) {
           a <- 5
         }
-        
+
         m <- 5
         b <- a + c
         d <- a + b

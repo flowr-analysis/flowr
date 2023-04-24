@@ -5,6 +5,7 @@ import { decorateWithIds } from '../../src/dataflow/id'
 import { decorateWithParentInformation } from '../../src/dataflow/parents'
 import { DataflowGraph, GLOBAL_SCOPE, graphToMermaidUrl, LOCAL_SCOPE } from '../../src/dataflow/graph'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool } from "../helper/provider"
+import { naiveLineBasedSlicing } from "../../src/slicing/static/static-slicer"
 
 
 describe('Extract Dataflow Information', () => {
@@ -153,6 +154,7 @@ describe('Extract Dataflow Information', () => {
         new DataflowGraph().addNode('0', 'i', LOCAL_SCOPE).addNode('4', 'i')
           .addEdge('4', '0', 'defined-by', 'always')
       )
+      // TODO: so many other tests... variable in sequence etc.
     })
 
     it('99. def for constant variable assignment', async () => {
@@ -197,6 +199,10 @@ describe('Extract Dataflow Information', () => {
 
       // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
       console.log(graphToMermaidUrl(dataflowGraph, dataflowIdMap))
+
+      // i know we do not want to slice, but let's try as a quick demo:
+      console.log([...naiveLineBasedSlicing(dataflowGraph, dataflowIdMap,'18')].sort().join(','))
+      console.log([...naiveLineBasedSlicing(dataflowGraph, dataflowIdMap,'25')].sort().join(','))
     })
   })
 })

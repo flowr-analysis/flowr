@@ -7,15 +7,15 @@ import type * as Lang from '../r-bridge/lang:4.x/ast/model'
 import { type ParentInformation, type RNodeWithParent } from './parents'
 import { guard } from '../util/assert'
 import {
-  addEdge,
   DataflowGraph, DataflowGraphEdge,
   DataflowGraphEdgeAttribute,
-  DataflowGraphEdgeType, DataflowGraphNode,
+  DataflowGraphEdgeType,
   DataflowScopeName,
-  GLOBAL_SCOPE, LOCAL_SCOPE, mergeDataflowGraphs
+  GLOBAL_SCOPE, LOCAL_SCOPE
 } from './graph'
 import {MergeableRecord} from "../util/objects"
 import {RNode} from "../r-bridge/lang:4.x/ast/model"
+import { DefaultMap } from "../util/defaultmap"
 
 const dataflowLogger = log.getSubLogger({ name: 'ast' })
 
@@ -69,10 +69,7 @@ function emptyFoldInfo (): FoldInfo {
     activeNodes: [],
     in:          [],
     out:         new Map(),
-    graph:       {
-      nodes: [],
-      edges: new Map()
-    }
+    graph:       new DataflowGraph()
   }
 }
 
@@ -90,18 +87,11 @@ function processSymbol<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (symb
     }
     // TODO: can be replaced by id set if we have a mapping with ids on the parented nodes
     dataflowIdMap.set(symbol.id, symbol)
-    const node: DataflowGraphNode = {
-      id:   symbol.id,
-      name: symbol.content
-    }
     return {
       activeNodes: [symbol.id],
       in:          [],
       out:         new Map(),
-      graph:       {
-        nodes: [node],
-        edges: new Map()
-      }
+      graph:       new DataflowGraph().addNode(symbol.id, symbol.content)
     }
   }
 }
@@ -109,14 +99,35 @@ function processSymbol<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (symb
 function processNonAssignmentBinaryOp<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: FoldInfo, rhs: FoldInfo): FoldInfo {
   // TODO: produce special edges
   // TODO: fix merge of map etc.
+  const ingoing = [...lhs.in, ...rhs.in, ...lhs.activeNodes, ...rhs.activeNodes]
+  const nextGraph = lhs.graph.mergeWith(rhs.graph)
+  linkVariablesInSameScope(nextGraph, ingoing)
   return {
     activeNodes: [], // binary ops require reads as without assignments there is no definition
-    in:          [...lhs.in, ...rhs.in, ...lhs.activeNodes, ...rhs.activeNodes],
-    // todo: there must be a more effective way than creating all of those new maps and arrays etc.
+    in:          ingoing,
     out:         new Map([...lhs.out, ...rhs.out]),
     // TODO: insert a join node?
-    graph:       mergeDataflowGraphs(lhs.graph, rhs.graph)
+    graph:       nextGraph
   }
+}
+
+function linkVariablesInSameScope(graph: DataflowGraph, idPool: IdType[]): void {
+  const nameIdShares = new DefaultMap<string, IdType[]>(() => [])
+  idPool.forEach(id => {
+    const name = graph.get(id)?.name
+    guard(name !== undefined, `name must be defined for ${id}`)
+    const previous = nameIdShares.get(name)
+    previous.push(id)
+  })
+
+  for (const ids of nameIdShares.values()) {
+    if (ids.length > 1) {
+      for (const id of ids) {
+        graph.addEdges(id, ids.filter(otherId => otherId !== id), 'same-read-read', 'always')
+      }
+    }
+  }
+
 }
 
 
@@ -155,15 +166,13 @@ function identifyReadAndWriteBasedOnOp<OtherInfo>(op: RNodeWithParent<OtherInfo>
 // TODO: nested assignments like x <- y <- z <- 1
 function processAssignment<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: FoldInfo, rhs: FoldInfo): FoldInfo {
   const { readTargets, writeTargets } = identifyReadAndWriteBasedOnOp(op,  rhs, lhs)
-  const nextGraph = mergeDataflowGraphs(lhs.graph, rhs.graph)
+  const nextGraph = lhs.graph.mergeWith(rhs.graph)
   // TODO: identify global, local etc.
   for (const [, writeTarget] of writeTargets) {
     for (const t of writeTarget) {
       const ids = t.attribute === 'always' ? [t.id] : t.ids
       for(const writeId of ids) {
-        for (const readId of readTargets) {
-          addEdge(nextGraph, writeId, readId, 'defined-by', 'always')
-        }
+        nextGraph.addEdges(writeId, readTargets, 'defined-by', 'always')
       }
     }
   }
@@ -201,7 +210,7 @@ function processIfThenElse<OtherInfo> (ifThen: RNodeWithParent<OtherInfo>, cond:
     activeNodes: [...cond.activeNodes, ...then.activeNodes, ...(otherwise?.activeNodes ?? [])],
     in:          ingoing,
     out:         outgoing,
-    graph:       mergeDataflowGraphs(cond.graph, then.graph, otherwise?.graph)
+    graph:       cond.graph.mergeWith(then.graph, otherwise?.graph)
   }
 }
 
@@ -251,12 +260,16 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
   // we assume same scope for local currently, yet we return local writes too, as a simple exprList does not act as scoping block
   // link a given name to IdTypes
   return (exprList, children) => {
+    if(children.length === 0) {
+      return emptyFoldInfo()
+    }
+
     // TODO: keep scope for writePointers
     const writePointers = new Map<string, WritePointerTargets>()
     const remainingRead =  new Map<string, IdType[]>() // name to id
 
     // TODO: this is definitely wrong
-    const nextGraph = mergeDataflowGraphs(...children.map(child => child.graph))
+    const nextGraph = children[0].graph.mergeWith(...children.slice(1).map(c => c.graph))
 
     for (const element of children) {
       const currentElement: FoldInfo = element
@@ -275,10 +288,10 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
             remainingRead.set(readName, [readId])
           }
         } else if (probableTarget.type === 'always') {
-          addEdge(nextGraph, readId, probableTarget.id, 'read', 'always')
+          nextGraph.addEdge(readId, probableTarget.id, 'read', 'always')
         } else {
           for (const target of probableTarget.ids) {
-            addEdge(nextGraph, readId, target, 'read', 'maybe')
+            nextGraph.addEdge(readId, target, 'read', 'maybe')
           }
         }
       }
@@ -297,16 +310,16 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
               const readIds = remainingRead.get(writeName)
               guard(readIds !== undefined, `Could not find readId for write variable ${writeId}`)
               for (const readId of readIds) {
-                addEdge(nextGraph, readId, writeId, 'same-read-read', 'always')
+                nextGraph.addEdge(readId, writeId, 'same-read-read', 'always')
               }
             } else if (writePointers.has(writeName)) { // write-write
               const writePointer = writePointers.get(writeName)
               guard(writePointer !== undefined, `Could not find writePointer for write variable ${writeId}`)
               if (writePointer.type === 'always') {
-                addEdge(nextGraph, writePointer.id, writeId, 'same-def-def', 'always')
+                nextGraph.addEdge(writePointer.id, writeId, 'same-def-def', 'always')
               } else {
                 for (const target of writePointer.ids) {
-                  addEdge(nextGraph, target, writeId, 'same-def-def', 'always')
+                  nextGraph.addEdge(target, writeId, 'same-def-def', 'always')
                 }
               }
             }

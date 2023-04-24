@@ -4,6 +4,7 @@ import { IdType } from './id'
 import * as Lang from '../r-bridge/lang:4.x/ast/model'
 import { DataflowMap } from './extractor'
 import { NoInfo } from '../r-bridge/lang:4.x/ast/model'
+import { guard } from "../util/assert"
 
 export type DataflowGraphEdgeType =
     | /** the edge determines that source reads target */ 'read'
@@ -54,53 +55,117 @@ export interface DataflowGraphDefinedByEdge extends DataflowGraphEdge {
 
 // TODO: export type DataflowGraphNodeType = 'variable' | 'processing' | 'assignment' | 'if-then-else' | 'loop' | 'function'
 
-/**
- * a node in the graph is identified by its unique id (usually assigned by {@link #decorateWithIds})
- * and a name (like the name of the variable reference)
- */
-export interface DataflowGraphNode {
-  id:   IdType
-  name: string
+
+export interface DataflowGraphNodeInfo {
+  name:  string
+  edges: DataflowGraphEdge[]
 }
 
 /**
  * holds the dataflow information found within the given AST
  * there is a node for every variable encountered, obeying scoping rules
- * TODO: additional information for edges
+ * the node info holds edge information, node-names etc.
+ * <p>
+ * the given map holds a key entry for each node with the corresponding node info attached
+ * <p>
+ * allows to chain calls for easier usage
  */
-export interface DataflowGraph {
-  nodes: DataflowGraphNode[]
-  edges: Map<IdType, DataflowGraphEdge[]>
-}
+export class DataflowGraph {
+  private graph = new Map<IdType, DataflowGraphNodeInfo>()
 
-
-/** insert a new edge in the given dataflow-graph */
-// TODO: check if from and to exists, TODO: check for duplicates
-export function addEdge(graph: DataflowGraph, from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): void {
-  const targets = graph.edges.get(from)
-  const edge = {
-    target: to,
-    type,
-    attribute
+  /**
+   * @return the ids of all nodes in the graph
+   */
+  public nodes(): IterableIterator<IdType> {
+    return this.graph.keys()
   }
-  if (targets === undefined) {
-    graph.edges.set(from, [edge])
-  } else {
-    // TODO: deal with same in the other direction, is a duplicate
-    if(!targets.includes(edge)) {
-      targets.push(edge)
+
+  /**
+   * @return the node info for the given id (if it exists)
+   */
+  public get(id: IdType): DataflowGraphNodeInfo | undefined {
+    return this.graph.get(id)
+  }
+
+  public entries(): IterableIterator<[IdType, DataflowGraphNodeInfo]> {
+    return this.graph.entries()
+  }
+
+  public addNode(id: IdType, name: string): DataflowGraph {
+    const oldNode = this.graph.get(id)
+    if(oldNode !== undefined) {
+      guard(oldNode.name === name, 'node names must match for the same id if added')
+      return this
     }
+    this.graph.set(id, {
+      name,
+      edges: []
+    })
+    return this
   }
+
+
+  public addEdges(from: IdType, to: IdType[], type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): DataflowGraph {
+    // TODO: make this far more performant!
+    for(const toId of to) {
+      this.addEdge(from, toId, type, attribute)
+    }
+    return this
+  }
+
+  public addEdge(from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): DataflowGraph {
+    // sort
+    if(type === 'same-read-read' || type === 'same-def-def') {
+      [from, to] = to > from ? [from, to] : [to, from]
+    }
+    const info = this.graph.get(from)
+    guard(info !== undefined, 'there must be a node info object for the edge source!')
+    const edge = {
+      target: to,
+      type,
+      attribute
+    }
+    // TODO: make this more performant
+    if(info.edges.find(e => e.target === to && e.type === type && e.attribute === attribute) === undefined) {
+      info.edges.push(edge)
+    }
+    return this
+  }
+
+
+  /** insert a new edge in the given dataflow-graph */
+  // TODO: check if from and to exists, TODO: check for duplicates
+  public mergeWith(...otherGraphs: (DataflowGraph | undefined)[]): DataflowGraph {
+    // TODO: join edges
+    // TODO: maybe switch to sets?
+    const newGraph = this.graph
+    for(const graph of otherGraphs) {
+      if(graph === undefined) {
+        continue
+      }
+      for(const [id, info] of graph.graph) {
+        const currentInfo = newGraph.get(id)
+        if (currentInfo === undefined) {
+          newGraph.set(id, info)
+        } else {
+          newGraph.set(id, mergeNodeInfos(currentInfo, info))
+        }
+      }
+    }
+
+    this.graph = newGraph
+    return this
+  }
+
 }
 
-export function mergeDataflowGraphs(...graphs: (DataflowGraph | undefined)[]): DataflowGraph {
-  // TODO: join edges
-  // TODO: check for duplicate nodes
-  // TODO: maybe switch to sets?
-  const nodes = graphs.flatMap(g => g?.nodes ?? [])
-  const edges = new Map(graphs.flatMap(g => [...g?.edges.entries()?? []] ))
-
-  return { nodes, edges }
+function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeInfo): DataflowGraphNodeInfo {
+  guard(current.name === next.name, 'nodes to be joined for the same id must have the same name')
+  return {
+    name:  current.name,
+    // TODO: join edges
+    edges: [...current.edges, ...next.edges]
+  }
 }
 
 function formatRange(range: Lang.Range | undefined): string {
@@ -114,15 +179,13 @@ function formatRange(range: Lang.Range | undefined): string {
 // TODO: subgraphs?
 export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
   const lines = ['flowchart LR']
-  graph.nodes.forEach(node => {
-    lines.push(`    ${node.id}(["\`${node.name}\n      *${formatRange(dataflowIdMap?.get(node.id)?.location)}*\`"])`)
-  })
-  graph.edges.forEach((targets, source) => {
-    targets.forEach(to => {
-      const sameEdge = to.type === 'same-def-def' || to.type === 'same-read-read'
-      lines.push(`    ${source} ${sameEdge ? '-.-' : '-->'}|"${to.type} (${to.attribute})"| ${to.target}`)
-    })
-  })
+  for (const [id, info] of graph.entries()) {
+    lines.push(`    ${id}(["\`${info.name}\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"])`)
+    for (const edge of info.edges) {
+      const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
+      lines.push(`    ${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${edge.target}`)
+    }
+  }
   return lines.join('\n')
 }
 

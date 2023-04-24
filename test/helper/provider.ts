@@ -92,5 +92,11 @@ export const RArithmeticBinaryOpPool: Array<{ flavor: 'arithmetic', str: string 
 export const RLogicalBinaryOpPool: Array<{ flavor: 'logical', str: string }> =
       Lang.LogicalOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'logical' }))
 
+export const RComparisonBinaryOpPool: Array<{ flavor: 'comparison', str: string }> =
+    Lang.ComparisonOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'comparison' }))
+
 export const RAssignmentOpPool: Array<{ flavor: 'assignment', str: string }> =
     Lang.Assignments.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'assignment' }))
+
+export const RNonAssignmentBinaryOpPool: Array<{ label: 'arithmetic' | 'logical' | 'comparison', pool: typeof RArithmeticBinaryOpPool | typeof RLogicalBinaryOpPool | typeof RComparisonBinaryOpPool }> =
+    [{ label: 'arithmetic', pool: RArithmeticBinaryOpPool }, { label: 'logical', pool: RLogicalBinaryOpPool } , { label: 'comparison', pool: RComparisonBinaryOpPool }]

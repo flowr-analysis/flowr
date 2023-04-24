@@ -47,4 +47,8 @@ export class DefaultMap<K, V = K> {
   public entries (): IterableIterator<[K, V]> {
     return this.internal.entries()
   }
+
+  public values(): IterableIterator<V> {
+    return this.internal.values()
+  }
 }

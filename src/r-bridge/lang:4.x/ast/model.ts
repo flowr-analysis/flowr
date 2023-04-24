@@ -21,6 +21,7 @@ export enum Type {
   Number = 'NUM_CONST', // TODO: support negative numbers
   String = 'STR_CONST',
   BinaryOp = 'binaryop',
+  Comment = 'COMMENT',
   /* can be special operators like %*% or %o% */
   Special = 'SPECIAL',
   // parens will be removed and dealt with as precedences/arguments automatically
@@ -28,8 +29,10 @@ export enum Type {
   ParenRight = ')',
   BraceLeft = '{',
   BraceRight = '}',
-  Sequence = ':',
-    If = 'IF',
+  For = 'FOR',
+  ForCondition = 'forcond',
+  ForIn = 'IN',
+  If = 'IF',
   Else = 'ELSE'
 }
 
@@ -260,10 +263,27 @@ export type RIfThenElse<Info = NoInfo> = {
   otherwise?:    RNode<Info>
 } & Base<Info> & Location
 
+/**
+ * ```ts
+ * for(<variable> in <vector>) <body>
+ * ```
+ */
+export type RForLoop<Info = NoInfo> = {
+  readonly type: Type.For
+  /** variable used in for-loop: <p> `for(<variable> in ...) ...`*/
+  variable:      RSymbol<Info>
+  /** vector used in for-loop: <p> `for(... in <vector>) ...`*/
+  vector:        RNode<Info>
+  /** body used in for-loop: <p> `for(... in ...) <body>`*/
+  body:          RNode<Info>
+} & Base<Info> & Location
+
+
 // TODO: special constants
 export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
 
 export type RSingleNode<Info> = RSymbol<Info> | RConstant<Info>
-export type RNode<Info = NoInfo> = RExprList<Info> | RIfThenElse<Info> | RBinaryOp<Info> | RSingleNode<Info>
+export type RConstructs<Info> = RForLoop<Info> | RIfThenElse<Info>
+export type RNode<Info = NoInfo> = RExprList<Info> | RConstructs<Info> | RBinaryOp<Info> | RSingleNode<Info>
 
 export const ALL_VALID_TYPES = Object.values(Type)

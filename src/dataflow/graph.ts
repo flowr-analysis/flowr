@@ -57,8 +57,9 @@ export interface DataflowGraphDefinedByEdge extends DataflowGraphEdge {
 
 
 export interface DataflowGraphNodeInfo {
-  name:  string
-  edges: DataflowGraphEdge[]
+  name:              string
+  definedAtPosition: false | DataflowScopeName
+  edges:             DataflowGraphEdge[]
 }
 
 /**
@@ -91,7 +92,7 @@ export class DataflowGraph {
     return this.graph.entries()
   }
 
-  public addNode(id: IdType, name: string): DataflowGraph {
+  public addNode(id: IdType, name: string, definedAtPosition: false | DataflowScopeName = false): DataflowGraph {
     const oldNode = this.graph.get(id)
     if(oldNode !== undefined) {
       guard(oldNode.name === name, 'node names must match for the same id if added')
@@ -99,6 +100,7 @@ export class DataflowGraph {
     }
     this.graph.set(id, {
       name,
+      definedAtPosition,
       edges: []
     })
     return this
@@ -117,6 +119,8 @@ export class DataflowGraph {
    * Will insert a new edge into the graph,
    * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
    * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
+   *
+   * TODO: ensure that target has a def scope and source does not?
    */
   public addEdge(from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): DataflowGraph {
     // sort
@@ -169,7 +173,7 @@ export class DataflowGraph {
     }
     for(const [id, info] of this.graph) {
       const otherInfo = other.graph.get(id)
-      if(otherInfo === undefined || info.name !== otherInfo.name || info.edges.length !== otherInfo.edges.length) {
+      if(otherInfo === undefined || info.name !== otherInfo.name || info.definedAtPosition !== otherInfo.definedAtPosition || info.edges.length !== otherInfo.edges.length) {
         return false
       }
       // TODO: assuming that all edges are unique (which should be ensured by constructed)
@@ -187,10 +191,12 @@ export class DataflowGraph {
 
 function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeInfo): DataflowGraphNodeInfo {
   guard(current.name === next.name, 'nodes to be joined for the same id must have the same name')
+  guard(current.definedAtPosition === next.definedAtPosition, 'nodes to be joined for the same id must have the same definedAtPosition')
   return {
-    name:  current.name,
+    name:              current.name,
+    definedAtPosition: current.definedAtPosition,
     // TODO: join edges
-    edges: [...current.edges, ...next.edges]
+    edges:             [...current.edges, ...next.edges]
   }
 }
 
@@ -204,9 +210,10 @@ function formatRange(range: Lang.Range | undefined): string {
 
 // TODO: subgraphs?
 export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
-  const lines = ['flowchart LR']
+  const lines = ['flowchart TD']
   for (const [id, info] of graph.entries()) {
-    lines.push(`    ${id}(["\`${info.name}\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"])`)
+    const def = info.definedAtPosition !== false
+    lines.push(`    ${id}${def ? "[" : "([" }"\`${info.name}\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"${def ? "]" : "])" }`)
     for (const edge of info.edges) {
       const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
       lines.push(`    ${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${edge.target}`)

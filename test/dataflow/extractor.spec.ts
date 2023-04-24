@@ -3,7 +3,7 @@ import { assertDataflow, describeSession, retrieveAst } from '../helper/shell'
 import { produceDataFlowGraph } from '../../src/dataflow/extractor'
 import { decorateWithIds } from '../../src/dataflow/id'
 import { decorateWithParentInformation } from '../../src/dataflow/parents'
-import { DataflowGraph, graphToMermaidUrl } from '../../src/dataflow/graph'
+import { DataflowGraph, GLOBAL_SCOPE, graphToMermaidUrl, LOCAL_SCOPE } from '../../src/dataflow/graph'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool } from "../helper/provider"
 
 
@@ -46,29 +46,36 @@ describe('Extract Dataflow Information', () => {
       for(const op of RAssignmentOpPool) {
         let idx = 0
         describe(`3.${++idx} ${op.str}`, () => {
-          const constantAssignment = `x ${op.str} 5`
+          const scope = op.str.length > 2 ? GLOBAL_SCOPE : LOCAL_SCOPE // love it
+          const swapSourceAndTarget = op.str === '->' || op.str === '->>'
+
+          const constantAssignment = swapSourceAndTarget ? `5 ${op.str} x` : `x ${op.str} 5`
           assertDataflow(`${constantAssignment} (constant assignment)`, shell, constantAssignment,
-            new DataflowGraph().addNode('0', 'x')
+            new DataflowGraph().addNode(swapSourceAndTarget ? '1' : '0', 'x', scope)
           )
 
           const variableAssignment = `x ${op.str} y`
-          const dataflowGraph = new DataflowGraph().addNode('0', 'x').addNode('1', 'y')
-          if(op.str === '->' || op.str === '->>') {
-            dataflowGraph.addEdge('1', '0', 'defined-by', 'always')
+          const dataflowGraph = new DataflowGraph()
+          if(swapSourceAndTarget) {
+            dataflowGraph.addNode('0', 'x').addNode('1', 'y', scope)
+              .addEdge('1', '0', 'defined-by', 'always')
           } else {
-            dataflowGraph.addEdge('0', '1', 'defined-by', 'always')
+            dataflowGraph.addNode('0', 'x',scope).addNode('1', 'y')
+              .addEdge('0', '1', 'defined-by', 'always')
           }
           assertDataflow(`${variableAssignment} (variable assignment)`, shell, variableAssignment, dataflowGraph)
 
           const circularAssignment = `x ${op.str} x`
 
-          const circularGraph = new DataflowGraph().addNode('0', 'x').addNode('1', 'x')
-            .addEdge('0', '1', 'same-read-read', 'always')
-          if(op.str === '->' || op.str === '->>') {
-            circularGraph.addEdge('1', '0', 'defined-by', 'always')
+          const circularGraph = new DataflowGraph()
+          if(swapSourceAndTarget) {
+            circularGraph.addNode('0', 'x').addNode('1', 'x', scope)
+              .addEdge('1', '0', 'defined-by', 'always')
           } else {
-            circularGraph.addEdge('0', '1', 'defined-by', 'always')
+            circularGraph.addNode('0', 'x', scope).addNode('1', 'x')
+              .addEdge('0', '1', 'defined-by', 'always')
           }
+
           assertDataflow(`${circularAssignment} (circular assignment)`, shell, circularAssignment, circularGraph)
         })
       }
@@ -136,6 +143,18 @@ describe('Extract Dataflow Information', () => {
         })
       }
     })
+
+    describe('5. for', () => {
+      // TODO: support for vectors!
+      assertDataflow('5.1 simple constant for-loop', shell, `for(i in 1:10) { 1 }`,
+        new DataflowGraph().addNode('0', 'i', LOCAL_SCOPE)
+      )
+      assertDataflow('5.1 using loop variable in body', shell, `for(i in 1:10) { i }`,
+        new DataflowGraph().addNode('0', 'i', LOCAL_SCOPE).addNode('4', 'i')
+          .addEdge('4', '0', 'defined-by', 'always')
+      )
+    })
+
     it('99. def for constant variable assignment', async () => {
       const ast = await retrieveAst(shell, `
         a <- 3
@@ -151,6 +170,30 @@ describe('Extract Dataflow Information', () => {
       const astWithId = decorateWithIds(ast)
       const astWithParentIds = decorateWithParentInformation(astWithId.decoratedAst)
       const { dataflowIdMap, dataflowGraph } = produceDataFlowGraph(astWithParentIds)
+
+      // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
+      console.log(graphToMermaidUrl(dataflowGraph, dataflowIdMap))
+    })
+
+    it('100. the classic', async () => {
+      const ast = await retrieveAst(shell, `
+          sum <- 0
+          product <- 1
+          w <- 7
+          N <- 10
+          
+          for (i in 1:(N-1)) {
+            sum <- sum + i + w
+            product <- product * i
+          }
+          
+          # TODO: currently not available :/
+          # cat("Sum:", sum, "\\n")
+          # cat("Product:", product, "\\n")
+      `)
+      const astWithId = decorateWithIds(ast)
+      const astWithParentIds = decorateWithParentInformation(astWithId.decoratedAst)
+      const {dataflowIdMap, dataflowGraph} = produceDataFlowGraph(astWithParentIds)
 
       // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
       console.log(graphToMermaidUrl(dataflowGraph, dataflowIdMap))

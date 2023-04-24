@@ -51,4 +51,8 @@ export class DefaultMap<K, V = K> {
   public values(): IterableIterator<V> {
     return this.internal.values()
   }
+
+  public delete(k: K): boolean {
+    return this.internal.delete(k)
+  }
 }

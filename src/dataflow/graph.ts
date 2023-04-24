@@ -1,13 +1,15 @@
 
 // TODO: modify | alias | etc.
 import { IdType } from './id'
+import * as Lang from '../r-bridge/lang:4.x/ast/model'
+import { DataflowMap } from './extractor'
+import { NoInfo } from '../r-bridge/lang:4.x/ast/model'
 
 export type DataflowGraphEdgeType =
-    | /* the edge determines that source reads target */ 'read'
-    | /* the edge determines that source is defined by target */ 'defined-by'
-    // TODO: improve comments and TODO: remove them if they are linked otherwise or make ure that read-read is removed if we know a def marker for them?
-    | /* the edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
-    | /* the edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable */ 'same-def-def'
+    | /** the edge determines that source reads target */ 'read'
+    | /** the edge determines that source is defined by target */ 'defined-by'
+    | /** the edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
+    | /** similar to {@link 'same-read-read'} but for def-def constructs without a read in-between */ 'same-def-def'
 
 // context -- is it always read/defined-by // TODO: loops
 export type DataflowGraphEdgeAttribute = 'always' | 'maybe'
@@ -101,3 +103,38 @@ export function mergeDataflowGraphs(...graphs: (DataflowGraph | undefined)[]): D
   return { nodes, edges }
 }
 
+function formatRange(range: Lang.Range | undefined): string {
+  if (range === undefined) {
+    return '??'
+  }
+
+  return `${range.start.line}.${range.start.column}-${range.end.line}.${range.end.column}`
+}
+
+// TODO: subgraphs?
+export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
+  const lines = ['flowchart LR']
+  graph.nodes.forEach(node => {
+    lines.push(`    ${node.id}(["\`${node.name}\n      *${formatRange(dataflowIdMap?.get(node.id)?.location)}*\`"])`)
+  })
+  graph.edges.forEach((targets, source) => {
+    targets.forEach(to => {
+      const sameEdge = to.type === 'same-def-def' || to.type === 'same-read-read'
+      lines.push(`    ${source} ${sameEdge ? '-.-' : '-->'}|"${to.type} (${to.attribute})"| ${to.target}`)
+    })
+  })
+  return lines.join('\n')
+}
+
+export function graphToMermaidUrl(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
+  const obj = {
+    code:    graphToMermaid(graph, dataflowIdMap),
+    mermaid: {
+      "theme": "default"
+    },
+    updateEditor:  false,
+    autoSync:      true,
+    updateDiagram: false
+  }
+  return `https://mermaid.live/edit#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}`
+}

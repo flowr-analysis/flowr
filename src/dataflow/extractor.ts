@@ -112,8 +112,7 @@ function processNonAssignmentBinaryOp<OtherInfo> (op: RNodeWithParent<OtherInfo>
   }
 }
 
-/** does not connect fully but only link so that all are connected, updates teh graph in-place */
-function linkVariablesInSameScope(graph: DataflowGraph, idPool: IdType[]): void {
+function produceNameSharedIdMap(idPool: IdType[], graph: DataflowGraph): DefaultMap<string, IdType[]> {
   const nameIdShares = new DefaultMap<string, IdType[]>(() => [])
   idPool.forEach(id => {
     const name = graph.get(id)?.name
@@ -121,6 +120,12 @@ function linkVariablesInSameScope(graph: DataflowGraph, idPool: IdType[]): void 
     const previous = nameIdShares.get(name)
     previous.push(id)
   })
+  return nameIdShares
+}
+
+/** does not connect fully but only link so that all are connected, updates teh graph in-place */
+function linkVariablesInSameScope(graph: DataflowGraph, idPool: IdType[]): void {
+  const nameIdShares = produceNameSharedIdMap(idPool, graph)
 
   for (const ids of nameIdShares.values()) {
     if (ids.length <= 1) {
@@ -133,7 +138,7 @@ function linkVariablesInSameScope(graph: DataflowGraph, idPool: IdType[]): void 
   }
 }
 
-function setDefinitionOfId(graph: DataflowGraph, id: IdType, scope: DataflowScopeName): void {
+function setDefinitionOfNode(graph: DataflowGraph, id: IdType, scope: DataflowScopeName): void {
   const node = graph.get(id)
   guard(node !== undefined, `node must be defined for ${id} to set definition scope to ${scope}`)
   guard(node.definedAtPosition === false || node.definedAtPosition === scope, `node must not be previously defined at position or have same scope for ${id} to set definition scope to ${scope}`)
@@ -182,7 +187,7 @@ function processAssignment<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: Fold
     for (const t of writeTarget) {
       const ids = t.attribute === 'always' ? [t.id] : t.ids
       for(const writeId of ids) {
-        setDefinitionOfId(nextGraph, writeId, scope)
+        setDefinitionOfNode(nextGraph, writeId, scope)
         nextGraph.addEdges(writeId, readTargets, 'defined-by', 'always')
       }
     }
@@ -229,23 +234,39 @@ function processIfThenElse<OtherInfo> (ifThen: RNodeWithParent<OtherInfo>, cond:
 
 function processForLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, variable: FoldInfo, vector: FoldInfo, body: FoldInfo): FoldInfo {
 
-  // TODO: allow to also attribute in-put with amybe and always
+  // TODO: allow to also attribute in-put with maybe and always
   // again within an if-then-else we consider all actives to be read
-  const ingoing = [...variable.in, ...vector.in, ...body.in, ...vector.activeNodes, ...body.activeNodes]
+  // TODO: deal with ...variable.in it is not really ingoing in the sense of bindings i against it, but it should be for the for-loop
+  // currently i add it at the end, but is this correct?
+  const ingoing = [...vector.in, ...body.in, ...vector.activeNodes, ...body.activeNodes]
 
   // we assign all with a maybe marker
 
   const writtenVariable: [[DataflowScopeName, FoldReadWriteTarget[]]] = [[LOCAL_SCOPE, variable.activeNodes.map(id => ({attribute: 'always', id}))]]
   const nextGraph = variable.graph.mergeWith(vector.graph, body.graph)
 
+  // TODO: hold name when reading to avoid constant indirection?
+  // now we have to bind all open reads with the given name to the locally defined writtenVariable!
+  // TODO: assert target name? (should be the correct way to do)
+  const nameIdShares = produceNameSharedIdMap(ingoing, nextGraph)
+
   for(const [scope, targets] of writtenVariable) {
     for(const target of targets) {
       const ids = target.attribute === 'always' ? [target.id] : target.ids
       for(const id of ids) {
-        setDefinitionOfId(nextGraph, id, scope)
+        const name = nextGraph.get(id)?.name
+        guard(name !== undefined, `name should be defined for node ${id}`)
+        const readIdsToLink = nameIdShares.get(name)
+        for(const readId of readIdsToLink) {
+          nextGraph.addEdge(readId, id, 'defined-by', 'always')
+        }
+        // now, we remove the name from the id shares as they are no longer needed
+        nameIdShares.delete(name)
+        setDefinitionOfNode(nextGraph, id, scope)
       }
     }
   }
+
   const outgoing = new Map([...variable.out, ...writtenVariable])
 
   for(const [scope, targets] of body.out) {
@@ -266,7 +287,8 @@ function processForLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, variable: 
 
   return {
     activeNodes: [],
-    in:          ingoing,
+    // we only want those not bound by a local variable
+    in:          [...variable.in, ...[...nameIdShares.values()].flatMap(v => v)],
     out:         outgoing,
     graph:       nextGraph
   }

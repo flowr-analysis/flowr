@@ -150,6 +150,10 @@ describe('Extract Dataflow Information', () => {
       assertDataflow('5.1 simple constant for-loop', shell, `for(i in 1:10) { 1 }`,
         new DataflowGraph().addNode('0', 'i', LOCAL_SCOPE)
       )
+      assertDataflow('5.1 using loop variable in body', shell, `for(i in 1:10) { i }`,
+        new DataflowGraph().addNode('0', 'i', LOCAL_SCOPE).addNode('4', 'i')
+          .addEdge('4', '0', 'defined-by', 'always')
+      )
     })
 
     it('99. def for constant variable assignment', async () => {

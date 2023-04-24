@@ -119,6 +119,8 @@ export class DataflowGraph {
    * Will insert a new edge into the graph,
    * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
    * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
+   *
+   * TODO: ensure that target has a def scope and source does not?
    */
   public addEdge(from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): DataflowGraph {
     // sort
@@ -210,8 +212,8 @@ function formatRange(range: Lang.Range | undefined): string {
 export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
   const lines = ['flowchart LR']
   for (const [id, info] of graph.entries()) {
-    const bold = info.definedAtPosition === false ? '' : '**'
-    lines.push(`    ${id}(["\`${bold}${info.name}${bold}\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"])`)
+    const def = info.definedAtPosition !== false
+    lines.push(`    ${id}${def ? "[" : "([" }"\`${info.name}\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"${def ? "]" : "])" }`)
     for (const edge of info.edges) {
       const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
       lines.push(`    ${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${edge.target}`)

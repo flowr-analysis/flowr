@@ -133,6 +133,13 @@ function linkVariablesInSameScope(graph: DataflowGraph, idPool: IdType[]): void 
   }
 }
 
+function setDefinitionOfId(graph: DataflowGraph, id: IdType, scope: DataflowScopeName): void {
+  const node = graph.get(id)
+  guard(node !== undefined, `node must be defined for ${id} to set definition scope to ${scope}`)
+  guard(node.definedAtPosition === false || node.definedAtPosition === scope, `node must not be previously defined at position or have same scope for ${id} to set definition scope to ${scope}`)
+  node.definedAtPosition = scope
+}
+
 
 function identifyReadAndWriteBasedOnOp<OtherInfo>(op: RNodeWithParent<OtherInfo>, rhs: FoldInfo, lhs: FoldInfo) {
   const read = [...lhs.in, ...rhs.in]
@@ -171,10 +178,11 @@ function processAssignment<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: Fold
   const { readTargets, writeTargets } = identifyReadAndWriteBasedOnOp(op,  rhs, lhs)
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
   // TODO: identify global, local etc.
-  for (const [, writeTarget] of writeTargets) {
+  for (const [scope, writeTarget] of writeTargets) {
     for (const t of writeTarget) {
       const ids = t.attribute === 'always' ? [t.id] : t.ids
       for(const writeId of ids) {
+        setDefinitionOfId(nextGraph, writeId, scope)
         nextGraph.addEdges(writeId, readTargets, 'defined-by', 'always')
       }
     }
@@ -227,15 +235,25 @@ function processForLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, variable: 
 
   // we assign all with a maybe marker
 
-  // TODO: variable is written!
-  // TODO: ...variable.activeNodes
-  const outgoing = new Map([...variable.out])
+  const writtenVariable: [[DataflowScopeName, FoldReadWriteTarget[]]] = [[LOCAL_SCOPE, variable.activeNodes.map(id => ({attribute: 'always', id}))]]
+  const nextGraph = variable.graph.mergeWith(vector.graph, body.graph)
+
+  for(const [scope, targets] of writtenVariable) {
+    for(const target of targets) {
+      const ids = target.attribute === 'always' ? [target.id] : target.ids
+      for(const id of ids) {
+        setDefinitionOfId(nextGraph, id, scope)
+      }
+    }
+  }
+  const outgoing = new Map([...variable.out, ...writtenVariable])
 
   for(const [scope, targets] of body.out) {
     const existing = outgoing.get(scope)
     const existingIds = existing?.flatMap(t => t.attribute === 'always' ? [t.id] : t.ids) ?? []
     outgoing.set(scope, targets.map(t => {
       if(t.attribute === 'always') {
+        // maybe due to loop which does not have to execute!
         return {attribute: 'maybe', ids: [t.id, ...existingIds]}
       } else {
         return t
@@ -243,8 +261,7 @@ function processForLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, variable: 
     }))
   }
 
-  // TODO: scoping
-  const nextGraph = vector.graph.mergeWith(vector.graph, body.graph)
+  // TODO: scoping?
   linkVariablesInSameScope(nextGraph, ingoing)
 
   return {

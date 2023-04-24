@@ -6,22 +6,24 @@ class FlowrLogger extends Logger<ILogObj> {
 
   private readonly childLoggers: Array<Logger<ILogObj>> = []
 
-  public getSubLogger(settings?: ISettingsParam<ILogObj>, logObj?: ILogObj): Logger<ILogObj> {
+  public getSubLogger (settings?: ISettingsParam<ILogObj>, logObj?: ILogObj): Logger<ILogObj> {
     const newSubLogger = super.getSubLogger(settings, logObj)
     this.childLoggers.push(newSubLogger)
     return newSubLogger
   }
 
-  public updateSettings(updater: (logger: Logger<ILogObj>) => void): void {
+  public updateSettings (updater: (logger: Logger<ILogObj>) => void): void {
     updater(this)
-    this.childLoggers.forEach(child => { updater(child) })
+    this.childLoggers.forEach(child => {
+      updater(child)
+    })
   }
 
   /**
    * make the logger log to a file as well
    */
-  public logToFile(filename = 'flowr.log', options: Options = {
-    size: '10M',
+  public logToFile (filename = 'flowr.log', options: Options = {
+    size:     '10M',
     interval: '1d',
     compress: 'gzip'
   }): void {
@@ -44,10 +46,10 @@ export enum LogLevel {
   fatal = 6
 }
 
-function getActiveLog(): FlowrLogger {
+function getActiveLog (): FlowrLogger {
   return new FlowrLogger({
-    type: 'pretty',
-    name: 'main',
+    type:            'pretty',
+    name:            'main',
     stylePrettyLogs: true,
     prettyLogStyles: {
       logLevelName: {

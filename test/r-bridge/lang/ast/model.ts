@@ -7,7 +7,7 @@ describe('Model specific tests', () => {
     it('deny to merge no ranges', () => {
       assert.throws(() => mergeRanges(), Error)
     })
-    const assertMerged = (ranges: Lang.Range[], expected: Lang.Range, message: string = ''): void => {
+    const assertMerged = (ranges: Lang.Range[], expected: Lang.Range, message = ''): void => {
       it(JSON.stringify(ranges), () => {
         assert.deepStrictEqual(mergeRanges(...ranges), expected, `${message}`)
       })

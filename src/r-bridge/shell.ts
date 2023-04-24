@@ -1,4 +1,4 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'child_process'
+import { type ChildProcessWithoutNullStreams, spawn } from 'child_process'
 import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, type Logger } from 'tslog'
 import { EOL } from 'os'
@@ -7,11 +7,12 @@ import { ts2r } from './lang:4.x/values'
 import { log } from '../util/log'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both'
+
 interface CollectorTimeout extends MergeableRecord {
   /**
    * number of milliseconds to wait for the collection to finish
    */
-  ms: number
+  ms:             number
   /**
    * if true, the timeout will reset whenever we receive new data
    */
@@ -20,7 +21,7 @@ interface CollectorTimeout extends MergeableRecord {
 }
 
 interface CollectorUntil extends MergeableRecord {
-  predicate: (data: string) => boolean
+  predicate:       (data: string) => boolean
   includeInResult: boolean
 }
 
@@ -30,38 +31,39 @@ interface CollectorUntil extends MergeableRecord {
  */
 interface OutputCollectorConfiguration extends MergeableRecord {
   /** the streams to use to collect the output from */
-  from: OutputStreamSelector
+  from:                    OutputStreamSelector
   /**
    * a string marker to signal that the command was executed successfully.
    * must not appear as a standalone line in the output. this is our hacky way of ensuring that we are done.
    */
-  postamble: string
+  postamble:               string
   /** internal timeout configuration to use (see {@link CollectorTimeout}) */
-  timeout: CollectorTimeout
+  timeout:                 CollectorTimeout
   /** should the postamble be included in the result? */
-  keepPostamble: boolean
+  keepPostamble:           boolean
   /** automatically trim all lines in the output (useful to ignore trailing whitespace etc.) */
   automaticallyTrimOutput: boolean
 }
 
 export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguration = {
-  from: 'stdout',
-  postamble: `🐧${'-'.repeat(27)}🐧`,
-  timeout: {
+  from:      'stdout',
+  postamble: `🐧${'-'.repeat(13)}🐧`,
+  timeout:   {
     // TODO: allow to configure such things in a configuration file?
-    ms: 10_000,
+    ms:             10_000,
     resetOnNewData: true
   },
-  keepPostamble: false,
+  keepPostamble:           false,
   automaticallyTrimOutput: true
 }
+
 // TODO: doc
 export interface RShellSessionOptions extends MergeableRecord {
-  readonly pathToRExecutable: string
+  readonly pathToRExecutable:  string
   readonly commandLineOptions: readonly string[]
-  readonly cwd: string
-  readonly eol: string
-  readonly env: NodeJS.ProcessEnv
+  readonly cwd:                string
+  readonly eol:                string
+  readonly env:                NodeJS.ProcessEnv
 }
 
 /**
@@ -74,12 +76,12 @@ export interface RShellOptions extends RShellSessionOptions {
 }
 
 export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
-  sessionName: 'default',
-  pathToRExecutable: 'R',
+  sessionName:        'default',
+  pathToRExecutable:  'R',
   commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
-  cwd: process.cwd(),
-  env: process.env,
-  eol: EOL
+  cwd:                process.cwd(),
+  env:                process.env,
+  eol:                EOL
 } as const
 
 /**
@@ -95,17 +97,13 @@ export class RShell {
   // TODO: deep readonly?
   public readonly options: Readonly<RShellOptions>
   public readonly session: RShellSession
-  private readonly log: Logger<ILogObj>
+  private readonly log:    Logger<ILogObj>
 
-  public constructor(options?: Partial<RShellOptions>) {
+  public constructor (options?: Partial<RShellOptions>) {
     this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
     this.log = log.getSubLogger({ name: this.options.sessionName })
 
     this.session = new RShellSession(this.options, this.log)
-  }
-
-  private _sendCommand(command: string): void {
-    this.session.writeLine(command)
   }
 
   /**
@@ -113,7 +111,7 @@ export class RShell {
    * will not do anything to alter input markers!
    */
   // TODO: rename to execute or so?
-  public sendCommand(command: string): void {
+  public sendCommand (command: string): void {
     this.log.trace(`> ${command}`)
     this._sendCommand(command)
   }
@@ -126,11 +124,11 @@ export class RShell {
    * @param addonConfig further configuration on how and what to collect: see {@link OutputCollectorConfiguration},
    *                    defaults are set in {@link DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION}
    */
-  public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
+  public async sendCommandWithOutput (command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
     const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig)
     this.log.trace(`> ${command}`)
     const output = await this.session.collectLinesUntil(config.from, {
-      predicate: data => data === config.postamble,
+      predicate:       data => data === config.postamble,
       includeInResult: config.keepPostamble // we do not want the postamble
     }, config.timeout, () => {
       this._sendCommand(command)
@@ -153,7 +151,7 @@ export class RShell {
    *
    * @see sendCommand
    */
-  public sendCommands(...commands: string[]): void {
+  public sendCommands (...commands: string[]): void {
     for (const element of commands) {
       this.sendCommand(element)
     }
@@ -162,7 +160,7 @@ export class RShell {
   /**
    * clears the R environment using the `rm` command.
    */
-  public clearEnvironment(): void {
+  public clearEnvironment (): void {
     this.log.debug('clearing environment')
     this._sendCommand('rm(list=ls())')
   }
@@ -171,39 +169,37 @@ export class RShell {
    * usually R will stop execution on errors, with this the R session will try to
    * continue working!
    */
-  public continueOnError(): void {
+  public continueOnError (): void {
     this.log.info('continue in case of Errors')
     this._sendCommand('options(error=function() {})')
   }
 
-  public injectLibPaths(...paths: string[]): void {
+  public injectLibPaths (...paths: string[]): void {
     this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
     this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
   }
 
   // TODO: this is really hacky
-  public tryToInjectHomeLibPath(): void {
+  public tryToInjectHomeLibPath (): void {
     this.injectLibPaths('~/.r-libs')
   }
 
   /**
    * checks if a given package is already installed on the system!
    */
-  public async isPackageInstalled(packageName: string): Promise<boolean> {
+  public async isPackageInstalled (packageName: string): Promise<boolean> {
     this.log.debug(`checking if package "${packageName}" is installed`)
     const result = await this.sendCommandWithOutput(
       `cat(paste0(is.element("${packageName}", installed.packages()[,1])),"${this.options.eol}")`)
     return result.length === 1 && result[0] === ts2r(true)
   }
 
-  public async allInstalledPackages(): Promise<string[]> {
+  public async allInstalledPackages (): Promise<string[]> {
     this.log.debug('getting all installed packages')
     const [packages] = await this.sendCommandWithOutput(`cat(paste0(installed.packages()[,1], collapse=","),"${this.options.eol}")`)
     return packages.split(',')
   }
 
-  // TODO: allow to configure repos etc.
-  // TODO: parser for errors
   // TODO: bioconductor support?
   /**
    * installs the package using a temporary location
@@ -212,11 +208,11 @@ export class RShell {
    * @param autoload    if true, the package will be loaded after installation
    * @param force       if true, the package will be installed no if it is already on the system and ready to be loaded
    */
-  public async ensurePackageInstalled(packageName: string, autoload = false, force = false): Promise<{
-    packageName: string
+  public async ensurePackageInstalled (packageName: string, autoload = false, force = false): Promise<{
+    packageName:           string
     packageExistedAlready: boolean
     /** the temporary directory used for the installation, undefined if none was used */
-    libraryLocation?: string
+    libraryLocation?:      string
   }> {
     const packageExistedAlready = await this.isPackageInstalled(packageName)
     if (!force && packageExistedAlready) {
@@ -224,7 +220,10 @@ export class RShell {
       if (autoload) {
         this.sendCommand(`library(${ts2r(packageName)})`)
       }
-      return { packageName, packageExistedAlready: true }
+      return {
+        packageName,
+        packageExistedAlready: true
+      }
     }
 
     // obtain a temporary directory
@@ -236,10 +235,10 @@ export class RShell {
     const successfulDone = new RegExp(`.*DONE *\\(${packageName}\\)`)
 
     await this.session.collectLinesUntil('both', {
-      predicate: data => successfulDone.test(data),
+      predicate:       data => successfulDone.test(data),
       includeInResult: false
     }, {
-      ms: 10_000,
+      ms:             10_000,
       resetOnNewData: true
     }, () => {
       // the else branch is a cheesy way to work even if the package is already installed!
@@ -248,16 +247,27 @@ export class RShell {
     if (autoload) {
       this.sendCommand(`library(${ts2r(packageName)}, lib.loc=${ts2r(tempdir)})`)
     }
-    return { packageName, libraryLocation: tempdir, packageExistedAlready }
+    return {
+      packageName,
+      libraryLocation: tempdir,
+      packageExistedAlready
+    }
   }
+
+  // TODO: allow to configure repos etc.
+  // TODO: parser for errors
 
   /**
    * close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
    *
    * @return true if the operation succeeds, false otherwise
    */
-  public close(): boolean {
+  public close (): boolean {
     return this.session.end()
+  }
+
+  private _sendCommand (command: string): void {
+    this.session.writeLine(command)
   }
 }
 
@@ -265,63 +275,37 @@ export class RShell {
  * used to deal with the underlying input-output streams of the R process
  */
 class RShellSession {
-  private readonly bareSession: ChildProcessWithoutNullStreams
+  private readonly bareSession:   ChildProcessWithoutNullStreams
   private readonly sessionStdOut: readline.Interface
   private readonly sessionStdErr: readline.Interface
-  private readonly options: RShellSessionOptions
-  private readonly log: Logger<ILogObj>
+  private readonly options:       RShellSessionOptions
+  private readonly log:           Logger<ILogObj>
 
-  public constructor(options: RShellSessionOptions, log: Logger<ILogObj>) {
+  public constructor (options: RShellSessionOptions, log: Logger<ILogObj>) {
     this.bareSession = spawn(options.pathToRExecutable, options.commandLineOptions, {
-      env: options.env,
-      cwd: options.cwd,
+      env:         options.env,
+      cwd:         options.cwd,
       windowsHide: true
     })
-    this.sessionStdOut = readline.createInterface({ input: this.bareSession.stdout, terminal: false })
-    this.sessionStdErr = readline.createInterface({ input: this.bareSession.stderr, terminal: false })
+    this.sessionStdOut = readline.createInterface({
+      input:    this.bareSession.stdout,
+      terminal: false
+    })
+    this.sessionStdErr = readline.createInterface({
+      input:    this.bareSession.stderr,
+      terminal: false
+    })
     this.options = options
     this.log = log
     this.setupRSessionLoggers()
   }
 
-  private setupRSessionLoggers(): void {
-    this.bareSession.stdout.on('data', (data: Buffer) => {
-      this.log.trace(`< ${data.toString()}`)
-    })
-    this.bareSession.stderr.on('data', (data: string) => {
-      this.log.warn(`< ${data}`)
-    })
-    this.bareSession.on('close', (code: number) => {
-      this.log.trace(`session exited with code ${code}`)
-    })
-  }
-
-  public write(data: string): void {
+  public write (data: string): void {
     this.bareSession.stdin.write(data)
   }
 
-  public writeLine(data: string): void {
+  public writeLine (data: string): void {
     this.write(`${data}${this.options.eol}`)
-  }
-
-  private on(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
-    const both = from === 'both'
-    if (both || from === 'stdout') {
-      this.sessionStdOut.on(event, listener)
-    }
-    if (both || from === 'stderr') {
-      this.sessionStdErr.on(event, listener)
-    }
-  }
-
-  private removeListener(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
-    const both = from === 'both'
-    if (both || from === 'stdout') {
-      this.sessionStdOut.removeListener(event, listener)
-    }
-    if (both || from === 'stderr') {
-      this.sessionStdErr.removeListener(event, listener)
-    }
   }
 
   /**
@@ -334,12 +318,14 @@ class RShellSession {
    * @timeout configuration for how and when to timeout
    * @action event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
    */
-  public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
+  public async collectLinesUntil (from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
     const result: string[] = []
     let handler: (data: string) => void
 
     return await new Promise<string[]>((resolve, reject) => {
-      const makeTimer = (): NodeJS.Timeout => setTimeout(() => { reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`)) }, timeout.ms)
+      const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
+        reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`))
+      }, timeout.ms)
       let timer = makeTimer()
 
       handler = (data: string): void => {
@@ -369,7 +355,39 @@ class RShellSession {
    * @return true if the kill succeeds, false otherwise
    * @see RShell#close
    */
-  end(): boolean {
+  end (): boolean {
     return this.bareSession.kill()
+  }
+
+  private setupRSessionLoggers (): void {
+    this.bareSession.stdout.on('data', (data: Buffer) => {
+      this.log.trace(`< ${data.toString()}`)
+    })
+    this.bareSession.stderr.on('data', (data: string) => {
+      this.log.warn(`< ${data}`)
+    })
+    this.bareSession.on('close', (code: number) => {
+      this.log.trace(`session exited with code ${code}`)
+    })
+  }
+
+  private on (from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
+    const both = from === 'both'
+    if (both || from === 'stdout') {
+      this.sessionStdOut.on(event, listener)
+    }
+    if (both || from === 'stderr') {
+      this.sessionStdErr.on(event, listener)
+    }
+  }
+
+  private removeListener (from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
+    const both = from === 'both'
+    if (both || from === 'stdout') {
+      this.sessionStdOut.removeListener(event, listener)
+    }
+    if (both || from === 'stderr') {
+      this.sessionStdErr.removeListener(event, listener)
+    }
   }
 }

@@ -1,7 +1,7 @@
 import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
-import { assertAst, describeSession } from '../../helper/shell'
-import { RNumberPool, RStringPool, RSymbolPool } from '../../helper/provider'
-import { exprList } from '../../helper/ast-builder'
+import { assertAst, describeSession } from '../../../helper/shell'
+import { RNumberPool, RStringPool, RSymbolPool } from '../../../helper/provider'
+import { exprList } from '../../../helper/ast-builder'
 
 describe('0. Constant Parsing', () => {
   describeSession('0. parse single', shell => {
@@ -9,10 +9,10 @@ describe('0. Constant Parsing', () => {
       for (const number of RNumberPool) {
         const range = Lang.rangeFrom(1, 1, 1, number.str.length)
         assertAst(number.str, shell, number.str, exprList({
-          type: Lang.Type.Number,
+          type:     Lang.Type.Number,
           location: range,
-          lexeme: number.str,
-          content: number.val
+          lexeme:   number.str,
+          content:  number.val
         }))
       }
     })
@@ -20,10 +20,10 @@ describe('0. Constant Parsing', () => {
       for (const string of RStringPool) {
         const range = Lang.rangeFrom(1, 1, 1, string.str.length)
         assertAst(string.str, shell, string.str, exprList({
-          type: Lang.Type.String,
+          type:     Lang.Type.String,
           location: range,
-          lexeme: string.str,
-          content: string.val
+          lexeme:   string.str,
+          content:  string.val
         })
         )
       }
@@ -32,19 +32,19 @@ describe('0. Constant Parsing', () => {
       for (const symbol of RSymbolPool) {
         const range = Lang.rangeFrom(1, 1, 1, symbol.str.length)
         assertAst(symbol.str, shell, symbol.str, exprList({
-          type: Lang.Type.Symbol,
+          type:     Lang.Type.Symbol,
           location: range,
-          lexeme: symbol.str,
-          content: symbol.val
+          lexeme:   symbol.str,
+          content:  symbol.val
         })
         )
       }
     })
     assertAst('boolean', shell, 'TRUE', exprList({
-      type: Lang.Type.Boolean,
+      type:     Lang.Type.Logical,
       location: Lang.rangeFrom(1, 1, 1, 4),
-      lexeme: 'TRUE',
-      content: true
+      lexeme:   'TRUE',
+      content:  true
     }))
   })
   // TODO: vectors etc.

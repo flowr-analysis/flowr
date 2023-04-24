@@ -1,5 +1,6 @@
 import { type MergeableRecord } from '../../../util/objects'
 import { type RNa, type RNull, type RNumberValue, type RStringValue } from '../values'
+import { guard } from '../../../util/assert'
 
 /**
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
@@ -14,7 +15,7 @@ export enum Type {
   ExprHelpAssignWrapper = 'expr_or_assign_or_help',
   Symbol = 'SYMBOL',
   /* will be represented as a number in R */
-  Boolean = 'boolean',
+  Logical = 'boolean',
   /* this will be a symbol for us */
   Null = 'NULL_CONST',
   Number = 'NUM_CONST', // TODO: support negative numbers
@@ -30,7 +31,9 @@ export enum Type {
   If = 'IF',
   Else = 'ELSE'
 }
+
 export type StringUsedInRCode = string
+
 export enum OperatorArity {
   Unary = 1,
   Binary = 2,
@@ -44,51 +47,51 @@ export type OperatorUsedAs = 'assignment' | 'operation' | 'access'
 export type OperatorName = string
 
 export interface OperatorInformationValue extends MergeableRecord {
-  name: OperatorName
-  stringUsedInRAst: string
+  name:                 OperatorName
+  stringUsedInRAst:     string
   stringUsedInternally: string
   // precedence: number // handled by R
-  flavorInRAst: OperatorFlavorInAst
-  flavor: OperatorFlavor
-  writtenAs: OperatorWrittenAs
-  arity: OperatorArity
-  usedAs: OperatorUsedAs
+  flavorInRAst:         OperatorFlavorInAst
+  flavor:               OperatorFlavor
+  writtenAs:            OperatorWrittenAs
+  arity:                OperatorArity
+  usedAs:               OperatorUsedAs
 }
 
 // TODO: remove flavor separation and use only one (no special)
 // TODO: make it complete
 /* eslint-disable */
 export const OperatorDatabase: Record<StringUsedInRCode, OperatorInformationValue> & MergeableRecord = {
-  '+':    { name: 'addition or unary +',          stringUsedInRAst: '+',            stringUsedInternally: '+',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix', arity:  OperatorArity.Both,   usedAs: 'operation' },
-  '-':    { name: 'subtraction or unary -',       stringUsedInRAst: '-',            stringUsedInternally: '-',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix', arity:  OperatorArity.Both,   usedAs: 'operation' },
-  '*':    { name: 'multiplication',               stringUsedInRAst: '*',            stringUsedInternally: '*',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '/':    { name: 'division',                     stringUsedInRAst: '/',            stringUsedInternally: '/',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '^':    { name: 'exponentiation',               stringUsedInRAst: '^',            stringUsedInternally: '^',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '+':    { name: 'addition or unary +',          stringUsedInRAst: '+',            stringUsedInternally: '+',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Both,   usedAs: 'operation' },
+  '-':    { name: 'subtraction or unary -',       stringUsedInRAst: '-',            stringUsedInternally: '-',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Both,   usedAs: 'operation' },
+  '*':    { name: 'multiplication',               stringUsedInRAst: '*',            stringUsedInternally: '*',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '/':    { name: 'division',                     stringUsedInRAst: '/',            stringUsedInternally: '/',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '^':    { name: 'exponentiation',               stringUsedInRAst: '^',            stringUsedInternally: '^',    flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
   /* no error, R uses ^ to represent ** in the AST */
-  '**':   { name: 'alternative exponentiation',   stringUsedInRAst: '^' ,           stringUsedInternally: '**',   flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '%%':   { name: 'modulus',                      stringUsedInRAst: '%%',           stringUsedInternally: '%%',   flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '%/%':  { name: 'integer division',             stringUsedInRAst: '%/%',          stringUsedInternally: '%/%',  flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '%*%':  { name: 'matrix product',               stringUsedInRAst: '%*%',          stringUsedInternally: '%*%',  flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '%o%':  { name: 'outer product',                stringUsedInRAst: '%o%',          stringUsedInternally: '%o%',  flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '%x%':  { name: 'kronecker product',            stringUsedInRAst: '%x%',          stringUsedInternally: '%x%',  flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '==':   { name: 'equal to',                     stringUsedInRAst: 'EQ',           stringUsedInternally: '==',   flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '!=':   { name: 'not equal to',                 stringUsedInRAst: 'NE',           stringUsedInternally: '!=',   flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '>':    { name: 'greater than',                 stringUsedInRAst: 'GT',           stringUsedInternally: '>',    flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '>=':   { name: 'greater than or equal to',     stringUsedInRAst: 'GE',           stringUsedInternally: '>=',   flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '<':    { name: 'less than',                    stringUsedInRAst: 'LT',           stringUsedInternally: '<',    flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '<=':   { name: 'less than or equal to',        stringUsedInRAst: 'LE',           stringUsedInternally: '<=',   flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '&':    { name: 'logical and (vectorized)',     stringUsedInRAst: 'AND',          stringUsedInternally: '&',    flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '&&':   { name: 'logical and (non-vectorized)', stringUsedInRAst: 'AND2',         stringUsedInternally: '&&',   flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '|':    { name: 'logical or (vectorized)',      stringUsedInRAst: 'OR',           stringUsedInternally: '|',    flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
-  '||':   { name: 'logical or (not-vectorized)',  stringUsedInRAst: 'OR2',          stringUsedInternally: '||',   flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '**':   { name: 'alternative exponentiation',   stringUsedInRAst: '^' ,           stringUsedInternally: '**',   flavorInRAst: 'arithmetic', flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%%':   { name: 'modulus',                      stringUsedInRAst: '%%',           stringUsedInternally: '%%',   flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%/%':  { name: 'integer division',             stringUsedInRAst: '%/%',          stringUsedInternally: '%/%',  flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%*%':  { name: 'matrix product',               stringUsedInRAst: '%*%',          stringUsedInternally: '%*%',  flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%o%':  { name: 'outer product',                stringUsedInRAst: '%o%',          stringUsedInternally: '%o%',  flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%x%':  { name: 'kronecker product',            stringUsedInRAst: '%x%',          stringUsedInternally: '%x%',  flavorInRAst: 'special',    flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '==':   { name: 'equal to',                     stringUsedInRAst: 'EQ',           stringUsedInternally: '==',   flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '!=':   { name: 'not equal to',                 stringUsedInRAst: 'NE',           stringUsedInternally: '!=',   flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '>':    { name: 'greater than',                 stringUsedInRAst: 'GT',           stringUsedInternally: '>',    flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '>=':   { name: 'greater than or equal to',     stringUsedInRAst: 'GE',           stringUsedInternally: '>=',   flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '<':    { name: 'less than',                    stringUsedInRAst: 'LT',           stringUsedInternally: '<',    flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '<=':   { name: 'less than or equal to',        stringUsedInRAst: 'LE',           stringUsedInternally: '<=',   flavorInRAst: 'comparison', flavor: 'comparison',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '&':    { name: 'logical and (vectorized)',     stringUsedInRAst: 'AND',          stringUsedInternally: '&',    flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '&&':   { name: 'logical and (non-vectorized)', stringUsedInRAst: 'AND2',         stringUsedInternally: '&&',   flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '|':    { name: 'logical or (vectorized)',      stringUsedInRAst: 'OR',           stringUsedInternally: '|',    flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '||':   { name: 'logical or (not-vectorized)',  stringUsedInRAst: 'OR2',          stringUsedInternally: '||',   flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
   '!':    { name: 'unary not',                    stringUsedInRAst: 'NOT',          stringUsedInternally: '!',    flavorInRAst: 'logical',    flavor: 'logical',       writtenAs: 'prefix', arity: OperatorArity.Unary,  usedAs: 'operation' },
-  '%in%': { name: 'matching operator',            stringUsedInRAst: '%in%',         stringUsedInternally: '%in%', flavorInRAst: 'special',    flavor: 'logical',       writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '%in%': { name: 'matching operator',            stringUsedInRAst: '%in%',         stringUsedInternally: '%in%', flavorInRAst: 'special',    flavor: 'logical',       writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
   // TODO: clean up flavor? should not be special
-  '<-':   { name: 'left assignment',              stringUsedInRAst: 'LEFT_ASSIGN',  stringUsedInternally: '<-',   flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'assignment' },
-  '<<-':  { name: 'left global assignment',       stringUsedInRAst: 'LEFT_ASSIGN',  stringUsedInternally: '<<-',  flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'assignment' },
-  '->':   { name: 'right assignment',             stringUsedInRAst: 'RIGHT_ASSIGN', stringUsedInternally: '->',   flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'assignment' },
-  '->>':  { name: 'right global assignment',      stringUsedInRAst: 'RIGHT_ASSIGN', stringUsedInternally: '->>',  flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'assignment' },
-  '=':    { name: 'equal assignment',             stringUsedInRAst: 'EQ_ASSIGN',    stringUsedInternally: '=',    flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix', arity:  OperatorArity.Binary, usedAs: 'assignment' }
+  '<-':   { name: 'left assignment',              stringUsedInRAst: 'LEFT_ASSIGN',  stringUsedInternally: '<-',   flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'assignment' },
+  '<<-':  { name: 'left global assignment',       stringUsedInRAst: 'LEFT_ASSIGN',  stringUsedInternally: '<<-',  flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'assignment' },
+  '->':   { name: 'right assignment',             stringUsedInRAst: 'RIGHT_ASSIGN', stringUsedInternally: '->',   flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'assignment' },
+  '->>':  { name: 'right global assignment',      stringUsedInRAst: 'RIGHT_ASSIGN', stringUsedInternally: '->>',  flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'assignment' },
+  '=':    { name: 'equal assignment',             stringUsedInRAst: 'EQ_ASSIGN',    stringUsedInternally: '=',    flavorInRAst: 'special',    flavor: 'assignment',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'assignment' }
 }
 /* eslint-enable */
 
@@ -108,50 +111,59 @@ export const AssignmentsRAst: readonly string[] = Assignments.map(op => Operator
 export const Operators = [...ArithmeticOperators, ...ComparisonOperators, ...LogicalOperators] as const
 export type Operator = typeof Operators[number]
 
-export interface Base<LexemeType = string> extends MergeableRecord {
-  type: Type
-  /** the original string retrieved from R, can be used for further identification */
-  lexeme: LexemeType
+/** simply used as an empty interface with no information about additional decorations */
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface NoInfo {
 }
 
-// TODO: deep readonly variant
-interface WithChildren<Children extends Base<string | undefined>> {
+/**
+ * @typeParam Info - can be used to store additional information about the node
+ */
+export type Base<Info = NoInfo, LexemeType = string> = {
+  type:   Type
+  /** the original string retrieved from R, can be used for further identification */
+  lexeme: LexemeType
+} & MergeableRecord & Info
+
+interface WithChildren<Info, Children extends Base<Info, string | undefined>> {
   children: Children[]
 }
 
-interface Leaf<LexemeType = string> extends Base<LexemeType> {
+type Leaf<Info = NoInfo, LexemeType = string> = Base<Info, LexemeType>
 
-}
-
-// xmlparsedata uses start and end only to break ties and calculates them on max col width approximation
+// xmlparsedata uses its own start and end only to break ties and calculates them on max col width approximation
 interface Position {
-  line: number
+  line:   number
   column: number
 }
 
 export interface Range {
   start: Position
-  end: Position
+  end:   Position
 }
 
 // TODO: test
-export function rangeFrom(line1: number | string, col1: number | string, line2: number | string, col2: number | string): Range {
+export function rangeFrom (line1: number | string, col1: number | string, line2: number | string, col2: number | string): Range {
   // TODO: do we have to ensure ordering?
   return {
-    start: { line: Number(line1), column: Number(col1) },
-    end: { line: Number(line2), column: Number(col2) }
+    start: {
+      line:   Number(line1),
+      column: Number(col1)
+    },
+    end: {
+      line:   Number(line2),
+      column: Number(col2)
+    }
   }
 }
 
 // TODO: test more
-export function mergeRanges(...rs: Range[]): Range {
-  if (rs.length === 0) {
-    throw new Error('Cannot merge no ranges')
-  }
+export function mergeRanges (...rs: Range[]): Range {
+  guard(rs.length > 0, 'Cannot merge no ranges')
 
   return {
     start: rs.reduce((acc, r) => acc.line < r.start.line || (acc.line === r.start.line && acc.column < r.start.column) ? acc : r.start, rs[0].start),
-    end: rs.reduce((acc, r) => acc.line > r.end.line || (acc.line === r.end.line && acc.column > r.end.column) ? acc : r.end, rs[0].end)
+    end:   rs.reduce((acc, r) => acc.line > r.end.line || (acc.line === r.end.line && acc.column > r.end.column) ? acc : r.end, rs[0].end)
   }
 }
 
@@ -159,7 +171,7 @@ export function mergeRanges(...rs: Range[]): Range {
  * @return > 0 if r1 > r2, < 0 if r1 < r2, 0 if r1 === r2
  */
 // TODO: test
-export function compareRanges(r1: Range, r2: Range): number {
+export function compareRanges (r1: Range, r2: Range): number {
   if (r1.start.line !== r2.start.line) {
     return r1.start.line - r2.start.line
   } else if (r1.start.column !== r2.start.column) {
@@ -172,7 +184,7 @@ export function compareRanges(r1: Range, r2: Range): number {
 }
 
 // TODO: test
-export function addRanges(r1: Range, r2: Range): Range {
+export function addRanges (r1: Range, r2: Range): Range {
   return rangeFrom(r1.start.line + r2.start.line, r1.start.column + r2.start.column, r1.end.line + r2.end.line, r1.end.column + r2.end.column)
 }
 
@@ -180,64 +192,70 @@ interface Location {
   location: Range
 }
 
-export interface RExprList extends WithChildren<RNode>, Base<string | undefined>, Partial<Location> {
-  readonly type: Type.ExprList
+export type RExprList<Info = NoInfo> = {
+  readonly type:     Type.ExprList
   readonly content?: string
-}
+} & WithChildren<Info, RNode<Info>> & Base<Info, string | undefined> & Partial<Location>
 
-export interface RSymbol<T extends string = string> extends Leaf, Location {
+export type RSymbol<Info = NoInfo, T extends string = string> = {
   readonly type: Type.Symbol
-  content: T
-}
+  content:       T
+} & Leaf<Info> & Location
 
 /** includes numeric, integer, and complex */
-export interface RNumber extends Leaf, Location {
+export type RNumber<Info = NoInfo> = {
   readonly type: Type.Number
-  content: RNumberValue
-}
+  content:       RNumberValue
+} & Leaf<Info> & Location
 
-export interface RLogical extends Leaf, Location {
-  readonly type: Type.Boolean
-  content: boolean
-}
+export type RLogicalValue = boolean
 
-export interface RString extends Leaf, Location {
+export type RLogical<Info = NoInfo> = {
+  readonly type: Type.Logical
+  content:       RLogicalValue
+} & Leaf<Info> & Location
+
+export type RString<Info = NoInfo> = {
   readonly type: Type.String
-  content: RStringValue
-}
+  content:       RStringValue
+} & Leaf<Info> & Location
 
-export interface RBinaryOp extends Base, Location {
-  readonly type: Type.BinaryOp
+// TODO: others?
+export type RBinaryOp<Info = NoInfo> = {
+  readonly type:   Type.BinaryOp
   readonly flavor: OperatorFlavor
-  // TODO: others?
-  op: string
-  lhs: RNode
-  rhs: RNode
-}
+  op:              string
+  lhs:             RNode<Info>
+  rhs:             RNode<Info>
+} & Base<Info> & Location
 
-export interface RLogicalOp extends RBinaryOp {
+export type RLogicalOp<Info = NoInfo> = {
   flavor: 'logical'
-}
+} & RBinaryOp<Info>
 
-export interface RArithmeticOp extends RBinaryOp {
+export type RArithmeticOp<Info = NoInfo> = {
   flavor: 'arithmetic'
-}
+} & RBinaryOp<Info>
 
-export interface RComparisonOp extends RBinaryOp {
+export type RComparisonOp<Info = NoInfo> = {
   flavor: 'comparison'
-}
+} & RBinaryOp<Info>
 
-export interface RIfThenElse extends Base, Location {
+export type RAssignmentOp<Info = NoInfo> = {
+  flavor: 'assignment'
+} & RBinaryOp<Info>
+
+export type RIfThenElse<Info = NoInfo> = {
   readonly type: Type.If
-  condition: RNode
-  then: RNode
-  else?: RNode
-}
+  condition:     RNode<Info>
+  then:          RNode<Info>
+  otherwise?:    RNode<Info>
+} & Base<Info> & Location
 
 // TODO: special constants
-export type RConstant = RNumber | RString | RLogical | RSymbol<typeof RNull | typeof RNa>
+export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
 
-export type RSingleNode = RSymbol | RConstant
-export type RNode = RExprList | RIfThenElse | RBinaryOp | RSingleNode
+export type RSingleNode<Info> = RSymbol<Info> | RConstant<Info>
+export type RNode<Info = NoInfo> = RExprList<Info> | RIfThenElse<Info> | RBinaryOp<Info> | RSingleNode<Info>
 
 export const ALL_VALID_TYPES = Object.values(Type)

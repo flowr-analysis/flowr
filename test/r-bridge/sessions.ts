@@ -1,8 +1,8 @@
 import { assert } from 'chai'
 import fs from 'fs'
 import { randomString } from '../../src/util/random'
-import { testRequiresNetworkConnection } from './helper/network'
-import { describeSession, testWithShell } from './helper/shell'
+import { testRequiresNetworkConnection } from '../helper/network'
+import { describeSession, testWithShell } from '../helper/shell'
 import { isInstallTest } from '../main.spec'
 import { parseCSV } from '../../src/r-bridge/lang:4.x/values'
 import { log, LogLevel } from '../../src/util/log'
@@ -87,7 +87,7 @@ describe('RShell sessions', function () {
 
       assert.isTrue(got.map(g => g[1]).includes(pkg), `expected package ${pkg} to be loaded, but got: ${JSON.stringify(got)}`)
     })
-    testWithShell('6.1 loadWithForceInstall', async (shell, test) => {
+    testWithShell('6.1 load with force install', async (shell, test) => {
       await testRequiresNetworkConnection(test)
       isInstallTest(test)
 

@@ -29,6 +29,7 @@
     "mocha-multi-reporters": "^1.5.1",
     "nyc": "^15.1.0",
     "rotating-file-stream": "^3.1.0",
+    "ts-essentials": "^9.3.1",
     "ts-node": "^10.9.1",
     "tslog": "^4.8.2",
     "typedoc": "^0.23.28",

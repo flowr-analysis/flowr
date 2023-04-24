@@ -1,6 +1,6 @@
 // all examples are based on the R language def (Draft of 2023-03-15, 10.3.1)
-import * as Lang from '../../../src/r-bridge/lang:4.x/ast/model'
-import { RNa, RNull, type RNumberValue, type RStringValue } from '../../../src/r-bridge/lang:4.x/values'
+import * as Lang from '../../src/r-bridge/lang:4.x/ast/model'
+import { RNa, RNull, type RNumberValue, type RStringValue } from '../../src/r-bridge/lang:4.x/values'
 
 // maps a string to the expected R number parse value
 export const RNumberPool: Array<{ val: RNumberValue, str: string }> = [
@@ -92,5 +92,11 @@ export const RArithmeticBinaryOpPool: Array<{ flavor: 'arithmetic', str: string 
 export const RLogicalBinaryOpPool: Array<{ flavor: 'logical', str: string }> =
       Lang.LogicalOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'logical' }))
 
+export const RComparisonBinaryOpPool: Array<{ flavor: 'comparison', str: string }> =
+    Lang.ComparisonOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'comparison' }))
+
 export const RAssignmentOpPool: Array<{ flavor: 'assignment', str: string }> =
     Lang.Assignments.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'assignment' }))
+
+export const RNonAssignmentBinaryOpPool: Array<{ label: 'arithmetic' | 'logical' | 'comparison', pool: typeof RArithmeticBinaryOpPool | typeof RLogicalBinaryOpPool | typeof RComparisonBinaryOpPool }> =
+    [{ label: 'arithmetic', pool: RArithmeticBinaryOpPool }, { label: 'logical', pool: RLogicalBinaryOpPool } , { label: 'comparison', pool: RComparisonBinaryOpPool }]

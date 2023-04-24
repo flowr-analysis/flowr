@@ -62,7 +62,7 @@ export interface DataflowGraphNodeInfo {
 }
 
 /**
- * holds the dataflow information found within the given AST
+ * Holds the dataflow information found within the given AST
  * there is a node for every variable encountered, obeying scoping rules
  * the node info holds edge information, node-names etc.
  * <p>

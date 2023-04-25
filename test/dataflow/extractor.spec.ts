@@ -1,11 +1,18 @@
 // TODO: get def-usage for every line
 import { assertDataflow, describeSession, retrieveAst } from '../helper/shell'
 import { produceDataFlowGraph } from '../../src/dataflow/extractor'
-import { decorateWithIds } from '../../src/dataflow/id'
-import { decorateWithParentInformation } from '../../src/dataflow/parents'
-import { DataflowGraph, GLOBAL_SCOPE, graphToMermaidUrl, LOCAL_SCOPE } from '../../src/dataflow/graph'
+import { decorateWithIds, IdType } from '../../src/dataflow/id'
+import { decorateWithParentInformation, RNodeWithParent } from '../../src/dataflow/parents'
+import {
+  DataflowGraph,
+  DataflowGraphNodeInfo, formatRange,
+  GLOBAL_SCOPE,
+  graphToMermaidUrl,
+  LOCAL_SCOPE
+} from '../../src/dataflow/graph'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool } from "../helper/provider"
 import { naiveLineBasedSlicing } from "../../src/slicing/static/static-slicer"
+import { NoInfo } from '../../src/r-bridge/lang:4.x/ast/model'
 
 
 describe('Extract Dataflow Information', () => {
@@ -178,7 +185,7 @@ describe('Extract Dataflow Information', () => {
     })
 
     it('100. the classic', async () => {
-      const ast = await retrieveAst(shell, `
+      const code = `
           sum <- 0
           product <- 1
           w <- 7
@@ -192,7 +199,8 @@ describe('Extract Dataflow Information', () => {
           # TODO: currently not available :/
           # cat("Sum:", sum, "\\n")
           # cat("Product:", product, "\\n")
-      `)
+      `
+      const ast = await retrieveAst(shell, code)
       const astWithId = decorateWithIds(ast)
       const astWithParentIds = decorateWithParentInformation(astWithId.decoratedAst)
       const {dataflowIdMap, dataflowGraph} = produceDataFlowGraph(astWithParentIds)
@@ -201,8 +209,22 @@ describe('Extract Dataflow Information', () => {
       console.log(graphToMermaidUrl(dataflowGraph, dataflowIdMap))
 
       // i know we do not want to slice, but let's try as a quick demo:
-      console.log([...naiveLineBasedSlicing(dataflowGraph, dataflowIdMap,'18')].sort().join(','))
-      console.log([...naiveLineBasedSlicing(dataflowGraph, dataflowIdMap,'25')].sort().join(','))
+
+      const print = (id: IdType): void => {
+        const nodeInfo = dataflowGraph.get(id) as DataflowGraphNodeInfo
+        const nodePosition = (dataflowIdMap.get(id) as RNodeWithParent<NoInfo>).location
+        console.log(`Static backward slice for id ${id}: ${nodeInfo.name} (${formatRange(nodePosition)})`)
+        const lines = [...naiveLineBasedSlicing(dataflowGraph, dataflowIdMap,id)].sort()
+        code.split('\n').map((line, index) => {
+          if (lines.includes(index+1)) {
+            console.log(`${[index+1]}\t ${line}`)
+          }
+        })
+        console.log('=====================================================\n')
+      }
+
+      print('18')
+      print('25')
     })
   })
 })

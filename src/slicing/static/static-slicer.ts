@@ -4,7 +4,7 @@ import { guard } from "../../util/assert"
 import { DataflowMap } from "../../dataflow/extractor"
 import { log } from "../../util/log"
 
-/** returns the line numbers to include, TODO: add ast etc.  */
+/** returns the line numbers to include, TODO: add ast etc., TODO: include braces and paranethesis as additional ast information so we can add the closing/opening brace into the slice!  */
 export function naiveLineBasedSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowIdMap: DataflowMap<OtherInfo>, id: IdType): Set<number> {
   const lines = new Set<number>()
   const visitQueue = [id]

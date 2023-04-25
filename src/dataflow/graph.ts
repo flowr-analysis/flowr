@@ -200,7 +200,7 @@ function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeI
   }
 }
 
-function formatRange(range: Lang.Range | undefined): string {
+export function formatRange(range: Lang.Range | undefined): string {
   if (range === undefined) {
     return '??'
   }

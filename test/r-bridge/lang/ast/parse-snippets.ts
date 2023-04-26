@@ -49,9 +49,8 @@ max
         },
         then: {
           type:     Lang.Type.ExpressionList,
-          content:  '{\nmax <<- a\ni ->2\n}',
+          lexeme:   '{\nmax <<- a\ni ->2\n}',
           location: Lang.rangeFrom(4, 11, 7, 1),
-          lexeme:   undefined,
           children: [
             {
               type:     Lang.Type.BinaryOp,

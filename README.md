@@ -16,7 +16,7 @@ A program slicer and analyzer for R programs.
 
 To work with *flowr* you need [*R*](https://www.r-project.org/) installed and on your path.
 
-Furthermore, we encourage you to enable to project-specific git-hooks by running:
+Furthermore, we encourage you to enable the project-specific git-hooks by running:
 
 ```shell
 git config --local core.hooksPath .githooks/

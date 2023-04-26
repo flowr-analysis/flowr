@@ -50,7 +50,7 @@ type FoldReadWriteTarget = FoldReadWriteTargetAlways | FoldReadWriteTargetMaybe
  * for each we hold a set of information (in(block), out(block) and unclassified references) as well as the currently produced
  * dataflow graph.
  * <p>
- * These graphs will be combined using {@link #mergeDataflowGraphs} to incrementally produce the final dataflow graph.
+ * These graphs will be combined using {@link DataflowGraph#mergeWith} to incrementally produce the final dataflow graph.
  */
 interface FoldInfo {
   /** variable names that have been used without clear indication of their origin (i.e. if they will be read or written to) */

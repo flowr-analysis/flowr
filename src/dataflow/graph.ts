@@ -200,7 +200,7 @@ function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeI
   }
 }
 
-function formatRange(range: Lang.Range | undefined): string {
+export function formatRange(range: Lang.Range | undefined): string {
   if (range === undefined) {
     return '??'
   }
@@ -213,7 +213,7 @@ export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<
   const lines = ['flowchart TD']
   for (const [id, info] of graph.entries()) {
     const def = info.definedAtPosition !== false
-    lines.push(`    ${id}${def ? "[" : "([" }"\`${info.name}\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"${def ? "]" : "])" }`)
+    lines.push(`    ${id}${def ? "[" : "([" }"\`${info.name} (${id})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"${def ? "]" : "])" }`)
     for (const edge of info.edges) {
       const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
       lines.push(`    ${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${edge.target}`)

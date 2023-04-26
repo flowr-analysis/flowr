@@ -253,6 +253,10 @@ function processForLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, variable: 
     for(const target of targets) {
       const ids = target.attribute === 'always' ? [target.id] : target.ids
       for(const id of ids) {
+        // define it in term of all vector.in and vector.activeNodes
+        // TODO: do not re-join every time!
+        nextGraph.addEdges(id, [...vector.in, ...vector.activeNodes], 'defined-by', 'always')
+
         const name = nextGraph.get(id)?.name
         guard(name !== undefined, `name should be defined for node ${id}`)
         const readIdsToLink = nameIdShares.get(name)

@@ -173,9 +173,20 @@ describe('Extract Dataflow Information', () => {
   describeSession('B. Working with expression lists', shell => {
     describe('0. Lists without variable references ', () => {
       let idx = 0
-      for(const b of ['1\n2\n3']) {
-        assertDataflow(`0.${idx++}.1 ${JSON.stringify(b)}`, shell, b, new DataflowGraph() )
+      for(const b of ['1\n2\n3', '1;2;3', '{ 1 + 2 }\n{ 3 * 4 }']) {
+        assertDataflow(`0.${idx++} ${JSON.stringify(b)}`, shell, b, new DataflowGraph() )
       }
+    })
+
+    describe('1. Lists with variable references ', () => {
+      describe(`1.1 read-read same variable`, () => {
+        const sameGraph = (id1: IdType, id2: IdType) => new DataflowGraph()
+          .addNode(id1, 'x').addNode(id2, 'x').addEdge(id1, id2, 'same-read-read', 'always')
+        assertDataflow(`1.1.1 directly together`, shell, 'x\nx', sameGraph('0', '1'))
+        assertDataflow(`1.1.2 surrounded by uninteresting elements`, shell, '3\nx\n1\nx\n2', sameGraph('1', '3'))
+        assertDataflow(`1.1.3 using braces`, shell, '{ x }\n{{ x }}', sameGraph('0', '1'))
+        assertDataflow(`1.1.4 using braces and uninteresting elements`, shell, '{ x + 2 }; 4 - { x }', sameGraph('0', '4'))
+      })
     })
   })
 

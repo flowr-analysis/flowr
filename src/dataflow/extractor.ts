@@ -123,19 +123,22 @@ function produceNameSharedIdMap(idPool: IdType[], graph: DataflowGraph): Default
   return nameIdShares
 }
 
-/** does not connect fully but only link so that all are connected, updates teh graph in-place */
-function linkVariablesInSameScope(graph: DataflowGraph, idPool: IdType[]): void {
-  const nameIdShares = produceNameSharedIdMap(idPool, graph)
-
+function linkVariablesInSameScopeWithNames (graph: DataflowGraph, nameIdShares: DefaultMap<string, IdType[]>) {
   for (const ids of nameIdShares.values()) {
     if (ids.length <= 1) {
       continue
     }
     const base = ids[0]
-    for(let i = 1; i < ids.length; i++) {
+    for (let i = 1; i < ids.length; i++) {
       graph.addEdge(base, ids[i], 'same-read-read', 'always')
     }
   }
+}
+
+/** does not connect fully but only link so that all are connected, updates teh graph in-place */
+function linkVariablesInSameScope(graph: DataflowGraph, idPool: IdType[]): void {
+  const nameIdShares = produceNameSharedIdMap(idPool, graph)
+  linkVariablesInSameScopeWithNames(graph, nameIdShares)
 }
 
 function setDefinitionOfNode(graph: DataflowGraph, id: IdType, scope: DataflowScopeName): void {
@@ -351,13 +354,14 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
     const writePointers = new Map<string, WritePointerTargets>()
     const remainingRead =  new Map<string, IdType[]>() // name to id
 
-    // TODO: this is definitely wrong
+    // TODO: this is probably wrong
     const nextGraph = children[0].graph.mergeWith(...children.slice(1).map(c => c.graph))
 
     for (const element of children) {
       const currentElement: FoldInfo = element
 
-      for (const readId of currentElement.in) {
+      // all inputs that have not been written until know, are read!
+      for (const readId of [...currentElement.in, ...currentElement.activeNodes]) {
         const existingRef = dataflowIdMap.get(readId)
         const readName = existingRef?.lexeme
         guard (readName !== undefined, `Could not find name for read variable ${readId}`)
@@ -410,10 +414,13 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
         }
       }
 
-
       // for each variable read add the closest write and if we have one, remove it from read
       updateAllWriteTargets(currentElement, dataflowIdMap, writePointers)
     }
+    // now, we have to link same reads
+
+    linkVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))
+
     return {
       // TODO: ensure active killed on that level?
       activeNodes: children.flatMap(child => child.activeNodes),

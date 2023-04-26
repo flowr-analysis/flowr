@@ -56,8 +56,8 @@ describe('Extract Dataflow Information', () => {
 
     describe('3. assignments', () => {
       // TODO: for all assignment ops!
+      let idx = 0
       for(const op of RAssignmentOpPool) {
-        let idx = 0
         describe(`3.${++idx} ${op.str}`, () => {
           const scope = op.str.length > 2 ? GLOBAL_SCOPE : LOCAL_SCOPE // love it
           const swapSourceAndTarget = op.str === '->' || op.str === '->>'

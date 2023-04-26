@@ -228,24 +228,35 @@ describe('Extract Dataflow Information', () => {
 
     describe('2. Lists with if-then constructs', () => {
       describe(`2.1 reads within if`, () => {
-        assertDataflow(`2.1.1 read previous def`, shell, 'x <- 2\n if(TRUE) { x }',
-          new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('4', 'x')
-            .addEdge('4', '0', 'read', 'maybe')
+        let idx = 0
+        for(const b of [{ label: 'without else', text: ''}, {label: 'with else', text: ' else { 1 }'}]) {
+          describe(`2.1.${++idx} ${b.label}`, () => {
+            assertDataflow(`2.1.${idx}.1 read previous def in cond`, shell, `x <- 2\n if(x) { 1 } ${b.text}`,
+              new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('3', 'x')
+                .addEdge('3', '0', 'read', 'always')
+            )
+            assertDataflow(`2.1.${idx}.2 read previous def in then`, shell, `x <- 2\n if(TRUE) { x } ${b.text}`,
+              new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('4', 'x')
+                .addEdge('4', '0', 'read', 'maybe')
+            )
+          })
+        }
+        assertDataflow(`2.1.${++idx}. read previous def in else`, shell, 'x <- 2\n if(TRUE) { 42 } else { x }',
+          new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('5', 'x')
+            .addEdge('5', '0', 'read', 'maybe')
         )
+        // TODO: others like same-read-read?
       })
       describe('2.2 write within if', () => {
-        const sameGraph = (id1: IdType, id2: IdType) => new DataflowGraph()
-          .addNode(id1, 'x', LOCAL_SCOPE).addNode(id2, 'x', LOCAL_SCOPE).addEdge(id1, id2, 'same-def-def', 'always')
-        assertDataflow(`1.2.1 directly together`, shell, 'x <- 1\nx <- 2', sameGraph('0', '3'))
-        assertDataflow(`1.2.2 directly together with mixed sides`, shell, '1 -> x\nx <- 2', sameGraph('1', '3'))
-        assertDataflow(`1.2.3 surrounded by uninteresting elements`, shell, '3\nx <- 1\n1\nx <- 3\n2', sameGraph('1', '5'))
-        assertDataflow(`1.2.4 using braces`, shell, '{ x <- 42 }\n{{ x <- 50 }}', sameGraph('0', '3'))
-        assertDataflow(`1.2.5 using braces and uninteresting elements`, shell, '5; { x <- 2 }; 17; 4 -> x; 9', sameGraph('1', '6'))
-
-        assertDataflow(`1.2.6 multiple occurrences of same variable`, shell, 'x <- 1\nx <- 3\n3\nx <- 9', new DataflowGraph()
-          .addNode('0', 'x', LOCAL_SCOPE).addNode('3', 'x', LOCAL_SCOPE).addNode('7', 'x', LOCAL_SCOPE)
-          .addEdge('0', '3', 'same-def-def', 'always')
-          .addEdge('3', '7', 'same-def-def', 'always'))
+        let idx = 0
+        for(const b of [{ label: 'without else', text: ''}, {label: 'with else', text: ' else { 1 }'}]) {
+          describe(`2.1.${++idx} ${b.label}`, () => {
+            assertDataflow(`2.2.1 directly together`, shell, 'if(TRUE) { x <- 2 }\n x',
+              new DataflowGraph().addNode('1', 'x', LOCAL_SCOPE).addNode('5', 'x')
+                .addEdge('5', '1', 'read', 'maybe')
+            )
+          })
+        }
       })
     })
   })

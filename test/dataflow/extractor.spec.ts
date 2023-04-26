@@ -200,6 +200,18 @@ describe('Extract Dataflow Information', () => {
         assertDataflow(`1.2.3 surrounded by uninteresting elements`, shell, '3\nx <- 1\n1\nx <- 3\n2', sameGraph('1', '5'))
         assertDataflow(`1.2.4 using braces`, shell, '{ x <- 42 }\n{{ x <- 50 }}', sameGraph('0', '3'))
         assertDataflow(`1.2.5 using braces and uninteresting elements`, shell, '5; { x <- 2 }; 17; 4 -> x; 9', sameGraph('1', '6'))
+
+        assertDataflow(`1.2.6 multiple occurrences of same variable`, shell, 'x <- 1\nx <- 3\n3\nx <- 9', new DataflowGraph()
+          .addNode('0', 'x', LOCAL_SCOPE).addNode('3', 'x', LOCAL_SCOPE).addNode('7', 'x', LOCAL_SCOPE)
+          .addEdge('0', '3', 'same-def-def', 'always')
+          .addEdge('3', '7', 'same-def-def', 'always'))
+      })
+      describe('1.3 def followed by read', () => {
+        const sameGraph = (id1: IdType, id2: IdType) => new DataflowGraph()
+          .addNode(id1, 'x', LOCAL_SCOPE).addNode(id2, 'x').addEdge(id2, id1, 'read', 'always')
+        assertDataflow(`1.3.1 directly together`, shell, 'x <- 1\nx', sameGraph('0', '3'))
+        assertDataflow(`1.3.2 surrounded by uninteresting elements`, shell, '3\nx <- 1\n1\nx\n2', sameGraph('1', '5'))
+        assertDataflow(`1.1.3 using braces`, shell, '{ x <- 1 }\n{{ x }}', sameGraph('0', '3'))
       })
     })
   })

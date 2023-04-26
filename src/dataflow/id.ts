@@ -20,7 +20,7 @@ export type IdRNode<OtherInfo> = RNode<OtherInfo & Id>
 
 export type IdGenerator<OtherInfo> = (data: RNode<OtherInfo>) => IdType
 
-// TODO: other generators?
+// TODO: other generators? => like one that uses the location
 /**
  * The simplest id generator which just increments a number on each call
  */

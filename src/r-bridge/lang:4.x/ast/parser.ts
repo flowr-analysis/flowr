@@ -13,6 +13,7 @@ import {
 import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
 import { guard } from "../../../util/assert"
+import { splitArrayOn } from '../../../util/arrays'
 
 const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
@@ -187,7 +188,11 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     }))
 
     // TODO: some more performant way, so that when redoing this recursively we don't have to extract names etc again
-    // mappedWithName.
+    const splitOnSemicolon = splitArrayOn(mappedWithName, ({name}) => name === Lang.Type.Semicolon)
+    if(splitOnSemicolon.length > 1) {
+      // TODO: check if non-wrapping expr list is correct
+      return splitOnSemicolon.flatMap(arr => this.parseBasedOnType(arr.map(({content}) => content)))
+    }
 
     // TODO: improve with error message and ensure no semicolon
     if (mappedWithName.length === 1) {

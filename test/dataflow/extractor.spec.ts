@@ -92,6 +92,27 @@ describe('Extract Dataflow Information', () => {
           assertDataflow(`${circularAssignment} (circular assignment)`, shell, circularAssignment, circularGraph)
         })
       }
+      describe(`3.${++idx} nested assignments`, () => {
+        // TODO: dependency between x and y?
+        assertDataflow(`3.${idx}.1 "x <- y <- 1"`, shell, 'x <- y <- 1',
+          new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('1', 'y', LOCAL_SCOPE)
+            .addEdge('0', '1', 'defined-by', 'always')
+        )
+        assertDataflow(`3.${idx}.2 "1 -> x -> y"`, shell, '1 -> x -> y',
+          new DataflowGraph().addNode('1', 'x', LOCAL_SCOPE).addNode('3', 'y', LOCAL_SCOPE)
+            .addEdge('3', '1', 'defined-by', 'always')
+        )
+        // still by indirection (even though y is overwritten?) TODO: discuss that
+        assertDataflow(`3.${idx}.3 "x <- 1 -> y"`, shell, 'x <- 1 -> y',
+          new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('2', 'y', LOCAL_SCOPE)
+            .addEdge('0', '2', 'defined-by', 'always')
+        )
+        assertDataflow(`3.${idx}.1 "x <- y <- z"`, shell, 'x <- y <- z',
+          new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('1', 'y', LOCAL_SCOPE).addNode('2', 'z')
+            .addEdge('0', '1', 'defined-by', 'always').addEdge('1', '2', 'defined-by', 'always')
+            .addEdge('0', '2', 'defined-by', 'always')
+        )
+      })
     })
 
     describe('4. if-then-else', () => {

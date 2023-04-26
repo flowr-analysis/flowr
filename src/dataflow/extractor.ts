@@ -148,9 +148,9 @@ function setDefinitionOfNode(graph: DataflowGraph, id: IdType, scope: DataflowSc
 }
 
 
-function identifyReadAndWriteBasedOnOp<OtherInfo>(op: RNodeWithParent<OtherInfo>, rhs: FoldInfo, lhs: FoldInfo) {
+function identifyReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RNodeWithParent<OtherInfo>, rhs: FoldInfo, lhs: FoldInfo) {
+  // what is written/read additionally is based on lhs/rhs - assignments read written variables as well
   const read = [...lhs.in, ...rhs.in]
-  const write = [...lhs.out, ...rhs.out]
 
   let source
   let target
@@ -181,12 +181,18 @@ function identifyReadAndWriteBasedOnOp<OtherInfo>(op: RNodeWithParent<OtherInfo>
       // TODO: use id.attribute?
       [{attribute: 'always', id: id.id}]
     ]))
-  return {readTargets: [...source.activeNodes, ...read], writeTargets: new Map<string, FoldWriteTarget[]> ([...writeNodes, ...write])}
+  const readFromSourceWritten: FoldReadTarget[] = [...source.out].flatMap(([scope,targets]): FoldReadTarget[] => {
+    guard(scope === LOCAL_SCOPE, 'currently, nested write re-assignments are only supported for local')
+    return targets.map(id => {
+      guard(id.attribute === 'always', 'currently, nested write re-assignments are only supported for always')
+      return id
+    })
+  })
+  return {readTargets: [...source.activeNodes, ...read, ...readFromSourceWritten], writeTargets: new Map<string, FoldWriteTarget[]> ([...writeNodes, ...target.out])}
 }
 
-// TODO: nested assignments like x <- y <- z <- 1
 function processAssignment<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: FoldInfo, rhs: FoldInfo): FoldInfo {
-  const { readTargets, writeTargets } = identifyReadAndWriteBasedOnOp(op,  rhs, lhs)
+  const { readTargets, writeTargets } = identifyReadAndWriteForAssignmentBasedOnOp(op,  rhs, lhs)
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
   // TODO: identify global, local etc.
   for (const [scope, writeTarget] of writeTargets) {

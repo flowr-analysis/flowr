@@ -7,14 +7,11 @@ import type * as Lang from '../r-bridge/lang:4.x/ast/model'
 import { type ParentInformation, type RNodeWithParent } from './parents'
 import { guard } from '../util/assert'
 import {
-  DataflowGraph, DataflowGraphEdge,
+  DataflowGraph,
   DataflowGraphEdgeAttribute,
-  DataflowGraphEdgeType,
   DataflowScopeName,
   GLOBAL_SCOPE, LOCAL_SCOPE
 } from './graph'
-import {MergeableRecord} from "../util/objects"
-import {RNode} from "../r-bridge/lang:4.x/ast/model"
 import { DefaultMap } from "../util/defaultmap"
 
 const dataflowLogger = log.getSubLogger({ name: 'ast' })
@@ -29,21 +26,22 @@ export type DataflowRNode<OtherInfo> = Lang.RSymbol<OtherInfo & Id & ParentInfor
 /** used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<IdType, RNodeWithParent<OtherInfo>>
 
-interface FoldReadWriteTargetBase {
+interface FoldWriteTargetBase {
   attribute: DataflowGraphEdgeAttribute
 }
 
-interface FoldReadWriteTargetAlways extends FoldReadWriteTargetBase {
+interface FoldWriteTargetAlways extends FoldWriteTargetBase {
   attribute: 'always',
   id:        IdType
 }
 
-interface FoldReadWriteTargetMaybe extends FoldReadWriteTargetBase {
+interface FoldWriteTargetMaybe extends FoldWriteTargetBase {
   attribute: 'maybe',
   ids:       IdType[]
 }
 
-type FoldReadWriteTarget = FoldReadWriteTargetAlways | FoldReadWriteTargetMaybe
+type FoldWriteTarget = FoldWriteTargetAlways | FoldWriteTargetMaybe
+type FoldReadTarget = { id: IdType, attribute: DataflowGraphEdgeAttribute }
 
 /**
  * during folding we consider each fold-step as a single block (e.g., a variable, a assignment, a function expression, ...)
@@ -54,11 +52,11 @@ type FoldReadWriteTarget = FoldReadWriteTargetAlways | FoldReadWriteTargetMaybe
  */
 interface FoldInfo {
   /** variable names that have been used without clear indication of their origin (i.e. if they will be read or written to) */
-  activeNodes: IdType[]
+  activeNodes: FoldReadTarget[]
   /** variables that have been read in the current block (i.e., in(block))*/
-  in:          IdType[] // TODO: read from env?
+  in:          FoldReadTarget[] // TODO: read from env?
   /** variables that have been written to the given scope (i.e., out(block)) */
-  out:         Map<DataflowScopeName, FoldReadWriteTarget[]>
+  out:         Map<DataflowScopeName, FoldWriteTarget[]>
   /** the complete dataflow graph produced by the current block */
   graph:       DataflowGraph
 }
@@ -88,7 +86,7 @@ function processSymbol<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (symb
     // TODO: can be replaced by id set if we have a mapping with ids on the parented nodes
     dataflowIdMap.set(symbol.id, symbol)
     return {
-      activeNodes: [symbol.id],
+      activeNodes: [{ attribute: 'always', id: symbol.id }],
       in:          [],
       out:         new Map(),
       graph:       new DataflowGraph().addNode(symbol.id, symbol.content)
@@ -112,10 +110,10 @@ function processNonAssignmentBinaryOp<OtherInfo> (op: RNodeWithParent<OtherInfo>
   }
 }
 
-function produceNameSharedIdMap(idPool: IdType[], graph: DataflowGraph): DefaultMap<string, IdType[]> {
-  const nameIdShares = new DefaultMap<string, IdType[]>(() => [])
+function produceNameSharedIdMap(idPool: FoldReadTarget[], graph: DataflowGraph): DefaultMap<string, FoldReadTarget[]> {
+  const nameIdShares = new DefaultMap<string, FoldReadTarget[]>(() => [])
   idPool.forEach(id => {
-    const name = graph.get(id)?.name
+    const name = graph.get(id.id)?.name
     guard(name !== undefined, `name must be defined for ${id}`)
     const previous = nameIdShares.get(name)
     previous.push(id)
@@ -123,20 +121,21 @@ function produceNameSharedIdMap(idPool: IdType[], graph: DataflowGraph): Default
   return nameIdShares
 }
 
-function linkVariablesInSameScopeWithNames (graph: DataflowGraph, nameIdShares: DefaultMap<string, IdType[]>) {
+function linkVariablesInSameScopeWithNames (graph: DataflowGraph, nameIdShares: DefaultMap<string, FoldReadTarget[]>) {
   for (const ids of nameIdShares.values()) {
     if (ids.length <= 1) {
       continue
     }
     const base = ids[0]
     for (let i = 1; i < ids.length; i++) {
-      graph.addEdge(base, ids[i], 'same-read-read', 'always')
+      // TODO: include the attribute? probably not, as same-edges are independent of structure
+      graph.addEdge(base.id, ids[i].id, 'same-read-read', 'always')
     }
   }
 }
 
 /** does not connect fully but only link so that all are connected, updates teh graph in-place */
-function linkVariablesInSameScope(graph: DataflowGraph, idPool: IdType[]): void {
+function linkVariablesInSameScope(graph: DataflowGraph, idPool: FoldReadTarget[]): void {
   const nameIdShares = produceNameSharedIdMap(idPool, graph)
   linkVariablesInSameScopeWithNames(graph, nameIdShares)
 }
@@ -176,9 +175,13 @@ function identifyReadAndWriteBasedOnOp<OtherInfo>(op: RNodeWithParent<OtherInfo>
     default:
       throw new Error(`Unknown assignment operator ${JSON.stringify(op)}`)
   }
-  const writeNodes = new Map<string, FoldReadWriteTarget[]>(
-    [...target.activeNodes].map(id => [global ? GLOBAL_SCOPE : LOCAL_SCOPE, [{attribute: 'always', id}]]))
-  return {readTargets: [...source.activeNodes, ...read], writeTargets: new Map<string, FoldReadWriteTarget[]> ([...writeNodes, ...write])}
+  const writeNodes = new Map<string, FoldWriteTarget[]>(
+    [...target.activeNodes].map(id => [
+      global ? GLOBAL_SCOPE : LOCAL_SCOPE,
+      // TODO: use id.attribute?
+      [{attribute: 'always', id: id.id}]
+    ]))
+  return {readTargets: [...source.activeNodes, ...read], writeTargets: new Map<string, FoldWriteTarget[]> ([...writeNodes, ...write])}
 }
 
 // TODO: nested assignments like x <- y <- z <- 1
@@ -191,7 +194,9 @@ function processAssignment<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: Fold
       const ids = t.attribute === 'always' ? [t.id] : t.ids
       for(const writeId of ids) {
         setDefinitionOfNode(nextGraph, writeId, scope)
-        nextGraph.addEdges(writeId, readTargets, 'defined-by', 'always')
+        for(const readTarget of readTargets) {
+          nextGraph.addEdge(writeId, readTarget.id, 'defined-by', readTarget.attribute)
+        }
       }
     }
   }
@@ -203,14 +208,22 @@ function processAssignment<OtherInfo> (op: RNodeWithParent<OtherInfo>, lhs: Fold
   }
 }
 
+function makeFoldReadTargetsMaybe (ids: FoldReadTarget[]): FoldReadTarget[] {
+  return ids.map(id => ({ attribute: 'maybe', id: id.id}))
+}
+
 function processIfThenElse<OtherInfo> (ifThen: RNodeWithParent<OtherInfo>, cond: FoldInfo, then: FoldInfo, otherwise?: FoldInfo): FoldInfo {
   // TODO: allow to also attribute in-put with amybe and always
   // again within an if-then-else we consider all actives to be read
-  const ingoing = [...cond.in, ...then.in, ...(otherwise?.in ?? []), ...cond.activeNodes, ...then.activeNodes, ...(otherwise?.activeNodes ?? [])]
+  const ingoing: FoldReadTarget[] = [...cond.in, ...makeFoldReadTargetsMaybe(then.in),
+    ...makeFoldReadTargetsMaybe(otherwise?.in ?? []), ...cond.activeNodes,
+    ...makeFoldReadTargetsMaybe(then.activeNodes), ...makeFoldReadTargetsMaybe(otherwise?.activeNodes ?? [])
+  ]
 
   // we assign all with a maybe marker
   const outgoing = new Map([...cond.out])
 
+  // we do not merge even if they appear in both branches because the maybe links will refer to different ids
   for(const [scope, targets] of then.out) {
     const existing = outgoing.get(scope)
     const existingIds = existing?.flatMap(t => t.attribute === 'always' ? [t.id] : t.ids) ?? []
@@ -244,7 +257,8 @@ function processForLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, variable: 
 
   // we assign all with a maybe marker
 
-  const writtenVariable: [[DataflowScopeName, FoldReadWriteTarget[]]] = [[LOCAL_SCOPE, variable.activeNodes.map(id => ({attribute: 'always', id}))]]
+  // TODO: use attribute?
+  const writtenVariable: [[DataflowScopeName, FoldWriteTarget[]]] = [[LOCAL_SCOPE, variable.activeNodes.map(id => ({attribute: 'always', id: id.id}))]]
   const nextGraph = variable.graph.mergeWith(vector.graph, body.graph)
 
   // TODO: hold name when reading to avoid constant indirection?
@@ -258,13 +272,15 @@ function processForLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, variable: 
       for(const id of ids) {
         // define it in term of all vector.in and vector.activeNodes
         // TODO: do not re-join every time!
-        nextGraph.addEdges(id, [...vector.in, ...vector.activeNodes], 'defined-by', 'always')
+        for(const link of [...vector.in, ...vector.activeNodes]) {
+          nextGraph.addEdge(id, link.id, 'defined-by', link.attribute)
+        }
 
         const name = nextGraph.get(id)?.name
         guard(name !== undefined, `name should be defined for node ${id}`)
         const readIdsToLink = nameIdShares.get(name)
         for(const readId of readIdsToLink) {
-          nextGraph.addEdge(readId, id, 'defined-by', 'always')
+          nextGraph.addEdge(readId.id, id, 'defined-by', readId.attribute)
         }
         // now, we remove the name from the id shares as they are no longer needed
         nameIdShares.delete(name)
@@ -352,7 +368,7 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
 
     // TODO: keep scope for writePointers
     const writePointers = new Map<string, WritePointerTargets>()
-    const remainingRead =  new Map<string, IdType[]>() // name to id
+    const remainingRead =  new Map<string, FoldReadTarget[]>() // name to id
 
     // TODO: this is probably wrong
     const nextGraph = children[0].graph.mergeWith(...children.slice(1).map(c => c.graph))
@@ -362,11 +378,12 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
 
       // all inputs that have not been written until know, are read!
       for (const readId of [...currentElement.in, ...currentElement.activeNodes]) {
-        const existingRef = dataflowIdMap.get(readId)
+        const existingRef = dataflowIdMap.get(readId.id)
         const readName = existingRef?.lexeme
         guard (readName !== undefined, `Could not find name for read variable ${readId}`)
 
         const probableTarget = writePointers.get(readName)
+        console.log('processing read', readName, 'with target', probableTarget, 'and remaining', remainingRead.get(readName), 'and writePointers', writePointers)
         if (probableTarget === undefined) {
           // keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
           if(remainingRead.has(readName)) {
@@ -375,10 +392,11 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
             remainingRead.set(readName, [readId])
           }
         } else if (probableTarget.type === 'always') {
-          nextGraph.addEdge(readId, probableTarget.id, 'read', 'always')
+          nextGraph.addEdge(readId.id, probableTarget.id, 'read', readId.attribute)
         } else {
           for (const target of probableTarget.ids) {
-            nextGraph.addEdge(readId, target, 'read', 'maybe')
+            // we can stick with maybe even if readId.attribute is always
+            nextGraph.addEdge(readId.id, target, 'read', 'maybe')
           }
         }
       }
@@ -397,7 +415,7 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
               guard(readIds !== undefined, `Could not find readId for write variable ${writeId}`)
               for (const readId of readIds) {
                 // TODO: is this really correct with write and read roles inverted?
-                nextGraph.addEdge(writeId, readId, 'defined-by', 'always')
+                nextGraph.addEdge(writeId, readId.id, 'defined-by', readId.attribute)
               }
             } else if (writePointers.has(writeName)) { // write-write
               const writePointer = writePointers.get(writeName)

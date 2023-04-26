@@ -178,7 +178,7 @@ describe('Extract Dataflow Information', () => {
       }
     })
 
-    describe('1. Lists with variable references ', () => {
+    describe('1. Lists with variable references', () => {
       describe(`1.1 read-read same variable`, () => {
         const sameGraph = (id1: IdType, id2: IdType) => new DataflowGraph()
           .addNode(id1, 'x').addNode(id2, 'x').addEdge(id1, id2, 'same-read-read', 'always')
@@ -211,7 +211,41 @@ describe('Extract Dataflow Information', () => {
           .addNode(id1, 'x', LOCAL_SCOPE).addNode(id2, 'x').addEdge(id2, id1, 'read', 'always')
         assertDataflow(`1.3.1 directly together`, shell, 'x <- 1\nx', sameGraph('0', '3'))
         assertDataflow(`1.3.2 surrounded by uninteresting elements`, shell, '3\nx <- 1\n1\nx\n2', sameGraph('1', '5'))
-        assertDataflow(`1.1.3 using braces`, shell, '{ x <- 1 }\n{{ x }}', sameGraph('0', '3'))
+        assertDataflow(`1.3.3 using braces`, shell, '{ x <- 1 }\n{{ x }}', sameGraph('0', '3'))
+        assertDataflow(`1.3.4 using braces and uninteresting elements`, shell, '{ x <- 2 }; 5; x', sameGraph('0', '4'))
+        assertDataflow(`1.3.5 redefinition links correctly`, shell, 'x <- 2; x <- 3; x', sameGraph('3', '6').addNode('0', 'x', LOCAL_SCOPE)
+          .addEdge('0', '3', 'same-def-def', 'always'))
+        assertDataflow(`1.3.6 multiple redefinition with circular definition`, shell, 'x <- 2; x <- x; x', new DataflowGraph()
+          .addNode('0', 'x', LOCAL_SCOPE).addNode('3', 'x', LOCAL_SCOPE)
+          .addNode('4', 'x').addNode('6', 'x')
+          .addEdge('4', '0', 'read', 'always')
+          .addEdge('3', '4', 'defined-by', 'always')
+          .addEdge('0', '3', 'same-def-def', 'always')
+          .addEdge('6', '3', 'read', 'always')
+        )
+      })
+    })
+
+    describe('2. Lists with if-then constructs', () => {
+      describe(`2.1 reads within if`, () => {
+        assertDataflow(`2.1.1 read previous def`, shell, 'x <- 2\n if(TRUE) { x }',
+          new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('4', 'x')
+            .addEdge('4', '0', 'read', 'maybe')
+        )
+      })
+      describe('2.2 write within if', () => {
+        const sameGraph = (id1: IdType, id2: IdType) => new DataflowGraph()
+          .addNode(id1, 'x', LOCAL_SCOPE).addNode(id2, 'x', LOCAL_SCOPE).addEdge(id1, id2, 'same-def-def', 'always')
+        assertDataflow(`1.2.1 directly together`, shell, 'x <- 1\nx <- 2', sameGraph('0', '3'))
+        assertDataflow(`1.2.2 directly together with mixed sides`, shell, '1 -> x\nx <- 2', sameGraph('1', '3'))
+        assertDataflow(`1.2.3 surrounded by uninteresting elements`, shell, '3\nx <- 1\n1\nx <- 3\n2', sameGraph('1', '5'))
+        assertDataflow(`1.2.4 using braces`, shell, '{ x <- 42 }\n{{ x <- 50 }}', sameGraph('0', '3'))
+        assertDataflow(`1.2.5 using braces and uninteresting elements`, shell, '5; { x <- 2 }; 17; 4 -> x; 9', sameGraph('1', '6'))
+
+        assertDataflow(`1.2.6 multiple occurrences of same variable`, shell, 'x <- 1\nx <- 3\n3\nx <- 9', new DataflowGraph()
+          .addNode('0', 'x', LOCAL_SCOPE).addNode('3', 'x', LOCAL_SCOPE).addNode('7', 'x', LOCAL_SCOPE)
+          .addEdge('0', '3', 'same-def-def', 'always')
+          .addEdge('3', '7', 'same-def-def', 'always'))
       })
     })
   })

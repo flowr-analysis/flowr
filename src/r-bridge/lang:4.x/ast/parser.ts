@@ -181,11 +181,13 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       return []
     }
 
-    // TODO: if any has a semicolon we must respect that and split to expr list
     const mappedWithName: NamedXmlBasedJson[] = obj.map((content) => ({
       name: this.getName(content),
       content
     }))
+
+    // TODO: some more performant way, so that when redoing this recursively we don't have to extract names etc again
+    // mappedWithName.
 
     // TODO: improve with error message and ensure no semicolon
     if (mappedWithName.length === 1) {

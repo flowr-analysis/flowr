@@ -29,6 +29,7 @@ export enum Type {
   ParenRight = ')',
   BraceLeft = '{',
   BraceRight = '}',
+  Semicolon = ';',
   For = 'FOR',
   ForCondition = 'forcond',
   ForIn = 'IN',

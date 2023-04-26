@@ -16,7 +16,12 @@ import { NoInfo } from '../../src/r-bridge/lang:4.x/ast/model'
 
 
 describe('Extract Dataflow Information', () => {
-  describeSession('A. atomic dataflow information', (shell) => {
+  /**
+   * Here we cover dataflow extraction for atomic statements (no expression lists).
+   * Yet, some constructs (like for-loops) require the combination of statements, they are included as well.
+   * This will not include functions!
+   */
+  describeSession('A. atomic dataflow information', shell => {
     describe('0. uninteresting leafs', () => {
       for(const input of ['42', '"test"', 'TRUE', 'NA', 'NULL']) {
         assertDataflow(input, shell, input, new DataflowGraph())
@@ -35,7 +40,7 @@ describe('Extract Dataflow Information', () => {
             describe(`2.${idx}.${++opIdx} ${op.str}`, () => {
               // TODO: some way to automatically retrieve the id if they are unique? || just allow to omit it?
               const inputDifferent = `x ${op.str} y`
-              assertDataflow(`${inputDifferent} (diff. variables)`, shell, inputDifferent,
+              assertDataflow(`${inputDifferent} (different variables)`, shell, inputDifferent,
                 new DataflowGraph().addNode('0', 'x').addNode('1', 'y'))
 
               const inputSame = `x ${op.str} x`
@@ -163,6 +168,18 @@ describe('Extract Dataflow Information', () => {
       )
       // TODO: so many other tests... variable in sequence etc.
     })
+  })
+
+  describeSession('B. Working with expression lists', shell => {
+    describe('0. Lists without variable references ', () => {
+      let idx = 0
+      for(const b of ['1\n2\n3']) {
+        assertDataflow(`0.${idx++}.1 ${JSON.stringify(b)}`, shell, b, new DataflowGraph() )
+      }
+    })
+  })
+
+  describeSession('others', shell => {
 
     it('99. def for constant variable assignment', async () => {
       const ast = await retrieveAst(shell, `

@@ -94,7 +94,7 @@ const ElseBracesVariants = [{
   num:          42
 }]
 
-describe('3. Parse simple constructs', () => {
+describe('4. Parse simple constructs', () => {
   describeSession('1.1 if-then', shell => {
     for (const pool of [{ name: 'braces', variants: IfThenBraceVariants }, { name: 'spacing', variants: IfThenSpacingVariants }]) {
       describe(`${pool.name} variants`, () => {

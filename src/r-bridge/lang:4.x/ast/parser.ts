@@ -100,7 +100,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     parseLog.debug(`config for xml parser: ${JSON.stringify(this.config)}`)
   }
 
-  public async parse (xmlString: string): Promise<Lang.RExprList> {
+  public async parse (xmlString: string): Promise<Lang.RExpressionList> {
     this.objectRoot = await this.parseToObj(xmlString) as XmlBasedJson
 
     return this.parseRootObjToAst(this.objectRoot)
@@ -154,16 +154,16 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     })
   }
 
-  private parseRootObjToAst (obj: XmlBasedJson): Lang.RExprList {
-    const exprContent = getKeysGuarded(obj, Lang.Type.ExprList)
-    this.assureName(exprContent, Lang.Type.ExprList)
+  private parseRootObjToAst (obj: XmlBasedJson): Lang.RExpressionList {
+    const exprContent = getKeysGuarded(obj, Lang.Type.ExpressionList)
+    this.assureName(exprContent, Lang.Type.ExpressionList)
 
     const children = getKeysGuarded(exprContent, this.config.childrenName)
     const parsedChildren = this.parseBasedOnType(children)
 
     // TODO: at total object in any case of error?
     return {
-      type:     Lang.Type.ExprList,
+      type:     Lang.Type.ExpressionList,
       children: parsedChildren,
       lexeme:   undefined
     }
@@ -180,8 +180,8 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       log.warn('no children received, skipping')
       return []
     }
-    // TODO: if any has a semicolon we must respect that and split to expr list
 
+    // TODO: if any has a semicolon we must respect that and split to expr list
     const mappedWithName: NamedXmlBasedJson[] = obj.map((content) => ({
       name: this.getName(content),
       content
@@ -215,6 +215,11 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     }
 
     // otherwise perform default parsing
+    const parsedNodes = this.parseNodesWithUnknownType(mappedWithName)
+    return parsedNodes
+  }
+
+  private parseNodesWithUnknownType (mappedWithName: NamedXmlBasedJson[]) {
     const parsedNodes: Lang.RNode[] = []
     // used to indicate the new root node of this set of nodes
     // TODO: refactor?
@@ -246,7 +251,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       case Lang.Type.Comment:
         log.debug(`skipping comment information for ${JSON.stringify(elem)}`)
         return undefined
-      case Lang.Type.Expr:
+      case Lang.Type.Expression:
       case Lang.Type.ExprHelpAssignWrapper:
         return this.parseExpr(elem.content)
       case Lang.Type.Number:
@@ -289,7 +294,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       return 'no for-loop'
     } else if (condition.name !== Lang.Type.ForCondition) {
       throw new XmlParseError(`expected condition for for-loop but found ${JSON.stringify(condition)}`)
-    } else if (body.name !== Lang.Type.Expr) {
+    } else if (body.name !== Lang.Type.Expression) {
       throw new XmlParseError(`expected expr body for for-loop but found ${JSON.stringify(body)}`)
     }
 
@@ -430,16 +435,16 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       content,
       location
     } = this.retrieveMetaStructure(obj)
+
     const children = this.parseBasedOnType(getKeysGuarded(unwrappedObj, this.config.childrenName))
     if (children.length === 1) {
       return children[0]
     } else {
       return {
-        type:   Lang.Type.ExprList,
+        type:   Lang.Type.ExpressionList,
         location,
-        content,
         children,
-        lexeme: undefined
+        lexeme: content
       }
     }
   }
@@ -527,7 +532,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   }
 }
 
-export async function parse (xmlString: string, tokenMap: XmlParserConfig['tokenMap']): Promise<Lang.RExprList> {
+export async function parse (xmlString: string, tokenMap: XmlParserConfig['tokenMap']): Promise<Lang.RExpressionList> {
   const parser = new XmlBasedAstParser({ tokenMap })
   return await parser.parse(xmlString)
 }

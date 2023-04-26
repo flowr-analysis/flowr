@@ -1,7 +1,7 @@
 // adds id-based parent information for an ast
 import {
   type RBinaryOp,
-  type RExprList,
+  type RExpressionList,
   RForLoop,
   type RIfThenElse,
   type RSingleNode
@@ -46,7 +46,7 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
     }
   }
 
-  const foldExprList = (exprList: RExprList<OtherInfo & Id>, children: Array<RNodeWithParent<OtherInfo>>): RNodeWithParent<OtherInfo> => {
+  const foldExprList = (exprList: RExpressionList<OtherInfo & Id>, children: Array<RNodeWithParent<OtherInfo>>): RNodeWithParent<OtherInfo> => {
     children.forEach(c => {
       c.parent = exprList.id
     })

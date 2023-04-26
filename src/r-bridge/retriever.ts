@@ -3,7 +3,7 @@
 import { type RShell } from './shell'
 import { parseCSV, ts2r } from './lang:4.x/values'
 import { parse } from './lang:4.x/ast/parser'
-import { type RExprList } from './lang:4.x/ast/model'
+import { type RExpressionList } from './lang:4.x/ast/model'
 import { startAndEndsWith } from '../util/strings'
 
 interface RParseRequestFromFile {
@@ -46,7 +46,7 @@ export async function retrieveXmlFromRCode (request: RParseRequest, shell: RShel
 /**
  * uses {@link #retrieveXmlFromRCode} and returns the nicely formatted object-AST
  */
-export async function retrieveAstFromRCode (request: RParseRequest, tokenMap: Record<string, string>, shell: RShell): Promise<RExprList> {
+export async function retrieveAstFromRCode (request: RParseRequest, tokenMap: Record<string, string>, shell: RShell): Promise<RExpressionList> {
   const xml = await retrieveXmlFromRCode(request, shell)
   return await parse(xml, tokenMap)
 }

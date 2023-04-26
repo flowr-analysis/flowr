@@ -48,7 +48,7 @@ max
           rhs:      { type: Lang.Type.Symbol, lexeme: 'b', content: 'b', location: Lang.rangeFrom(4, 8, 4, 8) }
         },
         then: {
-          type:     Lang.Type.ExprList,
+          type:     Lang.Type.ExpressionList,
           content:  '{\nmax <<- a\ni ->2\n}',
           location: Lang.rangeFrom(4, 11, 7, 1),
           lexeme:   undefined,

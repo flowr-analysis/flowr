@@ -85,6 +85,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
   })
 }
 
+// TODO: allow more configuration with title, etc.
 export const assertDataflow = (name: string, shell: RShell, input: string, expected: DataflowGraph, startIndexForDeterministicIds = 0): void => {
   it(name, async function () {
     const ast = await retrieveAst(shell, input)

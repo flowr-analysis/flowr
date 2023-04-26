@@ -26,13 +26,14 @@ interface XmlParserConfig extends MergeableRecord {
   contentName:   string
   childrenName:  string
   // Mapping from xml tag name to the real operation of the node
-  tokenMap?:     Record<string, string /* TODO: change this to OP enum or so */>
+  tokenMap:      Record<string, string /* TODO: change this to OP enum or so */>
 }
 
 const DEFAULT_XML_PARSER_CONFIG: XmlParserConfig = {
   attributeName: '@attributes',
   contentName:   '@content',
-  childrenName:  '@children'
+  childrenName:  '@children',
+  tokenMap:      { /* this should not be used, but just so that we can omit null-checks */ }
 }
 
 class XmlParseError extends Error {
@@ -81,7 +82,7 @@ function extractRange (ast: XmlBasedJson): Lang.Range {
   return rangeFrom(line1, col1, line2, col2)
 }
 
-function identifySpecialOp (content: string, lhs: RNode, rhs: RNode): OperatorFlavor {
+function identifySpecialOp (content: string): OperatorFlavor {
   if (Lang.ComparisonOperatorsRAst.includes(content)) {
     return 'comparison'
   } else if (Lang.LogicalOperatorsRAst.includes(content)) {
@@ -126,7 +127,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     } = this.retrieveMetaStructure(op.content)
 
     if (flavor === 'special') {
-      flavor = identifySpecialOp(content, parsedLhs, parsedRhs)
+      flavor = identifySpecialOp(content)
     }
 
     // TODO: assert exists as known operator
@@ -171,9 +172,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   }
 
   private revertTokenReplacement (token: string): string {
-    const result = this.config.tokenMap?.[token] ?? token
-    parseLog.debug(`reverting ${token}=>${result}`)
-    return result
+    return this.config.tokenMap[token] ?? token
   }
 
   private parseBasedOnType (obj: XmlBasedJson[]): Lang.RNode[] {
@@ -203,7 +202,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       if (binary !== 'no binary structure') {
         return [binary]
       } else {
-        // TODO: maybe-monad passthrough? or just use undefined
+        // TODO: maybe-monad pass through? or just use undefined
         const forLoop = this.parseForLoopStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2])
         if (forLoop !== 'no for-loop') {
           return [forLoop]

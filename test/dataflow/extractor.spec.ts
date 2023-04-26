@@ -5,15 +5,15 @@ import { decorateWithIds, IdType } from '../../src/dataflow/id'
 import { decorateWithParentInformation, RNodeWithParent } from '../../src/dataflow/parents'
 import {
   DataflowGraph,
-  DataflowGraphNodeInfo, formatRange,
+  DataflowGraphNodeInfo,
+  formatRange,
   GLOBAL_SCOPE,
   graphToMermaidUrl,
   LOCAL_SCOPE
 } from '../../src/dataflow/graph'
-import { RAssignmentOpPool, RNonAssignmentBinaryOpPool } from "../helper/provider"
-import { naiveLineBasedSlicing } from "../../src/slicing/static/static-slicer"
+import { RAssignmentOpPool, RNonAssignmentBinaryOpPool } from '../helper/provider'
+import { naiveLineBasedSlicing } from '../../src/slicing/static/static-slicer'
 import { NoInfo } from '../../src/r-bridge/lang:4.x/ast/model'
-
 
 describe('Extract Dataflow Information', () => {
   /**
@@ -28,7 +28,7 @@ describe('Extract Dataflow Information', () => {
       }
     })
 
-    assertDataflow('1. simple variable', shell, 'xylophon', new DataflowGraph().addNode('0', 'xylophon'))
+    assertDataflow('1. simple variable', shell, 'xylophone', new DataflowGraph().addNode('0', 'xylophone'))
 
     // TODO: these will be more interesting whenever we have more information on the edges (like modification etc.)
     describe('2. non-assignment binary operators', () => {
@@ -186,6 +186,20 @@ describe('Extract Dataflow Information', () => {
         assertDataflow(`1.1.2 surrounded by uninteresting elements`, shell, '3\nx\n1\nx\n2', sameGraph('1', '3'))
         assertDataflow(`1.1.3 using braces`, shell, '{ x }\n{{ x }}', sameGraph('0', '1'))
         assertDataflow(`1.1.4 using braces and uninteresting elements`, shell, '{ x + 2 }; 4 - { x }', sameGraph('0', '4'))
+
+        assertDataflow(`1.1.5 multiple occurrences of same variable`, shell, 'x\nx\n3\nx', new DataflowGraph()
+          .addNode('0', 'x').addNode('1', 'x').addNode('3', 'x')
+          .addEdge('0', '1', 'same-read-read', 'always')
+          .addEdge('0', '3', 'same-read-read', 'always'))
+      })
+      describe('1.2 def-def same variable', () => {
+        const sameGraph = (id1: IdType, id2: IdType) => new DataflowGraph()
+          .addNode(id1, 'x', LOCAL_SCOPE).addNode(id2, 'x', LOCAL_SCOPE).addEdge(id1, id2, 'same-def-def', 'always')
+        assertDataflow(`1.2.1 directly together`, shell, 'x <- 1\nx <- 2', sameGraph('0', '3'))
+        assertDataflow(`1.2.2 directly together with mixed sides`, shell, '1 -> x\nx <- 2', sameGraph('1', '3'))
+        assertDataflow(`1.2.3 surrounded by uninteresting elements`, shell, '3\nx <- 1\n1\nx <- 3\n2', sameGraph('1', '5'))
+        assertDataflow(`1.2.4 using braces`, shell, '{ x <- 42 }\n{{ x <- 50 }}', sameGraph('0', '3'))
+        assertDataflow(`1.2.5 using braces and uninteresting elements`, shell, '5; { x <- 2 }; 17; 4 -> x; 9', sameGraph('1', '6'))
       })
     })
   })
@@ -236,7 +250,7 @@ describe('Extract Dataflow Information', () => {
       // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
       console.log(graphToMermaidUrl(dataflowGraph, dataflowIdMap))
 
-      // i know we do not want to slice, but let's try as a quick demo:
+      // I know we do not want to slice, but let's try as a quick demo:
 
       const print = (id: IdType): void => {
         const nodeInfo = dataflowGraph.get(id) as DataflowGraphNodeInfo

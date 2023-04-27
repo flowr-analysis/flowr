@@ -99,7 +99,7 @@ function processNonAssignmentBinaryOp<OtherInfo> (op: RNodeWithParent<OtherInfo>
   // TODO: fix merge of map etc.
   const ingoing = [...lhs.in, ...rhs.in, ...lhs.activeNodes, ...rhs.activeNodes]
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
-  linkVariablesInSameScope(nextGraph, ingoing)
+  linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
   return {
     activeNodes: [], // binary ops require reads as without assignments there is no definition
@@ -121,7 +121,7 @@ function produceNameSharedIdMap(idPool: FoldReadTarget[], graph: DataflowGraph):
   return nameIdShares
 }
 
-function linkVariablesInSameScopeWithNames (graph: DataflowGraph, nameIdShares: DefaultMap<string, FoldReadTarget[]>) {
+function linkReadVariablesInSameScopeWithNames (graph: DataflowGraph, nameIdShares: DefaultMap<string, FoldReadTarget[]>) {
   for (const ids of nameIdShares.values()) {
     if (ids.length <= 1) {
       continue
@@ -135,9 +135,9 @@ function linkVariablesInSameScopeWithNames (graph: DataflowGraph, nameIdShares: 
 }
 
 /** does not connect fully but only link so that all are connected, updates teh graph in-place */
-function linkVariablesInSameScope(graph: DataflowGraph, idPool: FoldReadTarget[]): void {
+function linkIngoingVariablesInSameScope(graph: DataflowGraph, idPool: FoldReadTarget[]): void {
   const nameIdShares = produceNameSharedIdMap(idPool, graph)
-  linkVariablesInSameScopeWithNames(graph, nameIdShares)
+  linkReadVariablesInSameScopeWithNames(graph, nameIdShares)
 }
 
 function setDefinitionOfNode(graph: DataflowGraph, id: IdType, scope: DataflowScopeName): void {
@@ -243,7 +243,9 @@ function processIfThenElse<OtherInfo> (ifThen: RNodeWithParent<OtherInfo>, cond:
   }
 
   const nextGraph = cond.graph.mergeWith(then.graph, otherwise?.graph)
-  linkVariablesInSameScope(nextGraph, ingoing)
+  linkIngoingVariablesInSameScope(nextGraph, ingoing)
+  // TODO: join def-def?
+
 
   return {
     activeNodes: [],
@@ -311,7 +313,7 @@ function processForLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, variable: 
   }
 
   // TODO: scoping?
-  linkVariablesInSameScope(nextGraph, ingoing)
+  linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
   return {
     activeNodes: [],
@@ -443,7 +445,7 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
     }
     // now, we have to link same reads
 
-    linkVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))
+    linkReadVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))
 
     return {
       // TODO: ensure active killed on that level?

@@ -1,5 +1,4 @@
 import { assert } from 'chai'
-import { deepMergeObject, isObjectOrArray } from '../../src/util/objects'
 import { splitArrayOn } from '../../src/util/arrays'
 
 describe('Arrays', () => {

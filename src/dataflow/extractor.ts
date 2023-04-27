@@ -219,7 +219,7 @@ function makeFoldReadTargetsMaybe (ids: FoldReadTarget[]): FoldReadTarget[] {
 }
 
 function processIfThenElse<OtherInfo> (ifThen: RNodeWithParent<OtherInfo>, cond: FoldInfo, then: FoldInfo, otherwise?: FoldInfo): FoldInfo {
-  // TODO: allow to also attribute in-put with amybe and always
+  // TODO: allow to also attribute in-put with maybe and always
   // again within an if-then-else we consider all actives to be read
   const ingoing: FoldReadTarget[] = [...cond.in, ...makeFoldReadTargetsMaybe(then.in),
     ...makeFoldReadTargetsMaybe(otherwise?.in ?? []), ...cond.activeNodes,
@@ -362,7 +362,7 @@ function updateAllWriteTargets<OtherInfo> (currentChild: FoldInfo, dataflowIdMap
 }
 
 
-// TODO: we have to change that within quoted-expressions! and parse/deparse?
+// TODO: we have to change that within quoted-expressions! and parse/de-parse?
 function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (exprList: RNodeWithParent<OtherInfo>, children: FoldInfo[]) => FoldInfo {
   // TODO: deal with information in order + scoping when we have functions
   // we assume same scope for local currently, yet we return local writes too, as a simple exprList does not act as scoping block
@@ -406,7 +406,7 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
           }
         }
       }
-      // add same variable reads for deferd if they are read previously but not dependent
+      // add same variable reads for deferred if they are read previously but not dependent
       // TODO: deal with globals etc.
       for (const [, writeTargets] of currentElement.out) {
         for(const writeTarget of writeTargets) {

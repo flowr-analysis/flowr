@@ -208,7 +208,7 @@ export function formatRange(range: Lang.Range | undefined): string {
   return `${range.start.line}.${range.start.column}-${range.end.line}.${range.end.column}`
 }
 
-// TODO: subgraphs?
+// TODO: sub-graphs?
 export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix = 'flowchart TD', idPrefix = ''): string {
   const lines = [prefix]
   for (const [id, info] of graph.entries()) {

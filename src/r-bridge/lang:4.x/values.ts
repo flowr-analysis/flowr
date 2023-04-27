@@ -53,8 +53,8 @@ export function boolean2ts (value: string): boolean {
 const RNumHexFloatRegex = /^\s*0x(?<intpart>[0-9a-f]+)?(\.(?<floatpart>[0-9a-f]*))?p(?<exp>-?\d+)\s*$/
 
 // TODO: deal with NA etc!
-function getDecimalPlacesWithRadix (floatpart: string, radix: number): number {
-  return [...floatpart].reduce((acc, c, idx) => acc + parseInt(c, radix) / (radix ** (idx + 1)), 0)
+function getDecimalPlacesWithRadix (floatPart: string, radix: number): number {
+  return [...floatPart].reduce((acc, c, idx) => acc + parseInt(c, radix) / (radix ** (idx + 1)), 0)
 }
 
 export const RImaginaryMarker = 'i'
@@ -100,12 +100,12 @@ export function number2ts (value: string): RNumberValue {
     }
   } else {
     const {
-      intpart,
-      floatpart,
+      intPart,
+      floatPart,
       exp
-    } = floatHex.groups as { intpart: string | undefined, floatpart: string | undefined, exp: string }
-    const base = intpart === undefined ? 0 : parseInt(`${intpart}`, 16)
-    const floatSuffix = floatpart === undefined ? 0 : getDecimalPlacesWithRadix(floatpart, 16)
+    } = floatHex.groups as { intPart: string | undefined, floatPart: string | undefined, exp: string }
+    const base = intPart === undefined ? 0 : parseInt(`${intPart}`, 16)
+    const floatSuffix = floatPart === undefined ? 0 : getDecimalPlacesWithRadix(floatPart, 16)
     const exponent = parseInt(exp, 10)
     return {
       num: (base + floatSuffix) * Math.pow(2, exponent),

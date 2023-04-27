@@ -1,3 +1,5 @@
+// noinspection SpellCheckingInspection
+
 import { ALPHABET, randomString } from '../../src/util/random'
 import { assert } from 'chai'
 

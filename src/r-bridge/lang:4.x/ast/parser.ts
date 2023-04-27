@@ -186,7 +186,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       content
     }))
 
-    // TODO: some more performant way, so that when redoing this recursively we don't have to extract names etc again
+    // TODO: some more performant way, so that when redoing this recursively we don't have to extract names etc. again
     const splitOnSemicolon = splitArrayOn(mappedWithName, ({name}) => name === Lang.Type.Semicolon)
     if(splitOnSemicolon.length > 1) {
       // TODO: check if non-wrapping expr list is correct
@@ -221,8 +221,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     }
 
     // otherwise perform default parsing
-    const parsedNodes = this.parseNodesWithUnknownType(mappedWithName)
-    return parsedNodes
+    return this.parseNodesWithUnknownType(mappedWithName)
   }
 
   private parseNodesWithUnknownType (mappedWithName: NamedXmlBasedJson[]) {

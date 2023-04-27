@@ -3,10 +3,10 @@ import { deepMergeObject, isObjectOrArray } from '../../src/util/objects'
 
 describe('Objects', () => {
   describe('isObjectOrArray', () => {
-    const positive = (a: any, msg: string): void => {
+    const positive = (a: unknown, msg: string): void => {
       it(msg, () => { assert.isTrue(isObjectOrArray(a)) })
     }
-    const negative = (a: any, msg: string): void => {
+    const negative = (a: unknown, msg: string): void => {
       it(msg, () => { assert.isFalse(isObjectOrArray(a), `${msg} is not considered an object`) })
     }
 
@@ -89,7 +89,7 @@ describe('Objects', () => {
       describe('two non-empty (no overwrite)', () => {
         merged([3], [4], [3, 4], 'two disjoint arrays')
         merged([3, 4], [5], [3, 4, 5], 'no overwrite for multiple elements')
-        merged([3, 4], [4], [3, 4, 4], 'keep dupslicates')
+        merged([3, 4], [4], [3, 4, 4], 'keep duplicates')
         merged([1, [3, 4]], [2, [5]], [1, [3, 4], 2, [5]], 'do not merge nested arrays')
         merged([{ a: 3 }, 2], [{ a: 4 }], [{ a: 3 }, 2, { a: 4 }], 'do not merge nested objects')
       })

@@ -270,14 +270,21 @@ describe('Extract Dataflow Information', () => {
       describe('2.2 write within if', () => {
         let idx = 0
         for(const b of [{ label: 'without else', text: ''}, {label: 'with else', text: ' else { 1 }'}]) {
-          describe(`2.1.${++idx} ${b.label}`, () => {
-            assertDataflow(`2.2.1 directly together`, shell, 'if(TRUE) { x <- 2 }\n x',
-              new DataflowGraph().addNode('1', 'x', LOCAL_SCOPE).addNode('5', 'x')
-                .addEdge('5', '1', 'read', 'maybe')
-            )
-          })
+          assertDataflow(`2.1.${++idx} ${b.label} directly together`, shell, 'if(TRUE) { x <- 2 }\n x',
+            new DataflowGraph().addNode('1', 'x', LOCAL_SCOPE).addNode('5', 'x')
+              .addEdge('5', '1', 'read', 'maybe')
+          )
         }
+        assertDataflow(`2.2.${++idx} def in else read afterwards`, shell, 'if(TRUE) { 42 } else { x <- 5 }\nx',
+          new DataflowGraph().addNode('2', 'x', LOCAL_SCOPE).addNode('6', 'x')
+            .addEdge('6', '2', 'read', 'maybe')
+        )
+        /*        assertDataflow(`2.2.${++idx} def in then and else read afterward`, shell, 'if(TRUE) { x <- 7 } else { x <- 5 }\nx',
+          new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('5', 'x')
+            .addEdge('5', '0', 'read', 'maybe')
+        )*/
       })
+      // TODO: write-write if
     })
   })
 

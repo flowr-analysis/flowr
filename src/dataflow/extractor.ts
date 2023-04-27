@@ -230,7 +230,7 @@ function processIfThenElse<OtherInfo> (ifThen: RNodeWithParent<OtherInfo>, cond:
   const outgoing = new Map([...cond.out])
 
   // we do not merge even if they appear in both branches because the maybe links will refer to different ids
-  for(const [scope, targets] of then.out) {
+  for(const [scope, targets] of [...then.out, ...(otherwise?.out ?? [])]) {
     const existing = outgoing.get(scope)
     const existingIds = existing?.flatMap(t => t.attribute === 'always' ? [t.id] : t.ids) ?? []
     outgoing.set(scope, targets.map(t => {

@@ -208,23 +208,23 @@ export function formatRange(range: Lang.Range | undefined): string {
   return `${range.start.line}.${range.start.column}-${range.end.line}.${range.end.column}`
 }
 
-// TODO: subgraphs?
-export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
-  const lines = ['flowchart TD']
+// TODO: sub-graphs?
+export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix = 'flowchart TD', idPrefix = ''): string {
+  const lines = [prefix]
   for (const [id, info] of graph.entries()) {
     const def = info.definedAtPosition !== false
-    lines.push(`    ${id}${def ? "[" : "([" }"\`${info.name} (${id})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"${def ? "]" : "])" }`)
+    lines.push(`    ${idPrefix}${id}${def ? "[" : "([" }"\`${info.name} (${id})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"${def ? "]" : "])" }`)
     for (const edge of info.edges) {
       const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
-      lines.push(`    ${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${edge.target}`)
+      lines.push(`    ${idPrefix}${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${edge.target}`)
     }
   }
   return lines.join('\n')
 }
 
-export function graphToMermaidUrl(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
+export function mermaidCodeToUrl(code :string): string {
   const obj = {
-    code:    graphToMermaid(graph, dataflowIdMap),
+    code,
     mermaid: {
       "theme": "default"
     },
@@ -233,4 +233,27 @@ export function graphToMermaidUrl(graph: DataflowGraph, dataflowIdMap: DataflowM
     updateDiagram: false
   }
   return `https://mermaid.live/edit#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}`
+}
+
+// graphToMermaidUrl
+export function graphToMermaidUrl(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo>): string {
+  return mermaidCodeToUrl(graphToMermaid(graph, dataflowIdMap))
+}
+
+interface LabeledDiffGraph {
+  label: string
+  graph: DataflowGraph
+}
+
+/** uses same id map but ensures, it is different from the rhs so that mermaid can work with that */
+export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
+  // we add the prefix ourselves
+  const leftGraph = graphToMermaid(left.graph, dataflowIdMap, '', `l-${left.label}`)
+  const rightGraph = graphToMermaid(right.graph, dataflowIdMap, '', `r-${right.label}`)
+
+  return `flowchart TD\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`
+}
+
+export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
+  return mermaidCodeToUrl(diffGraphsToMermaid(left, right, dataflowIdMap))
 }

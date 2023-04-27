@@ -1,7 +1,7 @@
 // assign each node with a unique id to simplify usage and further compares
 import {
   type RBinaryOp,
-  type RExprList, RForLoop,
+  type RExpressionList, RForLoop,
   type RIfThenElse,
   type RNode,
   type RSingleNode
@@ -20,7 +20,7 @@ export type IdRNode<OtherInfo> = RNode<OtherInfo & Id>
 
 export type IdGenerator<OtherInfo> = (data: RNode<OtherInfo>) => IdType
 
-// TODO: other generators?
+// TODO: other generators? => like one that uses the location
 /**
  * The simplest id generator which just increments a number on each call
  */
@@ -76,7 +76,7 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
     idMap.set(newIfThen.id, newIfThen)
     return newIfThen
   }
-  const foldExprList = (exprList: RExprList<OtherInfo>, children: Array<IdRNode<OtherInfo>>): IdRNode<OtherInfo> => {
+  const foldExprList = (exprList: RExpressionList<OtherInfo>, children: Array<IdRNode<OtherInfo>>): IdRNode<OtherInfo> => {
     const newExprList = {
       ...exprList,
       children,

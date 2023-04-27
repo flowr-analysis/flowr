@@ -4,7 +4,7 @@ import { RShell } from '../../src/r-bridge/shell'
 import { testRequiresNetworkConnection } from './network'
 import { getStoredTokenMap, retrieveAstFromRCode } from '../../src/r-bridge/retriever'
 import { assert } from 'chai'
-import { DataflowGraph, graphToMermaidUrl } from '../../src/dataflow/graph'
+import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../src/dataflow/graph'
 import { decorateWithIds, deterministicCountingIdGenerator } from '../../src/dataflow/id'
 import { decorateWithParentInformation } from '../../src/dataflow/parents'
 import { produceDataFlowGraph } from '../../src/dataflow/extractor'
@@ -58,7 +58,7 @@ export const describeSession = (name: string, fn: (shell: RShell) => void, packa
   }).timeout('15min')
 }
 
-export const retrieveAst = async (shell: RShell, input: string): Promise<Lang.RExprList> => {
+export const retrieveAst = async (shell: RShell, input: string): Promise<Lang.RExpressionList> => {
   return await retrieveAstFromRCode({
     request:                 'text',
     content:                 input,
@@ -68,7 +68,7 @@ export const retrieveAst = async (shell: RShell, input: string): Promise<Lang.RE
 }
 
 /** call within describeSession */
-export const assertAst = (name: string, shell: RShell, input: string, expected: Lang.RExprList): void => {
+export const assertAst = (name: string, shell: RShell, input: string, expected: Lang.RExpressionList): void => {
   it(name, async function () {
     const ast = await retrieveAst(shell, input)
     assert.deepStrictEqual(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
@@ -77,7 +77,7 @@ export const assertAst = (name: string, shell: RShell, input: string, expected: 
 
 // TODO: improve comments and structure
 /** call within describeSession */
-export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: Lang.RNode) => Lang.RNode<Decorated>, expected: Lang.RExprList<Decorated>): void {
+export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: Lang.RNode) => Lang.RNode<Decorated>, expected: Lang.RExpressionList<Decorated>): void {
   it(name, async function () {
     const baseAst = await retrieveAst(shell, input)
     const ast = decorator(baseAst)
@@ -85,6 +85,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
   })
 }
 
+// TODO: allow more configuration with title, etc.
 export const assertDataflow = (name: string, shell: RShell, input: string, expected: DataflowGraph, startIndexForDeterministicIds = 0): void => {
   it(name, async function () {
     const ast = await retrieveAst(shell, input)
@@ -92,11 +93,13 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
     const astWithParentIds = decorateWithParentInformation(astWithId.decoratedAst)
     const { dataflowIdMap, dataflowGraph } = produceDataFlowGraph(astWithParentIds)
 
+    const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph: dataflowGraph }, dataflowIdMap)
     try {
-      assert.isTrue(expected.equals(dataflowGraph), `got: ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)},\nvs. expected: ${graphToMermaidUrl(expected, dataflowIdMap)}`)
+      assert.isTrue(expected.equals(dataflowGraph), diff)
     } catch (e) {
       console.error('vis-wanted:\n', graphToMermaidUrl(expected, dataflowIdMap))
       console.error('vis-got:\n', graphToMermaidUrl(dataflowGraph, dataflowIdMap))
+      console.error('diff:\n', diff)
       throw e
     }
   })

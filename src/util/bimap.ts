@@ -42,8 +42,8 @@ export class BiMap<K, V> implements Map<K, V> {
     return this.k2v.entries()
   }
 
-  public forEach (callbackfn: (value: V, key: K, map: Map<K, V>) => void, thisArg?: any): void {
-    this.k2v.forEach(callbackfn, thisArg)
+  public forEach (callbackFunction: (value: V, key: K, map: Map<K, V>) => void): void {
+    this.k2v.forEach(callbackFunction)
   }
 
   public get (key: K): V | undefined {

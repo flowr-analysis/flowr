@@ -4,7 +4,7 @@ import {
   type RAssignmentOp,
   type RBinaryOp,
   type RComparisonOp,
-  type RExprList, RForLoop,
+  type RExpressionList, RForLoop,
   type RIfThenElse,
   type RLogical,
   type RLogicalOp,
@@ -30,7 +30,7 @@ export interface FoldFunctions<Info, T> {
     foldForLoop: (loop: RForLoop<Info>, variable: T, vector: T, body: T) => T
   },
   foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: T, then: T, otherwise?: T) => T
-  foldExprList:   (exprList: RExprList<Info>, expressions: T[]) => T
+  foldExprList:   (exprList: RExpressionList<Info>, expressions: T[]) => T
 }
 
 /**
@@ -54,7 +54,7 @@ export function foldAst<Info, T> (ast: RNode<Info>, folds: FoldFunctions<Info, T
       return folds.loop.foldForLoop(ast, foldAst(ast.variable, folds), foldAst(ast.vector, folds), foldAst(ast.body, folds))
     case Lang.Type.If:
       return folds.foldIfThenElse(ast, foldAst(ast.condition, folds), foldAst(ast.then, folds), ast.otherwise === undefined ? undefined : foldAst(ast.otherwise, folds))
-    case Lang.Type.ExprList:
+    case Lang.Type.ExpressionList:
       return folds.foldExprList(ast, ast.children.map(expr => foldAst(expr, folds)))
     default:
       assertUnreachable(type)

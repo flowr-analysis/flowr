@@ -27,7 +27,7 @@ class FlowrLogger extends Logger<ILogObj> {
     interval: '1d',
     compress: 'gzip'
   }): void {
-    const stream = createStream('flowr.log', options)
+    const stream = createStream(filename, options)
 
     log.attachTransport(logObj => {
       stream.write(`${JSON.stringify(logObj)}\n`)

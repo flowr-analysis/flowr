@@ -13,6 +13,7 @@ import {
 import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
 import { guard } from "../../../util/assert"
+import { splitArrayOn } from '../../../util/arrays'
 
 const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
@@ -25,13 +26,14 @@ interface XmlParserConfig extends MergeableRecord {
   contentName:   string
   childrenName:  string
   // Mapping from xml tag name to the real operation of the node
-  tokenMap?:     Record<string, string /* TODO: change this to OP enum or so */>
+  tokenMap:      Record<string, string /* TODO: change this to OP enum or so */>
 }
 
 const DEFAULT_XML_PARSER_CONFIG: XmlParserConfig = {
   attributeName: '@attributes',
   contentName:   '@content',
-  childrenName:  '@children'
+  childrenName:  '@children',
+  tokenMap:      { /* this should not be used, but just so that we can omit null-checks */ }
 }
 
 class XmlParseError extends Error {
@@ -80,7 +82,7 @@ function extractRange (ast: XmlBasedJson): Lang.Range {
   return rangeFrom(line1, col1, line2, col2)
 }
 
-function identifySpecialOp (content: string, lhs: RNode, rhs: RNode): OperatorFlavor {
+function identifySpecialOp (content: string): OperatorFlavor {
   if (Lang.ComparisonOperatorsRAst.includes(content)) {
     return 'comparison'
   } else if (Lang.LogicalOperatorsRAst.includes(content)) {
@@ -100,7 +102,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     parseLog.debug(`config for xml parser: ${JSON.stringify(this.config)}`)
   }
 
-  public async parse (xmlString: string): Promise<Lang.RExprList> {
+  public async parse (xmlString: string): Promise<Lang.RExpressionList> {
     this.objectRoot = await this.parseToObj(xmlString) as XmlBasedJson
 
     return this.parseRootObjToAst(this.objectRoot)
@@ -125,7 +127,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     } = this.retrieveMetaStructure(op.content)
 
     if (flavor === 'special') {
-      flavor = identifySpecialOp(content, parsedLhs, parsedRhs)
+      flavor = identifySpecialOp(content)
     }
 
     // TODO: assert exists as known operator
@@ -154,25 +156,23 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     })
   }
 
-  private parseRootObjToAst (obj: XmlBasedJson): Lang.RExprList {
-    const exprContent = getKeysGuarded(obj, Lang.Type.ExprList)
-    this.assureName(exprContent, Lang.Type.ExprList)
+  private parseRootObjToAst (obj: XmlBasedJson): Lang.RExpressionList {
+    const exprContent = getKeysGuarded(obj, Lang.Type.ExpressionList)
+    this.assureName(exprContent, Lang.Type.ExpressionList)
 
     const children = getKeysGuarded(exprContent, this.config.childrenName)
     const parsedChildren = this.parseBasedOnType(children)
 
     // TODO: at total object in any case of error?
     return {
-      type:     Lang.Type.ExprList,
+      type:     Lang.Type.ExpressionList,
       children: parsedChildren,
       lexeme:   undefined
     }
   }
 
   private revertTokenReplacement (token: string): string {
-    const result = this.config.tokenMap?.[token] ?? token
-    parseLog.debug(`reverting ${token}=>${result}`)
-    return result
+    return this.config.tokenMap[token] ?? token
   }
 
   private parseBasedOnType (obj: XmlBasedJson[]): Lang.RNode[] {
@@ -180,12 +180,18 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       log.warn('no children received, skipping')
       return []
     }
-    // TODO: if any has a semicolon we must respect that and split to expr list
 
     const mappedWithName: NamedXmlBasedJson[] = obj.map((content) => ({
       name: this.getName(content),
       content
     }))
+
+    // TODO: some more performant way, so that when redoing this recursively we don't have to extract names etc. again
+    const splitOnSemicolon = splitArrayOn(mappedWithName, ({name}) => name === Lang.Type.Semicolon)
+    if(splitOnSemicolon.length > 1) {
+      // TODO: check if non-wrapping expr list is correct
+      return splitOnSemicolon.flatMap(arr => this.parseBasedOnType(arr.map(({content}) => content)))
+    }
 
     // TODO: improve with error message and ensure no semicolon
     if (mappedWithName.length === 1) {
@@ -196,7 +202,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       if (binary !== 'no binary structure') {
         return [binary]
       } else {
-        // TODO: maybe-monad passthrough? or just use undefined
+        // TODO: maybe-monad pass through? or just use undefined
         const forLoop = this.parseForLoopStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2])
         if (forLoop !== 'no for-loop') {
           return [forLoop]
@@ -215,6 +221,10 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     }
 
     // otherwise perform default parsing
+    return this.parseNodesWithUnknownType(mappedWithName)
+  }
+
+  private parseNodesWithUnknownType (mappedWithName: NamedXmlBasedJson[]) {
     const parsedNodes: Lang.RNode[] = []
     // used to indicate the new root node of this set of nodes
     // TODO: refactor?
@@ -246,7 +256,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       case Lang.Type.Comment:
         log.debug(`skipping comment information for ${JSON.stringify(elem)}`)
         return undefined
-      case Lang.Type.Expr:
+      case Lang.Type.Expression:
       case Lang.Type.ExprHelpAssignWrapper:
         return this.parseExpr(elem.content)
       case Lang.Type.Number:
@@ -289,7 +299,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       return 'no for-loop'
     } else if (condition.name !== Lang.Type.ForCondition) {
       throw new XmlParseError(`expected condition for for-loop but found ${JSON.stringify(condition)}`)
-    } else if (body.name !== Lang.Type.Expr) {
+    } else if (body.name !== Lang.Type.Expression) {
       throw new XmlParseError(`expected expr body for for-loop but found ${JSON.stringify(body)}`)
     }
 
@@ -430,16 +440,16 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       content,
       location
     } = this.retrieveMetaStructure(obj)
+
     const children = this.parseBasedOnType(getKeysGuarded(unwrappedObj, this.config.childrenName))
     if (children.length === 1) {
       return children[0]
     } else {
       return {
-        type:   Lang.Type.ExprList,
+        type:   Lang.Type.ExpressionList,
         location,
-        content,
         children,
-        lexeme: undefined
+        lexeme: content
       }
     }
   }
@@ -527,7 +537,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   }
 }
 
-export async function parse (xmlString: string, tokenMap: XmlParserConfig['tokenMap']): Promise<Lang.RExprList> {
+export async function parse (xmlString: string, tokenMap: XmlParserConfig['tokenMap']): Promise<Lang.RExpressionList> {
   const parser = new XmlBasedAstParser({ tokenMap })
   return await parser.parse(xmlString)
 }

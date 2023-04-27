@@ -5,25 +5,30 @@ import { decorateWithIds, IdType } from '../../src/dataflow/id'
 import { decorateWithParentInformation, RNodeWithParent } from '../../src/dataflow/parents'
 import {
   DataflowGraph,
-  DataflowGraphNodeInfo, formatRange,
+  DataflowGraphNodeInfo,
+  formatRange,
   GLOBAL_SCOPE,
   graphToMermaidUrl,
   LOCAL_SCOPE
 } from '../../src/dataflow/graph'
-import { RAssignmentOpPool, RNonAssignmentBinaryOpPool } from "../helper/provider"
-import { naiveLineBasedSlicing } from "../../src/slicing/static/static-slicer"
+import { RAssignmentOpPool, RNonAssignmentBinaryOpPool } from '../helper/provider'
+import { naiveLineBasedSlicing } from '../../src/slicing/static/static-slicer'
 import { NoInfo } from '../../src/r-bridge/lang:4.x/ast/model'
 
-
 describe('Extract Dataflow Information', () => {
-  describeSession('A. atomic dataflow information', (shell) => {
+  /**
+   * Here we cover dataflow extraction for atomic statements (no expression lists).
+   * Yet, some constructs (like for-loops) require the combination of statements, they are included as well.
+   * This will not include functions!
+   */
+  describeSession('A. atomic dataflow information', shell => {
     describe('0. uninteresting leafs', () => {
       for(const input of ['42', '"test"', 'TRUE', 'NA', 'NULL']) {
         assertDataflow(input, shell, input, new DataflowGraph())
       }
     })
 
-    assertDataflow('1. simple variable', shell, 'xylophon', new DataflowGraph().addNode('0', 'xylophon'))
+    assertDataflow('1. simple variable', shell, 'xylophone', new DataflowGraph().addNode('0', 'xylophone'))
 
     // TODO: these will be more interesting whenever we have more information on the edges (like modification etc.)
     describe('2. non-assignment binary operators', () => {
@@ -35,7 +40,7 @@ describe('Extract Dataflow Information', () => {
             describe(`2.${idx}.${++opIdx} ${op.str}`, () => {
               // TODO: some way to automatically retrieve the id if they are unique? || just allow to omit it?
               const inputDifferent = `x ${op.str} y`
-              assertDataflow(`${inputDifferent} (diff. variables)`, shell, inputDifferent,
+              assertDataflow(`${inputDifferent} (different variables)`, shell, inputDifferent,
                 new DataflowGraph().addNode('0', 'x').addNode('1', 'y'))
 
               const inputSame = `x ${op.str} x`
@@ -50,9 +55,8 @@ describe('Extract Dataflow Information', () => {
     })
 
     describe('3. assignments', () => {
-      // TODO: for all assignment ops!
+      let idx = 0
       for(const op of RAssignmentOpPool) {
-        let idx = 0
         describe(`3.${++idx} ${op.str}`, () => {
           const scope = op.str.length > 2 ? GLOBAL_SCOPE : LOCAL_SCOPE // love it
           const swapSourceAndTarget = op.str === '->' || op.str === '->>'
@@ -87,6 +91,27 @@ describe('Extract Dataflow Information', () => {
           assertDataflow(`${circularAssignment} (circular assignment)`, shell, circularAssignment, circularGraph)
         })
       }
+      describe(`3.${++idx} nested assignments`, () => {
+        // TODO: dependency between x and y?
+        assertDataflow(`3.${idx}.1 "x <- y <- 1"`, shell, 'x <- y <- 1',
+          new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('1', 'y', LOCAL_SCOPE)
+            .addEdge('0', '1', 'defined-by', 'always')
+        )
+        assertDataflow(`3.${idx}.2 "1 -> x -> y"`, shell, '1 -> x -> y',
+          new DataflowGraph().addNode('1', 'x', LOCAL_SCOPE).addNode('3', 'y', LOCAL_SCOPE)
+            .addEdge('3', '1', 'defined-by', 'always')
+        )
+        // still by indirection (even though y is overwritten?) TODO: discuss that
+        assertDataflow(`3.${idx}.3 "x <- 1 -> y"`, shell, 'x <- 1 -> y',
+          new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('2', 'y', LOCAL_SCOPE)
+            .addEdge('0', '2', 'defined-by', 'always')
+        )
+        assertDataflow(`3.${idx}.1 "x <- y <- z"`, shell, 'x <- y <- z',
+          new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('1', 'y', LOCAL_SCOPE).addNode('2', 'z')
+            .addEdge('0', '1', 'defined-by', 'always').addEdge('1', '2', 'defined-by', 'always')
+            .addEdge('0', '2', 'defined-by', 'always')
+        )
+      })
     })
 
     describe('4. if-then-else', () => {
@@ -163,6 +188,109 @@ describe('Extract Dataflow Information', () => {
       )
       // TODO: so many other tests... variable in sequence etc.
     })
+  })
+
+  describeSession('B. Working with expression lists', shell => {
+    describe('0. Lists without variable references ', () => {
+      let idx = 0
+      for(const b of ['1\n2\n3', '1;2;3', '{ 1 + 2 }\n{ 3 * 4 }']) {
+        assertDataflow(`0.${idx++} ${JSON.stringify(b)}`, shell, b, new DataflowGraph() )
+      }
+    })
+
+    describe('1. Lists with variable references', () => {
+      describe(`1.1 read-read same variable`, () => {
+        const sameGraph = (id1: IdType, id2: IdType) => new DataflowGraph()
+          .addNode(id1, 'x').addNode(id2, 'x').addEdge(id1, id2, 'same-read-read', 'always')
+        assertDataflow(`1.1.1 directly together`, shell, 'x\nx', sameGraph('0', '1'))
+        assertDataflow(`1.1.2 surrounded by uninteresting elements`, shell, '3\nx\n1\nx\n2', sameGraph('1', '3'))
+        assertDataflow(`1.1.3 using braces`, shell, '{ x }\n{{ x }}', sameGraph('0', '1'))
+        assertDataflow(`1.1.4 using braces and uninteresting elements`, shell, '{ x + 2 }; 4 - { x }', sameGraph('0', '4'))
+
+        assertDataflow(`1.1.5 multiple occurrences of same variable`, shell, 'x\nx\n3\nx', new DataflowGraph()
+          .addNode('0', 'x').addNode('1', 'x').addNode('3', 'x')
+          .addEdge('0', '1', 'same-read-read', 'always')
+          .addEdge('0', '3', 'same-read-read', 'always'))
+      })
+      describe('1.2 def-def same variable', () => {
+        const sameGraph = (id1: IdType, id2: IdType) => new DataflowGraph()
+          .addNode(id1, 'x', LOCAL_SCOPE).addNode(id2, 'x', LOCAL_SCOPE).addEdge(id1, id2, 'same-def-def', 'always')
+        assertDataflow(`1.2.1 directly together`, shell, 'x <- 1\nx <- 2', sameGraph('0', '3'))
+        assertDataflow(`1.2.2 directly together with mixed sides`, shell, '1 -> x\nx <- 2', sameGraph('1', '3'))
+        assertDataflow(`1.2.3 surrounded by uninteresting elements`, shell, '3\nx <- 1\n1\nx <- 3\n2', sameGraph('1', '5'))
+        assertDataflow(`1.2.4 using braces`, shell, '{ x <- 42 }\n{{ x <- 50 }}', sameGraph('0', '3'))
+        assertDataflow(`1.2.5 using braces and uninteresting elements`, shell, '5; { x <- 2 }; 17; 4 -> x; 9', sameGraph('1', '6'))
+
+        assertDataflow(`1.2.6 multiple occurrences of same variable`, shell, 'x <- 1\nx <- 3\n3\nx <- 9', new DataflowGraph()
+          .addNode('0', 'x', LOCAL_SCOPE).addNode('3', 'x', LOCAL_SCOPE).addNode('7', 'x', LOCAL_SCOPE)
+          .addEdge('0', '3', 'same-def-def', 'always')
+          .addEdge('3', '7', 'same-def-def', 'always'))
+      })
+      describe('1.3 def followed by read', () => {
+        const sameGraph = (id1: IdType, id2: IdType) => new DataflowGraph()
+          .addNode(id1, 'x', LOCAL_SCOPE).addNode(id2, 'x').addEdge(id2, id1, 'read', 'always')
+        assertDataflow(`1.3.1 directly together`, shell, 'x <- 1\nx', sameGraph('0', '3'))
+        assertDataflow(`1.3.2 surrounded by uninteresting elements`, shell, '3\nx <- 1\n1\nx\n2', sameGraph('1', '5'))
+        assertDataflow(`1.3.3 using braces`, shell, '{ x <- 1 }\n{{ x }}', sameGraph('0', '3'))
+        assertDataflow(`1.3.4 using braces and uninteresting elements`, shell, '{ x <- 2 }; 5; x', sameGraph('0', '4'))
+        assertDataflow(`1.3.5 redefinition links correctly`, shell, 'x <- 2; x <- 3; x', sameGraph('3', '6').addNode('0', 'x', LOCAL_SCOPE)
+          .addEdge('0', '3', 'same-def-def', 'always'))
+        assertDataflow(`1.3.6 multiple redefinition with circular definition`, shell, 'x <- 2; x <- x; x', new DataflowGraph()
+          .addNode('0', 'x', LOCAL_SCOPE).addNode('3', 'x', LOCAL_SCOPE)
+          .addNode('4', 'x').addNode('6', 'x')
+          .addEdge('4', '0', 'read', 'always')
+          .addEdge('3', '4', 'defined-by', 'always')
+          .addEdge('0', '3', 'same-def-def', 'always')
+          .addEdge('6', '3', 'read', 'always')
+        )
+      })
+    })
+
+    describe('2. Lists with if-then constructs', () => {
+      describe(`2.1 reads within if`, () => {
+        let idx = 0
+        for(const b of [{ label: 'without else', text: ''}, {label: 'with else', text: ' else { 1 }'}]) {
+          describe(`2.1.${++idx} ${b.label}`, () => {
+            assertDataflow(`2.1.${idx}.1 read previous def in cond`, shell, `x <- 2\n if(x) { 1 } ${b.text}`,
+              new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('3', 'x')
+                .addEdge('3', '0', 'read', 'always')
+            )
+            assertDataflow(`2.1.${idx}.2 read previous def in then`, shell, `x <- 2\n if(TRUE) { x } ${b.text}`,
+              new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('4', 'x')
+                .addEdge('4', '0', 'read', 'maybe')
+            )
+          })
+        }
+        assertDataflow(`2.1.${++idx}. read previous def in else`, shell, 'x <- 2\n if(TRUE) { 42 } else { x }',
+          new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('5', 'x')
+            .addEdge('5', '0', 'read', 'maybe')
+        )
+      })
+      describe('2.2 write within if', () => {
+        let idx = 0
+        for(const b of [{ label: 'without else', text: ''}, {label: 'with else', text: ' else { 1 }'}]) {
+          assertDataflow(`2.2.${++idx} ${b.label} directly together`, shell, 'if(TRUE) { x <- 2 }\n x',
+            new DataflowGraph().addNode('1', 'x', LOCAL_SCOPE).addNode('5', 'x')
+              .addEdge('5', '1', 'read', 'maybe')
+          )
+        }
+        assertDataflow(`2.2.${++idx} def in else read afterwards`, shell, 'if(TRUE) { 42 } else { x <- 5 }\nx',
+          new DataflowGraph().addNode('2', 'x', LOCAL_SCOPE).addNode('6', 'x')
+            .addEdge('6', '2', 'read', 'maybe')
+        )
+        assertDataflow(`2.2.${++idx} def in then and else read afterward`, shell, 'if(TRUE) { x <- 7 } else { x <- 5 }\nx',
+          new DataflowGraph().addNode('1', 'x', LOCAL_SCOPE).addNode('4', 'x', LOCAL_SCOPE).addNode('8', 'x')
+            .addEdge('8', '1', 'read', 'maybe')
+            .addEdge('8', '4', 'read', 'maybe')
+            // TODO: .addEdge('4', '1', 'same-def-def', 'always')
+        )
+      })
+      // TODO: others like same-read-read?
+      // TODO: write-write if
+    })
+  })
+
+  describeSession('others', shell => {
 
     it('99. def for constant variable assignment', async () => {
       const ast = await retrieveAst(shell, `
@@ -208,7 +336,7 @@ describe('Extract Dataflow Information', () => {
       // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
       console.log(graphToMermaidUrl(dataflowGraph, dataflowIdMap))
 
-      // i know we do not want to slice, but let's try as a quick demo:
+      // I know we do not want to slice, but let's try as a quick demo:
 
       const print = (id: IdType): void => {
         const nodeInfo = dataflowGraph.get(id) as DataflowGraphNodeInfo

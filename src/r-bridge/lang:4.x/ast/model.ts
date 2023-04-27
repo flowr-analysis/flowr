@@ -6,8 +6,8 @@ import { guard } from '../../../util/assert'
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
  */
 export enum Type {
-  ExprList = 'exprlist',
-  Expr = 'expr',
+  ExpressionList = 'exprlist',
+  Expression = 'expr',
   /*
    * https://github.com/REditorSupport/languageserver/issues/327
    * https://github.com/REditorSupport/languageserver/pull/328
@@ -29,6 +29,7 @@ export enum Type {
   ParenRight = ')',
   BraceLeft = '{',
   BraceRight = '}',
+  Semicolon = ';',
   For = 'FOR',
   ForCondition = 'forcond',
   ForIn = 'IN',
@@ -203,8 +204,8 @@ interface Location {
   location: Range
 }
 
-export type RExprList<Info = NoInfo> = {
-  readonly type:     Type.ExprList
+export type RExpressionList<Info = NoInfo> = {
+  readonly type:     Type.ExpressionList
   readonly content?: string
 } & WithChildren<Info, RNode<Info>> & Base<Info, string | undefined> & Partial<Location>
 
@@ -284,6 +285,6 @@ export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | R
 
 export type RSingleNode<Info> = RSymbol<Info> | RConstant<Info>
 export type RConstructs<Info> = RForLoop<Info> | RIfThenElse<Info>
-export type RNode<Info = NoInfo> = RExprList<Info> | RConstructs<Info> | RBinaryOp<Info> | RSingleNode<Info>
+export type RNode<Info = NoInfo> = RExpressionList<Info> | RConstructs<Info> | RBinaryOp<Info> | RSingleNode<Info>
 
 export const ALL_VALID_TYPES = Object.values(Type)

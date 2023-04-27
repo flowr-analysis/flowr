@@ -55,7 +55,6 @@ describe('Extract Dataflow Information', () => {
     })
 
     describe('3. assignments', () => {
-      // TODO: for all assignment ops!
       let idx = 0
       for(const op of RAssignmentOpPool) {
         describe(`3.${++idx} ${op.str}`, () => {

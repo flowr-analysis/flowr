@@ -33,6 +33,7 @@ export enum Type {
   For = 'FOR',
   ForCondition = 'forcond',
   ForIn = 'IN',
+  Repeat = 'REPEAT',
   If = 'IF',
   Else = 'ELSE'
 }
@@ -279,12 +280,22 @@ export type RForLoop<Info = NoInfo> = {
   body:          RNode<Info>
 } & Base<Info> & Location
 
+/**
+ * ```ts
+ * repeat <body>
+ * ```
+ */
+export type RRepeatLoop<Info = NoInfo> = {
+  readonly type: Type.Repeat
+  body:          RNode<Info>
+} & Base<Info> & Location
+
 
 // TODO: special constants
 export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
 
 export type RSingleNode<Info> = RSymbol<Info> | RConstant<Info>
-export type RConstructs<Info> = RForLoop<Info> | RIfThenElse<Info>
+export type RConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RIfThenElse<Info>
 export type RNode<Info = NoInfo> = RExpressionList<Info> | RConstructs<Info> | RBinaryOp<Info> | RSingleNode<Info>
 
 export const ALL_VALID_TYPES = Object.values(Type)

@@ -3,7 +3,7 @@ import {
   type RBinaryOp,
   type RExpressionList,
   RForLoop,
-  type RIfThenElse,
+  type RIfThenElse, RRepeatLoop,
   type RSingleNode
 } from '../r-bridge/lang:4.x/ast/model'
 import { type Id, type IdRNode, type IdType } from './id'
@@ -70,6 +70,15 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
     }
   }
 
+  const foldRepeatLoop = (loop: RRepeatLoop<OtherInfo & Id>, body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+    body.parent = loop.id
+    return {
+      ...loop,
+      body,
+      parent: undefined
+    }
+  }
+
   return foldAst(ast, {
     foldNumber:  foldLeaf,
     foldString:  foldLeaf,
@@ -82,7 +91,8 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
       foldAssignment:   binaryOp
     },
     loop: {
-      foldForLoop
+      foldForLoop,
+      foldRepeatLoop
     },
     foldIfThenElse,
     foldExprList

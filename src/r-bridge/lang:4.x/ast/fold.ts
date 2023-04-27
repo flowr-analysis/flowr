@@ -9,7 +9,7 @@ import {
   type RLogical,
   type RLogicalOp,
   type RNode,
-  type RNumber,
+  type RNumber, RRepeatLoop,
   type RString,
   type RSymbol
 } from './model'
@@ -27,7 +27,8 @@ export interface FoldFunctions<Info, T> {
     foldAssignment:   (op: RAssignmentOp<Info>, lhs: T, rhs: T) => T
   },
   loop: {
-    foldForLoop: (loop: RForLoop<Info>, variable: T, vector: T, body: T) => T
+    foldForLoop:    (loop: RForLoop<Info>, variable: T, vector: T, body: T) => T
+    foldRepeatLoop: (loop: RRepeatLoop<Info>, body: T) => T
   },
   foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: T, then: T, otherwise?: T) => T
   foldExprList:   (exprList: RExpressionList<Info>, expressions: T[]) => T
@@ -50,8 +51,10 @@ export function foldAst<Info, T> (ast: RNode<Info>, folds: FoldFunctions<Info, T
     case Lang.Type.BinaryOp:
       return foldBinaryOp(ast, folds)
     case Lang.Type.For:
-      // TODO: other loops
       return folds.loop.foldForLoop(ast, foldAst(ast.variable, folds), foldAst(ast.vector, folds), foldAst(ast.body, folds))
+    case Lang.Type.Repeat:
+      return folds.loop.foldRepeatLoop(ast, foldAst(ast.body, folds))
+    // TODO: other loops
     case Lang.Type.If:
       return folds.foldIfThenElse(ast, foldAst(ast.condition, folds), foldAst(ast.then, folds), ast.otherwise === undefined ? undefined : foldAst(ast.otherwise, folds))
     case Lang.Type.ExpressionList:

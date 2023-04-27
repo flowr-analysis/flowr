@@ -204,4 +204,17 @@ describe('4. Parse simple constructs', () => {
     })
     )
   })
+  describeSession('1.4 repeat-loop', shell => {
+    assertAst('repeat 2', shell, 'repeat 2', exprList({
+      type:     Lang.Type.Repeat,
+      location: Lang.rangeFrom(1, 1, 1, 6),
+      lexeme:   'repeat',
+      body:     {
+        type:     Lang.Type.Number,
+        location: Lang.rangeFrom(1, 8, 1, 8),
+        lexeme:   '2',
+        content:  numVal(2)
+      }
+    }))
+  })
 })

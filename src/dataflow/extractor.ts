@@ -324,6 +324,11 @@ function processForLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, variable: 
   }
 }
 
+function processRepeatLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, body: FoldInfo): FoldInfo {
+  // TODO
+  return emptyFoldInfo()
+}
+
 // TODO: instead of maybe use nested if-then path possibilities for abstract interpretation?
 type WritePointerTargets = { type: 'always', id: IdType } | { type: 'maybe', ids: IdType[] }
 type WritePointers = Map<IdType, WritePointerTargets>
@@ -478,7 +483,8 @@ export function produceDataFlowGraph<OtherInfo> (ast: RNodeWithParent<OtherInfo>
       foldAssignment:   processAssignment
     },
     loop: {
-      foldForLoop: processForLoop,
+      foldForLoop:    processForLoop,
+      foldRepeatLoop: processRepeatLoop
     },
     foldIfThenElse: processIfThenElse,
     foldExprList:   processExprList(dataflowIdMap)

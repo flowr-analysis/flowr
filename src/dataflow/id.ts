@@ -3,7 +3,7 @@ import {
   type RBinaryOp,
   type RExpressionList, RForLoop,
   type RIfThenElse,
-  type RNode,
+  type RNode, RRepeatLoop,
   type RSingleNode
 } from '../r-bridge/lang:4.x/ast/model'
 import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
@@ -98,6 +98,16 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
     return newForLoop
   }
 
+  const foldRepeatLoop = (repeatLoop: RRepeatLoop<OtherInfo>, body: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
+    const newRepeatLoop = {
+      ...repeatLoop,
+      body,
+      id: getId(repeatLoop)
+    }
+    idMap.set(newRepeatLoop.id, newRepeatLoop)
+    return newRepeatLoop
+  }
+
   const decoratedAst = foldAst(ast, {
     foldNumber:  foldLeaf,
     foldString:  foldLeaf,
@@ -110,7 +120,8 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
       foldAssignment:   binaryOp
     },
     loop: {
-      foldForLoop
+      foldForLoop,
+      foldRepeatLoop
     },
     foldIfThenElse,
     foldExprList

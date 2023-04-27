@@ -197,6 +197,11 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     if (mappedWithName.length === 1) {
       const parsed = this.parseOneElementBasedOnType(mappedWithName[0])
       return parsed === undefined ? [] : [parsed]
+    } else if(mappedWithName.length === 2) {
+      const parsed = this.parseRepeatLoopStructure(mappedWithName[0], mappedWithName[1])
+      if(parsed !== 'no repeat-loop') {
+        return [parsed]
+      }
     } else if (mappedWithName.length === 3) { /* TODO: unary ops for == 2 */
       const binary = this.parseBinaryStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2])
       if (binary !== 'no binary structure') {
@@ -290,6 +295,30 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     }
     // TODO: identify op name correctly
     return this.parseBinaryOp(flavor, lhs, op, rhs)
+  }
+
+  private parseRepeatLoopStructure (repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): Lang.RRepeatLoop | 'no repeat-loop' {
+    if (repeatToken.name !== Lang.Type.Repeat) {
+      log.debug('encountered non-repeat token for supposed repeat-loop structure')
+      return 'no repeat-loop'
+    }
+
+    parseLog.debug(`trying to parse repeat-loop with ${JSON.stringify([repeatToken, body])}`)
+    const parseBody = this.parseOneElementBasedOnType(body)
+    if (parseBody === undefined) {
+      log.warn(`no body for repeat-loop ${repeatToken} (${body})`)
+      return 'no repeat-loop'
+    }
+    const {
+      location,
+      content
+    } = this.retrieveMetaStructure(repeatToken.content)
+    return {
+      type:   Lang.Type.Repeat,
+      location,
+      lexeme: content,
+      body:   parseBody
+    }
   }
 
   private parseForLoopStructure (forToken: NamedXmlBasedJson, condition: NamedXmlBasedJson, body: NamedXmlBasedJson): RForLoop | 'no for-loop' {

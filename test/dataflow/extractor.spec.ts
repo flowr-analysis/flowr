@@ -203,7 +203,7 @@ describe('Extract Dataflow Information', () => {
       assertDataflow('6.4 using loop variable in body', shell, `repeat { x <- y }`,
         new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('1', 'y')
           // TODO: always until encountered conditional break etc?
-          .addEdge('1', '0', 'defined-by', 'always' /* TODO: maybe ? */)
+          .addEdge('0', '1', 'defined-by', 'always' /* TODO: maybe ? */)
       )
       // TODO: so many other tests... variable in sequence etc.
     })

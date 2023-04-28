@@ -313,10 +313,10 @@ class RShellSession {
    *
    * this method does allow other listeners to consume the same input
    *
-   * @from the stream(s) to collect the information from
-   * @until if the predicate returns true, this will stop the collection and resolve the promise
-   * @timeout configuration for how and when to timeout
-   * @action event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
+   * @param from    - the stream(s) to collect the information from
+   * @param until   - if the predicate returns true, this will stop the collection and resolve the promise
+   * @param timeout - configuration for how and when to timeout
+   * @param action  - event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
    */
   public async collectLinesUntil (from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
     const result: string[] = []

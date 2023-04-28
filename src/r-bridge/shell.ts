@@ -120,9 +120,9 @@ export class RShell {
   /**
    * Send a command and collect the output
    *
-   * @param command     the R command to execute (similar to {@link sendCommand})
-   * @param addonConfig further configuration on how and what to collect: see {@link OutputCollectorConfiguration},
-   *                    defaults are set in {@link DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION}
+   * @param command     - the R command to execute (similar to {@link sendCommand})
+   * @param addonConfig - further configuration on how and what to collect: see {@link OutputCollectorConfiguration},
+   *                      defaults are set in {@link DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION}
    */
   public async sendCommandWithOutput (command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
     const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig)
@@ -204,9 +204,9 @@ export class RShell {
   /**
    * installs the package using a temporary location
    *
-   * @param packageName the package to install
-   * @param autoload    if true, the package will be loaded after installation
-   * @param force       if true, the package will be installed no if it is already on the system and ready to be loaded
+   * @param packageName - the package to install
+   * @param autoload    - if true, the package will be loaded after installation
+   * @param force       - if true, the package will be installed no if it is already on the system and ready to be loaded
    */
   public async ensurePackageInstalled (packageName: string, autoload = false, force = false): Promise<{
     packageName:           string
@@ -260,7 +260,7 @@ export class RShell {
   /**
    * close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
    *
-   * @return true if the operation succeeds, false otherwise
+   * @returns true if the operation succeeds, false otherwise
    */
   public close (): boolean {
     return this.session.end()
@@ -313,10 +313,10 @@ class RShellSession {
    *
    * this method does allow other listeners to consume the same input
    *
-   * @from the stream(s) to collect the information from
-   * @until if the predicate returns true, this will stop the collection and resolve the promise
-   * @timeout configuration for how and when to timeout
-   * @action event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
+   * @param from    - the stream(s) to collect the information from
+   * @param until   - if the predicate returns true, this will stop the collection and resolve the promise
+   * @param timeout - configuration for how and when to timeout
+   * @param action  - event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
    */
   public async collectLinesUntil (from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
     const result: string[] = []
@@ -352,11 +352,15 @@ class RShellSession {
    * close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
    * TODO: find nice structure for this
    *
-   * @return true if the kill succeeds, false otherwise
+   * @returns true if the kill succeeds, false otherwise
    * @see RShell#close
    */
   end (): boolean {
-    return this.bareSession.kill()
+    const killResult = this.bareSession.kill()
+    this.sessionStdOut.close()
+    this.sessionStdErr.close()
+    log.info(`killed R session with pid ${this.bareSession.pid} and result ${killResult} (including streams)`)
+    return killResult
   }
 
   private setupRSessionLoggers (): void {
@@ -371,6 +375,7 @@ class RShellSession {
     })
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private on (from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
     const both = from === 'both'
     if (both || from === 'stdout') {
@@ -381,6 +386,7 @@ class RShellSession {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private removeListener (from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
     const both = from === 'both'
     if (both || from === 'stdout') {

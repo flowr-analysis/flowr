@@ -324,6 +324,16 @@ function processForLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, variable: 
   }
 }
 
+function processRepeatLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, body: FoldInfo): FoldInfo {
+  // TODO
+  return {
+    activeNodes: [],
+    in:          [...body.in, ...body.activeNodes.map(id => ({attribute: 'maybe' as const, id: id.id}))],
+    out:         body.out, // todo: kill that?
+    graph:       body.graph
+  }
+}
+
 // TODO: instead of maybe use nested if-then path possibilities for abstract interpretation?
 type WritePointerTargets = { type: 'always', id: IdType } | { type: 'maybe', ids: IdType[] }
 type WritePointers = Map<IdType, WritePointerTargets>
@@ -391,7 +401,6 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
         guard (readName !== undefined, `Could not find name for read variable ${readId}`)
 
         const probableTarget = writePointers.get(readName)
-        console.log('processing read', readName, 'with target', probableTarget, 'and remaining', remainingRead.get(readName), 'and writePointers', writePointers)
         if (probableTarget === undefined) {
           // keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
           if(remainingRead.has(readName)) {
@@ -478,7 +487,8 @@ export function produceDataFlowGraph<OtherInfo> (ast: RNodeWithParent<OtherInfo>
       foldAssignment:   processAssignment
     },
     loop: {
-      foldForLoop: processForLoop,
+      foldForLoop:    processForLoop,
+      foldRepeatLoop: processRepeatLoop
     },
     foldIfThenElse: processIfThenElse,
     foldExprList:   processExprList(dataflowIdMap)

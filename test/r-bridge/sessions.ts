@@ -2,11 +2,12 @@ import { assert } from 'chai'
 import fs from 'fs'
 import { randomString } from '../../src/util/random'
 import { testRequiresNetworkConnection } from '../helper/network'
-import { describeSession, testWithShell } from '../helper/shell'
+import { testWithShell, withShell } from '../helper/shell'
 import { isInstallTest } from '../main.spec'
 import { parseCSV } from '../../src/r-bridge/lang:4.x/values'
 import { log, LogLevel } from '../../src/util/log'
 
+/** here we use testWithShell to get a fresh shell within each call */
 describe('RShell sessions', function () {
   this.slow('500ms') // some respect for the r shell :/
   testWithShell('0. test that we can create a connection to R', shell => {
@@ -39,7 +40,7 @@ describe('RShell sessions', function () {
       assert.match(lines[0], /^.*Error.*a/)
     })
   })
-  describeSession('4. test if a package is already installed', shell => {
+  describe('4. test if a package is already installed', withShell(shell => {
     let installed: string[]
     before(async() => {
       installed = await shell.allInstalledPackages()
@@ -64,7 +65,7 @@ describe('RShell sessions', function () {
       const isInstalled = await shell.isPackageInstalled(unknownPackageName)
       assert.isFalse(isInstalled, `package ${unknownPackageName} should not be installed`)
     })
-  })
+  }))
   describe('5. install a package', () => {
     testWithShell('5.0 try to install a package that is already installed', async shell => {
       const [nameOfInstalledPackage] = await shell.allInstalledPackages()
@@ -81,6 +82,7 @@ describe('RShell sessions', function () {
     log.updateSettings(l => { l.settings.minLevel = LogLevel.debug })
     testWithShell('6.0 package is loaded', async shell => {
       const pkg = 'xmlparsedata'
+      shell.tryToInjectHomeLibPath()
       await shell.ensurePackageInstalled(pkg, true)
       // prove if we have it as a loaded namespace (fresh shell!)
       const got = parseCSV(await shell.sendCommandWithOutput('write.table(as.character(.packages()),sep=",", col.names=FALSE)'))

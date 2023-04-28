@@ -1,5 +1,5 @@
 // TODO: get def-usage for every line
-import { assertDataflow, describeSession, retrieveAst } from '../helper/shell'
+import { assertDataflow, retrieveAst, withShell } from '../helper/shell'
 import { produceDataFlowGraph } from '../../src/dataflow/extractor'
 import { decorateWithIds, IdType } from '../../src/dataflow/id'
 import { decorateWithParentInformation, RNodeWithParent } from '../../src/dataflow/parents'
@@ -21,7 +21,7 @@ describe('Extract Dataflow Information', () => {
    * Yet, some constructs (like for-loops) require the combination of statements, they are included as well.
    * This will not include functions!
    */
-  describeSession('A. atomic dataflow information', shell => {
+  describe('A. atomic dataflow information', withShell(shell => {
     describe('0. uninteresting leafs', () => {
       for(const input of ['42', '"test"', 'TRUE', 'NA', 'NULL']) {
         assertDataflow(input, shell, input, new DataflowGraph())
@@ -188,9 +188,28 @@ describe('Extract Dataflow Information', () => {
       )
       // TODO: so many other tests... variable in sequence etc.
     })
-  })
 
-  describeSession('B. Working with expression lists', shell => {
+    describe('6. repeat', () => {
+      // TODO: detect that a x <- repeat assignment does not have influence on the lhs as repeat returns NULL?
+      assertDataflow('6.1 simple constant repeat', shell, `repeat 2`,
+        new DataflowGraph()
+      )
+      assertDataflow('6.2 using loop variable in body', shell, `repeat x`,
+        new DataflowGraph().addNode('0', 'x')
+      )
+      assertDataflow('6.3 using loop variable in body', shell, `repeat { x <- 1 }`,
+        new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE)
+      )
+      assertDataflow('6.4 using loop variable in body', shell, `repeat { x <- y }`,
+        new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('1', 'y')
+          // TODO: always until encountered conditional break etc?
+          .addEdge('0', '1', 'defined-by', 'always' /* TODO: maybe ? */)
+      )
+      // TODO: so many other tests... variable in sequence etc.
+    })
+  }))
+
+  describe('B. Working with expression lists', withShell(shell => {
     describe('0. Lists without variable references ', () => {
       let idx = 0
       for(const b of ['1\n2\n3', '1;2;3', '{ 1 + 2 }\n{ 3 * 4 }']) {
@@ -288,10 +307,9 @@ describe('Extract Dataflow Information', () => {
       // TODO: others like same-read-read?
       // TODO: write-write if
     })
-  })
+  }))
 
-  describeSession('others', shell => {
-
+  describe('others', withShell(shell => {
     it('99. def for constant variable assignment', async () => {
       const ast = await retrieveAst(shell, `
         a <- 3
@@ -354,5 +372,5 @@ describe('Extract Dataflow Information', () => {
       print('18')
       print('25')
     })
-  })
+  }))
 })

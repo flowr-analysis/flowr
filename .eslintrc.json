@@ -17,7 +17,8 @@
     },
     "parser": "@typescript-eslint/parser",
     "plugins": [
-        "@typescript-eslint"
+        "@typescript-eslint",
+        "eslint-plugin-tsdoc"
     ],
     "rules": {
         "indent": [
@@ -28,6 +29,7 @@
             "error", { "align": "value" }
         ],
         "semi": ["error", "never"],
-        "@typescript-eslint/space-before-function-paren": "off"
+        "@typescript-eslint/space-before-function-paren": "off",
+        "tsdoc/syntax": "warn"
     }
 }

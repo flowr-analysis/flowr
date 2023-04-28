@@ -5,6 +5,7 @@ import * as Lang from '../r-bridge/lang:4.x/ast/model'
 import { DataflowMap } from './extractor'
 import { NoInfo } from '../r-bridge/lang:4.x/ast/model'
 import { guard } from "../util/assert"
+import { SourceRange } from '../r-bridge/lang:4.x/ast/range'
 
 export type DataflowGraphEdgeType =
     | /** the edge determines that source reads target */ 'read'
@@ -200,7 +201,7 @@ function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeI
   }
 }
 
-export function formatRange(range: Lang.Range | undefined): string {
+export function formatRange(range: SourceRange | undefined): string {
   if (range === undefined) {
     return '??'
   }

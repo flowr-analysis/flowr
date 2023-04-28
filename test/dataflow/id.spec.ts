@@ -1,11 +1,12 @@
-import { assertDecoratedAst, describeSession } from '../helper/shell'
+import { assertDecoratedAst, withShell } from '../helper/shell'
 import { deterministicCountingIdGenerator, type Id, decorateWithIds } from '../../src/dataflow/id'
 import * as Lang from '../../src/r-bridge/lang:4.x/ast/model'
 import { type RExpressionList } from '../../src/r-bridge/lang:4.x/ast/model'
 import { numVal } from '../helper/ast-builder'
+import { rangeFrom } from '../../src/r-bridge/lang:4.x/ast/range'
 
-describe('Assign unique Ids', () => {
-  describeSession('Testing deterministic counting Id assignment', (shell) => {
+describe('Assign unique Ids', withShell(shell => {
+  describe('Testing deterministic counting Id assignment', () => {
     const assertId = (name: string, input: string, expected: RExpressionList<Id>): void => {
       assertDecoratedAst(name, shell, input, ast => decorateWithIds(ast, deterministicCountingIdGenerator()).decoratedAst, expected)
     }
@@ -19,7 +20,7 @@ describe('Assign unique Ids', () => {
       })
       assertId('1.1 String', '"hello"', exprList({
         type:     Lang.Type.String,
-        location: Lang.rangeFrom(1, 1, 1, 7),
+        location: rangeFrom(1, 1, 1, 7),
         lexeme:   '"hello"',
         content:  {
           str:    'hello',
@@ -29,21 +30,21 @@ describe('Assign unique Ids', () => {
       }))
       assertId('1.2 Number', '42', exprList({
         type:     Lang.Type.Number,
-        location: Lang.rangeFrom(1, 1, 1, 2),
+        location: rangeFrom(1, 1, 1, 2),
         lexeme:   '42',
         content:  numVal(42),
         id:       '0'
       }))
       assertId('1.3 Logical', 'FALSE', exprList({
         type:     Lang.Type.Logical,
-        location: Lang.rangeFrom(1, 1, 1, 5),
+        location: rangeFrom(1, 1, 1, 5),
         lexeme:   'FALSE',
         content:  false,
         id:       '0'
       }))
       assertId('1.4 Symbol', 'k', exprList({
         type:     Lang.Type.Symbol,
-        location: Lang.rangeFrom(1, 1, 1, 1),
+        location: rangeFrom(1, 1, 1, 1),
         lexeme:   'k',
         content:  'k',
         id:       '0'
@@ -51,4 +52,4 @@ describe('Assign unique Ids', () => {
     })
     // TODO: Tests others
   })
-})
+}))

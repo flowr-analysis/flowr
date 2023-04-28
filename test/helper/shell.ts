@@ -36,16 +36,22 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
   })
 }
 
-export const describeSession = (name: string, fn: (shell: RShell) => void, packages: string[] = ['xmlparsedata']): Mocha.Suite => {
-  return describe(name, function () {
-    this.slow('500ms') // allow for shell mechanics
+/**
+ * produces a shell session for you, can be used within a `describe` block
+ * @param fn       - function to use the shell
+ * @param packages - packages to be ensured when the shell is created
+ */
+export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xmlparsedata']): () => void {
+  // TODO: use this from context? to set this.slow?
+  return function () {
     const shell = new RShell()
     // this way we probably do not have to reinstall even if we launch from WebStorm
-    before(async () => {
+    before(async function () {
+      this.timeout('15min')
       shell.tryToInjectHomeLibPath()
       for (const pkg of packages) {
         if (!await shell.isPackageInstalled(pkg)) {
-          // TODO: only check this once? network should not be expected to break during tests
+        // TODO: only check this once? network should not be expected to break during tests
           await testRequiresNetworkConnection(this.ctx)
         }
         await shell.ensurePackageInstalled(pkg, true)
@@ -55,7 +61,7 @@ export const describeSession = (name: string, fn: (shell: RShell) => void, packa
     after(() => {
       shell.close()
     })
-  }).timeout('15min')
+  }
 }
 
 export const retrieveAst = async (shell: RShell, input: string): Promise<Lang.RExpressionList> => {

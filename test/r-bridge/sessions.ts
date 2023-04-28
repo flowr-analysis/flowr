@@ -82,6 +82,7 @@ describe('RShell sessions', function () {
     log.updateSettings(l => { l.settings.minLevel = LogLevel.debug })
     testWithShell('6.0 package is loaded', async shell => {
       const pkg = 'xmlparsedata'
+      shell.tryToInjectHomeLibPath()
       await shell.ensurePackageInstalled(pkg, true)
       // prove if we have it as a loaded namespace (fresh shell!)
       const got = parseCSV(await shell.sendCommandWithOutput('write.table(as.character(.packages()),sep=",", col.names=FALSE)'))

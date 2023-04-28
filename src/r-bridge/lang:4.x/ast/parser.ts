@@ -2,10 +2,9 @@ import { deepMergeObject, type MergeableRecord } from '../../../util/objects'
 import * as xml2js from 'xml2js'
 import * as Lang from './model'
 import {
-  compareRanges,
   type NoInfo,
   type OperatorFlavor,
-  rangeFrom, RForLoop,
+  RForLoop,
   type RIfThenElse,
   type RNode,
   type RSymbol
@@ -14,6 +13,7 @@ import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
 import { guard } from "../../../util/assert"
 import { splitArrayOn } from '../../../util/arrays'
+import { compareRanges, rangeFrom, SourceRange } from './range'
 
 const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
@@ -72,7 +72,7 @@ function getKeysGuarded (obj: XmlBasedJson, ...key: string[]): (Record<string, a
   }
 }
 
-function extractRange (ast: XmlBasedJson): Lang.Range {
+function extractRange (ast: XmlBasedJson): SourceRange {
   const {
     line1,
     col1,
@@ -485,7 +485,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
 
   private retrieveMetaStructure (obj: XmlBasedJson): {
     unwrappedObj: XmlBasedJson
-    location:     Lang.Range
+    location:     SourceRange
     content:      string
   } {
     const unwrappedObj = this.objectWithArrUnwrap(obj)

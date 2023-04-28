@@ -1,6 +1,6 @@
 import { type MergeableRecord } from '../../../util/objects'
 import { type RNa, type RNull, type RNumberValue, type RStringValue } from '../values'
-import { guard } from '../../../util/assert'
+import { SourceRange } from './range'
 
 /**
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
@@ -144,65 +144,8 @@ interface WithChildren<Info, Children extends Base<Info, string | undefined>> {
 
 type Leaf<Info = NoInfo, LexemeType = string> = Base<Info, LexemeType>
 
-// xmlparsedata uses its own start and end only to break ties and calculates them on max col width approximation
-interface Position {
-  line:   number
-  column: number
-}
-
-export interface Range {
-  start: Position
-  end:   Position
-}
-
-// TODO: test
-export function rangeFrom (line1: number | string, col1: number | string, line2: number | string, col2: number | string): Range {
-  // TODO: do we have to ensure ordering?
-  return {
-    start: {
-      line:   Number(line1),
-      column: Number(col1)
-    },
-    end: {
-      line:   Number(line2),
-      column: Number(col2)
-    }
-  }
-}
-
-// TODO: test more
-export function mergeRanges (...rs: Range[]): Range {
-  guard(rs.length > 0, 'Cannot merge no ranges')
-
-  return {
-    start: rs.reduce((acc, r) => acc.line < r.start.line || (acc.line === r.start.line && acc.column < r.start.column) ? acc : r.start, rs[0].start),
-    end:   rs.reduce((acc, r) => acc.line > r.end.line || (acc.line === r.end.line && acc.column > r.end.column) ? acc : r.end, rs[0].end)
-  }
-}
-
-/**
- * @return > 0 if r1 > r2, < 0 if r1 < r2, 0 if r1 === r2
- */
-// TODO: test
-export function compareRanges (r1: Range, r2: Range): number {
-  if (r1.start.line !== r2.start.line) {
-    return r1.start.line - r2.start.line
-  } else if (r1.start.column !== r2.start.column) {
-    return r1.start.column - r2.start.column
-  } else if (r1.end.line !== r2.end.line) {
-    return r1.end.line - r2.end.line
-  } else {
-    return r1.end.column - r2.end.column
-  }
-}
-
-// TODO: test
-export function addRanges (r1: Range, r2: Range): Range {
-  return rangeFrom(r1.start.line + r2.start.line, r1.start.column + r2.start.column, r1.end.line + r2.end.line, r1.end.column + r2.end.column)
-}
-
 interface Location {
-  location: Range
+  location: SourceRange
 }
 
 export type RExpressionList<Info = NoInfo> = {

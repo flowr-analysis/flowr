@@ -13,7 +13,7 @@ import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
 import { guard } from "../../../util/assert"
 import { splitArrayOn } from '../../../util/arrays'
-import { compareRanges, rangeFrom, SourceRange } from './range'
+import { compareRanges, rangeFrom, SourceRange } from '../../../util/range'
 
 const parseLog = log.getSubLogger({ name: 'ast-parser' })
 

@@ -2,7 +2,7 @@ import { assertAst, withShell } from '../../../helper/shell'
 import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
 import { exprList, numVal } from '../../../helper/ast-builder'
 import { RAssignmentOpPool } from '../../../helper/provider'
-import { rangeFrom } from '../../../../src/r-bridge/lang:4.x/ast/range'
+import { rangeFrom } from '../../../../src/util/range'
 
 describe('2. Parse simple assignments', withShell(shell => {
   describe('1.1 constant assignments', () => {

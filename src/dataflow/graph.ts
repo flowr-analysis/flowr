@@ -5,7 +5,7 @@ import * as Lang from '../r-bridge/lang:4.x/ast/model'
 import { DataflowMap } from './extractor'
 import { NoInfo } from '../r-bridge/lang:4.x/ast/model'
 import { guard } from "../util/assert"
-import { SourceRange } from '../r-bridge/lang:4.x/ast/range'
+import { SourceRange } from '../util/range'
 
 export type DataflowGraphEdgeType =
     | /** the edge determines that source reads target */ 'read'

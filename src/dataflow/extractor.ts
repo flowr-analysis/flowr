@@ -396,7 +396,6 @@ function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (ex
         guard (readName !== undefined, `Could not find name for read variable ${readId}`)
 
         const probableTarget = writePointers.get(readName)
-        console.log('processing read', readName, 'with target', probableTarget, 'and remaining', remainingRead.get(readName), 'and writePointers', writePointers)
         if (probableTarget === undefined) {
           // keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
           if(remainingRead.has(readName)) {

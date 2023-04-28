@@ -356,7 +356,11 @@ class RShellSession {
    * @see RShell#close
    */
   end (): boolean {
-    return this.bareSession.kill()
+    const killResult = this.bareSession.kill()
+    this.sessionStdOut.close()
+    this.sessionStdErr.close()
+    log.info(`killed R session with pid ${this.bareSession.pid} and result ${killResult} (including streams)`)
+    return killResult
   }
 
   private setupRSessionLoggers (): void {

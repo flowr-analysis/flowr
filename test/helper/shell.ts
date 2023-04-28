@@ -41,7 +41,8 @@ export const describeSession = (name: string, fn: (shell: RShell) => void, packa
     this.slow('500ms') // allow for shell mechanics
     const shell = new RShell()
     // this way we probably do not have to reinstall even if we launch from WebStorm
-    before(async () => {
+    before(async function () {
+      this.timeout('15min')
       shell.tryToInjectHomeLibPath()
       for (const pkg of packages) {
         if (!await shell.isPackageInstalled(pkg)) {

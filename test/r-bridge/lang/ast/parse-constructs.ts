@@ -217,5 +217,25 @@ describe('4. Parse simple constructs', () => {
         content:  numVal(2)
       }
     }))
+    assertAst('repeat { x; y }', shell, 'repeat { x; y }', exprList({
+      type:     Lang.Type.Repeat,
+      location: rangeFrom(1, 1, 1, 6),
+      lexeme:   'repeat',
+      body:     {
+        type:     Lang.Type.ExpressionList,
+        location: rangeFrom(1, 8, 1, 15),
+        lexeme:   '{ x; y }',
+        children: [{
+          type:     Lang.Type.Symbol,
+          location: rangeFrom(1, 10, 1, 10),
+          lexeme:   'x',
+          content:  'x'
+        }, {
+          type:     Lang.Type.Symbol,
+          location: rangeFrom(1, 13, 1, 13),
+          lexeme:   'y',
+          content:  'y'
+        }]}
+    }))
   })
 })

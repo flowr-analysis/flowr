@@ -326,7 +326,12 @@ function processForLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, variable: 
 
 function processRepeatLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, body: FoldInfo): FoldInfo {
   // TODO
-  return emptyFoldInfo()
+  return {
+    activeNodes: [],
+    in:          [...body.in, ...body.activeNodes.map(id => ({attribute: 'maybe' as const, id: id.id}))],
+    out:         body.out, // todo: kill that?
+    graph:       body.graph
+  }
 }
 
 // TODO: instead of maybe use nested if-then path possibilities for abstract interpretation?

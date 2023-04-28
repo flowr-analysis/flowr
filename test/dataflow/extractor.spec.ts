@@ -188,6 +188,25 @@ describe('Extract Dataflow Information', () => {
       )
       // TODO: so many other tests... variable in sequence etc.
     })
+
+    describe('6. repeat', () => {
+      // TODO: detect that a x <- repeat assignment does not have influence on the lhs as repeat returns NULL?
+      assertDataflow('6.1 simple constant repeat', shell, `repeat 2`,
+        new DataflowGraph()
+      )
+      assertDataflow('6.2 using loop variable in body', shell, `repeat x`,
+        new DataflowGraph().addNode('0', 'x')
+      )
+      assertDataflow('6.3 using loop variable in body', shell, `repeat { x <- 1 }`,
+        new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE)
+      )
+      assertDataflow('6.4 using loop variable in body', shell, `repeat { x <- y }`,
+        new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('1', 'y')
+          // TODO: always until encountered conditional break etc?
+          .addEdge('1', '0', 'defined-by', 'always' /* TODO: maybe ? */)
+      )
+      // TODO: so many other tests... variable in sequence etc.
+    })
   }))
 
   describe('B. Working with expression lists', withShell(shell => {

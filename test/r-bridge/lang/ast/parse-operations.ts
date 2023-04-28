@@ -1,20 +1,20 @@
-import { assertAst, describeSession } from '../../../helper/shell'
+import { assertAst, withShell } from '../../../helper/shell'
 import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
 import { exprList, numVal } from '../../../helper/ast-builder'
 import { RArithmeticBinaryOpPool, RLogicalBinaryOpPool } from '../../../helper/provider'
 import { type RShell } from '../../../../src/r-bridge/shell'
 import { rangeFrom } from '../../../../src/r-bridge/lang:4.x/ast/range'
 
-describe('1. Parse simple operations', () => {
+describe('1. Parse simple operations', withShell(shell => {
   let idx = 0
   for (const opSuite of [{ label: 'arithmetic', pool: RArithmeticBinaryOpPool }, { label: 'logical', pool: RLogicalBinaryOpPool }]) {
-    describeSession(`1.${++idx} ${opSuite.label} operations`, shell => {
+    describe(`1.${++idx} ${opSuite.label} operations`, () => {
       for (const op of opSuite.pool) {
         describePrecedenceTestsForOp(op, shell)
       }
     })
   }
-  describeSession(`1.${++idx} comparison operations`, shell => {
+  describe(`1.${++idx} comparison operations`, () => {
     for (const op of Lang.ComparisonOperators) {
       describe(op, () => {
         const simpleInput = `1 ${op} 1`
@@ -43,7 +43,7 @@ describe('1. Parse simple operations', () => {
       })
     }
   })
-})
+}))
 
 function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number] | typeof RLogicalBinaryOpPool[number], shell: RShell): void {
   describe(`${op.str} (${op.flavor})`, () => {

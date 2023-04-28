@@ -1,11 +1,11 @@
 import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
-import { assertAst, describeSession } from '../../../helper/shell'
+import { assertAst, withShell } from '../../../helper/shell'
 import { RNumberPool, RStringPool, RSymbolPool } from '../../../helper/provider'
 import { exprList } from '../../../helper/ast-builder'
 import { rangeFrom } from '../../../../src/r-bridge/lang:4.x/ast/range'
 
-describe('0. Constant Parsing', () => {
-  describeSession('0. parse single', shell => {
+describe('0. Constant Parsing', withShell(shell => {
+  describe('0. parse single', () => {
     describe('0.1 numbers', () => {
       for (const number of RNumberPool) {
         const range = rangeFrom(1, 1, 1, number.str.length)
@@ -49,4 +49,4 @@ describe('0. Constant Parsing', () => {
     }))
   })
   // TODO: vectors etc.
-})
+}))

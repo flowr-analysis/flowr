@@ -1,12 +1,12 @@
-import { assertDecoratedAst, describeSession } from '../helper/shell'
+import { assertDecoratedAst, withShell } from '../helper/shell'
 import { deterministicCountingIdGenerator, type Id, decorateWithIds } from '../../src/dataflow/id'
 import * as Lang from '../../src/r-bridge/lang:4.x/ast/model'
 import { type RExpressionList } from '../../src/r-bridge/lang:4.x/ast/model'
 import { numVal } from '../helper/ast-builder'
 import { rangeFrom } from '../../src/r-bridge/lang:4.x/ast/range'
 
-describe('Assign unique Ids', () => {
-  describeSession('Testing deterministic counting Id assignment', (shell) => {
+describe('Assign unique Ids', withShell(shell => {
+  describe('Testing deterministic counting Id assignment', () => {
     const assertId = (name: string, input: string, expected: RExpressionList<Id>): void => {
       assertDecoratedAst(name, shell, input, ast => decorateWithIds(ast, deterministicCountingIdGenerator()).decoratedAst, expected)
     }
@@ -52,4 +52,4 @@ describe('Assign unique Ids', () => {
     })
     // TODO: Tests others
   })
-})
+}))

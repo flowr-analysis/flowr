@@ -1,11 +1,11 @@
-import { assertAst, describeSession } from '../../../helper/shell'
+import { assertAst, withShell } from '../../../helper/shell'
 import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
 import { exprList, numVal } from '../../../helper/ast-builder'
 import { RAssignmentOpPool } from '../../../helper/provider'
 import { rangeFrom } from '../../../../src/r-bridge/lang:4.x/ast/range'
 
-describe('2. Parse simple assignments', () => {
-  describeSession('1.1 constant assignments', shell => {
+describe('2. Parse simple assignments', withShell(shell => {
+  describe('1.1 constant assignments', () => {
     for (const op of RAssignmentOpPool) {
       const opOffset = op.str.length - 1
       assertAst(`x ${op.str} 5`, shell, `x ${op.str} 5`, exprList({
@@ -29,4 +29,4 @@ describe('2. Parse simple assignments', () => {
       }))
     }
   })
-})
+}))

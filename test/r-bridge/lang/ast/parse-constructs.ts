@@ -1,4 +1,4 @@
-import { assertAst, describeSession } from '../../../helper/shell'
+import { assertAst, withShell } from '../../../helper/shell'
 import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
 import { exprList, numVal } from '../../../helper/ast-builder'
 import { addRanges, rangeFrom } from '../../../../src/r-bridge/lang:4.x/ast/range'
@@ -95,8 +95,8 @@ const ElseBracesVariants = [{
   num:          42
 }]
 
-describe('4. Parse simple constructs', () => {
-  describeSession('1.1 if-then', shell => {
+describe('4. Parse simple constructs', withShell(shell => {
+  describe('1.1 if-then', () => {
     for (const pool of [{ name: 'braces', variants: IfThenBraceVariants }, { name: 'spacing', variants: IfThenSpacingVariants }]) {
       describe(`${pool.name} variants`, () => {
         for (const variant of pool.variants) {
@@ -123,7 +123,7 @@ describe('4. Parse simple constructs', () => {
       })
     }
   })
-  describeSession('1.2 if-then-else', shell => {
+  describe('1.2 if-then-else', () => {
     for (const elsePool of [{ name: 'braces', variants: ElseBracesVariants }, { name: 'spacing', variants: ElseSpacingVariants }]) {
       for (const ifThenPool of [{ name: 'braces', variants: IfThenBraceVariants }, {
         name:     'spacing',
@@ -166,7 +166,7 @@ describe('4. Parse simple constructs', () => {
     }
   })
   // TODO: with and without braces
-  describeSession('1.3 for-loop', shell => {
+  describe('1.3 for-loop', () => {
     assertAst('for(i in 1:10) 2', shell, 'for(i in 1:42)2', exprList({
       type:     Lang.Type.For,
       location: rangeFrom(1, 1, 1, 3),
@@ -205,7 +205,7 @@ describe('4. Parse simple constructs', () => {
     })
     )
   })
-  describeSession('1.4 repeat-loop', shell => {
+  describe('1.4 repeat-loop', () => {
     assertAst('repeat 2', shell, 'repeat 2', exprList({
       type:     Lang.Type.Repeat,
       location: rangeFrom(1, 1, 1, 6),
@@ -238,4 +238,4 @@ describe('4. Parse simple constructs', () => {
         }]}
     }))
   })
-})
+}))

@@ -1,10 +1,10 @@
-import { assertAst, describeSession } from '../../../helper/shell'
+import { assertAst, withShell } from '../../../helper/shell'
 import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
 import { exprList, numVal } from '../../../helper/ast-builder'
 import { rangeFrom } from '../../../../src/r-bridge/lang:4.x/ast/range'
 
-describe('3. Parse expression lists', () => {
-  describeSession('1. Expression lists with newlines and braces', shell => {
+describe('3. Parse expression lists', withShell(shell => {
+  describe('1. Expression lists with newlines and braces', () => {
     // TODO: find a better way to name these tests
     // this is already covered by other tests, yet it is good to state it here explicitly (expr list is the default top-level token for R)
     assertAst(`1.1 "42" (single element)`, shell, `42`, exprList({
@@ -110,7 +110,7 @@ describe('3. Parse expression lists', () => {
     }))
   })
 
-  describeSession('2. Expression lists with semicolons', shell => {
+  describe('2. Expression lists with semicolons', () => {
     assertAst(`1.1 "42;a" (two elements in same line)`, shell, `42;a`, exprList(
       {
         type:     Lang.Type.Number,
@@ -125,4 +125,4 @@ describe('3. Parse expression lists', () => {
         content:  'a'
       }))
   })
-})
+}))

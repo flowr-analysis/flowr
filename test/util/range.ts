@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import { mergeRanges, rangeFrom, SourceRange } from '../../src/util/range'
+import { compareRanges, mergeRanges, rangeFrom, SourceRange } from '../../src/util/range'
 import { allPermutations } from '../../src/util/arrays'
 
 describe('Ranges', () => {
@@ -49,6 +49,19 @@ describe('Ranges', () => {
     })
     it('more than two ranges', () => {
       assertIndependentOfOrder(rangeFrom(1, 1, 3, 3), rangeFrom(1, 1, 1, 1), rangeFrom(2, 2, 2, 2), rangeFrom(3, 3, 3, 3))
+    })
+  })
+  describe('compareRanges', () => {
+    it('identical ranges', () => {
+      for(const sameRange of [rangeFrom(1, 1, 1, 1), rangeFrom(2, 1, 4, 7) ]) {
+        assert.strictEqual(compareRanges(sameRange, sameRange), 0, `compareRanges(${JSON.stringify(sameRange)}, ${JSON.stringify(sameRange)})`)
+      }
+    })
+    it('smaller left', () => {
+      assert.strictEqual(compareRanges(rangeFrom(1, 1, 1, 1), rangeFrom(2, 1, 2, 1)), -1)
+      assert.strictEqual(compareRanges(rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 2)), -1)
+      assert.strictEqual(compareRanges(rangeFrom(1, 1, 1, 1), rangeFrom(1, 2, 1, 1)), -1)
+      assert.strictEqual(compareRanges(rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 2, 1)), -1)
     })
   })
 })

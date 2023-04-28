@@ -15,9 +15,11 @@ export interface SourceRange {
   end:   SourcePosition
 }
 
-// TODO: test
+/**
+ * at the moment this does not ensure ordering of start and end!
+ */
 export function rangeFrom (line1: number | string, col1: number | string, line2: number | string, col2: number | string): SourceRange {
-  // TODO: do we have to ensure ordering?
+  // TODO: do we have to ensure ordering? => Throw an error if this is the case!
   return {
     start: {
       line:   Number(line1),
@@ -30,7 +32,6 @@ export function rangeFrom (line1: number | string, col1: number | string, line2:
   }
 }
 
-// TODO: test more
 export function mergeRanges (...rs: SourceRange[]): SourceRange {
   guard(rs.length > 0, 'Cannot merge no ranges')
 
@@ -43,7 +44,6 @@ export function mergeRanges (...rs: SourceRange[]): SourceRange {
 /**
  * @returns \> 0 if r1 \> r2, \< 0 if r1 \< r2, 0 if r1 === r2
  */
-// TODO: test
 export function compareRanges (r1: SourceRange, r2: SourceRange): number {
   if (r1.start.line !== r2.start.line) {
     return r1.start.line - r2.start.line

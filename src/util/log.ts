@@ -36,7 +36,7 @@ class FlowrLogger extends Logger<ILogObj> {
 }
 
 // based on https://tslog.js.org/#/?id=minlevel
-export enum LogLevel {
+export const enum LogLevel {
   silly = 0,
   trace = 1,
   debug = 2,

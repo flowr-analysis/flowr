@@ -5,7 +5,7 @@ import { SourceRange } from '../../../util/range'
 /**
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
  */
-export enum Type {
+export const enum Type {
   ExpressionList = 'exprlist',
   Expression = 'expr',
   /*
@@ -240,5 +240,3 @@ export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | R
 export type RSingleNode<Info> = RSymbol<Info> | RConstant<Info>
 export type RConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RIfThenElse<Info>
 export type RNode<Info = NoInfo> = RExpressionList<Info> | RConstructs<Info> | RBinaryOp<Info> | RSingleNode<Info>
-
-export const ALL_VALID_TYPES = Object.values(Type)

@@ -13,7 +13,7 @@ import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
 import { guard } from "../../../util/assert"
 import { splitArrayOn } from '../../../util/arrays'
-import { compareRanges, rangeFrom, SourceRange } from '../../../util/range'
+import { rangeStartsCompletelyBefore, rangeFrom, SourceRange } from '../../../util/range'
 
 const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
@@ -429,7 +429,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   private ensureChildrenAreLhsAndRhsOrdered (first: XmlBasedJson, second: XmlBasedJson): void {
     const firstOtherLoc = extractRange(first[this.config.attributeName])
     const secondOtherLoc = extractRange(second[this.config.attributeName])
-    if (compareRanges(firstOtherLoc, secondOtherLoc) > 0) {
+    if (!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
       throw new XmlParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`)
     }
   }

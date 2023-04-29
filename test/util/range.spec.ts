@@ -1,6 +1,7 @@
 import { assert } from 'chai'
-import { compareRanges, mergeRanges, rangeFrom, SourceRange } from '../../src/util/range'
+import { rangeStartsCompletelyBefore, mergeRanges, rangeFrom, SourceRange, addRanges } from '../../src/util/range'
 import { allPermutations } from '../../src/util/arrays'
+import { formatRange } from '../../src/dataflow/graph'
 
 describe('Ranges', () => {
   describe('rangeFrom', () => {
@@ -51,17 +52,50 @@ describe('Ranges', () => {
       assertIndependentOfOrder(rangeFrom(1, 1, 3, 3), rangeFrom(1, 1, 1, 1), rangeFrom(2, 2, 2, 2), rangeFrom(3, 3, 3, 3))
     })
   })
-  describe('compareRanges', () => {
-    it('identical ranges', () => {
+  describe('rangeStartsCompletelyBefore', () => {
+    const assertStarts = (a: SourceRange, b: SourceRange, yesNo: boolean): void => {
+      it(`${formatRange(a)} ${yesNo ? '<' : 'not <'} ${formatRange(b)}`, () => {
+        assert.strictEqual(rangeStartsCompletelyBefore(a, b), yesNo, `rangeStartsCompletelyBefore(${JSON.stringify(a)}, ${JSON.stringify(b)})`)
+      })
+    }
+    describe('identical ranges', () => {
       for(const sameRange of [rangeFrom(1, 1, 1, 1), rangeFrom(2, 1, 4, 7) ]) {
-        assert.strictEqual(compareRanges(sameRange, sameRange), 0, `compareRanges(${JSON.stringify(sameRange)}, ${JSON.stringify(sameRange)})`)
+        assertStarts(sameRange, sameRange, false)
       }
     })
-    it('smaller left', () => {
-      assert.strictEqual(compareRanges(rangeFrom(1, 1, 1, 1), rangeFrom(2, 1, 2, 1)), -1)
-      assert.strictEqual(compareRanges(rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 2)), -1)
-      assert.strictEqual(compareRanges(rangeFrom(1, 1, 1, 1), rangeFrom(1, 2, 1, 1)), -1)
-      assert.strictEqual(compareRanges(rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 2, 1)), -1)
+    describe('smaller left', () => {
+      assertStarts(rangeFrom(1, 1, 1, 1), rangeFrom(2, 1, 2, 1), true)
+      assertStarts(rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 2), false)
+      assertStarts(rangeFrom(1, 1, 1, 1), rangeFrom(1, 2, 1, 1), true)
+      assertStarts(rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 2, 1), false)
+      assertStarts(rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 2), false)
+      assertStarts(rangeFrom(1, 1, 2, 1), rangeFrom(4, 2, 9, 3), true)
+    })
+    describe('smaller right', () => {
+      assertStarts(rangeFrom(2, 1, 2, 1), rangeFrom(1, 1, 1, 1),false)
+      assertStarts(rangeFrom(1, 1, 1, 2), rangeFrom(1, 1, 1, 1),false)
+      assertStarts(rangeFrom(1, 2, 1, 1), rangeFrom(1, 1, 1, 1),false)
+      assertStarts(rangeFrom(1, 1, 2, 1), rangeFrom(1, 1, 1, 1),false)
+      assertStarts(rangeFrom(1, 1, 1, 2), rangeFrom(1, 1, 1, 1),false)
+      assertStarts(rangeFrom(4, 2, 9, 3), rangeFrom(1, 1, 2, 1),false)
+    })
+  })
+  describe('addRanges', () => {
+    const assertAdd = (expected: SourceRange, a: SourceRange, b: SourceRange): void => {
+      assert.deepStrictEqual(addRanges(a, b), expected, `addRanges(${JSON.stringify(a)}, ${JSON.stringify(b)})`)
+    }
+
+    const assertIndependentOfOrder = (expected: SourceRange, a: SourceRange, b: SourceRange): void => {
+      assertAdd(expected, a, b)
+      assertAdd(expected, b, a)
+    }
+    it('with zero', () => {
+      assertIndependentOfOrder(rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 1), rangeFrom(0, 0, 0, 0))
+      assertIndependentOfOrder(rangeFrom(4, 1, 9, 3), rangeFrom(4, 1, 9, 3), rangeFrom(0, 0, 0, 0))
+    })
+    it('with other numbers', () => {
+      assertIndependentOfOrder(rangeFrom(2, 3, 4, 5), rangeFrom(1, 1, 1, 1), rangeFrom(1, 2, 3, 4))
+      assertIndependentOfOrder(rangeFrom(6, 4, 9, 7), rangeFrom(2, 2, 3, 4), rangeFrom(4, 2, 6, 3))
     })
   })
 })

@@ -42,21 +42,12 @@ export function mergeRanges (...rs: SourceRange[]): SourceRange {
 }
 
 /**
- * @returns \> 0 if r1 \> r2, \< 0 if r1 \< r2, 0 if r1 === r2
+ * @returns true iff `r1` starts and ends before `r2` starts (i.e., if `r1` and `r2` do not overlap and `r1` comes before `r2`
  */
-export function compareRanges (r1: SourceRange, r2: SourceRange): number {
-  if (r1.start.line !== r2.start.line) {
-    return r1.start.line - r2.start.line
-  } else if (r1.start.column !== r2.start.column) {
-    return r1.start.column - r2.start.column
-  } else if (r1.end.line !== r2.end.line) {
-    return r1.end.line - r2.end.line
-  } else {
-    return r1.end.column - r2.end.column
-  }
+export function rangeStartsCompletelyBefore (r1: SourceRange, r2: SourceRange): boolean {
+  return r1.end.line < r2.start.line || (r1.end.line === r2.start.line && r1.end.column < r2.start.column)
 }
 
-// TODO: test
 export function addRanges (r1: SourceRange, r2: SourceRange): SourceRange {
   return rangeFrom(r1.start.line + r2.start.line, r1.start.column + r2.start.column, r1.end.line + r2.end.line, r1.end.column + r2.end.column)
 }

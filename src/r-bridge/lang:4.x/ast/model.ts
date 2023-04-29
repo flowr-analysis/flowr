@@ -40,7 +40,7 @@ export const enum Type {
 
 export type StringUsedInRCode = string
 
-export enum OperatorArity {
+export const enum OperatorArity {
   Unary = 1,
   Binary = 2,
   Both = 3

@@ -25,3 +25,30 @@ export function splitArrayOn<T>(arr: T[], predicate: (elem: T) => boolean): T[][
   }
   return result
 }
+
+/**
+ * Generate all permutations of the given array using Heap's algorithm (with its non-recursive variant).
+ *
+ * @param arr - the array to permute
+ */
+export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
+  yield arr.slice()
+  const c = new Array(arr.length).fill(0)
+  let i = 1
+
+  while (i < arr.length) {
+    if (c[i] >= i) {
+      c[i] = 0
+      ++i
+    } else {
+      // save the swap to 0 (https://stackoverflow.com/questions/9960908/permutations-in-javascript/37580979#37580979)
+      const k = i % 2 && c[i]
+      const p = arr[i]
+      arr[i] = arr[k]
+      arr[k] = p
+      ++c[i]
+      i = 1
+      yield arr.slice()
+    }
+  }
+}

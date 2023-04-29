@@ -1,6 +1,6 @@
 import { type MergeableRecord } from '../../../util/objects'
 import { type RNa, type RNull, type RNumberValue, type RStringValue } from '../values'
-import { SourceRange } from './range'
+import { SourceRange } from '../../../util/range'
 
 /**
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)

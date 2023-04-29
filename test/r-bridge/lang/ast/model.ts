@@ -1,5 +1,6 @@
 import { assert } from 'chai'
-import { mergeRanges, rangeFrom, SourceRange } from '../../../../src/r-bridge/lang:4.x/ast/range'
+import { mergeRanges, rangeFrom, SourceRange } from '../../../../src/util/range'
+import { allPermutations } from '../../../../src/util/arrays'
 
 describe('Model specific tests', () => {
   describe('mergeRanges', () => {
@@ -49,8 +50,7 @@ describe('Model specific tests', () => {
       const a = rangeFrom(1, 2, 1, 2)
       const b = rangeFrom(4, 2, 5, 9)
       const c = rangeFrom(42, 3, 6, 6)
-      // TODO: permutation function? :D | + improve these tests
-      for (const perm of [[a, b, c], [a, c, b], [b, a, c], [b, c, a], [c, a, b], [c, b, a]]) {
+      for (const perm of allPermutations([a, b, c])) {
         assertMerged(perm, rangeFrom(1, 2, 6, 6))
       }
     })

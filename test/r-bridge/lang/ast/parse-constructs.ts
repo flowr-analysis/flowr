@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../helper/shell'
 import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
 import { exprList, numVal } from '../../../helper/ast-builder'
-import { addRanges, rangeFrom } from '../../../../src/r-bridge/lang:4.x/ast/range'
+import { addRanges, rangeFrom } from '../../../../src/util/range'
 
 const IfThenSpacingVariants = [{
   str:          'if(TRUE)1',

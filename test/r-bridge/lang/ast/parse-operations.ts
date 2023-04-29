@@ -3,7 +3,7 @@ import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
 import { exprList, numVal } from '../../../helper/ast-builder'
 import { RArithmeticBinaryOpPool, RLogicalBinaryOpPool } from '../../../helper/provider'
 import { type RShell } from '../../../../src/r-bridge/shell'
-import { rangeFrom } from '../../../../src/r-bridge/lang:4.x/ast/range'
+import { rangeFrom } from '../../../../src/util/range'
 
 describe('1. Parse simple operations', withShell(shell => {
   let idx = 0

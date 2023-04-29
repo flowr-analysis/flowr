@@ -3,7 +3,7 @@ import { deterministicCountingIdGenerator, type Id, decorateWithIds } from '../.
 import * as Lang from '../../src/r-bridge/lang:4.x/ast/model'
 import { type RExpressionList } from '../../src/r-bridge/lang:4.x/ast/model'
 import { numVal } from '../helper/ast-builder'
-import { rangeFrom } from '../../src/r-bridge/lang:4.x/ast/range'
+import { rangeFrom } from '../../src/util/range'
 
 describe('Assign unique Ids', withShell(shell => {
   describe('Testing deterministic counting Id assignment', () => {

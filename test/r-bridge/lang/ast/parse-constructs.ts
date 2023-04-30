@@ -249,7 +249,7 @@ describe('4. Parse simple constructs', withShell(shell => {
       }))
     })
     describe('1.5 while', () => {
-      assertAst('while (TRUE) 2', shell, 'while (TRUE) 2', exprList({
+      assertAst('while (TRUE) 42', shell, 'while (TRUE) 42', exprList({
         type:      Lang.Type.While,
         location:  rangeFrom(1, 1, 1, 5),
         lexeme:    'while',
@@ -261,9 +261,37 @@ describe('4. Parse simple constructs', withShell(shell => {
         },
         body: {
           type:     Lang.Type.Number,
-          location: rangeFrom(1, 14, 1, 14),
-          lexeme:   '2',
-          content:  numVal(2)
+          location: rangeFrom(1, 14, 1, 15),
+          lexeme:   '42',
+          content:  numVal(42)
+        }
+      }))
+
+      assertAst('while (FALSE) { x; y }', shell, 'while (FALSE) { x; y }', exprList({
+        type:      Lang.Type.While,
+        location:  rangeFrom(1, 1, 1, 5),
+        lexeme:    'while',
+        condition: {
+          type:     Lang.Type.Logical,
+          location: rangeFrom(1, 8, 1, 12),
+          lexeme:   'FALSE',
+          content:  false
+        },
+        body: {
+          type:     Lang.Type.ExpressionList,
+          location: rangeFrom(1, 15, 1, 22),
+          lexeme:   '{ x; y }',
+          children: [{
+            type:     Lang.Type.Symbol,
+            location: rangeFrom(1, 17, 1, 17),
+            lexeme:   'x',
+            content:  'x'
+          }, {
+            type:     Lang.Type.Symbol,
+            location: rangeFrom(1, 20, 1, 20),
+            lexeme:   'y',
+            content:  'y'
+          }]
         }
       }))
     })

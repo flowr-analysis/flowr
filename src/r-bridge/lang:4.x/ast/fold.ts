@@ -4,7 +4,7 @@ import {
   type RAssignmentOp,
   type RBinaryOp,
   type RComparisonBinaryOp,
-  type RExpressionList, RForLoop,
+  type RExpressionList, RForLoop, RFunctionCall,
   type RIfThenElse,
   type RLogical,
   type RLogicalBinaryOp, RLogicalUnaryOp,
@@ -36,8 +36,9 @@ export interface FoldFunctions<Info, T> {
     foldWhile:  (loop: RWhileLoop<Info>, condition: T, body: T) => T
     foldRepeat: (loop: RRepeatLoop<Info>, body: T) => T
   },
-  foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: T, then: T, otherwise?: T) => T
-  foldExprList:   (exprList: RExpressionList<Info>, expressions: T[]) => T
+  foldIfThenElse:   (ifThenExpr: RIfThenElse<Info>, cond: T, then: T, otherwise?: T) => T
+  foldExprList:     (exprList: RExpressionList<Info>, expressions: T[]) => T
+  foldFunctionCall: (call: RFunctionCall<Info>, parameters: T[]) => T
 }
 
 /**
@@ -64,6 +65,8 @@ export function foldAst<Info, T> (ast: RNode<Info>, folds: DeepReadonly<FoldFunc
       return folds.loop.foldWhile(ast, foldAst(ast.condition, folds), foldAst(ast.body, folds))
     case Lang.Type.Repeat:
       return folds.loop.foldRepeat(ast, foldAst(ast.body, folds))
+    case Lang.Type.FunctionCall:
+      return folds.foldFunctionCall(ast, ast.arguments.map(param => foldAst(param, folds)))
     // TODO: other loops
     case Lang.Type.If:
       return folds.foldIfThenElse(ast, foldAst(ast.condition, folds), foldAst(ast.then, folds), ast.otherwise === undefined ? undefined : foldAst(ast.otherwise, folds))

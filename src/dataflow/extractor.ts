@@ -395,6 +395,16 @@ function updateAllWriteTargets<OtherInfo> (currentChild: FoldInfo, dataflowIdMap
 }
 
 
+function processFunctionCall<OtherInfo> (functionCall: RNodeWithParent<OtherInfo>, parameters: FoldInfo[]): FoldInfo {
+  // TODO
+  return {
+    activeNodes: [],
+    in:          parameters.map(p => [...p.in, ...p.activeNodes]).flatMap(v => v),
+    out:         new Map(parameters.map(p => [...p.out]).flatMap(v => v)),
+    graph:       parameters.length === 0 ? new DataflowGraph() : parameters[0].graph.mergeWith(...parameters.slice(1).map(p => p.graph))
+  }
+}
+
 // TODO: we have to change that within quoted-expressions! and parse/de-parse?
 function processExprList<OtherInfo> (dataflowIdMap: DataflowMap<OtherInfo>): (exprList: RNodeWithParent<OtherInfo>, children: FoldInfo[]) => FoldInfo {
   // TODO: deal with information in order + scoping when we have functions
@@ -516,8 +526,9 @@ export function produceDataFlowGraph<OtherInfo> (ast: RNodeWithParent<OtherInfo>
       foldRepeat: processRepeatLoop,
       foldWhile:  processWhileLoop
     },
-    foldIfThenElse: processIfThenElse,
-    foldExprList:   processExprList(dataflowIdMap)
+    foldIfThenElse:   processIfThenElse,
+    foldExprList:     processExprList(dataflowIdMap),
+    foldFunctionCall: processFunctionCall,
   })
 
   // TODO: process

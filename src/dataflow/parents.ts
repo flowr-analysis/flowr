@@ -2,7 +2,7 @@
 import {
   type RBinaryOp,
   type RExpressionList,
-  RForLoop,
+  RForLoop, RFunctionCall,
   type RIfThenElse, RRepeatLoop,
   type RSingleNode, RUnaryOp, RWhileLoop
 } from '../r-bridge/lang:4.x/ast/model'
@@ -67,6 +67,17 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
     }
   }
 
+  const foldFunctionCall = (functionalCall: RFunctionCall<OtherInfo & Id>, parameters: Array<RNodeWithParent<OtherInfo>>): RNodeWithParent<OtherInfo> => {
+    parameters.forEach(c => {
+      c.parent = functionalCall.id
+    })
+    return {
+      ...functionalCall,
+      arguments: parameters,
+      parent:    undefined
+    }
+  }
+
   const foldFor = (loop: RForLoop<OtherInfo & Id>, variable: RNodeWithParent<OtherInfo>, vector: RNodeWithParent<OtherInfo>, body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
     variable.parent = loop.id
     vector.parent = loop.id
@@ -121,6 +132,7 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
       foldWhile
     },
     foldIfThenElse,
-    foldExprList
+    foldExprList,
+    foldFunctionCall
   })
 }

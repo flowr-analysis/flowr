@@ -37,7 +37,10 @@ export const enum Type {
   Repeat = 'REPEAT',
   While = 'WHILE',
   If = 'IF',
-  Else = 'ELSE'
+  Else = 'ELSE',
+  FunctionCall = 'SYMBOL_FUNCTION_CALL',
+  SymbolPackage = 'SYMBOL_PACKAGE',
+  NamespaceGet = 'NS_GET',
 }
 
 export type StringUsedInRCode = string
@@ -151,6 +154,13 @@ interface Location {
   location: SourceRange
 }
 
+export type NamespaceIdentifier = string
+interface Namespace {
+  /* null for unknown atm */
+  namespace: NamespaceIdentifier | null
+}
+
+
 export type RExpressionList<Info = NoInfo> = {
   readonly type:     Type.ExpressionList
   readonly content?: string
@@ -262,6 +272,12 @@ export type RWhileLoop<Info = NoInfo> = {
   body:          RNode<Info>
 } & Base<Info> & Location
 
+export type RFunctionCall<Info = NoInfo> = {
+  readonly type: Type.FunctionCall
+  arguments:     RNode<Info>[]
+} & Namespace & Base<Info> & Location
+
+
 
 // TODO: special constants
 export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
@@ -269,4 +285,5 @@ export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | R
 export type RSingleNode<Info> = RSymbol<Info> | RConstant<Info>
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
 export type RConstructs<Info> = RLoopConstructs<Info> | RIfThenElse<Info>
-export type RNode<Info = NoInfo> = RExpressionList<Info> | RConstructs<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>
+export type RCalls<Info>       = RFunctionCall<Info>
+export type RNode<Info = NoInfo> = RExpressionList<Info> | RCalls<Info> | RConstructs<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>

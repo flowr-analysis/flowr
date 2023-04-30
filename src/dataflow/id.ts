@@ -1,7 +1,7 @@
 // assign each node with a unique id to simplify usage and further compares
 import {
   type RBinaryOp,
-  type RExpressionList, RForLoop,
+  type RExpressionList, RForLoop, RFunctionCall,
   type RIfThenElse,
   type RNode, RRepeatLoop,
   type RSingleNode, RUnaryOp, RWhileLoop
@@ -96,6 +96,16 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
     return newExprList
   }
 
+  const foldFunctionCall = (functionCall: RFunctionCall<OtherInfo>, parameters: Array<IdRNode<OtherInfo>>): IdRNode<OtherInfo> => {
+    const newFunctionCall = {
+      ...functionCall,
+      arguments: parameters,
+      id:        getId(functionCall)
+    }
+    idMap.set(newFunctionCall.id, newFunctionCall)
+    return newFunctionCall
+  }
+
   const foldFor = (forLoop: RForLoop<OtherInfo>, variable: IdRNode<OtherInfo>, vector: IdRNode<OtherInfo>, body: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
     const newForLoop = {
       ...forLoop,
@@ -151,7 +161,8 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
       foldWhile
     },
     foldIfThenElse,
-    foldExprList
+    foldExprList,
+    foldFunctionCall
   })
 
   return {

@@ -96,146 +96,176 @@ const ElseBracesVariants = [{
 }]
 
 describe('4. Parse simple constructs', withShell(shell => {
-  describe('1.1 if-then', () => {
-    for (const pool of [{ name: 'braces', variants: IfThenBraceVariants }, { name: 'spacing', variants: IfThenSpacingVariants }]) {
-      describe(`${pool.name} variants`, () => {
-        for (const variant of pool.variants) {
-          const strNum = `${variant.num}`
-          assertAst(JSON.stringify(variant.str), shell, variant.str, exprList({
-            type:      Lang.Type.If,
-            // TODO: maybe merge in future?
-            location:  rangeFrom(1, 1, 1, 2),
-            lexeme:    'if',
-            condition: {
-              type:     Lang.Type.Logical,
-              location: variant.locationTrue,
-              lexeme:   'TRUE',
-              content:  true
-            },
-            then: {
-              type:     Lang.Type.Number,
-              location: variant.locationNum,
-              lexeme:   strNum,
-              content:  numVal(variant.num)
-            }
-          }))
-        }
-      })
-    }
-  })
-  describe('1.2 if-then-else', () => {
-    for (const elsePool of [{ name: 'braces', variants: ElseBracesVariants }, { name: 'spacing', variants: ElseSpacingVariants }]) {
-      for (const ifThenPool of [{ name: 'braces', variants: IfThenBraceVariants }, {
+  describe('4.1 if', () => {
+    describe('1.1 if-then', () => {
+      for (const pool of [{name: 'braces', variants: IfThenBraceVariants}, {
         name:     'spacing',
         variants: IfThenSpacingVariants
       }]) {
-        describe(`if-then: ${ifThenPool.name}, else: ${elsePool.name}`, () => {
-          for (const elseVariant of elsePool.variants) {
-            for (const ifThenVariant of ifThenPool.variants) {
-              const thenNum = `${ifThenVariant.num}`
-              const elseNum = `${elseVariant.num}`
-              const input = `${ifThenVariant.str}${elseVariant.str}`
-              assertAst(JSON.stringify(input), shell, input, exprList({
-                type:      Lang.Type.If,
-                // TODO: maybe merge in future?
-                location:  rangeFrom(1, 1, 1, 2),
-                lexeme:    'if',
-                condition: {
-                  type:     Lang.Type.Logical,
-                  location: ifThenVariant.locationTrue,
-                  lexeme:   'TRUE',
-                  content:  true
-                },
-                then: {
-                  type:     Lang.Type.Number,
-                  location: ifThenVariant.locationNum,
-                  lexeme:   thenNum,
-                  content:  numVal(ifThenVariant.num)
-                },
-                otherwise: {
-                  type:     Lang.Type.Number,
-                  location: addRanges(elseVariant.locationElse, ifThenVariant.end),
-                  lexeme:   elseNum,
-                  content:  numVal(elseVariant.num)
-                }
-              }))
-            }
+        describe(`${pool.name} variants`, () => {
+          for (const variant of pool.variants) {
+            const strNum = `${variant.num}`
+            assertAst(JSON.stringify(variant.str), shell, variant.str, exprList({
+              type:      Lang.Type.If,
+              // TODO: maybe merge in future?
+              location:  rangeFrom(1, 1, 1, 2),
+              lexeme:    'if',
+              condition: {
+                type:     Lang.Type.Logical,
+                location: variant.locationTrue,
+                lexeme:   'TRUE',
+                content:  true
+              },
+              then: {
+                type:     Lang.Type.Number,
+                location: variant.locationNum,
+                lexeme:   strNum,
+                content:  numVal(variant.num)
+              }
+            }))
           }
         })
       }
-    }
-  })
-  // TODO: with and without braces
-  describe('1.3 for-loop', () => {
-    assertAst('for(i in 1:10) 2', shell, 'for(i in 1:42)2', exprList({
-      type:     Lang.Type.For,
-      location: rangeFrom(1, 1, 1, 3),
-      lexeme:   'for',
-      variable: {
-        type:     Lang.Type.Symbol,
-        location: rangeFrom(1, 5, 1, 5),
-        lexeme:   'i',
-        content:  'i'
-      },
-      vector: {
-        type:     Lang.Type.BinaryOp,
-        flavor:   'arithmetic',
-        op:       ':',
-        location: rangeFrom(1, 11, 1, 11),
-        lexeme:   ':',
-        lhs:      {
-          type:     Lang.Type.Number,
-          location: rangeFrom(1, 10, 1, 10),
-          lexeme:   '1',
-          content:  numVal(1)
-        },
-        rhs: {
-          type:     Lang.Type.Number,
-          location: rangeFrom(1, 12, 1, 13),
-          lexeme:   '42',
-          content:  numVal(42)
+    })
+    describe('1.2 if-then-else', () => {
+      for (const elsePool of [{name: 'braces', variants: ElseBracesVariants}, {
+        name:     'spacing',
+        variants: ElseSpacingVariants
+      }]) {
+        for (const ifThenPool of [{name: 'braces', variants: IfThenBraceVariants}, {
+          name:     'spacing',
+          variants: IfThenSpacingVariants
+        }]) {
+          describe(`if-then: ${ifThenPool.name}, else: ${elsePool.name}`, () => {
+            for (const elseVariant of elsePool.variants) {
+              for (const ifThenVariant of ifThenPool.variants) {
+                const thenNum = `${ifThenVariant.num}`
+                const elseNum = `${elseVariant.num}`
+                const input = `${ifThenVariant.str}${elseVariant.str}`
+                assertAst(JSON.stringify(input), shell, input, exprList({
+                  type:      Lang.Type.If,
+                  // TODO: maybe merge in future?
+                  location:  rangeFrom(1, 1, 1, 2),
+                  lexeme:    'if',
+                  condition: {
+                    type:     Lang.Type.Logical,
+                    location: ifThenVariant.locationTrue,
+                    lexeme:   'TRUE',
+                    content:  true
+                  },
+                  then: {
+                    type:     Lang.Type.Number,
+                    location: ifThenVariant.locationNum,
+                    lexeme:   thenNum,
+                    content:  numVal(ifThenVariant.num)
+                  },
+                  otherwise: {
+                    type:     Lang.Type.Number,
+                    location: addRanges(elseVariant.locationElse, ifThenVariant.end),
+                    lexeme:   elseNum,
+                    content:  numVal(elseVariant.num)
+                  }
+                }))
+              }
+            }
+          })
         }
-      },
-      body: {
-        type:     Lang.Type.Number,
-        location: rangeFrom(1, 15, 1, 15),
-        lexeme:   '2',
-        content:  numVal(2)
       }
     })
-    )
   })
-  describe('1.4 repeat-loop', () => {
-    assertAst('repeat 2', shell, 'repeat 2', exprList({
-      type:     Lang.Type.Repeat,
-      location: rangeFrom(1, 1, 1, 6),
-      lexeme:   'repeat',
-      body:     {
-        type:     Lang.Type.Number,
-        location: rangeFrom(1, 8, 1, 8),
-        lexeme:   '2',
-        content:  numVal(2)
-      }
-    }))
-    assertAst('repeat { x; y }', shell, 'repeat { x; y }', exprList({
-      type:     Lang.Type.Repeat,
-      location: rangeFrom(1, 1, 1, 6),
-      lexeme:   'repeat',
-      body:     {
-        type:     Lang.Type.ExpressionList,
-        location: rangeFrom(1, 8, 1, 15),
-        lexeme:   '{ x; y }',
-        children: [{
+  // TODO: with and without braces
+  describe('4.2 loops', () => {
+    describe('1.3 for', () => {
+      assertAst('for(i in 1:10) 2', shell, 'for(i in 1:42)2', exprList({
+        type:     Lang.Type.For,
+        location: rangeFrom(1, 1, 1, 3),
+        lexeme:   'for',
+        variable: {
           type:     Lang.Type.Symbol,
-          location: rangeFrom(1, 10, 1, 10),
-          lexeme:   'x',
-          content:  'x'
-        }, {
-          type:     Lang.Type.Symbol,
-          location: rangeFrom(1, 13, 1, 13),
-          lexeme:   'y',
-          content:  'y'
-        }]}
-    }))
+          location: rangeFrom(1, 5, 1, 5),
+          lexeme:   'i',
+          content:  'i'
+        },
+        vector: {
+          type:     Lang.Type.BinaryOp,
+          flavor:   'arithmetic',
+          op:       ':',
+          location: rangeFrom(1, 11, 1, 11),
+          lexeme:   ':',
+          lhs:      {
+            type:     Lang.Type.Number,
+            location: rangeFrom(1, 10, 1, 10),
+            lexeme:   '1',
+            content:  numVal(1)
+          },
+          rhs: {
+            type:     Lang.Type.Number,
+            location: rangeFrom(1, 12, 1, 13),
+            lexeme:   '42',
+            content:  numVal(42)
+          }
+        },
+        body: {
+          type:     Lang.Type.Number,
+          location: rangeFrom(1, 15, 1, 15),
+          lexeme:   '2',
+          content:  numVal(2)
+        }
+      })
+      )
+    })
+    describe('1.4 repeat', () => {
+      assertAst('repeat 2', shell, 'repeat 2', exprList({
+        type:     Lang.Type.Repeat,
+        location: rangeFrom(1, 1, 1, 6),
+        lexeme:   'repeat',
+        body:     {
+          type:     Lang.Type.Number,
+          location: rangeFrom(1, 8, 1, 8),
+          lexeme:   '2',
+          content:  numVal(2)
+        }
+      }))
+      assertAst('repeat { x; y }', shell, 'repeat { x; y }', exprList({
+        type:     Lang.Type.Repeat,
+        location: rangeFrom(1, 1, 1, 6),
+        lexeme:   'repeat',
+        body:     {
+          type:     Lang.Type.ExpressionList,
+          location: rangeFrom(1, 8, 1, 15),
+          lexeme:   '{ x; y }',
+          children: [{
+            type:     Lang.Type.Symbol,
+            location: rangeFrom(1, 10, 1, 10),
+            lexeme:   'x',
+            content:  'x'
+          }, {
+            type:     Lang.Type.Symbol,
+            location: rangeFrom(1, 13, 1, 13),
+            lexeme:   'y',
+            content:  'y'
+          }]
+        }
+      }))
+    })
+    describe('1.5 while', () => {
+      assertAst('while (TRUE) 2', shell, 'while (TRUE) 2', exprList({
+        type:      Lang.Type.While,
+        location:  rangeFrom(1, 1, 1, 6),
+        lexeme:    'while',
+        condition: {
+          type:     Lang.Type.Logical,
+          location: rangeFrom(1, 8, 1, 11),
+          lexeme:   'TRUE',
+          content:  true
+        },
+        body: {
+          type:     Lang.Type.Number,
+          location: rangeFrom(1, 8, 1, 8),
+          lexeme:   '2',
+          content:  numVal(2)
+        }
+      }))
+    })
   })
 }))

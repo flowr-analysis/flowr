@@ -34,6 +34,7 @@ export const enum Type {
   ForCondition = 'forcond',
   ForIn = 'IN',
   Repeat = 'REPEAT',
+  While = 'WHILE',
   If = 'IF',
   Else = 'ELSE'
 }
@@ -233,10 +234,22 @@ export type RRepeatLoop<Info = NoInfo> = {
   body:          RNode<Info>
 } & Base<Info> & Location
 
+/**
+ * ```ts
+ * while ( <condition> ) <body>
+ * ```
+ */
+export type RWhileLoop<Info = NoInfo> = {
+  readonly type: Type.While
+  condition:     RNode<Info>
+  body:          RNode<Info>
+} & Base<Info> & Location
+
 
 // TODO: special constants
 export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
 
 export type RSingleNode<Info> = RSymbol<Info> | RConstant<Info>
-export type RConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RIfThenElse<Info>
+export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
+export type RConstructs<Info> = RLoopConstructs<Info> | RIfThenElse<Info>
 export type RNode<Info = NoInfo> = RExpressionList<Info> | RConstructs<Info> | RBinaryOp<Info> | RSingleNode<Info>

@@ -329,10 +329,21 @@ function processRepeatLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, body: F
   return {
     activeNodes: [],
     in:          [...body.in, ...body.activeNodes.map(id => ({attribute: 'maybe' as const, id: id.id}))],
-    out:         body.out, // todo: kill that?
+    out:         body.out,
     graph:       body.graph
   }
 }
+
+function processWhileLoop<OtherInfo> (loop: RNodeWithParent<OtherInfo>, condition: FoldInfo, body: FoldInfo): FoldInfo {
+  // TODO
+  return {
+    activeNodes: [],
+    in:          [...condition.in, ...body.in, ...condition.activeNodes, ...body.activeNodes.map(id => ({attribute: 'maybe' as const, id: id.id}))],
+    out:         new Map([...body.out, ...condition.out]), // todo: merge etc.
+    graph:       condition.graph.mergeWith(body.graph)
+  }
+}
+
 
 // TODO: instead of maybe use nested if-then path possibilities for abstract interpretation?
 type WritePointerTargets = { type: 'always', id: IdType } | { type: 'maybe', ids: IdType[] }
@@ -487,8 +498,9 @@ export function produceDataFlowGraph<OtherInfo> (ast: RNodeWithParent<OtherInfo>
       foldAssignment:   processAssignment
     },
     loop: {
-      foldForLoop:    processForLoop,
-      foldRepeatLoop: processRepeatLoop
+      foldFor:    processForLoop,
+      foldRepeat: processRepeatLoop,
+      foldWhile:  processWhileLoop
     },
     foldIfThenElse: processIfThenElse,
     foldExprList:   processExprList(dataflowIdMap)

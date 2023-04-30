@@ -3,11 +3,11 @@ import * as xml2js from 'xml2js'
 import * as Lang from './model'
 import {
   type NoInfo,
-  type OperatorFlavor,
+  type BinaryOperatorFlavor,
   RForLoop,
   type RIfThenElse,
   type RNode,
-  type RSymbol, RWhileLoop
+  type RSymbol, RWhileLoop, UnaryOperatorFlavor
 } from './model'
 import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
@@ -16,6 +16,8 @@ import { splitArrayOn } from '../../../util/arrays'
 import { rangeStartsCompletelyBefore, rangeFrom, SourceRange } from '../../../util/range'
 
 const parseLog = log.getSubLogger({ name: 'ast-parser' })
+
+// TODO: clean up this file and split into multiple to keep shorter
 
 interface AstParser<Target extends Lang.Base<NoInfo, string | undefined>> {
   parse: (xmlString: string) => Promise<Target>
@@ -82,7 +84,7 @@ function extractRange (ast: XmlBasedJson): SourceRange {
   return rangeFrom(line1, col1, line2, col2)
 }
 
-function identifySpecialOp (content: string): OperatorFlavor {
+function identifySpecialOp (content: string): BinaryOperatorFlavor {
   if (Lang.ComparisonOperatorsRAst.includes(content)) {
     return 'comparison'
   } else if (Lang.LogicalOperatorsRAst.includes(content)) {
@@ -108,7 +110,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     return this.parseRootObjToAst(this.objectRoot)
   }
 
-  public parseBinaryOp (flavor: OperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RBinaryOp {
+  public parseBinaryOp (flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RBinaryOp {
     parseLog.debug(`trying to parse ${flavor} op as binary op ${JSON.stringify([lhs, op, rhs])}`)
 
     this.ensureChildrenAreLhsAndRhsOrdered(lhs.content, rhs.content)
@@ -139,6 +141,33 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       rhs:    parsedRhs,
       op:     operationName,
       lexeme: content
+    }
+  }
+
+  public parseUnaryOp (flavor: UnaryOperatorFlavor, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): Lang.RUnaryOp {
+    parseLog.debug(`trying to parse ${flavor} op as unary op ${JSON.stringify([op, operand])}`)
+
+    const parsedOperand = this.parseOneElementBasedOnType(operand)
+
+    if (parsedOperand === undefined) {
+      throw new XmlParseError(`unexpected under-sided unary op for ${JSON.stringify([op, operand])}`)
+    }
+
+    const operationName = this.retrieveOpName(op)
+
+    const {
+      location,
+      content
+    } = this.retrieveMetaStructure(op.content)
+
+    // TODO: assert exists as known operator
+    return {
+      type:    Lang.Type.UnaryOp,
+      flavor,
+      location,
+      op:      operationName,
+      lexeme:  content,
+      operand: parsedOperand
     }
   }
 
@@ -198,11 +227,16 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       const parsed = this.parseOneElementBasedOnType(mappedWithName[0])
       return parsed === undefined ? [] : [parsed]
     } else if(mappedWithName.length === 2) {
-      const parsed = this.parseRepeatLoopStructure(mappedWithName[0], mappedWithName[1])
-      if(parsed !== 'no repeat-loop') {
-        return [parsed]
+      const unaryOp = this.parseUnaryStructure(mappedWithName[0], mappedWithName[1])
+      if(unaryOp !== 'no unary structure') {
+        return [unaryOp]
       }
-    } else if (mappedWithName.length === 3) { /* TODO: unary ops for == 2 */
+      const repeatLoop = this.parseRepeatLoopStructure(mappedWithName[0], mappedWithName[1])
+      if(repeatLoop !== 'no repeat-loop') {
+        return [repeatLoop]
+      }
+
+    } else if (mappedWithName.length === 3) {
       const binary = this.parseBinaryStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2])
       if (binary !== 'no binary structure') {
         return [binary]
@@ -251,7 +285,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   /**
    * parses a single structure in the ast based on its type
    *
-   * @return nothing if no parse result is to be produced (i.e., if it is skipped)
+   * @returns nothing if no parse result is to be produced (i.e., if it is skipped)
    */
   private parseOneElementBasedOnType (elem: NamedXmlBasedJson): Lang.RNode | undefined {
     switch (elem.name) {
@@ -284,7 +318,8 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
 
   private parseBinaryStructure (lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RNode | 'no binary structure' {
     parseLog.trace(`binary op for ${lhs.name} [${op.name}] ${rhs.name}`)
-    let flavor: OperatorFlavor | 'special'
+    let flavor: BinaryOperatorFlavor | 'special'
+    // TODO: filter for binary!
     if (Lang.ArithmeticOperatorsRAst.includes(op.name)) {
       flavor = 'arithmetic'
     } else if (Lang.ComparisonOperatorsRAst.includes(op.name)) {
@@ -300,6 +335,20 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     }
     // TODO: identify op name correctly
     return this.parseBinaryOp(flavor, lhs, op, rhs)
+  }
+
+  private parseUnaryStructure (op: NamedXmlBasedJson, operand: NamedXmlBasedJson): Lang.RNode | 'no unary structure' {
+    parseLog.trace(`unary op for ${op.name} ${operand.name}`)
+    let flavor: UnaryOperatorFlavor
+    // TODO: filter for unary
+    if (Lang.ArithmeticOperatorsRAst.includes(op.name)) {
+      flavor = 'arithmetic'
+    } else if (Lang.LogicalOperatorsRAst.includes(op.name)) {
+      flavor = 'logical'
+    } else {
+      return 'no unary structure'
+    }
+    return this.parseUnaryOp(flavor, op, operand)
   }
 
   private parseRepeatLoopStructure (repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): Lang.RRepeatLoop | 'no repeat-loop' {

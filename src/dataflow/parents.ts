@@ -4,7 +4,7 @@ import {
   type RExpressionList,
   RForLoop,
   type RIfThenElse, RRepeatLoop,
-  type RSingleNode, RWhileLoop
+  type RSingleNode, RUnaryOp, RWhileLoop
 } from '../r-bridge/lang:4.x/ast/model'
 import { type Id, type IdRNode, type IdType } from './id'
 import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
@@ -29,6 +29,14 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
       ...op,
       lhs,
       rhs,
+      parent: undefined
+    }
+  }
+  const unaryOp = (op: RUnaryOp<OtherInfo & Id>, operand: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+    operand.parent = op.id
+    return {
+      ...op,
+      operand,
       parent: undefined
     }
   }
@@ -102,6 +110,10 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
       foldArithmeticOp: binaryOp,
       foldComparisonOp: binaryOp,
       foldAssignment:   binaryOp
+    },
+    unaryOp: {
+      foldLogicalOp:    unaryOp,
+      foldArithmeticOp: unaryOp
     },
     loop: {
       foldFor,

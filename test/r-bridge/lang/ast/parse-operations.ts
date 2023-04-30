@@ -1,47 +1,84 @@
 import { assertAst, withShell } from '../../../helper/shell'
 import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
 import { exprList, numVal } from '../../../helper/ast-builder'
-import { RArithmeticBinaryOpPool, RLogicalBinaryOpPool } from '../../../helper/provider'
+import {
+  RArithmeticBinaryOpPool,
+  RArithmeticUnaryOpPool,
+  RLogicalBinaryOpPool,
+  RLogicalUnaryOpPool, RUnaryOpPool
+} from '../../../helper/provider'
 import { type RShell } from '../../../../src/r-bridge/shell'
 import { rangeFrom } from '../../../../src/util/range'
 
 describe('1. Parse simple operations', withShell(shell => {
-  let idx = 0
-  for (const opSuite of [{ label: 'arithmetic', pool: RArithmeticBinaryOpPool }, { label: 'logical', pool: RLogicalBinaryOpPool }]) {
-    describe(`1.${++idx} ${opSuite.label} operations`, () => {
-      for (const op of opSuite.pool) {
-        describePrecedenceTestsForOp(op, shell)
-      }
-    })
-  }
-  describe(`1.${++idx} comparison operations`, () => {
-    for (const op of Lang.ComparisonOperators) {
-      describe(op, () => {
-        const simpleInput = `1 ${op} 1`
-        const opOffset = op.length - 1
-        assertAst(simpleInput, shell, simpleInput, exprList(
-          {
-            type:     Lang.Type.BinaryOp,
-            op,
-            lexeme:   op,
-            flavor:   'comparison',
-            location: rangeFrom(1, 3, 1, 3 + opOffset),
-            lhs:      {
-              type:     Lang.Type.Number,
-              location: rangeFrom(1, 1, 1, 1),
-              lexeme:   '1',
-              content:  numVal(1)
-            },
-            rhs: {
-              type:     Lang.Type.Number,
-              location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
-              lexeme:   '1',
-              content:  numVal(1)
+  describe('1.1 unary operations', () => {
+    let idx = 0
+    for (const opSuite of RUnaryOpPool) {
+      describe(`1.1.${++idx} ${opSuite.label} operations`, () => {
+        for (const op of opSuite.pool) {
+          const simpleInput = `${op.str}42`
+          const opOffset = op.str.length - 1
+          assertAst(`${simpleInput}`, shell, simpleInput, exprList(
+            {
+              type:     Lang.Type.UnaryOp,
+              op:       op.str,
+              flavor:   op.flavor,
+              lexeme:   op.str,
+              location: rangeFrom(1, 1, 1, 1 + opOffset),
+              operand:  {
+                type:     Lang.Type.Number,
+                location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
+                lexeme:   '42',
+                content:  numVal(42)
+              }
             }
-          }
-        ))
+          ))
+        }
       })
     }
+  })
+
+  describe('1.2. binary operations', () => {
+    let idx = 0
+    for (const opSuite of [{label: 'arithmetic', pool: RArithmeticBinaryOpPool}, {
+      label: 'logical',
+      pool:  RLogicalBinaryOpPool
+    }]) {
+      describe(`1.2.${++idx} ${opSuite.label} operations`, () => {
+        for (const op of opSuite.pool) {
+          describePrecedenceTestsForOp(op, shell)
+        }
+      })
+    }
+    describe(`1.2${++idx} comparison operations`, () => {
+      for (const op of Lang.ComparisonOperators) {
+        describe(op, () => {
+          const simpleInput = `1 ${op} 1`
+          const opOffset = op.length - 1
+          assertAst(simpleInput, shell, simpleInput, exprList(
+            {
+              type:     Lang.Type.BinaryOp,
+              op,
+              lexeme:   op,
+              flavor:   'comparison',
+              location: rangeFrom(1, 3, 1, 3 + opOffset),
+              lhs:      {
+                type:     Lang.Type.Number,
+                location: rangeFrom(1, 1, 1, 1),
+                lexeme:   '1',
+                content:  numVal(1)
+              },
+              rhs: {
+                type:     Lang.Type.Number,
+                location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
+                lexeme:   '1',
+                content:  numVal(1)
+              }
+            }
+          ))
+        })
+      }
+    })
   })
 }))
 

@@ -1,30 +1,44 @@
 import { assertAst, withShell } from '../../../helper/shell'
 import * as Lang from '../../../../src/r-bridge/lang:4.x/ast/model'
 import { exprList, numVal } from '../../../helper/ast-builder'
-import { RArithmeticBinaryOpPool, RLogicalBinaryOpPool } from '../../../helper/provider'
+import {
+  RArithmeticBinaryOpPool,
+  RArithmeticUnaryOpPool,
+  RLogicalBinaryOpPool,
+  RLogicalUnaryOpPool
+} from '../../../helper/provider'
 import { type RShell } from '../../../../src/r-bridge/shell'
 import { rangeFrom } from '../../../../src/util/range'
 
 describe('1. Parse simple operations', withShell(shell => {
-  describe('1.1. unary operations', () => {
-    describe(`1.1.1 + operation`, () => {
-      const simpleInput = `+1`
-      assertAst(simpleInput, shell, simpleInput, exprList(
-        {
-          type:     Lang.Type.UnaryOp,
-          op:       '+',
-          flavor:   'arithmetic',
-          lexeme:   '+',
-          location: rangeFrom(1, 1, 1, 2),
-          operand:  {
-            type:     Lang.Type.Number,
-            location: rangeFrom(1, 3, 1, 3),
-            lexeme:   '1',
-            content:  numVal(1)
-          }
+  describe('1.1 unary operations', () => {
+    let idx = 0
+    for (const opSuite of [{label: 'arithmetic', pool: RArithmeticUnaryOpPool}, {
+      label: 'logical',
+      pool:  RLogicalUnaryOpPool
+    }]) {
+      describe(`1.1.${++idx} ${opSuite.label} operations`, () => {
+        for (const op of opSuite.pool) {
+          const simpleInput = `${op.str}42`
+          const opOffset = op.str.length - 1
+          assertAst(`${simpleInput}`, shell, simpleInput, exprList(
+            {
+              type:     Lang.Type.UnaryOp,
+              op:       op.str,
+              flavor:   op.flavor,
+              lexeme:   op.str,
+              location: rangeFrom(1, 1, 1, 1 + opOffset),
+              operand:  {
+                type:     Lang.Type.Number,
+                location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
+                lexeme:   '42',
+                content:  numVal(42)
+              }
+            }
+          ))
         }
-      ))
-    })
+      })
+    }
   })
 
   describe('1.2. binary operations', () => {

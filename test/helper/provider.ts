@@ -86,6 +86,13 @@ const canBeABinaryOp = (op: string): boolean => {
   return arity === Lang.OperatorArity.Binary || arity === Lang.OperatorArity.Both
 }
 
+const canBeAUnaryOp = (op: string): boolean => {
+  const arity = Lang.OperatorDatabase[op].arity
+  return arity === Lang.OperatorArity.Unary || arity === Lang.OperatorArity.Both
+}
+
+
+// TODO: maybe not feed generators from the model pool? on the other side, the model is our understanding of "truth"
 export const RArithmeticBinaryOpPool: Array<{ flavor: 'arithmetic', str: string }> =
     Lang.ArithmeticOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'arithmetic' }))
 
@@ -100,3 +107,9 @@ export const RAssignmentOpPool: Array<{ flavor: 'assignment', str: string }> =
 
 export const RNonAssignmentBinaryOpPool: Array<{ label: 'arithmetic' | 'logical' | 'comparison', pool: typeof RArithmeticBinaryOpPool | typeof RLogicalBinaryOpPool | typeof RComparisonBinaryOpPool }> =
     [{ label: 'arithmetic', pool: RArithmeticBinaryOpPool }, { label: 'logical', pool: RLogicalBinaryOpPool } , { label: 'comparison', pool: RComparisonBinaryOpPool }]
+
+export const RArithmeticUnaryOpPool: Array<{ flavor: 'arithmetic', str: string }> =
+  Lang.ArithmeticOperators.filter(canBeAUnaryOp).map(op => ({ str: op, flavor: 'arithmetic' }))
+
+export const RLogicalUnaryOpPool: Array<{ flavor: 'logical', str: string }> =
+  Lang.LogicalOperators.filter(canBeAUnaryOp).map(op => ({ str: op, flavor: 'logical' }))

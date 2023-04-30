@@ -251,7 +251,7 @@ describe('4. Parse simple constructs', withShell(shell => {
     describe('1.5 while', () => {
       assertAst('while (TRUE) 2', shell, 'while (TRUE) 2', exprList({
         type:      Lang.Type.While,
-        location:  rangeFrom(1, 1, 1, 6),
+        location:  rangeFrom(1, 1, 1, 5),
         lexeme:    'while',
         condition: {
           type:     Lang.Type.Logical,
@@ -261,7 +261,7 @@ describe('4. Parse simple constructs', withShell(shell => {
         },
         body: {
           type:     Lang.Type.Number,
-          location: rangeFrom(1, 8, 1, 8),
+          location: rangeFrom(1, 14, 1, 14),
           lexeme:   '2',
           content:  numVal(2)
         }

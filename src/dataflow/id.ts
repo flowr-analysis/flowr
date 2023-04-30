@@ -4,7 +4,7 @@ import {
   type RExpressionList, RForLoop,
   type RIfThenElse,
   type RNode, RRepeatLoop,
-  type RSingleNode, RWhileLoop
+  type RSingleNode, RUnaryOp, RWhileLoop
 } from '../r-bridge/lang:4.x/ast/model'
 import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
 import { BiMap } from '../util/bimap'
@@ -37,10 +37,10 @@ export interface AstWithIdInformation<OtherInfo> {
 /**
  * Decorate the given AST by assigning an unique ID to each node
  *
- * @param ast the ast to decorate, must not already have an id field! (TODO: check guard)
- * @param getId the id generator: must generate a unique id für each passed node
+ * @param ast    - the ast to decorate, must not already have an id field! (TODO: check guard)
+ * @param getId  - the id generator: must generate a unique id für each passed node
  *
- * @typeParam OtherInfo the original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)
+ * @typeParam OtherInfo - the original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)
  *
  * TODO: add id map to more quickly access these ids in the future => make it usable for we create new nodes with parents => move to parents?
  */
@@ -61,6 +61,15 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
       ...op,
       lhs,
       rhs,
+      id: getId(op)
+    }
+    idMap.set(newOp.id, newOp)
+    return newOp
+  }
+  const unaryOp = (op: RUnaryOp<OtherInfo>, operand: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
+    const newOp = {
+      ...op,
+      operand,
       id: getId(op)
     }
     idMap.set(newOp.id, newOp)
@@ -131,6 +140,10 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
       foldArithmeticOp: binaryOp,
       foldComparisonOp: binaryOp,
       foldAssignment:   binaryOp
+    },
+    unaryOp: {
+      foldArithmeticOp: unaryOp,
+      foldLogicalOp:    unaryOp,
     },
     loop: {
       foldFor,

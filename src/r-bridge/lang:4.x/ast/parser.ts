@@ -3,7 +3,7 @@ import * as xml2js from 'xml2js'
 import * as Lang from './model'
 import {
   type NoInfo,
-  type OperatorFlavor,
+  type BinaryOperatorFlavor,
   RForLoop,
   type RIfThenElse,
   type RNode,
@@ -82,7 +82,7 @@ function extractRange (ast: XmlBasedJson): SourceRange {
   return rangeFrom(line1, col1, line2, col2)
 }
 
-function identifySpecialOp (content: string): OperatorFlavor {
+function identifySpecialOp (content: string): BinaryOperatorFlavor {
   if (Lang.ComparisonOperatorsRAst.includes(content)) {
     return 'comparison'
   } else if (Lang.LogicalOperatorsRAst.includes(content)) {
@@ -108,7 +108,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     return this.parseRootObjToAst(this.objectRoot)
   }
 
-  public parseBinaryOp (flavor: OperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RBinaryOp {
+  public parseBinaryOp (flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RBinaryOp {
     parseLog.debug(`trying to parse ${flavor} op as binary op ${JSON.stringify([lhs, op, rhs])}`)
 
     this.ensureChildrenAreLhsAndRhsOrdered(lhs.content, rhs.content)
@@ -284,7 +284,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
 
   private parseBinaryStructure (lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): Lang.RNode | 'no binary structure' {
     parseLog.trace(`binary op for ${lhs.name} [${op.name}] ${rhs.name}`)
-    let flavor: OperatorFlavor | 'special'
+    let flavor: BinaryOperatorFlavor | 'special'
     if (Lang.ArithmeticOperatorsRAst.includes(op.name)) {
       flavor = 'arithmetic'
     } else if (Lang.ComparisonOperatorsRAst.includes(op.name)) {

@@ -110,6 +110,16 @@ function processNonAssignmentBinaryOp<OtherInfo> (op: RNodeWithParent<OtherInfo>
   }
 }
 
+function processUnaryOp<OtherInfo>(op: RNodeWithParent<OtherInfo>, operand: FoldInfo): FoldInfo {
+  // TODO: really pass through?
+  return {
+    activeNodes: operand.activeNodes,
+    in:          operand.in,
+    out:         operand.out,
+    graph:       operand.graph
+  }
+}
+
 function produceNameSharedIdMap(idPool: FoldReadTarget[], graph: DataflowGraph): DefaultMap<string, FoldReadTarget[]> {
   const nameIdShares = new DefaultMap<string, FoldReadTarget[]>(() => [])
   idPool.forEach(id => {
@@ -496,6 +506,10 @@ export function produceDataFlowGraph<OtherInfo> (ast: RNodeWithParent<OtherInfo>
       foldArithmeticOp: processNonAssignmentBinaryOp,
       foldComparisonOp: processNonAssignmentBinaryOp,
       foldAssignment:   processAssignment
+    },
+    unaryOp: {
+      foldLogicalOp:    processUnaryOp,
+      foldArithmeticOp: processUnaryOp
     },
     loop: {
       foldFor:    processForLoop,

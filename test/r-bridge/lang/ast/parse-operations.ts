@@ -6,42 +6,68 @@ import { type RShell } from '../../../../src/r-bridge/shell'
 import { rangeFrom } from '../../../../src/util/range'
 
 describe('1. Parse simple operations', withShell(shell => {
-  let idx = 0
-  for (const opSuite of [{ label: 'arithmetic', pool: RArithmeticBinaryOpPool }, { label: 'logical', pool: RLogicalBinaryOpPool }]) {
-    describe(`1.${++idx} ${opSuite.label} operations`, () => {
-      for (const op of opSuite.pool) {
-        describePrecedenceTestsForOp(op, shell)
-      }
-    })
-  }
-  describe(`1.${++idx} comparison operations`, () => {
-    for (const op of Lang.ComparisonOperators) {
-      describe(op, () => {
-        const simpleInput = `1 ${op} 1`
-        const opOffset = op.length - 1
-        assertAst(simpleInput, shell, simpleInput, exprList(
-          {
-            type:     Lang.Type.BinaryOp,
-            op,
-            lexeme:   op,
-            flavor:   'comparison',
-            location: rangeFrom(1, 3, 1, 3 + opOffset),
-            lhs:      {
-              type:     Lang.Type.Number,
-              location: rangeFrom(1, 1, 1, 1),
-              lexeme:   '1',
-              content:  numVal(1)
-            },
-            rhs: {
-              type:     Lang.Type.Number,
-              location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
-              lexeme:   '1',
-              content:  numVal(1)
-            }
+  describe('1.1. unary operations', () => {
+    describe(`1.1.1 + operation`, () => {
+      const simpleInput = `+1`
+      assertAst(simpleInput, shell, simpleInput, exprList(
+        {
+          type:     Lang.Type.UnaryOp,
+          op:       '+',
+          flavor:   'arithmetic',
+          lexeme:   '+',
+          location: rangeFrom(1, 1, 1, 2),
+          operand:  {
+            type:     Lang.Type.Number,
+            location: rangeFrom(1, 3, 1, 3),
+            lexeme:   '1',
+            content:  numVal(1)
           }
-        ))
+        }
+      ))
+    })
+  })
+
+  describe('1.2. binary operations', () => {
+    let idx = 0
+    for (const opSuite of [{label: 'arithmetic', pool: RArithmeticBinaryOpPool}, {
+      label: 'logical',
+      pool:  RLogicalBinaryOpPool
+    }]) {
+      describe(`1.2.${++idx} ${opSuite.label} operations`, () => {
+        for (const op of opSuite.pool) {
+          describePrecedenceTestsForOp(op, shell)
+        }
       })
     }
+    describe(`1.2${++idx} comparison operations`, () => {
+      for (const op of Lang.ComparisonOperators) {
+        describe(op, () => {
+          const simpleInput = `1 ${op} 1`
+          const opOffset = op.length - 1
+          assertAst(simpleInput, shell, simpleInput, exprList(
+            {
+              type:     Lang.Type.BinaryOp,
+              op,
+              lexeme:   op,
+              flavor:   'comparison',
+              location: rangeFrom(1, 3, 1, 3 + opOffset),
+              lhs:      {
+                type:     Lang.Type.Number,
+                location: rangeFrom(1, 1, 1, 1),
+                lexeme:   '1',
+                content:  numVal(1)
+              },
+              rhs: {
+                type:     Lang.Type.Number,
+                location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
+                lexeme:   '1',
+                content:  numVal(1)
+              }
+            }
+          ))
+        })
+      }
+    })
   })
 }))
 

@@ -21,6 +21,7 @@ export const enum Type {
   Number = 'NUM_CONST', // TODO: support negative numbers
   String = 'STR_CONST',
   BinaryOp = 'binaryop',
+  UnaryOp = 'unaryop',
   Comment = 'COMMENT',
   /* can be special operators like %*% or %o% */
   Special = 'SPECIAL',
@@ -47,8 +48,9 @@ export const enum OperatorArity {
   Both = 3
 }
 
-export type OperatorFlavor = 'arithmetic' | 'comparison' | 'logical' | 'assignment'
-export type OperatorFlavorInAst = OperatorFlavor | 'special'
+export type UnaryOperatorFlavor = 'arithmetic' | 'logical'
+export type BinaryOperatorFlavor = UnaryOperatorFlavor  | 'comparison' | 'assignment'
+export type BinaryOperatorFlavorInAst = BinaryOperatorFlavor | 'special'
 export type OperatorWrittenAs = 'infix' | 'prefix'
 export type OperatorUsedAs = 'assignment' | 'operation' | 'access'
 export type OperatorName = string
@@ -58,8 +60,8 @@ export interface OperatorInformationValue extends MergeableRecord {
   stringUsedInRAst:     string
   stringUsedInternally: string
   // precedence: number // handled by R
-  flavorInRAst:         OperatorFlavorInAst
-  flavor:               OperatorFlavor
+  flavorInRAst:         BinaryOperatorFlavorInAst
+  flavor:               BinaryOperatorFlavor
   writtenAs:            OperatorWrittenAs
   arity:                OperatorArity
   usedAs:               OperatorUsedAs
@@ -180,27 +182,42 @@ export type RString<Info = NoInfo> = {
 // TODO: others?
 export type RBinaryOp<Info = NoInfo> = {
   readonly type:   Type.BinaryOp
-  readonly flavor: OperatorFlavor
+  readonly flavor: BinaryOperatorFlavor
   op:              string
   lhs:             RNode<Info>
   rhs:             RNode<Info>
 } & Base<Info> & Location
 
-export type RLogicalOp<Info = NoInfo> = {
+export type RLogicalBinaryOp<Info = NoInfo> = {
   flavor: 'logical'
 } & RBinaryOp<Info>
 
-export type RArithmeticOp<Info = NoInfo> = {
+export type RArithmeticBinaryOp<Info = NoInfo> = {
   flavor: 'arithmetic'
 } & RBinaryOp<Info>
 
-export type RComparisonOp<Info = NoInfo> = {
+export type RComparisonBinaryOp<Info = NoInfo> = {
   flavor: 'comparison'
 } & RBinaryOp<Info>
 
 export type RAssignmentOp<Info = NoInfo> = {
   flavor: 'assignment'
 } & RBinaryOp<Info>
+
+export type RUnaryOp<Info = NoInfo> = {
+  readonly type:   Type.UnaryOp
+  readonly flavor: UnaryOperatorFlavor
+  op:              string
+  operand:         RNode<Info>
+} & Base<Info> & Location
+
+export type RLogicalUnaryOp<Info = NoInfo> = {
+  flavor: 'logical'
+} & RUnaryOp<Info>
+
+export type RArithmeticUnaryOp<Info = NoInfo> = {
+  flavor: 'arithmetic'
+} & RUnaryOp<Info>
 
 export type RIfThenElse<Info = NoInfo> = {
   readonly type: Type.If
@@ -252,4 +269,4 @@ export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | R
 export type RSingleNode<Info> = RSymbol<Info> | RConstant<Info>
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
 export type RConstructs<Info> = RLoopConstructs<Info> | RIfThenElse<Info>
-export type RNode<Info = NoInfo> = RExpressionList<Info> | RConstructs<Info> | RBinaryOp<Info> | RSingleNode<Info>
+export type RNode<Info = NoInfo> = RExpressionList<Info> | RConstructs<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>

@@ -190,7 +190,7 @@ describe('Extract Dataflow Information', () => {
     })
 
     describe('6. repeat', () => {
-      // TODO: detect that a x <- repeat assignment does not have influence on the lhs as repeat returns NULL?
+      // TODO: detect that a x <- repeat/while/for/... assignment does not have influence on the lhs as repeat returns NULL?
       assertDataflow('6.1 simple constant repeat', shell, `repeat 2`,
         new DataflowGraph()
       )
@@ -200,12 +200,30 @@ describe('Extract Dataflow Information', () => {
       assertDataflow('6.3 using loop variable in body', shell, `repeat { x <- 1 }`,
         new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE)
       )
-      assertDataflow('6.4 using loop variable in body', shell, `repeat { x <- y }`,
+      assertDataflow('6.4 using variable in body', shell, `repeat { x <- y }`,
         new DataflowGraph().addNode('0', 'x', LOCAL_SCOPE).addNode('1', 'y')
           // TODO: always until encountered conditional break etc?
           .addEdge('0', '1', 'defined-by', 'always' /* TODO: maybe ? */)
       )
       // TODO: so many other tests... variable in sequence etc.
+    })
+    describe('6. while', () => {
+      assertDataflow('6.1 simple constant while', shell, `while (TRUE) 2`,
+        new DataflowGraph()
+      )
+      assertDataflow('6.2 using variable in body', shell, `while (TRUE) x`,
+        new DataflowGraph().addNode('1', 'x')
+      )
+      assertDataflow('6.3 assignment in loop body', shell, `while (TRUE) { x <- 3 }`,
+        new DataflowGraph().addNode('1', 'x', LOCAL_SCOPE)
+      )
+      /* TODO: support
+      assertDataflow('6.4 def compare in loop', shell, `while ((x <- x - 1) > 0) { x }`,
+        new DataflowGraph().addNode('1', 'x', LOCAL_SCOPE).addNode('2', 'x')
+          .addNode('3', 'x')
+          // .addEdge('0', '1', 'defined-by', 'always')
+      )
+      */
     })
   }))
 

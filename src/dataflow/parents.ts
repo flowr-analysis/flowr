@@ -4,7 +4,7 @@ import {
   type RExpressionList,
   RForLoop,
   type RIfThenElse, RRepeatLoop,
-  type RSingleNode
+  type RSingleNode, RWhileLoop
 } from '../r-bridge/lang:4.x/ast/model'
 import { type Id, type IdRNode, type IdType } from './id'
 import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
@@ -16,6 +16,8 @@ export interface ParentInformation {
 export type RNodeWithParent<OtherInfo> = IdRNode<OtherInfo & ParentInformation>
 
 export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo>): RNodeWithParent<OtherInfo> {
+  // TODO: move out
+  // TODO: abstract away from all those cases with "children" if not needed
   const foldLeaf = (leaf: RSingleNode<OtherInfo & Id>): RNodeWithParent<OtherInfo> => ({
     ...leaf,
     parent: undefined
@@ -57,7 +59,7 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
     }
   }
 
-  const foldForLoop = (loop: RForLoop<OtherInfo & Id>, variable: RNodeWithParent<OtherInfo>, vector: RNodeWithParent<OtherInfo>, body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+  const foldFor = (loop: RForLoop<OtherInfo & Id>, variable: RNodeWithParent<OtherInfo>, vector: RNodeWithParent<OtherInfo>, body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
     variable.parent = loop.id
     vector.parent = loop.id
     body.parent = loop.id
@@ -70,11 +72,22 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
     }
   }
 
-  const foldRepeatLoop = (loop: RRepeatLoop<OtherInfo & Id>, body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+  const foldRepeat = (loop: RRepeatLoop<OtherInfo & Id>, body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
     body.parent = loop.id
     return {
       ...loop,
       body,
+      parent: undefined
+    }
+  }
+
+  const foldWhile = (loop: RWhileLoop<OtherInfo & Id>, condition: RNodeWithParent<OtherInfo>, body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+    body.parent = loop.id
+    condition.parent = loop.id
+    return {
+      ...loop,
+      body,
+      condition,
       parent: undefined
     }
   }
@@ -91,8 +104,9 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
       foldAssignment:   binaryOp
     },
     loop: {
-      foldForLoop,
-      foldRepeatLoop
+      foldFor,
+      foldRepeat,
+      foldWhile
     },
     foldIfThenElse,
     foldExprList

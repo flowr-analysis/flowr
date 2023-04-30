@@ -11,7 +11,7 @@ import {
   type RNode,
   type RNumber, RRepeatLoop,
   type RString,
-  type RSymbol
+  type RSymbol, RWhileLoop
 } from './model'
 import { assertUnreachable } from '../../../util/assert'
 
@@ -27,8 +27,9 @@ export interface FoldFunctions<Info, T> {
     foldAssignment:   (op: RAssignmentOp<Info>, lhs: T, rhs: T) => T
   },
   loop: {
-    foldForLoop:    (loop: RForLoop<Info>, variable: T, vector: T, body: T) => T
-    foldRepeatLoop: (loop: RRepeatLoop<Info>, body: T) => T
+    foldFor:    (loop: RForLoop<Info>, variable: T, vector: T, body: T) => T
+    foldWhile:  (loop: RWhileLoop<Info>, condition: T, body: T) => T
+    foldRepeat: (loop: RRepeatLoop<Info>, body: T) => T
   },
   foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: T, then: T, otherwise?: T) => T
   foldExprList:   (exprList: RExpressionList<Info>, expressions: T[]) => T
@@ -51,9 +52,11 @@ export function foldAst<Info, T> (ast: RNode<Info>, folds: FoldFunctions<Info, T
     case Lang.Type.BinaryOp:
       return foldBinaryOp(ast, folds)
     case Lang.Type.For:
-      return folds.loop.foldForLoop(ast, foldAst(ast.variable, folds), foldAst(ast.vector, folds), foldAst(ast.body, folds))
+      return folds.loop.foldFor(ast, foldAst(ast.variable, folds), foldAst(ast.vector, folds), foldAst(ast.body, folds))
+    case Lang.Type.While:
+      return folds.loop.foldWhile(ast, foldAst(ast.condition, folds), foldAst(ast.body, folds))
     case Lang.Type.Repeat:
-      return folds.loop.foldRepeatLoop(ast, foldAst(ast.body, folds))
+      return folds.loop.foldRepeat(ast, foldAst(ast.body, folds))
     // TODO: other loops
     case Lang.Type.If:
       return folds.foldIfThenElse(ast, foldAst(ast.condition, folds), foldAst(ast.then, folds), ast.otherwise === undefined ? undefined : foldAst(ast.otherwise, folds))

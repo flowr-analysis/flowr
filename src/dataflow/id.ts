@@ -4,7 +4,7 @@ import {
   type RExpressionList, RForLoop,
   type RIfThenElse,
   type RNode, RRepeatLoop,
-  type RSingleNode
+  type RSingleNode, RWhileLoop
 } from '../r-bridge/lang:4.x/ast/model'
 import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
 import { BiMap } from '../util/bimap'
@@ -46,6 +46,7 @@ export interface AstWithIdInformation<OtherInfo> {
  */
 export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator<OtherInfo>()): AstWithIdInformation<OtherInfo> {
   const idMap = new BiMap<IdType, IdRNode<OtherInfo>>()
+  // TODO: -> add map
 
   const foldLeaf = (leaf: RSingleNode<OtherInfo>): IdRNode<OtherInfo> => {
     const newLeaf = {
@@ -86,7 +87,7 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
     return newExprList
   }
 
-  const foldForLoop = (forLoop: RForLoop<OtherInfo>, variable: IdRNode<OtherInfo>, vector: IdRNode<OtherInfo>, body: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
+  const foldFor = (forLoop: RForLoop<OtherInfo>, variable: IdRNode<OtherInfo>, vector: IdRNode<OtherInfo>, body: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
     const newForLoop = {
       ...forLoop,
       variable,
@@ -98,11 +99,23 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
     return newForLoop
   }
 
-  const foldRepeatLoop = (repeatLoop: RRepeatLoop<OtherInfo>, body: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
+  const foldRepeat = (repeatLoop: RRepeatLoop<OtherInfo>, body: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
     const newRepeatLoop = {
       ...repeatLoop,
       body,
       id: getId(repeatLoop)
+    }
+    idMap.set(newRepeatLoop.id, newRepeatLoop)
+    return newRepeatLoop
+  }
+
+
+  const foldWhile = (whileLoop: RWhileLoop<OtherInfo>, condition: IdRNode<OtherInfo>, body: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
+    const newRepeatLoop = {
+      ...whileLoop,
+      body,
+      condition,
+      id: getId(whileLoop)
     }
     idMap.set(newRepeatLoop.id, newRepeatLoop)
     return newRepeatLoop
@@ -120,8 +133,9 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
       foldAssignment:   binaryOp
     },
     loop: {
-      foldForLoop,
-      foldRepeatLoop
+      foldFor,
+      foldRepeat,
+      foldWhile
     },
     foldIfThenElse,
     foldExprList

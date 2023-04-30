@@ -7,7 +7,7 @@ import {
   RForLoop,
   type RIfThenElse,
   type RNode,
-  type RSymbol
+  type RSymbol, RWhileLoop
 } from './model'
 import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
@@ -207,7 +207,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       if (binary !== 'no binary structure') {
         return [binary]
       } else {
-        // TODO: maybe-monad pass through? or just use undefined
+        // TODO: maybe-monad pass through? or just use undefined (see ts-fp)
         const forLoop = this.parseForLoopStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2])
         if (forLoop !== 'no for-loop') {
           return [forLoop]
@@ -217,6 +217,11 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       const ifThen = this.parseIfThenStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2], mappedWithName[3], mappedWithName[4])
       if (ifThen !== 'no if-then') {
         return [ifThen]
+      } else {
+        const whileLoop = this.parseWhileLoopStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2], mappedWithName[3], mappedWithName[4])
+        if (whileLoop !== 'no while-loop') {
+          return [whileLoop]
+        }
       }
     } else if (mappedWithName.length === 7) {
       const ifThenElse = this.parseIfThenElseStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2], mappedWithName[3], mappedWithName[4], mappedWithName[5], mappedWithName[6])
@@ -353,6 +358,40 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       vector:   parsedVector,
       body:     parseBody,
       lexeme:   content,
+      location
+    }
+  }
+
+  private parseWhileLoopStructure (whileToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson,  condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, body: NamedXmlBasedJson): RWhileLoop | 'no while-loop' {
+    if (whileToken.name !== Lang.Type.While) {
+      log.debug('encountered non-while token for supposed while-loop structure')
+      return 'no while-loop'
+    }  else if (leftParen.name !== Lang.Type.ParenLeft) {
+      throw new XmlParseError(`expected left-parenthesis for while but found ${JSON.stringify(leftParen)}`)
+    } else if (rightParen.name !== Lang.Type.ParenRight) {
+      throw new XmlParseError(`expected right-parenthesis for while but found ${JSON.stringify(rightParen)}`)
+    }
+
+    parseLog.debug(`trying to parse while-loop with ${JSON.stringify([whileToken, condition, body])}`)
+
+    const parsedCondition = this.parseOneElementBasedOnType(condition)
+    const parseBody = this.parseOneElementBasedOnType(body)
+
+    if (parsedCondition === undefined || parseBody === undefined) {
+      throw new XmlParseError(`unexpected under-sided while-loop, received ${JSON.stringify([parsedCondition, parseBody])} for ${JSON.stringify([whileToken, condition, body])}`)
+    }
+
+    const {
+      location,
+      content
+    } = this.retrieveMetaStructure(whileToken.content)
+
+    // TODO: assert exists as known operator
+    return {
+      type:      Lang.Type.While,
+      condition: parsedCondition,
+      body:      parseBody,
+      lexeme:    content,
       location
     }
   }

@@ -5,7 +5,7 @@ import {
   RArithmeticBinaryOpPool,
   RArithmeticUnaryOpPool,
   RLogicalBinaryOpPool,
-  RLogicalUnaryOpPool
+  RLogicalUnaryOpPool, RUnaryOpPool
 } from '../../../helper/provider'
 import { type RShell } from '../../../../src/r-bridge/shell'
 import { rangeFrom } from '../../../../src/util/range'
@@ -13,10 +13,7 @@ import { rangeFrom } from '../../../../src/util/range'
 describe('1. Parse simple operations', withShell(shell => {
   describe('1.1 unary operations', () => {
     let idx = 0
-    for (const opSuite of [{label: 'arithmetic', pool: RArithmeticUnaryOpPool}, {
-      label: 'logical',
-      pool:  RLogicalUnaryOpPool
-    }]) {
+    for (const opSuite of RUnaryOpPool) {
       describe(`1.1.${++idx} ${opSuite.label} operations`, () => {
         for (const op of opSuite.pool) {
           const simpleInput = `${op.str}42`

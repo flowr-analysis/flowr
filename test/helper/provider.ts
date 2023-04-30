@@ -113,3 +113,8 @@ export const RArithmeticUnaryOpPool: Array<{ flavor: 'arithmetic', str: string }
 
 export const RLogicalUnaryOpPool: Array<{ flavor: 'logical', str: string }> =
   Lang.LogicalOperators.filter(canBeAUnaryOp).map(op => ({ str: op, flavor: 'logical' }))
+
+export const RUnaryOpPool: Array<{ label: 'arithmetic' | 'logical', pool: typeof RArithmeticUnaryOpPool | typeof RLogicalUnaryOpPool }> = [{label: 'arithmetic', pool: RArithmeticUnaryOpPool}, {
+  label: 'logical',
+  pool:  RLogicalUnaryOpPool
+}]

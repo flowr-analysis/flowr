@@ -11,7 +11,7 @@ import {
   graphToMermaidUrl,
   LOCAL_SCOPE
 } from '../../src/dataflow/graph'
-import { RAssignmentOpPool, RNonAssignmentBinaryOpPool } from '../helper/provider'
+import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../helper/provider'
 import { naiveLineBasedSlicing } from '../../src/slicing/static/static-slicer'
 import { NoInfo } from '../../src/r-bridge/lang:4.x/ast/model'
 
@@ -21,7 +21,7 @@ describe('Extract Dataflow Information', () => {
    * Yet, some constructs (like for-loops) require the combination of statements, they are included as well.
    * This will not include functions!
    */
-  describe('A. atomic dataflow information', withShell(shell => {
+  describe('A. Atomic dataflow information', withShell(shell => {
     describe('0. uninteresting leafs', () => {
       for(const input of ['42', '"test"', 'TRUE', 'NA', 'NULL']) {
         assertDataflow(input, shell, input, new DataflowGraph())
@@ -30,8 +30,23 @@ describe('Extract Dataflow Information', () => {
 
     assertDataflow('1. simple variable', shell, 'xylophone', new DataflowGraph().addNode('0', 'xylophone'))
 
+    // TODO: clean up numbers
+    describe('2. unary operators', () => {
+      let idx = 0
+      for (const opSuite of RUnaryOpPool) {
+        describe(`2.${++idx} ${opSuite.label} operations`, () => {
+          for(const op of opSuite.pool) {
+            const inputDifferent = `${op.str}x`
+            assertDataflow(`${op.str}x`, shell, inputDifferent,
+              new DataflowGraph().addNode('0', 'x'))
+          }
+        })
+      }
+    })
+
+
     // TODO: these will be more interesting whenever we have more information on the edges (like modification etc.)
-    describe('2. non-assignment binary operators', () => {
+    describe('2b. non-assignment binary operators', () => {
       let idx = 0
       for(const opSuite of RNonAssignmentBinaryOpPool) {
         describe(`2.${++idx} ${opSuite.label}`, () => {

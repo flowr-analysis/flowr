@@ -4,7 +4,7 @@ import { parseLog } from "../../parser"
 import { getWithTokenType } from "../meta"
 import { ParserData } from "../../data"
 import { tryParseOneElementBasedOnType } from "./single-element"
-import { parseSymbol } from "../values/symbol"
+import { tryParseSymbol } from "../values/symbol"
 import { tryParseUnaryStructure } from "../operators/unary"
 import { tryParseRepeatLoopStructure } from "../loops/repeat"
 import { tryParseIfThenElseStructure } from "../control/if-then-else"
@@ -86,7 +86,7 @@ export function parseBasedOnType(
         return [forLoop]
       } else {
         // could be a symbol with namespace information
-        const symbol = parseSymbol(data.config, mappedWithName)
+        const symbol = tryParseSymbol(data, mappedWithName)
         if (symbol !== undefined) {
           return [symbol]
         }

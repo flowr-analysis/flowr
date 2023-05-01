@@ -3,7 +3,7 @@ import { guard, isNotUndefined } from '../../../../../../../util/assert'
 import { getTokenType, getWithTokenType, retrieveMetaStructure } from '../meta'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseLog } from '../../parser'
-import { parseSymbol } from '../values/symbol'
+import { tryParseSymbol } from '../values/symbol'
 import { parseBasedOnType } from '../structure/elements'
 import { ParserData } from '../../data'
 import { Type } from '../../../../model/type'
@@ -34,7 +34,7 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
     parseLog.trace(`expected function call to have corresponding symbol, yet received ${JSON.stringify(symbolContent)}`)
     return undefined
   }
-  const functionName = parseSymbol(data.config, getWithTokenType(data.config.tokenMap, symbolContent))
+  const functionName = tryParseSymbol(data, getWithTokenType(data.config.tokenMap, symbolContent))
   guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')
   const splitParametersOnComma = splitArrayOn(mappedWithName.slice(1), x => x.name === Type.Comma)
   const parameters: RNode[] = splitParametersOnComma.map(x => {

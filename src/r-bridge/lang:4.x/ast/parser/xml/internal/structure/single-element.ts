@@ -5,7 +5,7 @@ import { guard } from '../../../../../../../util/assert'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { parseExpression } from '../expression/expression'
-import { parseSymbol } from '../values/symbol'
+import { tryParseSymbol } from '../values/symbol'
 import { getWithTokenType } from '../meta'
 import { Type } from '../../../../model/type'
 import { RNode } from '../../../../model/model'
@@ -36,12 +36,12 @@ export function tryParseOneElementBasedOnType(data: ParserData, elem: NamedXmlBa
     case Type.ExprHelpAssignWrapper:
       return parseExpression(data, elem.content)
     case Type.Number:
-      return parseNumber(data.config, elem.content)
+      return parseNumber(data, elem.content)
     case Type.String:
-      return parseString(data.config, elem.content)
+      return parseString(data, elem.content)
     case Type.Symbol:
     case Type.Null: {
-      const symbol =  parseSymbol(data.config, getWithTokenType(data.config.tokenMap, [elem.content]))
+      const symbol =  tryParseSymbol(data, getWithTokenType(data.config.tokenMap, [elem.content]))
       guard(symbol !== undefined, `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
       return symbol
     }

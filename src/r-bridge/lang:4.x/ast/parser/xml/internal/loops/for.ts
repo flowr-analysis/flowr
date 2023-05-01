@@ -8,7 +8,7 @@ import { getTokenType, getWithTokenType, retrieveMetaStructure } from "../meta"
 import { parseLog } from "../../parser"
 import { guard } from "../../../../../../../util/assert"
 import { ParserData } from "../../data"
-import { parseSymbol } from "../values/symbol"
+import { tryParseSymbol } from "../values/symbol"
 import { parseBasedOnType } from "../structure/elements"
 import { tryParseOneElementBasedOnType } from "../structure/single-element"
 import { Type } from "../../../../model/type"
@@ -86,7 +86,7 @@ function parseForLoopCondition(data: ParserData, forCondition: XmlBasedJson): { 
   }))
   const inPosition = children.findIndex(elem => elem.name === Type.ForIn)
   guard(inPosition > 0 && inPosition < children.length - 1, `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`)
-  const variable = parseSymbol(data.config, getWithTokenType(data.config.tokenMap, [children[inPosition - 1].content]))
+  const variable = tryParseSymbol(data, getWithTokenType(data.config.tokenMap, [children[inPosition - 1].content]))
   guard(variable !== undefined, `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
   // TODO: just parse single element directly
   const vector = parseBasedOnType(data, [children[inPosition + 1].content])

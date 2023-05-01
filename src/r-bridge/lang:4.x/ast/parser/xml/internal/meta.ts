@@ -1,11 +1,11 @@
-import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from "../input-format"
-import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from "../../../../../../util/range"
-import { XmlParserConfig } from "../config"
+import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '../input-format'
+import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from '../../../../../../util/range'
+import { XmlParserConfig } from '../config'
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper
  */
-export function objectWithArrUnwrap (obj: XmlBasedJson[] | XmlBasedJson): XmlBasedJson {
+export function objectWithArrUnwrap(obj: XmlBasedJson[] | XmlBasedJson): XmlBasedJson {
   if (Array.isArray(obj)) {
     if (obj.length !== 1) {
       throw new XmlParseError(`expected only one element in the wrapped array, yet received ${JSON.stringify(obj)}`)
@@ -21,7 +21,7 @@ export function objectWithArrUnwrap (obj: XmlBasedJson[] | XmlBasedJson): XmlBas
 /**
  * given a xml element, extract the source location of the corresponding element in the R-ast
  */
-export function extractLocation (ast: XmlBasedJson): SourceRange {
+export function extractLocation(ast: XmlBasedJson): SourceRange {
   const {
     line1,
     col1,
@@ -38,7 +38,7 @@ export function extractLocation (ast: XmlBasedJson): SourceRange {
  * @param config - the configuration of the parser to use to retrieve the corresponding name fields
  * @param obj - the json object to extract the meta-information from
  */
-export function retrieveMetaStructure (config: XmlParserConfig, obj: XmlBasedJson): {
+export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson): {
   /** the obj passed in, but potentially without surrounding array wrappers (see {@link objectWithArrUnwrap}) */
   unwrappedObj: XmlBasedJson
   /** location information of the corresponding R-ast element */
@@ -61,7 +61,7 @@ export function revertTokenReplacement(tokenMap: XmlParserConfig['tokenMap'], to
 }
 
 // TODO: use NamedJsons all the time
-export function assureTokenType (tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson, expectedName: string): void {
+export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson, expectedName: string): void {
   // TODO: allow us to configure the name?
   const name = getTokenType(tokenMap, obj)
   if (name !== expectedName) {
@@ -76,7 +76,7 @@ export function assureTokenType (tokenMap: XmlParserConfig['tokenMap'], obj: Xml
  * @param tokenMap - used to revert token types (i.e., revert `xmlparsedata`)
  * @param content - the json object to extract the token-type from
  */
-export function getTokenType (tokenMap: XmlParserConfig['tokenMap'], content: XmlBasedJson): string {
+export function getTokenType(tokenMap: XmlParserConfig['tokenMap'], content: XmlBasedJson): string {
   return revertTokenReplacement(tokenMap, getKeysGuarded(content, '#name'))
 }
 
@@ -101,7 +101,7 @@ export function retrieveOpName(config: XmlParserConfig, op: NamedXmlBasedJson): 
  * @param first  - the first child which should be the lhs
  * @param second - the second child which should be the rhs
  */
-export function ensureChildrenAreLhsAndRhsOrdered (config: XmlParserConfig, first: XmlBasedJson, second: XmlBasedJson): void {
+export function ensureChildrenAreLhsAndRhsOrdered(config: XmlParserConfig, first: XmlBasedJson, second: XmlBasedJson): void {
   const firstOtherLoc = extractLocation(first[config.attributeName] as XmlBasedJson)
   const secondOtherLoc = extractLocation(second[config.attributeName] as XmlBasedJson)
   if (!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {

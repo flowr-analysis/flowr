@@ -18,7 +18,7 @@ export interface SourceRange {
 /**
  * at the moment this does not ensure ordering of start and end!
  */
-export function rangeFrom (line1: number | string, col1: number | string, line2: number | string, col2: number | string): SourceRange {
+export function rangeFrom(line1: number | string, col1: number | string, line2: number | string, col2: number | string): SourceRange {
   // TODO: do we have to ensure ordering? => Throw an error if this is the case!
   return {
     start: {
@@ -32,7 +32,7 @@ export function rangeFrom (line1: number | string, col1: number | string, line2:
   }
 }
 
-export function mergeRanges (...rs: SourceRange[]): SourceRange {
+export function mergeRanges(...rs: SourceRange[]): SourceRange {
   guard(rs.length > 0, 'Cannot merge no ranges')
 
   return {
@@ -44,10 +44,10 @@ export function mergeRanges (...rs: SourceRange[]): SourceRange {
 /**
  * @returns true iff `r1` starts and ends before `r2` starts (i.e., if `r1` and `r2` do not overlap and `r1` comes before `r2`
  */
-export function rangeStartsCompletelyBefore (r1: SourceRange, r2: SourceRange): boolean {
+export function rangeStartsCompletelyBefore(r1: SourceRange, r2: SourceRange): boolean {
   return r1.end.line < r2.start.line || (r1.end.line === r2.start.line && r1.end.column < r2.start.column)
 }
 
-export function addRanges (r1: SourceRange, r2: SourceRange): SourceRange {
+export function addRanges(r1: SourceRange, r2: SourceRange): SourceRange {
   return rangeFrom(r1.start.line + r2.start.line, r1.start.column + r2.start.column, r1.end.line + r2.end.line, r1.end.column + r2.end.column)
 }

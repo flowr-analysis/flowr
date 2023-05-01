@@ -1,48 +1,84 @@
-import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from "../../input-format"
-import { RForLoop, RNode, RSymbol } from "../../../../model"
-import * as Lang from "../../../../model"
+import {
+  getKeysGuarded,
+  NamedXmlBasedJson,
+  XmlBasedJson,
+  XmlParseError,
+} from "../../input-format"
 import { getTokenType, getWithTokenType, retrieveMetaStructure } from "../meta"
 import { parseLog } from "../../parser"
 import { guard } from "../../../../../../../util/assert"
 import { ParserData } from "../../data"
-import { parseSymbol } from "../values/symbol"
+import { tryParseSymbol } from "../values/symbol"
 import { parseBasedOnType } from "../structure/elements"
 import { tryParseOneElementBasedOnType } from "../structure/single-element"
+import { Type } from "../../../../model/type"
+import { RSymbol } from "../../../../model/nodes/RSymbol"
+import { RForLoop } from "../../../../model/nodes/RForLoop"
+import { RNode } from "../../../../model/model"
+import { executeHook, executeUnknownHook } from '../../hooks'
 
-export function parseForLoopStructure(data: ParserData, forToken: NamedXmlBasedJson, condition: NamedXmlBasedJson, body: NamedXmlBasedJson): RForLoop | undefined {
+export function tryParseForLoopStructure(
+  data: ParserData,
+  forToken: NamedXmlBasedJson,
+  condition: NamedXmlBasedJson,
+  body: NamedXmlBasedJson
+): RForLoop | undefined {
   // funny, for does not use top-level parenthesis
-  if (forToken.name !== Lang.Type.For) {
-    parseLog.debug('encountered non-for token for supposed for-loop structure')
-    return undefined
-  } else if (condition.name !== Lang.Type.ForCondition) {
-    throw new XmlParseError(`expected condition for for-loop but found ${JSON.stringify(condition)}`)
-  } else if (body.name !== Lang.Type.Expression) {
-    throw new XmlParseError(`expected expr body for for-loop but found ${JSON.stringify(body)}`)
+  if (forToken.name !== Type.For) {
+    parseLog.debug("encountered non-for token for supposed for-loop structure")
+    return executeUnknownHook(data.hooks.loops.onForLoop.unknown, data, { forToken, condition, body })
+  } else if (condition.name !== Type.ForCondition) {
+    throw new XmlParseError(
+      `expected condition for for-loop but found ${JSON.stringify(condition)}`
+    )
+  } else if (body.name !== Type.Expression) {
+    throw new XmlParseError(
+      `expected expr body for for-loop but found ${JSON.stringify(body)}`
+    )
   }
 
-  parseLog.debug(`trying to parse for-loop with ${JSON.stringify([forToken, condition, body])}`)
+  parseLog.debug(
+    `trying to parse for-loop with ${JSON.stringify([
+      forToken,
+      condition,
+      body,
+    ])}`
+  );
+  ({ forToken, condition, body } = executeHook(data.hooks.loops.onForLoop.before, data, { forToken, condition, body }))
 
-  const { variable: parsedVariable, vector: parsedVector } = parseForLoopCondition(data, condition.content)
+  const { variable: parsedVariable, vector: parsedVector } =
+    parseForLoopCondition(data, condition.content)
   const parseBody = tryParseOneElementBasedOnType(data, body)
 
-  if (parsedVariable === undefined || parsedVector === undefined || parseBody === undefined) {
-    throw new XmlParseError(`unexpected under-sided for-loop, received ${JSON.stringify([parsedVariable, parsedVariable, parseBody])} for ${JSON.stringify([forToken, condition, body])}`)
+  if (
+    parsedVariable === undefined ||
+    parsedVector === undefined ||
+    parseBody === undefined
+  ) {
+    throw new XmlParseError(
+      `unexpected under-sided for-loop, received ${JSON.stringify([
+        parsedVariable,
+        parsedVariable,
+        parseBody,
+      ])} for ${JSON.stringify([forToken, condition, body])}`
+    )
   }
 
-  const {
-    location,
-    content
-  } = retrieveMetaStructure(data.config,forToken.content)
+  const { location, content } = retrieveMetaStructure(
+    data.config,
+    forToken.content
+  )
 
   // TODO: assert exists as known operator
-  return {
-    type:     Lang.Type.For,
+  const result: RForLoop = {
+    type:     Type.For,
     variable: parsedVariable,
     vector:   parsedVector,
     body:     parseBody,
     lexeme:   content,
-    location
+    location,
   }
+  return executeHook(data.hooks.loops.onForLoop.after, data, result)
 }
 
 function parseForLoopCondition(data: ParserData, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined } {
@@ -51,9 +87,9 @@ function parseForLoopCondition(data: ParserData, forCondition: XmlBasedJson): { 
     name: getTokenType(data.config.tokenMap, content),
     content
   }))
-  const inPosition = children.findIndex(elem => elem.name === Lang.Type.ForIn)
+  const inPosition = children.findIndex(elem => elem.name === Type.ForIn)
   guard(inPosition > 0 && inPosition < children.length - 1, `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`)
-  const variable = parseSymbol(data.config, getWithTokenType(data.config.tokenMap, [children[inPosition - 1].content]))
+  const variable = tryParseSymbol(data, getWithTokenType(data.config.tokenMap, [children[inPosition - 1].content]))
   guard(variable !== undefined, `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
   // TODO: just parse single element directly
   const vector = parseBasedOnType(data, [children[inPosition + 1].content])

@@ -1,11 +1,12 @@
-
-import { getKeysGuarded, XmlBasedJson } from "../../input-format"
-import * as Lang from "../../../../model"
-import { getWithTokenType, retrieveMetaStructure } from "../meta"
-import { parseLog } from "../../parser"
-import { ParserData } from "../../data"
-import { parseBasedOnType } from "../structure/elements"
-import { tryToParseAsFunctionCall } from "../functions/call"
+import { getKeysGuarded, XmlBasedJson } from '../../input-format'
+import { getWithTokenType, retrieveMetaStructure } from '../meta'
+import { parseLog } from '../../parser'
+import { ParserData } from '../../data'
+import { parseBasedOnType } from '../structure/elements'
+import { tryToParseFunctionCall } from '../functions/call'
+import { Type } from '../../../../model/type'
+import { RExpressionList, RFunctionCall, RNode } from '../../../../model/model'
+import { executeHook } from '../../hooks'
 
 /**
  * Returns an ExprList if there are multiple children, otherwise returns the single child directly with no expr wrapper
@@ -13,8 +14,10 @@ import { tryToParseAsFunctionCall } from "../functions/call"
  * @param data - The data used by the parser (see {@link ParserData})
  * @param obj - The json object to extract the meta-information from
  */
-export function parseExpr(data: ParserData, obj: XmlBasedJson): Lang.RNode {
-  parseLog.debug(`trying to parse expr ${JSON.stringify(obj)}`)
+export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
+  parseLog.debug(`[expr] ${JSON.stringify(obj)}`)
+  obj = executeHook(data.hooks.expression.onExpression.before, data, obj)
+
   const {
     unwrappedObj,
     content,
@@ -22,20 +25,22 @@ export function parseExpr(data: ParserData, obj: XmlBasedJson): Lang.RNode {
   } = retrieveMetaStructure(data.config, obj)
 
   const childrenSource = getKeysGuarded<XmlBasedJson[]>(unwrappedObj, data.config.childrenName)
-  const maybeFunctionCall = tryToParseAsFunctionCall(data, getWithTokenType(data.config.tokenMap, childrenSource))
+  const maybeFunctionCall = tryToParseFunctionCall(data, getWithTokenType(data.config.tokenMap, childrenSource))
   if (maybeFunctionCall !== undefined) {
     return maybeFunctionCall
   }
 
   const children = parseBasedOnType(data, childrenSource)
+  let result: RNode
   if (children.length === 1) {
-    return children[0]
+    result = children[0]
   } else {
-    return {
-      type:   Lang.Type.ExpressionList,
+    result = {
+      type:   Type.ExpressionList,
       location,
       children,
       lexeme: content
     }
   }
+  return executeHook(data.hooks.expression.onExpression.after, data, result)
 }

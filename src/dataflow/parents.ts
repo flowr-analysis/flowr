@@ -1,21 +1,24 @@
 // adds id-based parent information for an ast
-import {
-  type RBinaryOp,
-  type RExpressionList,
-  RForLoop, RFunctionCall,
-  type RIfThenElse, RRepeatLoop,
-  type RSingleNode, RUnaryOp, RWhileLoop
-} from '../r-bridge/lang:4.x/ast/model'
-import { type Id, type IdRNode, type IdType } from './id'
-import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
+import { type Id, type IdRNode, type IdType } from "./id"
+import { foldAst } from "../r-bridge/lang:4.x/ast/model/processing/fold"
+import { RExpressionList } from "../r-bridge/lang:4.x/ast/model/nodes/RExpressionList"
+import { RBinaryOp } from "../r-bridge/lang:4.x/ast/model/nodes/RBinaryOp"
+import { RUnaryOp } from "../r-bridge/lang:4.x/ast/model/nodes/RUnaryOp"
+import { RIfThenElse } from "../r-bridge/lang:4.x/ast/model/nodes/RIfThenElse"
+import { RForLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RForLoop"
+import { RRepeatLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RRepeatLoop"
+
+import { RWhileLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RWhileLoop"
+import { RFunctionCall } from "../r-bridge/lang:4.x/ast/model/nodes/RFunctionCall"
+import { RSingleNode } from "../r-bridge/lang:4.x/ast/model/model"
 
 export interface ParentInformation {
-  parent: IdType | undefined
+  parent: IdType | undefined;
 }
 
 export type RNodeWithParent<OtherInfo> = IdRNode<OtherInfo & ParentInformation>
 
-export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo>): RNodeWithParent<OtherInfo> {
+export function decorateWithParentInformation<OtherInfo>(ast: IdRNode<OtherInfo>): RNodeWithParent<OtherInfo> {
   // TODO: move out
   // TODO: abstract away from all those cases with "children" if not needed
   const foldLeaf = (leaf: RSingleNode<OtherInfo & Id>): RNodeWithParent<OtherInfo> => ({
@@ -56,7 +59,7 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
     }
   }
 
-  const foldExprList = (exprList: RExpressionList<OtherInfo & Id>, children: Array<RNodeWithParent<OtherInfo>>): RNodeWithParent<OtherInfo> => {
+  const foldExprList = (exprList: RExpressionList<OtherInfo & Id>, children: RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
     children.forEach(c => {
       c.parent = exprList.id
     })
@@ -67,7 +70,7 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
     }
   }
 
-  const foldFunctionCall = (functionCall: RFunctionCall<OtherInfo & Id>, functionName: RNodeWithParent<OtherInfo>, parameters: Array<RNodeWithParent<OtherInfo>>): RNodeWithParent<OtherInfo> => {
+  const foldFunctionCall = (functionCall: RFunctionCall<OtherInfo & Id>, functionName: RNodeWithParent<OtherInfo>, parameters: RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
     functionName.parent = functionCall.id
     parameters.forEach(c => {
       c.parent = functionCall.id
@@ -127,6 +130,9 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
     unaryOp: {
       foldLogicalOp:    unaryOp,
       foldArithmeticOp: unaryOp
+    },
+    other: {
+      foldComment: foldLeaf,
     },
     loop: {
       foldFor,

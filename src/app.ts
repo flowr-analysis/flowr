@@ -1,12 +1,12 @@
-import { getStoredTokenMap, retrieveAstFromRCode } from './r-bridge/retriever'
-import * as readline from 'readline'
-import { RShell } from './r-bridge/shell'
-import { log } from './util/log'
+import { getStoredTokenMap, retrieveAstFromRCode } from "./r-bridge/retriever"
+import * as readline from "readline"
+import { RShell } from "./r-bridge/shell"
+import { log } from "./util/log"
 
 const rl = readline.createInterface({
   input:    process.stdin,
   output:   process.stdout,
-  terminal: true
+  terminal: true,
 })
 
 log.logToFile()
@@ -15,7 +15,7 @@ const shell = new RShell()
 shell.tryToInjectHomeLibPath()
 let tokenMap: null | Record<string, string> = null
 
-async function fun (): Promise<void> {
+async function fun(): Promise<void> {
   if (tokenMap === null) {
     tokenMap = await getStoredTokenMap(shell)
   }
@@ -26,7 +26,7 @@ async function fun (): Promise<void> {
       content:                 answer,
       attachSourceInformation: true,
       ensurePackageInstalled:  true
-    }, tokenMap as Record<string, string>, shell).then(async json => {
+    }, tokenMap!, shell).then(async json => {
       console.log(JSON.stringify(json))
       await fun()
     })

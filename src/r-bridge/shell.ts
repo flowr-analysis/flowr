@@ -1,12 +1,12 @@
-import { type ChildProcessWithoutNullStreams, spawn } from 'child_process'
-import { deepMergeObject, type MergeableRecord } from '../util/objects'
-import { type ILogObj, type Logger } from 'tslog'
-import { EOL } from 'os'
-import * as readline from 'node:readline'
-import { ts2r } from './lang:4.x/values'
-import { log } from '../util/log'
+import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
+import { deepMergeObject, type MergeableRecord } from "../util/objects"
+import { type ILogObj, type Logger } from "tslog"
+import { EOL } from "os"
+import * as readline from "node:readline"
+import { ts2r } from "./lang:4.x/values"
+import { log } from "../util/log"
 
-export type OutputStreamSelector = 'stdout' | 'stderr' | 'both'
+export type OutputStreamSelector = "stdout" | "stderr" | "both";
 
 interface CollectorTimeout extends MergeableRecord {
   /**
@@ -99,7 +99,7 @@ export class RShell {
   public readonly session: RShellSession
   private readonly log:    Logger<ILogObj>
 
-  public constructor (options?: Partial<RShellOptions>) {
+  public constructor(options?: Partial<RShellOptions>) {
     this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
     this.log = log.getSubLogger({ name: this.options.sessionName })
 
@@ -111,7 +111,7 @@ export class RShell {
    * will not do anything to alter input markers!
    */
   // TODO: rename to execute or so?
-  public sendCommand (command: string): void {
+  public sendCommand(command: string): void {
     this.log.trace(`> ${command}`)
     this._sendCommand(command)
   }
@@ -124,7 +124,7 @@ export class RShell {
    * @param addonConfig - further configuration on how and what to collect: see {@link OutputCollectorConfiguration},
    *                      defaults are set in {@link DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION}
    */
-  public async sendCommandWithOutput (command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
+  public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
     const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig)
     this.log.trace(`> ${command}`)
     const output = await this.session.collectLinesUntil(config.from, {
@@ -151,7 +151,7 @@ export class RShell {
    *
    * @see sendCommand
    */
-  public sendCommands (...commands: string[]): void {
+  public sendCommands(...commands: string[]): void {
     for (const element of commands) {
       this.sendCommand(element)
     }
@@ -160,7 +160,7 @@ export class RShell {
   /**
    * clears the R environment using the `rm` command.
    */
-  public clearEnvironment (): void {
+  public clearEnvironment(): void {
     this.log.debug('clearing environment')
     this._sendCommand('rm(list=ls())')
   }
@@ -169,32 +169,32 @@ export class RShell {
    * usually R will stop execution on errors, with this the R session will try to
    * continue working!
    */
-  public continueOnError (): void {
+  public continueOnError(): void {
     this.log.info('continue in case of Errors')
     this._sendCommand('options(error=function() {})')
   }
 
-  public injectLibPaths (...paths: string[]): void {
+  public injectLibPaths(...paths: string[]): void {
     this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
     this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
   }
 
   // TODO: this is really hacky
-  public tryToInjectHomeLibPath (): void {
+  public tryToInjectHomeLibPath(): void {
     this.injectLibPaths('~/.r-libs')
   }
 
   /**
    * checks if a given package is already installed on the system!
    */
-  public async isPackageInstalled (packageName: string): Promise<boolean> {
+  public async isPackageInstalled(packageName: string): Promise<boolean> {
     this.log.debug(`checking if package "${packageName}" is installed`)
     const result = await this.sendCommandWithOutput(
       `cat(paste0(is.element("${packageName}", installed.packages()[,1])),"${this.options.eol}")`)
     return result.length === 1 && result[0] === ts2r(true)
   }
 
-  public async allInstalledPackages (): Promise<string[]> {
+  public async allInstalledPackages(): Promise<string[]> {
     this.log.debug('getting all installed packages')
     const [packages] = await this.sendCommandWithOutput(`cat(paste0(installed.packages()[,1], collapse=","),"${this.options.eol}")`)
     return packages.split(',')
@@ -208,7 +208,7 @@ export class RShell {
    * @param autoload    - if true, the package will be loaded after installation
    * @param force       - if true, the package will be installed no if it is already on the system and ready to be loaded
    */
-  public async ensurePackageInstalled (packageName: string, autoload = false, force = false): Promise<{
+  public async ensurePackageInstalled(packageName: string, autoload = false, force = false): Promise<{
     packageName:           string
     packageExistedAlready: boolean
     /** the temporary directory used for the installation, undefined if none was used */
@@ -262,11 +262,11 @@ export class RShell {
    *
    * @returns true if the operation succeeds, false otherwise
    */
-  public close (): boolean {
+  public close(): boolean {
     return this.session.end()
   }
 
-  private _sendCommand (command: string): void {
+  private _sendCommand(command: string): void {
     this.session.writeLine(command)
   }
 }
@@ -281,7 +281,7 @@ class RShellSession {
   private readonly options:       RShellSessionOptions
   private readonly log:           Logger<ILogObj>
 
-  public constructor (options: RShellSessionOptions, log: Logger<ILogObj>) {
+  public constructor(options: RShellSessionOptions, log: Logger<ILogObj>) {
     this.bareSession = spawn(options.pathToRExecutable, options.commandLineOptions, {
       env:         options.env,
       cwd:         options.cwd,
@@ -300,11 +300,11 @@ class RShellSession {
     this.setupRSessionLoggers()
   }
 
-  public write (data: string): void {
+  public write(data: string): void {
     this.bareSession.stdin.write(data)
   }
 
-  public writeLine (data: string): void {
+  public writeLine(data: string): void {
     this.write(`${data}${this.options.eol}`)
   }
 
@@ -318,7 +318,7 @@ class RShellSession {
    * @param timeout - configuration for how and when to timeout
    * @param action  - event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
    */
-  public async collectLinesUntil (from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
+  public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
     const result: string[] = []
     let handler: (data: string) => void
 
@@ -355,7 +355,7 @@ class RShellSession {
    * @returns true if the kill succeeds, false otherwise
    * @see RShell#close
    */
-  end (): boolean {
+  end(): boolean {
     const killResult = this.bareSession.kill()
     this.sessionStdOut.close()
     this.sessionStdErr.close()
@@ -363,7 +363,7 @@ class RShellSession {
     return killResult
   }
 
-  private setupRSessionLoggers (): void {
+  private setupRSessionLoggers(): void {
     this.bareSession.stdout.on('data', (data: Buffer) => {
       this.log.trace(`< ${data.toString()}`)
     })
@@ -376,7 +376,7 @@ class RShellSession {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private on (from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
+  private on(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
     const both = from === 'both'
     if (both || from === 'stdout') {
       this.sessionStdOut.on(event, listener)
@@ -387,7 +387,7 @@ class RShellSession {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private removeListener (from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
+  private removeListener(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
     const both = from === 'both'
     if (both || from === 'stdout') {
       this.sessionStdOut.removeListener(event, listener)

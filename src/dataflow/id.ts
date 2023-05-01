@@ -1,15 +1,18 @@
 // assign each node with a unique id to simplify usage and further compares
-import {
-  type RBinaryOp,
-  type RExpressionList, RForLoop, RFunctionCall,
-  type RIfThenElse,
-  type RNode, RRepeatLoop,
-  type RSingleNode, RSymbol, RUnaryOp, RWhileLoop
-} from '../r-bridge/lang:4.x/ast/model'
-import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
-import { BiMap } from '../util/bimap'
+import { foldAst } from "../r-bridge/lang:4.x/ast/model/processing/fold"
+import { BiMap } from "../util/bimap"
+import { RExpressionList } from "../r-bridge/lang:4.x/ast/model/nodes/RExpressionList"
+import { RBinaryOp } from "../r-bridge/lang:4.x/ast/model/nodes/RBinaryOp"
+import { RUnaryOp } from "../r-bridge/lang:4.x/ast/model/nodes/RUnaryOp"
+import { RIfThenElse } from "../r-bridge/lang:4.x/ast/model/nodes/RIfThenElse"
+import { RForLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RForLoop"
+import { RRepeatLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RRepeatLoop"
 
-export type IdType = string
+import { RWhileLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RWhileLoop"
+import { RFunctionCall } from "../r-bridge/lang:4.x/ast/model/nodes/RFunctionCall"
+import { RNode, RSingleNode } from "../r-bridge/lang:4.x/ast/model/model"
+
+export type IdType = string;
 
 export interface Id {
   id: IdType
@@ -24,7 +27,7 @@ export type IdGenerator<OtherInfo> = (data: RNode<OtherInfo>) => IdType
 /**
  * The simplest id generator which just increments a number on each call
  */
-export function deterministicCountingIdGenerator<OtherInfo> (start = 0): IdGenerator<OtherInfo> {
+export function deterministicCountingIdGenerator<OtherInfo>(start = 0): IdGenerator<OtherInfo> {
   let id = start
   return () => `${id++}`
 }
@@ -42,9 +45,9 @@ export interface AstWithIdInformation<OtherInfo> {
  *
  * @typeParam OtherInfo - the original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)
  *
- * TODO: add id map to more quickly access these ids in the future => make it usable for we create new nodes with parents => move to parents?
+ * TODO: add id map to more quickly access these ids in the future =\> make it usable for we create new nodes with parents =\> move to parents?
  */
-export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator<OtherInfo>()): AstWithIdInformation<OtherInfo> {
+export function decorateWithIds<OtherInfo>(ast: RNode<Exclude<OtherInfo, Id>>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator<OtherInfo>()): AstWithIdInformation<OtherInfo> {
   const idMap = new BiMap<IdType, IdRNode<OtherInfo>>()
   // TODO: -> add map
 
@@ -86,7 +89,7 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
     idMap.set(newIfThen.id, newIfThen)
     return newIfThen
   }
-  const foldExprList = (exprList: RExpressionList<OtherInfo>, children: Array<IdRNode<OtherInfo>>): IdRNode<OtherInfo> => {
+  const foldExprList = (exprList: RExpressionList<OtherInfo>, children: IdRNode<OtherInfo>[]): IdRNode<OtherInfo> => {
     const newExprList = {
       ...exprList,
       children,
@@ -96,7 +99,7 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
     return newExprList
   }
 
-  const foldFunctionCall = (functionCall: RFunctionCall<OtherInfo>, functionName: IdRNode<OtherInfo>, parameters: Array<IdRNode<OtherInfo>>): IdRNode<OtherInfo> => {
+  const foldFunctionCall = (functionCall: RFunctionCall<OtherInfo>, functionName: IdRNode<OtherInfo>, parameters: IdRNode<OtherInfo>[]): IdRNode<OtherInfo> => {
     const newFunctionCall = {
       ...functionCall,
       functionName,
@@ -155,6 +158,9 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
     unaryOp: {
       foldArithmeticOp: unaryOp,
       foldLogicalOp:    unaryOp,
+    },
+    other: {
+      foldComment: foldLeaf
     },
     loop: {
       foldFor,

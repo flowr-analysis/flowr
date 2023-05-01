@@ -2,7 +2,7 @@
  * Thrown if the given input xml is not valid/contains unexpected elements.
  */
 export class XmlParseError extends Error {
-  constructor (message: string) {
+  constructor(message: string) {
     super(message)
     this.name = 'XmlParseError'
   }
@@ -35,9 +35,9 @@ export interface NamedXmlBasedJson {
  *
  * @typeParam T - the type of the values to retrieve. Note, that this type is not checked at runtime.
  */
-export function getKeysGuarded<T extends XmlBasedJsonValue> (obj: XmlBasedJson, key: string): T
-export function getKeysGuarded<T extends XmlBasedJsonValue> (obj: XmlBasedJson, ...key: string[]): Record<string, T>
-export function getKeysGuarded<T extends XmlBasedJsonValue> (obj: XmlBasedJson, ...key: string[]): (Record<string, T> | T) {
+export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, key: string): T
+export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ...key: string[]): Record<string, T>
+export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ...key: string[]): (Record<string, T> | T) {
   const keys = Object.keys(obj)
 
   const check = (key: string): T => {

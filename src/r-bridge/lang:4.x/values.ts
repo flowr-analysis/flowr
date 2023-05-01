@@ -1,16 +1,16 @@
-import { parse } from 'csv-parse/sync'
+import { parse } from "csv-parse/sync"
 
 class ValueConversionError extends Error {
-  constructor (message: string) {
+  constructor(message: string) {
     super(message)
-    this.name = 'ValueConversionError'
+    this.name = "ValueConversionError"
   }
 }
 
 /**
  * transforms a value to something R can understand (e.g., booleans to TRUE/FALSE)
  */
-export function ts2r (value: any): string {
+export function ts2r(value: any): string {
   if (typeof value === 'undefined') {
     return 'NA'
   } else if (typeof value === 'string') {
@@ -37,11 +37,11 @@ export function ts2r (value: any): string {
 const RTrue = 'TRUE'
 const RFalse = 'FALSE'
 
-export function isBoolean (value: string): boolean {
+export function isBoolean(value: string): boolean {
   return value === RTrue || value === RFalse
 }
 
-export function boolean2ts (value: string): boolean {
+export function boolean2ts(value: string): boolean {
   if (value === RTrue) {
     return true
   } else if (value === RFalse) {
@@ -53,7 +53,7 @@ export function boolean2ts (value: string): boolean {
 const RNumHexFloatRegex = /^\s*0x(?<intPart>[0-9a-f]+)?(\.(?<floatPart>[0-9a-f]*))?p(?<exp>-?\d+)\s*$/
 
 // TODO: deal with NA etc!
-function getDecimalPlacesWithRadix (floatPart: string, radix: number): number {
+function getDecimalPlacesWithRadix(floatPart: string, radix: number): number {
   return [...floatPart].reduce((acc, c, idx) => acc + parseInt(c, radix) / (radix ** (idx + 1)), 0)
 }
 
@@ -69,7 +69,7 @@ export interface RNumberValue {
   complexNumber: boolean
 }
 
-export function number2ts (value: string): RNumberValue {
+export function number2ts(value: string): RNumberValue {
   // TODO: check for legality? even though R should have done that already
 
   // check for hexadecimal number with floating point addon which is supported by R but not by JS :/
@@ -126,7 +126,7 @@ export interface RStringValue {
  *
  * @throws {@link ValueConversionError} if the string has an unknown starting quote
  */
-export function string2ts (value: string): RStringValue {
+export function string2ts(value: string): RStringValue {
   if (value.length < 2) {
     throw new ValueConversionError(`cannot parse string '${value}' as it is too short`)
   }
@@ -143,11 +143,11 @@ export function string2ts (value: string): RStringValue {
 export const RNa = 'NA'
 export const RNull = 'NULL'
 
-export function isNA (value: string): value is (typeof RNa) {
+export function isNA(value: string): value is (typeof RNa) {
   return value === RNa
 }
 
-export function parseCSV (lines: string[]): string[][] {
+export function parseCSV(lines: string[]): string[][] {
   // TODO: make this scalable?
   return parse(lines.join('\n'), { skipEmptyLines: true })
 }

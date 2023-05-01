@@ -17,7 +17,7 @@ import { RLogical } from '../../../../model/nodes/RLogical'
  * @param config - the configuration of the parser to use to retrieve the corresponding name fields
  * @param obj - the json object to extract the meta-information from
  */
-export function parseNumber (config: XmlParserConfig, obj: XmlBasedJson): RNumber | RLogical | RSymbol<NoInfo, typeof RNa> {
+export function parseNumber(config: XmlParserConfig, obj: XmlBasedJson): RNumber | RLogical | RSymbol<NoInfo, typeof RNa> {
   parseLog.debug(`[number] try: ${JSON.stringify(obj)}`)
 
   const { location, content } = retrieveMetaStructure(config, obj)

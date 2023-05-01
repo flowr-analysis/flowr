@@ -15,7 +15,7 @@ import { RRepeatLoop } from '../../../../model/nodes/RRepeatLoop'
  *
  * @returns The parsed {@link Lang.RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
  */
-export function tryParseRepeatLoop (data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): RRepeatLoop | undefined {
+export function tryParseRepeatLoop(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): RRepeatLoop | undefined {
   if (repeatToken.name !== Type.Repeat) {
     parseLog.debug('encountered non-repeat token for supposed repeat-loop structure')
     return undefined

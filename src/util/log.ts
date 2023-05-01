@@ -1,20 +1,23 @@
-import { type ILogObj, type ISettingsParam, Logger } from 'tslog'
-import { createStream, type Options } from 'rotating-file-stream'
+import { type ILogObj, type ISettingsParam, Logger } from "tslog"
+import { createStream, type Options } from "rotating-file-stream"
 
 class FlowrLogger extends Logger<ILogObj> {
   /** by keeping track of all children we can propagate updates of the settings (e.g., in tests) */
 
-  private readonly childLoggers: Array<Logger<ILogObj>> = []
+  private readonly childLoggers: Logger<ILogObj>[] = []
 
-  public getSubLogger (settings?: ISettingsParam<ILogObj>, logObj?: ILogObj): Logger<ILogObj> {
+  public getSubLogger(
+    settings?: ISettingsParam<ILogObj>,
+    logObj?: ILogObj
+  ): Logger<ILogObj> {
     const newSubLogger = super.getSubLogger(settings, logObj)
     this.childLoggers.push(newSubLogger)
     return newSubLogger
   }
 
-  public updateSettings (updater: (logger: Logger<ILogObj>) => void): void {
+  public updateSettings(updater: (logger: Logger<ILogObj>) => void): void {
     updater(this)
-    this.childLoggers.forEach(child => {
+    this.childLoggers.forEach((child) => {
       updater(child)
     })
   }
@@ -22,14 +25,17 @@ class FlowrLogger extends Logger<ILogObj> {
   /**
    * make the logger log to a file as well
    */
-  public logToFile (filename = 'flowr.log', options: Options = {
-    size:     '10M',
-    interval: '1d',
-    compress: 'gzip'
-  }): void {
+  public logToFile(
+    filename = "flowr.log",
+    options: Options = {
+      size:     "10M",
+      interval: "1d",
+      compress: "gzip",
+    }
+  ): void {
     const stream = createStream(filename, options)
 
-    log.attachTransport(logObj => {
+    log.attachTransport((logObj) => {
       stream.write(`${JSON.stringify(logObj)}\n`)
     })
   }
@@ -46,7 +52,7 @@ export const enum LogLevel {
   fatal = 6
 }
 
-function getActiveLog (): FlowrLogger {
+function getActiveLog(): FlowrLogger {
   return new FlowrLogger({
     type:            'pretty',
     name:            'main',

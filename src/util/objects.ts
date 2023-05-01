@@ -1,7 +1,7 @@
 /**
  * checks if `item` is an object (it may be an array, ...)
  */
-export function isObjectOrArray (item: unknown): boolean {
+export function isObjectOrArray(item: unknown): boolean {
   return typeof item === 'object'
 }
 
@@ -16,10 +16,10 @@ export type Mergeable = MergeableRecord | MergeableArray
  *
  * TODO: set etc. support in the future? => merge type class like?
  */
-export function deepMergeObject<T extends Mergeable> (base: T, addon?: Partial<T>): T
-export function deepMergeObject (base: Mergeable, addon: Mergeable): Mergeable
-export function deepMergeObject (base?: Mergeable, addon?: Mergeable): Mergeable | undefined
-export function deepMergeObject (base?: Mergeable, addon?: Mergeable): Mergeable | undefined {
+export function deepMergeObject<T extends Mergeable>(base: T, addon?: Partial<T>): T
+export function deepMergeObject(base: Mergeable, addon: Mergeable): Mergeable
+export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined
+export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined {
   assertSameType(base, addon)
   if (base === undefined || base === null) {
     return addon
@@ -46,7 +46,7 @@ export function deepMergeObject (base?: Mergeable, addon?: Mergeable): Mergeable
   return result
 }
 
-function deepMergeObjectWithResult (addon: MergeableRecord, base: MergeableRecord, result: MergeableRecord): void {
+function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord, result: MergeableRecord): void {
   Object.keys(addon).forEach(key => {
     if (isObjectOrArray(addon[key])) {
       if (!(key in base)) {
@@ -61,7 +61,7 @@ function deepMergeObjectWithResult (addon: MergeableRecord, base: MergeableRecor
   })
 }
 
-function assertSameType (base: unknown, addon: unknown): void {
+function assertSameType(base: unknown, addon: unknown): void {
   if (base !== undefined && addon !== undefined && typeof base !== typeof addon) {
     throw new Error(`cannot merge different types! ${typeof base} (${JSON.stringify(base)}) !== ${typeof addon} (${JSON.stringify(addon)})`)
   }

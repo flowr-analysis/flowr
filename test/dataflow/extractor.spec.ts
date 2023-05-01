@@ -2,13 +2,9 @@
 import { assertDataflow, retrieveAst, withShell } from "../helper/shell"
 import { produceDataFlowGraph } from "../../src/dataflow/extractor"
 import { decorateWithIds, IdType } from "../../src/dataflow/id"
-import {
-  decorateWithParentInformation,
-  RNodeWithParent,
-} from "../../src/dataflow/parents"
+import { decorateWithParentInformation } from "../../src/dataflow/parents"
 import {
   DataflowGraph,
-  DataflowGraphNodeInfo,
   formatRange,
   GLOBAL_SCOPE,
   graphToMermaidUrl,
@@ -20,8 +16,6 @@ import {
   RUnaryOpPool,
 } from "../helper/provider"
 import { naiveLineBasedSlicing } from "../../src/slicing/static/static-slicer"
-
-import { NoInfo } from "../../src/r-bridge/lang:4.x/ast/model/model"
 
 describe("Extract Dataflow Information", () => {
   /**
@@ -664,7 +658,7 @@ describe("Extract Dataflow Information", () => {
   describe(
     "others",
     withShell((shell) => {
-      it("99. def for constant variable assignment", async () => {
+      it("99. def for constant variable assignment", async() => {
         const ast = await retrieveAst(
           shell,
           `
@@ -690,7 +684,7 @@ describe("Extract Dataflow Information", () => {
         console.log(graphToMermaidUrl(dataflowGraph, dataflowIdMap))
       })
 
-      it("100. the classic", async () => {
+      it("100. the classic", async() => {
         const code = `
           sum <- 0
           product <- 1
@@ -720,9 +714,7 @@ describe("Extract Dataflow Information", () => {
 
         const print = (id: IdType): void => {
           const nodeInfo = dataflowGraph.get(id)!
-          const nodePosition = (
-            dataflowIdMap.get(id) as RNodeWithParent<NoInfo>
-          ).location
+          const nodePosition = dataflowIdMap.get(id)!.location
           console.log(
             `Static backward slice for id ${id}: ${
               nodeInfo.name

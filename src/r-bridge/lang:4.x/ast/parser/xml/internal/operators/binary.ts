@@ -46,7 +46,7 @@ export function parseBinaryStructure(
   return parseBinaryOp(data, flavor, lhs, op, rhs)
 }
 
-function parseBinaryOp (data: ParserData, flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RBinaryOp {
+function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RBinaryOp {
   parseLog.debug(`[binary op] trying to parse ${flavor} with ${JSON.stringify([lhs, op, rhs])}`)
 
   ensureChildrenAreLhsAndRhsOrdered(data.config, lhs.content, rhs.content)

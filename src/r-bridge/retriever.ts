@@ -27,7 +27,7 @@ type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseReq
  * Provides the capability to parse R files/R code using the R parser.
  * Depends on {@link RShell} to provide a connection to R.
  */
-export async function retrieveXmlFromRCode (request: RParseRequest, shell: RShell): Promise<string> {
+export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell): Promise<string> {
   if (request.ensurePackageInstalled) {
     await shell.ensurePackageInstalled('xmlparsedata', true)
   }
@@ -44,9 +44,9 @@ export async function retrieveXmlFromRCode (request: RParseRequest, shell: RShel
 
 // TODO: type ast etc
 /**
- * uses {@link #retrieveXmlFromRCode} and returns the nicely formatted object-AST
+ * uses {@link retrieveXmlFromRCode} and returns the nicely formatted object-AST
  */
-export async function retrieveAstFromRCode (request: RParseRequest, tokenMap: Record<string, string>, shell: RShell): Promise<RExpressionList> {
+export async function retrieveAstFromRCode(request: RParseRequest, tokenMap: Record<string, string>, shell: RShell): Promise<RExpressionList> {
   const xml = await retrieveXmlFromRCode(request, shell)
   return await parse(xml, tokenMap)
 }
@@ -54,7 +54,7 @@ export async function retrieveAstFromRCode (request: RParseRequest, tokenMap: Re
 /**
  * If the string has (R-)quotes around it, they will be removed, otherwise the string is returned unchanged.
  */
-export function removeTokenMapQuotationMarks (str: string): string {
+export function removeTokenMapQuotationMarks(str: string): string {
   if (str.length > 1 && (startAndEndsWith(str, '\'') || startAndEndsWith(str, '"'))) {
     return str.slice(1, -1)
   } else {
@@ -62,7 +62,7 @@ export function removeTokenMapQuotationMarks (str: string): string {
   }
 }
 
-export async function getStoredTokenMap (shell: RShell): Promise<Record<string, string>> {
+export async function getStoredTokenMap(shell: RShell): Promise<Record<string, string>> {
   await shell.ensurePackageInstalled('xmlparsedata', true /* use some kind of environment in the future */)
   // we invert the token map to get a mapping back from the replacement
   const parsed = parseCSV(await shell.sendCommandWithOutput(

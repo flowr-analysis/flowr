@@ -9,8 +9,8 @@ import { RIfThenElse } from '../../../../model/nodes/RIfThenElse'
 /**
  * Try to parse the construct as a {@link Lang.RIfThenElse}.
  */
-export function parseIfThenStructure (data: ParserData,
-                                      tokens: [
+export function parseIfThenStructure(data: ParserData,
+                                     tokens: [
                                         ifToken:    NamedXmlBasedJson,
                                         leftParen:  NamedXmlBasedJson,
                                         condition:  NamedXmlBasedJson,

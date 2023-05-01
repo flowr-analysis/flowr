@@ -1,16 +1,16 @@
 // adds id-based parent information for an ast
-import { type Id, type IdRNode, type IdType } from "./id";
-import { foldAst } from "../r-bridge/lang:4.x/ast/model/processing/fold";
-import { RExpressionList } from "../r-bridge/lang:4.x/ast/model/nodes/RExpressionList";
-import { RBinaryOp } from "../r-bridge/lang:4.x/ast/model/nodes/RBinaryOp";
-import { RUnaryOp } from "../r-bridge/lang:4.x/ast/model/nodes/RUnaryOp";
-import { RIfThenElse } from "../r-bridge/lang:4.x/ast/model/nodes/RIfThenElse";
-import { RForLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RForLoop";
-import { RRepeatLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RRepeatLoop";
+import { type Id, type IdRNode, type IdType } from "./id"
+import { foldAst } from "../r-bridge/lang:4.x/ast/model/processing/fold"
+import { RExpressionList } from "../r-bridge/lang:4.x/ast/model/nodes/RExpressionList"
+import { RBinaryOp } from "../r-bridge/lang:4.x/ast/model/nodes/RBinaryOp"
+import { RUnaryOp } from "../r-bridge/lang:4.x/ast/model/nodes/RUnaryOp"
+import { RIfThenElse } from "../r-bridge/lang:4.x/ast/model/nodes/RIfThenElse"
+import { RForLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RForLoop"
+import { RRepeatLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RRepeatLoop"
 
-import { RWhileLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RWhileLoop";
-import { RFunctionCall } from "../r-bridge/lang:4.x/ast/model/nodes/RFunctionCall";
-import { RSingleNode } from "../r-bridge/lang:4.x/ast/model/model";
+import { RWhileLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RWhileLoop"
+import { RFunctionCall } from "../r-bridge/lang:4.x/ast/model/nodes/RFunctionCall"
+import { RSingleNode } from "../r-bridge/lang:4.x/ast/model/model"
 
 export interface ParentInformation {
   parent: IdType | undefined;
@@ -18,7 +18,7 @@ export interface ParentInformation {
 
 export type RNodeWithParent<OtherInfo> = IdRNode<OtherInfo & ParentInformation>
 
-export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo>): RNodeWithParent<OtherInfo> {
+export function decorateWithParentInformation<OtherInfo>(ast: IdRNode<OtherInfo>): RNodeWithParent<OtherInfo> {
   // TODO: move out
   // TODO: abstract away from all those cases with "children" if not needed
   const foldLeaf = (leaf: RSingleNode<OtherInfo & Id>): RNodeWithParent<OtherInfo> => ({

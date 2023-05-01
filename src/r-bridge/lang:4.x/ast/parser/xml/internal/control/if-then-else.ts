@@ -11,8 +11,8 @@ import { RIfThenElse } from '../../../../model/nodes/RIfThenElse'
  * Try to parse the construct as a {@link Lang.RIfThenElse}.
  */
 // TODO: named tuples
-export function parseIfThenElseStructure (data: ParserData,
-                                          tokens: [
+export function parseIfThenElseStructure(data: ParserData,
+                                         tokens: [
                                             ifToken:    NamedXmlBasedJson,
                                             leftParen:  NamedXmlBasedJson,
                                             condition:  NamedXmlBasedJson,

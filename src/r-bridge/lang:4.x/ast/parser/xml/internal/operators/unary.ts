@@ -18,7 +18,7 @@ import { RNode } from '../../../../model/model'
  *
  * @returns The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
  */
-export function tryParseUnaryStructure (data: ParserData, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
+export function tryParseUnaryStructure(data: ParserData, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
   parseLog.trace(`unary op for ${op.name} ${operand.name}`)
   let flavor: UnaryOperatorFlavor
   // TODO: filter for unary

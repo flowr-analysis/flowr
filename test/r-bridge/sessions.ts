@@ -8,7 +8,7 @@ import { parseCSV } from '../../src/r-bridge/lang:4.x/values'
 import { log, LogLevel } from '../../src/util/log'
 
 /** here we use testWithShell to get a fresh shell within each call */
-describe('RShell sessions', function () {
+describe('RShell sessions', function() {
   this.slow('500ms') // some respect for the r shell :/
   testWithShell('0. test that we can create a connection to R', shell => {
     assert.doesNotThrow(() => {
@@ -45,17 +45,17 @@ describe('RShell sessions', function () {
     before(async() => {
       installed = await shell.allInstalledPackages()
     })
-    it('4.0 retrieve all installed packages', async () => {
+    it('4.0 retrieve all installed packages', async() => {
       assert.isTrue(installed.includes('base'), `base should be installed, but got: "${JSON.stringify(installed)}"`)
     })
-    it('4.1 is installed', async () => {
+    it('4.1 is installed', async() => {
       // of course someone could remove the packages in that instant, but for testing it should be fine
       for (const nameOfInstalledPackage of installed) {
         const isInstalled = await shell.isPackageInstalled(nameOfInstalledPackage)
         assert.isTrue(isInstalled, `package ${nameOfInstalledPackage} should be installed due to allInstalledPackages`)
       }
     })
-    it('4.2 is not installed', async () => {
+    it('4.2 is not installed', async() => {
       let unknownPackageName: string
       do {
         unknownPackageName = randomString(10)
@@ -89,7 +89,7 @@ describe('RShell sessions', function () {
 
       assert.isTrue(got.map(g => g[1]).includes(pkg), `expected package ${pkg} to be loaded, but got: ${JSON.stringify(got)}`)
     })
-    testWithShell('6.1 load with force install', async (shell, test) => {
+    testWithShell('6.1 load with force install', async(shell, test) => {
       await testRequiresNetworkConnection(test)
       isInstallTest(test)
 
@@ -113,7 +113,7 @@ describe('RShell sessions', function () {
 function installationTestSpec(): void {
   const i = 1
   for (const pkg of ['xmlparsedata', 'glue']) { // we use for instead of foreach to avoid index syntax issues
-    testWithShell(`5.${i + 1} install ${pkg}`, async function (shell, test) {
+    testWithShell(`5.${i + 1} install ${pkg}`, async function(shell, test) {
       isInstallTest(test)
       await testRequiresNetworkConnection(test)
       const pkgLoadInfo = await shell.ensurePackageInstalled(pkg, false, true)

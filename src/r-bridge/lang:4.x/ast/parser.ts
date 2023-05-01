@@ -667,7 +667,6 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       namespace   = undefined
     } else if(obj.length === 3 && isSymbol(obj[2].name)) {
       // TODO: guard etc.
-      console.log('obj', obj)
       const data  = this.retrieveMetaStructure(obj[2].content)
       location    = data.location
       content     = data.content

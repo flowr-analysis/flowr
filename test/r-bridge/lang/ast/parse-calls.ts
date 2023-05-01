@@ -33,7 +33,19 @@ describe('5. Parse function calls', withShell(shell => {
 
   })
   describe('5.4 functions with explicit namespacing', () => {
-
+    assertAst('x::f()', shell, 'x::f()', exprList({
+      type:         Lang.Type.FunctionCall,
+      location:     rangeFrom(1, 1, 1, 4),
+      lexeme:       'x::f', // TODO: make this more sensible?
+      functionName: {
+        type:      Lang.Type.Symbol,
+        location:  rangeFrom(1, 4, 1, 4),
+        lexeme:    'f',
+        content:   'f',
+        namespace: 'x',
+      },
+      parameters: []
+    }))
   })
   // TODO: identify the correct namespace otherwise (statically this is surely limited :c )
 }))

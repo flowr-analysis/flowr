@@ -42,6 +42,10 @@ export const enum Type {
   SymbolPackage = 'SYMBOL_PACKAGE',
   NamespaceGet = 'NS_GET',
 }
+export function isSymbol(type: string): boolean {
+  return type === Type.Symbol || type === Type.SymbolPackage || type === Type.FunctionCall || type === Type.Null
+}
+
 
 export type StringUsedInRCode = string
 

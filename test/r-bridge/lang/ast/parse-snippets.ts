@@ -24,7 +24,7 @@ max
         op:       '<-',
         location: rangeFrom(2, 3, 2, 4),
         lhs:      { type: Lang.Type.Symbol, lexeme: 'a', namespace: undefined, content: 'a', location: rangeFrom(2, 1, 2, 1) },
-        rhs:      { type: Lang.Type.Number, lexeme: '3', namespace: undefined, content: numVal(3), location: rangeFrom(2, 6, 2, 6) }
+        rhs:      { type: Lang.Type.Number, lexeme: '3', content: numVal(3), location: rangeFrom(2, 6, 2, 6) }
       },
       {
         type:     Lang.Type.BinaryOp,
@@ -33,7 +33,7 @@ max
         op:       '=',
         location: rangeFrom(3, 3, 3, 3),
         lhs:      { type: Lang.Type.Symbol, lexeme: 'b', namespace: undefined, content: 'b', location: rangeFrom(3, 1, 3, 1) },
-        rhs:      { type: Lang.Type.Number, lexeme: '4', namespace: undefined, content: numVal(4), location: rangeFrom(3, 5, 3, 5) }
+        rhs:      { type: Lang.Type.Number, lexeme: '4', content: numVal(4), location: rangeFrom(3, 5, 3, 5) }
       },
       {
         type:      Lang.Type.If,

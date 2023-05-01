@@ -7,13 +7,13 @@ import {
   RForLoop,
   type RIfThenElse,
   type RNode,
-  type RSymbol, RWhileLoop, UnaryOperatorFlavor, RFunctionCall
+  type RSymbol, RWhileLoop, UnaryOperatorFlavor, RFunctionCall, isSymbol
 } from './model'
-import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
 import { guard } from "../../../util/assert"
 import { splitArrayOn } from '../../../util/arrays'
 import { rangeStartsCompletelyBefore, rangeFrom, SourceRange } from '../../../util/range'
+import { log } from "../../../util/log"
 
 const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
@@ -206,7 +206,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
 
   private parseBasedOnType (obj: XmlBasedJson[]): Lang.RNode[] {
     if (obj.length === 0) {
-      log.warn('no children received, skipping')
+      parseLog.warn('no children received, skipping')
       return []
     }
 
@@ -243,6 +243,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
         if (forLoop !== 'no for-loop') {
           return [forLoop]
         } else {
+          // could be a symbol with namespace information
           const symbol = this.parseSymbol(mappedWithName)
           if (symbol !== 'no symbol') {
             return [symbol]
@@ -301,14 +302,14 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     switch (elem.name) {
       case Lang.Type.ParenLeft:
       case Lang.Type.ParenRight:
-        log.debug(`skipping parenthesis information for ${JSON.stringify(elem)}`)
+        parseLog.debug(`skipping parenthesis information for ${JSON.stringify(elem)}`)
         return undefined
       case Lang.Type.BraceLeft:
       case Lang.Type.BraceRight:
-        log.debug(`skipping brace information for ${JSON.stringify(elem)}`)
+        parseLog.debug(`skipping brace information for ${JSON.stringify(elem)}`)
         return undefined
       case Lang.Type.Comment:
-        log.debug(`skipping comment information for ${JSON.stringify(elem)}`)
+        parseLog.debug(`skipping comment information for ${JSON.stringify(elem)}`)
         return undefined
       case Lang.Type.Expression:
       case Lang.Type.ExprHelpAssignWrapper:
@@ -319,7 +320,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
         return this.parseString(elem.content)
       case Lang.Type.Symbol:
       case Lang.Type.Null: {
-        const symbol =  this.parseSymbol([elem.content])
+        const symbol =  this.parseSymbol(this.getMappedWithName([elem.content]))
         guard(symbol !== 'no symbol', `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
         return symbol
       }
@@ -365,14 +366,14 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
 
   private parseRepeatLoopStructure (repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): Lang.RRepeatLoop | 'no repeat-loop' {
     if (repeatToken.name !== Lang.Type.Repeat) {
-      log.debug('encountered non-repeat token for supposed repeat-loop structure')
+      parseLog.debug('encountered non-repeat token for supposed repeat-loop structure')
       return 'no repeat-loop'
     }
 
     parseLog.debug(`trying to parse repeat-loop with ${JSON.stringify([repeatToken, body])}`)
     const parseBody = this.parseOneElementBasedOnType(body)
     if (parseBody === undefined) {
-      log.warn(`no body for repeat-loop ${repeatToken} (${body})`)
+      parseLog.warn(`no body for repeat-loop ${repeatToken} (${body})`)
       return 'no repeat-loop'
     }
     const {
@@ -390,7 +391,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   private parseForLoopStructure (forToken: NamedXmlBasedJson, condition: NamedXmlBasedJson, body: NamedXmlBasedJson): RForLoop | 'no for-loop' {
     // funny, for does not use top-level parenthesis
     if (forToken.name !== Lang.Type.For) {
-      log.debug('encountered non-for token for supposed for-loop structure')
+      parseLog.debug('encountered non-for token for supposed for-loop structure')
       return 'no for-loop'
     } else if (condition.name !== Lang.Type.ForCondition) {
       throw new XmlParseError(`expected condition for for-loop but found ${JSON.stringify(condition)}`)
@@ -425,7 +426,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
 
   private parseWhileLoopStructure (whileToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson,  condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, body: NamedXmlBasedJson): RWhileLoop | 'no while-loop' {
     if (whileToken.name !== Lang.Type.While) {
-      log.debug('encountered non-while token for supposed while-loop structure')
+      parseLog.debug('encountered non-while token for supposed while-loop structure')
       return 'no while-loop'
     }  else if (leftParen.name !== Lang.Type.ParenLeft) {
       throw new XmlParseError(`expected left-parenthesis for while but found ${JSON.stringify(leftParen)}`)
@@ -465,7 +466,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     }))
     const inPosition = children.findIndex(elem => elem.name === Lang.Type.ForIn)
     guard(inPosition > 0 && inPosition < children.length - 1, `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`)
-    const variable = this.parseSymbol([children[inPosition - 1].content])
+    const variable = this.parseSymbol(this.getMappedWithName([children[inPosition - 1].content]))
     guard(variable !== 'no symbol', `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
     // TODO: just parse single element directly
     const vector = this.parseBasedOnType([children[inPosition + 1].content])
@@ -477,7 +478,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   private parseIfThenStructure (ifToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, then: NamedXmlBasedJson): RIfThenElse | 'no if-then' {
     // TODO: guard-like syntax for this too?
     if (ifToken.name !== Lang.Type.If) {
-      log.debug('encountered non-if token for supposed if-then structure')
+      parseLog.debug('encountered non-if token for supposed if-then structure')
       return 'no if-then'
     } else if (leftParen.name !== Lang.Type.ParenLeft) {
       throw new XmlParseError(`expected left-parenthesis for if but found ${JSON.stringify(leftParen)}`)
@@ -508,12 +509,12 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
 
   private parseIfThenElseStructure (ifToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, then: NamedXmlBasedJson, elseToken: NamedXmlBasedJson, elseBlock: NamedXmlBasedJson): RIfThenElse | 'no if-then-else' {
     // we start by parsing a regular if-then structure
-    log.trace(`trying to parse if-then-else structure for ${JSON.stringify([ifToken, leftParen, condition, rightParen, then, elseToken, elseBlock])}`)
+    parseLog.trace(`trying to parse if-then-else structure for ${JSON.stringify([ifToken, leftParen, condition, rightParen, then, elseToken, elseBlock])}`)
     const parsedIfThen = this.parseIfThenStructure(ifToken, leftParen, condition, rightParen, then)
     if (parsedIfThen === 'no if-then') {
       return 'no if-then-else'
     }
-    log.trace(`if-then part successful, now parsing else part for ${JSON.stringify([elseToken, elseBlock])}`)
+    parseLog.trace(`if-then part successful, now parsing else part for ${JSON.stringify([elseToken, elseBlock])}`)
     if (elseToken.name !== Lang.Type.Else) {
       throw new XmlParseError(`expected right-parenthesis for if but found ${JSON.stringify(rightParen)}`)
     }
@@ -653,33 +654,35 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   }
 
   // TODO: deal with namespace information
-  private parseSymbol (obj: XmlBasedJson[]): 'no symbol' | Lang.RSymbol {
+  private parseSymbol (obj: NamedXmlBasedJson[]): 'no symbol' | Lang.RSymbol {
     guard(obj.length > 0, 'to parse symbols we need at least one object to work on!')
     parseLog.debug(`trying to parse symbol with ${JSON.stringify(obj)}`)
 
     let location, content, namespace
 
-    if(obj.length === 1) {
-      const data  = this.retrieveMetaStructure(obj[0])
+    if(obj.length === 1 && isSymbol(obj[0].name)) {
+      const data  = this.retrieveMetaStructure(obj[0].content)
       location    = data.location
       content     = data.content
       namespace   = undefined
-    } else if(obj.length === 3) {
+    } else if(obj.length === 3 && isSymbol(obj[2].name)) {
       // TODO: guard etc.
-      const data  = this.retrieveMetaStructure(obj[2])
+      console.log('obj', obj)
+      const data  = this.retrieveMetaStructure(obj[2].content)
       location    = data.location
       content     = data.content
-      namespace   = this.retrieveMetaStructure(obj[0]).content
+      namespace   = this.retrieveMetaStructure(obj[0].content).content
     } else {
       return 'no symbol'
     }
 
     return {
-      type:      Lang.Type.Symbol,
-      namespace: undefined,
+      type:   Lang.Type.Symbol,
+      namespace,
       location,
       content,
-      lexeme:    content
+      // TODO: get correct lexeme from expr wrapper :C
+      lexeme: content,
     }
   }
 
@@ -697,12 +700,16 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       parseLog.info(`expected function call name to be wrapped an expression, yet received ${JSON.stringify(fnBase)}`)
       return 'no function call'
     }
+    parseLog.trace(`trying to parse function call with ${JSON.stringify(fnBase)}`)
     const {
       unwrappedObj, content, location
     } = this.retrieveMetaStructure(fnBase.content)
-    const symbolContent = getKeysGuarded(unwrappedObj, this.config.childrenName)
-    console.log(symbolContent)
-    const functionName = this.parseSymbol(symbolContent)
+    const symbolContent: XmlBasedJson[] = getKeysGuarded(unwrappedObj, this.config.childrenName)
+    if(symbolContent.map(x => this.getName(x)).findIndex(x => x === Lang.Type.FunctionCall) < 0) {
+      parseLog.trace(`expected function call to have corresponding symbol, yet received ${JSON.stringify(symbolContent)}`)
+      return 'no function call'
+    }
+    const functionName = this.parseSymbol(this.getMappedWithName(symbolContent))
     guard(functionName !== 'no symbol', 'expected function name to be a symbol, yet received none')
     const parameters: RNode[] = [] // this.parseBasedOnType(mappedWithName.slice(1))
     return {

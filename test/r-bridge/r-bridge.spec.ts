@@ -14,6 +14,7 @@ describe('R-Bridge', () => {
     require('./lang/ast/parse-assignments')
     require('./lang/ast/parse-expression-lists')
     require('./lang/ast/parse-constructs')
+    require('./lang/ast/parse-calls')
     require('./lang/ast/parse-snippets')
   })
 })

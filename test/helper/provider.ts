@@ -1,6 +1,7 @@
 // all examples are based on the R language def (Draft of 2023-03-15, 10.3.1)
 import * as Lang from '../../src/r-bridge/lang:4.x/ast/model'
 import { RNa, RNull, type RNumberValue, type RStringValue } from '../../src/r-bridge/lang:4.x/values'
+import { NamespaceIdentifier } from "../../src/r-bridge/lang:4.x/ast/model"
 
 // maps a string to the expected R number parse value
 export const RNumberPool: Array<{ val: RNumberValue, str: string }> = [
@@ -76,9 +77,14 @@ export const RStringPool: Array<{ val: RStringValue, str: string }> = [
   { str: '"\\U{10AFFE}"', val: { str: '\\U{10AFFE}', quotes: '"' } } // unicode 4
 ]
 
-export const RSymbolPool: Array<{ val: string, str: string }> = [
-  { str: 'NA', val: RNa },
-  { str: 'NULL', val: RNull }
+export const RSymbolPool: Array<{ val: string, str: string, namespace: NamespaceIdentifier | undefined, symbolStart: number }> = [
+  { str: 'NA', val: RNa, namespace: undefined, symbolStart: 1 },
+  { str: 'NULL', val: RNull, namespace: undefined, symbolStart: 1 },
+  { str: 'x', val: 'x', namespace: undefined, symbolStart: 1 },
+  { str: 'x.y', val: 'x.y', namespace: undefined, symbolStart: 1 },
+  { str: 'x::y', val: 'y', namespace: 'x', symbolStart: 4 },
+  // ::: for non-exported?
+  { str: 'x:::y', val: 'y', namespace: 'x', symbolStart: 5 }
 ]
 
 const canBeABinaryOp = (op: string): boolean => {

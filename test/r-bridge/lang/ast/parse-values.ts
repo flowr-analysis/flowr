@@ -31,12 +31,12 @@ describe('0. Constant Parsing', withShell(shell => {
     })
     describe('0.3 symbols', () => {
       for (const symbol of RSymbolPool) {
-        const range = rangeFrom(1, 1, 1, symbol.str.length)
+        const range = rangeFrom(1, symbol.symbolStart, 1, symbol.symbolStart + symbol.val.length - 1)
         assertAst(symbol.str, shell, symbol.str, exprList({
           type:      Lang.Type.Symbol,
-          namespace: undefined,
+          namespace: symbol.namespace,
           location:  range,
-          lexeme:    symbol.str,
+          lexeme:    symbol.val,
           content:   symbol.val
         })
         )

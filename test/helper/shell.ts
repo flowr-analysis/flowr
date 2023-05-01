@@ -19,6 +19,8 @@ import { decorateWithParentInformation } from "../../src/dataflow/parents"
 import { produceDataFlowGraph } from "../../src/dataflow/extractor"
 import { RExpressionList } from "../../src/r-bridge/lang:4.x/ast/model/nodes/RExpressionList"
 import { RNode } from "../../src/r-bridge/lang:4.x/ast/model/model"
+import { DeepPartial } from 'ts-essentials'
+import { XmlParserHooks } from '../../src/r-bridge/lang:4.x/ast/parser/xml/hooks'
 
 let defaultTokenMap: Record<string, string>
 
@@ -75,13 +77,13 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
   }
 }
 
-export const retrieveAst = async(shell: RShell, input: string): Promise<RExpressionList> => {
+export const retrieveAst = async(shell: RShell, input: string, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> => {
   return await retrieveAstFromRCode({
     request:                 'text',
     content:                 input,
     attachSourceInformation: true,
     ensurePackageInstalled:  false // should be called within describeSession for that!
-  }, defaultTokenMap, shell)
+  }, defaultTokenMap, shell, hooks)
 }
 
 /** call within describeSession */

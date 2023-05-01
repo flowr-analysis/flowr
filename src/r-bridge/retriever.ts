@@ -5,6 +5,8 @@ import { parseCSV, ts2r } from "./lang:4.x/values"
 import { parse } from "./lang:4.x/ast/parser/xml/parser"
 import { startAndEndsWith } from "../util/strings"
 import { RExpressionList } from "./lang:4.x/ast/model/nodes/RExpressionList"
+import { DeepPartial } from 'ts-essentials'
+import { XmlParserHooks } from './lang:4.x/ast/parser/xml/hooks'
 
 interface RParseRequestFromFile {
   request: "file";
@@ -46,9 +48,9 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
 /**
  * uses {@link retrieveXmlFromRCode} and returns the nicely formatted object-AST
  */
-export async function retrieveAstFromRCode(request: RParseRequest, tokenMap: Record<string, string>, shell: RShell): Promise<RExpressionList> {
+export async function retrieveAstFromRCode(request: RParseRequest, tokenMap: Record<string, string>, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> {
   const xml = await retrieveXmlFromRCode(request, shell)
-  return await parse(xml, tokenMap)
+  return await parse(xml, tokenMap, hooks)
 }
 
 /**

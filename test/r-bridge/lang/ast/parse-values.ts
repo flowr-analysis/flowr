@@ -90,6 +90,19 @@ describe(
           })
         )
       })
+      describe("0.5 comments", () => {
+        assertAst(
+          "simple line comment",
+          shell,
+          "# Hello World",
+          exprList({
+            type:     Type.Comment,
+            location: rangeFrom(1, 1, 1, 13),
+            lexeme:   "# Hello World",
+            content:  " Hello World",
+          })
+        )
+      })
     })
     // TODO: vectors etc.
   })

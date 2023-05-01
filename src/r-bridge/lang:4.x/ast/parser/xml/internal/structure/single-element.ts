@@ -9,6 +9,7 @@ import { parseSymbol } from '../values/symbol'
 import { getWithTokenType } from '../meta'
 import { Type } from '../../../../model/type'
 import { RNode } from '../../../../model/model'
+import { parseComment } from '../other/comment'
 
 /**
  * parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)
@@ -30,8 +31,7 @@ export function tryParseOneElementBasedOnType(data: ParserData, elem: NamedXmlBa
       parseLog.debug(`skipping brace information for ${JSON.stringify(elem)}`)
       return undefined
     case Type.Comment:
-      parseLog.debug(`skipping comment information for ${JSON.stringify(elem)}`)
-      return undefined
+      return parseComment(data.config, elem.content)
     case Type.Expression:
     case Type.ExprHelpAssignWrapper:
       return parseExpr(data, elem.content)

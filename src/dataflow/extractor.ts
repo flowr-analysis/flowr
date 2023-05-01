@@ -1,21 +1,21 @@
-import { log } from "../util/log"
-import { BiMap } from "../util/bimap"
-import { type Id, type IdType } from "./id"
-import { foldAst } from "../r-bridge/lang:4.x/ast/fold"
-import { RNa, RNull } from "../r-bridge/lang:4.x/values"
-import { type ParentInformation, type RNodeWithParent } from "./parents"
-import { guard } from "../util/assert"
+import { log } from "../util/log";
+import { BiMap } from "../util/bimap";
+import { type Id, type IdType } from "./id";
+import { foldAst } from "../r-bridge/lang:4.x/ast/model/processing/fold";
+import { RNa, RNull } from "../r-bridge/lang:4.x/values";
+import { type ParentInformation, type RNodeWithParent } from "./parents";
+import { guard } from "../util/assert";
 import {
   DataflowGraph,
   DataflowGraphEdgeAttribute,
   DataflowScopeName,
   GLOBAL_SCOPE,
   LOCAL_SCOPE,
-} from "./graph"
-import { DefaultMap } from "../util/defaultmap"
-import { RSymbol } from "../r-bridge/lang:4.x/ast/model/nodes/RSymbol"
+} from "./graph";
+import { DefaultMap } from "../util/defaultmap";
+import { RSymbol } from "../r-bridge/lang:4.x/ast/model/nodes/RSymbol";
 
-const dataflowLogger = log.getSubLogger({ name: "ast" })
+const dataflowLogger = log.getSubLogger({ name: "ast" });
 
 export type DataflowRNode<OtherInfo> = RSymbol<OtherInfo & Id & ParentInformation>
 

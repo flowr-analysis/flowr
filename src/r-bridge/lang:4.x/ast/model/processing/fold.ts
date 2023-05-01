@@ -1,49 +1,49 @@
-import { assertUnreachable } from "../../../util/assert"
-import { DeepReadonly } from "ts-essentials"
-import { Type } from "./model/type"
-import { RExpressionList } from "./model/nodes/RExpressionList"
-import { RNumber } from "./model/nodes/RNumber"
-import { RSymbol } from "./model/nodes/RSymbol"
-import { RLogical } from "./model/nodes/RLogical"
-import { RString } from "./model/nodes/RString"
+import { assertUnreachable } from "../../../../../util/assert";
+import { DeepReadonly } from "ts-essentials";
+import { Type } from "../type";
+import { RExpressionList } from "../nodes/RExpressionList";
+import { RNumber } from "../nodes/RNumber";
+import { RSymbol } from "../nodes/RSymbol";
+import { RLogical } from "../nodes/RLogical";
+import { RString } from "../nodes/RString";
 import {
   RArithmeticBinaryOp,
   RAssignmentOp,
   RBinaryOp,
   RComparisonBinaryOp,
   RLogicalBinaryOp,
-} from "./model/nodes/RBinaryOp"
+} from "../nodes/RBinaryOp";
 import {
   RArithmeticUnaryOp,
   RLogicalUnaryOp,
   RUnaryOp,
-} from "./model/nodes/RUnaryOp"
-import { RIfThenElse } from "./model/nodes/RIfThenElse"
-import { RForLoop } from "./model/nodes/RForLoop"
-import { RRepeatLoop } from "./model/nodes/RRepeatLoop"
+} from "../nodes/RUnaryOp";
+import { RIfThenElse } from "../nodes/RIfThenElse";
+import { RForLoop } from "../nodes/RForLoop";
+import { RRepeatLoop } from "../nodes/RRepeatLoop";
 
-import { RWhileLoop } from "./model/nodes/RWhileLoop"
-import { RFunctionCall } from "./model/nodes/RFunctionCall"
-import { RNode } from "./model/model"
+import { RWhileLoop } from "../nodes/RWhileLoop";
+import { RFunctionCall } from "../nodes/RFunctionCall";
+import { RNode } from "../model";
 
 export interface FoldFunctions<Info, T> {
-  foldNumber:  (num: RNumber<Info>) => T;
-  foldString:  (str: RString<Info>) => T;
+  foldNumber: (num: RNumber<Info>) => T;
+  foldString: (str: RString<Info>) => T;
   foldLogical: (logical: RLogical<Info>) => T;
-  foldSymbol:  (symbol: RSymbol<Info>) => T;
+  foldSymbol: (symbol: RSymbol<Info>) => T;
   binaryOp: {
-    foldLogicalOp:    (op: RLogicalBinaryOp<Info>, lhs: T, rhs: T) => T;
+    foldLogicalOp: (op: RLogicalBinaryOp<Info>, lhs: T, rhs: T) => T;
     foldArithmeticOp: (op: RArithmeticBinaryOp<Info>, lhs: T, rhs: T) => T;
     foldComparisonOp: (op: RComparisonBinaryOp<Info>, lhs: T, rhs: T) => T;
-    foldAssignment:   (op: RAssignmentOp<Info>, lhs: T, rhs: T) => T;
+    foldAssignment: (op: RAssignmentOp<Info>, lhs: T, rhs: T) => T;
   };
   unaryOp: {
-    foldLogicalOp:    (op: RLogicalUnaryOp<Info>, operand: T) => T;
+    foldLogicalOp: (op: RLogicalUnaryOp<Info>, operand: T) => T;
     foldArithmeticOp: (op: RArithmeticUnaryOp<Info>, operand: T) => T;
   };
   loop: {
-    foldFor:    (loop: RForLoop<Info>, variable: T, vector: T, body: T) => T;
-    foldWhile:  (loop: RWhileLoop<Info>, condition: T, body: T) => T;
+    foldFor: (loop: RForLoop<Info>, variable: T, vector: T, body: T) => T;
+    foldWhile: (loop: RWhileLoop<Info>, condition: T, body: T) => T;
     foldRepeat: (loop: RRepeatLoop<Info>, body: T) => T;
   };
   foldIfThenElse: (
@@ -52,7 +52,7 @@ export interface FoldFunctions<Info, T> {
     then: T,
     otherwise?: T
   ) => T;
-  foldExprList:     (exprList: RExpressionList<Info>, expressions: T[]) => T;
+  foldExprList: (exprList: RExpressionList<Info>, expressions: T[]) => T;
   foldFunctionCall: (
     call: RFunctionCall<Info>,
     functionName: T,

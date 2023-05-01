@@ -15,6 +15,7 @@ import { RRepeatLoop } from "./nodes/RRepeatLoop"
 import { RWhileLoop } from "./nodes/RWhileLoop"
 import { RFunctionCall } from "./nodes/RFunctionCall"
 import { RForLoop } from "./nodes/RForLoop"
+import { RComment } from "./nodes/RComment"
 
 export * from "./nodes/RBinaryOp"
 export * from "./nodes/RExpressionList"
@@ -28,6 +29,7 @@ export * from "./nodes/RString"
 export * from "./nodes/RSymbol"
 export * from "./nodes/RUnaryOp"
 export * from "./nodes/RWhileLoop"
+export * from "./nodes/RComment"
 
 /** simply used as an empty interface with no information about additional decorations */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -69,4 +71,5 @@ export type RSingleNode<Info>     = RSymbol<Info> | RConstant<Info>
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>
 export type RCalls<Info>          = RFunctionCall<Info>
-export type RNode<Info = NoInfo>  = RExpressionList<Info> | RCalls<Info> | RConstructs<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>
+export type ROther<Info>          = RComment<Info>
+export type RNode<Info = NoInfo>  = RExpressionList<Info> | ROther<Info> | RCalls<Info> | RConstructs<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>

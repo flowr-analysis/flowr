@@ -375,9 +375,8 @@ describe('Extract Dataflow Information', () => {
             product <- product * i
           }
           
-          # TODO: currently not available :/
-          # cat("Sum:", sum, "\\n")
-          # cat("Product:", product, "\\n")
+          cat("Sum:", sum, "\\n")
+          cat("Product:", product, "\\n")
       `
       const ast = await retrieveAst(shell, code)
       const astWithId = decorateWithIds(ast)
@@ -404,6 +403,7 @@ describe('Extract Dataflow Information', () => {
 
       print('18')
       print('25')
+      // TODO: 34
     })
   }))
 })

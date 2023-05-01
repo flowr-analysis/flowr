@@ -15,10 +15,11 @@ describe('2. Parse simple assignments', withShell(shell => {
         lexeme:   op.str,
         op:       op.str,
         lhs:      {
-          type:     Lang.Type.Symbol,
-          location: rangeFrom(1, 1, 1, 1),
-          lexeme:   'x',
-          content:  'x'
+          type:      Lang.Type.Symbol,
+          location:  rangeFrom(1, 1, 1, 1),
+          namespace: undefined,
+          lexeme:    'x',
+          content:   'x'
         },
         rhs: {
           type:     Lang.Type.Number,

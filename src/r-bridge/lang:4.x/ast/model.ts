@@ -37,8 +37,16 @@ export const enum Type {
   Repeat = 'REPEAT',
   While = 'WHILE',
   If = 'IF',
-  Else = 'ELSE'
+  Else = 'ELSE',
+  Comma = ',',
+  FunctionCall = 'SYMBOL_FUNCTION_CALL',
+  SymbolPackage = 'SYMBOL_PACKAGE',
+  NamespaceGet = 'NS_GET',
 }
+export function isSymbol(type: string): boolean {
+  return type === Type.Symbol || type === Type.SymbolPackage || type === Type.FunctionCall || type === Type.Null
+}
+
 
 export type StringUsedInRCode = string
 
@@ -151,6 +159,13 @@ interface Location {
   location: SourceRange
 }
 
+export type NamespaceIdentifier = string
+interface Namespace {
+  /* null for unknown atm */
+  namespace: NamespaceIdentifier | undefined
+}
+
+
 export type RExpressionList<Info = NoInfo> = {
   readonly type:     Type.ExpressionList
   readonly content?: string
@@ -159,7 +174,7 @@ export type RExpressionList<Info = NoInfo> = {
 export type RSymbol<Info = NoInfo, T extends string = string> = {
   readonly type: Type.Symbol
   content:       T
-} & Leaf<Info> & Location
+} & Leaf<Info> & Namespace & Location
 
 /** includes numeric, integer, and complex */
 export type RNumber<Info = NoInfo> = {
@@ -262,6 +277,13 @@ export type RWhileLoop<Info = NoInfo> = {
   body:          RNode<Info>
 } & Base<Info> & Location
 
+export type RFunctionCall<Info = NoInfo> = {
+  readonly type: Type.FunctionCall
+  functionName:  RSymbol<Info>
+  parameters:    RNode<Info>[]
+} & Base<Info> & Location
+
+
 
 // TODO: special constants
 export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
@@ -269,4 +291,5 @@ export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | R
 export type RSingleNode<Info> = RSymbol<Info> | RConstant<Info>
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
 export type RConstructs<Info> = RLoopConstructs<Info> | RIfThenElse<Info>
-export type RNode<Info = NoInfo> = RExpressionList<Info> | RConstructs<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>
+export type RCalls<Info>       = RFunctionCall<Info>
+export type RNode<Info = NoInfo> = RExpressionList<Info> | RCalls<Info> | RConstructs<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>

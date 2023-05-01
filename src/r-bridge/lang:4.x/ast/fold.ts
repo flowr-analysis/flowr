@@ -38,7 +38,7 @@ export interface FoldFunctions<Info, T> {
   },
   foldIfThenElse:   (ifThenExpr: RIfThenElse<Info>, cond: T, then: T, otherwise?: T) => T
   foldExprList:     (exprList: RExpressionList<Info>, expressions: T[]) => T
-  foldFunctionCall: (call: RFunctionCall<Info>, parameters: T[]) => T
+  foldFunctionCall: (call: RFunctionCall<Info>, functionName: T, parameters: T[]) => T
 }
 
 /**
@@ -66,7 +66,7 @@ export function foldAst<Info, T> (ast: RNode<Info>, folds: DeepReadonly<FoldFunc
     case Lang.Type.Repeat:
       return folds.loop.foldRepeat(ast, foldAst(ast.body, folds))
     case Lang.Type.FunctionCall:
-      return folds.foldFunctionCall(ast, ast.arguments.map(param => foldAst(param, folds)))
+      return folds.foldFunctionCall(ast, foldAst(ast.functionName, folds), ast.parameters.map(param => foldAst(param, folds)))
     // TODO: other loops
     case Lang.Type.If:
       return folds.foldIfThenElse(ast, foldAst(ast.condition, folds), foldAst(ast.then, folds), ast.otherwise === undefined ? undefined : foldAst(ast.otherwise, folds))

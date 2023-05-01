@@ -67,14 +67,16 @@ export function decorateWithParentInformation<OtherInfo> (ast: IdRNode<OtherInfo
     }
   }
 
-  const foldFunctionCall = (functionalCall: RFunctionCall<OtherInfo & Id>, parameters: Array<RNodeWithParent<OtherInfo>>): RNodeWithParent<OtherInfo> => {
+  const foldFunctionCall = (functionCall: RFunctionCall<OtherInfo & Id>, functionName: RNodeWithParent<OtherInfo>, parameters: Array<RNodeWithParent<OtherInfo>>): RNodeWithParent<OtherInfo> => {
+    functionName.parent = functionCall.id
     parameters.forEach(c => {
-      c.parent = functionalCall.id
+      c.parent = functionCall.id
     })
     return {
-      ...functionalCall,
-      arguments: parameters,
-      parent:    undefined
+      ...functionCall,
+      functionName,
+      parameters: parameters,
+      parent:     undefined
     }
   }
 

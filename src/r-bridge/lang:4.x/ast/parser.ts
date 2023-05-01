@@ -7,7 +7,7 @@ import {
   RForLoop,
   type RIfThenElse,
   type RNode,
-  type RSymbol, RWhileLoop, UnaryOperatorFlavor
+  type RSymbol, RWhileLoop, UnaryOperatorFlavor, RFunctionCall
 } from './model'
 import { log } from '../../../util/log'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
@@ -210,10 +210,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       return []
     }
 
-    const mappedWithName: NamedXmlBasedJson[] = obj.map((content) => ({
-      name: this.getName(content),
-      content
-    }))
+    const mappedWithName: NamedXmlBasedJson[] = this.getMappedWithName(obj)
 
     // TODO: some more performant way, so that when redoing this recursively we don't have to extract names etc. again
     const splitOnSemicolon = splitArrayOn(mappedWithName, ({name}) => name === Lang.Type.Semicolon)
@@ -245,7 +242,13 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
         const forLoop = this.parseForLoopStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2])
         if (forLoop !== 'no for-loop') {
           return [forLoop]
+        } else {
+          const symbol = this.parseSymbol(mappedWithName)
+          if (symbol !== 'no symbol') {
+            return [symbol]
+          }
         }
+        // TODO: try to parse symbols with namespace information
       }
     } else if (mappedWithName.length === 5) {
       const ifThen = this.parseIfThenStructure(mappedWithName[0], mappedWithName[1], mappedWithName[2], mappedWithName[3], mappedWithName[4])
@@ -266,6 +269,13 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
 
     // otherwise perform default parsing
     return this.parseNodesWithUnknownType(mappedWithName)
+  }
+
+  private getMappedWithName(obj: XmlBasedJson[]) {
+    return obj.map((content) => ({
+      name: this.getName(content),
+      content
+    }))
   }
 
   private parseNodesWithUnknownType (mappedWithName: NamedXmlBasedJson[]) {
@@ -308,9 +318,11 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       case Lang.Type.String:
         return this.parseString(elem.content)
       case Lang.Type.Symbol:
-        return this.parseSymbol(elem.content)
-      case Lang.Type.Null:
-        return this.parseSymbol(elem.content)
+      case Lang.Type.Null: {
+        const symbol =  this.parseSymbol([elem.content])
+        guard(symbol !== 'no symbol', `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
+        return symbol
+      }
       default:
         throw new XmlParseError(`unknown type ${elem.name}`)
     }
@@ -453,7 +465,8 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     }))
     const inPosition = children.findIndex(elem => elem.name === Lang.Type.ForIn)
     guard(inPosition > 0 && inPosition < children.length - 1, `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`)
-    const variable = this.parseSymbol(children[inPosition - 1].content)
+    const variable = this.parseSymbol([children[inPosition - 1].content])
+    guard(variable !== 'no symbol', `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
     // TODO: just parse single element directly
     const vector = this.parseBasedOnType([children[inPosition + 1].content])
     guard(vector.length === 1, `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`)
@@ -558,7 +571,13 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       location
     } = this.retrieveMetaStructure(obj)
 
-    const children = this.parseBasedOnType(getKeysGuarded(unwrappedObj, this.config.childrenName))
+    const childrenSource = getKeysGuarded(unwrappedObj, this.config.childrenName)
+    const maybeFunctionCall = this.tryToParseAsFunctionCall(this.getMappedWithName(childrenSource))
+    if (maybeFunctionCall !== 'no function call') {
+      return maybeFunctionCall
+    }
+
+    const children = this.parseBasedOnType(childrenSource)
     if (children.length === 1) {
       return children[0]
     } else {
@@ -600,7 +619,8 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     if (isNA(content)) { /* the special symbol */
       return {
         ...common,
-        type: Lang.Type.Symbol,
+        namespace: undefined,
+        type:      Lang.Type.Symbol,
         content
       }
     } else if (isBoolean(content)) {
@@ -632,17 +652,34 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     }
   }
 
-  private parseSymbol (obj: XmlBasedJson): Lang.RSymbol {
-    parseLog.debug(`trying to parse symbol ${JSON.stringify(obj)}`)
-    const {
-      location,
-      content
-    } = this.retrieveMetaStructure(obj)
+  // TODO: deal with namespace information
+  private parseSymbol (obj: XmlBasedJson[]): 'no symbol' | Lang.RSymbol {
+    guard(obj.length > 0, 'to parse symbols we need at least one object to work on!')
+    parseLog.debug(`trying to parse symbol with ${JSON.stringify(obj)}`)
+
+    let location, content, namespace
+
+    if(obj.length === 1) {
+      const data  = this.retrieveMetaStructure(obj[0])
+      location    = data.location
+      content     = data.content
+      namespace   = undefined
+    } else if(obj.length === 3) {
+      // TODO: guard etc.
+      const data  = this.retrieveMetaStructure(obj[2])
+      location    = data.location
+      content     = data.content
+      namespace   = this.retrieveMetaStructure(obj[0]).content
+    } else {
+      return 'no symbol'
+    }
+
     return {
-      type:   Lang.Type.Symbol,
+      type:      Lang.Type.Symbol,
+      namespace: undefined,
       location,
       content,
-      lexeme: content
+      lexeme:    content
     }
   }
 
@@ -651,6 +688,30 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
      * only real arithmetic ops have their operation as their own name, the others identify via content
      */
     return op.content[this.config.contentName]
+  }
+
+  private tryToParseAsFunctionCall(mappedWithName: NamedXmlBasedJson[]): 'no function call' | RFunctionCall {
+    guard(mappedWithName.length > 0, 'to parse function calls we need at least one object to work on!')
+    const fnBase = mappedWithName[0]
+    if(fnBase.name !== Lang.Type.Expression) {
+      parseLog.info(`expected function call name to be wrapped an expression, yet received ${JSON.stringify(fnBase)}`)
+      return 'no function call'
+    }
+    const {
+      unwrappedObj, content, location
+    } = this.retrieveMetaStructure(fnBase.content)
+    const symbolContent = getKeysGuarded(unwrappedObj, this.config.childrenName)
+    console.log(symbolContent)
+    const functionName = this.parseSymbol(symbolContent)
+    guard(functionName !== 'no symbol', 'expected function name to be a symbol, yet received none')
+    const parameters: RNode[] = [] // this.parseBasedOnType(mappedWithName.slice(1))
+    return {
+      type:   Lang.Type.FunctionCall,
+      location,
+      lexeme: content,
+      functionName,
+      parameters
+    }
   }
 }
 

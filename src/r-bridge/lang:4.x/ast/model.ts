@@ -157,7 +157,7 @@ interface Location {
 export type NamespaceIdentifier = string
 interface Namespace {
   /* null for unknown atm */
-  namespace: NamespaceIdentifier | null
+  namespace: NamespaceIdentifier | undefined
 }
 
 
@@ -169,7 +169,7 @@ export type RExpressionList<Info = NoInfo> = {
 export type RSymbol<Info = NoInfo, T extends string = string> = {
   readonly type: Type.Symbol
   content:       T
-} & Leaf<Info> & Location
+} & Leaf<Info> & Namespace & Location
 
 /** includes numeric, integer, and complex */
 export type RNumber<Info = NoInfo> = {
@@ -274,8 +274,9 @@ export type RWhileLoop<Info = NoInfo> = {
 
 export type RFunctionCall<Info = NoInfo> = {
   readonly type: Type.FunctionCall
-  arguments:     RNode<Info>[]
-} & Namespace & Base<Info> & Location
+  functionName:  RSymbol<Info>
+  parameters:    RNode<Info>[]
+} & Base<Info> & Location
 
 
 

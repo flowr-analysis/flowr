@@ -22,43 +22,50 @@ describe('3. Parse expression lists', withShell(shell => {
       lexeme:   '42',
       content:  numVal(42)
     }, {
-      type:     Lang.Type.Symbol,
-      location: rangeFrom(2, 1, 2, 1),
-      lexeme:   'a',
-      content:  'a'
+      type:      Lang.Type.Symbol,
+      location:  rangeFrom(2, 1, 2, 1),
+      namespace: undefined,
+      lexeme:    'a',
+      content:   'a'
     }))
 
     const manyLines = `a\nb\nc\nd\nn2\nz\n`
     assertAst(`1.3 ${JSON.stringify(manyLines)} (many lines)`, shell, manyLines, exprList({
-      type:     Lang.Type.Symbol,
-      location: rangeFrom(1, 1, 1, 1),
-      lexeme:   'a',
-      content:  'a'
+      type:      Lang.Type.Symbol,
+      location:  rangeFrom(1, 1, 1, 1),
+      namespace: undefined,
+      lexeme:    'a',
+      content:   'a'
     }, {
-      type:     Lang.Type.Symbol,
-      location: rangeFrom(2, 1, 2, 1),
-      lexeme:   'b',
-      content:  'b'
+      type:      Lang.Type.Symbol,
+      location:  rangeFrom(2, 1, 2, 1),
+      namespace: undefined,
+      lexeme:    'b',
+      content:   'b'
     }, {
-      type:     Lang.Type.Symbol,
-      location: rangeFrom(3, 1, 3, 1),
-      lexeme:   'c',
-      content:  'c'
+      type:      Lang.Type.Symbol,
+      location:  rangeFrom(3, 1, 3, 1),
+      namespace: undefined,
+      lexeme:    'c',
+      content:   'c'
     }, {
-      type:     Lang.Type.Symbol,
-      location: rangeFrom(4, 1, 4, 1),
-      lexeme:   'd',
-      content:  'd'
+      type:      Lang.Type.Symbol,
+      location:  rangeFrom(4, 1, 4, 1),
+      namespace: undefined,
+      lexeme:    'd',
+      content:   'd'
     }, {
-      type:     Lang.Type.Symbol,
-      location: rangeFrom(5, 1, 5, 2),
-      lexeme:   'n2',
-      content:  'n2'
+      type:      Lang.Type.Symbol,
+      location:  rangeFrom(5, 1, 5, 2),
+      namespace: undefined,
+      lexeme:    'n2',
+      content:   'n2'
     }, {
-      type:     Lang.Type.Symbol,
-      location: rangeFrom(6, 1, 6, 1),
-      lexeme:   'z',
-      content:  'z'
+      type:      Lang.Type.Symbol,
+      location:  rangeFrom(6, 1, 6, 1),
+      namespace: undefined,
+      lexeme:    'z',
+      content:   'z'
     }))
 
     const twoLineWithBraces = `{ 42\na }`
@@ -74,10 +81,11 @@ describe('3. Parse expression lists', withShell(shell => {
           content:  numVal(42)
         },
         {
-          type:     Lang.Type.Symbol,
-          location: rangeFrom(2, 1, 2, 1),
-          lexeme:   'a',
-          content:  'a'
+          type:      Lang.Type.Symbol,
+          location:  rangeFrom(2, 1, 2, 1),
+          namespace: undefined,
+          lexeme:    'a',
+          content:   'a'
         }
       ]
     }))
@@ -96,17 +104,19 @@ describe('3. Parse expression lists', withShell(shell => {
           content:  numVal(42)
         },
         {
-          type:     Lang.Type.Symbol,
-          location: rangeFrom(2, 1, 2, 1),
-          lexeme:   'a',
-          content:  'a'
+          type:      Lang.Type.Symbol,
+          location:  rangeFrom(2, 1, 2, 1),
+          namespace: undefined,
+          lexeme:    'a',
+          content:   'a'
         }
       ]
     }, {
-      type:     Lang.Type.Symbol,
-      location: rangeFrom(3, 3, 3, 3),
-      lexeme:   'x',
-      content:  'x'
+      type:      Lang.Type.Symbol,
+      location:  rangeFrom(3, 3, 3, 3),
+      namespace: undefined,
+      lexeme:    'x',
+      content:   'x'
     }))
   })
 
@@ -119,10 +129,11 @@ describe('3. Parse expression lists', withShell(shell => {
         content:  numVal(42)
       },
       {
-        type:     Lang.Type.Symbol,
-        location: rangeFrom(1, 4, 1, 4),
-        lexeme:   'a',
-        content:  'a'
+        type:      Lang.Type.Symbol,
+        location:  rangeFrom(1, 4, 1, 4),
+        namespace: undefined,
+        lexeme:    'a',
+        content:   'a'
       }))
   })
 }))

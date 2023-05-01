@@ -4,7 +4,7 @@ import {
   type RExpressionList, RForLoop, RFunctionCall,
   type RIfThenElse,
   type RNode, RRepeatLoop,
-  type RSingleNode, RUnaryOp, RWhileLoop
+  type RSingleNode, RSymbol, RUnaryOp, RWhileLoop
 } from '../r-bridge/lang:4.x/ast/model'
 import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
 import { BiMap } from '../util/bimap'
@@ -96,11 +96,12 @@ export function decorateWithIds<OtherInfo> (ast: RNode<Exclude<OtherInfo, Id>>, 
     return newExprList
   }
 
-  const foldFunctionCall = (functionCall: RFunctionCall<OtherInfo>, parameters: Array<IdRNode<OtherInfo>>): IdRNode<OtherInfo> => {
+  const foldFunctionCall = (functionCall: RFunctionCall<OtherInfo>, functionName: IdRNode<OtherInfo>, parameters: Array<IdRNode<OtherInfo>>): IdRNode<OtherInfo> => {
     const newFunctionCall = {
       ...functionCall,
-      arguments: parameters,
-      id:        getId(functionCall)
+      functionName,
+      parameters,
+      id: getId(functionCall)
     }
     idMap.set(newFunctionCall.id, newFunctionCall)
     return newFunctionCall

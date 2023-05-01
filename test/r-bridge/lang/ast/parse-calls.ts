@@ -13,18 +13,26 @@ import { rangeFrom } from '../../../../src/util/range'
 describe('5. Parse function calls', withShell(shell => {
   describe('5.1 functions without arguments', () => {
     assertAst('f()', shell, 'f()', exprList({
-      type:      Lang.Type.FunctionCall,
-      location:  rangeFrom(1, 1, 1, 3),
-      lexeme:    'f()',
-      name:      'f',
-      namespace: null,
-      arguments: []
+      type:         Lang.Type.FunctionCall,
+      location:     rangeFrom(1, 1, 1, 1),
+      lexeme:       'f', // TODO: make this more sensible?
+      functionName: {
+        type:      Lang.Type.Symbol,
+        location:  rangeFrom(1, 1, 1, 1),
+        lexeme:    'f',
+        content:   'f',
+        namespace: undefined,
+      },
+      parameters: []
     }))
   })
   describe('5.2 functions with arguments', () => {
 
   })
-  describe('5.2 functions with explicit namespacing', () => {
+  describe('5.3 functions with named arguments', () => {
+
+  })
+  describe('5.4 functions with explicit namespacing', () => {
 
   })
   // TODO: identify the correct namespace otherwise (statically this is surely limited :c )

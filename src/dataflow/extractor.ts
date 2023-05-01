@@ -395,8 +395,9 @@ function updateAllWriteTargets<OtherInfo> (currentChild: FoldInfo, dataflowIdMap
 }
 
 
-function processFunctionCall<OtherInfo> (functionCall: RNodeWithParent<OtherInfo>, parameters: FoldInfo[]): FoldInfo {
-  // TODO
+function processFunctionCall<OtherInfo> (functionCall: RNodeWithParent<OtherInfo>, functionName: FoldInfo,  parameters: FoldInfo[]): FoldInfo {
+  // TODO: deal with function info
+  // TODO rest
   return {
     activeNodes: [],
     in:          parameters.map(p => [...p.in, ...p.activeNodes]).flatMap(v => v),

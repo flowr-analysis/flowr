@@ -43,11 +43,12 @@ describe('Assign unique Ids', withShell(shell => {
         id:       '0'
       }))
       assertId('1.4 Symbol', 'k', exprList({
-        type:     Lang.Type.Symbol,
-        location: rangeFrom(1, 1, 1, 1),
-        lexeme:   'k',
-        content:  'k',
-        id:       '0'
+        type:      Lang.Type.Symbol,
+        location:  rangeFrom(1, 1, 1, 1),
+        namespace: undefined,
+        lexeme:    'k',
+        content:   'k',
+        id:        '0'
       }))
     })
     // TODO: Tests others

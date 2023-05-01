@@ -181,10 +181,11 @@ describe('4. Parse simple constructs', withShell(shell => {
         location: rangeFrom(1, 1, 1, 3),
         lexeme:   'for',
         variable: {
-          type:     Lang.Type.Symbol,
-          location: rangeFrom(1, 5, 1, 5),
-          lexeme:   'i',
-          content:  'i'
+          type:      Lang.Type.Symbol,
+          location:  rangeFrom(1, 5, 1, 5),
+          namespace: undefined,
+          lexeme:    'i',
+          content:   'i'
         },
         vector: {
           type:     Lang.Type.BinaryOp,
@@ -235,15 +236,17 @@ describe('4. Parse simple constructs', withShell(shell => {
           location: rangeFrom(1, 8, 1, 15),
           lexeme:   '{ x; y }',
           children: [{
-            type:     Lang.Type.Symbol,
-            location: rangeFrom(1, 10, 1, 10),
-            lexeme:   'x',
-            content:  'x'
+            type:      Lang.Type.Symbol,
+            location:  rangeFrom(1, 10, 1, 10),
+            namespace: undefined,
+            lexeme:    'x',
+            content:   'x'
           }, {
-            type:     Lang.Type.Symbol,
-            location: rangeFrom(1, 13, 1, 13),
-            lexeme:   'y',
-            content:  'y'
+            type:      Lang.Type.Symbol,
+            location:  rangeFrom(1, 13, 1, 13),
+            namespace: undefined,
+            lexeme:    'y',
+            content:   'y'
           }]
         }
       }))
@@ -282,15 +285,17 @@ describe('4. Parse simple constructs', withShell(shell => {
           location: rangeFrom(1, 15, 1, 22),
           lexeme:   '{ x; y }',
           children: [{
-            type:     Lang.Type.Symbol,
-            location: rangeFrom(1, 17, 1, 17),
-            lexeme:   'x',
-            content:  'x'
+            type:      Lang.Type.Symbol,
+            location:  rangeFrom(1, 17, 1, 17),
+            namespace: undefined,
+            lexeme:    'x',
+            content:   'x'
           }, {
-            type:     Lang.Type.Symbol,
-            location: rangeFrom(1, 20, 1, 20),
-            lexeme:   'y',
-            content:  'y'
+            type:      Lang.Type.Symbol,
+            location:  rangeFrom(1, 20, 1, 20),
+            namespace: undefined,
+            lexeme:    'y',
+            content:   'y'
           }]
         }
       }))

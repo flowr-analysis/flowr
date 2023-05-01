@@ -1,10 +1,11 @@
-import { NamedXmlBasedJson, XmlParseError } from "../../input-format"
-import { RIfThenElse } from "../../../../model"
-import * as Lang from "../../../../model"
-import { tryParseOneElementBasedOnType } from "../structure/single-element"
-import { retrieveMetaStructure } from "../meta"
-import { parseLog } from "../../parser"
-import { ParserData } from "../../data"
+import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
+import { tryParseOneElementBasedOnType } from '../structure/single-element'
+import { retrieveMetaStructure } from '../meta'
+import { parseLog } from '../../parser'
+import { ParserData } from '../../data'
+import { Type } from '../../../../model/type'
+import { RIfThenElse } from '../../../../model/nodes/RIfThenElse'
+
 /**
  * Try to parse the construct as a {@link Lang.RIfThenElse}.
  */
@@ -17,12 +18,12 @@ export function parseIfThenStructure (data: ParserData,
                                         then:       NamedXmlBasedJson
                                       ]): RIfThenElse | undefined {
   // TODO: guard-like syntax for this too?
-  if (tokens[0].name !== Lang.Type.If) {
+  if (tokens[0].name !== Type.If) {
     parseLog.debug('encountered non-if token for supposed if-then structure')
     return undefined
-  } else if (tokens[1].name !== Lang.Type.ParenLeft) {
+  } else if (tokens[1].name !== Type.ParenLeft) {
     throw new XmlParseError(`expected left-parenthesis for if but found ${JSON.stringify(tokens[1])}`)
-  } else if (tokens[3].name !== Lang.Type.ParenRight) {
+  } else if (tokens[3].name !== Type.ParenRight) {
     throw new XmlParseError(`expected right-parenthesis for if but found ${JSON.stringify(tokens[3])}`)
   }
 
@@ -37,7 +38,7 @@ export function parseIfThenStructure (data: ParserData,
   const { location, content} = retrieveMetaStructure(data.config, tokens[0].content)
 
   return {
-    type:      Lang.Type.If,
+    type:      Type.If,
     condition: parsedCondition,
     then:      parsedThen,
     location,

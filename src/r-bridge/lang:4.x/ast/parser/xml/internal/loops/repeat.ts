@@ -1,9 +1,10 @@
-import { NamedXmlBasedJson } from "../../input-format"
-import * as Lang from "../../../../model"
-import { retrieveMetaStructure } from "../meta"
-import { parseLog } from "../../parser"
-import { ParserData } from "../../data"
-import { tryParseOneElementBasedOnType } from "../structure/single-element"
+import { NamedXmlBasedJson } from '../../input-format'
+import { retrieveMetaStructure } from '../meta'
+import { parseLog } from '../../parser'
+import { ParserData } from '../../data'
+import { tryParseOneElementBasedOnType } from '../structure/single-element'
+import { Type } from '../../../../model/type'
+import { RRepeatLoop } from '../../../../model/nodes/RRepeatLoop'
 
 /**
  * Try to parse the construct as a {@link Lang.RRepeatLoop}.
@@ -14,8 +15,8 @@ import { tryParseOneElementBasedOnType } from "../structure/single-element"
  *
  * @returns The parsed {@link Lang.RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
  */
-export function tryParseRepeatLoop (data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): Lang.RRepeatLoop | undefined {
-  if (repeatToken.name !== Lang.Type.Repeat) {
+export function tryParseRepeatLoop (data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): RRepeatLoop | undefined {
+  if (repeatToken.name !== Type.Repeat) {
     parseLog.debug('encountered non-repeat token for supposed repeat-loop structure')
     return undefined
   }
@@ -31,7 +32,7 @@ export function tryParseRepeatLoop (data: ParserData, repeatToken: NamedXmlBased
     content
   } = retrieveMetaStructure(data.config, repeatToken.content)
   return {
-    type:   Lang.Type.Repeat,
+    type:   Type.Repeat,
     location,
     lexeme: content,
     body:   parseBody

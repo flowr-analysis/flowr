@@ -1,14 +1,14 @@
 // TODO: global entrypoint for configuration of the parser and all components
 
-import { type RShell } from './shell'
-import { parseCSV, ts2r } from './lang:4.x/values'
-import { parse } from './lang:4.x/ast/parser/xml/parser'
-import { type RExpressionList } from './lang:4.x/ast/model'
-import { startAndEndsWith } from '../util/strings'
+import { type RShell } from "./shell"
+import { parseCSV, ts2r } from "./lang:4.x/values"
+import { parse } from "./lang:4.x/ast/parser/xml/parser"
+import { startAndEndsWith } from "../util/strings"
+import { RExpressionList } from "./lang:4.x/ast/model/nodes/RExpressionList"
 
 interface RParseRequestFromFile {
-  request: 'file'
-  content: string
+  request: "file";
+  content: string;
 }
 
 interface RParseRequestFromText {

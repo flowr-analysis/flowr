@@ -1,11 +1,9 @@
-
 // TODO: modify | alias | etc.
 import { IdType } from './id'
-import * as Lang from '../r-bridge/lang:4.x/ast/model'
 import { DataflowMap } from './extractor'
-import { NoInfo } from '../r-bridge/lang:4.x/ast/model'
-import { guard } from "../util/assert"
+import { guard } from '../util/assert'
 import { SourceRange } from '../util/range'
+import { NoInfo } from '../r-bridge/lang:4.x/ast/model/model'
 
 export type DataflowGraphEdgeType =
     | /** the edge determines that source reads target */ 'read'
@@ -93,7 +91,7 @@ export class DataflowGraph {
     return this.graph.entries()
   }
 
-  public addNode(id: IdType, name: string, definedAtPosition: false | DataflowScopeName = false): DataflowGraph {
+  public addNode(id: IdType, name: string, definedAtPosition: false | DataflowScopeName = false): this {
     const oldNode = this.graph.get(id)
     if(oldNode !== undefined) {
       guard(oldNode.name === name, 'node names must match for the same id if added')
@@ -108,7 +106,7 @@ export class DataflowGraph {
   }
 
 
-  public addEdges(from: IdType, to: IdType[], type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): DataflowGraph {
+  public addEdges(from: IdType, to: IdType[], type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): this {
     // TODO: make this far more performant!
     for(const toId of to) {
       this.addEdge(from, toId, type, attribute)
@@ -123,7 +121,7 @@ export class DataflowGraph {
    *
    * TODO: ensure that target has a def scope and source does not?
    */
-  public addEdge(from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): DataflowGraph {
+  public addEdge(from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): this {
     // sort
     if(type === 'same-read-read' || type === 'same-def-def') {
       [from, to] = to > from ? [from, to] : [to, from]
@@ -145,7 +143,7 @@ export class DataflowGraph {
 
   /** insert a new edge in the given dataflow-graph */
   // TODO: check if from and to exists, TODO: check for duplicates
-  public mergeWith(...otherGraphs: (DataflowGraph | undefined)[]): DataflowGraph {
+  public mergeWith(...otherGraphs: (DataflowGraph | undefined)[]): this {
     // TODO: join edges
     // TODO: maybe switch to sets?
     const newGraph = this.graph

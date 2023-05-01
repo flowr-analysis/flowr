@@ -1,10 +1,17 @@
 // all examples are based on the R language def (Draft of 2023-03-15, 10.3.1)
-import * as Lang from '../../src/r-bridge/lang:4.x/ast/model'
 import { RNa, RNull, type RNumberValue, type RStringValue } from '../../src/r-bridge/lang:4.x/values'
-import { NamespaceIdentifier } from "../../src/r-bridge/lang:4.x/ast/model"
+import {
+  ArithmeticOperators,
+  Assignments,
+  ComparisonOperators,
+  LogicalOperators,
+  OperatorArity,
+  OperatorDatabase
+} from '../../src/r-bridge/lang:4.x/ast/model/operators'
+import { NamespaceIdentifier } from '../../src/r-bridge/lang:4.x/ast/model/model'
 
 // maps a string to the expected R number parse value
-export const RNumberPool: Array<{ val: RNumberValue, str: string }> = [
+export const RNumberPool: { val: RNumberValue, str: string }[] = [
   // the default block
   { str: '1', val: { num: 1, complexNumber: false, markedAsInt: false } },
   { str: '10', val: { num: 10, complexNumber: false, markedAsInt: false } },
@@ -40,7 +47,7 @@ export const RNumberPool: Array<{ val: RNumberValue, str: string }> = [
 ]
 
 // TODO: deal with errors in case of "Hell\0o"
-export const RStringPool: Array<{ val: RStringValue, str: string }> = [
+export const RStringPool: { val: RStringValue, str: string }[] = [
   // the default block
   { str: '""', val: { str: '', quotes: '"' } },
   { str: "''", val: { str: '', quotes: "'" } },
@@ -77,7 +84,7 @@ export const RStringPool: Array<{ val: RStringValue, str: string }> = [
   { str: '"\\U{10AFFE}"', val: { str: '\\U{10AFFE}', quotes: '"' } } // unicode 4
 ]
 
-export const RSymbolPool: Array<{ val: string, str: string, namespace: NamespaceIdentifier | undefined, symbolStart: number }> = [
+export const RSymbolPool: { val: string, str: string, namespace: NamespaceIdentifier | undefined, symbolStart: number }[] = [
   { str: 'NA', val: RNa, namespace: undefined, symbolStart: 1 },
   { str: 'NULL', val: RNull, namespace: undefined, symbolStart: 1 },
   { str: 'x', val: 'x', namespace: undefined, symbolStart: 1 },
@@ -88,39 +95,39 @@ export const RSymbolPool: Array<{ val: string, str: string, namespace: Namespace
 ]
 
 const canBeABinaryOp = (op: string): boolean => {
-  const arity = Lang.OperatorDatabase[op].arity
-  return arity === Lang.OperatorArity.Binary || arity === Lang.OperatorArity.Both
+  const arity = OperatorDatabase[op].arity
+  return arity === OperatorArity.Binary || arity === OperatorArity.Both
 }
 
 const canBeAUnaryOp = (op: string): boolean => {
-  const arity = Lang.OperatorDatabase[op].arity
-  return arity === Lang.OperatorArity.Unary || arity === Lang.OperatorArity.Both
+  const arity = OperatorDatabase[op].arity
+  return arity === OperatorArity.Unary || arity === OperatorArity.Both
 }
 
 
 // TODO: maybe not feed generators from the model pool? on the other side, the model is our understanding of "truth"
-export const RArithmeticBinaryOpPool: Array<{ flavor: 'arithmetic', str: string }> =
-    Lang.ArithmeticOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'arithmetic' }))
+export const RArithmeticBinaryOpPool: { flavor: 'arithmetic', str: string }[] =
+    ArithmeticOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'arithmetic' }))
 
-export const RLogicalBinaryOpPool: Array<{ flavor: 'logical', str: string }> =
-      Lang.LogicalOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'logical' }))
+export const RLogicalBinaryOpPool: { flavor: 'logical', str: string }[] =
+      LogicalOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'logical' }))
 
-export const RComparisonBinaryOpPool: Array<{ flavor: 'comparison', str: string }> =
-    Lang.ComparisonOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'comparison' }))
+export const RComparisonBinaryOpPool: { flavor: 'comparison', str: string }[] =
+    ComparisonOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'comparison' }))
 
-export const RAssignmentOpPool: Array<{ flavor: 'assignment', str: string }> =
-    Lang.Assignments.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'assignment' }))
+export const RAssignmentOpPool: { flavor: 'assignment', str: string }[] =
+    Assignments.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'assignment' }))
 
-export const RNonAssignmentBinaryOpPool: Array<{ label: 'arithmetic' | 'logical' | 'comparison', pool: typeof RArithmeticBinaryOpPool | typeof RLogicalBinaryOpPool | typeof RComparisonBinaryOpPool }> =
+export const RNonAssignmentBinaryOpPool: { label: 'arithmetic' | 'logical' | 'comparison', pool: typeof RArithmeticBinaryOpPool | typeof RLogicalBinaryOpPool | typeof RComparisonBinaryOpPool }[] =
     [{ label: 'arithmetic', pool: RArithmeticBinaryOpPool }, { label: 'logical', pool: RLogicalBinaryOpPool } , { label: 'comparison', pool: RComparisonBinaryOpPool }]
 
-export const RArithmeticUnaryOpPool: Array<{ flavor: 'arithmetic', str: string }> =
-  Lang.ArithmeticOperators.filter(canBeAUnaryOp).map(op => ({ str: op, flavor: 'arithmetic' }))
+export const RArithmeticUnaryOpPool: { flavor: 'arithmetic', str: string }[] =
+  ArithmeticOperators.filter(canBeAUnaryOp).map(op => ({ str: op, flavor: 'arithmetic' }))
 
-export const RLogicalUnaryOpPool: Array<{ flavor: 'logical', str: string }> =
-  Lang.LogicalOperators.filter(canBeAUnaryOp).map(op => ({ str: op, flavor: 'logical' }))
+export const RLogicalUnaryOpPool: { flavor: 'logical', str: string }[] =
+  LogicalOperators.filter(canBeAUnaryOp).map(op => ({ str: op, flavor: 'logical' }))
 
-export const RUnaryOpPool: Array<{ label: 'arithmetic' | 'logical', pool: typeof RArithmeticUnaryOpPool | typeof RLogicalUnaryOpPool }> = [{label: 'arithmetic', pool: RArithmeticUnaryOpPool}, {
+export const RUnaryOpPool: { label: 'arithmetic' | 'logical', pool: typeof RArithmeticUnaryOpPool | typeof RLogicalUnaryOpPool }[] = [{label: 'arithmetic', pool: RArithmeticUnaryOpPool}, {
   label: 'logical',
   pool:  RLogicalUnaryOpPool
 }]

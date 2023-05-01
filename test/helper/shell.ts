@@ -1,13 +1,24 @@
-import type * as Lang from '../../src/r-bridge/lang:4.x/ast/model'
-import { it } from 'mocha'
-import { RShell } from '../../src/r-bridge/shell'
-import { testRequiresNetworkConnection } from './network'
-import { getStoredTokenMap, retrieveAstFromRCode } from '../../src/r-bridge/retriever'
-import { assert } from 'chai'
-import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../src/dataflow/graph'
-import { decorateWithIds, deterministicCountingIdGenerator } from '../../src/dataflow/id'
-import { decorateWithParentInformation } from '../../src/dataflow/parents'
-import { produceDataFlowGraph } from '../../src/dataflow/extractor'
+import { it } from "mocha"
+import { RShell } from "../../src/r-bridge/shell"
+import { testRequiresNetworkConnection } from "./network"
+import {
+  getStoredTokenMap,
+  retrieveAstFromRCode,
+} from "../../src/r-bridge/retriever"
+import { assert } from "chai"
+import {
+  DataflowGraph,
+  diffGraphsToMermaidUrl,
+  graphToMermaidUrl,
+} from "../../src/dataflow/graph"
+import {
+  decorateWithIds,
+  deterministicCountingIdGenerator,
+} from "../../src/dataflow/id"
+import { decorateWithParentInformation } from "../../src/dataflow/parents"
+import { produceDataFlowGraph } from "../../src/dataflow/extractor"
+import { RExpressionList } from "../../src/r-bridge/lang:4.x/ast/model/nodes/RExpressionList"
+import { RNode } from "../../src/r-bridge/lang:4.x/ast/model/model"
 
 let defaultTokenMap: Record<string, string>
 
@@ -52,7 +63,7 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
       for (const pkg of packages) {
         if (!await shell.isPackageInstalled(pkg)) {
         // TODO: only check this once? network should not be expected to break during tests
-          await testRequiresNetworkConnection(this.ctx)
+          await testRequiresNetworkConnection(this)
         }
         await shell.ensurePackageInstalled(pkg, true)
       }
@@ -64,7 +75,7 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
   }
 }
 
-export const retrieveAst = async (shell: RShell, input: string): Promise<Lang.RExpressionList> => {
+export const retrieveAst = async (shell: RShell, input: string): Promise<RExpressionList> => {
   return await retrieveAstFromRCode({
     request:                 'text',
     content:                 input,
@@ -74,7 +85,7 @@ export const retrieveAst = async (shell: RShell, input: string): Promise<Lang.RE
 }
 
 /** call within describeSession */
-export const assertAst = (name: string, shell: RShell, input: string, expected: Lang.RExpressionList): void => {
+export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList): void => {
   it(name, async function () {
     const ast = await retrieveAst(shell, input)
     assert.deepStrictEqual(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
@@ -83,7 +94,7 @@ export const assertAst = (name: string, shell: RShell, input: string, expected: 
 
 // TODO: improve comments and structure
 /** call within describeSession */
-export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: Lang.RNode) => Lang.RNode<Decorated>, expected: Lang.RExpressionList<Decorated>): void {
+export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: RNode) => RNode<Decorated>, expected: RExpressionList<Decorated>): void {
   it(name, async function () {
     const baseAst = await retrieveAst(shell, input)
     const ast = decorator(baseAst)

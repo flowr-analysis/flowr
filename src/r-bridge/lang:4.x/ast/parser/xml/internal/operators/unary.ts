@@ -1,28 +1,30 @@
-import { UnaryOperatorFlavor } from "../../../../model"
-import { NamedXmlBasedJson } from "../../input-format"
-import * as Lang from "../../../../model"
-import { retrieveMetaStructure, retrieveOpName } from "../meta"
-import { parseLog } from "../../parser"
-import { tryParseOneElementBasedOnType } from "../structure/single-element"
-import { ParserData } from "../../data"
-import { guard } from "../../../../../../../util/assert"
+import { NamedXmlBasedJson } from '../../input-format'
+import { retrieveMetaStructure, retrieveOpName } from '../meta'
+import { parseLog } from '../../parser'
+import { tryParseOneElementBasedOnType } from '../structure/single-element'
+import { ParserData } from '../../data'
+import { guard } from '../../../../../../../util/assert'
+import { Type } from '../../../../model/type'
+import { ArithmeticOperatorsRAst, LogicalOperatorsRAst, UnaryOperatorFlavor } from '../../../../model/operators'
+import { RUnaryOp } from '../../../../model/nodes/RUnaryOp'
+import { RNode } from '../../../../model/model'
 
 /**
- * Parses the construct as a {@link Lang.RUnaryOp} (automatically identifies the flavor).
+ * Parses the construct as a {@link RUnaryOp} (automatically identifies the flavor).
  *
  * @param data - The data used by the parser (see {@link ParserData})
  * @param op - The operator token
  * @param operand - The operand of the unary operator
  *
- * @returns The parsed {@link Lang.RUnaryOp} or `undefined` if the given construct is not a unary operator
+ * @returns The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
  */
-export function tryParseUnaryStructure (data: ParserData, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): Lang.RNode | undefined {
+export function tryParseUnaryStructure (data: ParserData, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
   parseLog.trace(`unary op for ${op.name} ${operand.name}`)
   let flavor: UnaryOperatorFlavor
   // TODO: filter for unary
-  if (Lang.ArithmeticOperatorsRAst.includes(op.name)) {
+  if (ArithmeticOperatorsRAst.includes(op.name)) {
     flavor = 'arithmetic'
-  } else if (Lang.LogicalOperatorsRAst.includes(op.name)) {
+  } else if (LogicalOperatorsRAst.includes(op.name)) {
     flavor = 'logical'
   } else {
     return undefined
@@ -30,7 +32,7 @@ export function tryParseUnaryStructure (data: ParserData, op: NamedXmlBasedJson,
   return parseUnaryOp(data, flavor, op, operand)
 }
 
-function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): Lang.RUnaryOp {
+function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
   parseLog.debug(`[unary op] parse ${flavor} with ${JSON.stringify([op, operand])}`)
   const parsedOperand = tryParseOneElementBasedOnType(data, operand)
 
@@ -41,7 +43,7 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, op: NamedXm
 
   // TODO: assert exists as known operator
   return {
-    type:    Lang.Type.UnaryOp,
+    type:    Type.UnaryOp,
     flavor,
     location,
     op:      operationName,

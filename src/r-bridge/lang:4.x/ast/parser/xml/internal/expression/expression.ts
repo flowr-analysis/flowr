@@ -1,11 +1,11 @@
-
-import { getKeysGuarded, XmlBasedJson } from "../../input-format"
-import * as Lang from "../../../../model"
-import { getWithTokenType, retrieveMetaStructure } from "../meta"
-import { parseLog } from "../../parser"
-import { ParserData } from "../../data"
-import { parseBasedOnType } from "../structure/elements"
-import { tryToParseAsFunctionCall } from "../functions/call"
+import { getKeysGuarded, XmlBasedJson } from '../../input-format'
+import { getWithTokenType, retrieveMetaStructure } from '../meta'
+import { parseLog } from '../../parser'
+import { ParserData } from '../../data'
+import { parseBasedOnType } from '../structure/elements'
+import { tryToParseAsFunctionCall } from '../functions/call'
+import { Type } from '../../../../model/type'
+import { RNode } from '../../../../model/model'
 
 /**
  * Returns an ExprList if there are multiple children, otherwise returns the single child directly with no expr wrapper
@@ -13,7 +13,7 @@ import { tryToParseAsFunctionCall } from "../functions/call"
  * @param data - The data used by the parser (see {@link ParserData})
  * @param obj - The json object to extract the meta-information from
  */
-export function parseExpr(data: ParserData, obj: XmlBasedJson): Lang.RNode {
+export function parseExpr(data: ParserData, obj: XmlBasedJson): RNode {
   parseLog.debug(`trying to parse expr ${JSON.stringify(obj)}`)
   const {
     unwrappedObj,
@@ -32,7 +32,7 @@ export function parseExpr(data: ParserData, obj: XmlBasedJson): Lang.RNode {
     return children[0]
   } else {
     return {
-      type:   Lang.Type.ExpressionList,
+      type:   Type.ExpressionList,
       location,
       children,
       lexeme: content

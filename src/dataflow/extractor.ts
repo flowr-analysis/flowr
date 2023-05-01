@@ -1,22 +1,23 @@
-import { log } from '../util/log'
-import { BiMap } from '../util/bimap'
-import { type Id, type IdType } from './id'
-import { foldAst } from '../r-bridge/lang:4.x/ast/fold'
-import { RNa, RNull } from '../r-bridge/lang:4.x/values'
-import type * as Lang from '../r-bridge/lang:4.x/ast/model'
-import { type ParentInformation, type RNodeWithParent } from './parents'
-import { guard } from '../util/assert'
+import { log } from "../util/log"
+import { BiMap } from "../util/bimap"
+import { type Id, type IdType } from "./id"
+import { foldAst } from "../r-bridge/lang:4.x/ast/fold"
+import { RNa, RNull } from "../r-bridge/lang:4.x/values"
+import { type ParentInformation, type RNodeWithParent } from "./parents"
+import { guard } from "../util/assert"
 import {
   DataflowGraph,
   DataflowGraphEdgeAttribute,
   DataflowScopeName,
-  GLOBAL_SCOPE, LOCAL_SCOPE
-} from './graph'
+  GLOBAL_SCOPE,
+  LOCAL_SCOPE,
+} from "./graph"
 import { DefaultMap } from "../util/defaultmap"
+import { RSymbol } from "../r-bridge/lang:4.x/ast/model/nodes/RSymbol"
 
-const dataflowLogger = log.getSubLogger({ name: 'ast' })
+const dataflowLogger = log.getSubLogger({ name: "ast" })
 
-export type DataflowRNode<OtherInfo> = Lang.RSymbol<OtherInfo & Id & ParentInformation>
+export type DataflowRNode<OtherInfo> = RSymbol<OtherInfo & Id & ParentInformation>
 
 /**
  * The basic dataflow algorithm will work like this: [TODO: extend :D]
@@ -41,7 +42,7 @@ interface FoldWriteTargetMaybe extends FoldWriteTargetBase {
 }
 
 type FoldWriteTarget = FoldWriteTargetAlways | FoldWriteTargetMaybe
-type FoldReadTarget = { id: IdType, attribute: DataflowGraphEdgeAttribute }
+interface FoldReadTarget { id: IdType, attribute: DataflowGraphEdgeAttribute }
 
 /**
  * during folding we consider each fold-step as a single block (e.g., a variable, a assignment, a function expression, ...)

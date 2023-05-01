@@ -1,10 +1,10 @@
-import { NamedXmlBasedJson } from "../../input-format"
-import * as Lang from "../../../../model"
-import { guard } from "../../../../../../../util/assert"
-import { isSymbol } from "../../../../model"
-import { retrieveMetaStructure } from "../meta"
-import { parseLog } from "../../parser"
-import { XmlParserConfig } from "../../config"
+import { NamedXmlBasedJson } from '../../input-format'
+import { guard } from '../../../../../../../util/assert'
+import { retrieveMetaStructure } from '../meta'
+import { parseLog } from '../../parser'
+import { XmlParserConfig } from '../../config'
+import { isSymbol, Type } from '../../../../model/type'
+import { RSymbol } from '../../../../model/nodes/RSymbol'
 
 /**
  * Parse the given object as an R symbol (incorporating namespace information).
@@ -15,7 +15,7 @@ import { XmlParserConfig } from "../../config"
  * @returns the parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol
  */
 // TODO: deal with namespace information
-export function parseSymbol(config: XmlParserConfig, obj: NamedXmlBasedJson[]): Lang.RSymbol | undefined {
+export function parseSymbol(config: XmlParserConfig, obj: NamedXmlBasedJson[]): RSymbol | undefined {
   guard(obj.length > 0, 'to parse symbols we need at least one object to work on!')
   parseLog.debug(`trying to parse symbol with ${JSON.stringify(obj)}`)
 
@@ -37,7 +37,7 @@ export function parseSymbol(config: XmlParserConfig, obj: NamedXmlBasedJson[]): 
   }
 
   return {
-    type:   Lang.Type.Symbol,
+    type:   Type.Symbol,
     namespace,
     location,
     content,

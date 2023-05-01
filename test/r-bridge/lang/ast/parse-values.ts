@@ -66,17 +66,30 @@ describe(
           )
         }
       })
-      assertAst(
-        "boolean",
-        shell,
-        "TRUE",
-        exprList({
-          type:     Type.Logical,
-          location: rangeFrom(1, 1, 1, 4),
-          lexeme:   "TRUE",
-          content:  true,
-        })
-      )
+      describe("0.4 boolean", () => {
+        assertAst(
+          "TRUE",
+          shell,
+          "TRUE",
+          exprList({
+            type:     Type.Logical,
+            location: rangeFrom(1, 1, 1, 4),
+            lexeme:   "TRUE",
+            content:  true,
+          })
+        )
+        assertAst(
+          "FALSE",
+          shell,
+          "FALSE",
+          exprList({
+            type:     Type.Logical,
+            location: rangeFrom(1, 1, 1, 5),
+            lexeme:   "FALSE",
+            content:  false,
+          })
+        )
+      })
     })
     // TODO: vectors etc.
   })

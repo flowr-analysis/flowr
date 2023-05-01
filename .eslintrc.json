@@ -29,6 +29,7 @@
             "error", { "align": "value" }
         ],
         "semi": ["error", "never"],
+        "space-before-function-paren": "off",
         "@typescript-eslint/space-before-function-paren": "off",
         "tsdoc/syntax": "warn"
     }

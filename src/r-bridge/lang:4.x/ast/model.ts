@@ -284,7 +284,6 @@ export type RFunctionCall<Info = NoInfo> = {
 } & Base<Info> & Location
 
 
-
 // TODO: special constants
 export type RConstant<Info> = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
 

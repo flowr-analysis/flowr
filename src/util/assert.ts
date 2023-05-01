@@ -5,6 +5,10 @@ export function assertUnreachable (x: never): never {
   throw new Error(`Unexpected object: ${JSON.stringify(x)}`)
 }
 
+export function isNotUndefined<T> (x: T | undefined): x is T {
+  return x !== undefined
+}
+
 class GuardError extends Error {
   constructor (message: string) {
     super(message)

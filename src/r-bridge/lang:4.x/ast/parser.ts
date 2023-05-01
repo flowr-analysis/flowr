@@ -10,7 +10,7 @@ import {
   type RSymbol, RWhileLoop, UnaryOperatorFlavor, RFunctionCall, isSymbol
 } from './model'
 import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
-import { guard } from "../../../util/assert"
+import { guard, isNotUndefined } from "../../../util/assert"
 import { splitArrayOn } from '../../../util/arrays'
 import { rangeStartsCompletelyBefore, rangeFrom, SourceRange } from '../../../util/range'
 import { log } from "../../../util/log"
@@ -713,9 +713,9 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     const splitParametersOnComma = splitArrayOn(mappedWithName.slice(1), x => x.name === Lang.Type.Comma)
     const parameters: RNode[] = splitParametersOnComma.map(x => {
       const gotParameters = this.parseBasedOnType(x.map(x => x.content))
-      guard(gotParameters.length === 1, `expected parameter to be wrapped in expression, yet received ${gotParameters}`)
-      return gotParameters[0]
-    })
+      guard(gotParameters.length < 2, `expected parameter to be wrapped in expression, yet received ${JSON.stringify(gotParameters)}`)
+      return gotParameters.length === 0 ? undefined : gotParameters[0]
+    }).filter(isNotUndefined)
 
     return {
       type:   Lang.Type.FunctionCall,

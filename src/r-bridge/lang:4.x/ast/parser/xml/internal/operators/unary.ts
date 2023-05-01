@@ -8,6 +8,7 @@ import { Type } from '../../../../model/type'
 import { ArithmeticOperatorsRAst, LogicalOperatorsRAst, UnaryOperatorFlavor } from '../../../../model/operators'
 import { RUnaryOp } from '../../../../model/nodes/RUnaryOp'
 import { RNode } from '../../../../model/model'
+import { executeHook, executeUnknownHook } from '../../hooks'
 
 /**
  * Parses the construct as a {@link RUnaryOp} (automatically identifies the flavor).
@@ -27,13 +28,15 @@ export function tryParseUnaryStructure(data: ParserData, op: NamedXmlBasedJson, 
   } else if (LogicalOperatorsRAst.includes(op.name)) {
     flavor = 'logical'
   } else {
-    return undefined
+    return executeUnknownHook(data.hooks.operators.onUnary.unknown, data, { op, operand })
   }
   return parseUnaryOp(data, flavor, op, operand)
 }
 
 function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
-  parseLog.debug(`[unary op] parse ${flavor} with ${JSON.stringify([op, operand])}`)
+  parseLog.debug(`[unary op] parse ${flavor} with ${JSON.stringify([op, operand])}`); // <- sadly required for not miss-interpreting the destructuring match as call
+  ({ flavor, op, operand} = executeHook(data.hooks.operators.onUnary.before, data, { flavor, op, operand }))
+
   const parsedOperand = tryParseOneElementBasedOnType(data, operand)
 
   guard(parsedOperand !== undefined, `unexpected under-sided unary op for ${JSON.stringify([op, operand])}`)
@@ -42,7 +45,7 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, op: NamedXm
   const { location, content } = retrieveMetaStructure(data.config, op.content)
 
   // TODO: assert exists as known operator
-  return {
+  const result: RUnaryOp = {
     type:    Type.UnaryOp,
     flavor,
     location,
@@ -50,4 +53,5 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, op: NamedXm
     lexeme:  content,
     operand: parsedOperand
   }
+  return executeHook(data.hooks.operators.onUnary.after, data, result)
 }

@@ -6,6 +6,7 @@ import { ParserData } from "../../data"
 import { Type } from "../../../../model/type"
 
 import { RWhileLoop } from "../../../../model/nodes/RWhileLoop"
+import { executeHook, executeUnknownHook } from '../../hooks'
 
 export function tryParseWhileLoopStructure(
   data: ParserData,
@@ -19,7 +20,7 @@ export function tryParseWhileLoopStructure(
     parseLog.debug(
       "encountered non-while token for supposed while-loop structure"
     )
-    return undefined
+    return executeUnknownHook(data.hooks.loops.onWhileLoop.unknown, data, { whileToken, leftParen, condition, rightParen, body })
   } else if (leftParen.name !== Type.ParenLeft) {
     throw new XmlParseError(
       `expected left-parenthesis for while but found ${JSON.stringify(
@@ -40,7 +41,9 @@ export function tryParseWhileLoopStructure(
       condition,
       body,
     ])}`
-  )
+  );
+  ({ whileToken, leftParen, condition, rightParen, body } = executeHook(data.hooks.loops.onWhileLoop.before, data, { whileToken, leftParen, condition, rightParen, body }))
+
 
   const parsedCondition = tryParseOneElementBasedOnType(data, condition)
   const parseBody = tryParseOneElementBasedOnType(data, body)
@@ -60,11 +63,12 @@ export function tryParseWhileLoopStructure(
   )
 
   // TODO: assert exists as known operator
-  return {
+  const result: RWhileLoop = {
     type:      Type.While,
     condition: parsedCondition,
     body:      parseBody,
     lexeme:    content,
     location,
   }
+  return executeHook(data.hooks.loops.onWhileLoop.after, data, result)
 }

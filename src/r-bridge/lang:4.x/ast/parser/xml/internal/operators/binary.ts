@@ -19,6 +19,7 @@ import {
 } from "../../../../model/operators"
 import { RBinaryOp } from "../../../../model/nodes/RBinaryOp"
 import { RNode } from "../../../../model/model"
+import { executeHook, executeUnknownHook } from '../../hooks'
 
 export function tryParseBinaryStructure(
   data: ParserData,
@@ -40,14 +41,15 @@ export function tryParseBinaryStructure(
   } else if (Type.Special === op.name) {
     flavor = "special"
   } else {
-    return undefined
+    return executeUnknownHook(data.hooks.operators.onBinary.unknown, data, { lhs, op, rhs })
   }
   // TODO: identify op name correctly
   return parseBinaryOp(data, flavor, lhs, op, rhs)
 }
 
 function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RBinaryOp {
-  parseLog.debug(`[binary op] trying to parse ${flavor} with ${JSON.stringify([lhs, op, rhs])}`)
+  parseLog.debug(`[binary op] trying to parse ${flavor} with ${JSON.stringify([lhs, op, rhs])}`);
+  ({ flavor, lhs, rhs, op} = executeHook(data.hooks.operators.onBinary.before, data, { flavor, lhs, op, rhs }))
 
   ensureChildrenAreLhsAndRhsOrdered(data.config, lhs.content, rhs.content)
   const parsedLhs = tryParseOneElementBasedOnType(data, lhs)
@@ -66,7 +68,7 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
   }
 
   // TODO: assert exists as known operator
-  return {
+  const result: RBinaryOp = {
     type:   Type.BinaryOp,
     flavor,
     location,
@@ -75,5 +77,6 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
     op:     operationName,
     lexeme: content
   }
+  return executeHook(data.hooks.operators.onBinary.after, data, result)
 }
 

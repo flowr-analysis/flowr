@@ -5,6 +5,7 @@ import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { Type } from '../../../../model/type'
 import { RIfThenElse } from '../../../../model/nodes/RIfThenElse'
+import { executeHook, executeUnknownHook } from '../../hooks'
 
 /**
  * Try to parse the construct as a {@link RIfThenElse}.
@@ -20,12 +21,14 @@ export function tryParseIfThenStructure(data: ParserData,
   // TODO: guard-like syntax for this too?
   if (tokens[0].name !== Type.If) {
     parseLog.debug('encountered non-if token for supposed if-then structure')
-    return undefined
+    return executeUnknownHook(data.hooks.control.onIfThen.unknown, data, tokens)
   } else if (tokens[1].name !== Type.ParenLeft) {
     throw new XmlParseError(`expected left-parenthesis for if but found ${JSON.stringify(tokens[1])}`)
   } else if (tokens[3].name !== Type.ParenRight) {
     throw new XmlParseError(`expected right-parenthesis for if but found ${JSON.stringify(tokens[3])}`)
   }
+
+  tokens = executeHook(data.hooks.control.onIfThen.before, data, tokens)
 
   const parsedCondition = tryParseOneElementBasedOnType(data, tokens[2])
   const parsedThen = tryParseOneElementBasedOnType(data, tokens[4])
@@ -37,11 +40,12 @@ export function tryParseIfThenStructure(data: ParserData,
 
   const { location, content} = retrieveMetaStructure(data.config, tokens[0].content)
 
-  return {
+  const result: RIfThenElse = {
     type:      Type.If,
     condition: parsedCondition,
     then:      parsedThen,
     location,
     lexeme:    content
   }
+  return executeHook(data.hooks.control.onIfThen.after, data, result)
 }

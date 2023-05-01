@@ -38,7 +38,7 @@ export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RSy
     return executeUnknownHook(data.hooks.values.onSymbol.unknown, data, objs)
   }
 
-  const result = {
+  const result: RSymbol = {
     type:   Type.Symbol,
     namespace,
     location,

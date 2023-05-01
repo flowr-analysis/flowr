@@ -9,7 +9,7 @@ import {
   RForLoop,
   RFunctionCall, RIfThenElse,
   RNode,
-  RRepeatLoop,
+  RRepeatLoop, RString,
   RUnaryOp,
   RWhileLoop
 } from '../../model/model'
@@ -35,6 +35,10 @@ type AutoIfOmit<T> = T | undefined
  * </ul>
  *
  * For those marked with {@link AutoIfOmit} you can return `undefined` to automatically take the original arguments (unchanged).
+ * <p>
+ * Use {@link executeHook} and {@link executeUnknownHook} to execute the hooks.
+ * <p>
+ * Please note, that there is no guarantee, that a hook is not using any other. For example, {@link tryParseIfThenStructure} is used by {@link tryParseIfThenElseStructure}.
  */
 export interface XmlParserHooks {
   values: {
@@ -46,12 +50,12 @@ export interface XmlParserHooks {
     /** {@link parseString} */
     onString: {
       before(data: ParserData, inputObj: XmlBasedJson): AutoIfOmit<XmlBasedJson>
-      after(data: ParserData, result: RSymbol): AutoIfOmit<RSymbol>
+      after(data: ParserData, result: RString): AutoIfOmit<RString>
     },
     /** {@link tryParseSymbol} */
     onSymbol: {
-      unknown(data: ParserData, inputObjs: XmlBasedJson[]): AutoIfOmit<RSymbol | undefined>
-      before(data: ParserData, inputObjs: XmlBasedJson[]): AutoIfOmit<XmlBasedJson[]>
+      unknown(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<RSymbol | undefined>
+      before(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
       after(data: ParserData, result: RSymbol | undefined): AutoIfOmit<RSymbol | undefined>
     }
   },
@@ -113,14 +117,15 @@ export interface XmlParserHooks {
   expression: {
     /** {@link parseExpression} */
     onExpression: {
+      /** can be a function as well, is not known when issuing before! */
       before(data: ParserData, inputObj: XmlBasedJson): AutoIfOmit<XmlBasedJson>
       after(data: ParserData, result: RNode): AutoIfOmit<RNode>
     }
   },
   control: {
-    /** {@link tryParseIfThenStructure} */
+    /** {@link tryParseIfThenStructure}, triggered by {@link onIfThenElse} as well */
     onIfThen: {
-      /** triggered if {@link tryParseIfThenStructure} could not detect a if-then, you probably still want to return `undefined` */
+      /** triggered if {@link tryParseIfThenStructure} could not detect an if-then, you probably still want to return `undefined` */
       unknown(data: ParserData, tokens: [
         ifToken:    NamedXmlBasedJson,
         leftParen:  NamedXmlBasedJson,
@@ -143,9 +148,9 @@ export interface XmlParserHooks {
       ]>
       after(data: ParserData, result: RIfThenElse): AutoIfOmit<RIfThenElse>
     },
-    /** {@link tryParseIfThenElseStructure} */
-    onIfElse: {
-      /** triggered if {@link tryParseIfThenElseStructure} could not detect a if-else, you probably still want to return `undefined` */
+    /** {@link tryParseIfThenElseStructure}, triggers {@link onIfThen} */
+    onIfThenElse: {
+      /** triggered if {@link tryParseIfThenElseStructure} could not detect an if-then-else, you probably still want to return `undefined`, this is probably called as a consequence of the unknown hook of if-then */
       unknown(data: ParserData, tokens: [
         ifToken:    NamedXmlBasedJson,
         leftParen:  NamedXmlBasedJson,
@@ -155,6 +160,7 @@ export interface XmlParserHooks {
         elseToken:  NamedXmlBasedJson,
         elseBlock:  NamedXmlBasedJson
       ]): AutoIfOmit<RIfThenElse | undefined>
+      /** be aware, that the if-then part triggers another hook! */
       before(data: ParserData, tokens: [
         ifToken:    NamedXmlBasedJson,
         leftParen:  NamedXmlBasedJson,
@@ -183,7 +189,7 @@ export interface XmlParserHooks {
  *
  * @see executeUnknownHook
  */
-export function executeHook<T, R>(hook: (data: ParserData, input: any) => AutoIfOmit<any>, data: ParserData, input: T): R {
+export function executeHook<T, R>(hook: (data: ParserData, input: T) => AutoIfOmit<R>, data: ParserData, input: T): R {
   const result = hook(data, input)
   if (result === undefined) {
     return input as unknown as R
@@ -194,7 +200,7 @@ export function executeHook<T, R>(hook: (data: ParserData, input: any) => AutoIf
 /**
  * @see executeHook
  */
-export function executeUnknownHook<T, R>(hook: (data: ParserData, input: any) => AutoIfOmit<any>, data: ParserData, input: T): R | undefined {
+export function executeUnknownHook<T, R>(hook: (data: ParserData, input: T) => AutoIfOmit<R>, data: ParserData, input: T): AutoIfOmit<R> {
   return hook(data, input)
 }
 // TODO: on unknown keep returning undefined!
@@ -230,7 +236,7 @@ export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = 
       before:  doNothing,
       after:   doNothing
     },
-    onIfElse: {
+    onIfThenElse: {
       unknown: doNothing,
       before:  doNothing,
       after:   doNothing

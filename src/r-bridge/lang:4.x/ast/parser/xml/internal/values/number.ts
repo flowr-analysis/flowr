@@ -26,7 +26,7 @@ export function parseNumber(data: ParserData, obj: XmlBasedJson): RNumber | RLog
   const { location, content } = retrieveMetaStructure(data.config, obj)
   const common = { location, lexeme: content }
 
-  let result
+  let result:  RNumber | RLogical | RSymbol<NoInfo, typeof RNa>
   /* the special symbol */
   if (isNA(content)) {
     result = {

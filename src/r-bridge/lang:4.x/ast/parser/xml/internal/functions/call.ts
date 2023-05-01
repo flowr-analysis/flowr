@@ -9,6 +9,7 @@ import { ParserData } from '../../data'
 import { Type } from '../../../../model/type'
 import { RFunctionCall } from '../../../../model/nodes/RFunctionCall'
 import { RNode } from '../../../../model/model'
+import { executeHook, executeUnknownHook } from '../../hooks'
 
 /**
  * Tries to parse the given data as a function call.
@@ -23,17 +24,22 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
   const fnBase = mappedWithName[0]
   if(fnBase.name !== Type.Expression) {
     parseLog.info(`expected function call name to be wrapped an expression, yet received ${JSON.stringify(fnBase)}`)
-    return undefined
+    return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
   }
+
   parseLog.trace(`trying to parse function call with ${JSON.stringify(fnBase)}`)
+  mappedWithName = executeHook(data.hooks.functions.onFunctionCall.before, data, mappedWithName)
+
   const {
     unwrappedObj, content, location
   } = retrieveMetaStructure(data.config, fnBase.content)
   const symbolContent: XmlBasedJson[] = getKeysGuarded(unwrappedObj, data.config.childrenName)
   if(symbolContent.map(x => getTokenType(data.config.tokenMap, x)).findIndex(x => x === Type.FunctionCall) < 0) {
     parseLog.trace(`expected function call to have corresponding symbol, yet received ${JSON.stringify(symbolContent)}`)
-    return undefined
+    return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
   }
+
+
   const functionName = tryParseSymbol(data, getWithTokenType(data.config.tokenMap, symbolContent))
   guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')
   const splitParametersOnComma = splitArrayOn(mappedWithName.slice(1), x => x.name === Type.Comma)
@@ -43,11 +49,12 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
     return gotParameters.length === 0 ? undefined : gotParameters[0]
   }).filter(isNotUndefined)
 
-  return {
+  const result: RFunctionCall = {
     type:   Type.FunctionCall,
     location,
     lexeme: content,
     functionName,
     parameters
   }
+  return executeHook(data.hooks.functions.onFunctionCall.after, data, result)
 }

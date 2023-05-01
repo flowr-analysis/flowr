@@ -6,6 +6,7 @@ import { parseBasedOnType } from '../structure/elements'
 import { tryToParseFunctionCall } from '../functions/call'
 import { Type } from '../../../../model/type'
 import { RExpressionList, RFunctionCall, RNode } from '../../../../model/model'
+import { executeHook } from '../../hooks'
 
 /**
  * Returns an ExprList if there are multiple children, otherwise returns the single child directly with no expr wrapper
@@ -15,6 +16,8 @@ import { RExpressionList, RFunctionCall, RNode } from '../../../../model/model'
  */
 export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
   parseLog.debug(`[expr] ${JSON.stringify(obj)}`)
+  obj = executeHook(data.hooks.expression.onExpression.before, data, obj)
+
   const {
     unwrappedObj,
     content,
@@ -28,14 +31,16 @@ export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
   }
 
   const children = parseBasedOnType(data, childrenSource)
+  let result: RNode
   if (children.length === 1) {
-    return children[0]
+    result = children[0]
   } else {
-    return {
+    result = {
       type:   Type.ExpressionList,
       location,
       children,
       lexeme: content
     }
   }
+  return executeHook(data.hooks.expression.onExpression.after, data, result)
 }

@@ -21,7 +21,7 @@ export function parseString(data: ParserData, obj: XmlBasedJson): RString {
 
   const { location, content } = retrieveMetaStructure(data.config, obj)
 
-  const result = {
+  const result: RString = {
     type:    Type.String,
     location,
     content: string2ts(content),

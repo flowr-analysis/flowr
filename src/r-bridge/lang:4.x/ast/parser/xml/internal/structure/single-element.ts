@@ -31,7 +31,7 @@ export function tryParseOneElementBasedOnType(data: ParserData, elem: NamedXmlBa
       parseLog.debug(`skipping brace information for ${JSON.stringify(elem)}`)
       return undefined
     case Type.Comment:
-      return parseComment(data.config, elem.content)
+      return parseComment(data, elem.content)
     case Type.Expression:
     case Type.ExprHelpAssignWrapper:
       return parseExpression(data, elem.content)

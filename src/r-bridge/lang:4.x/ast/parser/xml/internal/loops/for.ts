@@ -15,6 +15,7 @@ import { Type } from "../../../../model/type"
 import { RSymbol } from "../../../../model/nodes/RSymbol"
 import { RForLoop } from "../../../../model/nodes/RForLoop"
 import { RNode } from "../../../../model/model"
+import { executeHook, executeUnknownHook } from '../../hooks'
 
 export function tryParseForLoopStructure(
   data: ParserData,
@@ -25,7 +26,7 @@ export function tryParseForLoopStructure(
   // funny, for does not use top-level parenthesis
   if (forToken.name !== Type.For) {
     parseLog.debug("encountered non-for token for supposed for-loop structure")
-    return undefined
+    return executeUnknownHook(data.hooks.loops.onForLoop.unknown, data, { forToken, condition, body })
   } else if (condition.name !== Type.ForCondition) {
     throw new XmlParseError(
       `expected condition for for-loop but found ${JSON.stringify(condition)}`
@@ -42,7 +43,8 @@ export function tryParseForLoopStructure(
       condition,
       body,
     ])}`
-  )
+  );
+  ({ forToken, condition, body } = executeHook(data.hooks.loops.onForLoop.before, data, { forToken, condition, body }))
 
   const { variable: parsedVariable, vector: parsedVector } =
     parseForLoopCondition(data, condition.content)
@@ -68,7 +70,7 @@ export function tryParseForLoopStructure(
   )
 
   // TODO: assert exists as known operator
-  return {
+  const result: RForLoop = {
     type:     Type.For,
     variable: parsedVariable,
     vector:   parsedVector,
@@ -76,6 +78,7 @@ export function tryParseForLoopStructure(
     lexeme:   content,
     location,
   }
+  return executeHook(data.hooks.loops.onForLoop.after, data, result)
 }
 
 function parseForLoopCondition(data: ParserData, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined } {

@@ -2,62 +2,37 @@ import { NamedXmlBasedJson, XmlParseError } from "../../input-format"
 import { RIfThenElse } from "../../../../model"
 import * as Lang from "../../../../model"
 import { tryParseOneElementBasedOnType } from "../structure/single-element"
-import { retrieveMetaStructure } from "../meta"
 import { parseLog } from "../../parser"
 import { ParserData } from "../../data"
-
-/**
- * Try to parse the construct as a {@link Lang.RIfThenElse}.
- */
-export function parseIfThenStructure (data: ParserData, ifToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, then: NamedXmlBasedJson): RIfThenElse | undefined {
-  // TODO: guard-like syntax for this too?
-  if (ifToken.name !== Lang.Type.If) {
-    parseLog.debug('encountered non-if token for supposed if-then structure')
-    return undefined
-  } else if (leftParen.name !== Lang.Type.ParenLeft) {
-    throw new XmlParseError(`expected left-parenthesis for if but found ${JSON.stringify(leftParen)}`)
-  } else if (rightParen.name !== Lang.Type.ParenRight) {
-    throw new XmlParseError(`expected right-parenthesis for if but found ${JSON.stringify(rightParen)}`)
-  }
-
-  const parsedCondition = tryParseOneElementBasedOnType(data, condition)
-  const parsedThen = tryParseOneElementBasedOnType(data, then)
-
-
-  if (parsedCondition === undefined || parsedThen === undefined) {
-    throw new XmlParseError(`unexpected missing parts of if, received ${JSON.stringify([parsedCondition, parsedThen])} for ${JSON.stringify([ifToken, condition, then])}`)
-  }
-
-  const { location, content} = retrieveMetaStructure(data.config, ifToken.content)
-
-  return {
-    type:      Lang.Type.If,
-    condition: parsedCondition,
-    then:      parsedThen,
-    location,
-    lexeme:    content
-  }
-}
+import { parseIfThenStructure } from "./if-then"
+import { guard } from "../../../../../../../util/assert"
 
 /**
  * Try to parse the construct as a {@link Lang.RIfThenElse}.
  */
 // TODO: named tuples
-export function parseIfThenElseStructure (data: ParserData, ifToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, then: NamedXmlBasedJson, elseToken: NamedXmlBasedJson, elseBlock: NamedXmlBasedJson): RIfThenElse | undefined {
+export function parseIfThenElseStructure (data: ParserData,
+                                          tokens: [
+                                            ifToken:    NamedXmlBasedJson,
+                                            leftParen:  NamedXmlBasedJson,
+                                            condition:  NamedXmlBasedJson,
+                                            rightParen: NamedXmlBasedJson,
+                                            then:       NamedXmlBasedJson,
+                                            elseToken:  NamedXmlBasedJson,
+                                            elseBlock:  NamedXmlBasedJson
+                                          ]): RIfThenElse | undefined {
   // we start by parsing a regular if-then structure
-  parseLog.trace(`trying to parse if-then-else structure for ${JSON.stringify([ifToken, leftParen, condition, rightParen, then, elseToken, elseBlock])}`)
-  const parsedIfThen = parseIfThenStructure(data, ifToken, leftParen, condition, rightParen, then)
+  parseLog.trace(`trying to parse if-then-else structure for ${JSON.stringify(tokens)}`)
+  const parsedIfThen = parseIfThenStructure(data, [tokens[0], tokens[1], tokens[2], tokens[3], tokens[4]])
   if (parsedIfThen === undefined) {
     return undefined
   }
-  parseLog.trace(`if-then part successful, now parsing else part for ${JSON.stringify([elseToken, elseBlock])}`)
-  if (elseToken.name !== Lang.Type.Else) {
-    throw new XmlParseError(`expected right-parenthesis for if but found ${JSON.stringify(rightParen)}`)
-  }
-  const parsedElse = tryParseOneElementBasedOnType(data, elseBlock)
-  if (parsedElse === undefined) {
-    throw new XmlParseError(`unexpected missing else-part of if-then-else, received ${JSON.stringify([parsedIfThen, parsedElse])} for ${JSON.stringify([ifToken, condition, then, elseToken, elseBlock])}`)
-  }
+  parseLog.trace(`if-then part successful, now parsing else part for ${JSON.stringify([tokens[5], tokens[6]])}`)
+  guard(tokens[5].name === Lang.Type.Else, `expected else token for if-then-else but found ${JSON.stringify(tokens[5])}`)
+
+  const parsedElse = tryParseOneElementBasedOnType(data, tokens[6])
+  guard(parsedElse !== undefined, `unexpected missing else-part of if-then-else, received ${JSON.stringify([parsedIfThen, parsedElse])} for ${JSON.stringify(tokens)}`)
+
   return {
     ...parsedIfThen,
     otherwise: parsedElse

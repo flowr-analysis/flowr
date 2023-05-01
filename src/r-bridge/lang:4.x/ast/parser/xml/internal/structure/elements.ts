@@ -8,10 +8,11 @@ import { tryParseOneElementBasedOnType } from "./single-element"
 import { parseSymbol } from "../values/symbol"
 import { tryParseUnaryStructure } from "../operators/unary"
 import { tryParseRepeatLoop } from "../loops/repeat"
-import { parseIfThenElseStructure, parseIfThenStructure } from "../control/if-then-else"
+import { parseIfThenElseStructure } from "../control/if-then-else"
 import { parseForLoopStructure } from "../loops/for"
 import { parseWhileLoopStructure } from "../loops/while"
 import { parseBinaryStructure } from "../operators/binary"
+import { parseIfThenStructure } from "../control/if-then"
 
 export function parseBasedOnType(data: ParserData, obj: XmlBasedJson[]): Lang.RNode[] {
   if (obj.length === 0) {
@@ -61,7 +62,7 @@ export function parseBasedOnType(data: ParserData, obj: XmlBasedJson[]): Lang.RN
       // TODO: try to parse symbols with namespace information
     }
   } else if (mappedWithName.length === 5) {
-    const ifThen = parseIfThenStructure(data, mappedWithName[0], mappedWithName[1], mappedWithName[2], mappedWithName[3], mappedWithName[4])
+    const ifThen = parseIfThenStructure(data, [mappedWithName[0], mappedWithName[1], mappedWithName[2], mappedWithName[3], mappedWithName[4]])
     if (ifThen !== undefined) {
       return [ifThen]
     } else {
@@ -71,7 +72,7 @@ export function parseBasedOnType(data: ParserData, obj: XmlBasedJson[]): Lang.RN
       }
     }
   } else if (mappedWithName.length === 7) {
-    const ifThenElse = parseIfThenElseStructure(data, mappedWithName[0], mappedWithName[1], mappedWithName[2], mappedWithName[3], mappedWithName[4], mappedWithName[5], mappedWithName[6])
+    const ifThenElse = parseIfThenElseStructure(data, [mappedWithName[0], mappedWithName[1], mappedWithName[2], mappedWithName[3], mappedWithName[4], mappedWithName[5], mappedWithName[6]])
     if (ifThenElse !== undefined) {
       return [ifThenElse]
     }

@@ -14,10 +14,14 @@ import { guard, isNotUndefined } from "../../../../../util/assert"
 import { splitArrayOn } from '../../../../../util/arrays'
 import { rangeStartsCompletelyBefore, SourceRange } from '../../../../../util/range'
 import { log } from "../../../../../util/log"
-import { extractLocation, getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from "./input-format"
+import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from "./input-format"
 import { DEFAULT_XML_PARSER_CONFIG, XmlParserConfig } from "./config"
+import { xlm2jsonObject } from "./internal/xml2json"
+import { extractLocation, retrieveMetaStructure } from "./internal/meta"
+import { parseNumber } from "./internal/values/number"
+import { parseString } from "./internal/values/string"
 
-const parseLog = log.getSubLogger({ name: 'ast-parser' })
+export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
 // TODO: clean up this file and split into multiple to keep shorter
 
@@ -46,7 +50,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   }
 
   public async parse (xmlString: string): Promise<Lang.RExpressionList> {
-    this.objectRoot = await this.parseToObj(xmlString) as XmlBasedJson
+    this.objectRoot = await xlm2jsonObject(this.config, xmlString) as XmlBasedJson
 
     return this.parseRootObjToAst(this.objectRoot)
   }
@@ -67,7 +71,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     const {
       location,
       content
-    } = this.retrieveMetaStructure(op.content)
+    } = retrieveMetaStructure(this.config, op.content)
 
     if (flavor === 'special') {
       flavor = identifySpecialOp(content)
@@ -99,7 +103,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     const {
       location,
       content
-    } = this.retrieveMetaStructure(op.content)
+    } = retrieveMetaStructure(this.config, op.content)
 
     // TODO: assert exists as known operator
     return {
@@ -110,20 +114,6 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       lexeme:  content,
       operand: parsedOperand
     }
-  }
-
-  private async parseToObj (xmlString: string): Promise<object> {
-    return await xml2js.parseStringPromise(xmlString, {
-      attrkey:               this.config.attributeName,
-      charkey:               this.config.contentName,
-      childkey:              this.config.childrenName,
-      charsAsChildren:       false,
-      explicitChildren:      true,
-      // we need this for semicolons etc., while we keep the old broken components we ignore them completely
-      preserveChildrenOrder: true,
-      normalize:             true,
-      strict:                true
-    })
   }
 
   private parseRootObjToAst (obj: XmlBasedJson): Lang.RExpressionList {
@@ -256,9 +246,9 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       case Lang.Type.ExprHelpAssignWrapper:
         return this.parseExpr(elem.content)
       case Lang.Type.Number:
-        return this.parseNumber(elem.content)
+        return parseNumber(this.config, elem.content)
       case Lang.Type.String:
-        return this.parseString(elem.content)
+        return parseString(this.config, elem.content)
       case Lang.Type.Symbol:
       case Lang.Type.Null: {
         const symbol =  this.parseSymbol(this.getMappedWithName([elem.content]))
@@ -320,7 +310,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     const {
       location,
       content
-    } = this.retrieveMetaStructure(repeatToken.content)
+    } = retrieveMetaStructure(this.config, repeatToken.content)
     return {
       type:   Lang.Type.Repeat,
       location,
@@ -352,7 +342,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     const {
       location,
       content
-    } = this.retrieveMetaStructure(forToken.content)
+    } = retrieveMetaStructure(this.config,forToken.content)
 
     // TODO: assert exists as known operator
     return {
@@ -387,7 +377,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     const {
       location,
       content
-    } = this.retrieveMetaStructure(whileToken.content)
+    } = retrieveMetaStructure(this.config, whileToken.content)
 
     // TODO: assert exists as known operator
     return {
@@ -433,7 +423,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     const {
       location,
       content
-    } = this.retrieveMetaStructure(ifToken.content)
+    } = retrieveMetaStructure(this.config, ifToken.content)
 
     if (parsedCondition === undefined || parsedThen === undefined) {
       throw new XmlParseError(`unexpected missing parts of if, received ${JSON.stringify([parsedCondition, parsedThen])} for ${JSON.stringify([ifToken, condition, then])}`)
@@ -489,19 +479,6 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     return this.revertTokenReplacement(getKeysGuarded(content, '#name') as string)
   }
 
-  private objectWithArrUnwrap (obj: XmlBasedJson): XmlBasedJson {
-    if (Array.isArray(obj)) {
-      if (obj.length !== 1) {
-        throw new XmlParseError(`expected only one element in the wrapped array, yet received ${JSON.stringify(obj)}`)
-      }
-      return obj[0]
-    } else if (typeof obj === 'object') {
-      return obj
-    } else {
-      throw new XmlParseError(`expected array or object, yet received ${JSON.stringify(obj)}`)
-    }
-  }
-
   /**
    * Returns an ExprList if there are multiple children, otherwise returns the single child directly with no expr wrapper
    */
@@ -511,7 +488,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       unwrappedObj,
       content,
       location
-    } = this.retrieveMetaStructure(obj)
+    } = retrieveMetaStructure(this.config, obj)
 
     const childrenSource = getKeysGuarded<XmlBasedJson[]>(unwrappedObj, this.config.childrenName)
     const maybeFunctionCall = this.tryToParseAsFunctionCall(this.getMappedWithName(childrenSource))
@@ -532,68 +509,6 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     }
   }
 
-  private retrieveMetaStructure (obj: XmlBasedJson): {
-    unwrappedObj: XmlBasedJson
-    location:     SourceRange
-    content:      string
-  } {
-    const unwrappedObj = this.objectWithArrUnwrap(obj)
-    const core = getKeysGuarded<any>(unwrappedObj, this.config.contentName, this.config.attributeName)
-    const location = extractLocation(core[this.config.attributeName])
-    const content = core[this.config.contentName]
-    return {
-      unwrappedObj,
-      location,
-      content
-    }
-  }
-
-  private parseNumber (obj: XmlBasedJson): Lang.RNumber | Lang.RLogical | RSymbol<NoInfo, typeof RNa> {
-    parseLog.debug(`trying to parse number ${JSON.stringify(obj)}`)
-    const {
-      location,
-      content
-    } = this.retrieveMetaStructure(obj)
-    const common = {
-      location,
-      lexeme: content
-    }
-    if (isNA(content)) { /* the special symbol */
-      return {
-        ...common,
-        namespace: undefined,
-        type:      Lang.Type.Symbol,
-        content
-      }
-    } else if (isBoolean(content)) {
-      return {
-        ...common,
-        type:    Lang.Type.Logical,
-        content: boolean2ts(content)
-      }
-    } else {
-      return {
-        ...common,
-        type:    Lang.Type.Number,
-        content: number2ts(content)
-      }
-    }
-  }
-
-  private parseString (obj: XmlBasedJson): Lang.RString {
-    parseLog.debug(`trying to parse string ${JSON.stringify(obj)}`)
-    const {
-      location,
-      content
-    } = this.retrieveMetaStructure(obj)
-    return {
-      type:    Lang.Type.String,
-      location,
-      content: string2ts(content),
-      lexeme:  content
-    }
-  }
-
   // TODO: deal with namespace information
   private parseSymbol (obj: NamedXmlBasedJson[]): 'no symbol' | Lang.RSymbol {
     guard(obj.length > 0, 'to parse symbols we need at least one object to work on!')
@@ -602,16 +517,16 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     let location, content, namespace
 
     if(obj.length === 1 && isSymbol(obj[0].name)) {
-      const data  = this.retrieveMetaStructure(obj[0].content)
+      const data  = retrieveMetaStructure(this.config, obj[0].content)
       location    = data.location
       content     = data.content
       namespace   = undefined
     } else if(obj.length === 3 && isSymbol(obj[2].name)) {
       // TODO: guard etc.
-      const data  = this.retrieveMetaStructure(obj[2].content)
+      const data  = retrieveMetaStructure(this.config, obj[2].content)
       location    = data.location
       content     = data.content
-      namespace   = this.retrieveMetaStructure(obj[0].content).content
+      namespace   = retrieveMetaStructure(this.config, obj[0].content).content
     } else {
       return 'no symbol'
     }
@@ -643,7 +558,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     parseLog.trace(`trying to parse function call with ${JSON.stringify(fnBase)}`)
     const {
       unwrappedObj, content, location
-    } = this.retrieveMetaStructure(fnBase.content)
+    } = retrieveMetaStructure(this.config, fnBase.content)
     const symbolContent: XmlBasedJson[] = getKeysGuarded(unwrappedObj, this.config.childrenName)
     if(symbolContent.map(x => this.getName(x)).findIndex(x => x === Lang.Type.FunctionCall) < 0) {
       parseLog.trace(`expected function call to have corresponding symbol, yet received ${JSON.stringify(symbolContent)}`)

@@ -1,6 +1,3 @@
-import { rangeFrom, SourceRange } from "../../../../../util/range"
-import { guard } from "../../../../../util/assert"
-
 /**
  * Thrown if the given input xml is not valid/contains unexpected elements.
  */
@@ -29,19 +26,6 @@ export interface NamedXmlBasedJson {
   name:    string,
   /** remaining content (e.g., children, ...) */
   content: XmlBasedJson
-}
-
-/**
- * given a xml element, extract the source location of the corresponding element in the R-ast
- */
-export function extractLocation (ast: XmlBasedJson): SourceRange {
-  const {
-    line1,
-    col1,
-    line2,
-    col2
-  } = getKeysGuarded<string>(ast, 'line1', 'col1', 'line2', 'col2')
-  return rangeFrom(line1, col1, line2, col2)
 }
 
 

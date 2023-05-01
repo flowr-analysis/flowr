@@ -17,6 +17,9 @@ import { RNa } from '../../../values'
 import { BinaryOperatorFlavor, UnaryOperatorFlavor } from '../../model/operators'
 import { ParserData } from './data'
 
+/** Denotes that if you return `undefined`, the parser will automatically take the original arguments (unchanged) */
+type AutoIfOmit<T> = T | undefined
+
 /**
  * Hooks for every action the parser does. They can process the object before and after the actual parsing.
  *
@@ -29,86 +32,87 @@ import { ParserData } from './data'
  * <ul>
  *   <li><strong>unknown:</strong> is called if the structure could not be identified. </li>
  * </ul>
- * TODO: allowed processors to return undefined to signal that there is nothing?
+ *
+ * For those marked with {@link AutoIfOmit} you can return `undefined` to automatically take the original arguments (unchanged).
  */
 export interface ParserHooks {
   values: {
     /** {@link parseNumber} */
     onNumber: {
-      before(data: ParserData, inputObj: XmlBasedJson): XmlBasedJson
-      after(data: ParserData, result: RNumber | RLogical | RSymbol<NoInfo, typeof RNa>): RNumber | RLogical | RSymbol<NoInfo, typeof RNa>
+      before(data: ParserData, inputObj: XmlBasedJson): AutoIfOmit<XmlBasedJson>
+      after(data: ParserData, result: RNumber | RLogical | RSymbol<NoInfo, typeof RNa>): AutoIfOmit<RNumber | RLogical | RSymbol<NoInfo, typeof RNa>>
     },
     /** {@link parseString} */
     onString: {
-      before(data: ParserData, inputObj: XmlBasedJson): XmlBasedJson
-      after(data: ParserData, result: RSymbol): RSymbol
+      before(data: ParserData, inputObj: XmlBasedJson): AutoIfOmit<XmlBasedJson>
+      after(data: ParserData, result: RSymbol): AutoIfOmit<RSymbol>
     },
     /** {@link parseSymbol} */
     onSymbol: {
-      before(data: ParserData, inputObjs: XmlBasedJson[]): XmlBasedJson[]
-      after(data: ParserData, result: RSymbol | undefined): RSymbol | undefined
+      before(data: ParserData, inputObjs: XmlBasedJson[]): AutoIfOmit<XmlBasedJson[]>
+      after(data: ParserData, result: RSymbol | undefined): AutoIfOmit<RSymbol | undefined>
     }
   },
   other: {
     /** {@link parseComment} */
     onComment: {
-      before(data: ParserData, inputObj: XmlBasedJson): XmlBasedJson
-      after(data: ParserData, result: RComment): RComment
+      before(data: ParserData, inputObj: XmlBasedJson): AutoIfOmit<XmlBasedJson>
+      after(data: ParserData, result: RComment): AutoIfOmit<RComment>
     }
   },
   operators: {
     /** {@link tryParseBinaryStructure} */
     onBinary: {
       /** triggered if {@link tryParseBinaryStructure} could not find a matching operator, you probably still want to return `undefined` */
-      unknown(data: ParserData, lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RNode | undefined
-      before(data: ParserData, flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): {flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson}
-      after(data: ParserData, result: RBinaryOp): RBinaryOp
+      unknown(data: ParserData, lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): AutoIfOmit<RNode | undefined>
+      before(data: ParserData, flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): AutoIfOmit<{flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson}>
+      after(data: ParserData, result: RBinaryOp): AutoIfOmit<RBinaryOp>
     },
     /** {@link tryParseUnaryStructure} */
     onUnary: {
       /** triggered if {@link tryParseUnaryStructure} could not find a matching operator, you probably still want to return `undefined` */
-      unknown(data: ParserData, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined
-      before(data: ParserData, flavor: UnaryOperatorFlavor, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): {flavor: UnaryOperatorFlavor, op: NamedXmlBasedJson, operand: NamedXmlBasedJson}
-      after(data: ParserData, result: RUnaryOp): RUnaryOp
+      unknown(data: ParserData, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): AutoIfOmit<RNode | undefined>
+      before(data: ParserData, flavor: UnaryOperatorFlavor, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): AutoIfOmit<{flavor: UnaryOperatorFlavor, op: NamedXmlBasedJson, operand: NamedXmlBasedJson}>
+      after(data: ParserData, result: RUnaryOp): AutoIfOmit<RUnaryOp>
     },
   },
   loops: {
     /** {@link tryParseForLoopStructure} */
     onForLoop: {
       /** triggered if {@link tryParseForLoopStructure} could not detect a for-loop, you probably still want to return `undefined` */
-      unknown(data: ParserData, forToken: NamedXmlBasedJson, condition: NamedXmlBasedJson, body: NamedXmlBasedJson): RForLoop | undefined
-      before(data: ParserData, forToken: NamedXmlBasedJson, condition: NamedXmlBasedJson, body: NamedXmlBasedJson): { forToken: NamedXmlBasedJson, condition: NamedXmlBasedJson, body: NamedXmlBasedJson }
-      after(data: ParserData, result: RForLoop): RForLoop
+      unknown(data: ParserData, forToken: NamedXmlBasedJson, condition: NamedXmlBasedJson, body: NamedXmlBasedJson): AutoIfOmit<RForLoop | undefined>
+      before(data: ParserData, forToken: NamedXmlBasedJson, condition: NamedXmlBasedJson, body: NamedXmlBasedJson): AutoIfOmit<{ forToken: NamedXmlBasedJson, condition: NamedXmlBasedJson, body: NamedXmlBasedJson }>
+      after(data: ParserData, result: RForLoop): AutoIfOmit<RForLoop>
     },
     /** {@link tryParseRepeatLoopStructure} */
     onRepeatLoop: {
       /** triggered if {@link tryParseRepeatLoopStructure} could not detect a repeat-loop, you probably still want to return `undefined` */
-      unknown(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): RRepeatLoop | undefined
-      before(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): { repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson }
-      after(data: ParserData, result: RRepeatLoop): RRepeatLoop
+      unknown(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): AutoIfOmit<RRepeatLoop | undefined>
+      before(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): AutoIfOmit<{ repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson }>
+      after(data: ParserData, result: RRepeatLoop): AutoIfOmit<RRepeatLoop>
     },
     /** {@link tryParseWhileLoopStructure} */
     onWhileLoop: {
       /** triggered if {@link tryParseWhileLoopStructure} could not detect a while-loop, you probably still want to return `undefined` */
-      unknown(data: ParserData, whileToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, body: NamedXmlBasedJson): RWhileLoop | undefined
-      before(data: ParserData, whileToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, body: NamedXmlBasedJson): { whileToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, body: NamedXmlBasedJson }
-      after(data: ParserData, result: RWhileLoop): RWhileLoop
+      unknown(data: ParserData, whileToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, body: NamedXmlBasedJson): AutoIfOmit<RWhileLoop | undefined>
+      before(data: ParserData, whileToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, body: NamedXmlBasedJson): AutoIfOmit<{ whileToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, body: NamedXmlBasedJson }>
+      after(data: ParserData, result: RWhileLoop): AutoIfOmit<RWhileLoop>
     }
   },
   functions: {
     /** {@link tryToParseFunctionCall} */
     onFunctionCall: {
       /** triggered if {@link tryToParseFunctionCall} could not detect a function call, you probably still want to return `undefined` */
-      unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | undefined
-      before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): NamedXmlBasedJson[]
-      after(data: ParserData, result: RFunctionCall): RFunctionCall
+      unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RFunctionCall | undefined>
+      before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
+      after(data: ParserData, result: RFunctionCall): AutoIfOmit<RFunctionCall>
     }
   },
   expression: {
     /** {@link parseExpression} */
     onExpression: {
-      before(data: ParserData, inputObj: XmlBasedJson): XmlBasedJson
-      after(data: ParserData, result: RNode): RNode
+      before(data: ParserData, inputObj: XmlBasedJson): AutoIfOmit<XmlBasedJson>
+      after(data: ParserData, result: RNode): AutoIfOmit<RNode>
     }
   },
   control: {
@@ -121,21 +125,21 @@ export interface ParserHooks {
         condition:  NamedXmlBasedJson,
         rightParen: NamedXmlBasedJson,
         then:       NamedXmlBasedJson
-      ]): RIfThenElse | undefined
+      ]): AutoIfOmit<RIfThenElse | undefined>
       before(data: ParserData, tokens: [
         ifToken:    NamedXmlBasedJson,
         leftParen:  NamedXmlBasedJson,
         condition:  NamedXmlBasedJson,
         rightParen: NamedXmlBasedJson,
         then:       NamedXmlBasedJson
-      ]): [
+      ]): AutoIfOmit<[
         ifToken:    NamedXmlBasedJson,
         leftParen:  NamedXmlBasedJson,
         condition:  NamedXmlBasedJson,
         rightParen: NamedXmlBasedJson,
         then:       NamedXmlBasedJson
-      ]
-      after(data: ParserData, result: RIfThenElse): RIfThenElse
+      ]>
+      after(data: ParserData, result: RIfThenElse): AutoIfOmit<RIfThenElse>
     },
     /** {@link tryParseIfThenElseStructure} */
     onIfElse: {
@@ -148,7 +152,7 @@ export interface ParserHooks {
         then:       NamedXmlBasedJson,
         elseToken:  NamedXmlBasedJson,
         elseBlock:  NamedXmlBasedJson
-      ]): RIfThenElse | undefined
+      ]): AutoIfOmit<RIfThenElse | undefined>
       before(data: ParserData, tokens: [
         ifToken:    NamedXmlBasedJson,
         leftParen:  NamedXmlBasedJson,
@@ -157,7 +161,7 @@ export interface ParserHooks {
         then:       NamedXmlBasedJson,
         elseToken:  NamedXmlBasedJson,
         elseBlock:  NamedXmlBasedJson
-      ]): [
+      ]): AutoIfOmit<[
         ifToken:    NamedXmlBasedJson,
         leftParen:  NamedXmlBasedJson,
         condition:  NamedXmlBasedJson,
@@ -165,8 +169,8 @@ export interface ParserHooks {
         then:       NamedXmlBasedJson,
         elseToken:  NamedXmlBasedJson,
         elseBlock:  NamedXmlBasedJson
-      ]
-      after(data: ParserData, result: RIfThenElse): RIfThenElse
+      ]>
+      after(data: ParserData, result: RIfThenElse): AutoIfOmit<RIfThenElse>
     }
   }
 }

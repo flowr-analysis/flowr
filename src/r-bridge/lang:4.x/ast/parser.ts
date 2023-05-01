@@ -710,7 +710,13 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     }
     const functionName = this.parseSymbol(this.getMappedWithName(symbolContent))
     guard(functionName !== 'no symbol', 'expected function name to be a symbol, yet received none')
-    const parameters: RNode[] = [] // this.parseBasedOnType(mappedWithName.slice(1))
+    const splitParametersOnComma = splitArrayOn(mappedWithName.slice(1), x => x.name === Lang.Type.Comma)
+    const parameters: RNode[] = splitParametersOnComma.map(x => {
+      const gotParameters = this.parseBasedOnType(x.map(x => x.content))
+      guard(gotParameters.length === 1, `expected parameter to be wrapped in expression, yet received ${gotParameters}`)
+      return gotParameters[0]
+    })
+
     return {
       type:   Lang.Type.FunctionCall,
       location,

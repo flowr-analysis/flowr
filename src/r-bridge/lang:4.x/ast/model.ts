@@ -38,6 +38,7 @@ export const enum Type {
   While = 'WHILE',
   If = 'IF',
   Else = 'ELSE',
+  Comma = ',',
   FunctionCall = 'SYMBOL_FUNCTION_CALL',
   SymbolPackage = 'SYMBOL_PACKAGE',
   NamespaceGet = 'NS_GET',

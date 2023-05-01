@@ -67,7 +67,7 @@ export interface Namespace {
 // TODO: special constants
 export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
 
-export type RSingleNode<Info>     = RSymbol<Info> | RConstant<Info>
+export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info>
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>
 export type RCalls<Info>          = RFunctionCall<Info>

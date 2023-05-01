@@ -159,6 +159,9 @@ export function decorateWithIds<OtherInfo>(ast: RNode<Exclude<OtherInfo, Id>>, g
       foldArithmeticOp: unaryOp,
       foldLogicalOp:    unaryOp,
     },
+    other: {
+      foldComment: foldLeaf
+    },
     loop: {
       foldFor,
       foldRepeat,

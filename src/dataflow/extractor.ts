@@ -528,6 +528,9 @@ export function produceDataFlowGraph<OtherInfo>(ast: RNodeWithParent<OtherInfo>)
       foldRepeat: processRepeatLoop,
       foldWhile:  processWhileLoop
     },
+    other: {
+      foldComment: processUninterestingLeaf,
+    },
     foldIfThenElse:   processIfThenElse,
     foldExprList:     processExprList(dataflowIdMap),
     foldFunctionCall: processFunctionCall,

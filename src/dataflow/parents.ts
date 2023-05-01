@@ -131,6 +131,9 @@ export function decorateWithParentInformation<OtherInfo>(ast: IdRNode<OtherInfo>
       foldLogicalOp:    unaryOp,
       foldArithmeticOp: unaryOp
     },
+    other: {
+      foldComment: foldLeaf,
+    },
     loop: {
       foldFor,
       foldRepeat,

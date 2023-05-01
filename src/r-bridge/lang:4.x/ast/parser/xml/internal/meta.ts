@@ -1,5 +1,5 @@
-import { getKeysGuarded, XmlBasedJson, XmlParseError } from "../input-format"
-import { rangeFrom, SourceRange } from "../../../../../../util/range"
+import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from "../input-format"
+import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from "../../../../../../util/range"
 import { XmlParserConfig } from "../config"
 
 /**
@@ -53,5 +53,58 @@ export function retrieveMetaStructure (config: XmlParserConfig, obj: XmlBasedJso
     unwrappedObj,
     location,
     content
+  }
+}
+
+export function revertTokenReplacement(tokenMap: XmlParserConfig['tokenMap'], token: string): string {
+  return tokenMap[token] ?? token
+}
+
+// TODO: use NamedJsons all the time
+export function assureTokenType (tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson, expectedName: string): void {
+  // TODO: allow us to configure the name?
+  const name = getTokenType(tokenMap, obj)
+  if (name !== expectedName) {
+    throw new XmlParseError(`expected name to be ${expectedName}, yet received ${name} for ${JSON.stringify(obj)}`)
+  }
+}
+
+/**
+ * Extract the token-type of the given object. This is based on the knowledge, that all json objects created
+ * from the R xml have a name attached.
+ *
+ * @param tokenMap - used to revert token types (i.e., revert `xmlparsedata`)
+ * @param content - the json object to extract the token-type from
+ */
+export function getTokenType (tokenMap: XmlParserConfig['tokenMap'], content: XmlBasedJson): string {
+  return revertTokenReplacement(tokenMap, getKeysGuarded(content, '#name'))
+}
+
+export function getWithTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson[]) {
+  return obj.map((content) => ({
+    name: getTokenType(tokenMap, content),
+    content
+  }))
+}
+
+export function retrieveOpName(config: XmlParserConfig, op: NamedXmlBasedJson): string {
+  /*
+   * only real arithmetic ops have their operation as their own name, the others identify via content
+   */
+  return op.content[config.contentName] as string
+}
+
+/**
+ * Ensure that the first child is completely before the second child.
+ *
+ * @param config - the configuration of the parser to use to retrieve the corresponding name fields
+ * @param first  - the first child which should be the lhs
+ * @param second - the second child which should be the rhs
+ */
+export function ensureChildrenAreLhsAndRhsOrdered (config: XmlParserConfig, first: XmlBasedJson, second: XmlBasedJson): void {
+  const firstOtherLoc = extractLocation(first[config.attributeName] as XmlBasedJson)
+  const secondOtherLoc = extractLocation(second[config.attributeName] as XmlBasedJson)
+  if (!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
+    throw new XmlParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`)
   }
 }

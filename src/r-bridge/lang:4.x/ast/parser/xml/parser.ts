@@ -15,6 +15,7 @@ import { splitArrayOn } from '../../../../../util/arrays'
 import { rangeStartsCompletelyBefore, SourceRange } from '../../../../../util/range'
 import { log } from "../../../../../util/log"
 import { extractLocation, getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from "./input-format"
+import { DEFAULT_XML_PARSER_CONFIG, XmlParserConfig } from "./config"
 
 const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
@@ -22,21 +23,6 @@ const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
 interface AstParser<Target extends Lang.Base<NoInfo, string | undefined>> {
   parse: (xmlString: string) => Promise<Target>
-}
-
-interface XmlParserConfig extends MergeableRecord {
-  attributeName: string
-  contentName:   string
-  childrenName:  string
-  // Mapping from xml tag name to the real operation of the node
-  tokenMap:      Record<string, string /* TODO: change this to OP enum or so */>
-}
-
-const DEFAULT_XML_PARSER_CONFIG: XmlParserConfig = {
-  attributeName: '@attributes',
-  contentName:   '@content',
-  childrenName:  '@children',
-  tokenMap:      { /* this should not be used, but just so that we can omit null-checks */ }
 }
 
 function identifySpecialOp (content: string): BinaryOperatorFlavor {

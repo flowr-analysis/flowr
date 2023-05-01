@@ -3,9 +3,9 @@ import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { parseBasedOnType } from '../structure/elements'
-import { tryToParseAsFunctionCall } from '../functions/call'
+import { tryToParseFunctionCall } from '../functions/call'
 import { Type } from '../../../../model/type'
-import { RNode } from '../../../../model/model'
+import { RExpressionList, RFunctionCall, RNode } from '../../../../model/model'
 
 /**
  * Returns an ExprList if there are multiple children, otherwise returns the single child directly with no expr wrapper
@@ -13,8 +13,8 @@ import { RNode } from '../../../../model/model'
  * @param data - The data used by the parser (see {@link ParserData})
  * @param obj - The json object to extract the meta-information from
  */
-export function parseExpr(data: ParserData, obj: XmlBasedJson): RNode {
-  parseLog.debug(`trying to parse expr ${JSON.stringify(obj)}`)
+export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
+  parseLog.debug(`[expr] ${JSON.stringify(obj)}`)
   const {
     unwrappedObj,
     content,
@@ -22,7 +22,7 @@ export function parseExpr(data: ParserData, obj: XmlBasedJson): RNode {
   } = retrieveMetaStructure(data.config, obj)
 
   const childrenSource = getKeysGuarded<XmlBasedJson[]>(unwrappedObj, data.config.childrenName)
-  const maybeFunctionCall = tryToParseAsFunctionCall(data, getWithTokenType(data.config.tokenMap, childrenSource))
+  const maybeFunctionCall = tryToParseFunctionCall(data, getWithTokenType(data.config.tokenMap, childrenSource))
   if (maybeFunctionCall !== undefined) {
     return maybeFunctionCall
   }

@@ -7,7 +7,7 @@ import { Type } from "../../../../model/type"
 
 import { RWhileLoop } from "../../../../model/nodes/RWhileLoop"
 
-export function parseWhileLoopStructure(
+export function tryParseWhileLoopStructure(
   data: ParserData,
   whileToken: NamedXmlBasedJson,
   leftParen: NamedXmlBasedJson,

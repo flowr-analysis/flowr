@@ -16,7 +16,7 @@ import { RSymbol } from "../../../../model/nodes/RSymbol"
 import { RForLoop } from "../../../../model/nodes/RForLoop"
 import { RNode } from "../../../../model/model"
 
-export function parseForLoopStructure(
+export function tryParseForLoopStructure(
   data: ParserData,
   forToken: NamedXmlBasedJson,
   condition: NamedXmlBasedJson,

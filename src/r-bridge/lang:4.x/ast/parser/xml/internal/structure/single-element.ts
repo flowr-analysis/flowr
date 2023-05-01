@@ -4,7 +4,7 @@ import { parseString } from '../values/string'
 import { guard } from '../../../../../../../util/assert'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
-import { parseExpr } from '../expression/expression'
+import { parseExpression } from '../expression/expression'
 import { parseSymbol } from '../values/symbol'
 import { getWithTokenType } from '../meta'
 import { Type } from '../../../../model/type'
@@ -34,7 +34,7 @@ export function tryParseOneElementBasedOnType(data: ParserData, elem: NamedXmlBa
       return parseComment(data.config, elem.content)
     case Type.Expression:
     case Type.ExprHelpAssignWrapper:
-      return parseExpr(data, elem.content)
+      return parseExpression(data, elem.content)
     case Type.Number:
       return parseNumber(data.config, elem.content)
     case Type.String:

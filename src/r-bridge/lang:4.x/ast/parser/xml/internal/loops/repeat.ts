@@ -7,15 +7,15 @@ import { Type } from '../../../../model/type'
 import { RRepeatLoop } from '../../../../model/nodes/RRepeatLoop'
 
 /**
- * Try to parse the construct as a {@link Lang.RRepeatLoop}.
+ * Try to parse the construct as a {@link RRepeatLoop}.
  *
  * @param data - The data used by the parser (see {@link ParserData})
  * @param repeatToken - Token which represents the `repeat` keyword
  * @param body - The `body` of the repeat-loop
  *
- * @returns The parsed {@link Lang.RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
+ * @returns The parsed {@link RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
  */
-export function tryParseRepeatLoop(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): RRepeatLoop | undefined {
+export function tryParseRepeatLoopStructure(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): RRepeatLoop | undefined {
   if (repeatToken.name !== Type.Repeat) {
     parseLog.debug('encountered non-repeat token for supposed repeat-loop structure')
     return undefined

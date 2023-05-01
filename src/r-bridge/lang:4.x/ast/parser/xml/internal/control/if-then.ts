@@ -7,15 +7,15 @@ import { Type } from '../../../../model/type'
 import { RIfThenElse } from '../../../../model/nodes/RIfThenElse'
 
 /**
- * Try to parse the construct as a {@link Lang.RIfThenElse}.
+ * Try to parse the construct as a {@link RIfThenElse}.
  */
-export function parseIfThenStructure(data: ParserData,
-                                     tokens: [
-                                        ifToken:    NamedXmlBasedJson,
-                                        leftParen:  NamedXmlBasedJson,
-                                        condition:  NamedXmlBasedJson,
-                                        rightParen: NamedXmlBasedJson,
-                                        then:       NamedXmlBasedJson
+export function tryParseIfThenStructure(data: ParserData,
+                                        tokens: [
+                                          ifToken:    NamedXmlBasedJson,
+                                          leftParen:  NamedXmlBasedJson,
+                                          condition:  NamedXmlBasedJson,
+                                          rightParen: NamedXmlBasedJson,
+                                          then:       NamedXmlBasedJson
                                       ]): RIfThenElse | undefined {
   // TODO: guard-like syntax for this too?
   if (tokens[0].name !== Type.If) {

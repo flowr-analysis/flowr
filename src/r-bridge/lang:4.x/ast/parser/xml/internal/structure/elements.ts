@@ -6,12 +6,12 @@ import { ParserData } from "../../data"
 import { tryParseOneElementBasedOnType } from "./single-element"
 import { parseSymbol } from "../values/symbol"
 import { tryParseUnaryStructure } from "../operators/unary"
-import { tryParseRepeatLoop } from "../loops/repeat"
-import { parseIfThenElseStructure } from "../control/if-then-else"
-import { parseForLoopStructure } from "../loops/for"
-import { parseWhileLoopStructure } from "../loops/while"
-import { parseBinaryStructure } from "../operators/binary"
-import { parseIfThenStructure } from "../control/if-then"
+import { tryParseRepeatLoopStructure } from "../loops/repeat"
+import { tryParseIfThenElseStructure } from "../control/if-then-else"
+import { tryParseForLoopStructure } from "../loops/for"
+import { tryParseWhileLoopStructure } from "../loops/while"
+import { tryParseBinaryStructure } from "../operators/binary"
+import { tryParseIfThenStructure } from "../control/if-then"
 import { Type } from "../../../../model/type"
 import { RNode } from "../../../../model/model"
 
@@ -57,7 +57,7 @@ export function parseBasedOnType(
     if (unaryOp !== undefined) {
       return [unaryOp]
     }
-    const repeatLoop = tryParseRepeatLoop(
+    const repeatLoop = tryParseRepeatLoopStructure(
       data,
       mappedWithName[0],
       mappedWithName[1]
@@ -66,7 +66,7 @@ export function parseBasedOnType(
       return [repeatLoop]
     }
   } else if (mappedWithName.length === 3) {
-    const binary = parseBinaryStructure(
+    const binary = tryParseBinaryStructure(
       data,
       mappedWithName[0],
       mappedWithName[1],
@@ -76,7 +76,7 @@ export function parseBasedOnType(
       return [binary]
     } else {
       // TODO: maybe-monad pass through? or just use undefined (see ts-fp)
-      const forLoop = parseForLoopStructure(
+      const forLoop = tryParseForLoopStructure(
         data,
         mappedWithName[0],
         mappedWithName[1],
@@ -94,7 +94,7 @@ export function parseBasedOnType(
       // TODO: try to parse symbols with namespace information
     }
   } else if (mappedWithName.length === 5) {
-    const ifThen = parseIfThenStructure(data, [
+    const ifThen = tryParseIfThenStructure(data, [
       mappedWithName[0],
       mappedWithName[1],
       mappedWithName[2],
@@ -104,7 +104,7 @@ export function parseBasedOnType(
     if (ifThen !== undefined) {
       return [ifThen]
     } else {
-      const whileLoop = parseWhileLoopStructure(
+      const whileLoop = tryParseWhileLoopStructure(
         data,
         mappedWithName[0],
         mappedWithName[1],
@@ -117,7 +117,7 @@ export function parseBasedOnType(
       }
     }
   } else if (mappedWithName.length === 7) {
-    const ifThenElse = parseIfThenElseStructure(data, [
+    const ifThenElse = tryParseIfThenElseStructure(data, [
       mappedWithName[0],
       mappedWithName[1],
       mappedWithName[2],

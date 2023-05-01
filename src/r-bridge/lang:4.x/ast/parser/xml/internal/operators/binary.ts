@@ -20,7 +20,7 @@ import {
 import { RBinaryOp } from "../../../../model/nodes/RBinaryOp"
 import { RNode } from "../../../../model/model"
 
-export function parseBinaryStructure(
+export function tryParseBinaryStructure(
   data: ParserData,
   lhs: NamedXmlBasedJson,
   op: NamedXmlBasedJson,

@@ -2,7 +2,7 @@
 
 import { type RShell } from './shell'
 import { parseCSV, ts2r } from './lang:4.x/values'
-import { parse } from './lang:4.x/ast/parser'
+import { parse } from './lang:4.x/ast/parser/xml/parser'
 import { type RExpressionList } from './lang:4.x/ast/model'
 import { startAndEndsWith } from '../util/strings'
 

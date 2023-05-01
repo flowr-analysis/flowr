@@ -1,6 +1,6 @@
-import { deepMergeObject, type MergeableRecord } from '../../../util/objects'
+import { deepMergeObject, type MergeableRecord } from '../../../../../util/objects'
 import * as xml2js from 'xml2js'
-import * as Lang from './model'
+import * as Lang from '../../model'
 import {
   type NoInfo,
   type BinaryOperatorFlavor,
@@ -8,12 +8,13 @@ import {
   type RIfThenElse,
   type RNode,
   type RSymbol, RWhileLoop, UnaryOperatorFlavor, RFunctionCall, isSymbol
-} from './model'
-import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../values'
-import { guard, isNotUndefined } from "../../../util/assert"
-import { splitArrayOn } from '../../../util/arrays'
-import { rangeStartsCompletelyBefore, rangeFrom, SourceRange } from '../../../util/range'
-import { log } from "../../../util/log"
+} from '../../model'
+import { boolean2ts, isBoolean, isNA, number2ts, type RNa, string2ts } from '../../../values'
+import { guard, isNotUndefined } from "../../../../../util/assert"
+import { splitArrayOn } from '../../../../../util/arrays'
+import { rangeStartsCompletelyBefore, SourceRange } from '../../../../../util/range'
+import { log } from "../../../../../util/log"
+import { extractLocation, getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from "./input-format"
 
 const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
@@ -36,52 +37,6 @@ const DEFAULT_XML_PARSER_CONFIG: XmlParserConfig = {
   contentName:   '@content',
   childrenName:  '@children',
   tokenMap:      { /* this should not be used, but just so that we can omit null-checks */ }
-}
-
-class XmlParseError extends Error {
-  constructor (message: string) {
-    super(message)
-    this.name = 'XmlParseError'
-  }
-}
-
-type XmlBasedJson = Record<string, any>
-
-interface NamedXmlBasedJson {
-  name:    string,
-  content: XmlBasedJson
-}
-
-function getKeysGuarded (obj: XmlBasedJson, key: string): any
-function getKeysGuarded (obj: XmlBasedJson, ...key: string[]): Record<string, any>
-function getKeysGuarded (obj: XmlBasedJson, ...key: string[]): (Record<string, any> | string) {
-  const keys = Object.keys(obj)
-
-  const check = (key: string): any => {
-    if (!keys.includes(key)) {
-      throw new XmlParseError(`expected obj to have key ${key}, yet received ${JSON.stringify(obj)}`)
-    }
-    return obj[key]
-  }
-
-  if (key.length === 1) {
-    return check(key[0])
-  } else {
-    return key.reduce<Record<string, any>>((acc, key) => {
-      acc[key] = check(key)
-      return acc
-    }, {})
-  }
-}
-
-function extractRange (ast: XmlBasedJson): SourceRange {
-  const {
-    line1,
-    col1,
-    line2,
-    col2
-  } = getKeysGuarded(ast, 'line1', 'col1', 'line2', 'col2')
-  return rangeFrom(line1, col1, line2, col2)
 }
 
 function identifySpecialOp (content: string): BinaryOperatorFlavor {
@@ -186,10 +141,10 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   }
 
   private parseRootObjToAst (obj: XmlBasedJson): Lang.RExpressionList {
-    const exprContent = getKeysGuarded(obj, Lang.Type.ExpressionList)
+    const exprContent = getKeysGuarded<XmlBasedJson>(obj, Lang.Type.ExpressionList)
     this.assureName(exprContent, Lang.Type.ExpressionList)
 
-    const children = getKeysGuarded(exprContent, this.config.childrenName)
+    const children = getKeysGuarded<XmlBasedJson[]>(exprContent, this.config.childrenName)
     const parsedChildren = this.parseBasedOnType(children)
 
     // TODO: at total object in any case of error?
@@ -460,7 +415,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
 
   private parseForLoopCondition(forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined } {
     // must have a child which is `in`, a variable on the left, and a vector on the right
-    const children: NamedXmlBasedJson[] = getKeysGuarded(forCondition, this.config.childrenName).map((content: XmlBasedJson) => ({
+    const children: NamedXmlBasedJson[] = getKeysGuarded<XmlBasedJson[]>(forCondition, this.config.childrenName).map(content => ({
       name: this.getName(content),
       content
     }))
@@ -529,8 +484,8 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
   }
 
   private ensureChildrenAreLhsAndRhsOrdered (first: XmlBasedJson, second: XmlBasedJson): void {
-    const firstOtherLoc = extractRange(first[this.config.attributeName])
-    const secondOtherLoc = extractRange(second[this.config.attributeName])
+    const firstOtherLoc = extractLocation(first[this.config.attributeName] as XmlBasedJson)
+    const secondOtherLoc = extractLocation(second[this.config.attributeName] as XmlBasedJson)
     if (!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
       throw new XmlParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`)
     }
@@ -572,7 +527,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
       location
     } = this.retrieveMetaStructure(obj)
 
-    const childrenSource = getKeysGuarded(unwrappedObj, this.config.childrenName)
+    const childrenSource = getKeysGuarded<XmlBasedJson[]>(unwrappedObj, this.config.childrenName)
     const maybeFunctionCall = this.tryToParseAsFunctionCall(this.getMappedWithName(childrenSource))
     if (maybeFunctionCall !== 'no function call') {
       return maybeFunctionCall
@@ -597,8 +552,8 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     content:      string
   } {
     const unwrappedObj = this.objectWithArrUnwrap(obj)
-    const core = getKeysGuarded(unwrappedObj, this.config.contentName, this.config.attributeName)
-    const location = extractRange(core[this.config.attributeName])
+    const core = getKeysGuarded<any>(unwrappedObj, this.config.contentName, this.config.attributeName)
+    const location = extractLocation(core[this.config.attributeName])
     const content = core[this.config.contentName]
     return {
       unwrappedObj,
@@ -689,7 +644,7 @@ class XmlBasedAstParser implements AstParser<Lang.RNode> {
     /*
      * only real arithmetic ops have their operation as their own name, the others identify via content
      */
-    return op.content[this.config.contentName]
+    return op.content[this.config.contentName] as string
   }
 
   private tryToParseAsFunctionCall(mappedWithName: NamedXmlBasedJson[]): 'no function call' | RFunctionCall {

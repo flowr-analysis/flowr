@@ -1,3 +1,5 @@
+import { DeepPartial } from 'ts-essentials'
+
 /**
  * checks if `item` is an object (it may be an array, ...)
  */
@@ -14,9 +16,9 @@ export type Mergeable = MergeableRecord | MergeableArray
  * given two objects deeply merges them, if an object is an array it will merge the array values!
  * Guarantees some type safety by requiring objects to merge to be from the same type (allows undefined)
  *
- * TODO: set etc. support in the future? => merge type class like?
+ * TODO: set etc. support in the future? =\> merge type class like?
  */
-export function deepMergeObject<T extends Mergeable>(base: T, addon?: Partial<T>): T
+export function deepMergeObject<T extends Mergeable>(base: T, addon?: DeepPartial<T> | Partial<T>): T
 export function deepMergeObject(base: Mergeable, addon: Mergeable): Mergeable
 export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined
 export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined {

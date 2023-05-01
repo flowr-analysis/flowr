@@ -16,6 +16,7 @@ import {
 import { RNa } from '../../../values'
 import { BinaryOperatorFlavor, UnaryOperatorFlavor } from '../../model/operators'
 import { ParserData } from './data'
+import { DeepReadonly, DeepRequired } from 'ts-essentials'
 
 /** Denotes that if you return `undefined`, the parser will automatically take the original arguments (unchanged) */
 type AutoIfOmit<T> = T | undefined
@@ -35,7 +36,7 @@ type AutoIfOmit<T> = T | undefined
  *
  * For those marked with {@link AutoIfOmit} you can return `undefined` to automatically take the original arguments (unchanged).
  */
-export interface ParserHooks {
+export interface XmlParserHooks {
   values: {
     /** {@link parseNumber} */
     onNumber: {
@@ -174,3 +175,82 @@ export interface ParserHooks {
     }
   }
 }
+
+function doNothing() { return undefined }
+
+export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = {
+  values: {
+    onNumber: {
+      before: doNothing,
+      after:  doNothing
+    },
+    onString: {
+      before: doNothing,
+      after:  doNothing
+    },
+    onSymbol: {
+      before: doNothing,
+      after:  doNothing
+    }
+  },
+  other: {
+    onComment: {
+      before: doNothing,
+      after:  doNothing
+    }
+  },
+  control: {
+    onIfThen: {
+      unknown: doNothing,
+      before:  doNothing,
+      after:   doNothing
+    },
+    onIfElse: {
+      unknown: doNothing,
+      before:  doNothing,
+      after:   doNothing
+    }
+  },
+  loops: {
+    onForLoop: {
+      unknown: doNothing,
+      before:  doNothing,
+      after:   doNothing
+    },
+    onRepeatLoop: {
+      unknown: doNothing,
+      before:  doNothing,
+      after:   doNothing
+    },
+    onWhileLoop: {
+      unknown: doNothing,
+      before:  doNothing,
+      after:   doNothing
+    }
+  },
+  operators: {
+    onBinary: {
+      unknown: doNothing,
+      before:  doNothing,
+      after:   doNothing
+    },
+    onUnary: {
+      unknown: doNothing,
+      before:  doNothing,
+      after:   doNothing
+    }
+  },
+  functions: {
+    onFunctionCall: {
+      unknown: doNothing,
+      before:  doNothing,
+      after:   doNothing
+    }
+  },
+  expression: {
+    onExpression: {
+      before: doNothing,
+      after:  doNothing
+    }
+  }
+} as const

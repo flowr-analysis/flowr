@@ -1,3 +1,7 @@
+import { assertAst, withShell } from '../helper/shell'
+import { exprList } from '../helper/ast-builder'
+import { log, LogLevel } from '../../src/util/log'
+
 describe('R-Bridge', () => {
   describe('R language utilities', () => {
     require('./lang/values')

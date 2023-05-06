@@ -7,11 +7,17 @@ import {
 import { exprList } from "../../../helper/ast-builder"
 import { rangeFrom } from "../../../../src/util/range"
 import { Type } from "../../../../src/r-bridge/lang:4.x/ast/model/type"
+import { log, LogLevel } from '../../../../src/util/log'
 
 describe(
   "0. Constant Parsing",
-  withShell((shell) => {
+  withShell(shell => {
     describe("0. parse single", () => {
+      describe('0.0 parse illegal', () => {
+        log.updateSettings(s => s.settings.minLevel = LogLevel.trace)
+        assertAst('illegal r string', shell, '{', exprList()).timeout('5min')
+      })
+
       describe("0.1 numbers", () => {
         for (const number of RNumberPool) {
           const range = rangeFrom(1, 1, 1, number.str.length)

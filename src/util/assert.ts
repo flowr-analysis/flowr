@@ -16,6 +16,9 @@ class GuardError extends Error {
   }
 }
 
+/**
+ * @throws GuardError - if the assertion fails
+ */
 export function guard(x: boolean, message = 'Assertion failed'): asserts x {
   if (!x) {
     throw new GuardError(message)

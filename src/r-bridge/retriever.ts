@@ -7,6 +7,7 @@ import { startAndEndsWith } from "../util/strings"
 import { RExpressionList } from "./lang:4.x/ast/model/nodes/RExpressionList"
 import { DeepPartial } from 'ts-essentials'
 import { XmlParserHooks } from './lang:4.x/ast/parser/xml/hooks'
+import { guard } from '../util/assert'
 
 export interface RParseRequestFromFile {
   request: "file";
@@ -38,23 +39,29 @@ interface RParseRequestBase {
  */
 export type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseRequestBase
 
+const ERR_MARKER = "err"
+
 /**
  * Provides the capability to parse R files/R code using the R parser.
  * Depends on {@link RShell} to provide a connection to R.
+ * <p>
+ * throws if the file could not be parsed
  */
-export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell): Promise<string> {
+export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell): Promise<string > {
   if (request.ensurePackageInstalled) {
     await shell.ensurePackageInstalled('xmlparsedata', true)
   }
 
-  shell.sendCommands(
-    `parsed <- parse(${request.request} = ${JSON.stringify(request.content)}, keep.source = ${ts2r(request.attachSourceInformation)})`,
-    `output <- xmlparsedata::xml_parse_data(parsed, includeText = ${ts2r(request.attachSourceInformation)}, pretty = FALSE)`
+  shell.sendCommands(`flowr_output <- "${ERR_MARKER}"`,
+    // now, try to retrieve the ast
+    `try(flowr_parsed <- parse(${request.request} = ${JSON.stringify(request.content)}, keep.source = ${ts2r(request.attachSourceInformation)}), silent=FALSE)`,
+    `try(flowr_output <- xmlparsedata::xml_parse_data(flowr_parsed, includeText = ${ts2r(request.attachSourceInformation)}, pretty = FALSE), silent=FALSE)`
   )
   // TODO: let commands produce output by cat wrapper/shell.command creator to abstract from this?
-  const xml = await shell.sendCommandWithOutput(`cat(output,${ts2r(shell.options.eol)})`)
-
-  return xml.join(shell.options.eol)
+  const xml = await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)
+  const output = xml.join(shell.options.eol)
+  guard(output !== ERR_MARKER, 'unable to parse R code (see the log for more information)')
+  return output
 }
 
 // TODO: type ast etc

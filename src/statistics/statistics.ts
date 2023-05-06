@@ -33,8 +33,16 @@ export async function extract<T extends RParseRequestFromText | RParseRequestFro
   let first = true
   for(const request of requests) {
     onRequest(request)
-    result = await extractSingle(result, shell, { ...request, attachSourceInformation: true, ensurePackageInstalled: first })
-    first = false
+    try {
+      result = await extractSingle(result, shell, {
+        ...request,
+        attachSourceInformation: true,
+        ensurePackageInstalled:  first
+      })
+      first = false
+    } catch (e) {
+      console.error('for request: ', request, e)
+    }
   }
 
   return result

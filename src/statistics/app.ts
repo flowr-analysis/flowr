@@ -23,7 +23,7 @@ async function getStats() {
     file => console.log(`processing ${++cur}/${processArguments.length} ${file.content}`),
     ...processArguments.map(file => ({ request: 'file' as const, content: file }))
   )
-  console.log(JSON.stringify(stats))
+  console.log(JSON.stringify(stats, undefined, 2))
   shell.close()
 }
 

@@ -112,7 +112,7 @@ export class RShell {
    */
   // TODO: rename to execute or so?
   public sendCommand(command: string): void {
-    this.log.trace(`> ${command}`)
+    this.log.trace(`> ${JSON.stringify(command)}`)
     this._sendCommand(command)
   }
 
@@ -126,7 +126,7 @@ export class RShell {
    */
   public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
     const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig)
-    this.log.trace(`> ${command}`)
+    this.log.trace(`> ${JSON.stringify(command)}`)
     const output = await this.session.collectLinesUntil(config.from, {
       predicate:       data => data === config.postamble,
       includeInResult: config.keepPostamble // we do not want the postamble

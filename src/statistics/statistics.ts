@@ -25,10 +25,14 @@ export async function extractSingle(result: FeatureStatistics, shell: RShell, fr
 /**
  * extract all statistic information from a set of requests using the presented R session
  */
-export async function extract(shell: RShell, ...requests: (RParseRequestFromFile | RParseRequestFromText)[]): Promise<FeatureStatistics> {
+export async function extract<T extends RParseRequestFromText | RParseRequestFromFile>(shell: RShell,
+                                                                                       onRequest: (request: T) => void,
+                                                                                       ...requests: T[]
+): Promise<FeatureStatistics> {
   let result = InitialFeatureStatistics()
   let first = true
   for(const request of requests) {
+    onRequest(request)
     result = await extractSingle(result, shell, { ...request, attachSourceInformation: true, ensurePackageInstalled: first })
     first = false
   }

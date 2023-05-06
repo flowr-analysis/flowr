@@ -47,7 +47,7 @@ const libraryOrRequire = xpath.parse(`
 `)
 
 // there is no except in xpath 1.0?
-const libraryOrRequireWithVariable = xpath.parse(`
+const packageLoadedWithVariableLoadRequire = xpath.parse(`
     //SYMBOL_FUNCTION_CALL[text() = $variable]
     /parent::expr
     /parent::expr[
@@ -60,8 +60,12 @@ const libraryOrRequireWithVariable = xpath.parse(`
     ]/OP-LEFT-PAREN[1]/following-sibling::expr[1][SYMBOL | STR_CONST]/*
 `)
 
+const packageLoadedWithVariableNamespaces = xpath.parse(`
+  //SYMBOL_FUNCTION_CALL[text() = $variable]/../following-sibling::expr[1][SYMBOL]/*
+`)
+
 const queryForFunctionCall = xpath.parse(`
-  //SYMBOL_FUNCTION_CALL[text() = $variable]/../..//SYMBOL[1]
+  //SYMBOL_FUNCTION_CALL[text() = $variable]/../following-sibling::expr[1][STR_CONST]/*
 `)
 
 // otherwise, the parser seems to fail
@@ -105,7 +109,11 @@ export const usedPackages: Feature<PackageInfo> = {
     }
 
     for(const fn of [ 'library', 'require' ]) {
-      const nodes = libraryOrRequireWithVariable.select({ node: input, variables: { variable: fn } })
+      const nodes = packageLoadedWithVariableLoadRequire.select({ node: input, variables: { variable: fn } })
+      append(existing, '<loadedByVariable>', nodes)
+    }
+    for(const fn of [ 'loadNamespace', 'requireNamespace', 'attachNamespace' ]) {
+      const nodes = packageLoadedWithVariableNamespaces.select({ node: input, variables: { variable: fn } })
       append(existing, '<loadedByVariable>', nodes)
     }
 

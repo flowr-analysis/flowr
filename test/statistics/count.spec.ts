@@ -7,10 +7,10 @@ describe('Count structures in R-Scripts', withShell(shell => {
     const code = `
 library(CodeDepends)
 require(devtools)
-loadNamespace(glue)
-requireNamespace(rang)
+loadNamespace("glue")
+requireNamespace("rang")
 library(withr)
-attachNamespace(purr)
+attachNamespace("purr")
 xmlparsedata::xml_parse_data(parse(text="hello"))
 lintr:::doMagic()
     `

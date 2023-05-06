@@ -16,6 +16,8 @@ import {
   RUnaryOpPool,
 } from "../helper/provider"
 import { naiveLineBasedSlicing } from "../../src/slicing/static/static-slicer"
+import { log } from '../../src/util/log'
+import { LogLevel } from 'typedoc'
 
 describe("Extract Dataflow Information", () => {
   /**
@@ -679,7 +681,6 @@ describe("Extract Dataflow Information", () => {
         )
         const { dataflowIdMap, dataflowGraph } =
           produceDataFlowGraph(astWithParentIds)
-
         // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
         console.log(graphToMermaidUrl(dataflowGraph, dataflowIdMap))
       })

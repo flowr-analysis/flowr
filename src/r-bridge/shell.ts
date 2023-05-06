@@ -50,7 +50,7 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
   postamble: `🐧${'-'.repeat(13)}🐧`,
   timeout:   {
     // TODO: allow to configure such things in a configuration file?
-    ms:             10_000,
+    ms:             100_000,
     resetOnNewData: true
   },
   keepPostamble:           false,
@@ -238,7 +238,7 @@ export class RShell {
       predicate:       data => successfulDone.test(data),
       includeInResult: false
     }, {
-      ms:             10_000,
+      ms:             100_000,
       resetOnNewData: true
     }, () => {
       // the else branch is a cheesy way to work even if the package is already installed!

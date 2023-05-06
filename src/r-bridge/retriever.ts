@@ -8,22 +8,35 @@ import { RExpressionList } from "./lang:4.x/ast/model/nodes/RExpressionList"
 import { DeepPartial } from 'ts-essentials'
 import { XmlParserHooks } from './lang:4.x/ast/parser/xml/hooks'
 
-interface RParseRequestFromFile {
+export interface RParseRequestFromFile {
   request: "file";
+  /** the path to the file (absolute paths are probably best here */
   content: string;
 }
 
-interface RParseRequestFromText {
+export interface RParseRequestFromText {
   request: 'text'
+  /* source code to parse (not a file path) */
   content: string
 }
 
 interface RParseRequestBase {
+  /**
+   * Should lexeme information be retained in the AST?
+   * You most likely want `true` here.
+   */
   attachSourceInformation: boolean
+  /**
+   * Ensure that all required packages are present and if not install them?
+   * The only reason to set this to `false` is probably ina series of parse requests for the same session.
+   */
   ensurePackageInstalled:  boolean
 }
 
-type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseRequestBase
+/**
+ * A request that can be passed along to {@link retrieveXmlFromRCode}.
+ */
+export type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseRequestBase
 
 /**
  * Provides the capability to parse R files/R code using the R parser.

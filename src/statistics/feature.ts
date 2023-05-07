@@ -52,7 +52,7 @@ export function formatMap<T>(map: Map<T, number>, details: boolean): string {
     }
     const max = Math.max(...map.values())
     const keyOfMax = [...map.entries()].find(([_, value]) => value === max)?.[0] ?? '?'
-    return ` [${JSON.stringify(keyOfMax)} (${max}) ${map.size > 1 ? ', ...' : ''}]`
+    return ` [${JSON.stringify(keyOfMax)} (${max})${map.size > 1 ? ', ...' : ''}]`
   }
 }
 

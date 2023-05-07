@@ -79,15 +79,15 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
     return existing
   },
 
-  toString(data: FunctionDefinitionInfo): string {
+  toString(data: FunctionDefinitionInfo, details: boolean): string {
     const groupedAssignedFunctions = groupCount(data.assignedFunctions)
     const startingWithDot = [...groupedAssignedFunctions.keys()].filter(key => key.startsWith('.')).length
     const groupedUsedParameterNames = groupCount(data.usedParameterNames)
 
     return `---defined functions------------
-\ttotal: ${data.total} (of which ${data.lambdasOnly} are using OP-LAMBDA)
-\tfunctions assigned: ${groupedAssignedFunctions.size} (of which ${startingWithDot} start with dot)${formatMap(groupedAssignedFunctions)}
-\tparameter names: ${groupedUsedParameterNames.size} ${formatMap(groupedUsedParameterNames)}
+\ttotal: ${data.total} (${data.lambdasOnly} of which are using OP-LAMBDA)
+\tfunctions assigned: ${groupedAssignedFunctions.size} (of which ${startingWithDot} start with dot)${formatMap(groupedAssignedFunctions, details)}
+\tparameter names: ${groupedUsedParameterNames.size} ${formatMap(groupedUsedParameterNames, details)}
 \tfunctions directly called: ${data.functionsDirectlyCalled}
 \tnested functions: ${data.nestedFunctions}
 `

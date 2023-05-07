@@ -14,12 +14,10 @@ export async function extractSingle(result: FeatureStatistics, shell: RShell, fr
   const doc = new DOMParser().parseFromString(xml, 'text/xml')
 
   for (const [key, feature] of Object.entries(ALL_FEATURES)) {
-    if(features !== 'all' && !features.has(key as FeatureKey)) {
+    if(features !== 'all' && !features.has(key )) {
       continue
     }
-    // eslint-disable-nex-line @typescript-eslint/ban-ts-comment
-    // @ts-expect-error object.entries does not retain the type information
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     result[key] = feature.append(result[key], doc)
   }
 

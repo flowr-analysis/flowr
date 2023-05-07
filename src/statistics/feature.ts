@@ -16,10 +16,11 @@ export interface Feature<T> {
   /** a function that retrieves the feature in the document appends it to the existing feature set (we could use a monoid :D) */
   append:               (existing: T, input: Document) => T
   /** formats the given information to be consumed by a human */
-  toString:             (data: T) => string
+  toString:             (data: T, showDetails : boolean) => string
 }
 
-export const ALL_FEATURES = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const ALL_FEATURES: Record<string, Feature<any>> = {
   usedPackages:     usedPackages,
   comments:         comments,
   definedFunctions: definedFunctions
@@ -37,13 +38,22 @@ export const InitialFeatureStatistics: () => FeatureStatistics = () => ({
   definedFunctions: initialFunctionDefinitionInfo()
 })
 
-export function formatMap<T>(map: Map<T, number>): string {
-  return [...map.entries()]
-    .map(([key, value]) => [JSON.stringify(key), value] as [string, number])
-    .sort(([s], [s2]) => s.localeCompare(s2))
-    // TODO: use own
-    .map(([key, value]) => `\n\t\t${removeTokenMapQuotationMarks(key)}: ${value}`)
-    .join()
+export function formatMap<T>(map: Map<T, number>, details: boolean): string {
+  if(details) {
+    return [...map.entries()]
+      .map(([key, value]) => [JSON.stringify(key), value] as [string, number])
+      .sort(([s], [s2]) => s.localeCompare(s2))
+      // TODO: use own
+      .map(([key, value]) => `\n\t\t${removeTokenMapQuotationMarks(key)}: ${value}`)
+      .join()
+  } else {
+    if(map.size === 0) {
+      return ''
+    }
+    const max = Math.max(...map.values())
+    const keyOfMax = [...map.entries()].find(([_, value]) => value === max)?.[0] ?? '?'
+    return ` [${JSON.stringify(keyOfMax)} (${max}) ${map.size > 1 ? ', ...' : ''}]`
+  }
 }
 
 /** helper to append something to an info map =\> TODO rename */

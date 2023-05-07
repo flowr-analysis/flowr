@@ -149,7 +149,7 @@ export const comments: Feature<CommentInfo> = {
     return existing
   },
 
-  toString(data: CommentInfo): string {
+  toString(data: CommentInfo, details: boolean): string {
     // TODO: make more performant & improve formatting (tables etc.)
     const groupedImportFrom = processUsedFunction(data.importFrom)
     const groupedDynLib = processUsedFunction(data.useDynLib)
@@ -159,11 +159,11 @@ export const comments: Feature<CommentInfo> = {
     return `---comments-------------
 \ttotal amount: ${data.totalAmount}
 \troxygen comments: ${data.roxygenComments}
-\timports (complete package, discouraged) (${data.import.length} times)${formatMap(groupCount(data.import))}
-\timports from (${groupedImportFrom.size} times)${formatMap(processUsedFunction(data.importFrom))}
-\timports classes from (S4) (${groupedImportClassesFrom.size} times)${formatMap(groupedImportClassesFrom)}
-\timports methods from (S4, generic) (${groupedImportMethodsFrom.size} times)${formatMap(groupedImportMethodsFrom)}
-\tused dynamic libs: (${groupedDynLib.size} times)${formatMap(groupedDynLib)}
+\timports (complete package, discouraged) (${data.import.length} times)${formatMap(groupCount(data.import), details)}
+\timports from (${groupedImportFrom.size} times)${formatMap(processUsedFunction(data.importFrom), details)}
+\timports classes from (S4) (${groupedImportClassesFrom.size} times)${formatMap(groupedImportClassesFrom, details)}
+\timports methods from (S4, generic) (${groupedImportMethodsFrom.size} times)${formatMap(groupedImportMethodsFrom, details)}
+\tused dynamic libs: (${groupedDynLib.size} times)${formatMap(groupedDynLib, details)}
 \texports:
 \t\ttotal (+@export): ${data.export}
 \t\t@exportClass: ${data.exportClass}

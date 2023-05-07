@@ -110,12 +110,12 @@ export const usedPackages: Feature<UsedPackageInfo> = {
     return existing
   },
 
-  toString(data: UsedPackageInfo): string {
+  toString(data: UsedPackageInfo, details: boolean): string {
     let result = '---used packages (does not care for roxygen comments!)-------------'
     result += `\n\tloaded by a variable (unknown): ${data['<loadedByVariable>'].length}`
     for(const fn of [ 'library', 'require', 'loadNamespace', 'requireNamespace', 'attachNamespace', '::', ':::' ] as (keyof UsedPackageInfo)[]) {
       const pkgs = data[fn] as string[]
-      result += `\n\t${fn} (${pkgs.length} times) ${formatMap(groupCount<SinglePackageInfo>(pkgs))}`
+      result += `\n\t${fn} (${pkgs.length} times) ${formatMap(groupCount<SinglePackageInfo>(pkgs), details)}`
     }
 
     return result

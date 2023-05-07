@@ -29,13 +29,10 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
   // console.log(JSON.stringify(stats, undefined, 2))
 
   for(const entry of Object.keys(stats.features)) {
-    if(processedFeatures !== 'all' && !processedFeatures.has(entry as FeatureKey)) {
+    if(processedFeatures !== 'all' && !processedFeatures.has(entry)) {
       continue
     }
-    // eslint-disable-nex-line @typescript-eslint/ban-ts-comment
-    // @ts-expect-error object.keys does not retain the type information
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/restrict-template-expressions
-    console.log(ALL_FEATURES[entry].toString(stats.features[entry]))
+    console.log(ALL_FEATURES[entry].toString(stats.features[entry], false))
   }
 
   const numberOfLinesPerFiles = stats.meta.lines.map(l => l.length).sort((a, b) => a - b)
@@ -53,5 +50,5 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
   shell.close()
 }
 
-void getStats(['definedFunctions'])
+void getStats('all')
 

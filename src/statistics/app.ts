@@ -35,13 +35,20 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
     console.log(ALL_FEATURES[entry].toString(stats.features[entry], false))
   }
 
+  // TODO: unify anlaysis of min/max etc.
   const numberOfLinesPerFiles = stats.meta.lines.map(l => l.length).sort((a, b) => a - b)
   const sumLines = numberOfLinesPerFiles.reduce((a, b) => a + b, 0)
 
   const lineLengths = stats.meta.lines.flat().sort((a, b) => a - b)
   const sumOfLineLengths = lineLengths.reduce((a, b) => a + b, 0)
 
+  const processingTimes = stats.meta.processingTimeMs
+  processingTimes.sort((a, b) => a - b)
+  const sumProcessingTime = processingTimes.reduce((a, b) => a + b, 0)
+
   console.log(`processed ${stats.meta.successfulParsed} files (skipped ${stats.meta.skipped.length} due to errors):
+\ttotal processing time: ${stats.meta.processingTimeMs.reduce((a, b) => a + b, 0)}ms
+\t\tprocessing time range: [${processingTimes[0]}ms .. ${processingTimes[processingTimes.length - 1]}ms] (avg: ${sumProcessingTime / processingTimes.length}ms, median: ${processingTimes[Math.floor(processingTimes.length / 2)]}ms)
 \ttotal number of lines: ${sumLines}
 \t\tline range: [${numberOfLinesPerFiles[0]} .. ${numberOfLinesPerFiles[numberOfLinesPerFiles.length - 1]}] (avg: ${sumLines / numberOfLinesPerFiles.length}, median: ${numberOfLinesPerFiles[Math.floor(numberOfLinesPerFiles.length / 2)]})
 \t\tline length range: [${lineLengths[0]} .. ${lineLengths[lineLengths.length - 1]}] (avg: ${sumOfLineLengths / lineLengths.length}, median: ${lineLengths[Math.floor(lineLengths.length / 2)]})

@@ -30,6 +30,10 @@ export interface MetaStatistics {
    */
   successfulParsed: number
   /**
+   * the processing time for each request
+   */
+  processingTimeMs: number[]
+  /**
    * skipped requests
    */
   skipped:          string[]
@@ -41,6 +45,7 @@ export interface MetaStatistics {
 
 const initialMetaStatistics: () => MetaStatistics = () => ({
   successfulParsed: 0,
+  processingTimeMs: [],
   skipped:          [],
   lines:            []
 })
@@ -72,6 +77,7 @@ export async function extract<T extends RParseRequestFromText | RParseRequestFro
   for(const request of requests) {
     onRequest(request)
     processMetaOnSuccessful(meta, request)
+    const start = performance.now()
     try {
       result = await extractSingle(result, shell, {
         ...request,
@@ -83,6 +89,7 @@ export async function extract<T extends RParseRequestFromText | RParseRequestFro
       console.error('for request: ', request, e)
       meta.skipped.push(request.content)
     }
+    meta.processingTimeMs.push(performance.now() - start)
   }
   console.warn(`skipped ${meta.skipped.length} requests due to errors (run with logs to get more info)`)
   return { features: result, meta }

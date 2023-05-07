@@ -1,36 +1,33 @@
-import { Feature, formatMap, Query } from '../feature'
-import { SinglePackageInfo } from './usedPackages'
+import { Feature, Query } from '../feature'
 import { MergeableRecord } from '../../util/objects'
-import { UsedFunction } from './usedFunctions'
 import * as xpath from 'xpath-ts2'
 import { guard, isNotNull, isNotUndefined } from '../../util/assert'
-import { groupCount } from '../../util/arrays'
+import { append } from '../statisticsFile'
 
 export interface CommentInfo extends MergeableRecord {
   totalAmount:       number
   roxygenComments:   number
-  import:            SinglePackageInfo[]
-  importFrom:        UsedFunction[]
-  importMethodsFrom: UsedFunction[]
-  // jeah, they refer to classes here, but we keep it to allow same processing to take place (in the end, they are entities)
-  importClassesFrom: UsedFunction[]
-  export:            number,
-  exportClass:       number,
-  exportMethod:      number,
-  exportS3Method:    number,
-  exportPattern:     number,
+  import:            number
+  importFrom:        number
+  importMethodsFrom: number
+  importClassesFrom: number
+  export:            number
+  exportClass:       number
+  exportMethod:      number
+  exportS3Method:    number
+  exportPattern:     number
   // TODO: deal with comma extras etc?
-  useDynLib:         ( SinglePackageInfo | UsedFunction )[]
+  useDynLib:         number
 }
 
 export const initialCommentInfo = (): CommentInfo => ({
   totalAmount:       0,
   roxygenComments:   0,
-  import:            [],
-  importFrom:        [],
-  importMethodsFrom: [],
-  importClassesFrom: [],
-  useDynLib:         [],
+  import:            0,
+  importFrom:        0,
+  importMethodsFrom: 0,
+  importClassesFrom: 0,
+  useDynLib:         0,
   export:            0,
   exportClass:       0,
   exportMethod:      0,
@@ -56,20 +53,20 @@ const exportPatternRegex = /^'\s*@exportPattern/
 
 
 
-function processRoxygenImport(existing: CommentInfo, comments: string[]) {
-  existing.import.push(...comments.map(text => importRegex.exec(text)?.groups?.package).filter(isNotUndefined))
+function processRoxygenImport(existing: CommentInfo, commentsText: string[]) {
+  const packages = commentsText.map(text => importRegex.exec(text)?.groups?.package).filter(isNotUndefined)
+  existing.import += packages.length
+  append(comments.name, 'import', packages)
 }
 
-function processWithRegex(comments: string[], existing: CommentInfo, regex: RegExp) {
-  const result = comments.map(text => regex.exec(text)).filter(isNotNull)
+function processWithRegex(commentsText: string[], existing: CommentInfo, regex: RegExp) {
+  const result = commentsText.map(text => regex.exec(text)).filter(isNotNull)
     .flatMap(match => {
       const packageName = match.groups?.package ?? '<unknown>'
-      return (match.groups?.fn.trim().split(/\s+/) ?? []).map(fn => ({
-        package:  packageName,
-        function: fn
-      }))
+      return (match.groups?.fn.trim().split(/\s+/) ?? []).map(fn => `${JSON.stringify(packageName)},${fn}`)
     })
-  existing.importFrom.push(...result)
+  existing.importFrom += result.length
+  append(comments.name, 'importFrom', result)
 }
 
 function processRoxygenImportFrom(existing: CommentInfo, comments: string[]) {
@@ -92,35 +89,23 @@ function processExports(existing: CommentInfo, comments: string[]) {
   existing.exportPattern += comments.filter(text => exportPatternRegex.test(text)).length
 }
 
-function processMatchForDynLib(match: RegExpExecArray): ( SinglePackageInfo | UsedFunction )[] {
+function processMatchForDynLib(match: RegExpExecArray): string[] {
   const packageName = match.groups?.package ?? '<unknown>'
   const functions = match.groups?.fn?.trim().split(/\s+/) ?? []
   if (functions.length === 0) {
     return [packageName]
   } else {
-    return functions.map(fn => ({
-      package:  packageName,
-      function: fn
-    }))
+    return functions.map(fn => `${JSON.stringify(packageName)},${fn}`)
   }
 }
 
-function processRoxygenUseDynLib(existing: CommentInfo, comments: string[]) {
-  const result: ( SinglePackageInfo | UsedFunction )[] = comments.map(text => useDynLibRegex.exec(text))
+function processRoxygenUseDynLib(existing: CommentInfo, commentsText: string[]) {
+  const result: string[] = commentsText.map(text => useDynLibRegex.exec(text))
     .filter(isNotNull)
     .flatMap(processMatchForDynLib)
-  existing.useDynLib.push(...result)
-}
 
-function processUsedFunction(data: (SinglePackageInfo | UsedFunction)[]) {
-  return new Map([...groupCount(data)]
-    .map(([key, value]) => {
-      if(typeof key === 'string') {
-        return [key, value]
-      } else {
-        return [`${key.package}::${key.function}`, value]
-      }
-    }))
+  existing.useDynLib += result.length
+  append(comments.name, 'useDynLib', result)
 }
 
 export const comments: Feature<CommentInfo> = {
@@ -149,27 +134,23 @@ export const comments: Feature<CommentInfo> = {
     return existing
   },
 
-  toString(data: CommentInfo, details: boolean): string {
+  toString(data: CommentInfo): string {
     // TODO: make more performant & improve formatting (tables etc.)
-    const groupedImportFrom = processUsedFunction(data.importFrom)
-    const groupedDynLib = processUsedFunction(data.useDynLib)
-    const groupedImportMethodsFrom = processUsedFunction(data.importMethodsFrom)
-    const groupedImportClassesFrom = processUsedFunction(data.importClassesFrom)
-
     return `---comments-------------
-\ttotal amount: ${data.totalAmount}
-\troxygen comments: ${data.roxygenComments}
-\timports (complete package, discouraged) (${data.import.length} times)${formatMap(groupCount(data.import), details)}
-\timports from (${groupedImportFrom.size} times)${formatMap(processUsedFunction(data.importFrom), details)}
-\timports classes from (S4) (${groupedImportClassesFrom.size} times)${formatMap(groupedImportClassesFrom, details)}
-\timports methods from (S4, generic) (${groupedImportMethodsFrom.size} times)${formatMap(groupedImportMethodsFrom, details)}
-\tused dynamic libs: (${groupedDynLib.size} times)${formatMap(groupedDynLib, details)}
+\ttotal amount:                            ${data.totalAmount} times
+\troxygen comments:                        ${data.roxygenComments} times
+\timports
+\t\timports (complete package, discouraged): ${data.import} times
+\t\timports from:                            ${data.importFrom} times
+\t\timports classes from (S4):               ${data.importClassesFrom} times
+\t\timports methods from (S4, generic):      ${data.importMethodsFrom} times
+\t\tused dynamic libs:                       ${data.useDynLib} times
 \texports:
-\t\ttotal (+@export): ${data.export}
-\t\t@exportClass: ${data.exportClass}
-\t\t@exportMethod: ${data.exportMethod}
-\t\t@exportS3Method: ${data.exportS3Method}
-\t\t@exportPattern: ${data.exportPattern}
+\t\ttotal (+@export):                      ${data.export}
+\t\t@exportClass:                          ${data.exportClass}
+\t\t@exportMethod:                         ${data.exportMethod}
+\t\t@exportS3Method:                       ${data.exportS3Method}
+\t\t@exportPattern:                        ${data.exportPattern}
     `
   }
 }

@@ -1,18 +1,18 @@
-import { Feature, formatMap, Query } from '../feature'
+import { Feature, Query } from '../feature'
 import { MergeableRecord } from '../../util/objects'
 import * as xpath from 'xpath-ts2'
-import { groupCount } from '../../util/arrays'
+import { append } from '../statisticsFile'
 
 export interface AssignmentInfo extends MergeableRecord {
-  assignmentOperator:       string[]
+  assignmentOperator:       number
   nestedOperatorAssignment: number
-  specialAssignmentOps:     string[]
+  specialAssignmentOps:     number
 }
 
 // TODO: integers, constants, etc.
 export const initialAssignmentInfo = (): AssignmentInfo => ({
-  assignmentOperator:       [],
-  specialAssignmentOps:     [],
+  assignmentOperator:       0,
+  specialAssignmentOps:     0,
   nestedOperatorAssignment: 0
 })
 
@@ -55,28 +55,30 @@ function enrichOpForBracketAssign(node: Node): string {
 }
 
 export const assignments: Feature<AssignmentInfo> = {
-  name:        'assignments',
+  name:        'Assignments',
   description: 'all ways to assign something in R',
 
   append(existing: AssignmentInfo, input: Document): AssignmentInfo {
-    const assignmentOperators = defaultOperatorAssignmentQuery.select({ node: input }).map(n => n.textContent ?? '<unknown>')
-    const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input }).length
+    const assignmentOperators = defaultOperatorAssignmentQuery.select({ node: input })
+    const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input })
     const specialAssignmentOps = bracketAssignQuery.select({ node: input }).map(enrichOpForBracketAssign)
 
-    existing.nestedOperatorAssignment += nestedOperators
+    existing.nestedOperatorAssignment += nestedOperators.length
+    existing.assignmentOperator += assignmentOperators.length
+    existing.specialAssignmentOps += specialAssignmentOps.length
 
-    existing.assignmentOperator.push(...assignmentOperators)
-    existing.specialAssignmentOps.push(...specialAssignmentOps)
+    append(this.name, 'assignmentOperator', assignmentOperators)
+    append(this.name, 'specialAssignmentOps', specialAssignmentOps)
 
     return existing
   },
 
-  toString(data: AssignmentInfo, details: boolean): string {
+  toString(data: AssignmentInfo): string {
     // TODO: separate between unique and total count
     return `---assignments-------------
-\toperator assignments (${data.assignmentOperator.length} times)${formatMap(groupCount(data.assignmentOperator), details)}
-\tnested operator assignments: ${data.nestedOperatorAssignment}
-\tspecial assignments (${data.specialAssignmentOps.length} times)${formatMap(groupCount(data.specialAssignmentOps), details)}
+\toperator assignments:        ${data.assignmentOperator} times
+\tnested operator assignments: ${data.nestedOperatorAssignment} times
+\tspecial assignments:         ${data.specialAssignmentOps} times)
     `
   }
 }

@@ -21,11 +21,14 @@ export function resetStatisticsDirectory() {
 /**
  * append the content of all nodes to the storage file for the given feature
  */
-export function append<T>(name: string, fn: keyof T, nodes: Node[]) {
+export function append<T>(name: string, fn: keyof T, nodes: string[] | Node[]) {
   if(nodes.length === 0) {
     return
   }
-  const contents = new Set(nodes.map(node => node.textContent ?? '<unknown>'))
+  const contents = typeof nodes[0] === 'string' ?
+      nodes as string[]
+    : (nodes as Node[]).map(node => node.textContent ?? '<unknown>')
+
   const filepath = statisticsFile(name, String(fn))
 
   const dirpath = path.dirname(filepath)
@@ -33,5 +36,5 @@ export function append<T>(name: string, fn: keyof T, nodes: Node[]) {
     fs.mkdirSync(dirpath, { recursive: true })
   }
 
-  fs.appendFileSync(filepath, [...contents].join('\n') + '\n')
+  fs.appendFileSync(filepath, contents.join('\n') + '\n')
 }

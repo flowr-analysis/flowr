@@ -81,9 +81,9 @@ export function statisticsFile(name: string, fn: string): string {
 /**
  * append the content of all nodes to the storage file for the given feature
  */
-export function append(name: string, fn: string, nodes: Node[]) {
+export function append<T>(name: string, fn: keyof T, nodes: Node[]) {
   const contents = new Set(nodes.map(node => node.textContent ?? '<unknown>'))
 
-  fs.appendFileSync(statisticsFile(name, fn), [...contents].join('\n') + '\n')
+  fs.appendFileSync(statisticsFile(name, String(fn)), [...contents].join('\n') + '\n')
 }
 

@@ -7,26 +7,26 @@ import { groupCount } from '../../util/arrays'
 export type SinglePackageInfo = string
 
 export interface UsedPackageInfo extends MergeableRecord {
-  library:              SinglePackageInfo[]
-  require:              SinglePackageInfo[]
-  loadNamespace:        SinglePackageInfo[]
-  requireNamespace:     SinglePackageInfo[]
-  attachNamespace:      SinglePackageInfo[]
-  '::':                 SinglePackageInfo[]
-  ':::':                SinglePackageInfo[]
+  library:              number
+  require:              number
+  loadNamespace:        number
+  requireNamespace:     number
+  attachNamespace:      number
+  '::':                 number
+  ':::':                number
   /** just contains all occurrences where it is impossible to statically determine which package is loaded */
-  '<loadedByVariable>': string[]
+  '<loadedByVariable>': number
 }
 
 export const initialUsedPackageInfos = (): UsedPackageInfo => ({
-  library:              [],
-  require:              [],
-  loadNamespace:        [],
-  requireNamespace:     [],
-  attachNamespace:      [],
-  '::':                 [],
-  ':::':                [],
-  '<loadedByVariable>': []
+  library:              0,
+  require:              0,
+  loadNamespace:        0,
+  requireNamespace:     0,
+  attachNamespace:      0,
+  '::':                 0,
+  ':::':                0,
+  '<loadedByVariable>': 0
 })
 
 
@@ -100,22 +100,24 @@ export const usedPackages: Feature<UsedPackageInfo> = {
     for(const q of queries) {
       for(const fn of q.types) {
         const nodes = q.query.select({ node: input, variables: { variable: fn } })
-        append(existing, fn, nodes)
+        append(this.name, fn, nodes)
       }
     }
 
-    append(existing, '<loadedByVariable>', packageLoadedWithVariableLoadRequire.select({ node: input }))
-    append(existing, '<loadedByVariable>', packageLoadedWithVariableNamespaces.select({ node: input }))
+    append(this.name, '<loadedByVariable>', [
+      ...packageLoadedWithVariableLoadRequire.select({ node: input }),
+      ...packageLoadedWithVariableNamespaces.select({ node: input })
+    ])
 
     return existing
   },
 
-  toString(data: UsedPackageInfo, details: boolean): string {
+  toString(data: UsedPackageInfo): string {
     let result = '---used packages (does not care for roxygen comments!)-------------'
-    result += `\n\tloaded by a variable (unknown): ${data['<loadedByVariable>'].length}`
+    result += `\n\tloaded by a variable (unknown): ${data['<loadedByVariable>']}`
     for(const fn of [ 'library', 'require', 'loadNamespace', 'requireNamespace', 'attachNamespace', '::', ':::' ] as (keyof UsedPackageInfo)[]) {
-      const pkgs = data[fn] as string[]
-      result += `\n\t${fn} (${pkgs.length} times) ${formatMap(groupCount<SinglePackageInfo>(pkgs), details)}`
+      const pkgs = data[fn] as number
+      result += `\n\t${fn}: ${pkgs} times`
     }
 
     return result

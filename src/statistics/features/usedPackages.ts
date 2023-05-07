@@ -2,6 +2,7 @@ import { Feature } from '../feature'
 import * as xpath from 'xpath-ts'
 import { MergeableRecord } from '../../util/objects'
 import { EvalOptions } from 'xpath-ts/src/parse-api'
+import { groupCount } from '../../util/arrays'
 
 export type SinglePackageInfo = string
 
@@ -91,8 +92,7 @@ const queries: { types: readonly (keyof PackageInfo)[], query: { select(options?
 ]
 
 function append(existing: PackageInfo, fn: keyof PackageInfo, nodes: Node[]) {
-  // @ts-expect-error - we know that the nodes are part of package info
-  existing[fn] = [...existing[fn], ...new Set(nodes.map(node => node.textContent ?? '<unknown>'))]
+  (existing[fn] as unknown[]).push(...new Set(nodes.map(node => node.textContent ?? '<unknown>')))
 }
 
 export const usedPackages: Feature<PackageInfo> = {
@@ -118,7 +118,25 @@ export const usedPackages: Feature<PackageInfo> = {
     }
 
     return existing
+  },
+
+  toString(data: PackageInfo): string {
+    let result = '---used packages-------------'
+    result += `\n\tloaded by a variable (unknown): ${data['<loadedByVariable>'].length}`
+    for(const fn of [ 'library', 'require', 'loadNamespace', 'requireNamespace', 'attachNamespace', '::', ':::' ] as (keyof PackageInfo)[]) {
+      const pkgs = data[fn] as string[]
+      result += `\n\t${fn} (${pkgs.length} times) ${formatMap(groupCount<SinglePackageInfo>(pkgs))}`
+    }
+
+    return result
   }
+}
+
+function formatMap(map: Map<string, number>): string {
+  return [...map.entries()]
+    .sort(([s], [s2]) => s.localeCompare(s2))
+    .map(([key, value]) => `\n\t\t${key}: ${value}`)
+    .join('')
 }
 
 

@@ -1,6 +1,7 @@
 import { RShell } from '../r-bridge/shell'
 import { extract } from './statistics'
 import { log, LogLevel } from '../util/log'
+import { ALL_FEATURES } from './feature'
 
 log.updateSettings(l => l.settings.minLevel = LogLevel.error)
 
@@ -23,7 +24,15 @@ async function getStats() {
     file => console.log(`processing ${++cur}/${processArguments.length} ${file.content}`),
     ...processArguments.map(file => ({ request: 'file' as const, content: file }))
   )
-  console.log(JSON.stringify(stats, undefined, 2))
+  // console.log(JSON.stringify(stats, undefined, 2))
+
+  for(const entry of Object.keys(stats)) {
+    // eslint-disable-nex-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error object.keys does not retain the type information
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/restrict-template-expressions
+    console.log(ALL_FEATURES[entry].toString(stats[entry]))
+  }
+
   shell.close()
 }
 

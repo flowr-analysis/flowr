@@ -1,7 +1,8 @@
 import { Feature, formatMap } from '../feature'
+import * as xpath from 'xpath-ts'
 import { MergeableRecord } from '../../util/objects'
+import { EvalOptions } from 'xpath-ts/src/parse-api'
 import { groupCount } from '../../util/arrays'
-import { parseWithVariable, withVariable, xpath } from '../../util/xpath'
 
 export type SinglePackageInfo = string
 
@@ -30,7 +31,7 @@ export const initialUsedPackageInfos = (): UsedPackageInfo => ({
 
 
 // based on the extraction routine of lintr search for function calls which are not character-loads (we can not trace those...)
-const [libraryQuery, requireQuery] = parseWithVariable(`
+const libraryOrRequire = xpath.parse(`
   //SYMBOL_FUNCTION_CALL[text() = $variable]
     /parent::expr
     /parent::expr[
@@ -44,10 +45,10 @@ const [libraryQuery, requireQuery] = parseWithVariable(`
         )
       )
     ]/OP-LEFT-PAREN[1]/following-sibling::expr[1][SYMBOL | STR_CONST]/*
-`, 'variable', 'library', 'require')
+`)
 
 // there is no except in xpath 1.0?
-const libraryOrRequireWithVariable = withVariable(`
+const packageLoadedWithVariableLoadRequire = xpath.parse(`
     //SYMBOL_FUNCTION_CALL[text() = $variable]
     /parent::expr
     /parent::expr[
@@ -58,37 +59,40 @@ const libraryOrRequireWithVariable = withVariable(`
           /NUM_CONST[text() = 'TRUE' or text() = 'T']
         )
     ]/OP-LEFT-PAREN[1]/following-sibling::expr[1][SYMBOL | STR_CONST]/*
-`, 'variable', 'library', 'require')
+`)
 
-const fnCallWithVariable = withVariable(`
+const packageLoadedWithVariableNamespaces = xpath.parse(`
   //SYMBOL_FUNCTION_CALL[text() = $variable]/../following-sibling::expr[1][SYMBOL]/*
-`, 'variable', 'loadNamespace', 'requireNamespace', 'attachNamespace')
+`)
 
-const queryWithVariable = xpath.parse([...libraryOrRequireWithVariable, ...fnCallWithVariable].join(' | '))
-
-const [loadNamespaceQuery, requireNamespaceQuery, attachNamespaceQuery] = parseWithVariable(`
+const queryForFunctionCall = xpath.parse(`
   //SYMBOL_FUNCTION_CALL[text() = $variable]/../following-sibling::expr[1][STR_CONST]/*
-`, 'variable', 'loadNamespace', 'requireNamespace', 'attachNamespace')
+`)
 
 // otherwise, the parser seems to fail
-const [normalNsQuery, internalNsQuery] = parseWithVariable(`
+const queryForNsAccess = xpath.parse(`
   //NS_GET[text() = $variable]/../SYMBOL_PACKAGE[1]
   |
   //NS_GET_INT[text() = $variable]/../SYMBOL_PACKAGE[1]
-`, 'variable', '::', ':::')
+`)
 
-const queries: { type: keyof UsedPackageInfo, query: XPathExpression }[] = [
-  { type: 'library',              query: libraryQuery },
-  { type: 'require',              query: requireQuery },
-  { type: 'loadNamespace',        query: loadNamespaceQuery },
-  { type: 'requireNamespace',     query: requireNamespaceQuery },
-  { type: 'attachNamespace',      query: attachNamespaceQuery },
-  { type: '::',                   query: normalNsQuery },
-  { type: ':::',                  query: internalNsQuery }
+const queries: { types: readonly (keyof UsedPackageInfo)[], query: { select(options?: EvalOptions): Node[] } }[] = [
+  {
+    types: [ 'library', 'require' ],
+    query: libraryOrRequire
+  },
+  {
+    types: [ 'loadNamespace', 'requireNamespace', 'attachNamespace' ],
+    query: queryForFunctionCall
+  },
+  {
+    types: [ '::', ':::' ],
+    query: queryForNsAccess
+  }
 ]
 
-function append(existing: UsedPackageInfo, fn: keyof UsedPackageInfo, nodes: string[]) {
-  (existing[fn] as unknown[]).push(...new Set(nodes))
+function append(existing: UsedPackageInfo, fn: keyof UsedPackageInfo, nodes: Node[]) {
+  (existing[fn] as unknown[]).push(...new Set(nodes.map(node => node.textContent ?? '<unknown>')))
 }
 
 export const usedPackages: Feature<UsedPackageInfo> = {
@@ -98,12 +102,20 @@ export const usedPackages: Feature<UsedPackageInfo> = {
   append(existing: UsedPackageInfo, input: Document): UsedPackageInfo {
     // we will unify in the end, so we can count, group etc. but we do not re-count multiple packages in the same file
     for(const q of queries) {
-      const nodes = xpath.queryAllContent(q.query, input, '<unknown>')
-      append(existing, q.type, nodes)
+      for(const fn of q.types) {
+        const nodes = q.query.select({ node: input, variables: { variable: fn } })
+        append(existing, fn, nodes)
+      }
     }
 
-    const loadWithVariable = xpath.queryAllContent(queryWithVariable, input, '<unknown>')
-    append(existing, '<loadedByVariable>', loadWithVariable)
+    for(const fn of [ 'library', 'require' ]) {
+      const nodes = packageLoadedWithVariableLoadRequire.select({ node: input, variables: { variable: fn } })
+      append(existing, '<loadedByVariable>', nodes)
+    }
+    for(const fn of [ 'loadNamespace', 'requireNamespace', 'attachNamespace' ]) {
+      const nodes = packageLoadedWithVariableNamespaces.select({ node: input, variables: { variable: fn } })
+      append(existing, '<loadedByVariable>', nodes)
+    }
 
     return existing
   },

@@ -1,7 +1,8 @@
 import { Feature, formatMap } from '../feature'
+import { CommentInfo } from './comments'
+import * as xpath from 'xpath-ts'
 import { MergeableRecord } from '../../util/objects'
 import { groupCount } from '../../util/arrays'
-import { xpath } from '../../util/xpath'
 
 export type FunctionNameInfo = string
 
@@ -24,7 +25,7 @@ export const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({
 
 // TODO: note that this can not work with assign, setGeneric and so on for now
 // TODO: is it fater to wrap with count?
-export const queryAnyFunctionDefinition = new XPathEvaluator().createExpression(`//FUNCTION`)
+export const queryAnyFunctionDefinition = xpath.parse(`//FUNCTION`)
 export const queryAnyLambdaDefinition = xpath.parse(`//OP-LAMBDA`)
 
 // we do not care on how these functions are defined
@@ -41,13 +42,13 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
   description: 'all functions defined within the document',
 
   append(existing: FunctionDefinitionInfo, input: Document): FunctionDefinitionInfo {
-    const allFunctions = xpath.queryCount(queryAnyFunctionDefinition, input)
-    const allLambdas = xpath.queryCount(queryAnyLambdaDefinition, input)
+    const allFunctions = queryAnyFunctionDefinition.select({ node: input })
+    const allLambdas = queryAnyLambdaDefinition.select({ node: input })
 
-    existing.total += allFunctions + allLambdas
+    existing.total += allFunctions.length + allLambdas.length
 
-    const assignedFunctions = xpath.queryAllContent(queryAssignedFunctionDefinitions, input, '<unknown>')
-    existing.assignedFunctions.push(...new Set(assignedFunctions))
+    const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input })
+    existing.assignedFunctions.push(...new Set(assignedFunctions.map(node => node.textContent ?? '<unknown>')))
     return existing
   },
 

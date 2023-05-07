@@ -2,7 +2,7 @@ import { Feature, formatMap } from '../feature'
 import { SinglePackageInfo } from './usedPackages'
 import { MergeableRecord } from '../../util/objects'
 import { UsedFunction } from './usedFunctions'
-import { xpath } from '../../util/xpath'
+import * as xpath from 'xpath-ts'
 import { guard, isNotNull, isNotUndefined } from '../../util/assert'
 import { groupCount } from '../../util/arrays'
 
@@ -128,7 +128,7 @@ export const comments: Feature<CommentInfo> = {
   description: 'all comments that appear within the document',
 
   append(existing: CommentInfo, input: Document): CommentInfo {
-    const comments = xpath.queryAllContent(commentQuery, input, '#')
+    const comments = commentQuery.select({ node: input }).map(node => node.textContent ?? '#')
       .map(text => {
         guard(text.startsWith('#'), `unexpected comment ${text}`)
         return text.slice(1)

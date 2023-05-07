@@ -28,15 +28,22 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
   )
   // console.log(JSON.stringify(stats, undefined, 2))
 
-  for(const entry of Object.keys(stats)) {
+  for(const entry of Object.keys(stats.features)) {
     if(processedFeatures !== 'all' && !processedFeatures.has(entry as FeatureKey)) {
       continue
     }
     // eslint-disable-nex-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error object.keys does not retain the type information
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/restrict-template-expressions
-    console.log(ALL_FEATURES[entry].toString(stats[entry]))
+    console.log(ALL_FEATURES[entry].toString(stats.features[entry]))
   }
+
+  const sumLines = stats.meta.lines.reduce((a, b) => a + b, 0)
+  console.log(`processed ${stats.meta.successfulParsed} files (skipped ${stats.meta.skipped.length} due to errors):
+\ttotal lines: ${sumLines}
+\tavg. lines per file: ${sumLines / stats.meta.lines.length}
+\tline range: [${Math.min(...stats.meta.lines)} .. ${Math.max(...stats.meta.lines)}]
+  `)
 
   shell.close()
 }

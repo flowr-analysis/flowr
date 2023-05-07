@@ -27,6 +27,7 @@ export const initialValueInfo = (): ValueInfo => ({
 const numericConstantQuery: Query = xpath.parse(`//NUM_CONST`)
 const stringConstantQuery: Query = xpath.parse(`//STR_CONST`)
 const specialConstantsQuery: Query = xpath.parse(`//NULL_CONST`)
+const shortLogicalSymbolQuery: Query = xpath.parse(`//SYMBOL[text() = 'T' or text() = 'F']`)
 
 
 function classifyNumericConstants(numerics: string, existing: ValueInfo) {
@@ -56,6 +57,9 @@ export const values: Feature<ValueInfo> = {
     const strings = stringConstantQuery.select({ node: input}).map(n => n.textContent ?? '<unknown>')
     const numerics = numericConstantQuery.select({ node: input}).map(n => n.textContent ?? '<unknown>')
     const specialConstants = specialConstantsQuery.select({ node: input}).map(n => n.textContent ?? '<unknown>')
+
+    const specialLogicalSymbols = shortLogicalSymbolQuery.select({ node: input}).map(n => n.textContent ?? '<unknown>')
+    existing.logical.push(...specialLogicalSymbols)
 
     existing.strings.push(...strings)
     numerics.forEach(n => classifyNumericConstants(n, existing))

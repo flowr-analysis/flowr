@@ -84,7 +84,7 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 
   toString(data: FunctionDefinitionInfo): string {
     return `---defined functions------------
-\ttotal:              ${data.total} (${data.lambdasOnly} of which are using OP-LAMBDA)
+\ttotal: ${data.total} (${data.lambdasOnly} of which are using OP-LAMBDA)
 \t\tfunctions assigned:        ${data.assignedFunctions}
 \t\tparameter names:           ${data.usedParameterNames}
 \t\tfunctions directly called: ${data.functionsDirectlyCalled}

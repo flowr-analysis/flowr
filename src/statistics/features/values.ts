@@ -93,10 +93,10 @@ export const values: Feature<ValueInfo> = {
   toString(data: ValueInfo): string {
     // TODO: separate between unique and total count?
     return `---values-------------
-\tstrings:  ${data.strings} times
-\tnumerics: ${data.allNumerics} times, ${data.imaginaryNumbers} imaginary, ${data.integers} integer, ${data.floatHex} with float hex
-\tlogical:  ${data.logical} times
-\tspecial constants: ${data.specialConstants} times
+\tstrings:           ${data.strings}
+\tnumerics:          ${data.allNumerics}, ${data.imaginaryNumbers} imaginary, ${data.integers} integer, ${data.floatHex} with float hex
+\tlogical:           ${data.logical}
+\tspecial constants: ${data.specialConstants}
     `
   }
 }

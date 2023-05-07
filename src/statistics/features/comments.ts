@@ -109,7 +109,7 @@ function processRoxygenUseDynLib(existing: CommentInfo, commentsText: string[]) 
 }
 
 export const comments: Feature<CommentInfo> = {
-  name:        'comments',
+  name:        'Comments',
   description: 'all comments that appear within the document',
 
   append(existing: CommentInfo, input: Document): CommentInfo {
@@ -137,14 +137,14 @@ export const comments: Feature<CommentInfo> = {
   toString(data: CommentInfo): string {
     // TODO: make more performant & improve formatting (tables etc.)
     return `---comments-------------
-\ttotal amount:                            ${data.totalAmount} times
-\troxygen comments:                        ${data.roxygenComments} times
+\ttotal amount:                            ${data.totalAmount}
+\troxygen comments:                        ${data.roxygenComments}
 \timports
-\t\timports (complete package, discouraged): ${data.import} times
-\t\timports from:                            ${data.importFrom} times
-\t\timports classes from (S4):               ${data.importClassesFrom} times
-\t\timports methods from (S4, generic):      ${data.importMethodsFrom} times
-\t\tused dynamic libs:                       ${data.useDynLib} times
+\t\timports (complete package, discouraged): ${data.import}
+\t\timports from:                            ${data.importFrom}
+\t\timports classes from (S4):               ${data.importClassesFrom}
+\t\timports methods from (S4, generic):      ${data.importMethodsFrom}
+\t\tused dynamic libs:                       ${data.useDynLib}
 \texports:
 \t\ttotal (+@export):                      ${data.export}
 \t\t@exportClass:                          ${data.exportClass}

@@ -118,7 +118,7 @@ export const usedPackages: Feature<UsedPackageInfo> = {
     result += `\n\tloaded by a variable (unknown): ${data['<loadedByVariable>']}`
     for(const fn of [ 'library', 'require', 'loadNamespace', 'requireNamespace', 'attachNamespace', '::', ':::' ] as (keyof UsedPackageInfo)[]) {
       const pkgs = data[fn] as number
-      result += `\n\t${fn}: ${pkgs} times`
+      result += `\n\t${fn}: ${pkgs}`
     }
 
     return result

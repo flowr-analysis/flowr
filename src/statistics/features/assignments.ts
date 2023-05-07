@@ -76,9 +76,9 @@ export const assignments: Feature<AssignmentInfo> = {
   toString(data: AssignmentInfo): string {
     // TODO: separate between unique and total count
     return `---assignments-------------
-\toperator assignments:        ${data.assignmentOperator} times
-\tnested operator assignments: ${data.nestedOperatorAssignment} times
-\tspecial assignments:         ${data.specialAssignmentOps} times)
+\toperator assignments:        ${data.assignmentOperator}
+\tnested operator assignments: ${data.nestedOperatorAssignment}
+\tspecial assignments:         ${data.specialAssignmentOps}
     `
   }
 }

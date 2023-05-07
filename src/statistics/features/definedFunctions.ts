@@ -45,6 +45,7 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
     const allLambdas = queryAnyLambdaDefinition.select({ node: input })
 
     existing.total += allFunctions.length + allLambdas.length
+    existing.lambdasOnly += allLambdas.length
 
     const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input })
     existing.assignedFunctions.push(...new Set(assignedFunctions.map(node => node.textContent ?? '<unknown>')))
@@ -52,9 +53,10 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
   },
 
   toString(data: FunctionDefinitionInfo): string {
-    const groupedFunctions = groupCount(data.assignedFunctions)
+    const groupedAssignedFunctions = groupCount(data.assignedFunctions)
     return `---defined functions------------
-\tfunctions defined: ${groupedFunctions.size}${formatMap(groupedFunctions)}
+\ttotal: ${data.total} (of which ${data.lambdasOnly} are lambdas)
+\tfunctions defined: ${groupedAssignedFunctions.size}${formatMap(groupedAssignedFunctions)}
 `
   }
 

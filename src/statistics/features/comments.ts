@@ -1,4 +1,4 @@
-import { Feature, formatMap } from '../feature'
+import { Feature, formatMap, Query } from '../feature'
 import { SinglePackageInfo } from './usedPackages'
 import { MergeableRecord } from '../../util/objects'
 import { UsedFunction } from './usedFunctions'
@@ -38,7 +38,7 @@ export const initialCommentInfo = (): CommentInfo => ({
   exportPattern:     0
 })
 
-const commentQuery = xpath.parse('//COMMENT')
+const commentQuery: Query = xpath.parse('//COMMENT')
 
 const importRegex = /^'\s*@import\s+(?<package>\S+)/
 const importFromRegex = /^'\s*@importFrom\s+(?<package>\S+)(?<fn>( +\S+)+)$/

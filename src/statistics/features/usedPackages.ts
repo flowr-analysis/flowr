@@ -1,4 +1,4 @@
-import { append, Feature, formatMap } from '../feature'
+import { append, Feature, formatMap, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { MergeableRecord } from '../../util/objects'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
@@ -31,7 +31,7 @@ export const initialUsedPackageInfos = (): UsedPackageInfo => ({
 
 
 // based on the extraction routine of lintr search for function calls which are not character-loads (we can not trace those...)
-const libraryOrRequire = xpath.parse(`
+const libraryOrRequire: Query = xpath.parse(`
   //SYMBOL_FUNCTION_CALL[text() = $variable]
     /parent::expr
     /parent::expr[
@@ -48,7 +48,7 @@ const libraryOrRequire = xpath.parse(`
 `)
 
 // there is no except in xpath 1.0?
-const packageLoadedWithVariableLoadRequire = xpath.parse(`
+const packageLoadedWithVariableLoadRequire: Query = xpath.parse(`
     //SYMBOL_FUNCTION_CALL[text() = 'library' or text() = 'require']
     /parent::expr
     /parent::expr[
@@ -61,16 +61,16 @@ const packageLoadedWithVariableLoadRequire = xpath.parse(`
     ]/OP-LEFT-PAREN[1]/following-sibling::expr[1][SYMBOL | STR_CONST]/*
 `)
 
-const packageLoadedWithVariableNamespaces = xpath.parse(`
+const packageLoadedWithVariableNamespaces: Query = xpath.parse(`
   //SYMBOL_FUNCTION_CALL[text() = 'loadNamespace' or text() = 'requireNamespace' or text() = 'attachNamespace']/../following-sibling::expr[1][SYMBOL]/*
 `)
 
-const queryForFunctionCall = xpath.parse(`
+const queryForFunctionCall: Query = xpath.parse(`
   //SYMBOL_FUNCTION_CALL[text() = $variable]/../following-sibling::expr[1][STR_CONST]/*
 `)
 
 // otherwise, the parser seems to fail
-const queryForNsAccess = xpath.parse(`
+const queryForNsAccess: Query = xpath.parse(`
   //NS_GET[text() = $variable]/../SYMBOL_PACKAGE[1]
   |
   //NS_GET_INT[text() = $variable]/../SYMBOL_PACKAGE[1]

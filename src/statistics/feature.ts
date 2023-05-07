@@ -2,6 +2,8 @@ import { initialUsedPackageInfos, usedPackages } from './features/usedPackages'
 import { comments, initialCommentInfo } from './features/comments'
 import { removeTokenMapQuotationMarks } from '../r-bridge/retriever'
 import { definedFunctions, initialFunctionDefinitionInfo } from './features/definedFunctions'
+import { initialValueInfo, values } from './features/values'
+import { EvalOptions } from 'xpath-ts2/src/parse-api'
 
 /**
  * A feature is something to be retrieved by the statistics.
@@ -23,7 +25,8 @@ export interface Feature<T> {
 export const ALL_FEATURES: Record<string, Feature<any>> = {
   usedPackages:     usedPackages,
   comments:         comments,
-  definedFunctions: definedFunctions
+  definedFunctions: definedFunctions,
+  values:           values
 } as const
 
 export type FeatureKey = keyof typeof ALL_FEATURES
@@ -35,8 +38,12 @@ export type FeatureStatistics = {
 export const InitialFeatureStatistics: () => FeatureStatistics = () => ({
   usedPackages:     initialUsedPackageInfos(),
   comments:         initialCommentInfo(),
-  definedFunctions: initialFunctionDefinitionInfo()
+  definedFunctions: initialFunctionDefinitionInfo(),
+  values:           initialValueInfo()
 })
+
+/** just to shorten type inline hints */
+export interface Query { select(options?: EvalOptions): Node[] }
 
 export function formatMap<T>(map: Map<T, number>, details: boolean): string {
   if(details) {

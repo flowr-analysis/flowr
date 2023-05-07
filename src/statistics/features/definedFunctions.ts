@@ -1,4 +1,4 @@
-import { append, Feature, formatMap } from '../feature'
+import { append, Feature, formatMap, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { MergeableRecord } from '../../util/objects'
 import { groupCount } from '../../util/arrays'
@@ -31,11 +31,11 @@ export const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({
 
 // TODO: note that this can not work with assign, setGeneric and so on for now
 // TODO: is it faster to wrap with count?
-const queryAnyFunctionDefinition = xpath.parse(`//FUNCTION`)
-const queryAnyLambdaDefinition = xpath.parse(`//OP-LAMBDA`)
+const queryAnyFunctionDefinition: Query = xpath.parse(`//FUNCTION`)
+const queryAnyLambdaDefinition: Query = xpath.parse(`//OP-LAMBDA`)
 
 // we do not care on how these functions are defined
-const queryAssignedFunctionDefinitions = xpath.parse(`
+const queryAssignedFunctionDefinitions: Query = xpath.parse(`
   //LEFT_ASSIGN[following-sibling::expr/*[self::FUNCTION or self::OP-LAMBDA]]/preceding-sibling::expr[count(*)=1]/SYMBOL
   |
   //EQ_ASSIGN[following-sibling::expr/*[self::FUNCTION or self::OP-LAMBDA]]/preceding-sibling::expr[count(*)=1]/SYMBOL
@@ -43,16 +43,16 @@ const queryAssignedFunctionDefinitions = xpath.parse(`
   //RIGHT_ASSIGN[preceding-sibling::expr/*[self::FUNCTION or self::OP-LAMBDA]]/following-sibling::expr[count(*)=1]/SYMBOL
 `)
 
-const queryUsedParameterNames = xpath.parse(`
+const queryUsedParameterNames: Query = xpath.parse(`
   //FUNCTION/../SYMBOL_FORMALS
 `)
 
 // this is probably not completely correct
-const defineFunctionsToBeCalled = xpath.parse(`
+const defineFunctionsToBeCalled: Query = xpath.parse(`
   //expr/expr/*[self::FUNCTION or self::OP-LAMBDA]/parent::expr[preceding-sibling::OP-LEFT-PAREN or preceding-sibling::OP-LEFT-BRACE]/parent::expr[following-sibling::OP-LEFT-PAREN]
 `)
 
-const nestedFunctionsQuery = xpath.parse(`
+const nestedFunctionsQuery: Query = xpath.parse(`
   //expr[preceding-sibling::FUNCTION or preceding-sibling::OP-LAMBDA]//*[self::FUNCTION or self::OP-LAMBDA]
 `)
 

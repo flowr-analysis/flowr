@@ -15,7 +15,6 @@ export interface ValueInfo extends MergeableRecord {
   strings:          string[]
 }
 
-// TODO: integers, constants, etc.
 export const initialValueInfo = (): ValueInfo => ({
   numerics:         [],
   imaginaryNumbers: 0,

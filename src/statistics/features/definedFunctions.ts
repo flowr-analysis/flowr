@@ -9,28 +9,33 @@ export interface FunctionDefinitionInfo extends MergeableRecord {
   // TODO: scoping/namespaces?
   // TODO: local/global functions etc.
   /** all, anonymous, assigned, non-assigned, ... */
-  total:              number
+  total:                   number
   /** how many are really using OP-Lambda? */
-  lambdasOnly:        number
+  lambdasOnly:             number
   /** using `<<-`, `<-`, `=`, `->` `->>` */
-  assignedFunctions:  FunctionNameInfo[]
-  usedParameterNames: string[]
+  assignedFunctions:       FunctionNameInfo[]
+  usedParameterNames:      string[]
+  /** anonymous functions invoked directly */
+  functionsDirectlyCalled: number
+  nestedFunctions:         number
 }
 
 export const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({
-  total:              0,
-  lambdasOnly:        0,
-  assignedFunctions:  [],
-  usedParameterNames: []
+  total:                   0,
+  lambdasOnly:             0,
+  assignedFunctions:       [],
+  usedParameterNames:      [],
+  functionsDirectlyCalled: 0,
+  nestedFunctions:         0
 })
 
 // TODO: note that this can not work with assign, setGeneric and so on for now
-// TODO: is it fater to wrap with count?
-export const queryAnyFunctionDefinition = xpath.parse(`//FUNCTION`)
-export const queryAnyLambdaDefinition = xpath.parse(`//OP-LAMBDA`)
+// TODO: is it faster to wrap with count?
+const queryAnyFunctionDefinition = xpath.parse(`//FUNCTION`)
+const queryAnyLambdaDefinition = xpath.parse(`//OP-LAMBDA`)
 
 // we do not care on how these functions are defined
-export const queryAssignedFunctionDefinitions = xpath.parse(`
+const queryAssignedFunctionDefinitions = xpath.parse(`
   //LEFT_ASSIGN[following-sibling::expr/*[self::FUNCTION or self::OP-LAMBDA]]/preceding-sibling::expr[count(*)=1]/SYMBOL
   |
   //EQ_ASSIGN[following-sibling::expr/*[self::FUNCTION or self::OP-LAMBDA]]/preceding-sibling::expr[count(*)=1]/SYMBOL
@@ -38,9 +43,19 @@ export const queryAssignedFunctionDefinitions = xpath.parse(`
   //RIGHT_ASSIGN[preceding-sibling::expr/*[self::FUNCTION or self::OP-LAMBDA]]/following-sibling::expr[count(*)=1]/SYMBOL
 `)
 
-export const queryUsedParameterNames = xpath.parse(`
+const queryUsedParameterNames = xpath.parse(`
   //FUNCTION/../SYMBOL_FORMALS
 `)
+
+// this is probably not completely correct
+const defineFunctionsToBeCalled = xpath.parse(`
+  //expr/expr/*[self::FUNCTION or self::OP-LAMBDA]/parent::expr[preceding-sibling::OP-LEFT-PAREN or preceding-sibling::OP-LEFT-BRACE]/parent::expr[following-sibling::OP-LEFT-PAREN]
+`)
+
+const nestedFunctionsQuery = xpath.parse(`
+  //expr[preceding-sibling::FUNCTION or preceding-sibling::OP-LAMBDA]//*[self::FUNCTION or self::OP-LAMBDA]
+`)
+
 
 export const definedFunctions: Feature<FunctionDefinitionInfo> = {
   name:        'defined functions',
@@ -56,6 +71,9 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
     const usedParameterNames = queryUsedParameterNames.select({ node: input })
     append(existing, 'usedParameterNames', usedParameterNames)
 
+    existing.functionsDirectlyCalled += defineFunctionsToBeCalled.select({ node: input }).length
+    existing.nestedFunctions += nestedFunctionsQuery.select({ node: input }).length
+
     const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input })
     existing.assignedFunctions.push(...new Set(assignedFunctions.map(node => node.textContent ?? '<unknown>')))
     return existing
@@ -68,8 +86,10 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 
     return `---defined functions------------
 \ttotal: ${data.total} (of which ${data.lambdasOnly} are using OP-LAMBDA)
-\tfunctions defined: ${groupedAssignedFunctions.size} (of which ${startingWithDot} start with dot)${formatMap(groupedAssignedFunctions)}
-\tused parameter names: ${groupedUsedParameterNames.size} ${formatMap(groupedUsedParameterNames)}
+\tfunctions assigned: ${groupedAssignedFunctions.size} (of which ${startingWithDot} start with dot)${formatMap(groupedAssignedFunctions)}
+\tparameter names: ${groupedUsedParameterNames.size} ${formatMap(groupedUsedParameterNames)}
+\tfunctions directly called: ${data.functionsDirectlyCalled}
+\tnested functions: ${data.nestedFunctions}
 `
   }
 

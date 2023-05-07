@@ -84,7 +84,6 @@ export async function extract<T extends RParseRequestFromText | RParseRequestFro
 
   resetStatisticsDirectory()
 
-  // TODO: allow to differentiate between testfolder and no testfolder
   let first = true
   for await (const request of requests) {
     onRequest(request)

@@ -135,7 +135,6 @@ export const comments: Feature<CommentInfo> = {
   },
 
   toString(data: CommentInfo): string {
-    // TODO: make more performant & improve formatting (tables etc.)
     return `---comments-------------
 \ttotal amount:                            ${data.totalAmount}
 \troxygen comments:                        ${data.roxygenComments}

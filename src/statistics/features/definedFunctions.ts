@@ -61,7 +61,7 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
   name:        'Defined Functions',
   description: 'all functions defined within the document',
 
-  append(existing: FunctionDefinitionInfo, input: Document): FunctionDefinitionInfo {
+  append(existing: FunctionDefinitionInfo, input: Document, filepath: string | undefined): FunctionDefinitionInfo {
     const allFunctions = queryAnyFunctionDefinition.select({ node: input }).length
     const allLambdas = queryAnyLambdaDefinition.select({ node: input }).length
 
@@ -70,14 +70,14 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 
     const usedParameterNames = queryUsedParameterNames.select({ node: input })
     existing.usedParameterNames += usedParameterNames.length
-    append(this.name, 'usedParameterNames', usedParameterNames)
+    append(this.name, 'usedParameterNames', usedParameterNames, filepath)
 
     existing.functionsDirectlyCalled += defineFunctionsToBeCalled.select({ node: input }).length
     existing.nestedFunctions += nestedFunctionsQuery.select({ node: input }).length
 
     const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input })
     existing.assignedFunctions += assignedFunctions.length
-    append(this.name, 'assignedFunctions', assignedFunctions)
+    append(this.name, 'assignedFunctions', assignedFunctions, filepath)
 
     return existing
   },

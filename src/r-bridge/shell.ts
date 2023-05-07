@@ -359,7 +359,7 @@ class RShellSession {
     const killResult = this.bareSession.kill()
     this.sessionStdOut.close()
     this.sessionStdErr.close()
-    log.info(`killed R session with pid ${this.bareSession.pid} and result ${killResult} (including streams)`)
+    log.info(`killed R session with pid ${this.bareSession.pid ?? '<unknown>'} and result ${killResult ? 'successful' : 'failed'} (including streams)`)
     return killResult
   }
 

@@ -53,32 +53,32 @@ const exportPatternRegex = /^'\s*@exportPattern/
 
 
 
-function processRoxygenImport(existing: CommentInfo, commentsText: string[]) {
+function processRoxygenImport(existing: CommentInfo, commentsText: string[], filepath: string | undefined) {
   const packages = commentsText.map(text => importRegex.exec(text)?.groups?.package).filter(isNotUndefined)
   existing.import += packages.length
-  append(comments.name, 'import', packages)
+  append(comments.name, 'import', packages, filepath)
 }
 
-function processWithRegex(commentsText: string[], existing: CommentInfo, regex: RegExp) {
+function processWithRegex(commentsText: string[], existing: CommentInfo, regex: RegExp, filepath: string | undefined) {
   const result = commentsText.map(text => regex.exec(text)).filter(isNotNull)
     .flatMap(match => {
       const packageName = match.groups?.package ?? '<unknown>'
       return (match.groups?.fn.trim().split(/\s+/) ?? []).map(fn => `${JSON.stringify(packageName)},${fn}`)
     })
   existing.importFrom += result.length
-  append(comments.name, 'importFrom', result)
+  append(comments.name, 'importFrom', result, filepath)
 }
 
-function processRoxygenImportFrom(existing: CommentInfo, comments: string[]) {
-  processWithRegex(comments, existing, importFromRegex)
+function processRoxygenImportFrom(existing: CommentInfo, comments: string[], filepath: string | undefined) {
+  processWithRegex(comments, existing, importFromRegex, filepath)
 }
 
-function processRoxygenImportClassesFrom(existing: CommentInfo, comments: string[]) {
-  processWithRegex(comments, existing, importClassesFromRegex)
+function processRoxygenImportClassesFrom(existing: CommentInfo, comments: string[], filepath: string | undefined) {
+  processWithRegex(comments, existing, importClassesFromRegex, filepath)
 }
 
-function processRoxygenImportMethodsFrom(existing: CommentInfo, comments: string[]) {
-  processWithRegex(comments, existing, importMethodsFrom)
+function processRoxygenImportMethodsFrom(existing: CommentInfo, comments: string[], filepath: string | undefined) {
+  processWithRegex(comments, existing, importMethodsFrom, filepath)
 }
 
 function processExports(existing: CommentInfo, comments: string[]) {
@@ -99,20 +99,20 @@ function processMatchForDynLib(match: RegExpExecArray): string[] {
   }
 }
 
-function processRoxygenUseDynLib(existing: CommentInfo, commentsText: string[]) {
+function processRoxygenUseDynLib(existing: CommentInfo, commentsText: string[], filepath: string | undefined) {
   const result: string[] = commentsText.map(text => useDynLibRegex.exec(text))
     .filter(isNotNull)
     .flatMap(processMatchForDynLib)
 
   existing.useDynLib += result.length
-  append(comments.name, 'useDynLib', result)
+  append(comments.name, 'useDynLib', result, filepath)
 }
 
 export const comments: Feature<CommentInfo> = {
   name:        'Comments',
   description: 'all comments that appear within the document',
 
-  append(existing: CommentInfo, input: Document): CommentInfo {
+  append(existing: CommentInfo, input: Document, filepath: string | undefined): CommentInfo {
     const comments = commentQuery.select({ node: input }).map(node => node.textContent ?? '#')
       .map(text => {
         guard(text.startsWith('#'), `unexpected comment ${text}`)
@@ -124,11 +124,11 @@ export const comments: Feature<CommentInfo> = {
     const roxygenComments = comments.filter(text => text.startsWith("'"))
     existing.roxygenComments += roxygenComments.length
 
-    processRoxygenImport(existing, roxygenComments)
-    processRoxygenImportFrom(existing, roxygenComments)
-    processRoxygenUseDynLib(existing, roxygenComments)
-    processRoxygenImportClassesFrom(existing, roxygenComments)
-    processRoxygenImportMethodsFrom(existing, roxygenComments)
+    processRoxygenImport(existing, roxygenComments, filepath)
+    processRoxygenImportFrom(existing, roxygenComments, filepath)
+    processRoxygenUseDynLib(existing, roxygenComments, filepath)
+    processRoxygenImportClassesFrom(existing, roxygenComments, filepath)
+    processRoxygenImportMethodsFrom(existing, roxygenComments, filepath)
     processExports(existing, roxygenComments)
 
     return existing

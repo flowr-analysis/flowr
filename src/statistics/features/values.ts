@@ -56,7 +56,7 @@ export const values: Feature<ValueInfo> = {
   name:        'Values',
   description: 'all values used (as constants etc.)',
 
-  append(existing: ValueInfo, input: Document): ValueInfo {
+  append(existing: ValueInfo, input: Document, filepath: string | undefined): ValueInfo {
     const strings = stringConstantQuery.select({ node: input})
     const numerics = numericConstantQuery.select({ node: input})
     const specialConstants = specialConstantsQuery.select({ node: input})
@@ -82,10 +82,10 @@ export const values: Feature<ValueInfo> = {
     existing.specialConstants += specialConstants.length
     existing.logical += specialLogicalSymbols.length
 
-    append(this.name, 'numeric', numbers)
-    append(this.name, 'string', strings)
-    append(this.name, 'specialConstant', specialConstants)
-    append(this.name, 'logical', specialLogicalSymbols)
+    append(this.name, 'numeric', numbers, filepath)
+    append(this.name, 'string', strings, filepath)
+    append(this.name, 'specialConstant', specialConstants, filepath)
+    append(this.name, 'logical', specialLogicalSymbols, filepath)
 
     return existing
   },

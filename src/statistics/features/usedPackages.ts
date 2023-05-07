@@ -96,19 +96,19 @@ export const usedPackages: Feature<UsedPackageInfo> = {
   name:        'Used Packages',
   description: 'All the packages used in the code',
 
-  append(existing: UsedPackageInfo, input: Document): UsedPackageInfo {
+  append(existing: UsedPackageInfo, input: Document, filepath: string | undefined): UsedPackageInfo {
     // we will unify in the end, so we can count, group etc. but we do not re-count multiple packages in the same file
     for(const q of queries) {
       for(const fn of q.types) {
         const nodes = q.query.select({ node: input, variables: { variable: fn } })
-        append(this.name, fn, nodes)
+        append(this.name, fn, nodes, filepath)
       }
     }
 
     append(this.name, '<loadedByVariable>', [
       ...packageLoadedWithVariableLoadRequire.select({ node: input }),
       ...packageLoadedWithVariableNamespaces.select({ node: input })
-    ])
+    ], filepath)
 
     return existing
   },

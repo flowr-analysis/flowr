@@ -58,7 +58,7 @@ export const assignments: Feature<AssignmentInfo> = {
   name:        'Assignments',
   description: 'all ways to assign something in R',
 
-  append(existing: AssignmentInfo, input: Document): AssignmentInfo {
+  append(existing: AssignmentInfo, input: Document, filepath: string | undefined): AssignmentInfo {
     const assignmentOperators = defaultOperatorAssignmentQuery.select({ node: input })
     const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input })
     const specialAssignmentOps = bracketAssignQuery.select({ node: input }).map(enrichOpForBracketAssign)
@@ -67,8 +67,8 @@ export const assignments: Feature<AssignmentInfo> = {
     existing.assignmentOperator += assignmentOperators.length
     existing.specialAssignmentOps += specialAssignmentOps.length
 
-    append(this.name, 'assignmentOperator', assignmentOperators)
-    append(this.name, 'specialAssignmentOps', specialAssignmentOps)
+    append(this.name, 'assignmentOperator', assignmentOperators, filepath)
+    append(this.name, 'specialAssignmentOps', specialAssignmentOps, filepath)
 
     return existing
   },

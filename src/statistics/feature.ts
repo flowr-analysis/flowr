@@ -16,8 +16,8 @@ export interface Feature<T> {
   readonly name:        string
   /** a description of the feature */
   readonly description: string
-  /** a function that retrieves the feature in the document appends it to the existing feature set (we could use a monoid :D) */
-  append:               (existing: T, input: Document) => T
+  /** a function that retrieves the feature in the document appends it to the existing feature set (we could use a monoid :D), the filepath corresponds to the active file (if any) */
+  append:               (existing: T, input: Document, filepath: string | undefined) => T
   /** formats the given information to be consumed by a human */
   toString:             (data: T) => string
 }

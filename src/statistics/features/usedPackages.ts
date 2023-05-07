@@ -1,4 +1,4 @@
-import { Feature } from '../feature'
+import { Feature, formatMap } from '../feature'
 import * as xpath from 'xpath-ts'
 import { MergeableRecord } from '../../util/objects'
 import { EvalOptions } from 'xpath-ts/src/parse-api'
@@ -130,13 +130,6 @@ export const usedPackages: Feature<PackageInfo> = {
 
     return result
   }
-}
-
-function formatMap(map: Map<string, number>): string {
-  return [...map.entries()]
-    .sort(([s], [s2]) => s.localeCompare(s2))
-    .map(([key, value]) => `\n\t\t${key}: ${value}`)
-    .join('')
 }
 
 

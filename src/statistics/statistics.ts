@@ -31,6 +31,7 @@ export async function extract<T extends RParseRequestFromText | RParseRequestFro
 ): Promise<FeatureStatistics> {
   let result = InitialFeatureStatistics()
   let first = true
+  const skipped = []
   for(const request of requests) {
     onRequest(request)
     try {
@@ -42,9 +43,10 @@ export async function extract<T extends RParseRequestFromText | RParseRequestFro
       first = false
     } catch (e) {
       console.error('for request: ', request, e)
+      skipped.push(request)
     }
   }
-
+  console.warn(`skipped ${skipped.length} requests due to errors (run with logs to get more info)`)
   return result
 }
 

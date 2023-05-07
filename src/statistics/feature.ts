@@ -1,5 +1,6 @@
 import { initialUsedPackageInfos, usedPackages } from './features/usedPackages'
 import { comments, initialCommentInfo } from './features/comments'
+import { removeTokenMapQuotationMarks } from '../r-bridge/retriever'
 
 /**
  * A feature is something to be retrieved by the statistics.
@@ -30,3 +31,12 @@ export const InitialFeatureStatistics: () => FeatureStatistics = () => ({
   usedPackages: initialUsedPackageInfos(),
   comments:     initialCommentInfo()
 })
+
+export function formatMap<T>(map: Map<T, number>): string {
+  return [...map.entries()]
+    .map(([key, value]) => [JSON.stringify(key), value] as [string, number])
+    .sort(([s], [s2]) => s.localeCompare(s2))
+    // TODO: use own
+    .map(([key, value]) => `\n\t\t${removeTokenMapQuotationMarks(key)}: ${value}`)
+    .join()
+}

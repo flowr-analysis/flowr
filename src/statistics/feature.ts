@@ -45,3 +45,8 @@ export function formatMap<T>(map: Map<T, number>): string {
     .map(([key, value]) => `\n\t\t${removeTokenMapQuotationMarks(key)}: ${value}`)
     .join()
 }
+
+/** helper to append something to an info map =\> TODO rename */
+export function append<K>(existing: K, fn: keyof K, nodes: Node[]) {
+  (existing[fn] as unknown[]).push(...new Set(nodes.map(node => node.textContent ?? '<unknown>')))
+}

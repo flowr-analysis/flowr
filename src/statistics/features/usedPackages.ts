@@ -1,4 +1,4 @@
-import { Feature, formatMap } from '../feature'
+import { append, Feature, formatMap } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { MergeableRecord } from '../../util/objects'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
@@ -90,10 +90,6 @@ const queries: { types: readonly (keyof UsedPackageInfo)[], query: { select(opti
     query: queryForNsAccess
   }
 ]
-
-function append(existing: UsedPackageInfo, fn: keyof UsedPackageInfo, nodes: Node[]) {
-  (existing[fn] as unknown[]).push(...new Set(nodes.map(node => node.textContent ?? '<unknown>')))
-}
 
 export const usedPackages: Feature<UsedPackageInfo> = {
   name:        'Used Packages',

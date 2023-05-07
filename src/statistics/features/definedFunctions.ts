@@ -54,9 +54,11 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 
   toString(data: FunctionDefinitionInfo): string {
     const groupedAssignedFunctions = groupCount(data.assignedFunctions)
+    const startingWithDot = [...groupedAssignedFunctions.keys()].filter(key => key.startsWith('.')).length
+
     return `---defined functions------------
 \ttotal: ${data.total} (of which ${data.lambdasOnly} are lambdas)
-\tfunctions defined: ${groupedAssignedFunctions.size}${formatMap(groupedAssignedFunctions)}
+\tfunctions defined: ${groupedAssignedFunctions.size} (of which ${startingWithDot} start with dot)${formatMap(groupedAssignedFunctions)}
 `
   }
 

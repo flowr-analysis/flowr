@@ -2,7 +2,7 @@ import { Feature, formatMap } from '../feature'
 import { SinglePackageInfo } from './usedPackages'
 import { MergeableRecord } from '../../util/objects'
 import { UsedFunction } from './usedFunctions'
-import * as xpath from 'xpath-ts'
+import * as xpath from 'xpath-ts2'
 import { guard, isNotNull, isNotUndefined } from '../../util/assert'
 import { groupCount } from '../../util/arrays'
 

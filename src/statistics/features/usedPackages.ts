@@ -1,7 +1,7 @@
 import { Feature, formatMap } from '../feature'
-import * as xpath from 'xpath-ts'
+import * as xpath from 'xpath-ts2'
 import { MergeableRecord } from '../../util/objects'
-import { EvalOptions } from 'xpath-ts/src/parse-api'
+import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { groupCount } from '../../util/arrays'
 
 export type SinglePackageInfo = string
@@ -61,6 +61,7 @@ const packageLoadedWithVariableLoadRequire = xpath.parse(`
     ]/OP-LEFT-PAREN[1]/following-sibling::expr[1][SYMBOL | STR_CONST]/*
 `)
 
+// TODO: joint query for load with variables!
 const packageLoadedWithVariableNamespaces = xpath.parse(`
   //SYMBOL_FUNCTION_CALL[text() = $variable]/../following-sibling::expr[1][SYMBOL]/*
 `)

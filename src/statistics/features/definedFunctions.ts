@@ -1,6 +1,5 @@
 import { Feature, formatMap } from '../feature'
-import { CommentInfo } from './comments'
-import * as xpath from 'xpath-ts'
+import * as xpath from 'xpath-ts2'
 import { MergeableRecord } from '../../util/objects'
 import { groupCount } from '../../util/arrays'
 

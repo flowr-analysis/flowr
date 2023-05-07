@@ -32,7 +32,7 @@ async function* getFiles(dir: string, suffix = '.R'): AsyncGenerator<string> {
 export async function* allRFiles(dir: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile> {
   let count = 0
   for await (const f of getFiles(dir, '.R')) {
-    if(++count >= limit) {
+    if(++count > limit) {
       break
     }
     yield { request: 'file', content: f }

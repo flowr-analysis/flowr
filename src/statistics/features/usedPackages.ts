@@ -1,8 +1,9 @@
-import { append, Feature, formatMap, Query } from '../feature'
+import { Feature, formatMap, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { MergeableRecord } from '../../util/objects'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { groupCount } from '../../util/arrays'
+import { append } from '../statisticsFile'
 
 export type SinglePackageInfo = string
 

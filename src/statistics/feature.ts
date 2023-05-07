@@ -5,7 +5,6 @@ import { definedFunctions, initialFunctionDefinitionInfo } from './features/defi
 import { initialValueInfo, values } from './features/values'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { assignments, initialAssignmentInfo } from './features/assignments'
-import fs from 'fs'
 
 /**
  * A feature is something to be retrieved by the statistics.
@@ -68,22 +67,5 @@ export function formatMap<T>(map: Map<T, number>, details: boolean): string {
 }
 
 
-/**
- * as we have a lot of data to collect, we want to store them in files
- *
- * @param name - the name of the feature {@link Feature#name}
- * @param fn - the name of the feature-aspect to record
- */
-export function statisticsFile(name: string, fn: string): string {
-  return `./statistics/${name}/${fn}.txt`
-}
-
-/**
- * append the content of all nodes to the storage file for the given feature
- */
-export function append<T>(name: string, fn: keyof T, nodes: Node[]) {
-  const contents = new Set(nodes.map(node => node.textContent ?? '<unknown>'))
-
-  fs.appendFileSync(statisticsFile(name, String(fn)), [...contents].join('\n') + '\n')
-}
+// TODO: more advanced file provider that closes all streams in the end and keeps files open/saves checks etc.
 

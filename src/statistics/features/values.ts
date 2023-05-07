@@ -1,8 +1,9 @@
-import { append, Feature, Query } from '../feature'
+import { Feature, Query } from '../feature'
 import { MergeableRecord } from '../../util/objects'
 import * as xpath from 'xpath-ts2'
 import { RNumHexFloatRegex } from '../../r-bridge/lang:4.x/values'
 import { assertUnreachable } from '../../util/assert'
+import { append } from '../statisticsFile'
 
 export interface ValueInfo extends MergeableRecord {
   allNumerics:      number,
@@ -52,7 +53,7 @@ function classifyNumericConstants(numeric: string, existing: ValueInfo): 'allNum
 }
 
 export const values: Feature<ValueInfo> = {
-  name:        'values',
+  name:        'Values',
   description: 'all values used (as constants etc.)',
 
   append(existing: ValueInfo, input: Document): ValueInfo {

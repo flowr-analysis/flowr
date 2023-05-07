@@ -1,7 +1,8 @@
-import { append, Feature, formatMap, Query } from '../feature'
+import { Feature, formatMap, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { MergeableRecord } from '../../util/objects'
 import { groupCount } from '../../util/arrays'
+import { append } from '../statisticsFile'
 
 export type FunctionNameInfo = string
 
@@ -58,7 +59,7 @@ const nestedFunctionsQuery: Query = xpath.parse(`
 
 
 export const definedFunctions: Feature<FunctionDefinitionInfo> = {
-  name:        'defined functions',
+  name:        'Defined Functions',
   description: 'all functions defined within the document',
 
   append(existing: FunctionDefinitionInfo, input: Document): FunctionDefinitionInfo {
@@ -69,7 +70,7 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
     existing.lambdasOnly += allLambdas.length
 
     const usedParameterNames = queryUsedParameterNames.select({ node: input })
-    append(existing, 'usedParameterNames', usedParameterNames)
+    append(this.name, 'usedParameterNames', usedParameterNames)
 
     existing.functionsDirectlyCalled += defineFunctionsToBeCalled.select({ node: input }).length
     existing.nestedFunctions += nestedFunctionsQuery.select({ node: input }).length

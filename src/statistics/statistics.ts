@@ -8,6 +8,7 @@ import { ALL_FEATURES, FeatureKey, FeatureStatistics, InitialFeatureStatistics }
 import { RShell } from '../r-bridge/shell'
 import { DOMParser } from 'xmldom'
 import fs from 'fs'
+import { resetStatisticsDirectory } from './statisticsFile'
 
 export async function extractSingle(result: FeatureStatistics, shell: RShell, from: RParseRequest, features: 'all' | Set<FeatureKey>): Promise<FeatureStatistics> {
   const xml = await retrieveXmlFromRCode(from, shell)
@@ -71,6 +72,8 @@ export async function extract<T extends RParseRequestFromText | RParseRequestFro
 ): Promise<{ features: FeatureStatistics, meta: MetaStatistics }> {
   let result = InitialFeatureStatistics()
   const meta = initialMetaStatistics()
+
+  resetStatisticsDirectory()
 
   // TODO: allow to differentiate between testfolder and no testfolder
   let first = true

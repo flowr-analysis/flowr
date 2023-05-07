@@ -63,7 +63,6 @@ export const assignments: Feature<AssignmentInfo> = {
     const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input }).length
     const specialAssignmentOps = bracketAssignQuery.select({ node: input }).map(enrichOpForBracketAssign)
 
-
     existing.nestedOperatorAssignment += nestedOperators
 
     existing.assignmentOperator.push(...assignmentOperators)

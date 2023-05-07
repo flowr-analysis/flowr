@@ -13,11 +13,11 @@ export interface UsedFunction {
 
 // TODO: get corresponding package with getNamespaceExports etc?
 export interface FunctionUsageInfo extends MergeableRecord {
-  allCalls: string[]
+  allCalls: number
 }
 
 export const initialValueInfo = (): FunctionUsageInfo => ({
-  allCalls: []
+  allCalls: 0
 })
 
 const functionCallQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL`)
@@ -29,14 +29,15 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
   append(existing: FunctionUsageInfo, input: Document): FunctionUsageInfo {
     const allFunctionCalls = functionCallQuery.select({ node: input })
 
-    existing.allCalls.push(...allFunctionCalls.map(n => n.textContent ?? '<unknown>'))
+    // TODO:
+    // existing.allCalls.push(...allFunctionCalls.map(n => n.textContent ?? '<unknown>'))
 
     return existing
   },
 
-  toString(data: FunctionUsageInfo, details: boolean): string {
+  toString(data: FunctionUsageInfo): string {
+    // \tall calls: ${data.allCalls.length}${formatMap(groupCount(data.allCalls), details)}
     return `---used functions-------------
-\tall calls: ${data.allCalls.length}${formatMap(groupCount(data.allCalls), details)}
     `
   }
 }

@@ -33,7 +33,7 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
     if(processedFeatures !== 'all' && !processedFeatures.has(entry)) {
       continue
     }
-    console.log(ALL_FEATURES[entry].toString(stats.features[entry], true))
+    console.log(ALL_FEATURES[entry].toString(stats.features[entry]))
   }
 
   // TODO: unify analysis of min/max etc.

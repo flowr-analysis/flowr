@@ -19,7 +19,7 @@ export interface Feature<T> {
   /** a function that retrieves the feature in the document appends it to the existing feature set (we could use a monoid :D) */
   append:               (existing: T, input: Document) => T
   /** formats the given information to be consumed by a human */
-  toString:             (data: T, showDetails : boolean) => string
+  toString:             (data: T) => string
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

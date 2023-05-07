@@ -1,7 +1,6 @@
-import { Feature, formatMap, Query } from '../feature'
+import { Feature, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { MergeableRecord } from '../../util/objects'
-import { groupCount } from '../../util/arrays'
 import { append } from '../statisticsFile'
 
 export type FunctionNameInfo = string
@@ -14,8 +13,8 @@ export interface FunctionDefinitionInfo extends MergeableRecord {
   /** how many are really using OP-Lambda? */
   lambdasOnly:             number
   /** using `<<-`, `<-`, `=`, `->` `->>` */
-  assignedFunctions:       FunctionNameInfo[]
-  usedParameterNames:      string[]
+  assignedFunctions:       number
+  usedParameterNames:      number
   /** anonymous functions invoked directly */
   functionsDirectlyCalled: number
   nestedFunctions:         number
@@ -24,8 +23,8 @@ export interface FunctionDefinitionInfo extends MergeableRecord {
 export const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({
   total:                   0,
   lambdasOnly:             0,
-  assignedFunctions:       [],
-  usedParameterNames:      [],
+  assignedFunctions:       0,
+  usedParameterNames:      0,
   functionsDirectlyCalled: 0,
   nestedFunctions:         0
 })
@@ -63,34 +62,33 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
   description: 'all functions defined within the document',
 
   append(existing: FunctionDefinitionInfo, input: Document): FunctionDefinitionInfo {
-    const allFunctions = queryAnyFunctionDefinition.select({ node: input })
-    const allLambdas = queryAnyLambdaDefinition.select({ node: input })
+    const allFunctions = queryAnyFunctionDefinition.select({ node: input }).length
+    const allLambdas = queryAnyLambdaDefinition.select({ node: input }).length
 
-    existing.total += allFunctions.length + allLambdas.length
-    existing.lambdasOnly += allLambdas.length
+    existing.total += allFunctions + allLambdas
+    existing.lambdasOnly += allLambdas
 
     const usedParameterNames = queryUsedParameterNames.select({ node: input })
+    existing.usedParameterNames += usedParameterNames.length
     append(this.name, 'usedParameterNames', usedParameterNames)
 
     existing.functionsDirectlyCalled += defineFunctionsToBeCalled.select({ node: input }).length
     existing.nestedFunctions += nestedFunctionsQuery.select({ node: input }).length
 
     const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input })
-    existing.assignedFunctions.push(...new Set(assignedFunctions.map(node => node.textContent ?? '<unknown>')))
+    existing.assignedFunctions += assignedFunctions.length
+    append(this.name, 'assignedFunctions', assignedFunctions)
+
     return existing
   },
 
-  toString(data: FunctionDefinitionInfo, details: boolean): string {
-    const groupedAssignedFunctions = groupCount(data.assignedFunctions)
-    const startingWithDot = [...groupedAssignedFunctions.keys()].filter(key => key.startsWith('.')).length
-    const groupedUsedParameterNames = groupCount(data.usedParameterNames)
-
+  toString(data: FunctionDefinitionInfo): string {
     return `---defined functions------------
-\ttotal: ${data.total} (${data.lambdasOnly} of which are using OP-LAMBDA)
-\tfunctions assigned: ${groupedAssignedFunctions.size} (of which ${startingWithDot} start with dot)${formatMap(groupedAssignedFunctions, details)}
-\tparameter names: ${groupedUsedParameterNames.size} ${formatMap(groupedUsedParameterNames, details)}
-\tfunctions directly called: ${data.functionsDirectlyCalled}
-\tnested functions: ${data.nestedFunctions}
+\ttotal:              ${data.total} (${data.lambdasOnly} of which are using OP-LAMBDA)
+\t\tfunctions assigned:        ${data.assignedFunctions}
+\t\tparameter names:           ${data.usedParameterNames}
+\t\tfunctions directly called: ${data.functionsDirectlyCalled}
+\t\tnested functions:          ${data.nestedFunctions}
 `
   }
 

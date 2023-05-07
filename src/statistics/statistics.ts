@@ -62,6 +62,15 @@ function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequest
   }
 }
 
+export function staticRequests(...requests: (RParseRequestFromText | RParseRequestFromFile)[]): AsyncGenerator<RParseRequestFromText | RParseRequestFromFile> {
+  // eslint-disable-next-line @typescript-eslint/require-await
+  return async function* () {
+    for (const request of requests) {
+      yield request
+    }
+  }()
+}
+
 /**
  * extract all statistic information from a set of requests using the presented R session
  */

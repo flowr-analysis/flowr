@@ -36,9 +36,9 @@ export interface MetaStatistics {
    */
   skipped:          string[]
   /**
-   * number of lines consumed for each request
+   * number of lines with each individual line length consumed for each request
    */
-  lines:            number[]
+  lines:            number[][]
 }
 
 const initialMetaStatistics: () => MetaStatistics = () => ({
@@ -51,9 +51,10 @@ const initialMetaStatistics: () => MetaStatistics = () => ({
 function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequestFromFile>(meta: MetaStatistics, request: T) {
   meta.successfulParsed++
   if(request.request === 'text') {
-    meta.lines.push(request.content.split('\n').length)
+    meta.lines.push(request.content.split('\n').map(l => l.length))
   } else {
-    meta.lines.push(fs.readFileSync(request.content, 'utf-8').split('\n').length)
+    // TODO: separate between comment and non-comment lines?
+    meta.lines.push(fs.readFileSync(request.content, 'utf-8').split('\n').map(l => l.length))
   }
 }
 

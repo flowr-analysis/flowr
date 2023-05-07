@@ -22,6 +22,7 @@ async function getStats() {
   let cur = 0
   const stats = await extract(shell,
     file => console.log(`processing ${++cur}/${processArguments.length} ${file.content}`),
+    new Set(['usedPackages']),
     ...processArguments.map(file => ({ request: 'file' as const, content: file }))
   )
   // console.log(JSON.stringify(stats, undefined, 2))

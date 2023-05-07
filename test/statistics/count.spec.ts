@@ -14,7 +14,7 @@ attachNamespace("purr")
 xmlparsedata::xml_parse_data(parse(text="hello"))
 lintr:::doMagic()
     `
-    const result = await extract(shell,() => { /* do nothing */ }, { request: 'text', content: code })
+    const result = await extract(shell,() => { /* do nothing */ },  'all',{ request: 'text', content: code })
 
     console.log(result)
     /* const result = countQueries(xml, '//SYMBOL_FUNCTION_CALL')

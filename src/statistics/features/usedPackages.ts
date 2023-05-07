@@ -14,7 +14,7 @@ export interface UsedPackageInfo extends MergeableRecord {
   attachNamespace:      SinglePackageInfo[]
   '::':                 SinglePackageInfo[]
   ':::':                SinglePackageInfo[]
-  /** just contains all occurrences */
+  /** just contains all occurrences where it is impossible to statically determine which package is loaded */
   '<loadedByVariable>': string[]
 }
 

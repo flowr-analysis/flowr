@@ -25,8 +25,10 @@ export const ALL_FEATURES = {
   definedFunctions: definedFunctions
 } as const
 
+export type FeatureKey = keyof typeof ALL_FEATURES
+
 export type FeatureStatistics = {
-  [K in keyof typeof ALL_FEATURES]: ReturnType<typeof ALL_FEATURES[K]['append']>
+  [K in FeatureKey]: ReturnType<typeof ALL_FEATURES[K]['append']>
 }
 
 export const InitialFeatureStatistics: () => FeatureStatistics = () => ({

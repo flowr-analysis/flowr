@@ -33,6 +33,6 @@
         "semi": ["error", "never"],
         "space-before-function-paren": ["error", "never"],
         "@typescript-eslint/space-before-function-paren": ["error", "never"],
-        "tsdoc/syntax": "warn"
+        "tsdoc/syntax": "error"
     }
 }

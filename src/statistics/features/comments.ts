@@ -1,5 +1,5 @@
 import { Feature, formatMap } from '../feature'
-import { UsedPackageInfo, SinglePackageInfo } from './usedPackages'
+import { SinglePackageInfo } from './usedPackages'
 import { MergeableRecord } from '../../util/objects'
 import { UsedFunction } from './usedFunctions'
 import * as xpath from 'xpath-ts'

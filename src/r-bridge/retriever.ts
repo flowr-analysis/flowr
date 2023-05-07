@@ -47,7 +47,7 @@ const ERR_MARKER = "err"
  * <p>
  * throws if the file could not be parsed
  */
-export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell): Promise<string > {
+export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell): Promise<string> {
   if (request.ensurePackageInstalled) {
     await shell.ensurePackageInstalled('xmlparsedata', true)
   }

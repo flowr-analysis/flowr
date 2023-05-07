@@ -1,4 +1,4 @@
-import { assertAst, withShell } from "../../../helper/shell"
+import { assertAst, retrieveAst, withShell } from '../../../helper/shell'
 import {
   RNumberPool,
   RStringPool,
@@ -7,16 +7,24 @@ import {
 import { exprList } from "../../../helper/ast-builder"
 import { rangeFrom } from "../../../../src/util/range"
 import { Type } from "../../../../src/r-bridge/lang:4.x/ast/model/type"
-import { log, LogLevel } from '../../../../src/util/log'
+import {  retrieveXmlFromRCode } from '../../../../src/r-bridge/retriever'
+import chai, { assert } from 'chai'
+import chaiAsPromised from 'chai-as-promised'
+chai.use(chaiAsPromised)
+
 
 describe(
   "0. Constant Parsing",
   withShell(shell => {
     describe("0. parse single", () => {
-      describe('0.0 parse illegal', () => {
-        log.updateSettings(s => s.settings.minLevel = LogLevel.trace)
-        assertAst('illegal r string', shell, '{', exprList()).timeout('5min')
-      })
+      it('0.0 parse illegal', () =>
+        assert.isRejected(retrieveXmlFromRCode({
+          request:                 'text',
+          content:                 '{',
+          attachSourceInformation: true,
+          ensurePackageInstalled:  true
+        }, shell))
+      )
 
       describe("0.1 numbers", () => {
         for (const number of RNumberPool) {

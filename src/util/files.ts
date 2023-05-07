@@ -25,11 +25,18 @@ export async function* getFiles(dir: string): AsyncGenerator<string> {
 /**
  * Retrieves all R files in a given directory (asynchronously)
  *
+ * @param dir - directory-path to start the search from
+ * @param limit - limit the number of files to be retrieved
+ *
  * @see #getFiles
  */
-export async function* allRFiles(dir: string): AsyncGenerator<RParseRequestFromFile> {
+export async function* allRFiles(dir: string, limit: 'unlimited' | number = 'unlimited'): AsyncGenerator<RParseRequestFromFile> {
+  const count = 0
   for await (const f of getFiles(dir)) {
     if (f.endsWith('.R')) {
+      if(limit !== 'unlimited' && count >= limit) {
+        break
+      }
       yield { request: 'file', content: f }
     }
   }

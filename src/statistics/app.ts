@@ -6,7 +6,7 @@ import { allRFiles } from '../util/files'
 
 log.updateSettings(l => l.settings.minLevel = LogLevel.error)
 
-// TODO: command line options (=> yargs?)
+// TODO: command line options (=> yargs?), allow to configure logging, limits, multiple folders, features to track, ...
 
 const shell = new RShell()
 shell.tryToInjectHomeLibPath()
@@ -25,7 +25,7 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
   const stats = await extract(shell,
     file => console.log(`processing ${++cur} ${file.content}`),
     processedFeatures,
-    allRFiles(processArguments[0])
+    allRFiles(processArguments[0], 5_000)
   )
   // console.log(JSON.stringify(stats, undefined, 2))
 
@@ -36,7 +36,7 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
     console.log(ALL_FEATURES[entry].toString(stats.features[entry], true))
   }
 
-  // TODO: unify anlysis of min/max etc.
+  // TODO: unify analysis of min/max etc.
   const numberOfLinesPerFiles = stats.meta.lines.map(l => l.length).sort((a, b) => a - b)
   const sumLines = numberOfLinesPerFiles.reduce((a, b) => a + b, 0)
 

@@ -30,6 +30,7 @@ export async function extract<T extends RParseRequestFromText | RParseRequestFro
                                                                                        ...requests: T[]
 ): Promise<FeatureStatistics> {
   let result = InitialFeatureStatistics()
+  // TODO: allow to differentiate between testfolder and no testfolder
   let first = true
   const skipped = []
   for(const request of requests) {

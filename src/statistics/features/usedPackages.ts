@@ -121,7 +121,7 @@ export const usedPackages: Feature<PackageInfo> = {
   },
 
   toString(data: PackageInfo): string {
-    let result = '---used packages-------------'
+    let result = '---used packages (does not care for roxygen comments!)-------------'
     result += `\n\tloaded by a variable (unknown): ${data['<loadedByVariable>'].length}`
     for(const fn of [ 'library', 'require', 'loadNamespace', 'requireNamespace', 'attachNamespace', '::', ':::' ] as (keyof PackageInfo)[]) {
       const pkgs = data[fn] as string[]

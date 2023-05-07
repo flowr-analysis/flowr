@@ -1,8 +1,11 @@
 import { SinglePackageInfo } from './usedPackages'
-
-export type FunctionNameInfo = string
+import { FunctionNameInfo } from './definedFunctions'
 
 export interface UsedFunction {
   package:  SinglePackageInfo,
   function: FunctionNameInfo
 }
+
+
+// TODO: defined functions
+// TODO: get corresponding package with getNamespaceExports etc?

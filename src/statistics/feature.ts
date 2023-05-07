@@ -4,6 +4,7 @@ import { removeTokenMapQuotationMarks } from '../r-bridge/retriever'
 import { definedFunctions, initialFunctionDefinitionInfo } from './features/definedFunctions'
 import { initialValueInfo, values } from './features/values'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
+import { assignments, initialAssignmentInfo } from './features/assignments'
 
 /**
  * A feature is something to be retrieved by the statistics.
@@ -26,7 +27,8 @@ export const ALL_FEATURES: Record<string, Feature<any>> = {
   usedPackages:     usedPackages,
   comments:         comments,
   definedFunctions: definedFunctions,
-  values:           values
+  values:           values,
+  assignments:      assignments
 } as const
 
 export type FeatureKey = keyof typeof ALL_FEATURES
@@ -39,7 +41,8 @@ export const InitialFeatureStatistics: () => FeatureStatistics = () => ({
   usedPackages:     initialUsedPackageInfos(),
   comments:         initialCommentInfo(),
   definedFunctions: initialFunctionDefinitionInfo(),
-  values:           initialValueInfo()
+  values:           initialValueInfo(),
+  assignments:      initialAssignmentInfo()
 })
 
 /** just to shorten type inline hints */

@@ -27,13 +27,32 @@ const nestedOperatorAssignmentQuery: Query = xpath.parse(`//*[
 
 // LBB for double '[[<-', OP-LEFT-BRACKET for '[<-', 'OP-DOLLAR' for '$<-', OP-AT for '@<-' (similar with EQ_ASSIGN, swapped for RIGHT_ASSIGN)
 const bracketAssignQuery: Query = xpath.parse(`
-  //expr/*[ (self::LBB or self::OP-LEFT-BRACKET or self::OP-DOLLAR or self::OP-AT) 
+  //expr/*[(self::LBB or self::OP-LEFT-BRACKET or self::OP-DOLLAR or self::OP-AT) 
         and (
-          following-sibling::LEFT_ASSIGN or following-sibling::EQ_ASSIGN
+          ../following-sibling::LEFT_ASSIGN or ../following-sibling::EQ_ASSIGN
           or
-          preceding-sibling::RIGHT_ASSIGN
+          ../preceding-sibling::RIGHT_ASSIGN
      )]
  `)
+
+function enrichOpForBracketAssign(node: Node): string {
+  let op: string | null = null
+  const siblings = node.parentNode?.parentNode?.childNodes
+  if(siblings == null) {
+    return `${node.textContent ?? '<unknown>'}??`
+  }
+
+  // next and previous sibling do not work to our liking (they are not entertained by the xpath-ts chain)
+  for (let i = 0; i < siblings.length; i++) {
+    const child = siblings.item(i)
+    if(child.nodeName === 'LEFT_ASSIGN' || child.nodeName === 'EQ_ASSIGN' || child.nodeName === 'RIGHT_ASSIGN') {
+      op = child.textContent
+      break
+    }
+  }
+
+  return `${node.textContent ?? '<unknown>'}${op ?? '??'}`
+}
 
 export const assignments: Feature<AssignmentInfo> = {
   name:        'assignments',
@@ -42,7 +61,8 @@ export const assignments: Feature<AssignmentInfo> = {
   append(existing: AssignmentInfo, input: Document): AssignmentInfo {
     const assignmentOperators = defaultOperatorAssignmentQuery.select({ node: input }).map(n => n.textContent ?? '<unknown>')
     const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input }).length
-    const specialAssignmentOps = bracketAssignQuery.select({ node: input }).map(n => n.textContent ?? '<unknown>')
+    const specialAssignmentOps = bracketAssignQuery.select({ node: input }).map(enrichOpForBracketAssign)
+
 
     existing.nestedOperatorAssignment += nestedOperators
 

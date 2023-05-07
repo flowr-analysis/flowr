@@ -76,7 +76,6 @@ export async function extract<T extends RParseRequestFromText | RParseRequestFro
   let first = true
   for(const request of requests) {
     onRequest(request)
-    processMetaOnSuccessful(meta, request)
     const start = performance.now()
     try {
       result = await extractSingle(result, shell, {
@@ -84,6 +83,7 @@ export async function extract<T extends RParseRequestFromText | RParseRequestFro
         attachSourceInformation: true,
         ensurePackageInstalled:  first
       }, features)
+      processMetaOnSuccessful(meta, request)
       first = false
     } catch (e) {
       console.error('for request: ', request, e)

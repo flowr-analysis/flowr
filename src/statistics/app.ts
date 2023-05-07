@@ -18,17 +18,18 @@ if (processArguments.length === 0) {
   process.exit(1)
 }
 
-async function getStats(features: 'all' | Set<FeatureKey> = new Set(['usedPackages'] as const)) {
+async function getStats(features: 'all' | FeatureKey[] = 'all') {
+  const processedFeatures: 'all' | Set<FeatureKey> = features === 'all' ? 'all' : new Set(features)
   let cur = 0
   const stats = await extract(shell,
     file => console.log(`processing ${++cur}/${processArguments.length} ${file.content}`),
-    features,
+    processedFeatures,
     ...processArguments.map(file => ({ request: 'file' as const, content: file }))
   )
   // console.log(JSON.stringify(stats, undefined, 2))
 
   for(const entry of Object.keys(stats)) {
-    if(features !== 'all' && !features.has(entry as FeatureKey)) {
+    if(processedFeatures !== 'all' && !processedFeatures.has(entry as FeatureKey)) {
       continue
     }
     // eslint-disable-nex-line @typescript-eslint/ban-ts-comment
@@ -40,5 +41,5 @@ async function getStats(features: 'all' | Set<FeatureKey> = new Set(['usedPackag
   shell.close()
 }
 
-void getStats()
+void getStats(['comments'])
 

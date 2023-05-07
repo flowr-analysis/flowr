@@ -1,6 +1,7 @@
 import { initialUsedPackageInfos, usedPackages } from './features/usedPackages'
 import { comments, initialCommentInfo } from './features/comments'
 import { removeTokenMapQuotationMarks } from '../r-bridge/retriever'
+import { definedFunctions, initialFunctionDefinitionInfo } from './features/definedFunctions'
 
 /**
  * A feature is something to be retrieved by the statistics.
@@ -19,8 +20,9 @@ export interface Feature<T> {
 }
 
 export const ALL_FEATURES = {
-  usedPackages: usedPackages,
-  comments:     comments
+  usedPackages:     usedPackages,
+  comments:         comments,
+  definedFunctions: definedFunctions
 } as const
 
 export type FeatureStatistics = {
@@ -28,8 +30,9 @@ export type FeatureStatistics = {
 }
 
 export const InitialFeatureStatistics: () => FeatureStatistics = () => ({
-  usedPackages: initialUsedPackageInfos(),
-  comments:     initialCommentInfo()
+  usedPackages:     initialUsedPackageInfos(),
+  comments:         initialCommentInfo(),
+  definedFunctions: initialFunctionDefinitionInfo()
 })
 
 export function formatMap<T>(map: Map<T, number>): string {

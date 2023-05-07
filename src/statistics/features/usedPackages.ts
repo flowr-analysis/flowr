@@ -6,7 +6,7 @@ import { groupCount } from '../../util/arrays'
 
 export type SinglePackageInfo = string
 
-export interface PackageInfo extends MergeableRecord {
+export interface UsedPackageInfo extends MergeableRecord {
   library:              SinglePackageInfo[]
   require:              SinglePackageInfo[]
   loadNamespace:        SinglePackageInfo[]
@@ -18,7 +18,7 @@ export interface PackageInfo extends MergeableRecord {
   '<loadedByVariable>': string[]
 }
 
-export const initialUsedPackageInfos = () => ({
+export const initialUsedPackageInfos = (): UsedPackageInfo => ({
   library:              [],
   require:              [],
   loadNamespace:        [],
@@ -76,7 +76,7 @@ const queryForNsAccess = xpath.parse(`
   //NS_GET_INT[text() = $variable]/../SYMBOL_PACKAGE[1]
 `)
 
-const queries: { types: readonly (keyof PackageInfo)[], query: { select(options?: EvalOptions): Node[] } }[] = [
+const queries: { types: readonly (keyof UsedPackageInfo)[], query: { select(options?: EvalOptions): Node[] } }[] = [
   {
     types: [ 'library', 'require' ],
     query: libraryOrRequire
@@ -91,15 +91,15 @@ const queries: { types: readonly (keyof PackageInfo)[], query: { select(options?
   }
 ]
 
-function append(existing: PackageInfo, fn: keyof PackageInfo, nodes: Node[]) {
+function append(existing: UsedPackageInfo, fn: keyof UsedPackageInfo, nodes: Node[]) {
   (existing[fn] as unknown[]).push(...new Set(nodes.map(node => node.textContent ?? '<unknown>')))
 }
 
-export const usedPackages: Feature<PackageInfo> = {
+export const usedPackages: Feature<UsedPackageInfo> = {
   name:        'Used Packages',
   description: 'All the packages used in the code',
 
-  append(existing: PackageInfo, input: Document): PackageInfo {
+  append(existing: UsedPackageInfo, input: Document): UsedPackageInfo {
     // we will unify in the end, so we can count, group etc. but we do not re-count multiple packages in the same file
     for(const q of queries) {
       for(const fn of q.types) {
@@ -120,10 +120,10 @@ export const usedPackages: Feature<PackageInfo> = {
     return existing
   },
 
-  toString(data: PackageInfo): string {
+  toString(data: UsedPackageInfo): string {
     let result = '---used packages (does not care for roxygen comments!)-------------'
     result += `\n\tloaded by a variable (unknown): ${data['<loadedByVariable>'].length}`
-    for(const fn of [ 'library', 'require', 'loadNamespace', 'requireNamespace', 'attachNamespace', '::', ':::' ] as (keyof PackageInfo)[]) {
+    for(const fn of [ 'library', 'require', 'loadNamespace', 'requireNamespace', 'attachNamespace', '::', ':::' ] as (keyof UsedPackageInfo)[]) {
       const pkgs = data[fn] as string[]
       result += `\n\t${fn} (${pkgs.length} times) ${formatMap(groupCount<SinglePackageInfo>(pkgs))}`
     }

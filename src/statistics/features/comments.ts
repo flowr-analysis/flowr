@@ -1,5 +1,5 @@
 import { Feature, formatMap } from '../feature'
-import { PackageInfo, SinglePackageInfo } from './usedPackages'
+import { UsedPackageInfo, SinglePackageInfo } from './usedPackages'
 import { MergeableRecord } from '../../util/objects'
 import { UsedFunction } from './usedFunctions'
 import * as xpath from 'xpath-ts'
@@ -23,7 +23,7 @@ export interface CommentInfo extends MergeableRecord {
   useDynLib:         ( SinglePackageInfo | UsedFunction )[]
 }
 
-export const initialCommentInfo = () => ({
+export const initialCommentInfo = (): CommentInfo => ({
   totalAmount:       0,
   roxygenComments:   0,
   import:            [],

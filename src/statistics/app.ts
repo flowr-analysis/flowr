@@ -25,7 +25,7 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
   const stats = await extract(shell,
     file => console.log(`processing ${++cur} ${file.content}`),
     processedFeatures,
-    allRFiles(processArguments[0], 5_000)
+    allRFiles(processArguments[0])
   )
   // console.log(JSON.stringify(stats, undefined, 2))
 

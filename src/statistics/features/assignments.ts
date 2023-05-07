@@ -6,11 +6,13 @@ import { groupCount } from '../../util/arrays'
 export interface AssignmentInfo extends MergeableRecord {
   assignmentOperator:       string[]
   nestedOperatorAssignment: number
+  specialAssignmentOps:     string[]
 }
 
 // TODO: integers, constants, etc.
 export const initialAssignmentInfo = (): AssignmentInfo => ({
   assignmentOperator:       [],
+  specialAssignmentOps:     [],
   nestedOperatorAssignment: 0
 })
 
@@ -23,6 +25,16 @@ const nestedOperatorAssignmentQuery: Query = xpath.parse(`//*[
  //RIGHT_ASSIGN[preceding-sibling::expr//*[self::LEFT_ASSIGN or self::EQ_ASSIGN or self::RIGHT_ASSIGN]]
 `)
 
+// LBB for double '[[<-', OP-LEFT-BRACKET for '[<-', 'OP-DOLLAR' for '$<-', OP-AT for '@<-' (similar with EQ_ASSIGN, swapped for RIGHT_ASSIGN)
+const bracketAssignQuery: Query = xpath.parse(`
+  //expr/*[ (self::LBB or self::OP-LEFT-BRACKET or self::OP-DOLLAR or self::OP-AT) 
+        and (
+          following-sibling::LEFT_ASSIGN or following-sibling::EQ_ASSIGN
+          or
+          preceding-sibling::RIGHT_ASSIGN
+     )]
+ `)
+
 export const assignments: Feature<AssignmentInfo> = {
   name:        'assignments',
   description: 'all ways to assign something in R',
@@ -30,10 +42,13 @@ export const assignments: Feature<AssignmentInfo> = {
   append(existing: AssignmentInfo, input: Document): AssignmentInfo {
     const assignmentOperators = defaultOperatorAssignmentQuery.select({ node: input }).map(n => n.textContent ?? '<unknown>')
     const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input }).length
+    const specialAssignmentOps = bracketAssignQuery.select({ node: input }).map(n => n.textContent ?? '<unknown>')
 
     existing.nestedOperatorAssignment += nestedOperators
 
     existing.assignmentOperator.push(...assignmentOperators)
+    existing.specialAssignmentOps.push(...specialAssignmentOps)
+
     return existing
   },
 
@@ -42,6 +57,7 @@ export const assignments: Feature<AssignmentInfo> = {
     return `---assignments-------------
 \toperator assignments (${data.assignmentOperator.length} times)${formatMap(groupCount(data.assignmentOperator), details)}
 \tnested operator assignments: ${data.nestedOperatorAssignment}
+\tspecial assignments (${data.specialAssignmentOps.length} times)${formatMap(groupCount(data.specialAssignmentOps), details)}
     `
   }
 }

@@ -2,19 +2,20 @@ import { RShell } from '../r-bridge/shell'
 import { extract } from './statistics'
 import { log, LogLevel } from '../util/log'
 import { ALL_FEATURES, FeatureKey } from './feature'
+import { allRFiles } from '../util/files'
 
 log.updateSettings(l => l.settings.minLevel = LogLevel.error)
+
+// TODO: command line options (=> yargs?)
 
 const shell = new RShell()
 shell.tryToInjectHomeLibPath()
 
 const processArguments = process.argv.slice(2)
 
-console.log(`processing ${processArguments.length} files`)
 
-
-if (processArguments.length === 0) {
-  console.error('Please provide at least one file to generate statistics for')
+if (processArguments.length !== 1) {
+  console.error('Please provide exactly one folder to generate statistics for (more arguments are not supported yet)')
   process.exit(1)
 }
 
@@ -22,9 +23,9 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
   const processedFeatures: 'all' | Set<FeatureKey> = features === 'all' ? 'all' : new Set(features)
   let cur = 0
   const stats = await extract(shell,
-    file => console.log(`processing ${++cur}/${processArguments.length} ${file.content}`),
+    file => console.log(`processing ${++cur} ${file.content}`),
     processedFeatures,
-    ...processArguments.map(file => ({ request: 'file' as const, content: file }))
+    allRFiles(processArguments[0])
   )
   // console.log(JSON.stringify(stats, undefined, 2))
 
@@ -32,10 +33,10 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
     if(processedFeatures !== 'all' && !processedFeatures.has(entry)) {
       continue
     }
-    console.log(ALL_FEATURES[entry].toString(stats.features[entry], false))
+    console.log(ALL_FEATURES[entry].toString(stats.features[entry], true))
   }
 
-  // TODO: unify anlaysis of min/max etc.
+  // TODO: unify anlysis of min/max etc.
   const numberOfLinesPerFiles = stats.meta.lines.map(l => l.length).sort((a, b) => a - b)
   const sumLines = numberOfLinesPerFiles.reduce((a, b) => a + b, 0)
 

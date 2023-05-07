@@ -67,14 +67,14 @@ function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequest
 export async function extract<T extends RParseRequestFromText | RParseRequestFromFile>(shell: RShell,
                                                                                        onRequest: (request: T) => void,
                                                                                        features: 'all' | Set<FeatureKey>,
-                                                                                       ...requests: T[]
+                                                                                       requests: AsyncGenerator<T>
 ): Promise<{ features: FeatureStatistics, meta: MetaStatistics }> {
   let result = InitialFeatureStatistics()
   const meta = initialMetaStatistics()
 
   // TODO: allow to differentiate between testfolder and no testfolder
   let first = true
-  for(const request of requests) {
+  for await (const request of requests) {
     onRequest(request)
     const start = performance.now()
     try {

@@ -1,7 +1,6 @@
 import { SinglePackageInfo } from './usedPackages'
 import { FunctionNameInfo } from './definedFunctions'
 import { Feature, formatMap, Query } from '../feature'
-import { ValueInfo } from './values'
 import { MergeableRecord } from '../../util/objects'
 import * as xpath from 'xpath-ts2'
 import { groupCount } from '../../util/arrays'
@@ -15,7 +14,6 @@ export interface UsedFunction {
 // TODO: get corresponding package with getNamespaceExports etc?
 export interface FunctionUsageInfo extends MergeableRecord {
   allCalls: string[]
-
 }
 
 export const initialValueInfo = (): FunctionUsageInfo => ({

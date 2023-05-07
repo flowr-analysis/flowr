@@ -2,20 +2,19 @@ import { promises as fs } from 'fs'
 import { resolve } from 'path'
 import { RParseRequest, RParseRequestFromFile, RParseRequestFromText } from '../r-bridge/retriever'
 
-/* */
 /**
  * retrieves all files in the given directory recursively
  * @param dir - directory-path to start the search from
- *
+ * @param suffix - suffix of the files to be retrieved
  * based on {@link https://stackoverflow.com/a/45130990}
  */
-export async function* getFiles(dir: string): AsyncGenerator<string> {
+async function* getFiles(dir: string, suffix = '.R'): AsyncGenerator<string> {
   const entries = await fs.readdir(dir, { withFileTypes: true })
   for (const subEntries of entries) {
     const res = resolve(dir, subEntries.name)
     if (subEntries.isDirectory()) {
-      yield* getFiles(res)
-    } else {
+      yield* getFiles(res, suffix)
+    } else if(subEntries.name.endsWith(suffix)) {
       yield res
     }
   }
@@ -30,14 +29,12 @@ export async function* getFiles(dir: string): AsyncGenerator<string> {
  *
  * @see #getFiles
  */
-export async function* allRFiles(dir: string, limit: 'unlimited' | number = 'unlimited'): AsyncGenerator<RParseRequestFromFile> {
-  const count = 0
-  for await (const f of getFiles(dir)) {
-    if (f.endsWith('.R')) {
-      if(limit !== 'unlimited' && count >= limit) {
-        break
-      }
-      yield { request: 'file', content: f }
+export async function* allRFiles(dir: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile> {
+  let count = 0
+  for await (const f of getFiles(dir, '.R')) {
+    if(++count >= limit) {
+      break
     }
+    yield { request: 'file', content: f }
   }
 }

@@ -2,11 +2,13 @@ import { Feature, formatMap, Query } from '../feature'
 import { MergeableRecord } from '../../util/objects'
 import * as xpath from 'xpath-ts2'
 import { groupCount } from '../../util/arrays'
+import { RNumHexFloatRegex } from '../../r-bridge/lang:4.x/values'
 
 export interface ValueInfo extends MergeableRecord {
   numerics:         string[]
   imaginaryNumbers: number,
   integers:         number,
+  floatHex:         number,
 
   logical:          string[]
   specialConstants: string[]
@@ -18,6 +20,7 @@ export const initialValueInfo = (): ValueInfo => ({
   numerics:         [],
   imaginaryNumbers: 0,
   integers:         0,
+  floatHex:         0,
 
   logical:          [],
   specialConstants: [],
@@ -30,23 +33,25 @@ const specialConstantsQuery: Query = xpath.parse(`//NULL_CONST`)
 const shortLogicalSymbolQuery: Query = xpath.parse(`//SYMBOL[text() = 'T' or text() = 'F']`)
 
 
-function classifyNumericConstants(numerics: string, existing: ValueInfo) {
-  if (numerics === 'TRUE' || numerics === 'FALSE') {
-    existing.logical.push(numerics)
+function classifyNumericConstants(numeric: string, existing: ValueInfo) {
+  if (numeric === 'TRUE' || numeric === 'FALSE') {
+    existing.logical.push(numeric)
     return
   }
-  if (numerics === 'NA' || numerics === 'NaN' || numerics === 'NULL' || numerics === 'Inf' || numerics === '-Inf') {
-    existing.specialConstants.push(numerics)
+  if (numeric === 'NA' || numeric === 'NaN' || numeric === 'NULL' || numeric === 'Inf' || numeric === '-Inf') {
+    existing.specialConstants.push(numeric)
     return
   }
 
-  if (numerics.includes('i')) {
+  if (numeric.includes('i')) {
     existing.imaginaryNumbers++
-  } else if (numerics.endsWith('L')) {
+  } else if (numeric.endsWith('L')) {
     existing.integers++
+  } else if (RNumHexFloatRegex.test(numeric)) {
+    existing.floatHex++
   }
 
-  existing.numerics.push(numerics)
+  existing.numerics.push(numeric)
 }
 
 export const values: Feature<ValueInfo> = {
@@ -77,7 +82,7 @@ export const values: Feature<ValueInfo> = {
     // TODO: separate between unique and total count
     return `---values-------------
 \tstrings: (${data.strings.length} times) ${formatMap(groupedStrings, details)}
-\tnumerics: (${data.numerics.length} times, ${data.imaginaryNumbers} imaginary, ${data.integers} integer)${formatMap(groupedNumeric, details)}
+\tnumerics: (${data.numerics.length} times, ${data.imaginaryNumbers} imaginary, ${data.integers} integer, ${data.floatHex} with float hex)${formatMap(groupedNumeric, details)}
 \tlogical: (${data.logical.length} times)${formatMap(groupCount(data.logical), details)}
 \tspecial constants: (${data.specialConstants.length} times)${formatMap(groupedSpecialConstants, details)}
     `

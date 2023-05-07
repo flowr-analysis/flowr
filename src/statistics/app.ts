@@ -1,7 +1,7 @@
 import { RShell } from '../r-bridge/shell'
 import { extract } from './statistics'
 import { log, LogLevel } from '../util/log'
-import { ALL_FEATURES } from './feature'
+import { ALL_FEATURES, FeatureKey } from './feature'
 
 log.updateSettings(l => l.settings.minLevel = LogLevel.error)
 
@@ -18,16 +18,19 @@ if (processArguments.length === 0) {
   process.exit(1)
 }
 
-async function getStats() {
+async function getStats(features: 'all' | Set<FeatureKey> = new Set(['usedPackages'] as const)) {
   let cur = 0
   const stats = await extract(shell,
     file => console.log(`processing ${++cur}/${processArguments.length} ${file.content}`),
-    new Set(['usedPackages']),
+    features,
     ...processArguments.map(file => ({ request: 'file' as const, content: file }))
   )
   // console.log(JSON.stringify(stats, undefined, 2))
 
   for(const entry of Object.keys(stats)) {
+    if(features !== 'all' && !features.has(entry as FeatureKey)) {
+      continue
+    }
     // eslint-disable-nex-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error object.keys does not retain the type information
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access,@typescript-eslint/restrict-template-expressions

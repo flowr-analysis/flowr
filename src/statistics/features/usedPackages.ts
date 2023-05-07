@@ -49,7 +49,7 @@ const libraryOrRequire = xpath.parse(`
 
 // there is no except in xpath 1.0?
 const packageLoadedWithVariableLoadRequire = xpath.parse(`
-    //SYMBOL_FUNCTION_CALL[text() = $variable]
+    //SYMBOL_FUNCTION_CALL[text() = 'library' or text() = 'require']
     /parent::expr
     /parent::expr[
         expr[2][SYMBOL]
@@ -61,9 +61,8 @@ const packageLoadedWithVariableLoadRequire = xpath.parse(`
     ]/OP-LEFT-PAREN[1]/following-sibling::expr[1][SYMBOL | STR_CONST]/*
 `)
 
-// TODO: joint query for load with variables!
 const packageLoadedWithVariableNamespaces = xpath.parse(`
-  //SYMBOL_FUNCTION_CALL[text() = $variable]/../following-sibling::expr[1][SYMBOL]/*
+  //SYMBOL_FUNCTION_CALL[text() = 'loadNamespace' or text() = 'requireNamespace' or text() = 'attachNamespace']/../following-sibling::expr[1][SYMBOL]/*
 `)
 
 const queryForFunctionCall = xpath.parse(`
@@ -109,14 +108,8 @@ export const usedPackages: Feature<UsedPackageInfo> = {
       }
     }
 
-    for(const fn of [ 'library', 'require' ]) {
-      const nodes = packageLoadedWithVariableLoadRequire.select({ node: input, variables: { variable: fn } })
-      append(existing, '<loadedByVariable>', nodes)
-    }
-    for(const fn of [ 'loadNamespace', 'requireNamespace', 'attachNamespace' ]) {
-      const nodes = packageLoadedWithVariableNamespaces.select({ node: input, variables: { variable: fn } })
-      append(existing, '<loadedByVariable>', nodes)
-    }
+    append(existing, '<loadedByVariable>', packageLoadedWithVariableLoadRequire.select({ node: input }))
+    append(existing, '<loadedByVariable>', packageLoadedWithVariableNamespaces.select({ node: input }))
 
     return existing
   },

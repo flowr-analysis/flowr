@@ -59,26 +59,30 @@ function processRoxygenImport(existing: CommentInfo, commentsText: string[], fil
   append(comments.name, 'import', packages, filepath)
 }
 
-function processWithRegex(commentsText: string[], existing: CommentInfo, regex: RegExp, filepath: string | undefined) {
-  const result = commentsText.map(text => regex.exec(text)).filter(isNotNull)
+function processWithRegex(commentsText: string[], existing: CommentInfo, regex: RegExp): string[] {
+  return commentsText.map(text => regex.exec(text)).filter(isNotNull)
     .flatMap(match => {
       const packageName = match.groups?.package ?? '<unknown>'
       return (match.groups?.fn.trim().split(/\s+/) ?? []).map(fn => `${JSON.stringify(packageName)},${fn}`)
     })
+}
+
+function processRoxygenImportFrom(existing: CommentInfo, commentsText: string[], filepath: string | undefined) {
+  const result = processWithRegex(commentsText, existing, importFromRegex)
   existing.importFrom += result.length
   append(comments.name, 'importFrom', result, filepath)
 }
 
-function processRoxygenImportFrom(existing: CommentInfo, comments: string[], filepath: string | undefined) {
-  processWithRegex(comments, existing, importFromRegex, filepath)
+function processRoxygenImportClassesFrom(existing: CommentInfo, commentsText: string[], filepath: string | undefined) {
+  const result = processWithRegex(commentsText, existing, importClassesFromRegex)
+  existing.importClassesFrom += result.length
+  append(comments.name, 'importClassesFrom', result, filepath)
 }
 
-function processRoxygenImportClassesFrom(existing: CommentInfo, comments: string[], filepath: string | undefined) {
-  processWithRegex(comments, existing, importClassesFromRegex, filepath)
-}
-
-function processRoxygenImportMethodsFrom(existing: CommentInfo, comments: string[], filepath: string | undefined) {
-  processWithRegex(comments, existing, importMethodsFrom, filepath)
+function processRoxygenImportMethodsFrom(existing: CommentInfo, commentsText: string[], filepath: string | undefined) {
+  const result = processWithRegex(commentsText, existing, importMethodsFrom)
+  existing.importMethodsFrom += result.length
+  append(comments.name, 'importMethodsFrom', result, filepath)
 }
 
 function processExports(existing: CommentInfo, comments: string[]) {

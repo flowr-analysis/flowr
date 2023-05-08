@@ -1,7 +1,8 @@
 import path from 'path'
 import fs from 'fs'
+import { date2string } from '../util/time'
 
-export const statisticsDirectory = `./statistics-out-${new Date().toUTCString()}`
+export const statisticsDirectory = `./statistics-out-${date2string(new Date())}`
 
 /**
  * as we have a lot of data to collect, we want to store them in files

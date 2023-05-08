@@ -1,11 +1,10 @@
-import { Feature, Query } from '../feature'
-import { MergeableRecord } from '../../util/objects'
+import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { RNumHexFloatRegex } from '../../r-bridge/lang:4.x/values'
 import { assertUnreachable } from '../../util/assert'
 import { append } from '../statisticsFile'
 
-export interface ValueInfo extends MergeableRecord {
+export interface ValueInfo extends FeatureInfo {
   // TODO: support negative numbers with unary op?
   allNumerics:      number,
   imaginaryNumbers: number,

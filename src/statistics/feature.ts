@@ -5,13 +5,17 @@ import { definedFunctions, initialFunctionDefinitionInfo } from './features/defi
 import { initialValueInfo, values } from './features/values'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { assignments, initialAssignmentInfo } from './features/assignments'
+import { MergeableRecord } from '../util/objects'
+
+/** since we are writing to files {@link append}, we only count feature occurrences (some feature/parts are not written to file) */
+export type FeatureInfo = Record<string, number> & MergeableRecord
 
 /**
  * A feature is something to be retrieved by the statistics.
  *
  * @typeParam T - the type of what should be collected for the feature
  */
-export interface Feature<T> {
+export interface Feature<T extends FeatureInfo> {
   /** a descriptive, yet unique name of the feature */
   readonly name:        string
   /** a description of the feature */

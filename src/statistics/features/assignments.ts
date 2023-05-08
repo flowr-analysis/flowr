@@ -1,9 +1,8 @@
-import { Feature, Query } from '../feature'
-import { MergeableRecord } from '../../util/objects'
+import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { append } from '../statisticsFile'
 
-export interface AssignmentInfo extends MergeableRecord {
+export interface AssignmentInfo extends FeatureInfo {
   assignmentOperator:               number
   nestedOperatorAssignment:         number
   directlyNestedOperatorAssignment: number

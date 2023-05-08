@@ -1,11 +1,11 @@
-import { Feature, Query } from '../feature'
+import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { MergeableRecord } from '../../util/objects'
 import { append } from '../statisticsFile'
 
 export type FunctionNameInfo = string
 
-export interface FunctionDefinitionInfo extends MergeableRecord {
+export interface FunctionDefinitionInfo extends FeatureInfo {
   // TODO: scoping/namespaces?
   // TODO: local/global functions etc.
   /** all, anonymous, assigned, non-assigned, ... */

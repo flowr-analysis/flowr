@@ -1,7 +1,6 @@
 import { SinglePackageInfo } from './usedPackages'
 import { FunctionNameInfo } from './definedFunctions'
-import { Feature, Query } from '../feature'
-import { MergeableRecord } from '../../util/objects'
+import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 
 export interface UsedFunction {
@@ -11,12 +10,15 @@ export interface UsedFunction {
 
 
 // TODO: get corresponding package with getNamespaceExports etc?
-export interface FunctionUsageInfo extends MergeableRecord {
-  allCalls: number
+export interface FunctionUsageInfo extends FeatureInfo {
+  allCalls:    number
+  /* sys.* */
+  systemCalls: number
 }
 
 export const initialValueInfo = (): FunctionUsageInfo => ({
-  allCalls: 0
+  allCalls:    0,
+  systemCalls: 0
 })
 
 const functionCallQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL`)

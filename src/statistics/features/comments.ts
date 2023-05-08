@@ -1,10 +1,10 @@
-import { Feature, Query } from '../feature'
+import { Feature, FeatureInfo, Query } from '../feature'
 import { MergeableRecord } from '../../util/objects'
 import * as xpath from 'xpath-ts2'
 import { guard, isNotNull, isNotUndefined } from '../../util/assert'
 import { append } from '../statisticsFile'
 
-export interface CommentInfo extends MergeableRecord {
+export interface CommentInfo extends FeatureInfo {
   totalAmount:       number
   roxygenComments:   number
   import:            number

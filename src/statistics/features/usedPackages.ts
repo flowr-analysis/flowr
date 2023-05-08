@@ -1,12 +1,11 @@
-import { Feature, Query } from '../feature'
+import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { MergeableRecord } from '../../util/objects'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { append } from '../statisticsFile'
 
 export type SinglePackageInfo = string
 
-export interface UsedPackageInfo extends MergeableRecord {
+export interface UsedPackageInfo extends FeatureInfo {
   library:              number
   require:              number
   loadNamespace:        number
@@ -100,8 +99,6 @@ export const usedPackages: Feature<UsedPackageInfo> = {
     for(const q of queries) {
       for(const fn of q.types) {
         const nodes = q.query.select({ node: input, variables: { variable: fn } })
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error currently we do not know, that it is a number...
         existing[fn] += nodes.length
         append(this.name, fn, nodes, filepath, true)
       }
@@ -122,7 +119,7 @@ export const usedPackages: Feature<UsedPackageInfo> = {
     let result = '---used packages (does not care for roxygen comments!)-------------'
     result += `\n\tloaded by a variable (unknown): ${data['<loadedByVariable>']}`
     for(const fn of [ 'library', 'require', 'loadNamespace', 'requireNamespace', 'attachNamespace', '::', ':::' ] as (keyof UsedPackageInfo)[]) {
-      const pkgs = data[fn] as number
+      const pkgs = data[fn]
       result += `\n\t${fn}: ${pkgs}`
     }
 

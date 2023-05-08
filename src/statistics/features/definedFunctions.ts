@@ -1,7 +1,6 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { MergeableRecord } from '../../util/objects'
-import { append } from '../statisticsFile'
+import { append, extractNodeContent } from '../statisticsFile'
 
 export type FunctionNameInfo = string
 
@@ -18,6 +17,8 @@ export interface FunctionDefinitionInfo extends FeatureInfo {
   /** anonymous functions invoked directly */
   functionsDirectlyCalled: number
   nestedFunctions:         number
+  /** functions that in some easily detectable way call themselves */
+  recursive:               number
 }
 
 export const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({
@@ -26,7 +27,8 @@ export const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({
   assignedFunctions:       0,
   usedParameterNames:      0,
   functionsDirectlyCalled: 0,
-  nestedFunctions:         0
+  nestedFunctions:         0,
+  recursive:               0
 })
 
 // TODO: note that this can not work with assign, setGeneric and so on for now
@@ -57,6 +59,19 @@ const nestedFunctionsQuery: Query = xpath.parse(`
 `)
 
 
+// expects to be invoked in the context of the parent function name // TODO: test if it is really invoked or just used in a function definition/quote etc?
+const functionCallWithNameQuery: Query = xpath.parse(`
+  ../following-sibling::expr/*[last()]//SYMBOL_FUNCTION_CALL[text() = $name]
+  |
+  ../preceding-sibling::expr/*[last()]//SYMBOL_FUNCTION_CALL[text() = $name]
+`)
+function testRecursive(node: Node, name: string): boolean {
+  const result = functionCallWithNameQuery.select({ node, variables: { name } })
+  return result.length > 0
+
+}
+
+
 export const definedFunctions: Feature<FunctionDefinitionInfo> = {
   name:        'Defined Functions',
   description: 'all functions defined within the document',
@@ -76,8 +91,19 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
     existing.nestedFunctions += nestedFunctionsQuery.select({ node: input }).length
 
     const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input })
+    const assignedNames = assignedFunctions.map(extractNodeContent)
     existing.assignedFunctions += assignedFunctions.length
-    append(this.name, 'assignedFunctions', assignedFunctions, filepath)
+    append(this.name, 'assignedFunctions', assignedNames, filepath)
+
+    const recursiveFunctions = []
+    for(let i = 0; i < assignedFunctions.length; i++) {
+      const name = assignedNames[i]
+      if(testRecursive(assignedFunctions[i], name)) {
+        recursiveFunctions.push(name)
+      }
+    }
+    existing.recursive += recursiveFunctions.length
+    append(this.name, 'recursiveFunctions', recursiveFunctions, filepath)
 
     return existing
   },
@@ -89,6 +115,7 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 \t\tparameter names:           ${data.usedParameterNames}
 \t\tfunctions directly called: ${data.functionsDirectlyCalled}
 \t\tnested functions:          ${data.nestedFunctions}
+\t\trecursive functions:       ${data.recursive}
 `
   }
 

@@ -41,7 +41,7 @@ export const initialFunctionUsageInfo = (): FunctionUsageInfo => ({
   specialPrimitiveFunctions:  0,
   internalFunctions:          0,
   metaFunctions:              0,
-  returnFunction:             0
+  returnFunction:             0,
 })
 
 function from(...names: string[]): RegExp {
@@ -90,8 +90,6 @@ function collectFunctionByPredicate(names: string[], info: FunctionUsageInfo, fi
   info[field] += matchingNames.length
   // as they all are recorded as part of the allFunctionCalls, we do not need to append them separately
 }
-
-
 
 const functionCallQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL`)
 

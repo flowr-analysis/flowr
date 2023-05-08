@@ -1,9 +1,8 @@
 import { SinglePackageInfo } from './usedPackages'
 import { FunctionNameInfo } from './definedFunctions'
-import { Feature, formatMap, Query } from '../feature'
+import { Feature, Query } from '../feature'
 import { MergeableRecord } from '../../util/objects'
 import * as xpath from 'xpath-ts2'
-import { groupCount } from '../../util/arrays'
 
 export interface UsedFunction {
   package:  SinglePackageInfo,

@@ -4,16 +4,18 @@ import * as xpath from 'xpath-ts2'
 import { append } from '../statisticsFile'
 
 export interface AssignmentInfo extends MergeableRecord {
-  assignmentOperator:       number
-  nestedOperatorAssignment: number
-  specialAssignmentOps:     number
+  assignmentOperator:               number
+  nestedOperatorAssignment:         number
+  directlyNestedOperatorAssignment: number
+  specialAssignmentOps:             number
 }
 
 // TODO: integers, constants, etc.
 export const initialAssignmentInfo = (): AssignmentInfo => ({
-  assignmentOperator:       0,
-  specialAssignmentOps:     0,
-  nestedOperatorAssignment: 0
+  assignmentOperator:               0,
+  specialAssignmentOps:             0,
+  nestedOperatorAssignment:         0,
+  directlyNestedOperatorAssignment: 0
 })
 
 const defaultOperatorAssignmentQuery: Query = xpath.parse(`//EQ_ASSIGN|//LEFT_ASSIGN|//RIGHT_ASSIGN`)
@@ -23,6 +25,14 @@ const nestedOperatorAssignmentQuery: Query = xpath.parse(`//*[
  ]
  |
  //RIGHT_ASSIGN[preceding-sibling::expr//*[self::LEFT_ASSIGN or self::EQ_ASSIGN or self::RIGHT_ASSIGN]]
+`)
+
+// the rhs must be an assignment directly
+const directlyNestedOperatorAssignmentQuery: Query = xpath.parse(`//*[
+  (self::LEFT_ASSIGN or self::EQ_ASSIGN) and following-sibling::expr/*[self::LEFT_ASSIGN or self::EQ_ASSIGN or self::RIGHT_ASSIGN]
+ ]
+ |
+ //RIGHT_ASSIGN[preceding-sibling::expr/*[self::LEFT_ASSIGN or self::EQ_ASSIGN or self::RIGHT_ASSIGN]]
 `)
 
 // LBB for double '[[<-', OP-LEFT-BRACKET for '[<-', 'OP-DOLLAR' for '$<-', OP-AT for '@<-' (similar with EQ_ASSIGN, swapped for RIGHT_ASSIGN)
@@ -61,9 +71,11 @@ export const assignments: Feature<AssignmentInfo> = {
   append(existing: AssignmentInfo, input: Document, filepath: string | undefined): AssignmentInfo {
     const assignmentOperators = defaultOperatorAssignmentQuery.select({ node: input })
     const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input })
+    const directlyNestedOperators = directlyNestedOperatorAssignmentQuery.select({ node: input })
     const specialAssignmentOps = bracketAssignQuery.select({ node: input }).map(enrichOpForBracketAssign)
 
     existing.nestedOperatorAssignment += nestedOperators.length
+    existing.directlyNestedOperatorAssignment += directlyNestedOperators.length
     existing.assignmentOperator += assignmentOperators.length
     existing.specialAssignmentOps += specialAssignmentOps.length
 
@@ -78,6 +90,7 @@ export const assignments: Feature<AssignmentInfo> = {
     return `---assignments-------------
 \toperator assignments:        ${data.assignmentOperator}
 \tnested operator assignments: ${data.nestedOperatorAssignment}
+\t\t directly nested: ${data.directlyNestedOperatorAssignment}
 \tspecial assignments:         ${data.specialAssignmentOps}
     `
   }

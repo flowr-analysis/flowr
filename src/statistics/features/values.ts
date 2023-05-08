@@ -95,7 +95,10 @@ export const values: Feature<ValueInfo> = {
     // TODO: separate between unique and total count?
     return `---values-------------
 \tstrings:           ${data.strings}
-\tnumerics:          ${data.allNumerics}, ${data.imaginaryNumbers} imaginary, ${data.integers} integer, ${data.floatHex} with float hex
+\tnumerics:          ${data.allNumerics}
+\t\timaginary (k): ${data.imaginaryNumbers}
+\t\tinteger (L):   ${data.integers} 
+\t\tfloat-hex:     ${data.floatHex}
 \tlogical:           ${data.logical}
 \tspecial constants: ${data.specialConstants}
     `

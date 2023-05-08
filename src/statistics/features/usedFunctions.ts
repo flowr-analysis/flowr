@@ -27,7 +27,7 @@ export interface FunctionUsageInfo extends FeatureInfo {
   internalFunctions:          number
 }
 
-export const initialValueInfo = (): FunctionUsageInfo => ({
+export const initialFunctionUsageInfo = (): FunctionUsageInfo => ({
   allCalls:                   0,
   mathFunctions:              0,
   programmingFunctions:       0,

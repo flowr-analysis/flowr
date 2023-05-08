@@ -6,6 +6,7 @@ import { initialValueInfo, values } from './features/values'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { assignments, initialAssignmentInfo } from './features/assignments'
 import { MergeableRecord } from '../util/objects'
+import { initialFunctionUsageInfo, usedFunctions } from './features/usedFunctions'
 
 /** since we are writing to files {@link append}, we only count feature occurrences (some feature/parts are not written to file) */
 export type FeatureInfo = Record<string, number> & MergeableRecord
@@ -31,6 +32,7 @@ export const ALL_FEATURES: Record<string, Feature<any>> = {
   usedPackages:     usedPackages,
   comments:         comments,
   definedFunctions: definedFunctions,
+  usedFunctions:    usedFunctions,
   values:           values,
   assignments:      assignments
 } as const
@@ -46,7 +48,8 @@ export const InitialFeatureStatistics: () => FeatureStatistics = () => ({
   comments:         initialCommentInfo(),
   definedFunctions: initialFunctionDefinitionInfo(),
   values:           initialValueInfo(),
-  assignments:      initialAssignmentInfo()
+  assignments:      initialAssignmentInfo(),
+  usedFunctions:    initialFunctionUsageInfo()
 })
 
 /** just to shorten type inline hints */

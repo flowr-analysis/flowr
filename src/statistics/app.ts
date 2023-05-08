@@ -58,5 +58,5 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
   shell.close()
 }
 
-void getStats('all')
+void getStats(['usedFunctions'])
 

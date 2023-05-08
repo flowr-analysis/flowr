@@ -27,14 +27,21 @@ export function resetStatisticsDirectory() {
  * @param fn - the name of the feature-aspect to record
  * @param nodes - the nodes to append, you may pass already transformed string contents
  * @param context - the context of the information retrieval (e.g. the name of the file that contained the R source code)
+ * @param unique - should duplicate entries be removed on addition
  */
-export function append<T>(name: string, fn: keyof T, nodes: string[] | Node[], context: string | undefined) {
+export function append<T>(name: string, fn: keyof T, nodes: string[] | Node[], context: string | undefined, unique = false ) {
   if(nodes.length === 0) {
     return
   }
   let contents = typeof nodes[0] === 'string' ?
       nodes as string[]
     : (nodes as Node[]).map(node => node.textContent ?? '<unknown>')
+
+  if(unique) {
+    contents = [...new Set(contents)]
+  }
+
+  console.log(`\t${name}: ${JSON.stringify(contents)}`)
 
   if(context !== undefined) {
     contents = contents.map(c => `${c}\t\t(${JSON.stringify(context)})`)

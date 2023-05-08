@@ -56,7 +56,7 @@ const exportPatternRegex = /^'\s*@exportPattern/
 function processRoxygenImport(existing: CommentInfo, commentsText: string[], filepath: string | undefined) {
   const packages = commentsText.map(text => importRegex.exec(text)?.groups?.package).filter(isNotUndefined)
   existing.import += packages.length
-  append(comments.name, 'import', packages, filepath)
+  append(comments.name, 'import', packages, filepath, true)
 }
 
 function processWithRegex(commentsText: string[], existing: CommentInfo, regex: RegExp): string[] {
@@ -70,19 +70,19 @@ function processWithRegex(commentsText: string[], existing: CommentInfo, regex: 
 function processRoxygenImportFrom(existing: CommentInfo, commentsText: string[], filepath: string | undefined) {
   const result = processWithRegex(commentsText, existing, importFromRegex)
   existing.importFrom += result.length
-  append(comments.name, 'importFrom', result, filepath)
+  append(comments.name, 'importFrom', result, filepath, true)
 }
 
 function processRoxygenImportClassesFrom(existing: CommentInfo, commentsText: string[], filepath: string | undefined) {
   const result = processWithRegex(commentsText, existing, importClassesFromRegex)
   existing.importClassesFrom += result.length
-  append(comments.name, 'importClassesFrom', result, filepath)
+  append(comments.name, 'importClassesFrom', result, filepath, true)
 }
 
 function processRoxygenImportMethodsFrom(existing: CommentInfo, commentsText: string[], filepath: string | undefined) {
   const result = processWithRegex(commentsText, existing, importMethodsFrom)
   existing.importMethodsFrom += result.length
-  append(comments.name, 'importMethodsFrom', result, filepath)
+  append(comments.name, 'importMethodsFrom', result, filepath, true)
 }
 
 function processExports(existing: CommentInfo, comments: string[]) {
@@ -109,7 +109,7 @@ function processRoxygenUseDynLib(existing: CommentInfo, commentsText: string[], 
     .flatMap(processMatchForDynLib)
 
   existing.useDynLib += result.length
-  append(comments.name, 'useDynLib', result, filepath)
+  append(comments.name, 'useDynLib', result, filepath, true)
 }
 
 export const comments: Feature<CommentInfo> = {

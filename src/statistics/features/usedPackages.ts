@@ -1,8 +1,7 @@
-import { Feature, formatMap, Query } from '../feature'
+import { Feature, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { MergeableRecord } from '../../util/objects'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
-import { groupCount } from '../../util/arrays'
 import { append } from '../statisticsFile'
 
 export type SinglePackageInfo = string
@@ -45,7 +44,7 @@ const libraryOrRequire: Query = xpath.parse(`
           /NUM_CONST[text() = 'TRUE' or text() = 'T']
         )
       )
-    ]/OP-LEFT-PAREN[1]/following-sibling::expr[1][SYMBOL | STR_CONST]/*
+    ]/OP-LEFT-PAREN[1]/following-sibling::expr[1][SYMBOL | STR_CONST]
 `)
 
 // there is no except in xpath 1.0?
@@ -59,15 +58,15 @@ const packageLoadedWithVariableLoadRequire: Query = xpath.parse(`
           /following-sibling::expr[1]
           /NUM_CONST[text() = 'TRUE' or text() = 'T']
         )
-    ]/OP-LEFT-PAREN[1]/following-sibling::expr[1][SYMBOL | STR_CONST]/*
+    ]/OP-LEFT-PAREN[1]/following-sibling::expr[1][SYMBOL | STR_CONST]
 `)
 
 const packageLoadedWithVariableNamespaces: Query = xpath.parse(`
-  //SYMBOL_FUNCTION_CALL[text() = 'loadNamespace' or text() = 'requireNamespace' or text() = 'attachNamespace']/../following-sibling::expr[1][SYMBOL]/*
+  //SYMBOL_FUNCTION_CALL[text() = 'loadNamespace' or text() = 'requireNamespace' or text() = 'attachNamespace']/../following-sibling::expr[1][SYMBOL]
 `)
 
 const queryForFunctionCall: Query = xpath.parse(`
-  //SYMBOL_FUNCTION_CALL[text() = $variable]/../following-sibling::expr[1][STR_CONST]/*
+  //SYMBOL_FUNCTION_CALL[text() = $variable]/../following-sibling::expr[1][STR_CONST]
 `)
 
 // otherwise, the parser seems to fail
@@ -101,10 +100,11 @@ export const usedPackages: Feature<UsedPackageInfo> = {
     for(const q of queries) {
       for(const fn of q.types) {
         const nodes = q.query.select({ node: input, variables: { variable: fn } })
-        append(this.name, fn, nodes, filepath)
+        append(this.name, fn, nodes, filepath, true)
       }
     }
 
+    // should not be unique as variables may be repeated, and we have no idea
     append(this.name, '<loadedByVariable>', [
       ...packageLoadedWithVariableLoadRequire.select({ node: input }),
       ...packageLoadedWithVariableNamespaces.select({ node: input })

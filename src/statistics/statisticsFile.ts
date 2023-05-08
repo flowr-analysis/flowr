@@ -21,6 +21,21 @@ export function resetStatisticsDirectory() {
   }
 }
 
+// requires to attach source information!
+function extractNodeContent(node: Node): string {
+  let result = node.textContent
+
+  if(node.hasChildNodes()) {
+    const firstChild = node.childNodes.item(0)
+    if(firstChild.nodeType === 3 /* text node */) {
+      result = firstChild.textContent
+    }
+  }
+
+  return result ?? '<unknown>'
+}
+
+
 /**
  * append the content of all nodes to the storage file for the given feature
  * @param name - the name of the feature {@link Feature#name}
@@ -35,13 +50,13 @@ export function append<T>(name: string, fn: keyof T, nodes: string[] | Node[], c
   }
   let contents = typeof nodes[0] === 'string' ?
       nodes as string[]
-    : (nodes as Node[]).map(node => node.textContent ?? '<unknown>')
+    : (nodes as Node[]).map(extractNodeContent)
 
   if(unique) {
     contents = [...new Set(contents)]
   }
 
-  console.log(`\t${name}: ${JSON.stringify(contents)}`)
+  // console.log(name, fn, JSON.stringify(contents))
 
   if(context !== undefined) {
     contents = contents.map(c => `${c}\t\t(${JSON.stringify(context)})`)

@@ -25,6 +25,7 @@ export interface FunctionUsageInfo extends FeatureInfo {
   specialPrimitiveFunctions:  number
   /** `.Primitive`, `.Internal`, `lazyLoadDBfetch`, ... */
   internalFunctions:          number
+  // TODO: from the list
 }
 
 export const initialFunctionUsageInfo = (): FunctionUsageInfo => ({
@@ -70,14 +71,14 @@ const specialPrimitiveFunctions = from('quote', 'substitute', 'missing', 'on.exi
 
 const internalOnlyFunctions = from(...markedAsInternalOnly)
 
-function collectFunctionByName(names: string[], info: FunctionUsageInfo, field: keyof FunctionUsageInfo, name: RegExp, filepath: string | undefined): void {
-  collectFunctionByPredicate(names, info, field, n => name.test(n), filepath)
+function collectFunctionByName(names: string[], info: FunctionUsageInfo, field: keyof FunctionUsageInfo, name: RegExp): void {
+  collectFunctionByPredicate(names, info, field, n => name.test(n))
 }
 
-function collectFunctionByPredicate(names: string[], info: FunctionUsageInfo, field: keyof FunctionUsageInfo, pred: (name: string) => boolean, filepath: string | undefined): void {
+function collectFunctionByPredicate(names: string[], info: FunctionUsageInfo, field: keyof FunctionUsageInfo, pred: (name: string) => boolean): void {
   const matchingNames = names.filter(pred)
   info[field] += matchingNames.length
-  append(usedFunctions.name, field, matchingNames, filepath)
+  // as they all are recorded as part of the allFunctionCalls, we do not need to append them separately
 }
 
 
@@ -96,12 +97,12 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
 
     const names = allFunctionCalls.map(extractNodeContent)
 
-    collectFunctionByName(names, existing, 'mathFunctions', mathFunctions, filepath)
-    collectFunctionByName(names, existing, 'programmingFunctions', programmingFunctions, filepath)
-    collectFunctionByName(names, existing, 'sessionManagementFunctions', sessionManagementFunctions, filepath)
-    collectFunctionByName(names, existing, 'primitiveFunctions', primitiveFunctions, filepath)
-    collectFunctionByName(names, existing, 'specialPrimitiveFunctions', specialPrimitiveFunctions, filepath)
-    collectFunctionByName(names, existing, 'internalFunctions', internalOnlyFunctions, filepath)
+    collectFunctionByName(names, existing, 'mathFunctions', mathFunctions)
+    collectFunctionByName(names, existing, 'programmingFunctions', programmingFunctions)
+    collectFunctionByName(names, existing, 'sessionManagementFunctions', sessionManagementFunctions)
+    collectFunctionByName(names, existing, 'primitiveFunctions', primitiveFunctions)
+    collectFunctionByName(names, existing, 'specialPrimitiveFunctions', specialPrimitiveFunctions)
+    collectFunctionByName(names, existing, 'internalFunctions', internalOnlyFunctions)
 
     return existing
   },

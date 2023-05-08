@@ -5,7 +5,6 @@ import { assertUnreachable } from '../../util/assert'
 import { append } from '../statisticsFile'
 
 export interface ValueInfo extends FeatureInfo {
-  // TODO: support negative numbers with unary op?
   allNumerics:      number,
   imaginaryNumbers: number,
   integers:         number,

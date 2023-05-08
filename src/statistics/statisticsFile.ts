@@ -21,8 +21,12 @@ export function resetStatisticsDirectory() {
   }
 }
 
-// requires to attach source information!
-function extractNodeContent(node: Node): string {
+/**
+ * Requires source information to be attached on parsing!
+ * <p>
+ * Returns the content of the node (i.e., the text content excluding the children)
+ */
+export function extractNodeContent(node: Node): string {
   let result = node.textContent
 
   if(node.hasChildNodes()) {

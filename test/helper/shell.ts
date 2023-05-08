@@ -72,7 +72,6 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
     })
     fn(shell)
     after(() => {
-      console.log('closing shell')
       shell.close()
     })
   }

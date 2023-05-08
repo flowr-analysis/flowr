@@ -100,15 +100,20 @@ export const usedPackages: Feature<UsedPackageInfo> = {
     for(const q of queries) {
       for(const fn of q.types) {
         const nodes = q.query.select({ node: input, variables: { variable: fn } })
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error currently we do not know, that it is a number...
+        existing[fn] += nodes.length
         append(this.name, fn, nodes, filepath, true)
       }
     }
 
-    // should not be unique as variables may be repeated, and we have no idea
-    append(this.name, '<loadedByVariable>', [
+    const nodesForVariableLoad = [
       ...packageLoadedWithVariableLoadRequire.select({ node: input }),
       ...packageLoadedWithVariableNamespaces.select({ node: input })
-    ], filepath)
+    ]
+    existing['<loadedByVariable>'] += nodesForVariableLoad.length
+    // should not be unique as variables may be repeated, and we have no idea
+    append(this.name, '<loadedByVariable>', nodesForVariableLoad, filepath)
 
     return existing
   },

@@ -58,11 +58,28 @@ const programmingFunctions = from('nargs', 'missing', 'on.exit', 'interactive',
 
 const sessionManagementFunctions = from('browser', 'proc.time', 'gc.time', 'tracemem', 'retracemem', 'untracemem')
 
+const markedAsInternalOnly = ['.Primitive', '.Internal',
+  '.Call.graphics', '.External.graphics', '.subset', '.subset2',
+  '.primTrace', '.primUntrace', 'lazyLoadDBfetch']
+
+const primitiveFunctions = from(':', '~', 'c', 'list', 'call', 'switch', 'expression', 'substitute',
+  'UseMethod', 'standardGeneric', '.C', '.Fortran', '.Call', '.External',
+  'round', 'signif', 'rep', 'seq.int', ...markedAsInternalOnly)
+
+const specialPrimitiveFunctions = from('quote', 'substitute', 'missing', 'on.exit', 'call', 'expression', '.Internal')
+
+const internalOnlyFunctions = from(...markedAsInternalOnly)
+
 function collectFunctionByName(names: string[], info: FunctionUsageInfo, field: keyof FunctionUsageInfo, name: RegExp, filepath: string | undefined): void {
-  const matchingNames = names.filter(n => name.test(n))
+  collectFunctionByPredicate(names, info, field, n => name.test(n), filepath)
+}
+
+function collectFunctionByPredicate(names: string[], info: FunctionUsageInfo, field: keyof FunctionUsageInfo, pred: (name: string) => boolean, filepath: string | undefined): void {
+  const matchingNames = names.filter(pred)
   info[field] += matchingNames.length
   append(usedFunctions.name, field, matchingNames, filepath)
 }
+
 
 
 const functionCallQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL`)
@@ -82,6 +99,9 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
     collectFunctionByName(names, existing, 'mathFunctions', mathFunctions, filepath)
     collectFunctionByName(names, existing, 'programmingFunctions', programmingFunctions, filepath)
     collectFunctionByName(names, existing, 'sessionManagementFunctions', sessionManagementFunctions, filepath)
+    collectFunctionByName(names, existing, 'primitiveFunctions', primitiveFunctions, filepath)
+    collectFunctionByName(names, existing, 'specialPrimitiveFunctions', specialPrimitiveFunctions, filepath)
+    collectFunctionByName(names, existing, 'internalFunctions', internalOnlyFunctions, filepath)
 
     return existing
   },

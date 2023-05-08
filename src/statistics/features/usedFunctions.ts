@@ -24,7 +24,9 @@ export interface FunctionUsageInfo extends FeatureInfo {
   /** e.g. do not evaluate part of functions, `quote`, ... */
   specialPrimitiveFunctions:  number
   /** `.Primitive`, `.Internal`, `lazyLoadDBfetch`, ... */
-  internalFunctions:          number
+  internalFunctions:          number,
+  /** `body`, `environment`, `formals` */
+  metaFunctions:              number
   // TODO: from the list
 }
 
@@ -35,7 +37,8 @@ export const initialFunctionUsageInfo = (): FunctionUsageInfo => ({
   sessionManagementFunctions: 0,
   primitiveFunctions:         0,
   specialPrimitiveFunctions:  0,
-  internalFunctions:          0
+  internalFunctions:          0,
+  metaFunctions:              0
 })
 
 function from(...names: string[]): RegExp {
@@ -71,6 +74,8 @@ const specialPrimitiveFunctions = from('quote', 'substitute', 'missing', 'on.exi
 
 const internalOnlyFunctions = from(...markedAsInternalOnly)
 
+const metaFunctions = from('body', 'environment', 'formals')
+
 function collectFunctionByName(names: string[], info: FunctionUsageInfo, field: keyof FunctionUsageInfo, name: RegExp): void {
   collectFunctionByPredicate(names, info, field, n => name.test(n))
 }
@@ -103,6 +108,7 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
     collectFunctionByName(names, existing, 'primitiveFunctions', primitiveFunctions)
     collectFunctionByName(names, existing, 'specialPrimitiveFunctions', specialPrimitiveFunctions)
     collectFunctionByName(names, existing, 'internalFunctions', internalOnlyFunctions)
+    collectFunctionByName(names, existing, 'metaFunctions', metaFunctions)
 
     return existing
   },
@@ -116,6 +122,7 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
 \t\tprimitive functions:          ${data.primitiveFunctions}
 \t\tspecial primitive functions:  ${data.specialPrimitiveFunctions}
 \t\tinternal functions:           ${data.internalFunctions}
+\t\tmeta functions:               ${data.metaFunctions}
     `
   }
 }

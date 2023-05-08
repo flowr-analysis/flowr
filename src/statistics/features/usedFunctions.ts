@@ -89,7 +89,12 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
   toString(data: FunctionUsageInfo): string {
     return `---used functions-------------
 \tall calls: ${data.allCalls}
-\t\tsys.*: ${data.systemCalls}
+\t\tmath functions:               ${data.mathFunctions}
+\t\tprogramming functions:        ${data.programmingFunctions}
+\t\tsession management functions: ${data.sessionManagementFunctions}
+\t\tprimitive functions:          ${data.primitiveFunctions}
+\t\tspecial primitive functions:  ${data.specialPrimitiveFunctions}
+\t\tinternal functions:           ${data.internalFunctions}
     `
   }
 }

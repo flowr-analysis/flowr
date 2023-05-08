@@ -8,13 +8,13 @@ import { RParseRequest, RParseRequestFromFile, RParseRequestFromText } from '../
  * @param suffix - suffix of the files to be retrieved
  * based on {@link https://stackoverflow.com/a/45130990}
  */
-async function* getFiles(dir: string, suffix = '.R'): AsyncGenerator<string> {
+async function* getFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
   const entries = await fs.readdir(dir, { withFileTypes: true })
   for (const subEntries of entries) {
     const res = resolve(dir, subEntries.name)
     if (subEntries.isDirectory()) {
       yield* getFiles(res, suffix)
-    } else if(subEntries.name.endsWith(suffix)) {
+    } else if(suffix.test(subEntries.name)) {
       yield res
     }
   }
@@ -31,7 +31,7 @@ async function* getFiles(dir: string, suffix = '.R'): AsyncGenerator<string> {
  */
 export async function* allRFiles(dir: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile> {
   let count = 0
-  for await (const f of getFiles(dir, '.R')) {
+  for await (const f of getFiles(dir, /\.[rR]$/)) {
     if(++count > limit) {
       break
     }

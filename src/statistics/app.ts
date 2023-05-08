@@ -23,7 +23,7 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
   const processedFeatures: 'all' | Set<FeatureKey> = features === 'all' ? 'all' : new Set(features)
   let cur = 0
   const stats = await extract(shell,
-    file => console.log(`processing ${++cur} ${file.content}`),
+    file => console.log(`${new Date().toLocaleString()} processing ${++cur} ${file.content}`),
     processedFeatures,
     allRFiles(processArguments[0])
   )

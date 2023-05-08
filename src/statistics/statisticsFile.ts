@@ -32,7 +32,7 @@ function extractNodeContent(node: Node): string {
     }
   }
 
-  return result?.replace('\n', '\\n') ?? '<unknown>'
+  return result?.trim()?.replace('\n', '\\n') ?? '<unknown>'
 }
 
 

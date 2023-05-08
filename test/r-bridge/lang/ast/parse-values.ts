@@ -1,4 +1,4 @@
-import { assertAst, retrieveAst, withShell } from '../../../helper/shell'
+import { assertAst, withShell } from '../../../helper/shell'
 import {
   RNumberPool,
   RStringPool,

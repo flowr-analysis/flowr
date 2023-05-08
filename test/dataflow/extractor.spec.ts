@@ -16,8 +16,6 @@ import {
   RUnaryOpPool,
 } from "../helper/provider"
 import { naiveLineBasedSlicing } from "../../src/slicing/static/static-slicer"
-import { log } from '../../src/util/log'
-import { LogLevel } from 'typedoc'
 
 describe("Extract Dataflow Information", () => {
   /**

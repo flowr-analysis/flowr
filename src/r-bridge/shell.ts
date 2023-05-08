@@ -280,6 +280,7 @@ class RShellSession {
   private readonly sessionStdErr: readline.Interface
   private readonly options:       RShellSessionOptions
   private readonly log:           Logger<ILogObj>
+  private collectionTimeout:      NodeJS.Timeout | undefined
 
   public constructor(options: RShellSessionOptions, log: Logger<ILogObj>) {
     this.bareSession = spawn(options.pathToRExecutable, options.commandLineOptions, {
@@ -326,7 +327,7 @@ class RShellSession {
       const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
         reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`))
       }, timeout.ms)
-      let timer = makeTimer()
+      this.collectionTimeout = makeTimer()
 
       handler = (data: string): void => {
         const end = until.predicate(data)
@@ -334,11 +335,11 @@ class RShellSession {
           result.push(data)
         }
         if (end) {
-          clearTimeout(timer)
+          clearTimeout(this.collectionTimeout)
           resolve(result)
         } else if (timeout.resetOnNewData) {
-          clearTimeout(timer)
-          timer = makeTimer()
+          clearTimeout(this.collectionTimeout)
+          this.collectionTimeout = makeTimer()
         }
       }
       this.on(from, 'line', handler)
@@ -357,6 +358,9 @@ class RShellSession {
    */
   end(): boolean {
     const killResult = this.bareSession.kill()
+    if(this.collectionTimeout !== undefined) {
+      clearTimeout(this.collectionTimeout)
+    }
     this.sessionStdOut.close()
     this.sessionStdErr.close()
     log.info(`killed R session with pid ${this.bareSession.pid ?? '<unknown>'} and result ${killResult ? 'successful' : 'failed'} (including streams)`)

@@ -1,6 +1,8 @@
 import path from 'path'
 import fs from 'fs'
 
+export const statisticsDirectory = `./statistics-out-${new Date().toUTCString()}`
+
 /**
  * as we have a lot of data to collect, we want to store them in files
  *
@@ -8,13 +10,13 @@ import fs from 'fs'
  * @param fn - the name of the feature-aspect to record
  */
 export function statisticsFile(name: string, fn: string): string {
-  return `./statistics-out/${name}/${fn}.txt`
+  return path.join(statisticsDirectory, name, `${fn}.txt`)
 }
 
 // TODO: guard existing etc. so that we do not remove wanted stuff
 export function resetStatisticsDirectory() {
-  if(fs.existsSync('./statistics-out')) {
-    fs.rmSync('./statistics-out', { recursive: true })
+  if(fs.existsSync(statisticsDirectory)) {
+    fs.rmSync(statisticsDirectory, { recursive: true })
   }
 }
 

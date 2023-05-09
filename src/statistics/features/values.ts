@@ -55,7 +55,7 @@ export const values: Feature<ValueInfo> = {
   name:        'Values',
   description: 'all values used (as constants etc.)',
 
-  append(existing: ValueInfo, input: Document, filepath: string | undefined): ValueInfo {
+  process(existing: ValueInfo, input: Document, filepath: string | undefined): ValueInfo {
     const strings = stringConstantQuery.select({ node: input})
     const numerics = numericConstantQuery.select({ node: input})
     const specialConstants = specialConstantsQuery.select({ node: input})
@@ -87,18 +87,5 @@ export const values: Feature<ValueInfo> = {
     append(this.name, 'logical', specialLogicalSymbols, filepath)
 
     return existing
-  },
-
-  toString(data: ValueInfo): string {
-    // TODO: separate between unique and total count?
-    return `---values-------------
-\tstrings:           ${data.strings}
-\tnumerics:          ${data.allNumerics}
-\t\timaginary (k): ${data.imaginaryNumbers}
-\t\tinteger (L):   ${data.integers} 
-\t\tfloat-hex:     ${data.floatHex}
-\tlogical:           ${data.logical}
-\tspecial constants: ${data.specialConstants}
-    `
   }
 }

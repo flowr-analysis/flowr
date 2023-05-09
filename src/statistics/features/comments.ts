@@ -116,7 +116,7 @@ export const comments: Feature<CommentInfo> = {
   name:        'Comments',
   description: 'all comments that appear within the document',
 
-  append(existing: CommentInfo, input: Document, filepath: string | undefined): CommentInfo {
+  process(existing: CommentInfo, input: Document, filepath: string | undefined): CommentInfo {
     const comments = commentQuery.select({ node: input }).map(node => node.textContent ?? '#')
       .map(text => {
         guard(text.startsWith('#'), `unexpected comment ${text}`)
@@ -136,24 +136,5 @@ export const comments: Feature<CommentInfo> = {
     processExports(existing, roxygenComments)
 
     return existing
-  },
-
-  toString(data: CommentInfo): string {
-    return `---comments-------------
-\ttotal amount:                            ${data.totalAmount}
-\troxygen comments:                        ${data.roxygenComments}
-\timports
-\t\timports (complete package, discouraged): ${data.import}
-\t\timports from:                            ${data.importFrom}
-\t\timports classes from (S4):               ${data.importClassesFrom}
-\t\timports methods from (S4, generic):      ${data.importMethodsFrom}
-\t\tused dynamic libs:                       ${data.useDynLib}
-\texports:
-\t\ttotal (+@export):                      ${data.export}
-\t\t@exportClass:                          ${data.exportClass}
-\t\t@exportMethod:                         ${data.exportMethod}
-\t\t@exportS3Method:                       ${data.exportS3Method}
-\t\t@exportPattern:                        ${data.exportPattern}
-    `
   }
 }

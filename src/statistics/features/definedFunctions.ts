@@ -76,7 +76,7 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
   name:        'Defined Functions',
   description: 'all functions defined within the document',
 
-  append(existing: FunctionDefinitionInfo, input: Document, filepath: string | undefined): FunctionDefinitionInfo {
+  process(existing: FunctionDefinitionInfo, input: Document, filepath: string | undefined): FunctionDefinitionInfo {
     const allFunctions = queryAnyFunctionDefinition.select({ node: input }).length
     const allLambdas = queryAnyLambdaDefinition.select({ node: input })
 
@@ -108,17 +108,5 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
     append(this.name, 'recursiveFunctions', recursiveFunctions, filepath)
 
     return existing
-  },
-
-  toString(data: FunctionDefinitionInfo): string {
-    return `---defined functions------------
-\ttotal: ${data.total} (${data.lambdasOnly} of which are using OP-LAMBDA)
-\t\tfunctions assigned:        ${data.assignedFunctions}
-\t\tparameter names:           ${data.usedParameterNames}
-\t\tfunctions directly called: ${data.functionsDirectlyCalled}
-\t\tnested functions:          ${data.nestedFunctions}
-\t\trecursive functions:       ${data.recursive}
-`
   }
-
 }

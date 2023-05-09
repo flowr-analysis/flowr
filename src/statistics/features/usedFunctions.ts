@@ -119,7 +119,7 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
   name:        'Used Functions',
   description: 'all functions called, split into various sub-categories',
 
-  append(existing: FunctionUsageInfo, input: Document, filepath: string | undefined): FunctionUsageInfo {
+  process(existing: FunctionUsageInfo, input: Document, filepath: string | undefined): FunctionUsageInfo {
     const allFunctionCalls = functionCallQuery.select({ node: input })
 
     existing.allCalls += allFunctionCalls.length
@@ -143,25 +143,5 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
     collectFunctionByName(names, existing, 'optionFunctions', optionFunctions)
 
     return existing
-  },
-
-  toString(data: FunctionUsageInfo): string {
-    return `---used functions-------------
-\tall calls: ${data.allCalls}
-\t\tmath functions:               ${data.mathFunctions}
-\t\tprogramming functions:        ${data.programmingFunctions}
-\t\tsession management functions: ${data.sessionManagementFunctions}
-\t\tprimitive functions:          ${data.primitiveFunctions}
-\t\tspecial primitive functions:  ${data.specialPrimitiveFunctions}
-\t\tinternal functions:           ${data.internalFunctions}
-\t\tmeta functions:               ${data.metaFunctions}
-\t\treturn function:              ${data.returnFunction}
-\t\tparsing functions:            ${data.parsingFunctions}
-\t\tedit functions:               ${data.editFunctions}
-\t\tassign functions:             ${data.assignFunctions}
-\t\tget functions:                ${data.getFunctions}
-\t\thelp functions:               ${data.helpFunctions}
-\t\toption functions:             ${data.optionFunctions}
-    `
   }
 }

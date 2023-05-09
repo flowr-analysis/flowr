@@ -19,7 +19,7 @@ export async function extractSingle(result: FeatureStatistics, shell: RShell, fr
       continue
     }
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    result[key] = feature.append(result[key], doc, from.request === 'file' ? from.content : undefined)
+    result[key] = feature.process(result[key], doc, from.request === 'file' ? from.content : undefined)
   }
 
   return result

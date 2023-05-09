@@ -67,7 +67,7 @@ export const assignments: Feature<AssignmentInfo> = {
   name:        'Assignments',
   description: 'all ways to assign something in R',
 
-  append(existing: AssignmentInfo, input: Document, filepath: string | undefined): AssignmentInfo {
+  process(existing: AssignmentInfo, input: Document, filepath: string | undefined): AssignmentInfo {
     const assignmentOperators = defaultOperatorAssignmentQuery.select({ node: input })
     const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input })
     const directlyNestedOperators = directlyNestedOperatorAssignmentQuery.select({ node: input })
@@ -82,15 +82,5 @@ export const assignments: Feature<AssignmentInfo> = {
     append(this.name, 'specialAssignmentOps', specialAssignmentOps, filepath)
 
     return existing
-  },
-
-  toString(data: AssignmentInfo): string {
-    // TODO: separate between unique and total count
-    return `---assignments-------------
-\toperator assignments:        ${data.assignmentOperator}
-\tnested operator assignments: ${data.nestedOperatorAssignment}
-\t\t directly nested: ${data.directlyNestedOperatorAssignment}
-\tspecial assignments:         ${data.specialAssignmentOps}
-    `
   }
 }

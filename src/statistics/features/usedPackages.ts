@@ -94,7 +94,7 @@ export const usedPackages: Feature<UsedPackageInfo> = {
   name:        'Used Packages',
   description: 'All the packages used in the code',
 
-  append(existing: UsedPackageInfo, input: Document, filepath: string | undefined): UsedPackageInfo {
+  process(existing: UsedPackageInfo, input: Document, filepath: string | undefined): UsedPackageInfo {
     // we will unify in the end, so we can count, group etc. but we do not re-count multiple packages in the same file
     for(const q of queries) {
       for(const fn of q.types) {
@@ -113,17 +113,6 @@ export const usedPackages: Feature<UsedPackageInfo> = {
     append(this.name, '<loadedByVariable>', nodesForVariableLoad, filepath)
 
     return existing
-  },
-
-  toString(data: UsedPackageInfo): string {
-    let result = '---used packages (does not care for roxygen comments!)-------------'
-    result += `\n\tloaded by a variable (unknown): ${data['<loadedByVariable>']}`
-    for(const fn of [ 'library', 'require', 'loadNamespace', 'requireNamespace', 'attachNamespace', '::', ':::' ] as (keyof UsedPackageInfo)[]) {
-      const pkgs = data[fn]
-      result += `\n\t${fn}: ${pkgs}`
-    }
-
-    return result
   }
 }
 

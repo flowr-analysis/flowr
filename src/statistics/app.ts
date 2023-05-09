@@ -1,7 +1,7 @@
 import { RShell } from '../r-bridge/shell'
 import { extract } from './statistics'
 import { log, LogLevel } from '../util/log'
-import { ALL_FEATURES, FeatureKey } from './feature'
+import { ALL_FEATURES, FeatureKey, printFeatureStatistics } from './feature'
 import { allRFiles } from '../util/files'
 
 log.updateSettings(l => l.settings.minLevel = LogLevel.error)
@@ -29,12 +29,7 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
   )
   // console.log(JSON.stringify(stats, undefined, 2))
 
-  for(const entry of Object.keys(stats.features)) {
-    if(processedFeatures !== 'all' && !processedFeatures.has(entry)) {
-      continue
-    }
-    console.log(ALL_FEATURES[entry].toString(stats.features[entry]))
-  }
+  printFeatureStatistics(stats.features, processedFeatures)
 
   // TODO: unify analysis of min/max etc.
   const numberOfLinesPerFiles = stats.meta.lines.map(l => l.length).sort((a, b) => a - b)

@@ -78,10 +78,12 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 
   append(existing: FunctionDefinitionInfo, input: Document, filepath: string | undefined): FunctionDefinitionInfo {
     const allFunctions = queryAnyFunctionDefinition.select({ node: input }).length
-    const allLambdas = queryAnyLambdaDefinition.select({ node: input }).length
+    const allLambdas = queryAnyLambdaDefinition.select({ node: input })
 
-    existing.total += allFunctions + allLambdas
-    existing.lambdasOnly += allLambdas
+    append(this.name, 'allLambdas', allLambdas, filepath)
+
+    existing.total += allFunctions + allLambdas.length
+    existing.lambdasOnly += allLambdas.length
 
     const usedParameterNames = queryUsedParameterNames.select({ node: input })
     existing.usedParameterNames += usedParameterNames.length

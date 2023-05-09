@@ -10,6 +10,9 @@ export interface UsedFunction {
 }
 
 
+// TODO: general register function to allow to register these counters with optional writes if necessary from all features
+// together with sub-search which works on the result of a given regex
+
 // TODO: get corresponding package with getNamespaceExports etc?
 export interface FunctionUsageInfo extends FeatureInfo {
   allCalls:                   number
@@ -24,12 +27,18 @@ export interface FunctionUsageInfo extends FeatureInfo {
   /** e.g. do not evaluate part of functions, `quote`, ... */
   specialPrimitiveFunctions:  number
   /** `.Primitive`, `.Internal`, `lazyLoadDBfetch`, ... */
-  internalFunctions:          number,
+  internalFunctions:          number
   /** `body`, `environment`, `formals` */
-  metaFunctions:              number,
+  metaFunctions:              number
   /** return */
   returnFunction:             number
-  // TODO: from the list
+  parsingFunctions:           number
+  editFunctions:              number
+  assignFunctions:            number
+  getFunctions:               number
+  helpFunctions:              number
+  optionFunctions:            number
+  // TODO: others from the list
 }
 
 export const initialFunctionUsageInfo = (): FunctionUsageInfo => ({
@@ -42,6 +51,12 @@ export const initialFunctionUsageInfo = (): FunctionUsageInfo => ({
   internalFunctions:          0,
   metaFunctions:              0,
   returnFunction:             0,
+  parsingFunctions:           0,
+  editFunctions:              0,
+  assignFunctions:            0,
+  getFunctions:               0,
+  helpFunctions:              0,
+  optionFunctions:            0
 })
 
 function from(...names: string[]): RegExp {
@@ -81,6 +96,13 @@ const metaFunctions = from('body', 'environment', 'formals')
 
 const returnFunction = from('return')
 
+const parsingFunctions = from('parse', 'deparse', 'substitute', 'quote', 'call', 'eval', 'evalq', 'eval.parent')
+const editFunctions = from('edit', 'vi', 'emacs', 'pico', 'xemacs', 'xedit', 'fix', 'fixInNamespace')
+const assignFunctions = from('assign',  'assignInNamespace', 'assignInMyNamespace')
+const getFunctions = from('get', 'exists', 'getFromNamespace')
+const helpFunctions = from('help', 'help.search', 'prompt')
+const optionFunctions = from('options', 'getOption', '.Option')
+
 function collectFunctionByName(names: string[], info: FunctionUsageInfo, field: keyof FunctionUsageInfo, name: RegExp): void {
   collectFunctionByPredicate(names, info, field, n => name.test(n))
 }
@@ -113,6 +135,12 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
     collectFunctionByName(names, existing, 'internalFunctions', internalOnlyFunctions)
     collectFunctionByName(names, existing, 'metaFunctions', metaFunctions)
     collectFunctionByName(names, existing, 'returnFunction', returnFunction)
+    collectFunctionByName(names, existing, 'parsingFunctions', parsingFunctions)
+    collectFunctionByName(names, existing, 'editFunctions', editFunctions)
+    collectFunctionByName(names, existing, 'assignFunctions', assignFunctions)
+    collectFunctionByName(names, existing, 'getFunctions', getFunctions)
+    collectFunctionByName(names, existing, 'helpFunctions', helpFunctions)
+    collectFunctionByName(names, existing, 'optionFunctions', optionFunctions)
 
     return existing
   },
@@ -128,6 +156,12 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
 \t\tinternal functions:           ${data.internalFunctions}
 \t\tmeta functions:               ${data.metaFunctions}
 \t\treturn function:              ${data.returnFunction}
+\t\tparsing functions:            ${data.parsingFunctions}
+\t\tedit functions:               ${data.editFunctions}
+\t\tassign functions:             ${data.assignFunctions}
+\t\tget functions:                ${data.getFunctions}
+\t\thelp functions:               ${data.helpFunctions}
+\t\toption functions:             ${data.optionFunctions}
     `
   }
 }

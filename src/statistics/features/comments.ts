@@ -2,7 +2,7 @@ import { Feature, FeatureInfo, Query } from '../feature'
 import { MergeableRecord } from '../../util/objects'
 import * as xpath from 'xpath-ts2'
 import { guard, isNotNull, isNotUndefined } from '../../util/assert'
-import { append } from '../statisticsFile'
+import { append } from '../output/statisticsFile'
 
 export interface CommentInfo extends FeatureInfo {
   totalAmount:       number

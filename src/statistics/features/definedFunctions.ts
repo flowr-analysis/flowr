@@ -1,6 +1,6 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append, extractNodeContent } from '../statisticsFile'
+import { append, extractNodeContent } from '../output/statisticsFile'
 
 export type FunctionNameInfo = string
 

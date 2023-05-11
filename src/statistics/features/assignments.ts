@@ -1,6 +1,6 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append } from '../statisticsFile'
+import { append } from '../output/statisticsFile'
 
 export interface AssignmentInfo extends FeatureInfo {
   assignmentOperator:               number

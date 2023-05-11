@@ -1,8 +1,6 @@
 import path from 'path'
 import fs from 'fs'
-import { date2string } from '../util/time'
-
-export const statisticsDirectory = `./statistics-out-${date2string(new Date())}`
+import { statisticsDirectory } from './fileProvider'
 
 /**
  * as we have a lot of data to collect, we want to store them in files
@@ -12,13 +10,6 @@ export const statisticsDirectory = `./statistics-out-${date2string(new Date())}`
  */
 export function statisticsFile(name: string, fn: string): string {
   return path.join(statisticsDirectory, name, `${fn}.txt`)
-}
-
-// TODO: guard existing etc. so that we do not remove wanted stuff
-export function resetStatisticsDirectory() {
-  if(fs.existsSync(statisticsDirectory)) {
-    fs.rmSync(statisticsDirectory, { recursive: true })
-  }
 }
 
 /**
@@ -77,3 +68,5 @@ export function append<T>(name: string, fn: keyof T, nodes: string[] | Node[], c
 
   fs.appendFileSync(filepath, contents.join('\n') + '\n')
 }
+
+

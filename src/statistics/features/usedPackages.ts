@@ -1,7 +1,7 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
-import { append } from '../statisticsFile'
+import { append } from '../output/statisticsFile'
 
 export type SinglePackageInfo = string
 

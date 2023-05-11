@@ -6,6 +6,7 @@ import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { assignments, initialAssignmentInfo } from './features/assignments'
 import { MergeableRecord } from '../util/objects'
 import { initialFunctionUsageInfo, usedFunctions } from './features/usedFunctions'
+import { initialLoopInfo, loops } from './features/loops'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
@@ -36,7 +37,8 @@ export const ALL_FEATURES: Record<string, Feature<any>> = {
   definedFunctions: definedFunctions,
   usedFunctions:    usedFunctions,
   values:           values,
-  assignments:      assignments
+  assignments:      assignments,
+  loops:            loops
 } as const
 
 export type FeatureKey = keyof typeof ALL_FEATURES
@@ -54,7 +56,8 @@ export const InitialFeatureStatistics: () => FeatureStatistics = () => ({
   definedFunctions: initialFunctionDefinitionInfo(),
   values:           initialValueInfo(),
   assignments:      initialAssignmentInfo(),
-  usedFunctions:    initialFunctionUsageInfo()
+  usedFunctions:    initialFunctionUsageInfo(),
+  loops:            initialLoopInfo()
 })
 
 /** just to shorten type inline hints */

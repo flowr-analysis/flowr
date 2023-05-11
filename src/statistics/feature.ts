@@ -42,7 +42,7 @@ export const ALL_FEATURES: Record<string, Feature<any>> = {
 export type FeatureKey = keyof typeof ALL_FEATURES
 
 export type FeatureStatistics = {
-  [K in FeatureKey]: ReturnType<typeof ALL_FEATURES[K]['process']>
+  [K in FeatureKey]: FeatureInfo
 }
 
 /**
@@ -70,8 +70,29 @@ export function printFeatureStatistics(statistics: FeatureStatistics, features: 
     const meta = ALL_FEATURES[feature]
     console.log(`\n\n-----${meta.name}-------------`)
     console.log(`\x1b[37m${meta.description}\x1b[m`)
-    console.table(statistics[feature])
+    printFeatureStatisticsEntry(statistics[feature])
     console.log('\n\n')
+  }
+}
+
+const pad = 3
+
+function printFeatureStatisticsEntry(info: FeatureInfo): void {
+  let longestKey = 0
+  let longestValue = 0
+  const out = new Map<string, string>()
+  for(const [key, value] of Object.entries(info)) {
+    if(key.length > longestKey) {
+      longestKey = key.length
+    }
+    const valueString = value.toLocaleString()
+    out.set(key, valueString)
+    if(valueString.length > longestValue) {
+      longestValue = valueString.length
+    }
+  }
+  for(const [key, value] of out.entries()) {
+    console.log(`${key.padEnd(longestKey + pad)} ${value.padStart(longestValue)}`)
   }
 }
 

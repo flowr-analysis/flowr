@@ -9,9 +9,11 @@ import { RShell } from '../r-bridge/shell'
 import { DOMParser } from 'xmldom'
 import fs from 'fs'
 
+const parser = new DOMParser()
+
 export async function extractSingle(result: FeatureStatistics, shell: RShell, from: RParseRequest, features: 'all' | Set<FeatureKey>): Promise<FeatureStatistics> {
   const xml = await retrieveXmlFromRCode(from, shell)
-  const doc = new DOMParser().parseFromString(xml, 'text/xml')
+  const doc = parser.parseFromString(xml, 'text/xml')
 
   for (const [key, feature] of Object.entries(ALL_FEATURES)) {
     if(features !== 'all' && !features.has(key )) {

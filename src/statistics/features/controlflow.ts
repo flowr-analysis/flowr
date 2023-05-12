@@ -16,6 +16,8 @@ export interface ControlflowInfo extends FeatureInfo {
   singleVariableIfThenElse: number
   /** switch(...) */
   switchCase:               number
+  variableSwitchCase:       number
+  constantSwitchCase:       number
 }
 
 export const initialControlflowInfo = (): ControlflowInfo => ({
@@ -27,7 +29,9 @@ export const initialControlflowInfo = (): ControlflowInfo => ({
   constantIfThenElse:       0,
   singleVariableIfThen:     0,
   singleVariableIfThenElse: 0,
-  switchCase:               0
+  switchCase:               0,
+  variableSwitchCase:       0,
+  constantSwitchCase:       0
 })
 
 const ifThenQuery: Query = xpath.parse(`//IF[not(following-sibling::ELSE)]`)
@@ -45,6 +49,11 @@ const constantCondition: Query = xpath.parse(`
 const singleVariableCondition: Query = xpath.parse(`./SYMBOL[text() != 'T' and text() != 'F']`)
 
 const nestedIfThenQuery: Query = xpath.parse(`..//expr/IF`)
+
+// directly returns the first parameter of switch
+const switchQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL[text() = 'switch']/../../expr[preceding-sibling::OP-LEFT-PAREN][1]`)
+
+
 
 function collectForIfThenOptionalElse(existing: ControlflowInfo, name: 'IfThen' | 'IfThenElse',  ifThenOptionalElse: Node, filepath: string | undefined) {
   // select when condition to check if constant, ...
@@ -64,9 +73,9 @@ function collectForIfThenOptionalElse(existing: ControlflowInfo, name: 'IfThen' 
   append(controlflow.name, singleVariableKey, singleVariableConditions, filepath)
 
   const nestedKey = `nested${name}`
-  const nestedIfThens = nestedIfThenQuery.select({ node: ifThenOptionalElse })
+  const nestedIfThen = nestedIfThenQuery.select({ node: ifThenOptionalElse })
 
-  existing[nestedKey] += nestedIfThens.length
+  existing[nestedKey] += nestedIfThen.length
 }
 
 export const controlflow: Feature<ControlflowInfo> = {
@@ -83,6 +92,23 @@ export const controlflow: Feature<ControlflowInfo> = {
 
     ifThen.forEach(ifThen => { collectForIfThenOptionalElse(existing, 'IfThen', ifThen, filepath) })
     ifThenElse.forEach(ifThenElse => { collectForIfThenOptionalElse(existing, 'IfThenElse', ifThenElse, filepath) })
+
+    const switchCases = switchQuery.select({ node: input })
+    existing.switchCase += switchCases.length
+    append(controlflow.name, 'switchCase', switchCases, filepath)
+
+
+    const constantSwitchCases = switchCases.flatMap(switchCase =>
+      constantCondition.select({ node: switchCase })
+    )
+    existing.constantSwitchCase += constantSwitchCases.length
+    append(controlflow.name, 'constantSwitchCase', constantSwitchCases, filepath)
+
+    const variableSwitchCases = switchCases.flatMap(switchCase =>
+      singleVariableCondition.select({ node: switchCase })
+    )
+    existing.variableSwitchCase += variableSwitchCases.length
+    append(controlflow.name, 'variableSwitchCase', variableSwitchCases, filepath)
 
     return existing
   }

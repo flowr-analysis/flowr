@@ -96,7 +96,7 @@ const metaFunctions = from('body', 'environment', 'formals')
 
 const returnFunction = from('return')
 
-const parsingFunctions = from('parse', 'deparse', 'substitute', 'quote', 'call', 'eval', 'evalq', 'eval.parent')
+const parsingFunctions = from('parse', 'deparse', 'substitute', 'quote', 'bquote', 'call', 'eval', 'evalq', 'eval.parent')
 const editFunctions = from('edit', 'vi', 'emacs', 'pico', 'xemacs', 'xedit', 'fix', 'fixInNamespace')
 const assignFunctions = from('assign',  'assignInNamespace', 'assignInMyNamespace')
 const getFunctions = from('get', 'exists', 'getFromNamespace')

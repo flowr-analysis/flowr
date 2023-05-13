@@ -11,6 +11,7 @@ for i in "${!content[@]}"; do
   arr[i]="${ROOT_FOLDER}${content[i]}"
 done
 
-mkdir -p "./stats-output/top-$(date +%Y-%m-%d-%H-%M-%S)/"
-npm run stats -- "${arr[@]}" --output-dir "./stats-output/top/" |& tee -a "./stats-output/top/full.log"
+DIR="./stats-output/top-$(date +%Y-%m-%d-%H-%M-%S)/"
+mkdir -p "${DIR}"
+npm run stats -- "${arr[@]}" --output-dir "${DIR}" |& tee -a "${DIR}/full.log"
 

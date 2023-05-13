@@ -42,11 +42,7 @@ export function append<T>(name: string, fn: keyof T, nodes: string[] | Node[], c
     contents = [...new Set(contents)]
   }
 
-  // console.log(name, fn, JSON.stringify(contents))
-
-  if(context !== undefined) {
-    contents = contents.map(c => `${c}\t\t(${JSON.stringify(context)})`)
-  }
+  contents = contents.map(c => JSON.stringify({ value: c, context }))
 
   fileProvider.append(name, fn, contents.join('\n'))
 }

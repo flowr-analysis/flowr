@@ -50,7 +50,7 @@ export type FeatureStatistics = {
 }
 
 /**
- * while e could use these to generate the corresponding types automatically, i wanted to have the types and comments in one place
+ * while we could use these to generate the corresponding types automatically, i wanted to have the types and comments in one place
  */
 export const InitialFeatureStatistics: () => FeatureStatistics = () => ({
   usedPackages:     initialUsedPackageInfos(),

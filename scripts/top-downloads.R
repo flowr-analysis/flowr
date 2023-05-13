@@ -1,7 +1,7 @@
 library(cranlogs)
 
 # retrieve top N packages
-N <- 1000
+N <- 500
 
 # Get the names of all packages
 pkgnames <- available.packages(repos="https://cloud.r-project.org")[,1]
@@ -25,4 +25,4 @@ download_numbers <- aggregate(count ~ package, data=download_numbers, sum)
 download_numbers <- download_numbers[order(-download_numbers$count),]
 print(download_numbers[1:N,])
 
-write.csv(download_numbers[1:N,], file="top-r-downloads.txt", quote=FALSE, row.names=FALSE)
+write.table(download_numbers[1:N,], file="top-r-downloads.txt", quote=FALSE, sep=",", row.names=FALSE, col.names=FALSE)

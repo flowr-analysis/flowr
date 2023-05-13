@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+## Runs stats for all packages in parallel for chunks given by `SPLIT`
 ROOT_FOLDER="${HOME}/Documents/CRAN/"
 SPLIT=16
 

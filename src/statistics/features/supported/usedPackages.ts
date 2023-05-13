@@ -11,6 +11,7 @@ export interface UsedPackageInfo extends FeatureInfo {
   loadNamespace:        number
   requireNamespace:     number
   attachNamespace:      number
+  withinApply:          number
   '::':                 number
   ':::':                number
   /** just contains all occurrences where it is impossible to statically determine which package is loaded */
@@ -23,6 +24,7 @@ export const initialUsedPackageInfos = (): UsedPackageInfo => ({
   loadNamespace:        0,
   requireNamespace:     0,
   attachNamespace:      0,
+  withinApply:          0,
   '::':                 0,
   ':::':                0,
   '<loadedByVariable>': 0
@@ -30,6 +32,13 @@ export const initialUsedPackageInfos = (): UsedPackageInfo => ({
 
 
 // based on the extraction routine of lintr search for function calls which are not character-loads (we can not trace those...)
+const withinApply: Query = xpath.parse(`
+  //SYMBOL_FUNCTION_CALL[contains(.,"apply")]/../..
+    //SYMBOL[text()='require' or text()='library' or text()='loadNamespace' or text()='requireNamespace' or text()='attachNamespace']
+    /../..
+`)
+
+// horribles ways O found exploratively like loading within `sapply`
 const libraryOrRequire: Query = xpath.parse(`
   //SYMBOL_FUNCTION_CALL[text() = $variable]
     /parent::expr
@@ -111,6 +120,10 @@ export const usedPackages: Feature<UsedPackageInfo> = {
     existing['<loadedByVariable>'] += nodesForVariableLoad.length
     // should not be unique as variables may be repeated, and we have no idea
     append(this.name, '<loadedByVariable>', nodesForVariableLoad, filepath)
+
+    const withinApplyNodes = withinApply.select({ node: input })
+    existing.withinApply += withinApplyNodes.length
+    append(this.name, 'withinApply', withinApplyNodes, filepath)
 
     return existing
   }

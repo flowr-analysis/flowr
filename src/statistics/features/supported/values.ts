@@ -1,8 +1,8 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { RNumHexFloatRegex } from '../../r-bridge/lang:4.x/values'
-import { assertUnreachable } from '../../util/assert'
-import { append } from '../output/statisticsFile'
+import { RNumHexFloatRegex } from '../../../r-bridge/lang:4.x/values'
+import { assertUnreachable } from '../../../util/assert'
+import { append } from '../../output/statisticsFile'
 
 export interface ValueInfo extends FeatureInfo {
   allNumerics:      number,

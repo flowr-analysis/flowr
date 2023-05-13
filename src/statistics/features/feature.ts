@@ -1,14 +1,14 @@
-import { initialUsedPackageInfos, usedPackages } from './features/usedPackages'
-import { comments, initialCommentInfo } from './features/comments'
-import { definedFunctions, initialFunctionDefinitionInfo } from './features/definedFunctions'
-import { initialValueInfo, values } from './features/values'
+import { initialUsedPackageInfos, usedPackages } from './supported/usedPackages'
+import { comments, initialCommentInfo } from './supported/comments'
+import { definedFunctions, initialFunctionDefinitionInfo } from './supported/definedFunctions'
+import { initialValueInfo, values } from './supported/values'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
-import { assignments, initialAssignmentInfo } from './features/assignments'
-import { MergeableRecord } from '../util/objects'
-import { initialFunctionUsageInfo, usedFunctions } from './features/usedFunctions'
-import { initialLoopInfo, loops } from './features/loops'
-import { controlflow, initialControlflowInfo } from './features/controlflow'
-import { dataAccess, initialDataAccessInfo } from './features/dataAccess'
+import { assignments, initialAssignmentInfo } from './supported/assignments'
+import { MergeableRecord } from '../../util/objects'
+import { initialFunctionUsageInfo, usedFunctions } from './supported/usedFunctions'
+import { initialLoopInfo, loops } from './supported/loops'
+import { controlflow, initialControlflowInfo } from './supported/controlflow'
+import { dataAccess, initialDataAccessInfo } from './supported/dataAccess'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
@@ -46,6 +46,7 @@ export const ALL_FEATURES: Record<string, Feature<any>> = {
 } as const
 
 export type FeatureKey = keyof typeof ALL_FEATURES
+export const allFeatureNames: FeatureKey[] = Object.keys(ALL_FEATURES)
 
 export type FeatureStatistics = {
   [K in FeatureKey]: FeatureInfo
@@ -68,42 +69,6 @@ export const InitialFeatureStatistics: () => FeatureStatistics = () => ({
 
 /** just to shorten type inline hints */
 export interface Query { select(options?: EvalOptions): Node[] }
-
-
-
-export function printFeatureStatistics(statistics: FeatureStatistics, features: 'all' | Set<FeatureKey> = 'all'): void {
-  for(const feature of Object.keys(statistics)) {
-    if(features !== 'all' && !features.has(feature)) {
-      continue
-    }
-    const meta = ALL_FEATURES[feature]
-    console.log(`\n\n-----${meta.name}-------------`)
-    console.log(`\x1b[37m${meta.description}\x1b[m`)
-    printFeatureStatisticsEntry(statistics[feature])
-    console.log('\n\n')
-  }
-}
-
-const pad = 3
-
-function printFeatureStatisticsEntry(info: FeatureInfo): void {
-  let longestKey = 0
-  let longestValue = 0
-  const out = new Map<string, string>()
-  for(const [key, value] of Object.entries(info)) {
-    if(key.length > longestKey) {
-      longestKey = key.length
-    }
-    const valueString = value.toLocaleString()
-    out.set(key, valueString)
-    if(valueString.length > longestValue) {
-      longestValue = valueString.length
-    }
-  }
-  for(const [key, value] of out.entries()) {
-    console.log(`${key.padEnd(longestKey + pad)} ${value.padStart(longestValue)}`)
-  }
-}
 
 
 

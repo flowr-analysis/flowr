@@ -20,7 +20,13 @@ export function extractNodeContent(node: Node): string {
 }
 
 
-const fileProvider = new StatisticFileProvider()
+let fileProvider: StatisticFileProvider
+
+export function initFileProvider(outputDirectory: string) {
+  console.log(`Initializing file provider for output directory ${outputDirectory}`)
+  fileProvider = new StatisticFileProvider(outputDirectory)
+}
+
 
 /**
  * append the content of all nodes to the storage file for the given feature

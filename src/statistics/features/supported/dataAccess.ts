@@ -1,6 +1,6 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append, extractNodeContent } from '../output/statisticsFile'
+import { append, extractNodeContent } from '../../output/statisticsFile'
 
 export interface DataAccess extends FeatureInfo {
   singleBracket:               number

@@ -1,6 +1,6 @@
-import { date2string } from '../../util/time'
 import path from 'path'
 import fs from 'fs'
+import { guard } from '../../util/assert'
 
 type FileDescriptor = number
 
@@ -14,7 +14,8 @@ export class StatisticFileProvider {
   public readonly statisticsDirectory: string
   private readonly connections = new Map<string, FileDescriptor>()
 
-  constructor(statisticsDirectory = `./statistics-out-${date2string(new Date())}`)  {
+  constructor(statisticsDirectory: string | undefined)  {
+    guard(statisticsDirectory !== undefined, `Please supply an output directory!`)
     this.statisticsDirectory = statisticsDirectory
 
     // just to make sure, that they are closed

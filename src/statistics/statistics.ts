@@ -4,7 +4,7 @@ import {
   RParseRequestFromFile,
   RParseRequestFromText
 } from '../r-bridge/retriever'
-import { ALL_FEATURES, FeatureKey, FeatureStatistics, InitialFeatureStatistics } from './feature'
+import { ALL_FEATURES, FeatureKey, FeatureStatistics, InitialFeatureStatistics } from './features/feature'
 import { RShell } from '../r-bridge/shell'
 import { DOMParser } from 'xmldom'
 import fs from 'fs'

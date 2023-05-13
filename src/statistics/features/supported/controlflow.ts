@@ -1,6 +1,6 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append } from '../output/statisticsFile'
+import { append } from '../../output/statisticsFile'
 
 export interface ControlflowInfo extends FeatureInfo {
   ifThen:                   number

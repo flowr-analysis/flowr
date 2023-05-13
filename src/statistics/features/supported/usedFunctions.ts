@@ -2,7 +2,7 @@ import { SinglePackageInfo } from './usedPackages'
 import { FunctionNameInfo } from './definedFunctions'
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append, extractNodeContent } from '../output/statisticsFile'
+import { append, extractNodeContent } from '../../output/statisticsFile'
 
 export interface UsedFunction {
   package:  SinglePackageInfo,

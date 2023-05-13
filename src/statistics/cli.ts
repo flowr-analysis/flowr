@@ -12,8 +12,8 @@ export const optionDefinitions: OptionDefinition[] = [
   { name: 'verbose',    alias: 'v', type: Boolean, description: 'Run with verbose logging' },
   { name: 'help',       alias: 'h', type: Boolean, description: 'Print this usage guide.' },
   { name: 'limit',      alias: 'l', type: Number,  description: 'Limit the number of files to process'},
-  { name: 'input',  alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
-  { name: 'output-dir', alias: 'o', type: String,  description: 'Folder to write the output to', defaultValue: `./statistics-out-${date2string(new Date())}`, typeLabel: '{underline folder}' },
+  { name: 'input',      alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
+  { name: 'output-dir', alias: 'o', type: String,  description: 'Folder to write the output to', defaultValue: `${process.cwd()}/statistics-out-${date2string(new Date())}`, typeLabel: '{underline folder}' },
   { name: 'features',               type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: `{underline names}` },
 ]
 
@@ -54,7 +54,8 @@ export const optionHelp = [
  *
  * @see #allRFiles
  */
-export async function* allRFilesFrom(inputs: string[], limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile, number> {
+export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGenerator<RParseRequestFromFile, number> {
+  limit ??= Number.MAX_VALUE
   if(inputs.length === 0) {
     log.info('No inputs given, nothing to do')
     return 0

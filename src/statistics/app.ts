@@ -1,7 +1,7 @@
 import { RShell } from '../r-bridge/shell'
 import { extract } from './statistics'
 import { log, LogLevel } from '../util/log'
-import { ALL_FEATURES, FeatureKey, printFeatureStatistics } from './feature'
+import { FeatureKey, printFeatureStatistics } from './feature'
 import { allRFiles } from '../util/files'
 
 log.updateSettings(l => l.settings.minLevel = LogLevel.error)
@@ -19,6 +19,28 @@ if (processArguments.length !== 1) {
   process.exit(1)
 }
 
+interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}
+
+function minMaxAvgAndMedian(data: number[]): MinMaxAvgMedian {
+  data  = data.sort((a, b) => a - b)
+  const sum = data.reduce((a, b) => a + b, 0)
+  return {
+    sum,
+    min:    data[0],
+    max:    data[data.length - 1],
+    avg:    sum / data.length,
+    median: data[Math.floor(data.length / 2)]
+  }
+}
+
+const THIN_MATH_SPACE = '\u2009'
+function formatStatNumber(num: number): string {
+  return Number(num.toFixed(3)).toLocaleString()
+}
+function statsString(data: MinMaxAvgMedian, suffix = ''): string {
+  return `[${formatStatNumber(data.min)}${suffix} .. ${formatStatNumber(data.max)}${suffix}] (avg: ${formatStatNumber(data.avg)}${suffix}, median: ${formatStatNumber(data.median)}${suffix})`
+}
+
 async function getStats(features: 'all' | FeatureKey[] = 'all') {
   const processedFeatures: 'all' | Set<FeatureKey> = features === 'all' ? 'all' : new Set(features)
   let cur = 0
@@ -32,22 +54,16 @@ async function getStats(features: 'all' | FeatureKey[] = 'all') {
   printFeatureStatistics(stats.features, processedFeatures)
 
   // TODO: unify analysis of min/max etc.
-  const numberOfLinesPerFiles = stats.meta.lines.map(l => l.length).sort((a, b) => a - b)
-  const sumLines = numberOfLinesPerFiles.reduce((a, b) => a + b, 0)
-
-  const lineLengths = stats.meta.lines.flat().sort((a, b) => a - b)
-  const sumOfLineLengths = lineLengths.reduce((a, b) => a + b, 0)
-
-  const processingTimes = stats.meta.processingTimeMs
-  processingTimes.sort((a, b) => a - b)
-  const sumProcessingTime = processingTimes.reduce((a, b) => a + b, 0)
+  const linesPerFile = minMaxAvgAndMedian(stats.meta.lines.map(l => l.length))
+  const lineLengths = minMaxAvgAndMedian(stats.meta.lines.flat())
+  const processingTimesPerFile = minMaxAvgAndMedian(stats.meta.processingTimeMs)
 
   console.log(`processed ${stats.meta.successfulParsed} files (skipped ${stats.meta.skipped.length} due to errors):
 \ttotal processing time: ${stats.meta.processingTimeMs.reduce((a, b) => a + b, 0)}ms
-\t\tprocessing time range: [${processingTimes[0]}ms .. ${processingTimes[processingTimes.length - 1]}ms] (avg: ${sumProcessingTime / processingTimes.length}ms, median: ${processingTimes[Math.floor(processingTimes.length / 2)]}ms)
-\ttotal number of lines: ${sumLines}
-\t\tline range: [${numberOfLinesPerFiles[0]} .. ${numberOfLinesPerFiles[numberOfLinesPerFiles.length - 1]}] (avg: ${sumLines / numberOfLinesPerFiles.length}, median: ${numberOfLinesPerFiles[Math.floor(numberOfLinesPerFiles.length / 2)]})
-\t\tline length range: [${lineLengths[0]} .. ${lineLengths[lineLengths.length - 1]}] (avg: ${sumOfLineLengths / lineLengths.length}, median: ${lineLengths[Math.floor(lineLengths.length / 2)]})
+\t\tprocessing time range: ${statsString(processingTimesPerFile, `${THIN_MATH_SPACE}ms`)}
+\ttotal number of lines: ${lineLengths.sum}
+\t\tline range: ${statsString(linesPerFile)}
+\t\tline length range: ${statsString(lineLengths,`${THIN_MATH_SPACE}chars`)}
   `)
 
   shell.close()

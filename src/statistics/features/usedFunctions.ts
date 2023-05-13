@@ -117,7 +117,7 @@ const functionCallQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL`)
 
 export const usedFunctions: Feature<FunctionUsageInfo> = {
   name:        'Used Functions',
-  description: 'all functions called, split into various sub-categories',
+  description: 'All functions called, split into various sub-categories',
 
   process(existing: FunctionUsageInfo, input: Document, filepath: string | undefined): FunctionUsageInfo {
     const allFunctionCalls = functionCallQuery.select({ node: input })

@@ -74,7 +74,7 @@ function testRecursive(node: Node, name: string): boolean {
 
 export const definedFunctions: Feature<FunctionDefinitionInfo> = {
   name:        'Defined Functions',
-  description: 'all functions defined within the document',
+  description: 'All functions defined within the document',
 
   process(existing: FunctionDefinitionInfo, input: Document, filepath: string | undefined): FunctionDefinitionInfo {
     const allFunctions = queryAnyFunctionDefinition.select({ node: input }).length

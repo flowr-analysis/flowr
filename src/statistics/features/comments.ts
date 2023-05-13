@@ -1,5 +1,4 @@
 import { Feature, FeatureInfo, Query } from '../feature'
-import { MergeableRecord } from '../../util/objects'
 import * as xpath from 'xpath-ts2'
 import { guard, isNotNull, isNotUndefined } from '../../util/assert'
 import { append } from '../output/statisticsFile'
@@ -114,7 +113,7 @@ function processRoxygenUseDynLib(existing: CommentInfo, commentsText: string[], 
 
 export const comments: Feature<CommentInfo> = {
   name:        'Comments',
-  description: 'all comments that appear within the document',
+  description: 'All comments that appear within the document',
 
   process(existing: CommentInfo, input: Document, filepath: string | undefined): CommentInfo {
     const comments = commentQuery.select({ node: input }).map(node => node.textContent ?? '#')

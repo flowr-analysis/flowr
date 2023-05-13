@@ -53,7 +53,7 @@ function classifyNumericConstants(numeric: string, existing: ValueInfo): 'allNum
 
 export const values: Feature<ValueInfo> = {
   name:        'Values',
-  description: 'all values used (as constants etc.)',
+  description: 'All values used (as constants etc.)',
 
   process(existing: ValueInfo, input: Document, filepath: string | undefined): ValueInfo {
     const strings = stringConstantQuery.select({ node: input})

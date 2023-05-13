@@ -8,6 +8,7 @@ import { MergeableRecord } from '../util/objects'
 import { initialFunctionUsageInfo, usedFunctions } from './features/usedFunctions'
 import { initialLoopInfo, loops } from './features/loops'
 import { controlflow, initialControlflowInfo } from './features/controlflow'
+import { dataAccess, initialDataAccessInfo } from './features/dataAccess'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
@@ -40,7 +41,8 @@ export const ALL_FEATURES: Record<string, Feature<any>> = {
   values:           values,
   assignments:      assignments,
   loops:            loops,
-  controlflow:      controlflow
+  controlflow:      controlflow,
+  dataAccess:       dataAccess
 } as const
 
 export type FeatureKey = keyof typeof ALL_FEATURES
@@ -60,7 +62,8 @@ export const InitialFeatureStatistics: () => FeatureStatistics = () => ({
   assignments:      initialAssignmentInfo(),
   usedFunctions:    initialFunctionUsageInfo(),
   loops:            initialLoopInfo(),
-  controlflow:      initialControlflowInfo()
+  controlflow:      initialControlflowInfo(),
+  dataAccess:       initialDataAccessInfo()
 })
 
 /** just to shorten type inline hints */

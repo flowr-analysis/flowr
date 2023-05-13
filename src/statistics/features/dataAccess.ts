@@ -13,6 +13,7 @@ export interface DataAccess extends FeatureInfo {
   doubleBracketConstant:       number
   doubleBracketSingleVariable: number
   doubleBracketCommaAccess:    number
+  chainedOrNestedAccess:       number
   byName:                      number
   bySlot:                      number
 }
@@ -29,6 +30,7 @@ export const initialDataAccessInfo = (): DataAccess => ({
   doubleBracketConstant:       0,
   doubleBracketSingleVariable: 0,
   doubleBracketCommaAccess:    0,
+  chainedOrNestedAccess:       0,
   byName:                      0,
   bySlot:                      0
 })
@@ -37,6 +39,10 @@ const singleBracketAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-
 const doubleBracketAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-sibling::LBB][1]`)
 const namedAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-sibling::OP-DOLLAR][1]`)
 const slottedAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-sibling::OP-AT][1]`)
+const chainedOrNestedAccess: Query = xpath.parse(`
+//*[following-sibling::OP-LEFT-BRACKET or following-sibling::LBB or following-sibling::OP-DOLLAR or following-sibling::OP-AT]//
+    *[self::OP-LEFT-BRACKET or self::LBB or self::OP-DOLLAR or self::OP-AT][1]
+`)
 
 // TODO: merge with if queries etc?
 const constantAccess: Query = xpath.parse(`
@@ -85,6 +91,11 @@ export const dataAccess: Feature<DataAccess> = {
     const slottedAccesses = slottedAccess.select({ node: input })
     append(dataAccess.name, 'bySlot', slottedAccesses.map(n => n.parentNode ?? n), filepath)
     existing.bySlot += slottedAccesses.length
+
+
+    const chainedOrNestedAccesses = chainedOrNestedAccess.select({ node: input })
+    append(dataAccess.name, 'chainedOrNestedAccess', chainedOrNestedAccesses.map(n => n.parentNode ?? n), filepath)
+    existing.chainedOrNestedAccess += chainedOrNestedAccesses.length
 
     return existing
   }

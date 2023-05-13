@@ -1,40 +1,42 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { guard } from '../../util/assert'
 import { append, extractNodeContent } from '../output/statisticsFile'
-import { log } from '../../util/log'
 
 export interface DataAccess extends FeatureInfo {
-  singleBracket:               number,
-  singleBracketEmpty:          number,
-  singleBracketConstant:       number,
-  singleBracketSingleVariable: number,
-  doubleBracket:               number,
-  doubleBracketEmpty:          number,
-  doubleBracketConstant:       number,
-  doubleBracketSingleVariable: number,
-  byName:                      number,
-  bySlot:                      number,
-  unknown:                     number
+  singleBracket:               number
+  singleBracketEmpty:          number
+  singleBracketConstant:       number
+  singleBracketSingleVariable: number
+  singleBracketCommaAccess:    number
+  doubleBracket:               number
+  doubleBracketEmpty:          number
+  doubleBracketConstant:       number
+  doubleBracketSingleVariable: number
+  doubleBracketCommaAccess:    number
+  byName:                      number
+  bySlot:                      number
 }
+// TODO: single bracket comma access
 
 export const initialDataAccessInfo = (): DataAccess => ({
   singleBracket:               0,
   singleBracketEmpty:          0,
   singleBracketConstant:       0,
   singleBracketSingleVariable: 0,
+  singleBracketCommaAccess:    0,
   doubleBracket:               0,
   doubleBracketEmpty:          0,
   doubleBracketConstant:       0,
   doubleBracketSingleVariable: 0,
+  doubleBracketCommaAccess:    0,
   byName:                      0,
-  bySlot:                      0,
-  unknown:                     0
+  bySlot:                      0
 })
 
 const singleBracketAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-sibling::OP-LEFT-BRACKET][1]`)
 const doubleBracketAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-sibling::LBB][1]`)
-//  or self::LBB
+const namedAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-sibling::OP-DOLLAR][1]`)
+const slottedAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-sibling::OP-AT][1]`)
 
 // TODO: merge with if queries etc?
 const constantAccess: Query = xpath.parse(`
@@ -46,7 +48,7 @@ const constantAccess: Query = xpath.parse(`
   |
   ./SYMBOL[text() = 'T' or text() = 'F']`)
 const singleVariableAccess: Query = xpath.parse(`./SYMBOL[text() != 'T' and text() != 'F']`)
-
+const commaAccess: Query = xpath.parse(`../OP-COMMA`)
 
 function processForBracketAccess(existing: DataAccess, nodes: Node[], access: 'singleBracket' | 'doubleBracket', filepath: string | undefined) {
 // we use the parent node to get more information in the output if applicable
@@ -59,6 +61,9 @@ function processForBracketAccess(existing: DataAccess, nodes: Node[], access: 's
   existing[`${access}Empty`] += nodes.map(extractNodeContent).filter(n => n === ']').length
   existing[`${access}Constant`] += constantAccesses.length
   existing[`${access}SingleVariable`] += singleVariableAccesses.length
+
+  const commaAccesses = nodes.flatMap(n => commaAccess.select({ node: n }))
+  existing[`${access}CommaAccess`] += commaAccesses.length
 }
 
 
@@ -72,6 +77,14 @@ export const dataAccess: Feature<DataAccess> = {
 
     processForBracketAccess(existing, singleBracketAccesses, 'singleBracket', filepath)
     processForBracketAccess(existing, doubleBracketAccesses, 'doubleBracket', filepath)
+
+    const namedAccesses = namedAccess.select({ node: input })
+    append(dataAccess.name, 'byName', namedAccesses.map(n => n.parentNode ?? n), filepath)
+    existing.byName += namedAccesses.length
+
+    const slottedAccesses = slottedAccess.select({ node: input })
+    append(dataAccess.name, 'bySlot', slottedAccesses.map(n => n.parentNode ?? n), filepath)
+    existing.bySlot += slottedAccesses.length
 
     return existing
   }

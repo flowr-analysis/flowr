@@ -679,7 +679,6 @@ describe("Extract Dataflow Information", () => {
         )
         const { dataflowIdMap, dataflowGraph } =
           produceDataFlowGraph(astWithParentIds)
-
         // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
         console.log(graphToMermaidUrl(dataflowGraph, dataflowIdMap))
       })

@@ -9,6 +9,10 @@ export function isNotUndefined<T>(x: T | undefined): x is T {
   return x !== undefined
 }
 
+export function isNotNull<T>(x: T | null): x is T {
+  return x !== null
+}
+
 class GuardError extends Error {
   constructor(message: string) {
     super(message)
@@ -16,6 +20,9 @@ class GuardError extends Error {
   }
 }
 
+/**
+ * @throws GuardError - if the assertion fails
+ */
 export function guard(x: boolean, message = 'Assertion failed'): asserts x {
   if (!x) {
     throw new GuardError(message)

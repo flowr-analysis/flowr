@@ -87,8 +87,8 @@ export const retrieveAst = async(shell: RShell, input: string, hooks?: DeepParti
 }
 
 /** call within describeSession */
-export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList): void => {
-  it(name, async function() {
+export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList): Mocha.Test => {
+  return it(name, async function() {
     const ast = await retrieveAst(shell, input)
     assert.deepStrictEqual(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
   })

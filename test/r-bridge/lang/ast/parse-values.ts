@@ -1,4 +1,4 @@
-import { assertAst, withShell } from "../../../helper/shell"
+import { assertAst, withShell } from '../../../helper/shell'
 import {
   RNumberPool,
   RStringPool,
@@ -7,11 +7,25 @@ import {
 import { exprList } from "../../../helper/ast-builder"
 import { rangeFrom } from "../../../../src/util/range"
 import { Type } from "../../../../src/r-bridge/lang:4.x/ast/model/type"
+import {  retrieveXmlFromRCode } from '../../../../src/r-bridge/retriever'
+import chai, { assert } from 'chai'
+import chaiAsPromised from 'chai-as-promised'
+chai.use(chaiAsPromised)
+
 
 describe(
   "0. Constant Parsing",
-  withShell((shell) => {
+  withShell(shell => {
     describe("0. parse single", () => {
+      it('0.0 parse illegal', () =>
+        assert.isRejected(retrieveXmlFromRCode({
+          request:                 'text',
+          content:                 '{',
+          attachSourceInformation: true,
+          ensurePackageInstalled:  true
+        }, shell))
+      )
+
       describe("0.1 numbers", () => {
         for (const number of RNumberPool) {
           const range = rangeFrom(1, 1, 1, number.str.length)

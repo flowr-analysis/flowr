@@ -50,7 +50,7 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
   postamble: `🐧${'-'.repeat(13)}🐧`,
   timeout:   {
     // TODO: allow to configure such things in a configuration file?
-    ms:             10_000,
+    ms:             750_000,
     resetOnNewData: true
   },
   keepPostamble:           false,
@@ -112,7 +112,7 @@ export class RShell {
    */
   // TODO: rename to execute or so?
   public sendCommand(command: string): void {
-    this.log.trace(`> ${command}`)
+    this.log.trace(`> ${JSON.stringify(command)}`)
     this._sendCommand(command)
   }
 
@@ -126,7 +126,7 @@ export class RShell {
    */
   public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
     const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig)
-    this.log.trace(`> ${command}`)
+    this.log.trace(`> ${JSON.stringify(command)}`)
     const output = await this.session.collectLinesUntil(config.from, {
       predicate:       data => data === config.postamble,
       includeInResult: config.keepPostamble // we do not want the postamble
@@ -238,7 +238,7 @@ export class RShell {
       predicate:       data => successfulDone.test(data),
       includeInResult: false
     }, {
-      ms:             10_000,
+      ms:             750_000,
       resetOnNewData: true
     }, () => {
       // the else branch is a cheesy way to work even if the package is already installed!
@@ -280,6 +280,7 @@ class RShellSession {
   private readonly sessionStdErr: readline.Interface
   private readonly options:       RShellSessionOptions
   private readonly log:           Logger<ILogObj>
+  private collectionTimeout:      NodeJS.Timeout | undefined
 
   public constructor(options: RShellSessionOptions, log: Logger<ILogObj>) {
     this.bareSession = spawn(options.pathToRExecutable, options.commandLineOptions, {
@@ -326,7 +327,7 @@ class RShellSession {
       const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
         reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`))
       }, timeout.ms)
-      let timer = makeTimer()
+      this.collectionTimeout = makeTimer()
 
       handler = (data: string): void => {
         const end = until.predicate(data)
@@ -334,11 +335,11 @@ class RShellSession {
           result.push(data)
         }
         if (end) {
-          clearTimeout(timer)
+          clearTimeout(this.collectionTimeout)
           resolve(result)
         } else if (timeout.resetOnNewData) {
-          clearTimeout(timer)
-          timer = makeTimer()
+          clearTimeout(this.collectionTimeout)
+          this.collectionTimeout = makeTimer()
         }
       }
       this.on(from, 'line', handler)
@@ -357,9 +358,12 @@ class RShellSession {
    */
   end(): boolean {
     const killResult = this.bareSession.kill()
+    if(this.collectionTimeout !== undefined) {
+      clearTimeout(this.collectionTimeout)
+    }
     this.sessionStdOut.close()
     this.sessionStdErr.close()
-    log.info(`killed R session with pid ${this.bareSession.pid} and result ${killResult} (including streams)`)
+    log.info(`killed R session with pid ${this.bareSession.pid ?? '<unknown>'} and result ${killResult ? 'successful' : 'failed'} (including streams)`)
     return killResult
   }
 

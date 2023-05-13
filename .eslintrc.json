@@ -33,6 +33,11 @@
         "semi": ["error", "never"],
         "space-before-function-paren": ["error", "never"],
         "@typescript-eslint/space-before-function-paren": ["error", "never"],
-        "tsdoc/syntax": "warn"
+        "@typescript-eslint/no-unused-vars": ["error", {
+            "argsIgnorePattern": "^_",
+            "destructuredArrayIgnorePattern": "^_",
+            "varsIgnorePattern": "^_"
+        }],
+        "tsdoc/syntax": "error"
     }
 }

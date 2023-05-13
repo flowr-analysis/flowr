@@ -23,7 +23,7 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
   guard(mappedWithName.length > 0, 'to parse function calls we need at least one object to work on!')
   const fnBase = mappedWithName[0]
   if(fnBase.name !== Type.Expression) {
-    parseLog.info(`expected function call name to be wrapped an expression, yet received ${JSON.stringify(fnBase)}`)
+    parseLog.trace(`expected function call name to be wrapped an expression, yet received ${JSON.stringify(fnBase)}`)
     return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
   }
 

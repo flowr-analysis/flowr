@@ -11,6 +11,9 @@
     "src/slicing/static",
     "src/statistics"
   ],
+  "exclude": [
+    "**/node_modules/**/*"
+  ],
   "theme": "default",
   "out": "doc",
   "readme": "README.md",

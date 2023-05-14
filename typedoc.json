@@ -1,5 +1,9 @@
 {
   "name": "flowr project documentation",
+  "plugin": [
+    "typedoc-umlclass",
+    "typedoc-plugin-missing-exports"
+  ],
   "entryPoints": [
     "src/app.ts",
     "src/dataflow",
@@ -10,9 +14,17 @@
   "theme": "default",
   "out": "doc",
   "readme": "README.md",
+  "umlClassDiagram": {
+    "type": "detailed",
+    "location": "embed",
+    "format": "svg",
+    "position": "below",
+    "legendType": "none",
+    "generatorProcessCount": 4
+  },
   "lightHighlightTheme": "light-plus",
   "darkHighlightTheme": "dark-plus",
-  "hideGenerator": true,
+  "hideGenerator": false,
   "searchInComments": true,
   "useTsLinkResolution": true,
   "categorizeByGroup": true,
@@ -21,9 +33,7 @@
     "protected": false,
     "private": false,
     "inherited": true,
-    "external": false,
-    "@alpha": false,
-    "@beta": false
+    "external": false
   },
   "validation": {
     "notExported": true,

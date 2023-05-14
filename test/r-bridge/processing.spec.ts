@@ -1,29 +1,18 @@
 import { assertDecoratedAst, withShell } from "../helper/shell"
 import {
-  decorateWithIds,
   deterministicCountingIdGenerator,
   type Id,
 } from '../../src/dataflow'
 import { numVal } from "../helper/ast-builder"
 import { rangeFrom } from "../../src/util/range"
-import { RNode, Type, RExpressionList } from '../../src/r-bridge'
+import { RNode, Type, RExpressionList, decorateAst } from '../../src/r-bridge'
 
-describe(
-  "Assign unique Ids",
+describe("Assign unique Ids and Parents",
   withShell((shell) => {
     describe("Testing deterministic counting Id assignment", () => {
-      const assertId = (
-        name: string,
-        input: string,
-        expected: RExpressionList<Id>
-      ): void => {
-        assertDecoratedAst(
-          name,
-          shell,
-          input,
-          (ast) =>
-            decorateWithIds(ast, deterministicCountingIdGenerator())
-              .decoratedAst,
+      const assertId = (name: string, input: string, expected: RExpressionList<Id>): void => {
+        assertDecoratedAst(name, shell, input,
+          (ast) => decorateAst(ast, deterministicCountingIdGenerator()).decoratedAst,
           expected
         )
       }

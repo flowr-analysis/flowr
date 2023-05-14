@@ -16,6 +16,7 @@ import { guard } from './assert'
 import { decorateAst, getStoredTokenMap, retrieveAstFromRCode, RShell } from '../r-bridge'
 import { DefaultMap } from './defaultmap'
 import literal = DataFactory.literal
+import type Writeable from 'stream'
 
 const domain = 'https://uni-ulm.de/r-ast/'
 
@@ -87,47 +88,53 @@ function retrieveContext(context: QuadContextRetriever, obj: DataForQuad): strin
   return typeof context === 'string' ? context : context(obj)
 }
 
+
+const writer = new Writer( { format: 'N-Quads' })
+
 /**
  * Serializes the given object or array to rdf quads.
  *
  * @param obj - the object to serialize (must be a Record and no array etc.)
  * @param config - further configuration options
+ *
+ * @returns the serialized quads
  */
-export function serialize2quads(obj: RecordForQuad, config: QuadSerializationConfiguration): void {
+export function serialize2quads(obj: RecordForQuad, config: QuadSerializationConfiguration): string {
   const useConfig = deepMergeObject(DefaultQuadSerializationConfiguration, config)
   guard(isObjectOrArray(obj), 'cannot serialize non-object to rdf!')
   guard(!Array.isArray(obj), 'cannot serialize arrays!')
 
-  const writer = new Writer(process.stdout, { format: 'N-Quads' })
-  serializeObject(obj, writer, useConfig)
+  const quads: Quad[] = []
+  serializeObject(obj, quads, useConfig)
+  return writer.quadsToString(quads)
 }
 
 
-function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, writer: Writer<Quad>, config:  Required<QuadSerializationConfiguration>) {
+function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
   for (const [index, element] of value.entries()) {
-    writer.addQuad(quad(
+    quads.push(quad(
       namedNode(domain + config.getId(obj)),
       namedNode(domain + key + '-' + String(index)),
       namedNode(domain + config.getId(element)),
       namedNode(retrieveContext(config.context, obj))
     ))
     guard(isObjectOrArray(element), `cannot serialize non-object to rdf within array of ${JSON.stringify(value)}!`)
-    serializeObject(element as DataForQuad, writer, config)
+    serializeObject(element as DataForQuad, quads, config)
   }
 }
 
-function processObjectEntries(key: string, value: unknown, obj: DataForQuad, writer: Writer<Quad>, config:  Required<QuadSerializationConfiguration>) {
-  writer.addQuad(quad(
+function processObjectEntries(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
+  quads.push(quad(
     namedNode(domain + config.getId(obj)),
     namedNode(domain + key),
     namedNode(domain + config.getId(value)),
     namedNode(retrieveContext(config.context, obj))
   ))
-  serializeObject(value as DataForQuad, writer, config)
+  serializeObject(value as DataForQuad, quads, config)
 }
 
-function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, writer: Writer<Quad>, config: Required<QuadSerializationConfiguration>) {
-  writer.addQuad(quad(
+function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
+  quads.push(quad(
     namedNode(domain + config.getId(obj)),
     namedNode(domain + key),
     literal(String(value), typeof (value) /*, literal with typeof(value) */),
@@ -135,41 +142,23 @@ function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, writ
   ))
 }
 
-function processObjectEntry(key: string, value: unknown, obj: DataForQuad, writer: Writer<Quad>, config:  Required<QuadSerializationConfiguration>) {
+function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
   if (isObjectOrArray(value)) {
     if (Array.isArray(value)) {
-      processArrayEntries(key, value, obj, writer, config)
+      processArrayEntries(key, value, obj, quads, config)
     } else {
-      processObjectEntries(key, value, obj, writer, config)
+      processObjectEntries(key, value, obj, quads, config)
     }
   } else {
-    processLiteralEntry(value, key, obj, writer, config)
+    processLiteralEntry(value, key, obj, quads, config)
   }
 }
 
-function serializeObject(obj: DataForQuad, writer: Writer<Quad>, config: Required<QuadSerializationConfiguration>): void {
+function serializeObject(obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>): void {
   for(const [key, value] of Object.entries(obj)) {
     if(config.ignore(key, value)) {
       continue
     }
-    processObjectEntry(key, value, obj, writer, config)
+    processObjectEntry(key, value, obj, quads, config)
   }
 }
-
-
-
-// TODO: remove
-async function test() {
-  const shell = new RShell()
-  shell.tryToInjectHomeLibPath()
-  const tokenMap = await getStoredTokenMap(shell)
-  const ast = await retrieveAstFromRCode({ request: 'text', content: 'x <- 1', ensurePackageInstalled: true, attachSourceInformation: true }, tokenMap, shell)
-  shell.close()
-  const decorated = decorateAst(ast).decoratedAst
-
-  serialize2quads(decorated, {
-    context: 'random-input',
-  })
-}
-
-// void test()

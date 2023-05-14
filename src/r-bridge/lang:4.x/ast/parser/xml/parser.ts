@@ -13,7 +13,7 @@ export const parseLog = log.getSubLogger({ name: "ast-parser" })
  * The main entry point to normalize the given R ast.
  */
 export async function parse(xmlString: string, tokenMap: XmlParserConfig['tokenMap'], hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> {
-  const config = deepMergeObject(DEFAULT_XML_PARSER_CONFIG, { tokenMap })
+  const config = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap })
   const hooksWithDefaults = deepMergeObject(DEFAULT_PARSER_HOOKS, hooks) as XmlParserHooks
   parseLog.debug(`config for xml parser: ${JSON.stringify(config)}`)
 

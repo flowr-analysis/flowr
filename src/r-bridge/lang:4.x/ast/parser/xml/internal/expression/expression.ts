@@ -5,7 +5,7 @@ import { ParserData } from '../../data'
 import { parseBasedOnType } from '../structure/elements'
 import { tryToParseFunctionCall } from '../functions/call'
 import { Type } from '../../../../model/type'
-import { RExpressionList, RFunctionCall, RNode } from '../../../../model/model'
+import { RNode } from '../../../../model/model'
 import { executeHook } from '../../hooks'
 
 /**

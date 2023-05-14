@@ -54,9 +54,13 @@ export interface XmlParserHooks {
     },
     /** {@link tryParseSymbol} */
     onSymbol: {
-      unknown(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<RSymbol | undefined>
+      /**
+       * triggered if {@link tryParseSymbol} could not determine the namespace and or symbol.
+       * Can emit non-symbol values easily due to special symbols like `T`.
+       */
+      unknown(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<RNode | undefined>
       before(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
-      after(data: ParserData, result: RSymbol | undefined): AutoIfOmit<RSymbol | undefined>
+      after(data: ParserData, result: RNode | undefined): AutoIfOmit<RNode | undefined>
     }
   },
   other: {

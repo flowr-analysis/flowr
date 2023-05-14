@@ -37,7 +37,8 @@ export function tryParseRepeatLoopStructure(data: ParserData, repeatToken: Named
     type:   Type.Repeat,
     location,
     lexeme: content,
-    body:   parseBody
+    body:   parseBody,
+    info:   {}
   }
   return executeHook(data.hooks.loops.onRepeatLoop.after, data, result)
 }

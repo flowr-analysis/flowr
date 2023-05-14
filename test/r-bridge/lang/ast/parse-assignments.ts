@@ -20,18 +20,21 @@ describe(
             flavor:   "assignment",
             lexeme:   op.str,
             op:       op.str,
+            info:     {},
             lhs:      {
               type:      Type.Symbol,
               location:  rangeFrom(1, 1, 1, 1),
               namespace: undefined,
               lexeme:    "x",
               content:   "x",
+              info:      {}
             },
             rhs: {
               type:     Type.Number,
               location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
               lexeme:   "5",
               content:  numVal(5),
+              info:     {}
             },
           })
         )

@@ -28,19 +28,22 @@ export function parseNumber(data: ParserData, obj: XmlBasedJson): RNumber | RLog
       ...common,
       namespace: undefined,
       type:      Type.Symbol,
-      content
+      content,
+      info:      {}
     }
   } else if (isBoolean(content)) {
     result = {
       ...common,
       type:    Type.Logical,
-      content: boolean2ts(content)
+      content: boolean2ts(content),
+      info:    {}
     }
   } else {
     result = {
       ...common,
       type:    Type.Number,
-      content: number2ts(content)
+      content: number2ts(content),
+      info:    {}
     }
   }
   return executeHook(data.hooks.values.onNumber.after, data, result)

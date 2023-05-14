@@ -1,12 +1,13 @@
 // TODO: get def-usage for every line
 import { assertDataflow, retrieveAst, withShell } from "../helper/shell"
-import { produceDataFlowGraph, decorateWithIds, IdType, decorateWithParentInformation,   DataflowGraph, formatRange, GlobalScope, graphToMermaidUrl, LocalScope } from '../../src/dataflow'
+import { produceDataFlowGraph, DataflowGraph, formatRange, GlobalScope, graphToMermaidUrl, LocalScope } from '../../src/dataflow'
 import {
   RAssignmentOpPool,
   RNonAssignmentBinaryOpPool,
   RUnaryOpPool,
 } from "../helper/provider"
 import { naiveLineBasedSlicing } from '../../src/slicing/static'
+import { decorateAst, IdType } from '../../src/r-bridge'
 
 describe("Extract Dataflow Information", () => {
   /**
@@ -664,12 +665,10 @@ describe("Extract Dataflow Information", () => {
         d <- a + b
       `
         )
-        const astWithId = decorateWithIds(ast)
-        const astWithParentIds = decorateWithParentInformation(
-          astWithId.decoratedAst
-        )
+        const decorated = decorateAst(ast)
+
         const { dataflowIdMap, dataflowGraph } =
-          produceDataFlowGraph(astWithParentIds)
+          produceDataFlowGraph(decorated.decoratedAst)
         // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
         console.log(graphToMermaidUrl(dataflowGraph, dataflowIdMap))
       })
@@ -690,12 +689,9 @@ describe("Extract Dataflow Information", () => {
           cat("Product:", product, "\\n")
       `
         const ast = await retrieveAst(shell, code)
-        const astWithId = decorateWithIds(ast)
-        const astWithParentIds = decorateWithParentInformation(
-          astWithId.decoratedAst
-        )
+        const decorated = decorateAst(ast)
         const { dataflowIdMap, dataflowGraph } =
-          produceDataFlowGraph(astWithParentIds)
+          produceDataFlowGraph(decorated.decoratedAst)
 
         // console.log(JSON.stringify(decoratedAst), dataflowIdMap)
         console.log(graphToMermaidUrl(dataflowGraph, dataflowIdMap))

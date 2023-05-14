@@ -1,8 +1,12 @@
 import { log } from "../util/log"
 import { BiMap } from "../util/bimap"
-import { type Id, type IdType } from "./id"
-import { foldAst, RAssignmentOp, RNa, RNull, RSymbol } from '../r-bridge'
-import { type ParentInformation, type RNodeWithParent } from "./parents"
+import {
+  foldAst,
+  IdType,
+  RNa, RNode, RNodeWithParent,
+  RNull,
+  Type
+} from '../r-bridge'
 import { guard } from "../util/assert"
 import {
   DataflowGraph,
@@ -15,7 +19,7 @@ import { DefaultMap } from "../util/defaultmap"
 
 const dataflowLogger = log.getSubLogger({ name: "ast" })
 
-export type DataflowRNode<OtherInfo> = RSymbol<OtherInfo & Id & ParentInformation> & { info: OtherInfo & Id & ParentInformation }
+export type DataflowRNode<OtherInfo> = RNodeWithParent<OtherInfo> & { type: Type.Symbol }
 
 /**
  * The basic dataflow algorithm will work like this: [TODO: extend :D]
@@ -76,19 +80,19 @@ function processUninterestingLeaf(_leaf: unknown): FoldInfo {
 }
 
 // TODO: is out parameter info the best choice? or should i remain with a closure? i wanted to reduce nesting
-function processSymbol<OtherInfo>(dataflowIdMap: DataflowMap<OtherInfo>): (symbol: RSymbol<OtherInfo & Id & ParentInformation>) => FoldInfo {
+function processSymbol<OtherInfo>(dataflowIdMap: DataflowMap<OtherInfo>): (symbol: DataflowRNode<OtherInfo>) => FoldInfo {
   // TODO: are there other built-ins?
   return symbol => {
     if (symbol.content === RNull || symbol.content === RNa) {
       return emptyFoldInfo()
     }
     // TODO: can be replaced by id set if we have a mapping with ids on the parented nodes
-    dataflowIdMap.set(symbol.info?.id as IdType, symbol as RNodeWithParent<OtherInfo>)
+    dataflowIdMap.set(symbol.info.id , symbol )
     return {
-      activeNodes: [{ attribute: 'always', id: symbol.info?.id as IdType }],
+      activeNodes: [{ attribute: 'always', id: symbol.info.id  }],
       in:          [],
       out:         new Map(),
-      graph:       new DataflowGraph().addNode(symbol.info?.id as IdType, symbol.content)
+      graph:       new DataflowGraph().addNode(symbol.info.id , symbol.content)
     }
   }
 }
@@ -200,8 +204,8 @@ function identifyReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RNodeWithPare
   return {readTargets: [...source.activeNodes, ...read, ...readFromSourceWritten], writeTargets: new Map<string, FoldWriteTarget[]> ([...writeNodes, ...target.out])}
 }
 
-function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Id & ParentInformation>, lhs: FoldInfo, rhs: FoldInfo): FoldInfo {
-  const { readTargets, writeTargets } = identifyReadAndWriteForAssignmentBasedOnOp(op as RNodeWithParent<OtherInfo>,  rhs, lhs)
+function processAssignment<OtherInfo>(op: RNodeWithParent<OtherInfo> & { type: Type.BinaryOp }, lhs: FoldInfo, rhs: FoldInfo): FoldInfo {
+  const { readTargets, writeTargets } = identifyReadAndWriteForAssignmentBasedOnOp(op, rhs, lhs)
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
   // TODO: identify global, local etc.
   for (const [scope, writeTarget] of writeTargets) {
@@ -502,11 +506,11 @@ export interface DataflowInformation<OtherInfo> {
   dataflowGraph: DataflowGraph
 }
 
-export function produceDataFlowGraph<OtherInfo>(ast: RNodeWithParent<OtherInfo>): DataflowInformation<OtherInfo> {
+export function produceDataFlowGraph<OtherInfo>(ast: RNode<OtherInfo & { id: IdType, parent: IdType | undefined }>): DataflowInformation<OtherInfo> {
   const dataflowIdMap = new BiMap<IdType, RNodeWithParent<OtherInfo>>()
 
 
-  const foldResult = foldAst<OtherInfo & Id & ParentInformation, FoldInfo>(ast, {
+  const foldResult = foldAst<OtherInfo & { id: IdType, parent: IdType | undefined }, FoldInfo>(ast, {
     foldNumber:  processUninterestingLeaf,
     foldString:  processUninterestingLeaf,
     foldLogical: processUninterestingLeaf,

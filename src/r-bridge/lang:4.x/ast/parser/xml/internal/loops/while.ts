@@ -66,6 +66,7 @@ export function tryParseWhileLoopStructure(
     body:      parseBody,
     lexeme:    content,
     location,
+    info:      {}
   }
   return executeHook(data.hooks.loops.onWhileLoop.after, data, result)
 }

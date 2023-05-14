@@ -33,7 +33,7 @@ export interface Base<Info, LexemeType = string> extends MergeableRecord{
   /** the original string retrieved from R, can be used for further identification */
   lexeme: LexemeType
   /** allows to attach additional information to the node */
-  info?:  Info
+  info:   Info
 }
 
 export interface WithChildren<Info, Children extends Base<Info, string | undefined>> {
@@ -63,5 +63,3 @@ export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>
 export type RCalls<Info>          = RFunctionCall<Info>
 export type ROther<Info>          = RComment<Info>
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | ROther<Info> | RCalls<Info> | RConstructs<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>
-
-export type RNodeWithInfo<Info> = RNode<Info> & { info: Info }

@@ -22,5 +22,6 @@ export function parseRootObjToAst(
     type:     Type.ExpressionList,
     children: parsedChildren,
     lexeme:   undefined,
+    info:     {}
   }
 }

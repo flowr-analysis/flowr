@@ -2,6 +2,7 @@ import { it } from "mocha"
 import { testRequiresNetworkConnection } from "./network"
 import { DeepPartial } from 'ts-essentials'
 import {
+  decorateAst, deterministicCountingIdGenerator,
   getStoredTokenMap,
   retrieveAstFromRCode,
   RExpressionList,
@@ -12,9 +13,7 @@ import {
 import { assert } from 'chai'
 import {
   DataflowGraph,
-  decorateWithIds,
-  decorateWithParentInformation,
-  deterministicCountingIdGenerator, diffGraphsToMermaidUrl, graphToMermaidUrl, produceDataFlowGraph
+  diffGraphsToMermaidUrl, graphToMermaidUrl, produceDataFlowGraph
 } from '../../src/dataflow'
 
 let defaultTokenMap: Record<string, string>
@@ -103,9 +102,9 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 export const assertDataflow = (name: string, shell: RShell, input: string, expected: DataflowGraph, startIndexForDeterministicIds = 0): void => {
   it(name, async function() {
     const ast = await retrieveAst(shell, input)
-    const astWithId = decorateWithIds(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
-    const astWithParentIds = decorateWithParentInformation(astWithId.decoratedAst)
-    const { dataflowIdMap, dataflowGraph } = produceDataFlowGraph(astWithParentIds)
+    const decoratedAst = decorateAst(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
+    // TODO: use both info
+    const { dataflowIdMap, dataflowGraph } = produceDataFlowGraph(decoratedAst.decoratedAst)
 
     const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph: dataflowGraph }, dataflowIdMap)
     try {

@@ -1,8 +1,7 @@
-import { DataflowGraph } from "../../dataflow/graph"
-import { IdType } from "../../dataflow/id"
-import { guard } from "../../util/assert"
-import { DataflowMap } from "../../dataflow/extractor"
+import { DataflowGraph, DataflowMap } from '../../dataflow'
+import { guard } from '../../util/assert'
 import { log } from "../../util/log"
+import { IdType } from '../../r-bridge'
 
 /** returns the line numbers to include, TODO: add ast etc., TODO: include braces and parenthesis as additional ast information so we can add the closing/opening brace into the slice!  */
 export function naiveLineBasedSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowIdMap: DataflowMap<OtherInfo>, id: IdType): Set<number> {

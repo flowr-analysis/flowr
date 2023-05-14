@@ -15,12 +15,14 @@ describe(
           type:         Type.FunctionCall,
           location:     rangeFrom(1, 1, 1, 1),
           lexeme:       "f", // TODO: make this more sensible?
+          info:         {},
           functionName: {
             type:      Type.Symbol,
             location:  rangeFrom(1, 1, 1, 1),
             lexeme:    "f",
             content:   "f",
             namespace: undefined,
+            info:      {},
           },
           parameters: [],
         })
@@ -35,12 +37,14 @@ describe(
           type:         Type.FunctionCall,
           location:     rangeFrom(1, 1, 1, 1),
           lexeme:       "f", // TODO: make this more sensible?
+          info:         {},
           functionName: {
             type:      Type.Symbol,
             location:  rangeFrom(1, 1, 1, 1),
             lexeme:    "f",
             content:   "f",
             namespace: undefined,
+            info:      {}
           },
           parameters: [
             {
@@ -48,12 +52,14 @@ describe(
               location: rangeFrom(1, 3, 1, 3),
               lexeme:   "1",
               content:  numVal(1),
+              info:     {}
             },
             {
               type:     Type.Number,
               location: rangeFrom(1, 6, 1, 6),
               lexeme:   "2",
               content:  numVal(2),
+              info:     {}
             },
           ],
         })
@@ -69,12 +75,14 @@ describe(
           type:         Type.FunctionCall,
           location:     rangeFrom(1, 1, 1, 4),
           lexeme:       "x::f", // TODO: make this more sensible?
+          info:         {},
           functionName: {
             type:      Type.Symbol,
             location:  rangeFrom(1, 4, 1, 4),
             lexeme:    "f",
             content:   "f",
             namespace: "x",
+            info:      {}
           },
           parameters: [],
         })

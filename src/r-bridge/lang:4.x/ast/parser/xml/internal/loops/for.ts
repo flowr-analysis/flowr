@@ -72,6 +72,7 @@ export function tryParseForLoopStructure(
     vector:   parsedVector,
     body:     parseBody,
     lexeme:   content,
+    info:     {},
     location,
   }
   return executeHook(data.hooks.loops.onForLoop.after, data, result)

@@ -23,7 +23,8 @@ export function parseString(data: ParserData, obj: XmlBasedJson): RString {
     type:    Type.String,
     location,
     content: string2ts(content),
-    lexeme:  content
+    lexeme:  content,
+    info:    {}
   }
   return executeHook(data.hooks.values.onString.after, data, result)
 }

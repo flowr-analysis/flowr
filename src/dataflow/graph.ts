@@ -1,9 +1,8 @@
 // TODO: modify | alias | etc.
-import { IdType } from './id'
 import { DataflowMap } from './extractor'
 import { guard } from '../util/assert'
 import { SourceRange } from '../util/range'
-import { NoInfo } from '../r-bridge'
+import { IdType, NoInfo } from '../r-bridge'
 
 export type DataflowGraphEdgeType =
     | /** the edge determines that source reads target */ 'read'

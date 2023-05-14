@@ -54,7 +54,8 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
     location,
     lexeme: content,
     functionName,
-    parameters
+    parameters,
+    info:   {}
   }
   return executeHook(data.hooks.functions.onFunctionCall.after, data, result)
 }

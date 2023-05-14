@@ -1,14 +1,34 @@
 {
   "name": "flowr project documentation",
-  "entryPointStrategy": "expand",
   "entryPoints": [
     "src/app.ts",
     "src/dataflow",
-    "src/r-bridge",
-    "src/slicing",
-    "src/statistics",
-    "src/util"
+    "src/r-bridge/",
+    "src/slicing/static",
+    "src/statistics"
   ],
   "theme": "default",
-  "out": "doc"
+  "out": "doc",
+  "readme": "README.md",
+  "lightHighlightTheme": "light-plus",
+  "darkHighlightTheme": "dark-plus",
+  "hideGenerator": true,
+  "searchInComments": true,
+  "useTsLinkResolution": true,
+  "categorizeByGroup": true,
+  "sort": [ "static-first", "alphabetical" ],
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "inherited": true,
+    "external": false,
+    "@alpha": false,
+    "@beta": false
+  },
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": true
+  },
+  "treatValidationWarningsAsErrors": false
 }

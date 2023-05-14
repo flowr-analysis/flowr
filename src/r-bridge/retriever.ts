@@ -1,12 +1,7 @@
-// TODO: global entrypoint for configuration of the parser and all components
-
 import { type RShell } from "./shell"
-import { parseCSV, ts2r } from "./lang:4.x/values"
-import { parse } from "./lang:4.x/ast/parser/xml/parser"
-import { startAndEndsWith } from "../util/strings"
-import { RExpressionList } from "./lang:4.x/ast/model/nodes/RExpressionList"
+import { parseCSV, ts2r, XmlParserHooks, RExpressionList, parse } from './lang:4.x'
+import { startAndEndsWith } from '../util/strings'
 import { DeepPartial } from 'ts-essentials'
-import { XmlParserHooks } from './lang:4.x/ast/parser/xml/hooks'
 import { guard } from '../util/assert'
 
 export interface RParseRequestFromFile {

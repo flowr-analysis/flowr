@@ -1,8 +1,7 @@
 import { log } from "../util/log"
 import { BiMap } from "../util/bimap"
 import { type Id, type IdType } from "./id"
-import { foldAst } from "../r-bridge/lang:4.x/ast/model/processing/fold"
-import { RNa, RNull } from "../r-bridge/lang:4.x/values"
+import { foldAst, RNa, RNull, RSymbol } from '../r-bridge'
 import { type ParentInformation, type RNodeWithParent } from "./parents"
 import { guard } from "../util/assert"
 import {
@@ -13,7 +12,6 @@ import {
   LOCAL_SCOPE,
 } from "./graph"
 import { DefaultMap } from "../util/defaultmap"
-import { RSymbol } from "../r-bridge/lang:4.x/ast/model/nodes/RSymbol"
 
 const dataflowLogger = log.getSubLogger({ name: "ast" })
 
@@ -125,7 +123,7 @@ function produceNameSharedIdMap(idPool: FoldReadTarget[], graph: DataflowGraph):
   const nameIdShares = new DefaultMap<string, FoldReadTarget[]>(() => [])
   idPool.forEach(id => {
     const name = graph.get(id.id)?.name
-    guard(name !== undefined, `name must be defined for ${id}`)
+    guard(name !== undefined, `name must be defined for ${JSON.stringify(id)}`)
     const previous = nameIdShares.get(name)
     previous.push(id)
   })
@@ -431,7 +429,7 @@ function processExprList<OtherInfo>(dataflowIdMap: DataflowMap<OtherInfo>): (exp
       for (const readId of [...currentElement.in, ...currentElement.activeNodes]) {
         const existingRef = dataflowIdMap.get(readId.id)
         const readName = existingRef?.lexeme
-        guard (readName !== undefined, `Could not find name for read variable ${readId}`)
+        guard (readName !== undefined, `Could not find name for read variable ${JSON.stringify(readId)}`)
 
         const probableTarget = writePointers.get(readName)
         if (probableTarget === undefined) {

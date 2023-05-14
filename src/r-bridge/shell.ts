@@ -3,12 +3,12 @@ import { deepMergeObject, type MergeableRecord } from "../util/objects"
 import { type ILogObj, type Logger } from "tslog"
 import { EOL } from "os"
 import * as readline from "node:readline"
-import { ts2r } from "./lang:4.x/values"
+import { ts2r } from './lang:4.x'
 import { log } from "../util/log"
 
 export type OutputStreamSelector = "stdout" | "stderr" | "both";
 
-interface CollectorTimeout extends MergeableRecord {
+export interface CollectorTimeout extends MergeableRecord {
   /**
    * number of milliseconds to wait for the collection to finish
    */
@@ -29,7 +29,7 @@ interface CollectorUntil extends MergeableRecord {
  * Configuration for the internal output collector used by the {@link RShell}
  * The defaults are configured with {@link DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION}
  */
-interface OutputCollectorConfiguration extends MergeableRecord {
+export interface OutputCollectorConfiguration extends MergeableRecord {
   /** the streams to use to collect the output from */
   from:                    OutputStreamSelector
   /**

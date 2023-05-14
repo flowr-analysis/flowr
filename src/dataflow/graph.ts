@@ -3,13 +3,13 @@ import { IdType } from './id'
 import { DataflowMap } from './extractor'
 import { guard } from '../util/assert'
 import { SourceRange } from '../util/range'
-import { NoInfo } from '../r-bridge/lang:4.x/ast/model/model'
+import { NoInfo } from '../r-bridge'
 
 export type DataflowGraphEdgeType =
     | /** the edge determines that source reads target */ 'read'
     | /** the edge determines that source is defined by target */ 'defined-by'
     | /** the edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
-    | /** similar to {@link 'same-read-read'} but for def-def constructs without a read in-between */ 'same-def-def'
+    | /** similar to `same-read-read` but for def-def constructs without a read in-between */ 'same-def-def'
 
 // context -- is it always read/defined-by // TODO: loops
 export type DataflowGraphEdgeAttribute = 'always' | 'maybe'
@@ -74,14 +74,14 @@ export class DataflowGraph {
   private graph = new Map<IdType, DataflowGraphNodeInfo>()
 
   /**
-   * @return the ids of all nodes in the graph
+   * @returns the ids of all nodes in the graph
    */
   public nodes(): IterableIterator<IdType> {
     return this.graph.keys()
   }
 
   /**
-   * @return the node info for the given id (if it exists)
+   * @returns the node info for the given id (if it exists)
    */
   public get(id: IdType): DataflowGraphNodeInfo | undefined {
     return this.graph.get(id)

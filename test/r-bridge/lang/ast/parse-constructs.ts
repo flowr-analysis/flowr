@@ -1,7 +1,7 @@
-import { assertAst, retrieveAst, withShell } from '../../../helper/shell'
+import { assertAst, withShell } from '../../../helper/shell'
 import { exprList, numVal } from "../../../helper/ast-builder"
 import { addRanges, rangeFrom } from "../../../../src/util/range"
-import { Type } from "../../../../src/r-bridge/lang:4.x/ast/model/type"
+import { Type } from '../../../../src/r-bridge'
 
 const IfThenSpacingVariants = [
   {

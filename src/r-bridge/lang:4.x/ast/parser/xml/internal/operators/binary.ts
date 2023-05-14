@@ -7,18 +7,17 @@ import {
 } from "../meta"
 import { identifySpecialOp } from "./special"
 import { ParserData } from "../../data"
-import { tryParseOneElementBasedOnType } from "../structure/single-element"
-import { Type } from "../../../../model/type"
-
+import { tryParseOneElementBasedOnType } from '../structure'
 import {
+  Type,
+  RNode,
+  RBinaryOp,
   ArithmeticOperatorsRAst,
   AssignmentsRAst,
   BinaryOperatorFlavor,
   ComparisonOperatorsRAst,
-  LogicalOperatorsRAst,
-} from "../../../../model/operators"
-import { RBinaryOp } from "../../../../model/nodes/RBinaryOp"
-import { RNode } from "../../../../model/model"
+  LogicalOperatorsRAst
+} from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 export function tryParseBinaryStructure(

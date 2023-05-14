@@ -1,6 +1,6 @@
-import { allFeatureNames } from './features/feature'
+import { allFeatureNames } from './features'
 import { OptionDefinition } from 'command-line-usage'
-import { RParseRequestFromFile } from '../r-bridge/retriever'
+import { RParseRequestFromFile } from '../r-bridge'
 import { log } from '../util/log'
 import { allRFiles } from '../util/files'
 import { date2string } from '../util/time'

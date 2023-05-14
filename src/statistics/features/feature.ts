@@ -1,14 +1,21 @@
-import { initialUsedPackageInfos, usedPackages } from './supported/usedPackages'
-import { comments, initialCommentInfo } from './supported/comments'
-import { definedFunctions, initialFunctionDefinitionInfo } from './supported/definedFunctions'
-import { initialValueInfo, values } from './supported/values'
+import {
+  assignments,
+  comments,
+  controlflow,
+  dataAccess,
+  definedFunctions,
+  initialAssignmentInfo,
+  initialCommentInfo, initialControlflowInfo, initialDataAccessInfo,
+  initialFunctionDefinitionInfo, initialFunctionUsageInfo, initialLoopInfo,
+  initialUsedPackageInfos,
+  initialValueInfo,
+  loops,
+  usedFunctions,
+  usedPackages,
+  values
+} from './supported'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
-import { assignments, initialAssignmentInfo } from './supported/assignments'
 import { MergeableRecord } from '../../util/objects'
-import { initialFunctionUsageInfo, usedFunctions } from './supported/usedFunctions'
-import { initialLoopInfo, loops } from './supported/loops'
-import { controlflow, initialControlflowInfo } from './supported/controlflow'
-import { dataAccess, initialDataAccessInfo } from './supported/dataAccess'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.

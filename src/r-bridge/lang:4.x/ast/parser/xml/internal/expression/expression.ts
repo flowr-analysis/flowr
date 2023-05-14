@@ -2,10 +2,9 @@ import { getKeysGuarded, XmlBasedJson } from '../../input-format'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
-import { parseBasedOnType } from '../structure/elements'
-import { tryToParseFunctionCall } from '../functions/call'
-import { Type } from '../../../../model/type'
-import { RNode } from '../../../../model/model'
+import { parseBasedOnType } from '../structure'
+import { tryToParseFunctionCall } from '../functions'
+import { Type, RNode } from '../../../../model'
 import { executeHook } from '../../hooks'
 
 /**

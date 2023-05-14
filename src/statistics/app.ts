@@ -1,12 +1,11 @@
-import { RShell } from '../r-bridge/shell'
+import { RShell } from '../r-bridge'
 import { extract } from './statistics'
 import { log, LogLevel } from '../util/log'
-import { FeatureKey } from './features/feature'
+import { FeatureKey } from './features'
 import commandLineArgs from 'command-line-args'
-import { printFeatureStatistics } from './output/printStats'
+import { printFeatureStatistics, initFileProvider } from './output'
 import { allRFilesFrom, optionDefinitions, optionHelp, StatsCliOptions, validateFeatures } from './cli'
 import commandLineUsage from 'command-line-usage'
-import { initFileProvider } from './output/statisticsFile'
 
 const options = commandLineArgs(optionDefinitions) as StatsCliOptions
 

@@ -1,0 +1,44 @@
+{
+  "includeVersion": true,
+  "plugin": [
+    "typedoc-umlclass",
+    "typedoc-plugin-missing-exports"
+  ],
+  "entryPoints": [
+    "src/app.ts",
+    "src/dataflow",
+    "src/r-bridge/",
+    "src/slicing/static",
+    "src/statistics"
+  ],
+  "theme": "default",
+  "out": "doc",
+  "readme": "README.md",
+  "umlClassDiagram": {
+    "type": "detailed",
+    "location": "embed",
+    "format": "svg",
+    "position": "below",
+    "legendType": "none",
+    "generatorProcessCount": 4
+  },
+  "lightHighlightTheme": "light-plus",
+  "darkHighlightTheme": "dark-plus",
+  "hideGenerator": false,
+  "searchInComments": true,
+  "useTsLinkResolution": true,
+  "categorizeByGroup": true,
+  "sort": [ "static-first", "alphabetical" ],
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "inherited": true,
+    "external": false
+  },
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": true
+  },
+  "treatValidationWarningsAsErrors": false
+}

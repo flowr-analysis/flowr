@@ -1,13 +1,17 @@
 import { NamedXmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure, retrieveOpName } from '../meta'
 import { parseLog } from '../../parser'
-import { tryParseOneElementBasedOnType } from '../structure/single-element'
+import { tryParseOneElementBasedOnType } from '../structure'
 import { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
-import { Type } from '../../../../model/type'
-import { ArithmeticOperatorsRAst, LogicalOperatorsRAst, UnaryOperatorFlavor } from '../../../../model/operators'
-import { RUnaryOp } from '../../../../model/nodes/RUnaryOp'
-import { RNode } from '../../../../model/model'
+import {
+  Type,
+  RNode,
+  RUnaryOp,
+  ArithmeticOperatorsRAst,
+  LogicalOperatorsRAst,
+  UnaryOperatorFlavor
+} from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 /**

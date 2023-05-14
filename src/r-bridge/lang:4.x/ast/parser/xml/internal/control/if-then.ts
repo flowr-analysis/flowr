@@ -1,10 +1,9 @@
 import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
-import { tryParseOneElementBasedOnType } from '../structure/single-element'
+import { tryParseOneElementBasedOnType } from '../structure'
 import { retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
-import { Type } from '../../../../model/type'
-import { RIfThenElse } from '../../../../model/nodes/RIfThenElse'
+import { Type, RIfThenElse } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 /**

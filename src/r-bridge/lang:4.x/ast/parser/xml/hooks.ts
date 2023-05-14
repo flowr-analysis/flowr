@@ -1,20 +1,23 @@
 import { NamedXmlBasedJson, XmlBasedJson } from './input-format'
-import { RNumber } from '../../model/nodes/RNumber'
-import { RLogical } from '../../model/nodes/RLogical'
-import { RSymbol } from '../../model/nodes/RSymbol'
 import {
+  RNumber,
   NoInfo,
   RBinaryOp,
   RComment,
   RForLoop,
-  RFunctionCall, RIfThenElse,
+  RFunctionCall,
+  RIfThenElse,
   RNode,
-  RRepeatLoop, RString,
+  RRepeatLoop,
+  RString,
   RUnaryOp,
-  RWhileLoop
-} from '../../model/model'
+  RWhileLoop,
+  RSymbol,
+  RLogical,
+  BinaryOperatorFlavor,
+  UnaryOperatorFlavor
+} from '../../model'
 import { RNa } from '../../../values'
-import { BinaryOperatorFlavor, UnaryOperatorFlavor } from '../../model/operators'
 import { ParserData } from './data'
 import { DeepReadonly, DeepRequired } from 'ts-essentials'
 

@@ -1,5 +1,4 @@
 import { withShell } from '../helper/shell'
-import { extract, staticRequests } from '../../src/statistics/statistics'
 
 describe('Count structures in R-Scripts', withShell(shell => {
   it('Count the number of function calls', async() => {

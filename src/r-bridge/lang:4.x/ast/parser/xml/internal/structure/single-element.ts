@@ -1,15 +1,12 @@
 import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
-import { parseNumber } from '../values/number'
-import { parseString } from '../values/string'
+import { parseNumber, parseString, tryParseSymbol } from '../values'
 import { guard } from '../../../../../../../util/assert'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
-import { parseExpression } from '../expression/expression'
-import { tryParseSymbol } from '../values/symbol'
+import { parseExpression } from '../expression'
 import { getWithTokenType } from '../meta'
-import { Type } from '../../../../model/type'
-import { RNode } from '../../../../model/model'
-import { parseComment } from '../other/comment'
+import { Type, RNode } from '../../../../model'
+import { parseComment } from '../other'
 
 /**
  * parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)

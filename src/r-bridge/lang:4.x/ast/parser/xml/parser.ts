@@ -1,10 +1,9 @@
 import { deepMergeObject } from "../../../../../util/objects"
 import { log } from "../../../../../util/log"
 import { DEFAULT_XML_PARSER_CONFIG, XmlParserConfig } from "./config"
-import { xlm2jsonObject } from "./internal/xml2json"
-import { parseRootObjToAst } from "./internal/structure/root"
+import { xlm2jsonObject, parseRootObjToAst } from './internal'
 import { ParserData } from "./data"
-import { RExpressionList } from "../../model/nodes/RExpressionList"
+import { RExpressionList } from '../../model'
 import { DEFAULT_PARSER_HOOKS, XmlParserHooks } from './hooks'
 import { DeepPartial } from 'ts-essentials'
 

@@ -2,34 +2,18 @@ import { SourceRange } from "../../../../util/range"
 import { Type } from "./type"
 import { MergeableRecord } from "../../../../util/objects"
 import { RNa, RNull } from "../../values"
-import { RExpressionList } from "./nodes/RExpressionList"
-import { RNumber } from "./nodes/RNumber"
-import { RSymbol } from "./nodes/RSymbol"
-import { RLogical } from "./nodes/RLogical"
-import { RString } from "./nodes/RString"
-import { RBinaryOp } from "./nodes/RBinaryOp"
-import { RUnaryOp } from "./nodes/RUnaryOp"
-import { RIfThenElse } from "./nodes/RIfThenElse"
-import { RRepeatLoop } from "./nodes/RRepeatLoop"
-
-import { RWhileLoop } from "./nodes/RWhileLoop"
-import { RFunctionCall } from "./nodes/RFunctionCall"
-import { RForLoop } from "./nodes/RForLoop"
-import { RComment } from "./nodes/RComment"
-
-export * from "./nodes/RBinaryOp"
-export * from "./nodes/RExpressionList"
-export * from "./nodes/RForLoop"
-export * from "./nodes/RFunctionCall"
-export * from "./nodes/RIfThenElse"
-export * from "./nodes/RLogical"
-export * from "./nodes/RNumber"
-export * from "./nodes/RRepeatLoop"
-export * from "./nodes/RString"
-export * from "./nodes/RSymbol"
-export * from "./nodes/RUnaryOp"
-export * from "./nodes/RWhileLoop"
-export * from "./nodes/RComment"
+import {
+  RExpressionList,
+  RNumber,
+  RSymbol,
+  RLogical,
+  RString,
+  RBinaryOp,
+  RUnaryOp,
+  RIfThenElse,
+  RRepeatLoop, RForLoop, RWhileLoop,
+  RComment, RFunctionCall
+} from './nodes'
 
 /** simply used as an empty interface with no information about additional decorations */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface

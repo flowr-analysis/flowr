@@ -19,5 +19,5 @@ export async function xlm2jsonObject(config: XmlParserConfig, xmlString: string)
     preserveChildrenOrder: true,
     normalize:             true,
     strict:                true
-  })
+  }) as XmlBasedJson
 }

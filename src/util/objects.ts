@@ -1,4 +1,4 @@
-import { DeepPartial } from 'ts-essentials'
+import { DeepPartial, DeepRequired } from 'ts-essentials'
 
 /**
  * checks if `item` is an object (it may be an array, ...)
@@ -18,13 +18,17 @@ export type Mergeable = MergeableRecord | MergeableArray
  *
  * TODO: set etc. support in the future? =\> merge type class like?
  */
+export function deepMergeObject<T extends Mergeable>(base: Required<T>, addon?: T): Required<T>
+export function deepMergeObject<T extends Mergeable>(base: DeepRequired<T>, addon?: T): DeepRequired<T>
 export function deepMergeObject<T extends Mergeable>(base: T, addon?: DeepPartial<T> | Partial<T>): T
 export function deepMergeObject(base: Mergeable, addon: Mergeable): Mergeable
 export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined
 export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined {
   assertSameType(base, addon)
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (base === undefined || base === null) {
     return addon
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   } else if (addon === undefined || addon === null) {
     return base
   } else if (!isObjectOrArray(base) || !isObjectOrArray(addon)) {

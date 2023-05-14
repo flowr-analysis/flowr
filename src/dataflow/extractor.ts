@@ -8,8 +8,8 @@ import {
   DataflowGraph,
   DataflowGraphEdgeAttribute,
   DataflowScopeName,
-  GLOBAL_SCOPE,
-  LOCAL_SCOPE,
+  GlobalScope,
+  LocalScope,
 } from "./graph"
 import { DefaultMap } from "../util/defaultmap"
 
@@ -186,12 +186,12 @@ function identifyReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RNodeWithPare
   }
   const writeNodes = new Map<string, FoldWriteTarget[]>(
     [...target.activeNodes].map(id => [
-      global ? GLOBAL_SCOPE : LOCAL_SCOPE,
+      global ? GlobalScope : LocalScope,
       // TODO: use id.attribute?
       [{attribute: 'always', id: id.id}]
     ]))
   const readFromSourceWritten: FoldReadTarget[] = [...source.out].flatMap(([scope,targets]): FoldReadTarget[] => {
-    guard(scope === LOCAL_SCOPE, 'currently, nested write re-assignments are only supported for local')
+    guard(scope === LocalScope, 'currently, nested write re-assignments are only supported for local')
     return targets.map(id => {
       guard(id.attribute === 'always', 'currently, nested write re-assignments are only supported for always')
       return id
@@ -275,7 +275,7 @@ function processForLoop(loop: unknown, variable: FoldInfo, vector: FoldInfo, bod
   // we assign all with a maybe marker
 
   // TODO: use attribute?
-  const writtenVariable: [[DataflowScopeName, FoldWriteTarget[]]] = [[LOCAL_SCOPE, variable.activeNodes.map(id => ({attribute: 'always', id: id.id}))]]
+  const writtenVariable: [[DataflowScopeName, FoldWriteTarget[]]] = [[LocalScope, variable.activeNodes.map(id => ({attribute: 'always', id: id.id}))]]
   const nextGraph = variable.graph.mergeWith(vector.graph, body.graph)
 
   // TODO: hold name when reading to avoid constant indirection?

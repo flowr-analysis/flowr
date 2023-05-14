@@ -17,15 +17,15 @@ export type DataflowGraphEdgeAttribute = 'always' | 'maybe'
 
 // TODO: on fold clarify with in and out-local, out-global! (out-function?)
 
-export const GLOBAL_SCOPE = '.GlobalEnv'
-export const LOCAL_SCOPE = '<local>'
+export const GlobalScope = '.GlobalEnv'
+export const LocalScope = '<local>'
 
 /**
  * used to represent usual R scopes
  */
 export type DataflowScopeName =
-  | /** default R global environment */            typeof GLOBAL_SCOPE
-  | /** unspecified automatic local environment */ typeof LOCAL_SCOPE
+  | /** default R global environment */            typeof GlobalScope
+  | /** unspecified automatic local environment */ typeof LocalScope
   | /** named environments */                      string
 
 

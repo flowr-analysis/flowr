@@ -1,6 +1,6 @@
 // TODO: get def-usage for every line
 import { assertDataflow, retrieveAst, withShell } from "../helper/shell"
-import { produceDataFlowGraph, decorateWithIds, IdType, decorateWithParentInformation,   DataflowGraph, formatRange, GLOBAL_SCOPE, graphToMermaidUrl, LOCAL_SCOPE } from '../../src/dataflow'
+import { produceDataFlowGraph, decorateWithIds, IdType, decorateWithParentInformation,   DataflowGraph, formatRange, GlobalScope, graphToMermaidUrl, LocalScope } from '../../src/dataflow'
 import {
   RAssignmentOpPool,
   RNonAssignmentBinaryOpPool,
@@ -85,7 +85,7 @@ describe("Extract Dataflow Information", () => {
         let idx = 0
         for (const op of RAssignmentOpPool) {
           describe(`3.${++idx} ${op.str}`, () => {
-            const scope = op.str.length > 2 ? GLOBAL_SCOPE : LOCAL_SCOPE // love it
+            const scope = op.str.length > 2 ? GlobalScope : LocalScope // love it
             const swapSourceAndTarget = op.str === "->" || op.str === "->>"
 
             const constantAssignment = swapSourceAndTarget
@@ -152,8 +152,8 @@ describe("Extract Dataflow Information", () => {
             shell,
             "x <- y <- 1",
             new DataflowGraph()
-              .addNode("0", "x", LOCAL_SCOPE)
-              .addNode("1", "y", LOCAL_SCOPE)
+              .addNode("0", "x", LocalScope)
+              .addNode("1", "y", LocalScope)
               .addEdge("0", "1", "defined-by", "always")
           )
           assertDataflow(
@@ -161,8 +161,8 @@ describe("Extract Dataflow Information", () => {
             shell,
             "1 -> x -> y",
             new DataflowGraph()
-              .addNode("1", "x", LOCAL_SCOPE)
-              .addNode("3", "y", LOCAL_SCOPE)
+              .addNode("1", "x", LocalScope)
+              .addNode("3", "y", LocalScope)
               .addEdge("3", "1", "defined-by", "always")
           )
           // still by indirection (even though y is overwritten?) TODO: discuss that
@@ -171,8 +171,8 @@ describe("Extract Dataflow Information", () => {
             shell,
             "x <- 1 -> y",
             new DataflowGraph()
-              .addNode("0", "x", LOCAL_SCOPE)
-              .addNode("2", "y", LOCAL_SCOPE)
+              .addNode("0", "x", LocalScope)
+              .addNode("2", "y", LocalScope)
               .addEdge("0", "2", "defined-by", "always")
           )
           assertDataflow(
@@ -180,8 +180,8 @@ describe("Extract Dataflow Information", () => {
             shell,
             "x <- y <- z",
             new DataflowGraph()
-              .addNode("0", "x", LOCAL_SCOPE)
-              .addNode("1", "y", LOCAL_SCOPE)
+              .addNode("0", "x", LocalScope)
+              .addNode("1", "y", LocalScope)
               .addNode("2", "z")
               .addEdge("0", "1", "defined-by", "always")
               .addEdge("1", "2", "defined-by", "always")
@@ -325,14 +325,14 @@ describe("Extract Dataflow Information", () => {
           "5.1 simple constant for-loop",
           shell,
           `for(i in 1:10) { 1 }`,
-          new DataflowGraph().addNode("0", "i", LOCAL_SCOPE)
+          new DataflowGraph().addNode("0", "i", LocalScope)
         )
         assertDataflow(
           "5.1 using loop variable in body",
           shell,
           `for(i in 1:10) { i }`,
           new DataflowGraph()
-            .addNode("0", "i", LOCAL_SCOPE)
+            .addNode("0", "i", LocalScope)
             .addNode("4", "i")
             .addEdge("4", "0", "defined-by", "always")
         )
@@ -357,14 +357,14 @@ describe("Extract Dataflow Information", () => {
           "6.3 using loop variable in body",
           shell,
           `repeat { x <- 1 }`,
-          new DataflowGraph().addNode("0", "x", LOCAL_SCOPE)
+          new DataflowGraph().addNode("0", "x", LocalScope)
         )
         assertDataflow(
           "6.4 using variable in body",
           shell,
           `repeat { x <- y }`,
           new DataflowGraph()
-            .addNode("0", "x", LOCAL_SCOPE)
+            .addNode("0", "x", LocalScope)
             .addNode("1", "y")
             // TODO: always until encountered conditional break etc?
             .addEdge("0", "1", "defined-by", "always" /* TODO: maybe ? */)
@@ -388,7 +388,7 @@ describe("Extract Dataflow Information", () => {
           "6.3 assignment in loop body",
           shell,
           `while (TRUE) { x <- 3 }`,
-          new DataflowGraph().addNode("1", "x", LOCAL_SCOPE)
+          new DataflowGraph().addNode("1", "x", LocalScope)
         )
         /* TODO: support
       assertDataflow('6.4 def compare in loop', shell, `while ((x <- x - 1) > 0) { x }`,
@@ -463,8 +463,8 @@ describe("Extract Dataflow Information", () => {
         describe("1.2 def-def same variable", () => {
           const sameGraph = (id1: IdType, id2: IdType) =>
             new DataflowGraph()
-              .addNode(id1, "x", LOCAL_SCOPE)
-              .addNode(id2, "x", LOCAL_SCOPE)
+              .addNode(id1, "x", LocalScope)
+              .addNode(id2, "x", LocalScope)
               .addEdge(id1, id2, "same-def-def", "always")
           assertDataflow(
             `1.2.1 directly together`,
@@ -502,9 +502,9 @@ describe("Extract Dataflow Information", () => {
             shell,
             "x <- 1\nx <- 3\n3\nx <- 9",
             new DataflowGraph()
-              .addNode("0", "x", LOCAL_SCOPE)
-              .addNode("3", "x", LOCAL_SCOPE)
-              .addNode("7", "x", LOCAL_SCOPE)
+              .addNode("0", "x", LocalScope)
+              .addNode("3", "x", LocalScope)
+              .addNode("7", "x", LocalScope)
               .addEdge("0", "3", "same-def-def", "always")
               .addEdge("3", "7", "same-def-def", "always")
           )
@@ -512,7 +512,7 @@ describe("Extract Dataflow Information", () => {
         describe("1.3 def followed by read", () => {
           const sameGraph = (id1: IdType, id2: IdType) =>
             new DataflowGraph()
-              .addNode(id1, "x", LOCAL_SCOPE)
+              .addNode(id1, "x", LocalScope)
               .addNode(id2, "x")
               .addEdge(id2, id1, "read", "always")
           assertDataflow(
@@ -544,7 +544,7 @@ describe("Extract Dataflow Information", () => {
             shell,
             "x <- 2; x <- 3; x",
             sameGraph("3", "6")
-              .addNode("0", "x", LOCAL_SCOPE)
+              .addNode("0", "x", LocalScope)
               .addEdge("0", "3", "same-def-def", "always")
           )
           assertDataflow(
@@ -552,8 +552,8 @@ describe("Extract Dataflow Information", () => {
             shell,
             "x <- 2; x <- x; x",
             new DataflowGraph()
-              .addNode("0", "x", LOCAL_SCOPE)
-              .addNode("3", "x", LOCAL_SCOPE)
+              .addNode("0", "x", LocalScope)
+              .addNode("3", "x", LocalScope)
               .addNode("4", "x")
               .addNode("6", "x")
               .addEdge("4", "0", "read", "always")
@@ -577,7 +577,7 @@ describe("Extract Dataflow Information", () => {
                 shell,
                 `x <- 2\n if(x) { 1 } ${b.text}`,
                 new DataflowGraph()
-                  .addNode("0", "x", LOCAL_SCOPE)
+                  .addNode("0", "x", LocalScope)
                   .addNode("3", "x")
                   .addEdge("3", "0", "read", "always")
               )
@@ -586,7 +586,7 @@ describe("Extract Dataflow Information", () => {
                 shell,
                 `x <- 2\n if(TRUE) { x } ${b.text}`,
                 new DataflowGraph()
-                  .addNode("0", "x", LOCAL_SCOPE)
+                  .addNode("0", "x", LocalScope)
                   .addNode("4", "x")
                   .addEdge("4", "0", "read", "maybe")
               )
@@ -597,7 +597,7 @@ describe("Extract Dataflow Information", () => {
             shell,
             "x <- 2\n if(TRUE) { 42 } else { x }",
             new DataflowGraph()
-              .addNode("0", "x", LOCAL_SCOPE)
+              .addNode("0", "x", LocalScope)
               .addNode("5", "x")
               .addEdge("5", "0", "read", "maybe")
           )
@@ -613,7 +613,7 @@ describe("Extract Dataflow Information", () => {
               shell,
               "if(TRUE) { x <- 2 }\n x",
               new DataflowGraph()
-                .addNode("1", "x", LOCAL_SCOPE)
+                .addNode("1", "x", LocalScope)
                 .addNode("5", "x")
                 .addEdge("5", "1", "read", "maybe")
             )
@@ -623,7 +623,7 @@ describe("Extract Dataflow Information", () => {
             shell,
             "if(TRUE) { 42 } else { x <- 5 }\nx",
             new DataflowGraph()
-              .addNode("2", "x", LOCAL_SCOPE)
+              .addNode("2", "x", LocalScope)
               .addNode("6", "x")
               .addEdge("6", "2", "read", "maybe")
           )
@@ -632,8 +632,8 @@ describe("Extract Dataflow Information", () => {
             shell,
             "if(TRUE) { x <- 7 } else { x <- 5 }\nx",
             new DataflowGraph()
-              .addNode("1", "x", LOCAL_SCOPE)
-              .addNode("4", "x", LOCAL_SCOPE)
+              .addNode("1", "x", LocalScope)
+              .addNode("4", "x", LocalScope)
               .addNode("8", "x")
               .addEdge("8", "1", "read", "maybe")
               .addEdge("8", "4", "read", "maybe")

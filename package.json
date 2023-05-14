@@ -7,7 +7,7 @@
     "main": "ts-node src/app.ts",
     "stats": "ts-node src/statistics/app.ts",
     "build": "tsc",
-    "doc": "typedoc --entryPointStrategy expand --out doc src",
+    "doc": "typedoc --options typedoc.json",
     "test": "nyc --no-clean --silent mocha --require ts-node/register --timeout 10000 \"test/**/*.spec.ts\"",
     "test-full": "npm run test -- --test-installation"
   },
@@ -108,7 +108,7 @@
     "ts-essentials": "^9.3.1",
     "ts-node": "^10.9.1",
     "tslog": "^4.8.2",
-    "typedoc": "^0.23.28",
+    "typedoc": "^0.24.7",
     "typescript": "^5.0.3",
     "xml2js": "^0.5.0",
     "xpath-ts2": "^1.4.2"

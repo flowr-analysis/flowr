@@ -1,0 +1,14 @@
+{
+  "name": "flowr project documentation",
+  "entryPointStrategy": "expand",
+  "entryPoints": [
+    "src/app.ts",
+    "src/dataflow",
+    "src/r-bridge",
+    "src/slicing",
+    "src/statistics",
+    "src/util"
+  ],
+  "theme": "default",
+  "out": "doc"
+}

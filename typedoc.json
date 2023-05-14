@@ -23,6 +23,7 @@
     "format": "svg",
     "position": "below",
     "legendType": "none",
+    "hideEmptyMembers": false,
     "generatorProcessCount": 4
   },
   "lightHighlightTheme": "light-plus",

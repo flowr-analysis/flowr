@@ -40,7 +40,11 @@ export interface WithChildren<Info, Children extends Base<Info, string | undefin
   children: Children[]
 }
 
-export type Leaf<Info = NoInfo, LexemeType = string> = Base<Info, LexemeType>
+// we want it, so we get better merge-graphs
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface Leaf<Info = NoInfo, LexemeType = string> extends Base<Info, LexemeType> {
+
+}
 
 export interface Location {
   location: SourceRange

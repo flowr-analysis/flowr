@@ -15,7 +15,7 @@ size=$(( (${#CONTAINED[@]} + SPLIT - 1) / SPLIT ))
 
 echo "Chunk size: ${size}"
 
-dirBasis="./stats-output/$(date +%Y-%m-%d-%H-%M-%S)"
+dirBasis="./statistics-out/$(date +%Y-%m-%d-%H-%M-%S)"
 echo "Output directory base: ${dirBasis}"
 
 # Split the array into chunks

@@ -1,5 +1,5 @@
 {
-  "name": "flowr project documentation",
+  "includeVersion": true,
   "plugin": [
     "typedoc-umlclass",
     "typedoc-plugin-missing-exports"

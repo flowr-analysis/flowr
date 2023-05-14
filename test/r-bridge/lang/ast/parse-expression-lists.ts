@@ -18,6 +18,7 @@ describe(
           location: rangeFrom(1, 1, 1, 2),
           lexeme:   "42",
           content:  numVal(42),
+          info:     {}
         })
       )
       // the r standard does not seem to allow '\r\n' or '\n\r'
@@ -33,6 +34,7 @@ describe(
             location: rangeFrom(1, 1, 1, 2),
             lexeme:   "42",
             content:  numVal(42),
+            info:     {}
           },
           {
             type:      Type.Symbol,
@@ -40,6 +42,7 @@ describe(
             namespace: undefined,
             lexeme:    "a",
             content:   "a",
+            info:      {}
           }
         )
       )
@@ -56,6 +59,7 @@ describe(
             namespace: undefined,
             lexeme:    "a",
             content:   "a",
+            info:      {}
           },
           {
             type:      Type.Symbol,
@@ -63,6 +67,7 @@ describe(
             namespace: undefined,
             lexeme:    "b",
             content:   "b",
+            info:      {}
           },
           {
             type:      Type.Symbol,
@@ -70,6 +75,7 @@ describe(
             namespace: undefined,
             lexeme:    "c",
             content:   "c",
+            info:      {}
           },
           {
             type:      Type.Symbol,
@@ -77,6 +83,7 @@ describe(
             namespace: undefined,
             lexeme:    "d",
             content:   "d",
+            info:      {}
           },
           {
             type:      Type.Symbol,
@@ -84,6 +91,7 @@ describe(
             namespace: undefined,
             lexeme:    "n2",
             content:   "n2",
+            info:      {}
           },
           {
             type:      Type.Symbol,
@@ -91,6 +99,7 @@ describe(
             namespace: undefined,
             lexeme:    "z",
             content:   "z",
+            info:      {}
           }
         )
       )
@@ -104,12 +113,14 @@ describe(
           type:     Type.ExpressionList,
           location: rangeFrom(1, 1, 2, 3),
           lexeme:   "{ 42\na }",
+          info:     {},
           children: [
             {
               type:     Type.Number,
               location: rangeFrom(1, 3, 1, 4),
               lexeme:   "42",
               content:  numVal(42),
+              info:     {}
             },
             {
               type:      Type.Symbol,
@@ -117,6 +128,7 @@ describe(
               namespace: undefined,
               lexeme:    "a",
               content:   "a",
+              info:      {}
             },
           ],
         })
@@ -133,12 +145,14 @@ describe(
             type:     Type.ExpressionList,
             location: rangeFrom(1, 1, 2, 3),
             lexeme:   "{ 42\na }",
+            info:     {},
             children: [
               {
                 type:     Type.Number,
                 location: rangeFrom(1, 3, 1, 4),
                 lexeme:   "42",
                 content:  numVal(42),
+                info:     {}
               },
               {
                 type:      Type.Symbol,
@@ -146,6 +160,7 @@ describe(
                 namespace: undefined,
                 lexeme:    "a",
                 content:   "a",
+                info:      {}
               },
             ],
           },
@@ -155,6 +170,7 @@ describe(
             namespace: undefined,
             lexeme:    "x",
             content:   "x",
+            info:      {}
           }
         )
       )
@@ -171,6 +187,7 @@ describe(
             location: rangeFrom(1, 1, 1, 2),
             lexeme:   "42",
             content:  numVal(42),
+            info:     {}
           },
           {
             type:      Type.Symbol,
@@ -178,6 +195,7 @@ describe(
             namespace: undefined,
             lexeme:    "a",
             content:   "a",
+            info:      {}
           }
         )
       )

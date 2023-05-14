@@ -47,6 +47,7 @@ export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNo
       content: content === 'T',
       location,
       lexeme:  content,
+      info:    {}
     }
   } else {
     result = {
@@ -56,6 +57,7 @@ export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNo
       content,
       // TODO: get correct lexeme from expr wrapper :C
       lexeme: content,
+      info:   {}
     }
   }
 

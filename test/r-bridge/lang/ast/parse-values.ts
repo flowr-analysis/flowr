@@ -37,6 +37,7 @@ describe(
               location: range,
               lexeme:   number.str,
               content:  number.val,
+              info:     {}
             })
           )
         }
@@ -53,6 +54,7 @@ describe(
               location: range,
               lexeme:   string.str,
               content:  string.val,
+              info:     {}
             })
           )
         }
@@ -75,6 +77,7 @@ describe(
               location:  range,
               lexeme:    symbol.val,
               content:   symbol.val,
+              info:      {}
             })
           )
         }
@@ -89,7 +92,8 @@ describe(
               type:     Type.Logical,
               location: rangeFrom(1, 1, 1, lexeme.length),
               lexeme,
-              content
+              content,
+              info:     {}
             })
           )
         }
@@ -104,6 +108,7 @@ describe(
             location: rangeFrom(1, 1, 1, 13),
             lexeme:   "# Hello World",
             content:  " Hello World",
+            info:     {}
           })
         )
       })

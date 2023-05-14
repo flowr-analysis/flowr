@@ -28,11 +28,13 @@ describe(
                 flavor:   op.flavor,
                 lexeme:   op.str,
                 location: rangeFrom(1, 1, 1, 1 + opOffset),
+                info:     {},
                 operand:  {
                   type:     Type.Number,
                   location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
                   lexeme:   "42",
                   content:  numVal(42),
+                  info:     {}
                 },
               })
             )
@@ -71,17 +73,20 @@ describe(
                 lexeme:   op,
                 flavor:   "comparison",
                 location: rangeFrom(1, 3, 1, 3 + opOffset),
+                info:     {},
                 lhs:      {
                   type:     Type.Number,
                   location: rangeFrom(1, 1, 1, 1),
                   lexeme:   "1",
                   content:  numVal(1),
+                  info:     {}
                 },
                 rhs: {
                   type:     Type.Number,
                   location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
                   lexeme:   "1",
                   content:  numVal(1),
+                  info:     {}
                 },
               })
             )
@@ -103,17 +108,20 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
         lexeme:   op.str,
         flavor:   op.flavor,
         location: rangeFrom(1, 3, 1, 3 + opOffset),
+        info:     {},
         lhs:      {
           type:     Type.Number,
           location: rangeFrom(1, 1, 1, 1),
           lexeme:   '1',
-          content:  numVal(1)
+          content:  numVal(1),
+          info:     {}
         },
         rhs: {
           type:     Type.Number,
           location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
           lexeme:   '1',
-          content:  numVal(1)
+          content:  numVal(1),
+          info:     {}
         }
       }
     ))
@@ -136,30 +144,35 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
           lexeme:   op.str,
           flavor:   op.flavor,
           location: rangeFrom(1, 7 + opOffset + defaultPrecedence.offsetC, 1, 7 + 2 * opOffset + defaultPrecedence.offsetC),
+          info:     {},
           lhs:      {
             type:     Type.BinaryOp,
             op:       op.str,
             lexeme:   op.str,
             flavor:   op.flavor,
             location: rangeFrom(1, 3 + defaultPrecedence.offsetL, 1, 3 + opOffset + defaultPrecedence.offsetL),
+            info:     {},
             lhs:      {
               type:     Type.Number,
               location: rangeFrom(1, 1 + defaultPrecedence.offsetL, 1, 1 + defaultPrecedence.offsetL),
               lexeme:   '1',
-              content:  numVal(1)
+              content:  numVal(1),
+              info:     {}
             },
             rhs: {
               type:     Type.Number,
               location: rangeFrom(1, 5 + opOffset + defaultPrecedence.offsetL, 1, 5 + opOffset + defaultPrecedence.offsetL),
               lexeme:   '1',
-              content:  numVal(1)
+              content:  numVal(1),
+              info:     {}
             }
           },
           rhs: {
             type:     Type.Number,
             location: rangeFrom(1, 9 + 2 * opOffset + defaultPrecedence.offsetR, 1, 10 + 2 * opOffset + defaultPrecedence.offsetR),
             lexeme:   '42',
-            content:  numVal(42)
+            content:  numVal(42),
+            info:     {}
           }
         }
       ))
@@ -173,11 +186,13 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
         lexeme:   op.str,
         flavor:   op.flavor,
         location: rangeFrom(1, 3, 1, 3 + opOffset),
+        info:     {},
         lhs:      {
           type:     Type.Number,
           location: rangeFrom(1, 1, 1, 1),
           content:  numVal(1),
-          lexeme:   '1'
+          lexeme:   '1',
+          info:     {}
         },
         rhs: {
           type:     Type.BinaryOp,
@@ -186,17 +201,20 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
           flavor:   op.flavor,
           // TODO: deal with brackets in location?
           location: rangeFrom(1, 8 + opOffset, 1, 8 + 2 * opOffset),
+          info:     {},
           lhs:      {
             type:     Type.Number,
             location: rangeFrom(1, 6 + opOffset, 1, 6 + opOffset),
             content:  numVal(1),
-            lexeme:   '1'
+            lexeme:   '1',
+            info:     {}
           },
           rhs: {
             type:     Type.Number,
             location: rangeFrom(1, 10 + 2 * opOffset, 1, 11 + 2 * opOffset),
             content:  numVal(42),
-            lexeme:   '42'
+            lexeme:   '42',
+            info:     {}
           }
         }
       }

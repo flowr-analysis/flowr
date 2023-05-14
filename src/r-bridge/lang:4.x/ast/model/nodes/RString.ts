@@ -2,8 +2,7 @@ import { Leaf, Location, NoInfo } from "../model"
 import { Type } from "../type"
 import { RStringValue } from "../../../values"
 
-export type RString<Info = NoInfo> = {
+export interface RString<Info = NoInfo> extends Leaf<Info>, Location {
   readonly type: Type.String;
   content:       RStringValue;
-} & Leaf<Info> &
-  Location;
+}

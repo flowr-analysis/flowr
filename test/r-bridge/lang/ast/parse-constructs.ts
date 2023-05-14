@@ -112,17 +112,20 @@ describe('4. Parse simple constructs', withShell(shell => {
               // TODO: maybe merge in future?
               location:  rangeFrom(1, 1, 1, 2),
               lexeme:    'if',
+              info:      {},
               condition: {
                 type:     Type.Logical,
                 location: variant.locationTrue,
                 lexeme:   'TRUE',
-                content:  true
+                content:  true,
+                info:     {}
               },
               then: {
                 type:     Type.Number,
                 location: variant.locationNum,
                 lexeme:   strNum,
-                content:  numVal(variant.num)
+                content:  numVal(variant.num),
+                info:     {}
               }
             }))
           }
@@ -149,23 +152,27 @@ describe('4. Parse simple constructs', withShell(shell => {
                   // TODO: maybe merge in future?
                   location:  rangeFrom(1, 1, 1, 2),
                   lexeme:    'if',
+                  info:      {},
                   condition: {
                     type:     Type.Logical,
                     location: ifThenVariant.locationTrue,
                     lexeme:   'TRUE',
-                    content:  true
+                    content:  true,
+                    info:     {}
                   },
                   then: {
                     type:     Type.Number,
                     location: ifThenVariant.locationNum,
                     lexeme:   thenNum,
-                    content:  numVal(ifThenVariant.num)
+                    content:  numVal(ifThenVariant.num),
+                    info:     {}
                   },
                   otherwise: {
                     type:     Type.Number,
                     location: addRanges(elseVariant.locationElse, ifThenVariant.end),
                     lexeme:   elseNum,
-                    content:  numVal(elseVariant.num)
+                    content:  numVal(elseVariant.num),
+                    info:     {}
                   }
                 }))
               }
@@ -182,12 +189,14 @@ describe('4. Parse simple constructs', withShell(shell => {
         type:     Type.For,
         location: rangeFrom(1, 1, 1, 3),
         lexeme:   'for',
+        info:     {},
         variable: {
           type:      Type.Symbol,
           location:  rangeFrom(1, 5, 1, 5),
           namespace: undefined,
           lexeme:    'i',
-          content:   'i'
+          content:   'i',
+          info:      {}
         },
         vector: {
           type:     Type.BinaryOp,
@@ -195,24 +204,28 @@ describe('4. Parse simple constructs', withShell(shell => {
           op:       ':',
           location: rangeFrom(1, 11, 1, 11),
           lexeme:   ':',
+          info:     {},
           lhs:      {
             type:     Type.Number,
             location: rangeFrom(1, 10, 1, 10),
             lexeme:   '1',
-            content:  numVal(1)
+            content:  numVal(1),
+            info:     {}
           },
           rhs: {
             type:     Type.Number,
             location: rangeFrom(1, 12, 1, 13),
             lexeme:   '42',
-            content:  numVal(42)
+            content:  numVal(42),
+            info:     {}
           }
         },
         body: {
           type:     Type.Number,
           location: rangeFrom(1, 15, 1, 15),
           lexeme:   '2',
-          content:  numVal(2)
+          content:  numVal(2),
+          info:     {}
         }
       })
       )
@@ -222,33 +235,39 @@ describe('4. Parse simple constructs', withShell(shell => {
         type:     Type.Repeat,
         location: rangeFrom(1, 1, 1, 6),
         lexeme:   'repeat',
+        info:     {},
         body:     {
           type:     Type.Number,
           location: rangeFrom(1, 8, 1, 8),
           lexeme:   '2',
-          content:  numVal(2)
+          content:  numVal(2),
+          info:     {}
         }
       }))
       assertAst('repeat { x; y }', shell, 'repeat { x; y }', exprList({
         type:     Type.Repeat,
         location: rangeFrom(1, 1, 1, 6),
         lexeme:   'repeat',
+        info:     {},
         body:     {
           type:     Type.ExpressionList,
           location: rangeFrom(1, 8, 1, 15),
           lexeme:   '{ x; y }',
+          info:     {},
           children: [{
             type:      Type.Symbol,
             location:  rangeFrom(1, 10, 1, 10),
             namespace: undefined,
             lexeme:    'x',
-            content:   'x'
+            content:   'x',
+            info:      {},
           }, {
             type:      Type.Symbol,
             location:  rangeFrom(1, 13, 1, 13),
             namespace: undefined,
             lexeme:    'y',
-            content:   'y'
+            content:   'y',
+            info:      {}
           }]
         }
       }))
@@ -258,17 +277,20 @@ describe('4. Parse simple constructs', withShell(shell => {
         type:      Type.While,
         location:  rangeFrom(1, 1, 1, 5),
         lexeme:    'while',
+        info:      {},
         condition: {
           type:     Type.Logical,
           location: rangeFrom(1, 8, 1, 11),
           lexeme:   'TRUE',
-          content:  true
+          content:  true,
+          info:     {}
         },
         body: {
           type:     Type.Number,
           location: rangeFrom(1, 14, 1, 15),
           lexeme:   '42',
-          content:  numVal(42)
+          content:  numVal(42),
+          info:     {}
         }
       }))
 
@@ -276,28 +298,33 @@ describe('4. Parse simple constructs', withShell(shell => {
         type:      Type.While,
         location:  rangeFrom(1, 1, 1, 5),
         lexeme:    'while',
+        info:      {},
         condition: {
           type:     Type.Logical,
           location: rangeFrom(1, 8, 1, 12),
           lexeme:   'FALSE',
-          content:  false
+          content:  false,
+          info:     {}
         },
         body: {
           type:     Type.ExpressionList,
           location: rangeFrom(1, 15, 1, 22),
           lexeme:   '{ x; y }',
+          info:     {},
           children: [{
             type:      Type.Symbol,
             location:  rangeFrom(1, 17, 1, 17),
             namespace: undefined,
             lexeme:    'x',
-            content:   'x'
+            content:   'x',
+            info:      {}
           }, {
             type:      Type.Symbol,
             location:  rangeFrom(1, 20, 1, 20),
             namespace: undefined,
             lexeme:    'y',
-            content:   'y'
+            content:   'y',
+            info:      {}
           }]
         }
       }))

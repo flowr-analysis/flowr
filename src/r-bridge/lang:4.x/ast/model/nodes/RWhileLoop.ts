@@ -6,8 +6,8 @@ import { Type } from '../type'
  * while ( <condition> ) <body>
  * ```
  */
-export type RWhileLoop<Info = NoInfo> = {
+export interface RWhileLoop<Info = NoInfo> extends Base<Info>, Location {
   readonly type: Type.While
   condition:     RNode<Info>
   body:          RNode<Info>
-} & Base<Info> & Location
+}

@@ -44,7 +44,8 @@ export function tryParseIfThenStructure(data: ParserData,
     condition: parsedCondition,
     then:      parsedThen,
     location,
-    lexeme:    content
+    lexeme:    content,
+    info:      {}
   }
   return executeHook(data.hooks.control.onIfThen.after, data, result)
 }

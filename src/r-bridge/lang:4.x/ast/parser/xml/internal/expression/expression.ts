@@ -38,7 +38,8 @@ export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
       type:   Type.ExpressionList,
       location,
       children,
-      lexeme: content
+      lexeme: content,
+      info:   {}
     }
   }
   return executeHook(data.hooks.expression.onExpression.after, data, result)

@@ -3,7 +3,7 @@ import { Type } from "../type"
 
 export type RLogicalValue = boolean;
 
-export type RLogical<Info = NoInfo> = {
+export interface RLogical<Info = NoInfo> extends Leaf<Info>, Location {
   readonly type: Type.Logical
   content:       RLogicalValue
-} & Leaf<Info> & Location
+}

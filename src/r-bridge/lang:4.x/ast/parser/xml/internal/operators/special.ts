@@ -1,4 +1,4 @@
-import { BinaryOperatorFlavor, ComparisonOperatorsRAst, LogicalOperatorsRAst } from '../../../../model/operators'
+import { BinaryOperatorFlavor, ComparisonOperatorsRAst, LogicalOperatorsRAst } from '../../../../model'
 
 /**
  * Identify the flavor of a given operator, as we do not really have a use for "special"

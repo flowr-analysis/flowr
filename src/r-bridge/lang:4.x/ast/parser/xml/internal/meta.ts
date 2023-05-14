@@ -46,13 +46,13 @@ export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson
   content:      string
 } {
   const unwrappedObj = objectWithArrUnwrap(obj)
-  const core = getKeysGuarded<any>(unwrappedObj, config.contentName, config.attributeName)
-  const location = extractLocation(core[config.attributeName])
+  const core = getKeysGuarded(unwrappedObj, config.contentName, config.attributeName)
+  const location = extractLocation(core[config.attributeName] as XmlBasedJson)
   const content = core[config.contentName]
   return {
     unwrappedObj,
     location,
-    content
+    content: content as string
   }
 }
 

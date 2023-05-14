@@ -8,13 +8,9 @@ import { getTokenType, getWithTokenType, retrieveMetaStructure } from "../meta"
 import { parseLog } from "../../parser"
 import { guard } from "../../../../../../../util/assert"
 import { ParserData } from "../../data"
-import { tryParseSymbol } from "../values/symbol"
-import { parseBasedOnType } from "../structure/elements"
-import { tryParseOneElementBasedOnType } from "../structure/single-element"
-import { Type } from "../../../../model/type"
-import { RSymbol } from "../../../../model/nodes/RSymbol"
-import { RForLoop } from "../../../../model/nodes/RForLoop"
-import { RNode } from "../../../../model/model"
+import { tryParseSymbol } from '../values'
+import { parseBasedOnType, tryParseOneElementBasedOnType } from '../structure'
+import { Type, RSymbol, RForLoop, RNode } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 export function tryParseForLoopStructure(

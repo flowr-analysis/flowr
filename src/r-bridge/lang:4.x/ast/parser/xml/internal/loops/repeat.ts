@@ -2,9 +2,9 @@ import { NamedXmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
-import { tryParseOneElementBasedOnType } from '../structure/single-element'
-import { Type } from '../../../../model/type'
-import { RRepeatLoop } from '../../../../model/nodes/RRepeatLoop'
+import { tryParseOneElementBasedOnType } from '../structure'
+import { Type } from '../../../../model'
+import { RRepeatLoop } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
@@ -27,7 +27,7 @@ export function tryParseRepeatLoopStructure(data: ParserData, repeatToken: Named
   ({ repeatToken, body } = executeHook(data.hooks.loops.onRepeatLoop.before, data, { repeatToken, body }))
 
   const parseBody = tryParseOneElementBasedOnType(data, body)
-  guard(parseBody !== undefined, `no body for repeat-loop ${repeatToken} (${body})`)
+  guard(parseBody !== undefined, `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(body)})`)
 
   const {
     location,

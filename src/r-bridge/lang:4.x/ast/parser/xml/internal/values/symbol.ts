@@ -2,12 +2,9 @@ import { NamedXmlBasedJson } from '../../input-format'
 import { guard } from '../../../../../../../util/assert'
 import { retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
-import { isSymbol, Type } from '../../../../model/type'
-import { RSymbol } from '../../../../model/nodes/RSymbol'
+import { isSymbol, Type, RSymbol, RLogical, RNode } from '../../../../model'
 import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import { RLogical } from '../../../../model/nodes/RLogical'
-import { RNode } from '../../../../model/model'
 
 /**
  * Parse the given object as an R symbol (incorporating namespace information).

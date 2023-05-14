@@ -1,11 +1,9 @@
 import { NamedXmlBasedJson, XmlParseError } from "../../input-format"
 import { retrieveMetaStructure } from "../meta"
 import { parseLog } from "../../parser"
-import { tryParseOneElementBasedOnType } from "../structure/single-element"
+import { tryParseOneElementBasedOnType } from '../structure'
 import { ParserData } from "../../data"
-import { Type } from "../../../../model/type"
-
-import { RWhileLoop } from "../../../../model/nodes/RWhileLoop"
+import { Type, RWhileLoop } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 export function tryParseWhileLoopStructure(
@@ -41,8 +39,7 @@ export function tryParseWhileLoopStructure(
       condition,
       body,
     ])}`
-  );
-  ({ whileToken, leftParen, condition, rightParen, body } = executeHook(data.hooks.loops.onWhileLoop.before, data, { whileToken, leftParen, condition, rightParen, body }))
+  )
 
 
   const parsedCondition = tryParseOneElementBasedOnType(data, condition)

@@ -1,30 +1,27 @@
 import { assertUnreachable } from "../../../../../util/assert"
 import { DeepReadonly } from "ts-essentials"
 import { Type } from "../type"
-import { RExpressionList } from "../nodes/RExpressionList"
-import { RNumber } from "../nodes/RNumber"
-import { RSymbol } from "../nodes/RSymbol"
-import { RLogical } from "../nodes/RLogical"
-import { RString } from "../nodes/RString"
 import {
+  RExpressionList,
+  RNumber,
+  RSymbol,
+  RLogical,
+  RString,
   RArithmeticBinaryOp,
   RAssignmentOp,
   RBinaryOp,
   RComparisonBinaryOp,
   RLogicalBinaryOp,
-} from "../nodes/RBinaryOp"
-import {
   RArithmeticUnaryOp,
   RLogicalUnaryOp,
   RUnaryOp,
-} from "../nodes/RUnaryOp"
-import { RIfThenElse } from "../nodes/RIfThenElse"
-import { RForLoop } from "../nodes/RForLoop"
-import { RRepeatLoop } from "../nodes/RRepeatLoop"
-
-import { RWhileLoop } from "../nodes/RWhileLoop"
-import { RFunctionCall } from "../nodes/RFunctionCall"
-import { RComment, RNode } from "../model"
+  RIfThenElse,
+  RForLoop,
+  RRepeatLoop,
+  RWhileLoop,
+  RFunctionCall,
+  RComment } from '../nodes'
+import { RNode } from '../model'
 
 export interface FoldFunctions<Info, T> {
   foldNumber:  (num: RNumber<Info>) => T;

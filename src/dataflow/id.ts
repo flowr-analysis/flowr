@@ -1,16 +1,6 @@
 // assign each node with a unique id to simplify usage and further compares
-import { foldAst } from "../r-bridge/lang:4.x/ast/model/processing/fold"
+import { foldAst, RExpressionList, RBinaryOp, RUnaryOp, RIfThenElse, RForLoop, RRepeatLoop, RWhileLoop, RFunctionCall, RNode, RSingleNode } from "../r-bridge"
 import { BiMap } from "../util/bimap"
-import { RExpressionList } from "../r-bridge/lang:4.x/ast/model/nodes/RExpressionList"
-import { RBinaryOp } from "../r-bridge/lang:4.x/ast/model/nodes/RBinaryOp"
-import { RUnaryOp } from "../r-bridge/lang:4.x/ast/model/nodes/RUnaryOp"
-import { RIfThenElse } from "../r-bridge/lang:4.x/ast/model/nodes/RIfThenElse"
-import { RForLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RForLoop"
-import { RRepeatLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RRepeatLoop"
-
-import { RWhileLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RWhileLoop"
-import { RFunctionCall } from "../r-bridge/lang:4.x/ast/model/nodes/RFunctionCall"
-import { RNode, RSingleNode } from "../r-bridge/lang:4.x/ast/model/model"
 
 export type IdType = string;
 

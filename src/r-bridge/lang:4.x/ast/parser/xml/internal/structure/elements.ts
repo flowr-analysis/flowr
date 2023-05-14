@@ -4,16 +4,15 @@ import { parseLog } from "../../parser"
 import { getWithTokenType } from "../meta"
 import { ParserData } from "../../data"
 import { tryParseOneElementBasedOnType } from "./single-element"
-import { tryParseSymbol } from "../values/symbol"
-import { tryParseUnaryStructure } from "../operators/unary"
-import { tryParseRepeatLoopStructure } from "../loops/repeat"
-import { tryParseIfThenElseStructure } from "../control/if-then-else"
-import { tryParseForLoopStructure } from "../loops/for"
-import { tryParseWhileLoopStructure } from "../loops/while"
-import { tryParseBinaryStructure } from "../operators/binary"
-import { tryParseIfThenStructure } from "../control/if-then"
-import { Type } from "../../../../model/type"
-import { RNode } from "../../../../model/model"
+import { tryParseSymbol } from '../values'
+import { tryParseUnaryStructure, tryParseBinaryStructure } from '../operators'
+import {
+  tryParseRepeatLoopStructure,
+  tryParseForLoopStructure,
+  tryParseWhileLoopStructure
+} from '../loops'
+import { tryParseIfThenElseStructure, tryParseIfThenStructure } from '../control'
+import { Type, RNode } from '../../../../model'
 
 export function parseBasedOnType(
   data: ParserData,

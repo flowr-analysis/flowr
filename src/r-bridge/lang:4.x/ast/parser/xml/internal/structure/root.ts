@@ -2,8 +2,7 @@ import { getKeysGuarded, XmlBasedJson } from "../../input-format"
 import { assureTokenType } from "../meta"
 import { parseBasedOnType } from "./elements"
 import { ParserData } from "../../data"
-import { Type } from "../../../../model/type"
-import { RExpressionList } from "../../../../model/nodes/RExpressionList"
+import { Type, RExpressionList } from '../../../../model'
 
 export function parseRootObjToAst(
   data: ParserData,

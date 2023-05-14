@@ -1,16 +1,6 @@
 // adds id-based parent information for an ast
 import { type Id, type IdRNode, type IdType } from "./id"
-import { foldAst } from "../r-bridge/lang:4.x/ast/model/processing/fold"
-import { RExpressionList } from "../r-bridge/lang:4.x/ast/model/nodes/RExpressionList"
-import { RBinaryOp } from "../r-bridge/lang:4.x/ast/model/nodes/RBinaryOp"
-import { RUnaryOp } from "../r-bridge/lang:4.x/ast/model/nodes/RUnaryOp"
-import { RIfThenElse } from "../r-bridge/lang:4.x/ast/model/nodes/RIfThenElse"
-import { RForLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RForLoop"
-import { RRepeatLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RRepeatLoop"
-
-import { RWhileLoop } from "../r-bridge/lang:4.x/ast/model/nodes/RWhileLoop"
-import { RFunctionCall } from "../r-bridge/lang:4.x/ast/model/nodes/RFunctionCall"
-import { RSingleNode } from "../r-bridge/lang:4.x/ast/model/model"
+import { foldAst, RExpressionList, RBinaryOp, RUnaryOp, RIfThenElse, RForLoop, RRepeatLoop, RWhileLoop, RFunctionCall, RSingleNode } from '../r-bridge'
 
 export interface ParentInformation {
   parent: IdType | undefined;

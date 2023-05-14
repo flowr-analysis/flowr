@@ -7,7 +7,7 @@ import {
 import { exprList } from "../../../helper/ast-builder"
 import { rangeFrom } from "../../../../src/util/range"
 import { Type } from "../../../../src/r-bridge/lang:4.x/ast/model/type"
-import {  retrieveXmlFromRCode } from '../../../../src/r-bridge/retriever'
+import { retrieveXmlFromRCode } from '../../../../src/r-bridge/retriever'
 import chai, { assert } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 chai.use(chaiAsPromised)
@@ -81,28 +81,19 @@ describe(
         }
       })
       describe("0.4 boolean", () => {
-        assertAst(
-          "TRUE",
-          shell,
-          "TRUE",
-          exprList({
-            type:     Type.Logical,
-            location: rangeFrom(1, 1, 1, 4),
-            lexeme:   "TRUE",
-            content:  true,
-          })
-        )
-        assertAst(
-          "FALSE",
-          shell,
-          "FALSE",
-          exprList({
-            type:     Type.Logical,
-            location: rangeFrom(1, 1, 1, 5),
-            lexeme:   "FALSE",
-            content:  false,
-          })
-        )
+        for(const [lexeme, content] of [['TRUE', true], ['FALSE', false], ['T', true], ['F', false]] as const) {
+          assertAst(
+            `${lexeme} as ${JSON.stringify(content)}`,
+            shell,
+            lexeme,
+            exprList({
+              type:     Type.Logical,
+              location: rangeFrom(1, 1, 1, lexeme.length),
+              lexeme,
+              content
+            })
+          )
+        }
       })
       describe("0.5 comments", () => {
         assertAst(

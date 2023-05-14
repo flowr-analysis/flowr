@@ -42,6 +42,8 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
 
   const functionName = tryParseSymbol(data, getWithTokenType(data.config.tokenMap, symbolContent))
   guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')
+  guard(functionName.type === Type.Symbol, `expected function name to be a symbol, yet received ${JSON.stringify(functionName)}`)
+
   const splitParametersOnComma = splitArrayOn(mappedWithName.slice(1), x => x.name === Type.Comma)
   const parameters: RNode[] = splitParametersOnComma.map(x => {
     const gotParameters = parseBasedOnType(data, x.map(x => x.content))

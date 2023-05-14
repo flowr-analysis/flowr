@@ -91,6 +91,7 @@ function parseForLoopCondition(data: ParserData, forCondition: XmlBasedJson): { 
   guard(inPosition > 0 && inPosition < children.length - 1, `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`)
   const variable = tryParseSymbol(data, getWithTokenType(data.config.tokenMap, [children[inPosition - 1].content]))
   guard(variable !== undefined, `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
+  guard(variable.type === Type.Symbol, `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
   // TODO: just parse single element directly
   const vector = parseBasedOnType(data, [children[inPosition + 1].content])
   guard(vector.length === 1, `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`)

@@ -6,9 +6,13 @@ import { isSymbol, Type } from '../../../../model/type'
 import { RSymbol } from '../../../../model/nodes/RSymbol'
 import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
+import { RLogical } from '../../../../model/nodes/RLogical'
+import { RNode } from '../../../../model/model'
 
 /**
  * Parse the given object as an R symbol (incorporating namespace information).
+ * <p>
+ * The special symbols `T` and `F` are parsed as logic values.
  *
  * @param data - The data used by the parser (see {@link ParserData})
  * @param objs - the json object to extract the meta-information from
@@ -16,7 +20,7 @@ import { executeHook, executeUnknownHook } from '../../hooks'
  * @returns the parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol
  */
 // TODO: deal with namespace information
-export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RSymbol | undefined {
+export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
   guard(objs.length > 0, 'to parse symbols we need at least one object to work on!')
   parseLog.debug(`trying to parse symbol with ${JSON.stringify(objs)}`)
   objs = executeHook(data.hooks.values.onSymbol.before, data, objs)
@@ -38,13 +42,24 @@ export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RSy
     return executeUnknownHook(data.hooks.values.onSymbol.unknown, data, objs)
   }
 
-  const result: RSymbol = {
-    type:   Type.Symbol,
-    namespace,
-    location,
-    content,
-    // TODO: get correct lexeme from expr wrapper :C
-    lexeme: content,
+  let result: RSymbol | RLogical
+
+  if(namespace === undefined && (content === 'T' || content === 'F')) {
+    result = {
+      type:    Type.Logical,
+      content: content === 'T',
+      location,
+      lexeme:  content,
+    }
+  } else {
+    result = {
+      type:   Type.Symbol,
+      namespace,
+      location,
+      content,
+      // TODO: get correct lexeme from expr wrapper :C
+      lexeme: content,
+    }
   }
 
   return executeHook(data.hooks.values.onSymbol.after, data, result)

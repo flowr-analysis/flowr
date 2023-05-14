@@ -11,6 +11,9 @@
     "test": "nyc --no-clean --silent mocha --require ts-node/register --timeout 10000 \"test/**/*.spec.ts\" --reporter mocha-multi-reporters --reporter-options configFile=mocha-config.json",
     "test-full": "npm run test -- --test-installation"
   },
+  "mocha":{
+    "reporterEnabled": "spec"
+  },
   "keywords": [],
   "author": "Florian Sihler",
   "license": "ISC",

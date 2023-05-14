@@ -20,7 +20,10 @@ export type IdType = string;
  * Uniquely identified AST-Nodes
  * @param OtherInfo - the original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)
  */
-export type RNodeWithId<OtherInfo> = RNodeWithInfo<OtherInfo & { id: IdType }>
+export type RNodeWithId<OtherInfo> = RNodeWithInfo<OtherInfo & {
+  /** uniquely identifies an AST-Node */
+  id: IdType
+}>
 
 /**
  * A function that given an RNode returns a (guaranteed) unique id for it
@@ -64,7 +67,10 @@ export function deterministicLocationIdGenerator<OtherInfo>(start = 0): IdGenera
   return (data: RNode<OtherInfo>) => data.location !== undefined ? nodeToLocationId(data) : `${id++}`
 }
 
-export type RNodeWithParent<OtherInfo> = RNodeWithId<OtherInfo & { parent: IdType | undefined }>
+export type RNodeWithParent<OtherInfo = NoInfo> = RNodeWithId<OtherInfo & {
+  /** Links to the parent node, using an id so that the AST stays serializable */
+  parent: IdType | undefined
+}>
 
 
 type DecoratedAstMap<OtherInfo> = BiMap<IdType, RNodeWithParent<OtherInfo>>
@@ -198,11 +204,11 @@ function createFoldForWhileLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForIfThenElse<OtherInfo>(info: FoldInfo<OtherInfo>) {
-  return (data: RNode<OtherInfo>, cond: RNodeWithParent<OtherInfo>, then: RNodeWithParent<OtherInfo>, otherwise?: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+  return (data: RNode<OtherInfo>, condition: RNodeWithParent<OtherInfo>, then: RNodeWithParent<OtherInfo>, otherwise?: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
     const id = info.getId(data)
-    const decorated = { ...data, info: { ...(data.info as OtherInfo), id, parent: undefined },  cond, then, otherwise } as RNodeWithParent<OtherInfo>
+    const decorated = { ...data, info: { ...(data.info as OtherInfo), id, parent: undefined },  condition, then, otherwise } as RNodeWithParent<OtherInfo>
     info.idMap.set(id, decorated)
-    cond.info.parent = id
+    condition.info.parent = id
     then.info.parent = id
     if(otherwise) {
       otherwise.info.parent = id
@@ -212,22 +218,22 @@ function createFoldForIfThenElse<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
-  return (data: RNode<OtherInfo>, expressions: RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
+  return (data: RNode<OtherInfo>, children: RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
     const id = info.getId(data)
-    const decorated = { ...data, info: { ...(data.info as OtherInfo), id, parent: undefined },  expressions } as RNodeWithParent<OtherInfo>
+    const decorated = { ...data, info: { ...(data.info as OtherInfo), id, parent: undefined }, children } as RNodeWithParent<OtherInfo>
     info.idMap.set(id, decorated)
-    expressions.forEach(expr => expr.info.parent = id)
+    children.forEach(expr => expr.info.parent = id)
     return decorated
   }
 }
 
 function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
-  return (data: RNode<OtherInfo>, name: RNodeWithParent<OtherInfo>, args: RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
+  return (data: RNode<OtherInfo>, functionName: RNodeWithParent<OtherInfo>, parameters: RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
     const id = info.getId(data)
-    const decorated = { ...data, info: { ...(data.info as OtherInfo), id, parent: undefined },  name, args } as RNodeWithParent<OtherInfo>
+    const decorated = { ...data, info: { ...(data.info as OtherInfo), id, parent: undefined },  functionName, parameters } as RNodeWithParent<OtherInfo>
     info.idMap.set(id, decorated)
-    name.info.parent = id
-    args.forEach(arg => arg.info.parent = id)
+    functionName.info.parent = id
+    parameters.forEach(arg => arg.info.parent = id)
     return decorated
   }
 }

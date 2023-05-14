@@ -5,7 +5,7 @@ import {
   getStoredTokenMap,
   retrieveAstFromRCode,
   RExpressionList,
-  RNode,
+  RNode, RNodeWithParent,
   RShell,
   XmlParserHooks
 } from '../../src/r-bridge'
@@ -91,7 +91,7 @@ export const assertAst = (name: string, shell: RShell, input: string, expected: 
 
 // TODO: improve comments and structure
 /** call within describeSession */
-export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: RNode) => RNode<Decorated>, expected: RExpressionList<Decorated>): void {
+export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: RNode) => RNode<Decorated>, expected: RNodeWithParent<Decorated>): void {
   it(name, async function() {
     const baseAst = await retrieveAst(shell, input)
     const ast = decorator(baseAst)

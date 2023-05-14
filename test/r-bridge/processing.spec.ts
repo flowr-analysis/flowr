@@ -1,16 +1,12 @@
 import { assertDecoratedAst, withShell } from "../helper/shell"
-import {
-  deterministicCountingIdGenerator,
-  type Id,
-} from '../../src/dataflow'
 import { numVal } from "../helper/ast-builder"
 import { rangeFrom } from "../../src/util/range"
-import { RNode, Type, RExpressionList, decorateAst } from '../../src/r-bridge'
+import { Type, decorateAst, RNodeWithParent, deterministicCountingIdGenerator } from '../../src/r-bridge'
 
 describe("Assign unique Ids and Parents",
   withShell((shell) => {
     describe("Testing deterministic counting Id assignment", () => {
-      const assertId = (name: string, input: string, expected: RExpressionList<Id>): void => {
+      const assertDecorated = (name: string, input: string, expected: RNodeWithParent): void => {
         assertDecoratedAst(name, shell, input,
           (ast) => decorateAst(ast, deterministicCountingIdGenerator()).decoratedAst,
           expected
@@ -18,15 +14,16 @@ describe("Assign unique Ids and Parents",
       }
       // decided to test with ast parsing, as we are dependent on these changes in reality
       describe("1. Single nodes (leafs)", () => {
-        const exprList = (...children: RNode<Id>[]): RExpressionList<Id> => ({
+        const exprList = (...children: RNodeWithParent[]): RNodeWithParent => ({
           type:   Type.ExpressionList,
           lexeme: undefined,
           info:   {
-            id: "1"
+            parent: undefined,
+            id:     "1"
           },
           children,
         })
-        assertId(
+        assertDecorated(
           "1.1 String",
           '"hello"',
           exprList({
@@ -38,11 +35,12 @@ describe("Assign unique Ids and Parents",
               quotes: '"',
             },
             info: {
-              id: "0"
+              parent: "1",
+              id:     "0"
             },
           })
         )
-        assertId(
+        assertDecorated(
           "1.2 Number",
           "42",
           exprList({
@@ -51,11 +49,12 @@ describe("Assign unique Ids and Parents",
             lexeme:   "42",
             content:  numVal(42),
             info:     {
-              id: "0"
+              parent: "1",
+              id:     "0"
             },
           })
         )
-        assertId(
+        assertDecorated(
           "1.3 Logical",
           "FALSE",
           exprList({
@@ -64,11 +63,12 @@ describe("Assign unique Ids and Parents",
             lexeme:   "FALSE",
             content:  false,
             info:     {
-              id: "0"
+              parent: "1",
+              id:     "0"
             },
           })
         )
-        assertId(
+        assertDecorated(
           "1.4 Symbol",
           "k",
           exprList({
@@ -78,7 +78,8 @@ describe("Assign unique Ids and Parents",
             lexeme:    "k",
             content:   "k",
             info:      {
-              id: "0"
+              parent: "1",
+              id:     "0"
             },
           })
         )

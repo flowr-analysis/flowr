@@ -6,7 +6,7 @@ import { Type } from '../type'
  * repeat <body>
  * ```
  */
-export type RRepeatLoop<Info = NoInfo> = {
+export interface RRepeatLoop<Info = NoInfo> extends Base<Info>, Location {
   readonly type: Type.Repeat
   body:          RNode<Info>
-} & Base<Info> & Location
+}

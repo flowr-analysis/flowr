@@ -1,6 +1,19 @@
 // adds id-based parent information for an ast
 import { type Id, type IdRNode, type IdType } from "./id"
-import { foldAst, RExpressionList, RBinaryOp, RUnaryOp, RIfThenElse, RForLoop, RRepeatLoop, RWhileLoop, RFunctionCall, RSingleNode } from '../r-bridge'
+import {
+  foldAst,
+  RExpressionList,
+  RBinaryOp,
+  RUnaryOp,
+  RIfThenElse,
+  RForLoop,
+  RRepeatLoop,
+  RWhileLoop,
+  RFunctionCall,
+  RSingleNode,
+  Type
+} from '../r-bridge'
+import { guard } from '../util/assert'
 
 export interface ParentInformation {
   parent: IdType | undefined;
@@ -13,7 +26,10 @@ export function decorateWithParentInformation<OtherInfo>(ast: IdRNode<OtherInfo>
   // TODO: abstract away from all those cases with "children" if not needed
   const foldLeaf = (leaf: RSingleNode<OtherInfo & Id>): RNodeWithParent<OtherInfo> => ({
     ...leaf,
-    parent: undefined
+    info: {
+      ...(leaf.info as OtherInfo & Id),
+      parent: undefined
+    }
   })
   const binaryOp = (op: RBinaryOp<OtherInfo & Id>, lhs: RNodeWithParent<OtherInfo>, rhs: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
     lhs.parent = op.id
@@ -22,7 +38,10 @@ export function decorateWithParentInformation<OtherInfo>(ast: IdRNode<OtherInfo>
       ...op,
       lhs,
       rhs,
-      parent: undefined
+      info: {
+        ...(op.info as OtherInfo & Id),
+        parent: undefined
+      }
     }
   }
   const unaryOp = (op: RUnaryOp<OtherInfo & Id>, operand: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
@@ -30,7 +49,10 @@ export function decorateWithParentInformation<OtherInfo>(ast: IdRNode<OtherInfo>
     return {
       ...op,
       operand,
-      parent: undefined
+      info: {
+        ...(op.info as OtherInfo & Id),
+        parent: undefined
+      }
     }
   }
   const foldIfThenElse = (ifThen: RIfThenElse<OtherInfo & Id>, condition: RNodeWithParent<OtherInfo>, then: RNodeWithParent<OtherInfo>, otherwise?: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
@@ -45,7 +67,10 @@ export function decorateWithParentInformation<OtherInfo>(ast: IdRNode<OtherInfo>
       condition,
       then,
       otherwise,
-      parent: undefined
+      info: {
+        ...(ifThen.info as OtherInfo & Id),
+        parent: undefined
+      }
     }
   }
 
@@ -56,11 +81,15 @@ export function decorateWithParentInformation<OtherInfo>(ast: IdRNode<OtherInfo>
     return {
       ...exprList,
       children,
-      parent: undefined
+      info: {
+        ...(exprList.info as OtherInfo & Id),
+        parent: undefined
+      }
     }
   }
 
   const foldFunctionCall = (functionCall: RFunctionCall<OtherInfo & Id>, functionName: RNodeWithParent<OtherInfo>, parameters: RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
+    guard(functionName.type === Type.Symbol, 'functionName must be a symbol')
     functionName.parent = functionCall.id
     parameters.forEach(c => {
       c.parent = functionCall.id
@@ -69,11 +98,15 @@ export function decorateWithParentInformation<OtherInfo>(ast: IdRNode<OtherInfo>
       ...functionCall,
       functionName,
       parameters: parameters,
-      parent:     undefined
+      info:       {
+        ...(functionCall.info as OtherInfo & Id),
+        parent: undefined
+      }
     }
   }
 
   const foldFor = (loop: RForLoop<OtherInfo & Id>, variable: RNodeWithParent<OtherInfo>, vector: RNodeWithParent<OtherInfo>, body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+    guard(variable.type === Type.Symbol, 'variable must be a symbol')
     variable.parent = loop.id
     vector.parent = loop.id
     body.parent = loop.id
@@ -82,7 +115,10 @@ export function decorateWithParentInformation<OtherInfo>(ast: IdRNode<OtherInfo>
       variable,
       vector,
       body,
-      parent: undefined
+      info: {
+        ...(loop.info as OtherInfo & Id),
+        parent: undefined
+      }
     }
   }
 
@@ -91,7 +127,10 @@ export function decorateWithParentInformation<OtherInfo>(ast: IdRNode<OtherInfo>
     return {
       ...loop,
       body,
-      parent: undefined
+      info: {
+        ...(loop.info as OtherInfo & Id),
+        parent: undefined
+      }
     }
   }
 
@@ -102,7 +141,10 @@ export function decorateWithParentInformation<OtherInfo>(ast: IdRNode<OtherInfo>
       ...loop,
       body,
       condition,
-      parent: undefined
+      info: {
+        ...(loop.info as OtherInfo & Id),
+        parent: undefined
+      }
     }
   }
 

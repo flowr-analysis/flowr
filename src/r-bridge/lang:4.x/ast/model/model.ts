@@ -21,13 +21,20 @@ export interface NoInfo {
 }
 
 /**
+ * Provides the common base of all {@link RNode | RNodes}.
+ * <p>
+ * TODO: allow to enforce information to be present
+ *
  * @typeParam Info - can be used to store additional information about the node
+ * @typeParam LexemeType - the type of the lexeme, probably always a string or `string | undefined`
  */
-export type Base<Info = NoInfo, LexemeType = string> = {
+export interface Base<Info, LexemeType = string> extends MergeableRecord{
   type:   Type
   /** the original string retrieved from R, can be used for further identification */
   lexeme: LexemeType
-} & MergeableRecord & Info
+  /** allows to attach additional information to the node */
+  info?:  Info
+}
 
 export interface WithChildren<Info, Children extends Base<Info, string | undefined>> {
   children: Children[]
@@ -45,7 +52,6 @@ export interface Namespace {
   /* null for unknown atm */
   namespace: NamespaceIdentifier | undefined
 }
-
 
 
 // TODO: special constants

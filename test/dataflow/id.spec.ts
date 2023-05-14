@@ -32,7 +32,9 @@ describe(
         const exprList = (...children: RNode<Id>[]): RExpressionList<Id> => ({
           type:   Type.ExpressionList,
           lexeme: undefined,
-          id:     "1",
+          info:   {
+            id: "1"
+          },
           children,
         })
         assertId(
@@ -46,7 +48,9 @@ describe(
               str:    "hello",
               quotes: '"',
             },
-            id: "0",
+            info: {
+              id: "0"
+            },
           })
         )
         assertId(
@@ -57,7 +61,9 @@ describe(
             location: rangeFrom(1, 1, 1, 2),
             lexeme:   "42",
             content:  numVal(42),
-            id:       "0",
+            info:     {
+              id: "0"
+            },
           })
         )
         assertId(
@@ -68,7 +74,9 @@ describe(
             location: rangeFrom(1, 1, 1, 5),
             lexeme:   "FALSE",
             content:  false,
-            id:       "0",
+            info:     {
+              id: "0"
+            },
           })
         )
         assertId(
@@ -80,7 +88,9 @@ describe(
             namespace: undefined,
             lexeme:    "k",
             content:   "k",
-            id:        "0",
+            info:      {
+              id: "0"
+            },
           })
         )
       })

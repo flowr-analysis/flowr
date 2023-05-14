@@ -1,6 +1,20 @@
 // assign each node with a unique id to simplify usage and further compares
-import { foldAst, RExpressionList, RBinaryOp, RUnaryOp, RIfThenElse, RForLoop, RRepeatLoop, RWhileLoop, RFunctionCall, RNode, RSingleNode } from "../r-bridge"
+import {
+  foldAst,
+  RExpressionList,
+  RBinaryOp,
+  RUnaryOp,
+  RIfThenElse,
+  RForLoop,
+  RRepeatLoop,
+  RWhileLoop,
+  RFunctionCall,
+  RNode,
+  RSingleNode,
+  Type
+} from '../r-bridge'
 import { BiMap } from "../util/bimap"
+import { guard } from '../util/assert'
 
 export type IdType = string;
 
@@ -8,8 +22,8 @@ export interface Id {
   id: IdType
 }
 
-/** uniquely identifies AST-Nodes */
-export type IdRNode<OtherInfo> = RNode<OtherInfo & Id>
+/** uniquely identifies AST-Nodes now we have an information! */
+export type IdRNode<OtherInfo> = RNode<OtherInfo & Id> & { info: OtherInfo & Id }
 
 export type IdGenerator<OtherInfo> = (data: RNode<OtherInfo>) => IdType
 
@@ -42,95 +56,124 @@ export function decorateWithIds<OtherInfo>(ast: RNode<Exclude<OtherInfo, Id>>, g
   // TODO: -> add map
 
   const foldLeaf = (leaf: RSingleNode<OtherInfo>): IdRNode<OtherInfo> => {
-    const newLeaf = {
+    const newLeaf: IdRNode<OtherInfo> = {
       ...leaf,
-      id: getId(leaf)
+      info: {
+        ...(leaf.info as OtherInfo),
+        id: getId(leaf)
+      }
     }
-    idMap.set(newLeaf.id, newLeaf)
+    idMap.set(newLeaf.info.id, newLeaf)
     return newLeaf
   }
   const binaryOp = (op: RBinaryOp<OtherInfo>, lhs: IdRNode<OtherInfo>, rhs: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
-    const newOp = {
+    const newOp: IdRNode<OtherInfo> = {
       ...op,
       lhs,
       rhs,
-      id: getId(op)
+      info: {
+        ...(op.info as OtherInfo),
+        id: getId(op)
+      }
     }
-    idMap.set(newOp.id, newOp)
+    idMap.set(newOp.info.id, newOp)
     return newOp
   }
   const unaryOp = (op: RUnaryOp<OtherInfo>, operand: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
-    const newOp = {
+    const newOp: IdRNode<OtherInfo> = {
       ...op,
       operand,
-      id: getId(op)
+      info: {
+        ...(op.info as OtherInfo),
+        id: getId(op)
+      }
     }
-    idMap.set(newOp.id, newOp)
+    idMap.set(newOp.info.id, newOp)
     return newOp
   }
   const foldIfThenElse = (ifThen: RIfThenElse<OtherInfo>, condition: IdRNode<OtherInfo>, then: IdRNode<OtherInfo>, otherwise?: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
-    const newIfThen = {
+    const newIfThen: IdRNode<OtherInfo> = {
       ...ifThen,
       condition,
       then,
       otherwise,
-      id: getId(ifThen)
+      info: {
+        ...(ifThen.info as OtherInfo),
+        id: getId(ifThen)
+      }
     }
-    idMap.set(newIfThen.id, newIfThen)
+    idMap.set(newIfThen.info.id, newIfThen)
     return newIfThen
   }
   const foldExprList = (exprList: RExpressionList<OtherInfo>, children: IdRNode<OtherInfo>[]): IdRNode<OtherInfo> => {
-    const newExprList = {
+    const newExprList: IdRNode<OtherInfo> = {
       ...exprList,
       children,
-      id: getId(exprList)
+      info: {
+        ...(exprList.info as OtherInfo),
+        id: getId(exprList)
+      }
     }
-    idMap.set(newExprList.id, newExprList)
+    idMap.set(newExprList.info.id, newExprList)
     return newExprList
   }
 
   const foldFunctionCall = (functionCall: RFunctionCall<OtherInfo>, functionName: IdRNode<OtherInfo>, parameters: IdRNode<OtherInfo>[]): IdRNode<OtherInfo> => {
-    const newFunctionCall = {
+    guard(functionName.type === Type.Symbol, 'functionName must be a symbol')
+    const newFunctionCall: IdRNode<OtherInfo> = {
       ...functionCall,
       functionName,
       parameters,
-      id: getId(functionCall)
+      info: {
+        ...(functionCall.info as OtherInfo),
+        id: getId(functionCall)
+      }
     }
-    idMap.set(newFunctionCall.id, newFunctionCall)
+    idMap.set(newFunctionCall.info.id, newFunctionCall)
     return newFunctionCall
   }
 
   const foldFor = (forLoop: RForLoop<OtherInfo>, variable: IdRNode<OtherInfo>, vector: IdRNode<OtherInfo>, body: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
-    const newForLoop = {
+    guard(variable.type === Type.Symbol, 'variable must be a symbol')
+    const newForLoop: IdRNode<OtherInfo> = {
       ...forLoop,
       variable,
       vector,
       body,
-      id: getId(forLoop)
+      info: {
+        ...(forLoop.info as OtherInfo),
+        id: getId(forLoop)
+      }
     }
-    idMap.set(newForLoop.id, newForLoop)
+    idMap.set(newForLoop.info.id, newForLoop)
     return newForLoop
   }
 
   const foldRepeat = (repeatLoop: RRepeatLoop<OtherInfo>, body: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
-    const newRepeatLoop = {
+    const newRepeatLoop: IdRNode<OtherInfo> = {
       ...repeatLoop,
       body,
-      id: getId(repeatLoop)
+      info: {
+        ...(repeatLoop.info as OtherInfo),
+        id: getId(repeatLoop)
+      }
     }
-    idMap.set(newRepeatLoop.id, newRepeatLoop)
+    idMap.set(newRepeatLoop.info.id, newRepeatLoop)
     return newRepeatLoop
   }
 
 
   const foldWhile = (whileLoop: RWhileLoop<OtherInfo>, condition: IdRNode<OtherInfo>, body: IdRNode<OtherInfo>): IdRNode<OtherInfo> => {
-    const newRepeatLoop = {
+    const newRepeatLoop: IdRNode<OtherInfo> = {
       ...whileLoop,
       body,
       condition,
-      id: getId(whileLoop)
+      info: {
+        ...(whileLoop.info as OtherInfo),
+        id: getId(whileLoop)
+      }
     }
-    idMap.set(newRepeatLoop.id, newRepeatLoop)
+    idMap.set(newRepeatLoop.info.id, newRepeatLoop)
     return newRepeatLoop
   }
 

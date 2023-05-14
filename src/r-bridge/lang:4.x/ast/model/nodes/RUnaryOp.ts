@@ -2,18 +2,17 @@ import { Base, Location, NoInfo, RNode } from "../model"
 import { Type } from "../type"
 import { UnaryOperatorFlavor } from "../operators"
 
-export type RUnaryOp<Info = NoInfo> = {
+export interface RUnaryOp<Info = NoInfo> extends Base<Info>, Location {
   readonly type:   Type.UnaryOp;
   readonly flavor: UnaryOperatorFlavor;
   op:              string;
   operand:         RNode<Info>;
-} & Base<Info> &
-  Location;
+}
 
-export type RLogicalUnaryOp<Info = NoInfo> = {
+export interface RLogicalUnaryOp<Info = NoInfo> extends RUnaryOp<Info> {
   flavor: 'logical'
-} & RUnaryOp<Info>
+}
 
-export type RArithmeticUnaryOp<Info = NoInfo> = {
+export interface RArithmeticUnaryOp<Info = NoInfo> extends RUnaryOp<Info> {
   flavor: 'arithmetic'
-} & RUnaryOp<Info>
+}

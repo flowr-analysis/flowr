@@ -3,27 +3,26 @@ import { Base, Location, NoInfo, RNode } from "../model"
 import { Type } from "../type"
 import { BinaryOperatorFlavor } from "../operators"
 
-export type RBinaryOp<Info = NoInfo> = {
+export interface RBinaryOp<Info = NoInfo> extends Base<Info>, Location {
   readonly type:   Type.BinaryOp;
   readonly flavor: BinaryOperatorFlavor;
   op:              string;
   lhs:             RNode<Info>;
   rhs:             RNode<Info>;
-} & Base<Info> &
-  Location;
+}
 
-export type RLogicalBinaryOp<Info = NoInfo> = {
+export interface RLogicalBinaryOp<Info = NoInfo> extends RBinaryOp<Info> {
   flavor: 'logical'
-} & RBinaryOp<Info>
+}
 
-export type RArithmeticBinaryOp<Info = NoInfo> = {
+export interface RArithmeticBinaryOp<Info = NoInfo> extends RBinaryOp<Info> {
   flavor: 'arithmetic'
-} & RBinaryOp<Info>
+}
 
-export type RComparisonBinaryOp<Info = NoInfo> = {
+export interface RComparisonBinaryOp<Info = NoInfo> extends RBinaryOp<Info> {
   flavor: 'comparison'
-} & RBinaryOp<Info>
+}
 
-export type RAssignmentOp<Info = NoInfo> = {
+export interface RAssignmentOp<Info = NoInfo> extends RBinaryOp<Info> {
   flavor: 'assignment'
-} & RBinaryOp<Info>
+}

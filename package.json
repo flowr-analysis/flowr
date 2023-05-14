@@ -49,6 +49,7 @@
           "SwitchCase": 1
         }
       ],
+      "@typescript-eslint/non-nullable-type-assertion-style": "off",
       "@typescript-eslint/key-spacing": [
         "error",
         {

@@ -7,7 +7,7 @@ import { RSymbol } from './RSymbol'
  * for(<variable> in <vector>) <body>
  * ```
  */
-export type RForLoop<Info = NoInfo> = {
+export interface RForLoop<Info = NoInfo> extends Base<Info>, Location {
   readonly type: Type.For
   /** variable used in for-loop: <p> `for(<variable> in ...) ...`*/
   variable:      RSymbol<Info>
@@ -15,4 +15,4 @@ export type RForLoop<Info = NoInfo> = {
   vector:        RNode<Info>
   /** body used in for-loop: <p> `for(... in ...) <body>`*/
   body:          RNode<Info>
-} & Base<Info> & Location
+}

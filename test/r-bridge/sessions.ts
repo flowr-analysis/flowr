@@ -4,7 +4,7 @@ import { randomString } from '../../src/util/random'
 import { testRequiresNetworkConnection } from '../helper/network'
 import { testWithShell, withShell } from '../helper/shell'
 import { isInstallTest } from '../main.spec'
-import { parseCSV } from '../../src/r-bridge/lang:4.x/values'
+import { parseCSV } from '../../src/r-bridge'
 import { log, LogLevel } from '../../src/util/log'
 
 /** here we use testWithShell to get a fresh shell within each call */
@@ -34,7 +34,7 @@ describe('RShell sessions', function() {
     shell.continueOnError() // we will produce an error!
     shell.sendCommand('a <- 1 + 1')
     shell.clearEnvironment()
-    void shell.sendCommandWithOutput('a', { from: 'stderr' }).then(lines => {
+    await shell.sendCommandWithOutput('a', { from: 'stderr' }).then(lines => {
       assert.equal(lines.length, 1)
       // just await an error
       assert.match(lines[0], /^.*Error.*a/)
@@ -45,7 +45,7 @@ describe('RShell sessions', function() {
     before(async() => {
       installed = await shell.allInstalledPackages()
     })
-    it('4.0 retrieve all installed packages', async() => {
+    it('4.0 retrieve all installed packages', () => {
       assert.isTrue(installed.includes('base'), `base should be installed, but got: "${JSON.stringify(installed)}"`)
     })
     it('4.1 is installed', async() => {

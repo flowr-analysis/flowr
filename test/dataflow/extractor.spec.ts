@@ -1,21 +1,12 @@
 // TODO: get def-usage for every line
 import { assertDataflow, retrieveAst, withShell } from "../helper/shell"
-import { produceDataFlowGraph } from "../../src/dataflow/extractor"
-import { decorateWithIds, IdType } from "../../src/dataflow/id"
-import { decorateWithParentInformation } from "../../src/dataflow/parents"
-import {
-  DataflowGraph,
-  formatRange,
-  GLOBAL_SCOPE,
-  graphToMermaidUrl,
-  LOCAL_SCOPE,
-} from "../../src/dataflow/graph"
+import { produceDataFlowGraph, decorateWithIds, IdType, decorateWithParentInformation,   DataflowGraph, formatRange, GLOBAL_SCOPE, graphToMermaidUrl, LOCAL_SCOPE } from '../../src/dataflow'
 import {
   RAssignmentOpPool,
   RNonAssignmentBinaryOpPool,
   RUnaryOpPool,
 } from "../helper/provider"
-import { naiveLineBasedSlicing } from "../../src/slicing/static/static-slicer"
+import { naiveLineBasedSlicing } from '../../src/slicing/static'
 
 describe("Extract Dataflow Information", () => {
   /**

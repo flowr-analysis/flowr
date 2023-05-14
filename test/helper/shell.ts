@@ -1,26 +1,21 @@
 import { it } from "mocha"
-import { RShell } from "../../src/r-bridge/shell"
 import { testRequiresNetworkConnection } from "./network"
+import { DeepPartial } from 'ts-essentials'
 import {
   getStoredTokenMap,
   retrieveAstFromRCode,
-} from "../../src/r-bridge/retriever"
-import { assert } from "chai"
+  RExpressionList,
+  RNode,
+  RShell,
+  XmlParserHooks
+} from '../../src/r-bridge'
+import { assert } from 'chai'
 import {
   DataflowGraph,
-  diffGraphsToMermaidUrl,
-  graphToMermaidUrl,
-} from "../../src/dataflow/graph"
-import {
   decorateWithIds,
-  deterministicCountingIdGenerator,
-} from "../../src/dataflow/id"
-import { decorateWithParentInformation } from "../../src/dataflow/parents"
-import { produceDataFlowGraph } from "../../src/dataflow/extractor"
-import { RExpressionList } from "../../src/r-bridge/lang:4.x/ast/model/nodes/RExpressionList"
-import { RNode } from "../../src/r-bridge/lang:4.x/ast/model/model"
-import { DeepPartial } from 'ts-essentials'
-import { XmlParserHooks } from '../../src/r-bridge/lang:4.x/ast/parser/xml/hooks'
+  decorateWithParentInformation,
+  deterministicCountingIdGenerator, diffGraphsToMermaidUrl, graphToMermaidUrl, produceDataFlowGraph
+} from '../../src/dataflow'
 
 let defaultTokenMap: Record<string, string>
 

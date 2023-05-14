@@ -1,4 +1,4 @@
-import { removeTokenMapQuotationMarks } from '../../src/r-bridge/retriever'
+import { removeTokenMapQuotationMarks } from '../../src/r-bridge'
 import { assert } from 'chai'
 import { randomString } from '../../src/util/random'
 

@@ -1,7 +1,7 @@
 import { assertAst, withShell } from "../../../helper/shell"
 import { exprList, numVal } from "../../../helper/ast-builder"
 import { rangeFrom } from "../../../../src/util/range"
-import { Type } from "../../../../src/r-bridge/lang:4.x/ast/model/type"
+import { Type } from '../../../../src/r-bridge'
 
 describe(
   "3. Parse expression lists",

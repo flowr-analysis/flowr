@@ -1,14 +1,14 @@
 // all examples are based on the R language def (Draft of 2023-03-15, 10.3.1)
-import { RNa, RNull, type RNumberValue, type RStringValue } from '../../src/r-bridge/lang:4.x/values'
 import {
+  NamespaceIdentifier,
+  RNa, RNull, type RNumberValue, type RStringValue,
   ArithmeticOperators,
   Assignments,
   ComparisonOperators,
   LogicalOperators,
   OperatorArity,
   OperatorDatabase
-} from '../../src/r-bridge/lang:4.x/ast/model/operators'
-import { NamespaceIdentifier } from '../../src/r-bridge/lang:4.x/ast/model/model'
+} from '../../src/r-bridge'
 
 // maps a string to the expected R number parse value
 export const RNumberPool: { val: RNumberValue, str: string }[] = [

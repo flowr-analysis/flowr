@@ -1,6 +1,6 @@
-import { getStoredTokenMap, retrieveAstFromRCode, RShell } from './r-bridge'
 import * as readline from 'readline'
 import { log } from "./util/log"
+import { getStoredTokenMap, retrieveAstFromRCode, RShell } from './r-bridge'
 
 const rl = readline.createInterface({
   input:    process.stdin,

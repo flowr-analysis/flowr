@@ -3,15 +3,10 @@ import {
   decorateWithIds,
   deterministicCountingIdGenerator,
   type Id,
-} from "../../src/dataflow/id"
+} from '../../src/dataflow'
 import { numVal } from "../helper/ast-builder"
 import { rangeFrom } from "../../src/util/range"
-import { Type } from "../../src/r-bridge/lang:4.x/ast/model/type"
-import {
-  RExpressionList as RExpressionList1,
-  RExpressionList,
-} from "../../src/r-bridge/lang:4.x/ast/model/nodes/RExpressionList"
-import { RNode } from "../../src/r-bridge/lang:4.x/ast/model/model"
+import { RNode, Type, RExpressionList } from '../../src/r-bridge'
 
 describe(
   "Assign unique Ids",
@@ -34,7 +29,7 @@ describe(
       }
       // decided to test with ast parsing, as we are dependent on these changes in reality
       describe("1. Single nodes (leafs)", () => {
-        const exprList = (...children: RNode<Id>[]): RExpressionList1<Id> => ({
+        const exprList = (...children: RNode<Id>[]): RExpressionList<Id> => ({
           type:   Type.ExpressionList,
           lexeme: undefined,
           id:     "1",

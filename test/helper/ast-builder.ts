@@ -1,7 +1,4 @@
-import { type RNumberValue } from "../../src/r-bridge/lang:4.x/values"
-import { Type } from "../../src/r-bridge/lang:4.x/ast/model/type"
-import { RExpressionList } from "../../src/r-bridge/lang:4.x/ast/model/nodes/RExpressionList"
-import { RNode } from "../../src/r-bridge/lang:4.x/ast/model/model"
+import { type RNumberValue, Type, RExpressionList, RNode } from '../../src/r-bridge'
 
 export function exprList(...children: RNode[]): RExpressionList {
   return { type: Type.ExpressionList, children, lexeme: undefined }

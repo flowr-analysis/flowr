@@ -5,11 +5,8 @@ import {
   RLogicalBinaryOpPool,
   RUnaryOpPool,
 } from "../../../helper/provider"
-import { type RShell } from "../../../../src/r-bridge/shell"
+import { type RShell, Type, ComparisonOperators } from '../../../../src/r-bridge'
 import { rangeFrom } from "../../../../src/util/range"
-import { Type } from "../../../../src/r-bridge/lang:4.x/ast/model/type"
-
-import { ComparisonOperators } from "../../../../src/r-bridge/lang:4.x/ast/model/operators"
 
 describe(
   "1. Parse simple operations",

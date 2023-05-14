@@ -6,8 +6,7 @@ import {
 } from "../../../helper/provider"
 import { exprList } from "../../../helper/ast-builder"
 import { rangeFrom } from "../../../../src/util/range"
-import { Type } from "../../../../src/r-bridge/lang:4.x/ast/model/type"
-import { retrieveXmlFromRCode } from '../../../../src/r-bridge/retriever'
+import { retrieveXmlFromRCode, Type } from '../../../../src/r-bridge'
 import chai, { assert } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 chai.use(chaiAsPromised)

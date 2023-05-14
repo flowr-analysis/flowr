@@ -9,8 +9,8 @@ export class DefaultMap<K, V = K> {
   private readonly generator: (k: K) => V
 
   /**
-   * @param generator the generator to produce a default value for a given key
-   * @param map       the initial map to start with
+   * @param generator - the generator to produce a default value for a given key
+   * @param map       - the initial map to start with
    */
   public constructor(generator: (k: K) => V, map = new Map<K, V>()) {
     this.generator = generator

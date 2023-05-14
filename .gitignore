@@ -1,7 +1,6 @@
 doc/
 *-flowr.log.*
 statistics-out*/
-stats-output/
 
 ### VisualStudioCode template
 .vscode/*

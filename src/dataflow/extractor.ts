@@ -528,7 +528,9 @@ export function produceDataFlowGraph<OtherInfo>(ast: RNode<OtherInfo & { id: IdT
     loop: {
       foldFor:    processForLoop,
       foldRepeat: processRepeatLoop,
-      foldWhile:  processWhileLoop
+      foldWhile:  processWhileLoop,
+      foldBreak:  processUninterestingLeaf,
+      foldNext:   processUninterestingLeaf
     },
     other: {
       foldComment: processUninterestingLeaf,

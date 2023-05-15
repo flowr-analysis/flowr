@@ -7,6 +7,7 @@ import { parseExpression } from '../expression'
 import { getWithTokenType } from '../meta'
 import { Type, RNode } from '../../../../model'
 import { parseComment } from '../other'
+import { parseBreak, parseNext } from '../loops'
 
 /**
  * parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)
@@ -36,6 +37,10 @@ export function tryParseOneElementBasedOnType(data: ParserData, elem: NamedXmlBa
       return parseNumber(data, elem.content)
     case Type.String:
       return parseString(data, elem.content)
+    case Type.Break:
+      return parseBreak(data, elem.content)
+    case Type.Next:
+      return parseNext(data, elem.content)
     case Type.Symbol:
     case Type.Null: {
       const symbol =  tryParseSymbol(data, getWithTokenType(data.config.tokenMap, [elem.content]))

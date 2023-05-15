@@ -15,7 +15,7 @@ import {
   RSymbol,
   RLogical,
   BinaryOperatorFlavor,
-  UnaryOperatorFlavor
+  UnaryOperatorFlavor, RBreak, RNext
 } from '../../model'
 import { RNa } from '../../../values'
 import { ParserData } from './data'
@@ -110,6 +110,15 @@ export interface XmlParserHooks {
       unknown(data: ParserData, input: { whileToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, body: NamedXmlBasedJson }): AutoIfOmit<RWhileLoop | undefined>
       before(data: ParserData, input: { whileToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, body: NamedXmlBasedJson }): AutoIfOmit<{ whileToken: NamedXmlBasedJson, leftParen: NamedXmlBasedJson, condition: NamedXmlBasedJson, rightParen: NamedXmlBasedJson, body: NamedXmlBasedJson }>
       after(data: ParserData, result: RWhileLoop): AutoIfOmit<RWhileLoop>
+    }
+    /** {@link parseBreak} */
+    onBreak: {
+      before (data: ParserData, input: XmlBasedJson): AutoIfOmit<XmlBasedJson>
+      after (data: ParserData, result: RBreak): AutoIfOmit<RBreak>
+    },
+    onNext: {
+      before (data: ParserData, input: XmlBasedJson): AutoIfOmit<XmlBasedJson>
+      after (data: ParserData, result: RNext): AutoIfOmit<RNext>
     }
   },
   functions: {
@@ -264,6 +273,14 @@ export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = 
       unknown: doNothing,
       before:  doNothing,
       after:   doNothing
+    },
+    onBreak: {
+      before: doNothing,
+      after:  doNothing
+    },
+    onNext: {
+      before: doNothing,
+      after:  doNothing
     }
   },
   operators: {

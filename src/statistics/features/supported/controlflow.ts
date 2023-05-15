@@ -20,7 +20,7 @@ export interface ControlflowInfo extends FeatureInfo {
   constantSwitchCase:       number
 }
 
-export const initialControlflowInfo = (): ControlflowInfo => ({
+const initialControlflowInfo = (): ControlflowInfo => ({
   ifThen:                   0,
   ifThenElse:               0,
   nestedIfThen:             0,
@@ -111,5 +111,6 @@ export const controlflow: Feature<ControlflowInfo> = {
     append(controlflow.name, 'variableSwitchCase', variableSwitchCases, filepath)
 
     return existing
-  }
+  },
+  initialValue: initialControlflowInfo
 }

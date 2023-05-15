@@ -1,7 +1,7 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
-import { append } from '../../output/statisticsFile'
+import { append } from '../../output'
 
 export type SinglePackageInfo = string
 
@@ -18,7 +18,7 @@ export interface UsedPackageInfo extends FeatureInfo {
   '<loadedByVariable>': number
 }
 
-export const initialUsedPackageInfos = (): UsedPackageInfo => ({
+const initialUsedPackageInfos = (): UsedPackageInfo => ({
   library:              0,
   require:              0,
   loadNamespace:        0,
@@ -126,7 +126,9 @@ export const usedPackages: Feature<UsedPackageInfo> = {
     append(this.name, 'withinApply', withinApplyNodes, filepath)
 
     return existing
-  }
+  },
+
+  initialValue: initialUsedPackageInfos
 }
 
 

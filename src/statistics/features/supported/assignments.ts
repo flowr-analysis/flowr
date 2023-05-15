@@ -1,6 +1,6 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append } from '../../output/statisticsFile'
+import { append } from '../../output'
 
 export interface AssignmentInfo extends FeatureInfo {
   assignmentOperator:               number
@@ -10,7 +10,7 @@ export interface AssignmentInfo extends FeatureInfo {
 }
 
 // TODO: integers, constants, etc.
-export const initialAssignmentInfo = (): AssignmentInfo => ({
+const initialAssignmentInfo = (): AssignmentInfo => ({
   assignmentOperator:               0,
   specialAssignmentOps:             0,
   nestedOperatorAssignment:         0,
@@ -82,5 +82,7 @@ export const assignments: Feature<AssignmentInfo> = {
     append(this.name, 'specialAssignmentOps', specialAssignmentOps, filepath)
 
     return existing
-  }
+  },
+
+  initialValue: initialAssignmentInfo
 }

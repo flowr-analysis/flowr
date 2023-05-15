@@ -4,11 +4,6 @@ import {
   controlflow,
   dataAccess,
   definedFunctions,
-  initialAssignmentInfo,
-  initialCommentInfo, initialControlflowInfo, initialDataAccessInfo,
-  initialFunctionDefinitionInfo, initialFunctionUsageInfo, initialLoopInfo,
-  initialUsedPackageInfos,
-  initialValueInfo,
   loops,
   usedFunctions,
   usedPackages,
@@ -37,10 +32,12 @@ export interface Feature<T extends FeatureInfo> {
   readonly description: string
   /** a function that retrieves the feature in the document appends it to the existing feature set (we could use a monoid :D), the filepath corresponds to the active file (if any) */
   process:              (existing: T, input: Document, filepath: string | undefined) => T
+  /** values to start the existing track from  */
+  initialValue() : T
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const ALL_FEATURES: Record<string, Feature<any>> = {
+export const ALL_FEATURES = {
   usedPackages:     usedPackages,
   comments:         comments,
   definedFunctions: definedFunctions,
@@ -53,28 +50,13 @@ export const ALL_FEATURES: Record<string, Feature<any>> = {
 } as const
 
 export type FeatureKey = keyof typeof ALL_FEATURES
-export const allFeatureNames: FeatureKey[] = Object.keys(ALL_FEATURES)
+export type FeatureValue<k extends FeatureKey> = ReturnType<typeof ALL_FEATURES[k]['process']>
+export const allFeatureNames: FeatureKey[] = Object.keys(ALL_FEATURES) as FeatureKey[]
 
 export type FeatureStatistics = {
   [K in FeatureKey]: FeatureInfo
 }
 
-/**
- * while we could use these to generate the corresponding types automatically, i wanted to have the types and comments in one place
- */
-export const InitialFeatureStatistics: () => FeatureStatistics = () => ({
-  usedPackages:     initialUsedPackageInfos(),
-  comments:         initialCommentInfo(),
-  definedFunctions: initialFunctionDefinitionInfo(),
-  values:           initialValueInfo(),
-  assignments:      initialAssignmentInfo(),
-  usedFunctions:    initialFunctionUsageInfo(),
-  loops:            initialLoopInfo(),
-  controlflow:      initialControlflowInfo(),
-  dataAccess:       initialDataAccessInfo()
-})
-
-/** just to shorten type inline hints */
 export interface Query { select(options?: EvalOptions): Node[] }
 
 

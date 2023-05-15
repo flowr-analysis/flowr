@@ -23,7 +23,7 @@ validateFeatures(options.features)
 initFileProvider(options['output-dir'])
 
 async function getStats(features: 'all' | ['all'] | FeatureKey[] = 'all') {
-  const processedFeatures: 'all' | Set<FeatureKey> = features === 'all' || features[0] === 'all' ? 'all' : new Set(features)
+  const processedFeatures = (features === 'all' || features[0] === 'all' ? 'all' : new Set(features)) as 'all' | Set<FeatureKey>
   console.log(`Processing features: ${JSON.stringify(processedFeatures)}`)
   let cur = 0
   const stats = await extract(shell,
@@ -31,6 +31,7 @@ async function getStats(features: 'all' | ['all'] | FeatureKey[] = 'all') {
     processedFeatures,
     allRFilesFrom(options.input, options.limit)
   )
+  console.warn(`skipped ${stats.meta.skipped.length} requests due to errors (run with logs to get more info)`)
 
   printFeatureStatistics(stats, processedFeatures)
   shell.close()

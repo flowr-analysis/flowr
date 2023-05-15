@@ -1,6 +1,6 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append } from '../../output/statisticsFile'
+import { append } from '../../output'
 
 export interface LoopInfo extends FeatureInfo {
   forLoops:        number
@@ -10,7 +10,7 @@ export interface LoopInfo extends FeatureInfo {
   nextStatements:  number
 }
 
-export const initialLoopInfo = (): LoopInfo => ({
+const initialLoopInfo = (): LoopInfo => ({
   forLoops:        0,
   whileLoops:      0,
   repeatLoops:     0,
@@ -55,5 +55,7 @@ export const loops: Feature<LoopInfo> = {
     existing.implicitLoops += implicitLoops.length
     append(this.name, 'implicit-loops', implicitLoops, filepath)
     return existing
-  }
+  },
+
+  initialValue: initialLoopInfo
 }

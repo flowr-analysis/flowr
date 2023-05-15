@@ -1,6 +1,6 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append, extractNodeContent } from '../../output/statisticsFile'
+import { append, extractNodeContent } from '../../output'
 
 export interface DataAccess extends FeatureInfo {
   singleBracket:               number
@@ -19,7 +19,7 @@ export interface DataAccess extends FeatureInfo {
 }
 // TODO: single bracket comma access
 
-export const initialDataAccessInfo = (): DataAccess => ({
+const initialDataAccessInfo = (): DataAccess => ({
   singleBracket:               0,
   singleBracketEmpty:          0,
   singleBracketConstant:       0,
@@ -98,5 +98,6 @@ export const dataAccess: Feature<DataAccess> = {
     existing.chainedOrNestedAccess += chainedOrNestedAccesses.length
 
     return existing
-  }
+  },
+  initialValue: initialDataAccessInfo
 }

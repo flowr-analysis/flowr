@@ -38,6 +38,8 @@ export const enum Type {
   FunctionCall = "SYMBOL_FUNCTION_CALL",
   SymbolPackage = "SYMBOL_PACKAGE",
   NamespaceGet = "NS_GET",
+  Break = "BREAK",
+  Next = "NEXT"
 }
 
 /**

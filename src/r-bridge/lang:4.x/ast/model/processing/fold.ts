@@ -20,7 +20,8 @@ import {
   RRepeatLoop,
   RWhileLoop,
   RFunctionCall,
-  RComment } from '../nodes'
+  RComment, RNext, RBreak
+} from '../nodes'
 import { RNode } from '../model'
 
 export interface FoldFunctions<Info, T> {
@@ -42,6 +43,8 @@ export interface FoldFunctions<Info, T> {
     foldFor:    (loop: RForLoop<Info>, variable: T, vector: T, body: T) => T;
     foldWhile:  (loop: RWhileLoop<Info>, condition: T, body: T) => T;
     foldRepeat: (loop: RRepeatLoop<Info>, body: T) => T;
+    foldNext:   (next: RNext<Info>) => T;
+    foldBreak:  (next: RBreak<Info>) => T;
   };
   other: {
     foldComment: (comment: RComment<Info>) => T;
@@ -88,6 +91,10 @@ export function foldAst<Info, T>(ast: RNode<Info>, folds: DeepReadonly<FoldFunct
       return folds.loop.foldRepeat(ast, foldAst(ast.body, folds))
     case Type.FunctionCall:
       return folds.foldFunctionCall(ast, foldAst(ast.functionName, folds), ast.parameters.map(param => foldAst(param, folds)))
+    case Type.Next:
+      return folds.loop.foldNext(ast)
+    case Type.Break:
+      return folds.loop.foldBreak(ast)
     // TODO: other loops
     case Type.If:
       return folds.foldIfThenElse(ast, foldAst(ast.condition, folds), foldAst(ast.then, folds), ast.otherwise === undefined ? undefined : foldAst(ast.otherwise, folds))

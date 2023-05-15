@@ -12,7 +12,7 @@ import {
   RUnaryOp,
   RIfThenElse,
   RRepeatLoop, RForLoop, RWhileLoop,
-  RComment, RFunctionCall
+  RComment, RFunctionCall, RBreak, RNext
 } from './nodes'
 
 /** simply used as an empty interface with no information about additional decorations */
@@ -61,7 +61,7 @@ export interface Namespace {
 // TODO: special constants
 export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
 
-export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info>
+export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info>
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>
 export type RCalls<Info>          = RFunctionCall<Info>

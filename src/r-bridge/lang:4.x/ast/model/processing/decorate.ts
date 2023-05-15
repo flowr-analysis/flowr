@@ -1,8 +1,10 @@
 /**
  * The decoration module is tasked with taking an R-ast given by a {@link RNode} and
  *
- * 1. assigning a unique id to each node (see {@link RNodeWithId})
+ * 1. assigning a unique id to each node (see {@link IdGenerator})
  * 2. transforming the AST into a doubly linked tree using the ids (so it stays serializable)
+ *
+ * The main entry point is {@link decorateAst}.
  *
  * @module
  */
@@ -121,6 +123,8 @@ export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: Id
       foldFor:    createFoldForForLoop(info),
       foldRepeat: createFoldForRepeatLoop(info),
       foldWhile:  createFoldForWhileLoop(info),
+      foldBreak:  foldLeaf,
+      foldNext:   foldLeaf
     },
     foldIfThenElse:   createFoldForIfThenElse(info),
     foldExprList:     createFoldForExprList(info),

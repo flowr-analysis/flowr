@@ -184,7 +184,7 @@ describe('4. Parse simple constructs', withShell(shell => {
   })
   // TODO: with and without braces
   describe('4.2 loops', () => {
-    describe('1.3 for', () => {
+    describe('4.2.1 for', () => {
       assertAst('for(i in 1:10) 2', shell, 'for(i in 1:42)2', exprList({
         type:     Type.For,
         location: rangeFrom(1, 1, 1, 3),
@@ -230,7 +230,7 @@ describe('4. Parse simple constructs', withShell(shell => {
       })
       )
     })
-    describe('1.4 repeat', () => {
+    describe('4.2.2 repeat', () => {
       assertAst('repeat 2', shell, 'repeat 2', exprList({
         type:     Type.Repeat,
         location: rangeFrom(1, 1, 1, 6),
@@ -272,7 +272,7 @@ describe('4. Parse simple constructs', withShell(shell => {
         }
       }))
     })
-    describe('1.5 while', () => {
+    describe('4.2.3 while', () => {
       assertAst('while (TRUE) 42', shell, 'while (TRUE) 42', exprList({
         type:      Type.While,
         location:  rangeFrom(1, 1, 1, 5),
@@ -326,6 +326,48 @@ describe('4. Parse simple constructs', withShell(shell => {
             content:   'y',
             info:      {}
           }]
+        }
+      }))
+    })
+    describe('4.2.4 break', () => {
+      assertAst('while (TRUE) break', shell, 'while (TRUE) break', exprList({
+        type:      Type.While,
+        location:  rangeFrom(1, 1, 1, 5),
+        lexeme:    'while',
+        info:      {},
+        condition: {
+          type:     Type.Logical,
+          location: rangeFrom(1, 8, 1, 11),
+          lexeme:   'TRUE',
+          content:  true,
+          info:     {}
+        },
+        body: {
+          type:     Type.Break,
+          location: rangeFrom(1, 14, 1, 18),
+          lexeme:   'break',
+          info:     {}
+        }
+      }))
+    })
+    describe('4.2.5 next', () => {
+      assertAst('while (TRUE) next', shell, 'while (TRUE) next', exprList({
+        type:      Type.While,
+        location:  rangeFrom(1, 1, 1, 5),
+        lexeme:    'while',
+        info:      {},
+        condition: {
+          type:     Type.Logical,
+          location: rangeFrom(1, 8, 1, 11),
+          lexeme:   'TRUE',
+          content:  true,
+          info:     {}
+        },
+        body: {
+          type:     Type.Break,
+          location: rangeFrom(1, 14, 1, 17),
+          lexeme:   'next',
+          info:     {}
         }
       }))
     })

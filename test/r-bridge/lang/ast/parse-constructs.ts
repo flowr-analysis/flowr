@@ -364,7 +364,7 @@ describe('4. Parse simple constructs', withShell(shell => {
           info:     {}
         },
         body: {
-          type:     Type.Break,
+          type:     Type.Next,
           location: rangeFrom(1, 14, 1, 17),
           lexeme:   'next',
           info:     {}

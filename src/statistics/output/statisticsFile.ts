@@ -1,4 +1,4 @@
-import { StatisticFileProvider } from './fileProvider'
+import { DummyAppendProvider, StatisticAppendProvider, StatisticFileProvider } from './fileProvider'
 
 
 /**
@@ -20,8 +20,12 @@ export function extractNodeContent(node: Node): string {
 }
 
 
-let fileProvider: StatisticFileProvider
+/** by default, we do not write to anything */
+let fileProvider: StatisticAppendProvider = new DummyAppendProvider()
 
+/**
+ * Make the statistics write to a given output directory.
+ */
 export function initFileProvider(outputDirectory: string) {
   console.log(`Initializing file provider for output directory ${outputDirectory}`)
   fileProvider = new StatisticFileProvider(outputDirectory)

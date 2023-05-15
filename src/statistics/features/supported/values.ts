@@ -1,8 +1,8 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { RNumHexFloatRegex } from '../../../r-bridge/lang:4.x/values'
+import { RNumHexFloatRegex } from '../../../r-bridge'
 import { assertUnreachable } from '../../../util/assert'
-import { append } from '../../output/statisticsFile'
+import { append } from '../../output'
 
 export interface ValueInfo extends FeatureInfo {
   allNumerics:      number,
@@ -15,7 +15,7 @@ export interface ValueInfo extends FeatureInfo {
   strings:          number
 }
 
-export const initialValueInfo = (): ValueInfo => ({
+const initialValueInfo = (): ValueInfo => ({
   allNumerics:      0,
   imaginaryNumbers: 0,
   integers:         0,
@@ -87,5 +87,6 @@ export const values: Feature<ValueInfo> = {
     append(this.name, 'logical', specialLogicalSymbols, filepath)
 
     return existing
-  }
+  },
+  initialValue: initialValueInfo
 }

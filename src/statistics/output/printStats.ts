@@ -27,7 +27,7 @@ export function statsString(data: MinMaxAvgMedian, suffix = ''): string {
 
 
 export function printFeatureStatistics(statistics: {features: FeatureStatistics, meta: MetaStatistics}, features: 'all' | Set<FeatureKey> = 'all'): void {
-  for(const feature of Object.keys(statistics.features)) {
+  for(const feature of Object.keys(statistics.features) as FeatureKey[]) {
     if(features !== 'all' && !features.has(feature)) {
       continue
     }

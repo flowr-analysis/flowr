@@ -1,8 +1,20 @@
 import path from 'path'
 import fs from 'fs'
 import { guard } from '../../util/assert'
+import { log } from '../../util/log'
 
 type FileDescriptor = number
+type AppendFnType = string | number | symbol
+
+export interface StatisticAppendProvider {
+  append(name: string, fn: AppendFnType, content: string): void
+}
+
+export class DummyAppendProvider implements StatisticAppendProvider {
+  append(_name: string, _fn: AppendFnType, _content: string): void {
+    log.trace(`DummyAppendProvider: ${_name} ${String(_fn)} ${_content}`)
+  }
+}
 
 /**
  * Provides cached open connections for all files to connect.
@@ -10,7 +22,7 @@ type FileDescriptor = number
  * <p>
  * While we could simply reopen these files, it is safer/more performant to keep the connection open.
  */
-export class StatisticFileProvider {
+export class StatisticFileProvider implements StatisticAppendProvider{
   public readonly statisticsDirectory: string
   private readonly connections = new Map<string, FileDescriptor>()
 
@@ -37,7 +49,7 @@ export class StatisticFileProvider {
   /**
    * Append the given content to the information for a feature of the given name and function.
    */
-  public append(name: string, fn: string | number | symbol, content: string): void {
+  public append(name: string, fn: AppendFnType, content: string): void {
     const descriptor = this.getHandle(name, String(fn))
     fs.appendFileSync(descriptor, content + '\n', 'utf8')
   }

@@ -3,7 +3,7 @@ import { decorateAst } from '../../src/r-bridge'
 import { serialize2quads } from '../../src/util/quads'
 import { assert } from 'chai'
 
-describe('Quad generation', withShell(shell => {
+describe('Quad Generation', withShell(shell => {
   const compareQuads = async(code: string, expected: string) => {
     const ast = await retrieveAst(shell, code)
     const decorated = decorateAst(ast).decoratedAst

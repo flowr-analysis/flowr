@@ -2,7 +2,7 @@ import { SinglePackageInfo } from './usedPackages'
 import { FunctionNameInfo } from './definedFunctions'
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append, extractNodeContent } from '../../output/statisticsFile'
+import { append, extractNodeContent } from '../../output'
 
 export interface UsedFunction {
   package:  SinglePackageInfo,
@@ -41,7 +41,7 @@ export interface FunctionUsageInfo extends FeatureInfo {
   // TODO: others from the list
 }
 
-export const initialFunctionUsageInfo = (): FunctionUsageInfo => ({
+const initialFunctionUsageInfo = (): FunctionUsageInfo => ({
   allCalls:                   0,
   mathFunctions:              0,
   programmingFunctions:       0,
@@ -143,5 +143,7 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
     collectFunctionByName(names, existing, 'optionFunctions', optionFunctions)
 
     return existing
-  }
+  },
+
+  initialValue: initialFunctionUsageInfo
 }

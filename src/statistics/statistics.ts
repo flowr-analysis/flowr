@@ -5,9 +5,10 @@ import {
   RParseRequestFromFile,
   RParseRequestFromText
 } from '../r-bridge'
-import { ALL_FEATURES, FeatureKey, FeatureStatistics, InitialFeatureStatistics } from './features'
+import { ALL_FEATURES, Feature, FeatureKey, FeatureStatistics } from './features'
 import { DOMParser } from 'xmldom'
 import fs from 'fs'
+import { log } from '../util/log'
 
 const parser = new DOMParser()
 
@@ -15,8 +16,9 @@ export async function extractSingle(result: FeatureStatistics, shell: RShell, fr
   const xml = await retrieveXmlFromRCode(from, shell)
   const doc = parser.parseFromString(xml, 'text/xml')
 
-  for (const [key, feature] of Object.entries(ALL_FEATURES)) {
-    if(features !== 'all' && !features.has(key )) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const [key, feature] of Object.entries(ALL_FEATURES) as [FeatureKey, Feature<any>][]) {
+    if(features !== 'all' && !features.has(key)) {
       continue
     }
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -80,7 +82,11 @@ export async function extract<T extends RParseRequestFromText | RParseRequestFro
                                                                                        features: 'all' | Set<FeatureKey>,
                                                                                        requests: AsyncGenerator<T>
 ): Promise<{ features: FeatureStatistics, meta: MetaStatistics }> {
-  let result = InitialFeatureStatistics()
+  let result = {} as FeatureStatistics
+  for(const key of Object.keys(ALL_FEATURES)) {
+    result[key as FeatureKey] = ALL_FEATURES[key as FeatureKey].initialValue()
+  }
+
   const meta = initialMetaStatistics()
 
   let first = true
@@ -96,12 +102,11 @@ export async function extract<T extends RParseRequestFromText | RParseRequestFro
       processMetaOnSuccessful(meta, request)
       first = false
     } catch (e) {
-      console.error('for request: ', request, e)
+      log.error('for request: ', request, e)
       meta.skipped.push(request.content)
     }
     meta.processingTimeMs.push(performance.now() - start)
   }
-  console.warn(`skipped ${meta.skipped.length} requests due to errors (run with logs to get more info)`)
   return { features: result, meta }
 }
 

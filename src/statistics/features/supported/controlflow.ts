@@ -16,11 +16,11 @@ export interface ControlflowInfo extends FeatureInfo {
   singleVariableIfThenElse: number
   /** switch(...) */
   switchCase:               number
-  variableSwitchCase:       number
+  singleVariableSwitchCase: number
   constantSwitchCase:       number
 }
 
-export const initialControlflowInfo = (): ControlflowInfo => ({
+const initialControlflowInfo = (): ControlflowInfo => ({
   ifThen:                   0,
   ifThenElse:               0,
   nestedIfThen:             0,
@@ -30,14 +30,14 @@ export const initialControlflowInfo = (): ControlflowInfo => ({
   singleVariableIfThen:     0,
   singleVariableIfThenElse: 0,
   switchCase:               0,
-  variableSwitchCase:       0,
+  singleVariableSwitchCase: 0,
   constantSwitchCase:       0
 })
 
 const ifThenQuery: Query = xpath.parse(`//IF[not(following-sibling::ELSE)]`)
 const ifThenElseQuery: Query = xpath.parse(`//IF[following-sibling::ELSE]`)
 
-const selectCondition: Query = xpath.parse(`..//expr[preceding-sibling::OP-LEFT-PAREN][1]`)
+const selectCondition: Query = xpath.parse(`../expr[preceding-sibling::OP-LEFT-PAREN][1]`)
 const constantCondition: Query = xpath.parse(`
   ./NUM_CONST
   |
@@ -107,9 +107,10 @@ export const controlflow: Feature<ControlflowInfo> = {
     const variableSwitchCases = switchCases.flatMap(switchCase =>
       singleVariableCondition.select({ node: switchCase })
     )
-    existing.variableSwitchCase += variableSwitchCases.length
+    existing.singleVariableSwitchCase += variableSwitchCases.length
     append(controlflow.name, 'variableSwitchCase', variableSwitchCases, filepath)
 
     return existing
-  }
+  },
+  initialValue: initialControlflowInfo
 }

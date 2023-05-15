@@ -1,4 +1,4 @@
-import { allFeatureNames } from './features'
+import { allFeatureNames, FeatureKey } from './features'
 import { OptionDefinition } from 'command-line-usage'
 import { RParseRequestFromFile } from '../r-bridge'
 import { log } from '../util/log'
@@ -67,14 +67,14 @@ export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGen
   return count
 }
 
-export function validateFeatures(features: string[]) {
+export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])): asserts features is ['all'] | FeatureKey[] {
   for (const feature of features) {
     if (feature === 'all') {
       if (features.length > 1) {
         console.error(`Feature "all" must be the only feature given, got ${features.join(', ')}`)
         process.exit(1)
       }
-    } else if (!allFeatureNames.includes(feature)) {
+    } else if (!allFeatureNames.includes(feature as FeatureKey)) {
       console.error(`Feature ${feature} is unknown, supported are ${allFeatureNames.join(', ')} or "all"`)
       process.exit(1)
     }

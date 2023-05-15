@@ -1,7 +1,7 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { guard, isNotNull, isNotUndefined } from '../../../util/assert'
-import { append } from '../../output/statisticsFile'
+import { append } from '../../output'
 
 export interface CommentInfo extends FeatureInfo {
   totalAmount:       number
@@ -19,7 +19,7 @@ export interface CommentInfo extends FeatureInfo {
   useDynLib:         number
 }
 
-export const initialCommentInfo = (): CommentInfo => ({
+const initialCommentInfo = (): CommentInfo => ({
   totalAmount:       0,
   roxygenComments:   0,
   import:            0,
@@ -135,5 +135,7 @@ export const comments: Feature<CommentInfo> = {
     processExports(existing, roxygenComments)
 
     return existing
-  }
+  },
+
+  initialValue: initialCommentInfo
 }

@@ -1,6 +1,6 @@
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append, extractNodeContent } from '../../output/statisticsFile'
+import { append, extractNodeContent } from '../../output'
 
 export type FunctionNameInfo = string
 
@@ -21,7 +21,7 @@ export interface FunctionDefinitionInfo extends FeatureInfo {
   recursive:               number
 }
 
-export const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({
+const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({
   total:                   0,
   lambdasOnly:             0,
   assignedFunctions:       0,
@@ -108,5 +108,6 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
     append(this.name, 'recursiveFunctions', recursiveFunctions, filepath)
 
     return existing
-  }
+  },
+  initialValue: initialFunctionDefinitionInfo
 }

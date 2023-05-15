@@ -6,6 +6,8 @@ import commandLineArgs from 'command-line-args'
 import { printFeatureStatistics, initFileProvider } from './output'
 import { allRFilesFrom, optionDefinitions, optionHelp, StatsCliOptions, validateFeatures } from './cli'
 import commandLineUsage from 'command-line-usage'
+import { clusterStatisticsOutput } from './post-process/clusterer'
+import { guard } from '../util/assert'
 
 const options = commandLineArgs(optionDefinitions) as StatsCliOptions
 
@@ -15,6 +17,14 @@ if(options.help) {
 }
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
 log.info('running with options', options)
+
+// TODO: automatic post processing after run?
+if(options['post-process']) {
+  console.log('-----post processing')
+  guard(options.input.length === 1, 'post processing only works with a single input file')
+  clusterStatisticsOutput(options.input[0])
+  process.exit(0)
+}
 
 const shell = new RShell()
 shell.tryToInjectHomeLibPath()

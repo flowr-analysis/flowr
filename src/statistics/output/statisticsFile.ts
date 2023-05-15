@@ -31,6 +31,15 @@ export function initFileProvider(outputDirectory: string) {
   fileProvider = new StatisticFileProvider(outputDirectory)
 }
 
+/**
+ * Format used to dump each entry of a feature during collection.
+ */
+export interface StatisticsOutputFormat {
+  /** the collected value (like the assignment operator lexeme, ...) */
+  value:   string
+  /** the context of the information retrieval (e.g. the name of the file that contained the R source code) */
+  context: string | undefined
+}
 
 /**
  * append the content of all nodes to the storage file for the given feature
@@ -52,7 +61,7 @@ export function append<T>(name: string, fn: keyof T, nodes: string[] | Node[], c
     contents = [...new Set(contents)]
   }
 
-  contents = contents.map(c => JSON.stringify({ value: c, context }))
+  contents = contents.map(c => JSON.stringify({ value: c, context } as StatisticsOutputFormat))
 
   fileProvider.append(name, fn, contents.join('\n'))
 }

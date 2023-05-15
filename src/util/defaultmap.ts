@@ -48,11 +48,20 @@ export class DefaultMap<K, V = K> {
     return this.internal.entries()
   }
 
+  /** returns only the keys really stored in the map */
+  public keys(): IterableIterator<K> {
+    return this.internal.keys()
+  }
+
   public values(): IterableIterator<V> {
     return this.internal.values()
   }
 
   public delete(k: K): boolean {
     return this.internal.delete(k)
+  }
+
+  public size(): number {
+    return this.internal.size
   }
 }

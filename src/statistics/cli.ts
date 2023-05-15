@@ -9,21 +9,23 @@ export const toolName = 'stats'
 
 const featureNameList = allFeatureNames.map(s => `"${s}"`).join(', ')
 export const optionDefinitions: OptionDefinition[] = [
-  { name: 'verbose',    alias: 'v', type: Boolean, description: 'Run with verbose logging' },
-  { name: 'help',       alias: 'h', type: Boolean, description: 'Print this usage guide.' },
-  { name: 'limit',      alias: 'l', type: Number,  description: 'Limit the number of files to process'},
-  { name: 'input',      alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
-  { name: 'output-dir', alias: 'o', type: String,  description: 'Folder to write the output to', defaultValue: `${process.cwd()}/statistics-out/${date2string(new Date())}`, typeLabel: '{underline folder}' },
-  { name: 'features',               type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: `{underline names}` },
+  { name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
+  { name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide.' },
+  { name: 'post-process',             type: Boolean, description: 'If set, will change behavior and expect a single .txt file produced by a previous run. Will print statistics.' },
+  { name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process'},
+  { name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
+  { name: 'output-dir',   alias: 'o', type: String,  description: 'Folder to write the output to', defaultValue: `${process.cwd()}/statistics-out/${date2string(new Date())}`, typeLabel: '{underline folder}' },
+  { name: 'features',                 type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: `{underline names}` },
 ]
 
 export interface StatsCliOptions {
-  verbose:      boolean
-  help:         boolean
-  limit:        number
-  input:        string[]
-  'output-dir': string
-  features:     string[]
+  verbose:        boolean
+  help:           boolean
+  'post-process': boolean
+  limit:          number
+  input:          string[]
+  'output-dir':   string
+  features:       string[]
 }
 
 export const optionHelp = [
@@ -36,6 +38,7 @@ export const optionHelp = [
     content: [
       `$ ${toolName} {bold -i} {italic example.R} {bold -i} {italic example2.R} {bold --output-dir} {italic "output-folder/"}`,
       `$ ${toolName} {italic "folder1/"} {bold --features} {italic all} {bold --output-dir} {italic "output-folder/"}`,
+      `$ ${toolName} {bold --post-process} {italic "output-folder/Assignments/assignmentOperator.txt"}`,
       `$ ${toolName} {bold --help}`
     ]
   },

@@ -61,6 +61,22 @@ describe('Controlflow', withShell(shell => {
       expected: {
         ifThen: 1
       }
+    },
+    {
+      name:     'switch with constant condition',
+      code:     'switch(1, x)',
+      expected: {
+        switchCase:         1,
+        constantSwitchCase: 1
+      }
+    },
+    {
+      name:     'switch with single variable condition',
+      code:     'switch(x, y, z)',
+      expected: {
+        switchCase:               1,
+        singleVariableSwitchCase: 1
+      }
     }
   ])
 }))

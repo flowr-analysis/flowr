@@ -16,7 +16,7 @@ export interface ControlflowInfo extends FeatureInfo {
   singleVariableIfThenElse: number
   /** switch(...) */
   switchCase:               number
-  variableSwitchCase:       number
+  singleVariableSwitchCase: number
   constantSwitchCase:       number
 }
 
@@ -30,7 +30,7 @@ const initialControlflowInfo = (): ControlflowInfo => ({
   singleVariableIfThen:     0,
   singleVariableIfThenElse: 0,
   switchCase:               0,
-  variableSwitchCase:       0,
+  singleVariableSwitchCase: 0,
   constantSwitchCase:       0
 })
 
@@ -107,7 +107,7 @@ export const controlflow: Feature<ControlflowInfo> = {
     const variableSwitchCases = switchCases.flatMap(switchCase =>
       singleVariableCondition.select({ node: switchCase })
     )
-    existing.variableSwitchCase += variableSwitchCases.length
+    existing.singleVariableSwitchCase += variableSwitchCases.length
     append(controlflow.name, 'variableSwitchCase', variableSwitchCases, filepath)
 
     return existing

@@ -3,8 +3,8 @@
  * This allows the dataflow to hold current definition locations for variables, based on the current scope.
  * @module
  */
-import { IdType } from '../r-bridge'
-import { GlobalScope, LocalScope } from './graph'
+import { IdType } from '../../r-bridge'
+import { DataflowScopeName, GlobalScope, LocalScope } from '../graph'
 
 export type Identifier = string
 export type EnvironmentName = string
@@ -14,6 +14,19 @@ export type EnvironmentName = string
 export interface IdentifierDefinition {
   assignmentNode: IdType
   assignedTarget: Identifier
+}
+
+/**
+ * Something like `a` in `b <- a`.
+ * Without any surrounding information, `a` will produce the
+ * identifier reference `a` in the current scope (like the global environment).
+ * Similarly, `b` will create a reference.
+ */
+export interface IdentifierReference {
+  name:   Identifier,
+  scope:  DataflowScopeName,
+  /** node which represents the reference in the AST */
+  nodeId: IdType
 }
 
 interface IEnvironment {

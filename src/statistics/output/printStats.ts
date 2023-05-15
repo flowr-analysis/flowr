@@ -1,4 +1,4 @@
-import { ALL_FEATURES, FeatureInfo, FeatureKey, FeatureStatistics } from '../features/feature'
+import { ALL_FEATURES, FeatureKey, FeatureStatistics } from '../features'
 import { MetaStatistics } from '../statistics'
 
 interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}
@@ -16,8 +16,8 @@ export function minMaxAvgAndMedian(data: number[]): MinMaxAvgMedian {
 }
 
 export const THIN_MATH_SPACE = '\u2009'
-function formatStatNumber(num: number): string {
-  return Number(num.toFixed(3)).toLocaleString()
+function formatStatNumber(num: number | undefined): string {
+  return num === undefined ? '<?>' : Number(num.toFixed(3)).toLocaleString()
 }
 
 export function statsString(data: MinMaxAvgMedian, suffix = ''): string {
@@ -53,7 +53,7 @@ export function printFeatureStatistics(statistics: {features: FeatureStatistics,
 
 const pad = 3
 
-function printFeatureStatisticsEntry(info: FeatureInfo): void {
+export function printFeatureStatisticsEntry(info: Record<string, string | number>): void {
   let longestKey = 0
   let longestValue = 0
   const out = new Map<string, string>()

@@ -32,7 +32,7 @@ export class StatisticFileProvider implements StatisticAppendProvider{
 
     // just to make sure, that they are closed
     process.on('beforeExit', () => {
-      this.connections.forEach((fd) => {
+      this.connections.forEach(fd => {
         fs.closeSync(fd)
       })
     })

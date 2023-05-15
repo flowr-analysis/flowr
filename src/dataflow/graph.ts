@@ -1,5 +1,5 @@
 // TODO: modify | alias | etc.
-import { DataflowMap } from './extractor'
+import { DataflowMap } from './extractor-old'
 import { guard } from '../util/assert'
 import { SourceRange } from '../util/range'
 import { IdType, NoInfo } from '../r-bridge'

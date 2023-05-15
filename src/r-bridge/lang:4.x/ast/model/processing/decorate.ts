@@ -60,12 +60,14 @@ export function deterministicLocationIdGenerator<OtherInfo>(start = 0): IdGenera
   return (data: RNode<OtherInfo>) => data.location !== undefined ? nodeToLocationId(data) : `${id++}`
 }
 
-export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & {
+export interface ParentInformation {
   /** uniquely identifies an AST-Node */
   id:     IdType
   /** Links to the parent node, using an id so that the AST stays serializable */
   parent: IdType | undefined
-}>
+}
+
+export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInformation>
 
 
 type DecoratedAstMap<OtherInfo> = BiMap<IdType, RNodeWithParent<OtherInfo>>

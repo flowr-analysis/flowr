@@ -8,6 +8,13 @@ describe('Used Function Calls', withShell(shell => {
       name:     'no calls',
       code:     'a <- 1',
       expected: {}
+    },
+    {
+      name:     'one call',
+      code:     'b()',
+      expected: {
+        allCalls: 1
+      }
     }
   ])
 }))

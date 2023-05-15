@@ -4,7 +4,7 @@ import { RShell } from '../../src/r-bridge'
 import { deepMergeObject } from '../../src/util/objects'
 
 async function requestFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string): Promise<FeatureValue<T>> {
-  const results = await extract(shell, () => { /* do nothing */ }, 'all', staticRequests({ request: 'text', content: code }))
+  const results = await extract(shell, () => { /* do nothing */ }, new Set([feature]), staticRequests({ request: 'text', content: code }))
   return results.features[feature] as FeatureValue<T>
 }
 async function expectFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string, expected: FeatureValue<T>): Promise<void> {
@@ -26,5 +26,6 @@ export function testForFeatureForInput<T extends FeatureKey>(shell: RShell, feat
 }
 
 describe('Statistics', () => {
+  require('./features/controlflow.ts')
   require('./features/usedFunctions.ts')
 })

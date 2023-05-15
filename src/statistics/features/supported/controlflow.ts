@@ -37,7 +37,7 @@ const initialControlflowInfo = (): ControlflowInfo => ({
 const ifThenQuery: Query = xpath.parse(`//IF[not(following-sibling::ELSE)]`)
 const ifThenElseQuery: Query = xpath.parse(`//IF[following-sibling::ELSE]`)
 
-const selectCondition: Query = xpath.parse(`..//expr[preceding-sibling::OP-LEFT-PAREN][1]`)
+const selectCondition: Query = xpath.parse(`../expr[preceding-sibling::OP-LEFT-PAREN][1]`)
 const constantCondition: Query = xpath.parse(`
   ./NUM_CONST
   |

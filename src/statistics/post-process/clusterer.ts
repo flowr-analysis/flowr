@@ -4,7 +4,6 @@
  *
  * @module
  */
-import { FeatureKey } from '../features'
 import LineByLine from 'n-readlines'
 import { StatisticsOutputFormat } from '../output'
 import { DefaultMap } from '../../util/defaultmap'
@@ -25,8 +24,7 @@ export function clusterStatisticsOutput(filepath: string): void {
   while (line = lineReader.next()) {
     const json = JSON.parse(line.toString()) as StatisticsOutputFormat
     const contextId = contextIdMap.get(json.context)
-    if(contextId === '7162' || contextId === '7163')
-      console.log(json.context)
+
     const value = valueInfoMap.get(json.value)
     // step the counter accordingly
     value.set(contextId, value.get(contextId) + 1)

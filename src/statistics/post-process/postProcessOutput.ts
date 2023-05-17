@@ -3,7 +3,7 @@ import path from 'path'
 import { log } from '../../util/log'
 import fs from 'fs'
 import { ClusterContextIdMap, ClusterReport, clusterStatisticsOutput } from './clusterer'
-import { defaultStatisticsFileSuffix } from '../output'
+import { ColorEffect, Colors, defaultStatisticsFileSuffix, FontWeights, formatter } from '../output'
 import { deterministicCountingIdGenerator, IdType } from '../../r-bridge'
 import { DefaultMap } from '../../util/defaultmap'
 
@@ -79,8 +79,8 @@ export function printClusterReport(report: ClusterReport) {
   const shortstats = [...report.valueInfoMap.entries()].map(([id, values]) => {
     return {
       id,
-      count:  values.size(),
-      unique: new Set(values.values()).size
+      count:  [...values.values()].reduce((a, b) => a + b, 0),
+      unique: values.size()
     }
   }).sort((a, b) => b.count - a.count)
   const { longestId, longestCount, longestUnique } = shortstats.reduce((acc, {id, count, unique}) => {
@@ -95,6 +95,10 @@ export function printClusterReport(report: ClusterReport) {
     const strId = `${id}`.padEnd(longestId, ' ')
     const strCount = count.toLocaleString().padStart(longestCount, ' ')
     const strUnique = unique.toLocaleString().padStart(longestUnique, ' ')
-    console.log(`\t\x1b[1m${strId}\x1b[m\t ${strCount} \x1b[37mtotal\x1b[m\t ${strUnique} \x1b[37munique\x1b[m`)
+    const uniqueSuffix = `\t (${strUnique} ${formatter.format('unique', { color: Colors.white, effect: ColorEffect.foreground })})`
+    console.log(`\t${formatter.format(strId, { weight: FontWeights.bold })}\t ${strCount} ` +
+      `${formatter.format('total', { color: Colors.white, effect: ColorEffect.foreground })}`
+      + (count !== unique ? uniqueSuffix : '')
+    )
   }
 }

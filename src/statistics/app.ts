@@ -2,7 +2,7 @@ import { RShell } from '../r-bridge'
 import { extract } from './statistics'
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
-import { printFeatureStatistics, initFileProvider } from './output'
+import { printFeatureStatistics, initFileProvider, setFormatter, voidFormatter } from './output'
 import { allRFilesFrom, optionDefinitions, optionHelp, StatsCliOptions, validateFeatures } from './cli'
 import commandLineUsage from 'command-line-usage'
 import { guard } from '../util/assert'
@@ -16,6 +16,10 @@ if(options.help) {
 }
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
 log.info('running with options', options)
+if(options['no-ansi']) {
+  log.info('disabling ansi colors')
+  setFormatter(voidFormatter)
+}
 
 
 const processedFeatures = validateFeatures(options.features)

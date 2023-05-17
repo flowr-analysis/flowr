@@ -1,5 +1,6 @@
 import { ALL_FEATURES, FeatureKey, FeatureStatistics } from '../features'
 import { MetaStatistics } from '../statistics'
+import { ColorEffect, Colors, formatter } from './ansi'
 
 interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}
 
@@ -15,7 +16,6 @@ export function minMaxAvgAndMedian(data: number[]): MinMaxAvgMedian {
   }
 }
 
-export const THIN_MATH_SPACE = '\u2009'
 function formatStatNumber(num: number | undefined): string {
   return num === undefined ? '<?>' : Number(num.toFixed(3)).toLocaleString()
 }
@@ -33,7 +33,7 @@ export function printFeatureStatistics(statistics: {features: FeatureStatistics,
     }
     const meta = ALL_FEATURES[feature]
     console.log(`\n\n-----${meta.name}-------------`)
-    console.log(`\x1b[37m${meta.description}\x1b[m`)
+    console.log(formatter.format(meta.description, { color: Colors.white, effect: ColorEffect.foreground }))
     printFeatureStatisticsEntry(statistics.features[feature])
     console.log('\n\n')
   }
@@ -43,11 +43,11 @@ export function printFeatureStatistics(statistics: {features: FeatureStatistics,
   const processingTimesPerFile = minMaxAvgAndMedian(statistics.meta.processingTimeMs)
 
   console.log(`processed ${statistics.meta.successfulParsed} files (skipped ${statistics.meta.skipped.length} due to errors):
-\ttotal processing time: ${processingTimesPerFile.sum}${THIN_MATH_SPACE}ms
-\t\tprocessing time range: ${statsString(processingTimesPerFile, `${THIN_MATH_SPACE}ms`)}
+\ttotal processing time: ${processingTimesPerFile.sum} ms
+\t\tprocessing time range: ${statsString(processingTimesPerFile, ` ms`)}
 \ttotal number of lines: ${lineLengths.sum}
 \t\tline range: ${statsString(linesPerFile)}
-\t\tline length range: ${statsString(lineLengths,`${THIN_MATH_SPACE}chars`)}
+\t\tline length range: ${statsString(lineLengths,` chars`)}
   `)
 }
 

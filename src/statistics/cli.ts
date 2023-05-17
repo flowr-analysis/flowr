@@ -38,7 +38,7 @@ export const optionHelp = [
     content: [
       `$ ${toolName} {bold -i} {italic example.R} {bold -i} {italic example2.R} {bold --output-dir} {italic "output-folder/"}`,
       `$ ${toolName} {italic "folder1/"} {bold --features} {italic all} {bold --output-dir} {italic "output-folder/"}`,
-      `$ ${toolName} {bold --post-process} {italic "output-folder/Assignments/assignmentOperator.txt"}`,
+      `$ ${toolName} {bold --post-process} {italic "output-folder"} {bold --features} {italic assignments}`,
       `$ ${toolName} {bold --help}`
     ]
   },

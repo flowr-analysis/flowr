@@ -16,6 +16,8 @@ export class DummyAppendProvider implements StatisticAppendProvider {
   }
 }
 
+export const defaultStatisticsFileSuffix = '.txt'
+
 /**
  * Provides cached open connections for all files to connect.
  * allowing to append to the same file often.
@@ -43,7 +45,7 @@ export class StatisticFileProvider implements StatisticAppendProvider{
    * @param fn - the name of the feature-aspect to record
    */
   private statisticsFile(name: string, fn: string): string {
-    return path.join(this.statisticsDirectory, name, `${fn}.txt`)
+    return path.join(this.statisticsDirectory, name, `${fn}${defaultStatisticsFileSuffix}`)
   }
 
   /**

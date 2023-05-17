@@ -1,13 +1,12 @@
 import { RShell } from '../r-bridge'
 import { extract } from './statistics'
 import { log, LogLevel } from '../util/log'
-import { FeatureKey } from './features'
 import commandLineArgs from 'command-line-args'
 import { printFeatureStatistics, initFileProvider } from './output'
 import { allRFilesFrom, optionDefinitions, optionHelp, StatsCliOptions, validateFeatures } from './cli'
 import commandLineUsage from 'command-line-usage'
-import { clusterStatisticsOutput } from './post-process/clusterer'
 import { guard } from '../util/assert'
+import { postProcessFolder, printClusterReport } from './post-process'
 
 const options = commandLineArgs(optionDefinitions) as StatsCliOptions
 
@@ -18,22 +17,26 @@ if(options.help) {
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
 log.info('running with options', options)
 
+
+const processedFeatures = validateFeatures(options.features)
+
 // TODO: automatic post processing after run?
 if(options['post-process']) {
   console.log('-----post processing')
   guard(options.input.length === 1, 'post processing only works with a single input file')
-  clusterStatisticsOutput(options.input[0])
+  const reports = postProcessFolder(options.input[0], processedFeatures)
+  for(const report of reports) {
+    printClusterReport(report)
+  }
   process.exit(0)
 }
 
 const shell = new RShell()
 shell.tryToInjectHomeLibPath()
 
-validateFeatures(options.features)
 initFileProvider(options['output-dir'])
 
-async function getStats(features: 'all' | ['all'] | FeatureKey[] = 'all') {
-  const processedFeatures = (features === 'all' || features[0] === 'all' ? 'all' : new Set(features)) as 'all' | Set<FeatureKey>
+async function getStats() {
   console.log(`Processing features: ${JSON.stringify(processedFeatures)}`)
   let cur = 0
   const stats = await extract(shell,
@@ -47,5 +50,5 @@ async function getStats(features: 'all' | ['all'] | FeatureKey[] = 'all') {
   shell.close()
 }
 
-void getStats(options.features)
+void getStats()
 

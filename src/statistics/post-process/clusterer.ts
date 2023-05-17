@@ -4,51 +4,56 @@
  *
  * @module
  */
-import { FeatureKey } from '../features'
 import LineByLine from 'n-readlines'
 import { StatisticsOutputFormat } from '../output'
 import { DefaultMap } from '../../util/defaultmap'
 import { deterministicCountingIdGenerator, IdType } from '../../r-bridge'
-import fs from 'fs'
+import { MergeableRecord } from '../../util/objects'
 
 type ContextsWithCount = DefaultMap<IdType, number>
-export function clusterStatisticsOutput(filepath: string): void {
+export type ClusterContextIdMap = DefaultMap<string | undefined, IdType>
+export type ClusterValueInfoMap = DefaultMap<string, ContextsWithCount>
+
+/** produced by {@link clusterStatisticsOutput} */
+export interface ClusterReport extends MergeableRecord {
+  /** The input file which has been clustered */
+  readonly filepath: string
+  /** Maps each context encountered (i.e., every file which contains something associated with the feature) to a unique id, used in the {@link ClusterReport#valueInfoMap | valueInfoMap}. */
+  contextIdMap:      ClusterContextIdMap
+  /**
+   * Counts which contexts contained which values of a feature.
+   * For example, that `<-` occurred in files with ids `[12, 42, 19, 19]` (i.e., the context with the id 19 contained it twice).
+   */
+  valueInfoMap:      ClusterValueInfoMap
+}
+
+/**
+ * Takes a statistics file like `statistics-out/top-2023-01-01-00-00-00/Assignments/assignmentOperator.txt` and clusters the values by context
+ *
+ * @param filepath - filepath of the statistics file
+ * @param contextIdMap - the id map to use, can use an existing one to reuse ids for same contexts spreading over multiple input files.
+ *  `undefined` is used for unknown contexts. This map allows us to reference contexts with a way shorter identifier (vs. the full file path).
+ */
+export function clusterStatisticsOutput(filepath: string, contextIdMap: ClusterContextIdMap = new DefaultMap<string | undefined, IdType>(deterministicCountingIdGenerator())): ClusterReport {
   const lineReader = new LineByLine(filepath)
 
-  // as we do not want to store the same context multiple time, we assign each of them a unique id.
-  // undefined is used for unknown contexts
-  const contextIdMap = new DefaultMap<string | undefined, IdType>(deterministicCountingIdGenerator())
   // for each value we store the context ids it was seen in (may list the same context multiple times if more often) - this serves as a counter as well
-  const valueInfoMap = new DefaultMap<string, ContextsWithCount>(() => new DefaultMap(() => 0))
+  const valueInfoMap: ClusterValueInfoMap = new DefaultMap<string, ContextsWithCount>(() => new DefaultMap(() => 0))
   let line
+
   // eslint-disable-next-line no-cond-assign
   while (line = lineReader.next()) {
     const json = JSON.parse(line.toString()) as StatisticsOutputFormat
     const contextId = contextIdMap.get(json.context)
-    if(contextId === '7162' || contextId === '7163')
-      console.log(json.context)
+
     const value = valueInfoMap.get(json.value)
     // step the counter accordingly
     value.set(contextId, value.get(contextId) + 1)
   }
 
-  // TODO: outsource and clean up :C
-  console.log(`# ${filepath}:`)
-  console.log(`# ${contextIdMap.size()} different contexts`)
-  for (const [value, info] of valueInfoMap.entries()) {
-    console.log(`# ${value}: ${[...info.values()].reduce((a, b) => a + b, 0)} times in ${info.size()} different contexts`)
+  return {
+    filepath,
+    contextIdMap,
+    valueInfoMap
   }
-  console.log("\n\n\n")
-
-  console.log(`writing to ${filepath}.dat`)
-  const fileHandle = fs.openSync(`${filepath}.dat`, 'w')
-  const contexts = [...valueInfoMap.values()]
-  // write the header
-  fs.writeSync(fileHandle, [...valueInfoMap.keys()].map(k => `"${k}"`).join('\t') + '\n')
-  // for each id we write a line of all found values and their corresponding value
-  for(const id of contextIdMap.values()) {
-    const info = contexts.map(c => `${c.get(id)}`)
-    fs.writeSync(fileHandle, info.join('\t') + '\n')
-  }
-  fs.closeSync(fileHandle)
 }

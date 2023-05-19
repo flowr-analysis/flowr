@@ -9,7 +9,7 @@ import {
 import { naiveLineBasedSlicing } from '../../src/slicing/static'
 import { decorateAst, IdType } from '../../src/r-bridge'
 
-describe("Extract Dataflow Information", () => {
+describe("[OLD] Extract Dataflow Information", () => {
   /**
    * Here we cover dataflow extraction for atomic statements (no expression lists).
    * Yet, some constructs (like for-loops) require the combination of statements, they are included as well.

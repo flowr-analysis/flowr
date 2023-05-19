@@ -17,7 +17,7 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): Defau
   return nameIdShares
 }
 
-function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, nameIdShares: DefaultMap<string, IdentifierReference[]>) {
+export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, nameIdShares: DefaultMap<string, IdentifierReference[]>) {
   for (const ids of nameIdShares.values()) {
     if (ids.length <= 1) {
       continue

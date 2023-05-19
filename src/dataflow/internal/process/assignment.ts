@@ -14,7 +14,7 @@ export function processAssignment<OtherInfo>(op: RNodeWithParent<OtherInfo> & { 
 
   for (const write of writeTargets) {
     // TODO: special treatment? const ids = t.attribute === 'always' ? [t.id] : t.ids
-    setDefinitionOfNode(nextGraph, write, down.scope)
+    setDefinitionOfNode(nextGraph, write)
     for(const read of readTargets) {
       nextGraph.addEdge(write.nodeId, read.nodeId, 'defined-by', /* TODO: */ 'always')
     }

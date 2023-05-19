@@ -13,7 +13,7 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
     const ast = await retrieveAst(shell, input)
     const decoratedAst = decorateAst(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
     // TODO: use both info
-    const { graph } = produceDataFlowGraph(decoratedAst, GlobalScope)
+    const { graph } = produceDataFlowGraph(decoratedAst, LocalScope)
 
     const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph}, decoratedAst.idMap)
     try {
@@ -33,8 +33,7 @@ describe("Extract Dataflow Information", () => {
    * Yet, some constructs (like for-loops) require the combination of statements, they are included as well.
    * This will not include functions!
    */
-  describe(
-    "A. Atomic dataflow information",
+  describe("A. Atomic dataflow information",
     withShell((shell) => {
       describe("0. uninteresting leafs", () => {
         for (const input of ["42", '"test"', "TRUE", "NA", "NULL"]) {
@@ -42,9 +41,7 @@ describe("Extract Dataflow Information", () => {
         }
       })
 
-      assertDataflow(
-        "1. simple variable",
-        shell,
+      assertDataflow("1. simple variable", shell,
         "xylophone",
         new DataflowGraph().addNode("0", "xylophone")
       )
@@ -107,9 +104,7 @@ describe("Extract Dataflow Information", () => {
             const scope = op.str.length > 2 ? GlobalScope : LocalScope // love it
             const swapSourceAndTarget = op.str === "->" || op.str === "->>"
 
-            const constantAssignment = swapSourceAndTarget
-              ? `5 ${op.str} x`
-              : `x ${op.str} 5`
+            const constantAssignment = swapSourceAndTarget ? `5 ${op.str} x` : `x ${op.str} 5`
             assertDataflow(
               `${constantAssignment} (constant assignment)`,
               shell,

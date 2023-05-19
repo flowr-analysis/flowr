@@ -30,9 +30,10 @@ function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, nameIdShare
   }
 }
 
-export function setDefinitionOfNode(graph: DataflowGraph, reference: IdentifierReference, scope: DataflowScopeName): void {
+export function setDefinitionOfNode(graph: DataflowGraph, reference: IdentifierReference): void {
   const node = graph.get(reference.nodeId)
-  guard(node !== undefined, `node must be defined for ${JSON.stringify(reference)} to set definition scope to ${scope}`)
-  guard(node.definedAtPosition === false || node.definedAtPosition === scope, `node must not be previously defined at position or have same scope for ${JSON.stringify(reference)} to set definition scope to ${scope}`)
-  node.definedAtPosition = scope
+  console.log(`setting definition of ${JSON.stringify(reference)} to ${reference.scope}`)
+  guard(node !== undefined, `node must be defined for ${JSON.stringify(reference)} to set definition scope to ${reference.scope}`)
+  guard(node.definedAtPosition === false || node.definedAtPosition === reference.scope, `node must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
+  node.definedAtPosition = reference.scope
 }

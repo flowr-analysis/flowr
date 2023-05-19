@@ -9,7 +9,7 @@ import { DataflowScopeName, GlobalScope, LocalScope } from '../../graph'
 export type Identifier = string
 export type EnvironmentName = string
 /**
- * stores the definition of an identifier within an {@link IEnvironment}
+ * Stores the definition of an identifier within an {@link IEnvironment}
  */
 export type IdentifierDefinition = IdentifierReference
 
@@ -22,14 +22,14 @@ export type IdentifierDefinition = IdentifierReference
 export interface IdentifierReference {
   name:   Identifier,
   scope:  DataflowScopeName,
-  /** node which represents the reference in the AST */
+  /** Node which represents the reference in the AST */
   nodeId: IdType
 }
 
 export interface IEnvironment {
   readonly name: string
   /**
-   * maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions
+   * Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions
    */
   map:           Map<Identifier, IdentifierDefinition[]>
 }
@@ -48,7 +48,7 @@ export type NamedEnvironments = Map<EnvironmentName, IEnvironment>
 
 export interface Environments {
   readonly global: IEnvironment
-  /** stack of local environments, the first element is the top of the stack, new elements will be pushed to the front. */
+  /** Stack of local environments, the first element is the top of the stack, new elements will be pushed to the front. */
   readonly local:  IEnvironment[]
   readonly named:  NamedEnvironments
 }

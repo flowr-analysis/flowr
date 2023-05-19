@@ -1,5 +1,5 @@
 import { RNodeWithParent, Type } from '../../../r-bridge'
-import { DataflowInfo } from '../info'
+import { DataflowInformation } from '../info'
 import { DataflowProcessorDown } from '../../processor'
 import { GlobalScope, LocalScope } from '../../graph'
 import { guard } from '../../../util/assert'
@@ -8,8 +8,8 @@ import { setDefinitionOfNode } from '../linker'
 import { log } from '../../../util/log'
 
 export function processAssignment<OtherInfo>(op: RNodeWithParent<OtherInfo> & { type: Type.BinaryOp },
-                                             lhs: DataflowInfo<OtherInfo>, rhs: DataflowInfo<OtherInfo>,
-                                             down: DataflowProcessorDown<OtherInfo>): DataflowInfo<OtherInfo> {
+                                             lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>,
+                                             down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   const { readTargets, writeTargets, environments } = identifyReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, down)
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
 
@@ -32,7 +32,7 @@ export function processAssignment<OtherInfo>(op: RNodeWithParent<OtherInfo> & { 
 }
 
 function identifyReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RNodeWithParent<OtherInfo>,
-                                                               lhs: DataflowInfo<OtherInfo>, rhs: DataflowInfo<OtherInfo>,
+                                                               lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>,
                                                                down: DataflowProcessorDown<OtherInfo>) {
   // what is written/read additionally is based on lhs/rhs - assignments read written variables as well
   const read = [...lhs.in, ...rhs.in]

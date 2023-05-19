@@ -2,12 +2,12 @@
  * Processes a list of expressions joining their dataflow graphs accordingly.
  * @module
  */
-import { DataflowInfo, initializeCleanInfo } from '../info'
+import { DataflowInformation, initializeCleanInfo } from '../info'
 import { RExpressionList } from '../../../r-bridge'
 import { DataflowProcessorDown } from '../../processor'
 
 
-export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo>, expressions: DataflowInfo<OtherInfo>[], down: DataflowProcessorDown<OtherInfo>): DataflowInfo<OtherInfo> {
+export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo>, expressions: DataflowInformation<OtherInfo>[], down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   if(expressions.length === 0) {
     return initializeCleanInfo(down.ast, down.scope)
   }

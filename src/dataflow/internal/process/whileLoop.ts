@@ -1,9 +1,9 @@
-import { DataflowInfo } from '../info'
+import { DataflowInformation } from '../info'
 import { DataflowProcessorDown } from '../../processor'
 import { appendEnvironments } from '../environments'
 
-export function processWhileLoop<OtherInfo>(loop: unknown, condition: DataflowInfo<OtherInfo>,
-                                            body: DataflowInfo<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInfo<OtherInfo> {
+export function processWhileLoop<OtherInfo>(loop: unknown, condition: DataflowInformation<OtherInfo>,
+                                            body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   // TODO: guards for same scopes etc.
   // TODO bind against definitions in condition?
   return {

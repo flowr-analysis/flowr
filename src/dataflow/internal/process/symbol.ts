@@ -1,10 +1,10 @@
 import { ParentInformation, RNa, RNull, RSymbol } from '../../../r-bridge'
 import { DataflowGraph } from '../../graph'
-import { DataflowInfo, initializeCleanInfo } from '../info'
+import { DataflowInformation, initializeCleanInfo } from '../info'
 import { DataflowProcessorDown } from '../../processor'
 import { initializeCleanEnvironments } from '../environments'
 
-export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, down: DataflowProcessorDown<OtherInfo>): DataflowInfo<OtherInfo> {
+export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   // TODO: are there other built-ins?
   if (symbol.content === RNull || symbol.content === RNa) {
     return initializeCleanInfo(down.ast, down.scope)

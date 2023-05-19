@@ -1,11 +1,11 @@
 import { linkIngoingVariablesInSameScope, produceNameSharedIdMap, setDefinitionOfNode } from '../linker'
-import { DataflowInfo } from '../info'
+import { DataflowInformation } from '../info'
 import { DataflowProcessorDown } from '../../processor'
 import { appendEnvironments } from '../environments'
 
-export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfo<OtherInfo>,
-                                          vector: DataflowInfo<OtherInfo>, body: DataflowInfo<OtherInfo>,
-                                          down: DataflowProcessorDown<OtherInfo>): DataflowInfo<OtherInfo> {
+export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInformation<OtherInfo>,
+                                          vector: DataflowInformation<OtherInfo>, body: DataflowInformation<OtherInfo>,
+                                          down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
 
   // TODO: allow to also attribute in-put with maybe and always
   // again within an if-then-else we consider all actives to be read

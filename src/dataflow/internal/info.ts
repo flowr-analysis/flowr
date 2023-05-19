@@ -5,7 +5,7 @@ import { Environments, IdentifierReference, initializeCleanEnvironments } from '
 /**
  * Continuously updated during the dataflow analysis to hold the current state.
  */
-export interface DataflowInfo<OtherInfo> {
+export interface DataflowInformation<OtherInfo> {
   readonly ast: DecoratedAst<OtherInfo>
   /** Nodes that have not been identified as read or write and will be so on higher */
   activeNodes:  IdentifierReference[]
@@ -21,7 +21,7 @@ export interface DataflowInfo<OtherInfo> {
   graph:        DataflowGraph
 }
 
-export function initializeCleanInfo<OtherInfo>(ast: DecoratedAst<OtherInfo>, scope: DataflowScopeName): DataflowInfo<OtherInfo> {
+export function initializeCleanInfo<OtherInfo>(ast: DecoratedAst<OtherInfo>, scope: DataflowScopeName): DataflowInformation<OtherInfo> {
   return {
     ast,
     activeNodes:  [],

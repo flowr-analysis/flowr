@@ -1,11 +1,11 @@
-import { DataflowInfo } from '../info'
+import { DataflowInformation } from '../info'
 import { DataflowProcessorDown } from '../../processor'
 import { appendEnvironments, IdentifierReference } from '../environments'
 import { linkIngoingVariablesInSameScope } from '../linker'
 
-export function processIfThenElse<OtherInfo>(ifThen: unknown, cond: DataflowInfo<OtherInfo>,
-                                             then: DataflowInfo<OtherInfo>, otherwise: DataflowInfo<OtherInfo> | undefined,
-                                             down: DataflowProcessorDown<OtherInfo>): DataflowInfo<OtherInfo> {
+export function processIfThenElse<OtherInfo>(ifThen: unknown, cond: DataflowInformation<OtherInfo>,
+                                             then: DataflowInformation<OtherInfo>, otherwise: DataflowInformation<OtherInfo> | undefined,
+                                             down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   // TODO: allow to also attribute in-put with maybe and always
   // again within an if-then-else we consider all actives to be read
   // TODO: makeFoldReadTargetsMaybe(

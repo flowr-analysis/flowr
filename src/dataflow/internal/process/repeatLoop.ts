@@ -1,8 +1,8 @@
 import { log } from '../../../util/log'
-import { DataflowInfo } from '../info'
+import { DataflowInformation } from '../info'
 import { DataflowProcessorDown } from '../../processor'
 
-export function processRepeatLoop<OtherInfo>(loop: unknown, body: DataflowInfo<OtherInfo>, _down: DataflowProcessorDown<OtherInfo>): DataflowInfo<OtherInfo> {
+export function processRepeatLoop<OtherInfo>(loop: unknown, body: DataflowInformation<OtherInfo>, _down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   // TODO
   log.error('repeat loop not implemented')
   return body

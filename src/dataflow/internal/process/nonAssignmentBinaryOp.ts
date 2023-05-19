@@ -1,11 +1,11 @@
-import { DataflowInfo } from '../info'
+import { DataflowInformation } from '../info'
 import { guard } from '../../../util/assert'
 import { DataflowProcessorDown } from '../../processor'
 import { linkIngoingVariablesInSameScope } from '../linker'
 import { RBinaryOp } from '../../../r-bridge'
 import { appendEnvironments, overwriteEnvironments } from '../environments'
 
-export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo>, lhs: DataflowInfo<OtherInfo>, rhs: DataflowInfo<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInfo<OtherInfo> {
+export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo>, lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   // TODO: produce special edges
   // TODO: fix merge of map etc.
   guard(down.scope === lhs.scope, 'non-assignment binary operations can not change scopes')

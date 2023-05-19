@@ -5,19 +5,19 @@ import { foldAstTwoWay, TwoWayFoldFunctions } from '../r-bridge/lang:4.x/ast/mod
 import { DataflowScopeName } from './graph'
 import { DecoratedAst, ParentInformation, RNodeWithParent } from '../r-bridge'
 import { DeepReadonly } from 'ts-essentials'
-import { DataflowInfo } from './internal/info'
+import { DataflowInformation } from './internal/info'
 
 export interface DataflowProcessorDown<OtherInfo> {
   readonly ast: DecoratedAst<OtherInfo>
   scope:        DataflowScopeName
 }
 
-export type DataflowProcessorFolds<OtherInfo> = Omit<TwoWayFoldFunctions<OtherInfo, DataflowProcessorDown<OtherInfo>, DataflowInfo<OtherInfo>>, 'down'>
+export type DataflowProcessorFolds<OtherInfo> = Omit<TwoWayFoldFunctions<OtherInfo, DataflowProcessorDown<OtherInfo>, DataflowInformation<OtherInfo>>, 'down'>
 
 export function dataflowFold<OtherInfo>(ast: RNodeWithParent<OtherInfo>,
                                         initial: DataflowProcessorDown<OtherInfo & ParentInformation>,
-                                        folds: DataflowProcessorFolds<OtherInfo & ParentInformation>): DataflowInfo<OtherInfo & ParentInformation> {
-  const twoWayFolds: DeepReadonly<TwoWayFoldFunctions<OtherInfo & ParentInformation, DataflowProcessorDown<OtherInfo & ParentInformation>, DataflowInfo<OtherInfo & ParentInformation>>> = {
+                                        folds: DataflowProcessorFolds<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo & ParentInformation> {
+  const twoWayFolds: DeepReadonly<TwoWayFoldFunctions<OtherInfo & ParentInformation, DataflowProcessorDown<OtherInfo & ParentInformation>, DataflowInformation<OtherInfo & ParentInformation>>> = {
     down,
     ...folds
   }

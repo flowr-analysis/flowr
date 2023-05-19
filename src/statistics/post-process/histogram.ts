@@ -5,7 +5,8 @@ import { Table } from '../../util/files'
 
 /**
  * A conventional histogram (e.g., created by {@link histogramFromNumbers}).
- * Can be converted to a {@link Table} by {@link histogram2table}.
+ * Can be converted to a {@link Table} by {@link histograms2table}.
+ * As described in {@link histogramFromNumbers}, there always will be a special bin for minimum.
  */
 export interface Histogram {
   /** A name intended for humans to know what the histogram is about. */
@@ -51,6 +52,7 @@ export function histogramsFromClusters(report: ClusterReport, binSize: number, .
  * Because we need to create several histograms of different datasets and want to compare them, we do not accept the
  * number of bins desired and calculate the bin-size from the data (via `Math.ceil((max - min + 1) / bins)`).
  * Instead, we require the bin-size to be given.
+ * There *always* will be an extra bin for the minimum value.
  */
 export function histogramFromNumbers(name: string, binSize: number, values: number[]): Histogram {
   guard(binSize > 0, `binSize must be greater than 0, but was ${binSize}`)
@@ -67,11 +69,11 @@ export function histogramFromNumbers(name: string, binSize: number, values: numb
     }
   }
 
-  const numberOfBins = Math.ceil((max - min + 1) / binSize)
+  const numberOfBins = Math.ceil((max - min + 1) / binSize) + 1
   const histogram = new Array(numberOfBins).fill(0) as number[]
 
   for(const v of values) {
-    const bin = Math.floor((v - min) / binSize)
+    const bin = v === min ? 0 : Math.floor((v - min) / binSize) + 1
     histogram[bin]++
   }
 
@@ -83,23 +85,69 @@ export function histogramFromNumbers(name: string, binSize: number, values: numb
 }
 
 /**
- * Takes a histogram created by {@link histogramFromNumbers} and produces a CSV table from it.
+ * Takes an array of histograms created by {@link histogramFromNumbers} and produces a CSV table from it.
+ * They must have the same bin-size for this function to work.
+ *
+ * The table has the following columns:
+ * - `bin` - the corresponding bin number
+ * - `from` - the inclusive lower bound of the bin
+ * - `to` - the inclusive upper bound of the bin
+ * - a column with the name of each histogram, containing its count of values in the corresponding bin
  *
  * @param histograms - the histogram to convert
- * @param countAsDensity - if true, the count is divided by the total number of values (similar to pgfplots `hist/density` option)
+ * @param countAsDensity - if true, the count is divided by the total number of values (individually for each histogram, similar to pgfplots `hist/density` option)
  */
-export function histogram2table(histograms: Histogram, countAsDensity = false): Table {
-  const header = ['bin', 'from', 'to', 'count']
-  const sum = histograms.bins.reduce((a, b) => a + b, 0)
-  const rows = histograms.bins.map((count, i) => [
-    i,
-    i * histograms.binSize + histograms.min,
-    (i + 1) * histograms.binSize + histograms.min - 1,
-    countAsDensity ? count / sum : count
-  ].map(String))
+export function histograms2table(histograms: Histogram[], countAsDensity = false): Table {
+  guard(histograms.length > 0, 'there must be at least one histogram to convert to a table')
+  const mostBins = guardForLargestBinSize(histograms)
+
+  const header = ['bin', 'from', 'to', ...histograms.map(h => JSON.stringify(h.name))]
+
+  const sums = histograms.map(h => h.bins.reduce((a, b) => a + b, 0))
+
+  const rows: string[][] = []
+
+  for(let binIndex = 0; binIndex < mostBins; binIndex++) {
+    const row = new Array(histograms.length + 3) as string[]
+    row[0] = String(binIndex)
+    if(binIndex === 0) {
+      row[1] = String(histograms[0].min)
+      row[2] = String(histograms[0].min)
+    } else {
+      row[1] = String((binIndex-1) * histograms[0].binSize + histograms[0].min + (binIndex === 1 ? 1 : 0))
+      row[2] = String((binIndex) * histograms[0].binSize + histograms[0].min - 1)
+    }
+    // fill remaining columns
+    writeRoResultsForHistograms(histograms, binIndex, row, countAsDensity, sums)
+    rows.push(row)
+  }
 
   return {
     header: header,
     rows:   rows
+  }
+}
+
+function guardForLargestBinSize(histograms: Histogram[]) {
+  const first = histograms[0]
+  let mostBins = first.bins.length
+  for (let i = 1; i < histograms.length; i++) {
+    guard(histograms[i].binSize === first.binSize, `histograms must have the same bin-size, but ${histograms[i].name} has ${histograms[i].binSize} instead of ${first.binSize}`)
+    if (histograms[i].bins.length > mostBins) {
+      mostBins = histograms[i].bins.length
+    }
+  }
+  return mostBins
+}
+
+function writeRoResultsForHistograms(histograms: Histogram[], binIndex: number, row: string[], countAsDensity: boolean, sums: number[]) {
+  for (let j = 0; j < histograms.length; j++) {
+    const bins = histograms[j].bins
+    // does not have to be performant...
+    if (binIndex >= bins.length) {
+      row[j + 3] = '0' /* in a histogram, 0 is the best default value for bins that are not present -- no value appeared in the corresponding bin */
+    } else {
+      row[j + 3] = String(countAsDensity ? bins[binIndex] / sums[j] : bins[binIndex])
+    }
   }
 }

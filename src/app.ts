@@ -25,7 +25,7 @@ async function fun(): Promise<void> {
       content:                 answer,
       attachSourceInformation: true,
       ensurePackageInstalled:  true
-    }, tokenMap!, shell).then(async json => {
+    }, tokenMap as Record<string, string>, shell).then(async json => {
       console.log(JSON.stringify(json))
       await fun()
     })

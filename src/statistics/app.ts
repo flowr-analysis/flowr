@@ -6,7 +6,7 @@ import { printFeatureStatistics, initFileProvider, setFormatter, voidFormatter }
 import { allRFilesFrom, optionDefinitions, optionHelp, StatsCliOptions, validateFeatures } from './cli'
 import commandLineUsage from 'command-line-usage'
 import { guard } from '../util/assert'
-import { postProcessFolder, printClusterReport, histogramsFromClusters, histogram2table } from './post-process'
+import { postProcessFolder, printClusterReport, histogramsFromClusters, histograms2table } from './post-process'
 import { writeTableAsCsv } from '../util/files'
 
 const options = commandLineArgs(optionDefinitions) as StatsCliOptions
@@ -34,11 +34,9 @@ if(options['post-process']) {
   for(const report of reports) {
     printClusterReport(report)
     const receivedHistograms = histogramsFromClusters(report, 20)
-    for(const histogram of receivedHistograms) {
-      const outputPath = `${report.filepath}-${histogram.name}.dat`
-      console.log(`writing histogram data for ${histogram.name} to ${outputPath}`)
-      writeTableAsCsv(histogram2table(histogram, true), outputPath)
-    }
+    const outputPath = `${report.filepath}.dat`
+    console.log(`writing histogram data to ${outputPath}`)
+    writeTableAsCsv(histograms2table(receivedHistograms, true), outputPath)
     /* writeFileBasedCountToFile(fileBasedCount(report), outputPath) */
   }
   process.exit(0)

@@ -10,7 +10,7 @@ export function processAssignment<OtherInfo>(op: RNodeWithParent<OtherInfo> & { 
                                              lhs: DataflowInfo<OtherInfo>, rhs: DataflowInfo<OtherInfo>,
                                              down: DataflowProcessorDown<OtherInfo>): DataflowInfo<OtherInfo> {
   const { readTargets, writeTargets } = identifyReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, down)
-  const nextGraph = lhs.currentGraph.mergeWith(rhs.currentGraph)
+  const nextGraph = lhs.graph.mergeWith(rhs.graph)
 
   for (const write of writeTargets) {
     // TODO: special treatment? const ids = t.attribute === 'always' ? [t.id] : t.ids
@@ -20,12 +20,12 @@ export function processAssignment<OtherInfo>(op: RNodeWithParent<OtherInfo> & { 
     }
   }
   return {
-    activeNodes:  [],
-    in:           readTargets,
-    out:          writeTargets,
-    currentGraph: nextGraph,
-    ast:          down.ast,
-    currentScope: down.scope
+    activeNodes: [],
+    in:          readTargets,
+    out:         writeTargets,
+    graph:       nextGraph,
+    ast:         down.ast,
+    scope:       down.scope
   }
 }
 

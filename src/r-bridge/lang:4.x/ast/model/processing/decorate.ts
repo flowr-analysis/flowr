@@ -94,7 +94,7 @@ export interface DecoratedAst<OtherInfo> {
  *
  * @returns a {@link DecoratedAst | decorated AST} based on the input and the id provider.
  */
-export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator(0)): DecoratedAst<OtherInfo> {
+export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator(0)): DecoratedAst<OtherInfo & ParentInformation> {
   const idMap: DecoratedAstMap<OtherInfo> = new BiMap<IdType, RNodeWithParent<OtherInfo>>()
   const info: FoldInfo<OtherInfo> = { idMap, getId }
 

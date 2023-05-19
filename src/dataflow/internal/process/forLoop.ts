@@ -16,7 +16,7 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfo<
 
   // TODO: use attribute?
   const writtenVariable = variable.activeNodes
-  const nextGraph = variable.currentGraph.mergeWith(vector.currentGraph, body.currentGraph)
+  const nextGraph = variable.graph.mergeWith(vector.graph, body.graph)
 
   // TODO: hold name when reading to avoid constant indirection?
   // now we have to bind all open reads with the given name to the locally defined writtenVariable!
@@ -62,12 +62,12 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfo<
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
   return {
-    activeNodes:  [],
+    activeNodes: [],
     // we only want those not bound by a local variable
-    in:           [...variable.in, ...[...nameIdShares.values()].flatMap(v => v)],
-    out:          outgoing,
-    currentGraph: nextGraph,
-    ast:          down.ast,
-    currentScope: down.scope
+    in:          [...variable.in, ...[...nameIdShares.values()].flatMap(v => v)],
+    out:         outgoing,
+    graph:       nextGraph,
+    ast:         down.ast,
+    scope:       down.scope
   }
 }

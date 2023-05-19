@@ -31,17 +31,17 @@ export function processIfThenElse<OtherInfo>(ifThen: unknown, cond: DataflowInfo
     }))
   } */
 
-  const nextGraph = cond.currentGraph.mergeWith(then.currentGraph, otherwise?.currentGraph)
+  const nextGraph = cond.graph.mergeWith(then.graph, otherwise?.graph)
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
   // TODO: join def-def?
 
 
   return {
-    activeNodes:  [],
-    in:           ingoing,
-    out:          outgoing,
-    currentGraph: nextGraph,
-    ast:          down.ast,
-    currentScope: down.scope,
+    activeNodes: [],
+    in:          ingoing,
+    out:         outgoing,
+    graph:       nextGraph,
+    ast:         down.ast,
+    scope:       down.scope,
   }
 }

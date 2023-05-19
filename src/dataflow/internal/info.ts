@@ -13,17 +13,19 @@ export interface DataflowInfo<OtherInfo> {
   in:           IdentifierReference[]
   /** nodes which are written to */
   out:          IdentifierReference[]
-  currentScope: DataflowScopeName
-  currentGraph: DataflowGraph,
+  /** the current scope during the fold */
+  scope:        DataflowScopeName
+  /** the current constructed dataflow graph */
+  graph:        DataflowGraph
 }
 
 export function initializeCleanInfo<OtherInfo>(ast: DecoratedAst<OtherInfo>, scope: DataflowScopeName): DataflowInfo<OtherInfo> {
   return {
     ast,
-    activeNodes:  [],
-    in:           [],
-    out:          [],
-    currentScope: scope,
-    currentGraph: new DataflowGraph()
+    activeNodes: [],
+    in:          [],
+    out:         [],
+    scope:       scope,
+    graph:       new DataflowGraph()
   }
 }

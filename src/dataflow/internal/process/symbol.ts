@@ -10,11 +10,11 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
   }
 
   return {
-    ast:          down.ast,
-    activeNodes:  [ { nodeId: symbol.info.id, scope: down.scope, name: symbol.content } ],
-    in:           [],
-    out:          [],
-    currentScope: down.scope,
-    currentGraph: new DataflowGraph().addNode(symbol.info.id , symbol.content),
+    ast:         down.ast,
+    activeNodes: [ { nodeId: symbol.info.id, scope: down.scope, name: symbol.content } ],
+    in:          [],
+    out:         [],
+    scope:       down.scope,
+    graph:       new DataflowGraph().addNode(symbol.info.id , symbol.content),
   }
 }

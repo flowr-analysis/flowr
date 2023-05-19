@@ -1,4 +1,4 @@
-import { DataflowGraph, DataflowScopeName } from '../graph'
+import { DataflowGraph } from '../graph'
 import { IdentifierReference } from './environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
@@ -32,7 +32,6 @@ function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, nameIdShare
 
 export function setDefinitionOfNode(graph: DataflowGraph, reference: IdentifierReference): void {
   const node = graph.get(reference.nodeId)
-  console.log(`setting definition of ${JSON.stringify(reference)} to ${reference.scope}`)
   guard(node !== undefined, `node must be defined for ${JSON.stringify(reference)} to set definition scope to ${reference.scope}`)
   guard(node.definedAtPosition === false || node.definedAtPosition === reference.scope, `node must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
   node.definedAtPosition = reference.scope

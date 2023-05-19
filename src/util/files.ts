@@ -1,7 +1,15 @@
 import fs, { promises as fsPromise } from 'fs'
-import { RParseRequestFromFile } from '../r-bridge/retriever'
+import { RParseRequestFromFile } from '../r-bridge'
 import path from 'path'
 import { log } from './log'
+
+/**
+ * Represents a table, identified by a header and a list of rows.
+ */
+export interface Table {
+  header: string[]
+  rows:   string[][]
+}
 
 /**
  * retrieves all files in the given directory recursively
@@ -53,4 +61,9 @@ export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE
     yield { request: 'file', content: f }
   }
   return count
+}
+
+export function writeTableAsCsv(table: Table, file: string, sep = ',', newline = '\n') {
+  const csv = [table.header.join(sep), ...table.rows.map(row => row.join(sep))].join(newline)
+  fs.writeFileSync(file, csv)
 }

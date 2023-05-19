@@ -1,12 +1,22 @@
 import { ClusterReport } from './clusterer'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard, isNotUndefined } from '../../util/assert'
+import { Table } from '../../util/files'
 
+/**
+ * A conventional histogram (e.g., created by {@link histogramFromNumbers}).
+ * Can be converted to a {@link Table} by {@link histogram2table}.
+ */
 export interface Histogram {
+  /** A name intended for humans to know what the histogram is about. */
   readonly name: string
+  /** Values located in each bin */
   bins:          number[]
+  /** The configured size of each bin (stored explicitly to avoid semantic confusion with floating point arithmetic/problems with different rounding schemes) */
   binSize:       number
+  /** Minimum value encountered (inclusive minimum of the underlying value range) */
   min:           number
+  /** Maximum value encountered (inclusive maximum of the underlying value range) */
   max:           number
 }
 
@@ -20,7 +30,7 @@ export interface Histogram {
  * @param binSize - size of each bin (see {@link histogramFromNumbers} for details on why we do not specify the bin-count)
  * @param filter - if given, only produce histograms for the given values
  */
-export function histograms(report: ClusterReport, binSize: number, ...filter: string[]): Histogram[] {
+export function histogramsFromClusters(report: ClusterReport, binSize: number, ...filter: string[]): Histogram[] {
   const contexts = [...report.valueInfoMap.entries()]
 
   // first, we collect the number of appearances for each value
@@ -58,7 +68,6 @@ export function histogramFromNumbers(name: string, binSize: number, values: numb
   }
 
   const numberOfBins = Math.ceil((max - min) / binSize)
-  console.log(`min: ${min}, max: ${max}, binSize: ${binSize}, numberOfBins: ${numberOfBins}`)
   const histogram = new Array(numberOfBins).fill(0) as number[]
 
   for(const v of values) {
@@ -70,5 +79,27 @@ export function histogramFromNumbers(name: string, binSize: number, values: numb
     name: name,
     bins: histogram,
     binSize, min, max
+  }
+}
+
+/**
+ * Takes a histogram created by {@link histogramFromNumbers} and produces a CSV table from it.
+ *
+ * @param histograms - the histogram to convert
+ * @param countAsDensity - if true, the count is divided by the total number of values (similar to pgfplots `hist/density` option)
+ */
+export function histogram2table(histograms: Histogram, countAsDensity = false): Table {
+  const header = ['bin', 'from', 'to', 'count']
+  const sum = histograms.bins.reduce((a, b) => a + b, 0)
+  const rows = histograms.bins.map((count, i) => [
+    i,
+    i * histograms.binSize + histograms.min,
+    (i + 1) * histograms.binSize + histograms.min - 1,
+    countAsDensity ? count / sum : count
+  ].map(String))
+
+  return {
+    header: header,
+    rows:   rows
   }
 }

@@ -28,4 +28,5 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
 
 describe("Extract Dataflow Information", () => {
   require('./elements/atomic')
+  require('./elements/expression-lists')
 })

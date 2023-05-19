@@ -1,6 +1,7 @@
 import { linkIngoingVariablesInSameScope, produceNameSharedIdMap, setDefinitionOfNode } from '../linker'
 import { DataflowInfo } from '../info'
 import { DataflowProcessorDown } from '../../processor'
+import { appendEnvironments } from '../environments'
 
 export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfo<OtherInfo>,
                                           vector: DataflowInfo<OtherInfo>, body: DataflowInfo<OtherInfo>,
@@ -62,12 +63,13 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfo<
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
   return {
-    activeNodes: [],
+    activeNodes:  [],
     // we only want those not bound by a local variable
-    in:          [...variable.in, ...[...nameIdShares.values()].flatMap(v => v)],
-    out:         outgoing,
-    graph:       nextGraph,
-    ast:         down.ast,
-    scope:       down.scope
+    in:           [...variable.in, ...[...nameIdShares.values()].flatMap(v => v)],
+    out:          outgoing,
+    graph:        nextGraph,
+    environments: appendEnvironments(appendEnvironments(variable.environments, vector.environments), body.environments),
+    ast:          down.ast,
+    scope:        down.scope
   }
 }

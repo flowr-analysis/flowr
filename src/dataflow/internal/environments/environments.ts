@@ -3,18 +3,15 @@
  * This allows the dataflow to hold current definition locations for variables, based on the current scope.
  * @module
  */
-import { IdType } from '../../r-bridge'
-import { DataflowScopeName, GlobalScope, LocalScope } from '../graph'
+import { IdType } from '../../../r-bridge'
+import { DataflowScopeName, GlobalScope, LocalScope } from '../../graph'
 
 export type Identifier = string
 export type EnvironmentName = string
 /**
  * stores the definition of an identifier within an {@link IEnvironment}
  */
-export interface IdentifierDefinition {
-  assignmentNode: IdType
-  assignedTarget: Identifier
-}
+export type IdentifierDefinition = IdentifierReference
 
 /**
  * Something like `a` in `b <- a`.
@@ -29,38 +26,37 @@ export interface IdentifierReference {
   nodeId: IdType
 }
 
-interface IEnvironment {
-  readonly name:   string
-  /** if the environment (local) is nested, this points to the parent environment */
-  readonly parent: IEnvironment | undefined
+export interface IEnvironment {
+  readonly name: string
   /**
    * maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions
    */
-  map:             Map<Identifier, IdentifierDefinition[]>
+  map:           Map<Identifier, IdentifierDefinition[]>
 }
 
 export class Environment implements IEnvironment {
-  readonly name:   string
-  readonly parent: IEnvironment | undefined
-  map:             Map<Identifier, IdentifierDefinition[]>
+  readonly name: string
+  map:           Map<Identifier, IdentifierDefinition[]>
 
-  constructor(name: string, parent?: IEnvironment) {
+  constructor(name: string) {
     this.name   = name
-    this.parent = parent
     this.map    = new Map()
   }
 }
 
+export type NamedEnvironments = Map<EnvironmentName, IEnvironment>
+
 export interface Environments {
   readonly global: IEnvironment
-  readonly local:  IEnvironment
-  readonly named:  Map<EnvironmentName, IEnvironment>
+  /** stack of local environments, the first element is the top of the stack, new elements will be pushed to the front. */
+  readonly local:  IEnvironment[]
+  readonly named:  NamedEnvironments
 }
 
 export function initializeCleanEnvironments(): Environments {
   return {
     global: new Environment(GlobalScope),
-    local:  new Environment(LocalScope),
+    local:  [new Environment(LocalScope)],
     named:  new Map()
   }
 }

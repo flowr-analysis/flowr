@@ -5,11 +5,12 @@ export function processFunctionCall<OtherInfo>(functionCall: unknown, functionNa
   // TODO: deal with function info
   // TODO rest
   return {
-    activeNodes: [],
-    in:          [], // [...parameters.in, ...functionName.in, ...parameters.activeNodes, ...functionName.activeNodes],
-    out:         [], // parameters.out,
-    graph:       functionName.graph, /* parameters.length === 0 ? new DataflowGraph() : parameters[0].currentGraph.mergeWith(...parameters.slice(1).map(p => p.currentGraph)) */
-    ast:         down.ast,
-    scope:       down.scope
+    activeNodes:  [],
+    in:           [], // [...parameters.in, ...functionName.in, ...parameters.activeNodes, ...functionName.activeNodes],
+    out:          [], // parameters.out,
+    graph:        functionName.graph, /* parameters.length === 0 ? new DataflowGraph() : parameters[0].currentGraph.mergeWith(...parameters.slice(1).map(p => p.currentGraph)) */
+    environments: functionName.environments, // TODO: merge with parameters
+    ast:          down.ast,
+    scope:        down.scope
   }
 }

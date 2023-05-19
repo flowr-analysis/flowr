@@ -1,6 +1,6 @@
 import { DataflowInfo } from '../info'
 import { DataflowProcessorDown } from '../../processor'
-import { IdentifierReference } from '../environments'
+import { appendEnvironments, IdentifierReference } from '../environments'
 import { linkIngoingVariablesInSameScope } from '../linker'
 
 export function processIfThenElse<OtherInfo>(ifThen: unknown, cond: DataflowInfo<OtherInfo>,
@@ -36,12 +36,15 @@ export function processIfThenElse<OtherInfo>(ifThen: unknown, cond: DataflowInfo
   // TODO: join def-def?
 
 
+  const thenEnvironment = appendEnvironments(cond.environments, then.environments)
+  const otherwiseEnvironment = otherwise ? appendEnvironments(cond.environments, otherwise.environments) : cond.environments
   return {
-    activeNodes: [],
-    in:          ingoing,
-    out:         outgoing,
-    graph:       nextGraph,
-    ast:         down.ast,
-    scope:       down.scope,
+    activeNodes:  [],
+    in:           ingoing,
+    out:          outgoing,
+    environments: otherwiseEnvironment,
+    graph:        nextGraph,
+    ast:          down.ast,
+    scope:        down.scope,
   }
 }

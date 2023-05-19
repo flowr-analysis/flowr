@@ -3,13 +3,14 @@ import { DataflowInfo } from '../info'
 import { DataflowProcessorDown } from '../../processor'
 import { GlobalScope, LocalScope } from '../../graph'
 import { guard } from '../../../util/assert'
-import { IdentifierReference } from '../environments'
+import { IdentifierReference, overwriteEnvironments } from '../environments'
 import { setDefinitionOfNode } from '../linker'
+import { log } from '../../../util/log'
 
 export function processAssignment<OtherInfo>(op: RNodeWithParent<OtherInfo> & { type: Type.BinaryOp },
                                              lhs: DataflowInfo<OtherInfo>, rhs: DataflowInfo<OtherInfo>,
                                              down: DataflowProcessorDown<OtherInfo>): DataflowInfo<OtherInfo> {
-  const { readTargets, writeTargets } = identifyReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, down)
+  const { readTargets, writeTargets, environments } = identifyReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, down)
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
 
   for (const write of writeTargets) {
@@ -24,6 +25,7 @@ export function processAssignment<OtherInfo>(op: RNodeWithParent<OtherInfo> & { 
     in:          readTargets,
     out:         writeTargets,
     graph:       nextGraph,
+    environments,
     ast:         down.ast,
     scope:       down.scope
   }
@@ -69,8 +71,19 @@ function identifyReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RNodeWithPare
     guard(id.scope === LocalScope, 'currently, nested write re-assignments are only supported for local')
     return id
   })
+  const environments = overwriteEnvironments(source.environments, target.environments)
+  const overwriteEnvironment = global ? environments.global : environments.local[0]
+  // install assigned variables in environment
+  if(writeNodes.length !== 1) {
+    log.warn(`Unexpected write number in assignment ${JSON.stringify(op)}: ${JSON.stringify(writeNodes)}`)
+  }
+  for(const write of writeNodes) {
+    overwriteEnvironment.map.set(write.name, [write])
+  }
+
   return {
     readTargets:  [...source.activeNodes, ...read, ...readFromSourceWritten],
-    writeTargets: [...writeNodes, ...target.out]
+    writeTargets: [...writeNodes, ...target.out],
+    environments: environments
   }
 }

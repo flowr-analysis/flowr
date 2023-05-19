@@ -7,6 +7,7 @@ import { allRFilesFrom, optionDefinitions, optionHelp, StatsCliOptions, validate
 import commandLineUsage from 'command-line-usage'
 import { guard } from '../util/assert'
 import { postProcessFolder, printClusterReport } from './post-process'
+import { fileBasedCount, writeFileBasedCountToFile } from './post-process/fileBasedCount'
 
 const options = commandLineArgs(optionDefinitions) as StatsCliOptions
 
@@ -31,6 +32,9 @@ if(options['post-process']) {
   const reports = postProcessFolder(options.input[0], processedFeatures)
   for(const report of reports) {
     printClusterReport(report)
+    const outputPath = `${report.filepath}.dat`
+    console.log(`writing file based count to ${outputPath}`)
+    writeFileBasedCountToFile(fileBasedCount(report), outputPath)
   }
   process.exit(0)
 }

@@ -6,7 +6,8 @@ import { printFeatureStatistics, initFileProvider, setFormatter, voidFormatter }
 import { allRFilesFrom, optionDefinitions, optionHelp, StatsCliOptions, validateFeatures } from './cli'
 import commandLineUsage from 'command-line-usage'
 import { guard } from '../util/assert'
-import { postProcessFolder, printClusterReport } from './post-process'
+import { postProcessFolder, printClusterReport, histogramsFromClusters, histograms2table } from './post-process'
+import { writeTableAsCsv } from '../util/files'
 
 const options = commandLineArgs(optionDefinitions) as StatsCliOptions
 
@@ -29,8 +30,14 @@ if(options['post-process']) {
   console.log('-----post processing')
   guard(options.input.length === 1, 'post processing only works with a single input file')
   const reports = postProcessFolder(options.input[0], processedFeatures)
+  console.log(`found ${reports.length} reports`)
   for(const report of reports) {
     printClusterReport(report)
+    const receivedHistograms = histogramsFromClusters(report, 20)
+    const outputPath = `${report.filepath}.dat`
+    console.log(`writing histogram data to ${outputPath}`)
+    writeTableAsCsv(histograms2table(receivedHistograms, true), outputPath)
+    /* writeFileBasedCountToFile(fileBasedCount(report), outputPath) */
   }
   process.exit(0)
 }

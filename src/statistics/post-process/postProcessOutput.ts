@@ -21,7 +21,7 @@ export function postProcessFolder(filepath: string, features: FeatureSelection):
     return []
   }
 
-  const results = []
+  const results: ClusterReport[] = []
   for(const feature of features) {
     const result = processFeatureFolder(filepath, feature)
     if(result.length > 0) {

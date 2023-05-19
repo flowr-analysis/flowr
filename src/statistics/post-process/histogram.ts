@@ -67,7 +67,7 @@ export function histogramFromNumbers(name: string, binSize: number, values: numb
     }
   }
 
-  const numberOfBins = Math.ceil((max - min) / binSize)
+  const numberOfBins = Math.ceil((max - min + 1) / binSize)
   const histogram = new Array(numberOfBins).fill(0) as number[]
 
   for(const v of values) {

@@ -14,7 +14,7 @@ import { MergeableRecord } from '../../util/objects'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
- * Allows for one nesting level to denote hierarchical features. [TODO: | Record\<string, number\>]
+ * Allows for one nesting level to denote hierarchical features.
  * <p>
  * Since we are writing to files {@link process}, we only count feature occurrences (some feature/parts are not written to file)
  */
@@ -51,7 +51,11 @@ export const ALL_FEATURES = {
 
 export type FeatureKey = keyof typeof ALL_FEATURES
 export type FeatureValue<k extends FeatureKey> = ReturnType<typeof ALL_FEATURES[k]['process']>
-export const allFeatureNames: FeatureKey[] = Object.keys(ALL_FEATURES) as FeatureKey[]
+
+/** If the user passes `all`, this should be every feature present in {@link ALL_FEATURES} (see {@link allFeatureNames})*/
+export type FeatureSelection = Set<FeatureKey>
+
+export const allFeatureNames: Set<FeatureKey> = new Set<FeatureKey>(Object.keys(ALL_FEATURES) as FeatureKey[])
 
 export type FeatureStatistics = {
   [K in FeatureKey]: FeatureInfo

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-FILE="top-r-downloads.txt"
-ROOT_FOLDER="${HOME}/Documents/CRAN/"
+FILE="scripts/top-r-downloads.txt"
+ROOT_FOLDER="${HOME}/Documents/Data/Data/CRAN/"
 
 readarray -t content < <(cut -d ',' -f 1 "${FILE}")
 
@@ -13,5 +13,5 @@ done
 
 DIR="./statistics-out/top-$(date +%Y-%m-%d-%H-%M-%S)/"
 mkdir -p "${DIR}"
-npm run stats -- "${arr[@]}" --output-dir "${DIR}" |& tee -a "${DIR}/full.log"
+npm run stats -- "${arr[@]}" --output-dir "${DIR}" |& tee -a "./full.log"
 

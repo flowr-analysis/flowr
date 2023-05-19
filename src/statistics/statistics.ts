@@ -5,7 +5,7 @@ import {
   RParseRequestFromFile,
   RParseRequestFromText
 } from '../r-bridge'
-import { ALL_FEATURES, Feature, FeatureKey, FeatureStatistics } from './features'
+import { ALL_FEATURES, Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features'
 import { DOMParser } from 'xmldom'
 import fs from 'fs'
 import { log } from '../util/log'
@@ -79,7 +79,7 @@ export function staticRequests(...requests: (RParseRequestFromText | RParseReque
  */
 export async function extract<T extends RParseRequestFromText | RParseRequestFromFile>(shell: RShell,
                                                                                        onRequest: (request: T) => void,
-                                                                                       features: 'all' | Set<FeatureKey>,
+                                                                                       features: FeatureSelection,
                                                                                        requests: AsyncGenerator<T>
 ): Promise<{ features: FeatureStatistics, meta: MetaStatistics }> {
   let result = {} as FeatureStatistics

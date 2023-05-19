@@ -7,7 +7,7 @@ import { allRFilesFrom, optionDefinitions, optionHelp, StatsCliOptions, validate
 import commandLineUsage from 'command-line-usage'
 import { guard } from '../util/assert'
 import { postProcessFolder, printClusterReport } from './post-process'
-import { fileBasedCount, writeFileBasedCountToFile } from './post-process/fileBasedCount'
+import { histograms } from './post-process/histogram'
 
 const options = commandLineArgs(optionDefinitions) as StatsCliOptions
 
@@ -30,11 +30,13 @@ if(options['post-process']) {
   console.log('-----post processing')
   guard(options.input.length === 1, 'post processing only works with a single input file')
   const reports = postProcessFolder(options.input[0], processedFeatures)
+  console.log(`found ${reports.length} reports`)
   for(const report of reports) {
     printClusterReport(report)
     const outputPath = `${report.filepath}.dat`
-    console.log(`writing file based count to ${outputPath}`)
-    writeFileBasedCountToFile(fileBasedCount(report), outputPath)
+    console.log(histograms(report, 25, '<-'))
+    /* console.log(`writing file based count to ${outputPath}`)
+    writeFileBasedCountToFile(fileBasedCount(report), outputPath) */
   }
   process.exit(0)
 }

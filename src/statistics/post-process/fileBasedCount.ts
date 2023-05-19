@@ -7,7 +7,7 @@ export interface FileBasedTable {
 }
 
 /**
- * The purpose of this function  is to reformat {@link ClusterReport} in way that lists file-based contributions.
+ * The purpose of this function is to reformat {@link ClusterReport} in way that lists file-based contributions.
  * E.g., "the file with id 12 contained the assignment with `<-` 3 times".
  * Feature Values are listed in the header.
  *

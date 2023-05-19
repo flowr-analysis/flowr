@@ -14,7 +14,7 @@ type ContextsWithCount = DefaultMap<IdType, number>
 export type ClusterContextIdMap = DefaultMap<string | undefined, IdType>
 export type ClusterValueInfoMap = DefaultMap<string, ContextsWithCount>
 
-/** produced by {@link clusterStatisticsOutput} */
+/** Produced by {@link clusterStatisticsOutput} */
 export interface ClusterReport extends MergeableRecord {
   /** The input file which has been clustered */
   readonly filepath: string

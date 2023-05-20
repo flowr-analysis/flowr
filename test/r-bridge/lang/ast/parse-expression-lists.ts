@@ -3,15 +3,12 @@ import { exprList, numVal } from "../../../helper/ast-builder"
 import { rangeFrom } from "../../../../src/util/range"
 import { Type } from '../../../../src/r-bridge'
 
-describe(
-  "3. Parse expression lists",
+describe("Parse expression lists",
   withShell((shell) => {
-    describe("1. Expression lists with newlines and braces", () => {
+    describe("Expression lists with newlines and braces", () => {
       // TODO: find a better way to name these tests
       // this is already covered by other tests, yet it is good to state it here explicitly (expr list is the default top-level token for R)
-      assertAst(
-        `1.1 "42" (single element)`,
-        shell,
+      assertAst(`"42" (single element)`, shell,
         `42`,
         exprList({
           type:     Type.Number,
@@ -24,9 +21,7 @@ describe(
       // the r standard does not seem to allow '\r\n' or '\n\r'
       // TODO: split again for R treats lines differently on location compare
       const twoLine = `42\na`
-      assertAst(
-        `1.2 ${JSON.stringify(twoLine)} (two lines)`,
-        shell,
+      assertAst(`${JSON.stringify(twoLine)} (two lines)`, shell,
         twoLine,
         exprList(
           {
@@ -48,9 +43,7 @@ describe(
       )
 
       const manyLines = `a\nb\nc\nd\nn2\nz\n`
-      assertAst(
-        `1.3 ${JSON.stringify(manyLines)} (many lines)`,
-        shell,
+      assertAst(`${JSON.stringify(manyLines)} (many lines)`, shell,
         manyLines,
         exprList(
           {
@@ -105,9 +98,7 @@ describe(
       )
 
       const twoLineWithBraces = `{ 42\na }`
-      assertAst(
-        `1.4 ${JSON.stringify(twoLineWithBraces)} (two lines with braces)`,
-        shell,
+      assertAst(`${JSON.stringify(twoLineWithBraces)} (two lines with braces)`, shell,
         twoLineWithBraces,
         exprList({
           type:     Type.ExpressionList,
@@ -136,9 +127,7 @@ describe(
 
       // { 42\na }{ x } seems to be illegal for R...
       const multipleBraces = `{ 42\na }\n{ x }`
-      assertAst(
-        `1.5 ${JSON.stringify(multipleBraces)} (multiple braces)`,
-        shell,
+      assertAst(`${JSON.stringify(multipleBraces)} (multiple braces)`, shell,
         multipleBraces,
         exprList(
           {
@@ -176,10 +165,8 @@ describe(
       )
     })
 
-    describe("2. Expression lists with semicolons", () => {
-      assertAst(
-        `1.1 "42;a" (two elements in same line)`,
-        shell,
+    describe("Expression lists with semicolons", () => {
+      assertAst(`"42;a" (two elements in same line)`, shell,
         `42;a`,
         exprList(
           {

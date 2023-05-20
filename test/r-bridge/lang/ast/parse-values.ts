@@ -12,11 +12,10 @@ import chaiAsPromised from 'chai-as-promised'
 chai.use(chaiAsPromised)
 
 
-describe(
-  "0. Constant Parsing",
+describe("Constant Parsing",
   withShell(shell => {
-    describe("0. parse single", () => {
-      it('0.0 parse illegal', () =>
+    describe("parse single", () => {
+      it('parse illegal', () =>
         assert.isRejected(retrieveXmlFromRCode({
           request:                 'text',
           content:                 '{',
@@ -25,7 +24,7 @@ describe(
         }, shell))
       )
 
-      describe("0.1 numbers", () => {
+      describe("numbers", () => {
         for (const number of RNumberPool) {
           const range = rangeFrom(1, 1, 1, number.str.length)
           assertAst(
@@ -42,7 +41,7 @@ describe(
           )
         }
       })
-      describe("0.2 strings", () => {
+      describe("strings", () => {
         for (const string of RStringPool) {
           const range = rangeFrom(1, 1, 1, string.str.length)
           assertAst(
@@ -59,7 +58,7 @@ describe(
           )
         }
       })
-      describe("0.3 symbols", () => {
+      describe("symbols", () => {
         for (const symbol of RSymbolPool) {
           const range = rangeFrom(
             1,
@@ -82,7 +81,7 @@ describe(
           )
         }
       })
-      describe("0.4 boolean", () => {
+      describe("boolean", () => {
         for(const [lexeme, content] of [['TRUE', true], ['FALSE', false], ['T', true], ['F', false]] as const) {
           assertAst(
             `${lexeme} as ${JSON.stringify(content)}`,
@@ -98,7 +97,7 @@ describe(
           )
         }
       })
-      describe("0.5 comments", () => {
+      describe("comments", () => {
         assertAst(
           "simple line comment",
           shell,

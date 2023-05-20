@@ -1,5 +1,5 @@
 
-describe("B. Working with expression lists", () => {
+describe("Working with expression lists", () => {
   require('./lists/uninteresting')
 
   require('./lists/read')

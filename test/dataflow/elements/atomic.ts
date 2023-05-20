@@ -7,7 +7,7 @@ import { assertDataflow, withShell } from '../../helper/shell'
 import { DataflowGraph, GlobalScope, LocalScope } from '../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../helper/provider'
 
-describe("A. Atomic dataflow information",
+describe("Atomic dataflow information",
   withShell((shell) => {
     describe("uninteresting leafs", () => {
       for (const input of ["42", '"test"', "TRUE", "NA", "NULL"]) {

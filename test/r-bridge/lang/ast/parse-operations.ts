@@ -8,13 +8,11 @@ import {
 import { type RShell, Type, ComparisonOperators } from '../../../../src/r-bridge'
 import { rangeFrom } from "../../../../src/util/range"
 
-describe(
-  "1. Parse simple operations",
+describe("Parse simple operations",
   withShell((shell) => {
-    describe("1.1 unary operations", () => {
-      let idx = 0
+    describe("unary operations", () => {
       for (const opSuite of RUnaryOpPool) {
-        describe(`1.1.${++idx} ${opSuite.label} operations`, () => {
+        describe(`${opSuite.label} operations`, () => {
           for (const op of opSuite.pool) {
             const simpleInput = `${op.str}42`
             const opOffset = op.str.length - 1
@@ -43,8 +41,7 @@ describe(
       }
     })
 
-    describe("1.2. binary operations", () => {
-      let idx = 0
+    describe("binary operations", () => {
       for (const opSuite of [
         { label: "arithmetic", pool: RArithmeticBinaryOpPool },
         {
@@ -52,13 +49,13 @@ describe(
           pool:  RLogicalBinaryOpPool,
         },
       ]) {
-        describe(`1.2.${++idx} ${opSuite.label} operations`, () => {
+        describe(`${opSuite.label} operations`, () => {
           for (const op of opSuite.pool) {
             describePrecedenceTestsForOp(op, shell)
           }
         })
       }
-      describe(`1.2${++idx} comparison operations`, () => {
+      describe(`comparison operations`, () => {
         for (const op of ComparisonOperators) {
           describe(op, () => {
             const simpleInput = `1 ${op} 1`

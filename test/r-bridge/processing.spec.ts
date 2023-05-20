@@ -13,7 +13,7 @@ describe("Assign unique Ids and Parents",
         )
       }
       // decided to test with ast parsing, as we are dependent on these changes in reality
-      describe("1. Single nodes (leafs)", () => {
+      describe("Single nodes (leafs)", () => {
         const exprList = (...children: RNodeWithParent[]): RNodeWithParent => ({
           type:   Type.ExpressionList,
           lexeme: undefined,
@@ -23,9 +23,7 @@ describe("Assign unique Ids and Parents",
           },
           children,
         })
-        assertDecorated(
-          "1.1 String",
-          '"hello"',
+        assertDecorated("String", '"hello"',
           exprList({
             type:     Type.String,
             location: rangeFrom(1, 1, 1, 7),
@@ -40,9 +38,7 @@ describe("Assign unique Ids and Parents",
             },
           })
         )
-        assertDecorated(
-          "1.2 Number",
-          "42",
+        assertDecorated("Number", "42",
           exprList({
             type:     Type.Number,
             location: rangeFrom(1, 1, 1, 2),
@@ -54,9 +50,7 @@ describe("Assign unique Ids and Parents",
             },
           })
         )
-        assertDecorated(
-          "1.3 Logical",
-          "FALSE",
+        assertDecorated("Logical", "FALSE",
           exprList({
             type:     Type.Logical,
             location: rangeFrom(1, 1, 1, 5),
@@ -68,9 +62,7 @@ describe("Assign unique Ids and Parents",
             },
           })
         )
-        assertDecorated(
-          "1.4 Symbol",
-          "k",
+        assertDecorated("Symbol", "k",
           exprList({
             type:      Type.Symbol,
             location:  rangeFrom(1, 1, 1, 1),

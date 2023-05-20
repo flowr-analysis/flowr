@@ -4,10 +4,9 @@ import { RAssignmentOpPool } from "../../../helper/provider"
 import { rangeFrom } from "../../../../src/util/range"
 import { Type } from '../../../../src/r-bridge'
 
-describe(
-  "2. Parse simple assignments",
+describe("Parse simple assignments",
   withShell((shell) => {
-    describe("1.1 constant assignments", () => {
+    describe("constant assignments", () => {
       for (const op of RAssignmentOpPool) {
         const opOffset = op.str.length - 1
         assertAst(

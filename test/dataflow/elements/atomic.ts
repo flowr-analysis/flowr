@@ -9,26 +9,23 @@ import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../
 
 describe("A. Atomic dataflow information",
   withShell((shell) => {
-    describe("0. uninteresting leafs", () => {
+    describe("uninteresting leafs", () => {
       for (const input of ["42", '"test"', "TRUE", "NA", "NULL"]) {
         assertDataflow(input, shell, input, new DataflowGraph())
       }
     })
 
-    assertDataflow("1. simple variable", shell,
+    assertDataflow("simple variable", shell,
       "xylophone",
       new DataflowGraph().addNode("0", "xylophone")
     )
 
-    // TODO: clean up numbers
-    describe("2. unary operators", () => {
-      let idx = 0
+    describe("unary operators", () => {
       for (const opSuite of RUnaryOpPool) {
-        describe(`2.${++idx} ${opSuite.label} operations`, () => {
+        describe(`${opSuite.label} operations`, () => {
           for (const op of opSuite.pool) {
             const inputDifferent = `${op.str}x`
-            assertDataflow(
-              `${op.str}x`,
+            assertDataflow(      `${op.str}x`,
               shell,
               inputDifferent,
               new DataflowGraph().addNode("0", "x")
@@ -39,25 +36,21 @@ describe("A. Atomic dataflow information",
     })
 
     // TODO: these will be more interesting whenever we have more information on the edges (like modification etc.)
-    describe("2b. non-assignment binary operators", () => {
-      let idx = 0
+    describe("non-assignment binary operators", () => {
       for (const opSuite of RNonAssignmentBinaryOpPool) {
-        describe(`2.${++idx} ${opSuite.label}`, () => {
-          let opIdx = 0
+        describe(`${opSuite.label}`, () => {
           for (const op of opSuite.pool) {
-            describe(`2.${idx}.${++opIdx} ${op.str}`, () => {
+            describe(`${op.str}`, () => {
               // TODO: some way to automatically retrieve the id if they are unique? || just allow to omit it?
               const inputDifferent = `x ${op.str} y`
-              assertDataflow(
-                `${inputDifferent} (different variables)`,
+              assertDataflow(        `${inputDifferent} (different variables)`,
                 shell,
                 inputDifferent,
                 new DataflowGraph().addNode("0", "x").addNode("1", "y")
               )
 
               const inputSame = `x ${op.str} x`
-              assertDataflow(
-                `${inputSame} (same variables)`,
+              assertDataflow(        `${inputSame} (same variables)`,
                 shell,
                 inputSame,
                 new DataflowGraph()
@@ -71,16 +64,14 @@ describe("A. Atomic dataflow information",
       }
     })
 
-    describe("3. assignments", () => {
-      let idx = 0
+    describe("assignments", () => {
       for (const op of RAssignmentOpPool) {
-        describe(`3.${++idx} ${op.str}`, () => {
+        describe(`${op.str}`, () => {
           const scope = op.str.length > 2 ? GlobalScope : LocalScope // love it
           const swapSourceAndTarget = op.str === "->" || op.str === "->>"
 
           const constantAssignment = swapSourceAndTarget ? `5 ${op.str} x` : `x ${op.str} 5`
-          assertDataflow(
-            `${constantAssignment} (constant assignment)`,
+          assertDataflow(    `${constantAssignment} (constant assignment)`,
             shell,
             constantAssignment,
             new DataflowGraph().addNode(
@@ -103,8 +94,7 @@ describe("A. Atomic dataflow information",
               .addNode("1", "y")
               .addEdge("0", "1", "defined-by", "always")
           }
-          assertDataflow(
-            `${variableAssignment} (variable assignment)`,
+          assertDataflow(    `${variableAssignment} (variable assignment)`,
             shell,
             variableAssignment,
             dataflowGraph
@@ -125,18 +115,16 @@ describe("A. Atomic dataflow information",
               .addEdge("0", "1", "defined-by", "always")
           }
 
-          assertDataflow(
-            `${circularAssignment} (circular assignment)`,
+          assertDataflow(    `${circularAssignment} (circular assignment)`,
             shell,
             circularAssignment,
             circularGraph
           )
         })
       }
-      describe(`3.${++idx} nested assignments`, () => {
+      describe(`nested assignments`, () => {
         // TODO: dependency between x and y?
-        assertDataflow(
-          `3.${idx}.1 "x <- y <- 1"`,
+        assertDataflow(  `"x <- y <- 1"`,
           shell,
           "x <- y <- 1",
           new DataflowGraph()
@@ -144,8 +132,7 @@ describe("A. Atomic dataflow information",
             .addNode("1", "y", LocalScope)
             .addEdge("0", "1", "defined-by", "always")
         )
-        assertDataflow(
-          `3.${idx}.2 "1 -> x -> y"`,
+        assertDataflow(  `"1 -> x -> y"`,
           shell,
           "1 -> x -> y",
           new DataflowGraph()
@@ -154,8 +141,7 @@ describe("A. Atomic dataflow information",
             .addEdge("3", "1", "defined-by", "always")
         )
         // still by indirection (even though y is overwritten?) TODO: discuss that
-        assertDataflow(
-          `3.${idx}.3 "x <- 1 -> y"`,
+        assertDataflow(  `"x <- 1 -> y"`,
           shell,
           "x <- 1 -> y",
           new DataflowGraph()
@@ -163,8 +149,7 @@ describe("A. Atomic dataflow information",
             .addNode("2", "y", LocalScope)
             .addEdge("0", "2", "defined-by", "always")
         )
-        assertDataflow(
-          `3.${idx}.1 "x <- y <- z"`,
+        assertDataflow(  `"x <- y <- z"`,
           shell,
           "x <- y <- z",
           new DataflowGraph()
@@ -178,35 +163,30 @@ describe("A. Atomic dataflow information",
       })
     })
 
-    describe("4. if-then-else", () => {
+    describe("if-then-else", () => {
       // spacing issues etc. are dealt with within the parser, however, braces are not allowed to introduce scoping artifacts
-      let variant = 0
       for (const b of [
         { label: "without braces", func: (x: string) => `${x}` },
         { label: "with braces", func: (x: string) => `{ ${x} }` },
       ]) {
-        describe(`4.${++variant} Variant ${b.label}`, () => {
-          describe(`4.${variant}.1 if-then, no else`, () => {
-            assertDataflow(
-              `4.${variant}.1.1 completely constant`,
+        describe(`Variant ${b.label}`, () => {
+          describe(`if-then, no else`, () => {
+            assertDataflow(      `completely constant`,
               shell,
               `if (TRUE) ${b.func("1")}`,
               new DataflowGraph()
             )
-            assertDataflow(
-              `4.${variant}.1.2 compare cond.`,
+            assertDataflow(      `compare cond.`,
               shell,
               `if (x > 5) ${b.func("1")}`,
               new DataflowGraph().addNode("0", "x")
             )
-            assertDataflow(
-              `4.${variant}.1.3 compare cond. symbol in then`,
+            assertDataflow(      `compare cond. symbol in then`,
               shell,
               `if (x > 5) ${b.func("y")}`,
               new DataflowGraph().addNode("0", "x").addNode("3", "y")
             )
-            assertDataflow(
-              `4.${variant}.1.4 all variables`,
+            assertDataflow(      `all variables`,
               shell,
               `if (x > y) ${b.func("z")}`,
               new DataflowGraph()
@@ -214,8 +194,7 @@ describe("A. Atomic dataflow information",
                 .addNode("1", "y")
                 .addNode("3", "z")
             )
-            assertDataflow(
-              `4.${variant}.1.5 all variables, some same`,
+            assertDataflow(      `all variables, some same`,
               shell,
               `if (x > y) ${b.func("x")}`,
               new DataflowGraph()
@@ -224,8 +203,7 @@ describe("A. Atomic dataflow information",
                 .addNode("3", "x")
                 .addEdge("0", "3", "same-read-read", "always")
             )
-            assertDataflow(
-              `4.${variant}.1.6 all same variables`,
+            assertDataflow(      `all same variables`,
               shell,
               `if (x > x) ${b.func("x")}`,
               new DataflowGraph()
@@ -238,27 +216,23 @@ describe("A. Atomic dataflow information",
             )
           })
 
-          describe(`4.${variant}.2 if-then, with else`, () => {
-            assertDataflow(
-              `4.${variant}.2.1 completely constant`,
+          describe(`if-then, with else`, () => {
+            assertDataflow(      `completely constant`,
               shell,
               "if (TRUE) { 1 } else { 2 }",
               new DataflowGraph()
             )
-            assertDataflow(
-              `4.${variant}.2.2 compare cond.`,
+            assertDataflow(      `compare cond.`,
               shell,
               "if (x > 5) { 1 } else { 42 }",
               new DataflowGraph().addNode("0", "x")
             )
-            assertDataflow(
-              `4.${variant}.2.3 compare cond. symbol in then`,
+            assertDataflow(      `compare cond. symbol in then`,
               shell,
               "if (x > 5) { y } else { 42 }",
               new DataflowGraph().addNode("0", "x").addNode("3", "y")
             )
-            assertDataflow(
-              `4.${variant}.2.4 compare cond. symbol in then & else`,
+            assertDataflow(      `compare cond. symbol in then & else`,
               shell,
               "if (x > 5) { y } else { z }",
               new DataflowGraph()
@@ -266,8 +240,7 @@ describe("A. Atomic dataflow information",
                 .addNode("3", "y")
                 .addNode("4", "z")
             )
-            assertDataflow(
-              `4.${variant}.2.4 all variables`,
+            assertDataflow(      `all variables`,
               shell,
               "if (x > y) { z } else { a }",
               new DataflowGraph()
@@ -276,8 +249,7 @@ describe("A. Atomic dataflow information",
                 .addNode("3", "z")
                 .addNode("4", "a")
             )
-            assertDataflow(
-              `4.${variant}.2.5 all variables, some same`,
+            assertDataflow(      `all variables, some same`,
               shell,
               "if (y > x) { x } else { y }",
               new DataflowGraph()
@@ -288,8 +260,7 @@ describe("A. Atomic dataflow information",
                 .addEdge("1", "3", "same-read-read", "always")
                 .addEdge("0", "4", "same-read-read", "always")
             )
-            assertDataflow(
-              `4.${variant}.2.6 all same variables`,
+            assertDataflow(      `all same variables`,
               shell,
               "if (x > x) { x } else { x }",
               new DataflowGraph()
@@ -307,17 +278,13 @@ describe("A. Atomic dataflow information",
       }
     })
 
-    describe("5. for", () => {
+    describe("for", () => {
       // TODO: support for vectors!
-      assertDataflow(
-        "5.1 simple constant for-loop",
-        shell,
+      assertDataflow("simple constant for-loop", shell,
         `for(i in 1:10) { 1 }`,
         new DataflowGraph().addNode("0", "i", LocalScope)
       )
-      assertDataflow(
-        "5.1 using loop variable in body",
-        shell,
+      assertDataflow("using loop variable in body", shell,
         `for(i in 1:10) { i }`,
         new DataflowGraph()
           .addNode("0", "i", LocalScope)
@@ -327,29 +294,21 @@ describe("A. Atomic dataflow information",
       // TODO: so many other tests... variable in sequence etc.
     })
 
-    describe("6. repeat", () => {
+    describe("repeat", () => {
       // TODO: detect that a x <- repeat/while/for/... assignment does not have influence on the lhs as repeat returns NULL?
-      assertDataflow(
-        "6.1 simple constant repeat",
-        shell,
+      assertDataflow("simple constant repeat", shell,
         `repeat 2`,
         new DataflowGraph()
       )
-      assertDataflow(
-        "6.2 using loop variable in body",
-        shell,
+      assertDataflow("using loop variable in body", shell,
         `repeat x`,
         new DataflowGraph().addNode("0", "x")
       )
-      assertDataflow(
-        "6.3 using loop variable in body",
-        shell,
+      assertDataflow("using loop variable in body", shell,
         `repeat { x <- 1 }`,
         new DataflowGraph().addNode("0", "x", LocalScope)
       )
-      assertDataflow(
-        "6.4 using variable in body",
-        shell,
+      assertDataflow("using variable in body", shell,
         `repeat { x <- y }`,
         new DataflowGraph()
           .addNode("0", "x", LocalScope)
@@ -359,27 +318,21 @@ describe("A. Atomic dataflow information",
       )
       // TODO: so many other tests... variable in sequence etc.
     })
-    describe("6. while", () => {
-      assertDataflow(
-        "6.1 simple constant while",
-        shell,
+    describe("while", () => {
+      assertDataflow("simple constant while", shell,
         `while (TRUE) 2`,
         new DataflowGraph()
       )
-      assertDataflow(
-        "6.2 using variable in body",
-        shell,
+      assertDataflow("using variable in body", shell,
         `while (TRUE) x`,
         new DataflowGraph().addNode("1", "x")
       )
-      assertDataflow(
-        "6.3 assignment in loop body",
-        shell,
+      assertDataflow("assignment in loop body", shell,
         `while (TRUE) { x <- 3 }`,
         new DataflowGraph().addNode("1", "x", LocalScope)
       )
       /* TODO: support
-    assertDataflow('6.4 def compare in loop', shell, `while ((x <- x - 1) > 0) { x }`,
+    assertDataflow('def compare in loop', shell, `while ((x <- x - 1) > 0) { x }`,
       new DataflowGraph().addNode('1', 'x', LOCAL_SCOPE).addNode('2', 'x')
         .addNode('3', 'x')
         // .addEdge('0', '1', 'defined-by', 'always')

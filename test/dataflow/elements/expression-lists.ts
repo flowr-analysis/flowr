@@ -5,4 +5,5 @@ describe("B. Working with expression lists", () => {
   require('./lists/read')
 
   require('./lists/if-then')
+  require('./lists/loops/loops')
 })

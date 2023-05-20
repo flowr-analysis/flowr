@@ -26,7 +26,7 @@ import { RNode } from '../model'
 
 
 /**
- * Called during the down-pass, will pe propagated to children and used in the up-pass (see {@link TwoWayFoldFunctions}).
+ * Called during the down-pass, will pe propagated to children and used in the up-pass (see {@link StatefulFoldFunctions}).
  * <p>
  * Exists for leafs as well for consistency reasons.
  */
@@ -36,7 +36,7 @@ export type DownFold<Info, Down> = (node: RNode<Info>, down: Down) => Down
  * All fold functions besides `down` are called after the down-pass in conventional fold-fashion.
  * The `down` parameter holds information obtained during the down-pass, issued by the `down` function.
  */
-export interface TwoWayFoldFunctions<Info, Down, Up> {
+export interface StatefulFoldFunctions<Info, Down, Up> {
   down:        DownFold<Info, Down>
   foldNumber:  (num: RNumber<Info>, down: Down) => Up;
   foldString:  (str: RString<Info>, down: Down) => Up;
@@ -82,7 +82,7 @@ export interface TwoWayFoldFunctions<Info, Down, Up> {
 /**
  * Folds in old functional-fashion over the AST structure but allowing for a down function which can pass context to child nodes.
  */
-export function foldAstTwoWay<Info, Down, Up>(ast: RNode<Info>, down: Down, folds: DeepReadonly<TwoWayFoldFunctions<Info, Down, Up>>): Up {
+export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, folds: DeepReadonly<StatefulFoldFunctions<Info, Down, Up>>): Up {
   const type = ast.type
   down = folds.down(ast, down)
   switch (type) {
@@ -101,49 +101,49 @@ export function foldAstTwoWay<Info, Down, Up>(ast: RNode<Info>, down: Down, fold
     case Type.UnaryOp:
       return foldUnaryOp(ast, down, folds)
     case Type.For:
-      return folds.loop.foldFor(ast, foldAstTwoWay(ast.variable, down, folds), foldAstTwoWay(ast.vector, down, folds), foldAstTwoWay(ast.body, down, folds), down)
+      return folds.loop.foldFor(ast, foldAstStateful(ast.variable, down, folds), foldAstStateful(ast.vector, down, folds), foldAstStateful(ast.body, down, folds), down)
     case Type.While:
-      return folds.loop.foldWhile(ast, foldAstTwoWay(ast.condition, down, folds), foldAstTwoWay(ast.body, down, folds), down)
+      return folds.loop.foldWhile(ast, foldAstStateful(ast.condition, down, folds), foldAstStateful(ast.body, down, folds), down)
     case Type.Repeat:
-      return folds.loop.foldRepeat(ast, foldAstTwoWay(ast.body, down, folds), down)
+      return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down)
     case Type.FunctionCall:
-      return folds.foldFunctionCall(ast, foldAstTwoWay(ast.functionName, down, folds), ast.parameters.map(param => foldAstTwoWay(param, down, folds)), down)
+      return folds.foldFunctionCall(ast, foldAstStateful(ast.functionName, down, folds), ast.parameters.map(param => foldAstStateful(param, down, folds)), down)
     case Type.Next:
       return folds.loop.foldNext(ast, down)
     case Type.Break:
       return folds.loop.foldBreak(ast, down)
     // TODO: other loops
     case Type.If:
-      return folds.foldIfThenElse(ast, foldAstTwoWay(ast.condition, down, folds), foldAstTwoWay(ast.then, down, folds), ast.otherwise === undefined ? undefined : foldAstTwoWay(ast.otherwise, down, folds), down)
+      return folds.foldIfThenElse(ast, foldAstStateful(ast.condition, down, folds), foldAstStateful(ast.then, down, folds), ast.otherwise === undefined ? undefined : foldAstStateful(ast.otherwise, down, folds), down)
     case Type.ExpressionList:
-      return folds.foldExprList(ast, ast.children.map(expr => foldAstTwoWay(expr, down, folds)), down)
+      return folds.foldExprList(ast, ast.children.map(expr => foldAstStateful(expr, down, folds)), down)
     default:
       assertUnreachable(type)
   }
 }
 
-function foldBinaryOp<Info, Down, Up>(ast: RBinaryOp<Info>, down: Down, folds: TwoWayFoldFunctions<Info, Down, Up>): Up {
+function foldBinaryOp<Info, Down, Up>(ast: RBinaryOp<Info>, down: Down, folds: StatefulFoldFunctions<Info, Down, Up>): Up {
   switch (ast.flavor) {
     case 'logical':
-      return folds.binaryOp.foldLogicalOp(ast as RLogicalBinaryOp<Info>, foldAstTwoWay(ast.lhs, down, folds), foldAstTwoWay(ast.rhs, down, folds), down)
+      return folds.binaryOp.foldLogicalOp(ast as RLogicalBinaryOp<Info>, foldAstStateful(ast.lhs, down, folds), foldAstStateful(ast.rhs, down, folds), down)
     case 'arithmetic':
-      return folds.binaryOp.foldArithmeticOp(ast as RArithmeticBinaryOp<Info>, foldAstTwoWay(ast.lhs, down, folds), foldAstTwoWay(ast.rhs, down, folds), down)
+      return folds.binaryOp.foldArithmeticOp(ast as RArithmeticBinaryOp<Info>, foldAstStateful(ast.lhs, down, folds), foldAstStateful(ast.rhs, down, folds), down)
     case 'comparison':
-      return folds.binaryOp.foldComparisonOp(ast as RComparisonBinaryOp<Info>, foldAstTwoWay(ast.lhs, down, folds), foldAstTwoWay(ast.rhs, down, folds), down)
+      return folds.binaryOp.foldComparisonOp(ast as RComparisonBinaryOp<Info>, foldAstStateful(ast.lhs, down, folds), foldAstStateful(ast.rhs, down, folds), down)
     case 'assignment':
-      return folds.binaryOp.foldAssignment(ast as RAssignmentOp<Info>, foldAstTwoWay(ast.lhs, down, folds), foldAstTwoWay(ast.rhs, down, folds), down)
+      return folds.binaryOp.foldAssignment(ast as RAssignmentOp<Info>, foldAstStateful(ast.lhs, down, folds), foldAstStateful(ast.rhs, down, folds), down)
     default:
       assertUnreachable(ast.flavor)
   }
 }
 
 
-function foldUnaryOp<Info, Down, Up>(ast: RUnaryOp<Info>, down: Down, folds: TwoWayFoldFunctions<Info, Down, Up>): Up {
+function foldUnaryOp<Info, Down, Up>(ast: RUnaryOp<Info>, down: Down, folds: StatefulFoldFunctions<Info, Down, Up>): Up {
   switch (ast.flavor) {
     case 'logical':
-      return folds.unaryOp.foldLogicalOp(ast as RLogicalUnaryOp<Info>, foldAstTwoWay(ast.operand, down, folds), down)
+      return folds.unaryOp.foldLogicalOp(ast as RLogicalUnaryOp<Info>, foldAstStateful(ast.operand, down, folds), down)
     case 'arithmetic':
-      return folds.unaryOp.foldArithmeticOp(ast as RArithmeticUnaryOp<Info>, foldAstTwoWay(ast.operand, down, folds), down)
+      return folds.unaryOp.foldArithmeticOp(ast as RArithmeticUnaryOp<Info>, foldAstStateful(ast.operand, down, folds), down)
     default:
       assertUnreachable(ast.flavor)
   }

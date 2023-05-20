@@ -5,11 +5,72 @@
 import { DataflowInformation, initializeCleanInfo } from '../info'
 import { RExpressionList } from '../../../r-bridge'
 import { DataflowProcessorDown } from '../../processor'
-import { IdentifierReference, initializeCleanEnvironments, overwriteEnvironments, resolveByName } from '../../environments'
-import { guard } from '../../../util/assert'
+import {
+  IdentifierReference,
+  initializeCleanEnvironments,
+  overwriteEnvironments,
+  REnvironmentInformation,
+  resolveByName
+} from '../../environments'
 import { linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
+import { DataflowGraph } from '../../graph'
 
+
+function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, down: DataflowProcessorDown<OtherInfo>, environments: REnvironmentInformation, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
+  const readName = read.name
+
+  const probableTarget = resolveByName(readName, down.scope, environments)
+
+  if (probableTarget === undefined) {
+    // keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
+    if (remainingRead.has(readName)) {
+      remainingRead.get(readName)?.push(read)
+    } else {
+      remainingRead.set(readName, [read])
+    }
+  } else if (probableTarget.length === 1) {
+    nextGraph.addEdge(read, probableTarget[0], 'read')
+  } else {
+    for (const target of probableTarget) {
+      // we can stick with maybe even if readId.attribute is always
+      nextGraph.addEdge(read, target, 'read')
+    }
+  }
+}
+
+
+function processNextExpression<OtherInfo>(currentElement: DataflowInformation<OtherInfo>,
+                                          down: DataflowProcessorDown<OtherInfo>,
+                                          environments: REnvironmentInformation,
+                                          remainingRead: Map<string, IdentifierReference[]>,
+                                          nextGraph: DataflowGraph) {
+  // all inputs that have not been written until know, are read!
+  for (const read of [...currentElement.in, ...currentElement.activeNodes]) {
+    linkReadNameToWriteIfPossible(read, down, environments, remainingRead, nextGraph)
+  }
+  // add same variable reads for deferred if they are read previously but not dependent
+  for (const writeTarget of currentElement.out) {
+    const writeName = writeTarget.name
+
+    const remainingReadIds = remainingRead.get(writeName)
+    if (remainingReadIds) {
+      for (const read of remainingReadIds) {
+        nextGraph.addEdge(writeTarget, read, 'defined-by')
+      }
+      remainingRead.delete(writeName)
+      continue
+    }
+
+    const resolved = resolveByName(writeName, down.scope, environments)
+    if (resolved !== undefined) {
+      // write-write
+      for (const target of resolved) {
+        nextGraph.addEdge(target, writeTarget, 'same-def-def')
+      }
+    }
+  }
+}
 
 export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo>, expressions: DataflowInformation<OtherInfo>[], down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   if(expressions.length === 0) {
@@ -23,56 +84,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
   const nextGraph = expressions[0].graph.mergeWith(...expressions.slice(1).map(c => c.graph))
 
   for (const expression of expressions) {
-    const currentElement: DataflowInformation<OtherInfo> = expression
-
-    // all inputs that have not been written until know, are read!
-    for (const read of [...currentElement.in, ...currentElement.activeNodes]) {
-      const readName = read.name
-
-      const probableTarget = resolveByName(readName, down.scope, environments)
-      if (probableTarget === undefined) {
-        // keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
-        if(remainingRead.has(readName)) {
-          remainingRead.get(readName)?.push(read)
-        } else {
-          remainingRead.set(readName, [read])
-        }
-      } else if (probableTarget.length === 1) {
-        nextGraph.addEdge(read, probableTarget[0], 'read')
-      } else {
-        for (const target of probableTarget) {
-          // we can stick with maybe even if readId.attribute is always
-          nextGraph.addEdge(read, target, 'read')
-        }
-      }
-    }
-    // add same variable reads for deferred if they are read previously but not dependent
-    for (const writeTarget of currentElement.out) {
-      const writeId = writeTarget.nodeId
-      const existingRef = down.ast.idMap.get(writeId)
-      const writeName = existingRef?.lexeme
-      guard(writeName !== undefined, `Could not find name for write variable ${writeId}`)
-      if (remainingRead.has(writeName)) {
-        const readIds = remainingRead.get(writeName)
-        guard(readIds !== undefined, `Could not find readId for write variable ${writeId}`)
-        for (const read of readIds) {
-          nextGraph.addEdge(writeTarget, read, 'defined-by')
-        }
-        remainingRead.delete(writeName)
-      } else {
-        const resolved = resolveByName(writeName, down.scope, environments)
-        if (resolved) { // write-write
-          const writePointers = resolved
-          if (writePointers.length === 1) {
-            nextGraph.addEdge(writePointers[0], writeTarget, 'same-def-def')
-          } else {
-            for (const target of writePointers) {
-              nextGraph.addEdge(target, writeTarget, 'same-def-def')
-            }
-          }
-        }
-      }
-    }
+    processNextExpression(expression, down, environments, remainingRead, nextGraph)
 
     // update the environments for the next iteration with the previous writes
     environments = overwriteEnvironments(environments, expression.environments)

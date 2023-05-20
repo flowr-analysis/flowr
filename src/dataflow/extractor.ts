@@ -8,9 +8,9 @@ import { processNonAssignmentBinaryOp } from './internal/process/nonAssignmentBi
 import { processAssignment } from './internal/process/assignment'
 import { processUnaryOp } from './internal/process/unaryOp'
 import { processExpressionList } from './internal/process/expressionList'
-import { processRepeatLoop } from './internal/process/repeatLoop'
-import { processForLoop } from './internal/process/forLoop'
-import { processWhileLoop } from './internal/process/whileLoop'
+import { processRepeatLoop } from './internal/process/loops/repeatLoop'
+import { processForLoop } from './internal/process/loops/forLoop'
+import { processWhileLoop } from './internal/process/loops/whileLoop'
 import { processIfThenElse } from './internal/process/ifThenElse'
 import { processFunctionCall } from './internal/process/functionCall'
 

@@ -1,7 +1,7 @@
-import { linkIngoingVariablesInSameScope, produceNameSharedIdMap, setDefinitionOfNode } from '../linker'
-import { DataflowInformation } from '../info'
-import { DataflowProcessorDown } from '../../processor'
-import { appendEnvironments, makeAllMaybe } from '../../environments'
+import { linkIngoingVariablesInSameScope, produceNameSharedIdMap, setDefinitionOfNode } from '../../linker'
+import { DataflowInformation } from '../../info'
+import { DataflowProcessorDown } from '../../../processor'
+import { appendEnvironments, makeAllMaybe } from '../../../environments'
 
 export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInformation<OtherInfo>,
                                           vector: DataflowInformation<OtherInfo>, body: DataflowInformation<OtherInfo>,

@@ -1,5 +1,5 @@
-import { DataflowInformation } from '../info'
-import { DataflowProcessorDown } from '../../processor'
+import { DataflowInformation } from '../../info'
+import { DataflowProcessorDown } from '../../../processor'
 
 export function processRepeatLoop<OtherInfo>(loop: unknown, body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   return {

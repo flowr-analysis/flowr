@@ -1,6 +1,6 @@
 import { assertDataflow, withShell } from '../../helper/shell'
 import { DataflowGraph, LocalScope } from '../../../src/dataflow'
-import { IdType } from '../../../src/r-bridge'
+import { NodeId } from '../../../src/r-bridge'
 
 describe(
   "B. Working with expression lists",
@@ -19,7 +19,7 @@ describe(
 
     describe("1. Lists with variable references", () => {
       describe(`1.1 read-read same variable`, () => {
-        const sameGraph = (id1: IdType, id2: IdType) =>
+        const sameGraph = (id1: NodeId, id2: NodeId) =>
           new DataflowGraph()
             .addNode(id1, "x")
             .addNode(id2, "x")
@@ -62,7 +62,7 @@ describe(
         )
       })
       describe("1.2 def-def same variable", () => {
-        const sameGraph = (id1: IdType, id2: IdType) =>
+        const sameGraph = (id1: NodeId, id2: NodeId) =>
           new DataflowGraph()
             .addNode(id1, "x", LocalScope)
             .addNode(id2, "x", LocalScope)
@@ -111,7 +111,7 @@ describe(
         )
       })
       describe("1.3 def followed by read", () => {
-        const sameGraph = (id1: IdType, id2: IdType) =>
+        const sameGraph = (id1: NodeId, id2: NodeId) =>
           new DataflowGraph()
             .addNode(id1, "x", LocalScope)
             .addNode(id2, "x")

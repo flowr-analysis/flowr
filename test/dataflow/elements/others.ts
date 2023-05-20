@@ -1,5 +1,5 @@
 import { retrieveAst, withShell } from '../../helper/shell'
-import { decorateAst, IdType } from '../../../src/r-bridge'
+import { decorateAst, NodeId } from '../../../src/r-bridge'
 import {
   DataflowGraphNodeInfo,
   formatRange,
@@ -58,7 +58,7 @@ describe("others",
 
       // I know we do not want to slice, but let's try as a quick demo:
 
-      const print = (id: IdType): void => {
+      const print = (id: NodeId): void => {
         const nodeInfo = graph.get(id) as DataflowGraphNodeInfo
         const nodePosition = decorated.idMap.get(id)?.location as SourceRange
         console.log(

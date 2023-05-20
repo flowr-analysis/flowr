@@ -4,7 +4,7 @@ import { log } from '../../util/log'
 import fs from 'fs'
 import { ClusterContextIdMap, ClusterReport, clusterStatisticsOutput } from './clusterer'
 import { ColorEffect, Colors, defaultStatisticsFileSuffix, FontWeights, formatter } from '../output'
-import { deterministicCountingIdGenerator, IdType } from '../../r-bridge'
+import { deterministicCountingIdGenerator, NodeId } from '../../r-bridge'
 import { DefaultMap } from '../../util/defaultmap'
 
 /**
@@ -47,7 +47,7 @@ function processFeatureFolder(filepath: string, feature: FeatureKey): ClusterRep
   }
   log.info(`Processing ${feature} at ${targetPath}`)
 
-  const contextIdMap: ClusterContextIdMap = new DefaultMap<string | undefined, IdType>(deterministicCountingIdGenerator())
+  const contextIdMap: ClusterContextIdMap = new DefaultMap<string | undefined, NodeId>(deterministicCountingIdGenerator())
 
   const featureSubKeys = Object.keys(featureInfo.initialValue())
   const reports: ClusterReport[] = []

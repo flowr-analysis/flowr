@@ -69,8 +69,9 @@ function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInfo
   for(const active of target.activeNodes) {
     writeNodes.push({
       ...active,
-      scope: global ? GlobalScope : down.scope,
-      kind:  /* TODO: deal with functions */ 'variable'
+      scope:     global ? GlobalScope : down.scope,
+      kind:      /* TODO: deal with functions */ 'variable',
+      definedAt: op.info.id
     })
   }
   return writeNodes

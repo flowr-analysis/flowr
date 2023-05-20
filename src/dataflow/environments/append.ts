@@ -1,5 +1,14 @@
 import { guard } from '../../util/assert'
-import { REnvironmentInformation, IEnvironment, NamedEnvironments } from './environment'
+import { REnvironmentInformation, IEnvironment, NamedEnvironments, IdentifierDefinition } from './environment'
+
+function uniqueMergeValues(old: IdentifierDefinition[], value: IdentifierDefinition[]): IdentifierDefinition[] {
+  // TODO: improve this to ensure there are no duplicates
+  const set = new Set(old)
+  for (const v of value) {
+    set.add(v)
+  }
+  return [...set]
+}
 
 function appendIEnvironmentWith(base: IEnvironment, next: IEnvironment): IEnvironment {
   guard(base.name === next.name, 'cannot overwrite environments with different names')
@@ -7,8 +16,7 @@ function appendIEnvironmentWith(base: IEnvironment, next: IEnvironment): IEnviro
   for (const [key, value] of next.map) {
     const old = map.get(key)
     if(old) {
-      // TODO: improve this to ensure there are no duplicates
-      map.set(key, [...new Set([...old, ...value])])
+      map.set(key, uniqueMergeValues(old, value))
     } else {
       map.set(key, value)
     }
@@ -36,12 +44,17 @@ function appendNamedEnvironments(base: NamedEnvironments, next: NamedEnvironment
 /**
  * Adds all writes of `next` to `base` (i.e., the operations of `next` *might* happen).
  */
+export function appendEnvironments(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation
+export function appendEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation
+export function appendEnvironments(base: undefined, next: undefined): undefined
+export function appendEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined
 export function appendEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
   if(base === undefined) {
     return next
   } else if(next === undefined) {
     return base
   }
+  guard(base.local.length === next.local.length, "TODO; deal with the case if they differ")
 
   return {
     global: appendIEnvironmentWith(base.global, next.global),

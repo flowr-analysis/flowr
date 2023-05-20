@@ -3,7 +3,7 @@
  * This allows the dataflow to hold current definition locations for variables, based on the current scope.
  * @module
  */
-import { IdType } from '../../r-bridge'
+import { NodeId } from '../../r-bridge'
 import { DataflowGraphEdgeAttribute, DataflowScopeName, GlobalScope, LocalScope } from '../graph'
 
 /** identifiers are branded to avoid confusion with other string-like types */
@@ -13,7 +13,9 @@ export type EnvironmentName = string
  * Stores the definition of an identifier within an {@link IEnvironment}
  */
 export interface IdentifierDefinition extends IdentifierReference {
-  kind: 'function' | 'variable' | 'unknown' /* TODO: 'constant' */
+  kind:      'function' | 'variable' | 'unknown' /* TODO: 'constant' */
+  /** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
+  definedAt: NodeId
 }
 
 export interface VariableIdentifierDefinition extends IdentifierDefinition {
@@ -36,7 +38,7 @@ export interface IdentifierReference {
   name:   Identifier,
   scope:  DataflowScopeName,
   /** Node which represents the reference in the AST */
-  nodeId: IdType
+  nodeId: NodeId
   /**
    * Is this reference used in every execution path of the program or only if some of them. This can be too-conservative regarding `maybe`.
    * For example, if we can not detect `if(FALSE)`, this will be `maybe` even if we could statically determine, that the `then` branch is never executed.
@@ -83,6 +85,7 @@ export type NamedEnvironments = Map<EnvironmentName, IEnvironment>
  * the `baseenv`, the `emptyenv`and other default environments. Yet, during dataflow we want sometimes to know more (static
  * reference information) and sometimes know less (to be honest we do not want that,
  * but statically determining all attached environments is theoretically impossible --- consider attachments by user input).
+ * ONe example would be maps holding a potential list of all definitions of a variable, if we do not know the execution path (like with `if(x) A else B`).
  */
 export interface REnvironmentInformation {
   readonly global: IEnvironment

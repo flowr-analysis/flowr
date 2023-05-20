@@ -12,7 +12,7 @@ import { SourceRange } from '../../../src/util/range'
 
 describe("others",
   withShell((shell) => {
-    it("99. def for constant variable assignment", async() => {
+    it("def for constant variable assignment", async() => {
       const ast = await retrieveAst(
         shell,
         `
@@ -34,7 +34,7 @@ describe("others",
       console.log(graphToMermaidUrl(graph, decorated.idMap))
     })
 
-    it("100. the classic", async() => {
+    it("the classic", async() => {
       const code = `
           sum <- 0
           product <- 1

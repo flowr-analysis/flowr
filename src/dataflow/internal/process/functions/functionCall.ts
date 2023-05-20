@@ -1,5 +1,5 @@
-import { DataflowInformation } from '../info'
-import { DataflowProcessorDown } from '../../processor'
+import { DataflowInformation } from '../../info'
+import { DataflowProcessorDown } from '../../../processor'
 
 export function processFunctionCall<OtherInfo>(functionCall: unknown, functionName: DataflowInformation<OtherInfo>,  parameters: DataflowInformation<OtherInfo>[], down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   // TODO: deal with function info

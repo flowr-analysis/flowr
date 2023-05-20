@@ -20,6 +20,7 @@ import {
 import { RNa } from '../../../values'
 import { ParserData } from './data'
 import { DeepReadonly, DeepRequired } from 'ts-essentials'
+import { RFunctionDefinition } from '../../model/nodes/RFunctionDefinition'
 
 /** Denotes that if you return `undefined`, the parser will automatically take the original arguments (unchanged) */
 type AutoIfOmit<T> = T | undefined
@@ -128,6 +129,13 @@ export interface XmlParserHooks {
       unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RFunctionCall | undefined>
       before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
       after(data: ParserData, result: RFunctionCall): AutoIfOmit<RFunctionCall>
+    },
+    /** {@link tryToParseFunctionDefinition} */
+    onFunctionDefinition: {
+      /** triggered if {@link tryToParseFunctionDefinition} could not detect a function definition, you probably still want to return `undefined` */
+      unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RFunctionDefinition | undefined>
+      before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
+      after(data: ParserData, result: RFunctionDefinition): AutoIfOmit<RFunctionDefinition>
     }
   },
   expression: {
@@ -222,7 +230,7 @@ export function executeUnknownHook<T, R>(hook: (data: ParserData, input: T) => A
 // TODO: on unknown keep returning undefined!
 /* eslint-enable */
 
-function doNothing() { return undefined }
+const doNothing = () => undefined
 
 export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = {
   values: {
@@ -297,6 +305,11 @@ export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = 
   },
   functions: {
     onFunctionCall: {
+      unknown: doNothing,
+      before:  doNothing,
+      after:   doNothing
+    },
+    onFunctionDefinition: {
       unknown: doNothing,
       before:  doNothing,
       after:   doNothing

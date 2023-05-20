@@ -18,7 +18,6 @@ import { executeHook, executeUnknownHook } from '../../hooks'
  * @returns The parsed {@link RFunctionCall} or `undefined` if the given construct is not a function call
  */
 export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | undefined {
-  guard(mappedWithName.length > 0, 'to parse function calls we need at least one object to work on!')
   const fnBase = mappedWithName[0]
   if(fnBase.name !== Type.Expression) {
     parseLog.trace(`expected function call name to be wrapped an expression, yet received ${JSON.stringify(fnBase)}`)

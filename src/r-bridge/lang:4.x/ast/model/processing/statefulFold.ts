@@ -23,6 +23,7 @@ import {
   RComment, RNext, RBreak
 } from '../nodes'
 import { RNode } from '../model'
+import { RFunctionDefinition } from '../nodes/RFunctionDefinition'
 
 
 /**
@@ -69,13 +70,11 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
     otherwise: Up | undefined,
     down: Down
   ) => Up;
-  foldExprList:     (exprList: RExpressionList<Info>, expressions: Up[], down: Down) => Up;
-  foldFunctionCall: (
-    call: RFunctionCall<Info>,
-    functionName: Up,
-    parameters: Up[],
-    down: Down
-  ) => Up;
+  foldExprList: (exprList: RExpressionList<Info>, expressions: Up[], down: Down) => Up;
+  functions: {
+    foldFunctionDefinition: (definition: RFunctionDefinition<Info>, parameters: Up[], body: Up, down: Down) => Up;
+    foldFunctionCall:       (call: RFunctionCall<Info>, functionName: Up, parameters: Up[], down: Down) => Up;
+  }
 }
 
 
@@ -107,12 +106,13 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
     case Type.Repeat:
       return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down)
     case Type.FunctionCall:
-      return folds.foldFunctionCall(ast, foldAstStateful(ast.functionName, down, folds), ast.parameters.map(param => foldAstStateful(param, down, folds)), down)
+      return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.functionName, down, folds), ast.parameters.map(param => foldAstStateful(param, down, folds)), down)
+    case Type.Function:
+      return folds.functions.foldFunctionDefinition(ast, ast.parameters.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down)
     case Type.Next:
       return folds.loop.foldNext(ast, down)
     case Type.Break:
       return folds.loop.foldBreak(ast, down)
-    // TODO: other loops
     case Type.If:
       return folds.foldIfThenElse(ast, foldAstStateful(ast.condition, down, folds), foldAstStateful(ast.then, down, folds), ast.otherwise === undefined ? undefined : foldAstStateful(ast.otherwise, down, folds), down)
     case Type.ExpressionList:

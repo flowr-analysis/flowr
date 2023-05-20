@@ -31,11 +31,6 @@ export interface IdentifierReference {
   used:   DataflowGraphEdgeAttribute
 }
 
-export function makeMaybe(reference: IdentifierReference): IdentifierReference {
-  reference.used = 'maybe'
-  return reference
-}
-
 export function makeAllMaybe(references: IdentifierReference[] | undefined): IdentifierReference[] {
   if(references === undefined) {
     return []

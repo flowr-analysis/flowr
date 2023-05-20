@@ -1,7 +1,7 @@
 /**
  * Implementation of a bidirectional map
  *
- * All map-related functions are based on the normal Key -> Value map
+ * All map-related functions are based on the normal Key -&gt; Value map
  */
 export class BiMap<K, V> implements Map<K, V> {
   public readonly [Symbol.toStringTag]: string = 'BiMap'

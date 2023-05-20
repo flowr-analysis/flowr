@@ -76,14 +76,14 @@ export function printClusterReport(report: ClusterReport) {
   console.log(report.filepath)
 
   // TODO: violin plot by file
-  const shortstats = [...report.valueInfoMap.entries()].map(([id, values]) => {
+  const shortStats = [...report.valueInfoMap.entries()].map(([id, values]) => {
     return {
       id,
       count:  [...values.values()].reduce((a, b) => a + b, 0),
       unique: values.size()
     }
   }).sort((a, b) => b.count - a.count)
-  const { longestId, longestCount, longestUnique } = shortstats.reduce((acc, {id, count, unique}) => {
+  const { longestId, longestCount, longestUnique } = shortStats.reduce((acc, {id, count, unique}) => {
     return {
       longestId:     Math.max(acc.longestId, id.length),
       longestCount:  Math.max(acc.longestCount, count.toLocaleString().length),
@@ -91,7 +91,7 @@ export function printClusterReport(report: ClusterReport) {
     }
   }, { longestId: 0, longestCount: 0, longestUnique: 0 })
 
-  for(const {id, count, unique} of shortstats) {
+  for(const {id, count, unique} of shortStats) {
     const strId = `${id}`.padEnd(longestId, ' ')
     const strCount = count.toLocaleString().padStart(longestCount, ' ')
     const strUnique = unique.toLocaleString().padStart(longestUnique, ' ')

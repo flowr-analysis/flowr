@@ -15,7 +15,7 @@ import {
   DataflowGraph,
   diffGraphsToMermaidUrl, graphToMermaidUrl, LocalScope
 } from '../../src/dataflow'
-import { produceDataFlowGraph } from '../../src/dataflow/extractor'
+import { produceDataFlowGraph } from '../../src/dataflow'
 
 let defaultTokenMap: Record<string, string>
 

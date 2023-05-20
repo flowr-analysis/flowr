@@ -71,7 +71,7 @@ describe("others",
         ].sort()
         code.split("\n").map((line, index) => {
           if (lines.includes(index + 1)) {
-            console.log(`${[index + 1]}\t ${line}`)
+            console.log(`[${index + 1}]\t ${line}`)
           }
         })
         console.log(

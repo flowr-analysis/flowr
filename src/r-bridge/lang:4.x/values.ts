@@ -10,7 +10,7 @@ class ValueConversionError extends Error {
 /**
  * transforms a value to something R can understand (e.g., booleans to TRUE/FALSE)
  */
-export function ts2r(value: any): string {
+export function ts2r<T>(value: T): string {
   if (typeof value === 'undefined') {
     return 'NA'
   } else if (typeof value === 'string') {
@@ -149,5 +149,5 @@ export function isNA(value: string): value is (typeof RNa) {
 
 export function parseCSV(lines: string[]): string[][] {
   // TODO: make this scalable?
-  return parse(lines.join('\n'), { skipEmptyLines: true })
+  return parse(lines.join('\n'), { skipEmptyLines: true }) as string[][]
 }

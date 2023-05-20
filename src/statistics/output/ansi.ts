@@ -1,9 +1,12 @@
+
+// noinspection JSUnusedGlobalSymbols
 export enum FontWeights {
   bold = 1,
   faint = 2,
   italic = 3
 }
 
+// noinspection JSUnusedGlobalSymbols
 export enum Colors {
   black = 0,
   red = 1,
@@ -15,6 +18,7 @@ export enum Colors {
   white = 7
 }
 
+// noinspection JSUnusedGlobalSymbols
 export enum ColorEffect {
   foreground = 30,
   background = 40,

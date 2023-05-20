@@ -158,27 +158,35 @@ describe("Atomic dataflow information", withShell((shell) => {
 
     describe(`known impact assignments`, () => {
       describe('Loops return invisible null', () => {
-        for (const wrapper of [(x: string) => x, (x: string) => `{ ${x} }`]) {
-          const repeatCode = `x <- ${wrapper('repeat x')}`
-          assertDataflow(`"${repeatCode}"`, shell, repeatCode,
-            new DataflowGraph()
-              .addNode("0", "x", LocalScope)
-              .addNode("1", "x")
-          )
+        for (const assignment of [ { str: '<-', defId: ['0','0','0'], readId: ['1','1','1'], swap: false },
+          { str: '<<-', defId: ['0','0','0'], readId: ['1','1','1'], swap: false }, { str: '=', defId: ['0','0','0'], readId: ['1','1','1'], swap: false },
+          /* two for parenthesis necessary for precedence */
+          { str: '->', defId: ['2', '3', '6'], readId: ['0','0','0'], swap: true }, { str: '->>', defId: ['2', '3', '6'], readId: ['0','0','0'], swap: true }] ) {
+          describe(`${assignment.str}`, () => {
+            const scope = assignment.str.length > 2 ? GlobalScope : LocalScope
 
-          const whileCode = `x <- ${wrapper('while (x) 3')}`
-          assertDataflow(`"${whileCode}"`, shell, whileCode,
-            new DataflowGraph()
-              .addNode("0", "x", LocalScope)
-              .addNode("1", "x")
-          )
+            for (const wrapper of [(x: string) => x, (x: string) => `{ ${x} }`]) {
+              const build = (a: string, b: string) => assignment.swap ? `(${wrapper(b)}) ${assignment.str} ${a}` : `${a} ${assignment.str} ${wrapper(b)}`
 
-          const forCode = `x <- ${wrapper('for (x in 1:4) 3')}`
-          assertDataflow(`"${forCode}"`, shell, forCode,
-            new DataflowGraph()
-              .addNode("0", "x", LocalScope)
-              .addNode("1", "x", LocalScope)
-          )
+              const repeatCode = build('x', 'repeat x')
+              assertDataflow(`"${repeatCode}"`, shell, repeatCode, new DataflowGraph()
+                .addNode(assignment.defId[0], "x", scope)
+                .addNode(assignment.readId[0], "x")
+              )
+
+              const whileCode = build('x', 'while (x) 3')
+              assertDataflow(`"${whileCode}"`, shell, whileCode, new DataflowGraph()
+                .addNode(assignment.defId[1], "x", scope)
+                .addNode(assignment.readId[1], "x"))
+
+              const forCode = build('x', 'for (x in 1:4) 3')
+              assertDataflow(`"${forCode}"`, shell, forCode,
+                new DataflowGraph()
+                  .addNode(assignment.defId[2], "x", scope)
+                  .addNode(assignment.readId[2], "x", LocalScope /* for variable */)
+              )
+            }
+          })
         }
       })
     })

@@ -7,7 +7,6 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
                                           vector: DataflowInformation<OtherInfo>, body: DataflowInformation<OtherInfo>,
                                           down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
 
-  // TODO: allow to also attribute in-put with maybe and always
   // again within an if-then-else we consider all actives to be read
   // TODO: deal with ...variable.in it is not really ingoing in the sense of bindings i against it, but it should be for the for-loop
   // currently i add it at the end, but is this correct?
@@ -19,14 +18,10 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
   const writtenVariable = variable.activeNodes
   const nextGraph = variable.graph.mergeWith(vector.graph, body.graph)
 
-  // TODO: hold name when reading to avoid constant indirection?
   // now we have to bind all open reads with the given name to the locally defined writtenVariable!
-  // TODO: assert target name? (should be the correct way to do)
   const nameIdShares = produceNameSharedIdMap(ingoing)
 
   for(const write of writtenVariable) {
-    // TODO?: const ids = target.attribute === 'always' ? [target.id] : target.ids
-    // define it in term of all vector.in and vector.activeNodes
     // TODO: do not re-join every time!
     for(const link of [...vector.in, ...vector.activeNodes]) {
       nextGraph.addEdge(write.nodeId, link.nodeId, 'defined-by', /* TODO */ 'always')
@@ -46,7 +41,6 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
   makeAllMaybe(body.out)
 
 
-  // TODO: scoping?
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
   return {

@@ -34,6 +34,7 @@
          }
       ],
       "@typescript-eslint/non-nullable-type-assertion-style": "off",
+      "@typescript-eslint/no-unsafe-enum-comparison": "off",
       "@typescript-eslint/key-spacing": [
          "error",
          {

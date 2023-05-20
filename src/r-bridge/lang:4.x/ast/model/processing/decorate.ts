@@ -15,8 +15,8 @@ import { SourceRange } from '../../../../../util/range'
 import { BiMap } from '../../../../../util/bimap'
 import { foldAst } from './fold'
 
-/** The type of the id assigned to each node */
-export type IdType = string;
+/** The type of the id assigned to each node. Branded to avoid problematic usages with other string types. */
+export type NodeId = string & { __brand?: 'node-id'};
 
 /**
  * A function that given an RNode returns a (guaranteed) unique id for it
@@ -24,12 +24,12 @@ export type IdType = string;
  *
  * @returns a unique id for the given node
  */
-export type IdGenerator<OtherInfo> = (data: RNode<OtherInfo>) => IdType
+export type IdGenerator<OtherInfo> = (data: RNode<OtherInfo>) => NodeId
 
 /**
  * The simplest id generator which just increments a number on each call.
  */
-export function deterministicCountingIdGenerator(start = 0): () => IdType {
+export function deterministicCountingIdGenerator(start = 0): () => NodeId {
   let id = start
   return () => `${id++}`
 }
@@ -43,7 +43,7 @@ function loc2Id(loc: SourceRange) {
  *
  * @param data - the node to generate an id for, must have location information
  */
-export function nodeToLocationId<OtherInfo>(data: RNode<OtherInfo>): IdType {
+export function nodeToLocationId<OtherInfo>(data: RNode<OtherInfo>): NodeId {
   const loc = data.location
   guard(loc !== undefined, 'location must be defined to generate a location id')
   return loc2Id(loc)
@@ -60,15 +60,17 @@ export function deterministicLocationIdGenerator<OtherInfo>(start = 0): IdGenera
   return (data: RNode<OtherInfo>) => data.location !== undefined ? nodeToLocationId(data) : `${id++}`
 }
 
-export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & {
+export interface ParentInformation {
   /** uniquely identifies an AST-Node */
-  id:     IdType
+  id:     NodeId
   /** Links to the parent node, using an id so that the AST stays serializable */
-  parent: IdType | undefined
-}>
+  parent: NodeId | undefined
+}
+
+export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInformation>
 
 
-type DecoratedAstMap<OtherInfo> = BiMap<IdType, RNodeWithParent<OtherInfo>>
+type DecoratedAstMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
 interface FoldInfo<OtherInfo> { idMap: DecoratedAstMap<OtherInfo>, getId: IdGenerator<OtherInfo> }
 
 /**
@@ -92,8 +94,8 @@ export interface DecoratedAst<OtherInfo> {
  *
  * @returns a {@link DecoratedAst | decorated AST} based on the input and the id provider.
  */
-export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator(0)): DecoratedAst<OtherInfo> {
-  const idMap: DecoratedAstMap<OtherInfo> = new BiMap<IdType, RNodeWithParent<OtherInfo>>()
+export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator(0)): DecoratedAst<OtherInfo & ParentInformation> {
+  const idMap: DecoratedAstMap<OtherInfo> = new BiMap<NodeId, RNodeWithParent<OtherInfo>>()
   const info: FoldInfo<OtherInfo> = { idMap, getId }
 
   /* Please note, that all fold processors do not re-create copies in higher folding steps so that the idMap stays intact. */

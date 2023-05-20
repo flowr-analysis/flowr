@@ -20,11 +20,15 @@ class GuardError extends Error {
   }
 }
 
+export type GuardMessage = string | (() => string)
+
 /**
+ * @param assertion - will be asserted
+ * @param message - if a string, will be used as error message, if a function, will be called to produce the error message (can be used to avoid costly message generations)
  * @throws GuardError - if the assertion fails
  */
-export function guard(x: boolean, message = 'Assertion failed'): asserts x {
-  if (!x) {
-    throw new GuardError(message)
+export function guard(assertion: boolean, message: GuardMessage = 'Assertion failed'): asserts assertion {
+  if (!assertion) {
+    throw new GuardError( typeof message === 'string' ? message : message())
   }
 }

@@ -13,10 +13,8 @@ import namedNode = DataFactory.namedNode
 import quad = DataFactory.quad
 import { deepMergeObject, isObjectOrArray, MergeableRecord } from './objects'
 import { guard } from './assert'
-import { decorateAst, getStoredTokenMap, retrieveAstFromRCode, RShell } from '../r-bridge'
 import { DefaultMap } from './defaultmap'
 import literal = DataFactory.literal
-import type Writeable from 'stream'
 
 const domain = 'https://uni-ulm.de/r-ast/'
 
@@ -118,7 +116,7 @@ function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, qu
       namedNode(domain + config.getId(element)),
       namedNode(retrieveContext(config.context, obj))
     ))
-    guard(isObjectOrArray(element), `cannot serialize non-object to rdf within array of ${JSON.stringify(value)}!`)
+    guard(isObjectOrArray(element), () => `cannot serialize non-object to rdf within array of ${JSON.stringify(value)}!`)
     serializeObject(element as DataForQuad, quads, config)
   }
 }

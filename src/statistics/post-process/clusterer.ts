@@ -7,11 +7,11 @@
 import LineByLine from 'n-readlines'
 import { StatisticsOutputFormat } from '../output'
 import { DefaultMap } from '../../util/defaultmap'
-import { deterministicCountingIdGenerator, IdType } from '../../r-bridge'
+import { deterministicCountingIdGenerator, NodeId } from '../../r-bridge'
 import { MergeableRecord } from '../../util/objects'
 
-type ContextsWithCount = DefaultMap<IdType, number>
-export type ClusterContextIdMap = DefaultMap<string | undefined, IdType>
+type ContextsWithCount = DefaultMap<NodeId, number>
+export type ClusterContextIdMap = DefaultMap<string | undefined, NodeId>
 export type ClusterValueInfoMap = DefaultMap<string, ContextsWithCount>
 
 /** Produced by {@link clusterStatisticsOutput} */
@@ -34,7 +34,7 @@ export interface ClusterReport extends MergeableRecord {
  * @param contextIdMap - the id map to use, can use an existing one to reuse ids for same contexts spreading over multiple input files.
  *  `undefined` is used for unknown contexts. This map allows us to reference contexts with a way shorter identifier (vs. the full file path).
  */
-export function clusterStatisticsOutput(filepath: string, contextIdMap: ClusterContextIdMap = new DefaultMap<string | undefined, IdType>(deterministicCountingIdGenerator())): ClusterReport {
+export function clusterStatisticsOutput(filepath: string, contextIdMap: ClusterContextIdMap = new DefaultMap<string | undefined, NodeId>(deterministicCountingIdGenerator())): ClusterReport {
   const lineReader = new LineByLine(filepath)
 
   // for each value we store the context ids it was seen in (may list the same context multiple times if more often) - this serves as a counter as well

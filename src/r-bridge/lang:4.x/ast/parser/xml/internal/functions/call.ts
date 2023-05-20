@@ -25,7 +25,7 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
     return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
   }
 
-  parseLog.trace(`trying to parse function call with ${JSON.stringify(fnBase)}`)
+  parseLog.trace(`trying to parse function call`)
   mappedWithName = executeHook(data.hooks.functions.onFunctionCall.before, data, mappedWithName)
 
   const {
@@ -40,12 +40,12 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
 
   const functionName = tryParseSymbol(data, getWithTokenType(data.config.tokenMap, symbolContent))
   guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')
-  guard(functionName.type === Type.Symbol, `expected function name to be a symbol, yet received ${JSON.stringify(functionName)}`)
+  guard(functionName.type === Type.Symbol, () => `expected function name to be a symbol, yet received ${JSON.stringify(functionName)}`)
 
   const splitParametersOnComma = splitArrayOn(mappedWithName.slice(1), x => x.name === Type.Comma)
   const parameters: RNode[] = splitParametersOnComma.map(x => {
     const gotParameters = parseBasedOnType(data, x.map(x => x.content))
-    guard(gotParameters.length < 2, `expected parameter to be wrapped in expression, yet received ${JSON.stringify(gotParameters)}`)
+    guard(gotParameters.length < 2, () => `expected parameter to be wrapped in expression, yet received ${JSON.stringify(gotParameters)}`)
     return gotParameters.length === 0 ? undefined : gotParameters[0]
   }).filter(isNotUndefined)
 

@@ -1,8 +1,12 @@
 // TODO: modify | alias | etc.
-import { DataflowMap } from './extractor'
 import { guard } from '../util/assert'
 import { SourceRange } from '../util/range'
-import { IdType, NoInfo } from '../r-bridge'
+import { NodeId, NoInfo, RNodeWithParent } from '../r-bridge'
+import { IdentifierReference } from './environments'
+import { BiMap } from '../util/bimap'
+
+/** used to get an entry point for every id, after that it allows reference-chasing of the graph */
+export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
 
 export type DataflowGraphEdgeType =
     | /** the edge determines that source reads target */ 'read'
@@ -36,7 +40,7 @@ export type DataflowScopeName =
  * These edges are specialised by {@link DataflowGraphReadEdge} and {@link DataflowGraphDefinedByEdge}
  */
 export interface DataflowGraphEdge {
-  target:    IdType
+  target:    NodeId
   type:      DataflowGraphEdgeType
   attribute: DataflowGraphEdgeAttribute
 }
@@ -60,6 +64,8 @@ export interface DataflowGraphNodeInfo {
   edges:             DataflowGraphEdge[]
 }
 
+type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'used'>
+
 /**
  * Holds the dataflow information found within the given AST
  * there is a node for every variable encountered, obeying scoping rules
@@ -70,27 +76,27 @@ export interface DataflowGraphNodeInfo {
  * allows to chain calls for easier usage
  */
 export class DataflowGraph {
-  private graph = new Map<IdType, DataflowGraphNodeInfo>()
+  private graph = new Map<NodeId, DataflowGraphNodeInfo>()
 
   /**
    * @returns the ids of all nodes in the graph
    */
-  public nodes(): IterableIterator<IdType> {
+  public nodes(): IterableIterator<NodeId> {
     return this.graph.keys()
   }
 
   /**
    * @returns the node info for the given id (if it exists)
    */
-  public get(id: IdType): DataflowGraphNodeInfo | undefined {
+  public get(id: NodeId): DataflowGraphNodeInfo | undefined {
     return this.graph.get(id)
   }
 
-  public entries(): IterableIterator<[IdType, DataflowGraphNodeInfo]> {
+  public entries(): IterableIterator<[NodeId, DataflowGraphNodeInfo]> {
     return this.graph.entries()
   }
 
-  public addNode(id: IdType, name: string, definedAtPosition: false | DataflowScopeName = false): this {
+  public addNode(id: NodeId, name: string, definedAtPosition: false | DataflowScopeName = false): this {
     const oldNode = this.graph.get(id)
     if(oldNode !== undefined) {
       guard(oldNode.name === name, 'node names must match for the same id if added')
@@ -104,36 +110,39 @@ export class DataflowGraph {
     return this
   }
 
-
-  public addEdges(from: IdType, to: IdType[], type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): this {
-    // TODO: make this far more performant!
-    for(const toId of to) {
-      this.addEdge(from, toId, type, attribute)
-    }
-    return this
-  }
-
+  /** Basically only exists for creations in tests, within the dataflow-extraction, the 3-parameter variant will determine `attribute` automatically */
+  public addEdge(from: NodeId, to: NodeId, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): this
+  /** {@inheritDoc} */
+  public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: DataflowGraphEdgeType): this
   /**
    * Will insert a new edge into the graph,
    * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
    * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
-   *
+   * <p>
+   * If you omit the last parameter, this will make the edge `maybe` if at least one of the {@link IdentifierReference | references} has a used flag of `maybe`.
    * TODO: ensure that target has a def scope and source does not?
    */
-  public addEdge(from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): this {
-    // sort
+  public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute): this {
+    const fromId = typeof from === 'object' ? from.nodeId : from
+    const toId = typeof to === 'object' ? to.nodeId : to
+
+    // sort (on id so that sorting is the same, independent of the attribute)
     if(type === 'same-read-read' || type === 'same-def-def') {
-      [from, to] = to > from ? [from, to] : [to, from]
+      [from, to] = toId > fromId ? [from, to] : [to, from]
     }
-    const info = this.graph.get(from)
+
+    const info = this.graph.get(fromId)
+    if(attribute === undefined) {
+      attribute = (from as ReferenceForEdge).used === 'maybe' ? 'maybe' : (to as ReferenceForEdge).used
+    }
     guard(info !== undefined, 'there must be a node info object for the edge source!')
     const edge = {
-      target: to,
+      target: toId,
       type,
       attribute
     }
     // TODO: make this more performant
-    if(info.edges.find(e => e.target === to && e.type === type && e.attribute === attribute) === undefined) {
+    if(info.edges.find(e => e.target === toId && e.type === type && e.attribute === attribute) === undefined) {
       info.edges.push(edge)
     }
     return this
@@ -142,6 +151,7 @@ export class DataflowGraph {
 
   /** insert a new edge in the given dataflow-graph */
   // TODO: check if from and to exists, TODO: check for duplicates
+  // TODO: rework with new references?
   public mergeWith(...otherGraphs: (DataflowGraph | undefined)[]): this {
     // TODO: join edges
     // TODO: maybe switch to sets?
@@ -211,7 +221,8 @@ export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<
   const lines = [prefix]
   for (const [id, info] of graph.entries()) {
     const def = info.definedAtPosition !== false
-    lines.push(`    ${idPrefix}${id}${def ? "[" : "([" }"\`${info.name} (${id})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"${def ? "]" : "])" }`)
+    const defText = info.definedAtPosition ? `, <i>${info.definedAtPosition}</i>` : ''
+    lines.push(`    ${idPrefix}${id}${def ? "[" : "([" }"\`${info.name} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"${def ? "]" : "])" }`)
     for (const edge of info.edges) {
       const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
       lines.push(`    ${idPrefix}${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${edge.target}`)
@@ -244,14 +255,14 @@ interface LabeledDiffGraph {
 }
 
 /** uses same id map but ensures, it is different from the rhs so that mermaid can work with that */
-export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
+export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string): string {
   // we add the prefix ourselves
   const leftGraph = graphToMermaid(left.graph, dataflowIdMap, '', `l-${left.label}`)
   const rightGraph = graphToMermaid(right.graph, dataflowIdMap, '', `r-${right.label}`)
 
-  return `flowchart TD\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`
+  return `${prefix}flowchart TD\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`
 }
 
-export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
-  return mermaidCodeToUrl(diffGraphsToMermaid(left, right, dataflowIdMap))
+export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string): string {
+  return mermaidCodeToUrl(diffGraphsToMermaid(left, right, dataflowIdMap, prefix))
 }

@@ -44,7 +44,7 @@ export function tryParseOneElementBasedOnType(data: ParserData, elem: NamedXmlBa
     case Type.Symbol:
     case Type.Null: {
       const symbol =  tryParseSymbol(data, getWithTokenType(data.config.tokenMap, [elem.content]))
-      guard(symbol !== undefined, `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
+      guard(symbol !== undefined, () => `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
       return symbol
     }
     default:

@@ -24,22 +24,13 @@ export function tryParseForLoopStructure(
     parseLog.debug("encountered non-for token for supposed for-loop structure")
     return executeUnknownHook(data.hooks.loops.onForLoop.unknown, data, { forToken, condition, body })
   } else if (condition.name !== Type.ForCondition) {
-    throw new XmlParseError(
-      `expected condition for for-loop but found ${JSON.stringify(condition)}`
-    )
+    throw new XmlParseError(`expected condition for for-loop but found ${JSON.stringify(condition)}`)
   } else if (body.name !== Type.Expression) {
-    throw new XmlParseError(
-      `expected expr body for for-loop but found ${JSON.stringify(body)}`
-    )
+    throw new XmlParseError(`expected expr body for for-loop but found ${JSON.stringify(body)}`)
   }
 
-  parseLog.debug(
-    `trying to parse for-loop with ${JSON.stringify([
-      forToken,
-      condition,
-      body,
-    ])}`
-  );
+  parseLog.debug('trying to parse for-loop');
+
   ({ forToken, condition, body } = executeHook(data.hooks.loops.onForLoop.before, data, { forToken, condition, body }))
 
   const { variable: parsedVariable, vector: parsedVector } =
@@ -85,13 +76,13 @@ function parseForLoopCondition(data: ParserData, forCondition: XmlBasedJson): { 
     content
   }))
   const inPosition = children.findIndex(elem => elem.name === Type.ForIn)
-  guard(inPosition > 0 && inPosition < children.length - 1, `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`)
+  guard(inPosition > 0 && inPosition < children.length - 1, () => `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`)
   const variable = tryParseSymbol(data, getWithTokenType(data.config.tokenMap, [children[inPosition - 1].content]))
-  guard(variable !== undefined, `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
-  guard(variable.type === Type.Symbol, `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
+  guard(variable !== undefined, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
+  guard(variable.type === Type.Symbol, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
   // TODO: just parse single element directly
   const vector = parseBasedOnType(data, [children[inPosition + 1].content])
-  guard(vector.length === 1, `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`)
+  guard(vector.length === 1, () => `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`)
 
   return { variable, vector: vector[0] }
 }

@@ -13,8 +13,9 @@ import {
 import { assert } from 'chai'
 import {
   DataflowGraph,
-  diffGraphsToMermaidUrl, graphToMermaidUrl, produceDataFlowGraph
+  diffGraphsToMermaidUrl, graphToMermaidUrl, LocalScope
 } from '../../src/dataflow'
+import { produceDataFlowGraph } from '../../src/dataflow'
 
 let defaultTokenMap: Record<string, string>
 
@@ -104,14 +105,14 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
     const ast = await retrieveAst(shell, input)
     const decoratedAst = decorateAst(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
     // TODO: use both info
-    const { dataflowIdMap, dataflowGraph } = produceDataFlowGraph(decoratedAst.decoratedAst)
+    const { graph } = produceDataFlowGraph(decoratedAst, LocalScope)
 
-    const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph: dataflowGraph }, dataflowIdMap)
+    const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph}, decoratedAst.idMap, `%% ${input.replace(/\n/g, '\n%% ')}\n`)
     try {
-      assert.isTrue(expected.equals(dataflowGraph), diff)
+      assert.isTrue(expected.equals(graph), diff)
     } catch (e) {
-      console.error('vis-wanted:\n', graphToMermaidUrl(expected, dataflowIdMap))
-      console.error('vis-got:\n', graphToMermaidUrl(dataflowGraph, dataflowIdMap))
+      console.error('vis-wanted:\n', graphToMermaidUrl(expected, decoratedAst.idMap))
+      console.error('vis-got:\n', graphToMermaidUrl(graph, decoratedAst.idMap))
       console.error('diff:\n', diff)
       throw e
     }

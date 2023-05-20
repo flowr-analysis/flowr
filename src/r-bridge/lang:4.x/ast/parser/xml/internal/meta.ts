@@ -57,6 +57,7 @@ export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson
 }
 
 export function revertTokenReplacement(tokenMap: XmlParserConfig['tokenMap'], token: string): string {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- it is still necessary as we do not know if we have a replacement for the given token
   return tokenMap[token] ?? token
 }
 

@@ -38,12 +38,12 @@ export function tryParseUnaryStructure(data: ParserData, op: NamedXmlBasedJson, 
 }
 
 function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
-  parseLog.debug(`[unary op] parse ${flavor} with ${JSON.stringify([op, operand])}`); // <- sadly required for not miss-interpreting the destructuring match as call
+  parseLog.debug(`[unary op] parse ${flavor}`); // <- semicolon sadly required for not miss-interpreting the destructuring match as call
   ({ flavor, op, operand} = executeHook(data.hooks.operators.onUnary.before, data, { flavor, op, operand }))
 
   const parsedOperand = tryParseOneElementBasedOnType(data, operand)
 
-  guard(parsedOperand !== undefined, `unexpected under-sided unary op for ${JSON.stringify([op, operand])}`)
+  guard(parsedOperand !== undefined, () => `unexpected under-sided unary op for ${JSON.stringify([op, operand])}`)
 
   const operationName = retrieveOpName(data.config, op)
   const { location, content } = retrieveMetaStructure(data.config, op.content)

@@ -33,7 +33,7 @@ export function splitArrayOn<T>(arr: T[], predicate: (elem: T) => boolean): T[][
  */
 export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
   yield arr.slice()
-  const c: number[] = new Array(arr.length).fill(0)
+  const c = new Array(arr.length).fill(0) as number[]
   let i = 1
 
   while (i < arr.length) {
@@ -51,18 +51,4 @@ export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
       yield arr.slice()
     }
   }
-}
-
-
-/**
- * Returns a map that uniquely maps each element of the given array to the number of times it appears in the array.
- */
-// TODO: test
-export function groupCount<T>(arr: T[]): Map<T, number> {
-  const result = new Map<T, number>()
-  for(const elem of arr) {
-    const count = result.get(elem) ?? 0
-    result.set(elem, count + 1)
-  }
-  return result
 }

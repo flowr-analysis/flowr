@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import { deepMergeObject, isObjectOrArray } from '../../src/util/objects'
+import { deepMergeObject, isObjectOrArray, Mergeable } from '../../src/util/objects'
 
 describe('Objects', () => {
   describe('isObjectOrArray', () => {
@@ -29,19 +29,19 @@ describe('Objects', () => {
   })
 
   describe('deepMergeObject', () => {
-    const merged = (a: any, b: any, expected: any, msg: string): void => {
+    const merged = <T extends Mergeable>(a: T, b: T, expected: T, msg: string): void => {
       it(msg, () => {
         assert.deepStrictEqual(deepMergeObject(a, b), expected, `${JSON.stringify(a)} & ${JSON.stringify(b)}`)
       })
     }
-    const throws = (a: any, b: any, msg: string): void => {
+    const throws = <T extends Mergeable>(a: T, b: T, msg: string): void => {
       it(msg, () => {
         assert.throws(() => deepMergeObject(a, b), Error, undefined, msg)
       })
     }
     describe('objects only', () => {
       describe('with empty', () => {
-        for (const empty of [null, undefined, {}]) {
+        for (const empty of [null, undefined, {}] as Mergeable[]) {
           const emptyStr = JSON.stringify(empty)
           describe(`using ${emptyStr}`, () => {
             merged(empty, empty, empty, `two ${emptyStr} objects`)
@@ -73,7 +73,7 @@ describe('Objects', () => {
     })
     describe('arrays only', () => {
       describe('with empty', () => {
-        for (const empty of [null, undefined, []]) {
+        for (const empty of [null, undefined, []] as Mergeable[]) {
           const emptyStr = JSON.stringify(empty)
           describe(`using ${emptyStr}`, () => {
             merged(empty, empty, empty, `two ${emptyStr} arrays`)

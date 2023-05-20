@@ -14,7 +14,7 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
     // TODO: use both info
     const { graph } = produceDataFlowGraph(decoratedAst, LocalScope)
 
-    const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph}, decoratedAst.idMap)
+    const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph}, decoratedAst.idMap, `%% ${input.replace(/\n/g, '\n%% ')}\n`)
     try {
       assert.isTrue(expected.equals(graph), diff)
     } catch (e) {

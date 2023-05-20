@@ -37,7 +37,7 @@ export function processIfThenElse<OtherInfo>(ifThen: unknown, cond: DataflowInfo
 
 
   const thenEnvironment = appendEnvironments(cond.environments, then.environments)
-  const otherwiseEnvironment = otherwise ? appendEnvironments(cond.environments, otherwise.environments) : cond.environments
+  const otherwiseEnvironment = otherwise ? appendEnvironments(thenEnvironment, otherwise.environments) : thenEnvironment
   return {
     activeNodes:  [],
     in:           ingoing,

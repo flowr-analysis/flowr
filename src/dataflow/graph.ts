@@ -246,14 +246,14 @@ interface LabeledDiffGraph {
 }
 
 /** uses same id map but ensures, it is different from the rhs so that mermaid can work with that */
-export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
+export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string): string {
   // we add the prefix ourselves
   const leftGraph = graphToMermaid(left.graph, dataflowIdMap, '', `l-${left.label}`)
   const rightGraph = graphToMermaid(right.graph, dataflowIdMap, '', `r-${right.label}`)
 
-  return `flowchart TD\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`
+  return `${prefix}flowchart TD\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`
 }
 
-export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined): string {
-  return mermaidCodeToUrl(diffGraphsToMermaid(left, right, dataflowIdMap))
+export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string): string {
+  return mermaidCodeToUrl(diffGraphsToMermaid(left, right, dataflowIdMap, prefix))
 }

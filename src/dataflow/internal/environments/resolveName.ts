@@ -1,6 +1,7 @@
 import { Environments, Identifier, IdentifierReference } from './environments'
 import { DataflowScopeName, GlobalScope, LocalScope } from '../../graph'
 import { dataflowLogger } from '../../index'
+import { LogLevel } from '../../../util/log'
 
 // TODO: new log for resolution?
 
@@ -13,11 +14,11 @@ import { dataflowLogger } from '../../index'
  *
  * @returns A list of possible definitions of the identifier (one if the definition location is exactly and always known), or `undefined` if the identifier is undefined in the current scope/with the current environment information.
  */
-export function resolve(name: Identifier, withinScope: DataflowScopeName, environments: Environments): IdentifierReference[] | undefined {
-  if(withinScope === GlobalScope) {
-    return resolveGlobal(name, withinScope, environments)
-  } else if(withinScope === LocalScope) {
+export function resolveName(name: Identifier, withinScope: DataflowScopeName, environments: Environments): IdentifierReference[] | undefined {
+  if(withinScope === LocalScope) {
     return resolveLocal(name, withinScope, environments)
+  } else if(withinScope === GlobalScope) {
+    return resolveGlobal(name, withinScope, environments)
   } else {
     const namedScope = environments.named.get(withinScope)
     dataflowLogger.trace(`Resolving identifier ${name} in named scope ${withinScope} (${namedScope === undefined ? 'not found' : 'found'})`)

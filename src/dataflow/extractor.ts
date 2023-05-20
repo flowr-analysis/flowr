@@ -14,40 +14,39 @@ import { processWhileLoop } from './internal/process/whileLoop'
 import { processIfThenElse } from './internal/process/ifThenElse'
 import { processFunctionCall } from './internal/process/functionCall'
 
-function produceFolds<OtherInfo extends ParentInformation>(): DataflowProcessorFolds<OtherInfo> {
-  return {
-    foldNumber:  processUninterestingLeaf,
-    foldString:  processUninterestingLeaf,
-    foldLogical: processUninterestingLeaf,
-    foldSymbol:  processSymbol,
-    binaryOp:    {
-      foldLogicalOp:    processNonAssignmentBinaryOp,
-      foldArithmeticOp: processNonAssignmentBinaryOp,
-      foldComparisonOp: processNonAssignmentBinaryOp,
-      foldAssignment:   processAssignment
-    },
-    unaryOp: {
-      foldLogicalOp:    processUnaryOp,
-      foldArithmeticOp: processUnaryOp
-    },
-    loop: {
-      foldFor:    processForLoop,
-      foldRepeat: processRepeatLoop,
-      foldWhile:  processWhileLoop,
-      foldBreak:  processUninterestingLeaf,
-      foldNext:   processUninterestingLeaf
-    },
-    other: {
-      foldComment: processUninterestingLeaf,
-    },
-    foldIfThenElse:   processIfThenElse,
-    foldExprList:     processExpressionList,
-    foldFunctionCall: processFunctionCall,
-  }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
+const folds: DataflowProcessorFolds<any> = {
+  foldNumber:  processUninterestingLeaf,
+  foldString:  processUninterestingLeaf,
+  foldLogical: processUninterestingLeaf,
+  foldSymbol:  processSymbol,
+  binaryOp:    {
+    foldLogicalOp:    processNonAssignmentBinaryOp,
+    foldArithmeticOp: processNonAssignmentBinaryOp,
+    foldComparisonOp: processNonAssignmentBinaryOp,
+    foldAssignment:   processAssignment
+  },
+  unaryOp: {
+    foldLogicalOp:    processUnaryOp,
+    foldArithmeticOp: processUnaryOp
+  },
+  loop: {
+    foldFor:    processForLoop,
+    foldRepeat: processRepeatLoop,
+    foldWhile:  processWhileLoop,
+    foldBreak:  processUninterestingLeaf,
+    foldNext:   processUninterestingLeaf
+  },
+  other: {
+    foldComment: processUninterestingLeaf,
+  },
+  foldIfThenElse:   processIfThenElse,
+  foldExprList:     processExpressionList,
+  foldFunctionCall: processFunctionCall,
 }
 
 export function produceDataFlowGraph<OtherInfo>(ast: DecoratedAst<OtherInfo & ParentInformation>, scope: DataflowScopeName): DataflowInformation<OtherInfo & ParentInformation> {
-  return dataflowFold<OtherInfo>(ast.decoratedAst, { ast, scope }, produceFolds())
+  return dataflowFold<OtherInfo>(ast.decoratedAst, { ast, scope }, folds as DataflowProcessorFolds<OtherInfo & ParentInformation>)
 }
 
 // TODO: automatically load namespace exported functions etc.

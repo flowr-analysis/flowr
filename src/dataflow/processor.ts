@@ -4,7 +4,6 @@
 import { foldAstTwoWay, TwoWayFoldFunctions } from '../r-bridge/lang:4.x/ast/model/processing/twoWayFold'
 import { DataflowScopeName } from './graph'
 import { DecoratedAst, ParentInformation, RNodeWithParent } from '../r-bridge'
-import { DeepReadonly } from 'ts-essentials'
 import { DataflowInformation } from './internal/info'
 
 export interface DataflowProcessorDown<OtherInfo> {
@@ -17,10 +16,11 @@ export type DataflowProcessorFolds<OtherInfo> = Omit<TwoWayFoldFunctions<OtherIn
 export function dataflowFold<OtherInfo>(ast: RNodeWithParent<OtherInfo>,
                                         initial: DataflowProcessorDown<OtherInfo & ParentInformation>,
                                         folds: DataflowProcessorFolds<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo & ParentInformation> {
-  const twoWayFolds: DeepReadonly<TwoWayFoldFunctions<OtherInfo & ParentInformation, DataflowProcessorDown<OtherInfo & ParentInformation>, DataflowInformation<OtherInfo & ParentInformation>>> = {
-    down,
-    ...folds
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- just so we do not have to re-create
+  const twoWayFolds: any = folds
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  twoWayFolds.down = down
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   return foldAstTwoWay(ast, initial, twoWayFolds)
 }
 

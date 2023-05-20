@@ -118,7 +118,7 @@ function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, qu
       namedNode(domain + config.getId(element)),
       namedNode(retrieveContext(config.context, obj))
     ))
-    guard(isObjectOrArray(element), `cannot serialize non-object to rdf within array of ${JSON.stringify(value)}!`)
+    guard(isObjectOrArray(element), () => `cannot serialize non-object to rdf within array of ${JSON.stringify(value)}!`)
     serializeObject(element as DataForQuad, quads, config)
   }
 }

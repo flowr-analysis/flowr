@@ -43,7 +43,7 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, op: NamedXm
 
   const parsedOperand = tryParseOneElementBasedOnType(data, operand)
 
-  guard(parsedOperand !== undefined, `unexpected under-sided unary op for ${JSON.stringify([op, operand])}`)
+  guard(parsedOperand !== undefined, () => `unexpected under-sided unary op for ${JSON.stringify([op, operand])}`)
 
   const operationName = retrieveOpName(data.config, op)
   const { location, content } = retrieveMetaStructure(data.config, op.content)

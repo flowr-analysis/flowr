@@ -37,8 +37,8 @@ function identifyReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RNodeWithPare
   // what is written/read additionally is based on lhs/rhs - assignments read written variables as well
   const read = [...lhs.in, ...rhs.in]
 
-  let source
-  let target
+  let source: DataflowInformation<OtherInfo>
+  let target: DataflowInformation<OtherInfo>
   let global = false
 
   switch (op.lexeme) {
@@ -67,18 +67,24 @@ function identifyReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RNodeWithPare
       scope: global ? GlobalScope : down.scope
       // TODO: use id.attribute?
     }))
+
+  if(writeNodes.length !== 1) {
+    log.warn(`Unexpected write number in assignment ${JSON.stringify(op)}: ${JSON.stringify(writeNodes)}`)
+  }
+
+
   const readFromSourceWritten: IdentifierReference[] = [...source.out].map(id => {
     guard(id.scope === LocalScope, 'currently, nested write re-assignments are only supported for local')
     return id
   })
   const environments = overwriteEnvironments(source.environments, target.environments) ?? initializeCleanEnvironments()
-  const overwriteEnvironment = global ? environments.global : environments.local[0]
+
   // install assigned variables in environment
-  if(writeNodes.length !== 1) {
-    log.warn(`Unexpected write number in assignment ${JSON.stringify(op)}: ${JSON.stringify(writeNodes)}`)
-  }
   for(const write of writeNodes) {
-    overwriteEnvironment.map.set(write.name, [write])
+    if(global) { // globals set the local scope as well!
+      environments.global.map.set(write.name, [write])
+    }
+    environments.local[0].map.set(write.name, [write])
   }
 
   return {

@@ -27,7 +27,7 @@ export function tryParseRepeatLoopStructure(data: ParserData, repeatToken: Named
   ({ repeatToken, body } = executeHook(data.hooks.loops.onRepeatLoop.before, data, { repeatToken, body }))
 
   const parseBody = tryParseOneElementBasedOnType(data, body)
-  guard(parseBody !== undefined, `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(body)})`)
+  guard(parseBody !== undefined, () => `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(body)})`)
 
   const {
     location,

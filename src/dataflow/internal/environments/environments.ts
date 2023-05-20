@@ -36,7 +36,10 @@ export function makeMaybe(reference: IdentifierReference): IdentifierReference {
   return reference
 }
 
-export function makeAllMaybe(references: IdentifierReference[]): IdentifierReference[] {
+export function makeAllMaybe(references: IdentifierReference[] | undefined): IdentifierReference[] {
+  if(references === undefined) {
+    return []
+  }
   for(const reference of references) {
     reference.used = 'maybe'
   }

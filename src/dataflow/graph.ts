@@ -133,8 +133,7 @@ export class DataflowGraph {
 
     const info = this.graph.get(fromId)
     if(attribute === undefined) {
-      guard(typeof from === 'object' && typeof to === 'object', 'if you omit the attribute, both from and to must be references')
-      attribute = from.used === 'maybe' ? 'maybe' : to.used
+      attribute = (from as ReferenceForEdge).used === 'maybe' ? 'maybe' : (to as ReferenceForEdge).used
     }
     guard(info !== undefined, 'there must be a node info object for the edge source!')
     const edge = {

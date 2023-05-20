@@ -1,5 +1,5 @@
 export * from './append'
-export * from './resolve'
+export * from './resolveName'
 export * from './scoping'
 export * from './overwrite'
 export * from './environments'

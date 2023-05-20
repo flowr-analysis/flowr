@@ -10,15 +10,15 @@ export function processIfThenElse<OtherInfo>(ifThen: unknown, cond: DataflowInfo
   // again within an if-then-else we consider all actives to be read
   // TODO: makeFoldReadTargetsMaybe(
   const ingoing: IdentifierReference[] = [...cond.in, ...makeAllMaybe(then.in),
-    ...makeAllMaybe(otherwise?.in ?? []),
+    ...makeAllMaybe(otherwise?.in),
     ...cond.activeNodes,
     ...makeAllMaybe(then.activeNodes),
-    ...makeAllMaybe(otherwise?.activeNodes ?? [])
+    ...makeAllMaybe(otherwise?.activeNodes)
   ]
 
   // we assign all with a maybe marker
   // we do not merge even if they appear in both branches because the maybe links will refer to different ids
-  const outgoing = [...cond.out, ...makeAllMaybe(then.out), ...makeAllMaybe(otherwise?.out ?? [])]
+  const outgoing = [...cond.out, ...makeAllMaybe(then.out), ...makeAllMaybe(otherwise?.out)]
 
   const nextGraph = cond.graph.mergeWith(then.graph, otherwise?.graph)
   linkIngoingVariablesInSameScope(nextGraph, ingoing)

@@ -15,8 +15,8 @@ import { SourceRange } from '../../../../../util/range'
 import { BiMap } from '../../../../../util/bimap'
 import { foldAst } from './fold'
 
-/** The type of the id assigned to each node */
-export type IdType = string;
+/** The type of the id assigned to each node. Branded to avoid problematic usages with other string types. */
+export type IdType = string & { __brand?: 'id-type'};
 
 /**
  * A function that given an RNode returns a (guaranteed) unique id for it

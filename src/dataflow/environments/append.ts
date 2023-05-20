@@ -1,5 +1,5 @@
-import { guard } from '../../../util/assert'
-import { Environments, IEnvironment, NamedEnvironments } from './environments'
+import { guard } from '../../util/assert'
+import { REnvironmentInformation, IEnvironment, NamedEnvironments } from './environment'
 
 function appendIEnvironmentWith(base: IEnvironment, next: IEnvironment): IEnvironment {
   guard(base.name === next.name, 'cannot overwrite environments with different names')
@@ -36,7 +36,7 @@ function appendNamedEnvironments(base: NamedEnvironments, next: NamedEnvironment
 /**
  * Adds all writes of `next` to `base` (i.e., the operations of `next` *might* happen).
  */
-export function appendEnvironments(base: Environments | undefined, next: Environments | undefined): Environments | undefined {
+export function appendEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
   if(base === undefined) {
     return next
   } else if(next === undefined) {

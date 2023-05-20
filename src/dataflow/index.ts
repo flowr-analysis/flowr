@@ -4,4 +4,4 @@ export const dataflowLogger = log.getSubLogger({ name: "dataflow" })
 
 export * from './graph'
 export * from './extractor'
-export * from './internal/environments/environments'
+export * from './environments/environment'

@@ -1,6 +1,6 @@
-import { Environments, Identifier, IdentifierReference } from './environments'
-import { DataflowScopeName, GlobalScope, LocalScope } from '../../graph'
-import { dataflowLogger } from '../../index'
+import { REnvironmentInformation, Identifier, IdentifierReference } from './environment'
+import { DataflowScopeName, GlobalScope, LocalScope } from '../graph'
+import { dataflowLogger } from '../index'
 
 // TODO: new log for resolution?
 
@@ -13,7 +13,7 @@ import { dataflowLogger } from '../../index'
  *
  * @returns A list of possible definitions of the identifier (one if the definition location is exactly and always known), or `undefined` if the identifier is undefined in the current scope/with the current environment information.
  */
-export function resolveName(name: Identifier, withinScope: DataflowScopeName, environments: Environments): IdentifierReference[] | undefined {
+export function resolveName(name: Identifier, withinScope: DataflowScopeName, environments: REnvironmentInformation): IdentifierReference[] | undefined {
   if(withinScope === LocalScope) {
     return resolveLocal(name, withinScope, environments)
   } else if(withinScope === GlobalScope) {
@@ -25,7 +25,7 @@ export function resolveName(name: Identifier, withinScope: DataflowScopeName, en
   }
 }
 
-function resolveLocal(name: Identifier, withinScope: DataflowScopeName, environments: Environments) {
+function resolveLocal(name: Identifier, withinScope: DataflowScopeName, environments: REnvironmentInformation) {
   dataflowLogger.trace(`Resolving local identifier ${name} (scope name: ${withinScope}, local stack size: ${environments.local.length})`)
 
   const locals = environments.local
@@ -35,11 +35,11 @@ function resolveLocal(name: Identifier, withinScope: DataflowScopeName, environm
       return definition
     }
   }
-  dataflowLogger.trace(`Unable to find local identifier ${name} in local stack, falling back to global scope`)
+  dataflowLogger.trace(`Unable to find local identifier ${name} in local stack [present: ${locals.flatMap(e => [...e.map.keys()]).join(",")}], falling back to global scope`)
   return environments.global.map.get(name)
 }
 
-function resolveGlobal(name: string, withinScope: string, environments: Environments) {
+function resolveGlobal(name: string, withinScope: string, environments: REnvironmentInformation) {
   dataflowLogger.trace(`Resolving global identifier ${name} (scope name: ${withinScope})`)
   return environments.global.map.get(name)
 }

@@ -1,5 +1,5 @@
-import { guard } from '../../../util/assert'
-import { Environments, IEnvironment, NamedEnvironments } from './environments'
+import { guard } from '../../util/assert'
+import { REnvironmentInformation, IEnvironment, NamedEnvironments } from './environment'
 
 function overwriteIEnvironmentWith(base: IEnvironment, next: IEnvironment): IEnvironment {
   guard(base.name === next.name, 'cannot overwrite environments with different names')
@@ -28,14 +28,14 @@ function overwriteNamedEnvironments(base: NamedEnvironments, next: NamedEnvironm
 
 // TODO if we have something like x && (y <- 13) we still have to track the y assignment as maybe... or?
 
-export function overwriteEnvironments(base: Environments, next: Environments | undefined): Environments
-export function overwriteEnvironments(base: Environments | undefined, next: Environments): Environments
+export function overwriteEnvironments(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation
+export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation
 export function overwriteEnvironments(base: undefined, next: undefined): undefined
-export function overwriteEnvironments(base: Environments | undefined, next: Environments | undefined): Environments | undefined
+export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined
 /**
  * Assumes, that all definitions within next replace those within base (given the same name).
  */
-export function overwriteEnvironments(base: Environments | undefined, next: Environments | undefined): Environments | undefined {
+export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
   if(base === undefined) {
     return next
   } else if(next === undefined) {

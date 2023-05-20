@@ -1,6 +1,6 @@
 import { DataflowInformation } from '../info'
 import { DataflowProcessorDown } from '../../processor'
-import { appendEnvironments, makeAllMaybe } from '../environments'
+import { appendEnvironments, makeAllMaybe } from '../../environments'
 
 export function processWhileLoop<OtherInfo>(loop: unknown, condition: DataflowInformation<OtherInfo>,
                                             body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {

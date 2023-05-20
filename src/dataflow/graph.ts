@@ -2,7 +2,7 @@
 import { guard } from '../util/assert'
 import { SourceRange } from '../util/range'
 import { IdType, NoInfo, RNodeWithParent } from '../r-bridge'
-import { IdentifierReference } from './internal/environments'
+import { IdentifierReference } from './environments'
 import { BiMap } from '../util/bimap'
 
 /** used to get an entry point for every id, after that it allows reference-chasing of the graph */

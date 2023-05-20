@@ -1,5 +1,5 @@
 import { DataflowGraph } from '../graph'
-import { IdentifierReference } from './environments'
+import { IdentifierReference } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 

@@ -1,16 +1,22 @@
-import { RNodeWithParent, Type } from '../../../r-bridge'
+import { ParentInformation, RAssignmentOp, RNode } from '../../../r-bridge'
 import { DataflowInformation } from '../info'
 import { DataflowProcessorDown } from '../../processor'
 import { GlobalScope, LocalScope } from '../../graph'
 import { guard } from '../../../util/assert'
-import { IdentifierReference, initializeCleanEnvironments, overwriteEnvironments } from '../environments'
+import {
+  define,
+  IdentifierDefinition,
+  IdentifierReference,
+  initializeCleanEnvironments,
+  overwriteEnvironments
+} from '../../environments'
 import { setDefinitionOfNode } from '../linker'
 import { log } from '../../../util/log'
 
-export function processAssignment<OtherInfo>(op: RNodeWithParent<OtherInfo> & { type: Type.BinaryOp },
+export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>,
                                              lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>,
                                              down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
-  const { readTargets, writeTargets, environments } = identifyReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, down)
+  const { readTargets, writeTargets, environments } = processReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, down)
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
 
   for (const write of writeTargets) {
@@ -31,12 +37,7 @@ export function processAssignment<OtherInfo>(op: RNodeWithParent<OtherInfo> & { 
   }
 }
 
-function identifyReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RNodeWithParent<OtherInfo>,
-                                                               lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>,
-                                                               down: DataflowProcessorDown<OtherInfo>) {
-  // what is written/read additionally is based on lhs/rhs - assignments read written variables as well
-  const read = [...lhs.in, ...rhs.in]
-
+function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformation>, lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>) {
   let source: DataflowInformation<OtherInfo>
   let target: DataflowInformation<OtherInfo>
   let global = false
@@ -60,13 +61,28 @@ function identifyReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RNodeWithPare
     default:
       throw new Error(`Unknown assignment operator ${JSON.stringify(op)}`)
   }
-  const writeNodes: IdentifierReference[] =
-    [...target.activeNodes].map(id => ({
-      ...id,
-      // TODO: is global lock correct or can this be rebound in assign etc?
-      scope: global ? GlobalScope : down.scope
-      // TODO: use id.attribute?
-    }))
+  return { source, target, global }
+}
+
+function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation<OtherInfo>, global: boolean, down: DataflowProcessorDown<OtherInfo>): IdentifierDefinition[] {
+  const writeNodes: IdentifierDefinition[] = []
+  for(const active of target.activeNodes) {
+    writeNodes.push({
+      ...active,
+      scope: global ? GlobalScope : down.scope,
+      kind:  /* TODO: deal with functions */ 'variable'
+    })
+  }
+  return writeNodes
+}
+
+function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>,
+                                                              lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>,
+                                                              down: DataflowProcessorDown<OtherInfo>) {
+  // what is written/read additionally is based on lhs/rhs - assignments read written variables as well
+  const read = [...lhs.in, ...rhs.in]
+  const { source, target, global } = identifySourceAndTarget(op, lhs, rhs)
+  const writeNodes = produceWrittenNodes(op, target, global, down)
 
   if(writeNodes.length !== 1) {
     log.warn(`Unexpected write number in assignment ${JSON.stringify(op)}: ${JSON.stringify(writeNodes)}`)
@@ -81,10 +97,7 @@ function identifyReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RNodeWithPare
 
   // install assigned variables in environment
   for(const write of writeNodes) {
-    if(global) { // globals set the local scope as well!
-      environments.global.map.set(write.name, [write])
-    }
-    environments.local[0].map.set(write.name, [write])
+    define(write, global ? GlobalScope: LocalScope, environments)
   }
 
   return {

@@ -1,6 +1,6 @@
 import { DataflowInformation } from '../info'
 import { DataflowProcessorDown } from '../../processor'
-import { appendEnvironments, IdentifierReference, makeAllMaybe } from '../environments'
+import { appendEnvironments, IdentifierReference, makeAllMaybe } from '../../environments'
 import { linkIngoingVariablesInSameScope } from '../linker'
 
 export function processIfThenElse<OtherInfo>(ifThen: unknown, cond: DataflowInformation<OtherInfo>,

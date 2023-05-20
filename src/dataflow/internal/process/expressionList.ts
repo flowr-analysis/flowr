@@ -5,7 +5,7 @@
 import { DataflowInformation, initializeCleanInfo } from '../info'
 import { RExpressionList } from '../../../r-bridge'
 import { DataflowProcessorDown } from '../../processor'
-import { IdentifierReference, initializeCleanEnvironments, overwriteEnvironments, resolveName } from '../environments'
+import { IdentifierReference, initializeCleanEnvironments, overwriteEnvironments, resolveName } from '../../environments'
 import { guard } from '../../../util/assert'
 import { linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'

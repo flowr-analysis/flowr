@@ -5,7 +5,13 @@ function appendIEnvironmentWith(base: IEnvironment, next: IEnvironment): IEnviro
   guard(base.name === next.name, 'cannot overwrite environments with different names')
   const map = new Map(base.map)
   for (const [key, value] of next.map) {
-    map.set(key, value)
+    const old = map.get(key)
+    if(old) {
+      // TODO: improve this to ensure there are no duplicates
+      map.set(key, [...new Set([...old, ...value])])
+    } else {
+      map.set(key, value)
+    }
   }
   return {
     name: base.name,
@@ -30,7 +36,13 @@ function appendNamedEnvironments(base: NamedEnvironments, next: NamedEnvironment
 /**
  * Adds all writes of `next` to `base` (i.e., the operations of `next` *might* happen).
  */
-export function appendEnvironments(base: Environments, next: Environments): Environments {
+export function appendEnvironments(base: Environments | undefined, next: Environments | undefined): Environments | undefined {
+  if(base === undefined) {
+    return next
+  } else if(next === undefined) {
+    return base
+  }
+
   return {
     global: appendIEnvironmentWith(base.global, next.global),
     local:  next.local.map((env, index) => appendIEnvironmentWith(base.local[index], env)),

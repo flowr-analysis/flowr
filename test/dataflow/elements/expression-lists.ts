@@ -1,7 +1,6 @@
-import { withShell } from '../../helper/shell'
+import { assertDataflow, withShell } from '../../helper/shell'
 import { DataflowGraph, LocalScope } from '../../../src/dataflow'
 import { IdType } from '../../../src/r-bridge'
-import { assertDataflow } from '../extractor.spec'
 
 describe(
   "B. Working with expression lists",

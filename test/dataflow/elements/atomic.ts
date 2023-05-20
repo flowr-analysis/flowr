@@ -3,10 +3,9 @@
    * Yet, some constructs (like for-loops) require the combination of statements, they are included as well.
    * This will not include functions!
    */
-import { withShell } from '../../helper/shell'
+import { assertDataflow, withShell } from '../../helper/shell'
 import { DataflowGraph, GlobalScope, LocalScope } from '../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../helper/provider'
-import { assertDataflow } from '../extractor.spec'
 
 describe("A. Atomic dataflow information",
   withShell((shell) => {

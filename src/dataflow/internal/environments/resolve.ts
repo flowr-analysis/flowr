@@ -1,6 +1,6 @@
 import { Environments, Identifier, IdentifierReference } from './environments'
 import { DataflowScopeName, GlobalScope, LocalScope } from '../../graph'
-import { log } from '../../../util/log'
+import { dataflowLogger } from '../../index'
 
 // TODO: new log for resolution?
 
@@ -20,13 +20,13 @@ export function resolve(name: Identifier, withinScope: DataflowScopeName, enviro
     return resolveLocal(name, withinScope, environments)
   } else {
     const namedScope = environments.named.get(withinScope)
-    log.trace(`Resolving identifier ${name} in named scope ${withinScope} (${namedScope === undefined ? 'not found' : 'found'})`)
+    dataflowLogger.trace(`Resolving identifier ${name} in named scope ${withinScope} (${namedScope === undefined ? 'not found' : 'found'})`)
     return namedScope?.map.get(name)
   }
 }
 
 function resolveLocal(name: Identifier, withinScope: DataflowScopeName, environments: Environments) {
-  log.trace(`Resolving local identifier ${name} (scope name: ${withinScope}, local stack size: ${environments.local.length})`)
+  dataflowLogger.trace(`Resolving local identifier ${name} (scope name: ${withinScope}, local stack size: ${environments.local.length})`)
 
   const locals = environments.local
   for (const element of locals) {
@@ -35,11 +35,11 @@ function resolveLocal(name: Identifier, withinScope: DataflowScopeName, environm
       return definition
     }
   }
-  console.log(`Unable to find local identifier ${name} in local stack, falling back to global scope`)
-  return resolveGlobal(name, GlobalScope, environments)
+  dataflowLogger.trace(`Unable to find local identifier ${name} in local stack, falling back to global scope`)
+  return environments.global.map.get(name)
 }
 
 function resolveGlobal(name: string, withinScope: string, environments: Environments) {
-  log.trace(`Resolving global identifier ${name} (scope name: ${withinScope})`)
+  dataflowLogger.trace(`Resolving global identifier ${name} (scope name: ${withinScope})`)
   return environments.global.map.get(name)
 }

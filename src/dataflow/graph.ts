@@ -1,9 +1,12 @@
 // TODO: modify | alias | etc.
-import { DataflowMap } from './extractor-old'
 import { guard } from '../util/assert'
 import { SourceRange } from '../util/range'
-import { IdType, NoInfo } from '../r-bridge'
+import { IdType, NoInfo, RNodeWithParent } from '../r-bridge'
 import { IdentifierReference } from './internal/environments'
+import { BiMap } from '../util/bimap'
+
+/** used to get an entry point for every id, after that it allows reference-chasing of the graph */
+export type DataflowMap<OtherInfo> = BiMap<IdType, RNodeWithParent<OtherInfo>>
 
 export type DataflowGraphEdgeType =
     | /** the edge determines that source reads target */ 'read'

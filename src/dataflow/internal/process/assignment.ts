@@ -3,7 +3,7 @@ import { DataflowInformation } from '../info'
 import { DataflowProcessorDown } from '../../processor'
 import { GlobalScope, LocalScope } from '../../graph'
 import { guard } from '../../../util/assert'
-import { IdentifierReference, overwriteEnvironments } from '../environments'
+import { IdentifierReference, initializeCleanEnvironments, overwriteEnvironments } from '../environments'
 import { setDefinitionOfNode } from '../linker'
 import { log } from '../../../util/log'
 
@@ -71,7 +71,7 @@ function identifyReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RNodeWithPare
     guard(id.scope === LocalScope, 'currently, nested write re-assignments are only supported for local')
     return id
   })
-  const environments = overwriteEnvironments(source.environments, target.environments)
+  const environments = overwriteEnvironments(source.environments, target.environments) ?? initializeCleanEnvironments()
   const overwriteEnvironment = global ? environments.global : environments.local[0]
   // install assigned variables in environment
   if(writeNodes.length !== 1) {

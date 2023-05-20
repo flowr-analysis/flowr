@@ -1,5 +1,5 @@
 import { assertDataflow, withShell } from '../../helper/shell'
-import { DataflowGraph, LocalScope } from '../../../src/dataflow'
+import { DataflowGraph, GlobalScope, LocalScope } from '../../../src/dataflow'
 import { NodeId } from '../../../src/r-bridge'
 
 describe(
@@ -168,6 +168,7 @@ describe(
     describe("2. Lists with if-then constructs", () => {
       let idx = 0
       for(const assign of [ '<-', '<<-', '=']) {
+        const scope = assign === '<<-' ? GlobalScope : LocalScope
         describe(`2.${++idx} using ${assign}`, () => {
           describe(`2.${idx}.1 reads within if`, () => {
             let idx = 0
@@ -181,7 +182,7 @@ describe(
                   shell,
                   `x ${assign} 2\nif(x) { 1 } ${b.text}`,
                   new DataflowGraph()
-                    .addNode("0", "x", LocalScope)
+                    .addNode("0", "x", scope)
                     .addNode("3", "x")
                     .addEdge("3", "0", "read", "always")
                 )
@@ -190,7 +191,7 @@ describe(
                   shell,
                   `x ${assign} 2\nif(TRUE) { x } ${b.text}`,
                   new DataflowGraph()
-                    .addNode("0", "x", LocalScope)
+                    .addNode("0", "x", scope)
                     .addNode("4", "x")
                     .addEdge("4", "0", "read", "maybe")
                 )
@@ -201,7 +202,7 @@ describe(
               shell,
               `x ${assign} 2\nif(TRUE) { 42 } else { x }`,
               new DataflowGraph()
-                .addNode("0", "x", LocalScope)
+                .addNode("0", "x", scope)
                 .addNode("5", "x")
                 .addEdge("5", "0", "read", "maybe")
             )
@@ -217,7 +218,7 @@ describe(
                 shell,
                 `if(TRUE) { x ${assign} 2 }\nx`,
                 new DataflowGraph()
-                  .addNode("1", "x", LocalScope)
+                  .addNode("1", "x", scope)
                   .addNode("5", "x")
                   .addEdge("5", "1", "read", "maybe")
               )
@@ -227,7 +228,7 @@ describe(
               shell,
               `if(TRUE) { 42 } else { x ${assign} 5 }\nx`,
               new DataflowGraph()
-                .addNode("2", "x", LocalScope)
+                .addNode("2", "x", scope)
                 .addNode("6", "x")
                 .addEdge("6", "2", "read", "maybe")
             )
@@ -236,8 +237,8 @@ describe(
               shell,
               `if(TRUE) { x ${assign} 7 } else { x ${assign} 5 }\nx`,
               new DataflowGraph()
-                .addNode("1", "x", LocalScope)
-                .addNode("4", "x", LocalScope)
+                .addNode("1", "x", scope)
+                .addNode("4", "x", scope)
                 .addNode("8", "x")
                 .addEdge("8", "1", "read", "maybe")
                 .addEdge("8", "4", "read", "maybe")

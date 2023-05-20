@@ -19,7 +19,8 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
   const { readTargets, writeTargets, environments, swap } = processReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, down)
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
 
-  const impactReadTargets = determineImpactOfSource(swap ? op.rhs : op.lhs, readTargets)
+  // deal with special cases based on the source node and the determined read targets
+  const impactReadTargets = determineImpactOfSource(swap ? op.lhs : op.rhs, readTargets)
 
   for (const write of writeTargets) {
     setDefinitionOfNode(nextGraph, write)
@@ -44,6 +45,7 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
     source: DataflowInformation<OtherInfo>
     target: DataflowInformation<OtherInfo>
     global: boolean
+    /** true if `->` or `->>` */
     swap:   boolean
 } {
   let source: DataflowInformation<OtherInfo>

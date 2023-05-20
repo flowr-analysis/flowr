@@ -53,14 +53,7 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
   for (const writeTarget of currentElement.out) {
     const writeName = writeTarget.name
 
-    const remainingReadIds = remainingRead.get(writeName)
-    if (remainingReadIds) {
-      for (const read of remainingReadIds) {
-        nextGraph.addEdge(writeTarget, read, 'defined-by')
-      }
-      remainingRead.delete(writeName)
-      continue
-    }
+    // TODO: must something happen to the remaining reads?
 
     const resolved = resolveByName(writeName, down.scope, environments)
     if (resolved !== undefined) {

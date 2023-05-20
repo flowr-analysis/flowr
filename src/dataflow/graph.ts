@@ -3,6 +3,7 @@ import { DataflowMap } from './extractor-old'
 import { guard } from '../util/assert'
 import { SourceRange } from '../util/range'
 import { IdType, NoInfo } from '../r-bridge'
+import { IdentifierReference } from './internal/environments'
 
 export type DataflowGraphEdgeType =
     | /** the edge determines that source reads target */ 'read'
@@ -60,6 +61,8 @@ export interface DataflowGraphNodeInfo {
   edges:             DataflowGraphEdge[]
 }
 
+type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'used'>
+
 /**
  * Holds the dataflow information found within the given AST
  * there is a node for every variable encountered, obeying scoping rules
@@ -104,36 +107,40 @@ export class DataflowGraph {
     return this
   }
 
-
-  public addEdges(from: IdType, to: IdType[], type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): this {
-    // TODO: make this far more performant!
-    for(const toId of to) {
-      this.addEdge(from, toId, type, attribute)
-    }
-    return this
-  }
-
+  /** Basically only exists for creations in tests, within the dataflow-extraction, the 3-parameter variant will determine `attribute` automatically */
+  public addEdge(from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): this
+  /** {@inheritDoc} */
+  public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: DataflowGraphEdgeType): this
   /**
    * Will insert a new edge into the graph,
    * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
    * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
-   *
+   * <p>
+   * If you omit the last parameter, this will make the edge `maybe` if at least one of the {@link IdentifierReference | references} has a used flag of `maybe`.
    * TODO: ensure that target has a def scope and source does not?
    */
-  public addEdge(from: IdType, to: IdType, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): this {
-    // sort
+  public addEdge(from: IdType | ReferenceForEdge, to: IdType | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute): this {
+    const fromId = typeof from === 'object' ? from.nodeId : from
+    const toId = typeof to === 'object' ? to.nodeId : to
+
+    // sort (on id so that sorting is the same, independent of the attribute)
     if(type === 'same-read-read' || type === 'same-def-def') {
-      [from, to] = to > from ? [from, to] : [to, from]
+      [from, to] = toId > fromId ? [from, to] : [to, from]
     }
-    const info = this.graph.get(from)
+
+    const info = this.graph.get(fromId)
+    if(attribute === undefined) {
+      guard(typeof from === 'object' && typeof to === 'object', 'if you omit the attribute, both from and to must be references')
+      attribute = from.used === 'maybe' ? 'maybe' : to.used
+    }
     guard(info !== undefined, 'there must be a node info object for the edge source!')
     const edge = {
-      target: to,
+      target: toId,
       type,
       attribute
     }
     // TODO: make this more performant
-    if(info.edges.find(e => e.target === to && e.type === type && e.attribute === attribute) === undefined) {
+    if(info.edges.find(e => e.target === toId && e.type === type && e.attribute === attribute) === undefined) {
       info.edges.push(edge)
     }
     return this

@@ -39,11 +39,11 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
           remainingRead.set(readName, [read])
         }
       } else if (probableTarget.length === 1) {
-        nextGraph.addEdge(read.nodeId, probableTarget[0].nodeId, 'read', 'always')
+        nextGraph.addEdge(read, probableTarget[0], 'read')
       } else {
         for (const target of probableTarget) {
           // we can stick with maybe even if readId.attribute is always
-          nextGraph.addEdge(read.nodeId, target.nodeId, 'read', 'maybe')
+          nextGraph.addEdge(read, target, 'read')
         }
       }
     }
@@ -58,19 +58,19 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
       if (remainingRead.has(writeName)) {
         const readIds = remainingRead.get(writeName)
         guard(readIds !== undefined, `Could not find readId for write variable ${writeId}`)
-        for (const readId of readIds) {
+        for (const read of readIds) {
           // TODO: is this really correct with write and read roles inverted?
-          nextGraph.addEdge(writeId, readId.nodeId, 'defined-by', 'always' /* TODO */)
+          nextGraph.addEdge(writeTarget, read, 'defined-by')
         }
       } else {
         const resolved = resolve(writeName, down.scope, environments)
         if (resolved) { // write-write
           const writePointers = resolved
           if (writePointers.length === 1) {
-            nextGraph.addEdge(writePointers[0].nodeId, writeId, 'same-def-def', 'always')
+            nextGraph.addEdge(writePointers[0], writeTarget, 'same-def-def')
           } else {
             for (const target of writePointers) {
-              nextGraph.addEdge(target.nodeId, writeId, 'same-def-def', 'always')
+              nextGraph.addEdge(target, writeTarget, 'same-def-def')
             }
           }
         }

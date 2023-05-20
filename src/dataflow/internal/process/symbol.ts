@@ -12,7 +12,7 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 
   return {
     ast:          down.ast,
-    activeNodes:  [ { nodeId: symbol.info.id, scope: down.scope, name: symbol.content } ],
+    activeNodes:  [ { nodeId: symbol.info.id, scope: down.scope, name: symbol.content, used: 'always' } ],
     in:           [],
     out:          [],
     environments: initializeCleanEnvironments(),

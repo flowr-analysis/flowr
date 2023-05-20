@@ -4,7 +4,7 @@
  * @module
  */
 import { IdType } from '../../../r-bridge'
-import { DataflowScopeName, GlobalScope, LocalScope } from '../../graph'
+import { DataflowGraphEdgeAttribute, DataflowScopeName, GlobalScope, LocalScope } from '../../graph'
 
 export type Identifier = string
 export type EnvironmentName = string
@@ -24,7 +24,26 @@ export interface IdentifierReference {
   scope:  DataflowScopeName,
   /** Node which represents the reference in the AST */
   nodeId: IdType
+  /**
+   * Is this reference used in every execution path of the program or only if some of them. This can be too-conservative regarding `maybe`.
+   * For example, if we can not detect `if(FALSE)`, this will be `maybe` even if we could statically determine, that the `then` branch is never executed.
+   */
+  used:   DataflowGraphEdgeAttribute
 }
+
+export function makeMaybe(reference: IdentifierReference): IdentifierReference {
+  reference.used = 'maybe'
+  return reference
+}
+
+export function makeAllMaybe(references: IdentifierReference[]): IdentifierReference[] {
+  for(const reference of references) {
+    reference.used = 'maybe'
+  }
+  return references
+}
+
+
 
 export interface IEnvironment {
   readonly name: string

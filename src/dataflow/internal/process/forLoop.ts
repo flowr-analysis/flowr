@@ -1,7 +1,7 @@
 import { linkIngoingVariablesInSameScope, produceNameSharedIdMap, setDefinitionOfNode } from '../linker'
 import { DataflowInformation } from '../info'
 import { DataflowProcessorDown } from '../../processor'
-import { appendEnvironments } from '../environments'
+import { appendEnvironments, makeAllMaybe } from '../environments'
 
 export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInformation<OtherInfo>,
                                           vector: DataflowInformation<OtherInfo>, body: DataflowInformation<OtherInfo>,
@@ -11,7 +11,7 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
   // again within an if-then-else we consider all actives to be read
   // TODO: deal with ...variable.in it is not really ingoing in the sense of bindings i against it, but it should be for the for-loop
   // currently i add it at the end, but is this correct?
-  const ingoing = [...vector.in, ...body.in, ...vector.activeNodes, ...body.activeNodes]
+  const ingoing = [...vector.in, ...makeAllMaybe(body.in), ...vector.activeNodes, ...makeAllMaybe(body.activeNodes)]
 
   // we assign all with a maybe marker
 
@@ -43,21 +43,8 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
   }
 
   const outgoing = [...variable.out, ...writtenVariable, ...body.out]
+  makeAllMaybe(body.out)
 
-  // TODO:
-  /*for(const reference of body.out) {
-     const existing = outgoing.get(scope)
-    const existingIds = existing?.flatMap(t => t.attribute === 'always' ? [t.id] : t.ids) ?? []
-    outgoing.set(scope, targets.map(t => {
-      if(t.attribute === 'always') {
-        // maybe due to loop which does not have to execute!
-        return {attribute: 'maybe', ids: [t.id, ...existingIds]}
-      } else {
-        return t
-      }
-    }))
-  }
-   */
 
   // TODO: scoping?
   linkIngoingVariablesInSameScope(nextGraph, ingoing)

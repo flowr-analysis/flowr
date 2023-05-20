@@ -1,8 +1,8 @@
 /**
-   * Here we cover dataflow extraction for atomic statements (no expression lists).
-   * Yet, some constructs (like for-loops) require the combination of statements, they are included as well.
-   * This will not include functions!
-   */
+ * Here we cover dataflow extraction for atomic statements (no expression lists).
+ * Yet, some constructs (like for-loops) require the combination of statements, they are included as well.
+ * This will not include functions!
+ */
 import { assertDataflow, withShell } from '../../helper/shell'
 import { DataflowGraph, GlobalScope, LocalScope } from '../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../helper/provider'
@@ -25,8 +25,7 @@ describe("A. Atomic dataflow information",
         describe(`${opSuite.label} operations`, () => {
           for (const op of opSuite.pool) {
             const inputDifferent = `${op.str}x`
-            assertDataflow(      `${op.str}x`,
-              shell,
+            assertDataflow(`${op.str}x`, shell,
               inputDifferent,
               new DataflowGraph().addNode("0", "x")
             )
@@ -43,14 +42,14 @@ describe("A. Atomic dataflow information",
             describe(`${op.str}`, () => {
               // TODO: some way to automatically retrieve the id if they are unique? || just allow to omit it?
               const inputDifferent = `x ${op.str} y`
-              assertDataflow(        `${inputDifferent} (different variables)`,
+              assertDataflow(  `${inputDifferent} (different variables)`,
                 shell,
                 inputDifferent,
                 new DataflowGraph().addNode("0", "x").addNode("1", "y")
               )
 
               const inputSame = `x ${op.str} x`
-              assertDataflow(        `${inputSame} (same variables)`,
+              assertDataflow(  `${inputSame} (same variables)`,
                 shell,
                 inputSame,
                 new DataflowGraph()
@@ -171,31 +170,26 @@ describe("A. Atomic dataflow information",
       ]) {
         describe(`Variant ${b.label}`, () => {
           describe(`if-then, no else`, () => {
-            assertDataflow(      `completely constant`,
-              shell,
+            assertDataflow(`completely constant`, shell,
               `if (TRUE) ${b.func("1")}`,
               new DataflowGraph()
             )
-            assertDataflow(      `compare cond.`,
-              shell,
+            assertDataflow(`compare cond.`, shell,
               `if (x > 5) ${b.func("1")}`,
               new DataflowGraph().addNode("0", "x")
             )
-            assertDataflow(      `compare cond. symbol in then`,
-              shell,
+            assertDataflow(`compare cond. symbol in then`, shell,
               `if (x > 5) ${b.func("y")}`,
               new DataflowGraph().addNode("0", "x").addNode("3", "y")
             )
-            assertDataflow(      `all variables`,
-              shell,
+            assertDataflow(`all variables`, shell,
               `if (x > y) ${b.func("z")}`,
               new DataflowGraph()
                 .addNode("0", "x")
                 .addNode("1", "y")
                 .addNode("3", "z")
             )
-            assertDataflow(      `all variables, some same`,
-              shell,
+            assertDataflow(`all variables, some same`, shell,
               `if (x > y) ${b.func("x")}`,
               new DataflowGraph()
                 .addNode("0", "x")
@@ -203,8 +197,7 @@ describe("A. Atomic dataflow information",
                 .addNode("3", "x")
                 .addEdge("0", "3", "same-read-read", "always")
             )
-            assertDataflow(      `all same variables`,
-              shell,
+            assertDataflow(`all same variables`, shell,
               `if (x > x) ${b.func("x")}`,
               new DataflowGraph()
                 .addNode("0", "x")
@@ -217,31 +210,26 @@ describe("A. Atomic dataflow information",
           })
 
           describe(`if-then, with else`, () => {
-            assertDataflow(      `completely constant`,
-              shell,
+            assertDataflow(`completely constant`, shell,
               "if (TRUE) { 1 } else { 2 }",
               new DataflowGraph()
             )
-            assertDataflow(      `compare cond.`,
-              shell,
+            assertDataflow(`compare cond.`, shell,
               "if (x > 5) { 1 } else { 42 }",
               new DataflowGraph().addNode("0", "x")
             )
-            assertDataflow(      `compare cond. symbol in then`,
-              shell,
+            assertDataflow(`compare cond. symbol in then`, shell,
               "if (x > 5) { y } else { 42 }",
               new DataflowGraph().addNode("0", "x").addNode("3", "y")
             )
-            assertDataflow(      `compare cond. symbol in then & else`,
-              shell,
+            assertDataflow(`compare cond. symbol in then & else`, shell,
               "if (x > 5) { y } else { z }",
               new DataflowGraph()
                 .addNode("0", "x")
                 .addNode("3", "y")
                 .addNode("4", "z")
             )
-            assertDataflow(      `all variables`,
-              shell,
+            assertDataflow(`all variables`, shell,
               "if (x > y) { z } else { a }",
               new DataflowGraph()
                 .addNode("0", "x")
@@ -249,8 +237,7 @@ describe("A. Atomic dataflow information",
                 .addNode("3", "z")
                 .addNode("4", "a")
             )
-            assertDataflow(      `all variables, some same`,
-              shell,
+            assertDataflow(`all variables, some same`, shell,
               "if (y > x) { x } else { y }",
               new DataflowGraph()
                 .addNode("0", "y")
@@ -260,8 +247,7 @@ describe("A. Atomic dataflow information",
                 .addEdge("1", "3", "same-read-read", "always")
                 .addEdge("0", "4", "same-read-read", "always")
             )
-            assertDataflow(      `all same variables`,
-              shell,
+            assertDataflow(`all same variables`, shell,
               "if (x > x) { x } else { x }",
               new DataflowGraph()
                 .addNode("0", "x")

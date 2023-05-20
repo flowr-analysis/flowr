@@ -9,12 +9,11 @@ import { linkInputs } from '../linker'
 
 export function processWhileLoop<OtherInfo>(loop: unknown, condition: DataflowInformation<OtherInfo>,
                                             body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
-  // link for previous line (TODO: ship environments and so one in a general way)
   const environments = condition.environments ?? initializeCleanEnvironments()
   const nextGraph = condition.graph.mergeWith(body.graph)
 
   const remainingInputs = linkInputs(makeAllMaybe([...body.activeNodes, ...body.in]), down, environments, [...condition.in, ...condition.activeNodes], nextGraph)
-  // TODO bind against definitions in condition?
+
   return {
     activeNodes:  [],
     in:           remainingInputs,

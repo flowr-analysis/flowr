@@ -20,7 +20,6 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
 
   for (const write of writeTargets) {
-    // TODO: special treatment? const ids = t.attribute === 'always' ? [t.id] : t.ids
     setDefinitionOfNode(nextGraph, write)
     for(const read of readTargets) {
       nextGraph.addEdge(write, read, 'defined-by')
@@ -49,7 +48,7 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
     case '<<-':
       [target, source, global] = [lhs, rhs, true]
       break
-    case '=': // TODO: special
+    case '=': // TODO: special within function calls
       [target, source] = [lhs, rhs]
       break
     case '->':

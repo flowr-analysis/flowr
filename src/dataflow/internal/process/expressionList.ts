@@ -19,7 +19,6 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
   let environments = initializeCleanEnvironments()
   const remainingRead = new Map<string, IdentifierReference[]>()
 
-
   // TODO: this is probably wrong
   const nextGraph = expressions[0].graph.mergeWith(...expressions.slice(1).map(c => c.graph))
 
@@ -48,9 +47,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
       }
     }
     // add same variable reads for deferred if they are read previously but not dependent
-    // TODO: deal with globals etc.
     for (const writeTarget of currentElement.out) {
-      // TODO ? const writeTargetIds = writeTarget.attribute === 'always' ? [writeTarget.id] : writeTarget.ids
       const writeId = writeTarget.nodeId
       const existingRef = down.ast.idMap.get(writeId)
       const writeName = existingRef?.lexeme
@@ -81,7 +78,6 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     environments = overwriteEnvironments(environments, expression.environments)
   }
   // now, we have to link same reads
-
   linkReadVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))
 
   return {

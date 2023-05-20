@@ -331,13 +331,14 @@ describe("A. Atomic dataflow information",
         `while (TRUE) { x <- 3 }`,
         new DataflowGraph().addNode("1", "x", LocalScope)
       )
-      /* TODO: support
-    assertDataflow('def compare in loop', shell, `while ((x <- x - 1) > 0) { x }`,
-      new DataflowGraph().addNode('1', 'x', LOCAL_SCOPE).addNode('2', 'x')
-        .addNode('3', 'x')
-        // .addEdge('0', '1', 'defined-by', 'always')
-    )
-    */
+      assertDataflow('def compare in loop', shell, `while ((x <- x - 1) > 0) { x }`,
+        new DataflowGraph()
+          .addNode('0', 'x', LocalScope)
+          .addNode('1', 'x')
+          .addNode('7', 'x')
+          .addEdge('7', '0', 'read', 'maybe')
+          .addEdge('0', '1', 'defined-by', 'always')
+      )
     })
   })
 )

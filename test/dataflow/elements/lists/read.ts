@@ -113,5 +113,17 @@ describe("Lists with variable references", withShell(shell => {
         .addEdge("0", "3", "same-def-def", "always")
         .addEdge("6", "3", "read", "always")
     )
+    /* TODO: assertDataflow(`duplicate circular definition`, shell,
+      "x <- x; x <- x;",
+      new DataflowGraph()
+        .addNode("0", "x", LocalScope)
+        .addNode("3", "x", LocalScope)
+        .addNode("4", "x")
+        .addNode("6", "x")
+        .addEdge("4", "0", "read", "always")
+        .addEdge("3", "4", "defined-by", "always")
+        .addEdge("0", "3", "same-def-def", "always")
+        .addEdge("6", "3", "read", "always")
+    ) */
   })
 }))

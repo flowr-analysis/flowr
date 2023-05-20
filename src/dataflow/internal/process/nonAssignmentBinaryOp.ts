@@ -1,15 +1,11 @@
 import { DataflowInformation } from '../info'
-import { guard } from '../../../util/assert'
 import { DataflowProcessorDown } from '../../processor'
 import { linkIngoingVariablesInSameScope } from '../linker'
 import { RBinaryOp } from '../../../r-bridge'
 import { appendEnvironments, overwriteEnvironments } from '../environments'
 
 export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo>, lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
-  // TODO: produce special edges
-  // TODO: fix merge of map etc.
-  guard(down.scope === lhs.scope, 'non-assignment binary operations can not change scopes')
-  guard(lhs.scope === rhs.scope, 'non-assignment binary operations can not bridge scopes')
+  // TODO: produce special edges like `alias`
 
   const ingoing = [...lhs.in, ...rhs.in, ...lhs.activeNodes, ...rhs.activeNodes]
   const nextGraph = lhs.graph.mergeWith(rhs.graph)

@@ -8,9 +8,7 @@ describe(
     describe("0. Lists without variable references ", () => {
       let idx = 0
       for (const b of ["1\n2\n3", "1;2;3", "{ 1 + 2 }\n{ 3 * 4 }"]) {
-        assertDataflow(
-          `0.${idx++} ${JSON.stringify(b)}`,
-          shell,
+        assertDataflow(`0.${idx++} ${JSON.stringify(b)}`, shell,
           b,
           new DataflowGraph()
         )
@@ -24,34 +22,24 @@ describe(
             .addNode(id1, "x")
             .addNode(id2, "x")
             .addEdge(id1, id2, "same-read-read", "always")
-        assertDataflow(
-          `1.1.1 directly together`,
-          shell,
+        assertDataflow(`1.1.1 directly together`, shell,
           "x\nx",
           sameGraph("0", "1")
         )
-        assertDataflow(
-          `1.1.2 surrounded by uninteresting elements`,
-          shell,
+        assertDataflow(`1.1.2 surrounded by uninteresting elements`, shell,
           "3\nx\n1\nx\n2",
           sameGraph("1", "3")
         )
-        assertDataflow(
-          `1.1.3 using braces`,
-          shell,
+        assertDataflow(`1.1.3 using braces`, shell,
           "{ x }\n{{ x }}",
           sameGraph("0", "1")
         )
-        assertDataflow(
-          `1.1.4 using braces and uninteresting elements`,
-          shell,
+        assertDataflow(`1.1.4 using braces and uninteresting elements`, shell,
           "{ x + 2 }; 4 - { x }",
           sameGraph("0", "4")
         )
 
-        assertDataflow(
-          `1.1.5 multiple occurrences of same variable`,
-          shell,
+        assertDataflow(`1.1.5 multiple occurrences of same variable`, shell,
           "x\nx\n3\nx",
           new DataflowGraph()
             .addNode("0", "x")
@@ -67,40 +55,28 @@ describe(
             .addNode(id1, "x", LocalScope)
             .addNode(id2, "x", LocalScope)
             .addEdge(id1, id2, "same-def-def", "always")
-        assertDataflow(
-          `1.2.1 directly together`,
-          shell,
+        assertDataflow(`1.2.1 directly together`, shell,
           "x <- 1\nx <- 2",
           sameGraph("0", "3")
         )
-        assertDataflow(
-          `1.2.2 directly together with mixed sides`,
-          shell,
+        assertDataflow(`1.2.2 directly together with mixed sides`, shell,
           "1 -> x\nx <- 2",
           sameGraph("1", "3")
         )
-        assertDataflow(
-          `1.2.3 surrounded by uninteresting elements`,
-          shell,
+        assertDataflow(`1.2.3 surrounded by uninteresting elements`, shell,
           "3\nx <- 1\n1\nx <- 3\n2",
           sameGraph("1", "5")
         )
-        assertDataflow(
-          `1.2.4 using braces`,
-          shell,
+        assertDataflow(`1.2.4 using braces`, shell,
           "{ x <- 42 }\n{{ x <- 50 }}",
           sameGraph("0", "3")
         )
-        assertDataflow(
-          `1.2.5 using braces and uninteresting elements`,
-          shell,
+        assertDataflow(`1.2.5 using braces and uninteresting elements`, shell,
           "5; { x <- 2 }; 17; 4 -> x; 9",
           sameGraph("1", "6")
         )
 
-        assertDataflow(
-          `1.2.6 multiple occurrences of same variable`,
-          shell,
+        assertDataflow(`1.2.6 multiple occurrences of same variable`, shell,
           "x <- 1\nx <- 3\n3\nx <- 9",
           new DataflowGraph()
             .addNode("0", "x", LocalScope)
@@ -116,41 +92,29 @@ describe(
             .addNode(id1, "x", LocalScope)
             .addNode(id2, "x")
             .addEdge(id2, id1, "read", "always")
-        assertDataflow(
-          `1.3.1 directly together`,
-          shell,
+        assertDataflow(`1.3.1 directly together`, shell,
           "x <- 1\nx",
           sameGraph("0", "3")
         )
-        assertDataflow(
-          `1.3.2 surrounded by uninteresting elements`,
-          shell,
+        assertDataflow(`1.3.2 surrounded by uninteresting elements`, shell,
           "3\nx <- 1\n1\nx\n2",
           sameGraph("1", "5")
         )
-        assertDataflow(
-          `1.3.3 using braces`,
-          shell,
+        assertDataflow(`1.3.3 using braces`, shell,
           "{ x <- 1 }\n{{ x }}",
           sameGraph("0", "3")
         )
-        assertDataflow(
-          `1.3.4 using braces and uninteresting elements`,
-          shell,
+        assertDataflow(`1.3.4 using braces and uninteresting elements`, shell,
           "{ x <- 2 }; 5; x",
           sameGraph("0", "4")
         )
-        assertDataflow(
-          `1.3.5 redefinition links correctly`,
-          shell,
+        assertDataflow(`1.3.5 redefinition links correctly`, shell,
           "x <- 2; x <- 3; x",
           sameGraph("3", "6")
             .addNode("0", "x", LocalScope)
             .addEdge("0", "3", "same-def-def", "always")
         )
-        assertDataflow(
-          `1.3.6 multiple redefinition with circular definition`,
-          shell,
+        assertDataflow(`1.3.6 multiple redefinition with circular definition`, shell,
           "x <- 2; x <- x; x",
           new DataflowGraph()
             .addNode("0", "x", LocalScope)
@@ -177,8 +141,7 @@ describe(
               { label: "with else", text: " else { 1 }" },
             ]) {
               describe(`2.1.${++idx} ${b.label}`, () => {
-                assertDataflow(
-                  `2.1.${idx}.1 read previous def in cond`,
+                assertDataflow(        `2.1.${idx}.1 read previous def in cond`,
                   shell,
                   `x ${assign} 2\nif(x) { 1 } ${b.text}`,
                   new DataflowGraph()
@@ -186,8 +149,7 @@ describe(
                     .addNode("3", "x")
                     .addEdge("3", "0", "read", "always")
                 )
-                assertDataflow(
-                  `2.1.${idx}.2 read previous def in then`,
+                assertDataflow(        `2.1.${idx}.2 read previous def in then`,
                   shell,
                   `x ${assign} 2\nif(TRUE) { x } ${b.text}`,
                   new DataflowGraph()
@@ -197,8 +159,7 @@ describe(
                 )
               })
             }
-            assertDataflow(
-              `2.1.${++idx}. read previous def in else`,
+            assertDataflow(    `2.1.${++idx}. read previous def in else`,
               shell,
               `x ${assign} 2\nif(TRUE) { 42 } else { x }`,
               new DataflowGraph()
@@ -213,8 +174,7 @@ describe(
               { label: "without else", text: "" },
               { label: "with else", text: " else { 1 }" },
             ]) {
-              assertDataflow(
-                `2.2.${++idx} ${b.label} directly together`,
+              assertDataflow(      `2.2.${++idx} ${b.label} directly together`,
                 shell,
                 `if(TRUE) { x ${assign} 2 }\nx`,
                 new DataflowGraph()
@@ -223,8 +183,7 @@ describe(
                   .addEdge("5", "1", "read", "maybe")
               )
             }
-            assertDataflow(
-              `2.2.${++idx} def in else read afterwards`,
+            assertDataflow(    `2.2.${++idx} def in else read afterwards`,
               shell,
               `if(TRUE) { 42 } else { x ${assign} 5 }\nx`,
               new DataflowGraph()
@@ -232,8 +191,7 @@ describe(
                 .addNode("6", "x")
                 .addEdge("6", "2", "read", "maybe")
             )
-            assertDataflow(
-              `2.2.${++idx} def in then and else read afterward`,
+            assertDataflow(    `2.2.${++idx} def in then and else read afterward`,
               shell,
               `if(TRUE) { x ${assign} 7 } else { x ${assign} 5 }\nx`,
               new DataflowGraph()

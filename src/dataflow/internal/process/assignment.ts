@@ -1,4 +1,4 @@
-import { ParentInformation, RAssignmentOp, RNode } from '../../../r-bridge'
+import { ParentInformation, RAssignmentOp, RNode, Type } from '../../../r-bridge'
 import { DataflowInformation } from '../info'
 import { DataflowProcessorDown } from '../../processor'
 import { GlobalScope, LocalScope } from '../../graph'
@@ -16,12 +16,14 @@ import { log } from '../../../util/log'
 export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>,
                                              lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>,
                                              down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
-  const { readTargets, writeTargets, environments } = processReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, down)
+  const { readTargets, writeTargets, environments, swap } = processReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, down)
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
+
+  const impactReadTargets = determineImpactOfSource(swap ? op.rhs : op.lhs, readTargets)
 
   for (const write of writeTargets) {
     setDefinitionOfNode(nextGraph, write)
-    for(const read of readTargets) {
+    for(const read of impactReadTargets) {
       nextGraph.addEdge(write, read, 'defined-by')
     }
   }
@@ -36,10 +38,18 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
   }
 }
 
-function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformation>, lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>) {
+function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformation>,
+                                            lhs: DataflowInformation<OtherInfo>,
+                                            rhs: DataflowInformation<OtherInfo>) : {
+    source: DataflowInformation<OtherInfo>
+    target: DataflowInformation<OtherInfo>
+    global: boolean
+    swap:   boolean
+} {
   let source: DataflowInformation<OtherInfo>
   let target: DataflowInformation<OtherInfo>
   let global = false
+  let swap = false
 
   switch (op.lexeme) {
     case '<-':
@@ -52,15 +62,15 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
       [target, source] = [lhs, rhs]
       break
     case '->':
-      [target, source] = [rhs, lhs]
+      [target, source, swap] = [rhs, lhs, true]
       break
     case '->>':
-      [target, source, global] = [rhs, lhs, true]
+      [target, source, global, swap] = [rhs, lhs, true, true]
       break
     default:
       throw new Error(`Unknown assignment operator ${JSON.stringify(op)}`)
   }
-  return { source, target, global }
+  return { source, target, global, swap }
 }
 
 function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation<OtherInfo>, global: boolean, down: DataflowProcessorDown<OtherInfo>): IdentifierDefinition[] {
@@ -81,7 +91,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<
                                                               down: DataflowProcessorDown<OtherInfo>) {
   // what is written/read additionally is based on lhs/rhs - assignments read written variables as well
   const read = [...lhs.in, ...rhs.in]
-  const { source, target, global } = identifySourceAndTarget(op, lhs, rhs)
+  const { source, target, global, swap } = identifySourceAndTarget(op, lhs, rhs)
   const writeNodes = produceWrittenNodes(op, target, global, down)
 
   if(writeNodes.length !== 1) {
@@ -103,6 +113,22 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<
   return {
     readTargets:  [...source.activeNodes, ...read, ...readFromSourceWritten],
     writeTargets: [...writeNodes, ...target.out],
-    environments: environments
+    environments: environments,
+    swap
   }
+}
+
+/**
+ * Some R-constructs like loops are known to return values completely independent of their input (loops return an invisible `NULL`).
+ * This returns only those of `readTargets` that actually impact the target.
+ */
+function determineImpactOfSource<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, readTargets: IdentifierReference[]): IdentifierReference[] {
+
+  /* loops return an invisible null */
+  if(source.type === Type.For || source.type === Type.While || source.type === Type.Repeat) {
+    return []
+  }
+
+  // by default, we assume, that all have an impact
+  return readTargets
 }

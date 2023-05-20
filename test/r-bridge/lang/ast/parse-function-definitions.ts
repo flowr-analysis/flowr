@@ -72,5 +72,24 @@ describe("Parse function definitions",
         })
       )
     })
+    describe("functions with unnamed arguments", () => {
+      const noop = "function(x) { }"
+      assertAst(`noop - ${noop}`, shell, noop,
+        exprList({
+          type:       Type.Function,
+          location:   rangeFrom(1, 1, 1, 8),
+          lexeme:     "function",
+          parameters: [],
+          info:       {},
+          body:       {
+            type:     Type.ExpressionList,
+            location: rangeFrom(1, 12, 1, 14),
+            lexeme:   "{ }",
+            children: [],
+            info:     {}
+          }
+        })
+      )
+    })
   })
 )

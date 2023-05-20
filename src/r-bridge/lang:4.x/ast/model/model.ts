@@ -71,3 +71,12 @@ export type ROther<Info>          = RComment<Info>
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | RDefinitions<Info>
                                   | ROther<Info> | RCalls<Info> | RConstructs<Info>
                                   | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>
+
+/* TODO: blocked in R
+
+if else repeat while function for in next break
+TRUE FALSE NULL Inf NaN
+NA NA_integer_ NA_real_ NA_complex_ NA_character_
+... ..1 ..2 etc.
+
+*/

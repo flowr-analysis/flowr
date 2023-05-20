@@ -21,14 +21,14 @@ export function tryParseIfThenElseStructure(data: ParserData,
                                               elseBlock:  NamedXmlBasedJson
                                           ]): RIfThenElse | undefined {
   // we start by parsing a regular if-then structure
-  parseLog.trace(`trying to parse if-then-else structure for ${JSON.stringify(tokens)}`)
+  parseLog.trace(`trying to parse if-then-else structure`)
   tokens = executeHook(data.hooks.control.onIfThenElse.before, data, tokens)
 
   const parsedIfThen = tryParseIfThenStructure(data, [tokens[0], tokens[1], tokens[2], tokens[3], tokens[4]])
   if (parsedIfThen === undefined) {
     return executeUnknownHook(data.hooks.control.onIfThenElse.unknown, data, tokens)
   }
-  parseLog.trace(`if-then part successful, now parsing else part for ${JSON.stringify([tokens[5], tokens[6]])}`)
+  parseLog.trace(`if-then part successful, now parsing else part`)
   guard(tokens[5].name === Type.Else, () => `expected else token for if-then-else but found ${JSON.stringify(tokens[5])}`)
 
   const parsedElse = tryParseOneElementBasedOnType(data, tokens[6])

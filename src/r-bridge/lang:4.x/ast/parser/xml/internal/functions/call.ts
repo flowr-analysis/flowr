@@ -25,7 +25,7 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
     return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
   }
 
-  parseLog.trace(`trying to parse function call with ${JSON.stringify(fnBase)}`)
+  parseLog.trace(`trying to parse function call`)
   mappedWithName = executeHook(data.hooks.functions.onFunctionCall.before, data, mappedWithName)
 
   const {

@@ -18,6 +18,7 @@ export function tryParseIfThenStructure(data: ParserData,
                                           then:       NamedXmlBasedJson
                                       ]): RIfThenElse | undefined {
   // TODO: guard-like syntax for this too?
+  parseLog.trace(`trying to parse if-then structure`)
   if (tokens[0].name !== Type.If) {
     parseLog.debug('encountered non-if token for supposed if-then structure')
     return executeUnknownHook(data.hooks.control.onIfThen.unknown, data, tokens)

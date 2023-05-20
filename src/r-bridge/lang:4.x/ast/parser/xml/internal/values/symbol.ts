@@ -19,7 +19,7 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 // TODO: deal with namespace information
 export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
   guard(objs.length > 0, 'to parse symbols we need at least one object to work on!')
-  parseLog.debug(`trying to parse symbol with ${JSON.stringify(objs)}`)
+  parseLog.debug(`trying to parse symbol`)
   objs = executeHook(data.hooks.values.onSymbol.before, data, objs)
 
   let location, content, namespace

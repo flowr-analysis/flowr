@@ -38,7 +38,7 @@ export function tryParseUnaryStructure(data: ParserData, op: NamedXmlBasedJson, 
 }
 
 function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
-  parseLog.debug(`[unary op] parse ${flavor} with ${JSON.stringify([op, operand])}`); // <- sadly required for not miss-interpreting the destructuring match as call
+  parseLog.debug(`[unary op] parse ${flavor}`); // <- semicolon sadly required for not miss-interpreting the destructuring match as call
   ({ flavor, op, operand} = executeHook(data.hooks.operators.onUnary.before, data, { flavor, op, operand }))
 
   const parsedOperand = tryParseOneElementBasedOnType(data, operand)

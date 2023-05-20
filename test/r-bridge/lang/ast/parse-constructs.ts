@@ -97,9 +97,9 @@ const ElseBracesVariants = [{
   num:          42
 }]
 
-describe('4. Parse simple constructs', withShell(shell => {
-  describe('4.1 if', () => {
-    describe('1.1 if-then', () => {
+describe('Parse simple constructs', withShell(shell => {
+  describe('if', () => {
+    describe('if-then', () => {
       for (const pool of [{name: 'braces', variants: IfThenBraceVariants}, {
         name:     'spacing',
         variants: IfThenSpacingVariants
@@ -132,7 +132,7 @@ describe('4. Parse simple constructs', withShell(shell => {
         })
       }
     })
-    describe('1.2 if-then-else', () => {
+    describe('if-then-else', () => {
       for (const elsePool of [{name: 'braces', variants: ElseBracesVariants}, {
         name:     'spacing',
         variants: ElseSpacingVariants
@@ -183,8 +183,8 @@ describe('4. Parse simple constructs', withShell(shell => {
     })
   })
   // TODO: with and without braces
-  describe('4.2 loops', () => {
-    describe('4.2.1 for', () => {
+  describe('loops', () => {
+    describe('for', () => {
       assertAst('for(i in 1:10) 2', shell, 'for(i in 1:42)2', exprList({
         type:     Type.For,
         location: rangeFrom(1, 1, 1, 3),
@@ -230,7 +230,7 @@ describe('4. Parse simple constructs', withShell(shell => {
       })
       )
     })
-    describe('4.2.2 repeat', () => {
+    describe('repeat', () => {
       assertAst('repeat 2', shell, 'repeat 2', exprList({
         type:     Type.Repeat,
         location: rangeFrom(1, 1, 1, 6),
@@ -272,7 +272,7 @@ describe('4. Parse simple constructs', withShell(shell => {
         }
       }))
     })
-    describe('4.2.3 while', () => {
+    describe('while', () => {
       assertAst('while (TRUE) 42', shell, 'while (TRUE) 42', exprList({
         type:      Type.While,
         location:  rangeFrom(1, 1, 1, 5),
@@ -329,7 +329,7 @@ describe('4. Parse simple constructs', withShell(shell => {
         }
       }))
     })
-    describe('4.2.4 break', () => {
+    describe('break', () => {
       assertAst('while (TRUE) break', shell, 'while (TRUE) break', exprList({
         type:      Type.While,
         location:  rangeFrom(1, 1, 1, 5),
@@ -350,7 +350,7 @@ describe('4. Parse simple constructs', withShell(shell => {
         }
       }))
     })
-    describe('4.2.5 next', () => {
+    describe('next', () => {
       assertAst('while (TRUE) next', shell, 'while (TRUE) next', exprList({
         type:      Type.While,
         location:  rangeFrom(1, 1, 1, 5),

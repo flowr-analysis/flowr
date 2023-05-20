@@ -3,10 +3,9 @@ import { exprList, numVal } from "../../../helper/ast-builder"
 import { rangeFrom } from "../../../../src/util/range"
 import { Type } from '../../../../src/r-bridge'
 
-describe(
-  "5. Parse function calls",
+describe("Parse function calls",
   withShell((shell) => {
-    describe("5.1 functions without arguments", () => {
+    describe("functions without arguments", () => {
       assertAst(
         "f()",
         shell,
@@ -28,7 +27,7 @@ describe(
         })
       )
     })
-    describe("5.2 functions with arguments", () => {
+    describe("functions with arguments", () => {
       assertAst(
         "f(1, 2)",
         shell,
@@ -65,8 +64,8 @@ describe(
         })
       )
     })
-    describe("5.3 functions with named arguments", () => { /* TODO */ })
-    describe("5.4 functions with explicit namespacing", () => {
+    describe("functions with named arguments", () => { /* TODO */ })
+    describe("functions with explicit namespacing", () => {
       assertAst(
         "x::f()",
         shell,

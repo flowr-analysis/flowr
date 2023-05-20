@@ -59,9 +59,9 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
         const readIds = remainingRead.get(writeName)
         guard(readIds !== undefined, `Could not find readId for write variable ${writeId}`)
         for (const read of readIds) {
-          // TODO: is this really correct with write and read roles inverted?
           nextGraph.addEdge(writeTarget, read, 'defined-by')
         }
+        remainingRead.delete(writeName)
       } else {
         const resolved = resolveByName(writeName, down.scope, environments)
         if (resolved) { // write-write

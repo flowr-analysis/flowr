@@ -1,4 +1,4 @@
-import { REnvironmentInformation, Identifier, IdentifierReference } from './environment'
+import { REnvironmentInformation, Identifier, IdentifierReference, IdentifierDefinition } from './environment'
 import { DataflowScopeName, GlobalScope, LocalScope } from '../graph'
 import { dataflowLogger } from '../index'
 
@@ -13,7 +13,7 @@ import { dataflowLogger } from '../index'
  *
  * @returns A list of possible definitions of the identifier (one if the definition location is exactly and always known), or `undefined` if the identifier is undefined in the current scope/with the current environment information.
  */
-export function resolveName(name: Identifier, withinScope: DataflowScopeName, environments: REnvironmentInformation): IdentifierReference[] | undefined {
+export function resolveByName(name: Identifier, withinScope: DataflowScopeName, environments: REnvironmentInformation): IdentifierDefinition[] | undefined {
   if(withinScope === LocalScope) {
     return resolveLocal(name, withinScope, environments)
   } else if(withinScope === GlobalScope) {

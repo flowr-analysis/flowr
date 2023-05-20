@@ -5,7 +5,7 @@
 import { DataflowInformation, initializeCleanInfo } from '../info'
 import { RExpressionList } from '../../../r-bridge'
 import { DataflowProcessorDown } from '../../processor'
-import { IdentifierReference, initializeCleanEnvironments, overwriteEnvironments, resolveName } from '../../environments'
+import { IdentifierReference, initializeCleanEnvironments, overwriteEnvironments, resolveByName } from '../../environments'
 import { guard } from '../../../util/assert'
 import { linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
@@ -30,7 +30,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     for (const read of [...currentElement.in, ...currentElement.activeNodes]) {
       const readName = read.name
 
-      const probableTarget = resolveName(readName, down.scope, environments)
+      const probableTarget = resolveByName(readName, down.scope, environments)
       if (probableTarget === undefined) {
         // keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
         if(remainingRead.has(readName)) {
@@ -63,7 +63,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
           nextGraph.addEdge(writeTarget, read, 'defined-by')
         }
       } else {
-        const resolved = resolveName(writeName, down.scope, environments)
+        const resolved = resolveByName(writeName, down.scope, environments)
         if (resolved) { // write-write
           const writePointers = resolved
           if (writePointers.length === 1) {

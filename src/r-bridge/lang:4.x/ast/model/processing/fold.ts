@@ -4,7 +4,7 @@ import { foldAstStateful, StatefulFoldFunctions } from './statefulFold'
 
 export type FoldFunctions<Info, T> = Omit<StatefulFoldFunctions<Info, undefined, T>, 'down'>
 
-const down = () => { return undefined }
+const down = () => undefined
 
 /**
  * Folds in old functional-fashion over the AST structure.

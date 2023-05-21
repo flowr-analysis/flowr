@@ -30,7 +30,7 @@ describe("Random", () => {
         }
       }
     })
-    describe("guard against illegal parameters", () => {
+    describe("guard against illegal arguments", () => {
       it("negative", function() {
         for (const length of [-Infinity, -42, -2, -1]) {
           assert.throws(

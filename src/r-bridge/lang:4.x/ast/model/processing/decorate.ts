@@ -133,7 +133,7 @@ export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: Id
     functions:      {
       foldFunctionDefinition: createFoldForFunctionDefinition(info),
       foldFunctionCall:       createFoldForFunctionCall(info),
-      foldParameter:          createFoldForFunctionParameter(info),
+      foldArgument:           createFoldForFunctionArgument(info),
     }
   })
 
@@ -231,28 +231,28 @@ function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
-  return (data: RNode<OtherInfo>, functionName: RNodeWithParent<OtherInfo>, parameters: RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
+  return (data: RNode<OtherInfo>, functionName: RNodeWithParent<OtherInfo>, args: RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
     const id = info.getId(data)
-    const decorated = { ...data, info: { ...(data.info ), id, parent: undefined },  functionName, parameters } as RNodeWithParent<OtherInfo>
+    const decorated = { ...data, info: { ...(data.info ), id, parent: undefined },  functionName, arguments: args } as RNodeWithParent<OtherInfo>
     info.idMap.set(id, decorated)
     functionName.info.parent = id
-    parameters.forEach(arg => arg.info.parent = id)
+    args.forEach(arg => arg.info.parent = id)
     return decorated
   }
 }
 
 function createFoldForFunctionDefinition<OtherInfo>(info: FoldInfo<OtherInfo>) {
-  return (data: RNode<OtherInfo>, parameters: RNodeWithParent<OtherInfo>[], body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+  return (data: RNode<OtherInfo>, args: RNodeWithParent<OtherInfo>[], body: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
     const id = info.getId(data)
-    const decorated = { ...data, info: { ...(data.info ), id, parent: undefined },  parameters, body } as RNodeWithParent<OtherInfo>
+    const decorated = { ...data, info: { ...(data.info ), id, parent: undefined },  arguments: args, body } as RNodeWithParent<OtherInfo>
     info.idMap.set(id, decorated)
-    parameters.forEach(arg => arg.info.parent = id)
+    args.forEach(arg => arg.info.parent = id)
     body.info.parent = id
     return decorated
   }
 }
 
-function createFoldForFunctionParameter<OtherInfo>(info: FoldInfo<OtherInfo>) {
+function createFoldForFunctionArgument<OtherInfo>(info: FoldInfo<OtherInfo>) {
   return (data: RNode<OtherInfo>, name: RNodeWithParent<OtherInfo>, defaultValue: RNodeWithParent<OtherInfo> | undefined): RNodeWithParent<OtherInfo> => {
     const id = info.getId(data)
     const decorated = { ...data, info: { ...(data.info ), id, parent: undefined }, name, defaultValue } as RNodeWithParent<OtherInfo>

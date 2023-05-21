@@ -11,7 +11,7 @@ import { formatRange } from '../../src/dataflow'
 
 describe("Ranges", () => {
   describe("rangeFrom", () => {
-    it("correct parameters", () => {
+    it("correct arguments", () => {
       const pool = [-1, 0, 1, 2, 99]
       for (const startLine of pool) {
         for (const startColumn of pool) {

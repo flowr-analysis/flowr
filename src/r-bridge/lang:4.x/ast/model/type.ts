@@ -41,7 +41,7 @@ export const enum Type {
   NamespaceGet = "NS_GET",
   Break = "BREAK",
   Next = "NEXT",
-  Parameter = "Parameter"
+  Argument = "Argument"
 }
 
 /**

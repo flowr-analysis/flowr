@@ -41,20 +41,20 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
   guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')
   guard(functionName.type === Type.Symbol, () => `expected function name to be a symbol, yet received ${JSON.stringify(functionName)}`)
 
-  const splitParametersOnComma = splitArrayOn(mappedWithName.slice(1), x => x.name === Type.Comma)
-  const parameters: RNode[] = splitParametersOnComma.map(x => {
-    const gotParameters = parseBasedOnType(data, x.map(x => x.content))
-    guard(gotParameters.length < 2, () => `expected parameter to be wrapped in expression, yet received ${JSON.stringify(gotParameters)}`)
-    return gotParameters.length === 0 ? undefined : gotParameters[0]
+  const splitArgumentsOnComma = splitArrayOn(mappedWithName.slice(1), x => x.name === Type.Comma)
+  const args: RNode[] = splitArgumentsOnComma.map(x => {
+    const gotArguments = parseBasedOnType(data, x.map(x => x.content))
+    guard(gotArguments.length < 2, () => `expected argument to be wrapped in expression, yet received ${JSON.stringify(gotArguments)}`)
+    return gotArguments.length === 0 ? undefined : gotArguments[0]
   }).filter(isNotUndefined)
 
   const result: RFunctionCall = {
-    type:   Type.FunctionCall,
+    type:      Type.FunctionCall,
     location,
-    lexeme: content,
+    lexeme:    content,
     functionName,
-    parameters,
-    info:   {}
+    arguments: args,
+    info:      {}
   }
   return executeHook(data.hooks.functions.onFunctionCall.after, data, result)
 }

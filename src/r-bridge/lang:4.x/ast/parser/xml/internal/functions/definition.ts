@@ -1,6 +1,6 @@
 import { ParserData } from '../../data'
 import { NamedXmlBasedJson } from '../../input-format'
-import { RNode, Type } from '../../../../model'
+import { Type } from '../../../../model'
 import { RFunctionDefinition } from '../../../../model/nodes/RFunctionDefinition'
 import { parseLog } from '../../parser'
 import { executeHook, executeUnknownHook } from '../../hooks'
@@ -8,9 +8,9 @@ import { retrieveMetaStructure } from '../meta'
 import { guard, isNotUndefined } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseBasedOnType } from '../structure'
-import { tryToParseParameter } from './parameter'
+import { tryToParseArgument } from './argument'
 import { log } from '../../../../../../../util/log'
-import { RParameter } from '../../../../model/nodes/RParameter'
+import { RArgument } from '../../../../model/nodes/RArgument'
 
 /**
  * Tries to parse the given data as a function definition.
@@ -38,18 +38,18 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
   const closingParenIndex = mappedWithName.findIndex(x => x.name === Type.ParenRight)
   guard(closingParenIndex !== -1, () => `expected closing parenthesis, yet received ${JSON.stringify(mappedWithName)}`)
 
-  const splitParameters = splitArrayOn(mappedWithName.slice(2, closingParenIndex), x => x.name === Type.Comma)
+  const splitArguments = splitArrayOn(mappedWithName.slice(2, closingParenIndex), x => x.name === Type.Comma)
 
-  parseLog.trace(`function definition has ${splitParameters.length} parameters (by comma split)`)
+  parseLog.trace(`function definition has ${splitArguments.length} arguments (by comma split)`)
 
-  const parameters: (undefined | RParameter)[] = splitParameters.map(x => tryToParseParameter(data, x))
+  const args: (undefined | RArgument)[] = splitArguments.map(x => tryToParseArgument(data, x))
 
-  if(parameters.some(p => p === undefined)) {
-    log.error(`function had unexpected unknown parameters: ${JSON.stringify(parameters.filter(isNotUndefined))}, aborting.`)
+  if(args.some(p => p === undefined)) {
+    log.error(`function had unexpected unknown arguments: ${JSON.stringify(args.filter(isNotUndefined))}, aborting.`)
     return executeUnknownHook(data.hooks.functions.onFunctionDefinition.unknown, data, mappedWithName)
   }
 
-  parseLog.trace(`function definition retained ${parameters.length} parameters after parsing, moving to body.`)
+  parseLog.trace(`function definition retained ${args.length} arguments after parsing, moving to body.`)
 
   const bodyStructure = mappedWithName.slice(closingParenIndex + 1)
   guard(bodyStructure.length === 1, () => `expected function body to be unique, yet received ${JSON.stringify(bodyStructure)}`)
@@ -59,12 +59,12 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
 
 
   const result: RFunctionDefinition = {
-    type:       Type.Function,
+    type:      Type.Function,
     location,
-    lexeme:     content,
-    parameters: parameters as RParameter[],
-    body:       body[0],
-    info:       {}
+    lexeme:    content,
+    arguments: args as RArgument[],
+    body:      body[0],
+    info:      {}
   }
   return executeHook(data.hooks.functions.onFunctionDefinition.after, data, result)
 }

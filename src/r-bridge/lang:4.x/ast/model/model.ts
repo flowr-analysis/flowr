@@ -15,7 +15,7 @@ import {
   RComment, RFunctionCall, RBreak, RNext
 } from './nodes'
 import { RFunctionDefinition } from './nodes/RFunctionDefinition'
-import { RParameter } from './nodes/RParameter'
+import { RArgument } from './nodes/RArgument'
 
 /** simply used as an empty interface with no information about additional decorations */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -64,7 +64,7 @@ export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Inf
 export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info>
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>
-export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RParameter<Info>
+export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RArgument<Info>
 export type ROther<Info>          = RComment<Info>
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
                                   | ROther<Info> | RConstructs<Info>

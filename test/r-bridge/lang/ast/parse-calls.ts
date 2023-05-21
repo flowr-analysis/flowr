@@ -23,7 +23,7 @@ describe("Parse function calls",
             namespace: undefined,
             info:      {},
           },
-          parameters: [],
+          arguments: [],
         })
       )
     })
@@ -45,7 +45,7 @@ describe("Parse function calls",
             namespace: undefined,
             info:      {}
           },
-          parameters: [
+          arguments: [
             {
               type:     Type.Number,
               location: rangeFrom(1, 3, 1, 3),
@@ -83,7 +83,7 @@ describe("Parse function calls",
             namespace: "x",
             info:      {}
           },
-          parameters: [],
+          arguments: [],
         })
       )
     })

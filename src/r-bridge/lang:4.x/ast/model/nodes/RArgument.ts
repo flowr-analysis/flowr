@@ -2,8 +2,8 @@ import { Base, Location, NoInfo, RNode } from "../model"
 import { Type } from "../type"
 import { RSymbol } from './RSymbol'
 
-export interface RParameter<Info = NoInfo> extends Base<Info>, Location {
-  readonly type: Type.Parameter;
+export interface RArgument<Info = NoInfo> extends Base<Info>, Location {
+  readonly type: Type.Argument;
   name:          RSymbol<Info>;
   defaultValue:  RNode<Info> | undefined;
 }

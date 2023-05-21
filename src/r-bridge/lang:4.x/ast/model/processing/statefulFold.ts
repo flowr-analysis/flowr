@@ -24,7 +24,7 @@ import {
 } from '../nodes'
 import { RNode } from '../model'
 import { RFunctionDefinition } from '../nodes/RFunctionDefinition'
-import { RParameter } from '../nodes/RParameter'
+import { RArgument } from '../nodes/RArgument'
 
 
 /**
@@ -36,7 +36,7 @@ export type DownFold<Info, Down> = (node: RNode<Info>, down: Down) => Down
 
 /**
  * All fold functions besides `down` are called after the down-pass in conventional fold-fashion.
- * The `down` parameter holds information obtained during the down-pass, issued by the `down` function.
+ * The `down` argument holds information obtained during the down-pass, issued by the `down` function.
  */
 export interface StatefulFoldFunctions<Info, Down, Up> {
   down:        DownFold<Info, Down>
@@ -64,14 +64,14 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
   other: {
     foldComment: (comment: RComment<Info>, down: Down) => Up;
   };
-  /** The `otherwise` parameter is `undefined` if the `else` branch is missing */
+  /** The `otherwise` argument is `undefined` if the `else` branch is missing */
   foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down ) => Up;
   foldExprList:   (exprList: RExpressionList<Info>, expressions: Up[], down: Down) => Up;
   functions: {
-    foldFunctionDefinition: (definition: RFunctionDefinition<Info>, parameters: Up[], body: Up, down: Down) => Up;
-    foldFunctionCall:       (call: RFunctionCall<Info>, functionName: Up, parameters: Up[], down: Down) => Up;
-    /** The `defaultValue` parameter is `undefined` if the parameter was not initialized with a default value */
-    foldParameter:          (parameter: RParameter<Info>, name: Up, defaultValue: Up | undefined, down: Down) => Up;
+    foldFunctionDefinition: (definition: RFunctionDefinition<Info>, args: Up[], body: Up, down: Down) => Up;
+    foldFunctionCall:       (call: RFunctionCall<Info>, functionName: Up, args: Up[], down: Down) => Up;
+    /** The `defaultValue` argument is `undefined` if the argument was not initialized with a default value */
+    foldArgument:           (argument: RArgument<Info>, name: Up, defaultValue: Up | undefined, down: Down) => Up;
   }
 }
 
@@ -104,11 +104,11 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
     case Type.Repeat:
       return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down)
     case Type.FunctionCall:
-      return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.functionName, down, folds), ast.parameters.map(param => foldAstStateful(param, down, folds)), down)
+      return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.functionName, down, folds), ast.arguments.map(param => foldAstStateful(param, down, folds)), down)
     case Type.Function:
-      return folds.functions.foldFunctionDefinition(ast, ast.parameters.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down)
-    case Type.Parameter:
-      return folds.functions.foldParameter(ast, foldAstStateful(ast.name, down, folds), ast.defaultValue ? foldAstStateful(ast.defaultValue, down, folds) : undefined, down)
+      return folds.functions.foldFunctionDefinition(ast, ast.arguments.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down)
+    case Type.Argument:
+      return folds.functions.foldArgument(ast, foldAstStateful(ast.name, down, folds), ast.defaultValue ? foldAstStateful(ast.defaultValue, down, folds) : undefined, down)
     case Type.Next:
       return folds.loop.foldNext(ast, down)
     case Type.Break:

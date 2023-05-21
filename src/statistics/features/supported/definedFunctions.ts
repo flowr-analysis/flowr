@@ -13,7 +13,7 @@ export interface FunctionDefinitionInfo extends FeatureInfo {
   lambdasOnly:             number
   /** using `<<-`, `<-`, `=`, `->` `->>` */
   assignedFunctions:       number
-  usedParameterNames:      number
+  usedArgumentNames:       number
   /** anonymous functions invoked directly */
   functionsDirectlyCalled: number
   nestedFunctions:         number
@@ -25,7 +25,7 @@ const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({
   total:                   0,
   lambdasOnly:             0,
   assignedFunctions:       0,
-  usedParameterNames:      0,
+  usedArgumentNames:       0,
   functionsDirectlyCalled: 0,
   nestedFunctions:         0,
   recursive:               0
@@ -45,7 +45,7 @@ const queryAssignedFunctionDefinitions: Query = xpath.parse(`
   //RIGHT_ASSIGN[preceding-sibling::expr/*[self::FUNCTION or self::OP-LAMBDA]]/following-sibling::expr[count(*)=1]/SYMBOL
 `)
 
-const queryUsedParameterNames: Query = xpath.parse(`
+const queryUsedArgumentNames: Query = xpath.parse(`
   //FUNCTION/../SYMBOL_FORMALS
 `)
 
@@ -85,9 +85,9 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
     existing.total += allFunctions + allLambdas.length
     existing.lambdasOnly += allLambdas.length
 
-    const usedParameterNames = queryUsedParameterNames.select({ node: input })
-    existing.usedParameterNames += usedParameterNames.length
-    append(this.name, 'usedParameterNames', usedParameterNames, filepath)
+    const usedArgumentNames = queryUsedArgumentNames.select({ node: input })
+    existing.usedArgumentNames += usedArgumentNames.length
+    append(this.name, 'usedArgumentNames', usedArgumentNames, filepath)
 
     existing.functionsDirectlyCalled += defineFunctionsToBeCalled.select({ node: input }).length
     existing.nestedFunctions += nestedFunctionsQuery.select({ node: input }).length

@@ -4,25 +4,25 @@ import { retrieveMetaStructure } from '../meta'
 import { Type } from '../../../../model'
 import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import { RParameter } from '../../../../model/nodes/RParameter'
+import { RArgument } from '../../../../model/nodes/RArgument'
 import { log } from '../../../../../../../util/log'
 
 /**
- * Either parses `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]` as a parameter in R.
- * Probably directly called by the function definition/call parser as otherwise, we do not expect to find parameters.
+ * Either parses `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]` as a argument in R.
+ * Probably directly called by the function definition/call parser as otherwise, we do not expect to find arguments.
  *
  * @param data - The data used by the parser (see {@link ParserData})
  * @param objs - Either `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
  *
- * @returns The parsed parameter or `undefined` if the given object is not a parameter.
+ * @returns The parsed argument or `undefined` if the given object is not a argument.
  */
-export function tryToParseParameter(data: ParserData, objs: NamedXmlBasedJson[]): RParameter | undefined {
-  parseLog.debug(`[parameter] try: ${JSON.stringify(objs)}`)
-  objs = executeHook(data.hooks.functions.onParameter.before, data, objs)
+export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]): RArgument | undefined {
+  parseLog.debug(`[argument] try: ${JSON.stringify(objs)}`)
+  objs = executeHook(data.hooks.functions.onArgument.before, data, objs)
 
   if(objs.length !== 1 && objs.length !== 3) {
     log.warn(`Either [SYMBOL_FORMALS] or [SYMBOL_FORMALS, EQ_FORMALS, expr], but got: ${JSON.stringify(objs)}`)
-    return executeUnknownHook(data.hooks.functions.onParameter.unknown, data, objs)
+    return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
   }
 
 
@@ -30,8 +30,8 @@ export function tryToParseParameter(data: ParserData, objs: NamedXmlBasedJson[])
 
   const { location, content } = retrieveMetaStructure(data.config, symbol.content)
 
-  const result: RParameter = {
-    type:   Type.Parameter,
+  const result: RArgument = {
+    type:   Type.Argument,
     location,
     content,
     lexeme: content,
@@ -46,5 +46,5 @@ export function tryToParseParameter(data: ParserData, objs: NamedXmlBasedJson[])
     info:         {}
   }
 
-  return executeHook(data.hooks.functions.onParameter.after, data, result)
+  return executeHook(data.hooks.functions.onArgument.after, data, result)
 }

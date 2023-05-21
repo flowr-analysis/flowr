@@ -1,5 +1,5 @@
 import { assertAst, withShell } from "../../../helper/shell"
-import { exprList, numVal, parameter } from '../../../helper/ast-builder'
+import { exprList, numVal, argument } from '../../../helper/ast-builder'
 import { rangeFrom } from "../../../../src/util/range"
 import { Type } from '../../../../src/r-bridge'
 
@@ -9,12 +9,12 @@ describe("Parse function definitions",
       const noop = "function() { }"
       assertAst(`noop - ${noop}`, shell, noop,
         exprList({
-          type:       Type.Function,
-          location:   rangeFrom(1, 1, 1, 8),
-          lexeme:     "function",
-          parameters: [],
-          info:       {},
-          body:       {
+          type:      Type.Function,
+          location:  rangeFrom(1, 1, 1, 8),
+          lexeme:    "function",
+          arguments: [],
+          info:      {},
+          body:      {
             type:     Type.ExpressionList,
             location: rangeFrom(1, 12, 1, 14),
             lexeme:   "{ }",
@@ -26,12 +26,12 @@ describe("Parse function definitions",
       const noArgs = "function() { x + 2 * 3 }"
       assertAst(`noArgs - ${noArgs}`, shell, noArgs,
         exprList({
-          type:       Type.Function,
-          location:   rangeFrom(1, 1, 1, 8),
-          lexeme:     "function",
-          parameters: [],
-          info:       {},
-          body:       {
+          type:      Type.Function,
+          location:  rangeFrom(1, 1, 1, 8),
+          lexeme:    "function",
+          arguments: [],
+          info:      {},
+          body:      {
             type:     Type.BinaryOp,
             location: rangeFrom(1, 16, 1, 16),
             flavor:   'arithmetic',
@@ -72,16 +72,16 @@ describe("Parse function definitions",
         })
       )
     })
-    describe("functions with unnamed parameters", () => {
-      const oneParameter = "function(x) { }"
-      assertAst(`one parameter - ${oneParameter}`, shell, oneParameter,
+    describe("functions with unnamed arguments", () => {
+      const oneArgument = "function(x) { }"
+      assertAst(`one argument - ${oneArgument}`, shell, oneArgument,
         exprList({
-          type:       Type.Function,
-          location:   rangeFrom(1, 1, 1, 8),
-          lexeme:     "function",
-          parameters: [parameter("x", rangeFrom(1, 10, 1, 10))],
-          info:       {},
-          body:       {
+          type:      Type.Function,
+          location:  rangeFrom(1, 1, 1, 8),
+          lexeme:    "function",
+          arguments: [argument("x", rangeFrom(1, 10, 1, 10))],
+          info:      {},
+          body:      {
             type:     Type.ExpressionList,
             location: rangeFrom(1, 13, 1, 15),
             lexeme:   "{ }",
@@ -90,16 +90,16 @@ describe("Parse function definitions",
           }
         })
       )
-      const multipleParameters = "function(a,the,b) { b }"
-      assertAst(`multiple parameter - ${multipleParameters}`, shell, multipleParameters,
+      const multipleArguments = "function(a,the,b) { b }"
+      assertAst(`multiple argument - ${multipleArguments}`, shell, multipleArguments,
         exprList({
-          type:       Type.Function,
-          location:   rangeFrom(1, 1, 1, 8),
-          lexeme:     "function",
-          parameters: [
-            parameter("a", rangeFrom(1, 10, 1, 10)),
-            parameter("the", rangeFrom(1, 12, 1, 14)),
-            parameter("b", rangeFrom(1, 16, 1, 16))
+          type:      Type.Function,
+          location:  rangeFrom(1, 1, 1, 8),
+          lexeme:    "function",
+          arguments: [
+            argument("a", rangeFrom(1, 10, 1, 10)),
+            argument("the", rangeFrom(1, 12, 1, 14)),
+            argument("b", rangeFrom(1, 16, 1, 16))
           ],
           info: {},
           body: {

@@ -12,7 +12,9 @@ import { processRepeatLoop } from './internal/process/loops/repeatLoop'
 import { processForLoop } from './internal/process/loops/forLoop'
 import { processWhileLoop } from './internal/process/loops/whileLoop'
 import { processIfThenElse } from './internal/process/ifThenElse'
-import { processFunctionCall } from './internal/process/functionCall'
+import { processFunctionCall } from './internal/process/functions/functionCall'
+import { processFunctionDefinition } from './internal/process/functions/functionDefinition'
+import { processFunctionArgument } from './internal/process/functions/argument'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
 const folds: DataflowProcessorFolds<any> = {
@@ -40,9 +42,13 @@ const folds: DataflowProcessorFolds<any> = {
   other: {
     foldComment: processUninterestingLeaf,
   },
-  foldIfThenElse:   processIfThenElse,
-  foldExprList:     processExpressionList,
-  foldFunctionCall: processFunctionCall,
+  foldIfThenElse: processIfThenElse,
+  foldExprList:   processExpressionList,
+  functions:      {
+    foldFunctionDefinition: processFunctionDefinition,
+    foldFunctionCall:       processFunctionCall,
+    foldArgument:           processFunctionArgument
+  }
 }
 
 export function produceDataFlowGraph<OtherInfo>(ast: DecoratedAst<OtherInfo & ParentInformation>, scope: DataflowScopeName): DataflowInformation<OtherInfo & ParentInformation> {

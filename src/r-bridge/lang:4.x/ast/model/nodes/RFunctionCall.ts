@@ -5,5 +5,5 @@ import { RSymbol } from "./RSymbol"
 export interface RFunctionCall<Info = NoInfo> extends Base<Info>, Location {
   readonly type: Type.FunctionCall;
   functionName:  RSymbol<Info>;
-  parameters:    RNode<Info>[];
+  arguments:     RNode<Info>[];
 }

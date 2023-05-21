@@ -14,6 +14,8 @@ import {
   RRepeatLoop, RForLoop, RWhileLoop,
   RComment, RFunctionCall, RBreak, RNext
 } from './nodes'
+import { RFunctionDefinition } from './nodes/RFunctionDefinition'
+import { RArgument } from './nodes/RArgument'
 
 /** simply used as an empty interface with no information about additional decorations */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -22,11 +24,9 @@ export interface NoInfo {
 
 /**
  * Provides the common base of all {@link RNode | RNodes}.
- * <p>
- * TODO: allow to enforce information to be present
  *
  * @typeParam Info - can be used to store additional information about the node
- * @typeParam LexemeType - the type of the lexeme, probably always a string or `string | undefined`
+ * @typeParam LexemeType - the type of the lexeme, probably always a `string` or `string | undefined`
  */
 export interface Base<Info, LexemeType = string> extends MergeableRecord{
   type:   Type
@@ -64,6 +64,17 @@ export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Inf
 export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info>
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>
-export type RCalls<Info>          = RFunctionCall<Info>
+export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RArgument<Info>
 export type ROther<Info>          = RComment<Info>
-export type RNode<Info = NoInfo>  = RExpressionList<Info> | ROther<Info> | RCalls<Info> | RConstructs<Info> | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>
+export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
+                                  | ROther<Info> | RConstructs<Info>
+                                  | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>
+
+/* TODO: blocked in R
+
+if else repeat while function for in next break
+TRUE FALSE NULL Inf NaN
+NA NA_integer_ NA_real_ NA_complex_ NA_character_
+... ..1 ..2 etc.
+
+*/

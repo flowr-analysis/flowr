@@ -50,7 +50,7 @@ const singleVariableCondition: Query = xpath.parse(`./SYMBOL[text() != 'T' and t
 
 const nestedIfThenQuery: Query = xpath.parse(`..//expr/IF`)
 
-// directly returns the first parameter of switch
+// directly returns the first argument of switch
 const switchQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL[text() = 'switch']/../../expr[preceding-sibling::OP-LEFT-PAREN][1]`)
 
 

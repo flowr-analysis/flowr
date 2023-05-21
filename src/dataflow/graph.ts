@@ -110,7 +110,7 @@ export class DataflowGraph {
     return this
   }
 
-  /** Basically only exists for creations in tests, within the dataflow-extraction, the 3-parameter variant will determine `attribute` automatically */
+  /** Basically only exists for creations in tests, within the dataflow-extraction, the 3-argument variant will determine `attribute` automatically */
   public addEdge(from: NodeId, to: NodeId, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): this
   /** {@inheritDoc} */
   public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: DataflowGraphEdgeType): this
@@ -119,7 +119,7 @@ export class DataflowGraph {
    * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
    * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
    * <p>
-   * If you omit the last parameter, this will make the edge `maybe` if at least one of the {@link IdentifierReference | references} has a used flag of `maybe`.
+   * If you omit the last argument, this will make the edge `maybe` if at least one of the {@link IdentifierReference | references} has a used flag of `maybe`.
    * TODO: ensure that target has a def scope and source does not?
    */
   public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute): this {

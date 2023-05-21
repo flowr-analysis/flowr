@@ -6,6 +6,7 @@ import { parseBasedOnType } from '../structure'
 import { tryToParseFunctionCall } from '../functions'
 import { Type, RNode } from '../../../../model'
 import { executeHook } from '../../hooks'
+import { tryToParseFunctionDefinition } from '../functions/definition'
 
 /**
  * Returns an ExprList if there are multiple children, otherwise returns the single child directly with no expr wrapper
@@ -24,10 +25,17 @@ export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
   } = retrieveMetaStructure(data.config, obj)
 
   const childrenSource = getKeysGuarded<XmlBasedJson[]>(unwrappedObj, data.config.childrenName)
-  const maybeFunctionCall = tryToParseFunctionCall(data, getWithTokenType(data.config.tokenMap, childrenSource))
+  const typed = getWithTokenType(data.config.tokenMap, childrenSource)
+  const maybeFunctionCall = tryToParseFunctionCall(data, typed)
   if (maybeFunctionCall !== undefined) {
     return maybeFunctionCall
   }
+
+  const maybeFunctionDefinition = tryToParseFunctionDefinition(data, typed)
+  if (maybeFunctionDefinition !== undefined) {
+    return maybeFunctionDefinition
+  }
+
 
   const children = parseBasedOnType(data, childrenSource)
   let result: RNode

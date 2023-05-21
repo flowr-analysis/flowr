@@ -25,7 +25,7 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
     const base = ids[0]
     for (let i = 1; i < ids.length; i++) {
       // TODO: include the attribute? probably not, as same-edges are independent of structure
-      graph.addEdge(base.nodeId, ids[i].nodeId, 'same-read-read', 'always')
+      graph.addEdge(base.nodeId, ids[i].nodeId, 'same-read-read', 'always', true)
     }
   }
 }
@@ -59,11 +59,11 @@ export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReferen
       }
       givenInputs.push(bodyInput)
     } else if (probableTarget.length === 1) {
-      graph.addEdge(bodyInput, probableTarget[0], 'read')
+      graph.addEdge(bodyInput, probableTarget[0], 'read', undefined, true)
     } else {
       for (const target of probableTarget) {
         // we can stick with maybe even if readId.attribute is always
-        graph.addEdge(bodyInput, target, 'read')
+        graph.addEdge(bodyInput, target, 'read', undefined, true)
       }
     }
     // down.graph.get(node.id).definedAtPosition = false

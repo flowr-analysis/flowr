@@ -5,6 +5,7 @@ import { NodeId, NoInfo, RNodeWithParent } from '../r-bridge'
 import { IdentifierReference } from './environments'
 import { BiMap } from '../util/bimap'
 import { MergeableRecord } from '../util/objects'
+import { log } from '../util/log'
 
 /** used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
@@ -126,15 +127,18 @@ export class DataflowGraph {
   public addEdge(from: NodeId, to: NodeId, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): this
   /** {@inheritDoc} */
   public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: DataflowGraphEdgeType): this
+  /** {@inheritDoc} */
+  public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute, promote?: boolean): this
   /**
    * Will insert a new edge into the graph,
    * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
    * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
    * <p>
-   * If you omit the last argument, this will make the edge `maybe` if at least one of the {@link IdentifierReference | references} has a used flag of `maybe`.
+   * If you omit the last argument but set promote, this will make the edge `maybe` if at least one of the {@link IdentifierReference | references} or {@link DataflowGraphNodeInfo | nodes} has a used flag of `maybe`.
+   * Promote will probably only be used internally and not by tests etc.
    * TODO: ensure that target has a def scope and source does not?
    */
-  public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute): this {
+  public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute, promote= false): this {
     const fromId = typeof from === 'object' ? from.nodeId : from
     const toId = typeof to === 'object' ? to.nodeId : to
 
@@ -142,20 +146,29 @@ export class DataflowGraph {
     if(type === 'same-read-read' || type === 'same-def-def') {
       [from, to] = toId > fromId ? [from, to] : [to, from]
     }
-
-    const info = this.graph.get(fromId)
-    if(attribute === undefined) {
+    if(promote && attribute === undefined) {
       attribute = (from as ReferenceForEdge).used === 'maybe' ? 'maybe' : (to as ReferenceForEdge).used
     }
-    guard(info !== undefined, 'there must be a node info object for the edge source!')
+
+    const fromInfo = this.graph.get(fromId)
+    const toInfo = this.graph.get(toId)
+
+    guard(fromInfo !== undefined, 'there must be a node info object for the edge source!')
+
+    if(promote && (fromInfo.when === 'maybe' || toInfo?.when === 'maybe')) {
+      log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
+      attribute = 'maybe'
+    }
+
+    guard(attribute !== undefined, 'attribute must be set')
     const edge = {
       target: toId,
       type,
       attribute
     }
     // TODO: make this more performant
-    if(info.edges.find(e => e.target === toId && e.type === type && e.attribute === attribute) === undefined) {
-      info.edges.push(edge)
+    if(fromInfo.edges.find(e => e.target === toId && e.type === type && e.attribute === attribute) === undefined) {
+      fromInfo.edges.push(edge)
     }
     return this
   }
@@ -193,7 +206,7 @@ export class DataflowGraph {
     }
     for(const [id, info] of this.graph) {
       const otherInfo = other.graph.get(id)
-      if(otherInfo === undefined || info.name !== otherInfo.name || info.definedAtPosition !== otherInfo.definedAtPosition || info.edges.length !== otherInfo.edges.length) {
+      if(otherInfo === undefined || info.name !== otherInfo.name || info.definedAtPosition !== otherInfo.definedAtPosition || info.when !== otherInfo.when || info.edges.length !== otherInfo.edges.length) {
         return false
       }
       // TODO: assuming that all edges are unique (which should be ensured by constructed)
@@ -230,10 +243,11 @@ export function formatRange(range: SourceRange | undefined): string {
 }
 
 function definedAtPositionToMermaid(definedAtPosition: DataflowScopeName | false, when: DataflowGraphEdgeAttribute): string {
+  const whenText = when === 'always' ? '' : `, ${when}`
   if (definedAtPosition === false) {
-    return ''
+    return whenText
   }
-  return `, <i>${definedAtPosition} ${when === 'always' ? '!' : '&lt;?&gt;'}</i>`
+  return `, <i>${definedAtPosition}${whenText}</i>`
 }
 
 // TODO: sub-graphs for functions etc.?

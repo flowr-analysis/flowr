@@ -4,24 +4,25 @@ import { DataflowGraph, GlobalScope, LocalScope } from '../../../../src/dataflow
 // TODO: <- in parameters
 // TODO: allow to access environments in the end
 // TODO: nodes for anonymous functions
+// TODO: new mode, do not make everything 'maybe' within a function
 describe('Functions', withShell(shell => {
   describe('Only Functions', () => {
     assertDataflow(`unknown read in function`, shell, `function() { x }`,
       new DataflowGraph()
-        .addNode("0", "x")
+        .addNode("0", "x", false, 'maybe')
     )
     assertDataflow(`read of parameter`, shell, `function(x) { x }`,
       new DataflowGraph()
-        .addNode("0", "x", LocalScope)
-        .addNode("2", "x")
+        .addNode("0", "x", LocalScope, 'maybe')
+        .addNode("2", "x", false, 'maybe')
         .addEdge("2", "0", "read", "always")
     )
     assertDataflow(`read of one parameter`, shell, `function(x,y,z) y`,
       new DataflowGraph()
-        .addNode("0", "x", LocalScope)
-        .addNode("2", "y", LocalScope)
-        .addNode("4", "z", LocalScope)
-        .addNode("6", "y")
+        .addNode("0", "x", LocalScope, 'maybe')
+        .addNode("2", "y", LocalScope, 'maybe')
+        .addNode("4", "z", LocalScope, 'maybe')
+        .addNode("6", "y", false, 'maybe')
         .addEdge("6", "2", "read", "always")
     )
   })
@@ -29,27 +30,27 @@ describe('Functions', withShell(shell => {
     assertDataflow(`previously defined read in function`, shell, `x <- 3; function() { x }`,
       new DataflowGraph()
         .addNode("0", "x", LocalScope)
-        .addNode("3", "x")
+        .addNode("3", "x", false, 'maybe')
         .addEdge("3", "0", "read", "maybe")
     )
     assertDataflow(`local define with <- in function, read after`, shell, `function() { x <- 3; }; x`,
       new DataflowGraph()
-        .addNode("0", "x", LocalScope)
+        .addNode("0", "x", LocalScope, 'maybe')
         .addNode("4", "x")
     )
     assertDataflow(`local define with = in function, read after`, shell, `function() { x = 3; }; x`,
       new DataflowGraph()
-        .addNode("0", "x", LocalScope)
+        .addNode("0", "x", LocalScope, 'maybe')
         .addNode("4", "x")
     )
     assertDataflow(`local define with -> in function, read after`, shell, `function() { 3 -> x; }; x`,
       new DataflowGraph()
-        .addNode("1", "x", LocalScope)
+        .addNode("1", "x", LocalScope, 'maybe')
         .addNode("4", "x")
     )
     assertDataflow(`global define with <<- in function, read after`, shell, `function() { x <<- 3; }; x`,
       new DataflowGraph()
-        .addNode("0", "x", GlobalScope)
+        .addNode("0", "x", GlobalScope, 'maybe')
         .addNode("4", "x")
         /* can be shown as a global link as well, as it is not the local instance of x which survives */
         .addEdge("4", "0", "read", "maybe")

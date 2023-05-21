@@ -16,9 +16,12 @@ export function processFunctionDefinition<OtherInfo>(functionCall: unknown, args
 
   const outEnvironment = overwriteEnvironments(argsEnvironment, bodyEnvironment)
   const outGraph = body.graph.mergeWith(...args.map(a => a.graph))
-
+  // all nodes in the function graph are maybe as functions do not have to be executed
+  for(const [_, node] of outGraph.entries()) {
+    node.when = 'maybe'
+  }
   // TODO: deal with function info
-  // TODO rest
+  // TODO: rest
   return {
     activeNodes:  [],
     in:           remainingRead,

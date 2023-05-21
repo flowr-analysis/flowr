@@ -30,11 +30,11 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dow
       remainingRead.set(readName, [read])
     }
   } else if (probableTarget.length === 1) {
-    nextGraph.addEdge(read, probableTarget[0], 'read')
+    nextGraph.addEdge(read, probableTarget[0], 'read', undefined, true)
   } else {
     for (const target of probableTarget) {
       // we can stick with maybe even if readId.attribute is always
-      nextGraph.addEdge(read, target, 'read')
+      nextGraph.addEdge(read, target, 'read', undefined, true)
     }
   }
 }
@@ -59,7 +59,7 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
     if (resolved !== undefined) {
       // write-write
       for (const target of resolved) {
-        nextGraph.addEdge(target, writeTarget, 'same-def-def')
+        nextGraph.addEdge(target, writeTarget, 'same-def-def', undefined, true)
       }
     }
   }

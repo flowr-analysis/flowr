@@ -24,7 +24,7 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
   for (const write of writeTargets) {
     setDefinitionOfNode(nextGraph, write)
     for(const read of impactReadTargets) {
-      nextGraph.addEdge(write, read, 'defined-by')
+      nextGraph.addEdge(write, read, 'defined-by', undefined, true)
     }
   }
   return {

@@ -24,13 +24,13 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
   for(const write of writtenVariable) {
     // TODO: do not re-join every time!
     for(const link of [...vector.in, ...vector.activeNodes]) {
-      nextGraph.addEdge(write.nodeId, link.nodeId, 'defined-by', /* TODO */ 'always')
+      nextGraph.addEdge(write.nodeId, link.nodeId, 'defined-by', /* TODO */ 'always', true)
     }
 
     const name = write.name
     const readIdsToLink = nameIdShares.get(name)
     for(const readId of readIdsToLink) {
-      nextGraph.addEdge(readId.nodeId, write.nodeId, 'defined-by', /* TODO */ 'always')
+      nextGraph.addEdge(readId.nodeId, write.nodeId, 'defined-by', /* TODO */ 'always', true)
     }
     // now, we remove the name from the id shares as they are no longer needed
     nameIdShares.delete(name)

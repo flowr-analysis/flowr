@@ -354,7 +354,7 @@ describe("Atomic dataflow information", withShell((shell) => {
           .addNode('0', 'x', LocalScope)
           .addNode('1', 'x')
           .addNode('7', 'x')
-          .addEdge('7', '0', 'read', 'maybe')
+          .addEdge('7', '0', 'read', 'always')
           .addEdge('0', '1', 'defined-by', 'always')
       )
     })

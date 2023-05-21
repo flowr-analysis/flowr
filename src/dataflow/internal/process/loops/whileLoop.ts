@@ -12,7 +12,7 @@ export function processWhileLoop<OtherInfo>(loop: unknown, condition: DataflowIn
   const environments = condition.environments ?? initializeCleanEnvironments()
   const nextGraph = condition.graph.mergeWith(body.graph)
 
-  const remainingInputs = linkInputs(makeAllMaybe([...body.activeNodes, ...body.in]), down, environments, [...condition.in, ...condition.activeNodes], nextGraph)
+  const remainingInputs = linkInputs([...body.activeNodes, ...body.in], down.scope, environments, [...condition.in, ...condition.activeNodes], nextGraph, true)
 
   return {
     activeNodes:  [],

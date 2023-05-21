@@ -1,8 +1,7 @@
-import { DataflowGraph } from '../graph'
+import { DataflowGraph, DataflowScopeName } from '../graph'
 import { IdentifierReference, REnvironmentInformation, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
-import { DataflowProcessorDown } from '../processor'
 
 /* TODO: use environments for the default map */
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
@@ -38,11 +37,26 @@ export function setDefinitionOfNode(graph: DataflowGraph, reference: IdentifierR
   node.definedAtPosition = reference.scope
 }
 
-export function linkInputs<OtherInfo>(refererncesToLinkAgainstEnvironment: IdentifierReference[], down: DataflowProcessorDown<OtherInfo>, environmentInformation: REnvironmentInformation, setInputs: IdentifierReference[], graph: DataflowGraph): IdentifierReference[] {
-  for (const bodyInput of refererncesToLinkAgainstEnvironment) {
-    const probableTarget = resolveByName(bodyInput.name, down.scope, environmentInformation)
+/**
+ * This method links a set of read variables to definitions in an environment.
+ *
+ * @param referencesToLinkAgainstEnvironment - the set of references to link against the environment
+ * @param scope - the scope in which the linking shall happen (probably the {@link DataflowProcessorDown}-scope)
+ * @param environmentInformation - the environment information to link against
+ * @param givenInputs - the existing list of inputs that might be extended
+ * @param graph - the graph to enter the found links
+ * @param maybeForRemaining - each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
+ *
+ * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
+ */
+export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReference[], scope: DataflowScopeName, environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
+  for (const bodyInput of referencesToLinkAgainstEnvironment) {
+    const probableTarget = resolveByName(bodyInput.name, scope, environmentInformation)
     if (probableTarget === undefined) {
-      setInputs.push(bodyInput)
+      if(maybeForRemaining) {
+        bodyInput.used = 'maybe'
+      }
+      givenInputs.push(bodyInput)
     } else if (probableTarget.length === 1) {
       graph.addEdge(bodyInput, probableTarget[0], 'read')
     } else {
@@ -53,5 +67,5 @@ export function linkInputs<OtherInfo>(refererncesToLinkAgainstEnvironment: Ident
     }
     // down.graph.get(node.id).definedAtPosition = false
   }
-  return setInputs
+  return givenInputs
 }

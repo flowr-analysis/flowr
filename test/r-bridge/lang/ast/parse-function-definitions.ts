@@ -131,6 +131,50 @@ describe("Parse function definitions",
           }
         })
       )
+
+      const asFirstArgument = "function(..., a) { }"
+      assertAst(`as first arg - ${asFirstArgument}`, shell, asFirstArgument,
+        exprList({
+          type:      Type.Function,
+          location:  rangeFrom(1, 1, 1, 8),
+          lexeme:    "function",
+          arguments: [
+            argument("...", rangeFrom(1, 10, 1, 12), undefined, true),
+            argument("a", rangeFrom(1, 15, 1, 15))
+          ],
+          info: {},
+          body: {
+            type:     Type.ExpressionList,
+            location: rangeFrom(1, 18, 1, 20),
+            lexeme:   "{ }",
+            children: [],
+            info:     {}
+          }
+        })
+      )
+
+      const asLastArgument = "function(a, the, ...) { ... }"
+      assertAst(`as last arg - ${asLastArgument}`, shell, asLastArgument,
+        exprList({
+          type:      Type.Function,
+          location:  rangeFrom(1, 1, 1, 8),
+          lexeme:    "function",
+          arguments: [
+            argument("a", rangeFrom(1, 10, 1, 10)),
+            argument("the", rangeFrom(1, 13, 1, 15)),
+            argument("...", rangeFrom(1, 18, 1, 20), undefined, true)
+          ],
+          info: {},
+          body: {
+            type:      Type.Symbol,
+            location:  rangeFrom(1, 25, 1, 27),
+            lexeme:    "...",
+            content:   "...",
+            namespace: undefined,
+            info:      {}
+          }
+        })
+      )
     })
   })
 )

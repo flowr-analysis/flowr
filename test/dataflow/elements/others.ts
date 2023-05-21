@@ -10,7 +10,7 @@ import {
 import { naiveLineBasedSlicing } from '../../../src/slicing/static'
 import { SourceRange } from '../../../src/util/range'
 
-describe("others",
+describe("Others",
   withShell((shell) => {
     it("def for constant variable assignment", async() => {
       const ast = await retrieveAst(

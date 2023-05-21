@@ -12,7 +12,7 @@ export function processFunctionDefinition<OtherInfo>(functionCall: unknown, args
   const readInArguments = args.flatMap(a => [...a.in, ...a.activeNodes])
   const readInBody = [...body.in, ...body.activeNodes]
   // there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
-  linkInputs(readInBody, down.activeScope, argsEnvironment, readInArguments.slice(), body.graph, false)
+  const remainingRead = linkInputs(readInBody, down.activeScope, argsEnvironment, readInArguments.slice(), body.graph, true /* functions do not have to be called */)
 
   const outEnvironment = overwriteEnvironments(argsEnvironment, bodyEnvironment)
   const outGraph = body.graph.mergeWith(...args.map(a => a.graph))
@@ -21,7 +21,7 @@ export function processFunctionDefinition<OtherInfo>(functionCall: unknown, args
   // TODO rest
   return {
     activeNodes:  [],
-    in:           readInArguments,
+    in:           remainingRead,
     out:          args.flatMap(a => a.out),
     graph:        outGraph,
     environments: popLocalEnvironment(outEnvironment),

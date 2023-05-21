@@ -2,6 +2,8 @@ import { assertDataflow, withShell } from '../../../helper/shell'
 import { DataflowGraph, LocalScope } from '../../../../src/dataflow'
 
 // TODO: <- in parameters
+// TODO: allow to access environments in the end
+// TODO: nodes for anonymous functions
 describe('Functions', withShell(shell => {
   describe('Only Functions', () => {
     assertDataflow(`unknown read in function`, shell, `function() { x }`,
@@ -21,6 +23,14 @@ describe('Functions', withShell(shell => {
         .addNode("4", "z", LocalScope)
         .addNode("6", "y")
         .addEdge("6", "2", "read", "always")
+    )
+  })
+  describe('Scoping of parameters', () => {
+    assertDataflow(`previously defined read in function`, shell, `x <- 3; function() { x }`,
+      new DataflowGraph()
+        .addNode("0", "x", LocalScope)
+        .addNode("3", "x")
+        .addEdge("3", "0", "read", "maybe")
     )
   })
 }))

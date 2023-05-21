@@ -4,7 +4,6 @@ import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { log } from '../../util/log'
 
-/* TODO: use environments for the default map */
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
   const nameIdShares = produceNameSharedIdMap(references)
   linkReadVariablesInSameScopeWithNames(graph, nameIdShares)
@@ -34,7 +33,7 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
 export function setDefinitionOfNode(graph: DataflowGraph, reference: IdentifierReference): void {
   const node = graph.get(reference.nodeId)
   guard(node !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set definition scope to ${reference.scope}`)
-  guard(node.definedAtPosition === false || node.definedAtPosition === reference.scope, () => `node must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
+  guard(node.definedAtPosition === false || (node.definedAtPosition === reference.scope && node.when === reference.used), () => `node must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
   node.definedAtPosition = reference.scope
 }
 

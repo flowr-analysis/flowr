@@ -1,5 +1,5 @@
 import { assertDataflow, withShell } from '../../../helper/shell'
-import { DataflowGraph, LocalScope } from '../../../../src/dataflow'
+import { DataflowGraph, GlobalScope, LocalScope } from '../../../../src/dataflow'
 
 // TODO: <- in parameters
 // TODO: allow to access environments in the end
@@ -32,11 +32,29 @@ describe('Functions', withShell(shell => {
         .addNode("3", "x")
         .addEdge("3", "0", "read", "maybe")
     )
-    assertDataflow(`local define in function, read after`, shell, `function() { x <- 3; }; x`,
+    assertDataflow(`local define with <- in function, read after`, shell, `function() { x <- 3; }; x`,
       new DataflowGraph()
         .addNode("0", "x", LocalScope)
         .addNode("4", "x")
     )
+    assertDataflow(`local define with = in function, read after`, shell, `function() { x = 3; }; x`,
+      new DataflowGraph()
+        .addNode("0", "x", LocalScope)
+        .addNode("4", "x")
+    )
+    assertDataflow(`local define with -> in function, read after`, shell, `function() { 3 -> x; }; x`,
+      new DataflowGraph()
+        .addNode("1", "x", LocalScope)
+        .addNode("4", "x")
+    )
+    assertDataflow(`global define with <<- in function, read after`, shell, `function() { x <<- 3; }; x`,
+      new DataflowGraph()
+        .addNode("0", "x", GlobalScope)
+        .addNode("4", "x")
+        /* can be shown as a global link as well, as it is not the local instance of x which survives */
+        .addEdge("4", "0", "read", "maybe")
+    )
+    // TODO: scoping within parameters
   })
   describe('Scoping of parameters', () => {
 

@@ -4,6 +4,7 @@ import { SourceRange } from '../util/range'
 import { NodeId, NoInfo, RNodeWithParent } from '../r-bridge'
 import { IdentifierReference } from './environments'
 import { BiMap } from '../util/bimap'
+import { MergeableRecord } from '../util/objects'
 
 /** used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
@@ -58,9 +59,11 @@ export interface DataflowGraphDefinedByEdge extends DataflowGraphEdge {
 // TODO: export type DataflowGraphNodeType = 'variable' | 'processing' | 'assignment' | 'if-then-else' | 'loop' | 'function'
 
 
-export interface DataflowGraphNodeInfo {
+export interface DataflowGraphNodeInfo extends MergeableRecord {
   name:              string
   definedAtPosition: false | DataflowScopeName
+  /** When is usually `always`, yet global/local assignments in ifs, loops, or function definitions do not have to happen. They are marked with 'maybe'. */
+  when:              DataflowGraphEdgeAttribute
   edges:             DataflowGraphEdge[]
 }
 
@@ -96,7 +99,15 @@ export class DataflowGraph {
     return this.graph.entries()
   }
 
-  public addNode(id: NodeId, name: string, definedAtPosition: false | DataflowScopeName = false): this {
+  /**
+   * Adds a new node to the graph
+   *
+   * @param id - the id of the node
+   * @param name - the name of the node
+   * @param definedAtPosition - if false, the node is marked as `used`, otherwise, if you give the scope, it will be marked as `defined` within the given scope
+   * @param when - is the node active in all program paths or only in potentially in some
+   */
+  public addNode(id: NodeId, name: string, definedAtPosition: false | DataflowScopeName = false, when: DataflowGraphEdgeAttribute = 'always'): this {
     const oldNode = this.graph.get(id)
     if(oldNode !== undefined) {
       guard(oldNode.name === name, 'node names must match for the same id if added')
@@ -105,6 +116,7 @@ export class DataflowGraph {
     this.graph.set(id, {
       name,
       definedAtPosition,
+      when,
       edges: []
     })
     return this
@@ -203,6 +215,7 @@ function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeI
   return {
     name:              current.name,
     definedAtPosition: current.definedAtPosition,
+    when:              current.when,
     // TODO: join edges
     edges:             [...current.edges, ...next.edges]
   }
@@ -216,13 +229,22 @@ export function formatRange(range: SourceRange | undefined): string {
   return `${range.start.line}.${range.start.column}-${range.end.line}.${range.end.column}`
 }
 
-// TODO: sub-graphs?
+function definedAtPositionToMermaid(definedAtPosition: DataflowScopeName | false, when: DataflowGraphEdgeAttribute): string {
+  if (definedAtPosition === false) {
+    return ''
+  }
+  return `, <i>${definedAtPosition} ${when === 'always' ? '!' : '&lt;?&gt;'}</i>`
+}
+
+// TODO: sub-graphs for functions etc.?
 export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix = 'flowchart TD', idPrefix = ''): string {
   const lines = [prefix]
   for (const [id, info] of graph.entries()) {
     const def = info.definedAtPosition !== false
-    const defText = info.definedAtPosition ? `, <i>${info.definedAtPosition}</i>` : ''
-    lines.push(`    ${idPrefix}${id}${def ? "[" : "([" }"\`${info.name} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"${def ? "]" : "])" }`)
+    const defText = definedAtPositionToMermaid(info.definedAtPosition, info.when)
+    const open = def ? '[' : '(['
+    const close = def ? ']' : '])'
+    lines.push(`    ${idPrefix}${id}${open}"\`${info.name} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"${close}`)
     for (const edge of info.edges) {
       const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
       lines.push(`    ${idPrefix}${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${edge.target}`)

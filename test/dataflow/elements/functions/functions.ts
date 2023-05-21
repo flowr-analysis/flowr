@@ -55,9 +55,21 @@ describe('Functions', withShell(shell => {
         /* can be shown as a global link as well, as it is not the local instance of x which survives */
         .addEdge("4", "0", "read", "maybe")
     )
-    // TODO: scoping within parameters
+    assertDataflow(`global define with ->> in function, read after`, shell, `function() { 3 ->> x; }; x`,
+      new DataflowGraph()
+        .addNode("1", "x", GlobalScope, 'maybe')
+        .addNode("4", "x")
+        .addEdge("4", "1", "read", "maybe")
+    )
+    assertDataflow(`shadow in body`, shell, `x <- 2; function() { x <- 3 }; x`,
+      new DataflowGraph()
+        .addNode("0", "x", LocalScope)
+        .addNode("3", "x", LocalScope, 'maybe')
+        .addNode("7", "x")
+        .addEdge("7", "0", "read", "always")
+    )
   })
   describe('Scoping of parameters', () => {
-
+    // TODO: scoping within parameters
   })
 }))

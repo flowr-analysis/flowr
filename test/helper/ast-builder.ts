@@ -9,10 +9,11 @@ export function numVal(value: number, markedAsInt = false, complexNumber = false
   return { num: value, markedAsInt, complexNumber }
 }
 
-export function argument(name: string, location: SourceRange, defaultValue?: RNode): RArgument  {
+export function argument(name: string, location: SourceRange, defaultValue?: RNode, special = false): RArgument  {
   return {
     type:    Type.Argument,
     location,
+    special,
     lexeme:  name,
     content: name,
     defaultValue,

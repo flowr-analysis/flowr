@@ -31,11 +31,12 @@ export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]):
   const { location, content } = retrieveMetaStructure(data.config, symbol.content)
 
   const result: RArgument = {
-    type:   Type.Argument,
+    type:    Type.Argument,
     location,
     content,
-    lexeme: content,
-    name:   {
+    special: content === '...',
+    lexeme:  content,
+    name:    {
       type:      Type.Symbol,
       location, content,
       namespace: undefined,

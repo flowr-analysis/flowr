@@ -5,7 +5,7 @@ import { Type } from '../../../../src/r-bridge'
 
 describe("Parse function definitions",
   withShell((shell) => {
-    describe("functions without arguments", () => {
+    describe("without arguments", () => {
       const noop = "function() { }"
       assertAst(`noop - ${noop}`, shell, noop,
         exprList({
@@ -72,7 +72,7 @@ describe("Parse function definitions",
         })
       )
     })
-    describe("functions with unnamed arguments", () => {
+    describe("with unnamed arguments", () => {
       const oneArgument = "function(x) { }"
       assertAst(`one argument - ${oneArgument}`, shell, oneArgument,
         exprList({
@@ -109,6 +109,25 @@ describe("Parse function definitions",
             content:   "b",
             namespace: undefined,
             info:      {}
+          }
+        })
+      )
+    })
+    describe("with special arguments", () => {
+      const asSingleArgument = "function(...) { }"
+      assertAst(`as single arg - ${asSingleArgument}`, shell, asSingleArgument,
+        exprList({
+          type:      Type.Function,
+          location:  rangeFrom(1, 1, 1, 8),
+          lexeme:    "function",
+          arguments: [argument("...", rangeFrom(1, 10, 1, 12), undefined, true)],
+          info:      {},
+          body:      {
+            type:     Type.ExpressionList,
+            location: rangeFrom(1, 15, 1, 17),
+            lexeme:   "{ }",
+            children: [],
+            info:     {}
           }
         })
       )

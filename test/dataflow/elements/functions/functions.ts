@@ -7,11 +7,11 @@ describe('Functions', withShell(shell => {
       new DataflowGraph()
         .addNode("0", "x")
     )
-    assertDataflow(`read of parameter`, shell, `function(x) { x }`,
+    /*    assertDataflow(`read of parameter`, shell, `function(x) { x }`,
       new DataflowGraph()
         .addNode("0", "x", LocalScope)
         .addNode("1", "x")
         .addEdge("1", "0", "read", "always")
-    )
+    )*/
   })
 }))

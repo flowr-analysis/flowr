@@ -15,6 +15,7 @@ import { processIfThenElse } from './internal/process/ifThenElse'
 import { processFunctionCall } from './internal/process/functions/functionCall'
 import { processFunctionDefinition } from './internal/process/functions/functionDefinition'
 import { processFunctionArgument } from './internal/process/functions/argument'
+import { initializeCleanEnvironments } from './environments'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
 const folds: DataflowProcessorFolds<any> = {
@@ -52,7 +53,7 @@ const folds: DataflowProcessorFolds<any> = {
 }
 
 export function produceDataFlowGraph<OtherInfo>(ast: DecoratedAst<OtherInfo & ParentInformation>, scope: DataflowScopeName): DataflowInformation<OtherInfo & ParentInformation> {
-  return dataflowFold<OtherInfo>(ast.decoratedAst, { ast, activeScope: scope }, folds as DataflowProcessorFolds<OtherInfo & ParentInformation>)
+  return dataflowFold<OtherInfo>(ast.decoratedAst, { ast, activeScope: scope, environments: initializeCleanEnvironments() }, folds as DataflowProcessorFolds<OtherInfo & ParentInformation>)
 }
 
 // TODO: automatically load namespace exported functions etc.

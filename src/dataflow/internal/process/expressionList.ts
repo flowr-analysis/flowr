@@ -67,7 +67,7 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
 
 export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo>, expressions: DataflowInformation<OtherInfo>[], down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   if(expressions.length === 0) {
-    return initializeCleanInfo(down.ast, down.activeScope)
+    return initializeCleanInfo(down)
   }
 
   let environments = initializeCleanEnvironments()

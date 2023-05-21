@@ -47,6 +47,10 @@ export function parseBasedOnType(
     )
   }
 
+  /*
+   * if splitOnSemicolon.length === 1, we can continue with the normal parsing, but we may have had a trailing semicolon, with this, it is removed as well.
+   * splitOnSemiconlon.length === 0 is not possible, as we would have had an empty array before, split does not add elements.
+   */
   mappedWithName = splitOnSemicolon[0]
 
   // TODO: improve with error message and ensure no semicolon

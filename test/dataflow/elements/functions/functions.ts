@@ -35,7 +35,7 @@ describe('Functions', withShell(shell => {
     assertDataflow(`local define in function, read after`, shell, `function() { x <- 3; }; x`,
       new DataflowGraph()
         .addNode("0", "x", LocalScope)
-        .addNode("3", "x")
+        .addNode("4", "x")
     )
   })
   describe('Scoping of parameters', () => {

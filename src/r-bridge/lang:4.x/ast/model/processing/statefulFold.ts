@@ -24,6 +24,7 @@ import {
 } from '../nodes'
 import { RNode } from '../model'
 import { RFunctionDefinition } from '../nodes/RFunctionDefinition'
+import { RParameter } from '../nodes/RParameter'
 
 
 /**
@@ -63,17 +64,14 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
   other: {
     foldComment: (comment: RComment<Info>, down: Down) => Up;
   };
-  foldIfThenElse: (
-    ifThenExpr: RIfThenElse<Info>,
-    cond: Up,
-    then: Up,
-    otherwise: Up | undefined,
-    down: Down
-  ) => Up;
-  foldExprList: (exprList: RExpressionList<Info>, expressions: Up[], down: Down) => Up;
+  /** The `otherwise` parameter is `undefined` if the `else` branch is missing */
+  foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down ) => Up;
+  foldExprList:   (exprList: RExpressionList<Info>, expressions: Up[], down: Down) => Up;
   functions: {
     foldFunctionDefinition: (definition: RFunctionDefinition<Info>, parameters: Up[], body: Up, down: Down) => Up;
     foldFunctionCall:       (call: RFunctionCall<Info>, functionName: Up, parameters: Up[], down: Down) => Up;
+    /** The `defaultValue` parameter is `undefined` if the parameter was not initialized with a default value */
+    foldParameter:          (parameter: RParameter<Info>, name: Up, defaultValue: Up | undefined, down: Down) => Up;
   }
 }
 
@@ -109,6 +107,8 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
       return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.functionName, down, folds), ast.parameters.map(param => foldAstStateful(param, down, folds)), down)
     case Type.Function:
       return folds.functions.foldFunctionDefinition(ast, ast.parameters.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down)
+    case Type.Parameter:
+      return folds.functions.foldParameter(ast, foldAstStateful(ast.name, down, folds), ast.defaultValue ? foldAstStateful(ast.defaultValue, down, folds) : undefined, down)
     case Type.Next:
       return folds.loop.foldNext(ast, down)
     case Type.Break:

@@ -15,6 +15,7 @@ import {
   RComment, RFunctionCall, RBreak, RNext
 } from './nodes'
 import { RFunctionDefinition } from './nodes/RFunctionDefinition'
+import { RParameter } from './nodes/RParameter'
 
 /** simply used as an empty interface with no information about additional decorations */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -23,11 +24,9 @@ export interface NoInfo {
 
 /**
  * Provides the common base of all {@link RNode | RNodes}.
- * <p>
- * TODO: allow to enforce information to be present
  *
  * @typeParam Info - can be used to store additional information about the node
- * @typeParam LexemeType - the type of the lexeme, probably always a string or `string | undefined`
+ * @typeParam LexemeType - the type of the lexeme, probably always a `string` or `string | undefined`
  */
 export interface Base<Info, LexemeType = string> extends MergeableRecord{
   type:   Type
@@ -65,11 +64,10 @@ export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Inf
 export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info>
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>
-export type RCalls<Info>          = RFunctionCall<Info>
-export type RDefinitions<Info>    = RFunctionDefinition<Info>
+export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RParameter<Info>
 export type ROther<Info>          = RComment<Info>
-export type RNode<Info = NoInfo>  = RExpressionList<Info> | RDefinitions<Info>
-                                  | ROther<Info> | RCalls<Info> | RConstructs<Info>
+export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
+                                  | ROther<Info> | RConstructs<Info>
                                   | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>
 
 /* TODO: blocked in R

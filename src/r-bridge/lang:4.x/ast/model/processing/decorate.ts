@@ -133,6 +133,7 @@ export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: Id
     functions:      {
       foldFunctionDefinition: createFoldForFunctionDefinition(info),
       foldFunctionCall:       createFoldForFunctionCall(info),
+      foldParameter:          createFoldForFunctionParameter(info),
     }
   })
 
@@ -247,6 +248,19 @@ function createFoldForFunctionDefinition<OtherInfo>(info: FoldInfo<OtherInfo>) {
     info.idMap.set(id, decorated)
     parameters.forEach(arg => arg.info.parent = id)
     body.info.parent = id
+    return decorated
+  }
+}
+
+function createFoldForFunctionParameter<OtherInfo>(info: FoldInfo<OtherInfo>) {
+  return (data: RNode<OtherInfo>, name: RNodeWithParent<OtherInfo>, defaultValue: RNodeWithParent<OtherInfo> | undefined): RNodeWithParent<OtherInfo> => {
+    const id = info.getId(data)
+    const decorated = { ...data, info: { ...(data.info ), id, parent: undefined }, name, defaultValue } as RNodeWithParent<OtherInfo>
+    info.idMap.set(id, decorated)
+    name.info.parent = id
+    if(defaultValue) {
+      defaultValue.info.parent = id
+    }
     return decorated
   }
 }

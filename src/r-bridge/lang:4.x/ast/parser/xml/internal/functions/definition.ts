@@ -8,6 +8,9 @@ import { retrieveMetaStructure } from '../meta'
 import { guard, isNotUndefined } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseBasedOnType } from '../structure'
+import { tryToParseParameter } from './parameter'
+import { log } from '../../../../../../../util/log'
+import { RParameter } from '../../../../model/nodes/RParameter'
 
 /**
  * Tries to parse the given data as a function definition.
@@ -39,11 +42,12 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
 
   parseLog.trace(`function definition has ${splitParameters.length} parameters (by comma split)`)
 
-  const parameters: RNode[] = splitParameters.map(x => {
-    const gotParameters = parseBasedOnType(data, x.map(x => x.content))
-    guard(gotParameters.length < 2, () => `expected parameter to be wrapped in expression, yet received ${JSON.stringify(gotParameters)}`)
-    return gotParameters.length === 0 ? undefined : gotParameters[0]
-  }).filter(isNotUndefined)
+  const parameters: (undefined | RParameter)[] = splitParameters.map(x => tryToParseParameter(data, x))
+
+  if(parameters.some(p => p === undefined)) {
+    log.error(`function had unexpected unknown parameters: ${JSON.stringify(parameters.filter(isNotUndefined))}, aborting.`)
+    return executeUnknownHook(data.hooks.functions.onFunctionDefinition.unknown, data, mappedWithName)
+  }
 
   parseLog.trace(`function definition retained ${parameters.length} parameters after parsing, moving to body.`)
 
@@ -55,12 +59,12 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
 
 
   const result: RFunctionDefinition = {
-    type:   Type.Function,
+    type:       Type.Function,
     location,
-    lexeme: content,
-    parameters,
-    body:   body[0],
-    info:   {}
+    lexeme:     content,
+    parameters: parameters as RParameter[],
+    body:       body[0],
+    info:       {}
   }
   return executeHook(data.hooks.functions.onFunctionDefinition.after, data, result)
 }

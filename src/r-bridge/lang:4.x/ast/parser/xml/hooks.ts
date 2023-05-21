@@ -21,6 +21,7 @@ import { RNa } from '../../../values'
 import { ParserData } from './data'
 import { DeepReadonly, DeepRequired } from 'ts-essentials'
 import { RFunctionDefinition } from '../../model/nodes/RFunctionDefinition'
+import { RParameter } from '../../model/nodes/RParameter'
 
 /** Denotes that if you return `undefined`, the parser will automatically take the original arguments (unchanged) */
 type AutoIfOmit<T> = T | undefined
@@ -137,6 +138,13 @@ export interface XmlParserHooks {
       before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
       after(data: ParserData, result: RFunctionDefinition): AutoIfOmit<RFunctionDefinition>
     }
+    /** {@link tryToParseParameter} */
+    onParameter: {
+      /** triggered if {@link tryToParseParameter} could not detect a parameter, you probably still want to return `undefined` */
+      unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RParameter | undefined>
+      before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
+      after(data: ParserData, result: RParameter): AutoIfOmit<RParameter>
+    }
   },
   expression: {
     /** {@link parseExpression} */
@@ -207,7 +215,7 @@ export interface XmlParserHooks {
   }
 }
 
-/* eslint-disable */
+/* eslint-disable -- hooks are unsafe */
 /**
  * simple (rather type-wise unsafe ^^) function you can use to execute hooks and deal with {@link AutoIfOmit}
  *
@@ -227,7 +235,6 @@ export function executeHook<T, R>(hook: (data: ParserData, input: T) => AutoIfOm
 export function executeUnknownHook<T, R>(hook: (data: ParserData, input: T) => AutoIfOmit<R>, data: ParserData, input: T): AutoIfOmit<R> {
   return hook(data, input)
 }
-// TODO: on unknown keep returning undefined!
 /* eslint-enable */
 
 const doNothing = () => undefined
@@ -310,6 +317,11 @@ export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = 
       after:   doNothing
     },
     onFunctionDefinition: {
+      unknown: doNothing,
+      before:  doNothing,
+      after:   doNothing
+    },
+    onParameter: {
       unknown: doNothing,
       before:  doNothing,
       after:   doNothing

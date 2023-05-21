@@ -40,7 +40,8 @@ export const enum Type {
   SymbolPackage = "SYMBOL_PACKAGE",
   NamespaceGet = "NS_GET",
   Break = "BREAK",
-  Next = "NEXT"
+  Next = "NEXT",
+  Parameter = "Parameter"
 }
 
 /**

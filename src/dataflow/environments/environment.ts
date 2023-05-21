@@ -13,7 +13,7 @@ export type EnvironmentName = string
  * Stores the definition of an identifier within an {@link IEnvironment}
  */
 export interface IdentifierDefinition extends IdentifierReference {
-  kind:      'function' | 'variable' | 'unknown' /* TODO: 'constant' */
+  kind:      'function' | 'variable' | 'argument' | 'unknown' /* TODO: 'constant' */
   /** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
   definedAt: NodeId
 }

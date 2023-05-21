@@ -41,7 +41,7 @@ export function setDefinitionOfNode(graph: DataflowGraph, reference: IdentifierR
  * This method links a set of read variables to definitions in an environment.
  *
  * @param referencesToLinkAgainstEnvironment - the set of references to link against the environment
- * @param scope - the scope in which the linking shall happen (probably the {@link DataflowProcessorDown}-scope)
+ * @param scope - the scope in which the linking shall happen (probably the active scope of {@link DataflowProcessorDown})
  * @param environmentInformation - the environment information to link against
  * @param givenInputs - the existing list of inputs that might be extended
  * @param graph - the graph to enter the found links

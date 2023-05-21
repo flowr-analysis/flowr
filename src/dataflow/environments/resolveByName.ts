@@ -35,7 +35,7 @@ function resolveLocal(name: Identifier, withinScope: DataflowScopeName, environm
       return definition
     }
   }
-  dataflowLogger.trace(`Unable to find local identifier ${name} in local stack [present: ${locals.flatMap(e => [...e.map.keys()]).join(",")}], falling back to global scope`)
+  dataflowLogger.trace(`Unable to find identifier ${name} in local stack (present: [${locals.flatMap(e => [...e.map.keys()]).join(",")}]), falling back to global scope`)
   return environments.global.map.get(name)
 }
 

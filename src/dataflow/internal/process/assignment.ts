@@ -7,7 +7,6 @@ import {
   define,
   IdentifierDefinition,
   IdentifierReference,
-  initializeCleanEnvironments,
   overwriteEnvironments
 } from '../../environments'
 import { setDefinitionOfNode } from '../linker'
@@ -105,7 +104,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<
     guard(id.scope === LocalScope, 'currently, nested write re-assignments are only supported for local')
     return id
   })
-  const environments = overwriteEnvironments(source.environments, target.environments) ?? initializeCleanEnvironments()
+  const environments = overwriteEnvironments(source.environments, target.environments)
 
   // install assigned variables in environment
   for(const write of writeNodes) {

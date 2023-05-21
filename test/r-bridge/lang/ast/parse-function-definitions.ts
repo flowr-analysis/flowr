@@ -1,5 +1,5 @@
 import { assertAst, withShell } from "../../../helper/shell"
-import { exprList, numVal } from '../../../helper/ast-builder'
+import { exprList, numVal, parameter } from '../../../helper/ast-builder'
 import { rangeFrom } from "../../../../src/util/range"
 import { Type } from '../../../../src/r-bridge'
 
@@ -73,35 +73,42 @@ describe("Parse function definitions",
       )
     })
     describe("functions with unnamed parameters", () => {
-      const noop = "function(x) { }"
-      assertAst(`one parmeter - ${noop}`, shell, noop,
+      const oneParameter = "function(x) { }"
+      assertAst(`one parameter - ${oneParameter}`, shell, oneParameter,
         exprList({
           type:       Type.Function,
           location:   rangeFrom(1, 1, 1, 8),
           lexeme:     "function",
-          parameters: [{
-            type:         Type.Parameter,
-            location:     rangeFrom(1, 10, 1, 10),
-            content:      "x",
-            lexeme:       "x",
-            defaultValue: undefined,
-            name:         {
-              type:      Type.Symbol,
-              location:  rangeFrom(1, 10, 1, 10),
-              lexeme:    "x",
-              content:   "x",
-              namespace: undefined,
-              info:      {}
-            },
-            info: {}
-          }],
-          info: {},
-          body: {
+          parameters: [parameter("x", rangeFrom(1, 10, 1, 10))],
+          info:       {},
+          body:       {
             type:     Type.ExpressionList,
             location: rangeFrom(1, 13, 1, 15),
             lexeme:   "{ }",
             children: [],
             info:     {}
+          }
+        })
+      )
+      const multipleParameters = "function(a,the,b) { b }"
+      assertAst(`multiple parameter - ${multipleParameters}`, shell, multipleParameters,
+        exprList({
+          type:       Type.Function,
+          location:   rangeFrom(1, 1, 1, 8),
+          lexeme:     "function",
+          parameters: [
+            parameter("a", rangeFrom(1, 10, 1, 10)),
+            parameter("the", rangeFrom(1, 12, 1, 14)),
+            parameter("b", rangeFrom(1, 16, 1, 16))
+          ],
+          info: {},
+          body: {
+            type:      Type.Symbol,
+            location:  rangeFrom(1, 21, 1, 21),
+            lexeme:    "b",
+            content:   "b",
+            namespace: undefined,
+            info:      {}
           }
         })
       )

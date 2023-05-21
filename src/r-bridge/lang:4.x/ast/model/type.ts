@@ -10,6 +10,7 @@ export const enum Type {
    */
   ExprHelpAssignWrapper = "expr_or_assign_or_help",
   Symbol = "SYMBOL",
+  SymbolFormals = "SYMBOL_FORMALS",
   /* will be represented as a number in R */
   Logical = "boolean",
   /* this will be a symbol for us */
@@ -41,6 +42,7 @@ export const enum Type {
   NamespaceGet = "NS_GET",
   Break = "BREAK",
   Next = "NEXT",
+  EqFormals = "EQ_FORMALS",
   Argument = "Argument"
 }
 

@@ -41,6 +41,8 @@ export function overwriteEnvironments(base: REnvironmentInformation | undefined,
   } else if(next === undefined) {
     return base
   }
+  guard(next.local.length === base.local.length, `cannot overwrite environments with different local scopes, base ${base.local.length} vs. next ${next.local.length}. This should not happen.`)
+
   return {
     global: overwriteIEnvironmentWith(base.global, next.global),
     local:  next.local.map((env, index) => overwriteIEnvironmentWith(base.local[index], env)),

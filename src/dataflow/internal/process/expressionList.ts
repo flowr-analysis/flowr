@@ -7,7 +7,6 @@ import { RExpressionList } from '../../../r-bridge'
 import { DataflowProcessorDown } from '../../processor'
 import {
   IdentifierReference,
-  initializeCleanEnvironments,
   overwriteEnvironments,
   REnvironmentInformation,
   resolveByName
@@ -15,6 +14,7 @@ import {
 import { linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
 import { DataflowGraph } from '../../graph'
+import { dataflowLogger } from '../../index'
 
 
 function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, down: DataflowProcessorDown<OtherInfo>, environments: REnvironmentInformation, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
@@ -66,17 +66,20 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
 }
 
 export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo>, expressions: DataflowInformation<OtherInfo>[], down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+  dataflowLogger.trace(`processing expression list with ${expressions.length} expressions`)
   if(expressions.length === 0) {
     return initializeCleanInfo(down)
   }
 
-  let environments = initializeCleanEnvironments()
+  let environments = down.environments
   const remainingRead = new Map<string, IdentifierReference[]>()
 
   // TODO: this is probably wrong
   const nextGraph = expressions[0].graph.mergeWith(...expressions.slice(1).map(c => c.graph))
 
+  let expressionCounter = 0
   for (const expression of expressions) {
+    dataflowLogger.trace(`processing expression ${++expressionCounter} of ${expressions.length}`)
     processNextExpression(expression, down, environments, remainingRead, nextGraph)
 
     // update the environments for the next iteration with the previous writes
@@ -85,9 +88,11 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
   // now, we have to link same reads
   linkReadVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))
 
+  dataflowLogger.trace(`expression list exits with ${remainingRead.size} remaining read names`)
+
   return {
-    // TODO: ensure active killed on that level?
-    activeNodes: expressions.flatMap(child => child.activeNodes),
+    /* no active nodes remain, they are consumed within the remaining read collection */
+    activeNodes: [],
     in:          [...remainingRead.values()].flatMap(i => i),
     out:         expressions.flatMap(child => [...child.out]),
     ast:         down.ast,

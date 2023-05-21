@@ -11,10 +11,12 @@ import {
 } from '../../environments'
 import { setDefinitionOfNode } from '../linker'
 import { log } from '../../../util/log'
+import { dataflowLogger } from '../../index'
 
 export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>,
                                              lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>,
                                              down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+  dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)
   const { readTargets, writeTargets, environments, swap } = processReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, down)
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
 

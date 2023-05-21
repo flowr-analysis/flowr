@@ -247,7 +247,7 @@ function definedAtPositionToMermaid(definedAtPosition: DataflowScopeName | false
   if (definedAtPosition === false) {
     return whenText
   }
-  return `, <i>${definedAtPosition}${whenText}</i>`
+  return `, <i>${definedAtPosition.replace('<', '&lt;')}${whenText}</i>`
 }
 
 // TODO: sub-graphs for functions etc.?

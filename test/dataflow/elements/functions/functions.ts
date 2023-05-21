@@ -84,6 +84,15 @@ describe('Functions', withShell(shell => {
     )
   })
   describe('Scoping of parameters', () => {
-    // TODO: scoping within parameters
+    assertDataflow(`parameter shadows`, shell, `x <- 3; function(x) { x }`,
+      new DataflowGraph()
+        .addNode("0", "x", LocalScope)
+        .addNode("3", "x", LocalScope, 'maybe')
+        .addNode("5", "x", false, 'maybe')
+        .addEdge("5", "3", "read", "always")
+    )
+    // TODO: other tests for scoping within parameters
   })
+  // TODO: named parameters
+  // TODO: tests for nested functions
 }))

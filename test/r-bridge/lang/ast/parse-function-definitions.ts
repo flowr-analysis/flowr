@@ -202,6 +202,41 @@ describe("Parse function definitions", withShell((shell) => {
         }
       })
     )
+
+    const multipleArguments = "function(a, x=3, huhu=\"hehe\") { x }"
+    assertAst(`multiple argument - ${multipleArguments}`, shell, multipleArguments,
+      exprList({
+        type:      Type.Function,
+        location:  rangeFrom(1, 1, 1, 8),
+        lexeme:    "function",
+        arguments: [
+          argument("a", rangeFrom(1, 10, 1, 10)),
+          argument("x", rangeFrom(1, 13, 1, 13), {
+            type:     Type.Number,
+            location: rangeFrom(1, 15, 1, 15),
+            lexeme:   "3",
+            content:  numVal(3),
+            info:     {}
+          }),
+          argument("huhu", rangeFrom(1, 18, 1, 21), {
+            type:     Type.String,
+            location: rangeFrom(1, 23, 1, 28),
+            lexeme:   "\"hehe\"",
+            content:  { str: "hehe", quotes: '"' },
+            info:     {}
+          })
+        ],
+        info: {},
+        body: {
+          type:      Type.Symbol,
+          location:  rangeFrom(1, 33, 1, 33),
+          lexeme:    "x",
+          content:   "x",
+          namespace: undefined,
+          info:      {}
+        }
+      })
+    )
   })
 })
 )

@@ -25,12 +25,20 @@ describe('Functions', withShell(shell => {
         .addEdge("6", "2", "read", "always")
     )
   })
-  describe('Scoping of parameters', () => {
+  describe('Scoping of body', () => {
     assertDataflow(`previously defined read in function`, shell, `x <- 3; function() { x }`,
       new DataflowGraph()
         .addNode("0", "x", LocalScope)
         .addNode("3", "x")
         .addEdge("3", "0", "read", "maybe")
     )
+    assertDataflow(`local define in function, read after`, shell, `function() { x <- 3; }; x`,
+      new DataflowGraph()
+        .addNode("0", "x", LocalScope)
+        .addNode("3", "x")
+    )
+  })
+  describe('Scoping of parameters', () => {
+
   })
 }))

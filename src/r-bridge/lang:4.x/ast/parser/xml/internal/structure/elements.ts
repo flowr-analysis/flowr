@@ -13,6 +13,7 @@ import {
 } from '../loops'
 import { tryParseIfThenElse, tryParseIfThen } from '../control'
 import { Type, RNode } from '../../../../model'
+import { log } from '../../../../../../../util/log'
 
 export function parseBasedOnType(
   data: ParserData,
@@ -23,10 +24,12 @@ export function parseBasedOnType(
     return []
   }
 
-  const mappedWithName: NamedXmlBasedJson[] = getWithTokenType(
+  let mappedWithName: NamedXmlBasedJson[] = getWithTokenType(
     data.config.tokenMap,
     obj
   )
+
+  log.trace(`[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(", ")}]`)
 
   // TODO: some more performant way, so that when redoing this recursively we don't have to extract names etc. again
   const splitOnSemicolon = splitArrayOn(
@@ -35,13 +38,16 @@ export function parseBasedOnType(
   )
   if (splitOnSemicolon.length > 1) {
     // TODO: check if non-wrapping expr list is correct
-    return splitOnSemicolon.flatMap((arr) =>
+    log.trace(`found ${splitOnSemicolon.length} expressions by semicolon-split, parsing them separately`)
+    return splitOnSemicolon.flatMap(arr=>
       parseBasedOnType(
         data,
         arr.map(({ content }) => content)
       )
     )
   }
+
+  mappedWithName = splitOnSemicolon[0]
 
   // TODO: improve with error message and ensure no semicolon
   if (mappedWithName.length === 1) {

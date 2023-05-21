@@ -22,7 +22,7 @@ export function processFunctionDefinition<OtherInfo>(functionCall: unknown, args
   return {
     activeNodes:  [],
     in:           remainingRead,
-    out:          args.flatMap(a => a.out),
+    out:          [] /* nothing escapes a function definition */,
     graph:        outGraph,
     environments: popLocalEnvironment(outEnvironment),
     ast:          down.ast,

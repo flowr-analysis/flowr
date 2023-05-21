@@ -13,7 +13,7 @@ import { parseBasedOnType, tryParseOneElementBasedOnType } from '../structure'
 import { Type, RSymbol, RForLoop, RNode } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
-export function tryParseForLoopStructure(
+export function tryParseForLoop(
   data: ParserData,
   forToken: NamedXmlBasedJson,
   condition: NamedXmlBasedJson,

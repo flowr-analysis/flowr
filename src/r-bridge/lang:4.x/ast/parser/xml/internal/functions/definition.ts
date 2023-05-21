@@ -1,7 +1,6 @@
 import { ParserData } from '../../data'
 import { NamedXmlBasedJson } from '../../input-format'
-import { Type } from '../../../../model'
-import { RFunctionDefinition } from '../../../../model/nodes/RFunctionDefinition'
+import { Type, RArgument, RFunctionDefinition } from '../../../../model'
 import { parseLog } from '../../parser'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { retrieveMetaStructure } from '../meta'
@@ -10,7 +9,6 @@ import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseBasedOnType } from '../structure'
 import { tryToParseArgument } from './argument'
 import { log } from '../../../../../../../util/log'
-import { RArgument } from '../../../../model/nodes/RArgument'
 
 /**
  * Tries to parse the given data as a function definition.

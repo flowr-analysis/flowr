@@ -11,6 +11,6 @@ export function processFunctionArgument<OtherInfo>(functionCall: unknown, name: 
     graph:        name.graph, /* arguments.length === 0 ? new DataflowGraph() : arguments[0].currentGraph.mergeWith(...arguments.slice(1).map(p => p.currentGraph)) */
     environments: name.environments, // TODO: merge with arguments
     ast:          down.ast,
-    scope:        down.scope
+    scope:        down.activeScope
   }
 }

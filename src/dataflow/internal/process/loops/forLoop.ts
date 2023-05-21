@@ -51,6 +51,6 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
     graph:        nextGraph,
     environments: appendEnvironments(appendEnvironments(variable.environments, vector.environments), body.environments),
     ast:          down.ast,
-    scope:        down.scope
+    scope:        down.activeScope
   }
 }

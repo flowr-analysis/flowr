@@ -20,7 +20,7 @@ import { DataflowGraph } from '../../graph'
 function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, down: DataflowProcessorDown<OtherInfo>, environments: REnvironmentInformation, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
   const readName = read.name
 
-  const probableTarget = resolveByName(readName, down.scope, environments)
+  const probableTarget = resolveByName(readName, down.activeScope, environments)
 
   if (probableTarget === undefined) {
     // keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
@@ -55,7 +55,7 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
 
     // TODO: must something happen to the remaining reads?
 
-    const resolved = resolveByName(writeName, down.scope, environments)
+    const resolved = resolveByName(writeName, down.activeScope, environments)
     if (resolved !== undefined) {
       // write-write
       for (const target of resolved) {
@@ -67,7 +67,7 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
 
 export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo>, expressions: DataflowInformation<OtherInfo>[], down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   if(expressions.length === 0) {
-    return initializeCleanInfo(down.ast, down.scope)
+    return initializeCleanInfo(down.ast, down.activeScope)
   }
 
   let environments = initializeCleanEnvironments()
@@ -92,7 +92,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     out:         expressions.flatMap(child => [...child.out]),
     ast:         down.ast,
     environments,
-    scope:       down.scope,
+    scope:       down.activeScope,
     graph:       nextGraph
   }
 }

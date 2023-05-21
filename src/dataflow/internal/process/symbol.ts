@@ -7,16 +7,16 @@ import { initializeCleanEnvironments } from '../../environments'
 export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   // TODO: are there other built-ins?
   if (symbol.content === RNull || symbol.content === RNa) {
-    return initializeCleanInfo(down.ast, down.scope)
+    return initializeCleanInfo(down.ast, down.activeScope)
   }
 
   return {
     ast:          down.ast,
-    activeNodes:  [ { nodeId: symbol.info.id, scope: down.scope, name: symbol.content, used: 'always' } ],
+    activeNodes:  [ { nodeId: symbol.info.id, scope: down.activeScope, name: symbol.content, used: 'always' } ],
     in:           [],
     out:          [],
     environments: initializeCleanEnvironments(),
-    scope:        down.scope,
+    scope:        down.activeScope,
     graph:        new DataflowGraph().addNode(symbol.info.id , symbol.content),
   }
 }

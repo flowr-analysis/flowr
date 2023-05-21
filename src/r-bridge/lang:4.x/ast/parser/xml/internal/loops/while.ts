@@ -6,7 +6,7 @@ import { ParserData } from "../../data"
 import { Type, RWhileLoop } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
-export function tryParseWhileLoopStructure(
+export function tryParseWhileLoop(
   data: ParserData,
   whileToken: NamedXmlBasedJson,
   leftParen: NamedXmlBasedJson,

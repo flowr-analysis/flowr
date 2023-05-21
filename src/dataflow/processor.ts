@@ -5,10 +5,12 @@ import { foldAstStateful, StatefulFoldFunctions } from '../r-bridge/lang:4.x/ast
 import { DataflowScopeName } from './graph'
 import { DecoratedAst, ParentInformation, RNodeWithParent } from '../r-bridge'
 import { DataflowInformation } from './internal/info'
+import { REnvironmentInformation } from './environments'
 
 export interface DataflowProcessorDown<OtherInfo> {
   readonly ast: DecoratedAst<OtherInfo>
-  scope:        DataflowScopeName
+  environments: REnvironmentInformation
+  activeScope:  DataflowScopeName
 }
 
 export type DataflowProcessorFolds<OtherInfo> = Omit<StatefulFoldFunctions<OtherInfo, DataflowProcessorDown<OtherInfo>, DataflowInformation<OtherInfo>>, 'down'>

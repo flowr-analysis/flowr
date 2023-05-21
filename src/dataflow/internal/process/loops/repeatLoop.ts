@@ -8,7 +8,7 @@ export function processRepeatLoop<OtherInfo>(loop: unknown, body: DataflowInform
     out:          body.out,
     environments: body.environments,
     ast:          down.ast,
-    scope:        down.scope,
+    scope:        down.activeScope,
     graph:        body.graph
   }
 }

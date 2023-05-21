@@ -52,7 +52,7 @@ const folds: DataflowProcessorFolds<any> = {
 }
 
 export function produceDataFlowGraph<OtherInfo>(ast: DecoratedAst<OtherInfo & ParentInformation>, scope: DataflowScopeName): DataflowInformation<OtherInfo & ParentInformation> {
-  return dataflowFold<OtherInfo>(ast.decoratedAst, { ast, scope }, folds as DataflowProcessorFolds<OtherInfo & ParentInformation>)
+  return dataflowFold<OtherInfo>(ast.decoratedAst, { ast, activeScope: scope }, folds as DataflowProcessorFolds<OtherInfo & ParentInformation>)
 }
 
 // TODO: automatically load namespace exported functions etc.

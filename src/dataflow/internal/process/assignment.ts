@@ -35,7 +35,7 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
     graph:       nextGraph,
     environments,
     ast:         down.ast,
-    scope:       down.scope
+    scope:       down.activeScope
   }
 }
 
@@ -80,7 +80,7 @@ function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInfo
   for(const active of target.activeNodes) {
     writeNodes.push({
       ...active,
-      scope:     global ? GlobalScope : down.scope,
+      scope:     global ? GlobalScope : down.activeScope,
       kind:      /* TODO: deal with functions */ 'variable',
       definedAt: op.info.id
     })

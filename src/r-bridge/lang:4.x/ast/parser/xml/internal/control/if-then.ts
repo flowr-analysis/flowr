@@ -9,14 +9,14 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 /**
  * Try to parse the construct as a {@link RIfThenElse}.
  */
-export function tryParseIfThenStructure(data: ParserData,
-                                        tokens: [
-                                          ifToken:    NamedXmlBasedJson,
-                                          leftParen:  NamedXmlBasedJson,
-                                          condition:  NamedXmlBasedJson,
-                                          rightParen: NamedXmlBasedJson,
-                                          then:       NamedXmlBasedJson
-                                      ]): RIfThenElse | undefined {
+export function tryParseIfThen(data: ParserData,
+                               tokens: [
+                                   ifToken:    NamedXmlBasedJson,
+                                   leftParen:  NamedXmlBasedJson,
+                                   condition:  NamedXmlBasedJson,
+                                   rightParen: NamedXmlBasedJson,
+                                   then:       NamedXmlBasedJson
+                               ]): RIfThenElse | undefined {
   // TODO: guard-like syntax for this too?
   parseLog.trace(`trying to parse if-then structure`)
   if (tokens[0].name !== Type.If) {

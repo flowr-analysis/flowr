@@ -2,7 +2,7 @@ import { NamedXmlBasedJson } from '../../input-format'
 import { tryParseOneElementBasedOnType } from '../structure'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
-import { tryParseIfThenStructure } from './if-then'
+import { tryParseIfThen } from './if-then'
 import { guard } from '../../../../../../../util/assert'
 import { Type, RIfThenElse } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
@@ -10,21 +10,21 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 /**
  * Try to parse the construct as a {@link RIfThenElse}.
  */
-export function tryParseIfThenElseStructure(data: ParserData,
-                                            tokens: [
-                                              ifToken:    NamedXmlBasedJson,
-                                              leftParen:  NamedXmlBasedJson,
-                                              condition:  NamedXmlBasedJson,
-                                              rightParen: NamedXmlBasedJson,
-                                              then:       NamedXmlBasedJson,
-                                              elseToken:  NamedXmlBasedJson,
-                                              elseBlock:  NamedXmlBasedJson
-                                          ]): RIfThenElse | undefined {
+export function tryParseIfThenElse(data: ParserData,
+                                   tokens: [
+                                       ifToken:    NamedXmlBasedJson,
+                                       leftParen:  NamedXmlBasedJson,
+                                       condition:  NamedXmlBasedJson,
+                                       rightParen: NamedXmlBasedJson,
+                                       then:       NamedXmlBasedJson,
+                                       elseToken:  NamedXmlBasedJson,
+                                       elseBlock:  NamedXmlBasedJson
+                                   ]): RIfThenElse | undefined {
   // we start by parsing a regular if-then structure
   parseLog.trace(`trying to parse if-then-else structure`)
   tokens = executeHook(data.hooks.control.onIfThenElse.before, data, tokens)
 
-  const parsedIfThen = tryParseIfThenStructure(data, [tokens[0], tokens[1], tokens[2], tokens[3], tokens[4]])
+  const parsedIfThen = tryParseIfThen(data, [tokens[0], tokens[1], tokens[2], tokens[3], tokens[4]])
   if (parsedIfThen === undefined) {
     return executeUnknownHook(data.hooks.control.onIfThenElse.unknown, data, tokens)
   }

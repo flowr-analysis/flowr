@@ -5,13 +5,13 @@ import { getWithTokenType } from "../meta"
 import { ParserData } from "../../data"
 import { tryParseOneElementBasedOnType } from "./single-element"
 import { tryParseSymbol } from '../values'
-import { tryParseUnaryStructure, tryParseBinaryStructure } from '../operators'
+import { tryParseUnaryOperation, tryParseBinaryOperation } from '../operators'
 import {
-  tryParseRepeatLoopStructure,
-  tryParseForLoopStructure,
-  tryParseWhileLoopStructure
+  tryParseRepeatLoop,
+  tryParseForLoop,
+  tryParseWhileLoop
 } from '../loops'
-import { tryParseIfThenElseStructure, tryParseIfThenStructure } from '../control'
+import { tryParseIfThenElse, tryParseIfThen } from '../control'
 import { Type, RNode } from '../../../../model'
 
 export function parseBasedOnType(
@@ -48,7 +48,7 @@ export function parseBasedOnType(
     const parsed = tryParseOneElementBasedOnType(data, mappedWithName[0])
     return parsed !== undefined ? [parsed] : []
   } else if (mappedWithName.length === 2) {
-    const unaryOp = tryParseUnaryStructure(
+    const unaryOp = tryParseUnaryOperation(
       data,
       mappedWithName[0],
       mappedWithName[1]
@@ -56,7 +56,7 @@ export function parseBasedOnType(
     if (unaryOp !== undefined) {
       return [unaryOp]
     }
-    const repeatLoop = tryParseRepeatLoopStructure(
+    const repeatLoop = tryParseRepeatLoop(
       data,
       mappedWithName[0],
       mappedWithName[1]
@@ -65,7 +65,7 @@ export function parseBasedOnType(
       return [repeatLoop]
     }
   } else if (mappedWithName.length === 3) {
-    const binary = tryParseBinaryStructure(
+    const binary = tryParseBinaryOperation(
       data,
       mappedWithName[0],
       mappedWithName[1],
@@ -75,7 +75,7 @@ export function parseBasedOnType(
       return [binary]
     } else {
       // TODO: maybe-monad pass through? or just use undefined (see ts-fp)
-      const forLoop = tryParseForLoopStructure(
+      const forLoop = tryParseForLoop(
         data,
         mappedWithName[0],
         mappedWithName[1],
@@ -93,7 +93,7 @@ export function parseBasedOnType(
       // TODO: try to parse symbols with namespace information
     }
   } else if (mappedWithName.length === 5) {
-    const ifThen = tryParseIfThenStructure(data, [
+    const ifThen = tryParseIfThen(data, [
       mappedWithName[0],
       mappedWithName[1],
       mappedWithName[2],
@@ -103,7 +103,7 @@ export function parseBasedOnType(
     if (ifThen !== undefined) {
       return [ifThen]
     } else {
-      const whileLoop = tryParseWhileLoopStructure(
+      const whileLoop = tryParseWhileLoop(
         data,
         mappedWithName[0],
         mappedWithName[1],
@@ -116,7 +116,7 @@ export function parseBasedOnType(
       }
     }
   } else if (mappedWithName.length === 7) {
-    const ifThenElse = tryParseIfThenElseStructure(data, [
+    const ifThenElse = tryParseIfThenElse(data, [
       mappedWithName[0],
       mappedWithName[1],
       mappedWithName[2],

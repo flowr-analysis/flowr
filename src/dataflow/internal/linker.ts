@@ -2,6 +2,7 @@ import { DataflowGraph, DataflowScopeName } from '../graph'
 import { IdentifierReference, REnvironmentInformation, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
+import { log } from '../../util/log'
 
 /* TODO: use environments for the default map */
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
@@ -53,6 +54,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReferen
   for (const bodyInput of referencesToLinkAgainstEnvironment) {
     const probableTarget = resolveByName(bodyInput.name, scope, environmentInformation)
     if (probableTarget === undefined) {
+      log.trace(`found no target for ${bodyInput.name} in ${scope}`)
       if(maybeForRemaining) {
         bodyInput.used = 'maybe'
       }

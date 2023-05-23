@@ -20,7 +20,8 @@ import { produceDataFlowGraph } from '../../src/dataflow'
 let defaultTokenMap: Record<string, string>
 
 // we want the token map only once (to speed up tests)!
-before(async() => {
+before(async function() {
+  this.timeout('15min')
   const shell = new RShell()
   try {
     shell.tryToInjectHomeLibPath()

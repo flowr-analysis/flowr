@@ -20,6 +20,7 @@ const domain = 'https://uni-ulm.de/r-ast/'
 
 type RecordForQuad = Record<string, unknown>
 type DataForQuad = Record<string, unknown> | ArrayLike<unknown>
+type ContextForQuad = string
 
 /**
  * Predicate that allows you to ignore given elements based on their key/value
@@ -30,13 +31,15 @@ export type QuadIgnoreIf = (key: string, value: unknown) => boolean
 
 /**
  * Deterministically retrieve a unique id for a given object.
+ * @param obj - the object to retrieve the id for
+ * @param context - In order to provide unique ids even for different contexts, we add the context to the id.
  */
-export type QuadIdRetriever = (obj: unknown) => string
+export type QuadIdRetriever = (obj: unknown, context: ContextForQuad) => string
 
 /**
  * Either a constant string or a supplier depending on the object in question
  */
-export type QuadContextRetriever = string | ((obj: DataForQuad) => string)
+export type QuadContextRetriever = ContextForQuad | ((obj: DataForQuad) => ContextForQuad)
 
 /**
  * A deterministic counting id generator for quads.
@@ -44,7 +47,7 @@ export type QuadContextRetriever = string | ((obj: DataForQuad) => string)
 export function defaultQuadIdGenerator(): QuadIdRetriever {
   let counter = 0
   const idMap = new DefaultMap<unknown, number>( () => counter++ )
-  return (elem: unknown) => String(idMap.get(elem))
+  return (elem: unknown, context: ContextForQuad) => `${context}/${idMap.get(elem)}`
 }
 
 export function defaultQuadIgnoreIf(): QuadIgnoreIf {
@@ -77,8 +80,8 @@ export interface QuadSerializationConfiguration extends MergeableRecord {
 
 export const DefaultQuadSerializationConfiguration: Required<QuadSerializationConfiguration> = {
   ignore:  defaultQuadIgnoreIf(),
-  getId:   defaultQuadIdGenerator(),
   context: 'unknown-context',
+  getId:   defaultQuadIdGenerator(),
   domain:  "https://uni-ulm.de/r-ast/"
 }
 
@@ -110,11 +113,12 @@ export function serialize2quads(obj: RecordForQuad, config: QuadSerializationCon
 
 function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
   for (const [index, element] of value.entries()) {
+    const context= retrieveContext(config.context, obj)
     quads.push(quad(
-      namedNode(domain + config.getId(obj)),
+      namedNode(domain + config.getId(obj, context)),
       namedNode(domain + key + '-' + String(index)),
-      namedNode(domain + config.getId(element)),
-      namedNode(retrieveContext(config.context, obj))
+      namedNode(domain + config.getId(element, context)),
+      namedNode(context)
     ))
     guard(isObjectOrArray(element), () => `cannot serialize non-object to rdf within array of ${JSON.stringify(value)}!`)
     serializeObject(element as DataForQuad, quads, config)
@@ -122,21 +126,23 @@ function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, qu
 }
 
 function processObjectEntries(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
+  const context = retrieveContext(config.context, obj)
   quads.push(quad(
-    namedNode(domain + config.getId(obj)),
+    namedNode(domain + config.getId(obj, context)),
     namedNode(domain + key),
-    namedNode(domain + config.getId(value)),
-    namedNode(retrieveContext(config.context, obj))
+    namedNode(domain + config.getId(value, context)),
+    namedNode(context)
   ))
   serializeObject(value as DataForQuad, quads, config)
 }
 
 function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
+  const context = retrieveContext(config.context, obj)
   quads.push(quad(
-    namedNode(domain + config.getId(obj)),
+    namedNode(domain + config.getId(obj, context)),
     namedNode(domain + key),
     literal(String(value), typeof (value) /*, literal with typeof(value) */),
-    namedNode(retrieveContext(config.context, obj))
+    namedNode(context)
   ))
 }
 

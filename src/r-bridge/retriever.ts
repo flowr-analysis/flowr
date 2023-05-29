@@ -6,13 +6,13 @@ import { guard } from '../util/assert'
 
 export interface RParseRequestFromFile {
   request: "file";
-  /** the path to the file (absolute paths are probably best here */
+  /** The path to the file (absolute paths are probably best here */
   content: string;
 }
 
 export interface RParseRequestFromText {
   request: 'text'
-  /* source code to parse (not a file path) */
+  /* Source code to parse (not a file path) */
   content: string
 }
 

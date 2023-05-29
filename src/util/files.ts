@@ -63,6 +63,29 @@ export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE
   return count
 }
 
+
+/**
+ * Retrieves all R files in a given set of directories and files (asynchronously)
+ *
+ * @param inputs - files or directories to validate for R-files
+ * @param limit - limit the number of files to be retrieved
+ * @returns number of files processed (&le; limit)
+ *
+ * @see #allRFiles
+ */
+export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGenerator<RParseRequestFromFile, number> {
+  limit ??= Number.MAX_VALUE
+  if(inputs.length === 0) {
+    log.info('No inputs given, nothing to do')
+    return 0
+  }
+  let count = 0
+  for(const input of inputs) {
+    count += yield* allRFiles(input, limit - count)
+  }
+  return count
+}
+
 export function writeTableAsCsv(table: Table, file: string, sep = ',', newline = '\n') {
   const csv = [table.header.join(sep), ...table.rows.map(row => row.join(sep))].join(newline)
   fs.writeFileSync(file, csv)

@@ -3,8 +3,8 @@ import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
 import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import { serialize2quads } from '../util/quads'
-import path from 'path'
 import fs from 'fs'
+import { allRFilesFrom } from '../util/files'
 
 export const toolName = 'export-quads'
 
@@ -12,15 +12,17 @@ export const toolName = 'export-quads'
 export const optionDefinitions: OptionDefinition[] = [
   { name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
   { name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide.' },
-  { name: 'input',        alias: 'i', type: String,  description: 'Pass an R-file as src to read from', defaultOption: true, typeLabel: '{underline file}' },
-  { name: 'output',       alias: 'o', type: String,  description: 'File to write the generated quads to (defaults to {italic <input-file-name>.quads})', typeLabel: '{underline file}' },
+  { name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
+  { name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process'},
+  { name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to {italic out.quads})', typeLabel: '{underline file}' },
 ]
 
 export interface QuadsCliOptions {
   verbose: boolean
   help:    boolean
-  input:   string
-  output:  string
+  input:   string[]
+  limit:   number
+  output:  string | undefined
 }
 
 export const optionHelp = [
@@ -55,13 +57,18 @@ shell.tryToInjectHomeLibPath()
 
 async function getQuads() {
   const tokens = await getStoredTokenMap(shell)
-
-  const ast = await retrieveAstFromRCode({ request: 'file', content: options.input, attachSourceInformation: true, ensurePackageInstalled: true }, tokens, shell)
-  const decorated = decorateAst(ast).decoratedAst
-  const serialized = serialize2quads(decorated, { context: options.input })
-  const output = options.output ?? `${path.parse(options.input).name}.quads`
-  log.info(`Writing quads to ${output}`)
-  fs.writeFileSync(output, serialized)
+  const output = options.output ?? `out.quads`
+  for await (const request of allRFilesFrom(options.input, options.limit)) {
+    const ast = await retrieveAstFromRCode({
+      ...request,
+      attachSourceInformation: true,
+      ensurePackageInstalled:  true
+    }, tokens, shell)
+    const decorated = decorateAst(ast).decoratedAst
+    const serialized = serialize2quads(decorated, { context: request.content })
+    log.info(`Appending quads to ${output}`)
+    fs.writeFileSync(output, serialized)
+  }
   shell.close()
 }
 

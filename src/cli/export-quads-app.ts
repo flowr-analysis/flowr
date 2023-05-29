@@ -67,7 +67,7 @@ async function getQuads() {
     const decorated = decorateAst(ast).decoratedAst
     const serialized = serialize2quads(decorated, { context: request.content })
     log.info(`Appending quads to ${output}`)
-    fs.writeFileSync(output, serialized)
+    fs.appendFileSync(output, serialized)
   }
   shell.close()
 }

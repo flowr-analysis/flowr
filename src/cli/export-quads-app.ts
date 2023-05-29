@@ -1,4 +1,4 @@
-import { decorateAst, getStoredTokenMap, retrieveAstFromRCode, RShell } from '../r-bridge'
+import { decorateAst, getStoredTokenMap, retrieveAstFromRCode, RParseRequestFromFile, RShell } from '../r-bridge'
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
 import commandLineUsage, { OptionDefinition } from 'command-line-usage'
@@ -55,20 +55,31 @@ log.info('running with options', options)
 const shell = new RShell()
 shell.tryToInjectHomeLibPath()
 
+async function writeQuadForSingleFile(request: RParseRequestFromFile, tokens: Record<string, string>, output: string) {
+  const ast = await retrieveAstFromRCode({
+    ...request,
+    attachSourceInformation: true,
+    ensurePackageInstalled:  true
+  }, tokens, shell)
+  const decorated = decorateAst(ast).decoratedAst
+  const serialized = serialize2quads(decorated, { context: request.content })
+  log.info(`Appending quads to ${output}`)
+  fs.appendFileSync(output, serialized)
+}
+
 async function getQuads() {
   const tokens = await getStoredTokenMap(shell)
   const output = options.output ?? `out.quads`
+  let skipped = 0
   for await (const request of allRFilesFrom(options.input, options.limit)) {
-    const ast = await retrieveAstFromRCode({
-      ...request,
-      attachSourceInformation: true,
-      ensurePackageInstalled:  true
-    }, tokens, shell)
-    const decorated = decorateAst(ast).decoratedAst
-    const serialized = serialize2quads(decorated, { context: request.content })
-    log.info(`Appending quads to ${output}`)
-    fs.appendFileSync(output, serialized)
+    try {
+      await writeQuadForSingleFile(request, tokens, output)
+    } catch (e: unknown) {
+      log.error(`[Skipped] Error while processing ${request.content}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
+      skipped++
+    }
   }
+  console.log(`Skipped ${skipped} files`)
   shell.close()
 }
 

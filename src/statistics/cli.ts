@@ -1,8 +1,5 @@
 import { allFeatureNames, FeatureKey } from './features'
 import { OptionDefinition } from 'command-line-usage'
-import { RParseRequestFromFile } from '../r-bridge'
-import { log } from '../util/log'
-import { allRFiles } from '../util/files'
 import { date2string } from '../util/time'
 
 export const toolName = 'stats'
@@ -50,27 +47,6 @@ export const optionHelp = [
   }
 ]
 
-/**
- * Retrieves all R files in a given set of directories and files (asynchronously)
- *
- * @param inputs - files or directories to validate for R-files
- * @param limit - limit the number of files to be retrieved
- * @returns number of files processed (&le; limit)
- *
- * @see #allRFiles
- */
-export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGenerator<RParseRequestFromFile, number> {
-  limit ??= Number.MAX_VALUE
-  if(inputs.length === 0) {
-    log.info('No inputs given, nothing to do')
-    return 0
-  }
-  let count = 0
-  for(const input of inputs) {
-    count += yield* allRFiles(input, limit - count)
-  }
-  return count
-}
 
 export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])): Set<FeatureKey> {
   for (const feature of features) {

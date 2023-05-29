@@ -8,13 +8,14 @@
  * @module
  */
 
-import { DataFactory, Quad, Writer } from 'n3'
+import { DataFactory, NamedNode, Quad, Writer } from 'n3'
 import namedNode = DataFactory.namedNode
 import quad = DataFactory.quad
 import { deepMergeObject, isObjectOrArray, MergeableRecord } from './objects'
 import { guard } from './assert'
 import { DefaultMap } from './defaultmap'
 import literal = DataFactory.literal
+import { log } from "./log"
 
 const domain = 'https://uni-ulm.de/r-ast/'
 
@@ -136,12 +137,24 @@ function processObjectEntries(key: string, value: unknown, obj: DataForQuad, qua
   serializeObject(value as DataForQuad, quads, config)
 }
 
+function objToType(value: unknown): NamedNode | undefined {
+  let suffix: string | undefined
+  switch (typeof value) {
+    case 'string': suffix = 'string'; break
+    case 'number': suffix = Number.isInteger(value) ? 'integer' : 'decimal'; break
+    case 'boolean': suffix = 'boolean'; break
+    case 'bigint': suffix = 'integer'; break
+    default: log.warn(`unknown ${typeof value} with ${JSON.stringify(value)}`); break
+  }
+  return suffix ? namedNode(`http://www.w3.org/2001/XMLSchema#${suffix}`) : undefined
+}
+
 function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
   const context = retrieveContext(config.context, obj)
   quads.push(quad(
     namedNode(domain + config.getId(obj, context)),
     namedNode(domain + key),
-    literal(String(value), typeof (value) /*, literal with typeof(value) */),
+    literal(String(value), objToType(value)),
     namedNode(context)
   ))
 }

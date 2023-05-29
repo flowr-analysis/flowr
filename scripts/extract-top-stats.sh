@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+### Run to automatically run the 'stats' command for the top packages listed in ${FILE}
+
 FILE="scripts/top-r-downloads.txt"
 ROOT_FOLDER="${HOME}/Documents/Data/Data/CRAN/"
 

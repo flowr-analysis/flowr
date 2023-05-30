@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
+### Converts all files in the given folder to utf-8 encoding
 # Sadly xmlparsedata can not work with non-utf8 files :/
-
 
 if [ $# -ne 1 ]; then
     echo "Usage: $0 <root-folder>"

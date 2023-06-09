@@ -50,11 +50,19 @@ describe('Functions', withShell(shell => {
 
     assertDataflow(`read of one parameter`, shell, `function(x,y,z) y`,
       new DataflowGraph()
-        .addNode("0", "x", envWithParams, LocalScope, 'maybe')
-        .addNode("2", "y", envWithParams, LocalScope, 'maybe')
-        .addNode("4", "z", envWithParams, LocalScope, 'maybe')
-        .addNode("6", "y", envWithParams, false, 'maybe')
-        .addEdge("6", "2", "read", "always")
+        .addNode("7", "7", initializeCleanEnvironments(), LocalScope, 'always', {
+          out:         [],
+          activeNodes: [],
+          in:          [],
+          scope:       LocalScope,
+          graph:       new DataflowGraph()
+            .addNode("0", "x", envWithParams, LocalScope, 'always')
+            .addNode("2", "y", envWithParams, LocalScope, 'always')
+            .addNode("4", "z", envWithParams, LocalScope, 'always')
+            .addNode("6", "y", envWithParams, false, 'always')
+            .addEdge("6", "2", "read", "always"),
+          environments: envWithParams
+        })
     )
   })
   describe('Scoping of body', () => {

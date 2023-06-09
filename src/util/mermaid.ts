@@ -32,7 +32,16 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
   lines.push(`subgraph "${subflowId}" [function ${nodeId}]\n`)
   lines.push(graphToMermaid(subflow.graph, dataflowIdMap, '', idPrefix))
   for(const out of [...subflow.in, ...subflow.out, ...subflow.activeNodes]) {
+    // in/out/active
     lines.push(`style ${idPrefix}${out.nodeId} fill:#94C2FF,stroke:#4CB0DB\n `)
+  }
+  for(const mayArguments of subflow.environments.current.memory.values()) {
+    for(const mayArgument of mayArguments) {
+      if(mayArgument.kind === 'argument') {
+        // parameters
+        lines.push(`style ${idPrefix}${mayArgument.nodeId} fill:#CDCDCD,stroke:#242424\n `)
+      }
+    }
   }
   lines.push('end')
   lines.push(`${idPrefix}${nodeId} ---|function| ${subflowId}\n`)

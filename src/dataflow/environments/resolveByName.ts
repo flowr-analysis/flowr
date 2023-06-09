@@ -1,4 +1,4 @@
-import { REnvironmentInformation, Identifier, IdentifierDefinition } from './environment'
+import { REnvironmentInformation, Identifier, IdentifierDefinition, IEnvironment } from './environment'
 import { DataflowScopeName, GlobalScope, LocalScope } from '../graph'
 import { dataflowLogger } from '../index'
 
@@ -26,12 +26,15 @@ function resolveLocal(name: Identifier, withinScope: DataflowScopeName, environm
   dataflowLogger.trace(`Resolving local identifier ${name} (scope name: ${withinScope}, local stack size: ${environments.local.length})`)
 
   const locals = environments.local
-  for (const element of locals) {
-    const definition = element.memory.get(name)
+  let current: IEnvironment | undefined = locals[0]
+  do {
+    const definition = current.memory.get(name)
     if(definition !== undefined) {
       return definition
     }
-  }
+    current = current.parent
+  } while(current !== undefined)
+
   dataflowLogger.trace(`Unable to find identifier ${name} in local stack (present: [${locals.flatMap(e => [...e.memory.keys()]).join(",")}]), falling back to global scope`)
   return environments.global.memory.get(name)
 }

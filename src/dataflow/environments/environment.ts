@@ -60,6 +60,8 @@ export function makeAllMaybe(references: IdentifierReference[] | undefined): Ide
 
 export interface IEnvironment {
   readonly name: string
+  /** Lexical parent of the environment, if any (can be manipulated by R code) */
+  parent?:       IEnvironment
   /**
    * Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions
    * TODO: mark function, symbol, etc. definitions

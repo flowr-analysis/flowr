@@ -44,9 +44,8 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   }
 
   // TODO: exit points?
-  const outEnvironments = popLocalEnvironment(outEnvironment)
   const graph = new DataflowGraph()
-  graph.addNode(functionDefinition.info.id, functionDefinition.info.id, outEnvironments, down.activeScope, 'always', flow)
+  graph.addNode(functionDefinition.info.id, functionDefinition.info.id, popLocalEnvironment(down.environments), down.activeScope, 'always', flow)
   // TODO: deal with function info
   // TODO: rest
   return {
@@ -54,7 +53,8 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     in:           [] /* TODO: they must be bound on call */,
     out:          [] /* nothing escapes a function definition, but the function itself */,
     graph,
-    environments: outEnvironments,
+    /* TODO: have args. the potential to influence their surrounding on def? */
+    environments: popLocalEnvironment(down.environments),
     ast:          down.ast,
     scope:        down.activeScope
   }

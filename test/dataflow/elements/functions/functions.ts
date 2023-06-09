@@ -128,6 +128,10 @@ describe('Functions', withShell(shell => {
           environments: envWithXDefinedR
         })
     )
+    const envWithXDefinedGlobal = define(
+      {nodeId: '0', scope: GlobalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+      GlobalScope,
+      pushLocalEnvironment(initializeCleanEnvironments()))
     assertDataflow(`global define with <<- in function, read after`, shell, `function() { x <<- 3; }; x`,
       new DataflowGraph()
         .addNode("4", "x", initializeCleanEnvironments())
@@ -137,41 +141,66 @@ describe('Functions', withShell(shell => {
           in:          [],
           scope:       LocalScope,
           graph:       new DataflowGraph()
-            .addNode("1", "x", pushLocalEnvironment(initializeCleanEnvironments()), LocalScope, 'always'),
-          environments: envWithXDefinedR
+            .addNode("0", "x", pushLocalEnvironment(initializeCleanEnvironments()), GlobalScope, 'always'),
+          environments: envWithXDefinedGlobal
         })
-      /*      new DataflowGraph()
-        .addNode("0", "x", initializeCleanEnvironments(), GlobalScope, 'maybe')
-        .addNode("4", "x", initializeCleanEnvironments())
-        /!* can be shown as a global link as well, as it is not the local instance of x which survives *!/
-        .addEdge("4", "0", "read", "maybe")*/
     )
+    const envWithXDefinedGlobalR = define(
+      {nodeId: '1', scope: GlobalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+      GlobalScope,
+      pushLocalEnvironment(initializeCleanEnvironments()))
     assertDataflow(`global define with ->> in function, read after`, shell, `function() { 3 ->> x; }; x`,
       new DataflowGraph()
-        .addNode("1", "x", initializeCleanEnvironments(), GlobalScope, 'maybe')
         .addNode("4", "x", initializeCleanEnvironments())
-        .addEdge("4", "1", "read", "maybe")
+        .addNode("3", "3", initializeCleanEnvironments(), LocalScope, 'always', {
+          out:         [],
+          activeNodes: [],
+          in:          [],
+          scope:       LocalScope,
+          graph:       new DataflowGraph()
+            .addNode("1", "x", pushLocalEnvironment(initializeCleanEnvironments()), GlobalScope, 'always'),
+          environments: envWithXDefinedGlobalR
+        })
     )
+    const envDefXSingle = define(
+      {nodeId: '3', scope: LocalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '5' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments()))
     assertDataflow(`shadow in body`, shell, `x <- 2; function() { x <- 3; x }; x`,
       new DataflowGraph()
         .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
-        .addNode("3", "x", initializeCleanEnvironments(), LocalScope, 'maybe')
-        .addNode("6", "x", initializeCleanEnvironments(), false, 'maybe')
-        .addNode("9", "x", initializeCleanEnvironments())
-        .addEdge("6", "3", "read", "always")
+        .addNode("9", "x", initializeCleanEnvironments() /* TODO: this should probably be defined by 0 in env */)
         .addEdge("9", "0", "read", "always")
+        .addNode("8", "8", initializeCleanEnvironments(), LocalScope, 'always', {
+          out:         [],
+          activeNodes: [],
+          in:          [],
+          scope:       LocalScope,
+          graph:       new DataflowGraph()
+            .addNode("6", "x", pushLocalEnvironment(initializeCleanEnvironments()), false, 'always')
+            .addNode("3", "x", pushLocalEnvironment(initializeCleanEnvironments()), LocalScope, 'always')
+            .addEdge("6", "3", "read", "always"),
+          environments: envDefXSingle
+        })
     )
     assertDataflow(`shadow in body with closure`, shell, `x <- 2; function() { x <- x; x }; x`,
       new DataflowGraph()
         .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
-        .addNode("3", "x", initializeCleanEnvironments(), LocalScope, 'maybe')
-        .addNode("4", "x", initializeCleanEnvironments(), false, 'maybe')
-        .addNode("6", "x", initializeCleanEnvironments(), false, 'maybe')
-        .addNode("9", "x", initializeCleanEnvironments())
-        .addEdge("6", "3", "read", "always")
-        .addEdge("3", "4", "defined-by", "always")
-        .addEdge("4", "0", "read", "maybe")
+        .addNode("9", "x", initializeCleanEnvironments() /* TODO: this should these be defined by 0 in env or remove envs for non-funcs? */)
         .addEdge("9", "0", "read", "always")
+        .addNode("8", "8", initializeCleanEnvironments(), LocalScope, 'always', {
+          out:         [],
+          activeNodes: [],
+          in:          [],
+          scope:       LocalScope,
+          graph:       new DataflowGraph()
+            .addNode("6", "x", pushLocalEnvironment(initializeCleanEnvironments()), false, 'always')
+            .addNode("3", "x", pushLocalEnvironment(initializeCleanEnvironments()), LocalScope, 'always')
+            .addNode("4", "x", pushLocalEnvironment(initializeCleanEnvironments()), false, 'always')
+            .addEdge("6", "3", "read", "always")
+            .addEdge("3", "4", "defined-by", "always"),
+          environments: envDefXSingle
+        })
     )
   })
   describe('Scoping of parameters', () => {

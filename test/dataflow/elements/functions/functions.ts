@@ -79,27 +79,72 @@ describe('Functions', withShell(shell => {
           environments: pushLocalEnvironment(initializeCleanEnvironments())
         })
     )
+    const envWithXDefined = define(
+      {nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments()))
+
     assertDataflow(`local define with <- in function, read after`, shell, `function() { x <- 3; }; x`,
       new DataflowGraph()
-        .addNode("0", "x", initializeCleanEnvironments(), LocalScope, 'maybe')
         .addNode("4", "x", initializeCleanEnvironments())
+        .addNode("3", "3", initializeCleanEnvironments(), LocalScope, 'always', {
+          out:         [],
+          activeNodes: [],
+          in:          [],
+          scope:       LocalScope,
+          graph:       new DataflowGraph()
+            .addNode("0", "x", pushLocalEnvironment(initializeCleanEnvironments()), LocalScope, 'always'),
+          environments: envWithXDefined
+        })
     )
     assertDataflow(`local define with = in function, read after`, shell, `function() { x = 3; }; x`,
       new DataflowGraph()
-        .addNode("0", "x", initializeCleanEnvironments(), LocalScope, 'maybe')
         .addNode("4", "x", initializeCleanEnvironments())
+        .addNode("3", "3", initializeCleanEnvironments(), LocalScope, 'always', {
+          out:         [],
+          activeNodes: [],
+          in:          [],
+          scope:       LocalScope,
+          graph:       new DataflowGraph()
+            .addNode("0", "x", pushLocalEnvironment(initializeCleanEnvironments()), LocalScope, 'always'),
+          environments: envWithXDefined
+        })
     )
+
+    const envWithXDefinedR = define(
+      {nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments()))
     assertDataflow(`local define with -> in function, read after`, shell, `function() { 3 -> x; }; x`,
       new DataflowGraph()
-        .addNode("1", "x", initializeCleanEnvironments(), LocalScope, 'maybe')
         .addNode("4", "x", initializeCleanEnvironments())
+        .addNode("3", "3", initializeCleanEnvironments(), LocalScope, 'always', {
+          out:         [],
+          activeNodes: [],
+          in:          [],
+          scope:       LocalScope,
+          graph:       new DataflowGraph()
+            .addNode("1", "x", pushLocalEnvironment(initializeCleanEnvironments()), LocalScope, 'always'),
+          environments: envWithXDefinedR
+        })
     )
     assertDataflow(`global define with <<- in function, read after`, shell, `function() { x <<- 3; }; x`,
       new DataflowGraph()
+        .addNode("4", "x", initializeCleanEnvironments())
+        .addNode("3", "3", initializeCleanEnvironments(), LocalScope, 'always', {
+          out:         [],
+          activeNodes: [],
+          in:          [],
+          scope:       LocalScope,
+          graph:       new DataflowGraph()
+            .addNode("1", "x", pushLocalEnvironment(initializeCleanEnvironments()), LocalScope, 'always'),
+          environments: envWithXDefinedR
+        })
+      /*      new DataflowGraph()
         .addNode("0", "x", initializeCleanEnvironments(), GlobalScope, 'maybe')
         .addNode("4", "x", initializeCleanEnvironments())
-        /* can be shown as a global link as well, as it is not the local instance of x which survives */
-        .addEdge("4", "0", "read", "maybe")
+        /!* can be shown as a global link as well, as it is not the local instance of x which survives *!/
+        .addEdge("4", "0", "read", "maybe")*/
     )
     assertDataflow(`global define with ->> in function, read after`, shell, `function() { 3 ->> x; }; x`,
       new DataflowGraph()

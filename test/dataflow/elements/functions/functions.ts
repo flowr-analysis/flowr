@@ -204,12 +204,24 @@ describe('Functions', withShell(shell => {
     )
   })
   describe('Scoping of parameters', () => {
+    const envWithXDefined = define(
+      {nodeId: '3', scope: 'local', name: 'x', used: 'always', kind: 'argument', definedAt: '4' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments()))
     assertDataflow(`parameter shadows`, shell, `x <- 3; function(x) { x }`,
       new DataflowGraph()
         .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
-        .addNode("3", "x", initializeCleanEnvironments(), LocalScope, 'maybe')
-        .addNode("5", "x", initializeCleanEnvironments(), false, 'maybe')
-        .addEdge("5", "3", "read", "always")
+        .addNode("6", "6", initializeCleanEnvironments(), LocalScope, 'always', {
+          out:         [],
+          activeNodes: [],
+          in:          [],
+          scope:       LocalScope,
+          graph:       new DataflowGraph()
+            .addNode("3", "x", envWithXDefined, LocalScope, 'always')
+            .addNode("5", "x", envWithXDefined, false, 'always')
+            .addEdge("5", "3", "read", "always"),
+          environments: envWithXDefined
+        })
     )
     // TODO: other tests for scoping within parameters
   })

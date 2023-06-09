@@ -4,6 +4,8 @@ import { Environment, REnvironmentInformation } from './environment'
 /** Add a new local environment scope to the stack */
 export function pushLocalEnvironment(base: REnvironmentInformation): REnvironmentInformation {
   const local = new Environment(LocalScope)
+  local.parent = base.local[0]
+
   return {
     global: base.global,
     local:  [local, ...base.local]

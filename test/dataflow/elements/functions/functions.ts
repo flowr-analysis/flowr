@@ -66,16 +66,18 @@ describe('Functions', withShell(shell => {
     )
   })
   describe('Scoping of body', () => {
-    const xPrevDefined = define(
-      {nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'argument', definedAt: '1' },
-      LocalScope,
-      initializeCleanEnvironments())
-
     assertDataflow(`previously defined read in function`, shell, `x <- 3; function() { x }`,
       new DataflowGraph()
-        .addNode("0", "x", xPrevDefined, LocalScope)
-        .addNode("3", "x", pushLocalEnvironment(xPrevDefined), false, 'maybe')
-        .addEdge("3", "0", "read", "maybe")
+        .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
+        .addNode("4", "4", initializeCleanEnvironments(), LocalScope, 'always', {
+          out:         [],
+          activeNodes: [],
+          in:          [ { nodeId: "3", scope: LocalScope, name: "x", used: "always" } ],
+          scope:       LocalScope,
+          graph:       new DataflowGraph()
+            .addNode("3", "x", pushLocalEnvironment(initializeCleanEnvironments()), false, 'always'),
+          environments: pushLocalEnvironment(initializeCleanEnvironments())
+        })
     )
     assertDataflow(`local define with <- in function, read after`, shell, `function() { x <- 3; }; x`,
       new DataflowGraph()

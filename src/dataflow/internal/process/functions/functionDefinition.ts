@@ -51,7 +51,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   // TODO: rest
   return {
     activeNodes:  [],
-    in:           remainingRead,
+    in:           [] /* TODO: they must be bound on call */,
     out:          [] /* nothing escapes a function definition, but the function itself */,
     graph,
     environments: outEnvironments,

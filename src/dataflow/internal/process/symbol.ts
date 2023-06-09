@@ -16,6 +16,6 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
     out:          [],
     environments: down.environments,
     scope:        down.activeScope,
-    graph:        new DataflowGraph().addNode(symbol.info.id , symbol.content),
+    graph:        new DataflowGraph().addNode(symbol.info.id, symbol.content, down.environments),
   }
 }

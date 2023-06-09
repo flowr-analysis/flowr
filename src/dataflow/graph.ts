@@ -1,10 +1,15 @@
 // TODO: modify | alias | etc.
 import { guard } from '../util/assert'
 import { NodeId, RNodeWithParent } from '../r-bridge'
-import { IdentifierReference } from './environments'
+import {
+  environmentsEqual,
+  IdentifierReference,
+  REnvironmentInformation
+} from './environments'
 import { BiMap } from '../util/bimap'
 import { MergeableRecord } from '../util/objects'
 import { log } from '../util/log'
+import { dataflowLogger } from './index'
 
 /** used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
@@ -22,7 +27,7 @@ export type DataflowGraphEdgeAttribute = 'always' | 'maybe'
 // TODO: on fold clarify with in and out-local, out-global! (out-function?)
 
 export const GlobalScope = '.GlobalEnv'
-export const LocalScope = '<local>'
+export const LocalScope = 'local'
 
 /**
  * used to represent usual R scopes
@@ -62,6 +67,7 @@ export interface DataflowGraphDefinedByEdge extends DataflowGraphEdge {
 export interface DataflowGraphNodeInfo extends MergeableRecord {
   name:              string
   definedAtPosition: false | DataflowScopeName
+  environment:       REnvironmentInformation
   /** When is usually `always`, yet global/local assignments in ifs, loops, or function definitions do not have to happen. They are marked with 'maybe'. */
   when:              DataflowGraphEdgeAttribute
   edges:             DataflowGraphEdge[]
@@ -104,17 +110,20 @@ export class DataflowGraph {
    *
    * @param id - the id of the node
    * @param name - the name of the node
+   * @param environment - the environment in which the node is defined/used
    * @param definedAtPosition - if false, the node is marked as `used`, otherwise, if you give the scope, it will be marked as `defined` within the given scope
    * @param when - is the node active in all program paths or only in potentially in some
    */
-  public addNode(id: NodeId, name: string, definedAtPosition: false | DataflowScopeName = false, when: DataflowGraphEdgeAttribute = 'always'): this {
+  public addNode(id: NodeId, name: string, environment: REnvironmentInformation, definedAtPosition: false | DataflowScopeName = false, when: DataflowGraphEdgeAttribute = 'always'): this {
     const oldNode = this.graph.get(id)
     if(oldNode !== undefined) {
       guard(oldNode.name === name, 'node names must match for the same id if added')
       return this
     }
+    dataflowLogger.trace(`adding node ${id} with name ${name}, when ${when}, def ${JSON.stringify(definedAtPosition)}, and environment ${JSON.stringify(environment)} to graph`)
     this.graph.set(id, {
       name,
+      environment,
       definedAtPosition,
       when,
       edges: []
@@ -140,6 +149,11 @@ export class DataflowGraph {
   public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute, promote= false): this {
     const fromId = typeof from === 'object' ? from.nodeId : from
     const toId = typeof to === 'object' ? to.nodeId : to
+
+    if(fromId === toId) {
+      log.trace(`ignoring self-edge from ${fromId} to ${toId}`)
+      return this
+    }
 
     // sort (on id so that sorting is the same, independent of the attribute)
     if(type === 'same-read-read' || type === 'same-def-def') {
@@ -167,6 +181,7 @@ export class DataflowGraph {
     }
     // TODO: make this more performant
     if(fromInfo.edges.find(e => e.target === toId && e.type === type && e.attribute === attribute) === undefined) {
+      dataflowLogger.trace(`adding edge from ${fromId} to ${toId} with type ${type} and attribute ${attribute} to graph`)
       fromInfo.edges.push(edge)
     }
     return this
@@ -201,17 +216,20 @@ export class DataflowGraph {
   // TODO: diff function to get more information?
   public equals(other: DataflowGraph): boolean {
     if(this.graph.size !== other.graph.size) {
+      dataflowLogger.warn(`graph size does not match: ${this.graph.size} vs ${other.graph.size}`)
       return false
     }
     for(const [id, info] of this.graph) {
       const otherInfo = other.graph.get(id)
-      if(otherInfo === undefined || info.name !== otherInfo.name || info.definedAtPosition !== otherInfo.definedAtPosition || info.when !== otherInfo.when || info.edges.length !== otherInfo.edges.length) {
+      if(otherInfo === undefined || info.name !== otherInfo.name || info.definedAtPosition !== otherInfo.definedAtPosition || info.when !== otherInfo.when || info.edges.length !== otherInfo.edges.length || !environmentsEqual(info.environment, otherInfo.environment)) {
+        dataflowLogger.warn(`node ${id} does not match (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
         return false
       }
       // TODO: assuming that all edges are unique (which should be ensured by constructed)
       for(const edge of info.edges) {
         // TODO: improve finding edges
         if(otherInfo.edges.find(e => e.target === edge.target && e.type === edge.type && e.attribute === edge.attribute) === undefined) {
+          dataflowLogger.warn(`edge ${id} -> ${edge.target} does not match any of (${JSON.stringify(otherInfo.edges)})`)
           return false
         }
       }
@@ -224,10 +242,12 @@ export class DataflowGraph {
 function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeInfo): DataflowGraphNodeInfo {
   guard(current.name === next.name, 'nodes to be joined for the same id must have the same name')
   guard(current.definedAtPosition === next.definedAtPosition, 'nodes to be joined for the same id must have the same definedAtPosition')
+  guard(current.environment === next.environment, 'nodes to be joined for the same id must have the same environment')
   return {
     name:              current.name,
     definedAtPosition: current.definedAtPosition,
     when:              current.when,
+    environment:       current.environment,
     // TODO: join edges
     edges:             [...current.edges, ...next.edges]
   }

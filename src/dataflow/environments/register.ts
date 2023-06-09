@@ -1,4 +1,4 @@
-import { IdentifierDefinition, REnvironmentInformation } from './environment'
+import { IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
 import { DataflowScopeName, GlobalScope, LocalScope } from '../graph'
 
 /**
@@ -7,11 +7,13 @@ import { DataflowScopeName, GlobalScope, LocalScope } from '../graph'
  */
 export function define(definition: IdentifierDefinition, withinScope: DataflowScopeName, environments: REnvironmentInformation): REnvironmentInformation {
   if(withinScope === LocalScope) {
-    environments.local[0].memory.set(definition.name, [definition])
+    environments.current.memory.set(definition.name, [definition])
   } else if (withinScope === GlobalScope) {
-    environments.global.memory.set(definition.name, [definition])
-    // TODO: really overwrite all locals on the way as well?
-    environments.local.forEach(e => e.memory.set(definition.name, [definition]))
+    let current: IEnvironment | undefined = environments.current
+    do {
+      current.memory.set(definition.name, [definition])
+      current = current.parent
+    } while (current !== undefined)
   }
   return environments
 }

@@ -11,6 +11,9 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   const argsEnvironment = args.map(a => a.environments).reduce((a, b) => overwriteEnvironments(a, b), down.environments)
   const bodyEnvironment = body.environments
 
+  const outGraph = body.graph.mergeWith(...args.map(a => a.graph))
+
+
   // TODO: count parameter a=b as assignment!
   const readInArguments = args.flatMap(a => [...a.in, ...a.activeNodes])
   const readInBody = [...body.in, ...body.activeNodes]
@@ -20,7 +23,10 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads (of ids [${remainingRead.map(r => r.nodeId).join(', ')}])`)
 
   const outEnvironment = overwriteEnvironments(argsEnvironment, bodyEnvironment)
-  const outGraph = body.graph.mergeWith(...args.map(a => a.graph))
+  for(const read of remainingRead) {
+    dataflowLogger.trace(`Adding node ${read.nodeId} to function graph in environment ${JSON.stringify(outEnvironment)} `)
+    outGraph.addNode(read.nodeId, read.name, outEnvironment, false, 'maybe')
+  }
   // all nodes in the function graph are maybe as functions do not have to be executed
   for(const [_, node] of outGraph.entries()) {
     node.when = 'maybe'

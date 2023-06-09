@@ -4,7 +4,8 @@
  * @module
  */
 import { NodeId } from '../../r-bridge'
-import { DataflowGraphEdgeAttribute, DataflowScopeName, GlobalScope, LocalScope } from '../graph'
+import { DataflowGraphEdgeAttribute, DataflowScopeName, GlobalScope } from '../graph'
+import { dataflowLogger } from '../index'
 
 /** identifiers are branded to avoid confusion with other string-like types */
 export type Identifier = string & { __brand?: 'identifier' }
@@ -59,6 +60,8 @@ export function makeAllMaybe(references: IdentifierReference[] | undefined): Ide
 
 
 export interface IEnvironment {
+  /** unique and internally generated identifier -- will not be used for comparison but assists debugging for tracking identities */
+  readonly id:   string
   readonly name: string
   /** Lexical parent of the environment, if any (can be manipulated by R code) */
   parent?:       IEnvironment
@@ -70,14 +73,18 @@ export interface IEnvironment {
   memory:        Map<Identifier, IdentifierDefinition[]>
 }
 
+let environmentIdCounter = 0
+
 export class Environment implements IEnvironment {
   readonly name: string
+  readonly id:   string = `${environmentIdCounter++}`
   parent?:       IEnvironment
   memory:        Map<Identifier, IdentifierDefinition[]>
 
-  constructor(name: string) {
+  constructor(name: string, parent?: IEnvironment) {
     this.name   = name
-    this.memory    = new Map()
+    this.parent = parent
+    this.memory = new Map()
   }
 }
 
@@ -89,9 +96,10 @@ export class Environment implements IEnvironment {
  * One example would be maps holding a potential list of all definitions of a variable, if we do not know the execution path (like with `if(x) A else B`).
  */
 export interface REnvironmentInformation {
-  readonly global: IEnvironment
-  /** Stack of local environments, the first element is the top of the stack, new elements will be pushed to the front. */
-  readonly local:  IEnvironment[]
+  /**  The currently active environment (the stack is represented by the currently active {@link IEnvironment#parent}). Environments are maintained within the dataflow graph. */
+  readonly current: IEnvironment
+  /** nesting level of the environment, will be `0` for the global/root environment */
+  readonly level:   number
 }
 
 export function initializeCleanEnvironments(): REnvironmentInformation {
@@ -101,7 +109,47 @@ export function initializeCleanEnvironments(): REnvironmentInformation {
   // .Platform and .Machine
   // TODO: attach namespace to bind etc.
   return {
-    global: new Environment(GlobalScope),
-    local:  [new Environment(LocalScope)],
+    current: new Environment(GlobalScope),
+    level:   0
   }
+}
+
+
+export function environmentEqual(a: IEnvironment | undefined, b: IEnvironment | undefined): boolean {
+  if(a === undefined || b === undefined) {
+    dataflowLogger.warn(`Comparing undefined environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
+    return a === b
+  }
+  if(a.name !== b.name || a.memory.size !== b.memory.size) {
+    dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)} due to different names or sizes (${JSON.stringify([...a.memory.entries()])} vs. ${JSON.stringify([...b.memory.entries()])})`)
+    return false
+  }
+  for(const [key, value] of a.memory) {
+    const value2 = b.memory.get(key)
+    if(value2 === undefined || value.length !== value2.length) {
+      return false
+    }
+
+    for(let i = 0; i < value.length; ++i) {
+      const aval = value[i]
+      const bval = value2[i]
+      if(aval.name !== bval.name || aval.nodeId !== bval.nodeId || aval.scope !== bval.scope || aval.used !== bval.used || aval.definedAt !== bval.definedAt || aval.kind !== bval.kind) {
+        dataflowLogger.warn(`Different definitions ${JSON.stringify(aval)} and ${JSON.stringify(bval)} within environments`)
+        return false
+      }
+    }
+  }
+  return environmentEqual(a.parent, b.parent)
+}
+
+export function environmentsEqual(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined): boolean {
+  if(a === undefined || b === undefined) {
+    dataflowLogger.warn(`Comparing undefined environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
+    return a === b
+  }
+  if(!environmentEqual(a.current, b.current)) {
+    dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
+    return false
+  }
+  return true
 }

@@ -1,16 +1,15 @@
 import { guard } from '../../util/assert'
 import { REnvironmentInformation, IEnvironment } from './environment'
 
-function overwriteIEnvironmentWith(base: IEnvironment, next: IEnvironment): IEnvironment {
+function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined): IEnvironment {
+  guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined')
   guard(base.name === next.name, 'cannot overwrite environments with different names')
-  const map = new Map(base.memory)
+  const map = base.memory
   for (const [key, value] of next.memory) {
     map.set(key, value)
   }
-  return {
-    name:   base.name,
-    memory: map
-  }
+  base.parent = base.parent === undefined ? undefined : overwriteIEnvironmentWith(base.parent, next.parent)
+  return base
 }
 
 // TODO if we have something like x && (y <- 13) we still have to track the y assignment as maybe... or?
@@ -21,6 +20,8 @@ export function overwriteEnvironments(base: undefined, next: undefined): undefin
 export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined
 /**
  * Assumes, that all definitions within next replace those within base (given the same name).
+ * <p>
+ * Environments will be handled in-place to keep shared environments
  */
 export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
   if(base === undefined) {
@@ -28,10 +29,10 @@ export function overwriteEnvironments(base: REnvironmentInformation | undefined,
   } else if(next === undefined) {
     return base
   }
-  guard(next.local.length === base.local.length, `cannot overwrite environments with different local scopes, base ${base.local.length} vs. next ${next.local.length}. This should not happen.`)
+  guard(next.level === base.level, `cannot overwrite environments with differently nested local scopes, base ${base.level} vs. next ${next.level}. This should not happen.`)
 
   return {
-    global: overwriteIEnvironmentWith(base.global, next.global),
-    local:  next.local.map((env, index) => overwriteIEnvironmentWith(base.local[index], env))
+    current: overwriteIEnvironmentWith(base.current, next.current),
+    level:   base.level
   }
 }

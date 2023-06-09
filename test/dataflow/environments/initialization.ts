@@ -1,21 +1,20 @@
-import { GlobalScope, initializeCleanEnvironments, LocalScope } from '../../../src/dataflow'
+import { Environment, GlobalScope, initializeCleanEnvironments } from '../../../src/dataflow'
 import { expect } from 'chai'
 
 describe('Initialization', () => {
   it('Clean creation should have no info', () => {
     const clean = initializeCleanEnvironments()
-    expect(clean.global, 'there should be a new global environment').to.be.not.undefined
-    expect(clean.global.memory, 'the global environment should be empty').to.have.length(0)
-    expect(clean.global.name, 'the global environment must have the correct name').to.be.equal(GlobalScope)
-    expect(clean.local, 'there should be on e local environment').to.have.length(1)
-    expect(clean.local[0].memory, 'the default local environment should be empty').to.have.length(0)
-    expect(clean.local[0].name, 'the default local environment must have the correct name').to.be.equal(LocalScope)
+    expect(clean.current,'there should be a current environment').to.be.not.undefined
+    expect(clean.current.memory, 'the current environment should be empty').to.have.length(0)
+    expect(clean.current.name, 'the current environment must have the correct scope name').to.be.equal(GlobalScope)
+    expect(clean.level, 'the level of the clean environment is predefined as 0').to.be.equal(0)
   })
   it('Clean creation should create independent new environments', () => {
     const clean = initializeCleanEnvironments()
-    clean.local.push({ name: 'test', memory: new Map() })
+    clean.current.parent = new Environment('test')
+
     const second = initializeCleanEnvironments()
-    expect(second.local, 'the new one should be independent').to.have.length(1)
-    expect(clean.local, 'the old one should still have the additions').to.have.length(2)
+    expect(second.current.parent, 'the new one should not have a parent ').to.be.undefined
+    expect(clean.current.parent, 'the old one should still have the parent').to.be.not.undefined
   })
 })

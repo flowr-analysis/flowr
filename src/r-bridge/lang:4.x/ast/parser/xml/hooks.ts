@@ -15,13 +15,13 @@ import {
   RSymbol,
   RLogical,
   BinaryOperatorFlavor,
-  UnaryOperatorFlavor, RBreak, RNext, RExpressionList
+  RArgument,
+  RFunctionDefinition,
+  UnaryOperatorFlavor, RBreak, RNext
 } from '../../model'
 import { RNa } from '../../../values'
 import { ParserData } from './data'
 import { DeepReadonly, DeepRequired } from 'ts-essentials'
-import { RFunctionDefinition } from '../../model/nodes/RFunctionDefinition'
-import { RArgument } from '../../model/nodes/RArgument'
 
 /** Denotes that if you return `undefined`, the parser will automatically take the original arguments (unchanged) */
 type AutoIfOmit<T> = T | undefined
@@ -140,7 +140,7 @@ export interface XmlParserHooks {
     }
     /** {@link tryToParseArgument} */
     onArgument: {
-      /** triggered if {@link tryToParseArgument} could not detect a argument, you probably still want to return `undefined` */
+      /** triggered if {@link tryToParseArgument} could not detect an argument, you probably still want to return `undefined` */
       unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RArgument | undefined>
       before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
       after(data: ParserData, result: RArgument): AutoIfOmit<RArgument>

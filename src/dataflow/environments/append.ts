@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert'
-import { REnvironmentInformation, IEnvironment, NamedEnvironments, IdentifierDefinition } from './environment'
+import { REnvironmentInformation, IEnvironment, IdentifierDefinition } from './environment'
 
 function uniqueMergeValues(old: IdentifierDefinition[], value: IdentifierDefinition[]): IdentifierDefinition[] {
   // TODO: improve this to ensure there are no duplicates
@@ -12,8 +12,8 @@ function uniqueMergeValues(old: IdentifierDefinition[], value: IdentifierDefinit
 
 function appendIEnvironmentWith(base: IEnvironment, next: IEnvironment): IEnvironment {
   guard(base.name === next.name, 'cannot overwrite environments with different names')
-  const map = new Map(base.map)
-  for (const [key, value] of next.map) {
+  const map = new Map(base.memory)
+  for (const [key, value] of next.memory) {
     const old = map.get(key)
     if(old) {
       map.set(key, uniqueMergeValues(old, value))
@@ -22,23 +22,11 @@ function appendIEnvironmentWith(base: IEnvironment, next: IEnvironment): IEnviro
     }
   }
   return {
-    name: base.name,
-    map
+    name:   base.name,
+    memory: map
   }
 }
 
-function appendNamedEnvironments(base: NamedEnvironments, next: NamedEnvironments): NamedEnvironments {
-  const map = new Map(base)
-  for (const [key, value] of next) {
-    const old = map.get(key)
-    if(old) {
-      map.set(key, appendIEnvironmentWith(old, value))
-    } else {
-      map.set(key, value)
-    }
-  }
-  return map
-}
 
 // TODO if we have something like x && (y <- 13) we still have to track the y assignment as maybe... or?
 /**
@@ -58,7 +46,6 @@ export function appendEnvironments(base: REnvironmentInformation | undefined, ne
 
   return {
     global: appendIEnvironmentWith(base.global, next.global),
-    local:  next.local.map((env, index) => appendIEnvironmentWith(base.local[index], env)),
-    named:  appendNamedEnvironments(base.named, next.named)
+    local:  next.local.map((env, index) => appendIEnvironmentWith(base.local[index], env))
   }
 }

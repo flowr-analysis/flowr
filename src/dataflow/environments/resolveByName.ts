@@ -1,4 +1,4 @@
-import { REnvironmentInformation, Identifier, IdentifierReference, IdentifierDefinition } from './environment'
+import { REnvironmentInformation, Identifier, IdentifierDefinition } from './environment'
 import { DataflowScopeName, GlobalScope, LocalScope } from '../graph'
 import { dataflowLogger } from '../index'
 
@@ -18,11 +18,8 @@ export function resolveByName(name: Identifier, withinScope: DataflowScopeName, 
     return resolveLocal(name, withinScope, environments)
   } else if(withinScope === GlobalScope) {
     return resolveGlobal(name, withinScope, environments)
-  } else {
-    const namedScope = environments.named.get(withinScope)
-    dataflowLogger.trace(`Resolving identifier ${name} in named scope ${withinScope} (${namedScope === undefined ? 'not found' : 'found'})`)
-    return namedScope?.map.get(name)
   }
+  return undefined
 }
 
 function resolveLocal(name: Identifier, withinScope: DataflowScopeName, environments: REnvironmentInformation) {
@@ -30,16 +27,16 @@ function resolveLocal(name: Identifier, withinScope: DataflowScopeName, environm
 
   const locals = environments.local
   for (const element of locals) {
-    const definition = element.map.get(name)
+    const definition = element.memory.get(name)
     if(definition !== undefined) {
       return definition
     }
   }
-  dataflowLogger.trace(`Unable to find identifier ${name} in local stack (present: [${locals.flatMap(e => [...e.map.keys()]).join(",")}]), falling back to global scope`)
-  return environments.global.map.get(name)
+  dataflowLogger.trace(`Unable to find identifier ${name} in local stack (present: [${locals.flatMap(e => [...e.memory.keys()]).join(",")}]), falling back to global scope`)
+  return environments.global.memory.get(name)
 }
 
 function resolveGlobal(name: string, withinScope: string, environments: REnvironmentInformation) {
   dataflowLogger.trace(`Resolving global identifier ${name} (scope name: ${withinScope})`)
-  return environments.global.map.get(name)
+  return environments.global.memory.get(name)
 }

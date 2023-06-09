@@ -6,8 +6,7 @@ export function pushLocalEnvironment(base: REnvironmentInformation): REnvironmen
   const local = new Environment(LocalScope)
   return {
     global: base.global,
-    local:  [local, ...base.local],
-    named:  base.named
+    local:  [local, ...base.local]
   }
 }
 
@@ -16,7 +15,6 @@ export function popLocalEnvironment(base: REnvironmentInformation): REnvironment
   base.local.shift()
   return {
     global: base.global,
-    local:  base.local,
-    named:  base.named
+    local:  base.local
   }
 }

@@ -10,6 +10,7 @@ import { BiMap } from '../util/bimap'
 import { MergeableRecord } from '../util/objects'
 import { log } from '../util/log'
 import { dataflowLogger } from './index'
+import { DataflowInformation } from './internal/info'
 
 /** used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
@@ -63,6 +64,7 @@ export interface DataflowGraphDefinedByEdge extends DataflowGraphEdge {
 
 // TODO: export type DataflowGraphNodeType = 'variable' | 'processing' | 'assignment' | 'if-then-else' | 'loop' | 'function'
 
+export type DataflowFunctionFlowInformation = Omit<DataflowInformation<unknown>, 'ast'>
 
 export interface DataflowGraphNodeInfo extends MergeableRecord {
   name:              string
@@ -71,6 +73,8 @@ export interface DataflowGraphNodeInfo extends MergeableRecord {
   /** When is usually `always`, yet global/local assignments in ifs, loops, or function definitions do not have to happen. They are marked with 'maybe'. */
   when:              DataflowGraphEdgeAttribute
   edges:             DataflowGraphEdge[]
+  /** functions will emit a subgraph for their content which is then used as a template on each call of the function */
+  subflow?:          DataflowFunctionFlowInformation
 }
 
 type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'used'>
@@ -113,20 +117,22 @@ export class DataflowGraph {
    * @param environment - the environment in which the node is defined/used
    * @param definedAtPosition - if false, the node is marked as `used`, otherwise, if you give the scope, it will be marked as `defined` within the given scope
    * @param when - is the node active in all program paths or only in potentially in some
+   * @param flow - if the node is (for example) a function, it can have a subgraph which is used as a template for each call
    */
-  public addNode(id: NodeId, name: string, environment: REnvironmentInformation, definedAtPosition: false | DataflowScopeName = false, when: DataflowGraphEdgeAttribute = 'always'): this {
+  public addNode(id: NodeId, name: string, environment: REnvironmentInformation, definedAtPosition: false | DataflowScopeName = false, when: DataflowGraphEdgeAttribute = 'always', flow?: DataflowFunctionFlowInformation): this {
     const oldNode = this.graph.get(id)
     if(oldNode !== undefined) {
       guard(oldNode.name === name, 'node names must match for the same id if added')
       return this
     }
-    dataflowLogger.trace(`adding node ${id} with name ${name}, when ${when}, def ${JSON.stringify(definedAtPosition)}, and environment ${JSON.stringify(environment)} to graph`)
+    dataflowLogger.trace(`adding node ${id} with name ${name}, when ${when}, def ${JSON.stringify(definedAtPosition)}, and environment ${JSON.stringify(environment)} to graph (subgraph: ${JSON.stringify(flow)})`)
     this.graph.set(id, {
       name,
       environment,
       definedAtPosition,
       when,
-      edges: []
+      edges:   [],
+      subflow: flow
     })
     return this
   }
@@ -224,6 +230,22 @@ export class DataflowGraph {
       if(otherInfo === undefined || info.name !== otherInfo.name || info.definedAtPosition !== otherInfo.definedAtPosition || info.when !== otherInfo.when || info.edges.length !== otherInfo.edges.length || !environmentsEqual(info.environment, otherInfo.environment)) {
         dataflowLogger.warn(`node ${id} does not match (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
         return false
+      }
+      if(info.subflow !== undefined || otherInfo.subflow !== undefined) {
+        if(info.subflow === undefined || otherInfo.subflow === undefined) {
+          dataflowLogger.warn(`node ${id} does not match on subflow (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
+          return false
+        }
+        // TODO: improve : info.subflow.out !== otherInfo.subflow.out || info.subflow.in !== otherInfo.subflow.in || info.subflow.activeNodes !== otherInfo.subflow.activeNodes ||
+        if(info.subflow.scope !== otherInfo.subflow.scope || !environmentsEqual(info.subflow.environments, otherInfo.subflow.environments)) {
+          dataflowLogger.warn(`node ${id} does not match on subflow (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
+          return false
+        }
+        if(!info.subflow.graph.equals(otherInfo.subflow.graph)) {
+          dataflowLogger.warn(`node ${id} does not match on subflow graph (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
+          return false
+        }
+
       }
       // TODO: assuming that all edges are unique (which should be ensured by constructed)
       for(const edge of info.edges) {

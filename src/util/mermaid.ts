@@ -1,6 +1,12 @@
-import { NoInfo } from '../r-bridge'
+import { NodeId, NoInfo } from '../r-bridge'
 import { SourceRange } from './range'
-import { DataflowGraph, DataflowGraphEdgeAttribute, DataflowMap, DataflowScopeName } from '../dataflow'
+import {
+  DataflowFunctionFlowInformation,
+  DataflowGraph,
+  DataflowGraphEdgeAttribute,
+  DataflowMap,
+  DataflowScopeName
+} from '../dataflow'
 
 export function formatRange(range: SourceRange | undefined): string {
   if (range === undefined) {
@@ -18,6 +24,20 @@ function definedAtPositionToMermaid(definedAtPosition: DataflowScopeName | false
   return `, *${definedAtPosition.replace('<', '#lt;')}${whenText}*`
 }
 
+function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformation | undefined, dataflowIdMap: DataflowMap<NoInfo> | undefined, lines: string[], idPrefix = ''): void {
+  if(subflow === undefined) {
+    return
+  }
+  const subflowId = `${idPrefix}flow-${nodeId}`
+  lines.push(`subgraph "${subflowId}" [function ${nodeId}]\n`)
+  lines.push(graphToMermaid(subflow.graph, dataflowIdMap, '', idPrefix))
+  for(const out of [...subflow.in, ...subflow.out, ...subflow.activeNodes]) {
+    lines.push(`style ${idPrefix}${out.nodeId} fill:#94C2FF,stroke:#4CB0DB\n `)
+  }
+  lines.push('end')
+  lines.push(`${idPrefix}${nodeId} ---|function| ${subflowId}\n`)
+}
+
 // TODO: sub-graphs for functions etc.?
 export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix = 'flowchart TD', idPrefix = ''): string {
   const lines = [prefix]
@@ -31,6 +51,7 @@ export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<
       const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
       lines.push(`    ${idPrefix}${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${edge.target}`)
     }
+    subflowToMermaid(id, info.subflow, dataflowIdMap, lines, idPrefix)
   }
   return lines.join('\n')
 }

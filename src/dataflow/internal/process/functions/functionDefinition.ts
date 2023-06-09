@@ -2,7 +2,7 @@ import { DataflowInformation } from '../../info'
 import { DataflowProcessorDown } from '../../../processor'
 import { overwriteEnvironments, popLocalEnvironment } from '../../../environments'
 import { linkInputs } from '../../linker'
-import { dataflowLogger } from '../../../index'
+import { DataflowGraph, dataflowLogger } from '../../../index'
 import { ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
 
 export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, args: DataflowInformation<OtherInfo>[], body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
@@ -11,8 +11,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   const argsEnvironment = args.map(a => a.environments).reduce((a, b) => overwriteEnvironments(a, b), down.environments)
   const bodyEnvironment = body.environments
 
-  const outGraph = body.graph.mergeWith(...args.map(a => a.graph))
-
+  const subgraph = body.graph.mergeWith(...args.map(a => a.graph))
 
   // TODO: count parameter a=b as assignment!
   const readInArguments = args.flatMap(a => [...a.in, ...a.activeNodes])
@@ -25,20 +24,37 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   const outEnvironment = overwriteEnvironments(argsEnvironment, bodyEnvironment)
   for(const read of remainingRead) {
     dataflowLogger.trace(`Adding node ${read.nodeId} to function graph in environment ${JSON.stringify(outEnvironment)} `)
-    outGraph.addNode(read.nodeId, read.name, outEnvironment, false, 'maybe')
+    subgraph.addNode(read.nodeId, read.name, outEnvironment, false, 'maybe')
   }
+
+
   // all nodes in the function graph are maybe as functions do not have to be executed
-  for(const [_, node] of outGraph.entries()) {
+  /* for(const [_, node] of subgraph.entries()) {
     node.when = 'maybe'
+  } */
+
+  const flow = {
+    activeNodes:  [],
+    in:           remainingRead,
+    out:          [ /* TODO: out */ ],
+    graph:        subgraph,
+    environments: outEnvironment,
+    ast:          down.ast,
+    scope:        down.activeScope
   }
+
+  // TODO: exit points?
+  const outEnvironments = popLocalEnvironment(outEnvironment)
+  const graph = new DataflowGraph()
+  graph.addNode(functionDefinition.info.id, functionDefinition.info.id, outEnvironments, down.activeScope, 'always', flow)
   // TODO: deal with function info
   // TODO: rest
   return {
     activeNodes:  [],
     in:           remainingRead,
-    out:          [] /* nothing escapes a function definition */,
-    graph:        outGraph,
-    environments: popLocalEnvironment(outEnvironment),
+    out:          [] /* nothing escapes a function definition, but the function itself */,
+    graph,
+    environments: outEnvironments,
     ast:          down.ast,
     scope:        down.activeScope
   }

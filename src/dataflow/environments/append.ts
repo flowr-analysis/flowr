@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert'
-import { REnvironmentInformation, IEnvironment, IdentifierDefinition } from './environment'
+import { REnvironmentInformation, IEnvironment, IdentifierDefinition, Environment } from './environment'
 
 function uniqueMergeValues(old: IdentifierDefinition[], value: IdentifierDefinition[]): IdentifierDefinition[] {
   // TODO: improve this to ensure there are no duplicates
@@ -13,7 +13,7 @@ function uniqueMergeValues(old: IdentifierDefinition[], value: IdentifierDefinit
 function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined): IEnvironment {
   guard(base !== undefined && next !== undefined, 'can not append environments with undefined')
   guard(base.name === next.name, 'cannot overwrite environments with different names')
-  const map = base.memory
+  const map = new Map(base.memory)
   for (const [key, value] of next.memory) {
     const old = map.get(key)
     if(old) {
@@ -23,17 +23,17 @@ function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironme
     }
   }
 
-  base.parent = base.parent === undefined ? undefined : appendIEnvironmentWith(base.parent, next.parent)
+  const parent = base.parent === undefined ? undefined : appendIEnvironmentWith(base.parent, next.parent)
 
-  return base
+  const out = new Environment(base.name, parent)
+  out.memory = map
+  return out
 }
 
 
 // TODO if we have something like x && (y <- 13) we still have to track the y assignment as maybe... or?
 /**
  * Adds all writes of `next` to `base` (i.e., the operations of `next` *might* happen).
- * <p>
- * Environments will be handled in-place to keep shared environments
  */
 export function appendEnvironments(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation
 export function appendEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation

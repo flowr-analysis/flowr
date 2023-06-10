@@ -226,7 +226,6 @@ describe('Functions', withShell(shell => {
     // TODO: other tests for scoping within parameters
   })
   describe('Late binding of environment variables', () => {
-
     assertDataflow(`define after function definition`, shell, `function() { x }; x <- 3`,
       new DataflowGraph()
         .addNode("2", "x", initializeCleanEnvironments(), LocalScope)
@@ -239,14 +238,26 @@ describe('Functions', withShell(shell => {
             .addNode("0", "x", pushLocalEnvironment(initializeCleanEnvironments()), false, 'always'),
           environments: pushLocalEnvironment(initializeCleanEnvironments())
         })
-      /*      new DataflowGraph()
-        .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
-        .addNode("3", "x", initializeCleanEnvironments(), false, 'maybe')
-        .addEdge("3", "0", "read", "maybe")*/
     )
-
   })
 
+  /* TODO: wrong highlighting by mermaid, make it work with a() call at the end
+  describe('Nested Function Definitions', () => {
+    assertDataflow(`define after function definition`, shell, `a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a`,
+      new DataflowGraph()
+        .addNode("2", "x", initializeCleanEnvironments(), LocalScope)
+        .addNode("1", "1", initializeCleanEnvironments(), LocalScope, 'always', {
+          out:         [],
+          activeNodes: [],
+          in:          [{ nodeId: '0', scope: LocalScope, name: 'x', used: 'always' }],
+          scope:       LocalScope,
+          graph:       new DataflowGraph()
+            .addNode("0", "x", pushLocalEnvironment(initializeCleanEnvironments()), false, 'always'),
+          environments: pushLocalEnvironment(initializeCleanEnvironments())
+        })
+    )
+ })
+  */
   // TODO: named parameters
   // TODO: tests for nested functions
 }))

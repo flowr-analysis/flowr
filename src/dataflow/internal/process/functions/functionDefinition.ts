@@ -49,9 +49,9 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   // TODO: deal with function info
   // TODO: rest
   return {
-    activeNodes:  [],
+    activeNodes:  [] /* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: down.activeScope, used: 'always', name: functionDefinition.info.id as string } */,
     in:           [] /* TODO: they must be bound on call */,
-    out:          [] /* nothing escapes a function definition, but the function itself */,
+    out:          [],
     graph,
     /* TODO: have args. the potential to influence their surrounding on def? */
     environments: popLocalEnvironment(down.environments),

@@ -23,8 +23,15 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
   // deal with special cases based on the source node and the determined read targets
   const impactReadTargets = determineImpactOfSource(swap ? op.lhs : op.rhs, readTargets)
 
+  const isFunctionSide = swap ? op.lhs : op.rhs
+  const isFunction = isFunctionSide.type === Type.Function
+
   for (const write of writeTargets) {
     setDefinitionOfNode(nextGraph, write)
+    // TODO: this can be improved easily
+    if (isFunction) {
+      nextGraph.addEdge(write, isFunctionSide.info.id, 'defined-by', 'always', true)
+    }
     for(const read of impactReadTargets) {
       nextGraph.addEdge(write, read, 'defined-by', undefined, true)
     }
@@ -61,7 +68,7 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
     case '<<-':
       [target, source, global] = [lhs, rhs, true]
       break
-    case '=': // TODO: special within function calls
+    case '=':
       [target, source] = [lhs, rhs]
       break
     case '->':
@@ -76,13 +83,14 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
   return { source, target, global, swap }
 }
 
-function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation<OtherInfo>, global: boolean, down: DataflowProcessorDown<OtherInfo>): IdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation<OtherInfo>, global: boolean, down: DataflowProcessorDown<OtherInfo>, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
   const writeNodes: IdentifierDefinition[] = []
+  const isFunctionDef = functionTypeCheck.type === Type.Function
   for(const active of target.activeNodes) {
     writeNodes.push({
       ...active,
       scope:     global ? GlobalScope : down.activeScope,
-      kind:      /* TODO: deal with functions */ 'variable',
+      kind:      isFunctionDef ? 'function' : 'variable',
       definedAt: op.info.id
     })
   }
@@ -95,7 +103,10 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<
   // what is written/read additionally is based on lhs/rhs - assignments read written variables as well
   const read = [...lhs.in, ...rhs.in]
   const { source, target, global, swap } = identifySourceAndTarget(op, lhs, rhs)
-  const writeNodes = produceWrittenNodes(op, target, global, down)
+  // TODO: improve check for function definition
+  const funcTypeCheck = swap ? op.lhs : op.rhs
+
+  const writeNodes = produceWrittenNodes(op, target, global, down, funcTypeCheck)
 
   if(writeNodes.length !== 1) {
     log.warn(`Unexpected write number in assignment ${JSON.stringify(op)}: ${JSON.stringify(writeNodes)}`)

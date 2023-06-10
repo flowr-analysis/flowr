@@ -5,7 +5,7 @@ import {
   DataflowGraph,
   DataflowGraphEdgeAttribute,
   DataflowMap,
-  DataflowScopeName
+  DataflowScopeName, IEnvironment
 } from '../dataflow'
 
 export function formatRange(range: SourceRange | undefined): string {
@@ -24,6 +24,25 @@ function definedAtPositionToMermaid(definedAtPosition: DataflowScopeName | false
   return `, *${definedAtPosition.replace('<', '#lt;')}${whenText}*`
 }
 
+function stylesForDefinitionKindsInEnvironment(subflow: DataflowFunctionFlowInformation, lines: string[], idPrefix: string) {
+  // TODO: highlight seems to be often wrong
+  let current: IEnvironment | undefined = subflow.environments.current
+  while (current !== undefined) {
+    for (const definitions of subflow.environments.current.memory.values()) {
+      for (const definition of definitions) {
+        if (definition.kind === 'argument') {
+          // parameters
+          lines.push(`style ${idPrefix}${definition.nodeId} fill:#CDCDCD,stroke:#242424\n `)
+        } else if (definition.kind === 'function') {
+          // functions
+          lines.push(`style ${idPrefix}${definition.nodeId} fill:#FFF,stroke:#9370DB\n `)
+        }
+      }
+    }
+    current = current.parent
+  }
+}
+
 function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformation | undefined, dataflowIdMap: DataflowMap<NoInfo> | undefined, lines: string[], idPrefix = ''): void {
   if(subflow === undefined) {
     return
@@ -35,14 +54,7 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
     // in/out/active
     lines.push(`style ${idPrefix}${out.nodeId} fill:#94C2FF,stroke:#4CB0DB\n `)
   }
-  for(const mayArguments of subflow.environments.current.memory.values()) {
-    for(const mayArgument of mayArguments) {
-      if(mayArgument.kind === 'argument') {
-        // parameters
-        lines.push(`style ${idPrefix}${mayArgument.nodeId} fill:#CDCDCD,stroke:#242424\n `)
-      }
-    }
-  }
+  stylesForDefinitionKindsInEnvironment(subflow, lines, idPrefix)
   lines.push('end')
   lines.push(`${idPrefix}${nodeId} ---|function| ${subflowId}\n`)
 }

@@ -1,5 +1,5 @@
 import { DataflowGraph, DataflowScopeName } from '../graph'
-import { environmentsEqual, IdentifierReference, REnvironmentInformation, resolveByName } from '../environments'
+import { IdentifierReference, REnvironmentInformation, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { log } from '../../util/log'
@@ -30,15 +30,11 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
   }
 }
 
-export function setDefinitionOfNode(graph: DataflowGraph, reference: IdentifierReference, environments: REnvironmentInformation): void {
+export function setDefinitionOfNode(graph: DataflowGraph, reference: IdentifierReference): void {
   const node = graph.get(reference.nodeId)
   guard(node !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set definition scope to ${reference.scope}`)
   guard(node.definedAtPosition === false || (node.definedAtPosition === reference.scope && node.when === reference.used), () => `node must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
-  // guard(node.environment === undefined || environmentsEqual(node.environment, environments), () => `node must not have an environment set for ${JSON.stringify(reference)} (is: ${JSON.stringify(node.environment)}, vs.: ${JSON.stringify(environments)}))})`)
   node.definedAtPosition = reference.scope
-  // TODO: overwrite correct?
-  node.environment = environments
-
 }
 
 /**

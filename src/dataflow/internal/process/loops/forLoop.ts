@@ -34,7 +34,7 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
     }
     // now, we remove the name from the id shares as they are no longer needed
     nameIdShares.delete(name)
-    setDefinitionOfNode(nextGraph, write, down.environments)
+    setDefinitionOfNode(nextGraph, write)
   }
 
   const outgoing = [...variable.out, ...writtenVariable, ...body.out]

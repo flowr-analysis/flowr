@@ -18,7 +18,7 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
   }))
   for(const writtenNode of writtenNodes) {
     log.trace(`argument ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' no default value'}`)
-    setDefinitionOfNode(graph, writtenNode, down.environments)
+    setDefinitionOfNode(graph, writtenNode)
     define(writtenNode, LocalScope, down.environments)
   }
 

@@ -1,5 +1,5 @@
 import { LocalScope } from '../graph'
-import { Environment, IEnvironment, REnvironmentInformation } from './environment'
+import { Environment, REnvironmentInformation } from './environment'
 import { guard } from '../../util/assert'
 
 /** Add a new local environment scope to the stack */

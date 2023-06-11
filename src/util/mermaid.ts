@@ -5,7 +5,7 @@ import {
   DataflowGraph,
   DataflowGraphEdgeAttribute,
   DataflowMap,
-  DataflowScopeName, IEnvironment
+  DataflowScopeName
 } from '../dataflow'
 
 export function formatRange(range: SourceRange | undefined): string {
@@ -24,23 +24,8 @@ function definedAtPositionToMermaid(definedAtPosition: DataflowScopeName | false
   return `, *${definedAtPosition.replace('<', '#lt;')}${whenText}*`
 }
 
-function stylesForDefinitionKindsInEnvironment(subflow: DataflowFunctionFlowInformation, lines: string[], idPrefix: string) {
+function stylesForDefinitionKindsInEnvironment(_subflow: DataflowFunctionFlowInformation, _lines: string[], _idPrefix: string) {
   // TODO: highlight seems to be often wrong
-  let current: IEnvironment | undefined = subflow.environments.current
-  while (current !== undefined) {
-    for (const definitions of subflow.environments.current.memory.values()) {
-      for (const definition of definitions) {
-        if (definition.kind === 'argument') {
-          // parameters
-          lines.push(`style ${idPrefix}${definition.nodeId} fill:#CDCDCD,stroke:#242424\n `)
-        } else if (definition.kind === 'function') {
-          // functions
-          lines.push(`style ${idPrefix}${definition.nodeId} fill:#FFF,stroke:#9370DB\n `)
-        }
-      }
-    }
-    current = current.parent
-  }
 }
 
 function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformation | undefined, dataflowIdMap: DataflowMap<NoInfo> | undefined, lines: string[], idPrefix = ''): void {
@@ -48,25 +33,35 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
     return
   }
   const subflowId = `${idPrefix}flow-${nodeId}`
-  lines.push(`subgraph "${subflowId}" [function ${nodeId}]\n`)
-  lines.push(graphToMermaid(subflow.graph, dataflowIdMap, '', idPrefix))
+  lines.push(`\nsubgraph "${subflowId}" [function ${nodeId}]`)
+  lines.push(graphToMermaid(subflow.graph, dataflowIdMap, null, idPrefix))
   for(const out of [...subflow.in, ...subflow.out, ...subflow.activeNodes]) {
     // in/out/active
-    lines.push(`style ${idPrefix}${out.nodeId} fill:#94C2FF,stroke:#4CB0DB\n `)
+    lines.push(`    style ${idPrefix}${out.nodeId} stroke:purple,stroke-width:4px; `)
   }
   stylesForDefinitionKindsInEnvironment(subflow, lines, idPrefix)
   lines.push('end')
-  lines.push(`${idPrefix}${nodeId} ---|function| ${subflowId}\n`)
+  lines.push(`${idPrefix}${nodeId} -.-|function| ${subflowId}\n`)
 }
 
-// TODO: sub-graphs for functions etc.?
-export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix = 'flowchart TD', idPrefix = ''): string {
-  const lines = [prefix]
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function displayEnvReplacer(key: any, value: any): any {
+  if(value instanceof Map) {
+    return [...value]
+  } else {
+    return value
+  }
+}
+
+export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = ''): string {
+  const lines = prefix === null ? [] : [prefix]
   for (const [id, info] of graph.entries()) {
     const def = info.definedAtPosition !== false
     const defText = definedAtPositionToMermaid(info.definedAtPosition, info.when)
     const open = def ? '[' : '(['
     const close = def ? ']' : '])'
+    lines.push(`    %% ${id}: ${JSON.stringify(info.environment, displayEnvReplacer)}`)
     lines.push(`    ${idPrefix}${id}${open}"\`${info.name} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"${close}`)
     for (const edge of info.edges) {
       const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
@@ -85,9 +80,7 @@ export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<
 export function mermaidCodeToUrl(code: string): string {
   const obj = {
     code,
-    mermaid: {
-      'theme': 'default'
-    },
+    mermaid:       {},
     updateEditor:  false,
     autoSync:      true,
     updateDiagram: false

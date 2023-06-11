@@ -133,33 +133,72 @@ describe("Atomic dataflow information", withShell((shell) => {
     }
     describe(`nested assignments`, () => {
       // TODO: dependency between x and y?
+
+      const dfWithYDefined = define(
+        { name: "y", scope: LocalScope, nodeId: "1", used: 'always', definedAt: '3', kind: 'variable' },
+        LocalScope, initializeCleanEnvironments()
+      )
+      const dfWithXYDefined = define(
+        { name: "x", scope: LocalScope, nodeId: "0", used: 'always', definedAt: '4', kind: 'variable' },
+        LocalScope, define(
+          { name: "y", scope: LocalScope, nodeId: "1", used: 'always', definedAt: '3', kind: 'variable' },
+          LocalScope, initializeCleanEnvironments()
+        )
+      )
+
       assertDataflow(`"x <- y <- 1"`, shell,
         "x <- y <- 1",
         new DataflowGraph()
-          .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
-          .addNode("1", "y", initializeCleanEnvironments(), LocalScope)
+          .addNode("0", "x", dfWithXYDefined, LocalScope)
+          .addNode("1", "y", dfWithYDefined, LocalScope)
           .addEdge("0", "1", "defined-by", "always")
       )
+
+      const dfWithXDefined = define(
+        { name: "x", scope: LocalScope, nodeId: "1", used: 'always', definedAt: '2', kind: 'variable' },
+        LocalScope, initializeCleanEnvironments()
+      )
+      const dfWithYXDefined = define(
+        { name: "y", scope: LocalScope, nodeId: "3", used: 'always', definedAt: '4', kind: 'variable' },
+        LocalScope, define(
+          { name: "x", scope: LocalScope, nodeId: "1", used: 'always', definedAt: '2', kind: 'variable' },
+          LocalScope, initializeCleanEnvironments()
+        )
+      )
+
       assertDataflow(`"1 -> x -> y"`, shell,
         "1 -> x -> y",
         new DataflowGraph()
-          .addNode("1", "x", initializeCleanEnvironments(), LocalScope)
-          .addNode("3", "y", initializeCleanEnvironments(), LocalScope)
+          .addNode("1", "x", dfWithXDefined, LocalScope)
+          .addNode("3", "y", dfWithYXDefined, LocalScope)
           .addEdge("3", "1", "defined-by", "always")
       )
       // still by indirection (even though y is overwritten?) TODO: discuss that
+
+      const dfWithYDefinedB = define(
+        { name: "y", scope: LocalScope, nodeId: "2", used: 'always', definedAt: '3', kind: 'variable' },
+        LocalScope, initializeCleanEnvironments()
+      )
+      const dfWithXYDefinedB = define(
+        { name: "x", scope: LocalScope, nodeId: "0", used: 'always', definedAt: '4', kind: 'variable' },
+        LocalScope, define(
+          { name: "y", scope: LocalScope, nodeId: "2", used: 'always', definedAt: '3', kind: 'variable' },
+          LocalScope, initializeCleanEnvironments()
+        )
+      )
       assertDataflow(`"x <- 1 -> y"`, shell,
         "x <- 1 -> y",
         new DataflowGraph()
-          .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
-          .addNode("2", "y", initializeCleanEnvironments(), LocalScope)
+          .addNode("0", "x", dfWithXYDefinedB, LocalScope)
+          .addNode("2", "y", dfWithYDefinedB, LocalScope)
           .addEdge("0", "2", "defined-by", "always")
       )
+
       assertDataflow(`"x <- y <- z"`, shell,
         "x <- y <- z",
         new DataflowGraph()
-          .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
-          .addNode("1", "y", initializeCleanEnvironments(), LocalScope)
+          .addNode("0", "x", dfWithXYDefined, LocalScope)
+          .addNode("1", "y", dfWithYDefined, LocalScope)
           .addNode("2", "z", initializeCleanEnvironments())
           .addEdge("0", "1", "defined-by", "always")
           .addEdge("1", "2", "defined-by", "always")
@@ -179,21 +218,33 @@ describe("Atomic dataflow information", withShell((shell) => {
             for (const wrapper of [(x: string) => x, (x: string) => `{ ${x} }`]) {
               const build = (a: string, b: string) => assignment.swap ? `(${wrapper(b)}) ${assignment.str} ${a}` : `${a} ${assignment.str} ${wrapper(b)}`
 
+              const envsWithRepeatX = define(
+                { name: "x", scope: scope, nodeId: assignment.defId[0], used: 'always', definedAt: '3', kind: 'variable' },
+                scope, initializeCleanEnvironments()
+              )
               const repeatCode = build('x', 'repeat x')
               assertDataflow(`"${repeatCode}"`, shell, repeatCode, new DataflowGraph()
-                .addNode(assignment.defId[0], "x", initializeCleanEnvironments(), scope)
+                .addNode(assignment.defId[0], "x", envsWithRepeatX, scope)
                 .addNode(assignment.readId[0], "x", initializeCleanEnvironments())
               )
 
+              const envsWithWhileX = define(
+                { name: "x", scope: scope, nodeId: assignment.defId[1], used: 'always', definedAt: '4', kind: 'variable' },
+                scope, initializeCleanEnvironments()
+              )
               const whileCode = build('x', 'while (x) 3')
               assertDataflow(`"${whileCode}"`, shell, whileCode, new DataflowGraph()
-                .addNode(assignment.defId[1], "x", initializeCleanEnvironments(), scope)
+                .addNode(assignment.defId[1], "x", envsWithWhileX, scope)
                 .addNode(assignment.readId[1], "x", initializeCleanEnvironments()))
 
+              const envsWithForX = define(
+                { name: "x", scope: scope, nodeId: assignment.defId[2], used: 'always', definedAt: '7', kind: 'variable' },
+                scope, initializeCleanEnvironments()
+              )
               const forCode = build('x', 'for (x in 1:4) 3')
               assertDataflow(`"${forCode}"`, shell, forCode,
                 new DataflowGraph()
-                  .addNode(assignment.defId[2], "x", initializeCleanEnvironments(), scope)
+                  .addNode(assignment.defId[2], "x", envsWithForX, scope)
                   .addNode(assignment.readId[2], "x", initializeCleanEnvironments(), LocalScope /* for variable */)
               )
             }

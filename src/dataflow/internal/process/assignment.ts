@@ -142,6 +142,7 @@ function determineImpactOfSource<OtherInfo>(source: RNode<OtherInfo & ParentInfo
   if(source.type === Type.For || source.type === Type.While || source.type === Type.Repeat) {
     return []
   }
+  // TODO: support assignments only source
 
   // by default, we assume, that all have an impact
   return readTargets

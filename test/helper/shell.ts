@@ -20,7 +20,8 @@ import { produceDataFlowGraph } from '../../src/dataflow'
 let defaultTokenMap: Record<string, string>
 
 // we want the token map only once (to speed up tests)!
-before(async() => {
+before(async function() {
+  this.timeout('15min')
   const shell = new RShell()
   try {
     shell.tryToInjectHomeLibPath()
@@ -101,7 +102,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 
 // TODO: allow more configuration with title, etc.
 export const assertDataflow = (name: string, shell: RShell, input: string, expected: DataflowGraph, startIndexForDeterministicIds = 0): void => {
-  it(name, async function() {
+  it(`${name} (input: ${JSON.stringify(input)})`, async function() {
     const ast = await retrieveAst(shell, input)
     const decoratedAst = decorateAst(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
     // TODO: use both info

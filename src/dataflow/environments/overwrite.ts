@@ -1,29 +1,18 @@
 import { guard } from '../../util/assert'
-import { REnvironmentInformation, IEnvironment, NamedEnvironments } from './environment'
+import { REnvironmentInformation, IEnvironment, Environment } from './environment'
 
-function overwriteIEnvironmentWith(base: IEnvironment, next: IEnvironment): IEnvironment {
+function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined): IEnvironment {
+  guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined')
   guard(base.name === next.name, 'cannot overwrite environments with different names')
-  const map = new Map(base.map)
-  for (const [key, value] of next.map) {
+  const map = new Map(base.memory)
+  for (const [key, value] of next.memory) {
     map.set(key, value)
   }
-  return {
-    name: base.name,
-    map
-  }
-}
+  const parent = base.parent === undefined ? undefined : overwriteIEnvironmentWith(base.parent, next.parent)
 
-function overwriteNamedEnvironments(base: NamedEnvironments, next: NamedEnvironments): NamedEnvironments {
-  const map = new Map(base)
-  for (const [key, value] of next) {
-    const old = map.get(key)
-    if(old) {
-      map.set(key, overwriteIEnvironmentWith(old, value))
-    } else {
-      map.set(key, value)
-    }
-  }
-  return map
+  const out = new Environment(base.name, parent)
+  out.memory = map
+  return out
 }
 
 // TODO if we have something like x && (y <- 13) we still have to track the y assignment as maybe... or?
@@ -41,9 +30,10 @@ export function overwriteEnvironments(base: REnvironmentInformation | undefined,
   } else if(next === undefined) {
     return base
   }
+  guard(next.level === base.level, `cannot overwrite environments with differently nested local scopes, base ${base.level} vs. next ${next.level}. This should not happen.`)
+
   return {
-    global: overwriteIEnvironmentWith(base.global, next.global),
-    local:  next.local.map((env, index) => overwriteIEnvironmentWith(base.local[index], env)),
-    named:  overwriteNamedEnvironments(base.named, next.named)
+    current: overwriteIEnvironmentWith(base.current, next.current),
+    level:   base.level
   }
 }

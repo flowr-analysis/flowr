@@ -1,6 +1,6 @@
 import { type RNumberValue, Type, RExpressionList, RNode } from '../../src/r-bridge'
 import { SourceRange } from '../../src/util/range'
-import { RArgument } from '../../src/r-bridge/lang:4.x/ast/model/nodes/RArgument'
+import { RArgument } from '../../src/r-bridge'
 
 export function exprList(...children: RNode[]): RExpressionList {
   return { type: Type.ExpressionList, children, lexeme: undefined, info: {} }

@@ -7,25 +7,33 @@ import {
   define,
   IdentifierDefinition,
   IdentifierReference,
-  initializeCleanEnvironments,
   overwriteEnvironments
 } from '../../environments'
 import { setDefinitionOfNode } from '../linker'
 import { log } from '../../../util/log'
+import { dataflowLogger } from '../../index'
 
 export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>,
                                              lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>,
                                              down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+  dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)
   const { readTargets, writeTargets, environments, swap } = processReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, down)
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
 
   // deal with special cases based on the source node and the determined read targets
   const impactReadTargets = determineImpactOfSource(swap ? op.lhs : op.rhs, readTargets)
 
+  const isFunctionSide = swap ? op.lhs : op.rhs
+  const isFunction = isFunctionSide.type === Type.Function
+
   for (const write of writeTargets) {
     setDefinitionOfNode(nextGraph, write)
+    // TODO: this can be improved easily
+    if (isFunction) {
+      nextGraph.addEdge(write, isFunctionSide.info.id, 'defined-by', 'always', true)
+    }
     for(const read of impactReadTargets) {
-      nextGraph.addEdge(write, read, 'defined-by')
+      nextGraph.addEdge(write, read, 'defined-by', undefined, true)
     }
   }
   return {
@@ -35,7 +43,7 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
     graph:       nextGraph,
     environments,
     ast:         down.ast,
-    scope:       down.scope
+    scope:       down.activeScope
   }
 }
 
@@ -60,7 +68,7 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
     case '<<-':
       [target, source, global] = [lhs, rhs, true]
       break
-    case '=': // TODO: special within function calls
+    case '=':
       [target, source] = [lhs, rhs]
       break
     case '->':
@@ -75,13 +83,14 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
   return { source, target, global, swap }
 }
 
-function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation<OtherInfo>, global: boolean, down: DataflowProcessorDown<OtherInfo>): IdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation<OtherInfo>, global: boolean, down: DataflowProcessorDown<OtherInfo>, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
   const writeNodes: IdentifierDefinition[] = []
+  const isFunctionDef = functionTypeCheck.type === Type.Function
   for(const active of target.activeNodes) {
     writeNodes.push({
       ...active,
-      scope:     global ? GlobalScope : down.scope,
-      kind:      /* TODO: deal with functions */ 'variable',
+      scope:     global ? GlobalScope : down.activeScope,
+      kind:      isFunctionDef ? 'function' : 'variable',
       definedAt: op.info.id
     })
   }
@@ -94,7 +103,10 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<
   // what is written/read additionally is based on lhs/rhs - assignments read written variables as well
   const read = [...lhs.in, ...rhs.in]
   const { source, target, global, swap } = identifySourceAndTarget(op, lhs, rhs)
-  const writeNodes = produceWrittenNodes(op, target, global, down)
+  // TODO: improve check for function definition
+  const funcTypeCheck = swap ? op.lhs : op.rhs
+
+  const writeNodes = produceWrittenNodes(op, target, global, down, funcTypeCheck)
 
   if(writeNodes.length !== 1) {
     log.warn(`Unexpected write number in assignment ${JSON.stringify(op)}: ${JSON.stringify(writeNodes)}`)
@@ -105,7 +117,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<
     guard(id.scope === LocalScope, 'currently, nested write re-assignments are only supported for local')
     return id
   })
-  const environments = overwriteEnvironments(source.environments, target.environments) ?? initializeCleanEnvironments()
+  const environments = overwriteEnvironments(source.environments, target.environments)
 
   // install assigned variables in environment
   for(const write of writeNodes) {

@@ -1,22 +1,24 @@
 import { LocalScope } from '../graph'
 import { Environment, REnvironmentInformation } from './environment'
+import { guard } from '../../util/assert'
 
 /** Add a new local environment scope to the stack */
 export function pushLocalEnvironment(base: REnvironmentInformation): REnvironmentInformation {
   const local = new Environment(LocalScope)
+  local.parent = base.current
+
   return {
-    global: base.global,
-    local:  [local, ...base.local],
-    named:  base.named
+    current: local,
+    level:   base.level + 1
   }
 }
 
 export function popLocalEnvironment(base: REnvironmentInformation): REnvironmentInformation {
-  // TODO: ensure that there always is an environment
-  base.local.shift()
+  guard(base.level > 0, 'cannot remove the global/root environment')
+  const parent = base.current.parent
+  guard(parent !== undefined, 'level is wrong, parent is undefined even though level suggested depth > 0 (starts with 0)')
   return {
-    global: base.global,
-    local:  base.local,
-    named:  base.named
+    current: parent,
+    level:   base.level - 1
   }
 }

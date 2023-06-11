@@ -20,7 +20,7 @@ import {
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
-export function tryParseBinaryStructure(
+export function tryParseBinaryOperation(
   data: ParserData,
   lhs: NamedXmlBasedJson,
   op: NamedXmlBasedJson,

@@ -1,22 +1,21 @@
 import { NamedXmlBasedJson } from '../../input-format'
 import { parseLog } from '../../parser'
 import { retrieveMetaStructure } from '../meta'
-import { RNode, Type } from '../../../../model'
+import { RNode, Type, RArgument } from '../../../../model'
 import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import { RArgument } from '../../../../model/nodes/RArgument'
 import { log } from '../../../../../../../util/log'
 import { guard } from '../../../../../../../util/assert'
 import { tryParseOneElementBasedOnType } from '../structure'
 
 /**
- * Either parses `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]` as a argument in R.
+ * Either parses `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]` as an argument in R.
  * Probably directly called by the function definition/call parser as otherwise, we do not expect to find arguments.
  *
  * @param data - The data used by the parser (see {@link ParserData})
  * @param objs - Either `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
  *
- * @returns The parsed argument or `undefined` if the given object is not a argument.
+ * @returns The parsed argument or `undefined` if the given object is not an argument.
  */
 export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]): RArgument | undefined {
   parseLog.debug(`[argument] try: ${JSON.stringify(objs)}`)

@@ -21,7 +21,7 @@ export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo>
     environments: merger(lhs.environments, rhs.environments),
     // TODO: insert a join node?
     graph:        nextGraph,
-    scope:        down.scope,
+    scope:        down.activeScope,
     ast:          down.ast
   }
 }

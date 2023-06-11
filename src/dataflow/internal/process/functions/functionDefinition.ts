@@ -1,16 +1,61 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorDown } from '../../../processor'
+import { overwriteEnvironments, popLocalEnvironment } from '../../../environments'
+import { linkInputs } from '../../linker'
+import { DataflowGraph, dataflowLogger } from '../../../index'
+import { ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
 
-export function processFunctionDefinition<OtherInfo>(functionCall: unknown, args: DataflowInformation<OtherInfo>[], body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
-  // TODO: deal with function info
-  // TODO rest
-  return {
+export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, args: DataflowInformation<OtherInfo>[], body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+  dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
+  // as we know, that parameters can not duplicate, we overwrite their environments (which is the correct behavior, if someone uses non-`=` arguments in functions)
+  const argsEnvironment = args.map(a => a.environments).reduce((a, b) => overwriteEnvironments(a, b), down.environments)
+  const bodyEnvironment = body.environments
+
+  const subgraph = body.graph.mergeWith(...args.map(a => a.graph))
+
+  // TODO: count parameter a=b as assignment!
+  const readInArguments = args.flatMap(a => [...a.in, ...a.activeNodes])
+  const readInBody = [...body.in, ...body.activeNodes]
+  // there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
+  const remainingRead = linkInputs(readInBody, down.activeScope, argsEnvironment, readInArguments.slice(), body.graph, true /* functions do not have to be called */)
+
+  dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads (of ids [${remainingRead.map(r => r.nodeId).join(', ')}])`)
+
+  const outEnvironment = overwriteEnvironments(argsEnvironment, bodyEnvironment)
+  for(const read of remainingRead) {
+    dataflowLogger.trace(`Adding node ${read.nodeId} to function graph in environment ${JSON.stringify(outEnvironment)} `)
+    subgraph.addNode(read.nodeId, read.name, outEnvironment, false, 'maybe')
+  }
+
+
+  // all nodes in the function graph are maybe as functions do not have to be executed
+  /* for(const [_, node] of subgraph.entries()) {
+    node.when = 'maybe'
+  } */
+
+  const flow = {
     activeNodes:  [],
-    in:           [], // [...args.in, ...functionName.in, ...args.activeNodes, ...functionName.activeNodes],
-    out:          [], // args.out,
-    graph:        body.graph, /* args.length === 0 ? new DataflowGraph() : args[0].currentGraph.mergeWith(...args.slice(1).map(p => p.currentGraph)) */
-    environments: body.environments, // TODO: merge with args
+    in:           remainingRead,
+    out:          [ /* TODO: out */ ],
+    graph:        subgraph,
+    environments: outEnvironment,
     ast:          down.ast,
-    scope:        down.scope
+    scope:        down.activeScope
+  }
+
+  // TODO: exit points?
+  const graph = new DataflowGraph()
+  graph.addNode(functionDefinition.info.id, functionDefinition.info.id, popLocalEnvironment(down.environments), down.activeScope, 'always', flow)
+  // TODO: deal with function info
+  // TODO: rest
+  return {
+    activeNodes:  [] /* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: down.activeScope, used: 'always', name: functionDefinition.info.id as string } */,
+    in:           [] /* TODO: they must be bound on call */,
+    out:          [],
+    graph,
+    /* TODO: have args. the potential to influence their surrounding on def? */
+    environments: popLocalEnvironment(down.environments),
+    ast:          down.ast,
+    scope:        down.activeScope
   }
 }

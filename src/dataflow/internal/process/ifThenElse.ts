@@ -33,6 +33,6 @@ export function processIfThenElse<OtherInfo>(ifThen: unknown, cond: DataflowInfo
     environments: otherwiseEnvironment,
     graph:        nextGraph,
     ast:          down.ast,
-    scope:        down.scope,
+    scope:        down.activeScope,
   }
 }

@@ -4,16 +4,17 @@
  * @module
  */
 import { NodeId } from '../../r-bridge'
-import { DataflowGraphEdgeAttribute, DataflowScopeName, GlobalScope, LocalScope } from '../graph'
+import { DataflowGraphEdgeAttribute, DataflowScopeName, GlobalScope } from '../graph'
+import { dataflowLogger } from '../index'
 
 /** identifiers are branded to avoid confusion with other string-like types */
 export type Identifier = string & { __brand?: 'identifier' }
-export type EnvironmentName = string
+
 /**
  * Stores the definition of an identifier within an {@link IEnvironment}
  */
 export interface IdentifierDefinition extends IdentifierReference {
-  kind:      'function' | 'variable' | 'unknown' /* TODO: 'constant' */
+  kind:      'function' | 'variable' | 'argument' | 'unknown' /* TODO: 'constant' */
   /** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
   definedAt: NodeId
 }
@@ -59,43 +60,46 @@ export function makeAllMaybe(references: IdentifierReference[] | undefined): Ide
 
 
 export interface IEnvironment {
+  /** unique and internally generated identifier -- will not be used for comparison but assists debugging for tracking identities */
+  readonly id:   string
   readonly name: string
+  /** Lexical parent of the environment, if any (can be manipulated by R code) */
+  parent?:       IEnvironment
   /**
    * Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions
    * TODO: mark function, symbol, etc. definitions
    * TODO: base vs. empty environment, TODO: functions for that... make it a top-level class more likely
    */
-  map:           Map<Identifier, IdentifierDefinition[]>
+  memory:        Map<Identifier, IdentifierDefinition[]>
 }
+
+let environmentIdCounter = 0
 
 export class Environment implements IEnvironment {
   readonly name: string
-  map:           Map<Identifier, IdentifierDefinition[]>
+  readonly id:   string = `${environmentIdCounter++}`
+  parent?:       IEnvironment
+  memory:        Map<Identifier, IdentifierDefinition[]>
 
-  constructor(name: string) {
+  constructor(name: string, parent?: IEnvironment) {
     this.name   = name
-    this.map    = new Map()
+    this.parent = parent
+    this.memory = new Map()
   }
 }
-
-export type NamedEnvironments = Map<EnvironmentName, IEnvironment>
 
 /**
  * First of all, yes, R stores its environments differently, potentially even with a different differentiation between
  * the `baseenv`, the `emptyenv`and other default environments. Yet, during dataflow we want sometimes to know more (static
  * reference information) and sometimes know less (to be honest we do not want that,
  * but statically determining all attached environments is theoretically impossible --- consider attachments by user input).
- * ONe example would be maps holding a potential list of all definitions of a variable, if we do not know the execution path (like with `if(x) A else B`).
+ * One example would be maps holding a potential list of all definitions of a variable, if we do not know the execution path (like with `if(x) A else B`).
  */
 export interface REnvironmentInformation {
-  readonly global: IEnvironment
-  /** Stack of local environments, the first element is the top of the stack, new elements will be pushed to the front. */
-  readonly local:  IEnvironment[]
-  /**
-   * Explicit access to all named environments (excluding {@link LocalScope} and {@link GlobalScope}).
-   * Probably most useful in combination with `new.env` and friends.
-   */
-  readonly named:  NamedEnvironments
+  /**  The currently active environment (the stack is represented by the currently active {@link IEnvironment#parent}). Environments are maintained within the dataflow graph. */
+  readonly current: IEnvironment
+  /** nesting level of the environment, will be `0` for the global/root environment */
+  readonly level:   number
 }
 
 export function initializeCleanEnvironments(): REnvironmentInformation {
@@ -105,8 +109,47 @@ export function initializeCleanEnvironments(): REnvironmentInformation {
   // .Platform and .Machine
   // TODO: attach namespace to bind etc.
   return {
-    global: new Environment(GlobalScope),
-    local:  [new Environment(LocalScope)],
-    named:  new Map()
+    current: new Environment(GlobalScope),
+    level:   0
   }
+}
+
+
+export function environmentEqual(a: IEnvironment | undefined, b: IEnvironment | undefined): boolean {
+  if(a === undefined || b === undefined) {
+    dataflowLogger.warn(`Comparing undefined environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
+    return a === b
+  }
+  if(a.name !== b.name || a.memory.size !== b.memory.size) {
+    dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)} due to different names or sizes (${JSON.stringify([...a.memory.entries()])} vs. ${JSON.stringify([...b.memory.entries()])})`)
+    return false
+  }
+  for(const [key, value] of a.memory) {
+    const value2 = b.memory.get(key)
+    if(value2 === undefined || value.length !== value2.length) {
+      return false
+    }
+
+    for(let i = 0; i < value.length; ++i) {
+      const aval = value[i]
+      const bval = value2[i]
+      if(aval.name !== bval.name || aval.nodeId !== bval.nodeId || aval.scope !== bval.scope || aval.used !== bval.used || aval.definedAt !== bval.definedAt || aval.kind !== bval.kind) {
+        dataflowLogger.warn(`Different definitions ${JSON.stringify(aval)} and ${JSON.stringify(bval)} within environments`)
+        return false
+      }
+    }
+  }
+  return environmentEqual(a.parent, b.parent)
+}
+
+export function environmentsEqual(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined): boolean {
+  if(a === undefined || b === undefined) {
+    dataflowLogger.warn(`Comparing undefined environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
+    return a === b
+  }
+  if(!environmentEqual(a.current, b.current)) {
+    dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
+    return false
+  }
+  return true
 }

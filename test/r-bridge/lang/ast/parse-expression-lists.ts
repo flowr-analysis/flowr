@@ -186,6 +186,17 @@ describe("Parse expression lists",
           }
         )
       )
+
+      assertAst(`"{ 3; }" (empty)`, shell,
+        `{ 3; }`,
+        exprList({
+          type:     Type.Number,
+          location: rangeFrom(1, 3, 1, 3),
+          lexeme:   "3",
+          content:  numVal(3),
+          info:     {}
+        })
+      )
     })
   })
 )

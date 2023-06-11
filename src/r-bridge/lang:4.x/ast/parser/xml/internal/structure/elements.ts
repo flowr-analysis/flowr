@@ -5,14 +5,15 @@ import { getWithTokenType } from "../meta"
 import { ParserData } from "../../data"
 import { tryParseOneElementBasedOnType } from "./single-element"
 import { tryParseSymbol } from '../values'
-import { tryParseUnaryStructure, tryParseBinaryStructure } from '../operators'
+import { tryParseUnaryOperation, tryParseBinaryOperation } from '../operators'
 import {
-  tryParseRepeatLoopStructure,
-  tryParseForLoopStructure,
-  tryParseWhileLoopStructure
+  tryParseRepeatLoop,
+  tryParseForLoop,
+  tryParseWhileLoop
 } from '../loops'
-import { tryParseIfThenElseStructure, tryParseIfThenStructure } from '../control'
+import { tryParseIfThenElse, tryParseIfThen } from '../control'
 import { Type, RNode } from '../../../../model'
+import { log } from '../../../../../../../util/log'
 
 export function parseBasedOnType(
   data: ParserData,
@@ -23,10 +24,12 @@ export function parseBasedOnType(
     return []
   }
 
-  const mappedWithName: NamedXmlBasedJson[] = getWithTokenType(
+  let mappedWithName: NamedXmlBasedJson[] = getWithTokenType(
     data.config.tokenMap,
     obj
   )
+
+  log.trace(`[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(", ")}]`)
 
   // TODO: some more performant way, so that when redoing this recursively we don't have to extract names etc. again
   const splitOnSemicolon = splitArrayOn(
@@ -35,7 +38,8 @@ export function parseBasedOnType(
   )
   if (splitOnSemicolon.length > 1) {
     // TODO: check if non-wrapping expr list is correct
-    return splitOnSemicolon.flatMap((arr) =>
+    log.trace(`found ${splitOnSemicolon.length} expressions by semicolon-split, parsing them separately`)
+    return splitOnSemicolon.flatMap(arr=>
       parseBasedOnType(
         data,
         arr.map(({ content }) => content)
@@ -43,12 +47,18 @@ export function parseBasedOnType(
     )
   }
 
+  /*
+   * if splitOnSemicolon.length === 1, we can continue with the normal parsing, but we may have had a trailing semicolon, with this, it is removed as well.
+   * splitOnSemiconlon.length === 0 is not possible, as we would have had an empty array before, split does not add elements.
+   */
+  mappedWithName = splitOnSemicolon[0]
+
   // TODO: improve with error message and ensure no semicolon
   if (mappedWithName.length === 1) {
     const parsed = tryParseOneElementBasedOnType(data, mappedWithName[0])
     return parsed !== undefined ? [parsed] : []
   } else if (mappedWithName.length === 2) {
-    const unaryOp = tryParseUnaryStructure(
+    const unaryOp = tryParseUnaryOperation(
       data,
       mappedWithName[0],
       mappedWithName[1]
@@ -56,7 +66,7 @@ export function parseBasedOnType(
     if (unaryOp !== undefined) {
       return [unaryOp]
     }
-    const repeatLoop = tryParseRepeatLoopStructure(
+    const repeatLoop = tryParseRepeatLoop(
       data,
       mappedWithName[0],
       mappedWithName[1]
@@ -65,7 +75,7 @@ export function parseBasedOnType(
       return [repeatLoop]
     }
   } else if (mappedWithName.length === 3) {
-    const binary = tryParseBinaryStructure(
+    const binary = tryParseBinaryOperation(
       data,
       mappedWithName[0],
       mappedWithName[1],
@@ -75,7 +85,7 @@ export function parseBasedOnType(
       return [binary]
     } else {
       // TODO: maybe-monad pass through? or just use undefined (see ts-fp)
-      const forLoop = tryParseForLoopStructure(
+      const forLoop = tryParseForLoop(
         data,
         mappedWithName[0],
         mappedWithName[1],
@@ -93,7 +103,7 @@ export function parseBasedOnType(
       // TODO: try to parse symbols with namespace information
     }
   } else if (mappedWithName.length === 5) {
-    const ifThen = tryParseIfThenStructure(data, [
+    const ifThen = tryParseIfThen(data, [
       mappedWithName[0],
       mappedWithName[1],
       mappedWithName[2],
@@ -103,7 +113,7 @@ export function parseBasedOnType(
     if (ifThen !== undefined) {
       return [ifThen]
     } else {
-      const whileLoop = tryParseWhileLoopStructure(
+      const whileLoop = tryParseWhileLoop(
         data,
         mappedWithName[0],
         mappedWithName[1],
@@ -116,7 +126,7 @@ export function parseBasedOnType(
       }
     }
   } else if (mappedWithName.length === 7) {
-    const ifThenElse = tryParseIfThenElseStructure(data, [
+    const ifThenElse = tryParseIfThenElse(data, [
       mappedWithName[0],
       mappedWithName[1],
       mappedWithName[2],

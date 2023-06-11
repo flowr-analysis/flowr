@@ -11,11 +11,11 @@ import {
   RBinaryOp,
   RUnaryOp,
   RIfThenElse,
+  RArgument,
+  RFunctionDefinition,
   RRepeatLoop, RForLoop, RWhileLoop,
   RComment, RFunctionCall, RBreak, RNext
 } from './nodes'
-import { RFunctionDefinition } from './nodes/RFunctionDefinition'
-import { RArgument } from './nodes/RArgument'
 
 /** simply used as an empty interface with no information about additional decorations */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface

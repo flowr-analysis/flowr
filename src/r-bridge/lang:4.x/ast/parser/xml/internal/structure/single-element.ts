@@ -30,6 +30,7 @@ export function tryParseOneElementBasedOnType(data: ParserData, elem: NamedXmlBa
       return undefined
     case Type.Comment:
       return parseComment(data, elem.content)
+    case Type.ExpressionList:
     case Type.Expression:
     case Type.ExprHelpAssignWrapper:
       return parseExpression(data, elem.content)

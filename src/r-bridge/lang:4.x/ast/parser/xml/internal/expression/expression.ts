@@ -3,10 +3,9 @@ import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { parseBasedOnType } from '../structure'
-import { tryToParseFunctionCall } from '../functions'
+import { tryToParseFunctionCall, tryToParseFunctionDefinition } from '../functions'
 import { Type, RNode } from '../../../../model'
 import { executeHook } from '../../hooks'
-import { tryToParseFunctionDefinition } from '../functions/definition'
 
 /**
  * Returns an ExprList if there are multiple children, otherwise returns the single child directly with no expr wrapper

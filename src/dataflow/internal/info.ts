@@ -1,6 +1,7 @@
 import { DataflowGraph, DataflowScopeName } from '../graph'
 import { DecoratedAst } from '../../r-bridge'
 import { REnvironmentInformation, IdentifierReference } from '../environments'
+import { DataflowProcessorDown } from '../processor'
 
 /**
  * Continuously updated during the dataflow analysis to hold the current state.
@@ -15,20 +16,20 @@ export interface DataflowInformation<OtherInfo> {
   out:          IdentifierReference[]
   /** The current scope during the fold */
   scope:        DataflowScopeName
-  /** current environments used for name resolution, probably updated on the next expression-list processing, can be undefined, if empty */
-  environments: REnvironmentInformation | undefined
+  /** current environments used for name resolution, probably updated on the next expression-list processing */
+  environments: REnvironmentInformation
   /** The current constructed dataflow graph */
   graph:        DataflowGraph
 }
 
-export function initializeCleanInfo<OtherInfo>(ast: DecoratedAst<OtherInfo>, scope: DataflowScopeName): DataflowInformation<OtherInfo> {
+export function initializeCleanInfo<OtherInfo>(down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   return {
-    ast,
+    ast:          down.ast,
     activeNodes:  [],
     in:           [],
     out:          [],
-    scope:        scope,
-    environments: undefined,
+    scope:        down.activeScope,
+    environments: down.environments,
     graph:        new DataflowGraph()
   }
 }

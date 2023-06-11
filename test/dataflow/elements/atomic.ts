@@ -386,20 +386,12 @@ describe("Atomic dataflow information", withShell((shell) => {
       )
       assertDataflow("using loop variable in body", shell,
         `repeat { x <- 1 }`,
-        new DataflowGraph().addNode("0", "x", define(
-          { name: "x", scope: LocalScope, nodeId: "0", used: 'always', kind: 'variable', definedAt: '2' },
-          LocalScope,
-          initializeCleanEnvironments()
-        ), LocalScope)
+        new DataflowGraph().addNode("0", "x", initializeCleanEnvironments(), LocalScope)
       )
       assertDataflow("using variable in body", shell,
         `repeat { x <- y }`,
         new DataflowGraph()
-          .addNode("0", "x", define(
-            { name: "x", scope: LocalScope, nodeId: "0", used: 'always', kind: 'variable', definedAt: '2' },
-            LocalScope,
-            initializeCleanEnvironments()
-          ), LocalScope)
+          .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
           .addNode("1", "y", initializeCleanEnvironments())
         // TODO: always until encountered conditional break etc?
           .addEdge("0", "1", "defined-by", "always" /* TODO: maybe ? */)
@@ -418,20 +410,13 @@ describe("Atomic dataflow information", withShell((shell) => {
       )
       assertDataflow("assignment in loop body", shell,
         `while (TRUE) { x <- 3 }`,
-        new DataflowGraph().addNode("1", "x", define(
-          { name: "x", scope: LocalScope, nodeId: "1", used: 'maybe', kind: 'variable', definedAt: '3' },
-          LocalScope,
-          initializeCleanEnvironments()), LocalScope)
+        new DataflowGraph().addNode("1", "x", initializeCleanEnvironments(), LocalScope)
       )
-      const defWithX = define(
-        { name: "x", scope: LocalScope, nodeId: "0", used: 'always', kind: 'variable', definedAt: '4' },
-        LocalScope,
-        initializeCleanEnvironments())
       assertDataflow('def compare in loop', shell, `while ((x <- x - 1) > 0) { x }`,
         new DataflowGraph()
-          .addNode('0', 'x', defWithX, LocalScope)
+          .addNode('0', 'x', initializeCleanEnvironments(), LocalScope)
           .addNode('1', 'x', initializeCleanEnvironments())
-          .addNode('7', 'x', initializeCleanEnvironments() /* TODO: defWithX? */)
+          .addNode('7', 'x', initializeCleanEnvironments())
           .addEdge('7', '0', 'read', 'always')
           .addEdge('0', '1', 'defined-by', 'always')
       )

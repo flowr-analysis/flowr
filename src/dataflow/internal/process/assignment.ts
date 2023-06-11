@@ -27,7 +27,7 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
   const isFunction = isFunctionSide.type === Type.Function
 
   for (const write of writeTargets) {
-    setDefinitionOfNode(nextGraph, write)
+    setDefinitionOfNode(nextGraph, write, environments)
     // TODO: this can be improved easily
     if (isFunction) {
       nextGraph.addEdge(write, isFunctionSide.info.id, 'defined-by', 'always', true)

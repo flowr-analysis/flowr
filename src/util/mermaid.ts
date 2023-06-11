@@ -28,7 +28,8 @@ function stylesForDefinitionKindsInEnvironment(subflow: DataflowFunctionFlowInfo
   // TODO: highlight seems to be often wrong
   let current: IEnvironment | undefined = subflow.environments.current
   while (current !== undefined) {
-    for (const definitions of subflow.environments.current.memory.values()) {
+    console.log("At environment", current)
+    for (const definitions of current.memory.values()) {
       for (const definition of definitions) {
         if (definition.kind === 'argument') {
           // parameters

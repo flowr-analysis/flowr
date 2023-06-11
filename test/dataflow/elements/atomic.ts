@@ -6,6 +6,7 @@
 import { assertDataflow, withShell } from '../../helper/shell'
 import { DataflowGraph, GlobalScope, initializeCleanEnvironments, LocalScope } from '../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../helper/provider'
+import { define } from '../../../src/dataflow/environments'
 
 describe("Atomic dataflow information", withShell((shell) => {
   describe("uninteresting leafs", () => {
@@ -74,21 +75,27 @@ describe("Atomic dataflow information", withShell((shell) => {
           constantAssignment,
           new DataflowGraph().addNode(
             swapSourceAndTarget ? "1" : "0",
-            "x",  initializeCleanEnvironments(),
+            "x",  define(
+              { name: "x", scope: scope, nodeId: swapSourceAndTarget ? "1" : "0", used: 'always', definedAt: '2', kind: 'variable' },
+              scope, initializeCleanEnvironments()),
             scope
           )
         )
 
         const variableAssignment = `x ${op.str} y`
         const dataflowGraph = new DataflowGraph()
+        const dfWithXYDefined = define(
+          { name: swapSourceAndTarget ? "y" : "x", scope: scope, nodeId: swapSourceAndTarget ? "1" : "0", used: 'always', definedAt: '2', kind: 'variable' },
+          scope, initializeCleanEnvironments()
+        )
         if (swapSourceAndTarget) {
           dataflowGraph
             .addNode("0", "x",  initializeCleanEnvironments())
-            .addNode("1", "y",  initializeCleanEnvironments(), scope)
+            .addNode("1", "y",  dfWithXYDefined, scope)
             .addEdge("1", "0", "defined-by", "always")
         } else {
           dataflowGraph
-            .addNode("0", "x",  initializeCleanEnvironments(), scope)
+            .addNode("0", "x",  dfWithXYDefined, scope)
             .addNode("1", "y",  initializeCleanEnvironments())
             .addEdge("0", "1", "defined-by", "always")
         }
@@ -100,15 +107,19 @@ describe("Atomic dataflow information", withShell((shell) => {
 
         const circularAssignment = `x ${op.str} x`
 
+        const dfWithXDefined = define(
+          { name: "x", scope: scope, nodeId: swapSourceAndTarget ? "1" : "0", used: 'always', definedAt: '2', kind: 'variable' },
+          scope, initializeCleanEnvironments()
+        )
         const circularGraph = new DataflowGraph()
         if (swapSourceAndTarget) {
           circularGraph
             .addNode("0", "x", initializeCleanEnvironments())
-            .addNode("1", "x", initializeCleanEnvironments(), scope)
+            .addNode("1", "x", dfWithXDefined, scope)
             .addEdge("1", "0", "defined-by", "always")
         } else {
           circularGraph
-            .addNode("0", "x", initializeCleanEnvironments(), scope)
+            .addNode("0", "x", dfWithXDefined, scope)
             .addNode("1", "x", initializeCleanEnvironments())
             .addEdge("0", "1", "defined-by", "always")
         }

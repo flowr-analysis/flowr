@@ -241,7 +241,7 @@ describe('Functions', withShell(shell => {
     )
   })
 
-  /* TODO: wrong highlighting by mermaid, make it work with a() call at the end
+  /* TODO: wrong highlighting by mermaid, make it work with a() call at the end */
   describe('Nested Function Definitions', () => {
     assertDataflow(`define after function definition`, shell, `a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a`,
       new DataflowGraph()
@@ -256,8 +256,7 @@ describe('Functions', withShell(shell => {
           environments: pushLocalEnvironment(initializeCleanEnvironments())
         })
     )
- })
-  */
+  })
   // TODO: named parameters
   // TODO: tests for nested functions
 }))

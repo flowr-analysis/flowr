@@ -241,20 +241,53 @@ describe('Functions', withShell(shell => {
     )
   })
 
-  /* TODO: wrong highlighting by mermaid, make it work with a() call at the end */
+  /* TODO: make it work with a() call at the end */
   describe('Nested Function Definitions', () => {
-    assertDataflow(`define after function definition`, shell, `a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a`,
+    const withXParameterInOuter = define(
+      {nodeId: '1', scope: LocalScope, name: 'x', used: 'always', kind: 'function', definedAt: '8' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments()))
+    const withinNestedFunctionWithParam = define(
+      {nodeId: '2', scope: LocalScope, name: 'x', used: 'always', kind: 'argument', definedAt: '3' },
+      LocalScope,
+      pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments()))
+    )
+    const withinNestedFunctionWithDef = define(
+      {nodeId: '4', scope: LocalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '6' },
+      LocalScope,
+      pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments()))
+    )
+    assertDataflow(`double nested functions`, shell, `a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a`,
       new DataflowGraph()
-        .addNode("2", "x", initializeCleanEnvironments(), LocalScope)
-        .addNode("1", "1", initializeCleanEnvironments(), LocalScope, 'always', {
+        .addNode("0", "a", initializeCleanEnvironments(), LocalScope)
+        .addNode("13", "b", initializeCleanEnvironments(), LocalScope)
+        .addNode("16", "a", initializeCleanEnvironments())
+        .addEdge("16", "0", "read", "always")
+        .addNode("11", "11", initializeCleanEnvironments(), LocalScope, 'always', {
           out:         [],
           activeNodes: [],
-          in:          [{ nodeId: '0', scope: LocalScope, name: 'x', used: 'always' }],
+          in:          [],
           scope:       LocalScope,
           graph:       new DataflowGraph()
-            .addNode("0", "x", pushLocalEnvironment(initializeCleanEnvironments()), false, 'always'),
-          environments: pushLocalEnvironment(initializeCleanEnvironments())
+            .addNode("9", "x", pushLocalEnvironment(initializeCleanEnvironments()))
+            .addNode("1", "x", pushLocalEnvironment(initializeCleanEnvironments()), LocalScope, 'always')
+            .addNode("7", "7", pushLocalEnvironment(initializeCleanEnvironments()), LocalScope, 'always', {
+              out:         [],
+              activeNodes: [],
+              in:          [{ nodeId: '5', scope: LocalScope, name: 'x', used: 'always'}],
+              scope:       LocalScope,
+              graph:       new DataflowGraph()
+                .addNode("5", "b", withinNestedFunctionWithParam)
+                .addNode("4", "x", withinNestedFunctionWithParam, LocalScope, 'always')
+                .addNode("2", "x", withinNestedFunctionWithParam, LocalScope, 'always')
+                .addEdge("4", "5", "defined-by", "always"),
+              environments: withinNestedFunctionWithDef
+            })
+            .addEdge("9", "1", "read", "always")
+            .addEdge("1", "7", "defined-by", "always"),
+          environments: withXParameterInOuter
         })
+        .addEdge("0", "11", "defined-by", "always")
     )
   })
   // TODO: named parameters

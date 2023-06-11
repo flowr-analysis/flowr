@@ -235,7 +235,7 @@ export class DataflowGraph {
       }
       if(info.subflow !== undefined || otherInfo.subflow !== undefined) {
         if(info.subflow === undefined || otherInfo.subflow === undefined) {
-          dataflowLogger.warn(`node ${id} does not match on subflow (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
+          dataflowLogger.warn(`node ${id} does not match on subflow with undefined (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
           return false
         }
         // TODO: improve : info.subflow.out !== otherInfo.subflow.out || info.subflow.in !== otherInfo.subflow.in || info.subflow.activeNodes !== otherInfo.subflow.activeNodes ||

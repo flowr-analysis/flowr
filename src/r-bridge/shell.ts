@@ -242,7 +242,7 @@ export class RShell {
       resetOnNewData: true
     }, () => {
       // the else branch is a cheesy way to work even if the package is already installed!
-      this.sendCommand(`install.packages(${ts2r(packageName)},repos="https://cran.us.r-project.org", quiet=FALSE, lib=temp)`)
+      this.sendCommand(`install.packages(${ts2r(packageName)},repos=c("https://cloud.r-project.org/", "https://cran.uni-muenster.de/", "https://cran.us.r-project.org"), quiet=FALSE, lib=temp)`)
     })
     if (autoload) {
       this.sendCommand(`library(${ts2r(packageName)}, lib.loc=${ts2r(tempdir)})`)

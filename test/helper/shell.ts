@@ -2,8 +2,8 @@ import { it } from "mocha"
 import { testRequiresNetworkConnection } from "./network"
 import { DeepPartial } from 'ts-essentials'
 import {
-  decorateAst, deterministicCountingIdGenerator,
-  getStoredTokenMap,
+  decorateAst, DecoratedAstMap, deterministicCountingIdGenerator,
+  getStoredTokenMap, IdGenerator, NodeId, NoInfo,
   retrieveAstFromRCode,
   RExpressionList,
   RNode, RNodeWithParent,
@@ -16,6 +16,7 @@ import {
   diffGraphsToMermaidUrl, graphToMermaidUrl, LocalScope
 } from '../../src/dataflow'
 import { produceDataFlowGraph } from '../../src/dataflow'
+import { reconstructToCode } from '../../src/slicing/reconstruct'
 
 let defaultTokenMap: Record<string, string>
 
@@ -135,5 +136,19 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
       console.error('diff:\n', diff)
       throw e
     }
+  })
+}
+
+
+/** call within describeSession */
+function printIdMapping(ids: NodeId[], map: DecoratedAstMap<NoInfo>): string {
+  return ids.map(id => `${id}: ${JSON.stringify(map.get(id)?.lexeme)}`).join(', ')
+}
+export const assertReconstructed = (name: string, shell: RShell, input: string, ids: NodeId[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
+  return it(name, async function() {
+    const ast = await retrieveAst(shell, input)
+    const decoratedAst = decorateAst(ast, getId)
+    const reconstructed = reconstructToCode<NoInfo>(decoratedAst, ids)
+    assert.strictEqual(reconstructed, expected, `got: ${reconstructed}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(ids, decoratedAst.idMap)})`)
   })
 }

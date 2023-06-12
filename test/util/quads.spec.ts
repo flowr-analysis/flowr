@@ -28,16 +28,9 @@ describe('Quad Generation', withShell(shell => {
 <${idPrefix}4> <${domain}line> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
 <${idPrefix}4> <${domain}column> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
 <${idPrefix}1> <${domain}lexeme> "1" <test> .
-<${idPrefix}1> <${domain}info> <${idPrefix}5> <test> .
-<${idPrefix}5> <${domain}id> "0" <test> .
-<${idPrefix}5> <${domain}parent> "1" <test> .
 <${idPrefix}1> <${domain}type> "NUM_CONST" <test> .
-<${idPrefix}1> <${domain}content> <${idPrefix}6> <test> .
-<${idPrefix}6> <${domain}num> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
-<${idPrefix}6> <${domain}complexNumber> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> <test> .
-<${idPrefix}6> <${domain}markedAsInt> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> <test> .
-<${idPrefix}0> <${domain}info> <${idPrefix}7> <test> .
-<${idPrefix}7> <${domain}id> "1" <test> .
+<${idPrefix}1> <${domain}content> <${idPrefix}5> <test> .
+<${idPrefix}5> <${domain}num> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
     `)
   })
 }))

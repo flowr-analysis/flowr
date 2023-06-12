@@ -41,8 +41,7 @@ const folds: DataflowProcessorFolds<any> = {
     foldNext:   processUninterestingLeaf
   },
   other: {
-    foldComment:   processUninterestingLeaf,
-    foldDelimiter: processUninterestingLeaf
+    foldComment: processUninterestingLeaf,
   },
   foldIfThenElse: processIfThenElse,
   foldExprList:   processExpressionList,

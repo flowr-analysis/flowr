@@ -16,7 +16,6 @@ import {
   RRepeatLoop, RForLoop, RWhileLoop,
   RComment, RFunctionCall, RBreak, RNext
 } from './nodes'
-import { RDelimiter } from './nodes/RDelimiter'
 
 /** simply used as an empty interface with no information about additional decorations */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -66,7 +65,7 @@ export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<I
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>
 export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RArgument<Info>
-export type ROther<Info>          = RComment<Info> | RDelimiter<Info>
+export type ROther<Info>          = RComment<Info>
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
                                   | ROther<Info> | RConstructs<Info>
                                   | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>

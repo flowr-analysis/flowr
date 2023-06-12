@@ -1,18 +1,19 @@
 import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
 import { parseNumber, parseString, tryParseSymbol } from '../values'
 import { guard } from '../../../../../../../util/assert'
+import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { parseExpression } from '../expression'
 import { getWithTokenType } from '../meta'
 import { Type, RNode } from '../../../../model'
-import { parseComment, parseDelimiter } from '../other'
+import { parseComment } from '../other'
 import { parseBreak, parseNext } from '../loops'
 
 /**
- * Parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)
+ * parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)
  *
- * @param data - The data used by the parser (see {@link ParserData})
- * @param elem - The element to parse
+ * @param data - the data used by the parser (see {@link ParserData})
+ * @param elem - the element to parse
  *
  * @returns `undefined` if no parse result is to be produced (i.e., if it is skipped).
  *          Otherwise, returns the parsed element.
@@ -21,9 +22,12 @@ export function tryParseOneElementBasedOnType(data: ParserData, elem: NamedXmlBa
   switch (elem.name) {
     case Type.ParenLeft:
     case Type.ParenRight:
+      parseLog.debug(`skipping parenthesis information for ${JSON.stringify(elem)}`)
+      return undefined
     case Type.BraceLeft:
     case Type.BraceRight:
-      return parseDelimiter(data, elem)
+      parseLog.debug(`skipping brace information for ${JSON.stringify(elem)}`)
+      return undefined
     case Type.Comment:
       return parseComment(data, elem.content)
     case Type.ExpressionList:

@@ -20,14 +20,11 @@ import {
   RRepeatLoop,
   RWhileLoop,
   RFunctionCall,
-  RComment,
-  RNext,
-  RBreak,
-  RArgument,
-  RFunctionDefinition,
-  RDelimiter
+  RComment, RNext, RBreak
 } from '../nodes'
 import { RNode } from '../model'
+import { RFunctionDefinition } from '../nodes'
+import { RArgument } from '../nodes'
 
 
 /**
@@ -65,8 +62,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
     foldBreak:  (next: RBreak<Info>, down: Down) => Up;
   };
   other: {
-    foldComment:   (comment: RComment<Info>, down: Down) => Up;
-    foldDelimiter: (delimiter: RDelimiter<Info>, down: Down) => Up;
+    foldComment: (comment: RComment<Info>, down: Down) => Up;
   };
   /** The `otherwise` argument is `undefined` if the `else` branch is missing */
   foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down ) => Up;
@@ -101,8 +97,6 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
       return foldBinaryOp(ast, down, folds)
     case Type.UnaryOp:
       return foldUnaryOp(ast, down, folds)
-    case Type.Delimiter:
-      return folds.other.foldDelimiter(ast, down)
     case Type.For:
       return folds.loop.foldFor(ast, foldAstStateful(ast.variable, down, folds), foldAstStateful(ast.vector, down, folds), foldAstStateful(ast.body, down, folds), down)
     case Type.While:

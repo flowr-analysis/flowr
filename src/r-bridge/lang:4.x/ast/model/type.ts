@@ -43,8 +43,7 @@ export const enum Type {
   Break = "BREAK",
   Next = "NEXT",
   EqFormals = "EQ_FORMALS",
-  Argument = "Argument",
-  Delimiter = "Delimiter"
+  Argument = "Argument"
 }
 
 /**

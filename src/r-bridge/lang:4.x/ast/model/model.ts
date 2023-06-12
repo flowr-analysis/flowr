@@ -25,7 +25,7 @@ export interface NoInfo {
 /**
  * Provides the common base of all {@link RNode | RNodes}.
  *
- * @typeParam Info - can be used to store additional information about the node
+ * @typeParam Info       - can be used to store additional information about the node
  * @typeParam LexemeType - the type of the lexeme, probably always a `string` or `string | undefined`
  */
 export interface Base<Info, LexemeType = string> extends MergeableRecord{

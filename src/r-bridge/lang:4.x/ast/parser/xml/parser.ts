@@ -14,8 +14,8 @@ export const parseLog = log.getSubLogger({ name: "ast-parser" })
  * You probably want to use {@link retrieveAstFromRCode} to directly normalize a piece of code.
  *
  * @param xmlString - the xml string obtained probably by {@link retrieveXmlFromRCode} for normalization.
- * @param tokenMap - the token replacement map in effect by the xmlparser
- * @param hooks - optional hooks to customize the normalization process (see {@link XmlParserHooks} for details)
+ * @param tokenMap  - the token replacement map in effect by the xmlparser
+ * @param hooks     - optional hooks to customize the normalization process (see {@link XmlParserHooks} for details)
  *
  * @returns the expression list as the root of the normalized ast
  */

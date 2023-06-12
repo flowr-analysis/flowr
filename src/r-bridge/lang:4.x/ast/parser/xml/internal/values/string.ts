@@ -11,7 +11,7 @@ import { ParserData } from '../../data'
  * This requires you to check the corresponding name beforehand.
  *
  * @param data - The data used by the parser (see {@link ParserData})
- * @param obj - the json object to extract the meta-information from
+ * @param obj  - The json object to extract the meta-information from
  */
 export function parseString(data: ParserData, obj: XmlBasedJson): RString {
   parseLog.debug(`[string] try: ${JSON.stringify(obj)}`)

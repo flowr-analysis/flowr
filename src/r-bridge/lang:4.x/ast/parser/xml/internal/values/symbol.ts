@@ -12,9 +12,9 @@ import { executeHook, executeUnknownHook } from '../../hooks'
  * The special symbols `T` and `F` are parsed as logic values.
  *
  * @param data - The data used by the parser (see {@link ParserData})
- * @param objs - the json object to extract the meta-information from
+ * @param objs - The json object to extract the meta-information from
  *
- * @returns the parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol
+ * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  */
 // TODO: deal with namespace information
 export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {

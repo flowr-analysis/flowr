@@ -52,7 +52,7 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
   const bodyStructure = mappedWithName.slice(closingParenIndex + 1)
   guard(bodyStructure.length === 1, () => `expected function body to be unique, yet received ${JSON.stringify(bodyStructure)}`)
 
-  const body = parseBasedOnType(data, bodyStructure.map(b => b.content))
+  const body = parseBasedOnType(data, bodyStructure)
   guard(body.length === 1, () => `expected function body to yield one normalized expression, but ${JSON.stringify(body)}`)
 
 

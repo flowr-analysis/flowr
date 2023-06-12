@@ -17,17 +17,23 @@ import { log } from '../../../../../../../util/log'
 
 export function parseBasedOnType(
   data: ParserData,
-  obj: XmlBasedJson[]
+  obj: XmlBasedJson[] | NamedXmlBasedJson[]
 ): RNode[] {
   if (obj.length === 0) {
     parseLog.warn("no children received, skipping")
     return []
   }
 
-  let mappedWithName: NamedXmlBasedJson[] = getWithTokenType(
-    data.config.tokenMap,
-    obj
-  )
+  let mappedWithName: NamedXmlBasedJson[]
+
+  if(obj[0].name) {
+    mappedWithName = obj as NamedXmlBasedJson[]
+  } else {
+    mappedWithName = getWithTokenType(
+      data.config.tokenMap,
+      obj as XmlBasedJson[]
+    )
+  }
 
   log.trace(`[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(", ")}]`)
 
@@ -36,20 +42,18 @@ export function parseBasedOnType(
     mappedWithName,
     ({ name }) => name === Type.Semicolon
   )
+
   if (splitOnSemicolon.length > 1) {
     // TODO: check if non-wrapping expr list is correct
     log.trace(`found ${splitOnSemicolon.length} expressions by semicolon-split, parsing them separately`)
     return splitOnSemicolon.flatMap(arr=>
-      parseBasedOnType(
-        data,
-        arr.map(({ content }) => content)
-      )
+      parseBasedOnType(data, arr)
     )
   }
 
   /*
    * if splitOnSemicolon.length === 1, we can continue with the normal parsing, but we may have had a trailing semicolon, with this, it is removed as well.
-   * splitOnSemiconlon.length === 0 is not possible, as we would have had an empty array before, split does not add elements.
+   * splitOnSemicolon.length === 0 is not possible, as we would have had an empty array before, split does not add elements.
    */
   mappedWithName = splitOnSemicolon[0]
 

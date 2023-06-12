@@ -76,16 +76,16 @@ export interface XmlParserHooks {
     }
   },
   operators: {
-    /** {@link tryParseBinary} */
+    /** {@link tryParseBinaryOperation} */
     onBinary: {
-      /** triggered if {@link tryParseBinary} could not find a matching operator, you probably still want to return `undefined` */
+      /** triggered if {@link tryParseBinaryOperation} could not find a matching operator, you probably still want to return `undefined` */
       unknown(data: ParserData, input: { lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson }): AutoIfOmit<RNode | undefined>
       before(data: ParserData, input: { flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson }): AutoIfOmit<{flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson}>
       after(data: ParserData, result: RBinaryOp): AutoIfOmit<RBinaryOp>
     },
-    /** {@link tryParseUnary} */
+    /** {@link tryParseUnaryOperation} */
     onUnary: {
-      /** triggered if {@link tryParseUnary} could not find a matching operator, you probably still want to return `undefined` */
+      /** triggered if {@link tryParseUnaryOperation} could not find a matching operator, you probably still want to return `undefined` */
       unknown(data: ParserData, input: { op: NamedXmlBasedJson, operand: NamedXmlBasedJson } ): AutoIfOmit<RNode | undefined>
       before(data: ParserData, input: { flavor: UnaryOperatorFlavor, op: NamedXmlBasedJson, operand: NamedXmlBasedJson }): AutoIfOmit<{flavor: UnaryOperatorFlavor, op: NamedXmlBasedJson, operand: NamedXmlBasedJson}>
       after(data: ParserData, result: RUnaryOp): AutoIfOmit<RUnaryOp>

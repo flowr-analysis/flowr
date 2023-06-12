@@ -46,7 +46,11 @@ export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
       location,
       children,
       lexeme: content,
-      info:   {}
+      info:   {
+        // TODO: include children etc.
+        range:            data.currentRange,
+        additionalTokens: []
+      }
     }
   }
   return executeHook(data.hooks.expression.onExpression.after, data, result)

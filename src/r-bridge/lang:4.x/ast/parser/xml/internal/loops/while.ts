@@ -66,7 +66,11 @@ export function tryParseWhileLoop(
     body:      parseBody,
     lexeme:    content,
     location,
-    info:      {}
+    info:      {
+      // TODO: include children etc.
+      range:            data.currentRange,
+      additionalTokens: []
+    }
   }
   return executeHook(data.hooks.loops.onWhileLoop.after, data, result)
 }

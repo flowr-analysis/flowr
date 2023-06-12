@@ -73,6 +73,24 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
   }
 }
 
+// TODO: recursive work?
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function removeSourceInformation<T extends Record<string, any>>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj, (key, value) => {
+    if (key === 'range' || key === 'additionalTokens') {
+      return undefined
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return value
+  })) as T
+}
+
+function assertAstEqualIngoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, message?: string): void {
+  const astCopy = removeSourceInformation(ast)
+  const expectedCopy = removeSourceInformation(expected)
+  assert.deepStrictEqual(astCopy, expectedCopy, message)
+}
+
 export const retrieveAst = async(shell: RShell, input: string, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> => {
   return await retrieveAstFromRCode({
     request:                 'text',
@@ -86,7 +104,7 @@ export const retrieveAst = async(shell: RShell, input: string, hooks?: DeepParti
 export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList): Mocha.Test => {
   return it(name, async function() {
     const ast = await retrieveAst(shell, input)
-    assert.deepStrictEqual(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
+    assertAstEqualIngoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
   })
 }
 
@@ -96,7 +114,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
   it(name, async function() {
     const baseAst = await retrieveAst(shell, input)
     const ast = decorator(baseAst)
-    assert.deepStrictEqual(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
+    assertAstEqualIngoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
   })
 }
 

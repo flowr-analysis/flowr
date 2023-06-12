@@ -62,7 +62,11 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
     lexeme:    content,
     arguments: args as RArgument[],
     body:      body[0],
-    info:      {}
+    info:      {
+      // TODO: include children etc.
+      range:            data.currentRange,
+      additionalTokens: []
+    }
   }
   return executeHook(data.hooks.functions.onFunctionDefinition.after, data, result)
 }

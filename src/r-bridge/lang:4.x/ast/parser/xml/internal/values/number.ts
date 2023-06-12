@@ -19,7 +19,15 @@ export function parseNumber(data: ParserData, obj: XmlBasedJson): RNumber | RLog
   obj = executeHook(data.hooks.values.onNumber.before, data, obj)
 
   const { location, content } = retrieveMetaStructure(data.config, obj)
-  const common = { location, lexeme: content }
+  const common = {
+    location,
+    lexeme: content,
+    info:   {
+    // TODO: include children etc.
+      range:            data.currentRange,
+      additionalTokens: []
+    }
+  }
 
   let result:  RNumber | RLogical | RSymbol<NoInfo, typeof RNa>
   /* the special symbol */
@@ -28,22 +36,19 @@ export function parseNumber(data: ParserData, obj: XmlBasedJson): RNumber | RLog
       ...common,
       namespace: undefined,
       type:      Type.Symbol,
-      content,
-      info:      {}
+      content
     }
   } else if (isBoolean(content)) {
     result = {
       ...common,
       type:    Type.Logical,
-      content: boolean2ts(content),
-      info:    {}
+      content: boolean2ts(content)
     }
   } else {
     result = {
       ...common,
       type:    Type.Number,
-      content: number2ts(content),
-      info:    {}
+      content: number2ts(content)
     }
   }
   return executeHook(data.hooks.values.onNumber.after, data, result)

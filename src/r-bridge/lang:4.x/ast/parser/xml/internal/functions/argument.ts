@@ -48,10 +48,17 @@ export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]):
       location, content,
       namespace: undefined,
       lexeme:    content,
-      info:      {}
+      info:      {
+        range:            location,
+        additionalTokens: []
+      }
     },
-    defaultValue, /* TODO */
-    info: {}
+    defaultValue,
+    info: {
+      // TODO: add default value
+      range:            location,
+      additionalTokens: []
+    }
   }
 
   return executeHook(data.hooks.functions.onArgument.after, data, result)

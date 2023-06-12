@@ -24,7 +24,7 @@ export async function parse(xmlString: string, tokenMap: XmlParserConfig['tokenM
   const hooksWithDefaults = deepMergeObject(DEFAULT_PARSER_HOOKS, hooks) as XmlParserHooks
   parseLog.debug(`config for xml parser: ${JSON.stringify(config)}`)
 
-  const data: ParserData = { config, hooks: hooksWithDefaults }
+  const data: ParserData = { config, hooks: hooksWithDefaults, currentRange: undefined }
   const object = await xlm2jsonObject(config, xmlString)
 
   return parseRootObjToAst(data, object)

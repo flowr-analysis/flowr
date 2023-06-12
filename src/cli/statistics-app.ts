@@ -5,7 +5,6 @@ import {
   printClusterReport,
   histogramsFromClusters,
   histograms2table,
-  allRFilesFrom,
   optionDefinitions,
   optionHelp,
   StatsCliOptions,
@@ -19,7 +18,7 @@ import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
 import commandLineUsage from 'command-line-usage'
 import { guard } from '../util/assert'
-import { writeTableAsCsv } from '../util/files'
+import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 
 const options = commandLineArgs(optionDefinitions) as StatsCliOptions
 

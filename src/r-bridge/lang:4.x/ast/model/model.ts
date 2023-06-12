@@ -16,10 +16,27 @@ import {
   RRepeatLoop, RForLoop, RWhileLoop,
   RComment, RFunctionCall, RBreak, RNext
 } from './nodes'
+import { OtherInfoNode } from './nodes/info'
 
 /** simply used as an empty interface with no information about additional decorations */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface NoInfo {
+}
+
+/**
+ * Will be used to reconstruct the source of the given element in the R-ast.
+ * This will not be part of most comparisons as it is mainly of interest to the reconstruction of R code.
+ */
+interface Source {
+  /**
+   * The range is different from the assigned {@link Location} as it refers to the complete source range covered by the given
+   * element.
+   * <p>
+   * As an example for the difference, consider a for loop, the location of `for` will be just the three characters,
+   * but the *range* will be everything including the loop body.
+   */
+  range?:            SourceRange
+  additionalTokens?: OtherInfoNode[]
 }
 
 /**
@@ -28,12 +45,12 @@ export interface NoInfo {
  * @typeParam Info       - can be used to store additional information about the node
  * @typeParam LexemeType - the type of the lexeme, probably always a `string` or `string | undefined`
  */
-export interface Base<Info, LexemeType = string> extends MergeableRecord{
+export interface Base<Info, LexemeType = string> extends MergeableRecord {
   type:   Type
   /** the original string retrieved from R, can be used for further identification */
   lexeme: LexemeType
   /** allows to attach additional information to the node */
-  info:   Info
+  info:   Info & Source
 }
 
 export interface WithChildren<Info, Children extends Base<Info, string | undefined>> {

@@ -25,7 +25,10 @@ export function parseComment(data: ParserData, obj: XmlBasedJson): RComment {
     location,
     content: content.slice(1),
     lexeme:  content,
-    info:    {}
+    info:    {
+      range:            data.currentRange,
+      additionalTokens: []
+    }
   }
   return executeHook(data.hooks.other.onComment.after, data, result)
 }

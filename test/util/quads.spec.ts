@@ -18,26 +18,26 @@ describe('Quad Generation', withShell(shell => {
     const idPrefix =  `${domain}${context}/`
     // ids are deterministic, so we can compare the quads
     await compareQuads('1', `
-<${idPrefix}0> <${domain}type> "exprlist" <${context}> .
-<${idPrefix}0> <${domain}children-0> <${idPrefix}1> <${context}> .
-<${idPrefix}1> <${domain}location> <${idPrefix}2> <${context}> .
-<${idPrefix}2> <${domain}start> <${idPrefix}3> <${context}> .
-<${idPrefix}3> <${domain}line> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}3> <${domain}column> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}2> <${domain}end> <${idPrefix}4> <${context}> .
-<${idPrefix}4> <${domain}line> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}4> <${domain}column> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}1> <${domain}lexeme> "1" <${context}> .
-<${idPrefix}1> <${domain}type> "NUM_CONST" <${context}> .
-<${idPrefix}1> <${domain}content> <${idPrefix}5> <${context}> .
-<${idPrefix}5> <${domain}num> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
-<${idPrefix}5> <${domain}complexNumber> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> <${context}> .
-<${idPrefix}5> <${domain}markedAsInt> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> <${context}> .
-<${idPrefix}1> <${domain}info> <${idPrefix}6> <${context}> .
-<${idPrefix}6> <${domain}id> "0" <${context}> .
-<${idPrefix}6> <${domain}parent> "1" <${context}> .
-<${idPrefix}0> <${domain}info> <${idPrefix}7> <${context}> .
-<${idPrefix}7> <${domain}id> "1" <${context}> .
+<${idPrefix}0> <${domain}type> "exprlist" <test> .
+<${idPrefix}0> <${domain}children-0> <${idPrefix}1> <test> .
+<${idPrefix}1> <${domain}location> <${idPrefix}2> <test> .
+<${idPrefix}2> <${domain}start> <${idPrefix}3> <test> .
+<${idPrefix}3> <${domain}line> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
+<${idPrefix}3> <${domain}column> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
+<${idPrefix}2> <${domain}end> <${idPrefix}4> <test> .
+<${idPrefix}4> <${domain}line> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
+<${idPrefix}4> <${domain}column> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
+<${idPrefix}1> <${domain}lexeme> "1" <test> .
+<${idPrefix}1> <${domain}info> <${idPrefix}5> <test> .
+<${idPrefix}5> <${domain}id> "0" <test> .
+<${idPrefix}5> <${domain}parent> "1" <test> .
+<${idPrefix}1> <${domain}type> "NUM_CONST" <test> .
+<${idPrefix}1> <${domain}content> <${idPrefix}6> <test> .
+<${idPrefix}6> <${domain}num> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
+<${idPrefix}6> <${domain}complexNumber> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> <test> .
+<${idPrefix}6> <${domain}markedAsInt> "false"^^<http://www.w3.org/2001/XMLSchema#boolean> <test> .
+<${idPrefix}0> <${domain}info> <${idPrefix}7> <test> .
+<${idPrefix}7> <${domain}id> "1" <test> .
     `)
   })
 }))

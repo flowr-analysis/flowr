@@ -63,7 +63,11 @@ export function tryParseForLoop(
     vector:   parsedVector,
     body:     parseBody,
     lexeme:   content,
-    info:     {},
+    info:     {
+      // TODO: include children etc.
+      range:            data.currentRange,
+      additionalTokens: []
+    },
     location,
   }
   return executeHook(data.hooks.loops.onForLoop.after, data, result)

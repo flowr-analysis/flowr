@@ -15,7 +15,11 @@ export function parseNext(data: ParserData, obj: XmlBasedJson): RNext {
     type:   Type.Next,
     location,
     lexeme: content,
-    info:   {}
+    info:   {
+      // TODO: include children etc.
+      range:            data.currentRange,
+      additionalTokens: []
+    }
   }
   return executeHook(data.hooks.loops.onNext.after, data, result)
 }

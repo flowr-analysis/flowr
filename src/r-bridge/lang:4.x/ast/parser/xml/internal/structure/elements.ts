@@ -37,7 +37,6 @@ export function parseBasedOnType(
 
   log.trace(`[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(", ")}]`)
 
-  // TODO: some more performant way, so that when redoing this recursively we don't have to extract names etc. again
   const splitOnSemicolon = splitArrayOn(
     mappedWithName,
     ({ name }) => name === Type.Semicolon
@@ -57,7 +56,6 @@ export function parseBasedOnType(
    */
   mappedWithName = splitOnSemicolon[0]
 
-  // TODO: improve with error message and ensure no semicolon
   if (mappedWithName.length === 1) {
     const parsed = tryParseOneElementBasedOnType(data, mappedWithName[0])
     return parsed !== undefined ? [parsed] : []

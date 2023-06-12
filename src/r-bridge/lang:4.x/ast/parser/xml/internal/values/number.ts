@@ -24,8 +24,9 @@ export function parseNumber(data: ParserData, obj: XmlBasedJson): RNumber | RLog
     lexeme: content,
     info:   {
     // TODO: include children etc.
-      range:            data.currentRange,
-      additionalTokens: []
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme
     }
   }
 

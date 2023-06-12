@@ -23,8 +23,9 @@ export function parseRootObjToAst(
     children: parsedChildren,
     lexeme:   undefined,
     info:     {
-      range:            data.currentRange,
-      additionalTokens: []
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme
     }
   }
 }

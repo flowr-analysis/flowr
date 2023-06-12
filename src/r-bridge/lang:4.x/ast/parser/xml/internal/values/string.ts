@@ -26,8 +26,9 @@ export function parseString(data: ParserData, obj: XmlBasedJson): RString {
     lexeme:  content,
     info:    {
       // TODO: include children etc.
-      range:            data.currentRange,
-      additionalTokens: []
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme
     }
   }
   return executeHook(data.hooks.values.onString.after, data, result)

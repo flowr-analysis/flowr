@@ -1,7 +1,7 @@
 import { type RNumberValue, Type, RExpressionList, RNode, RArgument } from '../../src/r-bridge'
 import { SourceRange } from '../../src/util/range'
 
-const emptyInfo = { range: undefined, additionalTokens: [] }
+const emptyInfo = { fullRange: undefined, additionalTokens: [], fullLexeme: undefined }
 
 export function exprList(...children: RNode[]): RExpressionList {
   return { type: Type.ExpressionList, children, lexeme: undefined, info: emptyInfo }

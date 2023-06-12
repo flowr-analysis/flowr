@@ -49,8 +49,9 @@ export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNo
       lexeme:  content,
       info:    {
         // TODO: include children etc.
-        range:            data.currentRange,
-        additionalTokens: []
+        fullRange:        data.currentRange,
+        additionalTokens: [],
+        fullLexeme:       data.currentLexeme
       }
     }
   } else {
@@ -63,8 +64,9 @@ export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNo
       lexeme: content,
       info:   {
         // TODO: include children etc.
-        range:            data.currentRange,
-        additionalTokens: []
+        fullRange:        data.currentRange,
+        additionalTokens: [],
+        fullLexeme:       data.currentLexeme
       }
     }
   }

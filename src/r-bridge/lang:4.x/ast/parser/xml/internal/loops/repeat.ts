@@ -39,8 +39,9 @@ export function tryParseRepeatLoop(data: ParserData, repeatToken: NamedXmlBasedJ
     body:   parseBody,
     info:   {
       // TODO: include children etc.
-      range:            data.currentRange,
-      additionalTokens: []
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme
     }
   }
   return executeHook(data.hooks.loops.onRepeatLoop.after, data, result)

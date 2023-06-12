@@ -49,14 +49,16 @@ export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]):
       namespace: undefined,
       lexeme:    content,
       info:      {
-        range:            location,
-        additionalTokens: []
+        fullRange:        location,
+        additionalTokens: [],
+        fullLexeme:       content
       }
     },
     defaultValue,
     info: {
-      // TODO: add default value
-      range:            location,
+      // TODO: add default value to both
+      fullRange:        location,
+      fullLexeme:       content,
       additionalTokens: []
     }
   }

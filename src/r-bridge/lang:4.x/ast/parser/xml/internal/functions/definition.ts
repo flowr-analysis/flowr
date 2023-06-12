@@ -64,8 +64,9 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
     body:      body[0],
     info:      {
       // TODO: include children etc.
-      range:            data.currentRange,
-      additionalTokens: []
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme
     }
   }
   return executeHook(data.hooks.functions.onFunctionDefinition.after, data, result)

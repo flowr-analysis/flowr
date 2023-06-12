@@ -35,7 +35,11 @@ interface Source {
    * As an example for the difference, consider a for loop, the location of `for` will be just the three characters,
    * but the *range* will be everything including the loop body.
    */
-  range?:            SourceRange
+  fullRange?:        SourceRange
+  /**
+   * Similar to {@link Source.fullRange} this contains the complete R lexeme of the given element.
+   */
+  fullLexeme?:       string
   additionalTokens?: OtherInfoNode[]
 }
 

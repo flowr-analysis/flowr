@@ -148,7 +148,7 @@ export const assertReconstructed = (name: string, shell: RShell, input: string, 
   return it(name, async function() {
     const ast = await retrieveAst(shell, input)
     const decoratedAst = decorateAst(ast, getId)
-    const reconstructed = reconstructToCode<NoInfo>(decoratedAst, ids)
+    const reconstructed = reconstructToCode<NoInfo>(decoratedAst, new Set(ids))
     assert.strictEqual(reconstructed, expected, `got: ${reconstructed}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(ids, decoratedAst.idMap)})`)
   })
 }

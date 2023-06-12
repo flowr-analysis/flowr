@@ -26,7 +26,7 @@ export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
   const childrenSource = getKeysGuarded<XmlBasedJson[]>(unwrappedObj, data.config.childrenName)
   const typed = getWithTokenType(data.config.tokenMap, childrenSource)
 
-  const childData: ParserData = { ...data, currentRange: location }
+  const childData: ParserData = { ...data, currentRange: location, currentLexeme: content }
 
   const maybeFunctionCall = tryToParseFunctionCall(childData, typed)
   if (maybeFunctionCall !== undefined) {
@@ -52,8 +52,9 @@ export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
       lexeme: content,
       info:   {
         // TODO: include children etc.
-        range:            data.currentRange,
-        additionalTokens: []
+        fullRange:        childData.currentRange,
+        additionalTokens: [],
+        fullLexeme:       childData.currentLexeme
       }
     }
   }

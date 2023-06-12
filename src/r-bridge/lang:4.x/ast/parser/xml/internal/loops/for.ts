@@ -29,13 +29,15 @@ export function tryParseForLoop(
     throw new XmlParseError(`expected expr body for for-loop but found ${JSON.stringify(body)}`)
   }
 
-  parseLog.debug('trying to parse for-loop');
+  parseLog.debug('trying to parse for-loop')
+
+  const newParseData = { ...data, data, currentRange: undefined, currentLexeme: undefined };
 
   ({ forToken, condition, body } = executeHook(data.hooks.loops.onForLoop.before, data, { forToken, condition, body }))
 
   const { variable: parsedVariable, vector: parsedVector } =
-    parseForLoopCondition(data, condition.content)
-  const parseBody = tryParseOneElementBasedOnType(data, body)
+    parseForLoopCondition(newParseData, condition.content)
+  const parseBody = tryParseOneElementBasedOnType(newParseData, body)
 
   if (
     parsedVariable === undefined ||
@@ -65,8 +67,9 @@ export function tryParseForLoop(
     lexeme:   content,
     info:     {
       // TODO: include children etc.
-      range:            data.currentRange,
-      additionalTokens: []
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme,
     },
     location,
   }

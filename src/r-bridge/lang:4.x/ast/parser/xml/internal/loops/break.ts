@@ -16,8 +16,9 @@ export function parseBreak(data: ParserData, obj: XmlBasedJson): RBreak {
     location,
     lexeme: content,
     info:   {
-      range:            location,
-      additionalTokens: []
+      fullRange:        location,
+      additionalTokens: [],
+      fullLexeme:       content
     }
   }
   return executeHook(data.hooks.loops.onBreak.after, data, result)

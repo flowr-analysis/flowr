@@ -17,7 +17,7 @@ import {
   BinaryOperatorFlavor,
   RArgument,
   RFunctionDefinition,
-  UnaryOperatorFlavor, RBreak, RNext
+  UnaryOperatorFlavor, RBreak, RNext, RDelimiter
 } from '../../model'
 import { RNa } from '../../../values'
 import { ParserData } from './data'
@@ -73,6 +73,11 @@ export interface XmlParserHooks {
     onComment: {
       before(data: ParserData, inputObj: XmlBasedJson): AutoIfOmit<XmlBasedJson>
       after(data: ParserData, result: RComment): AutoIfOmit<RComment>
+    },
+    /** {@link parseDelimiter} */
+    onDelimiter: {
+      before(data: ParserData, inputObj: NamedXmlBasedJson): AutoIfOmit<NamedXmlBasedJson>
+      after(data: ParserData, result: RDelimiter): AutoIfOmit<RDelimiter>
     }
   },
   operators: {
@@ -257,6 +262,10 @@ export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = 
   },
   other: {
     onComment: {
+      before: doNothing,
+      after:  doNothing
+    },
+    onDelimiter: {
       before: doNothing,
       after:  doNothing
     }

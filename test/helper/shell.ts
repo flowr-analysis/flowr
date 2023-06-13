@@ -81,7 +81,7 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function removeSourceInformation<T extends Record<string, any>>(obj: T): T {
   return JSON.parse(JSON.stringify(obj, (key, value) => {
-    if (key === 'range' || key === 'additionalTokens') {
+    if (key === 'fullRange' || key === 'additionalTokens' || key === 'fullLexeme') {
       return undefined
     }
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return

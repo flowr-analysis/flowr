@@ -3,12 +3,13 @@ import {
   NodeId,
   ParentInformation,
   RExpressionList,
-  RForLoop,
+  RForLoop, RFunctionCall,
   RNodeWithParent,
   RRepeatLoop
 } from '../r-bridge'
 import { foldAstStateful, StatefulFoldFunctions } from '../r-bridge/lang:4.x/ast/model/processing/statefulFold'
 import { log } from '../util/log'
+import { guard } from '../util/assert'
 type Selection = Set<NodeId>
 interface PrettyPrintLine {
   line:   string
@@ -96,12 +97,30 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
   }
 }
 
-// TODO: make sure repeat gets autoselected
+// TODO: make sure repeat gets auto-selected
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, selection: Selection): Code {
   if(selection.has(loop.info.id)) {
     return reconstructAsLeaf(loop, selection)
   }
   return body
+}
+
+function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: Code[], selection: Selection): Code {
+  if(selection.has(call.info.id)) {
+    return plain(getLexeme(call))
+  }
+  const filteredArgs = args.filter(a => a.length > 0)
+  if(functionName.length === 0 && filteredArgs.length === 0) {
+    return []
+  }
+
+  guard(functionName.length <= 1, `can not have multiple lines for the function name, got: ${JSON.stringify(functionName)}`)
+
+  if(args.length === 0) {
+    return [{ line: `${functionName[0].line}()`, indent: functionName[0].indent }]
+  } else {
+    return plain(getLexeme(call))
+  }
 }
 
 // escalates with undefined if all are undefined
@@ -136,7 +155,7 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Selection, C
   foldExprList:   reconstructExpressionList,
   functions:      {
     foldFunctionDefinition: foldToConst,
-    foldFunctionCall:       foldToConst,
+    foldFunctionCall:       reconstructFunctionCall,
     foldArgument:           foldToConst
   }
 }
@@ -156,5 +175,10 @@ function prettyPrintCodeToString(code: Code, lf ='\n'): string {
  */
 export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Selection): string {
   const result = foldAstStateful(ast.decoratedAst, selection, reconstructAstFolds)
-  return prettyPrintCodeToString(result)
+  if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
+    // remove outer block
+    return prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1))
+  } else {
+    return prettyPrintCodeToString(result)
+  }
 }

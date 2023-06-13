@@ -1,7 +1,7 @@
 import { guard } from './assert'
 
 // xmlparsedata uses its own start and end only to break ties and calculates them on max col width approximation
-interface SourcePosition {
+export interface SourcePosition {
   /** starts with 1 */
   line:   number
   /** starts with 1 */

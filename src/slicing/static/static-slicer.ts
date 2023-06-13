@@ -1,13 +1,31 @@
-import { DataflowGraph, DataflowMap } from '../../dataflow'
+import { DataflowGraph } from '../../dataflow'
 import { guard } from '../../util/assert'
-import { log } from "../../util/log"
-import { NodeId } from '../../r-bridge'
+import { DecoratedAstMap, NodeId } from '../../r-bridge'
+import { SourcePosition } from '../../util/range'
+import { log } from '../../util/log'
 
-/** returns the line numbers to include, TODO: add ast etc., TODO: include braces and parenthesis as additional ast information so we can add the closing/opening brace into the slice!  */
-export function naiveLineBasedSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowIdMap: DataflowMap<OtherInfo>, id: NodeId): Set<number> {
-  const lines = new Set<number>()
-  const visitQueue = [id]
-  const visited = []
+export const slicerLogger = log.getSubLogger({ name: "slicer" })
+
+
+export function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: DecoratedAstMap<OtherInfo>): NodeId | undefined {
+  for(const [id, values] of dataflowIdMap.entries()) {
+    if(values.location && values.location.start.line === location.line && values.location.start.column === location.column) {
+      slicerLogger.trace(`resolving id ${id} for location ${JSON.stringify(location)}`)
+      return id
+    }
+  }
+  return undefined
+}
+
+/**
+ * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
+ * <p>
+ * The returned ids can be used to {@link reconstructToCode | reconstruct the slice to R code}.
+ */
+export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowIdMap: DecoratedAstMap<OtherInfo>, id: NodeId[]): Set<NodeId> {
+  guard(id.length > 0, `must have at least one seed id to calculate slice`)
+  const visitQueue = id
+  const visited = new Set<NodeId>()
 
   while (visitQueue.length > 0) {
     const current = visitQueue.pop()
@@ -15,26 +33,21 @@ export function naiveLineBasedSlicing<OtherInfo>(dataflowGraph: DataflowGraph, d
     if (current === undefined) {
       continue
     }
-    visited.push(current)
+    visited.add(current)
 
     const currentInfo = dataflowGraph.get(current)
-    guard(currentInfo !== undefined, `current id:${id} to calculate slice must be in graph`)
+    guard(currentInfo !== undefined, `current id: ${current} to calculate slice must be in graph`)
     const currentNode = dataflowIdMap.get(current)
-    guard(currentNode !== undefined, `current id:${id} to calculate slice must be in dataflowIdMap`)
-    if(currentNode.location === undefined) {
-      log.warn(`current id:${id} to calculate slice has no location (${JSON.stringify(currentNode)})`)
-    } else {
-      for(let lineNumber = currentNode.location.start.line; lineNumber <= currentNode.location.end.line; lineNumber++) {
-        lines.add(lineNumber)
-      }
-    }
+    guard(currentNode !== undefined, `current id: ${current} to calculate slice must be in dataflowIdMap`)
 
     for (const edge of currentInfo.edges.filter(e => e.type === 'read' || e.type === 'defined-by')) {
-      if (!visited.includes(edge.target)) {
+      if (!visited.has(edge.target)) {
         visitQueue.push(edge.target)
       }
     }
   }
 
-  return lines
+  slicerLogger.trace(`static slicing produced: ${JSON.stringify([...visited])}`)
+
+  return visited
 }

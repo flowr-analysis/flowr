@@ -17,6 +17,9 @@ import {
 } from '../../src/dataflow'
 import { produceDataFlowGraph } from '../../src/dataflow'
 import { reconstructToCode } from '../../src/slicing/reconstruct'
+import { locationToId, naiveStaticSlicing } from '../../src/slicing/static'
+import { SourcePosition } from '../../src/util/range'
+import { isNotUndefined } from '../../src/util/assert'
 
 let defaultTokenMap: Record<string, string>
 
@@ -152,3 +155,24 @@ export const assertReconstructed = (name: string, shell: RShell, input: string, 
     assert.strictEqual(reconstructed, expected, `got: ${reconstructed}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(ids, decoratedAst.idMap)})`)
   })
 }
+
+
+export const assertSliced = (name: string, shell: RShell, input: string, slices: SourcePosition[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
+  return it(name, async function() {
+    const ast = await retrieveAst(shell, input)
+    const decoratedAst = decorateAst(ast, getId)
+
+    const mappedIds = slices.map(l => locationToId(l, decoratedAst.idMap)).map((d, i) => {
+      assert(isNotUndefined(d), `all ids must be found, but not for id ${i}`)
+      return d
+    })
+
+    const dataflow = produceDataFlowGraph(decoratedAst)
+
+    const sliced = naiveStaticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds)
+    const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
+
+    assert.strictEqual(reconstructed, expected, `got: ${reconstructed}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(mappedIds, decoratedAst.idMap)})`)
+  })
+}
+

@@ -3,6 +3,6 @@ describe('Slicing', () => {
     require('./reconstruct/simple')
   })
   describe('Static Program Slices', () => {
-
+    require('./static/simple')
   })
 })

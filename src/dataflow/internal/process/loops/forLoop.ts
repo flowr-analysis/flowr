@@ -1,4 +1,9 @@
-import { linkIngoingVariablesInSameScope, produceNameSharedIdMap, setDefinitionOfNode } from '../../linker'
+import {
+  linkCircularRedefinitionsWithinALoop,
+  linkIngoingVariablesInSameScope,
+  produceNameSharedIdMap,
+  setDefinitionOfNode
+} from '../../linker'
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorDown } from '../../../processor'
 import { appendEnvironments, makeAllMaybe } from '../../../environments'
@@ -40,8 +45,9 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
   const outgoing = [...variable.out, ...writtenVariable, ...body.out]
   makeAllMaybe(body.out)
 
-
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
+
+  linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out)
 
   return {
     activeNodes:  [],

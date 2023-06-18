@@ -5,7 +5,7 @@ import {
   initializeCleanEnvironments,
   makeAllMaybe,
 } from '../../../environments'
-import { linkInputs } from '../../linker'
+import { linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../linker'
 
 export function processWhileLoop<OtherInfo>(loop: unknown, condition: DataflowInformation<OtherInfo>,
                                             body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
@@ -13,6 +13,8 @@ export function processWhileLoop<OtherInfo>(loop: unknown, condition: DataflowIn
   const nextGraph = condition.graph.mergeWith(body.graph)
 
   const remainingInputs = linkInputs([...body.activeNodes, ...body.in], down.activeScope, environments, [...condition.in, ...condition.activeNodes], nextGraph, true)
+
+  linkCircularRedefinitionsWithinALoop(nextGraph, produceNameSharedIdMap(remainingInputs), body.out)
 
   return {
     activeNodes:  [],

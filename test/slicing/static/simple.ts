@@ -6,6 +6,7 @@ describe('Simple', withShell(shell => {
       assertSliced(`x <- [${i}]`, shell, 'x <- 1\nx <- 2\nx <- 3', [{ line: i, column: 1 }], `x <- ${i}`)
     }
   })
+  // TODO: test for(i in 1:10) { print(i); i <- 12 }
   describe('The classic', () => {
     const code = `
 sum <- 0
@@ -29,13 +30,12 @@ N <- 10
 for(i in 1:(N-1)) sum <- sum + i + w`
     )
 
-    /* TODO: differs - why?
-    assertSliced('Product rhs in for', shell, code, [{ line: 9, column: 14 }],
-      `product <- 1
+    assertSliced('Sum rhs in for', shell, code, [{ line: 8, column: 10 }],
+      `sum <- 0
+w <- 7
 N <- 10
-for(i in 1:(N-1)) product <- product * i`
+for(i in 1:(N-1)) sum <- sum + i + w`
     )
-    */
   }
   )
 

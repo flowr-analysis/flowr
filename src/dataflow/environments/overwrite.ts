@@ -1,12 +1,26 @@
 import { guard } from '../../util/assert'
-import { REnvironmentInformation, IEnvironment, Environment } from './environment'
+import { REnvironmentInformation, IEnvironment, Environment, IdentifierDefinition } from './environment'
+
+function allAreMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
+  if(values.length === 0) {
+    return true
+  }
+  const attr = values[0].used
+  for (let i = 1; i < values.length; i++) {
+    const used = values[i].used
+    if(used !== attr) {
+      throw new Error(`inconsistent used attributes within ${JSON.stringify(values)}`)
+    }
+  }
+  return attr === 'maybe'
+}
 
 function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined): IEnvironment {
   guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined')
   guard(base.name === next.name, 'cannot overwrite environments with different names')
   const map = new Map(base.memory)
   for (const [key, values] of next.memory) {
-    const allMaybe = values.every(v => v.used === 'maybe')
+    const allMaybe = allAreMaybeGuardingSame(values)
     if(allMaybe) {
       const old = map.get(key) ?? []
       old.forEach(v => v.used = 'maybe')

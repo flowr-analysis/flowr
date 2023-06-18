@@ -20,4 +20,13 @@ describe('for', withShell(shell => {
       .addNode("0", "i", initializeCleanEnvironments(), LocalScope)
       .addEdge("8", "4", "read", "maybe")
   )
+  assertDataflow(`Read after for loop with outer def`,
+    shell,
+    `x <- 9\nfor(i in 1:10) { x <- 12 }\n x`,
+    new DataflowGraph()
+      .addNode("4", "x", initializeCleanEnvironments(), LocalScope)
+      .addNode("8", "x", initializeCleanEnvironments())
+      .addNode("0", "i", initializeCleanEnvironments(), LocalScope)
+      .addEdge("8", "4", "read", "maybe")
+  )
 }))

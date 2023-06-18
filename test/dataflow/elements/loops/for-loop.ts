@@ -71,4 +71,15 @@ describe('for', withShell(shell => {
       .addEdge("0", "10", "same-def-def", "maybe")
       .addEdge("7", "10", "same-def-def", "always") // both in same loop execution
   )
+  assertDataflow(`Redefinition within loop`,
+    shell,
+    `for(i in 1:10) { i; i <- 12 }\n i`,
+    new DataflowGraph()
+      .addNode("0", "i", initializeCleanEnvironments(), LocalScope)
+      .addNode("5", "i", initializeCleanEnvironments(), LocalScope)
+      .addNode("4", "i", initializeCleanEnvironments())
+      .addNode("10", "i", initializeCleanEnvironments())
+      .addEdge("4", "0", "read", "always")
+      .addEdge("10", "5", "read", "maybe")
+  )
 }))

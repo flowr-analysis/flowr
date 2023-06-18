@@ -23,8 +23,11 @@ function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnviro
     const allMaybe = allAreMaybeGuardingSame(values)
     if(allMaybe) {
       const old = map.get(key) ?? []
-      old.forEach(v => v.used = 'maybe')
-      map.set(key, [...old, ...values])
+      for(const o of old) {
+        o.used = 'maybe'
+      }
+
+      map.set(key, old.concat(values))
     } else {
       map.set(key, values)
     }

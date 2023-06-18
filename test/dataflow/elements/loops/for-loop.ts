@@ -24,9 +24,12 @@ describe('for', withShell(shell => {
     shell,
     `x <- 9\nfor(i in 1:10) { x <- 12 }\n x`,
     new DataflowGraph()
-      .addNode("4", "x", initializeCleanEnvironments(), LocalScope)
-      .addNode("8", "x", initializeCleanEnvironments())
-      .addNode("0", "i", initializeCleanEnvironments(), LocalScope)
-      .addEdge("8", "4", "read", "maybe")
+      .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
+      .addNode("11", "x", initializeCleanEnvironments())
+      .addNode("7", "x", initializeCleanEnvironments(), LocalScope)
+      .addNode("3", "i", initializeCleanEnvironments(), LocalScope)
+      .addEdge("11", "0", "read", "maybe")
+      .addEdge("11", "7", "read", "maybe")
+      .addEdge("0", "7", "same-def-def", "maybe")
   )
 }))

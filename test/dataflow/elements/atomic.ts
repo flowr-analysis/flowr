@@ -307,7 +307,7 @@ describe("Atomic dataflow information", withShell((shell) => {
         new DataflowGraph()
           .addNode("0", "i", initializeCleanEnvironments(), LocalScope)
           .addNode("4", "i", initializeCleanEnvironments())
-          .addEdge("4", "0", "defined-by", "always")
+          .addEdge("4", "0", "read", "always")
       )
     // TODO: so many other tests... variable in sequence etc.
     })

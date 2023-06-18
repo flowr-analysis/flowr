@@ -35,7 +35,7 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
     const name = write.name
     const readIdsToLink = nameIdShares.get(name)
     for(const readId of readIdsToLink) {
-      nextGraph.addEdge(readId.nodeId, write.nodeId, 'defined-by', /* TODO */ 'always', true)
+      nextGraph.addEdge(readId.nodeId, write.nodeId, 'read', /* TODO */ 'always', true)
     }
     // now, we remove the name from the id shares as they are no longer needed
     nameIdShares.delete(name)

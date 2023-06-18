@@ -49,7 +49,7 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
 
   const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
 
-  shell.sendCommands(`flowr_output <- "${ERR_MARKER}"`,
+  shell.sendCommands(`flowr_output <- flowr_parsed <- "${ERR_MARKER}"`,
     // now, try to retrieve the ast
     `try(flowr_parsed <- parse(${request.request} = ${JSON.stringify(request.content)}, keep.source = ${ts2r(request.attachSourceInformation)}${suffix}), silent=FALSE)`,
     `try(flowr_output <- xmlparsedata::xml_parse_data(flowr_parsed, includeText = ${ts2r(request.attachSourceInformation)}, pretty = FALSE), silent=FALSE)`

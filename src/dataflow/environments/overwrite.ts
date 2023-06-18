@@ -5,8 +5,15 @@ function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnviro
   guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined')
   guard(base.name === next.name, 'cannot overwrite environments with different names')
   const map = new Map(base.memory)
-  for (const [key, value] of next.memory) {
-    map.set(key, value)
+  for (const [key, values] of next.memory) {
+    const allMaybe = values.every(v => v.used === 'maybe')
+    if(allMaybe) {
+      const old = map.get(key) ?? []
+      old.forEach(v => v.used = 'maybe')
+      map.set(key, [...old, ...values])
+    } else {
+      map.set(key, values)
+    }
   }
   const parent = base.parent === undefined ? undefined : overwriteIEnvironmentWith(base.parent, next.parent)
 
@@ -23,6 +30,7 @@ export function overwriteEnvironments(base: undefined, next: undefined): undefin
 export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined
 /**
  * Assumes, that all definitions within next replace those within base (given the same name).
+ * <b>But</b> if all definitions within next are maybe, then they are appended to the base definitions (updating them to be `maybe` from now on as well), similar to {@link appendEnvironments}.
  */
 export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
   if(base === undefined) {

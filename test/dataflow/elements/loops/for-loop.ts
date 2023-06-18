@@ -25,11 +25,27 @@ describe('for', withShell(shell => {
     `x <- 9\nfor(i in 1:10) { x <- 12 }\n x`,
     new DataflowGraph()
       .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
-      .addNode("11", "x", initializeCleanEnvironments())
       .addNode("7", "x", initializeCleanEnvironments(), LocalScope)
+      .addNode("11", "x", initializeCleanEnvironments())
       .addNode("3", "i", initializeCleanEnvironments(), LocalScope)
       .addEdge("11", "0", "read", "maybe")
       .addEdge("11", "7", "read", "maybe")
+      .addEdge("0", "7", "same-def-def", "maybe")
+  )
+  assertDataflow(`Redefinition within loop`,
+    shell,
+    `x <- 9\nfor(i in 1:10) { x <- x }\n x`,
+    new DataflowGraph()
+      .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
+      .addNode("7", "x", initializeCleanEnvironments(), LocalScope)
+      .addNode("8", "x", initializeCleanEnvironments())
+      .addNode("11", "x", initializeCleanEnvironments())
+      .addNode("3", "i", initializeCleanEnvironments(), LocalScope)
+      .addEdge("11", "0", "read", "maybe")
+      .addEdge("11", "7", "read", "maybe")
+      .addEdge("8", "0", "read", "maybe")
+      .addEdge("8", "7", "read", "maybe")
+      .addEdge("7", "8", "defined-by", "always")
       .addEdge("0", "7", "same-def-def", "maybe")
   )
 }))

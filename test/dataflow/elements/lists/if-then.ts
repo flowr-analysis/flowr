@@ -1,6 +1,5 @@
 import {
   DataflowGraph,
-  Environment,
   GlobalScope,
   initializeCleanEnvironments,
   LocalScope

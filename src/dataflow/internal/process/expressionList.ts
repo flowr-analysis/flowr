@@ -93,7 +93,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
   return {
     /* no active nodes remain, they are consumed within the remaining read collection */
     activeNodes: [],
-    in:          [...remainingRead.values()].flatMap(i => i),
+    in:          [...remainingRead.values()].flat(),
     out:         expressions.flatMap(child => [...child.out]),
     ast:         down.ast,
     environments,

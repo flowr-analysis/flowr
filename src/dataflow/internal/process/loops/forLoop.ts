@@ -52,7 +52,7 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
   return {
     activeNodes:  [],
     // we only want those not bound by a local variable
-    in:           [...variable.in, ...[...nameIdShares.values()].flatMap(v => v)],
+    in:           [...variable.in, ...[...nameIdShares.values()].flat()],
     out:          outgoing,
     graph:        nextGraph,
     environments: appendEnvironments(appendEnvironments(variable.environments, vector.environments), body.environments),

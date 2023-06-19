@@ -51,7 +51,7 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
   } else {
     return [
       { line: '{', indent: 0 },
-      ...indentBy(subExpressions.flatMap(i=>i), 1),
+      ...indentBy(subExpressions.flat(), 1),
       { line: '}', indent: 0 }
     ]
   }

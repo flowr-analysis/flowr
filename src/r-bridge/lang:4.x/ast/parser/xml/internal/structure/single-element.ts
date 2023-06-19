@@ -49,6 +49,6 @@ export function tryParseOneElementBasedOnType(data: ParserData, elem: NamedXmlBa
       return symbol
     }
     default:
-      throw new XmlParseError(`unknown type ${elem.name}`)
+      throw new XmlParseError(`unknown type ${elem.name} for ${JSON.stringify(elem)} in ${JSON.stringify(data)}`)
   }
 }

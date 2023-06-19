@@ -8,7 +8,7 @@ describe('Function Call', withShell(shell => {
       {nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'argument', definedAt: '5' },
       LocalScope,
       pushLocalEnvironment(initializeCleanEnvironments()))
-    assertDataflow(`Calling function a`, shell, `i <- 4; a <- function(x) { x }\n a(i)`,
+    assertDataflow(`Calling function a`, shell, `i <- 4; a <- function(x) { x }\na(i)`,
       new DataflowGraph()
         .addNode({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
         .addNode({ tag: 'use', id: '10', name: 'i'})

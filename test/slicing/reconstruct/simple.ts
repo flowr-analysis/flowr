@@ -15,15 +15,24 @@ describe('Simple', withShell(shell => {
     for (const [code, id, expected] of [
       ['12 + (supi <- 42)', '0', '12 + (supi <- 42)' ],
       ['y <- x <- 42', '1', 'y <- x <- 42' ],
-      ['for (i in 1:20) { x <- 5 }', '4', 'x <- 5' ],
-      ['repeat x <- 5', '2', 'x <- 5' ],
-      ['repeat { x <- 5 }', '2', 'x <- 5' ]
+      ['for (i in 1:20) { x <- 5 }', '4', 'x <- 5' ]
     ]) {
       assertReconstructed(code, shell, code, id, expected)
     }
   })
 
   describe('Loops', () => {
+    describe('repeat', () => {
+      const pool: [string, string | string[], string][] = [
+        ['repeat { x }', '0', 'repeat x'],
+        ['repeat { x <- 5; y <- 9 }', '0', 'repeat x <- 5'],
+        ['repeat { x <- 5; y <- 9 }', ['0', '1', '4'], 'repeat {\n    x <- 5\n    y <- 9\n}']
+      ]
+      for (const [code, id, expected] of pool) {
+        assertReconstructed(code, shell, code, id, expected)
+      }
+    })
+
     describe('while', () => {
       const pool: [string, string | string[], string][] = [
         ['while(TRUE) { x }', '1', 'x'],

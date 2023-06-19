@@ -98,11 +98,31 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 }
 
 // TODO: make sure repeat gets auto-selected
+// TODO: outsource split
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, selection: Selection): Code {
-  if(selection.has(loop.info.id)) {
-    return reconstructAsLeaf(loop, selection)
+  if (selection.has(loop.info.id)) {
+    return plain(getLexeme(loop))
+  } else if (body.length === 0) {
+    return []
+  } else {
+    if(body.length <= 1) {
+      // 'inline'
+      return [{ line: `repeat ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
+    } else if (body[0].line === '{' && body[body.length - 1].line === '}') {
+      // 'block'
+      return [
+        { line: `repeat {`, indent: 0 },
+        ...body.slice(1, body.length - 1),
+        { line: '}', indent: 0 }
+      ]
+    } else {
+      // unknown
+      return [
+        { line: `repeat`, indent: 0 },
+        ...indentBy(body, 1)
+      ]
+    }
   }
-  return body
 }
 
 

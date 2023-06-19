@@ -49,6 +49,21 @@ N <- 10
 for(i in 1:(N-1)) product <- product * i`
     )
 
+    assertSliced('Sum in call', shell, code, [{ line: 12, column: 13 }],
+      `sum <- 0
+w <- 7
+N <- 10
+for(i in 1:(N-1)) sum <- sum + i + w
+cat("Sum:", sum, "\\n")`
+    )
+
+    assertSliced('Product in call', shell, code, [{ line: 13, column: 17 }],
+      `product <- 1
+N <- 10
+for(i in 1:(N-1)) product <- product * i
+cat("Product:", product, "\\n")`
+    )
+
   })
 
 }))

@@ -3,7 +3,7 @@ import { guard } from '../util/assert'
 import { NodeId, RNodeWithParent } from '../r-bridge'
 import {
   environmentsEqual,
-  IdentifierReference,
+  IdentifierReference, initializeCleanEnvironments,
   REnvironmentInformation
 } from './environments'
 import { BiMap } from '../util/bimap'
@@ -80,6 +80,56 @@ export interface DataflowGraphNodeInfo extends MergeableRecord {
 type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'used'>
 
 /**
+ * Arguments required to construct a node in the dataflow graph.
+ *
+ * @see DataflowGraphNodeUse
+ * @see DataflowGraphNodeVariableDefinition
+ */
+interface NodeArguments extends MergeableRecord{
+  /**
+   * The id of the node (the id assigned by the {@link ParentInformation} decoration)
+   */
+  id:           NodeId
+  /**
+   * The name of the node, usually the variable name
+   */
+  name:         string
+  /**
+   * The environment in which the node is defined.
+   * If you do not provide an explicit environment, this will use a new clean one (with {@link initializeCleanEnvironments}).
+   */
+  environment?: REnvironmentInformation
+  /**
+   * Is this node part of every local execution trace or only in some.
+   * If you do not provide an explicit value, this will default to `always`.
+   */
+  when?:        DataflowGraphEdgeAttribute
+}
+
+/**
+ * Arguments required to construct a node which represents the usage of a variable in the dataflow graph.
+ */
+export type DataflowGraphNodeUse = NodeArguments
+
+/**
+ * Arguments required to construct a node which represents the definition of a variable in the dataflow graph.
+ */
+export interface DataflowGraphNodeVariableDefinition extends NodeArguments {
+  /**
+   * The scope in which the node is defined  (can be global or local to the current environment).
+   */
+  scope: DataflowScopeName
+}
+
+export interface DataflowGraphNodeFunctionDefinition extends DataflowGraphNodeVariableDefinition {
+  /**
+   * The static subflow of the function definition, constructed within {@link processFunctionDefinition}
+   */
+  flow: DataflowFunctionFlowInformation
+}
+
+
+/**
  * Holds the dataflow information found within the given AST
  * there is a node for every variable encountered, obeying scoping rules
  * the node info holds edge information, node-names etc.
@@ -110,6 +160,39 @@ export class DataflowGraph {
   }
 
   /**
+   * Add a node which represents the usage of a variable to the graph
+   *
+   * @param id          - The id of the node which is used (the id assigned by the {@link ParentInformation} decoration)
+   * @param name        - The name of the node (usually the variable name which is read)
+   * @param when        - Is this node part of every local execution trace or only in some
+   * @param environment - The contextual environment in which the node is used
+   *
+   * @see addDefinitionNode
+   */
+  public addUseNode(id: NodeId, name: string, when: DataflowGraphEdgeAttribute = 'always', environment: REnvironmentInformation = initializeCleanEnvironments()): this {
+    return this.addNode(id, name, environment, false, when)
+  }
+
+  /**
+   * Add a node which represents a variable definition to the graph
+   *
+   * @param id          - The id of the node which is defined (the id assigned by the {@link ParentInformation} decoration)
+   * @param name        - The name of the node (usually the variable name which is defined)
+   * @param scope       - The scope in which the node is defined (can be global or local to the current environment)
+   * @param when        - Is this node part of every local execution trace or only in some
+   * @param environment - The contextual environment in which the node is defined
+   *
+   * @see addUseNode
+   */
+  public addDefinitionNode(id: NodeId, name: string, scope: DataflowScopeName, when: DataflowGraphEdgeAttribute = 'always', environment: REnvironmentInformation = initializeCleanEnvironments()): this {
+    return this.addNode(id, name, environment, scope, when)
+  }
+
+  public addFunctionDefinitionNode(id: NodeId, name: string, scope: DataflowScopeName, when: DataflowGraphEdgeAttribute = 'always', environment: REnvironmentInformation = initializeCleanEnvironments(), flow?: DataflowFunctionFlowInformation): this {
+    return this.addNode(id, name, environment, scope, when, flow)
+  }
+
+  /**
    * Adds a new node to the graph
    *
    * @param id - the id of the node
@@ -119,7 +202,7 @@ export class DataflowGraph {
    * @param when - is the node active in all program paths or only in potentially in some
    * @param flow - if the node is (for example) a function, it can have a subgraph which is used as a template for each call
    */
-  public addNode(id: NodeId, name: string, environment: REnvironmentInformation, definedAtPosition: false | DataflowScopeName = false, when: DataflowGraphEdgeAttribute = 'always', flow?: DataflowFunctionFlowInformation): this {
+  private addNode(id: NodeId, name: string, environment: REnvironmentInformation, definedAtPosition: false | DataflowScopeName = false, when: DataflowGraphEdgeAttribute = 'always', flow?: DataflowFunctionFlowInformation): this {
     const oldNode = this.graph.get(id)
     if(oldNode !== undefined) {
       guard(oldNode.name === name, 'node names must match for the same id if added')

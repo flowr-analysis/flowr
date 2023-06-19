@@ -1,8 +1,9 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorDown } from '../../../processor'
 import { overwriteEnvironments } from '../../../environments'
+import { ParentInformation, RFunctionCall } from '../../../../r-bridge'
 
-export function processFunctionCall<OtherInfo>(functionCall: unknown, functionName: DataflowInformation<OtherInfo>, args: DataflowInformation<OtherInfo>[], down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, functionName: DataflowInformation<OtherInfo>, args: DataflowInformation<OtherInfo>[], down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   // TODO: deal with function info
   // TODO rest
 
@@ -12,6 +13,8 @@ export function processFunctionCall<OtherInfo>(functionCall: unknown, functionNa
     finalEnv = overwriteEnvironments(finalEnv, arg.environments)
     finalGraph = finalGraph.mergeWith(arg.graph)
   }
+
+  finalGraph.addNode(functionCall.info.id, functionCall.functionName.content, finalEnv, down.activeScope, 'always')
 
   return {
     activeNodes:  [],

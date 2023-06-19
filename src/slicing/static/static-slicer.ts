@@ -1,4 +1,4 @@
-import { DataflowGraph } from '../../dataflow'
+import { DataflowGraph, graphToMermaidUrl } from '../../dataflow'
 import { guard } from '../../util/assert'
 import { DecoratedAstMap, NodeId } from '../../r-bridge'
 import { SourcePosition } from '../../util/range'
@@ -36,9 +36,9 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
     visited.add(current)
 
     const currentInfo = dataflowGraph.get(current)
-    guard(currentInfo !== undefined, `current id: ${current} to calculate slice must be in graph`)
+    guard(currentInfo !== undefined, () => `current id: ${current} to calculate slice must be in graph but is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
     const currentNode = dataflowIdMap.get(current)
-    guard(currentNode !== undefined, `current id: ${current} to calculate slice must be in dataflowIdMap`)
+    guard(currentNode !== undefined, () => `current id: ${current} to calculate slice must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
 
     for (const edge of currentInfo.edges.filter(e => e.type === 'read' || e.type === 'defined-by')) {
       if (!visited.has(edge.target)) {

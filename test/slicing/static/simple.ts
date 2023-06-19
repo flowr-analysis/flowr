@@ -36,7 +36,19 @@ w <- 7
 N <- 10
 for(i in 1:(N-1)) sum <- sum + i + w`
     )
-  }
-  )
+
+    assertSliced('Product lhs in for', shell, code, [{ line: 9, column: 3 }],
+      `product <- 1
+N <- 10
+for(i in 1:(N-1)) product <- product * i`
+    )
+
+    assertSliced('Product rhs in for', shell, code, [{ line: 9, column: 14 }],
+      `product <- 1
+N <- 10
+for(i in 1:(N-1)) product <- product * i`
+    )
+
+  })
 
 }))

@@ -1,5 +1,7 @@
 import { assertSliced, withShell } from '../../helper/shell'
 
+// TODO: test something like a <- function() { x };  x <- 3; y <- 2; a()
+
 describe('With Call', withShell(shell => {
   describe('Previously defined call', () => {
     const code = `i <- 4

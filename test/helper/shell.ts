@@ -147,12 +147,13 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
 function printIdMapping(ids: NodeId[], map: DecoratedAstMap<NoInfo>): string {
   return ids.map(id => `${id}: ${JSON.stringify(map.get(id)?.lexeme)}`).join(', ')
 }
-export const assertReconstructed = (name: string, shell: RShell, input: string, ids: NodeId[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
+export const assertReconstructed = (name: string, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
+  const selectedIds = Array.isArray(ids) ? ids : [ids]
   return it(name, async function() {
     const ast = await retrieveAst(shell, input)
     const decoratedAst = decorateAst(ast, getId)
-    const reconstructed = reconstructToCode<NoInfo>(decoratedAst, new Set(ids))
-    assert.strictEqual(reconstructed, expected, `got: ${reconstructed}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(ids, decoratedAst.idMap)})`)
+    const reconstructed = reconstructToCode<NoInfo>(decoratedAst, new Set(selectedIds))
+    assert.strictEqual(reconstructed, expected, `got: ${reconstructed}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, decoratedAst.idMap)})`)
   })
 }
 

@@ -5,7 +5,7 @@ import {
   RExpressionList,
   RForLoop, RFunctionCall,
   RNodeWithParent,
-  RRepeatLoop
+  RRepeatLoop, RWhileLoop
 } from '../r-bridge'
 import { foldAstStateful, StatefulFoldFunctions } from '../r-bridge/lang:4.x/ast/model/processing/statefulFold'
 import { log } from '../util/log'
@@ -105,6 +105,34 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
   return body
 }
 
+
+function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, selection: Selection): Code {
+  if(selection.has(loop.info.id)) {
+    return plain(getLexeme(loop))
+  }
+  if(condition.length === 0) {
+    return body
+  } else {
+    if(body.length <= 1) {
+      // 'inline'
+      return [{ line: `while(${getLexeme(loop.condition)}) ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
+    } else if (body[0].line === '{' && body[body.length - 1].line === '}') {
+      // 'block'
+      return [
+        { line: `while(${getLexeme(loop.condition)}) {`, indent: 0 },
+        ...body.slice(1, body.length - 1),
+        { line: '}', indent: 0 }
+      ]
+    } else {
+      // unknown
+      return [
+        { line: `while(${getLexeme(loop.condition)})`, indent: 0 },
+        ...indentBy(body, 1)
+      ]
+    }
+  }
+}
+
 function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: Code[], selection: Selection): Code {
   if(selection.has(call.info.id)) {
     return plain(getLexeme(call))
@@ -147,7 +175,7 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Selection, C
   loop: {
     foldFor:    reconstructForLoop,
     foldRepeat: reconstructRepeatLoop,
-    foldWhile:  foldToConst,
+    foldWhile:  reconstructWhileLoop,
     foldBreak:  reconstructAsLeaf,
     foldNext:   reconstructAsLeaf
   },

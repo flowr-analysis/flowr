@@ -47,6 +47,10 @@ export interface IdentifierReference {
   used:   DataflowGraphEdgeAttribute
 }
 
+export function equalIdentifierReferences(a: IdentifierReference, b: IdentifierReference): boolean {
+  return a.name === b.name && a.scope === b.scope && a.nodeId === b.nodeId && a.used === b.used
+}
+
 export function makeAllMaybe(references: IdentifierReference[] | undefined): IdentifierReference[] {
   if(references === undefined) {
     return []

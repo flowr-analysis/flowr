@@ -4,7 +4,7 @@ import { define, pushLocalEnvironment } from '../../../../src/dataflow/environme
 
 // TODO: <- in parameters
 // TODO: allow to access environments in the end
-describe('Functions', withShell(shell => {
+describe('Function Definition', withShell(shell => {
   describe('Only Functions', () => {
     assertDataflow(`unknown read in function`, shell, `function() { x }`,
       new DataflowGraph()

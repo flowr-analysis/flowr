@@ -5,7 +5,7 @@ import {
   DataflowGraph,
   DataflowGraphEdgeAttribute,
   DataflowMap,
-  DataflowScopeName
+  DataflowScopeName, FunctionArgument, IdentifierReference
 } from '../dataflow'
 
 export function formatRange(range: SourceRange | undefined): string {
@@ -54,15 +54,33 @@ function displayEnvReplacer(key: any, value: any): any {
   }
 }
 
+function printArg(arg: IdentifierReference | '<value>'): string {
+  return arg === '<value>' ? '<value>' : `${arg.nodeId}:${arg.name}`
+}
+function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
+  let result = ''
+  for(const arg of argMapping) {
+    result += Array.isArray(arg) ? `${arg[0]} -> ${printArg(arg[1])}\n` : `${printArg(arg)}\n`
+  }
+  return result.length === 0 ? '' : `\n    ${result}`
+}
+
 export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = ''): string {
   const lines = prefix === null ? [] : [prefix]
   for (const [id, info] of graph.entries()) {
     const def = info.definedAtPosition !== false
+    const fCall = info.functionCall !== undefined && info.functionCall !== false
     const defText = definedAtPositionToMermaid(info.definedAtPosition, info.when)
-    const open = def ? '[' : '(['
-    const close = def ? ']' : '])'
+    let open: string
+    let close: string
+    if(def) { open = '['; close = ']' }
+    else if(fCall) { open = '[['; close = ']]' }
+    else { open = '(['; close = '])' }
+
     lines.push(`    %% ${id}: ${JSON.stringify(info.environment, displayEnvReplacer)}`)
-    lines.push(`    ${idPrefix}${id}${open}"\`${info.name} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*\`"${close}`)
+    lines.push(`    ${idPrefix}${id}${open}"\`${info.name} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
+      info.functionCall ? displayFunctionArgMapping(info.functionCall) : ''
+    }\`"${close}`)
     for (const edge of info.edges) {
       const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
       lines.push(`    ${idPrefix}${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${edge.target}`)

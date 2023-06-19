@@ -1,8 +1,8 @@
 // TODO: modify | alias | etc.
-import { guard } from '../util/assert'
+import { assertUnreachable, guard } from '../util/assert'
 import { NodeId, RNodeWithParent } from '../r-bridge'
 import {
-  environmentsEqual,
+  environmentsEqual, equalIdentifierReferences,
   IdentifierReference, initializeCleanEnvironments,
   REnvironmentInformation
 } from './environments'
@@ -20,6 +20,7 @@ export type DataflowGraphEdgeType =
     | /** the edge determines that source is defined by target */ 'defined-by'
     | /** the edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
     | /** similar to `same-read-read` but for def-def constructs without a read in-between */ 'same-def-def'
+    | /** formal used as argument to a function call */ 'argument'
 
 // context -- is it always read/defined-by // TODO: loops
 export type DataflowGraphEdgeAttribute = 'always' | 'maybe'
@@ -66,11 +67,49 @@ export interface DataflowGraphDefinedByEdge extends DataflowGraphEdge {
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation<unknown>, 'ast'>
 
+export type NamedArgument = [string, IdentifierReference | '<value>']
+export type PositionalArgument = IdentifierReference | '<value>'
+export type FunctionArgument = NamedArgument | PositionalArgument
+
+function equalFunctionArgumentsReferences(a: IdentifierReference | '<value>', b: IdentifierReference | '<value>'): boolean {
+  if (a === '<value>' || b === '<value>') {
+    return a === b
+  }
+  return equalIdentifierReferences(a, b)
+}
+
+export function equalFunctionArguments(a: false | FunctionArgument[], b: false | FunctionArgument[]): boolean {
+  if(a === false || b === false) {
+    return a === b
+  }
+  else if (a.length !== b.length) {
+    return false
+  }
+  for (let i = 0; i < a.length; ++i) {
+    const aArg = a[i]
+    const bArg = b[i]
+    if (Array.isArray(aArg) && Array.isArray(bArg)) {
+      // must have same name
+      if (aArg[0] !== bArg[0]) {
+        return false
+      }
+      if (!equalFunctionArgumentsReferences(aArg[1], bArg[1])) {
+        return false
+      }
+    } else if (!equalFunctionArgumentsReferences(aArg as PositionalArgument, bArg as PositionalArgument)) {
+      return false
+    }
+  }
+  return true
+
+}
+
 // TODO: migrate with arguments used during construction
 export interface DataflowGraphNodeInfo extends MergeableRecord {
   name:              string
   definedAtPosition: false | DataflowScopeName
   environment:       REnvironmentInformation
+  functionCall:      false | FunctionArgument[]
   /** When is usually `always`, yet global/local assignments in ifs, loops, or function definitions do not have to happen. They are marked with 'maybe'. */
   when:              DataflowGraphEdgeAttribute
   edges:             DataflowGraphEdge[]
@@ -116,31 +155,39 @@ interface DataflowGraphNodeBase extends MergeableRecord {
  * Arguments required to construct a node which represents the usage of a variable in the dataflow graph.
  */
 export interface DataflowGraphNodeUse extends DataflowGraphNodeBase {
-  tag: 'use'
+  readonly tag: 'use'
+}
+
+/**
+ * Arguments required to construct a node which represents the usage of a variable in the dataflow graph.
+ */
+export interface DataflowGraphNodeFunctionCall extends DataflowGraphNodeBase {
+  readonly tag: 'function-call'
+  args:         FunctionArgument[]
 }
 
 /**
  * Arguments required to construct a node which represents the definition of a variable in the dataflow graph.
  */
 export interface DataflowGraphNodeVariableDefinition extends DataflowGraphNodeBase {
-  tag:   'variable-definition'
+  readonly tag: 'variable-definition'
   /**
    * The scope in which the node is defined  (can be global or local to the current environment).
    */
-  scope: DataflowScopeName
+  scope:        DataflowScopeName
 }
 
 export interface DataflowGraphNodeFunctionDefinition extends DataflowGraphNodeBase {
-  tag:     'function-definition'
+  readonly tag: 'function-definition'
   /**
    * The scope in which the node is defined  (can be global or local to the current environment).
    */
-  scope:   DataflowScopeName
+  scope:        DataflowScopeName
   /**
    * The static subflow of the function definition, constructed within {@link processFunctionDefinition}.
    * If the node is (for example) a function, it can have a subgraph which is used as a template for each call.
    */
-  subflow: DataflowFunctionFlowInformation
+  subflow:      DataflowFunctionFlowInformation
 }
 
 const DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
@@ -159,10 +206,10 @@ export class DataflowGraph {
   private graph = new Map<NodeId, DataflowGraphNodeInfo>()
 
   /**
-   * @returns the ids of all nodes in the graph
+   * @returns the ids of all nodes in the graph, together with their node info
    */
-  public nodes(): IterableIterator<NodeId> {
-    return this.graph.keys()
+  public nodes(): IterableIterator<[NodeId, DataflowGraphNodeInfo]> {
+    return this.graph.entries()
   }
 
   /**
@@ -180,10 +227,11 @@ export class DataflowGraph {
    * Adds a new node to the graph
    *
    * @see DataflowGraphNodeUse
+   * @see DataflowGraphNodeFunctionCall
    * @see DataflowGraphNodeVariableDefinition
    * @see DataflowGraphNodeFunctionDefinition
    */
-  public addNode(node: DataflowGraphNodeUse | DataflowGraphNodeVariableDefinition | DataflowGraphNodeFunctionDefinition): this {
+  public addNode(node: DataflowGraphNodeUse | DataflowGraphNodeVariableDefinition | DataflowGraphNodeFunctionDefinition | DataflowGraphNodeFunctionCall): this {
     const oldNode = this.graph.get(node.id)
     if(oldNode !== undefined) {
       guard(oldNode.name === node.name, 'node names must match for the same id if added')
@@ -192,15 +240,22 @@ export class DataflowGraph {
     dataflowLogger.trace(`[${node.tag}] adding node ${JSON.stringify(node)}`)
     const environment = node.environment ?? DEFAULT_ENVIRONMENT
     const when = node.when ?? 'always'
-    switch(node.tag) {
+    const tag = node.tag
+    switch(tag) {
       case 'use':
-        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: false, when, edges: [], subflow: undefined })
+        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: false, when, edges: [], subflow: undefined, functionCall: false })
         break
       case 'variable-definition':
-        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: node.scope, when, edges: [], subflow: undefined })
+        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: node.scope, when, edges: [], subflow: undefined, functionCall: false })
         break
       case 'function-definition':
-        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: node.scope, when, edges: [], subflow: node.subflow })
+        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: node.scope, when, edges: [], subflow: node.subflow, functionCall: false })
+        break
+      case 'function-call':
+        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: false, when, edges: [], subflow: undefined, functionCall: node.args })
+        break
+      default:
+        assertUnreachable(tag)
     }
     return this
   }
@@ -301,6 +356,12 @@ export class DataflowGraph {
         dataflowLogger.warn(`node ${id} does not match (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
         return false
       }
+
+      if(!equalFunctionArguments(info.functionCall, otherInfo.functionCall)) {
+        dataflowLogger.warn(`node ${id} does not match on function arguments (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
+        return false
+      }
+
       if(info.subflow !== undefined || otherInfo.subflow !== undefined) {
         if(info.subflow === undefined || otherInfo.subflow === undefined) {
           dataflowLogger.warn(`node ${id} does not match on subflow with undefined (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
@@ -335,11 +396,13 @@ function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeI
   guard(current.name === next.name, 'nodes to be joined for the same id must have the same name')
   guard(current.definedAtPosition === next.definedAtPosition, 'nodes to be joined for the same id must have the same definedAtPosition')
   guard(current.environment === next.environment, 'nodes to be joined for the same id must have the same environment')
+  guard(equalFunctionArguments(current.functionCall, next.functionCall), 'nodes to be joined for the same id must have the same function call information')
   return {
     name:              current.name,
     definedAtPosition: current.definedAtPosition,
     when:              current.when,
     environment:       current.environment,
+    functionCall:      current.functionCall,
     // TODO: join edges
     edges:             [...current.edges, ...next.edges]
   }

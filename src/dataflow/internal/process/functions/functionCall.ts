@@ -14,7 +14,8 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     finalGraph = finalGraph.mergeWith(arg.graph)
   }
 
-  finalGraph.addNode(functionCall.info.id, functionCall.functionName.content, finalEnv, down.activeScope, 'always')
+  // TODO: 
+  // finalGraph.addNode(functionCall.info.id, functionCall.functionName.content, finalEnv, down.activeScope, 'always')
 
   return {
     activeNodes:  [],

@@ -24,7 +24,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   const outEnvironment = overwriteEnvironments(argsEnvironment, bodyEnvironment)
   for(const read of remainingRead) {
     dataflowLogger.trace(`Adding node ${read.nodeId} to function graph in environment ${JSON.stringify(outEnvironment)} `)
-    subgraph.addNode(read.nodeId, read.name, outEnvironment, false, 'maybe')
+    subgraph.addNode({ tag: 'use', id: read.nodeId, name: read.name, environment: outEnvironment, when: 'maybe' })
   }
 
 
@@ -45,7 +45,15 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 
   // TODO: exit points?
   const graph = new DataflowGraph()
-  graph.addNode(functionDefinition.info.id, functionDefinition.info.id, popLocalEnvironment(down.environments), down.activeScope, 'always', flow)
+  graph.addNode({
+    tag:         'function-definition',
+    id:          functionDefinition.info.id,
+    name:        functionDefinition.info.id,
+    environment: popLocalEnvironment(down.environments),
+    scope:       down.activeScope,
+    when:        'always',
+    subflow:     flow
+  })
   // TODO: deal with function info
   // TODO: rest
   return {

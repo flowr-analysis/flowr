@@ -37,5 +37,8 @@ describe('Function Call', withShell(shell => {
         .addEdge('9', '10', 'argument', 'always')
         .addEdge('9', '3', 'read', 'always')
     )
+    assertDataflow(`Calling function a with constant function`, shell, `i <- 4
+a <- function(x) { x <- 2; 1 }
+a(i)`, new DataflowGraph())
   })
 }))

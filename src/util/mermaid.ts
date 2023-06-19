@@ -65,7 +65,7 @@ function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
   return result.length === 0 ? '' : `\n    ${result}`
 }
 
-export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = ''): string {
+export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = '', mark?: Set<NodeId>): string {
   const lines = prefix === null ? [] : [prefix]
   for (const [id, info] of graph.entries()) {
     const def = info.definedAtPosition !== false
@@ -76,11 +76,13 @@ export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<
     if(def) { open = '['; close = ']' }
     else if(fCall) { open = '[['; close = ']]' }
     else { open = '(['; close = '])' }
-
     lines.push(`    %% ${id}: ${JSON.stringify(info.environment, displayEnvReplacer)}`)
     lines.push(`    ${idPrefix}${id}${open}"\`${info.name} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
       info.functionCall ? displayFunctionArgMapping(info.functionCall) : ''
     }\`"${close}`)
+    if (mark?.has(id)) {
+      lines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `)
+    }
     for (const edge of info.edges) {
       const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
       lines.push(`    ${idPrefix}${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${edge.target}`)
@@ -106,9 +108,15 @@ export function mermaidCodeToUrl(code: string): string {
   return `https://mermaid.live/edit#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}`
 }
 
-// graphToMermaidUrl
-export function graphToMermaidUrl(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo>): string {
-  return mermaidCodeToUrl(graphToMermaid(graph, dataflowIdMap))
+/**
+ * Converts a dataflow graph to a mermaid url that visualizes the graph.
+ *
+ * @param graph         - graph to convert
+ * @param dataflowIdMap - id map to use to get access to the graph id mappings
+ * @param mark          - special nodes to mark (e.g. those included in the slice)
+ */
+export function graphToMermaidUrl(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo>, mark?: Set<NodeId>): string {
+  return mermaidCodeToUrl(graphToMermaid(graph, dataflowIdMap, undefined, undefined, mark))
 }
 
 export interface LabeledDiffGraph {

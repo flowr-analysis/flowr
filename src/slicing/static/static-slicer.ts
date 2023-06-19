@@ -17,6 +17,17 @@ export function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap:
   return undefined
 }
 
+export function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflowIdMap: DecoratedAstMap<OtherInfo>): NodeId | undefined {
+  for(const [id, values] of dataflowIdMap.entries()) {
+    if(values.location && values.location.start.line === line && values.lexeme === name) {
+      slicerLogger.trace(`resolving id ${id} for line ${line} and name ${name}`)
+      return id
+    }
+  }
+  return undefined
+}
+
+
 /**
  * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
  * <p>

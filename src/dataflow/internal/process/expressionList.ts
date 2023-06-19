@@ -14,7 +14,7 @@ import {
 import { linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
 import { DataflowGraph } from '../../graph'
-import { dataflowLogger, graphToMermaidUrl } from '../../index'
+import { dataflowLogger } from '../../index'
 
 
 function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, down: DataflowProcessorDown<OtherInfo>, environments: REnvironmentInformation, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
@@ -57,11 +57,13 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
 
     const resolved = resolveByName(writeName, down.activeScope, environments)
     if (resolved !== undefined) {
-      console.log(`resolved ${writeName} to ${resolved.length} targets (${JSON.stringify(resolved.map(r => r.name))}))}) in env ${JSON.stringify(environments)}`)
-      console.log(`in graph ${graphToMermaidUrl(nextGraph, down.ast.idMap)}`)
       // write-write
       for (const target of resolved) {
-        nextGraph.addEdge(target, writeTarget, 'same-def-def', undefined, true)
+        if(nextGraph.hasNode(target.nodeId)) {
+          nextGraph.addEdge(target, writeTarget, 'same-def-def', undefined, true)
+        } {
+          dataflowLogger.trace(`delay same-def-def edge because target ${JSON.stringify(target)} is not yet in graph (potentially an argument)`)
+        }
       }
     }
   }

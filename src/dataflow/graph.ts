@@ -2,7 +2,7 @@
 import { assertUnreachable, guard } from '../util/assert'
 import { NodeId, RNodeWithParent } from '../r-bridge'
 import {
-  environmentsEqual, equalIdentifierReferences,
+  environmentsEqual, equalIdentifierReferences, IdentifierDefinition,
   IdentifierReference, initializeCleanEnvironments,
   REnvironmentInformation
 } from './environments'
@@ -117,7 +117,7 @@ export interface DataflowGraphNodeInfo extends MergeableRecord {
   subflow?:          DataflowFunctionFlowInformation
 }
 
-type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'used'>
+type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'used'>  | IdentifierDefinition
 
 /**
  * Arguments required to construct a node in the dataflow graph.
@@ -210,6 +210,10 @@ export class DataflowGraph {
    */
   public nodes(): IterableIterator<[NodeId, DataflowGraphNodeInfo]> {
     return this.graph.entries()
+  }
+
+  public hasNode(id: NodeId): boolean {
+    return this.graph.has(id)
   }
 
   /**

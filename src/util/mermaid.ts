@@ -54,8 +54,11 @@ function displayEnvReplacer(key: any, value: any): any {
   }
 }
 
-function printArg(arg: IdentifierReference | '<value>'): string {
-  return arg === '<value>' ? '<value>' : `${arg.nodeId}:${arg.name}`
+function printArg(arg: IdentifierReference | '<value>' | undefined): string {
+  if(arg === undefined) {
+    return '??'
+  }
+  return arg === '<value>' ? '-value-' : `${arg.nodeId}:${arg.name}`
 }
 function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
   let result = ''

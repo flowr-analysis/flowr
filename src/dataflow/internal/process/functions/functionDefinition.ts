@@ -1,6 +1,6 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorDown } from '../../../processor'
-import { overwriteEnvironments, popLocalEnvironment } from '../../../environments'
+import { overwriteEnvironments, popLocalEnvironment, resolveByName } from '../../../environments'
 import { linkInputs } from '../../linker'
 import { DataflowGraph, dataflowLogger } from '../../../index'
 import { ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
@@ -20,6 +20,20 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   const remainingRead = linkInputs(readInBody, down.activeScope, argsEnvironment, readInArguments.slice(), body.graph, true /* functions do not have to be called */)
 
   dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads (of ids [${remainingRead.map(r => r.nodeId).join(', ')}])`)
+
+
+  // link same-def-def with arguments
+  for (const writeTarget of body.out) {
+    const writeName = writeTarget.name
+
+    const resolved = resolveByName(writeName, down.activeScope, argsEnvironment)
+    if (resolved !== undefined) {
+      // write-write
+      for (const target of resolved) {
+        subgraph.addEdge(target, writeTarget, 'same-def-def', undefined, true)
+      }
+    }
+  }
 
   const outEnvironment = overwriteEnvironments(argsEnvironment, bodyEnvironment)
   for(const read of remainingRead) {

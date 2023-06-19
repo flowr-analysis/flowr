@@ -448,7 +448,8 @@ describe('Function Definition', withShell(shell => {
                     .addNode({ tag: 'use', id: "5", name: "b", environment: withinNestedFunctionWithParam })
                     .addNode({ tag: 'variable-definition', id: "4", name: "x", environment: withinNestedFunctionWithParam, scope: LocalScope, when: 'always' })
                     .addNode({ tag: 'variable-definition', id: "2", name: "x", environment: withinNestedFunctionWithParam, scope: LocalScope, when: 'always' })
-                    .addEdge("4", "5", "defined-by", "always"),
+                    .addEdge("4", "5", "defined-by", "always")
+                    .addEdge("2", "4", 'same-def-def', 'always'),
                   environments: withinNestedFunctionWithDef
                 }
               })

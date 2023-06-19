@@ -1,7 +1,7 @@
 import { retrieveAst, withShell } from '../../../helper/shell'
 import { assert } from 'chai'
 
-describe("check hooks are called appropriately", withShell(shell => {
+describe("Check hooks are called appropriately", withShell(shell => {
   it('Call the number hook!', async() => {
     let before = false
     let after = false

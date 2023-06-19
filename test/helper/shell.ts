@@ -2,8 +2,8 @@ import { it } from "mocha"
 import { testRequiresNetworkConnection } from "./network"
 import { DeepPartial } from 'ts-essentials'
 import {
-  decorateAst, deterministicCountingIdGenerator,
-  getStoredTokenMap,
+  decorateAst, DecoratedAstMap, deterministicCountingIdGenerator,
+  getStoredTokenMap, IdGenerator, NodeId, NoInfo,
   retrieveAstFromRCode,
   RExpressionList,
   RNode, RNodeWithParent,
@@ -16,6 +16,10 @@ import {
   diffGraphsToMermaidUrl, graphToMermaidUrl, LocalScope
 } from '../../src/dataflow'
 import { produceDataFlowGraph } from '../../src/dataflow'
+import { reconstructToCode } from '../../src/slicing/reconstruct'
+import { locationToId, naiveStaticSlicing } from '../../src/slicing/static'
+import { SourcePosition } from '../../src/util/range'
+import { isNotUndefined } from '../../src/util/assert'
 
 let defaultTokenMap: Record<string, string>
 
@@ -73,6 +77,24 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
   }
 }
 
+// TODO: recursive work?
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function removeSourceInformation<T extends Record<string, any>>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj, (key, value) => {
+    if (key === 'fullRange' || key === 'additionalTokens' || key === 'fullLexeme') {
+      return undefined
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return value
+  })) as T
+}
+
+function assertAstEqualIngoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, message?: string): void {
+  const astCopy = removeSourceInformation(ast)
+  const expectedCopy = removeSourceInformation(expected)
+  assert.deepStrictEqual(astCopy, expectedCopy, message)
+}
+
 export const retrieveAst = async(shell: RShell, input: string, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> => {
   return await retrieveAstFromRCode({
     request:                 'text',
@@ -86,7 +108,7 @@ export const retrieveAst = async(shell: RShell, input: string, hooks?: DeepParti
 export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList): Mocha.Test => {
   return it(name, async function() {
     const ast = await retrieveAst(shell, input)
-    assert.deepStrictEqual(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
+    assertAstEqualIngoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
   })
 }
 
@@ -96,7 +118,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
   it(name, async function() {
     const baseAst = await retrieveAst(shell, input)
     const ast = decorator(baseAst)
-    assert.deepStrictEqual(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
+    assertAstEqualIngoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
   })
 }
 
@@ -119,3 +141,39 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
     }
   })
 }
+
+
+/** call within describeSession */
+function printIdMapping(ids: NodeId[], map: DecoratedAstMap<NoInfo>): string {
+  return ids.map(id => `${id}: ${JSON.stringify(map.get(id)?.lexeme)}`).join(', ')
+}
+export const assertReconstructed = (name: string, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
+  const selectedIds = Array.isArray(ids) ? ids : [ids]
+  return it(name, async function() {
+    const ast = await retrieveAst(shell, input)
+    const decoratedAst = decorateAst(ast, getId)
+    const reconstructed = reconstructToCode<NoInfo>(decoratedAst, new Set(selectedIds))
+    assert.strictEqual(reconstructed, expected, `got: ${reconstructed}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, decoratedAst.idMap)})`)
+  })
+}
+
+
+export const assertSliced = (name: string, shell: RShell, input: string, slices: SourcePosition[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
+  return it(name, async function() {
+    const ast = await retrieveAst(shell, input)
+    const decoratedAst = decorateAst(ast, getId)
+
+    const mappedIds = slices.map(l => locationToId(l, decoratedAst.idMap)).map((d, i) => {
+      assert(isNotUndefined(d), `all ids must be found, but not for id ${i}`)
+      return d
+    })
+
+    const dataflow = produceDataFlowGraph(decoratedAst)
+
+    const sliced = naiveStaticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds)
+    const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
+
+    assert.strictEqual(reconstructed, expected, `got: ${reconstructed}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(mappedIds, decoratedAst.idMap)})`)
+  })
+}
+

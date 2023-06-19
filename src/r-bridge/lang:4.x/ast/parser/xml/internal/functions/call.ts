@@ -43,7 +43,7 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
 
   const splitArgumentsOnComma = splitArrayOn(mappedWithName.slice(1), x => x.name === Type.Comma)
   const args: RNode[] = splitArgumentsOnComma.map(x => {
-    const gotArguments = parseBasedOnType(data, x.map(x => x.content))
+    const gotArguments = parseBasedOnType(data, x)
     guard(gotArguments.length < 2, () => `expected argument to be wrapped in expression, yet received ${JSON.stringify(gotArguments)}`)
     return gotArguments.length === 0 ? undefined : gotArguments[0]
   }).filter(isNotUndefined)
@@ -54,7 +54,12 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
     lexeme:    content,
     functionName,
     arguments: args,
-    info:      {}
+    info:      {
+      // TODO: include children etc.
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme
+    }
   }
   return executeHook(data.hooks.functions.onFunctionCall.after, data, result)
 }

@@ -22,6 +22,10 @@ export function parseRootObjToAst(
     type:     Type.ExpressionList,
     children: parsedChildren,
     lexeme:   undefined,
-    info:     {}
+    info:     {
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme
+    }
   }
 }

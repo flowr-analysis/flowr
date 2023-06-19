@@ -51,8 +51,9 @@ export function defaultQuadIdGenerator(): QuadIdRetriever {
   return (elem: unknown, context: ContextForQuad) => `${context}/${idMap.get(elem)}`
 }
 
+const ignoredKeysArray = ['complexNumber', 'markedAsInt', 'info']
 export function defaultQuadIgnoreIf(): QuadIgnoreIf {
-  return (key: string, value: unknown) => value === undefined
+  return (key: string, value: unknown) => value === undefined || ignoredKeysArray.includes(key)
 }
 
 /**

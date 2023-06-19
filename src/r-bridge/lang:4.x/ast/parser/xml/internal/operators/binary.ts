@@ -75,7 +75,12 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
     rhs:    parsedRhs,
     op:     operationName,
     lexeme: content,
-    info:   {}
+    info:   {
+      // TODO: include lhs and rhs
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme
+    }
   }
   return executeHook(data.hooks.operators.onBinary.after, data, result)
 }

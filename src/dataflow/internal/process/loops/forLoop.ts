@@ -1,4 +1,9 @@
-import { linkIngoingVariablesInSameScope, produceNameSharedIdMap, setDefinitionOfNode } from '../../linker'
+import {
+  linkCircularRedefinitionsWithinALoop,
+  linkIngoingVariablesInSameScope,
+  produceNameSharedIdMap,
+  setDefinitionOfNode
+} from '../../linker'
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorDown } from '../../../processor'
 import { appendEnvironments, makeAllMaybe } from '../../../environments'
@@ -30,7 +35,7 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
     const name = write.name
     const readIdsToLink = nameIdShares.get(name)
     for(const readId of readIdsToLink) {
-      nextGraph.addEdge(readId.nodeId, write.nodeId, 'defined-by', /* TODO */ 'always', true)
+      nextGraph.addEdge(readId.nodeId, write.nodeId, 'read', /* TODO */ 'always', true)
     }
     // now, we remove the name from the id shares as they are no longer needed
     nameIdShares.delete(name)
@@ -40,8 +45,9 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
   const outgoing = [...variable.out, ...writtenVariable, ...body.out]
   makeAllMaybe(body.out)
 
-
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
+
+  linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out)
 
   return {
     activeNodes:  [],

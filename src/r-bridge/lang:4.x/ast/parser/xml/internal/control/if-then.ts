@@ -46,7 +46,12 @@ export function tryParseIfThen(data: ParserData,
     then:      parsedThen,
     location,
     lexeme:    content,
-    info:      {}
+    info:      {
+      // TODO: include children etc.
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme
+    }
   }
   return executeHook(data.hooks.control.onIfThen.after, data, result)
 }

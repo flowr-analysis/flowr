@@ -52,7 +52,7 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
   const bodyStructure = mappedWithName.slice(closingParenIndex + 1)
   guard(bodyStructure.length === 1, () => `expected function body to be unique, yet received ${JSON.stringify(bodyStructure)}`)
 
-  const body = parseBasedOnType(data, bodyStructure.map(b => b.content))
+  const body = parseBasedOnType(data, bodyStructure)
   guard(body.length === 1, () => `expected function body to yield one normalized expression, but ${JSON.stringify(body)}`)
 
 
@@ -62,7 +62,12 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
     lexeme:    content,
     arguments: args as RArgument[],
     body:      body[0],
-    info:      {}
+    info:      {
+      // TODO: include children etc.
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme
+    }
   }
   return executeHook(data.hooks.functions.onFunctionDefinition.after, data, result)
 }

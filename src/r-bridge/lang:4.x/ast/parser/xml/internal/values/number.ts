@@ -12,14 +12,23 @@ import { executeHook } from '../../hooks'
  * This requires you to check the corresponding name beforehand.
  *
  * @param data - The data used by the parser (see {@link ParserData})
- * @param obj - the json object to extract the meta-information from
+ * @param obj  - The json object to extract the meta-information from
  */
 export function parseNumber(data: ParserData, obj: XmlBasedJson): RNumber | RLogical | RSymbol<NoInfo, typeof RNa> {
   parseLog.debug(`[number] try: ${JSON.stringify(obj)}`)
   obj = executeHook(data.hooks.values.onNumber.before, data, obj)
 
   const { location, content } = retrieveMetaStructure(data.config, obj)
-  const common = { location, lexeme: content }
+  const common = {
+    location,
+    lexeme: content,
+    info:   {
+    // TODO: include children etc.
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme
+    }
+  }
 
   let result:  RNumber | RLogical | RSymbol<NoInfo, typeof RNa>
   /* the special symbol */
@@ -28,22 +37,19 @@ export function parseNumber(data: ParserData, obj: XmlBasedJson): RNumber | RLog
       ...common,
       namespace: undefined,
       type:      Type.Symbol,
-      content,
-      info:      {}
+      content
     }
   } else if (isBoolean(content)) {
     result = {
       ...common,
       type:    Type.Logical,
-      content: boolean2ts(content),
-      info:    {}
+      content: boolean2ts(content)
     }
   } else {
     result = {
       ...common,
       type:    Type.Number,
-      content: number2ts(content),
-      info:    {}
+      content: number2ts(content)
     }
   }
   return executeHook(data.hooks.values.onNumber.after, data, result)

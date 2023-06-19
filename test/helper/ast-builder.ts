@@ -1,9 +1,10 @@
-import { type RNumberValue, Type, RExpressionList, RNode } from '../../src/r-bridge'
+import { type RNumberValue, Type, RExpressionList, RNode, RArgument } from '../../src/r-bridge'
 import { SourceRange } from '../../src/util/range'
-import { RArgument } from '../../src/r-bridge'
+
+const emptyInfo = { fullRange: undefined, additionalTokens: [], fullLexeme: undefined }
 
 export function exprList(...children: RNode[]): RExpressionList {
-  return { type: Type.ExpressionList, children, lexeme: undefined, info: {} }
+  return { type: Type.ExpressionList, children, lexeme: undefined, info: emptyInfo }
 }
 export function numVal(value: number, markedAsInt = false, complexNumber = false): RNumberValue {
   return { num: value, markedAsInt, complexNumber }
@@ -23,8 +24,8 @@ export function argument(name: string, location: SourceRange, defaultValue?: RNo
       lexeme:    name,
       content:   name,
       namespace: undefined,
-      info:      {}
+      info:      emptyInfo
     },
-    info: {}
+    info: emptyInfo
   }
 }

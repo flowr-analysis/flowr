@@ -35,8 +35,8 @@ export function extractLocation(ast: XmlBasedJson): SourceRange {
  * The json object that represents the input xml contains various meta-information.
  * This function extracts the meta-information and returns it.
  *
- * @param config - the configuration of the parser to use to retrieve the corresponding name fields
- * @param obj - the json object to extract the meta-information from
+ * @param config - The configuration of the parser to use to retrieve the corresponding name fields
+ * @param obj    - The json object to extract the meta-information from
  */
 export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson): {
   /** the obj passed in, but potentially without surrounding array wrappers (see {@link objectWithArrUnwrap}) */
@@ -75,7 +75,7 @@ export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlB
  * from the R xml have a name attached.
  *
  * @param tokenMap - used to revert token types (i.e., revert `xmlparsedata`)
- * @param content - the json object to extract the token-type from
+ * @param content  - the json object to extract the token-type from
  */
 export function getTokenType(tokenMap: XmlParserConfig['tokenMap'], content: XmlBasedJson): string {
   return revertTokenReplacement(tokenMap, getKeysGuarded(content, '#name'))

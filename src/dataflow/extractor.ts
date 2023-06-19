@@ -1,6 +1,6 @@
 import { DecoratedAst, ParentInformation } from '../r-bridge'
 import { DataflowInformation } from './internal/info'
-import { DataflowScopeName } from './graph'
+import { DataflowScopeName, LocalScope } from './graph'
 import { dataflowFold, DataflowProcessorFolds } from './processor'
 import { processUninterestingLeaf } from './internal/process/uninterestingLeaf'
 import { processSymbol } from './internal/process/symbol'
@@ -52,8 +52,8 @@ const folds: DataflowProcessorFolds<any> = {
   }
 }
 
-export function produceDataFlowGraph<OtherInfo>(ast: DecoratedAst<OtherInfo & ParentInformation>, scope: DataflowScopeName): DataflowInformation<OtherInfo & ParentInformation> {
-  return dataflowFold<OtherInfo>(ast.decoratedAst, { ast, activeScope: scope, environments: initializeCleanEnvironments() }, folds as DataflowProcessorFolds<OtherInfo & ParentInformation>)
+export function produceDataFlowGraph<OtherInfo>(ast: DecoratedAst<OtherInfo & ParentInformation>, initialScope: DataflowScopeName = LocalScope): DataflowInformation<OtherInfo & ParentInformation> {
+  return dataflowFold<OtherInfo>(ast.decoratedAst, { ast, activeScope: initialScope, environments: initializeCleanEnvironments() }, folds as DataflowProcessorFolds<OtherInfo & ParentInformation>)
 }
 
 // TODO: automatically load namespace exported functions etc.

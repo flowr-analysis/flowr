@@ -56,7 +56,12 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, op: NamedXm
     op:      operationName,
     lexeme:  content,
     operand: parsedOperand,
-    info:    {}
+    info:    {
+      // TODO: include children etc.
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme
+    }
   }
   return executeHook(data.hooks.operators.onUnary.after, data, result)
 }

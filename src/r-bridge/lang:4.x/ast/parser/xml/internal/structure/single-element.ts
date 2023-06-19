@@ -10,10 +10,10 @@ import { parseComment } from '../other'
 import { parseBreak, parseNext } from '../loops'
 
 /**
- * parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)
+ * Parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)
  *
- * @param data - the data used by the parser (see {@link ParserData})
- * @param elem - the element to parse
+ * @param data - The data used by the parser (see {@link ParserData})
+ * @param elem - The element to parse
  *
  * @returns `undefined` if no parse result is to be produced (i.e., if it is skipped).
  *          Otherwise, returns the parsed element.

@@ -9,7 +9,9 @@ export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references
   linkReadVariablesInSameScopeWithNames(graph, nameIdShares)
 }
 
-export function produceNameSharedIdMap(references: IdentifierReference[]): DefaultMap<string, IdentifierReference[]> {
+export type NameIdMap = DefaultMap<string, IdentifierReference[]>
+
+export function produceNameSharedIdMap(references: IdentifierReference[]): NameIdMap {
   const nameIdShares = new DefaultMap<string, IdentifierReference[]>(() => [])
   for(const reference of references) {
     nameIdShares.get(reference.name).push(reference)
@@ -69,4 +71,31 @@ export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReferen
     // down.graph.get(node.id).definedAtPosition = false
   }
   return givenInputs
+}
+
+/** all loops variables which are open read (not already bound by a redefinition within the loop) get a maybe read marker to their last definition within the loop
+ * e.g. with:
+ * ```R
+ * for(i in 1:10) {
+ *  x_1 <- x_2 + 1
+ * }
+ * ```
+ * `x_2` must get a read marker to `x_1` as `x_1` is the active redefinition in the second loop iteration.
+ */
+export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openIns: NameIdMap, outgoing: IdentifierReference[]): void {
+  // first we preprocess out so that only the last definition of a given identifier survives
+  // this implicitly assumes that the outgoing references are ordered
+  const lastOutgoing = new Map<string, IdentifierReference>()
+  for(const out of outgoing) {
+    lastOutgoing.set(out.name, out)
+  }
+  for(const [name, targets] of openIns.entries()) {
+    for(const out of lastOutgoing.values()) {
+      if(out.name === name) {
+        for(const target of targets) {
+          graph.addEdge(target.nodeId, out.nodeId, 'read', 'maybe')
+        }
+      }
+    }
+  }
 }

@@ -12,9 +12,9 @@ import { executeHook, executeUnknownHook } from '../../hooks'
  * The special symbols `T` and `F` are parsed as logic values.
  *
  * @param data - The data used by the parser (see {@link ParserData})
- * @param objs - the json object to extract the meta-information from
+ * @param objs - The json object to extract the meta-information from
  *
- * @returns the parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol
+ * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  */
 // TODO: deal with namespace information
 export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
@@ -47,7 +47,12 @@ export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNo
       content: content === 'T',
       location,
       lexeme:  content,
-      info:    {}
+      info:    {
+        // TODO: include children etc.
+        fullRange:        data.currentRange,
+        additionalTokens: [],
+        fullLexeme:       data.currentLexeme
+      }
     }
   } else {
     result = {
@@ -57,7 +62,12 @@ export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNo
       content,
       // TODO: get correct lexeme from expr wrapper :C
       lexeme: content,
-      info:   {}
+      info:   {
+        // TODO: include children etc.
+        fullRange:        data.currentRange,
+        additionalTokens: [],
+        fullLexeme:       data.currentLexeme
+      }
     }
   }
 

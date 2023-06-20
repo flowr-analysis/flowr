@@ -14,6 +14,7 @@ import {
 import { tryParseIfThenElse, tryParseIfThen } from '../control'
 import { Type, RNode } from '../../../../model'
 import { log } from '../../../../../../../util/log'
+import { tryToParseArgument } from '../functions/argument'
 
 export function parseBasedOnType(
   data: ParserData,
@@ -55,6 +56,28 @@ export function parseBasedOnType(
    * splitOnSemicolon.length === 0 is not possible, as we would have had an empty array before, split does not add elements.
    */
   mappedWithName = splitOnSemicolon[0]
+
+  // parse call arguments
+  // TODO: fix
+  if(mappedWithName.length > 1 && mappedWithName[0].name === Type.ParenLeft && mappedWithName[mappedWithName.length - 1].name === Type.ParenRight) {
+    log.trace(`found parenthesized expression, parsing it separately`)
+    const args = splitArrayOn(mappedWithName.slice(1, mappedWithName.length - 1), ({ name }) => name === Type.Comma)
+    let parsedArgs: RNode[] | undefined = []
+    for(const argList of args) {
+      const parsed = tryToParseArgument(data, argList)
+      if(parsed !== undefined) {
+        log.info(`parsed in arg list: ${JSON.stringify(parsed)}`)
+        parsedArgs?.push(parsed)
+      } else {
+        log.warn(`parsed fail in arg list: ${JSON.stringify(parsed)}, but expected only one element, abort`)
+        parsedArgs = undefined
+      }
+    }
+    if(parsedArgs !== undefined) {
+      return parsedArgs
+    }
+  }
+
 
   if (mappedWithName.length === 1) {
     const parsed = tryParseOneElementBasedOnType(data, mappedWithName[0])

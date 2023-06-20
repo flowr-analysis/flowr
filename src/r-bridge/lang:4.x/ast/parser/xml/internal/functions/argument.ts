@@ -13,7 +13,7 @@ import { tryParseOneElementBasedOnType } from '../structure'
  * Probably directly called by the function definition/call parser as otherwise, we do not expect to find arguments.
  *
  * @param data - The data used by the parser (see {@link ParserData})
- * @param objs - Either `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
+ * @param objs - Either `[SYMBOL_FORMALS]` or `[SYMBOL_SUB, EQ_FORMALS, expr]`
  *
  * @returns The parsed argument or `undefined` if the given object is not an argument.
  */
@@ -22,13 +22,13 @@ export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]):
   objs = executeHook(data.hooks.functions.onArgument.before, data, objs)
 
   if(objs.length !== 1 && objs.length !== 3) {
-    log.warn(`Either [SYMBOL_FORMALS] or [SYMBOL_FORMALS, EQ_FORMALS, expr], but got: ${JSON.stringify(objs)}`)
+    log.warn(`Either [SYMBOL_FORMALS] or [SYMBOL_SUB, EQ_FORMALS, expr], but got: ${JSON.stringify(objs)}`)
     return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
   }
 
 
   const symbol = objs[0]
-  if(symbol.name !== Type.SymbolFormals) {
+  if(objs.length === 1 && symbol.name !== Type.SymbolFormals || objs.length === 3 && symbol.name !== Type.SymbolNamedFormals) {
     log.warn(`expected symbol for argument, yet received ${JSON.stringify(objs)}`)
     return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
   }

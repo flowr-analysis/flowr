@@ -11,6 +11,7 @@ export const enum Type {
   ExprHelpAssignWrapper = "expr_or_assign_or_help",
   Symbol = "SYMBOL",
   SymbolFormals = "SYMBOL_FORMALS",
+  SymbolNamedFormals = "SYMBOL_SUB",
   /* will be represented as a number in R */
   Logical = "boolean",
   /* this will be a symbol for us */

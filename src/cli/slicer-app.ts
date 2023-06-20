@@ -170,7 +170,7 @@ Slicing:
   Slice write:          ${formatNanoseconds(slicingData.sliceWrite - slicingData.reconstruction)}
 `
   } else {
-    base += '\nSlicing:                ??\n'
+    base += '\nSlicing:                        ??\n'
   }
   base += `Shell close:            ${formatNanoseconds(shellClose - sliceWrite)}
 Total:                  ${formatNanoseconds(shellClose - shellInit)}`

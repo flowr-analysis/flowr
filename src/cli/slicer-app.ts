@@ -154,8 +154,7 @@ function formatNanoseconds(nanoseconds: bigint): string {
 }
 
 function getSlicesStats(tokenRetrieval: bigint, startTimeInNs: bigint, inputPrepare: bigint, slicingData: SlicingMeasurements | undefined, shellClose: bigint, sliceWrite: bigint) {
-  let base = `
-Shell init time:        ${formatNanoseconds(startTimeInNs - shellInit)}
+  let base = `Shell init time:        ${formatNanoseconds(startTimeInNs - shellInit)}
 Retrieval of token map: ${formatNanoseconds(tokenRetrieval - startTimeInNs)}
 Input preparation:      ${formatNanoseconds(inputPrepare - tokenRetrieval)}`
   if(slicingData !== undefined) {
@@ -196,11 +195,12 @@ async function getSlice() {
   const sliceWrite = process.hrtime.bigint()
   shell.close()
   const shellClose = process.hrtime.bigint()
-  const statOutput = getSlicesStats(tokenRetrieval, startTimeInNs, inputPrepare, slicingData, shellClose, sliceWrite)
-  console.log(statOutput)
+  const statsOutput = getSlicesStats(tokenRetrieval, startTimeInNs, inputPrepare, slicingData, shellClose, sliceWrite)
+  console.log(statsOutput)
   if(options.stats) {
-    console.log(`Writing stats for ${request.content}`)
-    fs.writeFileSync(`${options.input}.stats`, statOutput)
+    const filename = `${options.input}.stats`
+    console.log(`Writing stats for ${request.content} to "${filename}"`)
+    fs.writeFileSync(filename, statsOutput)
   }
 
 }

@@ -2,6 +2,7 @@ doc/
 *-flowr.log.*
 statistics-out*/
 **/*.R.slice
+**/*.R.stats
 
 ### VisualStudioCode template
 .vscode/*

@@ -1,6 +1,7 @@
 import { NodeId, NoInfo } from '../r-bridge'
 import { SourceRange } from './range'
 import {
+  BuiltIn,
   DataflowFunctionFlowInformation,
   DataflowGraph,
   DataflowGraphEdgeAttribute,
@@ -71,6 +72,7 @@ function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
 }
 
 export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = '', mark?: Set<NodeId>): string {
+  let hasBuiltIn = false
   const lines = prefix === null ? [] : [prefix]
   for (const [id, info] of graph.entries()) {
     const def = info.definedAtPosition !== false
@@ -91,8 +93,14 @@ export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<
     for (const edge of info.edges) {
       const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
       lines.push(`    ${idPrefix}${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${edge.target}`)
+      if(edge.target === BuiltIn) {
+        hasBuiltIn = true
+      }
     }
     subflowToMermaid(id, info.subflow, dataflowIdMap, lines, idPrefix)
+  }
+  if(hasBuiltIn) {
+    lines.push(`    ${idPrefix}${BuiltIn}["Built-in"]`)
   }
   return lines.join('\n')
 }

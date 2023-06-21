@@ -57,6 +57,8 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     scope:        down.activeScope
   }
 
+  console.log('function definition final env', outEnvironment)
+
   // TODO: exit points?
   const graph = new DataflowGraph()
   graph.addNode({

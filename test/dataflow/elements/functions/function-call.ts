@@ -34,7 +34,7 @@ describe('Function Call', withShell(shell => {
           }})
         .addEdge('10', '0', 'read', 'always')
         .addEdge('3', '7', 'defined-by', 'always')
-        .addEdge('9', '10', 'parameter', 'always')
+        .addEdge('9', '10', 'argument', 'always')
         .addEdge('9', '3', 'read', 'always')
     )
     const envWithXConstDefined = define(
@@ -76,7 +76,58 @@ a(i)`, new DataflowGraph()
         }})
       .addEdge('3', '14', 'defined-by', 'always')
       .addEdge('16', '3', 'read', 'always')
-      .addEdge('16', '17', 'parameter', 'always')
+      .addEdge('16', '17', 'argument', 'always')
     )
+  })
+
+  describe('Late function bindings', () => {
+    const innerEnv = pushLocalEnvironment(initializeCleanEnvironments())
+    assertDataflow(`Late binding of y`, shell, `a <- function() { y }\ny <- 12\na()`,
+      new DataflowGraph()
+        .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
+        .addNode({ tag: 'variable-definition', id: '4', name: 'y', scope: LocalScope })
+        .addNode({ tag: 'function-call', id: '7', name: 'a', args: []})
+        .addNode({
+          tag:     'function-definition',
+          id:      '2',
+          name:    '2',
+          scope:   LocalScope,
+          subflow: {
+            out:          [],
+            in:           [{ nodeId: '1', name: 'y', scope: LocalScope, used: 'always' }],
+            activeNodes:  [],
+            scope:        LocalScope,
+            environments: innerEnv,
+            graph:        new DataflowGraph()
+              .addNode({ tag: 'use', id: '1', name: 'y', scope: LocalScope, environment: innerEnv })
+          }})
+        .addEdge('0', '2', 'defined-by', 'always')
+        .addEdge('7', '0', 'read', 'always')
+        // TODO: functions must store the *final* environments with all definitions they produce
+        // TODO: on call the current environments should be used, joined with the def-environment!
+    )
+    assertDataflow(`Late binding of y`, shell, `a <- function() { x <- function() { y }; y <<- 12; return(x) }; a()`,
+      new DataflowGraph()
+        .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
+        .addNode({ tag: 'variable-definition', id: '4', name: 'y', scope: LocalScope })
+        .addNode({ tag: 'function-call', id: '7', name: 'a', args: []})
+        .addNode({
+          tag:     'function-definition',
+          id:      '2',
+          name:    '2',
+          scope:   LocalScope,
+          subflow: {
+            out:          [],
+            in:           [{ nodeId: '1', name: 'y', scope: LocalScope, used: 'always' }],
+            activeNodes:  [],
+            scope:        LocalScope,
+            environments: innerEnv,
+            graph:        new DataflowGraph()
+              .addNode({ tag: 'use', id: '1', name: 'y', scope: LocalScope, environment: innerEnv })
+          }})
+        .addEdge('0', '2', 'defined-by', 'always')
+        .addEdge('7', '0', 'read', 'always')
+    )
+    // a <- function(y) { y }; y <- 12; a()
   })
 }))

@@ -20,7 +20,7 @@ export type DataflowGraphEdgeType =
     | /** the edge determines that source is defined by target */ 'defined-by'
     | /** the edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
     | /** similar to `same-read-read` but for def-def constructs without a read in-between */ 'same-def-def'
-    | /** formal used as argument to a function call */ 'parameter'
+    | /** formal used as argument to a function call */ 'argument'
 
 // context -- is it always read/defined-by // TODO: loops
 export type DataflowGraphEdgeAttribute = 'always' | 'maybe'

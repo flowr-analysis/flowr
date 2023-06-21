@@ -38,7 +38,7 @@ export const enum Type {
   Else = "ELSE",
   Comma = ",",
   FunctionCall = "SYMBOL_FUNCTION_CALL",
-  Function = "FUNCTION",
+  FunctionDefinition = "FUNCTION",
   SymbolPackage = "SYMBOL_PACKAGE",
   NamespaceGet = "NS_GET",
   Break = "BREAK",

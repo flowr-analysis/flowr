@@ -14,7 +14,7 @@ export type Identifier = string & { __brand?: 'identifier' }
  * Stores the definition of an identifier within an {@link IEnvironment}
  */
 export interface IdentifierDefinition extends IdentifierReference {
-  kind:      'function' | 'variable' | 'argument' | 'unknown' /* TODO: 'constant' */
+  kind:      'function' | 'variable' | 'parameter' | 'unknown' /* TODO: 'constant' */
   /** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
   definedAt: NodeId
 }

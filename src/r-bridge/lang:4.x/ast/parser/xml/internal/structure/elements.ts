@@ -57,28 +57,6 @@ export function parseBasedOnType(
    */
   mappedWithName = splitOnSemicolon[0]
 
-  // parse call arguments
-  // TODO: fix
-  if(mappedWithName.length > 1 && mappedWithName[0].name === Type.ParenLeft && mappedWithName[mappedWithName.length - 1].name === Type.ParenRight) {
-    log.trace(`found parenthesized expression, parsing it separately`)
-    const args = splitArrayOn(mappedWithName.slice(1, mappedWithName.length - 1), ({ name }) => name === Type.Comma)
-    let parsedArgs: RNode[] | undefined = []
-    for(const argList of args) {
-      const parsed = tryToParseParameter(data, argList)
-      if(parsed !== undefined) {
-        log.info(`parsed in arg list: ${JSON.stringify(parsed)}`)
-        parsedArgs?.push(parsed)
-      } else {
-        log.warn(`parsed fail in arg list: ${JSON.stringify(parsed)}, but expected only one element, abort`)
-        parsedArgs = undefined
-      }
-    }
-    if(parsedArgs !== undefined) {
-      return parsedArgs
-    }
-  }
-
-
   if (mappedWithName.length === 1) {
     const parsed = tryParseOneElementBasedOnType(data, mappedWithName[0])
     return parsed !== undefined ? [parsed] : []

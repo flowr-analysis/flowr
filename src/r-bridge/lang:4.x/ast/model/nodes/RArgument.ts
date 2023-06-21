@@ -8,6 +8,6 @@ import { RSymbol } from './RSymbol'
 export interface RArgument<Info = NoInfo> extends Base<Info>, Location {
   readonly type: Type.Argument;
   /* the name is represented as a symbol to additionally get location information */
-  name?:         RSymbol<Info>;
-  value:         RNode<Info> | undefined;
+  name:          RSymbol<Info> | undefined;
+  value:         RNode<Info>;
 }

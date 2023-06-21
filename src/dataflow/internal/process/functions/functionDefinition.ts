@@ -5,19 +5,19 @@ import { linkInputs } from '../../linker'
 import { DataflowGraph, dataflowLogger } from '../../../index'
 import { ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
 
-export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, args: DataflowInformation<OtherInfo>[], body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, params: DataflowInformation<OtherInfo>[], body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
   // as we know, that parameters can not duplicate, we overwrite their environments (which is the correct behavior, if someone uses non-`=` arguments in functions)
-  const argsEnvironment = args.map(a => a.environments).reduce((a, b) => overwriteEnvironments(a, b), down.environments)
+  const argsEnvironment = params.map(a => a.environments).reduce((a, b) => overwriteEnvironments(a, b), down.environments)
   const bodyEnvironment = body.environments
 
-  const subgraph = body.graph.mergeWith(...args.map(a => a.graph))
+  const subgraph = body.graph.mergeWith(...params.map(a => a.graph))
 
   // TODO: count parameter a=b as assignment!
-  const readInArguments = args.flatMap(a => [...a.in, ...a.activeNodes])
+  const readInParameters = params.flatMap(a => [...a.in, ...a.activeNodes])
   const readInBody = [...body.in, ...body.activeNodes]
   // there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
-  const remainingRead = linkInputs(readInBody, down.activeScope, argsEnvironment, readInArguments.slice(), body.graph, true /* functions do not have to be called */)
+  const remainingRead = linkInputs(readInBody, down.activeScope, argsEnvironment, readInParameters.slice(), body.graph, true /* functions do not have to be called */)
 
   dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads (of ids [${remainingRead.map(r => r.nodeId).join(', ')}])`)
 
@@ -75,7 +75,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     in:           [] /* TODO: they must be bound on call */,
     out:          [],
     graph,
-    /* TODO: have args. the potential to influence their surrounding on def? */
+    /* TODO: have params. the potential to influence their surrounding on def? */
     environments: popLocalEnvironment(down.environments),
     ast:          down.ast,
     scope:        down.activeScope

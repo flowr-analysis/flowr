@@ -10,7 +10,7 @@ export function numVal(value: number, markedAsInt = false, complexNumber = false
   return { num: value, markedAsInt, complexNumber }
 }
 
-export function argument(name: string, location: SourceRange, defaultValue?: RNode, special = false): RParameter  {
+export function parameter(name: string, location: SourceRange, defaultValue?: RNode, special = false): RParameter  {
   return {
     type:    Type.Parameter,
     location,
@@ -29,3 +29,5 @@ export function argument(name: string, location: SourceRange, defaultValue?: RNo
     info: emptyInfo
   }
 }
+
+

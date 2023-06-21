@@ -204,6 +204,7 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Selection, C
   functions:      {
     foldFunctionDefinition: foldToConst,
     foldFunctionCall:       reconstructFunctionCall,
+    foldParameter:          foldToConst,
     foldArgument:           foldToConst
   }
 }

@@ -20,11 +20,14 @@ import {
   RRepeatLoop,
   RWhileLoop,
   RFunctionCall,
-  RComment, RNext, RBreak
+  RComment,
+  RNext,
+  RBreak,
+  RParameter
 } from '../nodes'
 import { RNode } from '../model'
 import { RFunctionDefinition } from '../nodes'
-import { RParameter } from '../nodes'
+import { RArgument } from '../nodes/RArgument'
 
 
 /**
@@ -70,8 +73,10 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
   functions: {
     foldFunctionDefinition: (definition: RFunctionDefinition<Info>, args: Up[], body: Up, down: Down) => Up;
     foldFunctionCall:       (call: RFunctionCall<Info>, functionName: Up, args: Up[], down: Down) => Up;
-    /** The `defaultValue` argument is `undefined` if the argument was not initialized with a default value, argument refers to parameters too */
-    foldArgument:           (argument: RParameter<Info>, name: Up, defaultValue: Up | undefined, down: Down) => Up;
+    /** The `name` is `undefined` if the argument is unnamed */
+    foldArgument:           (argument: RArgument<Info>, name: Up | undefined, value: Up, down: Down) => Up;
+    /** The `defaultValue` is `undefined` if the argument was not initialized with a default value */
+    foldParameter:          (parameter: RParameter<Info>, name: Up, defaultValue: Up | undefined, down: Down) => Up;
   }
 }
 
@@ -105,10 +110,12 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
       return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down)
     case Type.FunctionCall:
       return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.functionName, down, folds), ast.arguments.map(param => foldAstStateful(param, down, folds)), down)
-    case Type.Function:
-      return folds.functions.foldFunctionDefinition(ast, ast.arguments.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down)
+    case Type.FunctionDefinition:
+      return folds.functions.foldFunctionDefinition(ast, ast.parameters.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down)
     case Type.Parameter:
-      return folds.functions.foldArgument(ast, foldAstStateful(ast.name, down, folds), ast.defaultValue ? foldAstStateful(ast.defaultValue, down, folds) : undefined, down)
+      return folds.functions.foldParameter(ast, foldAstStateful(ast.name, down, folds), ast.defaultValue ? foldAstStateful(ast.defaultValue, down, folds) : undefined, down)
+    case Type.Argument:
+      return folds.functions.foldArgument(ast, ast.name ? foldAstStateful(ast.name, down, folds) : undefined, foldAstStateful(ast.value, down, folds), down)
     case Type.Next:
       return folds.loop.foldNext(ast, down)
     case Type.Break:

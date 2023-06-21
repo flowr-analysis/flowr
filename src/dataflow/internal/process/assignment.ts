@@ -24,7 +24,7 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
   const impactReadTargets = determineImpactOfSource(swap ? op.lhs : op.rhs, readTargets)
 
   const isFunctionSide = swap ? op.lhs : op.rhs
-  const isFunction = isFunctionSide.type === Type.Function
+  const isFunction = isFunctionSide.type === Type.FunctionDefinition
 
   for (const write of writeTargets) {
     setDefinitionOfNode(nextGraph, write)
@@ -85,7 +85,7 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
 
 function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation<OtherInfo>, global: boolean, down: DataflowProcessorDown<OtherInfo>, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
   const writeNodes: IdentifierDefinition[] = []
-  const isFunctionDef = functionTypeCheck.type === Type.Function
+  const isFunctionDef = functionTypeCheck.type === Type.FunctionDefinition
   for(const active of target.activeNodes) {
     writeNodes.push({
       ...active,

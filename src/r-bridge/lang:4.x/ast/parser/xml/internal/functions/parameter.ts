@@ -18,7 +18,7 @@ import { tryParseOneElementBasedOnType } from '../structure'
  * @returns The parsed parameter or `undefined` if the given object is not a parameter.
  */
 export function tryToParseParameter(data: ParserData, objs: NamedXmlBasedJson[]): RParameter | undefined {
-  parseLog.debug(`[def-argument] try: ${JSON.stringify(objs)}`)
+  parseLog.debug(`[parameter] try: ${JSON.stringify(objs)}`)
   objs = executeHook(data.hooks.functions.onParameter.before, data, objs)
 
   if(objs.length !== 1 && objs.length !== 3) {

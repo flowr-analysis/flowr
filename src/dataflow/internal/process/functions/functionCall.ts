@@ -41,7 +41,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     // add an argument edge to the final graph
     // TODO: deal with redefinitions within arguments
     for(const ingoing of ingoingRefs) {
-      finalGraph.addEdge(functionRootId, ingoing, 'argument', 'always')
+      finalGraph.addEdge(functionRootId, ingoing, 'parameter', 'always')
     }
     // TODO: bind the argument id to the corresponding argument within the function
   }

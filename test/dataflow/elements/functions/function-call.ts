@@ -5,7 +5,7 @@ import { define, pushLocalEnvironment } from '../../../../src/dataflow/environme
 describe('Function Call', withShell(shell => {
   describe('Calling previously defined functions', () => {
     const envWithXDefined = define(
-      {nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'argument', definedAt: '5' },
+      {nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
       LocalScope,
       pushLocalEnvironment(initializeCleanEnvironments()))
     assertDataflow(`Calling function a`, shell, `i <- 4; a <- function(x) { x }\na(i)`,
@@ -34,11 +34,11 @@ describe('Function Call', withShell(shell => {
           }})
         .addEdge('10', '0', 'read', 'always')
         .addEdge('3', '7', 'defined-by', 'always')
-        .addEdge('9', '10', 'argument', 'always')
+        .addEdge('9', '10', 'parameter', 'always')
         .addEdge('9', '3', 'read', 'always')
     )
     const envWithXConstDefined = define(
-      {nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'argument', definedAt: '5' },
+      {nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
       LocalScope,
       pushLocalEnvironment(initializeCleanEnvironments()))
     assertDataflow(`Calling with a constant function`, shell, `i <- 4
@@ -76,7 +76,7 @@ a(i)`, new DataflowGraph()
         }})
       .addEdge('3', '14', 'defined-by', 'always')
       .addEdge('16', '3', 'read', 'always')
-      .addEdge('16', '17', 'argument', 'always')
+      .addEdge('16', '17', 'parameter', 'always')
     )
   })
 }))

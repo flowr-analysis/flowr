@@ -14,8 +14,9 @@ import { processWhileLoop } from './internal/process/loops/whileLoop'
 import { processIfThenElse } from './internal/process/ifThenElse'
 import { processFunctionCall } from './internal/process/functions/functionCall'
 import { processFunctionDefinition } from './internal/process/functions/functionDefinition'
-import { processFunctionArgument } from './internal/process/functions/argument'
+import { processFunctionParameter } from './internal/process/functions/parameter'
 import { initializeCleanEnvironments } from './environments'
+import { processFunctionArgument } from './internal/process/functions/argument'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
 const folds: DataflowProcessorFolds<any> = {
@@ -48,6 +49,7 @@ const folds: DataflowProcessorFolds<any> = {
   functions:      {
     foldFunctionDefinition: processFunctionDefinition,
     foldFunctionCall:       processFunctionCall,
+    foldParameter:          processFunctionParameter,
     foldArgument:           processFunctionArgument
   }
 }

@@ -54,6 +54,7 @@ export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]):
     return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
   }
 
+  guard(parsedValue !== undefined, () => `[argument] parsed value must not be undefined, yet: ${JSON.stringify(objs)}`)
 
   const result: RArgument = {
     type:   Type.Argument,

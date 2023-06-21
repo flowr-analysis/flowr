@@ -1,5 +1,5 @@
 import { assertDataflow, withShell } from '../../../helper/shell'
-import { DataflowGraph, GlobalScope, initializeCleanEnvironments, LocalScope } from '../../../../src/dataflow'
+import { BuiltIn, DataflowGraph, GlobalScope, initializeCleanEnvironments, LocalScope } from '../../../../src/dataflow'
 import { define, pushLocalEnvironment } from '../../../../src/dataflow/environments'
 
 // TODO: <- in parameters
@@ -57,6 +57,50 @@ describe('Function Definition', withShell(shell => {
                 when:        'always'
               })
               .addEdge("2", "0", "read", "always"),
+            environments: envWithXDefined
+          }
+        })
+    )
+    assertDataflow(`read of parameter in return`, shell, `function(x) { return(x) }`,
+      new DataflowGraph()
+        .addNode({
+          tag:     'function-definition',
+          id:      "5",
+          name:    "5",
+          scope:   LocalScope,
+          when:    'always',
+          subflow: {
+            out:         [],
+            activeNodes: [],
+            in:          [],
+            scope:       LocalScope,
+            graph:       new DataflowGraph()
+              .addNode({
+                tag:         'variable-definition',
+                id:          "0",
+                name:        "x",
+                environment: envWithXDefined,
+                scope:       LocalScope,
+                when:        'always'
+              })
+              .addNode({
+                tag:         'use',
+                id:          "3",
+                name:        "x",
+                environment: envWithXDefined,
+                when:        'always'
+              })
+              .addNode({
+                tag:         'function-call',
+                id:          "2",
+                name:        'return',
+                environment: envWithXDefined,
+                when:        'always',
+                args:        [ { nodeId: "3", used: 'always', name: 'x', scope: LocalScope } ]
+              })
+              .addEdge("3", "0", "read", "always")
+              .addEdge("2", "3", "argument", "always")
+              .addEdge("2", BuiltIn, 'read', 'always'),
             environments: envWithXDefined
           }
         })

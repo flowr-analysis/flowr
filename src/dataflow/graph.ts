@@ -241,7 +241,7 @@ export class DataflowGraph {
       guard(oldNode.name === node.name, 'node names must match for the same id if added')
       return this
     }
-    dataflowLogger.trace(`[${node.tag}] adding node ${JSON.stringify(node)}`)
+    // dataflowLogger.trace(`[${node.tag}] adding node ${JSON.stringify(node)}`)
     const environment = node.environment ?? DEFAULT_ENVIRONMENT
     const when = node.when ?? 'always'
     const tag = node.tag
@@ -280,7 +280,7 @@ export class DataflowGraph {
    * TODO: ensure that target has a def scope and source does not?
    */
   public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute, promote= false): this {
-    dataflowLogger.trace(`trying to add edge from ${JSON.stringify(from)} to ${JSON.stringify(to)} with type ${type} and attribute ${JSON.stringify(attribute)} to graph`)
+    // dataflowLogger.trace(`trying to add edge from ${JSON.stringify(from)} to ${JSON.stringify(to)} with type ${type} and attribute ${JSON.stringify(attribute)} to graph`)
 
     const fromId = typeof from === 'object' ? from.nodeId : from
     const toId = typeof to === 'object' ? to.nodeId : to
@@ -316,7 +316,7 @@ export class DataflowGraph {
     }
     // TODO: make this more performant
     if(fromInfo.edges.find(e => e.target === toId && e.type === type && e.attribute === attribute) === undefined) {
-      dataflowLogger.trace(`adding edge from ${fromId} to ${toId} with type ${type} and attribute ${attribute} to graph`)
+      // dataflowLogger.trace(`adding edge from ${fromId} to ${toId} with type ${type} and attribute ${attribute} to graph`)
       fromInfo.edges.push(edge)
     }
     return this

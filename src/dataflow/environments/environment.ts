@@ -10,11 +10,15 @@ import { dataflowLogger } from '../index'
 /** identifiers are branded to avoid confusion with other string-like types */
 export type Identifier = string & { __brand?: 'identifier' }
 
+
+export const BuiltIn = 'built-in'
+
+
 /**
  * Stores the definition of an identifier within an {@link IEnvironment}
  */
 export interface IdentifierDefinition extends IdentifierReference {
-  kind:      'function' | 'variable' | 'parameter' | 'unknown' /* TODO: 'constant' */
+  kind:      'function' | 'variable' | 'parameter' | 'unknown' | 'built-in-function' /* TODO: 'constant' */
   /** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
   definedAt: NodeId
 }
@@ -106,14 +110,28 @@ export interface REnvironmentInformation {
   readonly level:   number
 }
 
+export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition[]>([
+  ['return', [{
+    kind:      'built-in-function',
+    scope:     GlobalScope,
+    used:      'always',
+    definedAt: BuiltIn,
+    name:      'return',
+    nodeId:    BuiltIn
+  }]]
+])
+
 export function initializeCleanEnvironments(): REnvironmentInformation {
   // TODO baseenv, emptyenv, and assignments directly to the environments (without indirection of assign)
   // TODO: track parent.env calls?
   // TODO undocumented user databases in comments? (see 1.2 of R internals with https://www.omegahat.net/RObjectTables/)
   // .Platform and .Machine
   // TODO: attach namespace to bind etc.
+  const global = new Environment(GlobalScope)
+  // use a copy
+  global.memory = new Map<Identifier, IdentifierDefinition[]>(DefaultEnvironmentMemory)
   return {
-    current: new Environment(GlobalScope),
+    current: global,
     level:   0
   }
 }

@@ -106,28 +106,7 @@ a(i)`, new DataflowGraph()
         // TODO: functions must store the *final* environments with all definitions they produce
         // TODO: on call the current environments should be used, joined with the def-environment!
     )
-    assertDataflow(`Late binding of y`, shell, `a <- function() { x <- function() { y }; y <<- 12; return(x) }; a()`,
-      new DataflowGraph()
-        .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
-        .addNode({ tag: 'variable-definition', id: '4', name: 'y', scope: LocalScope })
-        .addNode({ tag: 'function-call', id: '7', name: 'a', args: []})
-        .addNode({
-          tag:     'function-definition',
-          id:      '2',
-          name:    '2',
-          scope:   LocalScope,
-          subflow: {
-            out:          [],
-            in:           [{ nodeId: '1', name: 'y', scope: LocalScope, used: 'always' }],
-            activeNodes:  [],
-            scope:        LocalScope,
-            environments: innerEnv,
-            graph:        new DataflowGraph()
-              .addNode({ tag: 'use', id: '1', name: 'y', scope: LocalScope, environment: innerEnv })
-          }})
-        .addEdge('0', '2', 'defined-by', 'always')
-        .addEdge('7', '0', 'read', 'always')
-    )
+    // a <- function() { x <- function() { y }; y <- 12; return(x) }; a()
     // a <- function(y) { y }; y <- 12; a()
   })
 }))

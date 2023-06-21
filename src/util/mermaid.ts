@@ -35,9 +35,11 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
   const subflowId = `${idPrefix}flow-${nodeId}`
   lines.push(`\nsubgraph "${subflowId}" [function ${nodeId}]`)
   lines.push(graphToMermaid(subflow.graph, dataflowIdMap, null, idPrefix))
-  for(const out of [...subflow.in, ...subflow.out, ...subflow.activeNodes]) {
-    // in/out/active
-    lines.push(`    style ${idPrefix}${out.nodeId} stroke:purple,stroke-width:4px; `)
+  for(const [color, pool] of [['purple', subflow.in], ['green', subflow.out], ['orange', subflow.activeNodes]]) {
+    for (const out of pool as IdentifierReference[]) {
+      // in/out/active
+      lines.push(`    style ${idPrefix}${out.nodeId} stroke:${color as string},stroke-width:4px; `)
+    }
   }
   stylesForDefinitionKindsInEnvironment(subflow, lines, idPrefix)
   lines.push('end')

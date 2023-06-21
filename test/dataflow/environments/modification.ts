@@ -1,5 +1,6 @@
 import { NodeId } from '../../../src/r-bridge'
 import {
+  DefaultEnvironmentMemory,
   GlobalScope,
   IEnvironment,
   initializeCleanEnvironments,
@@ -30,7 +31,7 @@ describe('Overwrite', () => {
       define(variable('y', '_2'), GlobalScope, overwrite)
       const result = overwriteEnvironments(clean, overwrite)
       expect(result, 'there should be a result').to.be.not.undefined
-      expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2)
+      expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2 + DefaultEnvironmentMemory.size)
       existsDefinedAt('x', ['_1'], result.current, 'globals must be defined locally as well')
       existsDefinedAt('y', ['_2'], result.current, 'globals must be defined locally as well')
     })
@@ -42,7 +43,7 @@ describe('Overwrite', () => {
       define(variable('x', '_2'), GlobalScope, overwrite)
       const result = overwriteEnvironments(clean, overwrite)
       expect(result, 'there should be a result').to.be.not.undefined
-      expect(result.current.memory, 'there should be only one definition for x').to.have.length(1)
+      expect(result.current.memory, 'there should be only one definition for x').to.have.length(1 + DefaultEnvironmentMemory.size)
       existsDefinedAt('x', ['_2'], result.current)
     })
   })
@@ -58,7 +59,7 @@ describe('Overwrite', () => {
       const result = overwriteEnvironments(clean, overwrite)
       expect(result, 'there should be a result').to.be.not.undefined
       expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0)
-      expect(result.current.memory, 'there should be two definitions for long and short').to.have.length(2)
+      expect(result.current.memory, 'there should be two definitions for long and short').to.have.length(2 + DefaultEnvironmentMemory.size)
       existsDefinedAt('long', ['_1'], result.current)
       existsDefinedAt('short', ['_2'], result.current)
     })
@@ -71,7 +72,7 @@ describe('Overwrite', () => {
       const result = overwriteEnvironments(clean, overwrite)
       expect(result, 'there should be a result').to.be.not.undefined
       expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0)
-      expect(result.current.memory, 'there should be only one definition for long').to.have.length(1)
+      expect(result.current.memory, 'there should be only one definition for long').to.have.length(1 + DefaultEnvironmentMemory.size)
       existsDefinedAt('long', ['_2'], result.current)
     })
   })
@@ -86,7 +87,7 @@ describe('Append', () => {
       define(variable('y', '_2'), GlobalScope, append)
       const result = appendEnvironments(clean, append)
       expect(result, 'there should be a result').to.be.not.undefined
-      expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2)
+      expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2 + DefaultEnvironmentMemory.size)
       existsDefinedAt('x', ['_1'], result.current, 'globals must be defined locally as well')
       existsDefinedAt('y', ['_2'], result.current, 'globals must be defined locally as well')
     })
@@ -98,7 +99,7 @@ describe('Append', () => {
       define(variable('x', '_2'), GlobalScope, append)
       const result = appendEnvironments(clean, append)
       expect(result, 'there should be a result').to.be.not.undefined
-      expect(result.current.memory, 'there should be only one symbol defined (for x)').to.have.length(1)
+      expect(result.current.memory, 'there should be only one symbol defined (for x)').to.have.length(1 + DefaultEnvironmentMemory.size)
       existsDefinedAt('x', ['_1', '_2'], result.current)
     })
   })
@@ -114,7 +115,7 @@ describe('Append', () => {
       const result = appendEnvironments(clean, append)
       expect(result, 'there should be a result').to.be.not.undefined
       expect(result.level, 'neither definitions nor appends should produce new local scopes').to.be.equal(0)
-      expect(result.current.memory, 'there should be two definitions for local-long and local-short').to.have.length(2)
+      expect(result.current.memory, 'there should be two definitions for local-long and local-short').to.have.length(2 + DefaultEnvironmentMemory.size)
       existsDefinedAt('local-long', ['_1'], result.current)
       existsDefinedAt('local-short', ['_2'], result.current)
     })
@@ -127,7 +128,7 @@ describe('Append', () => {
       const result = appendEnvironments(clean, append)
       expect(result, 'there should be a result').to.be.not.undefined
       expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0)
-      expect(result.current.memory, 'there should be only one definition for local-long').to.have.length(1)
+      expect(result.current.memory, 'there should be only one definition for local-long').to.have.length(1 + DefaultEnvironmentMemory.size)
       existsDefinedAt('local-long', ['_1', '_2'], result.current)
     })
   })

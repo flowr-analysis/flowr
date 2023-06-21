@@ -1,13 +1,13 @@
 import { ParserData } from '../../data'
 import { NamedXmlBasedJson } from '../../input-format'
-import { Type, RArgument, RFunctionDefinition } from '../../../../model'
+import { Type, RParameter, RFunctionDefinition } from '../../../../model'
 import { parseLog } from '../../parser'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { retrieveMetaStructure } from '../meta'
 import { guard, isNotUndefined } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseBasedOnType } from '../structure'
-import { tryToParseArgument } from './argument'
+import { tryToParseParameter } from './parameter'
 import { log } from '../../../../../../../util/log'
 
 /**
@@ -40,7 +40,7 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
 
   parseLog.trace(`function definition has ${splitArguments.length} arguments (by comma split)`)
 
-  const args: (undefined | RArgument)[] = splitArguments.map(x => tryToParseArgument(data, x))
+  const args: (undefined | RParameter)[] = splitArguments.map(x => tryToParseParameter(data, x))
 
   if(args.some(p => p === undefined)) {
     log.error(`function had unexpected unknown arguments: ${JSON.stringify(args.filter(isNotUndefined))}, aborting.`)
@@ -60,7 +60,7 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
     type:      Type.Function,
     location,
     lexeme:    content,
-    arguments: args as RArgument[],
+    arguments: args as RParameter[],
     body:      body[0],
     info:      {
       // TODO: include children etc.

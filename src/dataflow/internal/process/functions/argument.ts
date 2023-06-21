@@ -2,11 +2,11 @@ import { DataflowInformation } from '../../info'
 import { DataflowProcessorDown } from '../../../processor'
 import { define, IdentifierDefinition } from '../../../environments'
 import { LocalScope } from '../../../graph'
-import { ParentInformation, RArgument } from '../../../../r-bridge'
+import { ParentInformation, RParameter } from '../../../../r-bridge'
 import { setDefinitionOfNode } from '../../linker'
 import { log } from '../../../../util/log'
 
-export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo & ParentInformation>, name: DataflowInformation<OtherInfo>,  defaultValue: DataflowInformation<OtherInfo> | undefined, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processFunctionArgument<OtherInfo>(argument: RParameter<OtherInfo & ParentInformation>, name: DataflowInformation<OtherInfo>,  defaultValue: DataflowInformation<OtherInfo> | undefined, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   const graph = defaultValue !== undefined ? name.graph.mergeWith(defaultValue.graph) : name.graph
 
   const writtenNodes: IdentifierDefinition[] = name.activeNodes.map(n => ({

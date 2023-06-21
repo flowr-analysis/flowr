@@ -2,11 +2,12 @@ import { Base, Location, NoInfo, RNode } from "../model"
 import { Type } from "../type"
 import { RSymbol } from './RSymbol'
 
+/**
+ * Represents a named or unnamed argument of a function definition in R.
+ */
 export interface RArgument<Info = NoInfo> extends Base<Info>, Location {
   readonly type: Type.Argument;
-  name:          RSymbol<Info>;
-  /** is it the special ... argument? */
-  special:       boolean;
-  defaultValue:  RNode<Info> | undefined;
+  /* the name is represented as a symbol to additionally get location information */
+  name?:         RSymbol<Info>;
+  value:         RNode<Info> | undefined;
 }
-// named "tagged" expressions on call

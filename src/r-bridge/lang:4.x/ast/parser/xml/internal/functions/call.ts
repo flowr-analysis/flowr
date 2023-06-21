@@ -6,9 +6,8 @@ import { parseLog } from '../../parser'
 import { tryParseSymbol } from '../values'
 import { parseBasedOnType } from '../structure'
 import { ParserData } from '../../data'
-import { Type, RNode, RFunctionCall, RArgument, NoInfo } from '../../../../model'
+import { Type, RNode, RFunctionCall } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import { tryToParseArgument } from './argument'
 
 /**
  * Tries to parse the given data as a function call.

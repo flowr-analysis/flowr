@@ -15,13 +15,14 @@ import {
   RSymbol,
   RLogical,
   BinaryOperatorFlavor,
-  RArgument,
+  RParameter,
   RFunctionDefinition,
   UnaryOperatorFlavor, RBreak, RNext
 } from '../../model'
 import { RNa } from '../../../values'
 import { ParserData } from './data'
 import { DeepReadonly, DeepRequired } from 'ts-essentials'
+import { RArgument } from '../../model/nodes/RArgument'
 
 /** Denotes that if you return `undefined`, the parser will automatically take the original arguments (unchanged) */
 type AutoIfOmit<T> = T | undefined
@@ -124,19 +125,26 @@ export interface XmlParserHooks {
     }
   },
   functions: {
-    /** {@link tryToParseFunctionCall} */
-    onFunctionCall: {
-      /** triggered if {@link tryToParseFunctionCall} could not detect a function call, you probably still want to return `undefined` */
-      unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RFunctionCall | undefined>
-      before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
-      after(data: ParserData, result: RFunctionCall): AutoIfOmit<RFunctionCall>
-    },
     /** {@link tryToParseFunctionDefinition} */
     onFunctionDefinition: {
       /** triggered if {@link tryToParseFunctionDefinition} could not detect a function definition, you probably still want to return `undefined` */
       unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RFunctionDefinition | undefined>
       before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
       after(data: ParserData, result: RFunctionDefinition): AutoIfOmit<RFunctionDefinition>
+    }
+    /** {@link tryToParseParameter} */
+    onParameter: {
+      /** triggered if {@link tryToParseParameter} could not detect a parameter, you probably still want to return `undefined` */
+      unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RParameter | undefined>
+      before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
+      after(data: ParserData, result: RParameter): AutoIfOmit<RParameter>
+    }
+    /** {@link tryToParseFunctionCall} */
+    onFunctionCall: {
+      /** triggered if {@link tryToParseFunctionCall} could not detect a function call, you probably still want to return `undefined` */
+      unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RFunctionCall | undefined>
+      before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
+      after(data: ParserData, result: RFunctionCall): AutoIfOmit<RFunctionCall>
     }
     /** {@link tryToParseArgument} */
     onArgument: {
@@ -311,12 +319,17 @@ export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = 
     }
   },
   functions: {
-    onFunctionCall: {
+    onFunctionDefinition: {
       unknown: doNothing,
       before:  doNothing,
       after:   doNothing
     },
-    onFunctionDefinition: {
+    onParameter: {
+      unknown: doNothing,
+      before:  doNothing,
+      after:   doNothing
+    },
+    onFunctionCall: {
       unknown: doNothing,
       before:  doNothing,
       after:   doNothing
@@ -325,7 +338,7 @@ export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = 
       unknown: doNothing,
       before:  doNothing,
       after:   doNothing
-    }
+    },
   },
   expression: {
     onExpression: {

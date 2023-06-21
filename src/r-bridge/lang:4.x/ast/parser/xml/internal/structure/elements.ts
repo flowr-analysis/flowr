@@ -14,7 +14,7 @@ import {
 import { tryParseIfThenElse, tryParseIfThen } from '../control'
 import { Type, RNode } from '../../../../model'
 import { log } from '../../../../../../../util/log'
-import { tryToParseArgument } from '../functions/argument'
+import { tryToParseParameter } from '../functions/parameter'
 
 export function parseBasedOnType(
   data: ParserData,
@@ -64,7 +64,7 @@ export function parseBasedOnType(
     const args = splitArrayOn(mappedWithName.slice(1, mappedWithName.length - 1), ({ name }) => name === Type.Comma)
     let parsedArgs: RNode[] | undefined = []
     for(const argList of args) {
-      const parsed = tryToParseArgument(data, argList)
+      const parsed = tryToParseParameter(data, argList)
       if(parsed !== undefined) {
         log.info(`parsed in arg list: ${JSON.stringify(parsed)}`)
         parsedArgs?.push(parsed)

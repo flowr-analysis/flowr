@@ -1,12 +1,12 @@
 import { DataflowInformation } from '../../info'
-import { DataflowProcessorDown } from '../../../processor'
+import { DataflowProcessorInformation } from '../../../processor'
 import { define, IdentifierDefinition } from '../../../environments'
 import { LocalScope } from '../../../graph'
 import { ParentInformation, RParameter } from '../../../../r-bridge'
 import { setDefinitionOfNode } from '../../linker'
 import { log } from '../../../../util/log'
 
-export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, name: DataflowInformation<OtherInfo>,  defaultValue: DataflowInformation<OtherInfo> | undefined, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const graph = defaultValue !== undefined ? name.graph.mergeWith(defaultValue.graph) : name.graph
 
   const writtenNodes: IdentifierDefinition[] = name.activeNodes.map(n => ({
@@ -30,7 +30,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
     out:          [...(defaultValue?.out ?? []), ...name.out, ...name.activeNodes],
     graph:        graph,
     environments: name.environments, // TODO: merge with arguments
-    ast:          down.ast,
+    ast:          down.completeAst,
     scope:        down.activeScope
   }
 }

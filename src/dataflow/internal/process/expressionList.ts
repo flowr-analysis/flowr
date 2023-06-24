@@ -3,8 +3,8 @@
  * @module
  */
 import { DataflowInformation, initializeCleanInfo } from '../info'
-import { RExpressionList } from '../../../r-bridge'
-import { DataflowProcessorDown } from '../../processor'
+import { ParentInformation, RExpressionList } from '../../../r-bridge'
+import { DataflowProcessorInformation } from '../../processor'
 import {
   IdentifierReference,
   overwriteEnvironments,
@@ -17,7 +17,7 @@ import { DataflowGraph } from '../../graph'
 import { dataflowLogger } from '../../index'
 
 
-function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, down: DataflowProcessorDown<OtherInfo>, environments: REnvironmentInformation, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
+function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, down: DataflowProcessorInformation<OtherInfo>, environments: REnvironmentInformation, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
   const readName = read.name
 
   const probableTarget = resolveByName(readName, down.activeScope, environments)
@@ -41,7 +41,7 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dow
 
 
 function processNextExpression<OtherInfo>(currentElement: DataflowInformation<OtherInfo>,
-                                          down: DataflowProcessorDown<OtherInfo>,
+                                          down: DataflowProcessorInformation<OtherInfo>,
                                           environments: REnvironmentInformation,
                                           remainingRead: Map<string, IdentifierReference[]>,
                                           nextGraph: DataflowGraph) {
@@ -69,7 +69,7 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
   }
 }
 
-export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo>, expressions: DataflowInformation<OtherInfo>[], down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   dataflowLogger.trace(`processing expression list with ${expressions.length} expressions`)
   if(expressions.length === 0) {
     return initializeCleanInfo(down)
@@ -104,7 +104,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     activeNodes: [],
     in:          [...remainingRead.values()].flat(),
     out:         expressions.flatMap(child => [...child.out]),
-    ast:         down.ast,
+    ast:         down.completeAst,
     environments,
     scope:       down.activeScope,
     graph:       nextGraph

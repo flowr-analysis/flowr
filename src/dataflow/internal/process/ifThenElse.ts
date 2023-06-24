@@ -1,11 +1,10 @@
 import { DataflowInformation } from '../info'
-import { DataflowProcessorDown } from '../../processor'
+import { DataflowProcessorInformation } from '../../processor'
 import { appendEnvironments, IdentifierReference, makeAllMaybe } from '../../environments'
 import { linkIngoingVariablesInSameScope } from '../linker'
+import { ParentInformation, RIfThenElse } from '../../../r-bridge'
 
-export function processIfThenElse<OtherInfo>(ifThen: unknown, cond: DataflowInformation<OtherInfo>,
-                                             then: DataflowInformation<OtherInfo>, otherwise: DataflowInformation<OtherInfo> | undefined,
-                                             down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & ParentInformation>, down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   // TODO: allow to also attribute in-put with maybe and always
   // again within an if-then-else we consider all actives to be read
   // TODO: makeFoldReadTargetsMaybe(
@@ -32,7 +31,7 @@ export function processIfThenElse<OtherInfo>(ifThen: unknown, cond: DataflowInfo
     out:          outgoing,
     environments: otherwiseEnvironment,
     graph:        nextGraph,
-    ast:          down.ast,
+    ast:          down.completeAst,
     scope:        down.activeScope,
   }
 }

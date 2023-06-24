@@ -1,10 +1,10 @@
 import { DataflowInformation } from '../info'
-import { DataflowProcessorDown } from '../../processor'
+import { DataflowProcessorInformation } from '../../processor'
 import { linkIngoingVariablesInSameScope } from '../linker'
-import { RBinaryOp } from '../../../r-bridge'
+import { ParentInformation, RBinaryOp } from '../../../r-bridge'
 import { appendEnvironments, overwriteEnvironments } from '../../environments'
 
-export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo>, lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   // TODO: produce special edges like `alias`
 
   const ingoing = [...lhs.in, ...rhs.in, ...lhs.activeNodes, ...rhs.activeNodes]
@@ -21,7 +21,7 @@ export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo>
     environments: merger(lhs.environments, rhs.environments),
     // TODO: insert a join node?
     graph:        nextGraph,
-    scope:        down.activeScope,
-    ast:          down.ast
+    scope:        data.activeScope,
+    ast:          data.completeAst
   }
 }

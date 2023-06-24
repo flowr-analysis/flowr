@@ -1,12 +1,12 @@
 import { DataflowInformation } from '../../info'
-import { DataflowProcessorDown } from '../../../processor'
+import { DataflowProcessorInformation } from '../../../processor'
 import { overwriteEnvironments } from '../../../environments'
 import { NodeId, ParentInformation, RFunctionCall } from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
 import { dataflowLogger, FunctionArgument } from '../../../index'
 // TODO: support partial matches: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Argument-matching
 
-export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, functionName: DataflowInformation<OtherInfo>, args: DataflowInformation<OtherInfo>[], down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   let finalGraph = functionName.graph
 
   // we update all the usage nodes within the dataflow graph of the function name to
@@ -65,7 +65,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     out:          [...functionName.out, ...args.flatMap(a => a.out)],
     graph:        finalGraph,
     environments: finalEnv,
-    ast:          down.ast,
+    ast:          down.completeAst,
     scope:        down.activeScope
   }
 }

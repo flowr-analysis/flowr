@@ -1,20 +1,20 @@
 /**
  * Based on a two-way fold, this processor will automatically supply scope information
  */
-import { foldAstStateful, StatefulFoldFunctions } from '../r-bridge/lang:4.x/ast/model/processing/statefulFold'
 import { DataflowScopeName } from './graph'
-import { DecoratedAst, ParentInformation, RNodeWithParent, Type } from '../r-bridge'
+import {
+  DecoratedAst,
+  ParentInformation, RNode,
+  RNodeWithParent
+} from '../r-bridge'
 import { DataflowInformation } from './internal/info'
-import { pushLocalEnvironment, REnvironmentInformation } from './environments'
+import { REnvironmentInformation } from './environments'
 
-/**
- * information passed down during folds
- */
-export interface DataflowProcessorDown<OtherInfo> {
+export interface DataflowProcessorInformation<OtherInfo> {
   /**
    * Initial and frozen ast-information
    */
-  readonly ast:          DecoratedAst<OtherInfo>
+  readonly completeAst:  DecoratedAst<OtherInfo>
   /**
    * Correctly contains pushed local scopes introduced by `function` scopes.
    * Will by default *not* contain any symbol-bindings introduces along the way, they have to be decorated when moving up the tree.
@@ -24,28 +24,38 @@ export interface DataflowProcessorDown<OtherInfo> {
    * Name of the currently active scope, (hopefully) always {@link LocalScope | Local}
    */
   readonly activeScope:  DataflowScopeName
+  /**
+   * Other processors to be called by the given functions
+   */
+  readonly processors:   DataflowProcessors<OtherInfo>
 }
 
-export type DataflowProcessorFolds<OtherInfo> = Omit<StatefulFoldFunctions<OtherInfo, DataflowProcessorDown<OtherInfo>, DataflowInformation<OtherInfo>>, 'down'>
+export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation<OtherInfo>
 
-export function dataflowFold<OtherInfo>(ast: RNodeWithParent<OtherInfo>,
-                                        initial: DataflowProcessorDown<OtherInfo & ParentInformation>,
-                                        folds: DataflowProcessorFolds<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo & ParentInformation> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- just so we do not have to re-create
-  const statefulFolds: any = folds
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  statefulFolds.down = down
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  return foldAstStateful(ast, initial, statefulFolds)
+type NodeWithKey<OtherInfo, Node extends RNode<OtherInfo & ParentInformation>, TypeKey> = Node['type'] extends TypeKey ? Node : never
+
+/**
+ * This way, a processor mapped to a {@link Type#Symbol} require a {@link RSymbol} as first parameter and so on.
+ */
+export type DataflowProcessors<OtherInfo> = {
+  [key in RNode['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, RNodeWithParent<OtherInfo>, key>>
 }
 
-function down<OtherInfo>(_node: RNodeWithParent<OtherInfo & ParentInformation>, down: DataflowProcessorDown<OtherInfo & ParentInformation>): DataflowProcessorDown<OtherInfo & ParentInformation> {
-  if(_node.type === Type.FunctionDefinition) {
-    return {
-      ...down,
-      environments: pushLocalEnvironment(down.environments)
-    }
-  }
-  // TODO: support other scope changes on `assign`, `eval` in env etc.
-  return down
+/**
+ * Originally, dataflow processor was written as a two-way fold, but this produced problems when trying to resolve function calls
+ * which require information regarding the calling *and* definition context. While this only is a problem for late bindings as they happen
+ * with functions (and probably quote'd R-expressions) it is still a problem that must be dealt with.
+ * Therefore, the dataflow processor has no complete control over the traversal and merge strategy of the graph, with each processor being in
+ * the position to call the other processors as needed for its children.
+ * <p>
+ * Now this method can be called recursively within the other processors to parse the dataflow for nodes that you can not narrow down.
+ *
+ * @param current - The current node to start processing from
+ * @param data - The initial information to be passed down
+ */
+export function processDataflowFor<OtherInfo>(current: RNodeWithParent<OtherInfo>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo & ParentInformation> {
+  return data.processors[current.type](current as never, data)
 }
+
+
+

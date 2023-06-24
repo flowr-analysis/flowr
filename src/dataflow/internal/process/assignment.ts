@@ -1,6 +1,6 @@
 import { ParentInformation, RAssignmentOp, RNode, Type } from '../../../r-bridge'
 import { DataflowInformation } from '../info'
-import { DataflowProcessorDown } from '../../processor'
+import { DataflowProcessorInformation } from '../../processor'
 import { GlobalScope, LocalScope } from '../../graph'
 import { guard } from '../../../util/assert'
 import {
@@ -13,9 +13,7 @@ import { setDefinitionOfNode } from '../linker'
 import { log } from '../../../util/log'
 import { dataflowLogger } from '../../index'
 
-export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>,
-                                             lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>,
-                                             down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)
   const { readTargets, writeTargets, environments, swap } = processReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, down)
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
@@ -42,7 +40,7 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
     out:         writeTargets,
     graph:       nextGraph,
     environments,
-    ast:         down.ast,
+    ast:         down.completeAst,
     scope:       down.activeScope
   }
 }
@@ -83,7 +81,7 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
   return { source, target, global, swap }
 }
 
-function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation<OtherInfo>, global: boolean, down: DataflowProcessorDown<OtherInfo>, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation<OtherInfo>, global: boolean, down: DataflowProcessorInformation<OtherInfo>, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
   const writeNodes: IdentifierDefinition[] = []
   const isFunctionDef = functionTypeCheck.type === Type.FunctionDefinition
   for(const active of target.activeNodes) {
@@ -99,7 +97,7 @@ function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInfo
 
 function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>,
                                                               lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>,
-                                                              down: DataflowProcessorDown<OtherInfo>) {
+                                                              down: DataflowProcessorInformation<OtherInfo>) {
   // what is written/read additionally is based on lhs/rhs - assignments read written variables as well
   const read = [...lhs.in, ...rhs.in]
   const { source, target, global, swap } = identifySourceAndTarget(op, lhs, rhs)

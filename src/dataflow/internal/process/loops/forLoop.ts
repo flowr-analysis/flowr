@@ -5,12 +5,12 @@ import {
   setDefinitionOfNode
 } from '../../linker'
 import { DataflowInformation } from '../../info'
-import { DataflowProcessorDown } from '../../../processor'
+import { DataflowProcessorInformation } from '../../../processor'
 import { appendEnvironments, makeAllMaybe, overwriteEnvironments } from '../../../environments'
+import { ParentInformation, RForLoop } from '../../../../r-bridge'
 
-export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInformation<OtherInfo>,
-                                          vector: DataflowInformation<OtherInfo>, body: DataflowInformation<OtherInfo>,
-                                          down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInformation>,
+                                          down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
 
   // again within an if-then-else we consider all actives to be read
   // TODO: deal with ...variable.in it is not really ingoing in the sense of bindings i against it, but it should be for the for-loop
@@ -61,7 +61,7 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
     out:          outgoing,
     graph:        nextGraph,
     environments: appendEnvironments(appendEnvironments(variable.environments, vector.environments), body.environments),
-    ast:          down.ast,
+    ast:          down.completeAst,
     scope:        down.activeScope
   }
 }

@@ -1,5 +1,5 @@
 import { DataflowInformation } from '../../info'
-import { DataflowProcessorDown } from '../../../processor'
+import { DataflowProcessorInformation } from '../../../processor'
 import { overwriteEnvironments, popLocalEnvironment, resolveByName } from '../../../environments'
 import { linkInputs } from '../../linker'
 import { DataflowGraph, dataflowLogger } from '../../../index'
@@ -7,10 +7,10 @@ import { ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
 import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
 
 
-export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, params: DataflowInformation<OtherInfo>[], body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
   // as we know, that parameters can not duplicate, we overwrite their environments (which is the correct behavior, if someone uses non-`=` arguments in functions)
-  const argsEnvironment = params.map(a => a.environments).reduce((a, b) => overwriteEnvironments(a, b), down.environments)
+  const argsEnvironment = params.map(a => a.environments).reduce((a, b) => overwriteEnvironments(a, b), data.environments)
   const bodyEnvironment = body.environments
 
   const subgraph = body.graph.mergeWith(...params.map(a => a.graph))
@@ -19,7 +19,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   const readInParameters = params.flatMap(a => [...a.in, ...a.activeNodes])
   const readInBody = [...body.in, ...body.activeNodes]
   // there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
-  const remainingRead = linkInputs(readInBody, down.activeScope, argsEnvironment, readInParameters.slice(), body.graph, true /* functions do not have to be called */)
+  const remainingRead = linkInputs(readInBody, data.activeScope, argsEnvironment, readInParameters.slice(), body.graph, true /* functions do not have to be called */)
 
   dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads (of ids [${remainingRead.map(r => r.nodeId).join(', ')}])`)
 
@@ -28,7 +28,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   for (const writeTarget of body.out) {
     const writeName = writeTarget.name
 
-    const resolved = resolveByName(writeName, down.activeScope, argsEnvironment)
+    const resolved = resolveByName(writeName, data.activeScope, argsEnvironment)
     if (resolved !== undefined) {
       // write-write
       for (const target of resolved) {
@@ -55,8 +55,8 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     out:          [ /* TODO: out */ ],
     graph:        subgraph,
     environments: outEnvironment,
-    ast:          down.ast,
-    scope:        down.activeScope
+    ast:          data.completeAst,
+    scope:        data.activeScope
   }
 
   const exitPoints = retrieveExitPointsOfFunctionDefinition(functionDefinition)
@@ -67,8 +67,8 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     tag:         'function-definition',
     id:          functionDefinition.info.id,
     name:        functionDefinition.info.id,
-    environment: popLocalEnvironment(down.environments),
-    scope:       down.activeScope,
+    environment: popLocalEnvironment(data.environments),
+    scope:       data.activeScope,
     when:        'always',
     subflow:     flow,
     exitPoints
@@ -81,8 +81,8 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     out:          [],
     graph,
     /* TODO: have params. the potential to influence their surrounding on def? */
-    environments: popLocalEnvironment(down.environments),
-    ast:          down.ast,
-    scope:        down.activeScope
+    environments: popLocalEnvironment(data.environments),
+    ast:          data.completeAst,
+    scope:        data.activeScope
   }
 }

@@ -1,8 +1,9 @@
 import { DataflowInformation } from '../../info'
-import { DataflowProcessorDown } from '../../../processor'
+import { DataflowProcessorInformation } from '../../../processor'
 import { linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap } from '../../linker'
+import { ParentInformation, RRepeatLoop } from '../../../../r-bridge'
 
-export function processRepeatLoop<OtherInfo>(loop: unknown, body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processRepeatLoop<OtherInfo>(loop: RRepeatLoop<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const graph = body.graph
   const namedIdShares = produceNameSharedIdMap([...body.in, ...body.activeNodes])
   linkCircularRedefinitionsWithinALoop(graph, namedIdShares, body.out)
@@ -12,8 +13,8 @@ export function processRepeatLoop<OtherInfo>(loop: unknown, body: DataflowInform
     in:           [...body.in, ...body.activeNodes],
     out:          body.out,
     environments: body.environments,
-    ast:          down.ast,
-    scope:        down.activeScope,
+    ast:          data.completeAst,
+    scope:        data.activeScope,
     graph:        body.graph
   }
 }

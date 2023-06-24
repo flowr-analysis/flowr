@@ -38,11 +38,11 @@ export function slicingCriterionToId<OtherInfo = NoInfo>(criterion: SlicingCrite
 function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: DecoratedAstMap<OtherInfo>): NodeId | undefined {
   let candidate: RNodeWithParent<OtherInfo> | undefined
   for(const [id, nodeInfo] of dataflowIdMap.entries()) {
-    console.log(id, nodeInfo.name, nodeInfo.location)
     if(nodeInfo.location === undefined || nodeInfo.location.start.line !== location.line || nodeInfo.location.start.column !== location.column) {
       continue // only consider those with position information
     }
 
+    slicerLogger.trace(`can resolve id ${id} (${JSON.stringify(nodeInfo)}) for location ${JSON.stringify(location)}`)
     // function calls have the same location as the symbol they refer to, so we need to prefer the function call
     if(candidate !== undefined && nodeInfo.type !== Type.FunctionCall || nodeInfo.type === Type.ExpressionList) {
       continue

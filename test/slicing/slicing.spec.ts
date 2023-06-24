@@ -4,5 +4,6 @@ describe('Slicing', () => {
   })
   describe('Static Program Slices', () => {
     require('./static/simple')
+    require('./static/calls')
   })
 })

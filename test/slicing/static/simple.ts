@@ -64,6 +64,10 @@ for(i in 1:(N-1)) product <- product * i
 cat("Product:", product, "\\n")`
     )
 
+    assertSliced('Top by name', shell, code, ['2@sum'],
+      `sum <- 0`
+    )
+
   })
 
 }))

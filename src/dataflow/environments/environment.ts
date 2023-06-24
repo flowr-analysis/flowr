@@ -149,6 +149,7 @@ export function environmentEqual(a: IEnvironment | undefined, b: IEnvironment | 
   for(const [key, value] of a.memory) {
     const value2 = b.memory.get(key)
     if(value2 === undefined || value.length !== value2.length) {
+      dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)} due to different sizes of ${JSON.stringify(key)} (${JSON.stringify(value)} vs. ${JSON.stringify(value2)})`)
       return false
     }
 

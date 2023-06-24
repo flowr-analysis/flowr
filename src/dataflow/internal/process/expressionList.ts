@@ -84,8 +84,13 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
   let expressionCounter = 0
   for (const expression of expressions) {
     dataflowLogger.trace(`processing expression ${++expressionCounter} of ${expressions.length}`)
-    processNextExpression(expression, down, environments, remainingRead, nextGraph)
+    for(const [_, nodeInfo] of expression.graph.nodes()) {
+      nodeInfo.environment = overwriteEnvironments(nodeInfo.environment, environments)
+    }
+    dataflowLogger.trace(`environments: ${environments.current.name} ${JSON.stringify([...environments.current.memory])}`)
 
+
+    processNextExpression(expression, down, environments, remainingRead, nextGraph)
     // update the environments for the next iteration with the previous writes
     environments = overwriteEnvironments(environments, expression.environments)
   }

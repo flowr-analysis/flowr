@@ -6,7 +6,7 @@ import {
 } from '../../linker'
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorDown } from '../../../processor'
-import { appendEnvironments, makeAllMaybe } from '../../../environments'
+import { appendEnvironments, makeAllMaybe, overwriteEnvironments } from '../../../environments'
 
 export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInformation<OtherInfo>,
                                           vector: DataflowInformation<OtherInfo>, body: DataflowInformation<OtherInfo>,
@@ -40,6 +40,11 @@ export function processForLoop<OtherInfo>(loop: unknown, variable: DataflowInfor
     // now, we remove the name from the id shares as they are no longer needed
     nameIdShares.delete(name)
     setDefinitionOfNode(nextGraph, write)
+  }
+  const headEnvironments = appendEnvironments(variable.environments, vector.environments)
+
+  for(const [_, nodeInfo] of nextGraph.nodes()) {
+    nodeInfo.environment = overwriteEnvironments(nodeInfo.environment, headEnvironments)
   }
 
   const outgoing = [...variable.out, ...writtenVariable, ...body.out]

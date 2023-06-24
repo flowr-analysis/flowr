@@ -1,14 +1,16 @@
 import { assertDataflow, withShell } from '../../../helper/shell'
 import { DataflowGraph, initializeCleanEnvironments, LocalScope } from '../../../../src/dataflow'
+import { define } from '../../../../src/dataflow/environments'
 
 describe('for', withShell(shell => {
+  const envWithX = () => define({ nodeId: "0", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "2", used: 'always' }, LocalScope, initializeCleanEnvironments())
   assertDataflow(`Read in for Loop`,
     shell,
     `x <- 12\nfor(i in 1:10) x `,
     new DataflowGraph()
       .addNode( { tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
-      .addNode( { tag: 'use', id: "7", name: "x" })
-      .addNode( { tag: 'variable-definition', id: "3", name: "i", scope: LocalScope })
+      .addNode( { tag: 'variable-definition', id: "3", name: "i", scope: LocalScope, environment: envWithX() })
+      .addNode( { tag: 'use', id: "7", name: "x", environment: define({ nodeId: "3", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "5", used: 'always' }, LocalScope, envWithX()) })
       .addEdge("7", "0", "read", "maybe")
   )
   assertDataflow(`Read after for loop`,

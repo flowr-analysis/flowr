@@ -1,9 +1,11 @@
 import { DataflowInformation } from '../../info'
-import { DataflowProcessorInformation } from '../../../processor'
+import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { ParentInformation } from '../../../../r-bridge'
 import { RArgument } from '../../../../r-bridge/lang:4.x/ast/model/nodes/RArgument'
 
 export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  const name = argument.name === undefined ? undefined : processDataflowFor(argument.name, data)
+  const value = processDataflowFor(argument.value, data)
   const graph = name !== undefined ? name.graph.mergeWith(value.graph) : value.graph
 
   // TODO: defined-by for default values

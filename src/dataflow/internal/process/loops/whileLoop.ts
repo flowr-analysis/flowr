@@ -1,5 +1,5 @@
 import { DataflowInformation } from '../../info'
-import { DataflowProcessorInformation } from '../../../processor'
+import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import {
   appendEnvironments,
   initializeCleanEnvironments,
@@ -8,11 +8,14 @@ import {
 import { linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../linker'
 import { ParentInformation, RWhileLoop } from '../../../../r-bridge'
 
-export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentInformation>, down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  const condition = processDataflowFor(loop.condition, data)
+  const body = processDataflowFor(loop.body, data)
+
   const environments = condition.environments ?? initializeCleanEnvironments()
   const nextGraph = condition.graph.mergeWith(body.graph)
 
-  const remainingInputs = linkInputs([...body.activeNodes, ...body.in], down.activeScope, environments, [...condition.in, ...condition.activeNodes], nextGraph, true)
+  const remainingInputs = linkInputs([...body.activeNodes, ...body.in], data.activeScope, environments, [...condition.in, ...condition.activeNodes], nextGraph, true)
 
   linkCircularRedefinitionsWithinALoop(nextGraph, produceNameSharedIdMap(remainingInputs), body.out)
 
@@ -23,7 +26,7 @@ export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentI
     graph:        nextGraph,
     /* the body might not happen if the condition is false */
     environments: appendEnvironments(condition.environments, body.environments),
-    ast:          down.completeAst,
-    scope:        down.activeScope
+    ast:          data.completeAst,
+    scope:        data.activeScope
   }
 }

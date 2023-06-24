@@ -4,7 +4,7 @@
  */
 import { DataflowInformation, initializeCleanInfo } from '../info'
 import { ParentInformation, RExpressionList } from '../../../r-bridge'
-import { DataflowProcessorInformation } from '../../processor'
+import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import {
   IdentifierReference,
   overwriteEnvironments,
@@ -69,13 +69,16 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
   }
 }
 
-export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  // TODO: change
+  const expressions = exprList.children.map(e => processDataflowFor(e, data))
+
   dataflowLogger.trace(`processing expression list with ${expressions.length} expressions`)
   if(expressions.length === 0) {
-    return initializeCleanInfo(down)
+    return initializeCleanInfo(data)
   }
 
-  let environments = down.environments
+  let environments = data.environments
   const remainingRead = new Map<string, IdentifierReference[]>()
 
   // TODO: this is probably wrong
@@ -90,7 +93,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     dataflowLogger.trace(`environments: ${environments.current.name} ${JSON.stringify([...environments.current.memory])}`)
 
 
-    processNextExpression(expression, down, environments, remainingRead, nextGraph)
+    processNextExpression(expression, data, environments, remainingRead, nextGraph)
     // update the environments for the next iteration with the previous writes
     environments = overwriteEnvironments(environments, expression.environments)
   }
@@ -104,9 +107,9 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     activeNodes: [],
     in:          [...remainingRead.values()].flat(),
     out:         expressions.flatMap(child => [...child.out]),
-    ast:         down.completeAst,
+    ast:         data.completeAst,
     environments,
-    scope:       down.activeScope,
+    scope:       data.activeScope,
     graph:       nextGraph
   }
 }

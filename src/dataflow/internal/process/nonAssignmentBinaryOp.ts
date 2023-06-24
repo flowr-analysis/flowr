@@ -1,12 +1,14 @@
 import { DataflowInformation } from '../info'
-import { DataflowProcessorInformation } from '../../processor'
+import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import { linkIngoingVariablesInSameScope } from '../linker'
 import { ParentInformation, RBinaryOp } from '../../../r-bridge'
 import { appendEnvironments, overwriteEnvironments } from '../../environments'
 
-export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
-  // TODO: produce special edges like `alias`
+export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  const lhs = processDataflowFor(op.lhs, data)
+  const rhs = processDataflowFor(op.rhs, data)
 
+  // TODO: produce special edges like `alias`
   const ingoing = [...lhs.in, ...rhs.in, ...lhs.activeNodes, ...rhs.activeNodes]
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
   linkIngoingVariablesInSameScope(nextGraph, ingoing)

@@ -1,10 +1,14 @@
 import { DataflowInformation } from '../info'
-import { DataflowProcessorInformation } from '../../processor'
+import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import { appendEnvironments, IdentifierReference, makeAllMaybe } from '../../environments'
 import { linkIngoingVariablesInSameScope } from '../linker'
 import { ParentInformation, RIfThenElse } from '../../../r-bridge'
 
 export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & ParentInformation>, down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  const cond = processDataflowFor(ifThen.condition, down)
+  const then = processDataflowFor(ifThen.then, down)
+  const otherwise = ifThen.otherwise === undefined ? undefined : processDataflowFor(ifThen.otherwise, down)
+
   // TODO: allow to also attribute in-put with maybe and always
   // again within an if-then-else we consider all actives to be read
   // TODO: makeFoldReadTargetsMaybe(

@@ -1,12 +1,14 @@
 import { DataflowInformation } from '../../info'
-import { DataflowProcessorInformation } from '../../../processor'
+import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { overwriteEnvironments } from '../../../environments'
 import { NodeId, ParentInformation, RFunctionCall } from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
 import { dataflowLogger, FunctionArgument } from '../../../index'
 // TODO: support partial matches: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Argument-matching
 
-export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  const functionName = processDataflowFor(functionCall.functionName, data)
+  const args = functionCall.arguments.map(arg => processDataflowFor(arg, data))
   let finalGraph = functionName.graph
 
   // we update all the usage nodes within the dataflow graph of the function name to
@@ -32,9 +34,9 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     tag:         'function-call',
     id:          functionRootId,
     name:        functionCallName,
-    environment: down.environments,
+    environment: data.environments,
     when:        'always',
-    scope:       down.activeScope,
+    scope:       data.activeScope,
     args:        callArgs // same reference
   })
   finalGraph.addEdge(functionRootId, functionNameId, 'read', 'always')
@@ -65,7 +67,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     out:          [...functionName.out, ...args.flatMap(a => a.out)],
     graph:        finalGraph,
     environments: finalEnv,
-    ast:          down.completeAst,
-    scope:        down.activeScope
+    ast:          data.completeAst,
+    scope:        data.activeScope
   }
 }

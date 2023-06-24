@@ -1,6 +1,6 @@
 import { DataflowInformation } from '../../info'
-import { DataflowProcessorInformation } from '../../../processor'
-import { overwriteEnvironments, popLocalEnvironment, resolveByName } from '../../../environments'
+import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
+import { overwriteEnvironments, popLocalEnvironment, pushLocalEnvironment, resolveByName } from '../../../environments'
 import { linkInputs } from '../../linker'
 import { DataflowGraph, dataflowLogger } from '../../../index'
 import { ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
@@ -9,6 +9,11 @@ import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
 
 export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
+  data = { ...data, environments: pushLocalEnvironment(data.environments) }
+  // TODO: update
+  const params = functionDefinition.parameters.map(p => processDataflowFor(p, data))
+
+  const body = processDataflowFor(functionDefinition.body, data)
   // as we know, that parameters can not duplicate, we overwrite their environments (which is the correct behavior, if someone uses non-`=` arguments in functions)
   const argsEnvironment = params.map(a => a.environments).reduce((a, b) => overwriteEnvironments(a, b), data.environments)
   const bodyEnvironment = body.environments

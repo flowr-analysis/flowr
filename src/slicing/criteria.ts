@@ -1,0 +1,68 @@
+import { DecoratedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation, RNodeWithParent, Type } from '../r-bridge'
+import { slicerLogger } from './static'
+import { SourcePosition } from '../util/range'
+
+export type SlicingCriterion = `${number}:${number}` | `${number}@${string}`
+
+/**
+ * Thrown if the given slicing criteria can not be found
+ */
+export class CriteriaParseError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'CriteriaParseError'
+  }
+}
+
+/**
+ * Takes a criterion in the form of `line:column` or `line@variable-name` and returns the corresponding node id
+ */
+export function slicingCriterionToId<OtherInfo = NoInfo>(criterion: SlicingCriterion, decorated: DecoratedAst<OtherInfo & ParentInformation>): NodeId {
+  let resolved: NodeId | undefined
+  if(criterion.includes(':')) {
+    const [line, column] = criterion.split(':').map(c => parseInt(c))
+    resolved = locationToId({ line, column }, decorated.idMap)
+  } else if(criterion.includes('@')) {
+    const [line, name] = criterion.split(/@(.*)/s) // only split at first occurrence
+    resolved = conventionalCriteriaToId(parseInt(line), name, decorated.idMap)
+  }
+
+  if(resolved === undefined) {
+    throw new CriteriaParseError(`invalid slicing criterion ${criterion}`)
+  }
+  return resolved
+}
+
+
+
+function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: DecoratedAstMap<OtherInfo>): NodeId | undefined {
+  let candidate: RNodeWithParent<OtherInfo> | undefined
+  for(const [id, nodeInfo] of dataflowIdMap.entries()) {
+    if(nodeInfo.location === undefined || nodeInfo.location.start.line !== location.line || nodeInfo.location.start.column !== location.column) {
+      continue // only consider those with position information
+    }
+
+    slicerLogger.trace(`can resolve id ${id} for location ${JSON.stringify(location)}`)
+    // function calls have the same location as the symbol they refer to, so we need to prefer the function call
+    if(candidate !== undefined && nodeInfo.type !== Type.FunctionCall) {
+      continue
+    }
+
+    candidate = nodeInfo
+  }
+  const id = candidate?.info.id
+  if(id) {
+    slicerLogger.trace(`resolve id ${id} for location ${JSON.stringify(location)}`)
+  }
+  return id
+}
+
+function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflowIdMap: DecoratedAstMap<OtherInfo>): NodeId | undefined {
+  for(const [id, values] of dataflowIdMap.entries()) {
+    if(values.location && values.location.start.line === line && values.lexeme === name) {
+      slicerLogger.trace(`resolving id ${id} for line ${line} and name ${name}`)
+      return id
+    }
+  }
+  return undefined
+}

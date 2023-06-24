@@ -1,31 +1,9 @@
 import { DataflowGraph, graphToMermaidUrl } from '../../dataflow'
 import { guard } from '../../util/assert'
 import { DecoratedAstMap, NodeId } from '../../r-bridge'
-import { SourcePosition } from '../../util/range'
 import { log } from '../../util/log'
 
 export const slicerLogger = log.getSubLogger({ name: "slicer" })
-
-
-export function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: DecoratedAstMap<OtherInfo>): NodeId | undefined {
-  for(const [id, values] of dataflowIdMap.entries()) {
-    if(values.location && values.location.start.line === location.line && values.location.start.column === location.column) {
-      slicerLogger.trace(`resolving id ${id} for location ${JSON.stringify(location)}`)
-      return id
-    }
-  }
-  return undefined
-}
-
-export function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflowIdMap: DecoratedAstMap<OtherInfo>): NodeId | undefined {
-  for(const [id, values] of dataflowIdMap.entries()) {
-    if(values.location && values.location.start.line === line && values.lexeme === name) {
-      slicerLogger.trace(`resolving id ${id} for line ${line} and name ${name}`)
-      return id
-    }
-  }
-  return undefined
-}
 
 
 /**

@@ -10,11 +10,12 @@ import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
 import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import fs from 'fs'
-import { conventionalCriteriaToId, locationToId, naiveStaticSlicing } from '../slicing/static'
+import { naiveStaticSlicing } from '../slicing/static'
 import { assert } from 'chai'
 import { guard, isNotUndefined } from '../util/assert'
 import { produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode } from '../slicing/reconstruct'
+import { SlicingCriterion, slicingCriterionToId } from '../slicing/criteria'
 
 export const toolName = 'slicer'
 
@@ -69,17 +70,8 @@ const shellInit = process.hrtime.bigint()
 const shell = new RShell()
 shell.tryToInjectHomeLibPath()
 
-function slicingCriterionToId(criterion: string, decorated: DecoratedAst<ParentInformation>): NodeId | undefined {
-  if(criterion.includes(':')) {
-    const [line, column] = criterion.split(':').map(c => parseInt(c))
-    return locationToId({ line, column }, decorated.idMap)
-  } else if(criterion.includes('@')) {
-    const [line, name] = criterion.split(/@(.*)/s) // only split at first occurence
-    return conventionalCriteriaToId(parseInt(line), name, decorated.idMap)
-  }
-}
 
-function sliceAllCriteriaToIds(slices: string[], decorated: DecoratedAst<ParentInformation>): NodeId[] {
+function sliceAllCriteriaToIds(slices: SlicingCriterion[], decorated: DecoratedAst<ParentInformation>): NodeId[] {
   return slices.map(l => slicingCriterionToId(l, decorated)).map((d, i) => {
     assert(isNotUndefined(d), `all ids must be found, but not for id ${i}`)
     console.log(`Slicing for ${JSON.stringify(decorated.idMap.get(d)?.lexeme)} (loc: ${JSON.stringify(decorated.idMap.get(d)?.location)}, from: ${slices[i]})`)
@@ -114,7 +106,7 @@ async function writeSliceForSingleFile(request: RParseRequestFromFile, tokens: R
   const slices = options.criterion.split(';').map(c => c.trim())
   const sliceDecode = process.hrtime.bigint()
 
-  const mappedIds = sliceAllCriteriaToIds(slices, decorated)
+  const mappedIds = sliceAllCriteriaToIds(slices as SlicingCriterion[], decorated)
   const sliceMapping = process.hrtime.bigint()
 
   const dataflow = produceDataFlowGraph(decorated)

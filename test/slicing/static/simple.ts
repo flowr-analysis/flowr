@@ -3,7 +3,7 @@ import { assertSliced, withShell } from '../../helper/shell'
 describe('Simple', withShell(shell => {
   describe('Constant assignments', () => {
     for(const i of [1, 2, 3]) {
-      assertSliced(`x <- [${i}]`, shell, 'x <- 1\nx <- 2\nx <- 3', [{ line: i, column: 1 }], `x <- ${i}`)
+      assertSliced(`x <- [${i}]`, shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`)
     }
   })
   // TODO: test for(i in 1:10) { print(i); i <- 12 }
@@ -23,33 +23,33 @@ cat("Sum:", sum, "\\n")
 cat("Product:", product, "\\n")
 `
 
-    assertSliced('Sum lhs in for', shell, code, [{ line: 8, column: 3 }],
+    assertSliced('Sum lhs in for', shell, code, ['8:3'],
       `sum <- 0
 w <- 7
 N <- 10
 for(i in 1:(N-1)) sum <- sum + i + w`
     )
 
-    assertSliced('Sum rhs in for', shell, code, [{ line: 8, column: 10 }],
+    assertSliced('Sum rhs in for', shell, code, ['8:10'],
       `sum <- 0
 w <- 7
 N <- 10
 for(i in 1:(N-1)) sum <- sum + i + w`
     )
 
-    assertSliced('Product lhs in for', shell, code, [{ line: 9, column: 3 }],
+    assertSliced('Product lhs in for', shell, code, ['9:3'],
       `product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product * i`
     )
 
-    assertSliced('Product rhs in for', shell, code, [{ line: 9, column: 14 }],
+    assertSliced('Product rhs in for', shell, code, ['9:14'],
       `product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product * i`
     )
 
-    assertSliced('Sum in call', shell, code, [{ line: 12, column: 13 }],
+    assertSliced('Sum in call', shell, code, ['12:13'],
       `sum <- 0
 w <- 7
 N <- 10
@@ -57,7 +57,7 @@ for(i in 1:(N-1)) sum <- sum + i + w
 cat("Sum:", sum, "\\n")`
     )
 
-    assertSliced('Product in call', shell, code, [{ line: 13, column: 17 }],
+    assertSliced('Product in call', shell, code, ['13:17'],
       `product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product * i

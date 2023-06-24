@@ -73,11 +73,11 @@ function printArg(arg: IdentifierReference | '<value>' | undefined): string {
   return arg === '<value>' ? '-value-' : `${arg.nodeId}:${arg.name}`
 }
 function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
-  let result = ''
+  const result = []
   for(const arg of argMapping) {
-    result += Array.isArray(arg) ? `${arg[0]} -> ${printArg(arg[1])}\n` : `${printArg(arg)}\n`
+    result.push(Array.isArray(arg) ? `${arg[0]} -> ${printArg(arg[1])}` : `${printArg(arg)}`)
   }
-  return result.length === 0 ? '' : `\n    ${result}`
+  return result.length === 0 ? '' : `\n    (${result.join(', ')})`
 }
 
 function nodeToMermaid(info: DataflowGraphNodeInfo, lines: string[], id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap<NoInfo> | undefined, mark: Set<NodeId> | undefined, hasBuiltIn: boolean) {

@@ -4,10 +4,11 @@ import {
   BuiltIn,
   DataflowFunctionFlowInformation,
   DataflowGraph,
-  DataflowGraphEdgeAttribute,
+  DataflowGraphEdgeAttribute, DataflowGraphNodeInfo,
   DataflowMap,
   DataflowScopeName, FunctionArgument, IdentifierReference
 } from '../dataflow'
+import { guard } from './assert'
 
 export function formatRange(range: SourceRange | undefined): string {
   if (range === undefined) {
@@ -43,6 +44,11 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: Dataflo
     }
   }
   for(const exitPoint of exitPoints) {
+    if(!subflow.graph.hasNode(exitPoint)) {
+      const node = dataflowIdMap?.get(exitPoint)
+      guard(node !== undefined, 'exit point not found')
+      lines.push(` ${idPrefix}${exitPoint}{{"${node.lexeme ?? '??'} (${exitPoint})\n      ${formatRange(dataflowIdMap?.get(exitPoint)?.location)}"}}`)
+    }
     lines.push(`    style ${idPrefix}${exitPoint} stroke-width:6.5px;`)
   }
   stylesForDefinitionKindsInEnvironment(subflow, lines, idPrefix)
@@ -74,33 +80,45 @@ function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
   return result.length === 0 ? '' : `\n    ${result}`
 }
 
+function nodeToMermaid(info: DataflowGraphNodeInfo, lines: string[], id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap<NoInfo> | undefined, mark: Set<NodeId> | undefined, hasBuiltIn: boolean) {
+  const def = info.definedAtPosition !== false
+  const fCall = info.functionCall !== undefined && info.functionCall !== false
+  const defText = definedAtPositionToMermaid(info.definedAtPosition, info.when)
+  let open: string
+  let close: string
+  if (def) {
+    open = '['
+    close = ']'
+  } else if (fCall) {
+    open = '[['
+    close = ']]'
+  } else {
+    open = '(['
+    close = '])'
+  }
+  lines.push(`    %% ${id}: ${JSON.stringify(info.environment, displayEnvReplacer)}`)
+  lines.push(`    ${idPrefix}${id}${open}"\`${info.name} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
+    info.functionCall ? displayFunctionArgMapping(info.functionCall) : ''
+  }\`"${close}`)
+  if (mark?.has(id)) {
+    lines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `)
+  }
+  for (const edge of info.edges) {
+    const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
+    lines.push(`    ${idPrefix}${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${edge.target}`)
+    if (edge.target === BuiltIn) {
+      hasBuiltIn = true
+    }
+  }
+  subflowToMermaid(id, info.exitPoints ?? [], info.subflow, dataflowIdMap, lines, idPrefix)
+  return hasBuiltIn
+}
+
 export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = '', mark?: Set<NodeId>): string {
   let hasBuiltIn = false
   const lines = prefix === null ? [] : [prefix]
   for (const [id, info] of graph.entries()) {
-    const def = info.definedAtPosition !== false
-    const fCall = info.functionCall !== undefined && info.functionCall !== false
-    const defText = definedAtPositionToMermaid(info.definedAtPosition, info.when)
-    let open: string
-    let close: string
-    if(def) { open = '['; close = ']' }
-    else if(fCall) { open = '[['; close = ']]' }
-    else { open = '(['; close = '])' }
-    lines.push(`    %% ${id}: ${JSON.stringify(info.environment, displayEnvReplacer)}`)
-    lines.push(`    ${idPrefix}${id}${open}"\`${info.name} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
-      info.functionCall ? displayFunctionArgMapping(info.functionCall) : ''
-    }\`"${close}`)
-    if (mark?.has(id)) {
-      lines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `)
-    }
-    for (const edge of info.edges) {
-      const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
-      lines.push(`    ${idPrefix}${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${edge.target}`)
-      if(edge.target === BuiltIn) {
-        hasBuiltIn = true
-      }
-    }
-    subflowToMermaid(id, info.exitPoints ?? [], info.subflow, dataflowIdMap, lines, idPrefix)
+    hasBuiltIn = nodeToMermaid(info, lines, id, idPrefix, dataflowIdMap, mark, hasBuiltIn)
   }
   if(hasBuiltIn) {
     lines.push(`    ${idPrefix}${BuiltIn}["Built-in"]`)

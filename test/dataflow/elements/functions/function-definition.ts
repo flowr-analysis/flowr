@@ -14,7 +14,7 @@ describe('Function Definition', withShell(shell => {
           name:       "1",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '0'],
           subflow:    {
             out:          [ /* TODO: exit points in the far future */ ],
             activeNodes:  [],
@@ -36,7 +36,7 @@ describe('Function Definition', withShell(shell => {
           name:       "3",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '2' ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -71,7 +71,7 @@ describe('Function Definition', withShell(shell => {
           name:       "5",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '4' ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -95,14 +95,22 @@ describe('Function Definition', withShell(shell => {
               })
               .addNode({
                 tag:         'function-call',
-                id:          "2",
+                id:          "4",
                 name:        'return',
                 environment: envWithXDefined,
                 when:        'always',
                 args:        [ { nodeId: "3", used: 'always', name: 'x', scope: LocalScope } ]
               })
+              .addNode({
+                tag:         'use',
+                id:          "2",
+                name:        'return',
+                environment: envWithXDefined,
+                when:        'always',
+              })
+              .addEdge("4", "2", "read", "always")
               .addEdge("3", "0", "read", "always")
-              .addEdge("2", "3", "argument", "always")
+              .addEdge("4", "3", "argument", "always")
               .addEdge("2", BuiltIn, 'read', 'always'),
             environments: envWithXDefined
           }
@@ -127,7 +135,7 @@ describe('Function Definition', withShell(shell => {
           name:       "7",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '6' ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -154,7 +162,7 @@ describe('Function Definition', withShell(shell => {
           name:       "4",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '3' ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -180,7 +188,7 @@ describe('Function Definition', withShell(shell => {
           name:       '3',
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '2' /* the assignment */ ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -201,7 +209,7 @@ describe('Function Definition', withShell(shell => {
           name:       "3",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '2', ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -227,7 +235,7 @@ describe('Function Definition', withShell(shell => {
           name:       "3",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '2' ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -252,7 +260,7 @@ describe('Function Definition', withShell(shell => {
           name:       "3",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '2' ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -277,7 +285,7 @@ describe('Function Definition', withShell(shell => {
           name:       "3",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '2' ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -304,7 +312,7 @@ describe('Function Definition', withShell(shell => {
           name:       "8",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '6' ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -342,7 +350,7 @@ describe('Function Definition', withShell(shell => {
           name:       "8",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '6' ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -392,7 +400,7 @@ describe('Function Definition', withShell(shell => {
           name:       "6",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '5' ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -424,7 +432,7 @@ describe('Function Definition', withShell(shell => {
           name:       "1",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '0' ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -477,7 +485,7 @@ describe('Function Definition', withShell(shell => {
           name:       "11",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [],
+          exitPoints: [ '9' ],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -493,7 +501,7 @@ describe('Function Definition', withShell(shell => {
                 environment: pushLocalEnvironment(initializeCleanEnvironments()),
                 scope:       LocalScope,
                 when:        'always',
-                exitPoints:  [],
+                exitPoints:  [ '6' ],
                 subflow:     {
                   out:         [],
                   activeNodes: [],

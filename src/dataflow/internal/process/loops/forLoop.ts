@@ -14,23 +14,23 @@ export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInfor
                                           data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const variable = processDataflowFor(loop.variable, data)
   const vector = processDataflowFor(loop.vector, data)
-  const headEnvironments = appendEnvironments(variable.environments, vector.environments)
+  let headEnvironments = appendEnvironments(variable.environments, vector.environments)
   const headGraph= variable.graph.mergeWith(vector.graph)
-  data = { ...data, environments: headEnvironments }
   // TODO: use attribute? TODO: use writes in vector?
   const writtenVariable = variable.activeNodes
   for(const write of writtenVariable) {
-    define({ ...write, used: 'always', definedAt: loop.info.id, kind: 'variable' }, LocalScope, headEnvironments)
+    headEnvironments = define({ ...write, used: 'always', definedAt: loop.info.id, kind: 'variable' }, LocalScope, headEnvironments)
   }
+  data = { ...data, environments: headEnvironments }
   const body = processDataflowFor(loop.body, data)
+
+  const nextGraph = headGraph.mergeWith(body.graph)
 
   // again within an if-then-else we consider all actives to be read
   // TODO: deal with ...variable.in it is not really ingoing in the sense of bindings i against it, but it should be for the for-loop
   // currently i add it at the end, but is this correct?
-  const ingoing = [...vector.in, ...makeAllMaybe(body.in), ...vector.activeNodes, ...makeAllMaybe(body.activeNodes)]
+  const ingoing = [...vector.in, ...makeAllMaybe(body.in, nextGraph), ...vector.activeNodes, ...makeAllMaybe(body.activeNodes, nextGraph)]
 
-
-  const nextGraph = headGraph.mergeWith(body.graph)
 
   // now we have to bind all open reads with the given name to the locally defined writtenVariable!
   const nameIdShares = produceNameSharedIdMap(ingoing)
@@ -51,10 +51,7 @@ export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInfor
     setDefinitionOfNode(nextGraph, write)
   }
 
-  const outgoing = [...variable.out, ...writtenVariable, ...body.out]
-
-  makeAllMaybe(body.out)
-
+  const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph)]
 
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
 

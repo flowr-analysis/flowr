@@ -29,7 +29,7 @@ describe("Lists with if-then constructs", withShell(shell => {
               `x ${assign} 2\nif(TRUE) { x } ${b.text}`,
               new DataflowGraph()
                 .addNode( { tag: 'variable-definition', id: "0", name: "x", scope: scope })
-                .addNode( { tag: 'use', id: "4", name: "x", environment: define({ nodeId: "0", name: 'x', scope, kind: 'variable', definedAt: "2", used: 'always' }, scope, initializeCleanEnvironments()) })
+                .addNode( { tag: 'use', id: "4", name: "x", when: 'maybe', environment: define({ nodeId: "0", name: 'x', scope, kind: 'variable', definedAt: "2", used: 'always' }, scope, initializeCleanEnvironments()) })
                 .addEdge("4", "0", "read", "maybe")
             )
           })
@@ -39,7 +39,7 @@ describe("Lists with if-then constructs", withShell(shell => {
           `x ${assign} 2\nif(TRUE) { 42 } else { x }`,
           new DataflowGraph()
             .addNode( { tag: 'variable-definition', id: "0", name: "x", scope: scope })
-            .addNode( { tag: 'use', id: "5", name: "x", environment: define({ nodeId: "0", name: 'x', scope, kind: 'variable', definedAt: "2", used: 'always' }, scope, initializeCleanEnvironments()) })
+            .addNode( { tag: 'use', id: "5", name: "x", when: 'maybe', environment: define({ nodeId: "0", name: 'x', scope, kind: 'variable', definedAt: "2", used: 'always' }, scope, initializeCleanEnvironments()) })
             .addEdge("5", "0", "read", "maybe")
         )
       })
@@ -52,8 +52,8 @@ describe("Lists with if-then constructs", withShell(shell => {
             shell,
             `if(TRUE) { x ${assign} 2 }\nx`,
             new DataflowGraph()
-              .addNode( { tag: 'variable-definition', id: "1", name: "x", scope: scope })
-              .addNode( { tag: 'use', id: "5", name: "x", environment: define({ nodeId: "1", name: 'x', scope, kind: 'variable', definedAt: "3", used: 'maybe' }, scope, initializeCleanEnvironments()) })
+              .addNode( { tag: 'variable-definition', id: "1", name: "x", when: 'maybe', scope: scope })
+              .addNode( { tag: 'use', id: "5", name: "x", environment: define({ nodeId: "1", name: 'x', scope, kind: 'variable', definedAt: "3", used: 'always' /* TODO: fix that...*/ }, scope, initializeCleanEnvironments()) })
               .addEdge("5", "1", "read", "maybe")
           )
         }
@@ -61,20 +61,20 @@ describe("Lists with if-then constructs", withShell(shell => {
           shell,
           `if(TRUE) { 42 } else { x ${assign} 5 }\nx`,
           new DataflowGraph()
-            .addNode( { tag: 'variable-definition', id: "2", name: "x", scope: scope })
-            .addNode( { tag: 'use', id: "6", name: "x", environment: define({ nodeId: "2", name: 'x', scope, kind: 'variable', definedAt: "4", used: 'maybe' }, scope, initializeCleanEnvironments()) })
+            .addNode( { tag: 'variable-definition', id: "2", name: "x", when: 'maybe', scope: scope })
+            .addNode( { tag: 'use', id: "6", name: "x", environment: define({ nodeId: "2", name: 'x', scope, kind: 'variable', definedAt: "4", used: 'always' }, scope, initializeCleanEnvironments()) })
             .addEdge("6", "2", "read", "maybe")
         )
 
-        const whenEnvironment = define({ nodeId: "1", name: 'x', scope, kind: 'variable', definedAt: "3", used: 'maybe' }, scope, initializeCleanEnvironments())
-        const otherwiseEnvironment = define({ nodeId: "4", name: 'x', scope, kind: 'variable', definedAt: "6", used: 'maybe' }, scope, initializeCleanEnvironments())
+        const whenEnvironment = define({ nodeId: "1", name: 'x', scope, kind: 'variable', definedAt: "3", used: 'always' }, scope, initializeCleanEnvironments())
+        const otherwiseEnvironment = define({ nodeId: "4", name: 'x', scope, kind: 'variable', definedAt: "6", used: 'always' }, scope, initializeCleanEnvironments())
 
         assertDataflow(`def in then and else read afterward`,
           shell,
           `if(TRUE) { x ${assign} 7 } else { x ${assign} 5 }\nx`,
           new DataflowGraph()
-            .addNode( { tag: 'variable-definition', id: "1", name: "x", scope: scope })
-            .addNode( { tag: 'variable-definition', id: "4", name: "x", scope: scope })
+            .addNode( { tag: 'variable-definition', id: "1", name: "x", scope: scope, when: 'maybe' })
+            .addNode( { tag: 'variable-definition', id: "4", name: "x", scope: scope, when: 'maybe' })
             .addNode( { tag: 'use', id: "8", name: "x", environment: appendEnvironments(whenEnvironment, otherwiseEnvironment) })
             .addEdge("8", "1", "read", "maybe")
             .addEdge("8", "4", "read", "maybe")

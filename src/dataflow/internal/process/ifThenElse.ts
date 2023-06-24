@@ -9,21 +9,22 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
   const then = processDataflowFor(ifThen.then, down)
   const otherwise = ifThen.otherwise === undefined ? undefined : processDataflowFor(ifThen.otherwise, down)
 
+  const nextGraph = cond.graph.mergeWith(then.graph, otherwise?.graph)
+
   // TODO: allow to also attribute in-put with maybe and always
   // again within an if-then-else we consider all actives to be read
   // TODO: makeFoldReadTargetsMaybe(
-  const ingoing: IdentifierReference[] = [...cond.in, ...makeAllMaybe(then.in),
-    ...makeAllMaybe(otherwise?.in),
+  const ingoing: IdentifierReference[] = [...cond.in, ...makeAllMaybe(then.in, nextGraph),
+    ...makeAllMaybe(otherwise?.in, nextGraph),
     ...cond.activeNodes,
-    ...makeAllMaybe(then.activeNodes),
-    ...makeAllMaybe(otherwise?.activeNodes)
+    ...makeAllMaybe(then.activeNodes, nextGraph),
+    ...makeAllMaybe(otherwise?.activeNodes, nextGraph)
   ]
 
   // we assign all with a maybe marker
   // we do not merge even if they appear in both branches because the maybe links will refer to different ids
-  const outgoing = [...cond.out, ...makeAllMaybe(then.out), ...makeAllMaybe(otherwise?.out)]
+  const outgoing = [...cond.out, ...makeAllMaybe(then.out, nextGraph), ...makeAllMaybe(otherwise?.out, nextGraph)]
 
-  const nextGraph = cond.graph.mergeWith(then.graph, otherwise?.graph)
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
   // TODO: join def-def?
 

@@ -11,11 +11,16 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
   data = { ...data, environments: pushLocalEnvironment(data.environments) }
   // TODO: update
-  const params = functionDefinition.parameters.map(p => processDataflowFor(p, data))
+  const params = []
+  for(const param of functionDefinition.parameters) {
+    const processed = processDataflowFor(param, data)
+    params.push(processed)
+    data = { ...data, environments: processed.environments }
+  }
+  const paramsEnvironments = data.environments
 
   const body = processDataflowFor(functionDefinition.body, data)
   // as we know, that parameters can not duplicate, we overwrite their environments (which is the correct behavior, if someone uses non-`=` arguments in functions)
-  const argsEnvironment = params.map(a => a.environments).reduce((a, b) => overwriteEnvironments(a, b), data.environments)
   const bodyEnvironment = body.environments
 
   const subgraph = body.graph.mergeWith(...params.map(a => a.graph))
@@ -24,7 +29,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   const readInParameters = params.flatMap(a => [...a.in, ...a.activeNodes])
   const readInBody = [...body.in, ...body.activeNodes]
   // there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
-  const remainingRead = linkInputs(readInBody, data.activeScope, argsEnvironment, readInParameters.slice(), body.graph, true /* functions do not have to be called */)
+  const remainingRead = linkInputs(readInBody, data.activeScope, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */)
 
   dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads (of ids [${remainingRead.map(r => r.nodeId).join(', ')}])`)
 
@@ -33,7 +38,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   for (const writeTarget of body.out) {
     const writeName = writeTarget.name
 
-    const resolved = resolveByName(writeName, data.activeScope, argsEnvironment)
+    const resolved = resolveByName(writeName, data.activeScope, paramsEnvironments)
     if (resolved !== undefined) {
       // write-write
       for (const target of resolved) {
@@ -42,7 +47,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     }
   }
 
-  const outEnvironment = overwriteEnvironments(argsEnvironment, bodyEnvironment)
+  const outEnvironment = overwriteEnvironments(paramsEnvironments, bodyEnvironment)
   for(const read of remainingRead) {
     dataflowLogger.trace(`Adding node ${read.nodeId} to function graph in environment ${JSON.stringify(outEnvironment)} `)
     subgraph.addNode({ tag: 'use', id: read.nodeId, name: read.name, environment: outEnvironment, when: 'maybe' })

@@ -31,7 +31,7 @@ function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnviro
     if(hasMaybe) {
       const old = map.get(key)
       // we need to make a copy to avoid side effects for old reference in other environments
-      const updatedOld: IdentifierDefinition[] = old === undefined ? [] : old.map(o => ({ ...o, used: 'maybe' }))
+      const updatedOld: IdentifierDefinition[] = old ?? []
       for (const v of values) {
         const find = updatedOld.find(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)
         if(find === undefined) {

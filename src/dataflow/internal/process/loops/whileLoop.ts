@@ -16,14 +16,14 @@ export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentI
   const environments = condition.environments ?? initializeCleanEnvironments()
   const nextGraph = condition.graph.mergeWith(body.graph)
 
-  const remainingInputs = linkInputs([...body.activeNodes, ...body.in], data.activeScope, environments, [...condition.in, ...condition.activeNodes], nextGraph, true)
+  const remainingInputs = linkInputs([...makeAllMaybe(body.activeNodes, nextGraph), ...makeAllMaybe(body.in, nextGraph)], data.activeScope, environments, [...condition.in, ...condition.activeNodes], nextGraph, true)
 
   linkCircularRedefinitionsWithinALoop(nextGraph, produceNameSharedIdMap(remainingInputs), body.out)
 
   return {
     activeNodes:  [],
     in:           remainingInputs,
-    out:          [...makeAllMaybe(body.out), ...condition.out], // todo: merge etc.
+    out:          [...makeAllMaybe(body.out, nextGraph), ...condition.out], // todo: merge etc.
     graph:        nextGraph,
     /* the body might not happen if the condition is false */
     environments: appendEnvironments(condition.environments, body.environments),

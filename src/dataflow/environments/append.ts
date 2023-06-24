@@ -5,11 +5,9 @@ function uniqueMergeValues(old: IdentifierDefinition[], value: IdentifierDefinit
   // TODO: improve this to ensure there are no duplicates
   const result = old
   for (const v of value) {
-    const find = old.find(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)
-    if(find === undefined) {
+    const find = result.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)
+    if(find < 0) {
       result.push(v)
-    } else if(find.used !== v.used) {
-      find.used = 'maybe'
     }
   }
   return result

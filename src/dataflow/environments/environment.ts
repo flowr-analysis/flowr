@@ -4,7 +4,7 @@
  * @module
  */
 import { NodeId } from '../../r-bridge'
-import { DataflowGraphEdgeAttribute, DataflowScopeName, GlobalScope } from '../graph'
+import { DataflowGraph, DataflowGraphEdgeAttribute, DataflowScopeName, GlobalScope } from '../graph'
 import { dataflowLogger } from '../index'
 
 /** identifiers are branded to avoid confusion with other string-like types */
@@ -55,14 +55,17 @@ export function equalIdentifierReferences(a: IdentifierReference, b: IdentifierR
   return a.name === b.name && a.scope === b.scope && a.nodeId === b.nodeId && a.used === b.used
 }
 
-export function makeAllMaybe(references: IdentifierReference[] | undefined): IdentifierReference[] {
+export function makeAllMaybe(references: IdentifierReference[] | undefined, graph: DataflowGraph): IdentifierReference[] {
   if(references === undefined) {
     return []
   }
-  for(const reference of references) {
-    reference.used = 'maybe'
-  }
-  return references
+  return references.map(ref => {
+    const node = graph.get(ref.nodeId)
+    if(node) {
+      node.when = 'maybe'
+    }
+    return { ...ref, used: 'maybe'}
+  })
 }
 
 

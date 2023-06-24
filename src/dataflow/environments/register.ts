@@ -1,19 +1,20 @@
-import { IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
+import { cloneEnvironments, IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
 import { DataflowScopeName, GlobalScope, LocalScope } from '../graph'
 
 /**
  * Insert the given `definition` --- defined within the given scope --- into the passed along `environments` will take care of propagation.
- * Modifies the passed along `environments` in-place. It returns the same reference for ease of use.
+ * Does not modify the passed along `environments` in-place! It returns the new reference.
  */
 export function define(definition: IdentifierDefinition, withinScope: DataflowScopeName, environments: REnvironmentInformation): REnvironmentInformation {
+  const newEnvironments = cloneEnvironments(environments)
   if(withinScope === LocalScope) {
-    environments.current.memory.set(definition.name, [definition])
+    newEnvironments.current.memory.set(definition.name, [definition])
   } else if (withinScope === GlobalScope) {
-    let current: IEnvironment | undefined = environments.current
+    let current: IEnvironment | undefined = newEnvironments.current
     do {
       current.memory.set(definition.name, [definition])
       current = current.parent
     } while (current !== undefined)
   }
-  return environments
+  return newEnvironments
 }

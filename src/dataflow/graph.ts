@@ -306,8 +306,8 @@ export class DataflowGraph {
   public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute, promote= false): this {
     // dataflowLogger.trace(`trying to add edge from ${JSON.stringify(from)} to ${JSON.stringify(to)} with type ${type} and attribute ${JSON.stringify(attribute)} to graph`)
 
-    const fromId = typeof from === 'object' ? from.nodeId : from
-    const toId = typeof to === 'object' ? to.nodeId : to
+    let fromId = typeof from === 'object' ? from.nodeId : from
+    let toId = typeof to === 'object' ? to.nodeId : to
 
     if(fromId === toId) {
       log.trace(`ignoring self-edge from ${fromId} to ${toId}`)
@@ -316,7 +316,10 @@ export class DataflowGraph {
 
     // sort (on id so that sorting is the same, independent of the attribute)
     if(type === 'same-read-read' || type === 'same-def-def') {
-      [from, to] = toId > fromId ? [from, to] : [to, from]
+      if(toId < fromId) {
+        { [from, to] = [to, from] }
+        { [fromId, toId] = [toId, fromId] }
+      }
     }
     if(promote && attribute === undefined) {
       attribute = (from as ReferenceForEdge).used === 'maybe' ? 'maybe' : (to as ReferenceForEdge).used

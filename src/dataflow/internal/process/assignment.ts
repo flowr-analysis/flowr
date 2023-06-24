@@ -117,11 +117,11 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<
     guard(id.scope === LocalScope, 'currently, nested write re-assignments are only supported for local')
     return id
   })
-  const environments = overwriteEnvironments(source.environments, target.environments)
+  let environments = overwriteEnvironments(source.environments, target.environments)
 
   // install assigned variables in environment
   for(const write of writeNodes) {
-    define(write, global ? GlobalScope: LocalScope, environments)
+    environments = define(write, global ? GlobalScope: LocalScope, environments)
   }
 
   return {

@@ -14,18 +14,25 @@ describe('Function Definition', withShell(shell => {
           name:       "1",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [ '0'],
+          exitPoints: ['0'],
           subflow:    {
-            out:          [ /* TODO: exit points in the far future */ ],
-            activeNodes:  [],
-            in:           [ { nodeId: "0", used: 'always', name: 'x', scope: LocalScope } ],
-            scope:        LocalScope,
-            graph:        new DataflowGraph().addNode( { tag: 'use', id: "0", name: "x", environment: pushLocalEnvironment(initializeCleanEnvironments()), when: 'always' }),
+            out:         [ /* TODO: exit points in the far future */],
+            activeNodes: [],
+            in:          [{ nodeId: "0", used: 'always', name: 'x', scope: LocalScope }],
+            scope:       LocalScope,
+            graph:       new DataflowGraph().addNode({
+              tag:         'use',
+              id:          "0",
+              name:        "x",
+              environment: pushLocalEnvironment(initializeCleanEnvironments()),
+              when:        'always'
+            }),
             environments: pushLocalEnvironment(initializeCleanEnvironments())
-          }})
+          }
+        })
     )
     const envWithXDefined = define(
-      {nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '1' },
+      { nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '1' },
       LocalScope,
       pushLocalEnvironment(initializeCleanEnvironments()))
     assertDataflow(`read of parameter`, shell, `function(x) { x }`,
@@ -36,7 +43,7 @@ describe('Function Definition', withShell(shell => {
           name:       "3",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [ '2' ],
+          exitPoints: ['2'],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -47,7 +54,7 @@ describe('Function Definition', withShell(shell => {
                 tag:         'variable-definition',
                 id:          "0",
                 name:        "x",
-                environment: envWithXDefined,
+                environment: pushLocalEnvironment(initializeCleanEnvironments()),
                 scope:       LocalScope,
                 when:        'always'
               })
@@ -71,7 +78,7 @@ describe('Function Definition', withShell(shell => {
           name:       "5",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [ '4' ],
+          exitPoints: ['4'],
           subflow:    {
             out:         [],
             activeNodes: [],
@@ -82,7 +89,7 @@ describe('Function Definition', withShell(shell => {
                 tag:         'variable-definition',
                 id:          "0",
                 name:        "x",
-                environment: envWithXDefined,
+                environment: pushLocalEnvironment(initializeCleanEnvironments()),
                 scope:       LocalScope,
                 when:        'always'
               })
@@ -99,7 +106,7 @@ describe('Function Definition', withShell(shell => {
                 name:        'return',
                 environment: envWithXDefined,
                 when:        'always',
-                args:        [ { nodeId: "3", used: 'always', name: 'x', scope: LocalScope } ]
+                args:        [{ nodeId: "3", used: 'always', name: 'x', scope: LocalScope }]
               })
               .addNode({
                 tag:         'use',
@@ -116,16 +123,23 @@ describe('Function Definition', withShell(shell => {
           }
         })
     )
-    const envWithParams = define(
-      {nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '1' },
+
+    const envWithoutParams = pushLocalEnvironment(initializeCleanEnvironments())
+    const envWithXParam = define(
+      { nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '1' },
       LocalScope,
-      define(
-        {nodeId: '2', scope: 'local', name: 'y', used: 'always', kind: 'parameter', definedAt: '3' },
-        LocalScope,
-        define(
-          {nodeId: '4', scope: 'local', name: 'z', used: 'always', kind: 'parameter', definedAt: '5' },
-          LocalScope,
-          pushLocalEnvironment(initializeCleanEnvironments()))))
+      envWithoutParams
+    )
+    const envWithXYParam = define(
+      { nodeId: '2', scope: 'local', name: 'y', used: 'always', kind: 'parameter', definedAt: '3' },
+      LocalScope,
+      envWithXParam
+    )
+    const envWithXYZParam = define(
+      { nodeId: '4', scope: 'local', name: 'z', used: 'always', kind: 'parameter', definedAt: '5' },
+      LocalScope,
+      envWithXYParam
+    )
 
     assertDataflow(`read of one parameter`, shell, `function(x,y,z) y`,
       new DataflowGraph()
@@ -142,12 +156,12 @@ describe('Function Definition', withShell(shell => {
             in:          [],
             scope:       LocalScope,
             graph:       new DataflowGraph()
-              .addNode({ tag: 'variable-definition', id: "0", name: "x", environment: envWithParams, scope: LocalScope, when: 'always' })
-              .addNode({ tag: 'variable-definition', id: "2", name: "y", environment: envWithParams, scope: LocalScope, when: 'always' })
-              .addNode({ tag: 'variable-definition', id: "4", name: "z", environment: envWithParams, scope: LocalScope, when: 'always' })
-              .addNode( { tag: 'use', id: "6", name: "y", environment: envWithParams, when: 'always' })
+              .addNode({ tag: 'variable-definition', id: "0", name: "x", environment: envWithoutParams, scope: LocalScope, when: 'always' })
+              .addNode({ tag: 'variable-definition', id: "2", name: "y", environment: envWithXParam, scope: LocalScope, when: 'always' })
+              .addNode({ tag: 'variable-definition', id: "4", name: "z", environment: envWithXYParam, scope: LocalScope, when: 'always' })
+              .addNode( { tag: 'use', id: "6", name: "y", environment: envWithXYZParam, when: 'always' })
               .addEdge("6", "2", "read", "always"),
-            environments: envWithParams
+            environments: envWithXYZParam
           }
         })
     )

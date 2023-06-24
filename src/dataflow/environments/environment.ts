@@ -96,19 +96,6 @@ export class Environment implements IEnvironment {
   }
 }
 
-
-function cloneEnvironment(environment: IEnvironment): IEnvironment {
-  const clone = new Environment(environment.name, environment.parent)
-  clone.memory = new Map(environment.memory)
-  return clone
-}
-export function cloneEnvironments(environment: REnvironmentInformation): REnvironmentInformation {
-  return {
-    current: cloneEnvironment(environment.current),
-    level:   environment.level
-  }
-}
-
 /**
  * First of all, yes, R stores its environments differently, potentially even with a different differentiation between
  * the `baseenv`, the `emptyenv`and other default environments. Yet, during dataflow we want sometimes to know more (static

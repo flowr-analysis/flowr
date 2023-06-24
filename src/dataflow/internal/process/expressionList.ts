@@ -6,6 +6,7 @@ import { DataflowInformation, initializeCleanInfo } from '../info'
 import { RExpressionList } from '../../../r-bridge'
 import { DataflowProcessorDown } from '../../processor'
 import {
+  cloneEnvironments,
   IdentifierReference,
   overwriteEnvironments,
   REnvironmentInformation,

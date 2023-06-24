@@ -16,7 +16,7 @@ export interface DataflowInformation<OtherInfo> {
   out:          IdentifierReference[]
   /** The current scope during the fold */
   scope:        DataflowScopeName
-  /** current environments used for name resolution, probably updated on the next expression-list processing */
+  /** Current environments used for name resolution, probably updated on the next expression-list processing */
   environments: REnvironmentInformation
   /** The current constructed dataflow graph */
   graph:        DataflowGraph

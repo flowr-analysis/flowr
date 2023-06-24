@@ -77,24 +77,24 @@ function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeId[], da
   return result
 }
 
-function sliceFunctionCall(id: NodeId, info: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, idMap: DataflowMap<NoInfo>, args: FunctionArgument[], visited: Set<NodeId>, visitQueue: NodeId[]) {
+function sliceFunctionCall(id: NodeId, callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, idMap: DataflowMap<NoInfo>, args: FunctionArgument[], visited: Set<NodeId>, visitQueue: NodeId[]) {
   slicerLogger.trace(`slicing function call with args: ${JSON.stringify(args)}`)
   // each read - maybe or not - is a linked function definition
-  const functionDefinitionReadIds = info.edges.filter(e => e.type === 'read').map(e => e.target)
+  const functionDefinitionReadIds = callerInfo.edges.filter(e => e.type === 'read').map(e => e.target)
   const allFunctionDefinitions = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, dataflowGraph, idMap)
   if(allFunctionDefinitions.length === 0) {
-    slicerLogger.warn(`function call to ${info.name} with Id ${id} does not have any linked function definitions, does not have to be included in slice`)
+    slicerLogger.warn(`function call to ${callerInfo.name} with Id ${id} does not have any linked function definitions, does not have to be included in slice`)
     return
   } else {
     const allFunctionDefinitionIds = allFunctionDefinitions.map(([id, info]) => `${id}[${info.name}]`)
     slicerLogger.trace(`all linked function definitions: ${allFunctionDefinitionIds.join(', ')}`)
   }
   for(const [functionDefinitionId, functionDefinitionInfo] of allFunctionDefinitions) {
-    sliceFunctionDefinition(functionDefinitionId, functionDefinitionInfo, dataflowGraph, idMap, args, visited, visitQueue)
+    sliceFunctionDefinition(callerInfo, functionDefinitionId, functionDefinitionInfo, dataflowGraph, idMap, args, visited, visitQueue)
   }
 }
 
-function sliceFunctionDefinition(functionDefinitionId: NodeId, info: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, idMap: DataflowMap<NoInfo>, _args: FunctionArgument[], visited: Set<NodeId>, _visitQueue: NodeId[]) {
+function sliceFunctionDefinition(callerInfo: DataflowGraphNodeInfo, functionDefinitionId: NodeId, info: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, idMap: DataflowMap<NoInfo>, _args: FunctionArgument[], visited: Set<NodeId>, visitQueue: NodeId[]) {
   // just slice with all exist points
   guard(info.subflow !== undefined, () => `function definition id: ${functionDefinitionId} does not have a subflow! Why does this happen here, this should be catched wayyy earlier/prevented by construction.`)
   guard(info.exitPoints !== undefined, () => `function definition id: ${functionDefinitionId} does have *undefined* linked exit points`)
@@ -104,4 +104,6 @@ function sliceFunctionDefinition(functionDefinitionId: NodeId, info: DataflowGra
   }
 
   naiveStaticSlicing(info.subflow.graph, idMap, info.exitPoints, visited)
+  // TODO: trace all open reads!
+  console.log(info.subflow.in, callerInfo.environment)
 }

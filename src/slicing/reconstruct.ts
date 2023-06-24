@@ -175,9 +175,9 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
   const parameters = reconstructParameters(definition.parameters).join(', ')
   if(body.length <= 1) {
     // 'inline'
-    const bodyStr = body.length === 0 ? '' : body[0].line
+    const bodyStr = body.length === 0 ? '' : `${body[0].line} ` /* add suffix space */
     // we keep the braces in every case because I do not like no-brace functions
-    return [{ line: `function(${parameters}) { ${bodyStr} }`, indent: 0 }]
+    return [{ line: `function(${parameters}) { ${bodyStr}}`, indent: 0 }]
   } else if (body[0].line === '{' && body[body.length - 1].line === '}') {
     // 'block'
     return [

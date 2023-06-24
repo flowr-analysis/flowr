@@ -88,101 +88,99 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
  */
 export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, folds: DeepReadonly<StatefulFoldFunctions<Info, Down, Up>>): Up {
   const type = ast.type
-  down = folds.down(ast, down, undefined)
+  // first down is used as the initial down before children processing, it will be passed to each folds call and first children
+  const firstDown = folds.down(ast, down, undefined)
   switch (type) {
     case Type.Number:
-      return folds.foldNumber(ast, down)
+      return folds.foldNumber(ast, firstDown)
     case Type.String:
-      return folds.foldString(ast, down)
+      return folds.foldString(ast, firstDown)
     case Type.Logical:
-      return folds.foldLogical(ast, down)
+      return folds.foldLogical(ast, firstDown)
     case Type.Symbol:
-      return folds.foldSymbol(ast, down)
+      return folds.foldSymbol(ast, firstDown)
     case Type.Comment:
-      return folds.other.foldComment(ast, down)
+      return folds.other.foldComment(ast, firstDown)
     case Type.BinaryOp:
-      return foldBinaryOp(ast, down, folds)
+      return foldBinaryOp(ast, firstDown, down, folds)
     case Type.UnaryOp:
-      return foldUnaryOp(ast, down, folds)
+      return foldUnaryOp(ast, firstDown, folds)
     case Type.For: {
-      const variable = foldAstStateful(ast.variable, down, folds)
+      const variable = foldAstStateful(ast.variable, firstDown, folds)
       const vector = foldAstStateful(ast.vector, folds.down(ast, down, variable), folds)
       const body = foldAstStateful(ast.body, folds.down(ast, down, vector), folds)
-      return folds.loop.foldFor(ast, variable, vector, body, down)
+      return folds.loop.foldFor(ast, variable, vector, body, firstDown)
     }
     case Type.While: {
-      const condition = foldAstStateful(ast.condition, down, folds)
+      const condition = foldAstStateful(ast.condition, firstDown, folds)
       const body = foldAstStateful(ast.body, folds.down(ast, down, condition), folds)
-      return folds.loop.foldWhile(ast, condition, body, down)
+      return folds.loop.foldWhile(ast, condition, body, firstDown)
     }
     case Type.Repeat:
-      return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down)
+      return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, firstDown, folds), firstDown)
     case Type.FunctionCall: {
-      const functionName = foldAstStateful(ast.functionName, down, folds)
+      const functionName = foldAstStateful(ast.functionName, firstDown, folds)
       const args: Up[] = []
       let last: Up = functionName
       for (const arg of ast.arguments) {
         last = foldAstStateful(arg, folds.down(ast, down, last), folds)
         args.push(last)
       }
-      return folds.functions.foldFunctionCall(ast, functionName, args, down)
+      return folds.functions.foldFunctionCall(ast, functionName, args, firstDown)
     }
     case Type.FunctionDefinition: {
       const params: Up[] = []
       let last: Up | undefined = undefined
       for (const param of ast.parameters) {
-        last = foldAstStateful(param, folds.down(ast, down, last), folds)
+        last = foldAstStateful(param, last === undefined ? firstDown : folds.down(ast, down, last), folds)
         params.push(last)
       }
-      down = folds.down(ast, down, last)
-      return folds.functions.foldFunctionDefinition(ast, params, foldAstStateful(ast.body, down, folds), down)
+      return folds.functions.foldFunctionDefinition(ast, params, foldAstStateful(ast.body, folds.down(ast, down, last), folds), firstDown)
     }
     case Type.Parameter: {
-      const name = foldAstStateful(ast.name, down, folds)
-      down = folds.down(ast, down, name)
-      return folds.functions.foldParameter(ast, name, ast.defaultValue ? foldAstStateful(ast.defaultValue, down, folds) : undefined, down)
+      const name = foldAstStateful(ast.name, firstDown, folds)
+      return folds.functions.foldParameter(ast, name, ast.defaultValue ? foldAstStateful(ast.defaultValue, folds.down(ast, down, name), folds) : undefined, firstDown)
     }
     case Type.Argument: {
-      const name: Up | undefined = ast.name ? foldAstStateful(ast.name, down, folds) : undefined
-      down = folds.down(ast, down, name)
-      return folds.functions.foldArgument(ast, name, foldAstStateful(ast.value, down, folds), down)
+      const name: Up | undefined = ast.name ? foldAstStateful(ast.name, firstDown, folds) : undefined
+      return folds.functions.foldArgument(ast, name, foldAstStateful(ast.value, name === undefined ? firstDown : folds.down(ast, down, name), folds), firstDown)
     }
     case Type.Next:
       return folds.loop.foldNext(ast, down)
     case Type.Break:
       return folds.loop.foldBreak(ast, down)
     case Type.If: {
-      const cond = foldAstStateful(ast.condition, down, folds)
+      const cond = foldAstStateful(ast.condition, firstDown, folds)
       const then = foldAstStateful(ast.then, folds.down(ast, down, cond), folds)
       const otherwise = ast.otherwise === undefined ? undefined : foldAstStateful(ast.otherwise, folds.down(ast, down, then), folds)
-      return folds.foldIfThenElse(ast, cond, then, otherwise, down)
+      return folds.foldIfThenElse(ast, cond, then, otherwise, firstDown)
     }
     case Type.ExpressionList: {
       const children: Up[] = []
       let last: Up | undefined = undefined
       for (const child of ast.children) {
-        last = foldAstStateful(child, folds.down(ast, down, last), folds)
+        last = foldAstStateful(child, last === undefined ? firstDown : folds.down(ast, down, last), folds)
         children.push(last)
       }
-      return folds.foldExprList(ast, children, down)
+      return folds.foldExprList(ast, children, firstDown)
     }
     default:
       assertUnreachable(type)
   }
 }
 
-function foldBinaryOp<Info, Down, Up>(ast: RBinaryOp<Info>, down: Down, folds: StatefulFoldFunctions<Info, Down, Up>): Up {
-  const lhs = foldAstStateful(ast.lhs, down, folds)
+function foldBinaryOp<Info, Down, Up>(ast: RBinaryOp<Info>, firstDown: Down, down: Down, folds: StatefulFoldFunctions<Info, Down, Up>): Up {
+  const lhs = foldAstStateful(ast.lhs, firstDown, folds)
   const rhs = foldAstStateful(ast.rhs, folds.down(ast, down, lhs), folds)
   switch (ast.flavor) {
     case 'logical':
-      return folds.binaryOp.foldLogicalOp(ast as RLogicalBinaryOp<Info>, lhs, rhs, down)
+      return folds.binaryOp.foldLogicalOp(ast as RLogicalBinaryOp<Info>, lhs, rhs, firstDown)
     case 'arithmetic':
-      return folds.binaryOp.foldArithmeticOp(ast as RArithmeticBinaryOp<Info>, lhs, rhs, down)
+      return folds.binaryOp.foldArithmeticOp(ast as RArithmeticBinaryOp<Info>, lhs, rhs, firstDown)
     case 'comparison':
-      return folds.binaryOp.foldComparisonOp(ast as RComparisonBinaryOp<Info>, lhs, rhs, down)
+      return folds.binaryOp.foldComparisonOp(ast as RComparisonBinaryOp<Info>, lhs, rhs, firstDown)
     case 'assignment':
-      return folds.binaryOp.foldAssignment(ast as RAssignmentOp<Info>, lhs, rhs, down)
+      return folds.binaryOp.foldAssignment(ast as RAssignmentOp<Info>, lhs, rhs, firstDown)
     default:
       assertUnreachable(ast.flavor)
   }

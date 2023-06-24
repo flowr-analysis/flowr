@@ -39,11 +39,17 @@ export function dataflowFold<OtherInfo>(ast: RNodeWithParent<OtherInfo>,
   return foldAstStateful(ast, initial, statefulFolds)
 }
 
-function down<OtherInfo>(_node: RNodeWithParent<OtherInfo & ParentInformation>, down: DataflowProcessorDown<OtherInfo & ParentInformation>): DataflowProcessorDown<OtherInfo & ParentInformation> {
+function down<OtherInfo>(_node: RNodeWithParent<OtherInfo & ParentInformation>, down: DataflowProcessorDown<OtherInfo & ParentInformation>, up: DataflowInformation<OtherInfo & ParentInformation> | undefined): DataflowProcessorDown<OtherInfo & ParentInformation> {
   if(_node.type === Type.FunctionDefinition) {
     return {
       ...down,
       environments: pushLocalEnvironment(down.environments)
+    }
+  }
+  if(up !== undefined) {
+    return {
+      ...down,
+      environments: up.environments
     }
   }
   // TODO: support other scope changes on `assign`, `eval` in env etc.

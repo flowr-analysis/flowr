@@ -4,28 +4,40 @@ import { define, pushLocalEnvironment } from '../../../../src/dataflow/environme
 
 describe('Function Call', withShell(shell => {
   describe('Calling previously defined functions', () => {
-    const envWithXDefined = define(
+    const envWithXParamDefined = define(
       {nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
       LocalScope,
       pushLocalEnvironment(initializeCleanEnvironments()))
+    const envWithFirstI = define(
+      {nodeId: '0', scope: 'local', name: 'i', used: 'always', kind: 'variable', definedAt: '2' },
+      LocalScope,
+      initializeCleanEnvironments()
+    )
+    const envWithIA = define(
+      {nodeId: '3', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '8' },
+      LocalScope,
+      envWithFirstI
+    )
     assertDataflow(`Calling function a`, shell, `i <- 4; a <- function(x) { x }\na(i)`,
       new DataflowGraph()
         .addNode({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
-        .addNode({ tag: 'use', id: '10', name: 'i'})
-        .addNode({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope })
+        .addNode({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
+        .addNode({ tag: 'use', id: '10', name: 'i', environment: envWithIA })
         .addNode({
-          tag:  'function-call',
-          id:   '11',
-          name: 'a',
-          args: [{
+          tag:         'function-call',
+          id:          '11',
+          name:        'a',
+          environment: envWithIA,
+          args:        [{
             nodeId: '10', name: 'i', scope: LocalScope, used: 'always'
           }] })
         .addNode({
-          tag:   'use',
-          id:    '9',
-          name:  'a',
-          scope: LocalScope,
-          when:  'always'
+          tag:         'use',
+          id:          '9',
+          name:        'a',
+          scope:       LocalScope,
+          environment: envWithIA,
+          when:        'always'
         })
         .addNode({
           tag:        'function-definition',
@@ -38,10 +50,10 @@ describe('Function Call', withShell(shell => {
             in:           [],
             activeNodes:  [],
             scope:        LocalScope,
-            environments: envWithXDefined,
+            environments: envWithXParamDefined,
             graph:        new DataflowGraph()
-              .addNode({ tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: envWithXDefined })
-              .addNode({ tag: 'use', id: '6', name: 'x', environment: envWithXDefined})
+              .addNode({ tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) })
+              .addNode({ tag: 'use', id: '6', name: 'x', environment: envWithXParamDefined})
               .addEdge('6', '4', 'read', 'always'),
           }})
         .addEdge('10', '0', 'read', 'always')
@@ -54,42 +66,60 @@ describe('Function Call', withShell(shell => {
       {nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
       LocalScope,
       pushLocalEnvironment(initializeCleanEnvironments()))
+
+    const envWithXDefinedForFunc = define(
+      {nodeId: '6', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '8' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments()))
+
+    const envWithLastXDefined = define(
+      {nodeId: '9', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '11' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments()))
+    const envWithIAndLargeA = define(
+      {nodeId: '3', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '15' },
+      LocalScope,
+      envWithFirstI
+    )
     assertDataflow(`Calling with a constant function`, shell, `i <- 4
 a <- function(x) { x <- x; x <- 3; 1 }
 a(i)`, new DataflowGraph()
       .addNode({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
-      .addNode({ tag: 'use', id: '17', name: 'i'})
+      .addNode({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
+      .addNode({ tag: 'use', id: '17', name: 'i', environment: envWithIAndLargeA})
       .addEdge('17', '0', 'read', 'always')
-      .addNode({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope })
       .addNode({
-        tag:  'function-call',
-        id:   '18',
-        name: 'a',
-        args: [{
+        tag:         'function-call',
+        id:          '18',
+        name:        'a',
+        environment: envWithIAndLargeA,
+        args:        [{
           nodeId: '17', name: 'i', scope: LocalScope, used: 'always'
         }]})
       .addNode({
-        tag:  'use',
-        id:   '16',
-        name: 'a',
-        when: 'always'
+        tag:         'use',
+        id:          '16',
+        name:        'a',
+        environment: envWithIAndLargeA,
+        when:        'always'
       })
       .addNode({
-        tag:        'function-definition',
-        id:         '14',
-        name:       '14',
-        scope:      LocalScope,
-        exitPoints: [ '12' ],
-        subflow:    {
+        tag:         'function-definition',
+        id:          '14',
+        name:        '14',
+        environment: initializeCleanEnvironments(),
+        scope:       LocalScope,
+        exitPoints:  [ '12' ],
+        subflow:     {
           out:          [],
           in:           [],
           activeNodes:  [],
           scope:        LocalScope,
-          environments: envWithXConstDefined,
+          environments: envWithLastXDefined,
           graph:        new DataflowGraph()
-            .addNode({ tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: envWithXConstDefined })
+            .addNode({ tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) })
             .addNode({ tag: 'variable-definition', id: '6', name: 'x', scope: LocalScope, environment: envWithXConstDefined })
-            .addNode({ tag: 'variable-definition', id: '9', name: 'x', scope: LocalScope, environment: envWithXConstDefined })
+            .addNode({ tag: 'variable-definition', id: '9', name: 'x', scope: LocalScope, environment: envWithXDefinedForFunc })
             .addNode({ tag: 'use', id: '7', name: 'x', environment: envWithXConstDefined })
             .addNode({ tag: 'use', id: '6', name: 'x', environment: envWithXConstDefined})
             .addEdge('6', '7', 'defined-by', 'always')
@@ -107,12 +137,34 @@ a(i)`, new DataflowGraph()
 
   describe('Late function bindings', () => {
     const innerEnv = pushLocalEnvironment(initializeCleanEnvironments())
+    const defWithA = define(
+      { nodeId: '0', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '3' },
+      LocalScope,
+      initializeCleanEnvironments()
+    )
+    const defWithAY = define(
+      { nodeId: '4', scope: 'local', name: 'y', used: 'always', kind: 'variable', definedAt: '6' },
+      LocalScope,
+      defWithA
+    )
+
     assertDataflow(`Late binding of y`, shell, `a <- function() { y }\ny <- 12\na()`,
       new DataflowGraph()
         .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
-        .addNode({ tag: 'variable-definition', id: '4', name: 'y', scope: LocalScope })
-        .addNode({ tag: 'function-call', id: '8', name: 'a', args: [] })
-        .addNode({ tag: 'use', id: '7', name: 'a' })
+        .addNode({
+          tag:         'variable-definition',
+          id:          '4',
+          name:        'y',
+          scope:       LocalScope,
+          environment: defWithA})
+        .addNode({
+          tag:         'function-call',
+          id:          '8',
+          name:        'a',
+          environment: defWithAY,
+          args:        []
+        })
+        .addNode({ tag: 'use', id: '7', name: 'a', environment: defWithAY })
         .addNode({
           tag:        'function-definition',
           id:         '2',

@@ -1,6 +1,12 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { overwriteEnvironments, popLocalEnvironment, pushLocalEnvironment, resolveByName } from '../../../environments'
+import {
+  initializeCleanEnvironments,
+  overwriteEnvironments,
+  popLocalEnvironment,
+  pushLocalEnvironment,
+  resolveByName
+} from '../../../environments'
 import { linkInputs } from '../../linker'
 import { DataflowGraph, dataflowLogger } from '../../../index'
 import { ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
@@ -9,7 +15,12 @@ import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
 
 export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
-  data = { ...data, environments: pushLocalEnvironment(data.environments) }
+  // within a function def we do not pass on the outer binds as they could be overwritten when called
+  let env = initializeCleanEnvironments()
+  for(let i = 0; i < data.environments.level + 1 /* add another env */; i++) {
+    env = pushLocalEnvironment(env)
+  }
+  data = { ...data, environments: env }
   // TODO: update
   const params = []
   for(const param of functionDefinition.parameters) {

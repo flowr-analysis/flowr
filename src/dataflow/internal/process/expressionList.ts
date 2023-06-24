@@ -3,10 +3,10 @@
  * @module
  */
 import { DataflowInformation, initializeCleanInfo } from '../info'
-import { ParentInformation, RExpressionList } from '../../../r-bridge'
+import { NodeId, ParentInformation, RExpressionList } from '../../../r-bridge'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import {
-  IdentifierReference, initializeCleanEnvironments,
+  IdentifierReference,
   overwriteEnvironments,
   REnvironmentInformation,
   resolveByName
@@ -17,11 +17,13 @@ import { DataflowGraph } from '../../graph'
 import { dataflowLogger } from '../../index'
 
 
-function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, data: DataflowProcessorInformation<OtherInfo>, environments: REnvironmentInformation, listEnvironments: REnvironmentInformation, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
+function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, data: DataflowProcessorInformation<OtherInfo>, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
   const readName = read.name
 
-  const localTarget = resolveByName(readName, data.activeScope, listEnvironments)
-  if(localTarget === undefined) {
+  const probableTarget = resolveByName(readName, data.activeScope, environments)
+
+  // record if at least one has not been defined
+  if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId))) {
     if (remainingRead.has(readName)) {
       remainingRead.get(readName)?.push(read)
     } else {
@@ -29,7 +31,6 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
     }
   }
 
-  const probableTarget = resolveByName(readName, data.activeScope, environments)
 
   // keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
   // we keep them if they are defined outside the current parent and maybe throw them away later
@@ -52,7 +53,7 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 function processNextExpression<OtherInfo>(currentElement: DataflowInformation<OtherInfo>,
                                           down: DataflowProcessorInformation<OtherInfo>,
                                           environments: REnvironmentInformation,
-                                          listEnvironments: REnvironmentInformation,
+                                          listEnvironments: Set<NodeId>,
                                           remainingRead: Map<string, IdentifierReference[]>,
                                           nextGraph: DataflowGraph) {
   // all inputs that have not been written until know, are read!
@@ -89,7 +90,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 
   let environments = data.environments
   // used to detect if a "write" happens within the same expression list
-  let listEnvironments = initializeCleanEnvironments()
+  const listEnvironments: Set<NodeId> = new Set<NodeId>()
 
   const remainingRead = new Map<string, IdentifierReference[]>()
 
@@ -111,7 +112,9 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     processNextExpression(processed, data, environments, listEnvironments, remainingRead, nextGraph)
     // update the environments for the next iteration with the previous writes
     environments = overwriteEnvironments(environments, processed.environments)
-    listEnvironments = overwriteEnvironments(listEnvironments, processed.environments)
+    for(const { nodeId } of processed.out) {
+      listEnvironments.add(nodeId)
+    }
   }
   // now, we have to link same reads
   linkReadVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))

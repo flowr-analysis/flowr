@@ -43,7 +43,7 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: Dataflo
     }
   }
   for(const exitPoint of exitPoints) {
-    lines.push(`    style ${idPrefix}${exitPoint} fill:gray,stroke-width:4px;`)
+    lines.push(`    style ${idPrefix}${exitPoint} stroke-width:6.5px;`)
   }
   stylesForDefinitionKindsInEnvironment(subflow, lines, idPrefix)
   lines.push('end')

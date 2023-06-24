@@ -3,7 +3,7 @@ import { DataflowProcessorDown } from '../../../processor'
 import { overwriteEnvironments } from '../../../environments'
 import { NodeId, ParentInformation, RFunctionCall } from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
-import { DataflowGraphNodeInfo, dataflowLogger, FunctionArgument } from '../../../index'
+import { dataflowLogger, FunctionArgument } from '../../../index'
 // TODO: support partial matches: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Argument-matching
 
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, functionName: DataflowInformation<OtherInfo>, args: DataflowInformation<OtherInfo>[], down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
@@ -11,24 +11,34 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 
   // we update all the usage nodes within the dataflow graph of the function name to
   // mark them as function calls, and append their argument linkages
-  let functionRootId: NodeId | undefined
-  let functionRootInfo: DataflowGraphNodeInfo | undefined
+  let functionNameId: NodeId | undefined
   for(const [nodeId, nodeInfo] of finalGraph.nodes()) {
     if(nodeInfo.definedAtPosition !== false) {
       continue
     }
-    functionRootId = nodeId
-    functionRootInfo = nodeInfo
+    functionNameId = nodeId
   }
 
-  guard(functionRootId !== undefined && functionRootInfo !== undefined, 'Function call root id | root info not found')
+  guard(functionNameId !== undefined, 'Function call name id not found')
 
-  dataflowLogger.debug(`Using ${functionRootId} (name: ${functionRootInfo.name}) as root for the function call`)
+  const functionRootId = functionCall.info.id
+  const functionCallName = functionCall.functionName.content
+  dataflowLogger.debug(`Using ${functionRootId} (name: ${functionCallName}) as root for the function call`)
 
   let finalEnv = functionName.environments
 
   const callArgs: FunctionArgument[] = []
-  functionRootInfo.functionCall = callArgs
+  finalGraph.addNode({
+    tag:         'function-call',
+    id:          functionRootId,
+    name:        functionCallName,
+    environment: down.environments,
+    when:        'always',
+    scope:       down.activeScope,
+    args:        callArgs // same reference
+  })
+  finalGraph.addEdge(functionRootId, functionNameId, 'read', 'always')
+
 
   for(const arg of args) {
     finalEnv = overwriteEnvironments(finalEnv, arg.environments)

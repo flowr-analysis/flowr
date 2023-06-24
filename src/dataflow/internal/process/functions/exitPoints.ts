@@ -25,7 +25,9 @@ function visitExitPoints<OtherInfo>(node: RNode<OtherInfo & ParentInformation>):
     case Type.ExpressionList:
       return visitExpressionList(node)
     case Type.FunctionCall:
-      if(node.name === 'return') {
+      console.log('FunctionCall', node.functionName.content)
+      if(node.functionName.content === 'return') {
+        console.log('Recorded return with', node.info.id)
         return {
           knownIds:     [ node.info.id ],
           potentialIds: []

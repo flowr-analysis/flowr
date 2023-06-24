@@ -29,7 +29,7 @@ function stylesForDefinitionKindsInEnvironment(_subflow: DataflowFunctionFlowInf
   // TODO: highlight seems to be often wrong
 }
 
-function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformation | undefined, dataflowIdMap: DataflowMap<NoInfo> | undefined, lines: string[], idPrefix = ''): void {
+function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: DataflowFunctionFlowInformation | undefined, dataflowIdMap: DataflowMap<NoInfo> | undefined, lines: string[], idPrefix = ''): void {
   if(subflow === undefined) {
     return
   }
@@ -41,6 +41,9 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
       // in/out/active
       lines.push(`    style ${idPrefix}${out.nodeId} stroke:${color as string},stroke-width:4px; `)
     }
+  }
+  for(const exitPoint of exitPoints) {
+    lines.push(`    style ${idPrefix}${exitPoint} fill:gray,stroke-width:4px;`)
   }
   stylesForDefinitionKindsInEnvironment(subflow, lines, idPrefix)
   lines.push('end')
@@ -97,7 +100,7 @@ export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<
         hasBuiltIn = true
       }
     }
-    subflowToMermaid(id, info.subflow, dataflowIdMap, lines, idPrefix)
+    subflowToMermaid(id, info.exitPoints ?? [], info.subflow, dataflowIdMap, lines, idPrefix)
   }
   if(hasBuiltIn) {
     lines.push(`    ${idPrefix}${BuiltIn}["Built-in"]`)

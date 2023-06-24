@@ -167,9 +167,11 @@ function reconstructParameters(parameters: RParameter<ParentInformation>[]): str
   return parameters.map(p => getLexeme(p))
 }
 
-function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, _parameters: Code[], body: Code, _selection: Selection): Code {
-  // even if a complete function is selected we will look inside
-  // we always have to reconstruct the parameters at the moment
+function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, _parameters: Code[], body: Code, selection: Selection): Code {
+  // if a definition is not selected, we only use the body - slicing will always select the definition
+  if(!selection.has(definition.info.id)) {
+    return body
+  }
   const parameters = reconstructParameters(definition.parameters).join(', ')
   if(body.length <= 1) {
     // 'inline'

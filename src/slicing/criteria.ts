@@ -38,13 +38,13 @@ export function slicingCriterionToId<OtherInfo = NoInfo>(criterion: SlicingCrite
 function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: DecoratedAstMap<OtherInfo>): NodeId | undefined {
   let candidate: RNodeWithParent<OtherInfo> | undefined
   for(const [id, nodeInfo] of dataflowIdMap.entries()) {
+    console.log(id, nodeInfo.name, nodeInfo.location)
     if(nodeInfo.location === undefined || nodeInfo.location.start.line !== location.line || nodeInfo.location.start.column !== location.column) {
       continue // only consider those with position information
     }
 
-    slicerLogger.trace(`can resolve id ${id} for location ${JSON.stringify(location)}`)
     // function calls have the same location as the symbol they refer to, so we need to prefer the function call
-    if(candidate !== undefined && nodeInfo.type !== Type.FunctionCall) {
+    if(candidate !== undefined && nodeInfo.type !== Type.FunctionCall || nodeInfo.type === Type.ExpressionList) {
       continue
     }
 
@@ -52,7 +52,7 @@ function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: Decora
   }
   const id = candidate?.info.id
   if(id) {
-    slicerLogger.trace(`resolve id ${id} for location ${JSON.stringify(location)}`)
+    slicerLogger.trace(`resolve id ${id} (${JSON.stringify(candidate?.info)}) for location ${JSON.stringify(location)}`)
   }
   return id
 }
@@ -65,16 +65,16 @@ function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflo
       continue
     }
 
-    slicerLogger.trace(`can resolve id ${id} for line ${line} and name ${name}`)
+    slicerLogger.trace(`can resolve id ${id} (${JSON.stringify(nodeInfo)}) for line ${line} and name ${name}`)
     // function calls have the same location as the symbol they refer to, so we need to prefer the function call
-    if(candidate !== undefined && nodeInfo.type !== Type.FunctionCall) {
+    if(candidate !== undefined && nodeInfo.type !== Type.FunctionCall || nodeInfo.type === Type.ExpressionList) {
       continue
     }
     candidate = nodeInfo
   }
   const id = candidate?.info.id
   if(id) {
-    slicerLogger.trace(`resolve id ${id} for line ${line} and name ${name}`)
+    slicerLogger.trace(`resolve id ${id} (${JSON.stringify(candidate?.info)}) for line ${line} and name ${name}`)
   }
   return id
 }

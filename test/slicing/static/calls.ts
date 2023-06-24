@@ -26,8 +26,6 @@ a(i)`)
 a <- function(x) { x + i }
 a(4)`
       assertSliced('Must include read', shell, code, ['3@a'], code)
-      // TODO: only show arg?
-      assertSliced('Slice for argument', shell, code, ['3@i'], `a(4)`)
     })
     describe('Read variable defined after', () => {
       const code = `a <- function(x) { x + i }

@@ -1,18 +1,25 @@
 import { guard } from '../../util/assert'
 import { REnvironmentInformation, IEnvironment, Environment, IdentifierDefinition } from './environment'
 
-function allAreMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
+function anyIsMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
   if(values.length === 0) {
     return true
   }
   const attr = values[0].used
+  let same = true
   for (let i = 1; i < values.length; i++) {
     const used = values[i].used
+    if(used === 'maybe') {
+      return true
+    }
     if(used !== attr) {
-      throw new Error(`inconsistent used attributes within ${JSON.stringify(values)}`)
+      same = false
     }
   }
-  return attr === 'maybe'
+  if(!same) {
+    throw new Error('all values must have either a maybe or are all the same')
+  }
+  return false
 }
 
 function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined): IEnvironment {
@@ -20,14 +27,18 @@ function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnviro
   guard(base.name === next.name, 'cannot overwrite environments with different names')
   const map = new Map(base.memory)
   for (const [key, values] of next.memory) {
-    const allMaybe = allAreMaybeGuardingSame(values)
-    if(allMaybe) {
-      const old = map.get(key) ?? []
-      for(const o of old) {
-        o.used = 'maybe'
+    const hasMaybe = anyIsMaybeGuardingSame(values)
+    if(hasMaybe) {
+      const old = map.get(key)
+      // we need to make a copy to avoid side effects for old reference in other environments
+      const updatedOld: IdentifierDefinition[] = old === undefined ? [] : old.map(o => ({ ...o, used: 'maybe' }))
+      for (const v of values) {
+        const find = updatedOld.find(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)
+        if(find === undefined) {
+          updatedOld.push(v)
+        }
       }
-
-      map.set(key, old.concat(values))
+      map.set(key, [...updatedOld])
     } else {
       map.set(key, values)
     }

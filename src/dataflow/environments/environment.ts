@@ -176,3 +176,20 @@ export function environmentsEqual(a: REnvironmentInformation | undefined, b: REn
   }
   return true
 }
+
+function cloneEnvironment(environment: IEnvironment): IEnvironment
+function cloneEnvironment(environment: IEnvironment | undefined): IEnvironment | undefined
+function cloneEnvironment(environment: IEnvironment | undefined): IEnvironment | undefined {
+  if(environment === undefined) {
+    return undefined
+  }
+  const clone = new Environment(environment.name, cloneEnvironment(environment.parent))
+  clone.memory = new Map(JSON.parse(JSON.stringify([...environment.memory])) as [Identifier, IdentifierDefinition[]][])
+  return clone
+}
+export function cloneEnvironments(environment: REnvironmentInformation): REnvironmentInformation {
+  return {
+    current: cloneEnvironment(environment.current),
+    level:   environment.level
+  }
+}

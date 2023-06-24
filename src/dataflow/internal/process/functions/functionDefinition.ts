@@ -49,11 +49,6 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   }
 
 
-  // all nodes in the function graph are maybe as functions do not have to be executed
-  /* for(const [_, node] of subgraph.entries()) {
-    node.when = 'maybe'
-  } */
-
   const flow = {
     activeNodes:  [],
     in:           remainingRead,

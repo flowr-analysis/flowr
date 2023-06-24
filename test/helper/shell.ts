@@ -167,7 +167,7 @@ export const assertSliced = (name: string, shell: RShell, input: string, criteri
 
     try {
       const mappedIds = criteria.map(c => slicingCriterionToId(c, decoratedAst))
-      
+
       const sliced = naiveStaticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds)
       const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
 

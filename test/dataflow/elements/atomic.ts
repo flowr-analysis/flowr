@@ -4,8 +4,9 @@
  * This will not include functions!
  */
 import { assertDataflow, withShell } from '../../helper/shell'
-import { DataflowGraph, GlobalScope, LocalScope } from '../../../src/dataflow'
+import { DataflowGraph, GlobalScope, initializeCleanEnvironments, LocalScope } from '../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../helper/provider'
+import { define } from '../../../src/dataflow/environments'
 
 describe("Atomic dataflow information", withShell((shell) => {
   describe("uninteresting leafs", () => {
@@ -302,7 +303,7 @@ describe("Atomic dataflow information", withShell((shell) => {
         `for(i in 1:10) { i }`,
         new DataflowGraph()
           .addNode({ tag: 'variable-definition', id: "0", name: "i", scope: LocalScope })
-          .addNode({ tag: 'use', id: "4", name: "i" })
+          .addNode({ tag: 'use', id: "4", name: "i", environment: define({ name: 'i', definedAt: '5', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments()) })
           .addEdge("4", "0", "read", "always")
       )
     // TODO: so many other tests... variable in sequence etc.

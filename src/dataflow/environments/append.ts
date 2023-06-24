@@ -3,11 +3,16 @@ import { REnvironmentInformation, IEnvironment, IdentifierDefinition, Environmen
 
 function uniqueMergeValues(old: IdentifierDefinition[], value: IdentifierDefinition[]): IdentifierDefinition[] {
   // TODO: improve this to ensure there are no duplicates
-  const set = new Set(old)
+  const result = old
   for (const v of value) {
-    set.add(v)
+    const find = old.find(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)
+    if(find === undefined) {
+      result.push(v)
+    } else if(find.used !== v.used) {
+      find.used = 'maybe'
+    }
   }
-  return [...set]
+  return result
 }
 
 function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined): IEnvironment {

@@ -6,13 +6,22 @@ import {
 } from '../../linker'
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { appendEnvironments, makeAllMaybe, overwriteEnvironments } from '../../../environments'
+import { appendEnvironments, define, makeAllMaybe } from '../../../environments'
 import { ParentInformation, RForLoop } from '../../../../r-bridge'
+import { LocalScope } from '../../../graph'
 
 export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInformation>,
                                           data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const variable = processDataflowFor(loop.variable, data)
   const vector = processDataflowFor(loop.vector, data)
+  const headEnvironments = appendEnvironments(variable.environments, vector.environments)
+  const headGraph= variable.graph.mergeWith(vector.graph)
+  data = { ...data, environments: headEnvironments }
+  // TODO: use attribute? TODO: use writes in vector?
+  const writtenVariable = variable.activeNodes
+  for(const write of writtenVariable) {
+    define({ ...write, used: 'always', definedAt: loop.info.id, kind: 'variable' }, LocalScope, headEnvironments)
+  }
   const body = processDataflowFor(loop.body, data)
 
   // again within an if-then-else we consider all actives to be read
@@ -20,11 +29,8 @@ export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInfor
   // currently i add it at the end, but is this correct?
   const ingoing = [...vector.in, ...makeAllMaybe(body.in), ...vector.activeNodes, ...makeAllMaybe(body.activeNodes)]
 
-  // we assign all with a maybe marker
 
-  // TODO: use attribute?
-  const writtenVariable = variable.activeNodes
-  const nextGraph = variable.graph.mergeWith(vector.graph, body.graph)
+  const nextGraph = headGraph.mergeWith(body.graph)
 
   // now we have to bind all open reads with the given name to the locally defined writtenVariable!
   const nameIdShares = produceNameSharedIdMap(ingoing)
@@ -44,14 +50,11 @@ export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInfor
     nameIdShares.delete(name)
     setDefinitionOfNode(nextGraph, write)
   }
-  const headEnvironments = appendEnvironments(variable.environments, vector.environments)
-
-  for(const [_, nodeInfo] of nextGraph.nodes()) {
-    nodeInfo.environment = overwriteEnvironments(nodeInfo.environment, headEnvironments)
-  }
 
   const outgoing = [...variable.out, ...writtenVariable, ...body.out]
+
   makeAllMaybe(body.out)
+
 
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
@@ -63,7 +66,7 @@ export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInfor
     in:           [...variable.in, ...[...nameIdShares.values()].flat()],
     out:          outgoing,
     graph:        nextGraph,
-    environments: appendEnvironments(appendEnvironments(variable.environments, vector.environments), body.environments),
+    environments: appendEnvironments(headEnvironments, body.environments),
     ast:          data.completeAst,
     scope:        data.activeScope
   }

@@ -10,6 +10,7 @@ import { ParentInformation, RWhileLoop } from '../../../../r-bridge'
 
 export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const condition = processDataflowFor(loop.condition, data)
+  // TODO: out in for must be active here
   const body = processDataflowFor(loop.body, data)
 
   const environments = condition.environments ?? initializeCleanEnvironments()

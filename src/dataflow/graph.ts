@@ -2,6 +2,7 @@
 import { assertUnreachable, guard } from '../util/assert'
 import { NodeId, RNodeWithParent } from '../r-bridge'
 import {
+  cloneEnvironments,
   environmentsEqual, equalIdentifierReferences, IdentifierDefinition,
   IdentifierReference, initializeCleanEnvironments,
   REnvironmentInformation
@@ -264,7 +265,8 @@ export class DataflowGraph {
       return this
     }
     // dataflowLogger.trace(`[${node.tag}] adding node ${JSON.stringify(node)}`)
-    const environment = node.environment ?? DEFAULT_ENVIRONMENT
+    // deep clone environment
+    const environment = node.environment === undefined ? DEFAULT_ENVIRONMENT : cloneEnvironments(node.environment)
     const when = node.when ?? 'always'
     const tag = node.tag
     switch(tag) {
@@ -337,9 +339,15 @@ export class DataflowGraph {
       attribute
     }
     // TODO: make this more performant
-    if(fromInfo.edges.find(e => e.target === toId && e.type === type && e.attribute === attribute) === undefined) {
+    // we ignore the attribute as it is only promoted to maybe
+    const find = fromInfo.edges.find(e => e.target === toId && e.type === type)
+    if(find === undefined) {
       // dataflowLogger.trace(`adding edge from ${fromId} to ${toId} with type ${type} and attribute ${attribute} to graph`)
       fromInfo.edges.push(edge)
+    } else {
+      if(find.attribute === 'maybe' || attribute === 'maybe') {
+        find.attribute = 'maybe'
+      }
     }
     return this
   }
@@ -378,18 +386,39 @@ export class DataflowGraph {
     }
     for(const [id, info] of this.graph) {
       const otherInfo = other.graph.get(id)
-      if(otherInfo === undefined || info.name !== otherInfo.name || info.definedAtPosition !== otherInfo.definedAtPosition || info.when !== otherInfo.when || info.edges.length !== otherInfo.edges.length || !environmentsEqual(info.environment, otherInfo.environment)) {
+      if(otherInfo === undefined || info.name !== otherInfo.name) {
         dataflowLogger.warn(`node ${id} does not match (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
         return false
       }
 
+      if(info.definedAtPosition !== otherInfo.definedAtPosition) {
+        dataflowLogger.warn(`node ${id} does not match on definedAtPosition (${JSON.stringify(info.definedAtPosition)} vs ${JSON.stringify(otherInfo.definedAtPosition)})`)
+        return false
+      }
+
+      if(info.when !== otherInfo.when) {
+        dataflowLogger.warn(`node ${id} does not match on when (${JSON.stringify(info.when)} vs ${JSON.stringify(otherInfo.when)})`)
+        return false
+      }
+
+
+      if(info.edges.length !== otherInfo.edges.length) {
+        dataflowLogger.warn(`node ${id} does not match on amount of edges (${JSON.stringify(info.edges)} vs ${JSON.stringify(otherInfo.edges)})`)
+        return false
+      }
+
+      if(!environmentsEqual(info.environment, otherInfo.environment)) {
+        dataflowLogger.warn(`node ${id} does not match on environments (${JSON.stringify(info.environment)} vs ${JSON.stringify(otherInfo.environment)})`)
+        return false
+      }
+
       if(!equalFunctionArguments(info.functionCall, otherInfo.functionCall)) {
-        dataflowLogger.warn(`node ${id} does not match on function arguments (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
+        dataflowLogger.warn(`node ${id} does not match on function arguments (${JSON.stringify(info.functionCall)} vs ${JSON.stringify(otherInfo.functionCall)})`)
         return false
       }
 
       if(!equalExitPoints(info.exitPoints, otherInfo.exitPoints)) {
-        dataflowLogger.warn(`node ${id} does not match on exit points (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
+        dataflowLogger.warn(`node ${id} does not match on exit points (${JSON.stringify(info.exitPoints)} vs ${JSON.stringify(otherInfo.exitPoints)})`)
         return false
       }
 

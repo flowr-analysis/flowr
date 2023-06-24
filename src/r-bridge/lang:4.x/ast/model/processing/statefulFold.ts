@@ -23,11 +23,11 @@ import {
   RComment,
   RNext,
   RBreak,
-  RParameter
+  RParameter,
+  RArgument,
+  RFunctionDefinition
 } from '../nodes'
 import { RNode } from '../model'
-import { RFunctionDefinition } from '../nodes'
-import { RArgument } from '../nodes/RArgument'
 
 
 /**

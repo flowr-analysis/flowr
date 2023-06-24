@@ -13,7 +13,7 @@ a <- function(x) { x <- 2; 1 }
 a(i)`
     // TODO: reconstruct must recurse into the function body and slice must trace function calls
     assertSliced('Function call with constant function', shell, constFunction, [{ line: 3, column: 1 }], `i <- 4
-a <- function(x) { x <- 2; 1 }
+a <- function(x) { 1 }
 a(i)`)
   })
 }))

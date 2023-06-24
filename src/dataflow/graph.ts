@@ -188,6 +188,11 @@ export interface DataflowGraphNodeFunctionDefinition extends DataflowGraphNodeBa
    * If the node is (for example) a function, it can have a subgraph which is used as a template for each call.
    */
   subflow:      DataflowFunctionFlowInformation
+  /**
+   * All exist points of the function definitions.
+   * In other words: last expressions/return calls
+   */
+  exitPoints:   NodeId[]
 }
 
 const DEFAULT_ENVIRONMENT = initializeCleanEnvironments()

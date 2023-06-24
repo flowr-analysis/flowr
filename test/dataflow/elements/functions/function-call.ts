@@ -17,11 +17,12 @@ describe('Function Call', withShell(shell => {
           nodeId: '10', name: 'i', scope: LocalScope, used: 'always'
         }] })
         .addNode({
-          tag:     'function-definition',
-          id:      '7',
-          name:    '7',
-          scope:   LocalScope,
-          subflow: {
+          tag:        'function-definition',
+          id:         '7',
+          name:       '7',
+          scope:      LocalScope,
+          exitPoints: [ '6' ],
+          subflow:    {
             out:          [],
             in:           [],
             activeNodes:  [],
@@ -30,7 +31,7 @@ describe('Function Call', withShell(shell => {
             graph:        new DataflowGraph()
               .addNode({ tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: envWithXDefined })
               .addNode({ tag: 'use', id: '6', name: 'x', environment: envWithXDefined})
-              .addEdge('6', '4', 'read', 'always')
+              .addEdge('6', '4', 'read', 'always'),
           }})
         .addEdge('10', '0', 'read', 'always')
         .addEdge('3', '7', 'defined-by', 'always')
@@ -52,11 +53,12 @@ a(i)`, new DataflowGraph()
         nodeId: '17', name: 'i', scope: LocalScope, used: 'always'
       }]})
       .addNode({
-        tag:     'function-definition',
-        id:      '14',
-        name:    '14',
-        scope:   LocalScope,
-        subflow: {
+        tag:        'function-definition',
+        id:         '14',
+        name:       '14',
+        scope:      LocalScope,
+        exitPoints: [ '13' ],
+        subflow:    {
           out:          [],
           in:           [],
           activeNodes:  [],
@@ -88,11 +90,12 @@ a(i)`, new DataflowGraph()
         .addNode({ tag: 'variable-definition', id: '4', name: 'y', scope: LocalScope })
         .addNode({ tag: 'function-call', id: '7', name: 'a', args: []})
         .addNode({
-          tag:     'function-definition',
-          id:      '2',
-          name:    '2',
-          scope:   LocalScope,
-          subflow: {
+          tag:        'function-definition',
+          id:         '2',
+          name:       '2',
+          scope:      LocalScope,
+          exitPoints: [],
+          subflow:    {
             out:          [],
             in:           [{ nodeId: '1', name: 'y', scope: LocalScope, used: 'always' }],
             activeNodes:  [],

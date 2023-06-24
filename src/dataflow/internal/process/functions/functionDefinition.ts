@@ -4,6 +4,8 @@ import { overwriteEnvironments, popLocalEnvironment, resolveByName } from '../..
 import { linkInputs } from '../../linker'
 import { DataflowGraph, dataflowLogger } from '../../../index'
 import { ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
+import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
+
 
 export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, params: DataflowInformation<OtherInfo>[], body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
   dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
@@ -57,6 +59,8 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     scope:        down.activeScope
   }
 
+  const exitPoints = retrieveExitPointsOfFunctionDefinition(functionDefinition)
+
   // TODO: exit points?
   const graph = new DataflowGraph()
   graph.addNode({
@@ -66,7 +70,8 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     environment: popLocalEnvironment(down.environments),
     scope:       down.activeScope,
     when:        'always',
-    subflow:     flow
+    subflow:     flow,
+    exitPoints
   })
   // TODO: deal with function info
   // TODO: rest

@@ -7,7 +7,9 @@ describe('With Call', withShell(shell => {
     const code = `i <- 4
 a <- function(x) { x }
 a(i)`
-    assertSliced(JSON.stringify(code), shell, code, ['3:1'], code)
+    for (const criterion of ['3:1', '3@a'] as const) {
+      assertSliced(JSON.stringify(code), shell, code, [criterion], code)
+    }
     const constFunction = `i <- 4
 a <- function(x) { x <- 2; 1 }
 a(i)`

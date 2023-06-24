@@ -1,10 +1,10 @@
 import {
   DecoratedAst,
   NodeId,
-  ParentInformation,
+  ParentInformation, RBinaryOp,
   RExpressionList,
-  RForLoop, RFunctionCall,
-  RNodeWithParent,
+  RForLoop, RFunctionCall, RFunctionDefinition,
+  RNodeWithParent, RParameter,
   RRepeatLoop, RWhileLoop
 } from '../r-bridge'
 import { foldAstStateful, StatefulFoldFunctions } from '../r-bridge/lang:4.x/ast/model/processing/statefulFold'
@@ -57,17 +57,26 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
   }
 }
 
-function reconstructBinaryOp(n: RNodeWithParent, lhs: Code, rhs: Code, selection: Selection): Code {
+function reconstructBinaryOp(n: RBinaryOp<ParentInformation>, lhs: Code, rhs: Code, selection: Selection): Code {
   if(selection.has(n.info.id)) {
     return plain(getLexeme(n))
   }
 
   if(lhs.length === 0 && rhs.length === 0) {
     return []
-  } else {
-    // TODO: maybe allow to cut off one side?
+  }
+  if(lhs.length === 0) { // if we have no lhs, only return rhs
+    return rhs
+  }
+  if(rhs.length === 0) { // if we have no rhs we have to keep everything to get the rhs
     return plain(getLexeme(n))
   }
+
+  return [  // inline pretty print
+    ...lhs.slice(0, lhs.length - 2),
+    { line: `${lhs[lhs.length - 1].line} ${n.op} ${rhs[0].line}`, indent: 0 },
+    ...indentBy(rhs.slice(1, rhs.length - 1), 1)
+  ]
 }
 
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, selection: Selection): Code {
@@ -153,6 +162,37 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
   }
 }
 
+function reconstructParameters(parameters: RParameter<ParentInformation>[]): string[] {
+  // const baseParameters = parameters.flatMap(p => plain(getLexeme(p)))
+  return parameters.map(p => getLexeme(p))
+}
+
+function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, _parameters: Code[], body: Code, _selection: Selection): Code {
+  // even if a complete function is selected we will look inside
+  // we always have to reconstruct the parameters at the moment
+  const parameters = reconstructParameters(definition.parameters).join(', ')
+  if(body.length <= 1) {
+    // 'inline'
+    const bodyStr = body.length === 0 ? '' : body[0].line
+    // we keep the braces in every case because I do not like no-brace functions
+    return [{ line: `function(${parameters}) { ${bodyStr} }`, indent: 0 }]
+  } else if (body[0].line === '{' && body[body.length - 1].line === '}') {
+    // 'block'
+    return [
+      { line: `function(${parameters}) {`, indent: 0 },
+      ...body.slice(1, body.length - 1),
+      { line: '}', indent: 0 }
+    ]
+  } else {
+    // unknown
+    return [
+      { line: `function(${parameters})`, indent: 0 },
+      ...indentBy(body, 1)
+    ]
+  }
+
+}
+
 function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: Code[], selection: Selection): Code {
   if(selection.has(call.info.id)) {
     return plain(getLexeme(call))
@@ -202,7 +242,7 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Selection, C
   foldIfThenElse: foldToConst,
   foldExprList:   reconstructExpressionList,
   functions:      {
-    foldFunctionDefinition: foldToConst,
+    foldFunctionDefinition: reconstructFunctionDefinition,
     foldFunctionCall:       reconstructFunctionCall,
     foldParameter:          foldToConst,
     foldArgument:           foldToConst
@@ -223,6 +263,7 @@ function prettyPrintCodeToString(code: Code, lf ='\n'): string {
  * Reconstructs parts of a normalized R ast into R code on an expression basis.
  */
 export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Selection): string {
+  reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
   const result = foldAstStateful(ast.decoratedAst, selection, reconstructAstFolds)
   if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
     // remove outer block

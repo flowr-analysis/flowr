@@ -166,10 +166,15 @@ export const assertSliced = (name: string, shell: RShell, input: string, criteri
 
     const dataflow = produceDataFlowGraph(decoratedAst)
 
-    const sliced = naiveStaticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds)
-    const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
+    try {
+      const sliced = naiveStaticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds)
+      const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
 
-    assert.strictEqual(reconstructed, expected, `got: ${reconstructed}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(mappedIds, decoratedAst.idMap)}), url: ${graphToMermaidUrl(dataflow.graph, decoratedAst.idMap, sliced)}`)
+      assert.strictEqual(reconstructed, expected, `got: ${reconstructed}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(mappedIds, decoratedAst.idMap)}), url: ${graphToMermaidUrl(dataflow.graph, decoratedAst.idMap, sliced)}`)
+    } catch (e) {
+      console.error('vis-got:\n', graphToMermaidUrl(dataflow.graph, decoratedAst.idMap))
+      throw e
+    }
   })
 }
 

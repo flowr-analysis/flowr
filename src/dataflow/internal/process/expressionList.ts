@@ -70,9 +70,7 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
 }
 
 export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
-  // TODO: change
-  const expressions = exprList.children.map(e => processDataflowFor(e, data))
-
+  const expressions = exprList.children
   dataflowLogger.trace(`processing expression list with ${expressions.length} expressions`)
   if(expressions.length === 0) {
     return initializeCleanInfo(data)
@@ -81,21 +79,24 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
   let environments = data.environments
   const remainingRead = new Map<string, IdentifierReference[]>()
 
-  // TODO: this is probably wrong
-  const nextGraph = expressions[0].graph.mergeWith(...expressions.slice(1).map(c => c.graph))
+  const nextGraph = new DataflowGraph()
+  const out = []
 
   let expressionCounter = 0
   for (const expression of expressions) {
     dataflowLogger.trace(`processing expression ${++expressionCounter} of ${expressions.length}`)
-    for(const [_, nodeInfo] of expression.graph.nodes()) {
-      nodeInfo.environment = overwriteEnvironments(nodeInfo.environment, environments)
-    }
-    dataflowLogger.trace(`environments: ${environments.current.name} ${JSON.stringify([...environments.current.memory])}`)
+    // use the current environments for processing
+    data = { ...data, environments }
+    const processed = processDataflowFor(expression, data)
+    nextGraph.mergeWith(processed.graph)
+    out.push(...processed.out)
+
+    dataflowLogger.trace(`expression ${expressionCounter} of ${expressions.length} has ${processed.activeNodes.length} active nodes`)
 
 
-    processNextExpression(expression, data, environments, remainingRead, nextGraph)
+    processNextExpression(processed, data, environments, remainingRead, nextGraph)
     // update the environments for the next iteration with the previous writes
-    environments = overwriteEnvironments(environments, expression.environments)
+    environments = overwriteEnvironments(environments, processed.environments)
   }
   // now, we have to link same reads
   linkReadVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))
@@ -106,7 +107,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     /* no active nodes remain, they are consumed within the remaining read collection */
     activeNodes: [],
     in:          [...remainingRead.values()].flat(),
-    out:         expressions.flatMap(child => [...child.out]),
+    out,
     ast:         data.completeAst,
     environments,
     scope:       data.activeScope,

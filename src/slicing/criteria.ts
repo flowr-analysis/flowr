@@ -58,11 +58,23 @@ function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: Decora
 }
 
 function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflowIdMap: DecoratedAstMap<OtherInfo>): NodeId | undefined {
-  for(const [id, values] of dataflowIdMap.entries()) {
-    if(values.location && values.location.start.line === line && values.lexeme === name) {
-      slicerLogger.trace(`resolving id ${id} for line ${line} and name ${name}`)
-      return id
+  let candidate: RNodeWithParent<OtherInfo> | undefined
+
+  for(const [id, nodeInfo] of dataflowIdMap.entries()) {
+    if(nodeInfo.location === undefined || nodeInfo.location.start.line !== line || nodeInfo.lexeme !== name) {
+      continue
     }
+
+    slicerLogger.trace(`can resolve id ${id} for line ${line} and name ${name}`)
+    // function calls have the same location as the symbol they refer to, so we need to prefer the function call
+    if(candidate !== undefined && nodeInfo.type !== Type.FunctionCall) {
+      continue
+    }
+    candidate = nodeInfo
   }
-  return undefined
+  const id = candidate?.info.id
+  if(id) {
+    slicerLogger.trace(`resolve id ${id} for line ${line} and name ${name}`)
+  }
+  return id
 }

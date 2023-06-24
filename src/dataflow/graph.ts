@@ -78,6 +78,21 @@ function equalFunctionArgumentsReferences(a: IdentifierReference | '<value>', b:
   return equalIdentifierReferences(a, b)
 }
 
+function equalExitPoints(a: NodeId[] | undefined, b: NodeId[] | undefined): boolean {
+  if (a === undefined || b === undefined) {
+    return a === b
+  }
+  if (a.length !== b.length) {
+    return false
+  }
+  for (let i = 0; i < a.length; ++i) {
+    if (a[i] !== b[i]) {
+      return false
+    }
+  }
+  return true
+}
+
 export function equalFunctionArguments(a: false | FunctionArgument[], b: false | FunctionArgument[]): boolean {
   if(a === false || b === false) {
     return a === b
@@ -115,6 +130,8 @@ export interface DataflowGraphNodeInfo extends MergeableRecord {
   edges:             DataflowGraphEdge[]
   /** functions will emit a subgraph for their content which is then used as a template on each call of the function */
   subflow?:          DataflowFunctionFlowInformation
+  /** function definitions carry exit points */
+  exitPoints?:       NodeId[]
 }
 
 type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'used'>  | IdentifierDefinition
@@ -252,16 +269,16 @@ export class DataflowGraph {
     const tag = node.tag
     switch(tag) {
       case 'use':
-        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: false, when, edges: [], subflow: undefined, functionCall: false })
+        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: false, when, edges: [], subflow: undefined, functionCall: false, exitPoints: undefined })
         break
       case 'variable-definition':
-        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: node.scope, when, edges: [], subflow: undefined, functionCall: false })
+        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: node.scope, when, edges: [], subflow: undefined, functionCall: false, exitPoints: undefined })
         break
       case 'function-definition':
-        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: node.scope, when, edges: [], subflow: node.subflow, functionCall: false })
+        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: node.scope, when, edges: [], subflow: node.subflow, functionCall: false, exitPoints: node.exitPoints })
         break
       case 'function-call':
-        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: false, when, edges: [], subflow: undefined, functionCall: node.args })
+        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: false, when, edges: [], subflow: undefined, functionCall: node.args, exitPoints: undefined })
         break
       default:
         assertUnreachable(tag)
@@ -371,6 +388,11 @@ export class DataflowGraph {
         return false
       }
 
+      if(!equalExitPoints(info.exitPoints, otherInfo.exitPoints)) {
+        dataflowLogger.warn(`node ${id} does not match on exit points (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
+        return false
+      }
+
       if(info.subflow !== undefined || otherInfo.subflow !== undefined) {
         if(info.subflow === undefined || otherInfo.subflow === undefined) {
           dataflowLogger.warn(`node ${id} does not match on subflow with undefined (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
@@ -406,6 +428,7 @@ function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeI
   guard(current.definedAtPosition === next.definedAtPosition, 'nodes to be joined for the same id must have the same definedAtPosition')
   guard(current.environment === next.environment, 'nodes to be joined for the same id must have the same environment')
   guard(equalFunctionArguments(current.functionCall, next.functionCall), 'nodes to be joined for the same id must have the same function call information')
+  guard(equalExitPoints(current.exitPoints, next.exitPoints), 'nodes to be joined must have same exist poinits')
   return {
     name:              current.name,
     definedAtPosition: current.definedAtPosition,
@@ -413,6 +436,7 @@ function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeI
     environment:       current.environment,
     functionCall:      current.functionCall,
     // TODO: join edges
-    edges:             [...current.edges, ...next.edges]
+    edges:             [...current.edges, ...next.edges],
+    exitPoints:        current.exitPoints,
   }
 }

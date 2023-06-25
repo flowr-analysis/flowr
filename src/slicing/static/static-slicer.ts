@@ -28,17 +28,23 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
     }
     visited.add(current)
 
-    const currentInfo = dataflowGraph.get(current)
+    const currentInfo = dataflowGraph.get(current, true)
+
+    slicerLogger.trace(`visiting id: ${current} with name: ${currentInfo?.name ?? '<unknown>'}`)
+
     if(currentInfo === undefined) {
-      slicerLogger.warn(`id: ${current} must be in graph but can not be found, this may be the case for exit points of function definitions, keep in slice to be sure`)
+      slicerLogger.warn(`id: ${current} must be in graph but can not be found, keep in slice to be sure`)
       continue
     }
 
     const currentNode = dataflowIdMap.get(current)
     guard(currentNode !== undefined, () => `id: ${current} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
 
-    for (const edge of currentInfo.edges.filter(e => e.type === 'read' || e.type === 'defined-by' || e.type === 'argument'  || e.type === 'calls' || e.type === 'relates' || e.type === 'returns')) {
+    const liveEdges = currentInfo.edges.filter(e => e.type === 'read' || e.type === 'defined-by' || e.type === 'argument'  || e.type === 'calls' || e.type === 'relates' || e.type === 'returns')
+    for (const edge of liveEdges) {
+      console.log('trace edge', edge)
       if (!visited.has(edge.target)) {
+        slicerLogger.trace(`adding id: ${edge.target} to visit queue`)
         visitQueue.push(edge.target)
       }
     }

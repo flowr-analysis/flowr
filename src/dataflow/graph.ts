@@ -321,12 +321,13 @@ export class DataflowGraph {
     let toId = typeof to === 'object' ? to.nodeId : to
 
     if(fromId === toId) {
-      log.trace(`ignoring self-edge from ${fromId} to ${toId}`)
+      log.trace(`ignoring self-edge from ${fromId} to ${toId} (${JSON.stringify(type)}, ${JSON.stringify(attribute)}, ${JSON.stringify(promote)})`)
       return this
     }
 
     // sort (on id so that sorting is the same, independent of the attribute)
-    if(type === 'same-read-read' || type === 'same-def-def' || type === 'relates') {
+    // TODO: make edges bidirectional
+    if(type === 'same-read-read' || type === 'same-def-def') {
       if(toId < fromId) {
         { [from, to] = [to, from] }
         { [fromId, toId] = [toId, fromId] }

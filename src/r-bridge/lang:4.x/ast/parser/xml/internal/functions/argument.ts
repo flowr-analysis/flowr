@@ -59,7 +59,6 @@ export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]):
   const result: RArgument = {
     type:   Type.Argument,
     location,
-    content,
     lexeme: content,
     name,
     value:  parsedValue,

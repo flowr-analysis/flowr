@@ -1,7 +1,7 @@
 import {
   DecoratedAst,
   NodeId,
-  ParentInformation, RBinaryOp,
+  ParentInformation, RArgument, RBinaryOp,
   RExpressionList,
   RForLoop, RFunctionCall, RFunctionDefinition, RIfThenElse,
   RNodeWithParent, RParameter,
@@ -212,6 +212,18 @@ function reconstructParameters(parameters: RParameter<ParentInformation>[]): str
   })
 }
 
+function reconstructArgument(argument: RArgument<ParentInformation>, name: Code | undefined, value: Code, selection: Selection): Code {
+  if(selection.has(argument.info.id)) {
+    return plain(getLexeme(argument))
+  }
+
+  if(argument.name !== undefined) {
+    return plain(`${getLexeme(argument.name)}=${getLexeme(argument.value)}`)
+  } else {
+    return value
+  }
+}
+
 function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, _parameters: Code[], body: Code, selection: Selection): Code {
   // if a definition is not selected, we only use the body - slicing will always select the definition
   if(!selection.has(definition.info.id)) {
@@ -294,7 +306,7 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Selection, C
     foldFunctionDefinition: reconstructFunctionDefinition,
     foldFunctionCall:       reconstructFunctionCall,
     foldParameter:          foldToConst,
-    foldArgument:           foldToConst
+    foldArgument:           reconstructArgument
   }
 }
 

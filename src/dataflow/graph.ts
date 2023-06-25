@@ -328,7 +328,7 @@ export class DataflowGraph {
     const fromInfo = this.graph.get(fromId)
     const toInfo = this.graph.get(toId)
 
-    guard(fromInfo !== undefined, 'there must be a node info object for the edge source!')
+    guard(fromInfo !== undefined, () => `there must be a node info object for the edge source! but is not for ${fromId} -> ${toId}`)
 
     if(promote && (fromInfo.when === 'maybe' || toInfo?.when === 'maybe')) {
       log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)

@@ -1,6 +1,7 @@
 import { assertDataflow, withShell } from '../../../helper/shell'
 import { DataflowGraph, initializeCleanEnvironments, LocalScope } from '../../../../src/dataflow'
 import { define, pushLocalEnvironment } from '../../../../src/dataflow/environments'
+import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/argument'
 
 describe('Function Call', withShell(shell => {
   describe('Calling previously defined functions', () => {
@@ -23,13 +24,14 @@ describe('Function Call', withShell(shell => {
         .addNode({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
         .addNode({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
         .addNode({ tag: 'use', id: '10', name: 'i', environment: envWithIA })
+        .addNode({ tag: 'use', id: '11', name: `${UnnamedArgumentPrefix}11`, environment: envWithIA })
         .addNode({
           tag:         'function-call',
-          id:          '11',
+          id:          '12',
           name:        'a',
           environment: envWithIA,
           args:        [{
-            nodeId: '10', name: 'i', scope: LocalScope, used: 'always'
+            nodeId: '11', name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, used: 'always'
           }] })
         .addNode({
           tag:         'use',
@@ -58,9 +60,10 @@ describe('Function Call', withShell(shell => {
           }})
         .addEdge('10', '0', 'read', 'always')
         .addEdge('3', '7', 'defined-by', 'always')
-        .addEdge('11', '10', 'argument', 'always')
+        .addEdge('12', '11', 'argument', 'always')
+        .addEdge('11', '10', 'read', 'always')
         .addEdge('9', '3', 'read', 'always')
-        .addEdge('11', '9', 'read', 'always')
+        .addEdge('12', '9', 'read', 'always')
     )
     const envWithXConstDefined = define(
       {nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
@@ -87,14 +90,15 @@ a(i)`, new DataflowGraph()
       .addNode({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
       .addNode({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
       .addNode({ tag: 'use', id: '17', name: 'i', environment: envWithIAndLargeA})
+      .addNode({ tag: 'use', id: '18', name: `${UnnamedArgumentPrefix}18`, environment: envWithIAndLargeA})
       .addEdge('17', '0', 'read', 'always')
       .addNode({
         tag:         'function-call',
-        id:          '18',
+        id:          '19',
         name:        'a',
         environment: envWithIAndLargeA,
         args:        [{
-          nodeId: '17', name: 'i', scope: LocalScope, used: 'always'
+          nodeId: '18', name: `${UnnamedArgumentPrefix}18`, scope: LocalScope, used: 'always'
         }]})
       .addNode({
         tag:         'use',
@@ -130,8 +134,9 @@ a(i)`, new DataflowGraph()
         }})
       .addEdge('3', '14', 'defined-by', 'always')
       .addEdge('16', '3', 'read', 'always')
-      .addEdge('18', '17', 'argument', 'always'
-      ).addEdge('18', '16', 'read', 'always')
+      .addEdge('19', '18', 'argument', 'always')
+      .addEdge('18', '17', 'read', 'always')
+      .addEdge('19', '16', 'read', 'always')
     )
   })
 

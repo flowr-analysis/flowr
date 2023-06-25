@@ -67,10 +67,10 @@ function displayEnvReplacer(key: any, value: any): any {
 }
 
 function printArg(arg: IdentifierReference | '<value>' | undefined): string {
-  if(arg === undefined) {
+  if(arg === undefined || arg === '<value>') {
     return '??'
   }
-  return arg === '<value>' ? '-value-' : `${arg.nodeId}:${arg.name}`
+  return `${arg.nodeId}`
 }
 function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
   const result = []

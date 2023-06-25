@@ -27,6 +27,7 @@ describe("Parse function calls",
         })
       )
     })
+    // TODO: update slice criterion resolution for arguments
     describe("functions with arguments", () => {
       assertAst(
         "f(1, 2)",
@@ -47,19 +48,32 @@ describe("Parse function calls",
           },
           arguments: [
             {
-              type:     Type.Number,
+              type:     Type.Argument,
               location: rangeFrom(1, 3, 1, 3),
+              name:     undefined,
+              info:     {},
               lexeme:   "1",
-              content:  numVal(1),
-              info:     {}
-            },
-            {
-              type:     Type.Number,
+              value:    {
+                type:     Type.Number,
+                location: rangeFrom(1, 3, 1, 3),
+                lexeme:   "1",
+                content:  numVal(1),
+                info:     {}
+              }
+            }, {
+              type:     Type.Argument,
               location: rangeFrom(1, 6, 1, 6),
+              name:     undefined,
               lexeme:   "2",
-              content:  numVal(2),
-              info:     {}
-            },
+              info:     {},
+              value:    {
+                type:     Type.Number,
+                location: rangeFrom(1, 6, 1, 6),
+                lexeme:   "2",
+                content:  numVal(2),
+                info:     {}
+              }
+            }
           ],
         })
       )

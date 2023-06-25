@@ -45,14 +45,14 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   for(const arg of args) {
     finalEnv = overwriteEnvironments(finalEnv, arg.environments)
     finalGraph = finalGraph.mergeWith(arg.graph)
-    const ingoingRefs = [...arg.in, ...arg.activeNodes]
-    guard(ingoingRefs.length <= 1, `TODO: deal with multiple ingoing nodes in case of function calls etc for ${JSON.stringify(ingoingRefs)}`)
+    const argumentRefs = [...arg.out]
+    guard(argumentRefs.length <= 1, `TODO: deal with multiple ingoing nodes in case of function calls etc for ${JSON.stringify(argumentRefs)}`)
 
-    callArgs.push(ingoingRefs[0])
+    callArgs.push(argumentRefs[0])
 
     // add an argument edge to the final graph
     // TODO: deal with redefinitions within arguments
-    for(const ingoing of ingoingRefs) {
+    for(const ingoing of argumentRefs) {
       finalGraph.addEdge(functionRootId, ingoing, 'argument', 'always')
     }
     // TODO: bind the argument id to the corresponding argument within the function

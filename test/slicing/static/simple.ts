@@ -10,6 +10,11 @@ describe('Simple', withShell(shell => {
     assertSliced('if(TRUE)', shell, 'if(TRUE) { x <- 3 } else { x <- 4}\nx', ['2@x'], 'if(TRUE) {\n    x <- 3\n}\nx')
     assertSliced('if(FALSE)', shell, 'if(FALSE) { x <- 3 } else { x <- 4}\nx', ['2@x'], 'if(FALSE) { } else {\n    x <- 4\n}\nx')
   })
+  describe('Access', () => {
+    assertSliced('Constant', shell, 'a <- 4\na <- list(1,2)\na[3]', ['3@a'], 'a <- list(1,2)\na[3]')
+    assertSliced('Variable', shell, 'i <- 4\na <- list(1,2)\na[i]', ['3@a'], 'i <- 4\na <- list(1,2)\na[i]')
+    assertSliced('Subset Sequence', shell, 'i <- 4\na <- list(1,2)\na[1:i,]', ['3@a'], 'i <- 4\na <- list(1,2)\na[1:i,]')
+  })
   // TODO: test for(i in 1:10) { print(i); i <- 12 }
   describe('The classic', () => {
     const code = `

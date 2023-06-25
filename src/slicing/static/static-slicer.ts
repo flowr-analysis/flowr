@@ -8,8 +8,6 @@ import { resolveByName } from '../../dataflow/environments'
 export const slicerLogger = log.getSubLogger({ name: "slicer" })
 
 
-// TODO: include library loads
-
 /**
  * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
  * <p>

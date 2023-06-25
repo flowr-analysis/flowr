@@ -292,6 +292,8 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 
 type AutoSelectPredicate = (node: RNode<ParentInformation>) => boolean
 
+
+// TODO: restrict loaded libraries in some way?
 interface ReconstructionConfiguration extends MergeableRecord {
   selection:    Selection
   /** if true, this will force the ast part to be reconstructed, this can be used, for example, to force include `library` statements */

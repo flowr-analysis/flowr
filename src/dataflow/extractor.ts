@@ -23,6 +23,7 @@ const processors: DataflowProcessors<any> = {
   [Type.Number]:             processUninterestingLeaf,
   [Type.String]:             processUninterestingLeaf,
   [Type.Logical]:            processUninterestingLeaf,
+  [Type.Access]:             processUninterestingLeaf, /* TODO */
   [Type.Symbol]:             processSymbol,
   [Type.BinaryOp]:           processBinaryOp,
   [Type.UnaryOp]:            processUnaryOp,

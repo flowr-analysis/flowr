@@ -2,6 +2,8 @@
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
  */
 export const enum Type {
+  /** `[`, `[[`, `$`, and `@` */
+  Access = "access",
   ExpressionList = "exprlist",
   Expression = "expr",
   /*

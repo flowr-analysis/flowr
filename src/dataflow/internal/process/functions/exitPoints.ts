@@ -55,6 +55,7 @@ function visitExitPoints<OtherInfo>(node: RNode<OtherInfo & ParentInformation>):
     case Type.Logical:
     case Type.Number:
     case Type.String:
+    case Type.Access:
       // just use this node
       break
     // contain noting to return/return `invisible(null)`

@@ -50,6 +50,12 @@ function* collectSingleNode<OtherInfo>(node: RNode<OtherInfo & ParentInformation
       yield* collectAllIds(node.name)
       yield* collectAllIds(node.value)
       break
+    case Type.Access:
+      yield* collectAllIds(node.name)
+      if(node.op === '[' || node.op === '[[') {
+        yield* collectAllIds(node.access)
+      }
+      break
     case Type.Symbol:
     case Type.Logical:
     case Type.Number:

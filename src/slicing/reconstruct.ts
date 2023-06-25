@@ -280,6 +280,7 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Selection, C
   foldString:  reconstructAsLeaf,
   foldLogical: reconstructAsLeaf,
   foldSymbol:  reconstructAsLeaf,
+  foldAccess:  foldToConst, /* TODO ! */
   binaryOp:    {
     foldLogicalOp:    reconstructBinaryOp,
     foldArithmeticOp: reconstructBinaryOp,

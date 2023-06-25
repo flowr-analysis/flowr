@@ -110,6 +110,7 @@ export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: Id
     foldString:  foldLeaf,
     foldLogical: foldLeaf,
     foldSymbol:  foldLeaf,
+    foldAccess:  createFoldForAccess(info),
     binaryOp:    {
       foldLogicalOp:    foldBinaryOp,
       foldArithmeticOp: foldBinaryOp,
@@ -172,6 +173,21 @@ function createFoldForUnaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
     const decorated = { ...data, info: { ...(data.info ), id, parent: undefined }, operand } as RNodeWithParent<OtherInfo>
     info.idMap.set(id, decorated)
     operand.info.parent = id
+    return decorated
+  }
+}
+
+function createFoldForAccess<OtherInfo>(info: FoldInfo<OtherInfo>) {
+  return (data: RNode<OtherInfo>, name: RNodeWithParent<OtherInfo>, access: string | RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
+    const id = info.getId(data)
+    const decorated = { ...data, info: { ...(data.info ), id, parent: undefined }, name, access } as RNodeWithParent<OtherInfo>
+    info.idMap.set(id, decorated)
+    name.info.parent = id
+    if(typeof access !== 'string') {
+      for(const acc of access) {
+        acc.info.parent = id
+      }
+    }
     return decorated
   }
 }

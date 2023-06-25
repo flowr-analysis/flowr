@@ -25,7 +25,7 @@ function anyIsMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
   return false
 }
 
-function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined): IEnvironment {
+export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined, includeParent = true): IEnvironment {
   guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined')
   guard(base.name === next.name, 'cannot overwrite environments with different names')
   const map = new Map(base.memory)
@@ -46,7 +46,13 @@ function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnviro
       map.set(key, values)
     }
   }
-  const parent = base.parent === undefined ? undefined : overwriteIEnvironmentWith(base.parent, next.parent)
+
+  let parent: IEnvironment | undefined
+  if(includeParent) {
+    parent = base.parent === undefined ? undefined : overwriteIEnvironmentWith(base.parent, next.parent)
+  } else {
+    parent = base.parent
+  }
 
   const out = new Environment(base.name, parent)
   out.memory = map

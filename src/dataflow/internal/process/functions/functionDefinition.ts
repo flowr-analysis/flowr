@@ -8,9 +8,10 @@ import {
   resolveByName
 } from '../../../environments'
 import { linkInputs } from '../../linker'
-import { DataflowGraph, dataflowLogger } from '../../../index'
-import { ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
+import { DataflowGraph, dataflowLogger, DataflowMap, graphToMermaidUrl } from '../../../index'
+import { collectAllIds, ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
 import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
+import { guard } from '../../../../util/assert'
 
 
 export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
@@ -76,6 +77,9 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   }
 
   const exitPoints = retrieveExitPointsOfFunctionDefinition(functionDefinition)
+  // if exit points are extra, we must link them to all dataflow nodes they relate to.
+  linkExitPointsInGraph(exitPoints, subgraph, data.completeAst.idMap)
+
 
   // TODO: exit points?
   const graph = new DataflowGraph()
@@ -100,5 +104,27 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     environments: popLocalEnvironment(data.environments),
     ast:          data.completeAst,
     scope:        data.activeScope
+  }
+}
+
+
+function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowGraph, idMap: DataflowMap<OtherInfo>): void {
+  console.log('graph', graphToMermaidUrl(graph, idMap))
+  for(const exitPoint of exitPoints) {
+    const exitPointNode = graph.get(exitPoint)
+    // if there already is an exit point it is either a variable or already linked
+    if(exitPointNode !== undefined) {
+      continue
+    }
+    const nodeInAst = idMap.get(exitPoint)
+
+    guard(nodeInAst !== undefined, `Could not find exit point node with id ${exitPoint} in ast`)
+    graph.addNode({ tag: 'exit-point', id: exitPoint, name: `"${nodeInAst.lexeme ?? '??'}"`, when: 'always' })
+
+    const allIds = [...collectAllIds(nodeInAst)].filter(id => graph.get(id) !== undefined)
+    for(const relatedId of allIds) {
+      // TODO: custom edge type?
+      graph.addEdge(exitPoint, relatedId, 'relates', 'always')
+    }
   }
 }

@@ -11,7 +11,7 @@ import {
   REnvironmentInformation,
   resolveByName
 } from '../../environments'
-import { linkReadVariablesInSameScopeWithNames } from '../linker'
+import { linkFunctionCallExitPoints, linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
 import { DataflowGraph } from '../../graph'
 import { dataflowLogger } from '../../index'
@@ -116,6 +116,9 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
       listEnvironments.add(nodeId)
     }
   }
+
+  linkFunctionCallExitPoints(nextGraph)
+
   // now, we have to link same reads
   linkReadVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))
 

@@ -1,8 +1,11 @@
-import { DataflowGraph, DataflowScopeName } from '../graph'
-import { IdentifierReference, REnvironmentInformation, resolveByName } from '../environments'
+import { DataflowGraph, DataflowGraphNodeInfo, DataflowMap, DataflowScopeName } from '../graph'
+import { BuiltIn, IdentifierReference, REnvironmentInformation, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { log } from '../../util/log'
+import { NodeId, NoInfo } from '../../r-bridge'
+import { graphToMermaidUrl } from '../../util/mermaid'
+import { slicerLogger } from '../../slicing/static'
 
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
   const nameIdShares = produceNameSharedIdMap(references)
@@ -30,6 +33,53 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
       graph.addEdge(base.nodeId, ids[i].nodeId, 'same-read-read', 'always', true)
     }
   }
+}
+
+export function linkFunctionCallExitPoints(graph: DataflowGraph): void {
+  const calls = [...graph.nodes()]
+    .filter(([_,info]) => info.functionCall !== false)
+
+
+  for(const [id, info] of calls) {
+    const functionDefinitionReadIds = info.edges.filter(e => e.type === 'read' || e.type === 'calls').map(e => e.target)
+    const functionDefs = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph)
+    for(const defs of functionDefs.values()) {
+      const exitPoints = defs.exitPoints
+      guard(exitPoints !== undefined, () => `exit points of ${JSON.stringify(defs)} for call ${id} must have exit points`)
+      for(const exitPoint of exitPoints) {
+        graph.addEdge(id, exitPoint, 'read', 'always')
+      }
+    }
+  }
+}
+
+
+// TODO: abstract away into a 'getAllDefinitionsOf' function
+function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeId[], dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphNodeInfo> {
+  const potential: NodeId[] = functionDefinitionReadIds
+  const result = new Map<NodeId, DataflowGraphNodeInfo>()
+  while(potential.length > 0) {
+    const currentId = potential.pop() as NodeId
+    if(currentId === BuiltIn) {
+      // do not traverse builtins
+      slicerLogger.trace('skipping builtin function definition during collection')
+      continue
+    }
+    const currentInfo = dataflowGraph.get(currentId, true)
+    if(currentInfo === undefined) {
+      slicerLogger.trace(`skipping unknown link`)
+      continue
+    }
+
+
+    if(currentInfo.subflow !== undefined) {
+      result.set(currentId, currentInfo)
+    }
+    // trace all joined reads
+    // TODO: deal with redefinitions?
+    potential.push(...currentInfo.edges.filter(e => e.type === 'read' || e.type === 'defined-by' || e.type === 'calls').map(e => e.target))
+  }
+  return result
 }
 
 export function setDefinitionOfNode(graph: DataflowGraph, reference: IdentifierReference): void {

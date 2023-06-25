@@ -23,6 +23,7 @@ export type DataflowGraphEdgeType =
     | /** similar to `same-read-read` but for def-def constructs without a read in-between */ 'same-def-def'
     | /** formal used as argument to a function call */ 'argument'
     | /** the edge determines that the source calls the target */ 'calls'
+    | /** the source and edge relate to each other bidirectionally */ 'relates'
 
 // context -- is it always read/defined-by // TODO: loops
 export type DataflowGraphEdgeAttribute = 'always' | 'maybe'
@@ -173,6 +174,13 @@ interface DataflowGraphNodeBase extends MergeableRecord {
 /**
  * Arguments required to construct a node which represents the usage of a variable in the dataflow graph.
  */
+export interface DataflowGraphExitPoint extends DataflowGraphNodeBase {
+  readonly tag: 'exit-point'
+}
+
+/**
+ * Arguments required to construct a node which represents the usage of a variable in the dataflow graph.
+ */
 export interface DataflowGraphNodeUse extends DataflowGraphNodeBase {
   readonly tag: 'use'
 }
@@ -284,11 +292,12 @@ export class DataflowGraph {
    * Adds a new node to the graph
    *
    * @see DataflowGraphNodeUse
+   * @see DataflowGraphExitPoint
    * @see DataflowGraphNodeFunctionCall
    * @see DataflowGraphNodeVariableDefinition
    * @see DataflowGraphNodeFunctionDefinition
    */
-  public addNode(node: DataflowGraphNodeUse | DataflowGraphNodeVariableDefinition | DataflowGraphNodeFunctionDefinition | DataflowGraphNodeFunctionCall): this {
+  public addNode(node: DataflowGraphNodeUse | DataflowGraphExitPoint | DataflowGraphNodeVariableDefinition | DataflowGraphNodeFunctionDefinition | DataflowGraphNodeFunctionCall): this {
     const oldNode = this.graph.get(node.id)
     if(oldNode !== undefined) {
       guard(oldNode.name === node.name, 'node names must match for the same id if added')
@@ -311,6 +320,9 @@ export class DataflowGraph {
         break
       case 'function-call':
         this.graph.set(node.id, { name: node.name, environment, definedAtPosition: false, when, edges: [], subflow: undefined, functionCall: node.args, exitPoints: undefined })
+        break
+      case 'exit-point':
+        this.graph.set(node.id, { name: node.name, environment, definedAtPosition: false, when, edges: [], subflow: undefined, functionCall: false, exitPoints: undefined })
         break
       default:
         assertUnreachable(tag)

@@ -26,3 +26,7 @@ export interface RComparisonBinaryOp<Info = NoInfo> extends RBinaryOp<Info> {
 export interface RAssignmentOp<Info = NoInfo> extends RBinaryOp<Info> {
   flavor: 'assignment'
 }
+
+export interface RModelFormulaBinaryOp<Info = NoInfo> extends RBinaryOp<Info> {
+  flavor: 'model formula'
+}

@@ -25,7 +25,7 @@ import {
   RBreak,
   RParameter,
   RArgument,
-  RFunctionDefinition, RAccess
+  RFunctionDefinition, RAccess, RModelFormulaBinaryOp, RModelFormulaUnaryOp
 } from '../nodes'
 import { RNode } from '../model'
 
@@ -53,10 +53,12 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
     foldArithmeticOp: (op: RArithmeticBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
     foldComparisonOp: (op: RComparisonBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
     foldAssignment:   (op: RAssignmentOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
+    foldModelFormula: (op: RModelFormulaBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
   };
   unaryOp: {
     foldLogicalOp:    (op: RLogicalUnaryOp<Info>, operand: Up, down: Down) => Up;
     foldArithmeticOp: (op: RArithmeticUnaryOp<Info>, operand: Up, down: Down) => Up;
+    foldModelFormula: (op: RModelFormulaUnaryOp<Info>, operand: Up, down: Down) => Up;
   };
   loop: {
     foldFor:    (loop: RForLoop<Info>, variable: Up, vector: Up, body: Up, down: Down) => Up;
@@ -142,6 +144,8 @@ function foldBinaryOp<Info, Down, Up>(ast: RBinaryOp<Info>, down: Down, folds: S
       return folds.binaryOp.foldComparisonOp(ast as RComparisonBinaryOp<Info>, foldAstStateful(ast.lhs, down, folds), foldAstStateful(ast.rhs, down, folds), down)
     case 'assignment':
       return folds.binaryOp.foldAssignment(ast as RAssignmentOp<Info>, foldAstStateful(ast.lhs, down, folds), foldAstStateful(ast.rhs, down, folds), down)
+    case 'model formula':
+      return folds.binaryOp.foldModelFormula(ast as RModelFormulaBinaryOp<Info>, foldAstStateful(ast.lhs, down, folds), foldAstStateful(ast.rhs, down, folds), down)
     default:
       assertUnreachable(ast.flavor)
   }
@@ -154,6 +158,8 @@ function foldUnaryOp<Info, Down, Up>(ast: RUnaryOp<Info>, down: Down, folds: Sta
       return folds.unaryOp.foldLogicalOp(ast as RLogicalUnaryOp<Info>, foldAstStateful(ast.operand, down, folds), down)
     case 'arithmetic':
       return folds.unaryOp.foldArithmeticOp(ast as RArithmeticUnaryOp<Info>, foldAstStateful(ast.operand, down, folds), down)
+    case 'model formula':
+      return folds.unaryOp.foldModelFormula(ast as RModelFormulaUnaryOp<Info>, foldAstStateful(ast.operand, down, folds), down)
     default:
       assertUnreachable(ast.flavor)
   }

@@ -16,3 +16,8 @@ export interface RLogicalUnaryOp<Info = NoInfo> extends RUnaryOp<Info> {
 export interface RArithmeticUnaryOp<Info = NoInfo> extends RUnaryOp<Info> {
   flavor: 'arithmetic'
 }
+
+export interface RModelFormulaUnaryOp<Info = NoInfo> extends RUnaryOp<Info> {
+  flavor: 'model formula'
+}
+

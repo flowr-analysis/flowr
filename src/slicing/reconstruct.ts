@@ -285,11 +285,13 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Selection, C
     foldLogicalOp:    reconstructBinaryOp,
     foldArithmeticOp: reconstructBinaryOp,
     foldComparisonOp: reconstructBinaryOp,
-    foldAssignment:   reconstructBinaryOp
+    foldAssignment:   reconstructBinaryOp,
+    foldModelFormula: reconstructBinaryOp
   },
   unaryOp: {
     foldArithmeticOp: foldToConst,
     foldLogicalOp:    foldToConst,
+    foldModelFormula: foldToConst
   },
   other: {
     foldComment: reconstructAsLeaf

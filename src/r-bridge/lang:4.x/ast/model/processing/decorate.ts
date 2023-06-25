@@ -115,11 +115,13 @@ export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: Id
       foldLogicalOp:    foldBinaryOp,
       foldArithmeticOp: foldBinaryOp,
       foldComparisonOp: foldBinaryOp,
-      foldAssignment:   foldBinaryOp
+      foldAssignment:   foldBinaryOp,
+      foldModelFormula: foldBinaryOp
     },
     unaryOp: {
       foldArithmeticOp: unaryOp,
       foldLogicalOp:    unaryOp,
+      foldModelFormula: unaryOp
     },
     other: {
       foldComment: foldLeaf

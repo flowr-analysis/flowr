@@ -10,7 +10,7 @@ import {
   RUnaryOp,
   ArithmeticOperatorsRAst,
   LogicalOperatorsRAst,
-  UnaryOperatorFlavor
+  UnaryOperatorFlavor, ModelFormulaOperatorsRAst
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
@@ -31,6 +31,8 @@ export function tryParseUnaryOperation(data: ParserData, op: NamedXmlBasedJson, 
     flavor = 'arithmetic'
   } else if (LogicalOperatorsRAst.includes(op.name)) {
     flavor = 'logical'
+  } else if (ModelFormulaOperatorsRAst.includes(op.name)) {
+    flavor = 'model formula'
   } else {
     return executeUnknownHook(data.hooks.operators.onUnary.unknown, data, { op, operand })
   }

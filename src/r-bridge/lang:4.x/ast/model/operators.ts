@@ -93,6 +93,12 @@ export const LogicalOperators: readonly string[] = Object.keys(
 export const LogicalOperatorsRAst: readonly string[] = LogicalOperators.map(
   (op) => OperatorDatabase[op].stringUsedInRAst
 )
+export const ModelFormulaOperators: readonly string[] = Object.keys(
+  OperatorDatabase
+).filter((op) => OperatorDatabase[op].flavor === "model formula")
+export const ModelFormulaOperatorsRAst: readonly string[] =
+  ModelFormulaOperators.map((op) => OperatorDatabase[op].stringUsedInRAst)
+
 export const Assignments: readonly string[] = Object.keys(
   OperatorDatabase
 ).filter((op) => OperatorDatabase[op].flavor === "assignment")

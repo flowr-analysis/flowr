@@ -88,7 +88,7 @@ function removeSourceInformation<T extends Record<string, any>>(obj: T): T {
   })) as T
 }
 
-function assertAstEqualIngoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, message?: string): void {
+function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, message?: string): void {
   const astCopy = removeSourceInformation(ast)
   const expectedCopy = removeSourceInformation(expected)
   assert.deepStrictEqual(astCopy, expectedCopy, message)
@@ -107,7 +107,7 @@ export const retrieveAst = async(shell: RShell, input: string, hooks?: DeepParti
 export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList): Mocha.Test => {
   return it(name, async function() {
     const ast = await retrieveAst(shell, input)
-    assertAstEqualIngoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
+    assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
   })
 }
 
@@ -117,7 +117,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
   it(name, async function() {
     const baseAst = await retrieveAst(shell, input)
     const ast = decorator(baseAst)
-    assertAstEqualIngoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
+    assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
   })
 }
 

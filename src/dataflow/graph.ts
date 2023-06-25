@@ -368,7 +368,7 @@ export class DataflowGraph {
   }
 
 
-  /** merges the other graph into *this* one */
+  /** Merges the other graph into *this* one (in-place). The return value is only for convenience. */
   public mergeWith(...otherGraphs: (DataflowGraph | undefined)[]): this {
     // TODO: join edges
     // TODO: maybe switch to sets?

@@ -1,6 +1,6 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { initializeCleanEnvironments, overwriteEnvironments, resolveByName } from '../../../environments'
+import { overwriteEnvironments, resolveByName } from '../../../environments'
 import { NodeId, ParentInformation, RFunctionCall } from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
 import {
@@ -13,7 +13,7 @@ import {
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const functionName = processDataflowFor(functionCall.functionName, data)
   const args = functionCall.arguments.map(arg => processDataflowFor(arg, data))
-  let finalGraph = new DataflowGraph()
+  const finalGraph = new DataflowGraph()
 
   // we update all the usage nodes within the dataflow graph of the function name to
   // mark them as function calls, and append their argument linkages
@@ -53,16 +53,16 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 
   for(const arg of args) {
     finalEnv = overwriteEnvironments(finalEnv, arg.environments)
-    finalGraph = finalGraph.mergeWith(arg.graph)
-    const argumentRefs = [...arg.out]
-    guard(argumentRefs.length <= 1, `TODO: deal with multiple ingoing nodes in case of function calls etc for ${JSON.stringify(argumentRefs)}`)
+    finalGraph.mergeWith(arg.graph)
+    const argumentOutRefs = arg.out
 
-    callArgs.push(argumentRefs[0])
+    // if there are multiple, we still use the first one as it is the highest-one and therefore the most top-level arg reference
+    // multiple out references can occur if the argument itself is a function call
+    callArgs.push(argumentOutRefs[0])
 
     // add an argument edge to the final graph
-    // TODO: deal with redefinitions within arguments
-    for(const ingoing of argumentRefs) {
-      finalGraph.addEdge(functionRootId, ingoing, 'argument', 'always')
+    for(const outgoing of argumentOutRefs) {
+      finalGraph.addEdge(functionRootId, outgoing, 'argument', 'always')
     }
     // TODO: bind the argument id to the corresponding argument within the function
   }

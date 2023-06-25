@@ -109,7 +109,6 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 
 
 function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowGraph, idMap: DataflowMap<OtherInfo>, environment: REnvironmentInformation): void {
-  console.log('graph', graphToMermaidUrl(graph, idMap))
   for(const exitPoint of exitPoints) {
     const exitPointNode = graph.get(exitPoint)
     // if there already is an exit point it is either a variable or already linked

@@ -45,9 +45,8 @@ export function linkFunctionCallExitPoints(graph: DataflowGraph): void {
     for(const defs of functionDefs.values()) {
       guard(defs.tag === 'function-definition', () => `expected function definition, but got ${defs.tag}`)
       const exitPoints = defs.exitPoints
-      console.log('AT ID', id, defs)
       for(const exitPoint of exitPoints) {
-        graph.addEdge(id, exitPoint, 'read', 'always')
+        graph.addEdge(id, exitPoint, 'returns', 'always')
       }
     }
   }

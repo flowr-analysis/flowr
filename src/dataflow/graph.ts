@@ -24,6 +24,7 @@ export type DataflowGraphEdgeType =
     | /** formal used as argument to a function call */ 'argument'
     | /** the edge determines that the source calls the target */ 'calls'
     | /** the source and edge relate to each other bidirectionally */ 'relates'
+    | /** the source returns target on call */ 'returns'
 
 // context -- is it always read/defined-by // TODO: loops
 export type DataflowGraphEdgeAttribute = 'always' | 'maybe'

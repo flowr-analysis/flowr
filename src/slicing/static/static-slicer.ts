@@ -37,7 +37,7 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
     const currentNode = dataflowIdMap.get(current)
     guard(currentNode !== undefined, () => `id: ${current} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
 
-    for (const edge of currentInfo.edges.filter(e => e.type === 'read' || e.type === 'defined-by' || e.type === 'argument'  || e.type === 'calls')) {
+    for (const edge of currentInfo.edges.filter(e => e.type === 'read' || e.type === 'defined-by' || e.type === 'argument'  || e.type === 'calls' || e.type === 'relates' || e.type === 'returns')) {
       if (!visited.has(edge.target)) {
         visitQueue.push(edge.target)
       }

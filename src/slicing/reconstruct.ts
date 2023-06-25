@@ -203,7 +203,13 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 
 function reconstructParameters(parameters: RParameter<ParentInformation>[]): string[] {
   // const baseParameters = parameters.flatMap(p => plain(getLexeme(p)))
-  return parameters.map(p => getLexeme(p))
+  return parameters.map(p => {
+    if(p.defaultValue !== undefined) {
+      return `${getLexeme(p.name)}=${getLexeme(p.defaultValue)}`
+    } else {
+      return getLexeme(p)
+    }
+  })
 }
 
 function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, _parameters: Code[], body: Code, selection: Selection): Code {

@@ -4,10 +4,10 @@ import { getTokenType, getWithTokenType, retrieveMetaStructure } from '../meta'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseLog } from '../../parser'
 import { tryParseSymbol } from '../values'
-import { parseBasedOnType } from '../structure'
 import { ParserData } from '../../data'
 import { Type, RNode, RFunctionCall } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
+import { tryToParseArgument } from './argument'
 
 /**
  * Tries to parse the given data as a function call.
@@ -48,9 +48,9 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
     // guard(x.length === 1, `expected argument to be a single element wrapped in an expression, yet received ${JSON.stringify(x)}`)
     // TODO: improve expression unwrap
     parseLog.trace(`trying to parse argument ${JSON.stringify(x)}`)
-    const gotArgument = parseBasedOnType(data, x)
-    guard(gotArgument.length === 1, () => `expected one argument result in argumentlist, yet received ${gotArgument.length}  ${JSON.stringify(gotArgument)}`)
-    return gotArgument[0]
+    const gotArgument = tryToParseArgument(data, x)
+    guard(gotArgument !== undefined, () => `expected one argument result in argumentlist, yet received ${JSON.stringify(gotArgument)}`)
+    return gotArgument
   }).filter(isNotUndefined)
 
   const result: RFunctionCall = {

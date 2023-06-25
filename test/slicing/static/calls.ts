@@ -49,6 +49,11 @@ a(5)`)
       }
     })
   })
+  describe('Functions with named arguments', () => {
+    const code = `a <- function(x=4) { x }
+a(x = 3)`
+    assertSliced('Must include function definition', shell, code, ['2@a'], code)
+  })
   describe('Functions with nested definitions', () => {
     describe('Simple Function pass with return', () => {
       // TODO: limitation, does not work with <<- or anything which modifies the static resolutions at the moment

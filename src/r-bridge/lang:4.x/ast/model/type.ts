@@ -31,8 +31,12 @@ export const enum Type {
   BraceLeft = "{",
   BraceRight = "}",
   // TODO: deal with them as access operators, similarly with '[[' etc.
+  DoubleBracketLeft = "LBB",
   BracketLeft = "[",
   BracketRight = "]",
+  Dollar = "$",
+  At = "@",
+  Slot = "SLOT",
   Semicolon = ";",
   For = "FOR",
   ForCondition = "forcond",
@@ -65,6 +69,7 @@ export function isSymbol(type: string): boolean {
     type === Type.Symbol ||
     type === Type.SymbolPackage ||
     type === Type.FunctionCall ||
-    type === Type.Null
+    type === Type.Null ||
+    type === Type.Slot
   )
 }

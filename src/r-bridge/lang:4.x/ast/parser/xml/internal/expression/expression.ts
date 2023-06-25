@@ -6,6 +6,7 @@ import { parseBasedOnType } from '../structure'
 import { tryToParseFunctionCall, tryToParseFunctionDefinition } from '../functions'
 import { Type, RNode } from '../../../../model'
 import { executeHook } from '../../hooks'
+import { tryParseAccess } from '../access'
 
 /**
  * Returns an ExprList if there are multiple children, otherwise returns the single child directly with no expr wrapper
@@ -31,6 +32,11 @@ export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
   const maybeFunctionCall = tryToParseFunctionCall(childData, typed)
   if (maybeFunctionCall !== undefined) {
     return maybeFunctionCall
+  }
+
+  const maybeAccess = tryParseAccess(childData, typed)
+  if (maybeAccess !== undefined) {
+    return maybeAccess
   }
 
   const maybeFunctionDefinition = tryToParseFunctionDefinition(childData, typed)

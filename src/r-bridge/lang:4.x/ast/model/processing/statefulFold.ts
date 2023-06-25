@@ -104,7 +104,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
     case Type.UnaryOp:
       return foldUnaryOp(ast, down, folds)
     case Type.Access:
-      return folds.foldAccess(ast, foldAstStateful(ast.name, down, folds), ast.op === '[' || ast.op === '[[' ? ast.access.map(access => foldAstStateful(access, down, folds)) : ast.access as string, down)
+      return folds.foldAccess(ast, foldAstStateful(ast.accessed, down, folds), ast.operand === '[' || ast.operand === '[[' ? ast.access.map(access => foldAstStateful(access, down, folds)) : ast.access as string, down)
     case Type.For:
       return folds.loop.foldFor(ast, foldAstStateful(ast.variable, down, folds), foldAstStateful(ast.vector, down, folds), foldAstStateful(ast.body, down, folds), down)
     case Type.While:

@@ -14,7 +14,6 @@ import {
 import { tryParseIfThenElse, tryParseIfThen } from '../control'
 import { Type, RNode } from '../../../../model'
 import { log } from '../../../../../../../util/log'
-import { tryToParseParameter } from '../functions/parameter'
 
 export function parseBasedOnType(
   data: ParserData,

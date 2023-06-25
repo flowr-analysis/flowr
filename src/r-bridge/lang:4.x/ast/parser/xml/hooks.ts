@@ -17,12 +17,12 @@ import {
   BinaryOperatorFlavor,
   RParameter,
   RFunctionDefinition,
-  UnaryOperatorFlavor, RBreak, RNext
+  RArgument,
+  UnaryOperatorFlavor, RBreak, RNext, RAccess
 } from '../../model'
 import { RNa } from '../../../values'
 import { ParserData } from './data'
 import { DeepReadonly, DeepRequired } from 'ts-essentials'
-import { RArgument } from '../../model/nodes/RArgument'
 
 /** Denotes that if you return `undefined`, the parser will automatically take the original arguments (unchanged) */
 type AutoIfOmit<T> = T | undefined
@@ -68,6 +68,15 @@ export interface XmlParserHooks {
       before(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
       after(data: ParserData, result: RNode | undefined): AutoIfOmit<RNode | undefined>
     }
+  },
+  /** {@link tryParseAccess} */
+  onAccess: {
+    /**
+     * triggered if {@link tryParseAccess} could not determine the access
+     */
+    unknown(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<RAccess | undefined>
+    before(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
+    after(data: ParserData, result: RAccess): AutoIfOmit<RAccess>
   },
   other: {
     /** {@link parseComment} */
@@ -262,6 +271,11 @@ export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = 
       before:  doNothing,
       after:   doNothing
     }
+  },
+  onAccess: {
+    unknown: doNothing,
+    before:  doNothing,
+    after:   doNothing
   },
   other: {
     onComment: {

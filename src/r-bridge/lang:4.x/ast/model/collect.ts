@@ -51,8 +51,8 @@ function* collectSingleNode<OtherInfo>(node: RNode<OtherInfo & ParentInformation
       yield* collectAllIds(node.value)
       break
     case Type.Access:
-      yield* collectAllIds(node.name)
-      if(node.op === '[' || node.op === '[[') {
+      yield* collectAllIds(node.accessed)
+      if(node.operand === '[' || node.operand === '[[') {
         yield* collectAllIds(node.access)
       }
       break

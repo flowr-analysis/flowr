@@ -30,13 +30,13 @@ function stylesForDefinitionKindsInEnvironment(_subflow: DataflowFunctionFlowInf
   // TODO: highlight seems to be often wrong
 }
 
-function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: DataflowFunctionFlowInformation | undefined, dataflowIdMap: DataflowMap<NoInfo> | undefined, lines: string[], idPrefix = ''): void {
+function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: DataflowFunctionFlowInformation | undefined, dataflowIdMap: DataflowMap<NoInfo> | undefined, lines: string[], idPrefix = '', mark?: Set<NodeId>): void {
   if(subflow === undefined) {
     return
   }
   const subflowId = `${idPrefix}flow-${nodeId}`
   lines.push(`\nsubgraph "${subflowId}" [function ${nodeId}]`)
-  lines.push(graphToMermaid(subflow.graph, dataflowIdMap, null, idPrefix))
+  lines.push(graphToMermaid(subflow.graph, dataflowIdMap, null, idPrefix, mark))
   for(const [color, pool] of [['purple', subflow.in], ['green', subflow.out], ['orange', subflow.activeNodes]]) {
     for (const out of pool as IdentifierReference[]) {
       // in/out/active
@@ -110,7 +110,7 @@ function nodeToMermaid(info: DataflowGraphNodeInfo, lines: string[], id: NodeId,
       hasBuiltIn = true
     }
   }
-  subflowToMermaid(id, info.exitPoints ?? [], info.subflow, dataflowIdMap, lines, idPrefix)
+  subflowToMermaid(id, info.exitPoints ?? [], info.subflow, dataflowIdMap, lines, idPrefix, mark)
   return hasBuiltIn
 }
 

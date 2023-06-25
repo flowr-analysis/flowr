@@ -126,6 +126,46 @@ a(i)`, new DataflowGraph()
     )
   })
 
+  describe('Multiple out refs in arguments', () => {
+    assertDataflow(`Calling 'seq'`, shell, `seq(1, length(pkgnames), by = stepsize)`,
+      new DataflowGraph()
+        .addNode({
+          tag:         'function-call',
+          id:          '11',
+          name:        'seq',
+          environment: initializeCleanEnvironments(),
+          args:        [
+            { nodeId: '2', name: `${UnnamedArgumentPrefix}2`, scope: LocalScope, used: 'always' },
+            { nodeId: '7', name: `${UnnamedArgumentPrefix}7`, scope: LocalScope, used: 'always' },
+            { nodeId: '10', name: `by-10`, scope: LocalScope, used: 'always' },
+          ]
+        })
+        .addNode({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2`})
+        .addNode({ tag: 'use', id: '7', name: `${UnnamedArgumentPrefix}7`})
+        .addNode({ tag: 'use', id: '10', name: `by-10`})
+        .addEdge('11', '2', 'argument', 'always')
+        .addEdge('11', '7', 'argument', 'always')
+        .addEdge('11', '10', 'argument', 'always')
+        .addNode({ tag: 'use', id: '9', name: 'stepsize' })
+        .addEdge('10', '9', 'read', 'always')
+        .addNode({
+          tag:         'function-call',
+          id:          '6',
+          name:        'length',
+          environment: initializeCleanEnvironments(),
+          args:        [
+            { nodeId: '5', name: `${UnnamedArgumentPrefix}5`, scope: LocalScope, used: 'always' }
+          ]
+        })
+        .addEdge('7', '6', 'read', 'always')
+        .addNode({ tag: 'use', id: '5', name: `${UnnamedArgumentPrefix}5`})
+        .addEdge('6', '5', 'argument', 'always')
+        .addNode({ tag: 'use', id: '4', name: 'pkgnames' })
+        .addEdge('5', '4', 'read', 'always')
+
+    )
+  })
+
   describe('Late function bindings', () => {
     const innerEnv = pushLocalEnvironment(initializeCleanEnvironments())
     const defWithA = define(

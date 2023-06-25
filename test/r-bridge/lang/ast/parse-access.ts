@@ -11,6 +11,7 @@ import { Type } from '../../../../src/r-bridge'
  * b(a)
  */
 // TODO: quote and deparse should break references?
+// TODO: test something like function(a=3, b=a) { b }
 describe("Parse value access", withShell(shell => {
   describe('Single bracket', () => {
     assertAst("Empty", shell, "a[]", exprList({

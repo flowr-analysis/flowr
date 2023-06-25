@@ -4,7 +4,7 @@ import {
   initializeCleanEnvironments,
   overwriteEnvironments,
   popLocalEnvironment,
-  pushLocalEnvironment,
+  pushLocalEnvironment, REnvironmentInformation,
   resolveByName
 } from '../../../environments'
 import { linkInputs } from '../../linker'
@@ -78,7 +78,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 
   const exitPoints = retrieveExitPointsOfFunctionDefinition(functionDefinition)
   // if exit points are extra, we must link them to all dataflow nodes they relate to.
-  linkExitPointsInGraph(exitPoints, subgraph, data.completeAst.idMap)
+  linkExitPointsInGraph(exitPoints, subgraph, data.completeAst.idMap, data.environments)
 
 
   // TODO: exit points?
@@ -108,7 +108,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 }
 
 
-function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowGraph, idMap: DataflowMap<OtherInfo>): void {
+function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowGraph, idMap: DataflowMap<OtherInfo>, environment: REnvironmentInformation): void {
   console.log('graph', graphToMermaidUrl(graph, idMap))
   for(const exitPoint of exitPoints) {
     const exitPointNode = graph.get(exitPoint)
@@ -119,7 +119,7 @@ function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowG
     const nodeInAst = idMap.get(exitPoint)
 
     guard(nodeInAst !== undefined, `Could not find exit point node with id ${exitPoint} in ast`)
-    graph.addNode({ tag: 'exit-point', id: exitPoint, name: `${nodeInAst.lexeme ?? '??'}`, when: 'always' })
+    graph.addNode({ tag: 'exit-point', id: exitPoint, name: `${nodeInAst.lexeme ?? '??'}`, when: 'always', environment })
 
     const allIds = [...collectAllIds(nodeInAst)].filter(id => graph.get(id) !== undefined)
     for(const relatedId of allIds) {

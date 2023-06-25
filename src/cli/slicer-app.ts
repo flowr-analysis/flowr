@@ -1,8 +1,8 @@
 import {
   decorateAst, DecoratedAst,
   getStoredTokenMap, NodeId,
-  NoInfo, ParentInformation,
-  retrieveAstFromRCode,
+  NoInfo, ParentInformation, parse,
+  retrieveXmlFromRCode,
   RParseRequestFromFile,
   RShell
 } from '../r-bridge'
@@ -80,23 +80,26 @@ function sliceAllCriteriaToIds(slices: SlicingCriterion[], decorated: DecoratedA
 }
 
 interface SlicingMeasurements {
-  astRetrieval:     bigint,
-  astDecoration:    bigint,
-  sliceDecode:      bigint,
-  sliceMapping:     bigint,
-  dataflowCreation: bigint,
-  sliceCreation:    bigint,
-  reconstruction:   bigint,
-  sliceWrite:       bigint
+  astXmlRetrieval:     bigint,
+  astXmlNormalization: bigint,
+  astDecoration:       bigint,
+  sliceDecode:         bigint,
+  sliceMapping:        bigint,
+  dataflowCreation:    bigint,
+  sliceCreation:       bigint,
+  reconstruction:      bigint,
+  sliceWrite:          bigint
 }
 
 async function writeSliceForSingleFile(request: RParseRequestFromFile, tokens: Record<string, string>, output: string): Promise<SlicingMeasurements> {
-  const ast = await retrieveAstFromRCode({
+  const astXml = await retrieveXmlFromRCode({
     ...request,
     attachSourceInformation: true,
     ensurePackageInstalled:  true
-  }, tokens, shell)
-  const astRetrieval = process.hrtime.bigint()
+  }, shell)
+  const astXmlRetrieval = process.hrtime.bigint()
+  const ast = await parse(astXml, tokens)
+  const astXmlNormalization = process.hrtime.bigint()
 
   guard(options.criterion !== undefined, `criterion must be given`)
 
@@ -123,7 +126,7 @@ async function writeSliceForSingleFile(request: RParseRequestFromFile, tokens: R
   const sliceWrite = process.hrtime.bigint()
 
   return {
-    astRetrieval, astDecoration, sliceDecode, sliceMapping, dataflowCreation, sliceCreation, reconstruction, sliceWrite
+    astXmlRetrieval, astXmlNormalization, astDecoration, sliceDecode, sliceMapping, dataflowCreation, sliceCreation, reconstruction, sliceWrite
   }
 }
 
@@ -151,9 +154,10 @@ Retrieval of token map: ${formatNanoseconds(tokenRetrieval - startTimeInNs)}
 Input preparation:      ${formatNanoseconds(inputPrepare - tokenRetrieval)}`
   if(slicingData !== undefined) {
     base += `
-Slicing:
-  AST retrieval:        ${formatNanoseconds(slicingData.astRetrieval - inputPrepare)}
-  AST decoration:       ${formatNanoseconds(slicingData.astDecoration - slicingData.astRetrieval)}
+Slicing:                ${formatNanoseconds(slicingData.sliceWrite - inputPrepare)}
+  AST retrieval:        ${formatNanoseconds(slicingData.astXmlRetrieval - inputPrepare)}
+  AST normalization:    ${formatNanoseconds(slicingData.astXmlNormalization - slicingData.astXmlRetrieval)}
+  AST decoration:       ${formatNanoseconds(slicingData.astDecoration - slicingData.astXmlNormalization)}
   Slice decoding:       ${formatNanoseconds(slicingData.sliceDecode - slicingData.astDecoration)}
   Slice mapping:        ${formatNanoseconds(slicingData.sliceMapping - slicingData.sliceDecode)}
   Dataflow creation:    ${formatNanoseconds(slicingData.dataflowCreation - slicingData.sliceMapping)}

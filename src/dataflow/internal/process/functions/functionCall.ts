@@ -1,9 +1,12 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { overwriteEnvironments } from '../../../environments'
+import { overwriteEnvironments, resolveByName } from '../../../environments'
 import { NodeId, ParentInformation, RFunctionCall } from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
-import { dataflowLogger, FunctionArgument } from '../../../index'
+import {
+  dataflowLogger,
+  FunctionArgument
+} from '../../../index'
 // TODO: support partial matches: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Argument-matching
 
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
@@ -41,6 +44,14 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   })
   finalGraph.addEdge(functionRootId, functionNameId, 'read', 'always')
 
+  const resolved = resolveByName(functionCallName, data.activeScope, data.environments)
+  if(resolved !== undefined) {
+    for(const fn of resolved) {
+      dataflowLogger.trace(`recording call from ${functionCallName} (${functionRootId}) to ${JSON.stringify(fn)}`)
+      finalGraph.addEdge(functionRootId, fn.nodeId, 'calls', 'always')
+    }
+  }
+
 
   for(const arg of args) {
     finalEnv = overwriteEnvironments(finalEnv, arg.environments)
@@ -71,3 +82,4 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     scope:        data.activeScope
   }
 }
+

@@ -73,9 +73,9 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation>, lhs: Code, rhs: Co
   }
 
   return [  // inline pretty print
-    ...lhs.slice(0, lhs.length - 2),
+    ...lhs.slice(0, lhs.length - 1),
     { line: `${lhs[lhs.length - 1].line} ${n.op} ${rhs[0].line}`, indent: 0 },
-    ...indentBy(rhs.slice(1, rhs.length - 1), 1)
+    ...indentBy(rhs.slice(1, rhs.length), 1)
   ]
 }
 
@@ -326,6 +326,7 @@ function prettyPrintCodeToString(code: Code, lf ='\n'): string {
 export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Selection): string {
   reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
   const result = foldAstStateful(ast.decoratedAst, selection, reconstructAstFolds)
+  reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
   if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
     // remove outer block
     return prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1))

@@ -42,7 +42,7 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
     }
 
     if(currentInfo.functionCall !== false) {
-      slicerLogger.trace(`tracing function call`)
+      slicerLogger.trace(`tracing function call for ${current} (${currentInfo.name})`)
       const args = currentInfo.functionCall
       sliceFunctionCall(current, currentInfo, dataflowGraph, dataflowIdMap, args, visited, visitQueue)
     }
@@ -86,7 +86,7 @@ function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeId[], da
     }
     // trace all joined reads
     // TODO: deal with redefinitions?
-    potential.push(...currentInfo.edges.filter(e => e.type === 'read' || e.type === 'defined-by').map(e => e.target))
+    potential.push(...currentInfo.edges.filter(e => e.type === 'read' || e.type === 'defined-by' || e.type === 'calls').map(e => e.target))
   }
   return result
 }

@@ -22,6 +22,7 @@ export type DataflowGraphEdgeType =
     | /** the edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
     | /** similar to `same-read-read` but for def-def constructs without a read in-between */ 'same-def-def'
     | /** formal used as argument to a function call */ 'argument'
+    | /** the edge determines that the source calls the target */ 'calls'
 
 // context -- is it always read/defined-by // TODO: loops
 export type DataflowGraphEdgeAttribute = 'always' | 'maybe'
@@ -229,21 +230,50 @@ export class DataflowGraph {
   private graph = new Map<NodeId, DataflowGraphNodeInfo>()
 
   /**
-   * @returns the ids of all nodes in the graph, together with their node info
+   * @param includeDefinedFunctions - if true this will iterate over function definitions as well and not just the toplevel
+   * @returns the ids of all toplevel nodes in the graph, together with their node info
    */
-  public nodes(): IterableIterator<[NodeId, DataflowGraphNodeInfo]> {
-    return this.graph.entries()
+  public* nodes(includeDefinedFunctions = false): IterableIterator<[NodeId, DataflowGraphNodeInfo]> {
+    const nodes = [...this.graph.entries()]
+    for(const [id, node] of nodes) {
+      yield [id, node]
+      if(includeDefinedFunctions && node.subflow !== undefined) {
+        nodes.push(...node.subflow.graph.entries())
+      }
+    }
   }
 
-  public hasNode(id: NodeId): boolean {
-    return this.graph.has(id)
+  public hasNode(id: NodeId, includeDefinedFunctions = false): boolean {
+    if(!includeDefinedFunctions) {
+      return this.graph.has(id)
+    } else {
+      for(const [nodeId, _] of this.nodes(true)) {
+        if(nodeId === id) {
+          return true
+        }
+      }
+    }
+    return false
   }
 
   /**
+   * Get the {@link DataflowGraphNodeInfo} attached to a node with the given id in the graph
+   *
+   * @param id                      - the id of the node to get
+   * @param includeDefinedFunctions - if true this will search function definitions as well and not just the toplevel
    * @returns the node info for the given id (if it exists)
    */
-  public get(id: NodeId): DataflowGraphNodeInfo | undefined {
-    return this.graph.get(id)
+  public get(id: NodeId, includeDefinedFunctions = false): DataflowGraphNodeInfo | undefined {
+    if(!includeDefinedFunctions) {
+      return this.graph.get(id)
+    } else {
+      for(const [nodeId, info] of this.nodes(true)) {
+        if(nodeId === id) {
+          return info
+        }
+      }
+    }
+    return undefined
   }
 
   public entries(): IterableIterator<[NodeId, DataflowGraphNodeInfo]> {

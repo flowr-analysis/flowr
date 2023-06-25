@@ -1,7 +1,7 @@
 import {
   DecoratedAst,
   NodeId,
-  ParentInformation, RArgument, RBinaryOp,
+  ParentInformation, RAccess, RArgument, RBinaryOp,
   RExpressionList,
   RForLoop, RFunctionCall, RFunctionDefinition, RIfThenElse, RNode,
   RNodeWithParent, RParameter,
@@ -217,6 +217,19 @@ function reconstructParameters(parameters: RParameter<ParentInformation>[]): str
   })
 }
 
+
+function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: string | (Code | null)[], configuration: ReconstructionConfiguration): Code {
+  if (isSelected(configuration, node)) {
+    return plain(getLexeme(node))
+  }
+  // TODO: improve
+  if (accessed.length === 0) {
+    return []
+  }
+
+  return plain(getLexeme(node))
+}
+
 function reconstructArgument(argument: RArgument<ParentInformation>, name: Code | undefined, value: Code, configuration: ReconstructionConfiguration): Code {
   if(isSelected(configuration, argument)) {
     return plain(getLexeme(argument))
@@ -306,7 +319,7 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
   foldString:  reconstructAsLeaf,
   foldLogical: reconstructAsLeaf,
   foldSymbol:  reconstructAsLeaf,
-  foldAccess:  foldToConst, /* TODO ?! */
+  foldAccess:  reconstructFoldAccess,
   binaryOp:    {
     foldLogicalOp:    reconstructBinaryOp,
     foldArithmeticOp: reconstructBinaryOp,

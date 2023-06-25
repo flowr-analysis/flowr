@@ -47,7 +47,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
   foldString:  (str: RString<Info>, down: Down) => Up;
   foldLogical: (logical: RLogical<Info>, down: Down) => Up;
   foldSymbol:  (symbol: RSymbol<Info>, down: Down) => Up;
-  foldAccess:  (node: RAccess<Info>, name: Up, access: string | Up[], down: Down) => Up;
+  foldAccess:  (node: RAccess<Info>, name: Up, access: string | (null | Up)[], down: Down) => Up;
   binaryOp: {
     foldLogicalOp:    (op: RLogicalBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
     foldArithmeticOp: (op: RArithmeticBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
@@ -104,7 +104,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
     case Type.UnaryOp:
       return foldUnaryOp(ast, down, folds)
     case Type.Access:
-      return folds.foldAccess(ast, foldAstStateful(ast.accessed, down, folds), ast.operand === '[' || ast.operand === '[[' ? ast.access.map(access => foldAstStateful(access, down, folds)) : ast.access as string, down)
+      return folds.foldAccess(ast, foldAstStateful(ast.accessed, down, folds), ast.operand === '[' || ast.operand === '[[' ? ast.access.map(access => access === null ? null : foldAstStateful(access, down, folds)) : ast.access as string, down)
     case Type.For:
       return folds.loop.foldFor(ast, foldAstStateful(ast.variable, down, folds), foldAstStateful(ast.vector, down, folds), foldAstStateful(ast.body, down, folds), down)
     case Type.While:

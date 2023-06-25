@@ -75,9 +75,12 @@ function* collectSingleNode<OtherInfo>(node: RNode<OtherInfo & ParentInformation
  *
  * @param nodes - The root id nodes to start collecting from
  */
-export function* collectAllIds<OtherInfo>(nodes: RNode<OtherInfo & ParentInformation> | RNode<OtherInfo & ParentInformation>[] | undefined): IterableIterator<NodeId> {
+export function* collectAllIds<OtherInfo>(nodes: RNode<OtherInfo & ParentInformation> | (RNode<OtherInfo & ParentInformation> | null | undefined)[] | undefined): IterableIterator<NodeId> {
   if(Array.isArray(nodes)) {
     for (const node of nodes) {
+      if(node === null || node === undefined) {
+        continue
+      }
       yield* collectSingleNode(node)
     }
   } else if(nodes !== undefined) {

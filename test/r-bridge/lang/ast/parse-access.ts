@@ -51,6 +51,62 @@ describe("Parse value access", withShell(shell => {
         info:     {}
       }]
     }))
+    assertAst("Multiple bracket access", shell, "a[3,2]", exprList({
+      type:     Type.Access,
+      location: rangeFrom(1, 2, 1, 2),
+      lexeme:   '[',
+      operand:  '[',
+      info:     {},
+      accessed: {
+        type:      Type.Symbol,
+        location:  rangeFrom(1, 1, 1, 1),
+        namespace: undefined,
+        lexeme:    "a",
+        content:   "a",
+        info:      {}
+      },
+      access: [{
+        type:     Type.Number,
+        location: rangeFrom(1, 3, 1, 3),
+        lexeme:   "3",
+        content:  numVal(3),
+        info:     {}
+      },{
+        type:     Type.Number,
+        location: rangeFrom(1, 5, 1, 5),
+        lexeme:   "2",
+        content:  numVal(2),
+        info:     {}
+      }]
+    }))
+    assertAst("Multiple bracket access with empty", shell, "a[,2,4]", exprList({
+      type:     Type.Access,
+      location: rangeFrom(1, 2, 1, 2),
+      lexeme:   '[',
+      operand:  '[',
+      info:     {},
+      accessed: {
+        type:      Type.Symbol,
+        location:  rangeFrom(1, 1, 1, 1),
+        namespace: undefined,
+        lexeme:    "a",
+        content:   "a",
+        info:      {}
+      },
+      access: [null, {
+        type:     Type.Number,
+        location: rangeFrom(1, 4, 1, 4),
+        lexeme:   "2",
+        content:  numVal(2),
+        info:     {}
+      },{
+        type:     Type.Number,
+        location: rangeFrom(1, 6, 1, 6),
+        lexeme:   "4",
+        content:  numVal(4),
+        info:     {}
+      }]
+    }))
   })
   describe('Double bracket', () => {
     assertAst("Empty Double bracket access", shell, "b[[]]", exprList({
@@ -90,6 +146,56 @@ describe("Parse value access", withShell(shell => {
         content:  numVal(5),
         info:     {}
       }]
+    }))
+    assertAst("Multiple double bracket access", shell, "b[[5,3]]", exprList({
+      type:     Type.Access,
+      location: rangeFrom(1, 2, 1, 3),
+      lexeme:   '[[',
+      operand:  '[[',
+      info:     {},
+      accessed: {
+        type:      Type.Symbol,
+        location:  rangeFrom(1, 1, 1, 1),
+        namespace: undefined,
+        lexeme:    "b",
+        content:   "b",
+        info:      {}
+      },
+      access: [{
+        type:     Type.Number,
+        location: rangeFrom(1, 4, 1, 4),
+        lexeme:   "5",
+        content:  numVal(5),
+        info:     {}
+      }, {
+        type:     Type.Number,
+        location: rangeFrom(1, 6, 1, 6),
+        lexeme:   "3",
+        content:  numVal(3),
+        info:     {}
+      }]
+    }))
+    assertAst("Multiple double bracket access with empty", shell, "b[[5,,]]", exprList({
+      type:     Type.Access,
+      location: rangeFrom(1, 2, 1, 3),
+      lexeme:   '[[',
+      operand:  '[[',
+      info:     {},
+      accessed: {
+        type:      Type.Symbol,
+        location:  rangeFrom(1, 1, 1, 1),
+        namespace: undefined,
+        lexeme:    "b",
+        content:   "b",
+        info:      {}
+      },
+      access: [{
+        type:     Type.Number,
+        location: rangeFrom(1, 4, 1, 4),
+        lexeme:   "5",
+        content:  numVal(5),
+        info:     {}
+      },null,null]
     }))
   })
   describe('Dollar and Slot', () => {

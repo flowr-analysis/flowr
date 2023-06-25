@@ -19,7 +19,8 @@ export interface RNamedAccess<Info = NoInfo> extends RAccessBase<Info> {
 /** access can be a number, a variable or an expression that resolves to one, a filter etc. */
 export interface RIndexAccess<Info = NoInfo> extends RAccessBase<Info> {
   operand: '[' | '[[';
-  access:  RNode<Info>[]
+  /** is null if the access is empty, e.g. `a[,3]` */
+  access:  (RNode<Info> | null)[]
 }
 
 export type RAccess<Info = NoInfo> = RNamedAccess<Info> | RIndexAccess<Info>

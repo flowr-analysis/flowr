@@ -69,26 +69,29 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
 
   const splitAccessOnComma = splitArrayOn(remaining, x => x.name === Type.Comma)
 
-  const parsedAccess: RNode[] = splitAccessOnComma.map(x => {
+  const parsedAccess: (RNode | null)[] = splitAccessOnComma.map(x => {
+    if(x.length === 0) {
+      parseLog.trace(`record empty access`)
+      return null
+    }
     parseLog.trace(`trying to parse access ${JSON.stringify(x)}`)
     const gotAccess = parseBasedOnType(data, x)
     guard(gotAccess.length === 1, () => `expected one access result in access, yet received ${JSON.stringify(gotAccess)}`)
     return gotAccess[0]
   })
 
-  let resultingAccess: RNode[] | string = parsedAccess
+  let resultingAccess: (RNode | null)[] | string = parsedAccess
 
   if(operand === '@' || operand === '$') {
     guard(parsedAccess.length === 1, () => `expected one access result in access with ${JSON.stringify(operand)}, yet received ${JSON.stringify(parsedAccess)}`)
-    guard(parsedAccess[0].type === Type.Symbol, () => `${JSON.stringify(operand)} requires one symbol, yet received ${JSON.stringify(parsedAccess)}`)
-    resultingAccess = parsedAccess[0].content
+    const first = parsedAccess[0]
+    guard(first !== null && first.type === Type.Symbol, () => `${JSON.stringify(operand)} requires one symbol, yet received ${JSON.stringify(parsedAccess)}`)
+    resultingAccess = first.content
   }
 
   const {
     content, location
   } = retrieveMetaStructure(data.config, accessOp.content)
-
-
 
   const result = {
     type:     Type.Access,

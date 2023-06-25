@@ -36,8 +36,10 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: Dataflo
   lines.push(graphToMermaid(subflow.graph, dataflowIdMap, null, idPrefix, mark))
   for(const [color, pool] of [['purple', subflow.in], ['green', subflow.out], ['orange', subflow.activeNodes]]) {
     for (const out of pool as IdentifierReference[]) {
-      // in/out/active
-      lines.push(`    style ${idPrefix}${out.nodeId} stroke:${color as string},stroke-width:4px; `)
+      if(!mark?.has(out.nodeId)) {
+        // in/out/active for unmarked
+        lines.push(`    style ${idPrefix}${out.nodeId} stroke:${color as string},stroke-width:4px; `)
+      }
     }
   }
   for(const exitPoint of exitPoints) {

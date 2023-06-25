@@ -36,7 +36,7 @@ describe("Lists with if-then constructs", withShell(shell => {
         }
         assertDataflow(`read previous def in else`,
           shell,
-          `x ${assign} 2\nif(TRUE) { 42 } else { x }`,
+          `x ${assign} 2\nif(FALSE) { 42 } else { x }`,
           new DataflowGraph()
             .addNode( { tag: 'variable-definition', id: "0", name: "x", scope: scope })
             .addNode( { tag: 'use', id: "5", name: "x", when: 'maybe', environment: define({ nodeId: "0", name: 'x', scope, kind: 'variable', definedAt: "2", used: 'always' }, scope, initializeCleanEnvironments()) })
@@ -59,7 +59,7 @@ describe("Lists with if-then constructs", withShell(shell => {
         }
         assertDataflow(`def in else read afterwards`,
           shell,
-          `if(TRUE) { 42 } else { x ${assign} 5 }\nx`,
+          `if(FALSE) { 42 } else { x ${assign} 5 }\nx`,
           new DataflowGraph()
             .addNode( { tag: 'variable-definition', id: "2", name: "x", when: 'maybe', scope: scope })
             .addNode( { tag: 'use', id: "6", name: "x", environment: define({ nodeId: "2", name: 'x', scope, kind: 'variable', definedAt: "4", used: 'always' }, scope, initializeCleanEnvironments()) })
@@ -71,8 +71,9 @@ describe("Lists with if-then constructs", withShell(shell => {
 
         assertDataflow(`def in then and else read afterward`,
           shell,
-          `if(TRUE) { x ${assign} 7 } else { x ${assign} 5 }\nx`,
+          `if(z) { x ${assign} 7 } else { x ${assign} 5 }\nx`,
           new DataflowGraph()
+            .addNode( { tag: 'use', id: "0", name: "z", when: 'always', scope: scope })
             .addNode( { tag: 'variable-definition', id: "1", name: "x", scope: scope, when: 'maybe' })
             .addNode( { tag: 'variable-definition', id: "4", name: "x", scope: scope, when: 'maybe' })
             .addNode( { tag: 'use', id: "8", name: "x", environment: appendEnvironments(whenEnvironment, otherwiseEnvironment) })

@@ -8,19 +8,19 @@ interface RAccessBase<Info = NoInfo> extends Base<Info>, Location {
   readonly type: Type.Access;
   /** the accessed container/variable/expression */
   accessed:      RNode<Info>;
-  operand:       '[' | '[[' | '$' | '@';
+  operator:      '[' | '[[' | '$' | '@';
 }
 
 export interface RNamedAccess<Info = NoInfo> extends RAccessBase<Info> {
-  operand: '$' | '@';
-  access:  string;
+  operator: '$' | '@';
+  access:   string;
 }
 
 /** access can be a number, a variable or an expression that resolves to one, a filter etc. */
 export interface RIndexAccess<Info = NoInfo> extends RAccessBase<Info> {
-  operand: '[' | '[[';
+  operator: '[' | '[[';
   /** is null if the access is empty, e.g. `a[,3]` */
-  access:  (RNode<Info> | null)[]
+  access:   (RNode<Info> | null)[]
 }
 
 export type RAccess<Info = NoInfo> = RNamedAccess<Info> | RIndexAccess<Info>

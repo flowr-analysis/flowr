@@ -368,9 +368,7 @@ export class DataflowGraph {
   }
 
 
-  /** insert a new edge in the given dataflow-graph */
-  // TODO: check if from and to exists, TODO: check for duplicates
-  // TODO: rework with new references?
+  /** merges the other graph into *this* one */
   public mergeWith(...otherGraphs: (DataflowGraph | undefined)[]): this {
     // TODO: join edges
     // TODO: maybe switch to sets?

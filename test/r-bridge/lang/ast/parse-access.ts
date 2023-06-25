@@ -17,7 +17,7 @@ describe("Parse value access", withShell(shell => {
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 2),
       lexeme:   '[',
-      operand:  '[',
+      operator: '[',
       info:     {},
       accessed: {
         type:      Type.Symbol,
@@ -33,7 +33,7 @@ describe("Parse value access", withShell(shell => {
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 2),
       lexeme:   '[',
-      operand:  '[',
+      operator: '[',
       info:     {},
       accessed: {
         type:      Type.Symbol,
@@ -55,7 +55,7 @@ describe("Parse value access", withShell(shell => {
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 2),
       lexeme:   '[',
-      operand:  '[',
+      operator: '[',
       info:     {},
       accessed: {
         type:      Type.Symbol,
@@ -78,7 +78,7 @@ describe("Parse value access", withShell(shell => {
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 2),
       lexeme:   '[',
-      operand:  '[',
+      operator: '[',
       info:     {},
       accessed: {
         type:      Type.Symbol,
@@ -116,7 +116,7 @@ describe("Parse value access", withShell(shell => {
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 2),
       lexeme:   '[',
-      operand:  '[',
+      operator: '[',
       info:     {},
       accessed: {
         type:      Type.Symbol,
@@ -144,7 +144,7 @@ describe("Parse value access", withShell(shell => {
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 2),
       lexeme:   '[',
-      operand:  '[',
+      operator: '[',
       info:     {},
       accessed: {
         type:      Type.Symbol,
@@ -172,13 +172,13 @@ describe("Parse value access", withShell(shell => {
       type:     Type.Access,
       location: rangeFrom(1, 5, 1, 5),
       lexeme:   '[',
-      operand:  '[',
+      operator: '[',
       info:     {},
       accessed: {
         type:     Type.Access,
         location: rangeFrom(1, 2, 1, 2),
         lexeme:   '[',
-        operand:  '[',
+        operator: '[',
         info:     {},
         accessed: {
           type:      Type.Symbol,
@@ -210,7 +210,7 @@ describe("Parse value access", withShell(shell => {
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 3),
       lexeme:   '[[',
-      operand:  '[[',
+      operator: '[[',
       info:     {},
       accessed: {
         type:      Type.Symbol,
@@ -226,7 +226,7 @@ describe("Parse value access", withShell(shell => {
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 3),
       lexeme:   '[[',
-      operand:  '[[',
+      operator: '[[',
       info:     {},
       accessed: {
         type:      Type.Symbol,
@@ -248,7 +248,7 @@ describe("Parse value access", withShell(shell => {
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 3),
       lexeme:   '[[',
-      operand:  '[[',
+      operator: '[[',
       info:     {},
       accessed: {
         type:      Type.Symbol,
@@ -276,7 +276,7 @@ describe("Parse value access", withShell(shell => {
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 3),
       lexeme:   '[[',
-      operand:  '[[',
+      operator: '[[',
       info:     {},
       accessed: {
         type:      Type.Symbol,
@@ -300,7 +300,7 @@ describe("Parse value access", withShell(shell => {
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 2),
       lexeme:   '$',
-      operand:  '$',
+      operator: '$',
       info:     {},
       accessed: {
         type:      Type.Symbol,
@@ -316,7 +316,7 @@ describe("Parse value access", withShell(shell => {
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 2),
       lexeme:   '@',
-      operand:  '@',
+      operator: '@',
       info:     {},
       accessed: {
         type:      Type.Symbol,

@@ -178,11 +178,11 @@ function createFoldForUnaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForAccess<OtherInfo>(info: FoldInfo<OtherInfo>) {
-  return (data: RNode<OtherInfo>, name: RNodeWithParent<OtherInfo>, access: string | (RNodeWithParent<OtherInfo> | null)[]): RNodeWithParent<OtherInfo> => {
+  return (data: RNode<OtherInfo>, accessed: RNodeWithParent<OtherInfo>, access: string | (RNodeWithParent<OtherInfo> | null)[]): RNodeWithParent<OtherInfo> => {
     const id = info.getId(data)
-    const decorated = { ...data, info: { ...(data.info ), id, parent: undefined }, name, access } as RNodeWithParent<OtherInfo>
+    const decorated = { ...data, info: { ...(data.info ), id, parent: undefined }, accessed, access } as RNodeWithParent<OtherInfo>
     info.idMap.set(id, decorated)
-    name.info.parent = id
+    accessed.info.parent = id
     if(typeof access !== 'string') {
       for(const acc of access) {
         if(acc !== null) {

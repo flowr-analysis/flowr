@@ -20,6 +20,13 @@ describe("Atomic dataflow information", withShell((shell) => {
     new DataflowGraph().addNode({ tag: 'use', id: "0", name: "xylophone" })
   )
 
+  describe("access", () => {
+    assertDataflow("simple bracket access", shell,
+      "a[2]",
+      new DataflowGraph().addNode({ tag: 'use', id: "0", name: "a" })
+    )
+  })
+
   describe("unary operators", () => {
     for (const opSuite of RUnaryOpPool) {
       describe(`${opSuite.label} operations`, () => {

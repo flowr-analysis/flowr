@@ -27,22 +27,22 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
 
   const accessOp = mappedWithName[1]
 
-  let operand: RAccess['operand']
+  let operator: RAccess['operator']
   let closingLength = 0
 
   switch (accessOp.name) {
     case Type.BracketLeft:
-      operand = '['
+      operator = '['
       closingLength = 1
       break
     case Type.Dollar:
-      operand = '$'
+      operator = '$'
       break
     case Type.At:
-      operand = '@'
+      operator = '@'
       break
     case Type.DoubleBracketLeft:
-      operand = '[['
+      operator = '[['
       closingLength = 2
       break
     default:
@@ -82,10 +82,10 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
 
   let resultingAccess: (RNode | null)[] | string = parsedAccess
 
-  if(operand === '@' || operand === '$') {
-    guard(parsedAccess.length === 1, () => `expected one access result in access with ${JSON.stringify(operand)}, yet received ${JSON.stringify(parsedAccess)}`)
+  if(operator === '@' || operator === '$') {
+    guard(parsedAccess.length === 1, () => `expected one access result in access with ${JSON.stringify(operator)}, yet received ${JSON.stringify(parsedAccess)}`)
     const first = parsedAccess[0]
-    guard(first !== null && first.type === Type.Symbol, () => `${JSON.stringify(operand)} requires one symbol, yet received ${JSON.stringify(parsedAccess)}`)
+    guard(first !== null && first.type === Type.Symbol, () => `${JSON.stringify(operator)} requires one symbol, yet received ${JSON.stringify(parsedAccess)}`)
     resultingAccess = first.content
   }
 
@@ -98,7 +98,7 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
     location,
     lexeme:   content,
     accessed: parsedAccessed[0],
-    operand,
+    operator,
     access:   resultingAccess,
     info:     {
       // TODO: include children etc.

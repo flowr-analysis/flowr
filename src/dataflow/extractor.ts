@@ -17,13 +17,14 @@ import { processFunctionParameter } from './internal/process/functions/parameter
 import { initializeCleanEnvironments } from './environments'
 import { processFunctionArgument } from './internal/process/functions/argument'
 import { processAssignment } from './internal/process/assignment'
+import { processAccess } from './internal/process/access'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
 const processors: DataflowProcessors<any> = {
   [Type.Number]:             processUninterestingLeaf,
   [Type.String]:             processUninterestingLeaf,
   [Type.Logical]:            processUninterestingLeaf,
-  [Type.Access]:             processUninterestingLeaf, /* TODO */
+  [Type.Access]:             processAccess,
   [Type.Symbol]:             processSymbol,
   [Type.BinaryOp]:           processBinaryOp,
   [Type.UnaryOp]:            processUnaryOp,

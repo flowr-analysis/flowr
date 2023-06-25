@@ -3,15 +3,7 @@ import { exprList, numVal } from '../../../helper/ast-builder'
 import { rangeFrom } from '../../../../src/util/range'
 import { Type } from '../../../../src/r-bridge'
 
-// TODO: try slicing of something like
-/*
- * a <- function() { x <- 3; i }
- * i <- 4
- * b <- function(f) { i <- 5; f() }
- * b(a)
- */
 // TODO: quote and deparse should break references?
-// TODO: test something like function(a=3, b=a) { b }
 describe("Parse value access", withShell(shell => {
   describe('Single bracket', () => {
     assertAst("Empty", shell, "a[]", exprList({

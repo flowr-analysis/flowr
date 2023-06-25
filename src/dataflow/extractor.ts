@@ -24,7 +24,7 @@ const processors: DataflowProcessors<any> = {
   [Type.String]:             processUninterestingLeaf,
   [Type.Logical]:            processUninterestingLeaf,
   [Type.Symbol]:             processSymbol,
-  [Type.BinaryOp]:           processBinaryOp, // TODO: assignment separation
+  [Type.BinaryOp]:           processBinaryOp,
   [Type.UnaryOp]:            processUnaryOp,
   [Type.For]:                processForLoop,
   [Type.While]:              processWhileLoop,

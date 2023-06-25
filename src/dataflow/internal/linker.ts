@@ -54,7 +54,7 @@ export function linkFunctionCallExitPoints(graph: DataflowGraph): void {
 
 
 // TODO: abstract away into a 'getAllDefinitionsOf' function
-function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeId[], dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphNodeInfo> {
+export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeId[], dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphNodeInfo> {
   const potential: NodeId[] = functionDefinitionReadIds
   const result = new Map<NodeId, DataflowGraphNodeInfo>()
   while(potential.length > 0) {

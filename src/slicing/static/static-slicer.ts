@@ -1,14 +1,34 @@
-import {
-  DataflowGraph, graphToMermaidUrl
-} from '../../dataflow'
+import { DataflowGraph, DataflowGraphNodeInfo, graphToMermaidUrl, LocalScope } from '../../dataflow'
 import { guard } from '../../util/assert'
 import { DecoratedAstMap, NodeId } from '../../r-bridge'
 import { log } from '../../util/log'
+import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
+import { resolveByName } from '../../dataflow/environments'
 
 export const slicerLogger = log.getSubLogger({ name: "slicer" })
 
 
 // TODO: include library loads
+function linkOnFunctionCall(callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, visited: Set<NodeId>, visitQueue: NodeId[]) {
+  // bind with call-local environments during slicing
+  const functionCallDefs = callerInfo.edges.filter(e => e.type === 'calls').map(e => e.target)
+  const functionCallTargets = getAllLinkedFunctionDefinitions(functionCallDefs, dataflowGraph)
+
+  for (const [_, functionCallTarget] of functionCallTargets) {
+    guard(functionCallTarget.tag === 'function-definition', () => `expected function definition, but got ${functionCallTarget.tag}`)
+    for (const openIn of functionCallTarget.subflow.in) {
+      const defs = resolveByName(openIn.name, LocalScope, callerInfo.environment)
+      if (defs === undefined) {
+        continue
+      }
+      for (const def of defs) {
+        if (!visited.has(def.nodeId)) {
+          visitQueue.push(def.nodeId)
+        }
+      }
+    }
+  }
+}
 
 /**
  * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
@@ -35,6 +55,10 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
     if(currentInfo === undefined) {
       slicerLogger.warn(`id: ${current} must be in graph but can not be found, keep in slice to be sure`)
       continue
+    }
+
+    if(currentInfo.tag === 'function-call') {
+      linkOnFunctionCall(currentInfo, dataflowGraph, visited, visitQueue)
     }
 
     const currentNode = dataflowIdMap.get(current)

@@ -93,7 +93,6 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeI
     const returnEdges = currentInfo.edges.filter(e => e.type === 'returns')
     if(returnEdges.length > 0) {
       // only traverse return edges and do not follow calls etc. as this indicates that we have a function call which returns a result, and not the function call itself
-      console.log(`[${currentId}] found return edge ${JSON.stringify(returnEdges)} for ${currentId}`)
       potential.push(...returnEdges.map(e => e.target))
       continue
     }

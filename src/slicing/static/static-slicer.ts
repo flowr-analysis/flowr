@@ -1,7 +1,15 @@
-import { DataflowGraph, DataflowGraphNodeInfo, DataflowMap, FunctionArgument, graphToMermaidUrl } from '../../dataflow'
+import {
+  DataflowGraph,
+  DataflowGraphNodeInfo,
+  DataflowMap,
+  FunctionArgument,
+  graphToMermaidUrl,
+  LocalScope
+} from '../../dataflow'
 import { guard } from '../../util/assert'
 import { DecoratedAstMap, NodeId, NoInfo } from '../../r-bridge'
 import { log } from '../../util/log'
+import { resolveByName } from '../../dataflow/environments'
 
 export const slicerLogger = log.getSubLogger({ name: "slicer" })
 
@@ -105,5 +113,15 @@ function sliceFunctionDefinition(callerInfo: DataflowGraphNodeInfo, functionDefi
 
   naiveStaticSlicing(info.subflow.graph, idMap, info.exitPoints, visited)
   // TODO: trace all open reads!
-  console.log(info.subflow.in, callerInfo.environment)
+  for(const openIn of info.subflow.in) {
+    const defs = resolveByName(openIn.name, LocalScope, callerInfo.environment)
+    if(defs === undefined) {
+      continue
+    }
+    for(const def of defs) {
+      if (!visited.has(def.nodeId)) {
+        visitQueue.push(def.nodeId)
+      }
+    }
+  }
 }

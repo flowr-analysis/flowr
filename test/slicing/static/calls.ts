@@ -25,13 +25,28 @@ a(i)`)
       const code = `i <- 4
 a <- function(x) { x + i }
 a(4)`
-      assertSliced('Must include read', shell, code, ['3@a'], code)
+      for(const criterion of ['3:1', '3@a'] as const) {
+        assertSliced('Must include read', shell, code, [criterion], code)
+      }
     })
     describe('Read variable defined after', () => {
       const code = `a <- function(x) { x + i }
 i <- 4
 a(5)`
-      assertSliced('Must include read', shell, code, ['3@a'], code)
+      for(const criterion of ['3:1', '3@a'] as const) {
+        assertSliced('Must include read', shell, code, [criterion], code)
+      }
+    })
+    describe('Read variable defined before and after', () => {
+      const code = `i <- 3
+a <- function(x) { x + i }
+i <- 4
+a(5)`
+      for(const criterion of ['4:1', '4@a'] as const) {
+        assertSliced('Only keep second definition', shell, code, [criterion], `a <- function(x) { x + i }
+i <- 4
+a(5)`)
+      }
     })
   })
 }))

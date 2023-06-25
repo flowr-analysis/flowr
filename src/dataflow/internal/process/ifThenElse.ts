@@ -1,30 +1,40 @@
 import { DataflowInformation } from '../info'
-import { DataflowProcessorDown } from '../../processor'
+import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import { appendEnvironments, IdentifierReference, makeAllMaybe } from '../../environments'
 import { linkIngoingVariablesInSameScope } from '../linker'
+import { ParentInformation, RIfThenElse } from '../../../r-bridge'
 
-export function processIfThenElse<OtherInfo>(ifThen: unknown, cond: DataflowInformation<OtherInfo>,
-                                             then: DataflowInformation<OtherInfo>, otherwise: DataflowInformation<OtherInfo> | undefined,
-                                             down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & ParentInformation>, down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  const cond = processDataflowFor(ifThen.condition, down)
+  let then: DataflowInformation<OtherInfo> | undefined = processDataflowFor(ifThen.then, down)
+  let otherwise = ifThen.otherwise === undefined ? undefined : processDataflowFor(ifThen.otherwise, down)
+
+  if(ifThen.condition.lexeme === 'TRUE') {
+    otherwise = undefined
+  } else if(ifThen.condition.lexeme === 'FALSE') {
+    then = undefined
+  }
+
+  const nextGraph = cond.graph.mergeWith(then?.graph, otherwise?.graph)
+
   // TODO: allow to also attribute in-put with maybe and always
   // again within an if-then-else we consider all actives to be read
   // TODO: makeFoldReadTargetsMaybe(
-  const ingoing: IdentifierReference[] = [...cond.in, ...makeAllMaybe(then.in),
-    ...makeAllMaybe(otherwise?.in),
+  const ingoing: IdentifierReference[] = [...cond.in, ...makeAllMaybe(then?.in, nextGraph),
+    ...makeAllMaybe(otherwise?.in, nextGraph),
     ...cond.activeNodes,
-    ...makeAllMaybe(then.activeNodes),
-    ...makeAllMaybe(otherwise?.activeNodes)
+    ...makeAllMaybe(then?.activeNodes, nextGraph),
+    ...makeAllMaybe(otherwise?.activeNodes, nextGraph)
   ]
 
   // we assign all with a maybe marker
   // we do not merge even if they appear in both branches because the maybe links will refer to different ids
-  const outgoing = [...cond.out, ...makeAllMaybe(then.out), ...makeAllMaybe(otherwise?.out)]
+  const outgoing = [...cond.out, ...makeAllMaybe(then?.out, nextGraph), ...makeAllMaybe(otherwise?.out, nextGraph)]
 
-  const nextGraph = cond.graph.mergeWith(then.graph, otherwise?.graph)
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
   // TODO: join def-def?
 
-  const thenEnvironment = appendEnvironments(cond.environments, then.environments)
+  const thenEnvironment = appendEnvironments(cond.environments, then?.environments)
   const otherwiseEnvironment = otherwise ? appendEnvironments(thenEnvironment, otherwise.environments) : thenEnvironment
   return {
     activeNodes:  [],
@@ -32,7 +42,7 @@ export function processIfThenElse<OtherInfo>(ifThen: unknown, cond: DataflowInfo
     out:          outgoing,
     environments: otherwiseEnvironment,
     graph:        nextGraph,
-    ast:          down.ast,
+    ast:          down.completeAst,
     scope:        down.activeScope,
   }
 }

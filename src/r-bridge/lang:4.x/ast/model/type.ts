@@ -2,6 +2,8 @@
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
  */
 export const enum Type {
+  /** `[`, `[[`, `$`, and `@` */
+  Access = "access",
   ExpressionList = "exprlist",
   Expression = "expr",
   /*
@@ -11,6 +13,7 @@ export const enum Type {
   ExprHelpAssignWrapper = "expr_or_assign_or_help",
   Symbol = "SYMBOL",
   SymbolFormals = "SYMBOL_FORMALS",
+  SymbolNamedFormals = "SYMBOL_SUB",
   /* will be represented as a number in R */
   Logical = "boolean",
   /* this will be a symbol for us */
@@ -27,6 +30,13 @@ export const enum Type {
   ParenRight = ")",
   BraceLeft = "{",
   BraceRight = "}",
+  // TODO: deal with them as access operators, similarly with '[[' etc.
+  DoubleBracketLeft = "LBB",
+  BracketLeft = "[",
+  BracketRight = "]",
+  Dollar = "$",
+  At = "@",
+  Slot = "SLOT",
   Semicolon = ";",
   For = "FOR",
   ForCondition = "forcond",
@@ -37,12 +47,14 @@ export const enum Type {
   Else = "ELSE",
   Comma = ",",
   FunctionCall = "SYMBOL_FUNCTION_CALL",
-  Function = "FUNCTION",
+  FunctionDefinition = "FUNCTION",
   SymbolPackage = "SYMBOL_PACKAGE",
   NamespaceGet = "NS_GET",
   Break = "BREAK",
   Next = "NEXT",
   EqFormals = "EQ_FORMALS",
+  EqNamedArgument = "EQ_SUB",
+  Parameter = "Parameter",
   Argument = "Argument",
   Delimiter = "Delimiter"
 }
@@ -57,6 +69,7 @@ export function isSymbol(type: string): boolean {
     type === Type.Symbol ||
     type === Type.SymbolPackage ||
     type === Type.FunctionCall ||
-    type === Type.Null
+    type === Type.Null ||
+    type === Type.Slot
   )
 }

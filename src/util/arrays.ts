@@ -7,20 +7,27 @@
  * splitArrayOn(['a', '', 'b', '', '', 'c'], elem => elem === '')
  * // => [['a'], ['b'], [], ['c']]
  * ```
+ * @example if the last element satisfies the predicate, this will add an empty array element
+ * ```
+ * splitArrayOn([1,2,3], elem => true)
+ * // => [[], [], [], []]
+ * ```
  */
 export function splitArrayOn<T>(arr: T[], predicate: (elem: T) => boolean): T[][] {
   const result: T[][] = []
   let current: T[] = []
+  let fired = false
   for (const elem of arr) {
     if (predicate(elem)) {
       result.push(current)
       current = []
+      fired = true
     } else {
       current.push(elem)
     }
   }
 
-  if(current.length !== 0) {
+  if(fired || current.length > 0) {
     result.push(current)
   }
   return result

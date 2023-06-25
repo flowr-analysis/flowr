@@ -11,10 +11,11 @@ import {
   RBinaryOp,
   RUnaryOp,
   RIfThenElse,
-  RArgument,
+  RParameter,
   RFunctionDefinition,
   RRepeatLoop, RForLoop, RWhileLoop,
-  RComment, RFunctionCall, RBreak, RNext
+  RComment, RFunctionCall, RBreak, RNext,
+  RArgument, RNamedAccess, RIndexAccess
 } from './nodes'
 import { OtherInfoNode } from './nodes/info'
 
@@ -85,10 +86,10 @@ export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Inf
 export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info>
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>
-export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RArgument<Info>
+export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RParameter<Info> | RArgument<Info>
 export type ROther<Info>          = RComment<Info>
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
-                                  | ROther<Info> | RConstructs<Info>
+                                  | ROther<Info> | RConstructs<Info> | RNamedAccess<Info> | RIndexAccess<Info>
                                   | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>
 
 /* TODO: blocked in R

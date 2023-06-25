@@ -1,29 +1,33 @@
 import { DataflowInformation } from '../../info'
-import { DataflowProcessorDown } from '../../../processor'
+import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import {
   appendEnvironments,
   initializeCleanEnvironments,
   makeAllMaybe,
 } from '../../../environments'
 import { linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../linker'
+import { ParentInformation, RWhileLoop } from '../../../../r-bridge'
 
-export function processWhileLoop<OtherInfo>(loop: unknown, condition: DataflowInformation<OtherInfo>,
-                                            body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  const condition = processDataflowFor(loop.condition, data)
+  // TODO: out in for must be active here
+  const body = processDataflowFor(loop.body, data)
+
   const environments = condition.environments ?? initializeCleanEnvironments()
   const nextGraph = condition.graph.mergeWith(body.graph)
 
-  const remainingInputs = linkInputs([...body.activeNodes, ...body.in], down.activeScope, environments, [...condition.in, ...condition.activeNodes], nextGraph, true)
+  const remainingInputs = linkInputs([...makeAllMaybe(body.activeNodes, nextGraph), ...makeAllMaybe(body.in, nextGraph)], data.activeScope, environments, [...condition.in, ...condition.activeNodes], nextGraph, true)
 
   linkCircularRedefinitionsWithinALoop(nextGraph, produceNameSharedIdMap(remainingInputs), body.out)
 
   return {
     activeNodes:  [],
     in:           remainingInputs,
-    out:          [...makeAllMaybe(body.out), ...condition.out], // todo: merge etc.
+    out:          [...makeAllMaybe(body.out, nextGraph), ...condition.out], // todo: merge etc.
     graph:        nextGraph,
     /* the body might not happen if the condition is false */
     environments: appendEnvironments(condition.environments, body.environments),
-    ast:          down.ast,
-    scope:        down.activeScope
+    ast:          data.completeAst,
+    scope:        data.activeScope
   }
 }

@@ -1,38 +1,58 @@
 import { guard } from '../../util/assert'
 import { REnvironmentInformation, IEnvironment, Environment, IdentifierDefinition } from './environment'
 
-function allAreMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
+function anyIsMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
   if(values.length === 0) {
     return true
   }
   const attr = values[0].used
+  if(attr === 'maybe') {
+    return true
+  }
+  let same = true
   for (let i = 1; i < values.length; i++) {
     const used = values[i].used
+    if(used === 'maybe') {
+      return true
+    }
     if(used !== attr) {
-      throw new Error(`inconsistent used attributes within ${JSON.stringify(values)}`)
+      same = false
     }
   }
-  return attr === 'maybe'
+  if(!same) {
+    throw new Error('all values must have either a maybe or are all the same')
+  }
+  return false
 }
 
-function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined): IEnvironment {
+export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined, includeParent = true): IEnvironment {
   guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined')
   guard(base.name === next.name, 'cannot overwrite environments with different names')
   const map = new Map(base.memory)
   for (const [key, values] of next.memory) {
-    const allMaybe = allAreMaybeGuardingSame(values)
-    if(allMaybe) {
-      const old = map.get(key) ?? []
-      for(const o of old) {
-        o.used = 'maybe'
+    const hasMaybe = anyIsMaybeGuardingSame(values)
+    if(hasMaybe) {
+      const old = map.get(key)
+      // we need to make a copy to avoid side effects for old reference in other environments
+      const updatedOld: IdentifierDefinition[] = old ?? []
+      for (const v of values) {
+        const index = updatedOld.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)
+        if(index < 0) {
+          updatedOld.push(v)
+        }
       }
-
-      map.set(key, old.concat(values))
+      map.set(key, [...updatedOld])
     } else {
       map.set(key, values)
     }
   }
-  const parent = base.parent === undefined ? undefined : overwriteIEnvironmentWith(base.parent, next.parent)
+
+  let parent: IEnvironment | undefined
+  if(includeParent) {
+    parent = base.parent === undefined ? undefined : overwriteIEnvironmentWith(base.parent, next.parent)
+  } else {
+    parent = base.parent
+  }
 
   const out = new Environment(base.name, parent)
   out.memory = map

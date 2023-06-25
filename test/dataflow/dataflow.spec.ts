@@ -5,6 +5,9 @@ describe("Dataflow", () => {
   describe("Extraction", () => {
     require('./elements/atomic')
     require('./elements/expression-lists')
-    require('./elements/functions/functions')
+    describe('Functions', () => {
+      require('./elements/functions/function-definition')
+      require('./elements/functions/function-call')
+    })
   })
 })

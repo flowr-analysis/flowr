@@ -15,9 +15,10 @@ import {
   RSymbol,
   RLogical,
   BinaryOperatorFlavor,
-  RArgument,
+  RParameter,
   RFunctionDefinition,
-  UnaryOperatorFlavor, RBreak, RNext
+  RArgument,
+  UnaryOperatorFlavor, RBreak, RNext, RAccess
 } from '../../model'
 import { RNa } from '../../../values'
 import { ParserData } from './data'
@@ -67,6 +68,15 @@ export interface XmlParserHooks {
       before(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
       after(data: ParserData, result: RNode | undefined): AutoIfOmit<RNode | undefined>
     }
+  },
+  /** {@link tryParseAccess} */
+  onAccess: {
+    /**
+     * triggered if {@link tryParseAccess} could not determine the access
+     */
+    unknown(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<RAccess | undefined>
+    before(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
+    after(data: ParserData, result: RAccess): AutoIfOmit<RAccess>
   },
   other: {
     /** {@link parseComment} */
@@ -124,19 +134,26 @@ export interface XmlParserHooks {
     }
   },
   functions: {
-    /** {@link tryToParseFunctionCall} */
-    onFunctionCall: {
-      /** triggered if {@link tryToParseFunctionCall} could not detect a function call, you probably still want to return `undefined` */
-      unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RFunctionCall | undefined>
-      before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
-      after(data: ParserData, result: RFunctionCall): AutoIfOmit<RFunctionCall>
-    },
     /** {@link tryToParseFunctionDefinition} */
     onFunctionDefinition: {
       /** triggered if {@link tryToParseFunctionDefinition} could not detect a function definition, you probably still want to return `undefined` */
       unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RFunctionDefinition | undefined>
       before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
       after(data: ParserData, result: RFunctionDefinition): AutoIfOmit<RFunctionDefinition>
+    }
+    /** {@link tryToParseParameter} */
+    onParameter: {
+      /** triggered if {@link tryToParseParameter} could not detect a parameter, you probably still want to return `undefined` */
+      unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RParameter | undefined>
+      before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
+      after(data: ParserData, result: RParameter): AutoIfOmit<RParameter>
+    }
+    /** {@link tryToParseFunctionCall} */
+    onFunctionCall: {
+      /** triggered if {@link tryToParseFunctionCall} could not detect a function call, you probably still want to return `undefined` */
+      unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RFunctionCall | undefined>
+      before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
+      after(data: ParserData, result: RFunctionCall): AutoIfOmit<RFunctionCall>
     }
     /** {@link tryToParseArgument} */
     onArgument: {
@@ -255,6 +272,11 @@ export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = 
       after:   doNothing
     }
   },
+  onAccess: {
+    unknown: doNothing,
+    before:  doNothing,
+    after:   doNothing
+  },
   other: {
     onComment: {
       before: doNothing,
@@ -311,12 +333,17 @@ export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = 
     }
   },
   functions: {
-    onFunctionCall: {
+    onFunctionDefinition: {
       unknown: doNothing,
       before:  doNothing,
       after:   doNothing
     },
-    onFunctionDefinition: {
+    onParameter: {
+      unknown: doNothing,
+      before:  doNothing,
+      after:   doNothing
+    },
+    onFunctionCall: {
       unknown: doNothing,
       before:  doNothing,
       after:   doNothing
@@ -325,7 +352,7 @@ export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = 
       unknown: doNothing,
       before:  doNothing,
       after:   doNothing
-    }
+    },
   },
   expression: {
     onExpression: {

@@ -17,9 +17,8 @@ import {
 } from '../../src/dataflow'
 import { produceDataFlowGraph } from '../../src/dataflow'
 import { reconstructToCode } from '../../src/slicing/reconstruct'
-import { locationToId, naiveStaticSlicing } from '../../src/slicing/static'
-import { SourcePosition } from '../../src/util/range'
-import { isNotUndefined } from '../../src/util/assert'
+import { naiveStaticSlicing } from '../../src/slicing/static'
+import { SlicingCriterion, slicingCriterionToId } from '../../src/slicing/criteria'
 
 let defaultTokenMap: Record<string, string>
 
@@ -89,7 +88,7 @@ function removeSourceInformation<T extends Record<string, any>>(obj: T): T {
   })) as T
 }
 
-function assertAstEqualIngoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, message?: string): void {
+function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, message?: string): void {
   const astCopy = removeSourceInformation(ast)
   const expectedCopy = removeSourceInformation(expected)
   assert.deepStrictEqual(astCopy, expectedCopy, message)
@@ -108,7 +107,7 @@ export const retrieveAst = async(shell: RShell, input: string, hooks?: DeepParti
 export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList): Mocha.Test => {
   return it(name, async function() {
     const ast = await retrieveAst(shell, input)
-    assertAstEqualIngoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
+    assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
   })
 }
 
@@ -118,7 +117,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
   it(name, async function() {
     const baseAst = await retrieveAst(shell, input)
     const ast = decorator(baseAst)
-    assertAstEqualIngoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
+    assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
   })
 }
 
@@ -158,22 +157,25 @@ export const assertReconstructed = (name: string, shell: RShell, input: string, 
 }
 
 
-export const assertSliced = (name: string, shell: RShell, input: string, slices: SourcePosition[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
-  return it(name, async function() {
+export const assertSliced = (name: string, shell: RShell, input: string, criteria: SlicingCriterion[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
+  return it(`${JSON.stringify(criteria)} ${name}`, async function() {
     const ast = await retrieveAst(shell, input)
     const decoratedAst = decorateAst(ast, getId)
 
-    const mappedIds = slices.map(l => locationToId(l, decoratedAst.idMap)).map((d, i) => {
-      assert(isNotUndefined(d), `all ids must be found, but not for id ${i}`)
-      return d
-    })
 
     const dataflow = produceDataFlowGraph(decoratedAst)
 
-    const sliced = naiveStaticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds)
-    const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
+    try {
+      const mappedIds = criteria.map(c => slicingCriterionToId(c, decoratedAst))
 
-    assert.strictEqual(reconstructed, expected, `got: ${reconstructed}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(mappedIds, decoratedAst.idMap)})`)
+      const sliced = naiveStaticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds)
+      const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
+
+      assert.strictEqual(reconstructed, expected, `got: ${reconstructed}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(mappedIds, decoratedAst.idMap)}), url: ${graphToMermaidUrl(dataflow.graph, decoratedAst.idMap, sliced)}`)
+    } catch (e) {
+      console.error('vis-got:\n', graphToMermaidUrl(dataflow.graph, decoratedAst.idMap))
+      throw e
+    }
   })
 }
 

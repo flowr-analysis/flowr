@@ -1,8 +1,10 @@
-import { DataflowGraph, DataflowScopeName } from '../graph'
-import { IdentifierReference, REnvironmentInformation, resolveByName } from '../environments'
+import { DataflowGraph, DataflowGraphNodeFunctionCall, DataflowGraphNodeInfo, DataflowScopeName } from '../graph'
+import { BuiltIn, IdentifierReference, REnvironmentInformation, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { log } from '../../util/log'
+import { NodeId } from '../../r-bridge'
+import { slicerLogger } from '../../slicing/static'
 
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
   const nameIdShares = produceNameSharedIdMap(references)
@@ -32,22 +34,90 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
   }
 }
 
-export function setDefinitionOfNode(graph: DataflowGraph, reference: IdentifierReference): void {
-  const node = graph.get(reference.nodeId)
-  guard(node !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set definition scope to ${reference.scope}`)
-  guard(node.definedAtPosition === false || (node.definedAtPosition === reference.scope && node.when === reference.used), () => `node must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
-  node.definedAtPosition = reference.scope
+function specialReturnFunction(info: DataflowGraphNodeFunctionCall, graph: DataflowGraph, id: NodeId) {
+  guard(info.args.length <= 1, () => `expected up to one argument for return, but got ${info.args.length}`)
+  for (const arg of info.args) {
+    if (Array.isArray(arg)) {
+      if (arg[1] !== '<value>') {
+        graph.addEdge(id, arg[1], 'returns', 'always')
+      }
+    } else {
+      if (arg !== '<value>') {
+        graph.addEdge(id, arg, 'returns', 'always')
+      }
+    }
+  }
+}
+
+export function linkFunctionCallExitPoints(graph: DataflowGraph): void {
+  const calls = [...graph.nodes()]
+    .filter(([_,info]) => info.tag === 'function-call')
+
+
+  for(const [id, info] of calls) {
+    // TODO: special handling for others
+    if(info.tag === 'function-call' && info.name === 'return') {
+      specialReturnFunction(info, graph, id)
+      continue
+    }
+    const functionDefinitionReadIds = info.edges.filter(e => e.type === 'read' || e.type === 'calls').map(e => e.target)
+    const functionDefs = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph)
+    for(const defs of functionDefs.values()) {
+      guard(defs.tag === 'function-definition', () => `expected function definition, but got ${defs.tag}`)
+      const exitPoints = defs.exitPoints
+      for(const exitPoint of exitPoints) {
+        graph.addEdge(id, exitPoint, 'returns', 'always')
+      }
+    }
+  }
+}
+
+
+// TODO: abstract away into a 'getAllDefinitionsOf' function
+export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeId[], dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphNodeInfo> {
+  const potential: NodeId[] = functionDefinitionReadIds
+  const result = new Map<NodeId, DataflowGraphNodeInfo>()
+  while(potential.length > 0) {
+    const currentId = potential.pop() as NodeId
+    if(currentId === BuiltIn) {
+      // do not traverse builtins
+      slicerLogger.trace('skipping builtin function definition during collection')
+      continue
+    }
+    const currentInfo = dataflowGraph.get(currentId, true)
+    if(currentInfo === undefined) {
+      slicerLogger.trace(`skipping unknown link`)
+      continue
+    }
+
+    const returnEdges = currentInfo.edges.filter(e => e.type === 'returns')
+    if(returnEdges.length > 0) {
+      // only traverse return edges and do not follow calls etc. as this indicates that we have a function call which returns a result, and not the function call itself
+      potential.push(...returnEdges.map(e => e.target))
+      continue
+    }
+    const followEdges = currentInfo.edges.filter(e =>e.type === 'read' || e.type === 'defined-by')
+
+
+    if(currentInfo.subflow !== undefined) {
+      result.set(currentId, currentInfo)
+    }
+    // trace all joined reads
+    // TODO: deal with redefinitions?
+    potential.push(...followEdges.map(e => e.target))
+  }
+  return result
 }
 
 /**
  * This method links a set of read variables to definitions in an environment.
  *
- * @param referencesToLinkAgainstEnvironment - the set of references to link against the environment
- * @param scope - the scope in which the linking shall happen (probably the active scope of {@link DataflowProcessorDown})
- * @param environmentInformation - the environment information to link against
- * @param givenInputs - the existing list of inputs that might be extended
- * @param graph - the graph to enter the found links
- * @param maybeForRemaining - each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
+ * @param referencesToLinkAgainstEnvironment - The set of references to link against the environment
+ * @param scope                              - The scope in which the linking shall happen (probably the active scope of {@link DataflowProcessorInformation})
+ * @param environmentInformation             - The environment information to link against
+ * @param givenInputs                        - The existing list of inputs that might be extended
+ * @param graph                              - The graph to enter the found links
+ * @param maybeForRemaining                  - Each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
  *
  * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
  */

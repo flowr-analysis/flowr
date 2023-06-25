@@ -1,37 +1,98 @@
 import { DataflowInformation } from '../../info'
-import { DataflowProcessorDown } from '../../../processor'
-import { overwriteEnvironments, popLocalEnvironment } from '../../../environments'
+import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
+import {
+  IdentifierReference,
+  initializeCleanEnvironments,
+  overwriteEnvironments,
+  popLocalEnvironment,
+  pushLocalEnvironment, REnvironmentInformation,
+  resolveByName
+} from '../../../environments'
 import { linkInputs } from '../../linker'
-import { DataflowGraph, dataflowLogger } from '../../../index'
-import { ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
+import { DataflowGraph, dataflowLogger, DataflowMap } from '../../../index'
+import { collectAllIds, ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
+import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
+import { guard } from '../../../../util/assert'
 
-export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, args: DataflowInformation<OtherInfo>[], body: DataflowInformation<OtherInfo>, down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+
+function linkLowestClosureVariables<OtherInfo>(subgraph: DataflowGraph, outEnvironment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>) {
+  // track *all* function definitions - included those nested within the current graph
+  // try to resolve their 'in' by only using the lowest scope which will be popped after this definition
+  for (const [id, info] of subgraph.nodes(true)) {
+    if (info.tag !== 'function-definition') {
+      continue
+    }
+    const ingoingRefs = info.subflow.in
+    const remainingIn: IdentifierReference[] = []
+    for (const ingoing of ingoingRefs) {
+      const env = initializeCleanEnvironments()
+      env.current.memory = outEnvironment.current.memory
+      const resolved = resolveByName(ingoing.name, data.activeScope, env)
+      if (resolved === undefined) {
+        remainingIn.push(ingoing)
+        continue
+      }
+      dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id} (${JSON.stringify(resolved)})`)
+      for (const ref of resolved) {
+        subgraph.addEdge(ingoing, ref, 'read', 'always')
+      }
+    }
+    dataflowLogger.trace(`Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id}`)
+    info.subflow.in = remainingIn
+  }
+}
+
+export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
+  // within a function def we do not pass on the outer binds as they could be overwritten when called
+  let env = initializeCleanEnvironments()
+  for(let i = 0; i < data.environments.level + 1 /* add another env */; i++) {
+    env = pushLocalEnvironment(env)
+  }
+  data = { ...data, environments: env }
+  // TODO: update
+  const params = []
+  for(const param of functionDefinition.parameters) {
+    const processed = processDataflowFor(param, data)
+    params.push(processed)
+    data = { ...data, environments: processed.environments }
+  }
+  const paramsEnvironments = data.environments
+
+  const body = processDataflowFor(functionDefinition.body, data)
   // as we know, that parameters can not duplicate, we overwrite their environments (which is the correct behavior, if someone uses non-`=` arguments in functions)
-  const argsEnvironment = args.map(a => a.environments).reduce((a, b) => overwriteEnvironments(a, b), down.environments)
   const bodyEnvironment = body.environments
 
-  const subgraph = body.graph.mergeWith(...args.map(a => a.graph))
+  const subgraph = body.graph.mergeWith(...params.map(a => a.graph))
 
   // TODO: count parameter a=b as assignment!
-  const readInArguments = args.flatMap(a => [...a.in, ...a.activeNodes])
+  const readInParameters = params.flatMap(a => [...a.in, ...a.activeNodes])
   const readInBody = [...body.in, ...body.activeNodes]
   // there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
-  const remainingRead = linkInputs(readInBody, down.activeScope, argsEnvironment, readInArguments.slice(), body.graph, true /* functions do not have to be called */)
+  const remainingRead = linkInputs(readInBody, data.activeScope, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */)
 
   dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads (of ids [${remainingRead.map(r => r.nodeId).join(', ')}])`)
 
-  const outEnvironment = overwriteEnvironments(argsEnvironment, bodyEnvironment)
-  for(const read of remainingRead) {
-    dataflowLogger.trace(`Adding node ${read.nodeId} to function graph in environment ${JSON.stringify(outEnvironment)} `)
-    subgraph.addNode(read.nodeId, read.name, outEnvironment, false, 'maybe')
+
+  // link same-def-def with arguments
+  for (const writeTarget of body.out) {
+    const writeName = writeTarget.name
+
+    const resolved = resolveByName(writeName, data.activeScope, paramsEnvironments)
+    if (resolved !== undefined) {
+      // write-write
+      for (const target of resolved) {
+        subgraph.addEdge(target, writeTarget, 'same-def-def', undefined, true)
+      }
+    }
   }
 
+  const outEnvironment = overwriteEnvironments(paramsEnvironments, bodyEnvironment)
+  for(const read of remainingRead) {
+    dataflowLogger.trace(`Adding node ${read.nodeId} to function graph in environment ${JSON.stringify(outEnvironment)} `)
+    subgraph.addNode({ tag: 'use', id: read.nodeId, name: read.name, environment: outEnvironment, when: 'maybe' })
+  }
 
-  // all nodes in the function graph are maybe as functions do not have to be executed
-  /* for(const [_, node] of subgraph.entries()) {
-    node.when = 'maybe'
-  } */
 
   const flow = {
     activeNodes:  [],
@@ -39,13 +100,26 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     out:          [ /* TODO: out */ ],
     graph:        subgraph,
     environments: outEnvironment,
-    ast:          down.ast,
-    scope:        down.activeScope
+    ast:          data.completeAst,
+    scope:        data.activeScope
   }
 
-  // TODO: exit points?
+  const exitPoints = retrieveExitPointsOfFunctionDefinition(functionDefinition)
+  // if exit points are extra, we must link them to all dataflow nodes they relate to.
+  linkExitPointsInGraph(exitPoints, subgraph, data.completeAst.idMap, data.environments)
+  linkLowestClosureVariables(subgraph, outEnvironment, data, functionDefinition)
+
   const graph = new DataflowGraph()
-  graph.addNode(functionDefinition.info.id, functionDefinition.info.id, popLocalEnvironment(down.environments), down.activeScope, 'always', flow)
+  graph.addNode({
+    tag:         'function-definition',
+    id:          functionDefinition.info.id,
+    name:        functionDefinition.info.id,
+    environment: popLocalEnvironment(data.environments),
+    scope:       data.activeScope,
+    when:        'always',
+    subflow:     flow,
+    exitPoints
+  })
   // TODO: deal with function info
   // TODO: rest
   return {
@@ -53,9 +127,33 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     in:           [] /* TODO: they must be bound on call */,
     out:          [],
     graph,
-    /* TODO: have args. the potential to influence their surrounding on def? */
-    environments: popLocalEnvironment(down.environments),
-    ast:          down.ast,
-    scope:        down.activeScope
+    /* TODO: have params. the potential to influence their surrounding on def? */
+    environments: popLocalEnvironment(data.environments),
+    ast:          data.completeAst,
+    scope:        data.activeScope
   }
 }
+
+
+function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowGraph, idMap: DataflowMap<OtherInfo>, environment: REnvironmentInformation): void {
+  for(const exitPoint of exitPoints) {
+    const exitPointNode = graph.get(exitPoint)
+    // if there already is an exit point it is either a variable or already linked
+    if(exitPointNode !== undefined) {
+      continue
+    }
+    const nodeInAst = idMap.get(exitPoint)
+
+    guard(nodeInAst !== undefined, `Could not find exit point node with id ${exitPoint} in ast`)
+    graph.addNode({ tag: 'exit-point', id: exitPoint, name: `${nodeInAst.lexeme ?? '??'}`, when: 'always', environment })
+
+    const allIds = [...collectAllIds(nodeInAst)].filter(id => graph.get(id) !== undefined)
+    for(const relatedId of allIds) {
+      // TODO: custom edge type?
+      if(relatedId !== exitPoint) {
+        graph.addEdge(exitPoint, relatedId, 'relates', 'always')
+      }
+    }
+  }
+}
+

@@ -1,4 +1,4 @@
-import { type RNumberValue, Type, RExpressionList, RNode, RArgument } from '../../src/r-bridge'
+import { type RNumberValue, Type, RExpressionList, RNode, RParameter } from '../../src/r-bridge'
 import { SourceRange } from '../../src/util/range'
 
 const emptyInfo = { fullRange: undefined, additionalTokens: [], fullLexeme: undefined }
@@ -10,9 +10,9 @@ export function numVal(value: number, markedAsInt = false, complexNumber = false
   return { num: value, markedAsInt, complexNumber }
 }
 
-export function argument(name: string, location: SourceRange, defaultValue?: RNode, special = false): RArgument  {
+export function parameter(name: string, location: SourceRange, defaultValue?: RNode, special = false): RParameter  {
   return {
-    type:    Type.Argument,
+    type:    Type.Parameter,
     location,
     special,
     lexeme:  name,
@@ -29,3 +29,5 @@ export function argument(name: string, location: SourceRange, defaultValue?: RNo
     info: emptyInfo
   }
 }
+
+

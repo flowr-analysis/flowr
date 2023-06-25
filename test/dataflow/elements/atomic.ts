@@ -6,6 +6,7 @@
 import { assertDataflow, withShell } from '../../helper/shell'
 import { DataflowGraph, GlobalScope, initializeCleanEnvironments, LocalScope } from '../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../helper/provider'
+import { define } from '../../../src/dataflow/environments'
 
 describe("Atomic dataflow information", withShell((shell) => {
   describe("uninteresting leafs", () => {
@@ -16,8 +17,27 @@ describe("Atomic dataflow information", withShell((shell) => {
 
   assertDataflow("simple variable", shell,
     "xylophone",
-    new DataflowGraph().addNode("0", "xylophone",  initializeCleanEnvironments())
+    new DataflowGraph().addNode({ tag: 'use', id: "0", name: "xylophone" })
   )
+
+  describe("access", () => {
+    for(const input of ["a[2]", "a[[2]]", "a$b", "a@b", "a[2][3]"]) {
+      assertDataflow('const access', shell,
+        input,
+        new DataflowGraph().addNode({ tag: 'use', id: "0", name: "a" })
+      )
+    }
+    assertDataflow("chained bracket access with variables", shell,
+      "a[x][y]",
+      new DataflowGraph()
+        .addNode({ tag: 'use', id: "0", name: "a" })
+        .addNode({ tag: 'use', id: "1", name: "x" })
+        .addNode({ tag: 'use', id: "3", name: "y" })
+        .addEdge("0", "1", "relates", "always")
+        .addEdge("0", "3", "relates", "always")
+        .addEdge("1", "3", "relates", "always")
+    )
+  })
 
   describe("unary operators", () => {
     for (const opSuite of RUnaryOpPool) {
@@ -26,7 +46,7 @@ describe("Atomic dataflow information", withShell((shell) => {
           const inputDifferent = `${op.str}x`
           assertDataflow(`${op.str}x`, shell,
             inputDifferent,
-            new DataflowGraph().addNode("0", "x",  initializeCleanEnvironments())
+            new DataflowGraph().addNode({ tag: 'use', id: "0", name: "x" })
           )
         }
       })
@@ -44,7 +64,7 @@ describe("Atomic dataflow information", withShell((shell) => {
             assertDataflow(`${inputDifferent} (different variables)`,
               shell,
               inputDifferent,
-              new DataflowGraph().addNode("0", "x",  initializeCleanEnvironments()).addNode("1", "y",  initializeCleanEnvironments())
+              new DataflowGraph().addNode({ tag: 'use', id: "0", name: "x" }).addNode({ tag: 'use', id: "1", name: "y" })
             )
 
             const inputSame = `x ${op.str} x`
@@ -52,8 +72,8 @@ describe("Atomic dataflow information", withShell((shell) => {
               shell,
               inputSame,
               new DataflowGraph()
-                .addNode("0", "x",  initializeCleanEnvironments())
-                .addNode("1", "x",  initializeCleanEnvironments())
+                .addNode({ tag: 'use', id: "0", name: "x" })
+                .addNode({ tag: 'use', id: "1", name: "x" })
                 .addEdge("0", "1", "same-read-read", "always")
             )
           })
@@ -72,24 +92,20 @@ describe("Atomic dataflow information", withShell((shell) => {
         assertDataflow(`${constantAssignment} (constant assignment)`,
           shell,
           constantAssignment,
-          new DataflowGraph().addNode(
-            swapSourceAndTarget ? "1" : "0",
-            "x",  initializeCleanEnvironments(),
-            scope
-          )
+          new DataflowGraph().addNode({ tag: 'variable-definition', id: swapSourceAndTarget ? "1" : "0", name: "x", scope })
         )
 
         const variableAssignment = `x ${op.str} y`
         const dataflowGraph = new DataflowGraph()
         if (swapSourceAndTarget) {
           dataflowGraph
-            .addNode("0", "x",  initializeCleanEnvironments())
-            .addNode("1", "y",  initializeCleanEnvironments(), scope)
+            .addNode({ tag: 'use', id: "0", name: "x" })
+            .addNode({ tag: 'variable-definition', id: "1", name: "y", scope })
             .addEdge("1", "0", "defined-by", "always")
         } else {
           dataflowGraph
-            .addNode("0", "x",  initializeCleanEnvironments(), scope)
-            .addNode("1", "y",  initializeCleanEnvironments())
+            .addNode({ tag: 'variable-definition', id: "0", name: "x", scope })
+            .addNode({ tag: 'use', id: "1", name: "y" })
             .addEdge("0", "1", "defined-by", "always")
         }
         assertDataflow(`${variableAssignment} (variable assignment)`,
@@ -103,13 +119,13 @@ describe("Atomic dataflow information", withShell((shell) => {
         const circularGraph = new DataflowGraph()
         if (swapSourceAndTarget) {
           circularGraph
-            .addNode("0", "x", initializeCleanEnvironments())
-            .addNode("1", "x", initializeCleanEnvironments(), scope)
+            .addNode({ tag: 'use', id: "0", name: "x" })
+            .addNode({ tag: 'variable-definition', id: "1", name: "x", scope })
             .addEdge("1", "0", "defined-by", "always")
         } else {
           circularGraph
-            .addNode("0", "x", initializeCleanEnvironments(), scope)
-            .addNode("1", "x", initializeCleanEnvironments())
+            .addNode({ tag: 'variable-definition', id: "0", name: "x", scope })
+            .addNode({ tag: 'use', id: "1", name: "x" })
             .addEdge("0", "1", "defined-by", "always")
         }
 
@@ -125,31 +141,31 @@ describe("Atomic dataflow information", withShell((shell) => {
       assertDataflow(`"x <- y <- 1"`, shell,
         "x <- y <- 1",
         new DataflowGraph()
-          .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
-          .addNode("1", "y", initializeCleanEnvironments(), LocalScope)
+          .addNode({ tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
+          .addNode({ tag: 'variable-definition', id: "1", name: "y", scope: LocalScope })
           .addEdge("0", "1", "defined-by", "always")
       )
       assertDataflow(`"1 -> x -> y"`, shell,
         "1 -> x -> y",
         new DataflowGraph()
-          .addNode("1", "x", initializeCleanEnvironments(), LocalScope)
-          .addNode("3", "y", initializeCleanEnvironments(), LocalScope)
+          .addNode({ tag: 'variable-definition', id: "1", name: "x", scope: LocalScope })
+          .addNode({ tag: 'variable-definition', id: "3", name: "y", scope: LocalScope })
           .addEdge("3", "1", "defined-by", "always")
       )
       // still by indirection (even though y is overwritten?) TODO: discuss that
       assertDataflow(`"x <- 1 -> y"`, shell,
         "x <- 1 -> y",
         new DataflowGraph()
-          .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
-          .addNode("2", "y", initializeCleanEnvironments(), LocalScope)
+          .addNode({ tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
+          .addNode({ tag: 'variable-definition', id: "2", name: "y", scope: LocalScope })
           .addEdge("0", "2", "defined-by", "always")
       )
       assertDataflow(`"x <- y <- z"`, shell,
         "x <- y <- z",
         new DataflowGraph()
-          .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
-          .addNode("1", "y", initializeCleanEnvironments(), LocalScope)
-          .addNode("2", "z", initializeCleanEnvironments())
+          .addNode({ tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
+          .addNode({ tag: 'variable-definition', id: "1", name: "y", scope: LocalScope })
+          .addNode({ tag: 'use', id: "2", name: "z" })
           .addEdge("0", "1", "defined-by", "always")
           .addEdge("1", "2", "defined-by", "always")
           .addEdge("0", "2", "defined-by", "always")
@@ -170,20 +186,20 @@ describe("Atomic dataflow information", withShell((shell) => {
 
               const repeatCode = build('x', 'repeat x')
               assertDataflow(`"${repeatCode}"`, shell, repeatCode, new DataflowGraph()
-                .addNode(assignment.defId[0], "x", initializeCleanEnvironments(), scope)
-                .addNode(assignment.readId[0], "x", initializeCleanEnvironments())
+                .addNode({ tag: 'variable-definition', id: assignment.defId[0], name: "x", scope })
+                .addNode({ tag: 'use', id: assignment.readId[0], name: "x" })
               )
 
               const whileCode = build('x', 'while (x) 3')
               assertDataflow(`"${whileCode}"`, shell, whileCode, new DataflowGraph()
-                .addNode(assignment.defId[1], "x", initializeCleanEnvironments(), scope)
-                .addNode(assignment.readId[1], "x", initializeCleanEnvironments()))
+                .addNode({ tag: 'variable-definition', id: assignment.defId[1], name: "x", scope })
+                .addNode({ tag: 'use', id: assignment.readId[1], name: "x" }))
 
               const forCode = build('x', 'for (x in 1:4) 3')
               assertDataflow(`"${forCode}"`, shell, forCode,
                 new DataflowGraph()
-                  .addNode(assignment.defId[2], "x", initializeCleanEnvironments(), scope)
-                  .addNode(assignment.readId[2], "x", initializeCleanEnvironments(), LocalScope /* for variable */)
+                  .addNode({ tag: 'variable-definition', id: assignment.defId[2], name: "x", scope })
+                  .addNode({ tag: 'variable-definition', id: assignment.readId[2], name: "x", scope: LocalScope })
               )
             }
           })
@@ -206,37 +222,37 @@ describe("Atomic dataflow information", withShell((shell) => {
           )
           assertDataflow(`compare cond.`, shell,
             `if (x > 5) ${b.func("1")}`,
-            new DataflowGraph().addNode("0", "x", initializeCleanEnvironments())
+            new DataflowGraph().addNode({ tag: 'use', id: "0", name: "x" })
           )
           assertDataflow(`compare cond. symbol in then`, shell,
             `if (x > 5) ${b.func("y")}`,
-            new DataflowGraph().addNode("0", "x", initializeCleanEnvironments())
-              .addNode("3", "y", initializeCleanEnvironments())
+            new DataflowGraph().addNode({ tag: 'use', id: "0", name: "x" })
+              .addNode({ tag: 'use', id: "3", name: "y", when: 'maybe' })
           )
           assertDataflow(`all variables`, shell,
             `if (x > y) ${b.func("z")}`,
             new DataflowGraph()
-              .addNode("0", "x", initializeCleanEnvironments())
-              .addNode("1", "y", initializeCleanEnvironments())
-              .addNode("3", "z", initializeCleanEnvironments())
+              .addNode({ tag: 'use', id: "0", name: "x" })
+              .addNode({ tag: 'use', id: "1", name: "y" })
+              .addNode({ tag: 'use', id: "3", name: "z", when: 'maybe' })
           )
           assertDataflow(`all variables, some same`, shell,
             `if (x > y) ${b.func("x")}`,
             new DataflowGraph()
-              .addNode("0", "x", initializeCleanEnvironments())
-              .addNode("1", "y", initializeCleanEnvironments())
-              .addNode("3", "x", initializeCleanEnvironments())
-              .addEdge("0", "3", "same-read-read", "always")
+              .addNode({ tag: 'use', id: "0", name: "x" })
+              .addNode({ tag: 'use', id: "1", name: "y" })
+              .addNode({ tag: 'use', id: "3", name: "x", when: 'maybe' })
+              .addEdge("0", "3", "same-read-read", "maybe")
           )
           assertDataflow(`all same variables`, shell,
             `if (x > x) ${b.func("x")}`,
             new DataflowGraph()
-              .addNode("0", "x", initializeCleanEnvironments())
-              .addNode("1", "x", initializeCleanEnvironments())
-              .addNode("3", "x", initializeCleanEnvironments())
+              .addNode({ tag: 'use', id: "0", name: "x" })
+              .addNode({ tag: 'use', id: "1", name: "x" })
+              .addNode({ tag: 'use', id: "3", name: "x", when: 'maybe' })
               .addEdge("0", "1", "same-read-read", "always")
             // TODO: theoretically they just have to be connected
-              .addEdge("0", "3", "same-read-read", "always")
+              .addEdge("0", "3", "same-read-read", "maybe")
           )
         })
 
@@ -247,48 +263,48 @@ describe("Atomic dataflow information", withShell((shell) => {
           )
           assertDataflow(`compare cond.`, shell,
             "if (x > 5) { 1 } else { 42 }",
-            new DataflowGraph().addNode("0", "x", initializeCleanEnvironments())
+            new DataflowGraph().addNode({ tag: 'use', id: "0", name: "x" })
           )
           assertDataflow(`compare cond. symbol in then`, shell,
             "if (x > 5) { y } else { 42 }",
-            new DataflowGraph().addNode("0", "x", initializeCleanEnvironments()).addNode("3", "y", initializeCleanEnvironments())
+            new DataflowGraph().addNode({ tag: 'use', id: "0", name: "x" }).addNode({ tag: 'use', id: "3", name: "y", when: 'maybe' })
           )
           assertDataflow(`compare cond. symbol in then & else`, shell,
             "if (x > 5) { y } else { z }",
             new DataflowGraph()
-              .addNode("0", "x", initializeCleanEnvironments())
-              .addNode("3", "y", initializeCleanEnvironments())
-              .addNode("4", "z", initializeCleanEnvironments())
+              .addNode({ tag: 'use', id: "0", name: "x" })
+              .addNode({ tag: 'use', id: "3", name: "y", when: 'maybe' })
+              .addNode({ tag: 'use', id: "4", name: "z", when: 'maybe' })
           )
           assertDataflow(`all variables`, shell,
             "if (x > y) { z } else { a }",
             new DataflowGraph()
-              .addNode("0", "x", initializeCleanEnvironments())
-              .addNode("1", "y", initializeCleanEnvironments())
-              .addNode("3", "z", initializeCleanEnvironments())
-              .addNode("4", "a", initializeCleanEnvironments())
+              .addNode({ tag: 'use', id: "0", name: "x" })
+              .addNode({ tag: 'use', id: "1", name: "y" })
+              .addNode({ tag: 'use', id: "3", name: "z", when: 'maybe' })
+              .addNode({ tag: 'use', id: "4", name: "a", when: 'maybe' })
           )
           assertDataflow(`all variables, some same`, shell,
             "if (y > x) { x } else { y }",
             new DataflowGraph()
-              .addNode("0", "y", initializeCleanEnvironments())
-              .addNode("1", "x", initializeCleanEnvironments())
-              .addNode("3", "x", initializeCleanEnvironments())
-              .addNode("4", "y", initializeCleanEnvironments())
-              .addEdge("1", "3", "same-read-read", "always")
-              .addEdge("0", "4", "same-read-read", "always")
+              .addNode({ tag: 'use', id: "0", name: "y" })
+              .addNode({ tag: 'use', id: "1", name: "x" })
+              .addNode({ tag: 'use', id: "3", name: "x", when: 'maybe' })
+              .addNode({ tag: 'use', id: "4", name: "y", when: 'maybe' })
+              .addEdge("1", "3", "same-read-read", "maybe")
+              .addEdge("0", "4", "same-read-read", "maybe")
           )
           assertDataflow(`all same variables`, shell,
             "if (x > x) { x } else { x }",
             new DataflowGraph()
-              .addNode("0", "x", initializeCleanEnvironments())
-              .addNode("1", "x", initializeCleanEnvironments())
-              .addNode("3", "x", initializeCleanEnvironments())
-              .addNode("4", "x", initializeCleanEnvironments())
+              .addNode({ tag: 'use', id: "0", name: "x" })
+              .addNode({ tag: 'use', id: "1", name: "x" })
+              .addNode({ tag: 'use', id: "3", name: "x", when: 'maybe' })
+              .addNode({ tag: 'use', id: "4", name: "x", when: 'maybe' })
             // TODO: 0 is just hardcoded, they just have to be connected
               .addEdge("0", "1", "same-read-read", "always")
-              .addEdge("0", "3", "same-read-read", "always")
-              .addEdge("0", "4", "same-read-read", "always")
+              .addEdge("0", "3", "same-read-read", "maybe")
+              .addEdge("0", "4", "same-read-read", "maybe")
           )
         })
       })
@@ -300,14 +316,14 @@ describe("Atomic dataflow information", withShell((shell) => {
     // TODO: support for vectors!
       assertDataflow("simple constant for-loop", shell,
         `for(i in 1:10) { 1 }`,
-        new DataflowGraph().addNode("0", "i", initializeCleanEnvironments(), LocalScope)
+        new DataflowGraph().addNode({ tag: 'variable-definition', id: "0", name: "i", scope: LocalScope })
       )
       assertDataflow("using loop variable in body", shell,
         `for(i in 1:10) { i }`,
         new DataflowGraph()
-          .addNode("0", "i", initializeCleanEnvironments(), LocalScope)
-          .addNode("4", "i", initializeCleanEnvironments())
-          .addEdge("4", "0", "read", "always")
+          .addNode({ tag: 'variable-definition', id: "0", name: "i", scope: LocalScope })
+          .addNode({ tag: 'use', id: "4", name: "i", when: 'maybe', environment: define({ name: 'i', definedAt: '5', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments()) })
+          .addEdge("4", "0", "read", "maybe")
       )
     // TODO: so many other tests... variable in sequence etc.
     })
@@ -320,17 +336,17 @@ describe("Atomic dataflow information", withShell((shell) => {
       )
       assertDataflow("using loop variable in body", shell,
         `repeat x`,
-        new DataflowGraph().addNode("0", "x", initializeCleanEnvironments())
+        new DataflowGraph().addNode({ tag: 'use', id: "0", name: "x" })
       )
       assertDataflow("using loop variable in body", shell,
         `repeat { x <- 1 }`,
-        new DataflowGraph().addNode("0", "x", initializeCleanEnvironments(), LocalScope)
+        new DataflowGraph().addNode({ tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
       )
       assertDataflow("using variable in body", shell,
         `repeat { x <- y }`,
         new DataflowGraph()
-          .addNode("0", "x", initializeCleanEnvironments(), LocalScope)
-          .addNode("1", "y", initializeCleanEnvironments())
+          .addNode({ tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
+          .addNode({ tag: 'use', id: "1", name: "y" })
         // TODO: always until encountered conditional break etc?
           .addEdge("0", "1", "defined-by", "always" /* TODO: maybe ? */)
       )
@@ -344,18 +360,18 @@ describe("Atomic dataflow information", withShell((shell) => {
       )
       assertDataflow("using variable in body", shell,
         `while (TRUE) x`,
-        new DataflowGraph().addNode("1", "x", initializeCleanEnvironments())
+        new DataflowGraph().addNode({ tag: 'use', id: "1", name: "x", when: 'maybe' })
       )
       assertDataflow("assignment in loop body", shell,
         `while (TRUE) { x <- 3 }`,
-        new DataflowGraph().addNode("1", "x", initializeCleanEnvironments(), LocalScope)
+        new DataflowGraph().addNode({ tag: 'variable-definition', id: "1", name: "x", scope: LocalScope, when: 'maybe' })
       )
       assertDataflow('def compare in loop', shell, `while ((x <- x - 1) > 0) { x }`,
         new DataflowGraph()
-          .addNode('0', 'x', initializeCleanEnvironments(), LocalScope)
-          .addNode('1', 'x', initializeCleanEnvironments())
-          .addNode('7', 'x', initializeCleanEnvironments())
-          .addEdge('7', '0', 'read', 'always')
+          .addNode({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
+          .addNode({ tag: 'use', id: '1', name: 'x' })
+          .addNode({ tag: 'use', id: '7', name: 'x', when: 'maybe' })
+          .addEdge('7', '0', 'read', 'maybe')
           .addEdge('0', '1', 'defined-by', 'always')
       )
     })

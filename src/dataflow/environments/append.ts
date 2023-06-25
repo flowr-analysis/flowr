@@ -2,12 +2,14 @@ import { guard } from '../../util/assert'
 import { REnvironmentInformation, IEnvironment, IdentifierDefinition, Environment } from './environment'
 
 function uniqueMergeValues(old: IdentifierDefinition[], value: IdentifierDefinition[]): IdentifierDefinition[] {
-  // TODO: improve this to ensure there are no duplicates
-  const set = new Set(old)
+  const result = old
   for (const v of value) {
-    set.add(v)
+    const find = result.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)
+    if(find < 0) {
+      result.push(v)
+    }
   }
-  return [...set]
+  return result
 }
 
 function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironment | undefined): IEnvironment {

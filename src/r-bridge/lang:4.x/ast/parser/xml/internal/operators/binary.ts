@@ -16,7 +16,7 @@ import {
   AssignmentsRAst,
   BinaryOperatorFlavor,
   ComparisonOperatorsRAst,
-  LogicalOperatorsRAst
+  LogicalOperatorsRAst, ModelFormulaOperatorsRAst
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
@@ -35,6 +35,8 @@ export function tryParseBinaryOperation(
     flavor = "comparison"
   } else if (LogicalOperatorsRAst.includes(op.name)) {
     flavor = "logical"
+  }  else if (ModelFormulaOperatorsRAst.includes(op.name)) {
+    flavor = "model formula"
   } else if (AssignmentsRAst.includes(op.name)) {
     flavor = "assignment"
   } else if (Type.Special === op.name) {

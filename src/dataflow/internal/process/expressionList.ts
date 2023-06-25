@@ -3,33 +3,44 @@
  * @module
  */
 import { DataflowInformation, initializeCleanInfo } from '../info'
-import { RExpressionList } from '../../../r-bridge'
-import { DataflowProcessorDown } from '../../processor'
+import { NodeId, ParentInformation, RExpressionList } from '../../../r-bridge'
+import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import {
+  BuiltIn,
   IdentifierReference,
   overwriteEnvironments,
   REnvironmentInformation,
   resolveByName
 } from '../../environments'
-import { linkReadVariablesInSameScopeWithNames } from '../linker'
+import { linkFunctionCallExitPoints, linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
 import { DataflowGraph } from '../../graph'
 import { dataflowLogger } from '../../index'
 
 
-function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, down: DataflowProcessorDown<OtherInfo>, environments: REnvironmentInformation, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
+function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, data: DataflowProcessorInformation<OtherInfo>, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
   const readName = read.name
 
-  const probableTarget = resolveByName(readName, down.activeScope, environments)
+  const probableTarget = resolveByName(readName, data.activeScope, environments)
 
-  if (probableTarget === undefined) {
-    // keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
+  // record if at least one has not been defined
+  if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId))) {
     if (remainingRead.has(readName)) {
       remainingRead.get(readName)?.push(read)
     } else {
       remainingRead.set(readName, [read])
     }
-  } else if (probableTarget.length === 1) {
+  }
+
+
+  // keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
+  // we keep them if they are defined outside the current parent and maybe throw them away later
+  if (probableTarget === undefined) {
+    return
+  }
+
+
+  if (probableTarget.length === 1) {
     nextGraph.addEdge(read, probableTarget[0], 'read', undefined, true)
   } else {
     for (const target of probableTarget) {
@@ -41,13 +52,14 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dow
 
 
 function processNextExpression<OtherInfo>(currentElement: DataflowInformation<OtherInfo>,
-                                          down: DataflowProcessorDown<OtherInfo>,
+                                          down: DataflowProcessorInformation<OtherInfo>,
                                           environments: REnvironmentInformation,
+                                          listEnvironments: Set<NodeId>,
                                           remainingRead: Map<string, IdentifierReference[]>,
                                           nextGraph: DataflowGraph) {
   // all inputs that have not been written until know, are read!
   for (const read of [...currentElement.in, ...currentElement.activeNodes]) {
-    linkReadNameToWriteIfPossible(read, down, environments, remainingRead, nextGraph)
+    linkReadNameToWriteIfPossible(read, down, environments, listEnvironments, remainingRead, nextGraph)
   }
   // add same variable reads for deferred if they are read previously but not dependent
   for (const writeTarget of currentElement.out) {
@@ -59,32 +71,55 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
     if (resolved !== undefined) {
       // write-write
       for (const target of resolved) {
-        nextGraph.addEdge(target, writeTarget, 'same-def-def', undefined, true)
+        if(nextGraph.hasNode(target.nodeId)) {
+          nextGraph.addEdge(target, writeTarget, 'same-def-def', undefined, true)
+        } else {
+          // TODO: remove
+          dataflowLogger.trace(`delay same-def-def edge because target ${JSON.stringify(target)} is not yet in graph (potentially an argument)`)
+        }
       }
     }
   }
 }
 
-export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo>, expressions: DataflowInformation<OtherInfo>[], down: DataflowProcessorDown<OtherInfo>): DataflowInformation<OtherInfo> {
+export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  const expressions = exprList.children
   dataflowLogger.trace(`processing expression list with ${expressions.length} expressions`)
   if(expressions.length === 0) {
-    return initializeCleanInfo(down)
+    return initializeCleanInfo(data)
   }
 
-  let environments = down.environments
+  let environments = data.environments
+  // used to detect if a "write" happens within the same expression list
+  const listEnvironments: Set<NodeId> = new Set<NodeId>()
+
   const remainingRead = new Map<string, IdentifierReference[]>()
 
-  // TODO: this is probably wrong
-  const nextGraph = expressions[0].graph.mergeWith(...expressions.slice(1).map(c => c.graph))
+  const nextGraph = new DataflowGraph()
+  const out = []
 
   let expressionCounter = 0
   for (const expression of expressions) {
     dataflowLogger.trace(`processing expression ${++expressionCounter} of ${expressions.length}`)
-    processNextExpression(expression, down, environments, remainingRead, nextGraph)
+    // use the current environments for processing
+    data = { ...data, environments }
+    const processed = processDataflowFor(expression, data)
+    nextGraph.mergeWith(processed.graph)
+    out.push(...processed.out)
 
+    dataflowLogger.trace(`expression ${expressionCounter} of ${expressions.length} has ${processed.activeNodes.length} active nodes`)
+
+
+    processNextExpression(processed, data, environments, listEnvironments, remainingRead, nextGraph)
     // update the environments for the next iteration with the previous writes
-    environments = overwriteEnvironments(environments, expression.environments)
+    environments = overwriteEnvironments(environments, processed.environments)
+    for(const { nodeId } of processed.out) {
+      listEnvironments.add(nodeId)
+    }
   }
+
+  linkFunctionCallExitPoints(nextGraph)
+
   // now, we have to link same reads
   linkReadVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))
 
@@ -93,11 +128,11 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
   return {
     /* no active nodes remain, they are consumed within the remaining read collection */
     activeNodes: [],
-    in:          [...remainingRead.values()].flatMap(i => i),
-    out:         expressions.flatMap(child => [...child.out]),
-    ast:         down.ast,
+    in:          [...remainingRead.values()].flat(),
+    out,
+    ast:         data.completeAst,
     environments,
-    scope:       down.activeScope,
+    scope:       data.activeScope,
     graph:       nextGraph
   }
 }

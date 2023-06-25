@@ -116,19 +116,10 @@ describe('Function Definition', withShell(shell => {
                 environment: envWithXDefined,
                 when:        'always',
               })
-              .addNode({
-                tag:         'use',
-                id:          "2",
-                name:        'return',
-                environment: envWithXDefined,
-                when:        'always',
-              })
-              .addEdge("5", "2", "read", "always")
               .addEdge("5", BuiltIn, "calls", "always")
               .addEdge("3", "0", "read", "always")
               .addEdge("5", "4", "argument", "always")
-              .addEdge("4", "3", "read", "always")
-              .addEdge("2", BuiltIn, 'read', 'always'),
+              .addEdge("4", "3", "read", "always"),
             environments: envWithXDefined
           }
         })
@@ -592,8 +583,8 @@ describe('Function Definition', withShell(shell => {
                   scope: LocalScope,
                   graph: new DataflowGraph()
                     .addNode({ tag: 'use', id: "5", name: "b", environment: withinNestedFunctionWithParam })
-                    .addNode({ tag: 'use', id: "6", name: "<-", environment: withinNestedFunctionWithParam })
-                    .addEdge("6", "5", "relates", "always")
+                    .addNode({ tag: 'exit-point', id: "6", name: "<-", environment: withinNestedFunctionWithParam })
+                    .addEdge("6", "4", "relates", "always")
                     .addEdge("6", "5", "relates", "always")
                     .addNode({ tag: 'variable-definition', id: "4", name: "x", environment: withinNestedFunctionWithParam, scope: LocalScope, when: 'always' })
                     .addNode({ tag: 'variable-definition', id: "2", name: "x", environment: withinNestedFunctionWithoutParam, scope: LocalScope, when: 'always' })

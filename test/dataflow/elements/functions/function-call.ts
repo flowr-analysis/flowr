@@ -34,14 +34,6 @@ describe('Function Call', withShell(shell => {
             nodeId: '11', name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, used: 'always'
           }] })
         .addNode({
-          tag:         'use',
-          id:          '9',
-          name:        'a',
-          scope:       LocalScope,
-          environment: envWithIA,
-          when:        'always'
-        })
-        .addNode({
           tag:        'function-definition',
           id:         '7',
           name:       '7',
@@ -62,8 +54,6 @@ describe('Function Call', withShell(shell => {
         .addEdge('3', '7', 'defined-by', 'always')
         .addEdge('12', '11', 'argument', 'always')
         .addEdge('11', '10', 'read', 'always')
-        .addEdge('9', '3', 'read', 'always')
-        .addEdge('12', '9', 'read', 'always')
         .addEdge('12', '3', 'calls', 'always')
         .addEdge('12', '6', 'returns', 'always')
     )
@@ -103,13 +93,6 @@ a(i)`, new DataflowGraph()
           nodeId: '18', name: `${UnnamedArgumentPrefix}18`, scope: LocalScope, used: 'always'
         }]})
       .addNode({
-        tag:         'use',
-        id:          '16',
-        name:        'a',
-        environment: envWithIAndLargeA,
-        when:        'always'
-      })
-      .addNode({
         tag:         'function-definition',
         id:          '14',
         name:        '14',
@@ -136,10 +119,8 @@ a(i)`, new DataflowGraph()
             .addEdge('4', '6', 'same-def-def', 'always')
         }})
       .addEdge('3', '14', 'defined-by', 'always')
-      .addEdge('16', '3', 'read', 'always')
       .addEdge('19', '18', 'argument', 'always')
       .addEdge('18', '17', 'read', 'always')
-      .addEdge('19', '16', 'read', 'always')
       .addEdge('19', '3', 'calls', 'always')
       .addEdge('19', '12', 'returns', 'always')
     )
@@ -174,7 +155,6 @@ a(i)`, new DataflowGraph()
           environment: defWithAY,
           args:        []
         })
-        .addNode({ tag: 'use', id: '7', name: 'a', environment: defWithAY })
         .addNode({
           tag:        'function-definition',
           id:         '2',
@@ -191,8 +171,6 @@ a(i)`, new DataflowGraph()
               .addNode({ tag: 'use', id: '1', name: 'y', scope: LocalScope, environment: innerEnv })
           }})
         .addEdge('0', '2', 'defined-by', 'always')
-        .addEdge('8', '7', 'read', 'always')
-        .addEdge('7', '0', 'read', 'always')
         .addEdge('8', '0', 'calls', 'always')
         .addEdge('8', '1', 'returns', 'always')
         // TODO: functions must store the *final* environments with all definitions they produce

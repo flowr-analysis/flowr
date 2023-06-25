@@ -315,7 +315,7 @@ export class DataflowGraph {
    * TODO: ensure that target has a def scope and source does not?
    */
   public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute, promote= false): this {
-    dataflowLogger.trace(`trying to add edge from ${JSON.stringify(from)} to ${JSON.stringify(to)} with type ${type} and attribute ${JSON.stringify(attribute)} to graph`)
+    // dataflowLogger.trace(`trying to add edge from ${JSON.stringify(from)} to ${JSON.stringify(to)} with type ${type} and attribute ${JSON.stringify(attribute)} to graph`)
 
     let fromId = typeof from === 'object' ? from.nodeId : from
     let toId = typeof to === 'object' ? to.nodeId : to

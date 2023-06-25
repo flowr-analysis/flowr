@@ -21,9 +21,21 @@ describe("Atomic dataflow information", withShell((shell) => {
   )
 
   describe("access", () => {
-    assertDataflow("simple bracket access", shell,
-      "a[2]",
-      new DataflowGraph().addNode({ tag: 'use', id: "0", name: "a" })
+    for(const input of ["a[2]", "a[[2]]", "a$b", "a@b", "a[2][3]"]) {
+      assertDataflow('const access', shell,
+        input,
+        new DataflowGraph().addNode({ tag: 'use', id: "0", name: "a" })
+      )
+    }
+    assertDataflow("chained bracket access with variables", shell,
+      "a[x][y]",
+      new DataflowGraph()
+        .addNode({ tag: 'use', id: "0", name: "a" })
+        .addNode({ tag: 'use', id: "1", name: "x" })
+        .addNode({ tag: 'use', id: "3", name: "y" })
+        .addEdge("0", "1", "relates", "always")
+        .addEdge("0", "3", "relates", "always")
+        .addEdge("1", "3", "relates", "always")
     )
   })
 

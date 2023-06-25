@@ -10,6 +10,8 @@ export function processAccess<OtherInfo>(data: RAccess<OtherInfo & ParentInforma
   const ingoing = [...processedAccessed.in, ...processedAccessed.activeNodes]
   const environments = processedAccessed.environments
 
+  const accessedNodes = [...processedAccessed.activeNodes, ...processedAccessed.in, ...processedAccessed.out]
+
   if(data.operator === '[' || data.operator === '[[') {
     for(const access of data.access) {
       if(access === null) {
@@ -18,8 +20,14 @@ export function processAccess<OtherInfo>(data: RAccess<OtherInfo & ParentInforma
       const processedAccess = processDataflowFor(access, down)
       nextGraph.mergeWith(processedAccess.graph)
       outgoing.push(...processedAccess.out)
-      ingoing.push(...processedAccess.in)
-      ingoing.push(...processedAccess.activeNodes)
+      const newIngoing = [...processedAccess.in, ...processedAccess.activeNodes]
+      for(const newIn of newIngoing) {
+        // TODO: deal with complexity in the future by introduce a new specific node
+        for(const accessedNode of accessedNodes) {
+          nextGraph.addEdge(accessedNode, newIn, 'relates', 'always')
+        }
+      }
+      ingoing.push(...newIngoing)
       overwriteEnvironments(environments, processedAccess.environments)
     }
   }

@@ -28,6 +28,9 @@ export const enum Type {
   ParenRight = ")",
   BraceLeft = "{",
   BraceRight = "}",
+  // TODO: deal with them as access operators, similarly with '[[' etc.
+  BracketLeft = "[",
+  BracketRight = "]",
   Semicolon = ";",
   For = "FOR",
   ForCondition = "forcond",

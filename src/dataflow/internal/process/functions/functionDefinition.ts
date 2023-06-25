@@ -1,6 +1,7 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import {
+  BuiltIn,
   initializeCleanEnvironments,
   overwriteEnvironments,
   popLocalEnvironment,
@@ -123,7 +124,9 @@ function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowG
     const allIds = [...collectAllIds(nodeInAst)].filter(id => graph.get(id) !== undefined)
     for(const relatedId of allIds) {
       // TODO: custom edge type?
-      graph.addEdge(exitPoint, relatedId, 'relates', 'always')
+      if(relatedId !== exitPoint) {
+        graph.addEdge(exitPoint, relatedId, 'relates', 'always')
+      }
     }
   }
 }

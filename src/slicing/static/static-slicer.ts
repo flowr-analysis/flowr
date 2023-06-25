@@ -9,26 +9,6 @@ export const slicerLogger = log.getSubLogger({ name: "slicer" })
 
 
 // TODO: include library loads
-function linkOnFunctionCall(callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, visited: Set<NodeId>, visitQueue: NodeId[]) {
-  // bind with call-local environments during slicing
-  const functionCallDefs = callerInfo.edges.filter(e => e.type === 'calls').map(e => e.target)
-  const functionCallTargets = getAllLinkedFunctionDefinitions(functionCallDefs, dataflowGraph)
-
-  for (const [_, functionCallTarget] of functionCallTargets) {
-    guard(functionCallTarget.tag === 'function-definition', () => `expected function definition, but got ${functionCallTarget.tag}`)
-    for (const openIn of functionCallTarget.subflow.in) {
-      const defs = resolveByName(openIn.name, LocalScope, callerInfo.environment)
-      if (defs === undefined) {
-        continue
-      }
-      for (const def of defs) {
-        if (!visited.has(def.nodeId)) {
-          visitQueue.push(def.nodeId)
-        }
-      }
-    }
-  }
-}
 
 /**
  * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
@@ -66,7 +46,6 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
 
     const liveEdges = currentInfo.edges.filter(e => e.type === 'read' || e.type === 'defined-by' || e.type === 'argument'  || e.type === 'calls' || e.type === 'relates' || e.type === 'returns')
     for (const edge of liveEdges) {
-      console.log('trace edge', edge)
       if (!visited.has(edge.target)) {
         slicerLogger.trace(`adding id: ${edge.target} to visit queue`)
         visitQueue.push(edge.target)
@@ -79,4 +58,24 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
   return visited
 }
 
-// TODO: trace refs within function definition
+function linkOnFunctionCall(callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, visited: Set<NodeId>, visitQueue: NodeId[]) {
+  // bind with call-local environments during slicing
+  const functionCallDefs = callerInfo.edges.filter(e => e.type === 'calls').map(e => e.target)
+  const functionCallTargets = getAllLinkedFunctionDefinitions(functionCallDefs, dataflowGraph)
+
+  for (const [_, functionCallTarget] of functionCallTargets) {
+    guard(functionCallTarget.tag === 'function-definition', () => `expected function definition, but got ${functionCallTarget.tag}`)
+    for (const openIn of functionCallTarget.subflow.in) {
+      const defs = resolveByName(openIn.name, LocalScope, callerInfo.environment)
+      if (defs === undefined) {
+        continue
+      }
+      for (const def of defs) {
+        if (!visited.has(def.nodeId)) {
+          visitQueue.push(def.nodeId)
+        }
+      }
+    }
+  }
+}
+

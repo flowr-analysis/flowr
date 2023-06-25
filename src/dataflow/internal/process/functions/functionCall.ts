@@ -1,9 +1,10 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { overwriteEnvironments, resolveByName } from '../../../environments'
+import { initializeCleanEnvironments, overwriteEnvironments, resolveByName } from '../../../environments'
 import { NodeId, ParentInformation, RFunctionCall } from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
 import {
+  DataflowGraph,
   dataflowLogger,
   FunctionArgument
 } from '../../../index'
@@ -12,12 +13,12 @@ import {
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const functionName = processDataflowFor(functionCall.functionName, data)
   const args = functionCall.arguments.map(arg => processDataflowFor(arg, data))
-  let finalGraph = functionName.graph
+  let finalGraph = new DataflowGraph()
 
   // we update all the usage nodes within the dataflow graph of the function name to
   // mark them as function calls, and append their argument linkages
   let functionNameId: NodeId | undefined
-  for(const [nodeId, _] of finalGraph.nodes()) {
+  for(const [nodeId, _] of functionName.graph.nodes()) {
     functionNameId = nodeId
   }
 
@@ -39,7 +40,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     scope:       data.activeScope,
     args:        callArgs // same reference
   })
-  finalGraph.addEdge(functionRootId, functionNameId, 'read', 'always')
+  // finalGraph.addEdge(functionRootId, functionNameId, 'read', 'always')
 
   const resolved = resolveByName(functionCallName, data.activeScope, data.environments)
   if(resolved !== undefined) {
@@ -69,10 +70,13 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   // TODO:
   // finalGraph.addNode(functionCall.info.id, functionCall.functionName.content, finalEnv, down.activeScope, 'always')
 
+  const inIds = [...args.flatMap(a => [...a.in, a.activeNodes])].flat()
+  inIds.push({ nodeId: functionRootId, name: functionCallName, scope: data.activeScope, used: 'always' })
+
   return {
     activeNodes:  [],
-    in:           [...args.flatMap(a => [...a.in, a.activeNodes]), ...functionName.in, ...functionName.activeNodes].flat(),
-    out:          [...functionName.out, ...args.flatMap(a => a.out)],
+    in:           inIds,
+    out:          [ ...functionName.out, ...args.flatMap(a => a.out)],
     graph:        finalGraph,
     environments: finalEnv,
     ast:          data.completeAst,

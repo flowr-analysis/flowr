@@ -74,17 +74,15 @@ z <- 5
 u <- a()
 u()`
       assertSliced('Must include function shell', shell, code, ['5@a'], `a <- function() {
-        x <- function() { z + y }
-        y <- 12
-        return(x)
-    }
-z <- 5
-a()`)
-      /*      assertSliced('Must include function shell', shell, code, ['6@u'], `a <- function() {
         x <- function() { }
         return(x)
     }
-a()`)*/
+a()`)
+      assertSliced('Must include function shell', shell, code, ['6@u'], `a <- function() {
+        x <- function() { }
+        return(x)
+    }
+a()`)
     })
   })
 }))

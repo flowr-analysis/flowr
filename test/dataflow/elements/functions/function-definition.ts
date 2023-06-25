@@ -592,13 +592,13 @@ describe('Function Definition', withShell(shell => {
                   scope: LocalScope,
                   graph: new DataflowGraph()
                     .addNode({ tag: 'use', id: "5", name: "b", environment: withinNestedFunctionWithParam })
-                    .addNode({ tag: 'exit-point', id: "6", name: "<-", environment: withinNestedFunctionWithParam })
+                    .addNode({ tag: 'use', id: "6", name: "<-", environment: withinNestedFunctionWithParam })
+                    .addEdge("6", "5", "relates", "always")
+                    .addEdge("6", "5", "relates", "always")
                     .addNode({ tag: 'variable-definition', id: "4", name: "x", environment: withinNestedFunctionWithParam, scope: LocalScope, when: 'always' })
                     .addNode({ tag: 'variable-definition', id: "2", name: "x", environment: withinNestedFunctionWithoutParam, scope: LocalScope, when: 'always' })
                     .addEdge("4", "5", "defined-by", "always")
-                    .addEdge("2", "4", 'same-def-def', 'always')
-                    .addEdge("6", "5", "relates", "always")
-                    .addEdge("6", "4", "relates", "always"),
+                    .addEdge("2", "4", 'same-def-def', 'always'),
                   environments: withinNestedFunctionWithDef
                 }
               })

@@ -6,6 +6,7 @@ import { DataflowInformation, initializeCleanInfo } from '../info'
 import { NodeId, ParentInformation, RExpressionList } from '../../../r-bridge'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import {
+  BuiltIn,
   IdentifierReference,
   overwriteEnvironments,
   REnvironmentInformation,

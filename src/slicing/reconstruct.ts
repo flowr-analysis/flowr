@@ -3,7 +3,7 @@ import {
   NodeId,
   ParentInformation, RBinaryOp,
   RExpressionList,
-  RForLoop, RFunctionCall, RFunctionDefinition,
+  RForLoop, RFunctionCall, RFunctionDefinition, RIfThenElse,
   RNodeWithParent, RParameter,
   RRepeatLoop, RWhileLoop
 } from '../r-bridge'
@@ -134,6 +134,45 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
   }
 }
 
+function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, selection: Selection): Code {
+  if (selection.has(ifThenElse.info.id)) {
+    return plain(getLexeme(ifThenElse))
+  }
+  otherwise ??= []
+  if(condition.length === 0 && when.length === 0 && otherwise.length === 0) {
+    return []
+  }
+  if(otherwise.length === 0 && when.length === 0) {
+    return [
+      // TODO: recurse into condition?
+      { line: `if(${getLexeme(ifThenElse.condition)}) { }`, indent: 0 }
+    ]
+  } else if(otherwise.length === 0) {
+    return [
+      // TODO: recurse into condition?
+      { line: `if(${getLexeme(ifThenElse.condition)}) {`, indent: 0 },
+      ...indentBy(when, 1),
+      { line: '}', indent: 0 }
+    ]
+  } else if(when.length === 0) {
+    return [
+      // TODO: recurse into condition?
+      { line: `if(${getLexeme(ifThenElse.condition)}) { } else {`, indent: 0 },
+      ...indentBy(otherwise, 1),
+      { line: '}', indent: 0 }
+    ]
+  } else {
+    return [
+      { line: `if(${getLexeme(ifThenElse.condition)}) {`, indent: 0 },
+      ...indentBy(when, 1),
+      { line: '}', indent: 0 },
+      { line: 'else {', indent: 0 },
+      ...indentBy(otherwise, 1),
+      { line: '}', indent: 0 }
+    ]
+  }
+}
+
 
 function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, selection: Selection): Code {
   if(selection.has(loop.info.id)) {
@@ -243,7 +282,7 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Selection, C
     foldBreak:  reconstructAsLeaf,
     foldNext:   reconstructAsLeaf
   },
-  foldIfThenElse: foldToConst,
+  foldIfThenElse: reconstructIfThenElse,
   foldExprList:   reconstructExpressionList,
   functions:      {
     foldFunctionDefinition: reconstructFunctionDefinition,

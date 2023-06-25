@@ -6,6 +6,10 @@ describe('Simple', withShell(shell => {
       assertSliced(`x <- [${i}]`, shell, 'x <- 1\nx <- 2\nx <- 3', [`${i}:1`], `x <- ${i}`)
     }
   })
+  describe('Constant conditionals', () => {
+    assertSliced('if(TRUE)', shell, 'if(TRUE) { x <- 3 } else { x <- 4}\nx', ['2@x'], 'if(TRUE) {\n    x <- 3\n}\nx')
+    assertSliced('if(FALSE)', shell, 'if(FALSE) { x <- 3 } else { x <- 4}\nx', ['2@x'], 'if(FALSE) { } else {\n    x <- 4\n}\nx')
+  })
   // TODO: test for(i in 1:10) { print(i); i <- 12 }
   describe('The classic', () => {
     const code = `

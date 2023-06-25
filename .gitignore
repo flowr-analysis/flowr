@@ -3,6 +3,7 @@ doc/
 statistics-out*/
 **/*.R.slice
 **/*.R.stats
+**/*.R*.dataflow
 
 ### VisualStudioCode template
 .vscode/*

@@ -13,7 +13,7 @@ import fs from 'fs'
 import { naiveStaticSlicing } from '../slicing/static'
 import { assert } from 'chai'
 import { guard, isNotUndefined } from '../util/assert'
-import { produceDataFlowGraph } from '../dataflow'
+import { graphToMermaid, produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode } from '../slicing/reconstruct'
 import { SlicingCriterion, slicingCriterionToId } from '../slicing/criteria'
 
@@ -25,6 +25,7 @@ export const optionDefinitions: OptionDefinition[] = [
   { name: 'input',        alias: 'i', type: String,  description: '(Required) Pass a single file to slice', multiple: false, defaultOption: true, typeLabel: '{underline files}' },
   { name: 'criterion',    alias: 'c', type: String,  description: '(Required) Slicing criterion either in the form {underline line:col} or {underline line@variable}, multiple can be separated by \'{bold ;}\'', multiple: false },
   { name: 'stats',        alias: 's', type: Boolean, description: `Print stats to {italic <output>.stats} (runtimes etc.)`, multiple: false },
+  { name: 'dataflow',     alias: 'd', type: Boolean, description: `Dump mermaid code for the dataflow to {italic <output>.dataflow}`, multiple: false },
   // TODO: forward vs. backward slicing
   { name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to {italic <input>.slice})', typeLabel: '{underline file}' },
 ]
@@ -36,6 +37,7 @@ export interface SlicerCliOptions {
   criterion: string | undefined
   output:    string | undefined
   stats:     boolean
+  dataflow:  boolean
 }
 
 export const optionHelp = [
@@ -116,6 +118,9 @@ async function writeSliceForSingleFile(request: RParseRequestFromFile, tokens: R
   const dataflowCreation = process.hrtime.bigint()
 
   const sliced = naiveStaticSlicing(dataflow.graph, decorated.idMap, mappedIds)
+  if(options.dataflow) {
+    fs.writeFileSync(`${output}.dataflow`, graphToMermaid(dataflow.graph, decorated.idMap, undefined, undefined, sliced))
+  }
   const sliceCreation = process.hrtime.bigint()
 
   const reconstructed = reconstructToCode<NoInfo>(decorated, sliced)

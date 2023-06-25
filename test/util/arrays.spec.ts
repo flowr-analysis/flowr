@@ -10,7 +10,7 @@ describe('Arrays', () => {
     }
     test('empty array', [], () => true, [])
     test('false predicate' , [1, 2, 3], () => false, [[1, 2, 3]])
-    test('split on all', [1, 2, 3], () => true, [[], [], []])
+    test('split on all', [1, 2, 3], () => true, [[], [], [], []])
     test('split on empty string', ['a', '', 'b', '', '', 'c'], elem => elem === '', [['a'], ['b'], [], ['c']])
   })
   describe('allPermutations', () => {

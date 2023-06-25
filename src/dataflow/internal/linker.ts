@@ -113,12 +113,12 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeI
 /**
  * This method links a set of read variables to definitions in an environment.
  *
- * @param referencesToLinkAgainstEnvironment - the set of references to link against the environment
- * @param scope - the scope in which the linking shall happen (probably the active scope of {@link DataflowProcessorInformation})
- * @param environmentInformation - the environment information to link against
- * @param givenInputs - the existing list of inputs that might be extended
- * @param graph - the graph to enter the found links
- * @param maybeForRemaining - each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
+ * @param referencesToLinkAgainstEnvironment - The set of references to link against the environment
+ * @param scope                              - The scope in which the linking shall happen (probably the active scope of {@link DataflowProcessorInformation})
+ * @param environmentInformation             - The environment information to link against
+ * @param givenInputs                        - The existing list of inputs that might be extended
+ * @param graph                              - The graph to enter the found links
+ * @param maybeForRemaining                  - Each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
  *
  * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
  */

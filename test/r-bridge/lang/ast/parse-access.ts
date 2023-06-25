@@ -13,7 +13,7 @@ import { Type } from '../../../../src/r-bridge'
 // TODO: quote and deparse should break references?
 describe("Parse value access", withShell(shell => {
   describe('Single bracket', () => {
-    assertAst("Empty single bracket access", shell, "a[]", exprList({
+    assertAst("Empty", shell, "a[]", exprList({
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 2),
       lexeme:   '[',
@@ -29,7 +29,7 @@ describe("Parse value access", withShell(shell => {
       },
       access: []
     }))
-    assertAst("Single bracket access", shell, "a[1]", exprList({
+    assertAst("One value", shell, "a[1]", exprList({
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 2),
       lexeme:   '[',
@@ -51,7 +51,68 @@ describe("Parse value access", withShell(shell => {
         info:     {}
       }]
     }))
-    assertAst("Multiple bracket access", shell, "a[3,2]", exprList({
+    assertAst("One variable", shell, "a[x]", exprList({
+      type:     Type.Access,
+      location: rangeFrom(1, 2, 1, 2),
+      lexeme:   '[',
+      operand:  '[',
+      info:     {},
+      accessed: {
+        type:      Type.Symbol,
+        location:  rangeFrom(1, 1, 1, 1),
+        namespace: undefined,
+        lexeme:    "a",
+        content:   "a",
+        info:      {}
+      },
+      access: [{
+        type:      Type.Symbol,
+        location:  rangeFrom(1, 3, 1, 3),
+        namespace: undefined,
+        lexeme:    "x",
+        content:   "x",
+        info:      {}
+      }]
+    }))
+    assertAst("One expression", shell, "a[x + 3]", exprList({
+      type:     Type.Access,
+      location: rangeFrom(1, 2, 1, 2),
+      lexeme:   '[',
+      operand:  '[',
+      info:     {},
+      accessed: {
+        type:      Type.Symbol,
+        location:  rangeFrom(1, 1, 1, 1),
+        namespace: undefined,
+        lexeme:    "a",
+        content:   "a",
+        info:      {}
+      },
+      access: [{
+        type:     Type.BinaryOp,
+        location: rangeFrom(1, 5, 1, 5),
+        flavor:   'arithmetic',
+        op:       '+',
+        lexeme:   "+",
+        info:     {},
+        lhs:      {
+          type:      Type.Symbol,
+          location:  rangeFrom(1, 3, 1, 3),
+          namespace: undefined,
+          lexeme:    "x",
+          content:   "x",
+          info:      {}
+        },
+        rhs: {
+          type:     Type.Number,
+          location: rangeFrom(1, 7, 1, 7),
+          lexeme:   "3",
+          content:  numVal(3),
+          info:     {}
+        }
+      }]
+    }))
+    assertAst("Multiple", shell, "a[3,2]", exprList({
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 2),
       lexeme:   '[',
@@ -79,7 +140,7 @@ describe("Parse value access", withShell(shell => {
         info:     {}
       }]
     }))
-    assertAst("Multiple bracket access with empty", shell, "a[,2,4]", exprList({
+    assertAst("Multiple with empty", shell, "a[,2,4]", exprList({
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 2),
       lexeme:   '[',
@@ -107,9 +168,45 @@ describe("Parse value access", withShell(shell => {
         info:     {}
       }]
     }))
+    assertAst("Chained", shell, "a[1][4]", exprList({
+      type:     Type.Access,
+      location: rangeFrom(1, 5, 1, 5),
+      lexeme:   '[',
+      operand:  '[',
+      info:     {},
+      accessed: {
+        type:     Type.Access,
+        location: rangeFrom(1, 2, 1, 2),
+        lexeme:   '[',
+        operand:  '[',
+        info:     {},
+        accessed: {
+          type:      Type.Symbol,
+          location:  rangeFrom(1, 1, 1, 1),
+          namespace: undefined,
+          lexeme:    "a",
+          content:   "a",
+          info:      {}
+        },
+        access: [{
+          type:     Type.Number,
+          location: rangeFrom(1, 3, 1, 3),
+          lexeme:   "1",
+          content:  numVal(1),
+          info:     {}
+        }]
+      },
+      access: [{
+        type:     Type.Number,
+        location: rangeFrom(1, 6, 1, 6),
+        lexeme:   "4",
+        content:  numVal(4),
+        info:     {}
+      }]
+    }))
   })
   describe('Double bracket', () => {
-    assertAst("Empty Double bracket access", shell, "b[[]]", exprList({
+    assertAst("Empty", shell, "b[[]]", exprList({
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 3),
       lexeme:   '[[',
@@ -125,7 +222,7 @@ describe("Parse value access", withShell(shell => {
       },
       access: []
     }))
-    assertAst("Double bracket access", shell, "b[[5]]", exprList({
+    assertAst("One element", shell, "b[[5]]", exprList({
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 3),
       lexeme:   '[[',
@@ -147,7 +244,7 @@ describe("Parse value access", withShell(shell => {
         info:     {}
       }]
     }))
-    assertAst("Multiple double bracket access", shell, "b[[5,3]]", exprList({
+    assertAst("Multiple", shell, "b[[5,3]]", exprList({
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 3),
       lexeme:   '[[',
@@ -175,7 +272,7 @@ describe("Parse value access", withShell(shell => {
         info:     {}
       }]
     }))
-    assertAst("Multiple double bracket access with empty", shell, "b[[5,,]]", exprList({
+    assertAst("Multiple with empty", shell, "b[[5,,]]", exprList({
       type:     Type.Access,
       location: rangeFrom(1, 2, 1, 3),
       lexeme:   '[[',

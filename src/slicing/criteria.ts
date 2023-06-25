@@ -2,7 +2,8 @@ import { DecoratedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation, RNode
 import { slicerLogger } from './static'
 import { SourcePosition } from '../util/range'
 
-export type SlicingCriterion = `${number}:${number}` | `${number}@${string}`
+/** Either `line:column`, `line@variable-name`, or `$id` */
+export type SlicingCriterion = `${number}:${number}` | `${number}@${string}` | `${number}`
 
 /**
  * Thrown if the given slicing criteria can not be found
@@ -25,6 +26,8 @@ export function slicingCriterionToId<OtherInfo = NoInfo>(criterion: SlicingCrite
   } else if(criterion.includes('@')) {
     const [line, name] = criterion.split(/@(.*)/s) // only split at first occurrence
     resolved = conventionalCriteriaToId(parseInt(line), name, decorated.idMap)
+  } else if(criterion.startsWith('$')) {
+    resolved = criterion.substring(1) as NodeId
   }
 
   if(resolved === undefined) {

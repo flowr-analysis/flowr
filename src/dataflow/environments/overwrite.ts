@@ -6,6 +6,9 @@ function anyIsMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
     return true
   }
   const attr = values[0].used
+  if(attr === 'maybe') {
+    return true
+  }
   let same = true
   for (let i = 1; i < values.length; i++) {
     const used = values[i].used
@@ -33,8 +36,8 @@ function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: IEnviro
       // we need to make a copy to avoid side effects for old reference in other environments
       const updatedOld: IdentifierDefinition[] = old ?? []
       for (const v of values) {
-        const find = updatedOld.find(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)
-        if(find === undefined) {
+        const index = updatedOld.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)
+        if(index < 0) {
           updatedOld.push(v)
         }
       }

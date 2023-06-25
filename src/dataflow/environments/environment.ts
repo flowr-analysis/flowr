@@ -157,10 +157,10 @@ export function environmentEqual(a: IEnvironment | undefined, b: IEnvironment | 
     }
 
     for(let i = 0; i < value.length; ++i) {
-      const aval = value[i]
-      const bval = value2[i]
-      if(aval.name !== bval.name || aval.nodeId !== bval.nodeId || aval.scope !== bval.scope || aval.used !== bval.used || aval.definedAt !== bval.definedAt || aval.kind !== bval.kind) {
-        dataflowLogger.warn(`Different definitions ${JSON.stringify(aval)} and ${JSON.stringify(bval)} within environments`)
+      const aVal = value[i]
+      const bVal = value2[i]
+      if(aVal.name !== bVal.name || aVal.nodeId !== bVal.nodeId || aVal.scope !== bVal.scope || aVal.used !== bVal.used || aVal.definedAt !== bVal.definedAt || aVal.kind !== bVal.kind) {
+        dataflowLogger.warn(`Different definitions ${JSON.stringify(aVal)} and ${JSON.stringify(bVal)} within environments`)
         return false
       }
     }
@@ -180,19 +180,19 @@ export function environmentsEqual(a: REnvironmentInformation | undefined, b: REn
   return true
 }
 
-function cloneEnvironment(environment: IEnvironment): IEnvironment
-function cloneEnvironment(environment: IEnvironment | undefined): IEnvironment | undefined
-function cloneEnvironment(environment: IEnvironment | undefined): IEnvironment | undefined {
+function cloneEnvironment(environment: IEnvironment, recurseParents: boolean): IEnvironment
+function cloneEnvironment(environment: IEnvironment | undefined, recurseParents: boolean): IEnvironment | undefined
+function cloneEnvironment(environment: IEnvironment | undefined, recurseParents: boolean): IEnvironment | undefined {
   if(environment === undefined) {
     return undefined
   }
-  const clone = new Environment(environment.name, cloneEnvironment(environment.parent))
+  const clone = new Environment(environment.name, recurseParents ? cloneEnvironment(environment.parent, recurseParents) : environment.parent)
   clone.memory = new Map(JSON.parse(JSON.stringify([...environment.memory])) as [Identifier, IdentifierDefinition[]][])
   return clone
 }
-export function cloneEnvironments(environment: REnvironmentInformation): REnvironmentInformation {
+export function cloneEnvironments(environment: REnvironmentInformation, recurseParents = true): REnvironmentInformation {
   return {
-    current: cloneEnvironment(environment.current),
+    current: cloneEnvironment(environment.current, recurseParents),
     level:   environment.level
   }
 }

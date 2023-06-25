@@ -2,7 +2,6 @@ import { guard } from '../../util/assert'
 import { REnvironmentInformation, IEnvironment, IdentifierDefinition, Environment } from './environment'
 
 function uniqueMergeValues(old: IdentifierDefinition[], value: IdentifierDefinition[]): IdentifierDefinition[] {
-  // TODO: improve this to ensure there are no duplicates
   const result = old
   for (const v of value) {
     const find = result.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)

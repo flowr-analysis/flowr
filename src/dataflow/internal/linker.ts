@@ -102,7 +102,6 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeI
 
     if(currentInfo.subflow !== undefined) {
       result.set(currentId, currentInfo)
-      console.log(`[${currentId}] found subflow ${JSON.stringify(currentInfo.subflow)} for ${currentId}`)
     }
     // trace all joined reads
     // TODO: deal with redefinitions?

@@ -65,6 +65,7 @@ function linkOnFunctionCall(callerInfo: DataflowGraphNodeInfo, dataflowGraph: Da
 
   for (const [_, functionCallTarget] of functionCallTargets) {
     guard(functionCallTarget.tag === 'function-definition', () => `expected function definition, but got ${functionCallTarget.tag}`)
+    // all those linked within the scopes of other functions are already linked when exiting a function definition
     for (const openIn of functionCallTarget.subflow.in) {
       const defs = resolveByName(openIn.name, LocalScope, callerInfo.environment)
       if (defs === undefined) {

@@ -1,4 +1,4 @@
-import { DataflowGraph, DataflowGraphNodeInfo, DataflowScopeName } from '../graph'
+import { DataflowGraph, DataflowGraphNodeFunctionCall, DataflowGraphNodeInfo, DataflowScopeName } from '../graph'
 import { BuiltIn, IdentifierReference, REnvironmentInformation, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
@@ -34,12 +34,32 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
   }
 }
 
+function specialReturnFunction(info: DataflowGraphNodeFunctionCall, graph: DataflowGraph, id: NodeId) {
+  guard(info.args.length <= 1, () => `expected up to one argument for return, but got ${info.args.length}`)
+  for (const arg of info.args) {
+    if (Array.isArray(arg)) {
+      if (arg[1] !== '<value>') {
+        graph.addEdge(id, arg[1], 'returns', 'always')
+      }
+    } else {
+      if (arg !== '<value>') {
+        graph.addEdge(id, arg, 'returns', 'always')
+      }
+    }
+  }
+}
+
 export function linkFunctionCallExitPoints(graph: DataflowGraph): void {
   const calls = [...graph.nodes()]
     .filter(([_,info]) => info.tag === 'function-call')
 
 
   for(const [id, info] of calls) {
+    // TODO: special handling for others
+    if(info.tag === 'function-call' && info.name === 'return') {
+      specialReturnFunction(info, graph, id)
+      continue
+    }
     const functionDefinitionReadIds = info.edges.filter(e => e.type === 'read' || e.type === 'calls').map(e => e.target)
     const functionDefs = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph)
     for(const defs of functionDefs.values()) {
@@ -70,13 +90,23 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeI
       continue
     }
 
+    const returnEdges = currentInfo.edges.filter(e => e.type === 'returns')
+    if(returnEdges.length > 0) {
+      // only traverse return edges and do not follow calls etc. as this indicates that we have a function call which returns a result, and not the function call itself
+      console.log(`[${currentId}] found return edge ${JSON.stringify(returnEdges)} for ${currentId}`)
+      potential.push(...returnEdges.map(e => e.target))
+      continue
+    }
+    const followEdges = currentInfo.edges.filter(e =>e.type === 'read' || e.type === 'defined-by')
+
 
     if(currentInfo.subflow !== undefined) {
       result.set(currentId, currentInfo)
+      console.log(`[${currentId}] found subflow ${JSON.stringify(currentInfo.subflow)} for ${currentId}`)
     }
     // trace all joined reads
     // TODO: deal with redefinitions?
-    potential.push(...currentInfo.edges.filter(e => e.type === 'read' || e.type === 'defined-by' || e.type === 'calls').map(e => e.target))
+    potential.push(...followEdges.map(e => e.target))
   }
   return result
 }

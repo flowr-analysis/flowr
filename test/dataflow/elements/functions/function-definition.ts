@@ -17,7 +17,7 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: ['0'],
           subflow:    {
-            out:         [ /* TODO: exit points in the far future */],
+            out:         [],
             activeNodes: [],
             in:          [{ nodeId: "0", used: 'always', name: 'x', scope: LocalScope }],
             scope:       LocalScope,

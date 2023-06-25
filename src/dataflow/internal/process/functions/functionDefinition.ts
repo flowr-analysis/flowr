@@ -1,7 +1,7 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import {
-  BuiltIn,
+  IdentifierReference,
   initializeCleanEnvironments,
   overwriteEnvironments,
   popLocalEnvironment,
@@ -9,11 +9,38 @@ import {
   resolveByName
 } from '../../../environments'
 import { linkInputs } from '../../linker'
-import { DataflowGraph, dataflowLogger, DataflowMap, graphToMermaidUrl } from '../../../index'
+import { DataflowGraph, dataflowLogger, DataflowMap } from '../../../index'
 import { collectAllIds, ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
 import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
 import { guard } from '../../../../util/assert'
 
+
+function linkLowestClosureVariables<OtherInfo>(subgraph: DataflowGraph, outEnvironment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>) {
+  // track *all* function definitions - included those nested within the current graph
+  // try to resolve their 'in' by only using the lowest scope which will be popped after this definition
+  for (const [id, info] of subgraph.nodes(true)) {
+    if (info.tag !== 'function-definition') {
+      continue
+    }
+    const ingoingRefs = info.subflow.in
+    const remainingIn: IdentifierReference[] = []
+    for (const ingoing of ingoingRefs) {
+      const env = initializeCleanEnvironments()
+      env.current.memory = outEnvironment.current.memory
+      const resolved = resolveByName(ingoing.name, data.activeScope, env)
+      if (resolved === undefined) {
+        remainingIn.push(ingoing)
+        continue
+      }
+      dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id} (${JSON.stringify(resolved)})`)
+      for (const ref of resolved) {
+        subgraph.addEdge(ingoing, ref, 'read', 'always')
+      }
+    }
+    dataflowLogger.trace(`Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id}`)
+    info.subflow.in = remainingIn
+  }
+}
 
 export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
@@ -80,9 +107,8 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   const exitPoints = retrieveExitPointsOfFunctionDefinition(functionDefinition)
   // if exit points are extra, we must link them to all dataflow nodes they relate to.
   linkExitPointsInGraph(exitPoints, subgraph, data.completeAst.idMap, data.environments)
+  linkLowestClosureVariables(subgraph, outEnvironment, data, functionDefinition)
 
-
-  // TODO: exit points?
   const graph = new DataflowGraph()
   graph.addNode({
     tag:         'function-definition',
@@ -130,3 +156,4 @@ function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowG
     }
   }
 }
+

@@ -119,7 +119,7 @@ function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowG
     const nodeInAst = idMap.get(exitPoint)
 
     guard(nodeInAst !== undefined, `Could not find exit point node with id ${exitPoint} in ast`)
-    graph.addNode({ tag: 'exit-point', id: exitPoint, name: `"${nodeInAst.lexeme ?? '??'}"`, when: 'always' })
+    graph.addNode({ tag: 'exit-point', id: exitPoint, name: `${nodeInAst.lexeme ?? '??'}`, when: 'always' })
 
     const allIds = [...collectAllIds(nodeInAst)].filter(id => graph.get(id) !== undefined)
     for(const relatedId of allIds) {

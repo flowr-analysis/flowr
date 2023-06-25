@@ -1,8 +1,7 @@
 import {
   linkCircularRedefinitionsWithinALoop,
   linkIngoingVariablesInSameScope,
-  produceNameSharedIdMap,
-  setDefinitionOfNode
+  produceNameSharedIdMap
 } from '../../linker'
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
@@ -48,7 +47,7 @@ export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInfor
     }
     // now, we remove the name from the id shares as they are no longer needed
     nameIdShares.delete(name)
-    setDefinitionOfNode(nextGraph, write)
+    nextGraph.setDefinitionOfNode(write)
   }
 
   const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph)]

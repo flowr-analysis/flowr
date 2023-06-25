@@ -18,12 +18,9 @@ export function formatRange(range: SourceRange | undefined): string {
   return `${range.start.line}.${range.start.column}-${range.end.line}.${range.end.column}`
 }
 
-function definedAtPositionToMermaid(definedAtPosition: DataflowScopeName | false, when: DataflowGraphEdgeAttribute): string {
+function scopeToMermaid(scope: DataflowScopeName, when: DataflowGraphEdgeAttribute): string {
   const whenText = when === 'always' ? '' : `, ${when}`
-  if (definedAtPosition === false) {
-    return whenText
-  }
-  return `, *${definedAtPosition.replace('<', '#lt;')}${whenText}*`
+  return `, *${scope.replace('<', '#lt;')}${whenText}*`
 }
 
 function stylesForDefinitionKindsInEnvironment(_subflow: DataflowFunctionFlowInformation, _lines: string[], _idPrefix: string) {
@@ -80,10 +77,14 @@ function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
   return result.length === 0 ? '' : `\n    (${result.join(', ')})`
 }
 
+function escapeMarkdown(text: string): string {
+  return text.replace(/([+\-*])/g, '\\$1')
+}
+
 function nodeToMermaid(info: DataflowGraphNodeInfo, lines: string[], id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap<NoInfo> | undefined, mark: Set<NodeId> | undefined, hasBuiltIn: boolean) {
-  const def = info.definedAtPosition !== false
-  const fCall = info.functionCall !== undefined && info.functionCall !== false
-  const defText = definedAtPositionToMermaid(info.definedAtPosition, info.when)
+  const def = info.tag === 'variable-definition' || info.tag === 'function-definition'
+  const fCall = info.tag === 'function-call'
+  const defText = def ? scopeToMermaid(info.scope, info.when) : ''
   let open: string
   let close: string
   if (def) {
@@ -97,20 +98,22 @@ function nodeToMermaid(info: DataflowGraphNodeInfo, lines: string[], id: NodeId,
     close = '])'
   }
   lines.push(`    %% ${id}: ${JSON.stringify(info.environment, displayEnvReplacer)}`)
-  lines.push(`    ${idPrefix}${id}${open}"\`${info.name} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
-    info.functionCall ? displayFunctionArgMapping(info.functionCall) : ''
+  lines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name)} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
+    fCall ? displayFunctionArgMapping(info.args) : ''
   }\`"${close}`)
   if (mark?.has(id)) {
     lines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `)
   }
   for (const edge of info.edges) {
-    const sameEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read'
-    lines.push(`    ${idPrefix}${id} ${sameEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${edge.target}`)
+    const dotEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read' || edge.type === 'relates'
+    lines.push(`    ${idPrefix}${id} ${dotEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${edge.target}`)
     if (edge.target === BuiltIn) {
       hasBuiltIn = true
     }
   }
-  subflowToMermaid(id, info.exitPoints ?? [], info.subflow, dataflowIdMap, lines, idPrefix, mark)
+  if (info.tag === 'function-definition') {
+    subflowToMermaid(id, info.exitPoints, info.subflow, dataflowIdMap, lines, idPrefix, mark)
+  }
   return hasBuiltIn
 }
 

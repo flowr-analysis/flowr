@@ -1,10 +1,9 @@
-import { DataflowGraph, DataflowGraphNodeInfo, DataflowMap, DataflowScopeName } from '../graph'
+import { DataflowGraph, DataflowGraphNodeInfo, DataflowScopeName } from '../graph'
 import { BuiltIn, IdentifierReference, REnvironmentInformation, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { log } from '../../util/log'
-import { NodeId, NoInfo } from '../../r-bridge'
-import { graphToMermaidUrl } from '../../util/mermaid'
+import { NodeId } from '../../r-bridge'
 import { slicerLogger } from '../../slicing/static'
 
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
@@ -37,15 +36,16 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
 
 export function linkFunctionCallExitPoints(graph: DataflowGraph): void {
   const calls = [...graph.nodes()]
-    .filter(([_,info]) => info.functionCall !== false)
+    .filter(([_,info]) => info.tag === 'function-call')
 
 
   for(const [id, info] of calls) {
     const functionDefinitionReadIds = info.edges.filter(e => e.type === 'read' || e.type === 'calls').map(e => e.target)
     const functionDefs = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph)
     for(const defs of functionDefs.values()) {
+      guard(defs.tag === 'function-definition', () => `expected function definition, but got ${defs.tag}`)
       const exitPoints = defs.exitPoints
-      guard(exitPoints !== undefined, () => `exit points of ${JSON.stringify(defs)} for call ${id} must have exit points`)
+      console.log('AT ID', id, defs)
       for(const exitPoint of exitPoints) {
         graph.addEdge(id, exitPoint, 'read', 'always')
       }
@@ -80,13 +80,6 @@ function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeId[], da
     potential.push(...currentInfo.edges.filter(e => e.type === 'read' || e.type === 'defined-by' || e.type === 'calls').map(e => e.target))
   }
   return result
-}
-
-export function setDefinitionOfNode(graph: DataflowGraph, reference: IdentifierReference): void {
-  const node = graph.get(reference.nodeId)
-  guard(node !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set definition scope to ${reference.scope}`)
-  guard(node.definedAtPosition === false || (node.definedAtPosition === reference.scope && node.when === reference.used), () => `node must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
-  node.definedAtPosition = reference.scope
 }
 
 /**

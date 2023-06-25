@@ -17,10 +17,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   // we update all the usage nodes within the dataflow graph of the function name to
   // mark them as function calls, and append their argument linkages
   let functionNameId: NodeId | undefined
-  for(const [nodeId, nodeInfo] of finalGraph.nodes()) {
-    if(nodeInfo.definedAtPosition !== false) {
-      continue
-    }
+  for(const [nodeId, _] of finalGraph.nodes()) {
     functionNameId = nodeId
   }
 

@@ -48,3 +48,5 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
 
   return visited
 }
+
+// TODO: trace refs within function definition

@@ -9,7 +9,6 @@ import {
   IdentifierReference,
   overwriteEnvironments
 } from '../../environments'
-import { setDefinitionOfNode } from '../linker'
 import { log } from '../../../util/log'
 import { dataflowLogger } from '../../index'
 
@@ -27,7 +26,7 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
   const isFunction = isFunctionSide.type === Type.FunctionDefinition
 
   for (const write of writeTargets) {
-    setDefinitionOfNode(nextGraph, write)
+    nextGraph.setDefinitionOfNode(write)
     // TODO: this can be improved easily
     if (isFunction) {
       nextGraph.addEdge(write, isFunctionSide.info.id, 'defined-by', 'always', true)

@@ -3,7 +3,6 @@ import { DataflowProcessorInformation, processDataflowFor } from '../../../proce
 import { define, IdentifierDefinition } from '../../../environments'
 import { LocalScope } from '../../../graph'
 import { ParentInformation, RParameter } from '../../../../r-bridge'
-import { setDefinitionOfNode } from '../../linker'
 import { log } from '../../../../util/log'
 
 export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
@@ -22,7 +21,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
   let environments = name.environments
   for(const writtenNode of writtenNodes) {
     log.trace(`argument ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' no default value'}`)
-    setDefinitionOfNode(graph, writtenNode)
+    graph.setDefinitionOfNode(writtenNode)
     environments = define(writtenNode, LocalScope, environments)
   }
 

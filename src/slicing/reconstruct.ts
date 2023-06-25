@@ -207,7 +207,9 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
   guard(functionName.length <= 1, `can not have multiple lines for the function name, got: ${JSON.stringify(functionName)}`)
 
   if(args.length === 0) {
-    return [{ line: `${functionName[0].line}()`, indent: functionName[0].indent }]
+    guard(functionName.length === 1, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
+    guard(functionName[0].line.endsWith('()'), `by default we add '()' to function name on empty calls, but: ${JSON.stringify(functionName)}`)
+    return [{ line: `${functionName[0].line}`, indent: functionName[0].indent }]
   } else {
     return plain(getLexeme(call))
   }

@@ -49,4 +49,17 @@ a(5)`)
       }
     })
   })
+  describe('Functions with nested definitions', () => {
+    describe('Simple Function pass with return', () => {
+      // TODO: limitation, does not work with <<- or anything which modifies the static resolutions at the moment
+      const code = `a <- function() { a <- 2; return(function() { 1 }) }
+b <- a()
+b()`
+      assertSliced('Must include outer function', shell, code, ['2@a'], `a <- function() { return(function() { 1 }) }
+a()`)
+      assertSliced('Must include linked function', shell, code, ['3@b'], `a <- function() { return(function() { 1 }) }
+b <- a()
+b()`)
+    })
+  })
 }))

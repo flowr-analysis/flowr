@@ -1,4 +1,5 @@
 import {
+  BuiltIn,
   DataflowGraph,
   DataflowGraphNodeInfo,
   DataflowMap,
@@ -73,6 +74,11 @@ function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeId[], da
   const result: [NodeId, DataflowGraphNodeInfo][] = []
   while(potential.length > 0) {
     const currentId = potential.pop() as NodeId
+    if(currentId === BuiltIn) {
+      // do not traverse builtins
+      slicerLogger.trace('skipping builtin function definition during collection')
+      continue
+    }
     const currentInfo = getTargetEnsured(dataflowGraph, currentId, idMap)
 
     if(currentInfo.subflow !== undefined) {

@@ -582,7 +582,16 @@ describe('Function Definition', withShell(shell => {
     )
   })
   describe('Using special argument', () => {
-    /*
+    const envWithA = define(
+      { nodeId: '0', scope: LocalScope, name: 'a', used: 'always', kind: 'parameter', definedAt: '1' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments())
+    )
+    const envWithASpecial = define(
+      { nodeId: '2', scope: LocalScope, name: '...', used: 'always', kind: 'parameter', definedAt: '3' },
+      LocalScope,
+      envWithA
+    )
     assertDataflow(`Return ...`, shell, `function(a, ...) { foo(...) }`,
       new DataflowGraph()
         .addNode({
@@ -597,23 +606,26 @@ describe('Function Definition', withShell(shell => {
             activeNodes:  [],
             in:           [],
             scope:        LocalScope,
-            environments: initializeCleanEnvironments(),
+            environments: envWithASpecial,
             graph:        new DataflowGraph()
               .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(initializeCleanEnvironments()) })
-              .addNode({ tag: 'variable-definition', id: '2', name: '...', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(initializeCleanEnvironments()) })
-              .addNode({ tag: 'use', id: '5', name: '...', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(initializeCleanEnvironments()) })
+              .addNode({ tag: 'variable-definition', id: '2', name: '...', scope: LocalScope, when: 'always', environment: envWithA })
+              .addNode({ tag: 'use', id: '5', name: '...', scope: LocalScope, when: 'always', environment: envWithASpecial })
               .addNode({
                 tag:         'function-call',
                 id:          '7', name:        'foo',
                 scope:       LocalScope,
                 when:        'always',
-                environment: pushLocalEnvironment(initializeCleanEnvironments()),
-                args:        [ {nodeId: '6', } ]
+                environment: envWithASpecial,
+                args:        [ { nodeId: '6', name: `${UnnamedArgumentPrefix}6`, scope: LocalScope, used: 'always'  } ]
               })
+              .addNode({ tag: 'use', id: '6', name: `${UnnamedArgumentPrefix}6`, when: 'always', environment: envWithASpecial })
+              .addEdge('7', '6', 'argument', 'always')
+              .addEdge('6', '5', 'read', 'always')
+              .addEdge('5', '2', 'read', 'always')
           }
         })
     )
-        */
   })
   describe('Late binding of environment variables', () => {
     assertDataflow(`define after function definition`, shell, `function() { x }; x <- 3`,

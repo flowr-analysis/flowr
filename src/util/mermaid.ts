@@ -127,6 +127,7 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, mermai
   if (mark?.has(id)) {
     mermaid.lines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `)
   }
+
   for (const edge of graph.outgoingEdges(info.id)) {
     const dotEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read' || edge.type === 'relates'
     const edgeId = encodeEdge(idPrefix + id, idPrefix + edge.target, edge.type, edge.attribute)

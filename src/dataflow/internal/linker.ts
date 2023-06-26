@@ -59,6 +59,7 @@ export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph): void {
     // TODO: special handling for others
     if(info.tag === 'function-call' && info.name === 'return') {
       specialReturnFunction(info, graph, id)
+      graph.addEdge(id, BuiltIn, 'calls', 'always')
       continue
     }
 

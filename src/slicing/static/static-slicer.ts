@@ -28,21 +28,21 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
 
     const currentInfo = dataflowGraph.get(current, true)
 
-    slicerLogger.trace(`visiting id: ${current} with name: ${currentInfo?.name ?? '<unknown>'}`)
+    slicerLogger.trace(`visiting id: ${current} with name: ${currentInfo?.[0].name ?? '<unknown>'}`)
 
     if(currentInfo === undefined) {
       slicerLogger.warn(`id: ${current} must be in graph but can not be found, keep in slice to be sure`)
       continue
     }
 
-    if(currentInfo.tag === 'function-call') {
-      linkOnFunctionCall(currentInfo, dataflowGraph, visited, visitQueue)
+    if(currentInfo[0].tag === 'function-call') {
+      linkOnFunctionCall(currentInfo[0], currentInfo[1], visited, visitQueue)
     }
 
     const currentNode = dataflowIdMap.get(current)
     guard(currentNode !== undefined, () => `id: ${current} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
 
-    const liveEdges = dataflowGraph.outgoingEdges(currentInfo.id, true).filter(([_, e]) => e.type === 'read' || e.type === 'defined-by' || e.type === 'argument' || e.type === 'calls' || e.type === 'relates' || e.type === 'returns')
+    const liveEdges = currentInfo[1].outgoingEdges(currentInfo[0].id, false).filter(([_, e]) => e.type === 'read' || e.type === 'defined-by' || e.type === 'argument' || e.type === 'calls' || e.type === 'relates' || e.type === 'returns')
     for (const [target] of liveEdges) {
       if (!visited.has(target)) {
         slicerLogger.trace(`adding id: ${target} to visit queue`)

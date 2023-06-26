@@ -245,21 +245,19 @@ export class DataflowGraph {
 
   /**
    * Returns all outgoing edges of the node
-   * @param id - The id of the node to get the outgoing edges for
-   * @param includeSubflows - If true, this will search in subflows as well and add the edges to the result
+   * @param id                      - The id of the node to get the outgoing edges for
+   * @param includeDefinedFunctions - If true, this will search in subflows as well and add the edges to the result
    */
-  public outgoingEdges(id: NodeId, includeSubflows  = false): [NodeId, DataflowGraphEdge][] {
-    if(!includeSubflows) {
+  public outgoingEdges(id: NodeId, includeDefinedFunctions  = false): [NodeId, DataflowGraphEdge][] {
+    if(!includeDefinedFunctions) {
       return [...this.edges.get(id).entries()]
-    } else {
-      const edges = [...this.edges.get(id).entries()]
-      for(const [nodeId, _,graph ] of this.nodes(true)) {
-        if(nodeId === id) {
-          edges.push(...graph.outgoingEdges(nodeId, false))
-        }
-      }
-      return edges
     }
+
+    const got = this.get(id, includeDefinedFunctions)
+    if(got === undefined) {
+      return []
+    }
+    return [...got[1].edges.get(id).entries()]
   }
 
   public hasNode(id: NodeId, includeDefinedFunctions = false): boolean {
@@ -276,19 +274,22 @@ export class DataflowGraph {
   }
 
   /**
-   * Get the {@link DataflowGraphNodeInfo} attached to a node with the given id in the graph
+   * Get the {@link DataflowGraphNodeInfo} attached to a node with the given id in the graph (includes the graph it is in if searching for defs)
    *
    * @param id                      - the id of the node to get
    * @param includeDefinedFunctions - if true this will search function definitions as well and not just the toplevel
    * @returns the node info for the given id (if it exists)
    */
-  public get(id: NodeId, includeDefinedFunctions = false): DataflowGraphNodeInfo | undefined {
+  public get(id: NodeId, includeDefinedFunctions: true): [DataflowGraphNodeInfo, DataflowGraph] | undefined
+  public get(id: NodeId, includeDefinedFunctions?: false): DataflowGraphNodeInfo | undefined
+  public get(id: NodeId, includeDefinedFunctions: boolean): [DataflowGraphNodeInfo, DataflowGraph] | DataflowGraphNodeInfo | undefined
+  public get(id: NodeId, includeDefinedFunctions = false): [DataflowGraphNodeInfo, DataflowGraph] | DataflowGraphNodeInfo | undefined {
     if(!includeDefinedFunctions) {
       return this.graphNodes.get(id)
     } else {
-      for(const [nodeId, info] of this.nodes(true)) {
+      for(const [nodeId, info, graph] of this.nodes(true)) {
         if(nodeId === id) {
-          return info
+          return [info, graph]
         }
       }
     }
@@ -359,7 +360,7 @@ export class DataflowGraph {
       const fromInfo = this.get(fromId, true)
       const toInfo = this.get(toId, true)
 
-      if (fromInfo?.when === 'maybe' || toInfo?.when === 'maybe') {
+      if (fromInfo?.[0].when === 'maybe' || toInfo?.[0].when === 'maybe') {
         log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
         attribute = 'maybe'
       }
@@ -377,7 +378,9 @@ export class DataflowGraph {
     if(edgeInFrom === undefined) {
       existingFrom.set(toId, edge)
       if(bidirectional) {
-        this.edges.get(toId).set(fromId, edge)
+        const graphOfGot = this.get(toId, true)
+        guard(graphOfGot !== undefined, `graph of ${toId} must exist`)
+        graphOfGot[1].edges.get(toId).set(fromId, edge)
       }
     } else {
       if(attribute === 'maybe') {

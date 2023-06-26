@@ -29,6 +29,18 @@ foo(x, x.(y))
 foo(x, x.(3))
     `, ['4@foo'], `x. <- function(x) { x }
 foo(x, x.(3))`)
+    assertSliced('Using ...', shell, `
+f1 <- function (a,b) { c }
+f2 <- function (...) { f1(...) }
+x <- 3 
+c <- 4
+y <- 3
+f2(1,x)
+    `, ['7@f2'], `f1 <- function(a, b) { c }
+f2 <- function(...) { f1(...) }
+x <- 3
+c <- 4
+f2(1,x)`)
   })
   describe('Functions using environment', () => {
     describe('Read variable defined before', () => {

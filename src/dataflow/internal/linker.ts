@@ -1,4 +1,9 @@
-import { DataflowGraph, DataflowGraphNodeFunctionCall, DataflowGraphNodeInfo, DataflowScopeName } from '../graph'
+import {
+  DataflowGraph,
+  DataflowGraphNodeFunctionCall,
+  DataflowGraphNodeInfo,
+  DataflowScopeName
+} from '../graph'
 import { BuiltIn, IdentifierReference, REnvironmentInformation, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
@@ -55,7 +60,7 @@ export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph): void {
     .filter(([_,info]) => info.tag === 'function-call')
 
 
-  for(const [id, info, subgraph] of calls) {
+  for(const [id, info] of calls) {
     // TODO: special handling for others
     if(info.tag === 'function-call' && info.name === 'return') {
       specialReturnFunction(info, graph, id)
@@ -63,14 +68,12 @@ export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph): void {
       continue
     }
 
+    const edges = graph.get(id, true)
+    guard(edges !== undefined, () => `id ${id} must be present in graph`)
 
-    const functionDefinitionReadIds = subgraph.outgoingEdges(id, false).filter(([_, e]) => e.type === 'read' || e.type === 'calls' || e.type === 'relates').map(([target, _]) => target)
+    const functionDefinitionReadIds = [...edges[1]].filter(([_, e]) => e.types.has('read') || e.types.has('calls') || e.types.has('relates')).map(([target, _]) => target)
 
-    console.log('At: ', id, info.name, functionDefinitionReadIds)
-
-    const functionDefs = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph)
-
-    console.log('At: ', id, info.name, subgraph.outgoingEdges(id, false), functionDefinitionReadIds, functionDefs)
+    const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
 
     for(const defs of functionDefs.values()) {
       guard(defs.tag === 'function-definition', () => `expected function definition, but got ${defs.tag}`)
@@ -86,8 +89,8 @@ export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph): void {
 
 
 // TODO: abstract away into a 'getAllDefinitionsOf' function
-export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeId[], dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphNodeInfo> {
-  const potential: NodeId[] = functionDefinitionReadIds
+export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<NodeId>, dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphNodeInfo> {
+  const potential: NodeId[] = [...functionDefinitionReadIds]
   const visited = new Set<NodeId>()
   const result = new Map<NodeId, DataflowGraphNodeInfo>()
   while(potential.length > 0) {
@@ -105,15 +108,15 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeI
     }
     visited.add(currentId)
 
-    const outgoingEdges = dataflowGraph.outgoingEdges(currentId, true)
+    const outgoingEdges = [...currentInfo[1]]
 
-    const returnEdges = outgoingEdges.filter(([_, e]) => e.type === 'returns')
+    const returnEdges = outgoingEdges.filter(([_, e]) => e.types.has('returns'))
     if(returnEdges.length > 0) {
       // only traverse return edges and do not follow calls etc. as this indicates that we have a function call which returns a result, and not the function call itself
       potential.push(...returnEdges.map(([target]) => target))
       continue
     }
-    const followEdges = outgoingEdges.filter(([_, e]) =>e.type === 'read' || e.type === 'defined-by' || e.type === 'relates' || e.type === 'calls')
+    const followEdges = outgoingEdges.filter(([_, e]) => e.types.has('read') || e.types.has('defined-by') || e.types.has('relates') || e.types.has('calls'))
 
 
     if(currentInfo[0].subflow !== undefined) {

@@ -88,14 +88,14 @@ function escapeMarkdown(text: string): string {
   return text.replace(/([+\-*])/g, '\\$1')
 }
 
-function encodeEdge(from: string, to: string, type: DataflowGraphEdgeType, attribute: string): string {
+function encodeEdge(from: string, to: string, types: Set<DataflowGraphEdgeType>, attribute: string): string {
   // sort from and to for same edges and relates be order independent
-  if(type === 'same-read-read' || type === 'same-def-def' || type === 'relates') {
+  if(types.has('same-read-read') || types.has('same-def-def') || types.has('relates')) {
     if(from > to) {
       ({from, to} = {from: to, to: from})
     }
   }
-  return `${from}->${to}["${type} (${attribute})"]`
+  return `${from}->${to}["${[...types].join(':')} (${attribute})"]`
 }
 
 
@@ -128,12 +128,14 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, mermai
     mermaid.lines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `)
   }
 
-  for (const [target, edge] of graph.outgoingEdges(info.id, true)) {
-    const dotEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read' || edge.type === 'relates'
-    const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edge.type, edge.attribute)
+  const edges = graph.get(id, true)
+  guard(edges !== undefined, `node ${id} must be found`)
+  for (const [target, edge] of [...edges[1]]) {
+    const dotEdge = edge.types.has('same-def-def') || edge.types.has('same-read-read') || edge.types.has('relates')
+    const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edge.types, edge.attribute)
     if(!mermaid.presentEdges.has(edgeId)) {
       mermaid.presentEdges.add(edgeId)
-      mermaid.lines.push(`    ${idPrefix}${id} ${dotEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${target}`)
+      mermaid.lines.push(`    ${idPrefix}${id} ${dotEdge ? '-.-' : '-->'}|"${[...edge.types].join(', ')} (${edge.attribute})"| ${idPrefix}${target}`)
       if (target === BuiltIn) {
         mermaid.hasBuiltIn = true
       }

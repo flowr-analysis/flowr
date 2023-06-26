@@ -36,13 +36,13 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
     }
 
     if(currentInfo[0].tag === 'function-call') {
-      linkOnFunctionCall(currentInfo[0], currentInfo[1], visited, visitQueue)
+      linkOnFunctionCall(currentInfo[0], dataflowGraph, visited, visitQueue)
     }
 
     const currentNode = dataflowIdMap.get(current)
     guard(currentNode !== undefined, () => `id: ${current} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
 
-    const liveEdges = currentInfo[1].outgoingEdges(currentInfo[0].id, false).filter(([_, e]) => e.type === 'read' || e.type === 'defined-by' || e.type === 'argument' || e.type === 'calls' || e.type === 'relates' || e.type === 'returns')
+    const liveEdges = [...currentInfo[1]].filter(([_, e]) => e.types.has('read') || e.types.has('defined-by') || e.types.has('argument') || e.types.has('calls') || e.types.has('relates') || e.types.has('returns'))
     for (const [target] of liveEdges) {
       if (!visited.has(target)) {
         slicerLogger.trace(`adding id: ${target} to visit queue`)
@@ -58,8 +58,11 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
 
 function linkOnFunctionCall(callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, visited: Set<NodeId>, visitQueue: NodeId[]) {
   // bind with call-local environments during slicing
-  const functionCallDefs = dataflowGraph.outgoingEdges(callerInfo.id, true).filter(([_, e]) => e.type === 'calls').map(([target]) => target)
-  const functionCallTargets = getAllLinkedFunctionDefinitions(functionCallDefs, dataflowGraph)
+  const outgoingEdges = dataflowGraph.get(callerInfo.id, true)
+  guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`)
+
+  const functionCallDefs = [...outgoingEdges[1]].filter(([_, e]) => e.types.has('calls')).map(([target]) => target)
+  const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)
 
   for (const [_, functionCallTarget] of functionCallTargets) {
     guard(functionCallTarget.tag === 'function-definition', () => `expected function definition, but got ${functionCallTarget.tag}`)

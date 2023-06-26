@@ -12,7 +12,6 @@ import { MergeableRecord } from '../util/objects'
 import { log } from '../util/log'
 import { dataflowLogger } from './index'
 import { DataflowInformation } from './internal/info'
-import { DefaultMap } from '../util/defaultmap'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
@@ -49,21 +48,11 @@ export type DataflowScopeName =
  * An edge consist of the target node (i.e., the variable or processing node),
  * a type (if it is read or used in the context), and an attribute (if this edge exists for every program execution or
  * if it is only one possible execution path).
- *
- * These edges are specialised by {@link DataflowGraphReadEdge} and {@link DataflowGraphDefinedByEdge}
  */
 export interface DataflowGraphEdge {
-  type:      DataflowGraphEdgeType
+  // currently multiple edges are represented by multiple types
+  types:     Set<DataflowGraphEdgeType>
   attribute: DataflowGraphEdgeAttribute
-}
-
-export interface DataflowGraphReadEdge extends DataflowGraphEdge {
-  type: 'read'
-}
-
-export interface DataflowGraphDefinedByEdge extends DataflowGraphEdge {
-  type:  'defined-by'
-  scope: DataflowScopeName
 }
 
 
@@ -226,7 +215,7 @@ export type DataflowGraphNodeInfo = Required<DataflowGraphNodeArgument>
 export class DataflowGraph {
   private graphNodes = new Map<NodeId, DataflowGraphNodeInfo>()
   // TODO: improve access, theoretically we want a multi - default map, right now we do not allow multiple edges
-  private edges = new DefaultMap<NodeId, Map<NodeId, DataflowGraphEdge>>(() => new Map<NodeId, DataflowGraphEdge>())
+  private edges = new Map<NodeId, Map<NodeId, DataflowGraphEdge>>()
 
   /**
    * @param includeDefinedFunctions - if true this will iterate over function definitions as well and not just the toplevel
@@ -243,23 +232,6 @@ export class DataflowGraph {
     }
   }
 
-  /**
-   * Returns all outgoing edges of the node
-   * @param id                      - The id of the node to get the outgoing edges for
-   * @param includeDefinedFunctions - If true, this will search in subflows as well and add the edges to the result
-   */
-  public outgoingEdges(id: NodeId, includeDefinedFunctions  = false): [NodeId, DataflowGraphEdge][] {
-    if(!includeDefinedFunctions) {
-      return [...this.edges.get(id).entries()]
-    }
-
-    const got = this.get(id, includeDefinedFunctions)
-    if(got === undefined) {
-      return []
-    }
-    return [...got[1].edges.get(id).entries()]
-  }
-
   public hasNode(id: NodeId, includeDefinedFunctions = false): boolean {
     if(!includeDefinedFunctions) {
       return this.graphNodes.has(id)
@@ -274,26 +246,33 @@ export class DataflowGraph {
   }
 
   /**
-   * Get the {@link DataflowGraphNodeInfo} attached to a node with the given id in the graph (includes the graph it is in if searching for defs)
+   * Get the {@link DataflowGraphNodeInfo} attached to a node as well as all outgoing edges
    *
    * @param id                      - the id of the node to get
    * @param includeDefinedFunctions - if true this will search function definitions as well and not just the toplevel
    * @returns the node info for the given id (if it exists)
    */
-  public get(id: NodeId, includeDefinedFunctions: true): [DataflowGraphNodeInfo, DataflowGraph] | undefined
-  public get(id: NodeId, includeDefinedFunctions?: false): DataflowGraphNodeInfo | undefined
-  public get(id: NodeId, includeDefinedFunctions: boolean): [DataflowGraphNodeInfo, DataflowGraph] | DataflowGraphNodeInfo | undefined
-  public get(id: NodeId, includeDefinedFunctions = false): [DataflowGraphNodeInfo, DataflowGraph] | DataflowGraphNodeInfo | undefined {
+  public get(id: NodeId, includeDefinedFunctions = false): [DataflowGraphNodeInfo, [NodeId, DataflowGraphEdge][]] | undefined {
     if(!includeDefinedFunctions) {
-      return this.graphNodes.get(id)
+      const got = this.graphNodes.get(id)
+      return got === undefined ? undefined : [got, [...this.edges.get(id) ?? []]]
     } else {
-      for(const [nodeId, info, graph] of this.nodes(true)) {
+      let info = undefined
+      const edges = new Map<NodeId, DataflowGraphEdge>()
+      for(const [nodeId, probableInfo, graph] of this.nodes(true)) {
+        // TODO: we need to flatten the graph to have all edges in one place
+        const newEdges = graph.edges.get(id)
+        if(newEdges !== undefined) {
+          for(const [id, edge] of newEdges) {
+            edges.set(id, edge)
+          }
+        }
         if(nodeId === id) {
-          return [info, graph]
+          info = probableInfo
         }
       }
+      return info === undefined ? undefined : [info, [...edges]]
     }
-    return undefined
   }
 
   public entries(): IterableIterator<[NodeId, Required<DataflowGraphNodeInfo>]> {
@@ -354,12 +333,12 @@ export class DataflowGraph {
       { [fromId, toId] = [toId, fromId] }
     }
 
+
     if(promote) {
       attribute ??= (from as ReferenceForEdge).used === 'maybe' ? 'maybe' : (to as ReferenceForEdge).used
 
       const fromInfo = this.get(fromId, true)
       const toInfo = this.get(toId, true)
-
       if (fromInfo?.[0].when === 'maybe' || toInfo?.[0].when === 'maybe') {
         log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
         attribute = 'maybe'
@@ -367,28 +346,37 @@ export class DataflowGraph {
     }
 
     guard(attribute !== undefined, 'attribute must be set')
-    const edge = { type, attribute }
+    const edge: DataflowGraphEdge = { types: new Set([type]), attribute }
 
     // TODO: make this more performant
     // we ignore the attribute as it is only promoted to maybe
 
     const existingFrom = this.edges.get(fromId)
-    const edgeInFrom = existingFrom.get(toId)
+    const edgeInFrom = existingFrom?.get(toId)
 
     if(edgeInFrom === undefined) {
-      existingFrom.set(toId, edge)
+      if(existingFrom === undefined) {
+        this.edges.set(fromId, new Map([[toId, edge]]))
+      } else {
+        existingFrom.set(toId, edge)
+      }
       if(bidirectional) {
-        const graphOfGot = this.get(toId, true)
-        guard(graphOfGot !== undefined, `graph of ${toId} must exist`)
-        graphOfGot[1].edges.get(toId).set(fromId, edge)
+        const existingTo = this.edges.get(toId)
+        if(existingTo === undefined) {
+          this.edges.set(toId, new Map([[fromId, edge]]))
+        } else {
+          existingTo.set(fromId, edge)
+        }
       }
     } else {
       if(attribute === 'maybe') {
         // as the data is shared, we can just set it for one direction
         edgeInFrom.attribute = 'maybe'
-      } else if(type === 'calls' && edgeInFrom.type === 'read') {
-        // promote reading edges to call
-        edgeInFrom.type = 'calls'
+      }
+
+      if(!edgeInFrom.types.has(type)) {
+        // adding the type
+        edgeInFrom.types.add(type)
       }
     }
     return this
@@ -413,7 +401,20 @@ export class DataflowGraph {
       // TODO: make more performant
       for(const [id, edges] of otherGraph.edges.entries()) {
         for(const [target, edge] of edges) {
-          this.edges.get(id).set(target, edge)
+          const existing = this.edges.get(id)
+          if(existing === undefined) {
+            this.edges.set(id, new Map([[target, edge]]))
+          } else {
+            const get = existing.get(target)
+            if(get === undefined) {
+              existing.set(target, edge)
+            } else {
+              get.types = new Set([...get.types, ...edge.types])
+              if(edge.attribute === 'maybe') {
+                get.attribute = 'maybe'
+              }
+            }
+          }
         }
       }
     }
@@ -425,12 +426,22 @@ export class DataflowGraph {
     if(!equalNodes(this.graphNodes, other.graphNodes)) {
       return false
     }
-    return equalEdges(this.edges, other.edges)
+    // TODO: we need to remove nesting to avoid this uglyness
+    for(const [id] of this.graphNodes) {
+      const edges = this.get(id)
+      const otherEdges = other.get(id)
+      guard(edges !== undefined && otherEdges !== undefined, () => `edges must be defined for ${id} to compare graphs`)
+      if(!equalEdges(id, edges[1], otherEdges[1])) {
+        return false
+      }
+    }
+    return true
   }
 
   public setDefinitionOfNode(reference: IdentifierReference): void {
-    const node = this.get(reference.nodeId)
-    guard(node !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set definition scope to ${reference.scope}`)
+    const got = this.get(reference.nodeId)
+    guard(got !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set definition scope to ${reference.scope}`)
+    const [node] = got
     if(node.tag === 'function-definition' || node.tag === 'variable-definition') {
       guard(node.scope === reference.scope && node.when === reference.used, () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
       node.scope = reference.scope
@@ -445,27 +456,31 @@ export class DataflowGraph {
 }
 
 
-function equalEdges(our: DefaultMap<NodeId, Map<NodeId,DataflowGraphEdge>>, other: DefaultMap<NodeId, Map<NodeId,DataflowGraphEdge>>): boolean {
-  if(our.size() !== other.size()) {
-    dataflowLogger.warn(`edge size does not match: ${our.size()} vs ${other.size()}`)
+// to get the types within JSON.stringify
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function displayEnvReplacer(key: any, value: any): any {
+  if(value instanceof Map || value instanceof Set) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return [...value]
+  } else {
+    return value
+  }
+}
+
+function equalEdges(id: NodeId, our: [NodeId, DataflowGraphEdge][], other: [NodeId, DataflowGraphEdge][]): boolean {
+  if(our.length !== other.length) {
+    dataflowLogger.warn(`total edge size does not match: ${our.length} vs ${other.length}`)
     return false
   }
-  for(const [id, edges] of our.entries()) {
-    const otherEdges = other.get(id)
-    if(edges.size !== otherEdges.size) {
-      dataflowLogger.warn(`edge size does not match: ${edges.size} vs ${otherEdges.size}`)
+  // order independent compare
+  for(const [target, edge] of our) {
+    const otherEdge = other.find(([otherTarget, _]) => otherTarget === target)
+    if(otherEdge === undefined || edge.types.size !== otherEdge[1].types.size || [...edge.types].some(e => !otherEdge[1].types.has(e)) || edge.attribute !== otherEdge[1].attribute) {
+      dataflowLogger.warn(`edge with ${id}->${target} does not match (${JSON.stringify(edge, displayEnvReplacer)} vs ${JSON.stringify(otherEdge, displayEnvReplacer)})`)
       return false
     }
-    // order independent compare
-    for(const [target, edge] of edges) {
-      const otherEdge = otherEdges.get(target)
-      if(otherEdge === undefined || edge.type !== otherEdge.type || edge.attribute !== otherEdge.attribute) {
-        dataflowLogger.warn(`edge ${id} does not match (${JSON.stringify(edges)} vs ${JSON.stringify(otherEdges)})`)
-        return false
-      }
-    }
-    // TODO: ignore scope?
   }
+  // TODO: ignore scope?
   return true
 }
 

@@ -62,7 +62,7 @@ export function makeAllMaybe(references: IdentifierReference[] | undefined, grap
   return references.map(ref => {
     const node = graph.get(ref.nodeId)
     if(node) {
-      node.when = 'maybe'
+      node[0].when = 'maybe'
     }
     return { ...ref, used: 'maybe'}
   })

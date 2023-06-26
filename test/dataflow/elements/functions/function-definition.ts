@@ -116,7 +116,7 @@ describe('Function Definition', withShell(shell => {
                 environment: envWithXDefined,
                 when:        'always',
               })
-              .addEdge("5", BuiltIn, "calls", "always")
+              .addEdge("5", BuiltIn, "read", "always")
               .addEdge("3", "0", "read", "always")
               .addEdge("5", "4", "argument", "always")
               .addEdge("4", "3", "read", "always"),

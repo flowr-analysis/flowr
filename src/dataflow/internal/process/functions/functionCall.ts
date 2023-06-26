@@ -18,7 +18,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   // we update all the usage nodes within the dataflow graph of the function name to
   // mark them as function calls, and append their argument linkages
   let functionNameId: NodeId | undefined
-  for(const [nodeId, _] of functionName.graph.nodes()) {
+  for(const [nodeId] of functionName.graph.nodes()) {
     functionNameId = nodeId
   }
 
@@ -43,12 +43,6 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   // finalGraph.addEdge(functionRootId, functionNameId, 'read', 'always')
 
   const resolvedDefinitions = resolveByName(functionCallName, data.activeScope, data.environments)
-  if(resolvedDefinitions !== undefined) {
-    for(const fn of resolvedDefinitions) {
-      dataflowLogger.trace(`recording call from ${functionCallName} (${functionRootId}) to ${JSON.stringify(fn)}`)
-      finalGraph.addEdge(functionRootId, fn.nodeId, 'calls', 'always')
-    }
-  }
 
   for(const arg of args) {
     finalEnv = overwriteEnvironments(finalEnv, arg.environments)
@@ -72,6 +66,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 
   if(resolvedDefinitions !== undefined) {
     const trackCallIds = resolvedDefinitions.map(r => r.definedAt)
+
     // we get them by just choosing the rhs of the definition - TODO: this should be improved - maybe by a second call track
     const allLinkedFunctions: (RNodeWithParent | undefined)[] = trackCallIds.filter(i => i !== BuiltIn).map(id => data.completeAst.idMap.get(id))
 
@@ -82,7 +77,11 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
         continue
       }
       const linkedFunction = linkedFunctionBase.rhs
-      guard(linkedFunction.type === Type.FunctionDefinition, () => `Supposed Function definition ${JSON.stringify(linkedFunction.info.id)} is not a function def. but ${linkedFunction.type}`)
+
+      if(linkedFunction.type !== Type.FunctionDefinition) {
+        dataflowLogger.trace(`function call definition base ${functionCallName} does not lead to a function definition (${functionRootId}) but got ${linkedFunction.type}`)
+        continue
+      }
       dataflowLogger.trace(`linking arguments for ${functionCallName} (${functionRootId}) to ${JSON.stringify(linkedFunction.location)}`)
       linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph)
     }

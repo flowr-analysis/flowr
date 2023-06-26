@@ -253,9 +253,9 @@ export class DataflowGraph {
       return [...this.edges.get(id).entries()]
     } else {
       const edges = [...this.edges.get(id).entries()]
-      for(const [nodeId, node] of this.nodes(true)) {
-        if(node.tag === 'function-definition') {
-          edges.push(...node.subflow.graph.outgoingEdges(nodeId, false))
+      for(const [nodeId, _,graph ] of this.nodes(true)) {
+        if(nodeId === id) {
+          edges.push(...graph.outgoingEdges(nodeId, false))
         }
       }
       return edges

@@ -42,7 +42,13 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   })
   // finalGraph.addEdge(functionRootId, functionNameId, 'read', 'always')
 
-
+  const resolvedDefinitions = resolveByName(functionCallName, data.activeScope, data.environments)
+  if(resolvedDefinitions !== undefined) {
+    for(const fn of resolvedDefinitions) {
+      dataflowLogger.trace(`recording call from ${functionCallName} (${functionRootId}) to ${JSON.stringify(fn)}`)
+      finalGraph.addEdge(functionRootId, fn.nodeId, 'calls', 'always')
+    }
+  }
 
   for(const arg of args) {
     finalEnv = overwriteEnvironments(finalEnv, arg.environments)
@@ -63,7 +69,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   // TODO:
   // finalGraph.addNode(functionCall.info.id, functionCall.functionName.content, finalEnv, down.activeScope, 'always')
   // call links are added on expression level
-  const resolvedDefinitions = resolveByName(functionCallName, data.activeScope, data.environments)
+
   if(resolvedDefinitions !== undefined) {
     const trackCallIds = resolvedDefinitions.map(r => r.definedAt)
     // we get them by just choosing the rhs of the definition - TODO: this should be improved - maybe by a second call track

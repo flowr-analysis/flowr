@@ -67,6 +67,13 @@ f()
 `
     assertSliced('Late bindings of parameter in parameters', shell, lateCodeB, ['2@f'], `f <- function(a=b, b=3) { a + 1 }
 f()`)
+    assertSliced('Parameters binding context', shell, `f <- function(a=y) { a }
+a <- 5
+y <- 3
+y <- 4
+f()`, ['5@f'], `f <- function(a=y) { a }
+y <- 4
+f()`)
   })
   describe('Functions with nested definitions', () => {
     describe('Simple Function pass with return', () => {

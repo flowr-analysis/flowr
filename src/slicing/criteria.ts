@@ -45,7 +45,7 @@ function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: Decora
       continue // only consider those with position information
     }
 
-    slicerLogger.trace(`can resolve id ${id} (${JSON.stringify(nodeInfo)}) for location ${JSON.stringify(location)}`)
+    slicerLogger.trace(`can resolve id ${id} (${JSON.stringify(nodeInfo.location)}) for location ${JSON.stringify(location)}`)
     // function calls have the same location as the symbol they refer to, so we need to prefer the function call
     if(candidate !== undefined && nodeInfo.type !== Type.FunctionCall && nodeInfo.type !== Type.Argument || nodeInfo.type === Type.ExpressionList) {
       continue

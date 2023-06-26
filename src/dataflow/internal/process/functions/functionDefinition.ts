@@ -9,7 +9,7 @@ import {
   resolveByName
 } from '../../../environments'
 import { linkInputs } from '../../linker'
-import { DataflowGraph, dataflowLogger, DataflowMap } from '../../../index'
+import { DataflowGraph, dataflowLogger, DataflowMap, LocalScope } from '../../../index'
 import { collectAllIds, ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
 import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
 import { guard } from '../../../../util/assert'
@@ -32,7 +32,7 @@ function linkLowestClosureVariables<OtherInfo>(subgraph: DataflowGraph, outEnvir
         remainingIn.push(ingoing)
         continue
       }
-      dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id} (${JSON.stringify(resolved)})`)
+      dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id}`)
       for (const ref of resolved) {
         subgraph.addEdge(ingoing, ref, 'read', 'always')
       }
@@ -42,20 +42,68 @@ function linkLowestClosureVariables<OtherInfo>(subgraph: DataflowGraph, outEnvir
   }
 }
 
-export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
-  dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
-  // within a function def we do not pass on the outer binds as they could be overwritten when called
+function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
   let env = initializeCleanEnvironments()
-  for(let i = 0; i < data.environments.level + 1 /* add another env */; i++) {
+  for (let i = 0; i < data.environments.level + 1 /* add another env */; i++) {
     env = pushLocalEnvironment(env)
   }
-  data = { ...data, environments: env }
-  // TODO: update
-  const params = []
+  return { ...data, environments: env }
+}
+
+/**
+ * Within something like `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }`
+ * `a` will be defined by `b` and `b`will be a promise object bound by the first definition of b it can find.
+ * This means, that this function returns `2` due to the first `b <- 1` definition.
+ * If the code would be `f <- function(a=b, m=3) { if(m > 3) { b <- 1; }; a; b <- 5; a + 1 }`, we need a link to `b <- 1` and `b <- 6`
+ * as `b` can be defined by either one of them.
+ * <p>
+ * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers a first definitions</b>
+ */
+function findPromiseLinkagesForParameters<OtherInfo>(parameters: DataflowGraph, readInParameters: IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation<OtherInfo>): IdentifierReference[] {
+  // first we try to bind again within parameters - if we have it, fine
+  const remainingRead: IdentifierReference[] = []
+  for(const read of readInParameters) {
+    const resolved = resolveByName(read.name, LocalScope, parameterEnvs)
+    if (resolved !== undefined) {
+      for(const ref of resolved) {
+        parameters.addEdge(read, ref, 'read', 'always')
+      }
+      continue
+    }
+    // if not resolved, link all outs within the body as potential reads
+    // regarding the sort we can ignore equality as nodeIds are unique
+    // we sort to get the lowest id - if it is an 'always' flag we can safely use it instead of all of them
+    const writingOuts = body.out.filter(o => o.name === read.name).sort((a, b) => a.nodeId < b.nodeId ? 1 : -1)
+    if(writingOuts.length === 0) {
+      remainingRead.push(read)
+      continue
+    }
+    if(writingOuts[0].used === 'always') {
+      parameters.addEdge(read, writingOuts[0], 'read', 'always')
+      continue
+    }
+    for(const out of writingOuts) {
+      parameters.addEdge(read, out, 'read', 'maybe')
+    }
+  }
+  return remainingRead
+}
+
+export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
+
+  // within a function def we do not pass on the outer binds as they could be overwritten when called
+  data = prepareFunctionEnvironment(data)
+
+  const subgraph = new DataflowGraph()
+
+  let readInParameters: IdentifierReference[] = []
   for(const param of functionDefinition.parameters) {
     const processed = processDataflowFor(param, data)
-    params.push(processed)
-    data = { ...data, environments: processed.environments }
+    subgraph.mergeWith(processed.graph)
+    const read = [...processed.in, ...processed.activeNodes]
+    linkInputs(read, data.activeScope, data.environments, readInParameters, subgraph, false)
+    data = { ...data, environments: overwriteEnvironments(data.environments, processed.environments) }
   }
   const paramsEnvironments = data.environments
 
@@ -63,16 +111,16 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   // as we know, that parameters can not duplicate, we overwrite their environments (which is the correct behavior, if someone uses non-`=` arguments in functions)
   const bodyEnvironment = body.environments
 
-  const subgraph = body.graph.mergeWith(...params.map(a => a.graph))
 
-  // TODO: count parameter a=b as assignment!
-  const readInParameters = params.flatMap(a => [...a.in, ...a.activeNodes])
+  readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, body)
+
   const readInBody = [...body.in, ...body.activeNodes]
   // there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
   const remainingRead = linkInputs(readInBody, data.activeScope, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */)
 
-  dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads (of ids [${remainingRead.map(r => r.nodeId).join(', ')}])`)
+  subgraph.mergeWith(body.graph)
 
+  dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads`)
 
   // link same-def-def with arguments
   for (const writeTarget of body.out) {
@@ -89,7 +137,6 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 
   const outEnvironment = overwriteEnvironments(paramsEnvironments, bodyEnvironment)
   for(const read of remainingRead) {
-    dataflowLogger.trace(`Adding node ${read.nodeId} to function graph in environment ${JSON.stringify(outEnvironment)} `)
     subgraph.addNode({ tag: 'use', id: read.nodeId, name: read.name, environment: outEnvironment, when: 'maybe' })
   }
 
@@ -106,7 +153,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 
   const exitPoints = retrieveExitPointsOfFunctionDefinition(functionDefinition)
   // if exit points are extra, we must link them to all dataflow nodes they relate to.
-  linkExitPointsInGraph(exitPoints, subgraph, data.completeAst.idMap, data.environments)
+  linkExitPointsInGraph(exitPoints, subgraph, data.completeAst.idMap, outEnvironment)
   linkLowestClosureVariables(subgraph, outEnvironment, data, functionDefinition)
 
   const graph = new DataflowGraph()
@@ -120,11 +167,9 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     subflow:     flow,
     exitPoints
   })
-  // TODO: deal with function info
-  // TODO: rest
   return {
     activeNodes:  [] /* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: down.activeScope, used: 'always', name: functionDefinition.info.id as string } */,
-    in:           [] /* TODO: they must be bound on call */,
+    in:           [ /* TODO: keep in of parameters */ ],
     out:          [],
     graph,
     /* TODO: have params. the potential to influence their surrounding on def? */

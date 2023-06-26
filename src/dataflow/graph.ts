@@ -12,20 +12,19 @@ import { MergeableRecord } from '../util/objects'
 import { log } from '../util/log'
 import { dataflowLogger } from './index'
 import { DataflowInformation } from './internal/info'
-import { DefaultMap } from '../util/defaultmap'
 
-/** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
+/** used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
 
 export type DataflowGraphEdgeType =
-    | /** The edge determines that source reads target */ 'read'
-    | /** The edge determines that source is defined by target */ 'defined-by'
-    | /** The edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
-    | /** Similar to `same-read-read` but for def-def constructs without a read in-between */ 'same-def-def'
-    | /** Formal used as argument to a function call */ 'argument'
-    | /** The edge determines that the source calls the target */ 'calls'
-    | /** The source and edge relate to each other bidirectionally */ 'relates'
-    | /** The source returns target on call */ 'returns'
+    | /** the edge determines that source reads target */ 'read'
+    | /** the edge determines that source is defined by target */ 'defined-by'
+    | /** the edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
+    | /** similar to `same-read-read` but for def-def constructs without a read in-between */ 'same-def-def'
+    | /** formal used as argument to a function call */ 'argument'
+    | /** the edge determines that the source calls the target */ 'calls'
+    | /** the source and edge relate to each other bidirectionally */ 'relates'
+    | /** the source returns target on call */ 'returns'
 
 // context -- is it always read/defined-by // TODO: loops
 export type DataflowGraphEdgeAttribute = 'always' | 'maybe'
@@ -37,7 +36,7 @@ export const GlobalScope = '.GlobalEnv'
 export const LocalScope = 'local'
 
 /**
- * Used to represent usual R scopes
+ * used to represent usual R scopes
  */
 export type DataflowScopeName =
   | /** default R global environment */            typeof GlobalScope
@@ -53,6 +52,7 @@ export type DataflowScopeName =
  * These edges are specialised by {@link DataflowGraphReadEdge} and {@link DataflowGraphDefinedByEdge}
  */
 export interface DataflowGraphEdge {
+  target:    NodeId
   type:      DataflowGraphEdgeType
   attribute: DataflowGraphEdgeAttribute
 }
@@ -166,6 +166,13 @@ export interface DataflowGraphExitPoint extends DataflowGraphNodeBase {
 }
 
 /**
+ * Used internally for nodes that will be constructed in the future
+ */
+export interface DataflowGraphNodePlaceholder extends Partial<DataflowGraphNodeBase> {
+  readonly tag: 'placeholder'
+}
+
+/**
  * Arguments required to construct a node which represents the usage of a variable in the dataflow graph.
  */
 export interface DataflowGraphNodeUse extends DataflowGraphNodeBase {
@@ -212,59 +219,39 @@ export interface DataflowGraphNodeFunctionDefinition extends DataflowGraphNodeBa
 const DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
 
 export type DataflowGraphNodeArgument = DataflowGraphNodeUse | DataflowGraphExitPoint | DataflowGraphNodeVariableDefinition | DataflowGraphNodeFunctionDefinition | DataflowGraphNodeFunctionCall
-export type DataflowGraphNodeInfo = Required<DataflowGraphNodeArgument>
+export type DataflowGraphNodeInfo = Required<DataflowGraphNodeArgument | DataflowGraphNodePlaceholder> & {
+  edges: DataflowGraphEdge[]
+}
 
 /**
  * Holds the dataflow information found within the given AST
- * there is a node for every variable encountered, obeying scoping rules.
- * Edges are extra which may mean that edges for currently non-existing nodes exist (e.g. those bound later during graph construction)
+ * there is a node for every variable encountered, obeying scoping rules
+ * the node info holds edge information, node-names etc.
  * <p>
- * The given map holds a key entry for each node with the corresponding node info attached
+ * the given map holds a key entry for each node with the corresponding node info attached
  * <p>
- * Allows to chain calls for easier usage
+ * allows to chain calls for easier usage
  */
 export class DataflowGraph {
-  private graphNodes = new Map<NodeId, DataflowGraphNodeInfo>()
-  // TODO: improve access, theoretically we want a multi - default map, right now we do not allow multiple edges
-  private edges = new DefaultMap<NodeId, Map<NodeId, DataflowGraphEdge>>(() => new Map<NodeId, DataflowGraphEdge>())
+  private graph = new Map<NodeId, DataflowGraphNodeInfo>()
 
   /**
    * @param includeDefinedFunctions - if true this will iterate over function definitions as well and not just the toplevel
-   * @returns the ids of all toplevel nodes in the graph, together with their node info and the graph that contains them (in case of subgraphs)
+   * @returns the ids of all toplevel nodes in the graph, together with their node info
    */
-  public* nodes(includeDefinedFunctions = false): IterableIterator<[NodeId, DataflowGraphNodeInfo, DataflowGraph]> {
-    const nodes: [NodeId, DataflowGraphNodeInfo, DataflowGraph][] = [...this.graphNodes.entries()].map(([id, node]) => [id, node, this])
-    for(const [id, node, graph] of nodes) {
-      yield [id, node, graph]
+  public* nodes(includeDefinedFunctions = false): IterableIterator<[NodeId, DataflowGraphNodeInfo]> {
+    const nodes = [...this.graph.entries()]
+    for(const [id, node] of nodes) {
+      yield [id, node]
       if(includeDefinedFunctions && node.tag === 'function-definition') {
-        const entries = [...node.subflow.graph.entries()]
-        nodes.push(...entries.map(([id, n]) => [id, n, node.subflow.graph] as [NodeId, DataflowGraphNodeInfo, DataflowGraph]))
+        nodes.push(...node.subflow.graph.entries())
       }
-    }
-  }
-
-  /**
-   * Returns all outgoing edges of the node
-   * @param id - The id of the node to get the outgoing edges for
-   * @param includeSubflows - If true, this will search in subflows as well and add the edges to the result
-   */
-  public outgoingEdges(id: NodeId, includeSubflows  = false): [NodeId, DataflowGraphEdge][] {
-    if(!includeSubflows) {
-      return [...this.edges.get(id).entries()]
-    } else {
-      const edges = [...this.edges.get(id).entries()]
-      for(const [nodeId, _,graph ] of this.nodes(true)) {
-        if(nodeId === id) {
-          edges.push(...graph.outgoingEdges(nodeId, false))
-        }
-      }
-      return edges
     }
   }
 
   public hasNode(id: NodeId, includeDefinedFunctions = false): boolean {
     if(!includeDefinedFunctions) {
-      return this.graphNodes.has(id)
+      return this.graph.has(id)
     } else {
       for(const [nodeId, _] of this.nodes(true)) {
         if(nodeId === id) {
@@ -284,7 +271,7 @@ export class DataflowGraph {
    */
   public get(id: NodeId, includeDefinedFunctions = false): DataflowGraphNodeInfo | undefined {
     if(!includeDefinedFunctions) {
-      return this.graphNodes.get(id)
+      return this.graph.get(id)
     } else {
       for(const [nodeId, info] of this.nodes(true)) {
         if(nodeId === id) {
@@ -296,7 +283,7 @@ export class DataflowGraph {
   }
 
   public entries(): IterableIterator<[NodeId, Required<DataflowGraphNodeInfo>]> {
-    return this.graphNodes.entries()
+    return this.graph.entries()
   }
 
   /**
@@ -306,8 +293,8 @@ export class DataflowGraph {
    * @see DataflowGraphNodeArgument
    */
   public addNode(node: DataflowGraphNodeArgument): this {
-    const oldNode = this.graphNodes.get(node.id)
-    if(oldNode !== undefined) {
+    const oldNode = this.graph.get(node.id)
+    if(oldNode !== undefined && oldNode.tag !== 'placeholder') {
       guard(oldNode.name === node.name, 'node names must match for the same id if added')
       return this
     }
@@ -315,11 +302,11 @@ export class DataflowGraph {
     // deep clone environment
     const environment = node.environment === undefined ? DEFAULT_ENVIRONMENT : cloneEnvironments(node.environment)
     const when = node.when ?? 'always'
-    this.graphNodes.set(node.id, { ...node, when, environment, edges: [] })
+    this.graph.set(node.id, { ...node, when, environment, edges: oldNode?.edges ?? [] })
     return this
   }
 
-  /** Basically only exists for creations in tests, within the dataflow-extraction, this 3-argument variant will determine `attribute` automatically */
+  /** Basically only exists for creations in tests, within the dataflow-extraction, the 3-argument variant will determine `attribute` automatically */
   public addEdge(from: NodeId, to: NodeId, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): this
   /** {@inheritDoc} */
   public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: DataflowGraphEdgeType): this
@@ -337,8 +324,8 @@ export class DataflowGraph {
   public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute, promote= false): this {
     // dataflowLogger.trace(`trying to add edge from ${JSON.stringify(from)} to ${JSON.stringify(to)} with type ${type} and attribute ${JSON.stringify(attribute)} to graph`)
 
-    let fromId = typeof from === 'object' ? from.nodeId : from
-    let toId = typeof to === 'object' ? to.nodeId : to
+    const fromId = typeof from === 'object' ? from.nodeId : from
+    const toId = typeof to === 'object' ? to.nodeId : to
 
     if(fromId === toId) {
       log.trace(`ignoring self-edge from ${fromId} to ${toId} (${JSON.stringify(type)}, ${JSON.stringify(attribute)}, ${JSON.stringify(promote)})`)
@@ -346,46 +333,54 @@ export class DataflowGraph {
     }
 
     // sort (on id so that sorting is the same, independent of the attribute)
+    // TODO: make edges bidirectional
     const bidirectional = type === 'same-read-read' || type === 'same-def-def' || type === 'relates'
-
-    if(bidirectional && toId < fromId) {
-      { [from, to] = [to, from] }
-      { [fromId, toId] = [toId, fromId] }
+    const createEdges = [{ from, to, fromId, toId }]
+    if(bidirectional) {
+      createEdges.push({ from: to, to: from, fromId: toId, toId: fromId })
     }
 
-    if(promote) {
-      attribute ??= (from as ReferenceForEdge).used === 'maybe' ? 'maybe' : (to as ReferenceForEdge).used
+    for(const { from, to, fromId, toId } of createEdges) {
+      if (promote && attribute === undefined) {
+        attribute = (from as ReferenceForEdge).used === 'maybe' ? 'maybe' : (to as ReferenceForEdge).used
+      }
 
-      const fromInfo = this.get(fromId, true)
+      let fromInfo = this.get(fromId, true)
       const toInfo = this.get(toId, true)
 
-      if (fromInfo?.when === 'maybe' || toInfo?.when === 'maybe') {
+      if (fromInfo === undefined) {
+        dataflowLogger.warn(`Node ${fromId} does not already exist, creating placeholder`)
+        fromInfo = {
+          id:          fromId,
+          tag:         'placeholder',
+          name:        'placeholder',
+          when:        'always',
+          environment: DEFAULT_ENVIRONMENT,
+          edges:       []
+        }
+      }
+
+      if (promote && (fromInfo.when === 'maybe' || toInfo?.when === 'maybe')) {
         log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
         attribute = 'maybe'
       }
-    }
 
-    guard(attribute !== undefined, 'attribute must be set')
-    const edge = { type, attribute }
-
-    // TODO: make this more performant
-    // we ignore the attribute as it is only promoted to maybe
-
-    const existingFrom = this.edges.get(fromId)
-    const edgeInFrom = existingFrom.get(toId)
-
-    if(edgeInFrom === undefined) {
-      existingFrom.set(toId, edge)
-      if(bidirectional) {
-        this.edges.get(toId).set(fromId, edge)
+      guard(attribute !== undefined, 'attribute must be set')
+      const edge = {
+        target: toId,
+        type,
+        attribute
       }
-    } else {
-      if(attribute === 'maybe') {
-        // as the data is shared, we can just set it for one direction
-        edgeInFrom.attribute = 'maybe'
-      } else if(type === 'calls' && edgeInFrom.type === 'read') {
-        // promote reading edges to call
-        edgeInFrom.type = 'calls'
+      // TODO: make this more performant
+      // we ignore the attribute as it is only promoted to maybe
+      const find = fromInfo.edges.find(e => e.target === toId && (e.type === type || e.type === 'calls' && type === 'read'))
+      if (find === undefined) {
+        // dataflowLogger.trace(`adding edge from ${fromId} to ${toId} with type ${type} and attribute ${attribute} to graph`)
+        fromInfo.edges.push(edge)
+      } else {
+        if (find.attribute === 'maybe' || attribute === 'maybe') {
+          find.attribute = 'maybe'
+        }
       }
     }
     return this
@@ -394,35 +389,99 @@ export class DataflowGraph {
 
   /** Merges the other graph into *this* one (in-place). The return value is only for convenience. */
   public mergeWith(...otherGraphs: (DataflowGraph | undefined)[]): this {
-    for(const otherGraph of otherGraphs) {
-      if(otherGraph === undefined) {
+    // TODO: join edges
+    // TODO: maybe switch to sets?
+    const newGraph = this.graph
+    for(const graph of otherGraphs) {
+      if(graph === undefined) {
         continue
       }
-      for(const [id, info] of otherGraph.graphNodes) {
-        const currentInfo = this.graphNodes.get(id)
+      for(const [id, info] of graph.graph) {
+        const currentInfo = newGraph.get(id)
         if (currentInfo === undefined) {
-          this.graphNodes.set(id, info)
+          newGraph.set(id, info)
         } else {
-          this.graphNodes.set(id, mergeNodeInfos(currentInfo, info))
-        }
-      }
-
-      // TODO: make more performant
-      for(const [id, edges] of otherGraph.edges.entries()) {
-        for(const [target, edge] of edges) {
-          this.edges.get(id).set(target, edge)
+          newGraph.set(id, mergeNodeInfos(currentInfo, info))
         }
       }
     }
+
+    this.graph = newGraph
     return this
   }
 
   // TODO: diff function to get more information?
   public equals(other: DataflowGraph): boolean {
-    if(!equalNodes(this.graphNodes, other.graphNodes)) {
+    if(this.graph.size !== other.graph.size) {
+      dataflowLogger.warn(`graph size does not match: ${this.graph.size} vs ${other.graph.size}`)
       return false
     }
-    return equalEdges(this.edges, other.edges)
+    for(const [id, info] of this.graph) {
+      const otherInfo = other.graph.get(id)
+      if(otherInfo === undefined || info.tag !== otherInfo.tag || info.name !== otherInfo.name) {
+        dataflowLogger.warn(`node ${id} does not match (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
+        return false
+      }
+
+      if(info.tag === 'variable-definition' || info.tag === 'function-definition') {
+        guard(info.tag === otherInfo.tag, () => `node ${id} does not match on tag (${info.tag} vs ${otherInfo.tag})`)
+        if (info.scope !== otherInfo.scope) {
+          dataflowLogger.warn(`node ${id} does not match on scope (${JSON.stringify(info.scope)} vs ${JSON.stringify(otherInfo.scope)})`)
+          return false
+        }
+      }
+
+      if(info.when !== otherInfo.when) {
+        dataflowLogger.warn(`node ${id} does not match on when (${JSON.stringify(info.when)} vs ${JSON.stringify(otherInfo.when)})`)
+        return false
+      }
+
+      if(info.edges.length !== otherInfo.edges.length) {
+        dataflowLogger.warn(`node ${id} does not match on amount of edges (${JSON.stringify(info.edges)} vs ${JSON.stringify(otherInfo.edges)})`)
+        return false
+      }
+
+      if(!environmentsEqual(info.environment, otherInfo.environment)) {
+        dataflowLogger.warn(`node ${id} does not match on environments (${JSON.stringify(info.environment)} vs ${JSON.stringify(otherInfo.environment)})`)
+        return false
+      }
+
+      if(info.tag === 'function-call') {
+        guard(otherInfo.tag === 'function-call', 'otherInfo must be a function call as well')
+        if(!equalFunctionArguments(info.args, otherInfo.args)) {
+          dataflowLogger.warn(`node ${id} does not match on function arguments (${JSON.stringify(info.functionCall)} vs ${JSON.stringify(otherInfo.functionCall)})`)
+          return false
+        }
+      }
+
+      if(info.tag === 'function-definition') {
+        guard(otherInfo.tag === 'function-definition', 'otherInfo must be a function definition as well')
+
+        if (!equalExitPoints(info.exitPoints, otherInfo.exitPoints)) {
+          dataflowLogger.warn(`node ${id} does not match on exit points (${JSON.stringify(info.exitPoints)} vs ${JSON.stringify(otherInfo.exitPoints)})`)
+          return false
+        }
+
+        // TODO: improve : info.subflow.out !== otherInfo.subflow.out || info.subflow.in !== otherInfo.subflow.in || info.subflow.activeNodes !== otherInfo.subflow.activeNodes ||
+        if (info.subflow.scope !== otherInfo.subflow.scope || !environmentsEqual(info.subflow.environments, otherInfo.subflow.environments)) {
+          dataflowLogger.warn(`node ${id} does not match on subflow (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
+          return false
+        }
+        if (!info.subflow.graph.equals(otherInfo.subflow.graph)) {
+          dataflowLogger.warn(`node ${id} does not match on subflow graph (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
+          return false
+        }
+      }
+      // TODO: assuming that all edges are unique (which should be ensured by constructed)
+      for(const edge of info.edges) {
+        // TODO: improve finding edges
+        if(otherInfo.edges.find(e => e.target === edge.target && e.type === edge.type && e.attribute === edge.attribute) === undefined) {
+          dataflowLogger.warn(`edge ${id} -> ${edge.target} does not match any of (${JSON.stringify(otherInfo.edges)})`)
+          return false
+        }
+      }
+    }
+    return true
   }
 
   public setDefinitionOfNode(reference: IdentifierReference): void {
@@ -432,115 +491,39 @@ export class DataflowGraph {
       guard(node.scope === reference.scope && node.when === reference.used, () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
       node.scope = reference.scope
     } else {
-      this.graphNodes.set(reference.nodeId, {
+      this.graph.set(reference.nodeId, {
         ...node,
         tag:   'variable-definition',
         scope: reference.scope,
       })
     }
   }
+
 }
-
-
-function equalEdges(our: DefaultMap<NodeId, Map<NodeId,DataflowGraphEdge>>, other: DefaultMap<NodeId, Map<NodeId,DataflowGraphEdge>>): boolean {
-  if(our.size() !== other.size()) {
-    dataflowLogger.warn(`edge size does not match: ${our.size()} vs ${other.size()}`)
-    return false
-  }
-  for(const [id, edges] of our.entries()) {
-    const otherEdges = other.get(id)
-    if(edges.size !== otherEdges.size) {
-      dataflowLogger.warn(`edge size does not match: ${edges.size} vs ${otherEdges.size}`)
-      return false
-    }
-    // order independent compare
-    for(const [target, edge] of edges) {
-      const otherEdge = otherEdges.get(target)
-      if(otherEdge === undefined || edge.type !== otherEdge.type || edge.attribute !== otherEdge.attribute) {
-        dataflowLogger.warn(`edge ${id} does not match (${JSON.stringify(edges)} vs ${JSON.stringify(otherEdges)})`)
-        return false
-      }
-    }
-    // TODO: ignore scope?
-  }
-  return true
-}
-
-function equalNodes(our: Map<NodeId, DataflowGraphNodeInfo>, other: Map<NodeId, DataflowGraphNodeInfo>): boolean {
-  if(our.size !== other.size) {
-    dataflowLogger.warn(`graph size does not match: ${our.size} vs ${other.size}`)
-    return false
-  }
-  for(const [id, info] of our) {
-    const otherInfo = other.get(id)
-    if(otherInfo === undefined || info.tag !== otherInfo.tag || info.name !== otherInfo.name) {
-      dataflowLogger.warn(`node ${id} does not match (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
-      return false
-    }
-
-    if(info.tag === 'variable-definition' || info.tag === 'function-definition') {
-      guard(info.tag === otherInfo.tag, () => `node ${id} does not match on tag (${info.tag} vs ${otherInfo.tag})`)
-      if (info.scope !== otherInfo.scope) {
-        dataflowLogger.warn(`node ${id} does not match on scope (${JSON.stringify(info.scope)} vs ${JSON.stringify(otherInfo.scope)})`)
-        return false
-      }
-    }
-
-    if(info.when !== otherInfo.when) {
-      dataflowLogger.warn(`node ${id} does not match on when (${JSON.stringify(info.when)} vs ${JSON.stringify(otherInfo.when)})`)
-      return false
-    }
-
-    if(!environmentsEqual(info.environment, otherInfo.environment)) {
-      dataflowLogger.warn(`node ${id} does not match on environments (${JSON.stringify(info.environment)} vs ${JSON.stringify(otherInfo.environment)})`)
-      return false
-    }
-
-    if(info.tag === 'function-call') {
-      guard(otherInfo.tag === 'function-call', 'otherInfo must be a function call as well')
-      if(!equalFunctionArguments(info.args, otherInfo.args)) {
-        dataflowLogger.warn(`node ${id} does not match on function arguments (${JSON.stringify(info.functionCall)} vs ${JSON.stringify(otherInfo.functionCall)})`)
-        return false
-      }
-    }
-
-    if(info.tag === 'function-definition') {
-      guard(otherInfo.tag === 'function-definition', 'otherInfo must be a function definition as well')
-
-      if (!equalExitPoints(info.exitPoints, otherInfo.exitPoints)) {
-        dataflowLogger.warn(`node ${id} does not match on exit points (${JSON.stringify(info.exitPoints)} vs ${JSON.stringify(otherInfo.exitPoints)})`)
-        return false
-      }
-
-      // TODO: improve : info.subflow.out !== otherInfo.subflow.out || info.subflow.in !== otherInfo.subflow.in || info.subflow.activeNodes !== otherInfo.subflow.activeNodes ||
-      if (info.subflow.scope !== otherInfo.subflow.scope || !environmentsEqual(info.subflow.environments, otherInfo.subflow.environments)) {
-        dataflowLogger.warn(`node ${id} does not match on subflow (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
-        return false
-      }
-      if (!info.subflow.graph.equals(otherInfo.subflow.graph)) {
-        dataflowLogger.warn(`node ${id} does not match on subflow graph (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
-        return false
-      }
-    }
-  }
-  return true
-}
-
 
 function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeInfo): DataflowGraphNodeInfo {
+  if(current.tag === 'placeholder') {
+    return {
+      ...next,
+      // TODO: improve join of edges
+      edges: [...current.edges, ...next.edges]
+    }
+  }
   guard(current.tag === next.tag, 'nodes to be joined for the same id must have the same tag')
   guard(current.name === next.name, 'nodes to be joined for the same id must have the same name')
-  if(current.tag === 'variable-definition' || current.tag === 'function-definition') {
+  if (current.tag === 'variable-definition' || current.tag === 'function-definition') {
     guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same definedAtPosition')
   }
   guard(current.environment === next.environment, 'nodes to be joined for the same id must have the same environment')
-  if(current.tag === 'function-call') {
+  if (current.tag === 'function-call') {
     guard(equalFunctionArguments(current.args, (next as DataflowGraphNodeFunctionCall).args), 'nodes to be joined for the same id must have the same function call information')
   }
-  if(current.tag === 'function-definition') {
+  if (current.tag === 'function-definition') {
     guard(equalExitPoints(current.exitPoints, (next as DataflowGraphNodeFunctionDefinition).exitPoints), 'nodes to be joined must have same exist points')
   }
   return {
-    ...current // make a copy
+    ...current,
+    // TODO: improve join of edges
+    edges: [...current.edges, ...next.edges]
   }
 }

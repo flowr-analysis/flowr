@@ -32,7 +32,7 @@ function linkLowestClosureVariables<OtherInfo>(subgraph: DataflowGraph, outEnvir
         remainingIn.push(ingoing)
         continue
       }
-      dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id}`)
+      dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id} (${JSON.stringify(resolved)})`)
       for (const ref of resolved) {
         subgraph.addEdge(ingoing, ref, 'read', 'always')
       }
@@ -120,7 +120,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 
   subgraph.mergeWith(body.graph)
 
-  dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads`)
+  dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads (of ids [${remainingRead.map(r => r.nodeId).join(', ')}])`)
 
   // link same-def-def with arguments
   for (const writeTarget of body.out) {
@@ -137,6 +137,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 
   const outEnvironment = overwriteEnvironments(paramsEnvironments, bodyEnvironment)
   for(const read of remainingRead) {
+    dataflowLogger.trace(`Adding node ${read.nodeId} to function graph in environment ${JSON.stringify(outEnvironment)} `)
     subgraph.addNode({ tag: 'use', id: read.nodeId, name: read.name, environment: outEnvironment, when: 'maybe' })
   }
 

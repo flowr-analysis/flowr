@@ -119,6 +119,5 @@ describe('for', withShell(shell => {
       .addEdge("4", "0", "read", "maybe")
       .addEdge("10", "5", "read", "maybe")
       .addEdge("10", "0", "read", "always")
-      .addEdge("5", "0", "same-def-def", "always")
   )
 }))

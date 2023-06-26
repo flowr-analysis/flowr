@@ -117,8 +117,11 @@ b <- function(f) { i <- 5; f() }
 b(a)`
     assertSliced('Only i, not bound in context', shell, code, ['1@i'], `i`)
     assertSliced('Slice of b is independent', shell, code, ['3@b'], `b <- function(f) { }`)
-    assertSliced('Slice of b-call uses function', shell, code, ['4@b'], `a <- function() { x <- 3; i }
-b <- function(f) { i <- 5; f() }
+    assertSliced('Slice of b-call uses function', shell, code, ['4@b'], `a <- function() { i }
+b <- function(f) {
+        i <- 5
+        f()
+    }
 b(a)`)
   })
   // TODO: we cant slice against objects within external files etc. problems e.g. in Code NAT MC.R of Zenodo 47

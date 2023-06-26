@@ -50,7 +50,6 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     }
   }
 
-
   for(const arg of args) {
     finalEnv = overwriteEnvironments(finalEnv, arg.environments)
     finalGraph.mergeWith(arg.graph)
@@ -69,6 +68,8 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 
   // TODO:
   // finalGraph.addNode(functionCall.info.id, functionCall.functionName.content, finalEnv, down.activeScope, 'always')
+  // call links are added on expression level
+
   if(resolvedDefinitions !== undefined) {
     const trackCallIds = resolvedDefinitions.map(r => r.definedAt)
     // we get them by just choosing the rhs of the definition - TODO: this should be improved - maybe by a second call track
@@ -82,7 +83,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
       }
       const linkedFunction = linkedFunctionBase.rhs
       guard(linkedFunction.type === Type.FunctionDefinition, () => `Supposed Function definition ${JSON.stringify(linkedFunction.info.id)} is not a function def. but ${linkedFunction.type}`)
-      dataflowLogger.trace(`linking arguments for ${functionCallName} (${functionRootId}) to ${JSON.stringify(linkedFunction)}`)
+      dataflowLogger.trace(`linking arguments for ${functionCallName} (${functionRootId}) to ${JSON.stringify(linkedFunction.location)}`)
       linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph)
     }
   }
@@ -122,11 +123,11 @@ function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<Parent
     const param = nameParamMap.get(name)
     if(param !== undefined) {
       dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`)
-      graph.addEdge(param.name.info.id, arg.nodeId, 'read', 'always')
+      graph.addEdge(param.name.info.id, arg.nodeId, 'relates', 'always')
       matchedParameters.add(name)
     } else if(specialDotParameter !== undefined) {
       dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`)
-      graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, 'read', 'always')
+      graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, 'relates', 'always')
     }
   }
 
@@ -144,13 +145,13 @@ function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<Parent
     if(remainingParameter.length <= i) {
       if(specialDotParameter !== undefined) {
         dataflowLogger.trace(`mapping unnamed argument ${i} to dot-dot-dot parameter`)
-        graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, 'read', 'always')
+        graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, 'relates', 'always')
       }
       dataflowLogger.error(`skipping argument ${i} as there is no corresponding parameter - R should block that`)
       continue
     }
     const param = remainingParameter[i]
     dataflowLogger.trace(`mapping unnamed argument ${i} to parameter "${param.name.content}"`)
-    graph.addEdge(param.name.info.id, arg.nodeId, 'read', 'always')
+    graph.addEdge(param.name.info.id, arg.nodeId, 'relates', 'always')
   }
 }

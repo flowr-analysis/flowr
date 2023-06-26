@@ -146,6 +146,11 @@ b <- function(f) {
     }
 b(a)`)
   })
+  describe('Recursive functions', () => {
+    const code = `f <- function() { f() }
+f()`
+    assertSliced('Endless recursion', shell, code, ['2@f'], code)
+  })
   // TODO: we cant slice against objects within external files etc. problems e.g. in Code NAT MC.R of Zenodo 47
   describe('Uninteresting calls', () => {
     const code = `

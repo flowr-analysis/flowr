@@ -1,7 +1,7 @@
 import {
   DataflowGraph,
   DataflowGraphNodeInfo,
-  graphToMermaidUrl,
+  graphToMermaidUrl, IEnvironment,
   initializeCleanEnvironments,
   LocalScope, REnvironmentInformation
 } from '../../dataflow'
@@ -10,6 +10,7 @@ import { DecoratedAstMap, NodeId } from '../../r-bridge'
 import { log } from '../../util/log'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
 import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
+import objectHash from 'object-hash'
 
 export const slicerLogger = log.getSubLogger({ name: "slicer" })
 
@@ -25,7 +26,15 @@ interface NodeToSlice {
 type Fingerprint = string
 
 function fingerprint(visited: NodeToSlice): Fingerprint {
-  return `${visited.id}-${visited.baseEnvironment.level}-${visited.baseEnvironment.current.id}`
+  let env: IEnvironment | undefined = visited.baseEnvironment.current
+  let envFingerprint = ''
+  while (env !== undefined) {
+    // TODO: improve for large environments!
+    envFingerprint += objectHash(JSON.stringify([...env.memory.entries()]))
+    env = env.parent
+  }
+  // we do not use ids of envs in case of (in-)finite recursion
+  return `${visited.id}-${visited.baseEnvironment.level}-${envFingerprint}`
 }
 /**
  * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).

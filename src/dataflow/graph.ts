@@ -215,6 +215,32 @@ const DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
 export type DataflowGraphNodeArgument = DataflowGraphNodeUse | DataflowGraphExitPoint | DataflowGraphNodeVariableDefinition | DataflowGraphNodeFunctionDefinition | DataflowGraphNodeFunctionCall
 export type DataflowGraphNodeInfo = Required<DataflowGraphNodeArgument>
 
+function insertEdge(edges: DataflowGraphEdge[], edge: DataflowGraphEdge): void {
+  let i = 0
+  while (i < edges.length && edges[i].target < edge.target) {
+    ++i
+  }
+  edges.splice(i, 0, edge)
+}
+
+// using binary search to find edge in sorted edges
+function findEdge(edges: DataflowGraphEdge[], target: NodeId): DataflowGraphEdge | undefined {
+  let start = 0
+  let end = edges.length - 1
+  while (start <= end) {
+    const mid = Math.floor((start + end) / 2)
+    const edge = edges[mid]
+    if (edge.target === target) {
+      return edge
+    } else if (edge.target < target) {
+      start = mid + 1
+    } else {
+      end = mid - 1
+    }
+  }
+  return undefined
+}
+
 /**
  * Holds the dataflow information found within the given AST
  * there is a node for every variable encountered, obeying scoping rules.
@@ -226,7 +252,7 @@ export type DataflowGraphNodeInfo = Required<DataflowGraphNodeArgument>
  */
 export class DataflowGraph {
   private graphNodes = new Map<NodeId, DataflowGraphNodeInfo>()
-  // TODO: improve access, theoretically we want a multi - default map
+  // TODO: improve access, theoretically we want a multi - default map - for now edges will be sorted with insertion sort
   private edgesFromTo = new DefaultMap<NodeId, DataflowGraphEdge[]>(() => [])
 
   /**
@@ -365,21 +391,21 @@ export class DataflowGraph {
     // we ignore the attribute as it is only promoted to maybe
 
     const existingFrom = this.edgesFromTo.get(fromId)
-    const edgeInFrom = existingFrom.find(e => e.target === toId)
+    const edgeInFrom = findEdge(existingFrom, toId)
     // TODO: other direction
     if(edgeInFrom === undefined) {
       // dataflowLogger.trace(`adding edge from ${fromId} to ${toId} with type ${type} and attribute ${attribute} to graph`)
-      existingFrom.push(edge)
+      insertEdge(existingFrom, edge)
       if(bidirectional) {
         const existingTo = this.edgesFromTo.get(toId)
-        existingTo.push({ ...edge, target: fromId })
+        insertEdge(existingTo, { ...edge, target: fromId })
       }
     } else {
       if(attribute === 'maybe') {
         edgeInFrom.attribute = 'maybe'
         if(bidirectional) {
           const existingTo = this.edgesFromTo.get(toId)
-          const edgeInTo = existingTo.find(e => e.target === fromId)
+          const edgeInTo = findEdge(existingTo, fromId)
           guard(edgeInTo !== undefined, `edge must exist in both directions, but does not for ${fromId}->${toId}`)
           edgeInTo.attribute = 'maybe'
         }
@@ -442,17 +468,18 @@ function equalEdges(our: DefaultMap<NodeId, DataflowGraphEdge[]>, other: Default
     return false
   }
   for(const [id, edges] of our.entries()) {
-    const otherEdge = other.get(id)
-    if(edges.length !== otherEdge.length) {
-      dataflowLogger.warn(`edge size does not match: ${edges.length} vs ${otherEdge.length}`)
+    const otherEdges = other.get(id)
+    if(edges.length !== otherEdges.length) {
+      dataflowLogger.warn(`edge size does not match: ${edges.length} vs ${otherEdges.length}`)
       return false
     }
     // order independent compare
-    const otherMap = new Map(otherEdge.map(e => [e.target, e]))
-    // TODO: order independent
-    for(const edge of edges) {
-      const otherEdge = otherMap.get(edge.target)
-      if(otherEdge === undefined || edge.type !== otherEdge.type || edge.attribute !== otherEdge.attribute) {
+
+    // both are sorted in the same way and use the same ids, therefore:
+    for(let i = 0; i < edges.length; i++) {
+      const edge = edges[i]
+      const otherEdge = otherEdges[i]
+      if(edge.type !== otherEdge.type || edge.attribute !== otherEdge.attribute) {
         dataflowLogger.warn(`edge ${id} does not match (${JSON.stringify(edges)} vs ${JSON.stringify(otherEdge)})`)
         return false
       }

@@ -474,6 +474,58 @@ describe('Function Definition', withShell(shell => {
     )
     // TODO: other tests for scoping within parameters
   })
+  describe('Using named arguments', () => {
+    const envWithA = define(
+      { nodeId: '0', scope: LocalScope, name: 'a', used: 'always', kind: 'parameter', definedAt: '2' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments())
+    )
+    const envWithAB = define(
+      { nodeId: '3', scope: LocalScope, name: 'b', used: 'always', kind: 'parameter', definedAt: '5' },
+      LocalScope,
+      envWithA
+    )
+    assertDataflow(`parameter shadows`, shell, `function(a=3, b=a) { b }`,
+      new DataflowGraph()
+        .addNode({
+          tag:        'function-definition',
+          id:         '7',
+          name:       '7',
+          exitPoints: ['6'],
+          scope:      LocalScope,
+          when:       'always',
+          subflow:    {
+            out:          [],
+            activeNodes:  [],
+            in:           [],
+            scope:        LocalScope,
+            environments: envWithAB,
+            graph:        new DataflowGraph()
+              .addNode({
+                tag:         'variable-definition',
+                id:          '0',
+                name:        'a',
+                environment: pushLocalEnvironment(initializeCleanEnvironments()),
+                scope:       LocalScope,
+                when:        'always'
+              })
+              .addNode({
+                tag:         'variable-definition',
+                id:          '3',
+                name:        'b',
+                environment: envWithA,
+                scope:       LocalScope,
+                when:        'always'
+              })
+              .addNode({ tag: 'use', id: '4', name: 'a', environment: envWithA, when: 'always' })
+              .addNode({ tag: 'use', id: '6', name: 'b', environment: envWithAB, when: 'always' })
+              .addEdge('4', '0', 'read', 'always')
+              .addEdge('3', '4', 'defined-by', 'maybe' /* default values can be overridden */)
+              .addEdge('6', '3', 'read', 'always')
+          }
+        })
+    )
+  })
   describe('Late binding of environment variables', () => {
     assertDataflow(`define after function definition`, shell, `function() { x }; x <- 3`,
       new DataflowGraph()

@@ -42,20 +42,29 @@ function linkLowestClosureVariables<OtherInfo>(subgraph: DataflowGraph, outEnvir
   }
 }
 
-export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
-  dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
-  // within a function def we do not pass on the outer binds as they could be overwritten when called
+function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
   let env = initializeCleanEnvironments()
-  for(let i = 0; i < data.environments.level + 1 /* add another env */; i++) {
+  for (let i = 0; i < data.environments.level + 1 /* add another env */; i++) {
     env = pushLocalEnvironment(env)
   }
-  data = { ...data, environments: env }
-  // TODO: update
-  const params = []
+  return { ...data, environments: env }
+}
+
+export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
+
+  // within a function def we do not pass on the outer binds as they could be overwritten when called
+  data = prepareFunctionEnvironment(data)
+
+  const subgraph = new DataflowGraph()
+
+  const readInParameters: IdentifierReference[] = []
   for(const param of functionDefinition.parameters) {
     const processed = processDataflowFor(param, data)
-    params.push(processed)
-    data = { ...data, environments: processed.environments }
+    subgraph.mergeWith(processed.graph)
+    const read = [...processed.in, ...processed.activeNodes]
+    linkInputs(read, data.activeScope, data.environments, readInParameters, subgraph, false)
+    data = { ...data, environments: overwriteEnvironments(data.environments, processed.environments) }
   }
   const paramsEnvironments = data.environments
 
@@ -63,13 +72,12 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   // as we know, that parameters can not duplicate, we overwrite their environments (which is the correct behavior, if someone uses non-`=` arguments in functions)
   const bodyEnvironment = body.environments
 
-  const subgraph = body.graph.mergeWith(...params.map(a => a.graph))
 
-  // TODO: count parameter a=b as assignment!
-  const readInParameters = params.flatMap(a => [...a.in, ...a.activeNodes])
   const readInBody = [...body.in, ...body.activeNodes]
   // there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
   const remainingRead = linkInputs(readInBody, data.activeScope, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */)
+
+  subgraph.mergeWith(body.graph)
 
   dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads (of ids [${remainingRead.map(r => r.nodeId).join(', ')}])`)
 
@@ -120,11 +128,9 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     subflow:     flow,
     exitPoints
   })
-  // TODO: deal with function info
-  // TODO: rest
   return {
     activeNodes:  [] /* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: down.activeScope, used: 'always', name: functionDefinition.info.id as string } */,
-    in:           [] /* TODO: they must be bound on call */,
+    in:           [ /* TODO: keep in of parameters */ ],
     out:          [],
     graph,
     /* TODO: have params. the potential to influence their surrounding on def? */

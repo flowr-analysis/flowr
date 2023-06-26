@@ -20,12 +20,17 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 
   let environments = name.environments
   for(const writtenNode of writtenNodes) {
-    log.trace(`argument ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' no default value'}`)
+    log.trace(`parameter ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' no default value'}`)
     graph.setDefinitionOfNode(writtenNode)
     environments = define(writtenNode, LocalScope, environments)
-  }
 
-  // TODO: defined-by for default values
+    if(defaultValue !== undefined) {
+      const definedBy = [...defaultValue.in, ...defaultValue.activeNodes]
+      for(const node of definedBy) {
+        graph.addEdge(writtenNode, node, 'defined-by', 'maybe' /* default arguments can be overridden! */)
+      }
+    }
+  }
 
   return {
     activeNodes:  [],

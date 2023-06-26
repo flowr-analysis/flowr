@@ -57,10 +57,15 @@ a(x = 3)`
     const lateCode = `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }
 f()
 `
-    assertSliced('Late bindings of parameters', shell, lateCode, ['2@f'], `f <- function(a=b, m=3) {
+    assertSliced('Late bindings of parameter in body', shell, lateCode, ['2@f'], `f <- function(a=b, m=3) {
         b <- 1
         a + 1
     }
+f()`)
+    const lateCodeB = `f <- function(a=b, b=3) { b <- 1; a; b <- 5; a + 1 }
+f()
+`
+    assertSliced('Late bindings of parameter in parameters', shell, lateCodeB, ['2@f'], `f <- function(a=b, b=3) { a + 1 }
 f()`)
   })
   describe('Functions with nested definitions', () => {

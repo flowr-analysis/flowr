@@ -20,7 +20,7 @@ export type DataflowGraphEdgeType =
     | /** The edge determines that source reads target */ 'read'
     | /** The edge determines that source is defined by target */ 'defined-by'
     | /** The edge determines that source (probably argument) defines the target (probably parameter), currently automatically created by `addEdge` */ 'defines-on-call'
-    | /** Inverse of `defines-on-call` currently only needed to get better results when slicing complex function calls */ 'defined-by-on-call'
+    | /** Inverse of `defines-on-call` currently only needed to get better results when slicing complex function calls, TODO: remove this in the future when the slicer knows the calling context of the function and can trace links accordingly */ 'defined-by-on-call'
     | /** The edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
     | /** Similar to `same-read-read` but for def-def constructs without a read in-between */ 'same-def-def'
     | /** Formal used as argument to a function call */ 'argument'

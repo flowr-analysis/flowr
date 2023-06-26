@@ -73,7 +73,7 @@ function findPromiseLinkagesForParameters<OtherInfo>(parameters: DataflowGraph, 
     // if not resolved, link all outs within the body as potential reads
     // regarding the sort we can ignore equality as nodeIds are unique
     // we sort to get the lowest id - if it is an 'always' flag we can safely use it instead of all of them
-    const writingOuts = body.out.filter(o => o.name === read.name).sort((a, b) => a.nodeId < b.nodeId ? -1 : 1)
+    const writingOuts = body.out.filter(o => o.name === read.name).sort((a, b) => a.nodeId < b.nodeId ? 1 : -1)
     if(writingOuts.length === 0) {
       remainingRead.push(read)
       continue

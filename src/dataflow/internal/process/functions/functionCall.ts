@@ -56,9 +56,6 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 
     // add an argument edge to the final graph
     finalGraph.addEdge(functionRootId, argumentOutRefs[0], 'argument', 'always')
-    for(const ingoing of [...arg.in, ...arg.activeNodes]) {
-      finalGraph.addEdge(argumentOutRefs[0], ingoing, 'relates', 'always')
-    }
     // TODO: bind the argument id to the corresponding argument within the function
   }
 

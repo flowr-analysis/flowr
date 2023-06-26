@@ -1,6 +1,6 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { ParentInformation, RArgument } from '../../../../r-bridge'
+import { collectAllIds, ParentInformation, RArgument, Type } from '../../../../r-bridge'
 import { LocalScope } from '../../../graph'
 
 export const UnnamedArgumentPrefix = 'unnamed-argument-'
@@ -17,10 +17,12 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
 
   const ingoingRefs = [...value.activeNodes, ...value.in, ...(name === undefined ? [] : [...name.in])]
 
-  const findArg = ingoingRefs.find(r => r.nodeId === argument.value.info.id)
-  if(findArg !== undefined) {
-    // link against the root reference currently i do not know how to deal with nested function calls otherwise
-    graph.addEdge(argument.info.id, findArg, 'read', 'always')
+  // we only need to link against those which are not already bound to another function call argument
+  const allIdsBeforeArguments = new Set(collectAllIds(argument, n => n.type === Type.Argument && n.info.id !== argument.info.id))
+  const ingoingBeforeArgs = ingoingRefs.filter(r => allIdsBeforeArguments.has(r.nodeId))
+  for(const ref of ingoingBeforeArgs) {
+    // link against the root reference currently I do not know how to deal with nested function calls otherwise
+    graph.addEdge(argument.info.id, ref, 'read', 'always')
   }
 
   // TODO: defined-by for default values

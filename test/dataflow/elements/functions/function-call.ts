@@ -57,7 +57,7 @@ describe('Function Call', withShell(shell => {
         .addEdge('12', '3', 'read', 'always')
         .addEdge('12', '7', 'calls', 'always')
         .addEdge('12', '6', 'returns', 'always')
-        .addEdge('11', '4', 'relates', 'always')
+        .addEdge('11', '4', 'defines-on-call', 'always')
     )
     const envWithXConstDefined = define(
       {nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
@@ -126,7 +126,7 @@ a(i)`, new DataflowGraph()
       .addEdge('19', '3', 'read', 'always')
       .addEdge('19', '14', 'calls', 'always')
       .addEdge('19', '12', 'returns', 'always')
-      .addEdge('18', '4', 'relates', 'always')
+      .addEdge('18', '4', 'defines-on-call', 'always')
     )
   })
 

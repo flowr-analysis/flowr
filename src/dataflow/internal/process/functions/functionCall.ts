@@ -122,14 +122,13 @@ function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<Parent
     const param = nameParamMap.get(name)
     if(param !== undefined) {
       dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`)
-      graph.addEdge(param.name.info.id, arg.nodeId, 'relates', 'always')
+      graph.addEdge(arg.nodeId, param.name.info.id, 'defines-on-call', 'always')
       matchedParameters.add(name)
     } else if(specialDotParameter !== undefined) {
       dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`)
-      graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, 'relates', 'always')
+      graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, 'defines-on-call', 'always')
     }
   }
-
 
   const remainingParameter = params.filter(p => !matchedParameters.has(p.name.content))
   const remainingArguments = args.filter(a => !Array.isArray(a)) as PositionalFunctionArgument[]
@@ -143,14 +142,14 @@ function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<Parent
     }
     if(remainingParameter.length <= i) {
       if(specialDotParameter !== undefined) {
-        dataflowLogger.trace(`mapping unnamed argument ${i} to dot-dot-dot parameter`)
-        graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, 'relates', 'always')
+        dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to dot-dot-dot parameter`)
+        graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, 'defines-on-call', 'always')
       }
       dataflowLogger.error(`skipping argument ${i} as there is no corresponding parameter - R should block that`)
       continue
     }
     const param = remainingParameter[i]
-    dataflowLogger.trace(`mapping unnamed argument ${i} to parameter "${param.name.content}"`)
-    graph.addEdge(param.name.info.id, arg.nodeId, 'relates', 'always')
+    dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to parameter "${param.name.content}"`)
+    graph.addEdge(arg.nodeId, param.name.info.id, 'defines-on-call', 'always')
   }
 }

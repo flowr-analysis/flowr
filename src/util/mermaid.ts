@@ -17,6 +17,8 @@ interface MermaidGraph {
   mark:         Set<NodeId> | undefined
   /** in the form of from-\>to because I am lazy, see {@link encodeEdge} */
   presentEdges: Set<string>
+  // keep for subflows
+  rootGraph:    DataflowGraph
 }
 
 export function formatRange(range: SourceRange | undefined): string {
@@ -38,7 +40,7 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: Dataflo
   }
   const subflowId = `${idPrefix}flow-${nodeId}`
   mermaid.lines.push(`\nsubgraph "${subflowId}" [function ${nodeId}]`)
-  mermaid.lines.push(graphToMermaid(subflow.graph, dataflowIdMap, null, idPrefix, mermaid.mark))
+  mermaid.lines.push(graphToMermaid(subflow.graph, dataflowIdMap, null, idPrefix, mermaid.mark, mermaid.rootGraph))
   for(const [color, pool] of [['purple', subflow.in], ['green', subflow.out], ['orange', subflow.activeNodes]]) {
     for (const out of pool as IdentifierReference[]) {
       if(!mermaid.mark?.has(out.nodeId)) {
@@ -63,7 +65,8 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: Dataflo
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function displayEnvReplacer(key: any, value: any): any {
-  if(value instanceof Map) {
+  if(value instanceof Map || value instanceof Set) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return [...value]
   } else {
     return value
@@ -120,6 +123,7 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, mermai
   const fCall = info.tag === 'function-call'
   const defText = def ? scopeToMermaid(info.scope, info.when) : ''
   const { open, close } = mermaidNodeBrackets(def, fCall)
+
   mermaid.lines.push(`    %% ${id}: ${JSON.stringify(info.environment, displayEnvReplacer)}`)
   mermaid.lines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name)} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
     fCall ? displayFunctionArgMapping(info.args) : ''
@@ -128,7 +132,7 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, mermai
     mermaid.lines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `)
   }
 
-  const edges = graph.get(id, true)
+  const edges = mermaid.rootGraph.get(id, true)
   guard(edges !== undefined, `node ${id} must be found`)
   for (const [target, edge] of [...edges[1]]) {
     const dotEdge = edge.types.has('same-def-def') || edge.types.has('same-read-read') || edge.types.has('relates')
@@ -146,8 +150,8 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, mermai
   }
 }
 
-export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = '', mark?: Set<NodeId>): string {
-  const mermaid: MermaidGraph = { lines: prefix === null ? [] : [prefix], presentEdges: new Set<string>(), hasBuiltIn: false, mark }
+export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = '', mark?: Set<NodeId>, rootGraph?: DataflowGraph): string {
+  const mermaid: MermaidGraph = { lines: prefix === null ? [] : [prefix], presentEdges: new Set<string>(), hasBuiltIn: false, mark, rootGraph: rootGraph ?? graph }
 
   for (const [id, info] of graph.entries()) {
     nodeToMermaid(graph, info, mermaid, id, idPrefix, dataflowIdMap, mark)

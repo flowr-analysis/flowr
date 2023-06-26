@@ -42,7 +42,7 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
     const currentNode = dataflowIdMap.get(current)
     guard(currentNode !== undefined, () => `id: ${current} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
 
-    const liveEdges = [...currentInfo[1]].filter(([_, e]) => e.types.has('read') || e.types.has('defined-by') || e.types.has('argument') || e.types.has('calls') || e.types.has('relates') || e.types.has('returns'))
+    const liveEdges = [...currentInfo[1]].filter(([_, e]) => e.types.has('read') || e.types.has('defined-by') || e.types.has('argument') || e.types.has('calls') || e.types.has('relates') || e.types.has('returns') || e.types.has('defines-on-call'))
     for (const [target] of liveEdges) {
       if (!visited.has(target)) {
         slicerLogger.trace(`adding id: ${target} to visit queue`)

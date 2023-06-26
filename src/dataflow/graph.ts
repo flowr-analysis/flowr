@@ -19,6 +19,8 @@ export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
 export type DataflowGraphEdgeType =
     | /** The edge determines that source reads target */ 'read'
     | /** The edge determines that source is defined by target */ 'defined-by'
+    | /** The edge determines that source (probably argument) defines the target (probably parameter), currently automatically created by `addEdge` */ 'defines-on-call'
+    | /** Inverse of `defines-on-call` currently only needed to get better results when slicing complex function calls */ 'defined-by-on-call'
     | /** The edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
     | /** Similar to `same-read-read` but for def-def constructs without a read in-between */ 'same-def-def'
     | /** Formal used as argument to a function call */ 'argument'
@@ -252,7 +254,7 @@ export class DataflowGraph {
    * @param includeDefinedFunctions - if true this will search function definitions as well and not just the toplevel
    * @returns the node info for the given id (if it exists)
    */
-  public get(id: NodeId, includeDefinedFunctions = false): [DataflowGraphNodeInfo, [NodeId, DataflowGraphEdge][]] | undefined {
+  public get(id: NodeId, includeDefinedFunctions = true): [DataflowGraphNodeInfo, [NodeId, DataflowGraphEdge][]] | undefined {
     if(!includeDefinedFunctions) {
       const got = this.graphNodes.get(id)
       return got === undefined ? undefined : [got, [...this.edges.get(id) ?? []]]
@@ -360,7 +362,8 @@ export class DataflowGraph {
       } else {
         existingFrom.set(toId, edge)
       }
-      if(bidirectional) {
+      if(bidirectional || type === 'defines-on-call') {
+        edge.types = type === 'defines-on-call' ? new Set(['defined-by-on-call']) : edge.types
         const existingTo = this.edges.get(toId)
         if(existingTo === undefined) {
           this.edges.set(toId, new Map([[fromId, edge]]))

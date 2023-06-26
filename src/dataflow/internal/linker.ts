@@ -116,7 +116,7 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
       potential.push(...returnEdges.map(([target]) => target))
       continue
     }
-    const followEdges = outgoingEdges.filter(([_, e]) => e.types.has('read') || e.types.has('defined-by') || e.types.has('relates') || e.types.has('calls'))
+    const followEdges = outgoingEdges.filter(([_, e]) => e.types.has('read') || e.types.has('defined-by') || e.types.has('defined-by-on-call') || e.types.has('relates') || e.types.has('calls'))
 
 
     if(currentInfo[0].subflow !== undefined) {

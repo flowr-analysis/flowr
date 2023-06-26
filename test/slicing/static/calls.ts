@@ -19,6 +19,16 @@ a(i)`)
     // TODO: should we really keep that open? edge case?
     assertSliced('Slice function definition', shell, constFunction, ['2@a'], `a <- function(x) { }`)
     assertSliced('Slice within function', shell, constFunction, ['2:20'], `x <- 2`)
+    assertSliced('Multiple unknown calls', shell, `
+foo(x, y)
+foo(x, 3)
+    `, ['3@foo'], `foo(x, 3)`)
+    assertSliced('Multiple unknown calls sharing known def', shell, `
+x. <- function (x) { x } 
+foo(x, x.(y))
+foo(x, x.(3))
+    `, ['4@foo'], `x. <- function(x) { x }
+foo(x, x.(3))`)
   })
   describe('Functions using environment', () => {
     describe('Read variable defined before', () => {

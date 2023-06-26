@@ -49,13 +49,15 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     finalGraph.mergeWith(arg.graph)
     const argumentOutRefs = arg.out
 
+    guard(argumentOutRefs.length > 0, `Argument ${JSON.stringify(arg)} has no out references, but needs one for the unnamed arg`)
     // if there are multiple, we still use the first one as it is the highest-one and therefore the most top-level arg reference
     // multiple out references can occur if the argument itself is a function call
     callArgs.push(argumentOutRefs[0])
 
     // add an argument edge to the final graph
-    for(const outgoing of argumentOutRefs) {
-      finalGraph.addEdge(functionRootId, outgoing, 'argument', 'always')
+    finalGraph.addEdge(functionRootId, argumentOutRefs[0], 'argument', 'always')
+    for(const ingoing of [...arg.in, ...arg.activeNodes]) {
+      finalGraph.addEdge(argumentOutRefs[0], ingoing, 'relates', 'always')
     }
     // TODO: bind the argument id to the corresponding argument within the function
   }

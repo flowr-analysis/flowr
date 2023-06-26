@@ -581,6 +581,40 @@ describe('Function Definition', withShell(shell => {
         })
     )
   })
+  describe('Using special argument', () => {
+    /*
+    assertDataflow(`Return ...`, shell, `function(a, ...) { foo(...) }`,
+      new DataflowGraph()
+        .addNode({
+          tag:        'function-definition',
+          id:         "8",
+          name:       "8",
+          scope:      LocalScope,
+          when:       'always',
+          exitPoints: ['7'],
+          subflow:    {
+            out:          [],
+            activeNodes:  [],
+            in:           [],
+            scope:        LocalScope,
+            environments: initializeCleanEnvironments(),
+            graph:        new DataflowGraph()
+              .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(initializeCleanEnvironments()) })
+              .addNode({ tag: 'variable-definition', id: '2', name: '...', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(initializeCleanEnvironments()) })
+              .addNode({ tag: 'use', id: '5', name: '...', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(initializeCleanEnvironments()) })
+              .addNode({
+                tag:         'function-call',
+                id:          '7', name:        'foo',
+                scope:       LocalScope,
+                when:        'always',
+                environment: pushLocalEnvironment(initializeCleanEnvironments()),
+                args:        [ {nodeId: '6', } ]
+              })
+          }
+        })
+    )
+        */
+  })
   describe('Late binding of environment variables', () => {
     assertDataflow(`define after function definition`, shell, `function() { x }; x <- 3`,
       new DataflowGraph()

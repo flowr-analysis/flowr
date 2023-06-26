@@ -575,7 +575,7 @@ describe('Function Definition', withShell(shell => {
               .addEdge('9', '0', 'read', 'always')
               .addEdge('13', '0', 'read', 'always')
               .addEdge('0', '1', 'defined-by', 'maybe')
-              .addEdge('1', '10', 'read', 'always')
+              .addEdge('1', '6', 'read', 'always')
               .addEdge('10', '6', 'same-def-def', 'always')
           }
         })

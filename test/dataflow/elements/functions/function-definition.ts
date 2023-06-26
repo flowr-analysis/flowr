@@ -485,7 +485,7 @@ describe('Function Definition', withShell(shell => {
       LocalScope,
       envWithA
     )
-    assertDataflow(`parameter shadows`, shell, `function(a=3, b=a) { b }`,
+    assertDataflow(`Read first parameter`, shell, `function(a=3, b=a) { b }`,
       new DataflowGraph()
         .addNode({
           tag:        'function-definition',

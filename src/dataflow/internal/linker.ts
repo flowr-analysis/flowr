@@ -62,7 +62,7 @@ export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph): void {
       continue
     }
 
-    const functionDefinitionReadIds = info.edges.filter(e => e.type === 'read' || e.type === 'calls').map(e => e.target)
+    const functionDefinitionReadIds = graph.outgoingEdges(info.id).filter(e => e.type === 'read' || e.type === 'calls').map(e => e.target)
     const functionDefs = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph)
     for(const defs of functionDefs.values()) {
       guard(defs.tag === 'function-definition', () => `expected function definition, but got ${defs.tag}`)
@@ -94,13 +94,14 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeI
       continue
     }
 
-    const returnEdges = currentInfo.edges.filter(e => e.type === 'returns')
+    const outgoingEdges = dataflowGraph.outgoingEdges(currentInfo.id)
+    const returnEdges = outgoingEdges.filter(e => e.type === 'returns')
     if(returnEdges.length > 0) {
       // only traverse return edges and do not follow calls etc. as this indicates that we have a function call which returns a result, and not the function call itself
       potential.push(...returnEdges.map(e => e.target))
       continue
     }
-    const followEdges = currentInfo.edges.filter(e =>e.type === 'read' || e.type === 'defined-by')
+    const followEdges = outgoingEdges.filter(e =>e.type === 'read' || e.type === 'defined-by')
 
 
     if(currentInfo.subflow !== undefined) {

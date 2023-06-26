@@ -83,7 +83,7 @@ function escapeMarkdown(text: string): string {
   return text.replace(/([+\-*])/g, '\\$1')
 }
 
-function nodeToMermaid(info: DataflowGraphNodeInfo, lines: string[], id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap<NoInfo> | undefined, mark: Set<NodeId> | undefined, hasBuiltIn: boolean) {
+function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, lines: string[], id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap<NoInfo> | undefined, mark: Set<NodeId> | undefined, hasBuiltIn: boolean) {
   const def = info.tag === 'variable-definition' || info.tag === 'function-definition'
   const fCall = info.tag === 'function-call'
   const defText = def ? scopeToMermaid(info.scope, info.when) : ''
@@ -106,7 +106,7 @@ function nodeToMermaid(info: DataflowGraphNodeInfo, lines: string[], id: NodeId,
   if (mark?.has(id)) {
     lines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `)
   }
-  for (const edge of info.edges) {
+  for (const edge of graph.outgoingEdges(info.id)) {
     const dotEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read' || edge.type === 'relates'
     lines.push(`    ${idPrefix}${id} ${dotEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${edge.target}`)
     if (edge.target === BuiltIn) {
@@ -123,7 +123,7 @@ export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<
   let hasBuiltIn = false
   const lines = prefix === null ? [] : [prefix]
   for (const [id, info] of graph.entries()) {
-    hasBuiltIn = nodeToMermaid(info, lines, id, idPrefix, dataflowIdMap, mark, hasBuiltIn)
+    hasBuiltIn = nodeToMermaid(graph, info, lines, id, idPrefix, dataflowIdMap, mark, hasBuiltIn)
   }
   if(hasBuiltIn) {
     lines.push(`    ${idPrefix}${BuiltIn}["Built-in"]`)

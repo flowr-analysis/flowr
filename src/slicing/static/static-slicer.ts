@@ -42,7 +42,7 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
     const currentNode = dataflowIdMap.get(current)
     guard(currentNode !== undefined, () => `id: ${current} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
 
-    const liveEdges = currentInfo.edges.filter(e => e.type === 'read' || e.type === 'defined-by' || e.type === 'argument'  || e.type === 'calls' || e.type === 'relates' || e.type === 'returns')
+    const liveEdges = dataflowGraph.outgoingEdges(currentInfo.id).filter(e => e.type === 'read' || e.type === 'defined-by' || e.type === 'argument'  || e.type === 'calls' || e.type === 'relates' || e.type === 'returns')
     for (const edge of liveEdges) {
       if (!visited.has(edge.target)) {
         slicerLogger.trace(`adding id: ${edge.target} to visit queue`)
@@ -58,7 +58,7 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
 
 function linkOnFunctionCall(callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, visited: Set<NodeId>, visitQueue: NodeId[]) {
   // bind with call-local environments during slicing
-  const functionCallDefs = callerInfo.edges.filter(e => e.type === 'calls').map(e => e.target)
+  const functionCallDefs = dataflowGraph.outgoingEdges(callerInfo.id).filter(e => e.type === 'calls').map(e => e.target)
   const functionCallTargets = getAllLinkedFunctionDefinitions(functionCallDefs, dataflowGraph)
 
   for (const [_, functionCallTarget] of functionCallTargets) {

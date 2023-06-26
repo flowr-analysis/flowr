@@ -53,6 +53,15 @@ a(5)`)
     const code = `a <- function(x=4) { x }
 a(x = 3)`
     assertSliced('Must include function definition', shell, code, ['2@a'], code)
+
+    const lateCode = `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }
+f()
+`
+    assertSliced('Late bindings of parameters', shell, lateCode, ['2@f'], `f <- function(a=b, m=3) {
+        b <- 1
+        a + 1
+    }
+f()`)
   })
   describe('Functions with nested definitions', () => {
     describe('Simple Function pass with return', () => {

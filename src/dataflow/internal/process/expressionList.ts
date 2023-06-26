@@ -6,13 +6,12 @@ import { DataflowInformation, initializeCleanInfo } from '../info'
 import { NodeId, ParentInformation, RExpressionList } from '../../../r-bridge'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import {
-  BuiltIn,
   IdentifierReference,
   overwriteEnvironments,
   REnvironmentInformation,
   resolveByName
 } from '../../environments'
-import { linkFunctionCallExitPoints, linkReadVariablesInSameScopeWithNames } from '../linker'
+import { linkFunctionCallExitPointsAndCalls, linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
 import { DataflowGraph } from '../../graph'
 import { dataflowLogger } from '../../index'
@@ -118,7 +117,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     }
   }
 
-  linkFunctionCallExitPoints(nextGraph)
+  linkFunctionCallExitPointsAndCalls(nextGraph)
 
   // now, we have to link same reads
   linkReadVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))

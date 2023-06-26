@@ -5,6 +5,7 @@ import { guard } from '../../util/assert'
 import { log } from '../../util/log'
 import { NodeId } from '../../r-bridge'
 import { slicerLogger } from '../../slicing/static'
+import { dataflowLogger } from '../index'
 
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
   const nameIdShares = produceNameSharedIdMap(references)
@@ -49,7 +50,7 @@ function specialReturnFunction(info: DataflowGraphNodeFunctionCall, graph: Dataf
   }
 }
 
-export function linkFunctionCallExitPoints(graph: DataflowGraph): void {
+export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph): void {
   const calls = [...graph.nodes()]
     .filter(([_,info]) => info.tag === 'function-call')
 
@@ -60,6 +61,7 @@ export function linkFunctionCallExitPoints(graph: DataflowGraph): void {
       specialReturnFunction(info, graph, id)
       continue
     }
+
     const functionDefinitionReadIds = info.edges.filter(e => e.type === 'read' || e.type === 'calls').map(e => e.target)
     const functionDefs = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph)
     for(const defs of functionDefs.values()) {
@@ -68,6 +70,8 @@ export function linkFunctionCallExitPoints(graph: DataflowGraph): void {
       for(const exitPoint of exitPoints) {
         graph.addEdge(id, exitPoint, 'returns', 'always')
       }
+      dataflowLogger.trace(`recording expression-list-level call from ${info.name}`)
+      graph.addEdge(id, defs.id, 'calls', 'always')
     }
   }
 }

@@ -71,9 +71,9 @@ export interface DataflowGraphDefinedByEdge extends DataflowGraphEdge {
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation<unknown>, 'ast'>
 
-export type NamedArgument = [string, IdentifierReference | '<value>']
-export type PositionalArgument = IdentifierReference | '<value>'
-export type FunctionArgument = NamedArgument | PositionalArgument
+export type NamedFunctionArgument = [string, IdentifierReference | '<value>']
+export type PositionalFunctionArgument = IdentifierReference | '<value>'
+export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument
 
 function equalFunctionArgumentsReferences(a: IdentifierReference | '<value>', b: IdentifierReference | '<value>'): boolean {
   if (a === '<value>' || b === '<value>') {
@@ -115,7 +115,7 @@ export function equalFunctionArguments(a: false | FunctionArgument[], b: false |
       if (!equalFunctionArgumentsReferences(aArg[1], bArg[1])) {
         return false
       }
-    } else if (!equalFunctionArgumentsReferences(aArg as PositionalArgument, bArg as PositionalArgument)) {
+    } else if (!equalFunctionArgumentsReferences(aArg as PositionalFunctionArgument, bArg as PositionalFunctionArgument)) {
       return false
     }
   }

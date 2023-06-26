@@ -1,12 +1,12 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { overwriteEnvironments, resolveByName } from '../../../environments'
-import { NodeId, ParentInformation, RFunctionCall } from '../../../../r-bridge'
+import { BuiltIn, IdentifierReference, overwriteEnvironments, resolveByName } from '../../../environments'
+import { NodeId, ParentInformation, RFunctionCall, RNodeWithParent, RParameter, Type } from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
 import {
   DataflowGraph,
   dataflowLogger,
-  FunctionArgument
+  FunctionArgument, NamedFunctionArgument, PositionalFunctionArgument
 } from '../../../index'
 // TODO: support partial matches: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Argument-matching
 
@@ -42,9 +42,9 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   })
   // finalGraph.addEdge(functionRootId, functionNameId, 'read', 'always')
 
-  const resolved = resolveByName(functionCallName, data.activeScope, data.environments)
-  if(resolved !== undefined) {
-    for(const fn of resolved) {
+  const resolvedDefinitions = resolveByName(functionCallName, data.activeScope, data.environments)
+  if(resolvedDefinitions !== undefined) {
+    for(const fn of resolvedDefinitions) {
       dataflowLogger.trace(`recording call from ${functionCallName} (${functionRootId}) to ${JSON.stringify(fn)}`)
       finalGraph.addEdge(functionRootId, fn.nodeId, 'calls', 'always')
     }
@@ -69,6 +69,23 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 
   // TODO:
   // finalGraph.addNode(functionCall.info.id, functionCall.functionName.content, finalEnv, down.activeScope, 'always')
+  if(resolvedDefinitions !== undefined) {
+    const trackCallIds = resolvedDefinitions.map(r => r.definedAt)
+    // we get them by just choosing the rhs of the definition - TODO: this should be improved - maybe by a second call track
+    const allLinkedFunctions: (RNodeWithParent | undefined)[] = trackCallIds.filter(i => i !== BuiltIn).map(id => data.completeAst.idMap.get(id))
+
+    for(const linkedFunctionBase of allLinkedFunctions) {
+      guard(linkedFunctionBase !== undefined, `A function definition in ${JSON.stringify(trackCallIds)} not found in ast`)
+      if(linkedFunctionBase.type !== Type.BinaryOp) {
+        dataflowLogger.trace(`function call definition base ${functionCallName} does not lead to an assignment (${functionRootId}) but got ${linkedFunctionBase.type}`)
+        continue
+      }
+      const linkedFunction = linkedFunctionBase.rhs
+      guard(linkedFunction.type === Type.FunctionDefinition, () => `Supposed Function definition ${JSON.stringify(linkedFunction.info.id)} is not a function def. but ${linkedFunction.type}`)
+      dataflowLogger.trace(`linking arguments for ${functionCallName} (${functionRootId}) to ${JSON.stringify(linkedFunction)}`)
+      linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph)
+    }
+  }
 
   const inIds = [...args.flatMap(a => [...a.in, a.activeNodes])].flat()
   inIds.push({ nodeId: functionRootId, name: functionCallName, scope: data.activeScope, used: 'always' })
@@ -84,3 +101,56 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   }
 }
 
+
+// TODO: in some way we need to remove the links for the default argument if it is given by the user on call - this could be done with 'when' but for now we do not do it as we expect such situations to be rare
+function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
+  const nameArgMap = new Map<string, IdentifierReference | '<value>'>(args.filter(Array.isArray) as NamedFunctionArgument[])
+  const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.map(p => [p.name.content, p]))
+
+  const specialDotParameter = params.find(p => p.special)
+
+  // all parameters matched by name
+  const matchedParameters = new Set<string>()
+
+
+  // first map names
+  for(const [name, arg] of nameArgMap) {
+    if(arg === '<value>') {
+      dataflowLogger.trace(`skipping value argument for ${name}`)
+      continue
+    }
+    const param = nameParamMap.get(name)
+    if(param !== undefined) {
+      dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`)
+      graph.addEdge(param.name.info.id, arg.nodeId, 'read', 'always')
+      matchedParameters.add(name)
+    } else if(specialDotParameter !== undefined) {
+      dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`)
+      graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, 'read', 'always')
+    }
+  }
+
+
+  const remainingParameter = params.filter(p => !matchedParameters.has(p.name.content))
+  const remainingArguments = args.filter(a => !Array.isArray(a)) as PositionalFunctionArgument[]
+
+  // TODO ...
+  for(let i = 0; i < remainingArguments.length; i++) {
+    const arg: PositionalFunctionArgument = remainingArguments[i]
+    if(arg === '<value>') {
+      dataflowLogger.trace(`skipping value argument for ${i}`)
+      continue
+    }
+    if(remainingParameter.length <= i) {
+      if(specialDotParameter !== undefined) {
+        dataflowLogger.trace(`mapping unnamed argument ${i} to dot-dot-dot parameter`)
+        graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, 'read', 'always')
+      }
+      dataflowLogger.error(`skipping argument ${i} as there is no corresponding parameter - R should block that`)
+      continue
+    }
+    const param = remainingParameter[i]
+    dataflowLogger.trace(`mapping unnamed argument ${i} to parameter "${param.name.content}"`)
+    graph.addEdge(param.name.info.id, arg.nodeId, 'read', 'always')
+  }
+}

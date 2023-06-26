@@ -31,13 +31,11 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
     }
   }
 
-
   // keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
   // we keep them if they are defined outside the current parent and maybe throw them away later
   if (probableTarget === undefined) {
     return
   }
-
 
   if (probableTarget.length === 1) {
     nextGraph.addEdge(read, probableTarget[0], 'read', undefined, true)

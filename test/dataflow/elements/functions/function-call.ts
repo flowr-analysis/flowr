@@ -54,8 +54,10 @@ describe('Function Call', withShell(shell => {
         .addEdge('3', '7', 'defined-by', 'always')
         .addEdge('12', '11', 'argument', 'always')
         .addEdge('11', '10', 'read', 'always')
-        .addEdge('12', '3', 'calls', 'always')
+        .addEdge('12', '3', 'read', 'always')
+        .addEdge('12', '7', 'calls', 'always')
         .addEdge('12', '6', 'returns', 'always')
+        .addEdge('11', '4', 'relates', 'always')
     )
     const envWithXConstDefined = define(
       {nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
@@ -121,8 +123,10 @@ a(i)`, new DataflowGraph()
       .addEdge('3', '14', 'defined-by', 'always')
       .addEdge('19', '18', 'argument', 'always')
       .addEdge('18', '17', 'read', 'always')
-      .addEdge('19', '3', 'calls', 'always')
+      .addEdge('19', '3', 'read', 'always')
+      .addEdge('19', '14', 'calls', 'always')
       .addEdge('19', '12', 'returns', 'always')
+      .addEdge('18', '4', 'relates', 'always')
     )
   })
 
@@ -211,7 +215,8 @@ a(i)`, new DataflowGraph()
               .addNode({ tag: 'use', id: '1', name: 'y', scope: LocalScope, environment: innerEnv })
           }})
         .addEdge('0', '2', 'defined-by', 'always')
-        .addEdge('8', '0', 'calls', 'always')
+        .addEdge('8', '2', 'calls', 'always')
+        .addEdge('8', '0', 'read', 'always')
         .addEdge('8', '1', 'returns', 'always')
         // TODO: functions must store the *final* environments with all definitions they produce
         // TODO: on call the current environments should be used, joined with the def-environment!

@@ -128,13 +128,13 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, mermai
     mermaid.lines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `)
   }
 
-  for (const edge of graph.outgoingEdges(info.id)) {
+  for (const [target, edge] of graph.outgoingEdges(info.id, true)) {
     const dotEdge = edge.type === 'same-def-def' || edge.type === 'same-read-read' || edge.type === 'relates'
-    const edgeId = encodeEdge(idPrefix + id, idPrefix + edge.target, edge.type, edge.attribute)
+    const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edge.type, edge.attribute)
     if(!mermaid.presentEdges.has(edgeId)) {
       mermaid.presentEdges.add(edgeId)
-      mermaid.lines.push(`    ${idPrefix}${id} ${dotEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${edge.target}`)
-      if (edge.target === BuiltIn) {
+      mermaid.lines.push(`    ${idPrefix}${id} ${dotEdge ? '-.-' : '-->'}|"${edge.type} (${edge.attribute})"| ${idPrefix}${target}`)
+      if (target === BuiltIn) {
         mermaid.hasBuiltIn = true
       }
     }

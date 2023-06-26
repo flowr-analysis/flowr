@@ -51,18 +51,19 @@ function specialReturnFunction(info: DataflowGraphNodeFunctionCall, graph: Dataf
 }
 
 export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph): void {
-  const calls = [...graph.nodes()]
+  const calls = [...graph.nodes(true)]
     .filter(([_,info]) => info.tag === 'function-call')
 
 
-  for(const [id, info] of calls) {
+  for(const [id, info, subgraph] of calls) {
     // TODO: special handling for others
     if(info.tag === 'function-call' && info.name === 'return') {
       specialReturnFunction(info, graph, id)
       continue
     }
 
-    const functionDefinitionReadIds = graph.outgoingEdges(info.id).filter(e => e.type === 'read' || e.type === 'calls').map(e => e.target)
+    const functionDefinitionReadIds = subgraph.outgoingEdges(id).filter(e => e.type === 'read' || e.type === 'calls').map(e => e.target)
+
     const functionDefs = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph)
     for(const defs of functionDefs.values()) {
       guard(defs.tag === 'function-definition', () => `expected function definition, but got ${defs.tag}`)
@@ -70,7 +71,7 @@ export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph): void {
       for(const exitPoint of exitPoints) {
         graph.addEdge(id, exitPoint, 'returns', 'always')
       }
-      dataflowLogger.trace(`recording expression-list-level call from ${info.name}`)
+      dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${defs.name}`)
       graph.addEdge(id, defs.id, 'calls', 'always')
     }
   }
@@ -80,9 +81,11 @@ export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph): void {
 // TODO: abstract away into a 'getAllDefinitionsOf' function
 export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeId[], dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphNodeInfo> {
   const potential: NodeId[] = functionDefinitionReadIds
+  const visited = new Set<NodeId>()
   const result = new Map<NodeId, DataflowGraphNodeInfo>()
   while(potential.length > 0) {
     const currentId = potential.pop() as NodeId
+
     if(currentId === BuiltIn) {
       // do not traverse builtins
       slicerLogger.trace('skipping builtin function definition during collection')
@@ -93,6 +96,7 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeI
       slicerLogger.trace(`skipping unknown link`)
       continue
     }
+    visited.add(currentId)
 
     const outgoingEdges = dataflowGraph.outgoingEdges(currentInfo.id)
     const returnEdges = outgoingEdges.filter(e => e.type === 'returns')
@@ -101,7 +105,7 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeI
       potential.push(...returnEdges.map(e => e.target))
       continue
     }
-    const followEdges = outgoingEdges.filter(e =>e.type === 'read' || e.type === 'defined-by')
+    const followEdges = outgoingEdges.filter(e =>e.type === 'read' || e.type === 'defined-by' || e.type === 'relates' || e.type === 'calls')
 
 
     if(currentInfo.subflow !== undefined) {
@@ -109,7 +113,7 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: NodeI
     }
     // trace all joined reads
     // TODO: deal with redefinitions?
-    potential.push(...followEdges.map(e => e.target))
+    potential.push(...followEdges.map(e => e.target).filter(id => !visited.has(id)))
   }
   return result
 }

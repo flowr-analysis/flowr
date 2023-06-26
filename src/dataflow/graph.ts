@@ -231,14 +231,15 @@ export class DataflowGraph {
 
   /**
    * @param includeDefinedFunctions - if true this will iterate over function definitions as well and not just the toplevel
-   * @returns the ids of all toplevel nodes in the graph, together with their node info
+   * @returns the ids of all toplevel nodes in the graph, together with their node info and the graph that contains them (in case of subgraphs)
    */
-  public* nodes(includeDefinedFunctions = false): IterableIterator<[NodeId, DataflowGraphNodeInfo]> {
-    const nodes = [...this.graphNodes.entries()]
-    for(const [id, node] of nodes) {
-      yield [id, node]
+  public* nodes(includeDefinedFunctions = false): IterableIterator<[NodeId, DataflowGraphNodeInfo, DataflowGraph]> {
+    const nodes: [NodeId, DataflowGraphNodeInfo, DataflowGraph][] = [...this.graphNodes.entries()].map(([id, node]) => [id, node, this])
+    for(const [id, node, graph] of nodes) {
+      yield [id, node, graph]
       if(includeDefinedFunctions && node.tag === 'function-definition') {
-        nodes.push(...node.subflow.graph.entries())
+        const entries = [...node.subflow.graph.entries()]
+        nodes.push(...entries.map(([id, n]) => [id, n, node.subflow.graph] as [NodeId, DataflowGraphNodeInfo, DataflowGraph]))
       }
     }
   }
@@ -376,6 +377,12 @@ export class DataflowGraph {
     } else {
       if(attribute === 'maybe') {
         edgeInFrom.attribute = 'maybe'
+        if(bidirectional) {
+          const existingTo = this.edgesFromTo.get(toId)
+          const edgeInTo = existingTo.find(e => e.target === fromId)
+          guard(edgeInTo !== undefined, `edge must exist in both directions, but does not for ${fromId}->${toId}`)
+          edgeInTo.attribute = 'maybe'
+        }
       }
     }
     return this

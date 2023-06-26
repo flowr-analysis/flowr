@@ -70,12 +70,7 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
     if (resolved !== undefined) {
       // write-write
       for (const target of resolved) {
-        if(nextGraph.hasNode(target.nodeId)) {
-          nextGraph.addEdge(target, writeTarget, 'same-def-def', undefined, true)
-        } else {
-          // TODO: remove
-          dataflowLogger.trace(`delay same-def-def edge because target ${JSON.stringify(target)} is not yet in graph (potentially an argument)`)
-        }
+        nextGraph.addEdge(target, writeTarget, 'same-def-def', undefined, true)
       }
     }
   }

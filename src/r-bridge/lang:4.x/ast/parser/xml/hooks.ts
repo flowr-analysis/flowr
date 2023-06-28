@@ -23,6 +23,7 @@ import {
 import { RNa } from '../../../values'
 import { ParserData } from './data'
 import { DeepReadonly, DeepRequired } from 'ts-essentials'
+import { RPipe } from '../../model/nodes/RPipe'
 
 /** Denotes that if you return `undefined`, the parser will automatically take the original arguments (unchanged) */
 type AutoIfOmit<T> = T | undefined
@@ -86,12 +87,12 @@ export interface XmlParserHooks {
     }
   },
   operators: {
-    /** {@link tryParseBinaryOperation} */
+    /** {@link tryParseBinaryOperation}, includes {@link RPipe} */
     onBinary: {
       /** triggered if {@link tryParseBinaryOperation} could not find a matching operator, you probably still want to return `undefined` */
       unknown(data: ParserData, input: { lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson }): AutoIfOmit<RNode | undefined>
-      before(data: ParserData, input: { flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson }): AutoIfOmit<{flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson}>
-      after(data: ParserData, result: RBinaryOp): AutoIfOmit<RBinaryOp>
+      before(data: ParserData, input: { flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson }): AutoIfOmit<{flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson}>
+      after(data: ParserData, result: RBinaryOp | RPipe): AutoIfOmit<RBinaryOp | RPipe>
     },
     /** {@link tryParseUnaryOperation} */
     onUnary: {

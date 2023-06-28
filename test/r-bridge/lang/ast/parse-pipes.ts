@@ -9,19 +9,33 @@ describe("Parse Pipes", withShell(shell => {
     shell,
     "x |> f()",
     exprList({
-      type:         Type.FunctionCall,
-      location:     rangeFrom(1, 1, 1, 1),
-      lexeme:       "f", // TODO: make this more sensible?
-      info:         {},
-      functionName: {
+      type:     Type.Pipe,
+      location: rangeFrom(1, 3, 1, 4),
+      lexeme:   '|>',
+      info:     {},
+      lhs:      {
         type:      Type.Symbol,
         location:  rangeFrom(1, 1, 1, 1),
-        lexeme:    "f",
-        content:   "f",
+        lexeme:    'x',
+        content:   'x',
         namespace: undefined,
         info:      {},
       },
-      arguments: [],
+      rhs: {
+        type:         Type.FunctionCall,
+        location:     rangeFrom(1, 6, 1, 6),
+        lexeme:       'f',
+        info:         {},
+        arguments:    [],
+        functionName: {
+          type:      Type.Symbol,
+          location:  rangeFrom(1, 6, 1, 6),
+          lexeme:    'f',
+          content:   'f',
+          namespace: undefined,
+          info:      {},
+        }
+      }
     })
   )
   /* TODO: Sys.setenv(`_R_USE_PIPEBIND_` = TRUE)

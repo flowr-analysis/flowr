@@ -19,6 +19,7 @@ import {
   LogicalOperatorsRAst, ModelFormulaOperatorsRAst
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
+import { RPipe } from '../../../../model/nodes/RPipe'
 
 /**
  * Parsing binary operations includes the pipe, even though the produced PIPE construct is not a binary operation,
@@ -31,10 +32,10 @@ export function tryParseBinaryOperation(
   rhs: NamedXmlBasedJson
 ): RNode | undefined {
   parseLog.trace(`binary op for ${lhs.name} [${op.name}] ${rhs.name}`)
-  let flavor: BinaryOperatorFlavor | "special"
+  let flavor: BinaryOperatorFlavor | 'special' | 'pipe'
   if(op.name === Type.Pipe) {
     // TODO:
-    flavor = 'arithmetic'
+    flavor = 'pipe'
   }
   else if (ArithmeticOperatorsRAst.has(op.name)) {
     flavor = "arithmetic"
@@ -55,7 +56,7 @@ export function tryParseBinaryOperation(
   return parseBinaryOp(data, flavor, lhs, op, rhs)
 }
 
-function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RBinaryOp {
+function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RBinaryOp | RPipe {
   parseLog.debug(`[binary op] trying to parse ${flavor}`);
   ({ flavor, lhs, rhs, op} = executeHook(data.hooks.operators.onBinary.before, data, { flavor, lhs, op, rhs }))
 
@@ -76,19 +77,36 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
   }
 
   // TODO: assert exists as known operator
-  const result: RBinaryOp = {
-    type:   Type.BinaryOp,
-    flavor,
-    location,
-    lhs:    parsedLhs,
-    rhs:    parsedRhs,
-    op:     operationName,
-    lexeme: content,
-    info:   {
-      // TODO: include lhs and rhs
-      fullRange:        data.currentRange,
-      additionalTokens: [],
-      fullLexeme:       data.currentLexeme
+  let result: RBinaryOp | RPipe
+  if(flavor === 'pipe') {
+    result = {
+      type:   Type.Pipe,
+      location,
+      lhs:    parsedLhs,
+      rhs:    parsedRhs,
+      lexeme: content,
+      info:   {
+        // TODO: include lhs and rhs
+        fullRange:        data.currentRange,
+        additionalTokens: [],
+        fullLexeme:       data.currentLexeme
+      }
+    }
+  } else {
+    result = {
+      type:   Type.BinaryOp,
+      flavor,
+      location,
+      lhs:    parsedLhs,
+      rhs:    parsedRhs,
+      op:     operationName,
+      lexeme: content,
+      info:   {
+        // TODO: include lhs and rhs
+        fullRange:        data.currentRange,
+        additionalTokens: [],
+        fullLexeme:       data.currentLexeme
+      }
     }
   }
   return executeHook(data.hooks.operators.onBinary.after, data, result)

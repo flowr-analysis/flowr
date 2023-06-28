@@ -7,6 +7,7 @@ import { assertDataflow, withShell } from '../../helper/shell'
 import { DataflowGraph, GlobalScope, initializeCleanEnvironments, LocalScope } from '../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../helper/provider'
 import { define } from '../../../src/dataflow/environments'
+import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 
 describe("Atomic dataflow information", withShell((shell) => {
   describe("uninteresting leafs", () => {
@@ -86,6 +87,14 @@ describe("Atomic dataflow information", withShell((shell) => {
     describe("Passing one argument", () => {
       assertDataflow("No parameter function", shell, "x |> f()",
         new DataflowGraph()
+          .addNode({ tag: 'use', id: "0", name: "x" })
+          .addNode({
+            tag:  'function-call',
+            id:   "2",
+            name: "f",
+            args: [{ name: `${UnnamedArgumentPrefix}0`, scope: LocalScope, nodeId: '0', used: 'always' }]
+          })
+          .addEdge("2", "0", "argument", "always")
       )
     })
   })

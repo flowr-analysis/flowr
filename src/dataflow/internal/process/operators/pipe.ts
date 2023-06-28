@@ -1,12 +1,12 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { linkIngoingVariablesInSameScope } from '../../linker'
-import { ParentInformation, Type } from '../../../../r-bridge'
+import {  ParentInformation, Type } from '../../../../r-bridge'
 import { overwriteEnvironments } from '../../../environments'
 import { RPipe } from '../../../../r-bridge/lang:4.x/ast/model/nodes/RPipe'
 import { dataflowLogger, graphToMermaidUrl } from '../../../index'
 import { guard } from '../../../../util/assert'
-import { UnnamedArgumentPrefix } from '../functions/argument'
+import { linkReadsForArgument, UnnamedArgumentPrefix } from '../functions/argument'
 
 export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const lhs = processDataflowFor(op.lhs, data)
@@ -26,7 +26,14 @@ export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInfo
     const functionCallNode = maybeFunctionCallNode[0]
     guard(functionCallNode.tag === 'function-call', () => `Expected function call node with id ${op.rhs.info.id} to be a function call node, but got ${functionCallNode.tag} instead.`)
 
+    // make the lhs an argument node:
     const argId = op.lhs.info.id
+    if(!nextGraph.hasNode(argId)) {
+      nextGraph.addNode({ tag: 'use', id: argId, name: `${UnnamedArgumentPrefix}${argId}`, environment: data.environments, when: 'always' })
+      linkReadsForArgument(op.lhs, [...lhs.activeNodes, ...lhs.in], nextGraph)
+    }
+
+
     dataflowLogger.trace(`Linking pipe arg ${argId} as first argument of ${op.rhs.info.id}`)
     functionCallNode.args.unshift({
       nodeId: argId,

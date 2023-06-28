@@ -96,6 +96,17 @@ describe("Atomic dataflow information", withShell((shell) => {
           })
           .addEdge("2", "0", "argument", "always")
       )
+      assertDataflow("Nested calling", shell, "x |> f() |> g()",
+        new DataflowGraph()
+          .addNode({ tag: 'use', id: "0", name: "x" })
+          .addNode({
+            tag:  'function-call',
+            id:   "2",
+            name: "f",
+            args: [{ name: `${UnnamedArgumentPrefix}0`, scope: LocalScope, nodeId: '0', used: 'always' }]
+          })
+          .addEdge("2", "0", "argument", "always")
+      )
     })
   })
 

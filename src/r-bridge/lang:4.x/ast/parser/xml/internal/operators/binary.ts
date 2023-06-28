@@ -20,6 +20,10 @@ import {
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
+/**
+ * Parsing binary operations includes the pipe, even though the produced PIPE construct is not a binary operation,
+ * to ensure it is handled separately from the others (especially in the combination of a pipe bind)
+ */
 export function tryParseBinaryOperation(
   data: ParserData,
   lhs: NamedXmlBasedJson,
@@ -28,16 +32,19 @@ export function tryParseBinaryOperation(
 ): RNode | undefined {
   parseLog.trace(`binary op for ${lhs.name} [${op.name}] ${rhs.name}`)
   let flavor: BinaryOperatorFlavor | "special"
-  // TODO: filter for binary!
-  if (ArithmeticOperatorsRAst.includes(op.name)) {
+  if(op.name === Type.Pipe) {
+    // TODO:
+    flavor = 'arithmetic'
+  }
+  else if (ArithmeticOperatorsRAst.has(op.name)) {
     flavor = "arithmetic"
-  } else if (ComparisonOperatorsRAst.includes(op.name)) {
+  } else if (ComparisonOperatorsRAst.has(op.name)) {
     flavor = "comparison"
-  } else if (LogicalOperatorsRAst.includes(op.name)) {
+  } else if (LogicalOperatorsRAst.has(op.name)) {
     flavor = "logical"
-  }  else if (ModelFormulaOperatorsRAst.includes(op.name)) {
+  }  else if (ModelFormulaOperatorsRAst.has(op.name)) {
     flavor = "model formula"
-  } else if (AssignmentsRAst.includes(op.name)) {
+  } else if (AssignmentsRAst.has(op.name)) {
     flavor = "assignment"
   } else if (Type.Special === op.name) {
     flavor = "special"

@@ -35,6 +35,7 @@ function* collectSingleNode<OtherInfo>(node: RNode<OtherInfo & ParentInformation
       yield* collectAllIds(node.then, stop)
       yield* collectAllIds(node.otherwise, stop)
       break
+    case Type.Pipe:
     case Type.BinaryOp:
       yield* collectAllIds(node.lhs, stop)
       yield* collectAllIds(node.rhs, stop)

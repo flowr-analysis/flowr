@@ -27,6 +27,7 @@ const processors: DataflowProcessors<any> = {
   [Type.Access]:             processAccess,
   [Type.Symbol]:             processSymbol,
   [Type.BinaryOp]:           processBinaryOp,
+  [Type.Pipe]:               processBinaryOp, /* TODO */
   [Type.UnaryOp]:            processUnaryOp,
   [Type.For]:                processForLoop,
   [Type.While]:              processWhileLoop,

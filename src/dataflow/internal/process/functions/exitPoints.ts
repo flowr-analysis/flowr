@@ -42,6 +42,7 @@ function visitExitPoints<OtherInfo>(node: RNode<OtherInfo & ParentInformation>):
       return visitLoops(node)
     case Type.If:
       return visitIf(node)
+    case Type.Pipe:
     case Type.BinaryOp:
       // assignments return invisible rhs
       return knownIdsOfChildren(node.info.id, node.lhs, node.rhs)

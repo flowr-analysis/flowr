@@ -5,9 +5,9 @@ import { BinaryOperatorFlavor, ComparisonOperatorsRAst, LogicalOperatorsRAst } f
  * operators within our internal AST.
  */
 export function identifySpecialOp(content: string): BinaryOperatorFlavor {
-  if (ComparisonOperatorsRAst.includes(content)) {
+  if (ComparisonOperatorsRAst.has(content)) {
     return 'comparison'
-  } else if (LogicalOperatorsRAst.includes(content)) {
+  } else if (LogicalOperatorsRAst.has(content)) {
     return 'logical'
   } else {
     // TODO: others?

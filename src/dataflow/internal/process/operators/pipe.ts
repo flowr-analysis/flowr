@@ -1,10 +1,11 @@
-import { DataflowInformation } from '../info'
-import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
-import { linkIngoingVariablesInSameScope } from '../linker'
-import { ParentInformation, RBinaryOp } from '../../../r-bridge'
-import { appendEnvironments, overwriteEnvironments } from '../../environments'
+import { DataflowInformation } from '../../info'
+import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
+import { linkIngoingVariablesInSameScope } from '../../linker'
+import { ParentInformation } from '../../../../r-bridge'
+import { appendEnvironments, overwriteEnvironments } from '../../../environments'
+import { RPipe } from '../../../../r-bridge/lang:4.x/ast/model/nodes/RPipe'
 
-export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const lhs = processDataflowFor(op.lhs, data)
   const rhs = processDataflowFor(op.rhs, data)
 

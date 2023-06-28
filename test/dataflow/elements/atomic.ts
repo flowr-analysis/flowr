@@ -82,6 +82,14 @@ describe("Atomic dataflow information", withShell((shell) => {
     }
   })
 
+  describe("pipes", () => {
+    describe("Passing one argument", () => {
+      assertDataflow("No parameter function", shell, "x |> f()",
+        new DataflowGraph()
+      )
+    })
+  })
+
   describe("assignments", () => {
     for (const op of RAssignmentOpPool) {
       describe(`${op.str}`, () => {

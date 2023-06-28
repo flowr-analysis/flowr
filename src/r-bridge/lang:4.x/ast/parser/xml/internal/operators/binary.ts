@@ -78,9 +78,16 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
   let result: RBinaryOp | RPipe
   if(flavor === 'pipe') {
     result = {
-      type:   Type.Pipe,
+      type: Type.Pipe,
       location,
-      lhs:    parsedLhs,
+      lhs:  {
+        type:     Type.Argument,
+        location: location,
+        value:    parsedLhs,
+        name:     undefined,
+        lexeme:   content,
+        info:     {}
+      },
       rhs:    parsedRhs,
       lexeme: content,
       info:   {

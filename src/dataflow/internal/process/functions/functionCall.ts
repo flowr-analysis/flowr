@@ -143,8 +143,9 @@ function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<Parent
       if(specialDotParameter !== undefined) {
         dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to dot-dot-dot parameter`)
         graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, 'defines-on-call', 'always')
+      } else {
+        dataflowLogger.error(`skipping argument ${i} as there is no corresponding parameter - R should block that`)
       }
-      dataflowLogger.error(`skipping argument ${i} as there is no corresponding parameter - R should block that`)
       continue
     }
     const param = remainingParameter[i]

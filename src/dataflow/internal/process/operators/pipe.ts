@@ -18,19 +18,24 @@ export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInfo
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
   if(op.rhs.type !== Type.FunctionCall) {
     dataflowLogger.warn(`Expected rhs of pipe to be a function call, but got ${op.rhs.type} instead.`)
+  } else {
+    const maybeFunctionCallNode = nextGraph.get(op.rhs.info.id, true)
+    guard(maybeFunctionCallNode !== undefined, () => `Expected function call node with id ${op.rhs.info.id} to be present in graph, but got undefined instead (graph: ${graphToMermaidUrl(nextGraph, data.completeAst.idMap)}).`)
+
+
+    const functionCallNode = maybeFunctionCallNode[0]
+    guard(functionCallNode.tag === 'function-call', () => `Expected function call node with id ${op.rhs.info.id} to be a function call node, but got ${functionCallNode.tag} instead.`)
+
+    const argId = op.lhs.info.id
+    dataflowLogger.trace(`Linking pipe arg ${argId} as first argument of ${op.rhs.info.id}`)
+    functionCallNode.args.unshift({
+      nodeId: argId,
+      name:   `${UnnamedArgumentPrefix}${argId}`,
+      scope:  data.activeScope,
+      used:   'always'
+    })
+    nextGraph.addEdge(functionCallNode.id, argId, 'argument', 'always')
   }
-
-  const maybeFunctionCallNode = nextGraph.get(op.rhs.info.id, true)
-  guard(maybeFunctionCallNode !== undefined, () => `Expected function call node with id ${op.rhs.info.id} to be present in graph, but got undefined instead (graph: ${graphToMermaidUrl(nextGraph, data.completeAst.idMap)}).`)
-
-
-  const functionCallNode = maybeFunctionCallNode[0]
-  guard(functionCallNode.tag === 'function-call', () => `Expected function call node with id ${op.rhs.info.id} to be a function call node, but got ${functionCallNode.tag} instead.`)
-
-  const argId =  op.lhs.info.id
-  dataflowLogger.trace(`Linking pipe arg ${argId } as first argument of ${op.rhs.info.id}`)
-  functionCallNode.args.unshift({ nodeId: argId, name: `${UnnamedArgumentPrefix}${argId}`, scope: data.activeScope, used: 'always' })
-  nextGraph.addEdge(functionCallNode.id, argId, 'argument', 'always')
 
   return {
     activeNodes:  [],

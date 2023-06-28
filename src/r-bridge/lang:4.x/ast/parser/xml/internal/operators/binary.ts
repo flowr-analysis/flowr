@@ -33,11 +33,9 @@ export function tryParseBinaryOperation(
 ): RNode | undefined {
   parseLog.trace(`binary op for ${lhs.name} [${op.name}] ${rhs.name}`)
   let flavor: BinaryOperatorFlavor | 'special' | 'pipe'
-  if(op.name === Type.Pipe) {
-    // TODO:
-    flavor = 'pipe'
-  }
-  else if (ArithmeticOperatorsRAst.has(op.name)) {
+  if (Type.Special === op.name) {
+    flavor = "special"
+  } else if (ArithmeticOperatorsRAst.has(op.name)) {
     flavor = "arithmetic"
   } else if (ComparisonOperatorsRAst.has(op.name)) {
     flavor = "comparison"
@@ -47,8 +45,8 @@ export function tryParseBinaryOperation(
     flavor = "model formula"
   } else if (AssignmentsRAst.has(op.name)) {
     flavor = "assignment"
-  } else if (Type.Special === op.name) {
-    flavor = "special"
+  } else if(op.name === Type.Pipe) {
+    flavor = 'pipe'
   } else {
     return executeUnknownHook(data.hooks.operators.onBinary.unknown, data, { lhs, op, rhs })
   }

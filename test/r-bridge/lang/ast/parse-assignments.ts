@@ -10,7 +10,7 @@ describe("Parse simple assignments",
       for (const op of RAssignmentOpPool) {
         const opOffset = op.str.length - 1
         assertAst(
-          `x ${op.str} 5`,
+          `Assign to 5`,
           shell,
           `x ${op.str} 5`,
           exprList({

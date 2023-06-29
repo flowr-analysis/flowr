@@ -147,7 +147,7 @@ describe('Parse simple constructs', withShell(shell => {
                 const thenNum = `${ifThenVariant.num}`
                 const elseNum = `${elseVariant.num}`
                 const input = `${ifThenVariant.str}${elseVariant.str}`
-                assertAst(JSON.stringify(input), shell, input, exprList({
+                assertAst('if-then-else', shell, input, exprList({
                   type:      Type.If,
                   // TODO: maybe merge in future?
                   location:  rangeFrom(1, 1, 1, 2),
@@ -231,7 +231,7 @@ describe('Parse simple constructs', withShell(shell => {
       )
     })
     describe('repeat', () => {
-      assertAst('repeat 2', shell, 'repeat 2', exprList({
+      assertAst('Single instruction repeat', shell, 'repeat 2', exprList({
         type:     Type.Repeat,
         location: rangeFrom(1, 1, 1, 6),
         lexeme:   'repeat',
@@ -244,7 +244,7 @@ describe('Parse simple constructs', withShell(shell => {
           info:     {}
         }
       }))
-      assertAst('repeat { x; y }', shell, 'repeat { x; y }', exprList({
+      assertAst('Two statement repeat', shell, 'repeat { x; y }', exprList({
         type:     Type.Repeat,
         location: rangeFrom(1, 1, 1, 6),
         lexeme:   'repeat',
@@ -294,7 +294,7 @@ describe('Parse simple constructs', withShell(shell => {
         }
       }))
 
-      assertAst('while (FALSE) { x; y }', shell, 'while (FALSE) { x; y }', exprList({
+      assertAst('Two statement while', shell, 'while (FALSE) { x; y }', exprList({
         type:      Type.While,
         location:  rangeFrom(1, 1, 1, 5),
         lexeme:    'while',
@@ -351,7 +351,7 @@ describe('Parse simple constructs', withShell(shell => {
       }))
     })
     describe('next', () => {
-      assertAst('while (TRUE) next', shell, 'while (TRUE) next', exprList({
+      assertAst('Next in while', shell, 'while (TRUE) next', exprList({
         type:      Type.While,
         location:  rangeFrom(1, 1, 1, 5),
         lexeme:    'while',

@@ -55,6 +55,7 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
 
   const result: RFunctionCall = {
     type:      Type.FunctionCall,
+    flavour:   'named',
     location,
     lexeme:    content,
     functionName,

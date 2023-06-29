@@ -130,6 +130,18 @@ a(i)`, new DataflowGraph()
     )
   })
 
+  /*  describe('Directly calling a function', () => {
+    assertDataflow('Calling with constant argument', shell, `(function(x) { x + 1 })(2)`,
+      new DataflowGraph()
+        .addNode({ tag: 'function-call', id: '5', name: 'foo', environment: initializeCleanEnvironments(), args: [{ nodeId: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, used: 'always' }]})
+        .addNode({ tag: 'use', id: '4', name: `${UnnamedArgumentPrefix}4`})
+        .addNode({ tag: 'use', id: '2', name: 'x'})
+        .addEdge('4', '2', 'read', 'always')
+        .addEdge('5', '4', 'argument', 'always')
+    )
+  })*/
+
+
   describe('Argument which is expression', () => {
     assertDataflow(`Calling with 1 + x`, shell, `foo(1 + x)`,
       new DataflowGraph()

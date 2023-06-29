@@ -90,22 +90,35 @@ describe("Atomic dataflow information", withShell((shell) => {
           .addNode({ tag: 'use', id: "0", name: "x" })
           .addNode({
             tag:  'function-call',
-            id:   "2",
+            id:   "3",
             name: "f",
-            args: [{ name: `${UnnamedArgumentPrefix}0`, scope: LocalScope, nodeId: '0', used: 'always' }]
+            args: [{ name: `${UnnamedArgumentPrefix}1`, scope: LocalScope, nodeId: '1', used: 'always' }]
           })
-          .addEdge("2", "0", "argument", "always")
+          .addNode({ tag: 'use', id: "1", name: `${UnnamedArgumentPrefix}1` })
+          .addEdge("3", "1", "argument", "always")
+          .addEdge("1", "0", "read", "always")
       )
       assertDataflow("Nested calling", shell, "x |> f() |> g()",
         new DataflowGraph()
           .addNode({ tag: 'use', id: "0", name: "x" })
           .addNode({
             tag:  'function-call',
-            id:   "2",
+            id:   "3",
             name: "f",
-            args: [{ name: `${UnnamedArgumentPrefix}0`, scope: LocalScope, nodeId: '0', used: 'always' }]
+            args: [{ name: `${UnnamedArgumentPrefix}1`, scope: LocalScope, nodeId: '1', used: 'always' }]
           })
-          .addEdge("2", "0", "argument", "always")
+          .addNode({
+            tag:  'function-call',
+            id:   "7",
+            name: "g",
+            args: [{ name: `${UnnamedArgumentPrefix}5`, scope: LocalScope, nodeId: '5', used: 'always' }]
+          })
+          .addNode({ tag: 'use', id: "1", name: `${UnnamedArgumentPrefix}1` })
+          .addNode({ tag: 'use', id: "5", name: `${UnnamedArgumentPrefix}5` })
+          .addEdge("3", "1", "argument", "always")
+          .addEdge("7", "5", "argument", "always")
+          .addEdge("5", "3", "read", "always")
+          .addEdge("1", "0", "read", "always")
       )
     })
   })

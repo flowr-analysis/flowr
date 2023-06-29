@@ -171,7 +171,6 @@ describe("Parse function calls",
         })
       )
     })
-    /*
     describe("directly called functions", () => {
       assertAst(
         "Directly call with 2",
@@ -179,7 +178,7 @@ describe("Parse function calls",
         "(function(x) { x + 1 })(2)",
         exprList({
           type:         Type.FunctionCall,
-          flavour:      "named", // TODO:
+          flavour:      "named",
           location:     rangeFrom(1, 1, 1, 1),
           lexeme:       "f", // TODO: make this more sensible?
           info:         {},
@@ -263,7 +262,6 @@ describe("Parse function calls",
         })
       )
     })
-*/
     describe("functions with explicit namespacing", () => {
       assertAst(
         "x::f()",

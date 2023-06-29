@@ -24,7 +24,7 @@ export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location 
 export interface RUnnamedFunctionCall<Info = NoInfo> extends Base<Info>, Location {
   readonly type:    Type.FunctionCall;
   readonly flavour: 'unnamed';
-  calledFunction:   RFunctionDefinition<Info>;
+  calledFunction:   RNode<Info>; /* can be either a function definition or another call that returns a function etc. */
   arguments:        RNode<Info>[];
 }
 

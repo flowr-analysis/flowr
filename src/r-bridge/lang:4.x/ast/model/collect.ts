@@ -86,6 +86,9 @@ export function* collectAllIds<OtherInfo>(nodes: RNode<OtherInfo & ParentInforma
       yield* collectSingleNode(node, stop)
     }
   } else if(nodes !== undefined) {
+    if(stop(nodes)) {
+      return
+    }
     yield* collectSingleNode(nodes, stop)
   }
 }

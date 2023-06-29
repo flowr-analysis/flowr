@@ -7,6 +7,7 @@ import { assertDataflow, withShell } from '../../helper/shell'
 import { DataflowGraph, GlobalScope, initializeCleanEnvironments, LocalScope } from '../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../helper/provider'
 import { define } from '../../../src/dataflow/environments'
+import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 
 describe("Atomic dataflow information", withShell((shell) => {
   describe("uninteresting leafs", () => {
@@ -80,6 +81,72 @@ describe("Atomic dataflow information", withShell((shell) => {
         }
       })
     }
+  })
+
+  describe("pipes", () => {
+    describe("Passing one argument", () => {
+      assertDataflow("No parameter function", shell, "x |> f()",
+        new DataflowGraph()
+          .addNode({ tag: 'use', id: "0", name: "x" })
+          .addNode({
+            tag:  'function-call',
+            id:   "3",
+            name: "f",
+            args: [{ name: `${UnnamedArgumentPrefix}1`, scope: LocalScope, nodeId: '1', used: 'always' }]
+          })
+          .addNode({ tag: 'use', id: "1", name: `${UnnamedArgumentPrefix}1` })
+          .addEdge("3", "1", "argument", "always")
+          .addEdge("1", "0", "read", "always")
+      )
+      assertDataflow("Nested calling", shell, "x |> f() |> g()",
+        new DataflowGraph()
+          .addNode({ tag: 'use', id: "0", name: "x" })
+          .addNode({
+            tag:  'function-call',
+            id:   "3",
+            name: "f",
+            args: [{ name: `${UnnamedArgumentPrefix}1`, scope: LocalScope, nodeId: '1', used: 'always' }]
+          })
+          .addNode({
+            tag:  'function-call',
+            id:   "7",
+            name: "g",
+            args: [{ name: `${UnnamedArgumentPrefix}5`, scope: LocalScope, nodeId: '5', used: 'always' }]
+          })
+          .addNode({ tag: 'use', id: "1", name: `${UnnamedArgumentPrefix}1` })
+          .addNode({ tag: 'use', id: "5", name: `${UnnamedArgumentPrefix}5` })
+          .addEdge("3", "1", "argument", "always")
+          .addEdge("7", "5", "argument", "always")
+          .addEdge("5", "3", "read", "always")
+          .addEdge("1", "0", "read", "always")
+      )
+      assertDataflow("Multi-Parameter function", shell, "x |> f(y,z)",
+        new DataflowGraph()
+          .addNode({ tag: 'use', id: "0", name: "x" })
+          .addNode({
+            tag:  'function-call',
+            id:   "7",
+            name: "f",
+            args: [
+              { name: `${UnnamedArgumentPrefix}1`, scope: LocalScope, nodeId: '1', used: 'always' },
+              { name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, nodeId: '4', used: 'always' },
+              { name: `${UnnamedArgumentPrefix}6`, scope: LocalScope, nodeId: '6', used: 'always' }
+            ]
+          })
+          .addNode({ tag: 'use', id: "1", name: `${UnnamedArgumentPrefix}1` })
+          .addNode({ tag: 'use', id: "4", name: `${UnnamedArgumentPrefix}4` })
+          .addNode({ tag: 'use', id: "6", name: `${UnnamedArgumentPrefix}6` })
+          .addNode({ tag: 'use', id: "0", name: 'x' })
+          .addNode({ tag: 'use', id: "3", name: 'y' })
+          .addNode({ tag: 'use', id: "5", name: 'z' })
+          .addEdge("7", "1", "argument", "always")
+          .addEdge("7", "4", "argument", "always")
+          .addEdge("7", "6", "argument", "always")
+          .addEdge("1", "0", "read", "always")
+          .addEdge("4", "3", "read", "always")
+          .addEdge("6", "5", "read", "always")
+      )
+    })
   })
 
   describe("assignments", () => {

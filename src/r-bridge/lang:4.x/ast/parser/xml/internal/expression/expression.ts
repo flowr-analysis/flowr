@@ -15,7 +15,7 @@ import { tryParseAccess } from '../access'
  * @param obj - The json object to extract the meta-information from
  */
 export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
-  parseLog.debug(`[expr] ${JSON.stringify(obj)}`)
+  parseLog.debug(`Parsing expr`)
   obj = executeHook(data.hooks.expression.onExpression.before, data, obj)
 
   const {

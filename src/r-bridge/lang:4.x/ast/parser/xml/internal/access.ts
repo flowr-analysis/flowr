@@ -74,7 +74,7 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
       parseLog.trace(`record empty access`)
       return null
     }
-    parseLog.trace(`trying to parse access ${JSON.stringify(x)}`)
+    parseLog.trace(`trying to parse access`)
     const gotAccess = parseBasedOnType(data, x)
     guard(gotAccess.length === 1, () => `expected one access result in access, yet received ${JSON.stringify(gotAccess)}`)
     return gotAccess[0]

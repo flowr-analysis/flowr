@@ -45,6 +45,7 @@ export const enum Type {
   While = "WHILE",
   If = "IF",
   Else = "ELSE",
+  Pipe = "PIPE",
   Comma = ",",
   FunctionCall = "SYMBOL_FUNCTION_CALL",
   FunctionDefinition = "FUNCTION",

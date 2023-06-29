@@ -27,11 +27,11 @@ export function tryParseUnaryOperation(data: ParserData, op: NamedXmlBasedJson, 
   parseLog.trace(`unary op for ${op.name} ${operand.name}`)
   let flavor: UnaryOperatorFlavor
   // TODO: filter for unary
-  if (ArithmeticOperatorsRAst.includes(op.name)) {
+  if (ArithmeticOperatorsRAst.has(op.name)) {
     flavor = 'arithmetic'
-  } else if (LogicalOperatorsRAst.includes(op.name)) {
+  } else if (LogicalOperatorsRAst.has(op.name)) {
     flavor = 'logical'
-  } else if (ModelFormulaOperatorsRAst.includes(op.name)) {
+  } else if (ModelFormulaOperatorsRAst.has(op.name)) {
     flavor = 'model formula'
   } else {
     return executeUnknownHook(data.hooks.operators.onUnary.unknown, data, { op, operand })

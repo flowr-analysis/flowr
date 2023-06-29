@@ -362,13 +362,22 @@ export class DataflowGraph {
       } else {
         existingFrom.set(toId, edge)
       }
-      if(bidirectional || type === 'defines-on-call') {
-        edge.types = type === 'defines-on-call' ? new Set(['defined-by-on-call']) : edge.types
+      if(bidirectional) {
         const existingTo = this.edges.get(toId)
         if(existingTo === undefined) {
           this.edges.set(toId, new Map([[fromId, edge]]))
         } else {
           existingTo.set(fromId, edge)
+        }
+      } else if (type === 'defines-on-call') {
+        const otherEdge: DataflowGraphEdge = { ...edge,
+          types: new Set(['defined-by-on-call'])
+        }
+        const existingTo = this.edges.get(toId)
+        if(existingTo === undefined) {
+          this.edges.set(toId, new Map([[fromId, otherEdge]]))
+        } else {
+          existingTo.set(fromId, otherEdge)
         }
       }
     } else {

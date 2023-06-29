@@ -47,7 +47,7 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
   const parsedArguments: RNode[] = splitArgumentsOnComma.map(x => {
     // guard(x.length === 1, `expected argument to be a single element wrapped in an expression, yet received ${JSON.stringify(x)}`)
     // TODO: improve expression unwrap
-    parseLog.trace(`trying to parse argument ${JSON.stringify(x)}`)
+    parseLog.trace(`trying to parse argument`)
     const gotArgument = tryToParseArgument(data, x)
     guard(gotArgument !== undefined, () => `expected one argument result in argumentlist, yet received ${JSON.stringify(gotArgument)}`)
     return gotArgument

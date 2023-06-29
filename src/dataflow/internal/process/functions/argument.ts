@@ -1,9 +1,20 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { collectAllIds, ParentInformation, RArgument, Type } from '../../../../r-bridge'
-import { LocalScope } from '../../../graph'
+import { collectAllIds, ParentInformation, RArgument, RNode, Type } from '../../../../r-bridge'
+import { DataflowGraph, LocalScope } from '../../../graph'
+import { IdentifierReference } from '../../../environments'
 
 export const UnnamedArgumentPrefix = 'unnamed-argument-'
+
+export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: IdentifierReference[], graph: DataflowGraph) {
+  const allIdsBeforeArguments = new Set(collectAllIds(root, n => n.type === Type.Argument && n.info.id !== root.info.id))
+  const ingoingBeforeArgs = ingoingRefs.filter(r => allIdsBeforeArguments.has(r.nodeId))
+
+  for (const ref of ingoingBeforeArgs) {
+    // link against the root reference currently I do not know how to deal with nested function calls otherwise
+    graph.addEdge(root.info.id, ref, 'read', 'always')
+  }
+}
 
 export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const name = argument.name === undefined ? undefined : processDataflowFor(argument.name, data)
@@ -18,12 +29,7 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
   const ingoingRefs = [...value.activeNodes, ...value.in, ...(name === undefined ? [] : [...name.in])]
 
   // we only need to link against those which are not already bound to another function call argument
-  const allIdsBeforeArguments = new Set(collectAllIds(argument, n => n.type === Type.Argument && n.info.id !== argument.info.id))
-  const ingoingBeforeArgs = ingoingRefs.filter(r => allIdsBeforeArguments.has(r.nodeId))
-  for(const ref of ingoingBeforeArgs) {
-    // link against the root reference currently I do not know how to deal with nested function calls otherwise
-    graph.addEdge(argument.info.id, ref, 'read', 'always')
-  }
+  linkReadsForArgument(argument, ingoingRefs, graph)
 
   // TODO: defined-by for default values
 

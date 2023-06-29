@@ -4,8 +4,8 @@ import { DataflowScopeName, LocalScope } from './graph'
 import { processDataflowFor, DataflowProcessorInformation, DataflowProcessors } from './processor'
 import { processUninterestingLeaf } from './internal/process/uninterestingLeaf'
 import { processSymbol } from './internal/process/symbol'
-import { processNonAssignmentBinaryOp } from './internal/process/nonAssignmentBinaryOp'
-import { processUnaryOp } from './internal/process/unaryOp'
+import { processNonAssignmentBinaryOp } from './internal/process/operators/nonAssignmentBinaryOp'
+import { processUnaryOp } from './internal/process/operators/unaryOp'
 import { processExpressionList } from './internal/process/expressionList'
 import { processRepeatLoop } from './internal/process/loops/repeatLoop'
 import { processForLoop } from './internal/process/loops/forLoop'
@@ -16,8 +16,9 @@ import { processFunctionDefinition } from './internal/process/functions/function
 import { processFunctionParameter } from './internal/process/functions/parameter'
 import { initializeCleanEnvironments } from './environments'
 import { processFunctionArgument } from './internal/process/functions/argument'
-import { processAssignment } from './internal/process/assignment'
+import { processAssignment } from './internal/process/operators/assignment'
 import { processAccess } from './internal/process/access'
+import { processPipeOperation } from './internal/process/operators/pipe'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
 const processors: DataflowProcessors<any> = {
@@ -27,6 +28,7 @@ const processors: DataflowProcessors<any> = {
   [Type.Access]:             processAccess,
   [Type.Symbol]:             processSymbol,
   [Type.BinaryOp]:           processBinaryOp,
+  [Type.Pipe]:               processPipeOperation,
   [Type.UnaryOp]:            processUnaryOp,
   [Type.For]:                processForLoop,
   [Type.While]:              processWhileLoop,

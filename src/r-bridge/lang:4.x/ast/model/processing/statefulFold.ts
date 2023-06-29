@@ -28,6 +28,7 @@ import {
   RFunctionDefinition, RAccess, RModelFormulaBinaryOp, RModelFormulaUnaryOp
 } from '../nodes'
 import { RNode } from '../model'
+import { RPipe } from '../nodes/RPipe'
 
 
 /**
@@ -53,6 +54,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
     foldArithmeticOp: (op: RArithmeticBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
     foldComparisonOp: (op: RComparisonBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
     foldAssignment:   (op: RAssignmentOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
+    foldPipe:         (op: RPipe<Info>, lhs: Up, rhs: Up, down: Down) => Up;
     foldModelFormula: (op: RModelFormulaBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
   };
   unaryOp: {
@@ -101,6 +103,8 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
       return folds.foldSymbol(ast, down)
     case Type.Comment:
       return folds.other.foldComment(ast, down)
+    case Type.Pipe:
+      return folds.binaryOp.foldPipe(ast, foldAstStateful(ast.lhs, down, folds), foldAstStateful(ast.rhs, down, folds), down)
     case Type.BinaryOp:
       return foldBinaryOp(ast, down, folds)
     case Type.UnaryOp:

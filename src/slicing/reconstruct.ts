@@ -11,6 +11,7 @@ import { foldAstStateful, StatefulFoldFunctions } from '../r-bridge/lang:4.x/ast
 import { log } from '../util/log'
 import { guard } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
+import { RPipe } from '../r-bridge/lang:4.x/ast/model/nodes/RPipe'
 type Selection = Set<NodeId>
 interface PrettyPrintLine {
   line:   string
@@ -62,7 +63,7 @@ function isSelected(configuration: ReconstructionConfiguration, n: RNode<ParentI
   return configuration.selection.has(n.info.id) || configuration.autoSelectIf(n)
 }
 
-function reconstructBinaryOp(n: RBinaryOp<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
+function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
   if(isSelected(configuration, n)) {
     return plain(getLexeme(n))
   }
@@ -79,7 +80,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation>, lhs: Code, rhs: Co
 
   return [  // inline pretty print
     ...lhs.slice(0, lhs.length - 1),
-    { line: `${lhs[lhs.length - 1].line} ${n.op} ${rhs[0].line}`, indent: 0 },
+    { line: `${lhs[lhs.length - 1].line} ${n.type === Type.Pipe ? '|>' : n.op} ${rhs[0].line}`, indent: 0 },
     ...indentBy(rhs.slice(1, rhs.length), 1)
   ]
 }
@@ -327,6 +328,7 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
     foldArithmeticOp: reconstructBinaryOp,
     foldComparisonOp: reconstructBinaryOp,
     foldAssignment:   reconstructBinaryOp,
+    foldPipe:         reconstructBinaryOp, /* TODO: check */
     foldModelFormula: reconstructBinaryOp
   },
   unaryOp: {

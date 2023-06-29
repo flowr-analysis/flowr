@@ -18,6 +18,7 @@ import {
   RArgument, RNamedAccess, RIndexAccess
 } from './nodes'
 import { OtherInfoNode } from './nodes/info'
+import { RPipe } from './nodes/RPipe'
 
 /** simply used as an empty interface with no information about additional decorations */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -90,7 +91,7 @@ export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<In
 export type ROther<Info>          = RComment<Info>
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
                                   | ROther<Info> | RConstructs<Info> | RNamedAccess<Info> | RIndexAccess<Info>
-                                  | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>
+                                  | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>  | RPipe<Info>
 
 /* TODO: blocked in R
 

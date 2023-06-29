@@ -1,16 +1,16 @@
-import { ParentInformation, RAssignmentOp, RNode, Type } from '../../../r-bridge'
-import { DataflowInformation } from '../info'
-import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
-import { GlobalScope, LocalScope } from '../../graph'
-import { guard } from '../../../util/assert'
+import { ParentInformation, RAssignmentOp, RNode, Type } from '../../../../r-bridge'
+import { DataflowInformation } from '../../info'
+import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
+import { GlobalScope, LocalScope } from '../../../graph'
+import { guard } from '../../../../util/assert'
 import {
   define,
   IdentifierDefinition,
   IdentifierReference,
   overwriteEnvironments
-} from '../../environments'
-import { log } from '../../../util/log'
-import { dataflowLogger } from '../../index'
+} from '../../../environments'
+import { log } from '../../../../util/log'
+import { dataflowLogger } from '../../../index'
 
 export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)

@@ -120,6 +120,32 @@ describe("Atomic dataflow information", withShell((shell) => {
           .addEdge("5", "3", "read", "always")
           .addEdge("1", "0", "read", "always")
       )
+      assertDataflow("Multi-Parameter function", shell, "x |> f(y,z)",
+        new DataflowGraph()
+          .addNode({ tag: 'use', id: "0", name: "x" })
+          .addNode({
+            tag:  'function-call',
+            id:   "7",
+            name: "f",
+            args: [
+              { name: `${UnnamedArgumentPrefix}1`, scope: LocalScope, nodeId: '1', used: 'always' },
+              { name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, nodeId: '4', used: 'always' },
+              { name: `${UnnamedArgumentPrefix}6`, scope: LocalScope, nodeId: '6', used: 'always' }
+            ]
+          })
+          .addNode({ tag: 'use', id: "1", name: `${UnnamedArgumentPrefix}1` })
+          .addNode({ tag: 'use', id: "4", name: `${UnnamedArgumentPrefix}4` })
+          .addNode({ tag: 'use', id: "6", name: `${UnnamedArgumentPrefix}6` })
+          .addNode({ tag: 'use', id: "0", name: 'x' })
+          .addNode({ tag: 'use', id: "3", name: 'y' })
+          .addNode({ tag: 'use', id: "5", name: 'z' })
+          .addEdge("7", "1", "argument", "always")
+          .addEdge("7", "4", "argument", "always")
+          .addEdge("7", "6", "argument", "always")
+          .addEdge("1", "0", "read", "always")
+          .addEdge("4", "3", "read", "always")
+          .addEdge("6", "5", "read", "always")
+      )
     })
   })
 

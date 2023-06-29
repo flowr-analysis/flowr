@@ -7,7 +7,11 @@ import { IdentifierReference } from '../../../environments'
 export const UnnamedArgumentPrefix = 'unnamed-argument-'
 
 export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: IdentifierReference[], graph: DataflowGraph) {
-  const allIdsBeforeArguments = new Set(collectAllIds(root, n => n.type === Type.Argument && n.info.id !== root.info.id))
+  console.log('collecting')
+  const allIdsBeforeArguments = new Set(collectAllIds(root, n => {
+    console.log(n.type, n.info.id)
+    return n.type === Type.Argument && n.info.id !== root.info.id
+  }))
   const ingoingBeforeArgs = ingoingRefs.filter(r => allIdsBeforeArguments.has(r.nodeId))
   console.log('XXXX', root.info.id, allIdsBeforeArguments, ingoingBeforeArgs, ingoingRefs)
   for (const ref of ingoingBeforeArgs) {

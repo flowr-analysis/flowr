@@ -14,12 +14,19 @@ describe("Parse Pipes", withShell(shell => {
       lexeme:   '|>',
       info:     {},
       lhs:      {
-        type:      Type.Symbol,
-        location:  rangeFrom(1, 1, 1, 1),
-        lexeme:    'x',
-        content:   'x',
-        namespace: undefined,
-        info:      {},
+        type:     Type.Argument,
+        name:     undefined,
+        location: rangeFrom(1, 1, 1, 1),
+        lexeme:   'x',
+        info:     {},
+        value:    {
+          type:      Type.Symbol,
+          location:  rangeFrom(1, 1, 1, 1),
+          lexeme:    'x',
+          content:   'x',
+          namespace: undefined,
+          info:      {}
+        }
       },
       rhs: {
         type:         Type.FunctionCall,
@@ -48,32 +55,46 @@ describe("Parse Pipes", withShell(shell => {
       lexeme:   '|>',
       info:     {},
       lhs:      {
-        type:     Type.Pipe,
+        type:     Type.Argument,
         location: rangeFrom(1, 3, 1, 4),
         lexeme:   '|>',
+        name:     undefined,
         info:     {},
-        lhs:      {
-          type:      Type.Symbol,
-          location:  rangeFrom(1, 1, 1, 1),
-          lexeme:    'x',
-          content:   'x',
-          namespace: undefined,
-          info:      {},
-        },
-        rhs: {
-          type:         Type.FunctionCall,
-          location:     rangeFrom(1, 6, 1, 6),
-          lexeme:       'f',
-          arguments:    [],
-          functionName: {
-            type:      Type.Symbol,
-            location:  rangeFrom(1, 6, 1, 6),
-            lexeme:    'f',
-            content:   'f',
-            namespace: undefined,
-            info:      {},
+        value:    {
+          type:     Type.Pipe,
+          location: rangeFrom(1, 3, 1, 4),
+          lexeme:   '|>',
+          info:     {},
+          lhs:      {
+            type:     Type.Argument,
+            location: rangeFrom(1, 1, 1, 1),
+            lexeme:   'x',
+            name:     undefined,
+            value:    {
+              type:      Type.Symbol,
+              location:  rangeFrom(1, 1, 1, 1),
+              lexeme:    'x',
+              content:   'x',
+              namespace: undefined,
+              info:      {},
+            },
+            info: {},
           },
-          info: {},
+          rhs: {
+            type:         Type.FunctionCall,
+            location:     rangeFrom(1, 6, 1, 6),
+            lexeme:       'f',
+            arguments:    [],
+            functionName: {
+              type:      Type.Symbol,
+              location:  rangeFrom(1, 6, 1, 6),
+              lexeme:    'f',
+              content:   'f',
+              namespace: undefined,
+              info:      {},
+            },
+            info: {},
+          }
         }
       },
       rhs: {

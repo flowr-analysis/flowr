@@ -130,7 +130,8 @@ a(i)`, new DataflowGraph()
     )
   })
 
-  /*  describe('Directly calling a function', () => {
+  /*
+  describe('Directly calling a function', () => {
     assertDataflow('Calling with constant argument', shell, `(function(x) { x + 1 })(2)`,
       new DataflowGraph()
         .addNode({ tag: 'function-call', id: '5', name: 'foo', environment: initializeCleanEnvironments(), args: [{ nodeId: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, used: 'always' }]})
@@ -139,7 +140,8 @@ a(i)`, new DataflowGraph()
         .addEdge('4', '2', 'read', 'always')
         .addEdge('5', '4', 'argument', 'always')
     )
-  })*/
+  })
+*/
 
 
   describe('Argument which is expression', () => {

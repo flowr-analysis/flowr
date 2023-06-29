@@ -9,7 +9,7 @@ function* collectSingleNode<OtherInfo>(node: RNode<OtherInfo & ParentInformation
   const type = node.type
   switch (type) {
     case Type.FunctionCall:
-      yield* collectAllIds(node.functionName, stop)
+      yield* collectAllIds(node.flavour === 'named' ? node.functionName : node.calledFunction, stop)
       yield* collectAllIds(node.arguments, stop)
       break
     case Type.FunctionDefinition:

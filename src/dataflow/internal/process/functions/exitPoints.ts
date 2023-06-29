@@ -25,7 +25,7 @@ function visitExitPoints<OtherInfo>(node: RNode<OtherInfo & ParentInformation>):
     case Type.ExpressionList:
       return visitExpressionList(node)
     case Type.FunctionCall:
-      if(node.functionName.content === 'return') {
+      if(node.flavour === 'named' && node.functionName.content === 'return') {
         return {
           knownIds:     [ node.info.id ],
           potentialIds: []

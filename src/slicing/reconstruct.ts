@@ -307,7 +307,7 @@ export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
 
 const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
 export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
-  if(node.type !== Type.FunctionCall) {
+  if(node.type !== Type.FunctionCall || node.flavour !== 'named') {
     return false
   }
   return libraryFunctionCall.test(node.functionName.content)

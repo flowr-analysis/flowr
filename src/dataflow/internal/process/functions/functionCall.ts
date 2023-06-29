@@ -11,6 +11,7 @@ import {
 // TODO: support partial matches: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Argument-matching
 
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  guard(functionCall.flavour === 'named', 'TODO: deal with unnamed calls')
   const functionName = processDataflowFor(functionCall.functionName, data)
   const args = functionCall.arguments.map(arg => processDataflowFor(arg, data))
   const finalGraph = new DataflowGraph()

@@ -20,6 +20,7 @@ import {
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { RPipe } from '../../../../model/nodes/RPipe'
+import { guard } from '../../../../../../../util/assert'
 
 /**
  * Parsing binary operations includes the pipe, even though the produced PIPE construct is not a binary operation,
@@ -77,15 +78,17 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
   // TODO: assert exists as known operator
   let result: RBinaryOp | RPipe
   if(flavor === 'pipe') {
+    guard(parsedLhs.location !== undefined, () => `pipe lhs must have a location, but ${JSON.stringify(parsedLhs)})`)
+    guard(parsedLhs.lexeme !== undefined, () => `pipe lhs must have a full lexeme, but ${JSON.stringify(parsedLhs)})`)
     result = {
       type: Type.Pipe,
       location,
       lhs:  {
         type:     Type.Argument,
-        location: location,
+        location: parsedLhs.location,
         value:    parsedLhs,
         name:     undefined,
-        lexeme:   content,
+        lexeme:   parsedLhs.lexeme,
         info:     {}
       },
       rhs:    parsedRhs,

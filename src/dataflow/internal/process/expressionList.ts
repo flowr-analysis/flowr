@@ -46,14 +46,14 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 
 
 function processNextExpression<OtherInfo>(currentElement: DataflowInformation<OtherInfo>,
-                                          down: DataflowProcessorInformation<OtherInfo>,
+                                          data: DataflowProcessorInformation<OtherInfo>,
                                           environments: REnvironmentInformation,
                                           listEnvironments: Set<NodeId>,
                                           remainingRead: Map<string, IdentifierReference[]>,
                                           nextGraph: DataflowGraph) {
   // all inputs that have not been written until know, are read!
   for (const read of [...currentElement.in, ...currentElement.activeNodes]) {
-    linkReadNameToWriteIfPossible(read, down, environments, listEnvironments, remainingRead, nextGraph)
+    linkReadNameToWriteIfPossible(read, data, environments, listEnvironments, remainingRead, nextGraph)
   }
   // add same variable reads for deferred if they are read previously but not dependent
   for (const writeTarget of currentElement.out) {
@@ -61,7 +61,7 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
 
     // TODO: must something happen to the remaining reads?
 
-    const resolved = resolveByName(writeName, down.activeScope, environments)
+    const resolved = resolveByName(writeName, data.activeScope, environments)
     if (resolved !== undefined) {
       // write-write
       for (const target of resolved) {

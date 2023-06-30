@@ -4,10 +4,10 @@ import { appendEnvironments, IdentifierReference, makeAllMaybe } from '../../env
 import { linkIngoingVariablesInSameScope } from '../linker'
 import { ParentInformation, RIfThenElse } from '../../../r-bridge'
 
-export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & ParentInformation>, down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
-  const cond = processDataflowFor(ifThen.condition, down)
-  let then: DataflowInformation<OtherInfo> | undefined = processDataflowFor(ifThen.then, down)
-  let otherwise = ifThen.otherwise === undefined ? undefined : processDataflowFor(ifThen.otherwise, down)
+export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  const cond = processDataflowFor(ifThen.condition, data)
+  let then: DataflowInformation<OtherInfo> | undefined = processDataflowFor(ifThen.then, data)
+  let otherwise = ifThen.otherwise === undefined ? undefined : processDataflowFor(ifThen.otherwise, data)
 
   if(ifThen.condition.lexeme === 'TRUE') {
     otherwise = undefined
@@ -42,7 +42,7 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
     out:          outgoing,
     environments: otherwiseEnvironment,
     graph:        nextGraph,
-    ast:          down.completeAst,
-    scope:        down.activeScope,
+    ast:          data.completeAst,
+    scope:        data.activeScope,
   }
 }

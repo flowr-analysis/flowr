@@ -161,7 +161,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReferen
       }
     }
   }
-  // down.graph.get(node.id).definedAtPosition = false
+  // data.graph.get(node.id).definedAtPosition = false
   return givenInputs
 }
 

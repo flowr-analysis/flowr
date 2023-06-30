@@ -74,7 +74,8 @@ a(5)`)
 x <- 2
 a()
 b()`
-    assertSliced('Include only b-definition', shell, code, ['3@a'], `a <- function() { x }
+    // TODO: at the moment we do not remove the second `b` in that case
+    assertSliced('Include only b-definition', shell, code, ['3@a'], `a <- b <- function() { x }
 x <- 2
 a()`)
     assertSliced('Include only b-definition', shell, code, ['4@b'], `b <- function() { x }

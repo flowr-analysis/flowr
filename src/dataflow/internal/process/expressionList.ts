@@ -6,7 +6,7 @@ import { DataflowInformation, initializeCleanInfo } from '../info'
 import { NodeId, ParentInformation, RExpressionList } from '../../../r-bridge'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import {
-  IdentifierReference,
+  IdentifierReference, IEnvironment,
   overwriteEnvironments, popLocalEnvironment,
   REnvironmentInformation,
   resolveByName
@@ -38,13 +38,9 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
     return
   }
 
-  if (probableTarget.length === 1) {
-    nextGraph.addEdge(read, probableTarget[0], 'read', undefined, true)
-  } else {
-    for (const target of probableTarget) {
-      // we can stick with maybe even if readId.attribute is always
-      nextGraph.addEdge(read, target, 'read', undefined, true)
-    }
+  for (const target of probableTarget) {
+    // we can stick with maybe even if readId.attribute is always
+    nextGraph.addEdge(read, target, 'read', undefined, true)
   }
 }
 
@@ -111,14 +107,28 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     environments = overwriteEnvironments(environments, processed.environments)
 
     // if the called function has global redefinitions, we have to keep them within our environment
-    for(const calledFn of calledEnvs) {
-      guard(calledFn.tag === 'function-definition', 'called function must call a function definition')
-      // only merge the environments they have in common
-      let environment = calledFn.environment
-      while(environment.level > environments.level) {
-        environment = popLocalEnvironment(environment)
+    for(const { functionCall, called } of calledEnvs) {
+      for(const calledFn of called) {
+        guard(calledFn.tag === 'function-definition', 'called function must call a function definition')
+        // only merge the environments they have in common
+        let environment = calledFn.environment
+        while (environment.level > environments.level) {
+          environment = popLocalEnvironment(environment)
+        }
+        // update alle definitions to be defined at this function call
+        let current: IEnvironment | undefined = environment.current
+        while(current !== undefined) {
+          for(const definitions of current.memory.values()) {
+            for(const def of definitions) {
+              def.definedAt = functionCall
+              nextGraph.addEdge(def.nodeId, functionCall, 'defined-by-on-call', def.used)
+            }
+          }
+          current = current.parent
+        }
+        // we update all definitions to be linked with teh corresponding function call
+        environments = overwriteEnvironments(environments, environment)
       }
-      environments = overwriteEnvironments(environments, environment)
     }
 
     for(const { nodeId } of processed.out) {

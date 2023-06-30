@@ -58,8 +58,8 @@ function specialReturnFunction(info: DataflowGraphNodeFunctionCall, graph: Dataf
 /**
  * Returns the called functions within the current graph, which can be used to merge the environments with the call
  */
-export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][], thisGraph: DataflowGraph): DataflowGraphNodeInfo[] {
-  const calledFunctionDefinitions = []
+export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] {
+  const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] = []
   for(const [id, info, nodeGraph] of functionCalls) {
     // TODO: special handling for others
     if(info.tag === 'function-call' && info.name === 'return') {
@@ -85,7 +85,7 @@ export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph, functio
       graph.addEdge(id, defs.id, 'calls', 'always')
     }
     if(nodeGraph === thisGraph) {
-      calledFunctionDefinitions.push(...functionDefs.values())
+      calledFunctionDefinitions.push({ functionCall: id,  called: [...functionDefs.values()] })
     }
   }
   return calledFunctionDefinitions
@@ -154,16 +154,14 @@ export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReferen
         bodyInput.used = 'maybe'
       }
       givenInputs.push(bodyInput)
-    } else if (probableTarget.length === 1) {
-      graph.addEdge(bodyInput, probableTarget[0], 'read', undefined, true)
     } else {
       for (const target of probableTarget) {
         // we can stick with maybe even if readId.attribute is always
         graph.addEdge(bodyInput, target, 'read', undefined, true)
       }
     }
-    // down.graph.get(node.id).definedAtPosition = false
   }
+  // down.graph.get(node.id).definedAtPosition = false
   return givenInputs
 }
 

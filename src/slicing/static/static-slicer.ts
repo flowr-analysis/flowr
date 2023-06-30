@@ -16,9 +16,11 @@ export const slicerLogger = log.getSubLogger({ name: "slicer" })
 
 
 interface NodeToSlice {
-  id:              NodeId
+  id:                 NodeId
   /** used for calling context etc. */
-  baseEnvironment: REnvironmentInformation
+  baseEnvironment:    REnvironmentInformation
+  /** if we add a function call we may need it only for its side effects (e.g., a redefinition of a global variable), if so, 'returns' links will not be traced */
+  onlyForSideEffects: boolean
 }
 
 
@@ -28,7 +30,7 @@ type Fingerprint = string
 function fingerprint(visited: NodeToSlice): Fingerprint {
   // we do not use ids of envs in case of (in-)finite recursion
   const envFingerprint = objectHash(visited.baseEnvironment, { excludeKeys: key => key === 'id' })
-  return `${visited.id}-${envFingerprint}`
+  return `${visited.id}-${envFingerprint}-${visited.onlyForSideEffects ? '0' : '1'}`
 }
 /**
  * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
@@ -41,7 +43,7 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
 
   const visited = new Map<Fingerprint, NodeId>()
   // every node ships the call environment which registers the calling environment
-  const visitQueue: NodeToSlice[] = id.map(i => ({ id: i, baseEnvironment: initializeCleanEnvironments() }))
+  const visitQueue: NodeToSlice[] = id.map(i => ({ id: i, baseEnvironment: initializeCleanEnvironments(), onlyForSideEffects: false }))
 
   while (visitQueue.length > 0) {
     const current = visitQueue.pop()
@@ -53,7 +55,7 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
 
     const currentInfo = dataflowGraph.get(current.id, true)
 
-    slicerLogger.trace(`visiting id: ${current.id} with name: ${currentInfo?.[0].name ?? '<unknown>'}`)
+    slicerLogger.trace(`visiting id: ${current.id} (${current.onlyForSideEffects ? 'only for side effects' : 'full'}) with name: ${currentInfo?.[0].name ?? '<unknown>'}`)
 
     if(currentInfo === undefined) {
       slicerLogger.warn(`id: ${current.id} must be in graph but can not be found, keep in slice to be sure`)
@@ -68,9 +70,9 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
     const currentNode = dataflowIdMap.get(current.id)
     guard(currentNode !== undefined, () => `id: ${current.id} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
 
-    const liveEdges = [...currentInfo[1]].filter(([_, e]) => e.types.has('read') || e.types.has('defined-by') || e.types.has('argument') || e.types.has('calls') || e.types.has('relates') || e.types.has('returns') || e.types.has('defines-on-call'))
-    for (const [target] of liveEdges) {
-      const envEdge = { id: target, baseEnvironment: current.baseEnvironment }
+    const liveEdges = [...currentInfo[1]].filter(([_, e]) => e.types.has('read') || e.types.has('defined-by') || e.types.has('argument') || e.types.has('calls') || e.types.has('relates') || (!current.onlyForSideEffects && e.types.has('returns')) || e.types.has('defines-on-call') || e.types.has('defined-by-on-call'))
+    for (const [target, edge] of liveEdges) {
+      const envEdge = { id: target, baseEnvironment: current.baseEnvironment, onlyForSideEffects: edge.types.has('defined-by-on-call') }
       if (!visited.has(fingerprint(envEdge))) {
         slicerLogger.trace(`adding id: ${target} to visit queue`)
         visitQueue.push(envEdge)
@@ -111,17 +113,23 @@ function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeI
         continue
       }
       for (const def of defs) {
-        const nodeToSlice = { id: def.nodeId, baseEnvironment: activeEnvironment}
+        const nodeToSlice = { id: def.nodeId, baseEnvironment: activeEnvironment, onlyForSideEffects: current.onlyForSideEffects }
         if (!visited.has(fingerprint(nodeToSlice))) {
           visitQueue.push(nodeToSlice)
         }
       }
     }
 
-    for(const exitPoint of functionCallTarget.exitPoints) {
-      const nodeToSlice = { id: exitPoint, baseEnvironment: activeEnvironment}
-      if (!visited.has(fingerprint(nodeToSlice))) {
-        visitQueue.push(nodeToSlice)
+    if(!current.onlyForSideEffects) {
+      for (const exitPoint of functionCallTarget.exitPoints) {
+        const nodeToSlice = {
+          id:                 exitPoint,
+          baseEnvironment:    activeEnvironment,
+          onlyForSideEffects: current.onlyForSideEffects
+        }
+        if (!visited.has(fingerprint(nodeToSlice))) {
+          visitQueue.push(nodeToSlice)
+        }
       }
     }
   }

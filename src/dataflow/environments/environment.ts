@@ -121,6 +121,22 @@ export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition
     definedAt: BuiltIn,
     name:      'return',
     nodeId:    BuiltIn
+  }]],
+  ['cat', [{
+    kind:      'built-in-function',
+    scope:     GlobalScope,
+    used:      'always',
+    definedAt: BuiltIn,
+    name:      'cat',
+    nodeId:    BuiltIn
+  }]],
+  ['print', [{
+    kind:      'built-in-function',
+    scope:     GlobalScope,
+    used:      'always',
+    definedAt: BuiltIn,
+    name:      'print',
+    nodeId:    BuiltIn
   }]]
 ])
 

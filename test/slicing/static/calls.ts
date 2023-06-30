@@ -145,6 +145,15 @@ b <- function(f) {
         f()
     }
 b(a)`)
+    assertSliced('Directly call returned function', shell, `a <- function(x) {
+  b <- function() { function() { x } }
+  return(b())
+}
+a(3)()`, ['5@a'], `a <- function(x) {
+        b <- function() { function() { x } }
+        return(b())
+    }
+a(3)()`)
   })
   describe('Recursive functions', () => {
     const code = `f <- function() { f() }

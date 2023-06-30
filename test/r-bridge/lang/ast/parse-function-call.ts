@@ -230,6 +230,63 @@ describe("Parse function calls",
           ]
         })
       )
+      assertAst(
+        "Double call with only the second one being direct",
+        shell,
+        "a(1)(2)",
+        exprList({
+          type:           Type.FunctionCall,
+          flavour:        "unnamed",
+          location:       rangeFrom(1, 1, 1, 4),
+          lexeme:         "a(1)",
+          info:           {},
+          calledFunction: {
+            type:         Type.FunctionCall,
+            flavour:      "named",
+            functionName: {
+              type:      Type.Symbol,
+              location:  rangeFrom(1, 1, 1, 1),
+              lexeme:    "a",
+              content:   "a",
+              namespace: undefined,
+              info:      {}
+            },
+            location:  rangeFrom(1, 1, 1, 1),
+            lexeme:    "a",
+            arguments: [{
+              type:     Type.Argument,
+              location: rangeFrom(1, 3, 1, 3),
+              lexeme:   "1",
+              name:     undefined,
+              info:     {},
+              value:    {
+                type:     Type.Number,
+                location: rangeFrom(1, 3, 1, 3),
+                lexeme:   "1",
+                content:  numVal(1),
+                info:     {}
+              }
+            }],
+            info: {}
+          },
+          arguments: [
+            {
+              type:     Type.Argument,
+              location: rangeFrom(1, 6, 1, 6),
+              name:     undefined,
+              info:     {},
+              lexeme:   "2",
+              value:    {
+                type:     Type.Number,
+                location: rangeFrom(1, 6, 1, 6),
+                lexeme:   "2",
+                content:  numVal(2),
+                info:     {}
+              }
+            }
+          ]
+        })
+      )
     })
     describe("functions with explicit namespacing", () => {
       assertAst(

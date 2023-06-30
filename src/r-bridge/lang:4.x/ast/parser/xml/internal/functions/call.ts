@@ -40,7 +40,7 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
 
   if(namedSymbolContent.findIndex(x => x.name === Type.FunctionCall) < 0) {
     parseLog.trace(`is not named function call, as the name is not of type ${Type.FunctionCall}, but: ${namedSymbolContent.map(n => n.name).join(',')}`)
-    const mayResult = tryParseUnnamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content)
+    const mayResult = tryParseUnnamedFunctionCall(data, mappedWithName, location, content)
     if(mayResult === undefined) {
       return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
     }
@@ -67,10 +67,10 @@ function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData) {
   return parsedArguments
 }
 
-function tryParseUnnamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJson[], mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | undefined {
+function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | undefined {
   // maybe remove symbol-content again because i just use the root expr of mapped with name
-  if(symbolContent.length !== 3 || mappedWithName.length < 3) {
-    parseLog.trace(`expected unnamed function call to have 3 elements [like (<func>)], yet received ${JSON.stringify(symbolContent)}`)
+  if(mappedWithName.length < 3) {
+    parseLog.trace(`expected unnamed function call to have 3 elements [like (<func>)], yet received ${JSON.stringify(mappedWithName)}`)
     return undefined
   }
   if(mappedWithName[1].name !== Type.ParenLeft || mappedWithName[mappedWithName.length - 1].name !== Type.ParenRight) {

@@ -17,8 +17,8 @@ import {
 } from '../../src/dataflow'
 import { produceDataFlowGraph } from '../../src/dataflow'
 import { reconstructToCode } from '../../src/slicing/reconstruct'
-import { naiveStaticSlicing } from '../../src/slicing/static'
-import { SlicingCriterion, slicingCriterionToId } from '../../src/slicing/criteria'
+import { staticSlicing } from '../../src/slicing/static'
+import { SlicingCriteria, slicingCriterionToId } from '../../src/slicing/criteria'
 
 let defaultTokenMap: Record<string, string>
 
@@ -159,7 +159,7 @@ export const assertReconstructed = (name: string, shell: RShell, input: string, 
 }
 
 
-export const assertSliced = (name: string, shell: RShell, input: string, criteria: SlicingCriterion[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
+export const assertSliced = (name: string, shell: RShell, input: string, criteria: SlicingCriteria[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
   return it(`${JSON.stringify(criteria)} ${name}`, async function() {
     const ast = await retrieveAst(shell, input)
     const decoratedAst = decorateAst(ast, getId)
@@ -170,7 +170,7 @@ export const assertSliced = (name: string, shell: RShell, input: string, criteri
     try {
       const mappedIds = criteria.map(c => slicingCriterionToId(c, decoratedAst))
 
-      const sliced = naiveStaticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds.slice())
+      const sliced = staticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds.slice())
       const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
 
       assert.strictEqual(reconstructed, expected, `got: ${reconstructed}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(mappedIds, decoratedAst.idMap)}), url: ${graphToMermaidUrl(dataflow.graph, decoratedAst.idMap, sliced)}`)

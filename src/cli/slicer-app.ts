@@ -1,7 +1,7 @@
 import {
-  decorateAst, DecoratedAst,
-  getStoredTokenMap, NodeId,
-  NoInfo, ParentInformation, parse,
+  decorateAst,
+  getStoredTokenMap,
+  NoInfo, normalize,
   retrieveXmlFromRCode,
   RParseRequestFromFile,
   RShell
@@ -10,12 +10,11 @@ import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
 import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import fs from 'fs'
-import { naiveStaticSlicing } from '../slicing/static'
-import { assert } from 'chai'
-import { guard, isNotUndefined } from '../util/assert'
+import { staticSlicing } from '../slicing/static'
+import { guard } from '../util/assert'
 import { graphToMermaid, produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode } from '../slicing/reconstruct'
-import { SlicingCriterion, slicingCriterionToId } from '../slicing/criteria'
+import { convertAllSlicingCriteriaToIds, SlicingCriteria } from '../slicing/criteria'
 
 export const toolName = 'slicer'
 
@@ -73,14 +72,6 @@ const shell = new RShell()
 shell.tryToInjectHomeLibPath()
 
 
-function sliceAllCriteriaToIds(slices: SlicingCriterion[], decorated: DecoratedAst<ParentInformation>): NodeId[] {
-  return slices.map(l => slicingCriterionToId(l, decorated)).map((d, i) => {
-    assert(isNotUndefined(d), `all ids must be found, but not for id ${i}`)
-    console.log(`Slicing for ${JSON.stringify(decorated.idMap.get(d)?.lexeme)} (loc: ${JSON.stringify(decorated.idMap.get(d)?.location)}, from: ${slices[i]})`)
-    return d
-  })
-}
-
 interface SlicingMeasurements {
   astXmlRetrieval:     bigint,
   astXmlNormalization: bigint,
@@ -100,7 +91,7 @@ async function writeSliceForSingleFile(request: RParseRequestFromFile, tokens: R
     ensurePackageInstalled:  true
   }, shell)
   const astXmlRetrieval = process.hrtime.bigint()
-  const ast = await parse(astXml, tokens)
+  const ast = await normalize(astXml, tokens)
   const astXmlNormalization = process.hrtime.bigint()
 
   guard(options.criterion !== undefined, `criterion must be given`)
@@ -111,13 +102,14 @@ async function writeSliceForSingleFile(request: RParseRequestFromFile, tokens: R
   const slices = options.criterion.split(';').map(c => c.trim())
   const sliceDecode = process.hrtime.bigint()
 
-  const mappedIds = sliceAllCriteriaToIds(slices as SlicingCriterion[], decorated)
+  const mappedIds = convertAllSlicingCriteriaToIds(slices as SlicingCriteria, decorated)
+  // TODO: debugging output
   const sliceMapping = process.hrtime.bigint()
 
   const dataflow = produceDataFlowGraph(decorated)
   const dataflowCreation = process.hrtime.bigint()
 
-  const sliced = naiveStaticSlicing(dataflow.graph, decorated.idMap, mappedIds)
+  const sliced = staticSlicing(dataflow.graph, decorated.idMap, mappedIds.map(i => i.id))
   if(options.dataflow) {
     fs.writeFileSync(`${output}.dataflow`, graphToMermaid(dataflow.graph, decorated.idMap, undefined, undefined, sliced))
   }

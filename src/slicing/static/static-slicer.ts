@@ -37,7 +37,7 @@ function fingerprint(visited: NodeToSlice): Fingerprint {
  * <p>
  * The returned ids can be used to {@link reconstructToCode | reconstruct the slice to R code}.
  */
-export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowIdMap: DecoratedAstMap<OtherInfo>, id: NodeId[]) {
+export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowIdMap: DecoratedAstMap<OtherInfo>, id: NodeId[]): Set<NodeId> {
   guard(id.length > 0, `must have at least one seed id to calculate slice`)
   slicerLogger.trace(`calculating slice for ${id.length} seed ids: ${JSON.stringify(id)}`)
 

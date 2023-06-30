@@ -1,5 +1,5 @@
 import { type RShell } from "./shell"
-import { parseCSV, ts2r, XmlParserHooks, RExpressionList, parse } from './lang:4.x'
+import { parseCSV, ts2r, XmlParserHooks, RExpressionList, normalize } from './lang:4.x'
 import { startAndEndsWith } from '../util/strings'
 import { DeepPartial } from 'ts-essentials'
 import { guard } from '../util/assert'
@@ -67,7 +67,7 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
  */
 export async function retrieveAstFromRCode(request: RParseRequest, tokenMap: Record<string, string>, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> {
   const xml = await retrieveXmlFromRCode(request, shell)
-  return await parse(xml, tokenMap, hooks)
+  return await normalize(xml, tokenMap, hooks)
 }
 
 /**

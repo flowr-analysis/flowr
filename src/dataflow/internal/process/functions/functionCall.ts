@@ -1,6 +1,12 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { BuiltIn, IdentifierReference, overwriteEnvironments, resolveByName } from '../../../environments'
+import {
+  BuiltIn,
+  IdentifierReference,
+  overwriteEnvironments,
+  REnvironmentInformation,
+  resolveByName
+} from '../../../environments'
 import { NodeId, ParentInformation, RFunctionCall, RNodeWithParent, RParameter, Type } from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
 import {
@@ -21,6 +27,24 @@ function getLastNodeInGraph<OtherInfo>(functionName: DataflowInformation<OtherIn
   return functionNameId
 }
 
+function porcessArgumentsOfFuntionCall<OtherInfo>(args: DataflowInformation<OtherInfo & ParentInformation>[], finalEnv: REnvironmentInformation, finalGraph: DataflowGraph, callArgs: FunctionArgument[], functionRootId: NodeId) {
+  for (const arg of args) {
+    finalEnv = overwriteEnvironments(finalEnv, arg.environments)
+    finalGraph.mergeWith(arg.graph)
+    const argumentOutRefs = arg.out
+
+    guard(argumentOutRefs.length > 0, `Argument ${JSON.stringify(arg)} has no out references, but needs one for the unnamed arg`)
+    // if there are multiple, we still use the first one as it is the highest-one and therefore the most top-level arg reference
+    // multiple out references can occur if the argument itself is a function call
+    callArgs.push(argumentOutRefs[0])
+
+    // add an argument edge to the final graph
+    finalGraph.addEdge(functionRootId, argumentOutRefs[0], 'argument', 'always')
+    // TODO: bind the argument id to the corresponding argument within the function
+  }
+  return finalEnv
+}
+
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const named = functionCall.flavour === 'named'
   const functionName = processDataflowFor(named ? functionCall.functionName : functionCall.calledFunction, data)
@@ -34,7 +58,10 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   guard(functionNameId !== undefined, 'Function call name id not found')
 
   const functionRootId = functionCall.info.id
+  // TODO: split that up so that unnamed function calls will not be resolved!
+
   let functionCallName: string
+
   if(named) {
     functionCallName = functionCall.functionName.content
     dataflowLogger.debug(`Using ${functionRootId} (name: ${functionCallName}) as root for the function call`)
@@ -43,7 +70,10 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`)
     // we know, that it calls the toplevel:
     finalGraph.addEdge(functionRootId, functionCall.calledFunction.info.id, 'calls', 'always')
+    // keep the defined function
+    finalGraph.mergeWith(functionName.graph)
   }
+
   let finalEnv = functionName.environments
 
   const callArgs: FunctionArgument[] = []
@@ -59,21 +89,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   // finalGraph.addEdge(functionRootId, functionNameId, 'read', 'always')
 
   const resolvedDefinitions = resolveByName(functionCallName, data.activeScope, data.environments)
-
-  for(const arg of args) {
-    finalEnv = overwriteEnvironments(finalEnv, arg.environments)
-    finalGraph.mergeWith(arg.graph)
-    const argumentOutRefs = arg.out
-
-    guard(argumentOutRefs.length > 0, `Argument ${JSON.stringify(arg)} has no out references, but needs one for the unnamed arg`)
-    // if there are multiple, we still use the first one as it is the highest-one and therefore the most top-level arg reference
-    // multiple out references can occur if the argument itself is a function call
-    callArgs.push(argumentOutRefs[0])
-
-    // add an argument edge to the final graph
-    finalGraph.addEdge(functionRootId, argumentOutRefs[0], 'argument', 'always')
-    // TODO: bind the argument id to the corresponding argument within the function
-  }
+  finalEnv = porcessArgumentsOfFuntionCall(args, finalEnv, finalGraph, callArgs, functionRootId)
 
   // TODO:
   // finalGraph.addNode(functionCall.info.id, functionCall.functionName.content, finalEnv, down.activeScope, 'always')

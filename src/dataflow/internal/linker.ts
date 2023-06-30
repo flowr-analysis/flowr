@@ -55,8 +55,12 @@ function specialReturnFunction(info: DataflowGraphNodeFunctionCall, graph: Dataf
   }
 }
 
-export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][]): void {
-  for(const [id, info] of functionCalls) {
+/**
+ * Returns the called functions within the current graph, which can be used to merge the environments with the call
+ */
+export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][], thisGraph: DataflowGraph): DataflowGraphNodeInfo[] {
+  const calledFunctionDefinitions = []
+  for(const [id, info, nodeGraph] of functionCalls) {
     // TODO: special handling for others
     if(info.tag === 'function-call' && info.name === 'return') {
       specialReturnFunction(info, graph, id)
@@ -80,7 +84,11 @@ export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph, functio
       dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${defs.name}`)
       graph.addEdge(id, defs.id, 'calls', 'always')
     }
+    if(nodeGraph === thisGraph) {
+      calledFunctionDefinitions.push(...functionDefs.values())
+    }
   }
+  return calledFunctionDefinitions
 }
 
 

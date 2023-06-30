@@ -7,7 +7,7 @@ import { NodeId, ParentInformation, RExpressionList } from '../../../r-bridge'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import {
   IdentifierReference,
-  overwriteEnvironments,
+  overwriteEnvironments, popLocalEnvironment,
   REnvironmentInformation,
   resolveByName
 } from '../../environments'
@@ -15,6 +15,7 @@ import { linkFunctionCallExitPointsAndCalls, linkReadVariablesInSameScopeWithNam
 import { DefaultMap } from '../../../util/defaultmap'
 import { DataflowGraph } from '../../graph'
 import { dataflowLogger } from '../../index'
+import { guard } from '../../../util/assert'
 
 
 function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, data: DataflowProcessorInformation<OtherInfo>, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
@@ -104,10 +105,22 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     processNextExpression(processed, data, environments, listEnvironments, remainingRead, nextGraph)
     const functionCallIds = [...processed.graph.nodes(true)]
       .filter(([_,info]) => info.tag === 'function-call')
-    linkFunctionCallExitPointsAndCalls(nextGraph, functionCallIds)
+    const calledEnvs = linkFunctionCallExitPointsAndCalls(nextGraph, functionCallIds, processed.graph)
 
     // update the environments for the next iteration with the previous writes
     environments = overwriteEnvironments(environments, processed.environments)
+
+    // if the called function has global redefinitions, we have to keep them within our environment
+    for(const calledFn of calledEnvs) {
+      guard(calledFn.tag === 'function-definition', 'called function must call a function definition')
+      // only merge the environments they have in common
+      let environment = calledFn.environment
+      while(environment.level > environments.level) {
+        environment = popLocalEnvironment(environment)
+      }
+      environments = overwriteEnvironments(environments, environment)
+    }
+
     for(const { nodeId } of processed.out) {
       listEnvironments.add(nodeId)
     }

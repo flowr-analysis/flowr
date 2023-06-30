@@ -161,7 +161,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     tag:         'function-definition',
     id:          functionDefinition.info.id,
     name:        functionDefinition.info.id,
-    environment: popLocalEnvironment(data.environments),
+    environment: popLocalEnvironment(outEnvironment),
     scope:       data.activeScope,
     when:        'always',
     subflow:     flow,

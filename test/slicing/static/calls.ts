@@ -201,9 +201,9 @@ a <- function() { x <<- x + 5; cat(x) }
 x <- 3
 a()
 cat(x)`
-    /* assertSliced('But the global redefinition remains', shell, globalCode, ['5@x'], `a <- function() { x <<- x + 5; cat(x) }
+    assertSliced('But the global redefinition remains', shell, globalCode, ['5@x'], `a <- function() { x <<- x + 5; cat(x) }
 x <- 3
 a()
-cat(x)`) */
+cat(x)`)
   })
 }))

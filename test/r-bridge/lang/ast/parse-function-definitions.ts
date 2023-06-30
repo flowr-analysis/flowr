@@ -5,7 +5,7 @@ import { Type } from '../../../../src/r-bridge'
 
 // TODO: tests for returns
 describe("Parse function definitions", withShell((shell) => {
-  describe("without arguments", () => {
+  describe("without parameters", () => {
     const noop = "function() { }"
     assertAst(`noop - ${noop}`, shell, noop,
       exprList({
@@ -72,9 +72,9 @@ describe("Parse function definitions", withShell((shell) => {
       })
     )
   })
-  describe("with unnamed arguments", () => {
-    const oneArgument = "function(x) { }"
-    assertAst(`one argument - ${oneArgument}`, shell, oneArgument,
+  describe("with unnamed parameters", () => {
+    const oneParameter = "function(x) { }"
+    assertAst(`one parameter - ${oneParameter}`, shell, oneParameter,
       exprList({
         type:       Type.FunctionDefinition,
         location:   rangeFrom(1, 1, 1, 8),
@@ -90,8 +90,8 @@ describe("Parse function definitions", withShell((shell) => {
         }
       })
     )
-    const multipleArguments = "function(a,the,b) { b }"
-    assertAst(`multiple argument - ${multipleArguments}`, shell, multipleArguments,
+    const multipleParameters = "function(a,the,b) { b }"
+    assertAst(`multiple parameters - ${multipleParameters}`, shell, multipleParameters,
       exprList({
         type:       Type.FunctionDefinition,
         location:   rangeFrom(1, 1, 1, 8),
@@ -113,9 +113,9 @@ describe("Parse function definitions", withShell((shell) => {
       })
     )
   })
-  describe("with special arguments (...)", () => {
-    const asSingleArgument = "function(...) { }"
-    assertAst(`as single arg - ${asSingleArgument}`, shell, asSingleArgument,
+  describe("with special parameters (...)", () => {
+    const asSinglParameter = "function(...) { }"
+    assertAst(`as single arg - ${asSinglParameter}`, shell, asSinglParameter,
       exprList({
         type:       Type.FunctionDefinition,
         location:   rangeFrom(1, 1, 1, 8),
@@ -132,8 +132,8 @@ describe("Parse function definitions", withShell((shell) => {
       })
     )
 
-    const asFirstArgument = "function(..., a) { }"
-    assertAst(`as first arg - ${asFirstArgument}`, shell, asFirstArgument,
+    const asFirstParameters = "function(..., a) { }"
+    assertAst(`as first arg - ${asFirstParameters}`, shell, asFirstParameters,
       exprList({
         type:       Type.FunctionDefinition,
         location:   rangeFrom(1, 1, 1, 8),
@@ -153,8 +153,8 @@ describe("Parse function definitions", withShell((shell) => {
       })
     )
 
-    const asLastArgument = "function(a, the, ...) { ... }"
-    assertAst(`as last arg - ${asLastArgument}`, shell, asLastArgument,
+    const asLastParameter = "function(a, the, ...) { ... }"
+    assertAst(`as last arg - ${asLastParameter}`, shell, asLastParameter,
       exprList({
         type:       Type.FunctionDefinition,
         location:   rangeFrom(1, 1, 1, 8),
@@ -176,9 +176,9 @@ describe("Parse function definitions", withShell((shell) => {
       })
     )
   })
-  describe("with named arguments", () => {
-    const oneArgument = "function(x=3) { }"
-    assertAst(`one argument - ${oneArgument}`, shell, oneArgument,
+  describe("with named parameters", () => {
+    const oneParameter = "function(x=3) { }"
+    assertAst(`one parameter - ${oneParameter}`, shell, oneParameter,
       exprList({
         type:       Type.FunctionDefinition,
         location:   rangeFrom(1, 1, 1, 8),
@@ -203,8 +203,8 @@ describe("Parse function definitions", withShell((shell) => {
       })
     )
 
-    const multipleArguments = "function(a, x=3, huhu=\"hehe\") { x }"
-    assertAst(`multiple argument - ${multipleArguments}`, shell, multipleArguments,
+    const multipleParameters = "function(a, x=3, huhu=\"hehe\") { x }"
+    assertAst(`multiple parameter - ${multipleParameters}`, shell, multipleParameters,
       exprList({
         type:       Type.FunctionDefinition,
         location:   rangeFrom(1, 1, 1, 8),

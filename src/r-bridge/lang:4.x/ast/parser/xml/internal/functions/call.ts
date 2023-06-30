@@ -37,6 +37,7 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
   let result: RFunctionCall
 
   const namedSymbolContent = getWithTokenType(data.config.tokenMap, symbolContent)
+
   if(namedSymbolContent.findIndex(x => x.name === Type.FunctionCall) < 0) {
     parseLog.trace(`is not named function call, as the name is not of type ${Type.FunctionCall}`)
     const mayResult = tryParseUnnamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content)
@@ -67,7 +68,7 @@ function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData) {
 }
 
 function tryParseUnnamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJson[], mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | undefined {
-  if(symbolContent.length !== 3 || mappedWithName.length !== 3) {
+  if(symbolContent.length !== 3 || mappedWithName.length < 3) {
     parseLog.trace(`expected unnamed function call to have 3 elements [like (<func>)], yet received ${JSON.stringify(symbolContent)}`)
     return undefined
   }

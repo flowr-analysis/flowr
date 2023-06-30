@@ -175,90 +175,59 @@ describe("Parse function calls",
       assertAst(
         "Directly call with 2",
         shell,
-        "(function(x) { x + 1 })(2)",
+        "(function(x) { x })(2)",
         exprList({
-          type:         Type.FunctionCall,
-          flavour:      "named",
-          location:     rangeFrom(1, 1, 1, 1),
-          lexeme:       "f", // TODO: make this more sensible?
-          info:         {},
-          functionName: {
-            type:      Type.Symbol,
-            location:  rangeFrom(1, 1, 1, 1),
-            lexeme:    "f",
-            content:   "f",
-            namespace: undefined,
-            info:      {}
-          },
-          arguments: [
-            {
-              type:     Type.Argument,
-              location: rangeFrom(1, 3, 1, 3),
-              name:     undefined,
-              info:     {},
-              lexeme:   "1",
-              value:    {
-                type:     Type.Number,
-                location: rangeFrom(1, 3, 1, 3),
-                lexeme:   "1",
-                content:  numVal(1),
-                info:     {}
-              }
-            }, {
-              type:     Type.Argument,
-              location: rangeFrom(1, 6, 1, 6),
-              name:     {
+          type:           Type.FunctionCall,
+          flavour:        "unnamed",
+          location:       rangeFrom(1, 1, 1, 1),
+          lexeme:         "f",
+          info:           {},
+          calledFunction: {
+            type:       Type.FunctionDefinition,
+            location:   rangeFrom(1, 2, 1, 9),
+            lexeme:     "function",
+            parameters: [{
+              type:         Type.Parameter,
+              location:     rangeFrom(1, 2, 1, 9),
+              special:      false,
+              lexeme:       "x",
+              defaultValue: undefined,
+              name:         {
                 type:      Type.Symbol,
-                location:  rangeFrom(1, 6, 1, 6),
+                location:  rangeFrom(1, 1, 1, 1),
                 lexeme:    "x",
                 content:   "x",
                 namespace: undefined,
                 info:      {}
               },
-              lexeme: "x",
-              info:   {},
-              value:  {
+              info: {},
+            }],
+            body: {
+              type:      Type.Symbol,
+              location:  rangeFrom(1, 16, 1, 16),
+              lexeme:    "x",
+              content:   "x",
+              namespace: undefined,
+              info:      {}
+            },
+            info: {}
+          },
+          arguments: [
+            {
+              type:     Type.Argument,
+              location: rangeFrom(1, 21, 1, 21),
+              name:     undefined,
+              info:     {},
+              lexeme:   "2",
+              value:    {
                 type:     Type.Number,
-                location: rangeFrom(1, 8, 1, 8),
+                location: rangeFrom(1, 21, 1, 21),
                 lexeme:   "2",
                 content:  numVal(2),
                 info:     {}
               }
-            }, {
-              type:     Type.Argument,
-              location: rangeFrom(1, 11, 1, 11),
-              name:     undefined,
-              info:     {},
-              lexeme:   "4",
-              value:    {
-                type:     Type.Number,
-                location: rangeFrom(1, 11, 1, 11),
-                lexeme:   "4",
-                content:  numVal(4),
-                info:     {}
-              }
-            }, {
-              type:     Type.Argument,
-              location: rangeFrom(1, 14, 1, 14),
-              name:     {
-                type:      Type.Symbol,
-                location:  rangeFrom(1, 14, 1, 14),
-                lexeme:    "y",
-                content:   "y",
-                namespace: undefined,
-                info:      {}
-              },
-              lexeme: "y",
-              info:   {},
-              value:  {
-                type:     Type.Number,
-                location: rangeFrom(1, 16, 1, 16),
-                lexeme:   "3",
-                content:  numVal(3),
-                info:     {}
-              }
             }
-          ],
+          ]
         })
       )
     })

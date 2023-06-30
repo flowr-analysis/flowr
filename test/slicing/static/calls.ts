@@ -149,7 +149,7 @@ b(a)`)
   b <- function() { function() { x } }
   return(b())
 }
-a(3)()`, ['5@a'], `a <- function(x) {
+a(3)()`, ['$20' /* we can't directly slice the second call as the "a" name would take the inner call */], `a <- function(x) {
         b <- function() { function() { x } }
         return(b())
     }

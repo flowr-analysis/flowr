@@ -276,6 +276,7 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
     return plain(getLexeme(call))
   }
   const filteredArgs = args.filter(a => a.length > 0)
+  console.log(call.info.id, call.location, call.arguments, args, filteredArgs)
   if(functionName.length === 0 && filteredArgs.length === 0) {
     return []
   }
@@ -284,7 +285,10 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 
   if(args.length === 0) {
     guard(functionName.length === 1, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
-    guard(functionName[0].line.endsWith('()'), `by default we add '()' to function name on empty calls, but: ${JSON.stringify(functionName)}`)
+    if(!functionName[0].line.endsWith('()')) {
+      // add empty call braces if not present
+      functionName[0].line += '()'
+    }
     return [{ line: `${functionName[0].line}`, indent: functionName[0].indent }]
   } else {
     return plain(getLexeme(call))

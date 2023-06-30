@@ -142,7 +142,6 @@ u <- a()
 u()`)
     })
   })
-  // TODO: currently we do not perform argument matching, we do not know, that f is a function
   describe('Higher-order functions', () => {
     const code = `a <- function() { x <- 3; i }
 i <- 4

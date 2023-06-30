@@ -101,8 +101,11 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 
     dataflowLogger.trace(`expression ${expressionCounter} of ${expressions.length} has ${processed.activeNodes.length} active nodes`)
 
-
     processNextExpression(processed, data, environments, listEnvironments, remainingRead, nextGraph)
+    const functionCallIds = [...processed.graph.nodes(true)]
+      .filter(([_,info]) => info.tag === 'function-call')
+    linkFunctionCallExitPointsAndCalls(nextGraph, functionCallIds)
+
     // update the environments for the next iteration with the previous writes
     environments = overwriteEnvironments(environments, processed.environments)
     for(const { nodeId } of processed.out) {
@@ -110,7 +113,6 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     }
   }
 
-  linkFunctionCallExitPointsAndCalls(nextGraph)
 
   // now, we have to link same reads
   linkReadVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))

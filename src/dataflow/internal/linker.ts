@@ -55,12 +55,8 @@ function specialReturnFunction(info: DataflowGraphNodeFunctionCall, graph: Dataf
   }
 }
 
-export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph): void {
-  const calls = [...graph.nodes(true)]
-    .filter(([_,info]) => info.tag === 'function-call')
-
-
-  for(const [id, info] of calls) {
+export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][]): void {
+  for(const [id, info] of functionCalls) {
     // TODO: special handling for others
     if(info.tag === 'function-call' && info.name === 'return') {
       specialReturnFunction(info, graph, id)

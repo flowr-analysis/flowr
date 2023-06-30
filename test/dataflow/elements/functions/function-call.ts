@@ -1,6 +1,6 @@
 import { assertDataflow, withShell } from '../../../helper/shell'
 import { DataflowGraph, initializeCleanEnvironments, LocalScope } from '../../../../src/dataflow'
-import { define, pushLocalEnvironment } from '../../../../src/dataflow/environments'
+import { define, popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/argument'
 import { UnnamedFunctionCallPrefix } from '../../../../src/dataflow/internal/process/functions/functionCall'
 
@@ -35,12 +35,13 @@ describe('Function Call', withShell(shell => {
             nodeId: '11', name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, used: 'always'
           }] })
         .addNode({
-          tag:        'function-definition',
-          id:         '7',
-          name:       '7',
-          scope:      LocalScope,
-          exitPoints: [ '6' ],
-          subflow:    {
+          tag:         'function-definition',
+          id:          '7',
+          name:        '7',
+          scope:       LocalScope,
+          exitPoints:  [ '6' ],
+          environment: popLocalEnvironment(envWithXParamDefined),
+          subflow:     {
             out:          [],
             in:           [],
             activeNodes:  [],

@@ -120,8 +120,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
         while(current !== undefined) {
           for(const definitions of current.memory.values()) {
             for(const def of definitions) {
-              def.definedAt = functionCall
-              nextGraph.addEdge(def.nodeId, functionCall, 'defined-by-on-call', def.used)
+              nextGraph.addEdge(def.nodeId, functionCall, 'side-effect-on-call', def.used)
             }
           }
           current = current.parent

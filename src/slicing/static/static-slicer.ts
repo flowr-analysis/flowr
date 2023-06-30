@@ -70,9 +70,9 @@ export function naiveStaticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, data
     const currentNode = dataflowIdMap.get(current.id)
     guard(currentNode !== undefined, () => `id: ${current.id} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
 
-    const liveEdges = [...currentInfo[1]].filter(([_, e]) => e.types.has('read') || e.types.has('defined-by') || e.types.has('argument') || e.types.has('calls') || e.types.has('relates') || (!current.onlyForSideEffects && e.types.has('returns')) || e.types.has('defines-on-call') || e.types.has('defined-by-on-call'))
+    const liveEdges = [...currentInfo[1]].filter(([_, e]) => e.types.has('read') || e.types.has('defined-by') || e.types.has('argument') || e.types.has('calls') || e.types.has('relates') || (!current.onlyForSideEffects && e.types.has('returns')) || e.types.has('defines-on-call') || e.types.has('side-effect-on-call'))
     for (const [target, edge] of liveEdges) {
-      const envEdge = { id: target, baseEnvironment: current.baseEnvironment, onlyForSideEffects: edge.types.has('defined-by-on-call') }
+      const envEdge = { id: target, baseEnvironment: current.baseEnvironment, onlyForSideEffects: edge.types.has('side-effect-on-call') }
       if (!visited.has(fingerprint(envEdge))) {
         slicerLogger.trace(`adding id: ${target} to visit queue`)
         visitQueue.push(envEdge)

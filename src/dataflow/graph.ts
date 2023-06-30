@@ -24,6 +24,7 @@ export type DataflowGraphEdgeType =
     | /** The edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
     | /** Similar to `same-read-read` but for def-def constructs without a read in-between */ 'same-def-def'
     | /** Formal used as argument to a function call */ 'argument'
+    | /** The edge determines that the source is a side effect that happens when the target is called */ 'side-effect-on-call'
     | /** The edge determines that the source calls the target */ 'calls'
     | /** The source and edge relate to each other bidirectionally */ 'relates'
     | /** The source returns target on call */ 'returns'

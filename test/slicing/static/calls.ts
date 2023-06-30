@@ -1,7 +1,5 @@
 import { assertSliced, withShell } from '../../helper/shell'
 
-// TODO: test something like a <- function() { x };  x <- 3; y <- 2; a()
-
 describe('With Call', withShell(shell => {
   describe('Simple', () => {
     const code = `i <- 4
@@ -70,6 +68,14 @@ i <- 4
 a(5)`)
       }
     })
+  })
+  describe('Functions with multiple definitions', () => {
+    const code = `a <- b <- function() { x }
+x <- 2
+a()
+b()`
+    // assertSliced('Include only a-definition', shell, code, ['3@a'], code)
+    assertSliced('Include only b-definition', shell, code, ['4@b'], code)
   })
   describe('Functions with named arguments', () => {
     const code = `a <- function(x=4) { x }

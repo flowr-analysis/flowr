@@ -173,9 +173,9 @@ a(i)`, new DataflowGraph()
       .addEdge('8', '4', 'returns', 'always')
       .addEdge('7', '0', 'defines-on-call', 'always')
     // TODO: parse OP-Lambda
-    /*    assertDataflow('Calling with constant argument using lambda', shell, `(\\(x) { x + 1 })(2)`,
+    assertDataflow('Calling with constant argument using lambda', shell, `(\\(x) { x + 1 })(2)`,
       outGraph
-    )*/
+    )
     assertDataflow('Calling with constant argument', shell, `(function(x) { x + 1 })(2)`,
       outGraph
     )

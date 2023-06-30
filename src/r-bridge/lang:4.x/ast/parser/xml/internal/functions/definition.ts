@@ -20,7 +20,7 @@ import { log } from '../../../../../../../util/log'
  */
 export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionDefinition | undefined {
   const fnBase = mappedWithName[0]
-  if(fnBase.name !== Type.FunctionDefinition) {
+  if(fnBase.name !== Type.FunctionDefinition && fnBase.name !== Type.LambdaFunctionDefinition) {
     parseLog.trace(`expected function definition to be identified by keyword, yet received ${JSON.stringify(fnBase)}`)
     return executeUnknownHook(data.hooks.functions.onFunctionDefinition.unknown, data, mappedWithName)
   }

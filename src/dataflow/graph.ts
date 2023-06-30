@@ -481,7 +481,7 @@ function displayEnvReplacer(key: any, value: any): any {
 
 function equalEdges(id: NodeId, our: [NodeId, DataflowGraphEdge][], other: [NodeId, DataflowGraphEdge][]): boolean {
   if(our.length !== other.length) {
-    dataflowLogger.warn(`total edge size does not match: ${our.length} vs ${other.length}`)
+    dataflowLogger.warn(`total edge size for ${id} does not match: ${our.length} vs ${other.length} (${JSON.stringify(our, displayEnvReplacer)}, ${JSON.stringify(other, displayEnvReplacer)})`)
     return false
   }
   // order independent compare

@@ -1,7 +1,7 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import {
-  BuiltIn,
+  BuiltIn, IdentifierDefinition,
   IdentifierReference,
   overwriteEnvironments,
   REnvironmentInformation,
@@ -43,6 +43,29 @@ function porcessArgumentsOfFuntionCall<OtherInfo>(args: DataflowInformation<Othe
     // TODO: bind the argument id to the corresponding argument within the function
   }
   return finalEnv
+}
+
+function linkArgumentsForAllNamedArguments<OtherInfo>(resolvedDefinitions: IdentifierDefinition[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionCallName: string, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph) {
+  const trackCallIds = resolvedDefinitions.map(r => r.definedAt)
+
+  // we get them by just choosing the rhs of the definition - TODO: this should be improved - maybe by a second call track
+  const allLinkedFunctions: (RNodeWithParent | undefined)[] = trackCallIds.filter(i => i !== BuiltIn).map(id => data.completeAst.idMap.get(id))
+
+  for (const linkedFunctionBase of allLinkedFunctions) {
+    guard(linkedFunctionBase !== undefined, `A function definition in ${JSON.stringify(trackCallIds)} not found in ast`)
+    if (linkedFunctionBase.type !== Type.BinaryOp) {
+      dataflowLogger.trace(`function call definition base ${functionCallName} does not lead to an assignment (${functionRootId}) but got ${linkedFunctionBase.type}`)
+      continue
+    }
+    const linkedFunction = linkedFunctionBase.rhs
+
+    if (linkedFunction.type !== Type.FunctionDefinition) {
+      dataflowLogger.trace(`function call definition base ${functionCallName} does not lead to a function definition (${functionRootId}) but got ${linkedFunction.type}`)
+      continue
+    }
+    dataflowLogger.trace(`linking arguments for ${functionCallName} (${functionRootId}) to ${JSON.stringify(linkedFunction.location)}`)
+    linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph)
+  }
 }
 
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
@@ -88,33 +111,23 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   })
   // finalGraph.addEdge(functionRootId, functionNameId, 'read', 'always')
 
-  const resolvedDefinitions = resolveByName(functionCallName, data.activeScope, data.environments)
   finalEnv = porcessArgumentsOfFuntionCall(args, finalEnv, finalGraph, callArgs, functionRootId)
 
   // TODO:
   // finalGraph.addNode(functionCall.info.id, functionCall.functionName.content, finalEnv, down.activeScope, 'always')
   // call links are added on expression level
 
-  if(resolvedDefinitions !== undefined) {
-    const trackCallIds = resolvedDefinitions.map(r => r.definedAt)
-
-    // we get them by just choosing the rhs of the definition - TODO: this should be improved - maybe by a second call track
-    const allLinkedFunctions: (RNodeWithParent | undefined)[] = trackCallIds.filter(i => i !== BuiltIn).map(id => data.completeAst.idMap.get(id))
-
-    for(const linkedFunctionBase of allLinkedFunctions) {
-      guard(linkedFunctionBase !== undefined, `A function definition in ${JSON.stringify(trackCallIds)} not found in ast`)
-      if(linkedFunctionBase.type !== Type.BinaryOp) {
-        dataflowLogger.trace(`function call definition base ${functionCallName} does not lead to an assignment (${functionRootId}) but got ${linkedFunctionBase.type}`)
-        continue
-      }
-      const linkedFunction = linkedFunctionBase.rhs
-
-      if(linkedFunction.type !== Type.FunctionDefinition) {
-        dataflowLogger.trace(`function call definition base ${functionCallName} does not lead to a function definition (${functionRootId}) but got ${linkedFunction.type}`)
-        continue
-      }
-      dataflowLogger.trace(`linking arguments for ${functionCallName} (${functionRootId}) to ${JSON.stringify(linkedFunction.location)}`)
-      linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph)
+  if(named) {
+    const resolvedDefinitions = resolveByName(functionCallName, data.activeScope, data.environments)
+    if (resolvedDefinitions !== undefined) {
+      linkArgumentsForAllNamedArguments(resolvedDefinitions, data, functionCallName, functionRootId, callArgs, finalGraph)
+    } else {
+      dataflowLogger.debug(`Could not resolve function call ${functionCallName} (${functionRootId})`)
+    }
+  } else {
+    // TODO: indirect parameter tracking!
+    if(functionCall.calledFunction.type === Type.FunctionDefinition) {
+      linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph)
     }
   }
 

@@ -443,4 +443,32 @@ a(,3)`, new DataflowGraph()
       .addEdge('4', '3', 'read', 'always')
     )
   })
+  describe('Define in parameters', () => {
+    assertDataflow(`Support assignments in function calls`, shell, `foo(x <- 3); x`, new DataflowGraph()
+      .addNode({
+        tag:   'function-call',
+        id:    '5',
+        name:  'foo',
+        scope: LocalScope,
+        args:  [
+          { nodeId: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, used: 'always' }
+        ]
+      })
+      .addNode({ tag: 'use', id: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope })
+      .addNode({ tag: 'variable-definition', id: '1', name: 'x', scope: LocalScope })
+      .addNode({
+        tag:         'use',
+        id:          '6',
+        name:        'x',
+        scope:       LocalScope,
+        environment: define(
+          { nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '3' },
+          LocalScope,
+          initializeCleanEnvironments()
+        ) })
+      .addEdge('5', '4', 'argument', 'always')
+      .addEdge('4', '1', 'read', 'always')
+      .addEdge('6', '1', 'read', 'always')
+    )
+  })
 }))

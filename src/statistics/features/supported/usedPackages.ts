@@ -38,7 +38,7 @@ const withinApply: Query = xpath.parse(`
     /../..
 `)
 
-// horribles ways O found exploratively like loading within `sapply`
+// horrible ways I found exploratively like loading within `sapply`
 const libraryOrRequire: Query = xpath.parse(`
   //SYMBOL_FUNCTION_CALL[text() = $variable]
     /parent::expr

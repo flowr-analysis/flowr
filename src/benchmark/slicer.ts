@@ -134,7 +134,7 @@ export class Slicer {
     const stats: PerSliceStats = {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       measurements:      undefined as never,
-      slicingCriteria,
+      slicingCriteria:   [],
       reconstructedCode: ''
     }
     this.perSliceMeasurements.set(slicingCriteria, stats)
@@ -143,6 +143,7 @@ export class Slicer {
       'decode slicing criterion',
       () => convertAllSlicingCriteriaToIds(slicingCriteria, this.decoratedAst as DecoratedAst)
     )
+    stats.slicingCriteria = mappedCriteria
 
     const mappedIds = mappedCriteria.map(c => c.id)
 

@@ -1,5 +1,5 @@
-import { SlicingCriteria } from '../slicing/criteria'
-import { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge'
+import { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criteria'
+import { NodeId, RParseRequestFromFile, RParseRequestFromText } from '../r-bridge'
 
 export type CommonSlicerMeasurements = 'initialize R session'
   | 'inject home path'
@@ -20,7 +20,7 @@ export type ElapsedTime = bigint
 
 export interface PerSliceStats {
   measurements:      Map<PerSliceMeasurements, ElapsedTime>
-  slicingCriteria:   SlicingCriteria
+  slicingCriteria:   { criterion: SingleSlicingCriterion, id: NodeId }[]
   reconstructedCode: string
   /* TODO: slicedOutput:    Set<NodeId>
    */

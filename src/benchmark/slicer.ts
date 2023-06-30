@@ -11,63 +11,18 @@ import {
   normalize,
   retrieveXmlFromRCode,
   RExpressionList,
-  RParseRequest,
+  RParseRequestFromFile, RParseRequestFromText,
   RShell
 } from '../r-bridge'
-import { Measurements } from './stopwatch'
+import { IStoppableStopwatch, Measurements } from './stopwatch'
 import { guard } from '../util/assert'
 import { DataflowInformation } from '../dataflow/internal/info'
 import { produceDataFlowGraph } from '../dataflow'
 import { convertAllSlicingCriteriaToIds, SlicingCriteria } from '../slicing/criteria'
 import { staticSlicing } from '../slicing/static'
 import { reconstructToCode } from '../slicing/reconstruct'
+import { CommonSlicerMeasurements, ElapsedTime, PerSliceMeasurements, PerSliceStats, SlicerStats } from './stats'
 
-
-/*
-export const SlicerMeasurements: MergeableRecord = {
-
-}
-*/
-
-// TODO: total
-export type CommonSlicerMeasurements = 'initialize R session'
-  | 'inject home path'
-  | 'ensure installation of xmlparsedata'
-  | 'retrieve token map'
-  | 'retrieve xml from R code'
-  | 'normalize R ast'
-  | 'decorate R ast'
-  | 'produce dataflow information'
-
-export type PerSliceMeasurements = 'decode slicing criterion'
-  | 'static slicing'
-  | 'reconstruct code'
-
-interface PerSliceStats {
-  measurements:    Measurements<PerSliceMeasurements>
-  slicingCriteria: SlicingCriteria
-  /* TODO: slicedOutput:    Set<NodeId>
-  reconstructed:   string
-   */
-}
-
-interface SlicerStats {
-  commonMeasurements:   Measurements<CommonSlicerMeasurements>
-  perSliceMeasurements: Map<SlicingCriteria, PerSliceStats>
-  request:              RParseRequest
-  input: {
-    numberOfLines:            number
-    numberOfCharacters:       number
-    numberOfRTokens:          number
-    numberOfNormalizedTokens: number
-  }
-  dataflow: {
-    numberOfNodes:               number
-    numberOfEdges:               number
-    numberOfCalls:               number
-    numberOfFunctionDefinitions: number
-  }
-}
 
 
 /**
@@ -75,6 +30,7 @@ interface SlicerStats {
  * It holds its own {@link RShell} instance, maintains a cached dataflow and keeps measurements.
  *
  * Make sure to call {@link init} to initialize the slicer, before calling {@link slice}.
+ * After slicing, call {@link finish} to close the R session and retrieve the stats.
  */
 export class Slicer {
   /** Measures all data that is recorded *once* per slicer (complete setup up to the dataflow graph creation) */
@@ -83,13 +39,15 @@ export class Slicer {
   private readonly session: RShell
   private stats:            SlicerStats | undefined
   private tokenMap:         Record<string, string> | undefined
-  private usedRequest:      RParseRequest | undefined
+  private usedRequest:      RParseRequestFromFile | RParseRequestFromText | undefined
   private loadedXml:        string | undefined
   private normalizedAst:    RExpressionList | undefined
   private decoratedAst:     DecoratedAst | undefined
   private dataflow:         DataflowInformation | undefined
+  private totalStopwatch:   IStoppableStopwatch
 
   constructor() {
+    this.totalStopwatch = this.commonMeasurements.start('total')
     this.session = this.commonMeasurements.measure(
       'initialize R session',
       () => new RShell()
@@ -104,7 +62,7 @@ export class Slicer {
    * Initialize the slicer on the given request.
    * Can only be called once for each instance.
    */
-  public async init(request: RParseRequest) {
+  public async init(request: RParseRequestFromFile | RParseRequestFromText) {
     guard(this.stats === undefined, 'cannot initialize the slicer twice')
 
     this.usedRequest = request
@@ -144,7 +102,7 @@ export class Slicer {
     )
 
     this.stats = {
-      commonMeasurements:   this.commonMeasurements,
+      commonMeasurements:   new Map<CommonSlicerMeasurements, ElapsedTime>(),
       perSliceMeasurements: this.perSliceMeasurements,
       request,
       input:                {
@@ -164,14 +122,20 @@ export class Slicer {
     }
   }
 
-  public slice(slicingCriteria: SlicingCriteria) {
+  /**
+   * Slice for the given {@link SlicingCriteria}.
+   * @see SingleSlicingCriterion
+   */
+  public slice(...slicingCriteria: SlicingCriteria) {
     guard(this.stats !== undefined, 'need to call init before slice!')
     guard(!this.perSliceMeasurements.has(slicingCriteria), 'do not slice the same criteria combination twice')
 
     const measurements = new Measurements<PerSliceMeasurements>()
     const stats: PerSliceStats = {
-      measurements,
-      slicingCriteria
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      measurements:      undefined as never,
+      slicingCriteria,
+      reconstructedCode: ''
     }
     this.perSliceMeasurements.set(slicingCriteria, stats)
 
@@ -191,15 +155,26 @@ export class Slicer {
       )
     )
 
-    const reconstructedCode = measurements.measure(
+    stats.reconstructedCode = measurements.measure(
       'reconstruct code',
       () => reconstructToCode<NoInfo>(this.decoratedAst as DecoratedAst, slicedOutput)
     )
+
+    stats.measurements = measurements.get()
     // TODO: end statistics
   }
 
-  public getStats(): SlicerStats {
+  /**
+   * Retrieves the final stats and closes the shell session.
+   */
+  public finish(): SlicerStats {
     guard(this.stats !== undefined, 'need to call init before getStats!')
+    this.commonMeasurements.measure(
+      'close R session',
+      () => this.session.close()
+    )
+    this.totalStopwatch.stop()
+    this.stats.commonMeasurements = this.commonMeasurements.get()
     return this.stats
   }
 }

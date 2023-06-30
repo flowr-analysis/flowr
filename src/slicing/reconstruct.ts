@@ -262,10 +262,11 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
       { line: '}', indent: 0 }
     ]
   } else {
-    // unknown
+    // unknown -> we add the braces just to be sure
     return [
-      { line: `function(${parameters})`, indent: 0 },
-      ...indentBy(body, 1)
+      { line: `function(${parameters}) {`, indent: 0 },
+      ...indentBy(body, 1),
+      { line: '}', indent: 0 }
     ]
   }
 

@@ -213,5 +213,37 @@ cat(x)`
     assertSliced('The local assignment is only needed if the global reads', shell, globalCodeWithoutLocal, ['5@x'], `a <- function() { x <<- 5 }
 a()
 cat(x)`)
+
+    assertSliced('Must work with nested globals', shell, `a <- function() { function(b) { x <<- b } }
+y <- 5
+x <- 2
+a()(y)
+cat(x)`, ['5@x'], `a <- function() { function(b) { x <<- b } }
+y <- 5
+a()(y)
+cat(x)`)
+
+    assertSliced('Must work with nested globals and known assignments not-happening', shell, `a <- function() { function(b) { if(FALSE) { x <<- b } } }
+y <- 5
+x <- 2
+a()(y)
+cat(x)`, ['5@x'], `x <- 2
+cat(x)`)
+
+    assertSliced('Must work with nested globals and maybe assignments', shell, `a <- function() { function(b) { if(runif() > .5) { x <<- b } } }
+y <- 5
+x <- 2
+a()(y)
+cat(x)`, ['5@x'], `a <- function() {
+        function(b) {
+            if(runif() > .5) {
+                x <<- b
+            }
+        }
+    }
+y <- 5
+x <- 2
+a()(y)
+cat(x)`)
   })
 }))

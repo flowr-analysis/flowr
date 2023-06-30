@@ -297,7 +297,7 @@ export class DataflowGraph {
     // deep clone environment
     const environment = node.environment === undefined ? DEFAULT_ENVIRONMENT : cloneEnvironments(node.environment)
     const when = node.when ?? 'always'
-    this.graphNodes.set(node.id, { ...node, when, environment, edges: [] })
+    this.graphNodes.set(node.id, { ...node, when, environment })
     return this
   }
 
@@ -558,8 +558,8 @@ function equalNodes(our: Map<NodeId, DataflowGraphNodeInfo>, other: Map<NodeId, 
 
 
 function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeInfo): DataflowGraphNodeInfo {
-  guard(current.tag === next.tag, 'nodes to be joined for the same id must have the same tag')
-  guard(current.name === next.name, 'nodes to be joined for the same id must have the same name')
+  guard(current.tag === next.tag, () => `nodes to be joined for the same id must have the same tag, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`)
+  guard(current.name === next.name, () => `nodes to be joined for the same id must have the same name, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`)
   if(current.tag === 'variable-definition' || current.tag === 'function-definition') {
     guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same definedAtPosition')
   }

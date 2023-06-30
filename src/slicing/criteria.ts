@@ -3,7 +3,7 @@ import { slicerLogger } from './static'
 import { SourcePosition } from '../util/range'
 
 /** Either `line:column`, `line@variable-name`, or `$id` */
-export type SlicingCriterion = `${number}:${number}` | `${number}@${string}` | `${number}`
+export type SlicingCriterion = `${number}:${number}` | `${number}@${string}` | `$${number}`
 
 /**
  * Thrown if the given slicing criteria can not be found

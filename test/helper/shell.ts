@@ -105,7 +105,8 @@ export const retrieveAst = async(shell: RShell, input: string, hooks?: DeepParti
 
 /** call within describeSession */
 export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList): Mocha.Test => {
-  return it(name, async function() {
+  // the ternary operator is to support the legacy way i wrote these tests - by mirroring the input within the name
+  return it(name === input ? name : `${name} (input: ${input})`, async function() {
     const ast = await retrieveAst(shell, input)
     assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
   })
@@ -126,6 +127,7 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
   it(`${name} (input: ${JSON.stringify(input)})`, async function() {
     const ast = await retrieveAst(shell, input)
     const decoratedAst = decorateAst(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
+
     // TODO: use both info
     const { graph } = produceDataFlowGraph(decoratedAst, LocalScope)
 

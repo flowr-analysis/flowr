@@ -145,6 +145,17 @@ b <- function(f) {
         f()
     }
 b(a)`)
+    assertSliced('Directly call returned function', shell, `m <- 12
+a <- function(x) {
+  b <- function() { function() { x } }
+  return(b())
+}
+a(m)()`, ['$23' /* we can't directly slice the second call as the "a" name would take the inner call */], `m <- 12
+a <- function(x) {
+        b <- function() { function() { x } }
+        return(b())
+    }
+a(m)()`)
   })
   describe('Recursive functions', () => {
     const code = `f <- function() { f() }

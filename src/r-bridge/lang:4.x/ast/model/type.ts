@@ -49,6 +49,7 @@ export const enum Type {
   Comma = ",",
   FunctionCall = "SYMBOL_FUNCTION_CALL",
   FunctionDefinition = "FUNCTION",
+  LambdaFunctionDefinition = "\\\\",
   SymbolPackage = "SYMBOL_PACKAGE",
   NamespaceGet = "NS_GET",
   Break = "BREAK",

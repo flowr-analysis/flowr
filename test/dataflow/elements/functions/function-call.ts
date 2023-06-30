@@ -2,6 +2,7 @@ import { assertDataflow, withShell } from '../../../helper/shell'
 import { DataflowGraph, initializeCleanEnvironments, LocalScope } from '../../../../src/dataflow'
 import { define, pushLocalEnvironment } from '../../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/argument'
+import { UnnamedFunctionCallPrefix } from '../../../../src/dataflow/internal/process/functions/functionCall'
 
 describe('Function Call', withShell(shell => {
   describe('Calling previously defined functions', () => {
@@ -129,6 +130,123 @@ a(i)`, new DataflowGraph()
       .addEdge('18', '4', 'defines-on-call', 'always')
     )
   })
+
+  describe('Directly calling a function', () => {
+    const envWithXParameter = define(
+      {nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '1' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments())
+    )
+    const outGraph = new DataflowGraph()
+      .addNode({
+        tag:  'function-call',
+        id:   '8',
+        name: `${UnnamedFunctionCallPrefix}8`,
+        args: [
+          { nodeId: '7', name: `${UnnamedArgumentPrefix}7`, scope: LocalScope, used: 'always' }
+        ]
+      })
+      .addNode({
+        tag:         'function-definition',
+        id:          '5',
+        name:        '5',
+        environment: initializeCleanEnvironments(),
+        scope:       LocalScope,
+        exitPoints:  [ '4' ],
+        subflow:     {
+          out:          [],
+          in:           [],
+          activeNodes:  [],
+          scope:        LocalScope,
+          environments: envWithXParameter,
+          graph:        new DataflowGraph()
+            .addNode({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) })
+            .addNode({ tag: 'use', id: '2', name: 'x', environment: envWithXParameter })
+            .addNode({ tag: 'exit-point', id: '4', name: '+', environment: envWithXParameter })
+            .addEdge('2', '4', 'relates', 'always')
+            .addEdge('2', '0', 'read', 'always')
+        }
+      })
+      .addNode({ tag: 'use', id: '7', name: `${UnnamedArgumentPrefix}7`})
+      .addEdge('8', '7', 'argument', 'always')
+      .addEdge('8', '5', 'calls', 'always')
+      .addEdge('8', '4', 'returns', 'always')
+      .addEdge('7', '0', 'defines-on-call', 'always')
+    // TODO: parse OP-Lambda
+    assertDataflow('Calling with constant argument using lambda', shell, `(\\(x) { x + 1 })(2)`,
+      outGraph
+    )
+    assertDataflow('Calling with constant argument', shell, `(function(x) { x + 1 })(2)`,
+      outGraph
+    )
+
+    const envWithADefined = define(
+      {nodeId: '0', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '4' },
+      LocalScope,
+      initializeCleanEnvironments()
+    )
+
+    assertDataflow('Calling a function which returns another', shell, `a <- function() { function() { 42 } }
+a()()`,
+    new DataflowGraph()
+      .addNode({
+        tag:         'function-call',
+        id:          '7',
+        name:        `${UnnamedFunctionCallPrefix}7`,
+        environment: envWithADefined,
+        args:        []
+      })
+      .addNode({
+        tag:         'function-call',
+        id:          '6',
+        name:        'a',
+        environment: envWithADefined,
+        args:        []
+      })
+      .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
+      .addNode({
+        tag:         'function-definition',
+        id:          '3',
+        name:        '3',
+        environment: initializeCleanEnvironments(),
+        scope:       LocalScope,
+        exitPoints:  [ '2' ],
+        subflow:     {
+          out:          [],
+          in:           [],
+          activeNodes:  [],
+          scope:        LocalScope,
+          environments: pushLocalEnvironment(initializeCleanEnvironments()),
+          graph:        new DataflowGraph()
+            .addNode({
+              tag:         'function-definition',
+              id:          '2',
+              name:        '2',
+              environment: pushLocalEnvironment(initializeCleanEnvironments()),
+              scope:       LocalScope,
+              exitPoints:  [ '1' ],
+              subflow:     {
+                out:          [],
+                in:           [],
+                activeNodes:  [],
+                scope:        LocalScope,
+                environments: pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
+                graph:        new DataflowGraph()
+                  .addNode({ tag: 'exit-point', id: '1', name: '42', environment: pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())) })
+              }
+            })
+        }
+      })
+      .addEdge('7', '6', 'calls', 'always')
+      .addEdge('6', '0', 'read', 'always')
+      .addEdge('0', '3', 'defined-by', 'always')
+      .addEdge('6', '3', 'calls', 'always')
+      .addEdge('6', '2', 'returns', 'always')
+      .addEdge('7', '2', 'calls', 'always')
+      .addEdge('7', '1', 'returns', 'always')
+    )
+  })
+
 
   describe('Argument which is expression', () => {
     assertDataflow(`Calling with 1 + x`, shell, `foo(1 + x)`,

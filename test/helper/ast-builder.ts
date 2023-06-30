@@ -12,13 +12,12 @@ export function numVal(value: number, markedAsInt = false, complexNumber = false
 
 export function parameter(name: string, location: SourceRange, defaultValue?: RNode, special = false): RParameter  {
   return {
-    type:    Type.Parameter,
+    type:   Type.Parameter,
     location,
     special,
-    lexeme:  name,
-    content: name,
+    lexeme: name,
     defaultValue,
-    name:    {
+    name:   {
       type:      Type.Symbol,
       location,
       lexeme:    name,

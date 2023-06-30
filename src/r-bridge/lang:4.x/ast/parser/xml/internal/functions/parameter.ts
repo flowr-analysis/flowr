@@ -40,7 +40,6 @@ export function tryToParseParameter(data: ParserData, objs: NamedXmlBasedJson[])
   const result: RParameter = {
     type:    Type.Parameter,
     location,
-    content,
     special: content === '...',
     lexeme:  content,
     name:    {

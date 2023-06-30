@@ -284,7 +284,10 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 
   if(args.length === 0) {
     guard(functionName.length === 1, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
-    guard(functionName[0].line.endsWith('()'), `by default we add '()' to function name on empty calls, but: ${JSON.stringify(functionName)}`)
+    if(!functionName[0].line.endsWith('()')) {
+      // add empty call braces if not present
+      functionName[0].line += '()'
+    }
     return [{ line: `${functionName[0].line}`, indent: functionName[0].indent }]
   } else {
     return plain(getLexeme(call))
@@ -307,7 +310,7 @@ export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
 
 const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
 export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
-  if(node.type !== Type.FunctionCall) {
+  if(node.type !== Type.FunctionCall || node.flavour !== 'named') {
     return false
   }
   return libraryFunctionCall.test(node.functionName.content)

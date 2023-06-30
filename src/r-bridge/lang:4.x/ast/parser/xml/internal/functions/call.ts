@@ -1,5 +1,5 @@
 import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
-import { guard, isNotUndefined } from '../../../../../../../util/assert'
+import { guard } from '../../../../../../../util/assert'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseLog } from '../../parser'

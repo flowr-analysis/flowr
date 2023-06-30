@@ -42,12 +42,12 @@ function linkLowestClosureVariables<OtherInfo>(subgraph: DataflowGraph, outEnvir
   }
 }
 
-function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
+function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowProcessorInformation<OtherInfo & ParentInformation> {
   let env = initializeCleanEnvironments()
   for (let i = 0; i < data.environments.level + 1 /* add another env */; i++) {
     env = pushLocalEnvironment(env)
   }
-  return { ...data, environments: env }
+  return { ...data, environments: env, when: 'always' /* function definitions are within the subflow template not affected by surrounding definitions */ }
 }
 
 /**
@@ -168,7 +168,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     exitPoints
   })
   return {
-    activeNodes:  [] /* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: down.activeScope, used: 'always', name: functionDefinition.info.id as string } */,
+    activeNodes:  [] /* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */,
     in:           [ /* TODO: keep in of parameters */ ],
     out:          [],
     graph,

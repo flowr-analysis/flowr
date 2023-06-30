@@ -13,7 +13,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
   const writtenNodes: IdentifierDefinition[] = name.activeNodes.map(n => ({
     ...n,
     kind:      'parameter',
-    used:      'always',
+    used:      data.when,
     definedAt: parameter.info.id,
     scope:     LocalScope
   }))

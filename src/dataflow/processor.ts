@@ -1,7 +1,7 @@
 /**
  * Based on a two-way fold, this processor will automatically supply scope information
  */
-import { DataflowScopeName } from './graph'
+import { DataflowGraphEdgeAttribute, DataflowScopeName } from './graph'
 import {
   DecoratedAst,
   ParentInformation, RNode,
@@ -28,6 +28,10 @@ export interface DataflowProcessorInformation<OtherInfo> {
    * Other processors to be called by the given functions
    */
   readonly processors:   DataflowProcessors<OtherInfo>
+  /**
+   * The edge signals if the current branch is *always* executed or only sometimes
+   */
+  readonly when:         DataflowGraphEdgeAttribute
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation<OtherInfo>

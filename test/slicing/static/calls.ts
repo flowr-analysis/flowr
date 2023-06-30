@@ -182,4 +182,28 @@ print(a[2])
     assertSliced('Must include function shell', shell, code, ['3@a'], `a <- list(1,2,3,4)
 a[3]`)
   })
+  describe('Global vs. local definitions', () => {
+    const localCode = `
+a <- function() { x = x + 5; cat(x) }
+x <- 3
+a()
+cat(x)`
+    assertSliced('Local redefinition has no effect', shell, localCode, ['5@x'], `x <- 3
+cat(x)`)
+    assertSliced('Local redefinition must be kept as part of call', shell, localCode, ['4@a'], `a <- function() {
+        x = x + 5
+        cat(x)
+    }
+x <- 3
+a()`)
+    const globalCode = `
+a <- function() { x <<- x + 5; cat(x) }
+x <- 3
+a()
+cat(x)`
+    assertSliced('But the global redefinition remains', shell, globalCode, ['5@x'], `a <- function() { x <<- x + 5; cat(x) }
+x <- 3
+a()
+cat(x)`)
+  })
 }))

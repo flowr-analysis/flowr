@@ -209,7 +209,7 @@ export type DataflowGraphNodeInfo = Required<DataflowGraphNodeArgument>
 /**
  * Holds the dataflow information found within the given AST
  * there is a node for every variable encountered, obeying scoping rules.
- * Edges are extra which may mean that edges for currently non-existing nodes exist (e.g. those bound later during graph construction)
+ * Edges are extra which may mean that edges for currently non-existing nodes exist (e.g., those bound later during graph construction)
  * <p>
  * The given map holds a key entry for each node with the corresponding node info attached
  * <p>
@@ -221,7 +221,7 @@ export class DataflowGraph {
   private edges = new Map<NodeId, Map<NodeId, DataflowGraphEdge>>()
 
   /**
-   * @param includeDefinedFunctions - if true this will iterate over function definitions as well and not just the toplevel
+   * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
    * @returns the ids of all toplevel nodes in the graph, together with their node info and the graph that contains them (in case of subgraphs)
    */
   public* nodes(includeDefinedFunctions = false): IterableIterator<[NodeId, DataflowGraphNodeInfo, DataflowGraph]> {

@@ -25,10 +25,12 @@ export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInfor
 
   const nextGraph = headGraph.mergeWith(body.graph)
 
+  const outEnvironments = appendEnvironments(headEnvironments, body.environments)
+
   // again within an if-then-else we consider all actives to be read
   // TODO: deal with ...variable.in it is not really ingoing in the sense of bindings i against it, but it should be for the for-loop
   // currently i add it at the end, but is this correct?
-  const ingoing = [...vector.in, ...makeAllMaybe(body.in, nextGraph), ...vector.activeNodes, ...makeAllMaybe(body.activeNodes, nextGraph)]
+  const ingoing = [...vector.in, ...makeAllMaybe(body.in, nextGraph, outEnvironments), ...vector.activeNodes, ...makeAllMaybe(body.activeNodes, nextGraph, outEnvironments)]
 
 
   // now we have to bind all open reads with the given name to the locally defined writtenVariable!
@@ -50,7 +52,7 @@ export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInfor
     nextGraph.setDefinitionOfNode(write)
   }
 
-  const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph)]
+  const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph, outEnvironments)]
 
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
@@ -62,7 +64,7 @@ export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInfor
     in:           [...variable.in, ...[...nameIdShares.values()].flat()],
     out:          outgoing,
     graph:        nextGraph,
-    environments: appendEnvironments(headEnvironments, body.environments),
+    environments: outEnvironments,
     ast:          data.completeAst,
     scope:        data.activeScope
   }

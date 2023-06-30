@@ -85,13 +85,13 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
   return { source, target, global, swap }
 }
 
-function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation<OtherInfo>, global: boolean, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation<OtherInfo>, global: boolean, down: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
   const writeNodes: IdentifierDefinition[] = []
   const isFunctionDef = functionTypeCheck.type === Type.FunctionDefinition
   for(const active of target.activeNodes) {
     writeNodes.push({
       ...active,
-      scope:     global ? GlobalScope : data.activeScope,
+      scope:     global ? GlobalScope : down.activeScope,
       kind:      isFunctionDef ? 'function' : 'variable',
       definedAt: op.info.id
     })

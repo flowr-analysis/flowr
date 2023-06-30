@@ -24,7 +24,7 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
 
   const argContent = argument.name?.content
   const argumentName = argContent === undefined ? `${UnnamedArgumentPrefix}${argument.info.id}` : `${argContent}-${argument.info.id}`
-  graph.addNode({ tag: 'use', id: argument.info.id, name: argumentName, environment: data.environments, when: data.when })
+  graph.addNode({ tag: 'use', id: argument.info.id, name: argumentName, environment: data.environments, when: 'always' })
 
   const ingoingRefs = [...value.activeNodes, ...value.in, ...(name === undefined ? [] : [...name.in])]
 

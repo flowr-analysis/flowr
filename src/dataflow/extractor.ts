@@ -45,7 +45,7 @@ const processors: DataflowProcessors<any> = {
 }
 
 export function produceDataFlowGraph<OtherInfo>(ast: DecoratedAst<OtherInfo & ParentInformation>, initialScope: DataflowScopeName = LocalScope): DataflowInformation<OtherInfo & ParentInformation> {
-  return processDataflowFor<OtherInfo>(ast.decoratedAst, { completeAst: ast, activeScope: initialScope, environments: initializeCleanEnvironments(), processors: processors as DataflowProcessors<OtherInfo & ParentInformation>, when: 'always' })
+  return processDataflowFor<OtherInfo>(ast.decoratedAst, { completeAst: ast, activeScope: initialScope, environments: initializeCleanEnvironments(), processors: processors as DataflowProcessors<OtherInfo & ParentInformation> })
 }
 
 // TODO: automatically load namespace exported functions etc.

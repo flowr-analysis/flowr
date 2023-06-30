@@ -46,14 +46,14 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 
 
 function processNextExpression<OtherInfo>(currentElement: DataflowInformation<OtherInfo>,
-                                          data: DataflowProcessorInformation<OtherInfo>,
+                                          down: DataflowProcessorInformation<OtherInfo>,
                                           environments: REnvironmentInformation,
                                           listEnvironments: Set<NodeId>,
                                           remainingRead: Map<string, IdentifierReference[]>,
                                           nextGraph: DataflowGraph) {
   // all inputs that have not been written until know, are read!
   for (const read of [...currentElement.in, ...currentElement.activeNodes]) {
-    linkReadNameToWriteIfPossible(read, data, environments, listEnvironments, remainingRead, nextGraph)
+    linkReadNameToWriteIfPossible(read, down, environments, listEnvironments, remainingRead, nextGraph)
   }
   // add same variable reads for deferred if they are read previously but not dependent
   for (const writeTarget of currentElement.out) {
@@ -61,7 +61,7 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
 
     // TODO: must something happen to the remaining reads?
 
-    const resolved = resolveByName(writeName, data.activeScope, environments)
+    const resolved = resolveByName(writeName, down.activeScope, environments)
     if (resolved !== undefined) {
       // write-write
       for (const target of resolved) {
@@ -103,8 +103,6 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
       .filter(([_,info]) => info.tag === 'function-call')
     const calledEnvs = linkFunctionCallExitPointsAndCalls(nextGraph, functionCallIds, processed.graph)
 
-    console.log('listEnvironments before overwrite', listEnvironments)
-
     // update the environments for the next iteration with the previous writes
     environments = overwriteEnvironments(environments, processed.environments)
 
@@ -128,7 +126,6 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
           current = current.parent
         }
         // we update all definitions to be linked with teh corresponding function call
-        // yet, we do have to overwrite maybe assignments that happen on this expression list level!
         environments = overwriteEnvironments(environments, environment)
       }
     }
@@ -136,7 +133,6 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     for(const { nodeId } of processed.out) {
       listEnvironments.add(nodeId)
     }
-    console.log('listEnvironments', listEnvironments)
   }
 
 

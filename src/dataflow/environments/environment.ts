@@ -56,6 +56,21 @@ export function equalIdentifierReferences(a: IdentifierReference, b: IdentifierR
   return a.name === b.name && a.scope === b.scope && a.nodeId === b.nodeId && a.used === b.used
 }
 
+export function makeAllMaybe(references: IdentifierReference[] | undefined, graph: DataflowGraph): IdentifierReference[] {
+  if(references === undefined) {
+    return []
+  }
+  return references.map(ref => {
+    const node = graph.get(ref.nodeId)
+    if(node) {
+      node[0].when = 'maybe'
+    }
+    return { ...ref, used: 'maybe'}
+  })
+}
+
+
+
 export interface IEnvironment {
   /** unique and internally generated identifier -- will not be used for comparison but assists debugging for tracking identities */
   readonly id:   string

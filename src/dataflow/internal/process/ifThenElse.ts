@@ -1,19 +1,18 @@
 import { DataflowInformation } from '../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
-import { appendEnvironments, IdentifierReference } from '../../environments'
+import { appendEnvironments, IdentifierReference, makeAllMaybe } from '../../environments'
 import { linkIngoingVariablesInSameScope } from '../linker'
 import { ParentInformation, RIfThenElse } from '../../../r-bridge'
 
-export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
-  const cond = processDataflowFor(ifThen.condition, data)
+export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & ParentInformation>, down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  const cond = processDataflowFor(ifThen.condition, down)
+  let then: DataflowInformation<OtherInfo> | undefined = processDataflowFor(ifThen.then, down)
+  let otherwise = ifThen.otherwise === undefined ? undefined : processDataflowFor(ifThen.otherwise, down)
 
-  let then: DataflowInformation<OtherInfo> | undefined
-  if(ifThen.condition.lexeme !== 'FALSE') {
-    then = processDataflowFor(ifThen.then, ifThen.condition.lexeme === 'TRUE' ? data : { ...data, when: 'maybe' })
-  }
-  let otherwise: DataflowInformation<OtherInfo> | undefined
-  if(ifThen.otherwise !== undefined && ifThen.condition.lexeme !== 'TRUE') {
-    otherwise = processDataflowFor(ifThen.otherwise, ifThen.condition.lexeme === 'FALSE' ? data : { ...data, when: 'maybe' })
+  if(ifThen.condition.lexeme === 'TRUE') {
+    otherwise = undefined
+  } else if(ifThen.condition.lexeme === 'FALSE') {
+    then = undefined
   }
 
   const nextGraph = cond.graph.mergeWith(then?.graph, otherwise?.graph)
@@ -21,16 +20,16 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
   // TODO: allow to also attribute in-put with maybe and always
   // again within an if-then-else we consider all actives to be read
   // TODO: makeFoldReadTargetsMaybe(
-  const ingoing: IdentifierReference[] = [...cond.in, ...(then?.in ?? []),
-    ...(otherwise?.in ?? []),
+  const ingoing: IdentifierReference[] = [...cond.in, ...makeAllMaybe(then?.in, nextGraph),
+    ...makeAllMaybe(otherwise?.in, nextGraph),
     ...cond.activeNodes,
-    ...(then?.activeNodes ?? []),
-    ...(otherwise?.activeNodes ?? [])
+    ...makeAllMaybe(then?.activeNodes, nextGraph),
+    ...makeAllMaybe(otherwise?.activeNodes, nextGraph)
   ]
 
   // we assign all with a maybe marker
   // we do not merge even if they appear in both branches because the maybe links will refer to different ids
-  const outgoing = [...cond.out, ...(then?.out ?? []), ...(otherwise?.out ?? [])]
+  const outgoing = [...cond.out, ...makeAllMaybe(then?.out, nextGraph), ...makeAllMaybe(otherwise?.out, nextGraph)]
 
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
   // TODO: join def-def?
@@ -43,7 +42,7 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
     out:          outgoing,
     environments: otherwiseEnvironment,
     graph:        nextGraph,
-    ast:          data.completeAst,
-    scope:        data.activeScope,
+    ast:          down.completeAst,
+    scope:        down.activeScope,
   }
 }

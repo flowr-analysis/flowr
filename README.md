@@ -41,8 +41,8 @@ For example, you can run
 npm run slicer -- --stats --criterion "8:3;3:1;12@product" test/testfiles/example.R
 ```
 
-Inspect the resulting slice at [`test/testfiles/example.R.slice`](test/testfiles/example.R.slice) , with the stats at
-[`test/testfiles/example.R.stats`](test/testfiles/example.R.stats) .
+Inspect the resulting slice at `test/testfiles/example.R.slice`, with the stats at
+`test/testfiles/example.R.stats`.
 
 ### Generate Usage Statistics
 

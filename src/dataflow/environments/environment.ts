@@ -19,7 +19,7 @@ export const BuiltIn = 'built-in'
  * Stores the definition of an identifier within an {@link IEnvironment}
  */
 export interface IdentifierDefinition extends IdentifierReference {
-  kind:      'function' | 'variable' | 'parameter' | 'unknown' | 'built-in-function' /* TODO: 'constant' */
+  kind:      'function' | 'variable' | 'parameter' | 'unknown' | 'built-in-function' | 'argument' /* TODO: 'constant' */
   /** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
   definedAt: NodeId
 }

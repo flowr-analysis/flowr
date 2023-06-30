@@ -270,12 +270,12 @@ a()()`,
           args:        [
             { nodeId: '2', name: `${UnnamedArgumentPrefix}2`, scope: LocalScope, used: 'always' },
             { nodeId: '7', name: `${UnnamedArgumentPrefix}7`, scope: LocalScope, used: 'always' },
-            { nodeId: '10', name: `by-10`, scope: LocalScope, used: 'always' },
+            { nodeId: '10', name: `by`, scope: LocalScope, used: 'always' },
           ]
         })
         .addNode({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2`})
         .addNode({ tag: 'use', id: '7', name: `${UnnamedArgumentPrefix}7`})
-        .addNode({ tag: 'use', id: '10', name: `by-10`})
+        .addNode({ tag: 'use', id: '10', name: `by`})
         .addEdge('11', '2', 'argument', 'always')
         .addEdge('11', '7', 'argument', 'always')
         .addEdge('11', '10', 'argument', 'always')
@@ -370,9 +370,8 @@ a()()`,
       LocalScope,
       initializeCleanEnvironments()
     )
-    assertDataflow(`Not giving first argument`, shell, `a <- function(x=3,y) { y }
-a(,3)`,
-    new DataflowGraph()
+    assertDataflow(`Not giving first parameter`, shell, `a <- function(x=3,y) { y }
+a(,3)`, new DataflowGraph()
       .addNode({
         tag:         'function-call',
         id:          '12',
@@ -411,6 +410,37 @@ a(,3)`,
       .addEdge('12', '11', 'argument', 'always')
       .addEdge('12', '6', 'returns', 'always')
       .addEdge('11', '4', 'defines-on-call', 'always')
+    )
+  })
+  describe('Reuse parameters in call', () => {
+    const envWithX = define(
+      { nodeId: '3', scope: 'local', name: 'x', used: 'always', kind: 'argument', definedAt: '3' },
+      LocalScope,
+      initializeCleanEnvironments()
+    )
+    assertDataflow(`Not giving first argument`, shell, `a(x=3, x)`, new DataflowGraph()
+      .addNode({
+        tag:  'function-call',
+        id:   '6',
+        name: 'a',
+        args: [
+          { nodeId: '3', name: 'x', scope: LocalScope, used: 'always' },
+          { nodeId: '5', name: `${UnnamedArgumentPrefix}5`, scope: LocalScope, used: 'always' },
+        ]
+      })
+      .addNode({ tag: 'use', id: '3', name: 'x', scope: LocalScope })
+      .addNode({
+        tag:         'use',
+        id:          '5',
+        name:        `${UnnamedArgumentPrefix}5`,
+        scope:       LocalScope,
+        environment: envWithX
+      })
+      .addNode({ tag: 'use', id: '4', name: 'x', environment: envWithX })
+      .addEdge('6', '3', 'argument', 'always')
+      .addEdge('6', '5', 'argument', 'always')
+      .addEdge('5', '4', 'read', 'always')
+      .addEdge('4', '3', 'read', 'always')
     )
   })
 }))

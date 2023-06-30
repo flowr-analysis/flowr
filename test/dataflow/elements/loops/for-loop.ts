@@ -3,6 +3,15 @@ import { DataflowGraph, initializeCleanEnvironments, LocalScope } from '../../..
 import { appendEnvironments, define } from '../../../../src/dataflow/environments'
 
 describe('for', withShell(shell => {
+  assertDataflow(`Single-vector for Loop`,
+    shell,
+    `for(i in 0) i `,
+    new DataflowGraph()
+      .addNode( { tag: 'variable-definition', id: "0", name: "i", scope: LocalScope })
+      .addNode( { tag: 'use', id: "2", name: "i", when: 'maybe', environment: define({ nodeId: "0", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "3", used: 'always' }, LocalScope, initializeCleanEnvironments()) })
+      .addEdge("2", "0", "read", "maybe")
+  )
+
   const envWithX = () => define({ nodeId: "0", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "2", used: 'always' }, LocalScope, initializeCleanEnvironments())
   assertDataflow(`Read in for Loop`,
     shell,

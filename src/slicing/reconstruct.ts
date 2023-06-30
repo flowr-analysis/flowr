@@ -272,11 +272,11 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 
 }
 
-function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: Code[], configuration: ReconstructionConfiguration): Code {
+function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: (Code | undefined)[], configuration: ReconstructionConfiguration): Code {
   if(isSelected(configuration, call)) {
     return plain(getLexeme(call))
   }
-  const filteredArgs = args.filter(a => a.length > 0)
+  const filteredArgs = args.filter(a => a !== undefined && a.length > 0)
   if(functionName.length === 0 && filteredArgs.length === 0) {
     return []
   }

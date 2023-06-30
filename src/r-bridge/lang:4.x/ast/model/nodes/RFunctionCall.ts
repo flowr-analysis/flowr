@@ -1,7 +1,6 @@
-import { Base, Location, NoInfo, RFunctions, RNode } from '../model'
+import { Base, Location, NoInfo, RNode } from '../model'
 import { Type } from "../type"
 import { RSymbol } from "./RSymbol"
-import { RFunctionDefinition } from './RFunctionDefinition'
 
 /**
  * Calls of functions like `a()` and `foo(42, "hello")`.
@@ -12,7 +11,8 @@ export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location 
   readonly type:    Type.FunctionCall;
   readonly flavour: 'named';
   functionName:     RSymbol<Info>;
-  arguments:        RNode<Info>[];
+  /** arguments can be undefined, for example when calling as `a(1, ,3)` */
+  arguments:        (RNode<Info> | undefined)[];
 }
 
 
@@ -25,7 +25,8 @@ export interface RUnnamedFunctionCall<Info = NoInfo> extends Base<Info>, Locatio
   readonly type:    Type.FunctionCall;
   readonly flavour: 'unnamed';
   calledFunction:   RNode<Info>; /* can be either a function definition or another call that returns a function etc. */
-  arguments:        RNode<Info>[];
+  /** arguments can be undefined, for example when calling as `a(1, ,3)` */
+  arguments:        (RNode<Info> | undefined)[];
 }
 
 export type RFunctionCall<Info = NoInfo> = RNamedFunctionCall<Info> | RUnnamedFunctionCall<Info>;

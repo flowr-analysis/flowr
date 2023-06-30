@@ -74,7 +74,10 @@ function displayEnvReplacer(key: any, value: any): any {
   }
 }
 
-function printArg(arg: IdentifierReference | '<value>' | undefined): string {
+function printArg(arg: IdentifierReference | '<value>' | 'empty' | undefined): string {
+  if(arg === 'empty') {
+    return ''
+  }
   if(arg === undefined || arg === '<value>') {
     return '??'
   }

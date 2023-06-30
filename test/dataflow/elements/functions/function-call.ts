@@ -248,7 +248,6 @@ a()()`,
     )
   })
 
-
   describe('Argument which is expression', () => {
     assertDataflow(`Calling with 1 + x`, shell, `foo(1 + x)`,
       new DataflowGraph()
@@ -353,5 +352,65 @@ a()()`,
     )
     // a <- function() { x <- function() { y }; y <- 12; return(x) }; a()
     // a <- function(y) { y }; y <- 12; a()
+  })
+
+  describe('Deal with empty calls', () => {
+    const withXParameter = define(
+      { nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '3' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments())
+    )
+    const withXYParameter = define(
+      { nodeId: '4', scope: 'local', name: 'y', used: 'always', kind: 'parameter', definedAt: '5' },
+      LocalScope,
+      withXParameter
+    )
+    const withADefined = define(
+      { nodeId: '0', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '8' },
+      LocalScope,
+      initializeCleanEnvironments()
+    )
+    assertDataflow(`Not giving first argument`, shell, `a <- function(x=3,y) { y }
+a(,3)`,
+    new DataflowGraph()
+      .addNode({
+        tag:         'function-call',
+        id:          '12',
+        name:        'a',
+        environment: withADefined,
+        args:        [
+          'empty',
+          { nodeId: '11', name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, used: 'always' }
+        ]
+      })
+      .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
+      .addNode({
+        tag:         'function-definition',
+        id:          '7',
+        scope:       LocalScope,
+        name:        '7',
+        exitPoints:  [ '6' ],
+        environment: popLocalEnvironment(withXYParameter),
+        subflow:     {
+          out:          [],
+          in:           [],
+          activeNodes:  [],
+          scope:        LocalScope,
+          environments: withXYParameter,
+          graph:        new DataflowGraph()
+            .addNode({ tag: 'variable-definition', id: '1', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) })
+            .addNode({ tag: 'variable-definition', id: '4', name: 'y', scope: LocalScope, environment: withXParameter })
+            .addNode({ tag: 'use', id: '6', name: 'y', scope: LocalScope, environment: withXYParameter })
+            .addEdge('6', '4', 'read', 'always')
+        }
+      })
+      .addNode({ tag: 'use', id: '11', name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, environment: withADefined })
+      .addEdge('12', '0', 'read', 'always')
+      .addEdge('12', '7', 'calls', 'always')
+      .addEdge('0', '7', 'defined-by', 'always')
+      .addEdge('12', '11', 'argument', 'always')
+      .addEdge('12', '6', 'returns', 'always')
+      .addEdge('11', '4', 'defines-on-call', 'always')
+    )
   })
 }))

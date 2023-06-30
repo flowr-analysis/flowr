@@ -65,7 +65,7 @@ export type DataflowFunctionFlowInformation = Omit<DataflowInformation<unknown>,
 
 export type NamedFunctionArgument = [string, IdentifierReference | '<value>']
 export type PositionalFunctionArgument = IdentifierReference | '<value>'
-export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument
+export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | 'empty'
 
 function equalFunctionArgumentsReferences(a: IdentifierReference | '<value>', b: IdentifierReference | '<value>'): boolean {
   if (a === '<value>' || b === '<value>') {

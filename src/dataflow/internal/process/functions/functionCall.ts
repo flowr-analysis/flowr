@@ -27,8 +27,12 @@ function getLastNodeInGraph<OtherInfo>(functionName: DataflowInformation<OtherIn
   return functionNameId
 }
 
-function processArgumentsOfFunctionCall<OtherInfo>(args: DataflowInformation<OtherInfo & ParentInformation>[], finalEnv: REnvironmentInformation, finalGraph: DataflowGraph, callArgs: FunctionArgument[], functionRootId: NodeId) {
+function processArgumentsOfFunctionCall<OtherInfo>(args: (DataflowInformation<OtherInfo & ParentInformation> | undefined)[], finalEnv: REnvironmentInformation, finalGraph: DataflowGraph, callArgs: FunctionArgument[], functionRootId: NodeId) {
   for (const arg of args) {
+    if(arg === undefined) {
+      callArgs.push('empty')
+      continue
+    }
     finalEnv = overwriteEnvironments(finalEnv, arg.environments)
     finalGraph.mergeWith(arg.graph)
     const argumentOutRefs = arg.out
@@ -71,7 +75,7 @@ function linkArgumentsForAllNamedArguments<OtherInfo>(resolvedDefinitions: Ident
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const named = functionCall.flavour === 'named'
   const functionName = processDataflowFor(named ? functionCall.functionName : functionCall.calledFunction, data)
-  const args = functionCall.arguments.map(arg => processDataflowFor(arg, data))
+  const args = functionCall.arguments.map(arg => arg && processDataflowFor(arg, data))
   const finalGraph = new DataflowGraph()
 
   // we update all the usage nodes within the dataflow graph of the function name to
@@ -112,7 +116,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 
   finalEnv = processArgumentsOfFunctionCall(args, finalEnv, finalGraph, callArgs, functionRootId)
 
-  const inIds = [...args.flatMap(a => [...a.in, a.activeNodes])].flat()
+  const inIds = [...args.flatMap(a => a !== undefined ? [...a.in, a.activeNodes] : [])].flat()
   inIds.push({ nodeId: functionRootId, name: functionCallName, scope: data.activeScope, used: 'always' })
 
   if(named) {
@@ -172,12 +176,12 @@ function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<Parent
   }
 
   const remainingParameter = params.filter(p => !matchedParameters.has(p.name.content))
-  const remainingArguments = args.filter(a => !Array.isArray(a)) as PositionalFunctionArgument[]
+  const remainingArguments = args.filter(a => !Array.isArray(a)) as (PositionalFunctionArgument | 'empty')[]
 
   // TODO ...
   for(let i = 0; i < remainingArguments.length; i++) {
-    const arg: PositionalFunctionArgument = remainingArguments[i]
-    if(arg === '<value>') {
+    const arg: PositionalFunctionArgument | 'empty' = remainingArguments[i]
+    if(arg === '<value>' || arg === 'empty') {
       dataflowLogger.trace(`skipping value argument for ${i}`)
       continue
     }

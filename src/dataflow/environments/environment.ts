@@ -56,16 +56,12 @@ export function equalIdentifierReferences(a: IdentifierReference, b: IdentifierR
   return a.name === b.name && a.scope === b.scope && a.nodeId === b.nodeId && a.used === b.used
 }
 
-export function makeAllMaybe(references: IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference[] {
+export function makeAllMaybe(references: IdentifierReference[] | undefined, graph: DataflowGraph): IdentifierReference[] {
   if(references === undefined) {
     return []
   }
   return references.map(ref => {
     const node = graph.get(ref.nodeId)
-    const definitions = resolveByName(ref.name, LocalScope, environments)
-    for(const definition of definitions ?? []) {
-      definition.used = 'maybe'
-    }
     if(node) {
       node[0].when = 'maybe'
     }

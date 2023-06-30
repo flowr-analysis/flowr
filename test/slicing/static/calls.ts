@@ -205,5 +205,13 @@ cat(x)`
 x <- 3
 a()
 cat(x)`)
+    const globalCodeWithoutLocal = `
+a <- function() { x <<- 5; cat(x) }
+x <- 3
+a()
+cat(x)`
+    assertSliced('The local assignment is only needed if the global reads', shell, globalCodeWithoutLocal, ['5@x'], `a <- function() { x <<- 5 }
+a()
+cat(x)`)
   })
 }))

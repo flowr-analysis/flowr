@@ -10,25 +10,40 @@ import {
 } from '../../../index'
 // TODO: support partial matches: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Argument-matching
 
+export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
+
+
+function getLastNodeInGraph<OtherInfo>(functionName: DataflowInformation<OtherInfo & ParentInformation>) {
+  let functionNameId: NodeId | undefined
+  for (const [nodeId] of functionName.graph.nodes()) {
+    functionNameId = nodeId
+  }
+  return functionNameId
+}
+
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
-  guard(functionCall.flavour === 'named', 'TODO: deal with unnamed calls')
-  const functionName = processDataflowFor(functionCall.functionName, data)
+  const named = functionCall.flavour === 'named'
+  const functionName = processDataflowFor(named ? functionCall.functionName : functionCall.calledFunction, data)
   const args = functionCall.arguments.map(arg => processDataflowFor(arg, data))
   const finalGraph = new DataflowGraph()
 
   // we update all the usage nodes within the dataflow graph of the function name to
   // mark them as function calls, and append their argument linkages
-  let functionNameId: NodeId | undefined
-  for(const [nodeId] of functionName.graph.nodes()) {
-    functionNameId = nodeId
-  }
+  const functionNameId = getLastNodeInGraph(functionName)
 
   guard(functionNameId !== undefined, 'Function call name id not found')
 
   const functionRootId = functionCall.info.id
-  const functionCallName = functionCall.functionName.content
-  dataflowLogger.debug(`Using ${functionRootId} (name: ${functionCallName}) as root for the function call`)
-
+  let functionCallName: string
+  if(named) {
+    functionCallName = functionCall.functionName.content
+    dataflowLogger.debug(`Using ${functionRootId} (name: ${functionCallName}) as root for the function call`)
+  } else {
+    functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`
+    dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`)
+    // we know, that it calls the toplevel:
+    finalGraph.addEdge(functionRootId, functionCall.calledFunction.info.id, 'calls', 'always')
+  }
   let finalEnv = functionName.environments
 
   const callArgs: FunctionArgument[] = []

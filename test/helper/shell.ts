@@ -127,6 +127,7 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
   it(`${name} (input: ${JSON.stringify(input)})`, async function() {
     const ast = await retrieveAst(shell, input)
     const decoratedAst = decorateAst(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
+
     // TODO: use both info
     const { graph } = produceDataFlowGraph(decoratedAst, LocalScope)
 

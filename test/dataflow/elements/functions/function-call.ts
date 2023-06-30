@@ -130,7 +130,6 @@ a(i)`, new DataflowGraph()
     )
   })
 
-  /*
   describe('Directly calling a function', () => {
     assertDataflow('Calling with constant argument', shell, `(function(x) { x + 1 })(2)`,
       new DataflowGraph()
@@ -141,7 +140,6 @@ a(i)`, new DataflowGraph()
         .addEdge('5', '4', 'argument', 'always')
     )
   })
-*/
 
 
   describe('Argument which is expression', () => {

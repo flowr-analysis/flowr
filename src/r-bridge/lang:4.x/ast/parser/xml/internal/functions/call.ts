@@ -9,7 +9,7 @@ import { Type, RNode, RFunctionCall, RUnnamedFunctionCall, RNamedFunctionCall } 
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { tryToParseArgument } from './argument'
 import { SourceRange } from '../../../../../../../util/range'
-import { parseBasedOnType } from '../structure'
+import { parseExpression } from '../expression'
 
 /**
  * Tries to parse the given data as a function call.
@@ -39,7 +39,7 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
   const namedSymbolContent = getWithTokenType(data.config.tokenMap, symbolContent)
 
   if(namedSymbolContent.findIndex(x => x.name === Type.FunctionCall) < 0) {
-    parseLog.trace(`is not named function call, as the name is not of type ${Type.FunctionCall}`)
+    parseLog.trace(`is not named function call, as the name is not of type ${Type.FunctionCall}, but: ${namedSymbolContent.map(n => n.name).join(',')}`)
     const mayResult = tryParseUnnamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content)
     if(mayResult === undefined) {
       return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
@@ -68,6 +68,7 @@ function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData) {
 }
 
 function tryParseUnnamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJson[], mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | undefined {
+  // maybe remove symbol-content again because i just use the root expr of mapped with name
   if(symbolContent.length !== 3 || mappedWithName.length < 3) {
     parseLog.trace(`expected unnamed function call to have 3 elements [like (<func>)], yet received ${JSON.stringify(symbolContent)}`)
     return undefined
@@ -78,11 +79,9 @@ function tryParseUnnamedFunctionCall(data: ParserData, symbolContent: NamedXmlBa
   }
 
   parseLog.trace('Assuming structure to be a function call')
-  const calledFunction = parseBasedOnType(data, symbolContent)
-  if(calledFunction.length !== 1) {
-    parseLog.warn(`expected unnamed function call to yield one element - the definition, yet received ${JSON.stringify(calledFunction)}`)
-    return undefined
-  }
+
+  // we parse an expression to allow function calls
+  const calledFunction = parseExpression(data, mappedWithName[0].content)
   const parsedArguments = parseArguments(mappedWithName, data)
 
   return {
@@ -90,7 +89,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, symbolContent: NamedXmlBa
     flavour:        'unnamed',
     location,
     lexeme:         content,
-    calledFunction: calledFunction[0],
+    calledFunction: calledFunction,
     arguments:      parsedArguments,
     info:           {
       // TODO: include children etc.

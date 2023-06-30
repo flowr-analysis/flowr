@@ -117,6 +117,10 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   // finalGraph.addNode(functionCall.info.id, functionCall.functionName.content, finalEnv, down.activeScope, 'always')
   // call links are added on expression level
 
+
+  const inIds = [...args.flatMap(a => [...a.in, a.activeNodes])].flat()
+  inIds.push({ nodeId: functionRootId, name: functionCallName, scope: data.activeScope, used: 'always' })
+
   if(named) {
     const resolvedDefinitions = resolveByName(functionCallName, data.activeScope, data.environments)
     if (resolvedDefinitions !== undefined) {
@@ -129,10 +133,10 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     if(functionCall.calledFunction.type === Type.FunctionDefinition) {
       linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph)
     }
+    // push the called function to the ids:
+    inIds.push(...functionName.in, ...functionName.activeNodes)
   }
 
-  const inIds = [...args.flatMap(a => [...a.in, a.activeNodes])].flat()
-  inIds.push({ nodeId: functionRootId, name: functionCallName, scope: data.activeScope, used: 'always' })
 
   return {
     activeNodes:  [],

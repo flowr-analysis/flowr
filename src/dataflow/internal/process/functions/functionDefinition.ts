@@ -161,14 +161,14 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     tag:         'function-definition',
     id:          functionDefinition.info.id,
     name:        functionDefinition.info.id,
-    environment: popLocalEnvironment(data.environments),
+    environment: popLocalEnvironment(outEnvironment),
     scope:       data.activeScope,
     when:        'always',
     subflow:     flow,
     exitPoints
   })
   return {
-    activeNodes:  [] /* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: down.activeScope, used: 'always', name: functionDefinition.info.id as string } */,
+    activeNodes:  [] /* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */,
     in:           [ /* TODO: keep in of parameters */ ],
     out:          [],
     graph,

@@ -22,14 +22,14 @@ export interface DataflowInformation<OtherInfo> {
   graph:        DataflowGraph
 }
 
-export function initializeCleanInfo<OtherInfo>(down: DataflowProcessorInformation<OtherInfo>): DataflowInformation<OtherInfo> {
+export function initializeCleanInfo<OtherInfo>(data: DataflowProcessorInformation<OtherInfo>): DataflowInformation<OtherInfo> {
   return {
-    ast:          down.completeAst,
+    ast:          data.completeAst,
     activeNodes:  [],
     in:           [],
     out:          [],
-    scope:        down.activeScope,
-    environments: down.environments,
+    scope:        data.activeScope,
+    environments: data.environments,
     graph:        new DataflowGraph()
   }
 }

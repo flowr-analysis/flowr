@@ -1,10 +1,9 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import {
-  BuiltIn, IdentifierDefinition,
+  BuiltIn, define, IdentifierDefinition,
   IdentifierReference,
   overwriteEnvironments,
-  REnvironmentInformation,
   resolveByName
 } from '../../../environments'
 import { NodeId, ParentInformation, RFunctionCall, RNodeWithParent, RParameter, Type } from '../../../../r-bridge'
@@ -12,7 +11,7 @@ import { guard } from '../../../../util/assert'
 import {
   DataflowGraph,
   dataflowLogger,
-  FunctionArgument, NamedFunctionArgument, PositionalFunctionArgument
+  FunctionArgument, LocalScope, NamedFunctionArgument, PositionalFunctionArgument
 } from '../../../index'
 // TODO: support partial matches: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Argument-matching
 
@@ -27,23 +26,6 @@ function getLastNodeInGraph<OtherInfo>(functionName: DataflowInformation<OtherIn
   return functionNameId
 }
 
-function porcessArgumentsOfFuntionCall<OtherInfo>(args: DataflowInformation<OtherInfo & ParentInformation>[], finalEnv: REnvironmentInformation, finalGraph: DataflowGraph, callArgs: FunctionArgument[], functionRootId: NodeId) {
-  for (const arg of args) {
-    finalEnv = overwriteEnvironments(finalEnv, arg.environments)
-    finalGraph.mergeWith(arg.graph)
-    const argumentOutRefs = arg.out
-
-    guard(argumentOutRefs.length > 0, `Argument ${JSON.stringify(arg)} has no out references, but needs one for the unnamed arg`)
-    // if there are multiple, we still use the first one as it is the highest-one and therefore the most top-level arg reference
-    // multiple out references can occur if the argument itself is a function call
-    callArgs.push(argumentOutRefs[0])
-
-    // add an argument edge to the final graph
-    finalGraph.addEdge(functionRootId, argumentOutRefs[0], 'argument', 'always')
-    // TODO: bind the argument id to the corresponding argument within the function
-  }
-  return finalEnv
-}
 
 function linkArgumentsForAllNamedArguments<OtherInfo>(resolvedDefinitions: IdentifierDefinition[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionCallName: string, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph) {
   const trackCallIds = resolvedDefinitions.map(r => r.definedAt)
@@ -71,14 +53,14 @@ function linkArgumentsForAllNamedArguments<OtherInfo>(resolvedDefinitions: Ident
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const named = functionCall.flavour === 'named'
   const functionName = processDataflowFor(named ? functionCall.functionName : functionCall.calledFunction, data)
-  const args = functionCall.arguments.map(arg => processDataflowFor(arg, data))
+
+  let finalEnv = functionName.environments
+  // arg env contains the environments with other args defined
+  let argEnv = functionName.environments
   const finalGraph = new DataflowGraph()
-
-  // we update all the usage nodes within the dataflow graph of the function name to
-  // mark them as function calls, and append their argument linkages
-  const functionNameId = getLastNodeInGraph(functionName)
-
-  guard(functionNameId !== undefined, 'Function call name id not found')
+  const callArgs: FunctionArgument[] = []
+  const args = []
+  const remainingReadInArgs = []
 
   const functionRootId = functionCall.info.id
   // TODO: split that up so that unnamed function calls will not be resolved!
@@ -97,9 +79,56 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     finalGraph.mergeWith(functionName.graph)
   }
 
-  let finalEnv = functionName.environments
 
-  const callArgs: FunctionArgument[] = []
+  for(const arg of functionCall.arguments) {
+    if(arg === undefined) {
+      callArgs.push('empty')
+      args.push(undefined)
+      continue
+    }
+
+    const processed = processDataflowFor(arg, { ...data, environments: argEnv })
+    args.push(processed)
+
+    finalEnv = overwriteEnvironments(finalEnv, processed.environments)
+    argEnv = overwriteEnvironments(argEnv, processed.environments)
+
+    finalGraph.mergeWith(processed.graph)
+
+    guard(processed.out.length > 0, `Argument ${JSON.stringify(arg)} has no out references, but needs one for the unnamed arg`)
+    callArgs.push(processed.out[0])
+
+    // add an argument edge to the final graph
+    finalGraph.addEdge(functionRootId, processed.out[0], 'argument', 'always')
+    // resolve reads within argument
+    for(const ingoing of [...processed.in, ...processed.activeNodes]) {
+      const tryToResolve = resolveByName(ingoing.name, LocalScope, argEnv)
+
+      if(tryToResolve === undefined) {
+        remainingReadInArgs.push(ingoing)
+      } else {
+        for(const resolved of tryToResolve) {
+          finalGraph.addEdge(ingoing.nodeId, resolved.nodeId,'read', 'always')
+        }
+      }
+    }
+    if(arg.type === Type.Argument && arg.name !== undefined) {
+      argEnv = define(
+        { ...processed.out[0], definedAt: arg.info.id, kind: 'argument' },
+        LocalScope,
+        argEnv
+      )
+    }
+    // TODO: bind the argument id to the corresponding argument within the function
+  }
+
+  // we update all the usage nodes within the dataflow graph of the function name to
+  // mark them as function calls, and append their argument linkages
+  const functionNameId = getLastNodeInGraph(functionName)
+
+  guard(functionNameId !== undefined, 'Function call name id not found')
+
+
   finalGraph.addNode({
     tag:         'function-call',
     id:          functionRootId,
@@ -109,16 +138,8 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     scope:       data.activeScope,
     args:        callArgs // same reference
   })
-  // finalGraph.addEdge(functionRootId, functionNameId, 'read', 'always')
 
-  finalEnv = porcessArgumentsOfFuntionCall(args, finalEnv, finalGraph, callArgs, functionRootId)
-
-  // TODO:
-  // finalGraph.addNode(functionCall.info.id, functionCall.functionName.content, finalEnv, down.activeScope, 'always')
-  // call links are added on expression level
-
-
-  const inIds = [...args.flatMap(a => [...a.in, a.activeNodes])].flat()
+  const inIds = remainingReadInArgs
   inIds.push({ nodeId: functionRootId, name: functionCallName, scope: data.activeScope, used: 'always' })
 
   if(named) {
@@ -137,11 +158,10 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     inIds.push(...functionName.in, ...functionName.activeNodes)
   }
 
-
   return {
     activeNodes:  [],
     in:           inIds,
-    out:          [ ...functionName.out, ...args.flatMap(a => a.out)],
+    out:          functionName.out, // we do not keep argument out as it has been linked by the function TODO: deal with foo(a <- 3)
     graph:        finalGraph,
     environments: finalEnv,
     ast:          data.completeAst,
@@ -179,12 +199,12 @@ function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<Parent
   }
 
   const remainingParameter = params.filter(p => !matchedParameters.has(p.name.content))
-  const remainingArguments = args.filter(a => !Array.isArray(a)) as PositionalFunctionArgument[]
+  const remainingArguments = args.filter(a => !Array.isArray(a)) as (PositionalFunctionArgument | 'empty')[]
 
   // TODO ...
   for(let i = 0; i < remainingArguments.length; i++) {
-    const arg: PositionalFunctionArgument = remainingArguments[i]
-    if(arg === '<value>') {
+    const arg: PositionalFunctionArgument | 'empty' = remainingArguments[i]
+    if(arg === '<value>' || arg === 'empty') {
       dataflowLogger.trace(`skipping value argument for ${i}`)
       continue
     }

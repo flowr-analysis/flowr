@@ -1,6 +1,6 @@
 import { assertDataflow, withShell } from '../../../helper/shell'
 import { DataflowGraph, initializeCleanEnvironments, LocalScope } from '../../../../src/dataflow'
-import { define, pushLocalEnvironment } from '../../../../src/dataflow/environments'
+import { define, popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/argument'
 import { UnnamedFunctionCallPrefix } from '../../../../src/dataflow/internal/process/functions/functionCall'
 
@@ -35,12 +35,13 @@ describe('Function Call', withShell(shell => {
             nodeId: '11', name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, used: 'always'
           }] })
         .addNode({
-          tag:        'function-definition',
-          id:         '7',
-          name:       '7',
-          scope:      LocalScope,
-          exitPoints: [ '6' ],
-          subflow:    {
+          tag:         'function-definition',
+          id:          '7',
+          name:        '7',
+          scope:       LocalScope,
+          exitPoints:  [ '6' ],
+          environment: popLocalEnvironment(envWithXParamDefined),
+          subflow:     {
             out:          [],
             in:           [],
             activeNodes:  [],
@@ -247,7 +248,6 @@ a()()`,
     )
   })
 
-
   describe('Argument which is expression', () => {
     assertDataflow(`Calling with 1 + x`, shell, `foo(1 + x)`,
       new DataflowGraph()
@@ -270,12 +270,12 @@ a()()`,
           args:        [
             { nodeId: '2', name: `${UnnamedArgumentPrefix}2`, scope: LocalScope, used: 'always' },
             { nodeId: '7', name: `${UnnamedArgumentPrefix}7`, scope: LocalScope, used: 'always' },
-            { nodeId: '10', name: `by-10`, scope: LocalScope, used: 'always' },
+            { nodeId: '10', name: `by`, scope: LocalScope, used: 'always' },
           ]
         })
         .addNode({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2`})
         .addNode({ tag: 'use', id: '7', name: `${UnnamedArgumentPrefix}7`})
-        .addNode({ tag: 'use', id: '10', name: `by-10`})
+        .addNode({ tag: 'use', id: '10', name: `by`})
         .addEdge('11', '2', 'argument', 'always')
         .addEdge('11', '7', 'argument', 'always')
         .addEdge('11', '10', 'argument', 'always')
@@ -352,5 +352,123 @@ a()()`,
     )
     // a <- function() { x <- function() { y }; y <- 12; return(x) }; a()
     // a <- function(y) { y }; y <- 12; a()
+  })
+
+  describe('Deal with empty calls', () => {
+    const withXParameter = define(
+      { nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '3' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments())
+    )
+    const withXYParameter = define(
+      { nodeId: '4', scope: 'local', name: 'y', used: 'always', kind: 'parameter', definedAt: '5' },
+      LocalScope,
+      withXParameter
+    )
+    const withADefined = define(
+      { nodeId: '0', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '8' },
+      LocalScope,
+      initializeCleanEnvironments()
+    )
+    assertDataflow(`Not giving first parameter`, shell, `a <- function(x=3,y) { y }
+a(,3)`, new DataflowGraph()
+      .addNode({
+        tag:         'function-call',
+        id:          '12',
+        name:        'a',
+        environment: withADefined,
+        args:        [
+          'empty',
+          { nodeId: '11', name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, used: 'always' }
+        ]
+      })
+      .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
+      .addNode({
+        tag:         'function-definition',
+        id:          '7',
+        scope:       LocalScope,
+        name:        '7',
+        exitPoints:  [ '6' ],
+        environment: popLocalEnvironment(withXYParameter),
+        subflow:     {
+          out:          [],
+          in:           [],
+          activeNodes:  [],
+          scope:        LocalScope,
+          environments: withXYParameter,
+          graph:        new DataflowGraph()
+            .addNode({ tag: 'variable-definition', id: '1', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) })
+            .addNode({ tag: 'variable-definition', id: '4', name: 'y', scope: LocalScope, environment: withXParameter })
+            .addNode({ tag: 'use', id: '6', name: 'y', scope: LocalScope, environment: withXYParameter })
+            .addEdge('6', '4', 'read', 'always')
+        }
+      })
+      .addNode({ tag: 'use', id: '11', name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, environment: withADefined })
+      .addEdge('12', '0', 'read', 'always')
+      .addEdge('12', '7', 'calls', 'always')
+      .addEdge('0', '7', 'defined-by', 'always')
+      .addEdge('12', '11', 'argument', 'always')
+      .addEdge('12', '6', 'returns', 'always')
+      .addEdge('11', '4', 'defines-on-call', 'always')
+    )
+  })
+  describe('Reuse parameters in call', () => {
+    const envWithX = define(
+      { nodeId: '3', scope: 'local', name: 'x', used: 'always', kind: 'argument', definedAt: '3' },
+      LocalScope,
+      initializeCleanEnvironments()
+    )
+    assertDataflow(`Not giving first argument`, shell, `a(x=3, x)`, new DataflowGraph()
+      .addNode({
+        tag:  'function-call',
+        id:   '6',
+        name: 'a',
+        args: [
+          { nodeId: '3', name: 'x', scope: LocalScope, used: 'always' },
+          { nodeId: '5', name: `${UnnamedArgumentPrefix}5`, scope: LocalScope, used: 'always' },
+        ]
+      })
+      .addNode({ tag: 'use', id: '3', name: 'x', scope: LocalScope })
+      .addNode({
+        tag:         'use',
+        id:          '5',
+        name:        `${UnnamedArgumentPrefix}5`,
+        scope:       LocalScope,
+        environment: envWithX
+      })
+      .addNode({ tag: 'use', id: '4', name: 'x', environment: envWithX })
+      .addEdge('6', '3', 'argument', 'always')
+      .addEdge('6', '5', 'argument', 'always')
+      .addEdge('5', '4', 'read', 'always')
+      .addEdge('4', '3', 'read', 'always')
+    )
+  })
+  describe('Define in parameters', () => {
+    assertDataflow(`Support assignments in function calls`, shell, `foo(x <- 3); x`, new DataflowGraph()
+      .addNode({
+        tag:   'function-call',
+        id:    '5',
+        name:  'foo',
+        scope: LocalScope,
+        args:  [
+          { nodeId: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, used: 'always' }
+        ]
+      })
+      .addNode({ tag: 'use', id: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope })
+      .addNode({ tag: 'variable-definition', id: '1', name: 'x', scope: LocalScope })
+      .addNode({
+        tag:         'use',
+        id:          '6',
+        name:        'x',
+        scope:       LocalScope,
+        environment: define(
+          { nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '3' },
+          LocalScope,
+          initializeCleanEnvironments()
+        ) })
+      .addEdge('5', '4', 'argument', 'always')
+      .addEdge('4', '1', 'read', 'always')
+      .addEdge('6', '1', 'read', 'always')
+    )
   })
 }))

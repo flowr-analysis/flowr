@@ -24,6 +24,7 @@ export type DataflowGraphEdgeType =
     | /** The edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
     | /** Similar to `same-read-read` but for def-def constructs without a read in-between */ 'same-def-def'
     | /** Formal used as argument to a function call */ 'argument'
+    | /** The edge determines that the source is a side effect that happens when the target is called */ 'side-effect-on-call'
     | /** The edge determines that the source calls the target */ 'calls'
     | /** The source and edge relate to each other bidirectionally */ 'relates'
     | /** The source returns target on call */ 'returns'
@@ -64,7 +65,7 @@ export type DataflowFunctionFlowInformation = Omit<DataflowInformation<unknown>,
 
 export type NamedFunctionArgument = [string, IdentifierReference | '<value>']
 export type PositionalFunctionArgument = IdentifierReference | '<value>'
-export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument
+export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | 'empty'
 
 function equalFunctionArgumentsReferences(a: IdentifierReference | '<value>', b: IdentifierReference | '<value>'): boolean {
   if (a === '<value>' || b === '<value>') {
@@ -208,7 +209,7 @@ export type DataflowGraphNodeInfo = Required<DataflowGraphNodeArgument>
 /**
  * Holds the dataflow information found within the given AST
  * there is a node for every variable encountered, obeying scoping rules.
- * Edges are extra which may mean that edges for currently non-existing nodes exist (e.g. those bound later during graph construction)
+ * Edges are extra which may mean that edges for currently non-existing nodes exist (e.g., those bound later during graph construction)
  * <p>
  * The given map holds a key entry for each node with the corresponding node info attached
  * <p>
@@ -220,7 +221,7 @@ export class DataflowGraph {
   private edges = new Map<NodeId, Map<NodeId, DataflowGraphEdge>>()
 
   /**
-   * @param includeDefinedFunctions - if true this will iterate over function definitions as well and not just the toplevel
+   * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
    * @returns the ids of all toplevel nodes in the graph, together with their node info and the graph that contains them (in case of subgraphs)
    */
   public* nodes(includeDefinedFunctions = false): IterableIterator<[NodeId, DataflowGraphNodeInfo, DataflowGraph]> {
@@ -529,7 +530,7 @@ function equalNodes(our: Map<NodeId, DataflowGraphNodeInfo>, other: Map<NodeId, 
     if(info.tag === 'function-call') {
       guard(otherInfo.tag === 'function-call', 'otherInfo must be a function call as well')
       if(!equalFunctionArguments(info.args, otherInfo.args)) {
-        dataflowLogger.warn(`node ${id} does not match on function arguments (${JSON.stringify(info.functionCall)} vs ${JSON.stringify(otherInfo.functionCall)})`)
+        dataflowLogger.warn(`node ${id} does not match on function arguments (${JSON.stringify(info.args)} vs ${JSON.stringify(otherInfo.args)})`)
         return false
       }
     }

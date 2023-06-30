@@ -52,18 +52,17 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
   return executeHook(data.hooks.functions.onFunctionCall.after, data, result)
 }
 
-function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData) {
+function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RNode| undefined)[] {
   const argContainer = mappedWithName.slice(1)
   guard(argContainer.length > 1 && argContainer[0].name === Type.ParenLeft && argContainer[argContainer.length - 1].name === Type.ParenRight, `expected args in parenthesis, but ${JSON.stringify(argContainer)}`)
   const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => x.name === Type.Comma)
-  const parsedArguments: RNode[] = splitArgumentsOnComma.map(x => {
+  const parsedArguments: (RNode| undefined)[] = splitArgumentsOnComma.map(x => {
     // guard(x.length === 1, `expected argument to be a single element wrapped in an expression, yet received ${JSON.stringify(x)}`)
     // TODO: improve expression unwrap
     parseLog.trace('trying to parse argument')
     const gotArgument = tryToParseArgument(data, x)
-    guard(gotArgument !== undefined, () => `expected one argument result in argumentlist, yet received ${JSON.stringify(gotArgument)}`)
     return gotArgument
-  }).filter(isNotUndefined)
+  })
   return parsedArguments
 }
 

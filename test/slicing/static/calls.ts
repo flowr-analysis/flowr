@@ -1,7 +1,5 @@
 import { assertSliced, withShell } from '../../helper/shell'
 
-// TODO: test something like a <- function() { x };  x <- 3; y <- 2; a()
-
 describe('With Call', withShell(shell => {
   describe('Simple', () => {
     const code = `i <- 4
@@ -71,6 +69,19 @@ a(5)`)
       }
     })
   })
+  describe('Functions with multiple definitions', () => {
+    const code = `a <- b <- function() { x }
+x <- 2
+a()
+b()`
+    // TODO: at the moment we do not remove the second `b` in that case
+    assertSliced('Include only b-definition', shell, code, ['3@a'], `a <- b <- function() { x }
+x <- 2
+a()`)
+    assertSliced('Include only b-definition', shell, code, ['4@b'], `b <- function() { x }
+x <- 2
+b()`)
+  })
   describe('Functions with named arguments', () => {
     const code = `a <- function(x=4) { x }
 a(x = 3)`
@@ -131,7 +142,6 @@ u <- a()
 u()`)
     })
   })
-  // TODO: currently we do not perform argument matching, we do not know, that f is a function
   describe('Higher-order functions', () => {
     const code = `a <- function() { x <- 3; i }
 i <- 4
@@ -171,5 +181,69 @@ print(a[2])
     `
     assertSliced('Must include function shell', shell, code, ['3@a'], `a <- list(1,2,3,4)
 a[3]`)
+  })
+  describe('Global vs. local definitions', () => {
+    const localCode = `
+a <- function() { x = x + 5; cat(x) }
+x <- 3
+a()
+cat(x)`
+    assertSliced('Local redefinition has no effect', shell, localCode, ['5@x'], `x <- 3
+cat(x)`)
+    assertSliced('Local redefinition must be kept as part of call', shell, localCode, ['4@a'], `a <- function() {
+        x = x + 5
+        cat(x)
+    }
+x <- 3
+a()`)
+    const globalCode = `
+a <- function() { x <<- x + 5; cat(x) }
+x <- 3
+a()
+cat(x)`
+    assertSliced('But the global redefinition remains', shell, globalCode, ['5@x'], `a <- function() { x <<- x + 5 }
+x <- 3
+a()
+cat(x)`)
+    const globalCodeWithoutLocal = `
+a <- function() { x <<- 5; cat(x) }
+x <- 3
+a()
+cat(x)`
+    assertSliced('The local assignment is only needed if the global reads', shell, globalCodeWithoutLocal, ['5@x'], `a <- function() { x <<- 5 }
+a()
+cat(x)`)
+
+    assertSliced('Must work with nested globals', shell, `a <- function() { function(b) { x <<- b } }
+y <- 5
+x <- 2
+a()(y)
+cat(x)`, ['5@x'], `a <- function() { function(b) { x <<- b } }
+y <- 5
+a()(y)
+cat(x)`)
+
+    assertSliced('Must work with nested globals and known assignments not-happening', shell, `a <- function() { function(b) { if(FALSE) { x <<- b } } }
+y <- 5
+x <- 2
+a()(y)
+cat(x)`, ['5@x'], `x <- 2
+cat(x)`)
+
+    assertSliced('Must work with nested globals and maybe assignments', shell, `a <- function() { function(b) { if(runif() > .5) { x <<- b } } }
+y <- 5
+x <- 2
+a()(y)
+cat(x)`, ['5@x'], `a <- function() {
+        function(b) {
+            if(runif() > .5) {
+                x <<- b
+            }
+        }
+    }
+y <- 5
+x <- 2
+a()(y)
+cat(x)`)
   })
 }))

@@ -78,7 +78,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
   functions: {
     foldFunctionDefinition: (definition: RFunctionDefinition<Info>, args: Up[], body: Up, down: Down) => Up;
     /** folds named and unnamed function calls */
-    foldFunctionCall:       (call: RFunctionCall<Info>, functionNameOrExpression: Up, args: Up[], down: Down) => Up;
+    foldFunctionCall:       (call: RFunctionCall<Info>, functionNameOrExpression: Up, args: (Up | undefined)[], down: Down) => Up;
     /** The `name` is `undefined` if the argument is unnamed */
     foldArgument:           (argument: RArgument<Info>, name: Up | undefined, value: Up, down: Down) => Up;
     /** The `defaultValue` is `undefined` if the argument was not initialized with a default value */
@@ -119,7 +119,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
     case Type.Repeat:
       return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down)
     case Type.FunctionCall:
-      return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.flavour === 'named' ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => foldAstStateful(param, down, folds)), down)
+      return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.flavour === 'named' ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => param === undefined ? param : foldAstStateful(param, down, folds)), down)
     case Type.FunctionDefinition:
       return folds.functions.foldFunctionDefinition(ast, ast.parameters.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down)
     case Type.Parameter:

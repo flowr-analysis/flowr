@@ -29,7 +29,7 @@ const getLexeme = (n: RNodeWithParent) => n.info.fullLexeme ?? n.lexeme ?? ''
 const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code => {
   const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf)
   const wouldBe = foldToConst(leaf)
-  reconstructLogger.trace(`reconstructAsLeaf: ${selectionHasLeaf ? 'y' : 'n'}:  ${JSON.stringify(wouldBe)}`)
+  reconstructLogger.trace(`reconstructAsLeaf: ${leaf.info.id} (${selectionHasLeaf ? 'y' : 'n'}):  ${JSON.stringify(wouldBe)}`)
   return selectionHasLeaf ? wouldBe : []
 }
 
@@ -262,20 +262,21 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
       { line: '}', indent: 0 }
     ]
   } else {
-    // unknown
+    // unknown -> we add the braces just to be sure
     return [
-      { line: `function(${parameters})`, indent: 0 },
-      ...indentBy(body, 1)
+      { line: `function(${parameters}) {`, indent: 0 },
+      ...indentBy(body, 1),
+      { line: '}', indent: 0 }
     ]
   }
 
 }
 
-function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: Code[], configuration: ReconstructionConfiguration): Code {
+function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: (Code | undefined)[], configuration: ReconstructionConfiguration): Code {
   if(isSelected(configuration, call)) {
     return plain(getLexeme(call))
   }
-  const filteredArgs = args.filter(a => a.length > 0)
+  const filteredArgs = args.filter(a => a !== undefined && a.length > 0)
   if(functionName.length === 0 && filteredArgs.length === 0) {
     return []
   }

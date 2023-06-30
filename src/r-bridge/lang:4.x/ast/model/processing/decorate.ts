@@ -254,7 +254,7 @@ function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
-  return (data: RFunctionCall<OtherInfo>, functionName: RNodeWithParent<OtherInfo>, args: RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
+  return (data: RFunctionCall<OtherInfo>, functionName: RNodeWithParent<OtherInfo>, args: (RNodeWithParent<OtherInfo> | undefined)[]): RNodeWithParent<OtherInfo> => {
     const id = info.getId(data)
     let decorated: RFunctionCall<OtherInfo & ParentInformation>
     if(data.flavour === 'named') {
@@ -264,7 +264,11 @@ function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
     }
     info.idMap.set(id, decorated)
     functionName.info.parent = id
-    args.forEach(arg => arg.info.parent = id)
+    for(const arg of args) {
+      if(arg !== undefined) {
+        arg.info.parent = id
+      }
+    }
     return decorated
   }
 }

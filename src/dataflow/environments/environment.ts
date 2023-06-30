@@ -4,8 +4,9 @@
  * @module
  */
 import { NodeId } from '../../r-bridge'
-import { DataflowGraph, DataflowGraphEdgeAttribute, DataflowScopeName, GlobalScope } from '../graph'
+import { DataflowGraph, DataflowGraphEdgeAttribute, DataflowScopeName, GlobalScope, LocalScope } from '../graph'
 import { dataflowLogger } from '../index'
+import { resolveByName } from './resolveByName'
 
 /** identifiers are branded to avoid confusion with other string-like types */
 export type Identifier = string & { __brand?: 'identifier' }
@@ -18,7 +19,7 @@ export const BuiltIn = 'built-in'
  * Stores the definition of an identifier within an {@link IEnvironment}
  */
 export interface IdentifierDefinition extends IdentifierReference {
-  kind:      'function' | 'variable' | 'parameter' | 'unknown' | 'built-in-function' /* TODO: 'constant' */
+  kind:      'function' | 'variable' | 'parameter' | 'unknown' | 'built-in-function' | 'argument' /* TODO: 'constant' */
   /** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
   definedAt: NodeId
 }
@@ -55,19 +56,22 @@ export function equalIdentifierReferences(a: IdentifierReference, b: IdentifierR
   return a.name === b.name && a.scope === b.scope && a.nodeId === b.nodeId && a.used === b.used
 }
 
-export function makeAllMaybe(references: IdentifierReference[] | undefined, graph: DataflowGraph): IdentifierReference[] {
+export function makeAllMaybe(references: IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference[] {
   if(references === undefined) {
     return []
   }
   return references.map(ref => {
     const node = graph.get(ref.nodeId)
+    const definitions = resolveByName(ref.name, LocalScope, environments)
+    for(const definition of definitions ?? []) {
+      definition.used = 'maybe'
+    }
     if(node) {
       node[0].when = 'maybe'
     }
     return { ...ref, used: 'maybe'}
   })
 }
-
 
 
 export interface IEnvironment {
@@ -120,6 +124,22 @@ export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition
     used:      'always',
     definedAt: BuiltIn,
     name:      'return',
+    nodeId:    BuiltIn
+  }]],
+  ['cat', [{
+    kind:      'built-in-function',
+    scope:     GlobalScope,
+    used:      'always',
+    definedAt: BuiltIn,
+    name:      'cat',
+    nodeId:    BuiltIn
+  }]],
+  ['print', [{
+    kind:      'built-in-function',
+    scope:     GlobalScope,
+    used:      'always',
+    definedAt: BuiltIn,
+    name:      'print',
     nodeId:    BuiltIn
   }]]
 ])

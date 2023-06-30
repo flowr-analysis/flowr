@@ -1,12 +1,12 @@
 import { assertDataflow, withShell } from '../../../helper/shell'
 import { BuiltIn, DataflowGraph, GlobalScope, initializeCleanEnvironments, LocalScope } from '../../../../src/dataflow'
-import { define, pushLocalEnvironment } from '../../../../src/dataflow/environments'
+import { define, popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/argument'
 
 // TODO: <- in parameters
 // TODO: allow to access environments in the end
 describe('Function Definition', withShell(shell => {
-  describe('Only Functions', () => {
+  describe('Only functions', () => {
     assertDataflow(`unknown read in function`, shell, `function() { x }`,
       new DataflowGraph()
         .addNode({
@@ -276,13 +276,14 @@ describe('Function Definition', withShell(shell => {
       new DataflowGraph()
         .addNode( { tag: 'use', id: "4", name: "x" })
         .addNode({
-          tag:        'function-definition',
-          id:         "3",
-          name:       "3",
-          scope:      LocalScope,
-          when:       'always',
-          exitPoints: [ '2' ],
-          subflow:    {
+          tag:         'function-definition',
+          id:          "3",
+          name:        "3",
+          scope:       LocalScope,
+          when:        'always',
+          exitPoints:  [ '2' ],
+          environment: popLocalEnvironment(envWithXDefinedGlobal),
+          subflow:     {
             out:         [],
             activeNodes: [],
             in:          [],
@@ -303,13 +304,14 @@ describe('Function Definition', withShell(shell => {
       new DataflowGraph()
         .addNode( { tag: 'use', id: "4", name: "x" })
         .addNode({
-          tag:        'function-definition',
-          id:         "3",
-          name:       "3",
-          scope:      LocalScope,
-          when:       'always',
-          exitPoints: [ '2' ],
-          subflow:    {
+          tag:         'function-definition',
+          id:          "3",
+          name:        "3",
+          scope:       LocalScope,
+          when:        'always',
+          exitPoints:  [ '2' ],
+          environment: popLocalEnvironment(envWithXDefinedGlobalR),
+          subflow:     {
             out:         [],
             activeNodes: [],
             in:          [],

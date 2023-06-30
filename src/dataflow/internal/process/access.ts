@@ -3,8 +3,8 @@ import { DataflowInformation } from '../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import { overwriteEnvironments } from '../../environments'
 
-export function processAccess<OtherInfo>(data: RAccess<OtherInfo & ParentInformation>, down: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
-  const processedAccessed = processDataflowFor(data.accessed, down)
+export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+  const processedAccessed = processDataflowFor(node.accessed, data)
   const nextGraph = processedAccessed.graph
   const outgoing = processedAccessed.out
   const ingoing = [...processedAccessed.in, ...processedAccessed.activeNodes]
@@ -12,12 +12,12 @@ export function processAccess<OtherInfo>(data: RAccess<OtherInfo & ParentInforma
 
   const accessedNodes = [...processedAccessed.activeNodes, ...processedAccessed.in, ...processedAccessed.out]
 
-  if(data.operator === '[' || data.operator === '[[') {
-    for(const access of data.access) {
+  if(node.operator === '[' || node.operator === '[[') {
+    for(const access of node.access) {
       if(access === null) {
         continue
       }
-      const processedAccess = processDataflowFor(access, down)
+      const processedAccess = processDataflowFor(access, data)
       nextGraph.mergeWith(processedAccess.graph)
       outgoing.push(...processedAccess.out)
       const newIngoing = [...processedAccess.in, ...processedAccess.activeNodes]
@@ -33,12 +33,12 @@ export function processAccess<OtherInfo>(data: RAccess<OtherInfo & ParentInforma
   }
 
   return {
-    ast:          down.completeAst,
+    ast:          data.completeAst,
     activeNodes:  [],
     in:           ingoing,
     out:          outgoing,
     environments: environments,
-    scope:        down.activeScope,
+    scope:        data.activeScope,
     graph:        nextGraph
   }
 }

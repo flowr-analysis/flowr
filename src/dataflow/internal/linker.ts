@@ -55,12 +55,12 @@ function specialReturnFunction(info: DataflowGraphNodeFunctionCall, graph: Dataf
   }
 }
 
-export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph): void {
-  const calls = [...graph.nodes(true)]
-    .filter(([_,info]) => info.tag === 'function-call')
-
-
-  for(const [id, info] of calls) {
+/**
+ * Returns the called functions within the current graph, which can be used to merge the environments with the call
+ */
+export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] {
+  const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] = []
+  for(const [id, info, nodeGraph] of functionCalls) {
     // TODO: special handling for others
     if(info.tag === 'function-call' && info.name === 'return') {
       specialReturnFunction(info, graph, id)
@@ -84,7 +84,11 @@ export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph): void {
       dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${defs.name}`)
       graph.addEdge(id, defs.id, 'calls', 'always')
     }
+    if(nodeGraph === thisGraph) {
+      calledFunctionDefinitions.push({ functionCall: id,  called: [...functionDefs.values()] })
+    }
   }
+  return calledFunctionDefinitions
 }
 
 
@@ -150,16 +154,14 @@ export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReferen
         bodyInput.used = 'maybe'
       }
       givenInputs.push(bodyInput)
-    } else if (probableTarget.length === 1) {
-      graph.addEdge(bodyInput, probableTarget[0], 'read', undefined, true)
     } else {
       for (const target of probableTarget) {
         // we can stick with maybe even if readId.attribute is always
         graph.addEdge(bodyInput, target, 'read', undefined, true)
       }
     }
-    // down.graph.get(node.id).definedAtPosition = false
   }
+  // data.graph.get(node.id).definedAtPosition = false
   return givenInputs
 }
 

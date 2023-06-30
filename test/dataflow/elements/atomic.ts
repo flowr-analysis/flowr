@@ -83,7 +83,7 @@ describe("Atomic dataflow information", withShell((shell) => {
     }
   })
 
-  describe("pipes", () => {
+  describe("Pipes", () => {
     describe("Passing one argument", () => {
       assertDataflow("No parameter function", shell, "x |> f()",
         new DataflowGraph()
@@ -240,7 +240,7 @@ describe("Atomic dataflow information", withShell((shell) => {
     })
 
     describe(`known impact assignments`, () => {
-      describe('Loops return invisible null', () => {
+      describe('loops return invisible null', () => {
         for (const assignment of [ { str: '<-', defId: ['0','0','0'], readId: ['1','1','1'], swap: false },
           { str: '<<-', defId: ['0','0','0'], readId: ['1','1','1'], swap: false }, { str: '=', defId: ['0','0','0'], readId: ['1','1','1'], swap: false },
           /* two for parenthesis necessary for precedence */
@@ -272,6 +272,38 @@ describe("Atomic dataflow information", withShell((shell) => {
           })
         }
       })
+    })
+    describe('assignment with function call', () => {
+      const environmentWithX = define(
+        { name: 'x', nodeId: '4', kind: 'argument', definedAt: '4', scope: LocalScope, used: 'always' },
+        LocalScope,
+        initializeCleanEnvironments()
+      )
+      assertDataflow(`define call with multiple args should only be defined by the call-return`, shell, `a <- foo(x=3,y,z)`,
+        new DataflowGraph()
+          .addNode({ tag: 'variable-definition', id: '0', name: "a", scope: LocalScope })
+          .addNode({
+            tag:  'function-call',
+            id:   '9',
+            name: "foo",
+            args: [
+              { name: 'x', nodeId: '4', scope: LocalScope, used: 'always' },
+              { name: `${UnnamedArgumentPrefix}6`, nodeId: '6', scope: LocalScope, used: 'always' },
+              { name: `${UnnamedArgumentPrefix}8`, nodeId: '8', scope: LocalScope, used: 'always' },
+            ]
+          })
+          .addNode({ tag: 'use', id: '4', name: "x" })
+          .addNode({ tag: 'use', id: '5', name: "y", environment: environmentWithX })
+          .addNode({ tag: 'use', id: '6', name: `${UnnamedArgumentPrefix}6`, environment: environmentWithX })
+          .addNode({ tag: 'use', id: '7', name: "z", environment: environmentWithX })
+          .addNode({ tag: 'use', id: '8', name: `${UnnamedArgumentPrefix}8`, environment: environmentWithX })
+          .addEdge('0', '9', 'defined-by', 'always')
+          .addEdge('9', '4', 'argument', 'always')
+          .addEdge('9', '6', 'argument', 'always')
+          .addEdge('9', '8', 'argument', 'always')
+          .addEdge('6', '5', 'read', 'always')
+          .addEdge('8', '7', 'read', 'always')
+      )
     })
   })
 

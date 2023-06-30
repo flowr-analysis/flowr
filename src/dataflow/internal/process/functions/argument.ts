@@ -23,13 +23,13 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
   const graph = value.graph
 
   const argContent = argument.name?.content
-  const argumentName = argContent === undefined ? `${UnnamedArgumentPrefix}${argument.info.id}` : `${argContent}-${argument.info.id}`
+  const argumentName = argContent ?? `${UnnamedArgumentPrefix}${argument.info.id}`
   graph.addNode({ tag: 'use', id: argument.info.id, name: argumentName, environment: data.environments, when: 'always' })
 
   const ingoingRefs = [...value.activeNodes, ...value.in, ...(name === undefined ? [] : [...name.in])]
 
   // we only need to link against those which are not already bound to another function call argument
-  linkReadsForArgument(argument, ingoingRefs, graph)
+  linkReadsForArgument(argument, [...ingoingRefs, ...value.out /* value may perform definitions */], graph)
 
   // TODO: defined-by for default values
 

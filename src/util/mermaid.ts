@@ -12,13 +12,14 @@ import { guard } from './assert'
 
 
 interface MermaidGraph {
-  lines:        string[]
-  hasBuiltIn:   boolean
-  mark:         Set<NodeId> | undefined
+  lines:               string[]
+  hasBuiltIn:          boolean
+  includeEnvironments: boolean
+  mark:                Set<NodeId> | undefined
   /** in the form of from-\>to because I am lazy, see {@link encodeEdge} */
-  presentEdges: Set<string>
+  presentEdges:        Set<string>
   // keep for subflows
-  rootGraph:    DataflowGraph
+  rootGraph:           DataflowGraph
 }
 
 export function formatRange(range: SourceRange | undefined): string {
@@ -124,7 +125,9 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, mermai
   const defText = def ? scopeToMermaid(info.scope, info.when) : ''
   const { open, close } = mermaidNodeBrackets(def, fCall)
 
-  mermaid.lines.push(`    %% ${id}: ${JSON.stringify(info.environment, displayEnvReplacer)}`)
+  if(mermaid.includeEnvironments) {
+    mermaid.lines.push(`    %% ${id}: ${JSON.stringify(info.environment, displayEnvReplacer)}`)
+  }
   mermaid.lines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name)} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
     fCall ? displayFunctionArgMapping(info.args) : ''
   }\`"${close}`)
@@ -151,7 +154,7 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, mermai
 }
 
 export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = '', mark?: Set<NodeId>, rootGraph?: DataflowGraph): string {
-  const mermaid: MermaidGraph = { lines: prefix === null ? [] : [prefix], presentEdges: new Set<string>(), hasBuiltIn: false, mark, rootGraph: rootGraph ?? graph }
+  const mermaid: MermaidGraph = { lines: prefix === null ? [] : [prefix], presentEdges: new Set<string>(), hasBuiltIn: false, mark, rootGraph: rootGraph ?? graph, includeEnvironments: true }
 
   for (const [id, info] of graph.entries()) {
     nodeToMermaid(graph, info, mermaid, id, idPrefix, dataflowIdMap, mark)

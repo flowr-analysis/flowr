@@ -529,7 +529,7 @@ function equalNodes(our: Map<NodeId, DataflowGraphNodeInfo>, other: Map<NodeId, 
     if(info.tag === 'function-call') {
       guard(otherInfo.tag === 'function-call', 'otherInfo must be a function call as well')
       if(!equalFunctionArguments(info.args, otherInfo.args)) {
-        dataflowLogger.warn(`node ${id} does not match on function arguments (${JSON.stringify(info.functionCall)} vs ${JSON.stringify(otherInfo.functionCall)})`)
+        dataflowLogger.warn(`node ${id} does not match on function arguments (${JSON.stringify(info.args)} vs ${JSON.stringify(otherInfo.args)})`)
         return false
       }
     }

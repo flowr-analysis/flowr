@@ -27,7 +27,7 @@ function getLastNodeInGraph<OtherInfo>(functionName: DataflowInformation<OtherIn
   return functionNameId
 }
 
-function porcessArgumentsOfFuntionCall<OtherInfo>(args: DataflowInformation<OtherInfo & ParentInformation>[], finalEnv: REnvironmentInformation, finalGraph: DataflowGraph, callArgs: FunctionArgument[], functionRootId: NodeId) {
+function processArgumentsOfFunctionCall<OtherInfo>(args: DataflowInformation<OtherInfo & ParentInformation>[], finalEnv: REnvironmentInformation, finalGraph: DataflowGraph, callArgs: FunctionArgument[], functionRootId: NodeId) {
   for (const arg of args) {
     finalEnv = overwriteEnvironments(finalEnv, arg.environments)
     finalGraph.mergeWith(arg.graph)
@@ -109,14 +109,8 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     scope:       data.activeScope,
     args:        callArgs // same reference
   })
-  // finalGraph.addEdge(functionRootId, functionNameId, 'read', 'always')
 
-  finalEnv = porcessArgumentsOfFuntionCall(args, finalEnv, finalGraph, callArgs, functionRootId)
-
-  // TODO:
-  // finalGraph.addNode(functionCall.info.id, functionCall.functionName.content, finalEnv, down.activeScope, 'always')
-  // call links are added on expression level
-
+  finalEnv = processArgumentsOfFunctionCall(args, finalEnv, finalGraph, callArgs, functionRootId)
 
   const inIds = [...args.flatMap(a => [...a.in, a.activeNodes])].flat()
   inIds.push({ nodeId: functionRootId, name: functionCallName, scope: data.activeScope, used: 'always' })
@@ -137,11 +131,10 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     inIds.push(...functionName.in, ...functionName.activeNodes)
   }
 
-
   return {
     activeNodes:  [],
     in:           inIds,
-    out:          [ ...functionName.out, ...args.flatMap(a => a.out)],
+    out:          functionName.out, // we do not keep argument out as it has been linked by the function TODO: deal with foo(a <- 3)
     graph:        finalGraph,
     environments: finalEnv,
     ast:          data.completeAst,

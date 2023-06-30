@@ -1,4 +1,4 @@
-import { ParentInformation, RAssignmentOp, RNode, Type } from '../../../../r-bridge'
+import { collectAllIds, NodeId, ParentInformation, RAssignmentOp, RNode, Type } from '../../../../r-bridge'
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { GlobalScope, LocalScope } from '../../../graph'
@@ -20,7 +20,6 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
 
   // deal with special cases based on the source node and the determined read targets
-  const impactReadTargets = determineImpactOfSource(swap ? op.lhs : op.rhs, readTargets)
 
   const isFunctionSide = swap ? op.lhs : op.rhs
   const isFunction = isFunctionSide.type === Type.FunctionDefinition
@@ -28,11 +27,15 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
   for (const write of writeTargets) {
     nextGraph.setDefinitionOfNode(write)
     // TODO: this can be improved easily
+
     if (isFunction) {
       nextGraph.addEdge(write, isFunctionSide.info.id, 'defined-by', 'always', true)
-    }
-    for(const read of impactReadTargets) {
-      nextGraph.addEdge(write, read, 'defined-by', undefined, true)
+    } else {
+      const impactReadTargets = determineImpactOfSource(swap ? op.lhs : op.rhs, readTargets)
+
+      for (const read of impactReadTargets) {
+        nextGraph.addEdge(write, read, 'defined-by', undefined, true)
+      }
     }
   }
   return {
@@ -136,12 +139,24 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<
  * This returns only those of `readTargets` that actually impact the target.
  */
 function determineImpactOfSource<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, readTargets: IdentifierReference[]): IdentifierReference[] {
-
-  /* loops return an invisible null */
-  if(source.type === Type.For || source.type === Type.While || source.type === Type.Repeat) {
-    return []
+  // collect all ids from the source but stop at Loops, function calls, definitions and everything which links its own return
+  // for loops this is necessary as they *always* return an invisible null, for function calls we do not know if they do
+  // yet, we need to keep the ids of these elements
+  const keepEndIds: NodeId[] = []
+  const allIds = new Set(collectAllIds(source, n => {
+    if(n.type === Type.FunctionCall || n.type === Type.FunctionDefinition) {
+      keepEndIds.push(n.info.id)
+      return true
+    }
+    return n.type === Type.For || n.type === Type.While || n.type === Type.Repeat
+  })
+  )
+  for(const id of keepEndIds) {
+    allIds.add(id)
   }
-
-  // by default, we assume, that all have an impact
-  return readTargets
+  if(allIds.size === 0) {
+    return []
+  } else {
+    return readTargets.filter(ref => allIds.has(ref.nodeId))
+  }
 }

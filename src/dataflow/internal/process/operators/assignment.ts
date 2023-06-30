@@ -125,7 +125,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<
 
   return {
     readTargets:  [...source.activeNodes, ...read, ...readFromSourceWritten],
-    writeTargets: [...writeNodes, ...target.out],
+    writeTargets: [...writeNodes, ...target.out, ...readFromSourceWritten],
     environments: environments,
     swap
   }

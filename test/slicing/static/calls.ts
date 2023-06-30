@@ -74,8 +74,12 @@ a(5)`)
 x <- 2
 a()
 b()`
-    // assertSliced('Include only a-definition', shell, code, ['3@a'], code)
-    assertSliced('Include only b-definition', shell, code, ['4@b'], code)
+    assertSliced('Include only b-definition', shell, code, ['3@a'], `a <- function() { x }
+x <- 2
+a()`)
+    assertSliced('Include only b-definition', shell, code, ['4@b'], `b <- function() { x }
+x <- 2
+b()`)
   })
   describe('Functions with named arguments', () => {
     const code = `a <- function(x=4) { x }

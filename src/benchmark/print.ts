@@ -39,7 +39,10 @@ export function stats2string(stats: SlicerStats): string {
 Request: ${JSON.stringify(stats.request)}
 Shell init time:        ${print(stats.commonMeasurements, 'initialize R session')}
 Retrieval of token map: ${print(stats.commonMeasurements, 'retrieve token map')}
-Input preparation:      ${print(stats.commonMeasurements, 'retrieve token map')}`
+AST retrieval:          ${print(stats.commonMeasurements,'retrieve AST from R code')}
+AST normalization:      ${print(stats.commonMeasurements,'normalize R AST')}
+AST decoration:         ${print(stats.commonMeasurements,'decorate R AST')}
+Dataflow creation:      ${print(stats.commonMeasurements,'produce dataflow information')}`
 
   // TODO:
   /*  if(slicingData !== undefined) {

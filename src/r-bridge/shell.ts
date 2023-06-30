@@ -47,7 +47,7 @@ export interface OutputCollectorConfiguration extends MergeableRecord {
 
 export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguration = {
   from:      'stdout',
-  postamble: `🐧${'-'.repeat(13)}🐧`,
+  postamble: `🐧${'-'.repeat(5)}🐧`,
   timeout:   {
     // TODO: allow to configure such things in a configuration file?
     ms:             750_000,
@@ -310,14 +310,14 @@ class RShellSession {
   }
 
   /**
-   * collect lines from the selected streams until the given condition is met or the timeout is reached
+   * Collect lines from the selected streams until the given condition is met or the timeout is reached
    *
-   * this method does allow other listeners to consume the same input
+   * This method does allow other listeners to consume the same input
    *
-   * @param from    - the stream(s) to collect the information from
-   * @param until   - if the predicate returns true, this will stop the collection and resolve the promise
-   * @param timeout - configuration for how and when to timeout
-   * @param action  - event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
+   * @param from    - The stream(s) to collect the information from
+   * @param until   - If the predicate returns true, this will stop the collection and resolve the promise
+   * @param timeout - Configuration for how and when to timeout
+   * @param action  - Event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
    */
   public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
     const result: string[] = []

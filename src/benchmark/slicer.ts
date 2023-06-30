@@ -4,6 +4,7 @@
  */
 
 import {
+  collectAllIds,
   decorateAst,
   DecoratedAst,
   getStoredTokenMap,
@@ -12,7 +13,7 @@ import {
   retrieveXmlFromRCode,
   RExpressionList,
   RParseRequestFromFile, RParseRequestFromText,
-  RShell
+  RShell, ts2r
 } from '../r-bridge'
 import { IStoppableStopwatch, Measurements } from './stopwatch'
 import { guard } from '../util/assert'
@@ -22,6 +23,7 @@ import { convertAllSlicingCriteriaToIds, SlicingCriteria } from '../slicing/crit
 import { staticSlicing } from '../slicing/static'
 import { reconstructToCode } from '../slicing/reconstruct'
 import { CommonSlicerMeasurements, ElapsedTime, PerSliceMeasurements, PerSliceStats, SlicerStats } from './stats'
+import fs from 'fs'
 
 
 
@@ -78,7 +80,7 @@ export class Slicer {
     )
 
     this.loadedXml = await this.commonMeasurements.measureAsync(
-      'retrieve xml from R code',
+      'retrieve AST from R code',
       () => retrieveXmlFromRCode({
         ...request,
         attachSourceInformation: true,
@@ -87,12 +89,12 @@ export class Slicer {
     )
 
     this.normalizedAst = await this.commonMeasurements.measureAsync(
-      'normalize R ast',
+      'normalize R AST',
       () => normalize(this.loadedXml as string, this.tokenMap as Record<string, string>)
     )
 
     this.decoratedAst = this.commonMeasurements.measure(
-      'decorate R ast',
+      'decorate R AST',
       () => decorateAst(this.normalizedAst as RExpressionList)
     )
 
@@ -101,23 +103,45 @@ export class Slicer {
       () => produceDataFlowGraph(this.decoratedAst as DecoratedAst)
     )
 
+    const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8')
+    // retrieve number of R tokens - flowr_parsed should still contain the last parsed code
+    const numberOfRTokens = await this.session.sendCommandWithOutput(`cat(nrow(getParseData(flowr_parsed)),${ts2r(this.session.options.eol)})`)
+    guard(numberOfRTokens.length === 1, 'expected exactly one line to obtain the number of R tokens')
+
+    // collect dataflow graph size
+    const nodes = [...this.dataflow.graph.nodes(true)]
+    let numberOfEdges = 0
+    let numberOfCalls = 0
+    let numberOfDefinitions = 0
+
+    for(const [n, info, graph] of nodes) {
+      const nodeInGraph = graph.get(n, true)
+      if(nodeInGraph === undefined) {
+        continue
+      }
+      numberOfEdges += nodeInGraph[1].length
+      if(info.tag === 'function-call') {
+        numberOfCalls++
+      } else if(info.tag === 'function-definition') {
+        numberOfDefinitions++
+      }
+    }
+
     this.stats = {
       commonMeasurements:   new Map<CommonSlicerMeasurements, ElapsedTime>(),
       perSliceMeasurements: this.perSliceMeasurements,
       request,
       input:                {
-        // TODO: support file load
-        numberOfLines:            -1,
-        numberOfCharacters:       -1,
-        numberOfRTokens:          -1,
-        numberOfNormalizedTokens: -1
+        numberOfLines:            loadedContent.split('\n').length,
+        numberOfCharacters:       loadedContent.length,
+        numberOfRTokens:          Number(numberOfRTokens[0]),
+        numberOfNormalizedTokens: [...collectAllIds(this.decoratedAst.decoratedAst)].length,
       },
-      // TODO
       dataflow: {
-        numberOfNodes:               -1,
-        numberOfEdges:               -1,
-        numberOfCalls:               -1,
-        numberOfFunctionDefinitions: -1
+        numberOfNodes:               [...this.dataflow.graph.nodes(true)].length,
+        numberOfEdges:               numberOfEdges,
+        numberOfCalls:               numberOfCalls,
+        numberOfFunctionDefinitions: numberOfDefinitions
       }
     }
   }

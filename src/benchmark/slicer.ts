@@ -43,13 +43,32 @@ export type PerSliceMeasurements = 'decode slicing criterion'
   | 'static slicing'
   | 'reconstruct code'
 
-export interface PerSliceStats {
+interface PerSliceStats {
   measurements:    Measurements<PerSliceMeasurements>
   slicingCriteria: SlicingCriteria
   /* TODO: slicedOutput:    Set<NodeId>
   reconstructed:   string
    */
 }
+
+interface SlicerStats {
+  commonMeasurements:   Measurements<CommonSlicerMeasurements>
+  perSliceMeasurements: Map<SlicingCriteria, PerSliceStats>
+  request:              RParseRequest
+  input: {
+    numberOfLines:            number
+    numberOfCharacters:       number
+    numberOfRTokens:          number
+    numberOfNormalizedTokens: number
+  }
+  dataflow: {
+    numberOfNodes:               number
+    numberOfEdges:               number
+    numberOfCalls:               number
+    numberOfFunctionDefinitions: number
+  }
+}
+
 
 /**
  * A slicer that can be used to slice exactly one file (multiple times).
@@ -62,6 +81,7 @@ export class Slicer {
   private readonly commonMeasurements = new Measurements<CommonSlicerMeasurements>()
   private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>
   private readonly session: RShell
+  private stats:            SlicerStats | undefined
   private tokenMap:         Record<string, string> | undefined
   private usedRequest:      RParseRequest | undefined
   private loadedXml:        string | undefined
@@ -85,7 +105,7 @@ export class Slicer {
    * Can only be called once for each instance.
    */
   public async init(request: RParseRequest) {
-    guard(this.usedRequest === undefined, 'cannot initialize the slicer twice')
+    guard(this.stats === undefined, 'cannot initialize the slicer twice')
 
     this.usedRequest = request
 
@@ -122,10 +142,30 @@ export class Slicer {
       'produce dataflow information',
       () => produceDataFlowGraph(this.decoratedAst as DecoratedAst)
     )
+
+    this.stats = {
+      commonMeasurements:   this.commonMeasurements,
+      perSliceMeasurements: this.perSliceMeasurements,
+      request,
+      input:                {
+        // TODO: support file load
+        numberOfLines:            -1,
+        numberOfCharacters:       -1,
+        numberOfRTokens:          -1,
+        numberOfNormalizedTokens: -1
+      },
+      // TODO
+      dataflow: {
+        numberOfNodes:               -1,
+        numberOfEdges:               -1,
+        numberOfCalls:               -1,
+        numberOfFunctionDefinitions: -1
+      }
+    }
   }
 
   public slice(slicingCriteria: SlicingCriteria) {
-    guard(this.usedRequest !== undefined, 'need to call init before slice!')
+    guard(this.stats !== undefined, 'need to call init before slice!')
     guard(!this.perSliceMeasurements.has(slicingCriteria), 'do not slice the same criteria combination twice')
 
     const measurements = new Measurements<PerSliceMeasurements>()
@@ -156,5 +196,10 @@ export class Slicer {
       () => reconstructToCode<NoInfo>(this.decoratedAst as DecoratedAst, slicedOutput)
     )
     // TODO: end statistics
+  }
+
+  public getStats(): SlicerStats {
+    guard(this.stats !== undefined, 'need to call init before getStats!')
+    return this.stats
   }
 }

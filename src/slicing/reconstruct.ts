@@ -276,7 +276,6 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
     return plain(getLexeme(call))
   }
   const filteredArgs = args.filter(a => a.length > 0)
-  console.log(call.info.id, call.location, call.arguments, args, filteredArgs)
   if(functionName.length === 0 && filteredArgs.length === 0) {
     return []
   }

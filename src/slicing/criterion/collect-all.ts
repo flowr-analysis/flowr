@@ -5,27 +5,12 @@
  */
 import { MergeableRecord } from '../../util/objects'
 import {
-  FoldFunctions,
   NodeId,
-  ParentInformation,
-  RAccess, RArgument,
-  RArithmeticBinaryOp, RArithmeticUnaryOp,
-  RAssignmentOp, RBreak, RComment,
-  RComparisonBinaryOp, RExpressionList, RForLoop, RFunctionCall, RFunctionDefinition, RIfThenElse,
-  RLogical,
-  RLogicalBinaryOp, RLogicalUnaryOp,
-  RModelFormulaBinaryOp, RModelFormulaUnaryOp, RNext,
-  RNodeWithParent,
-  RNumber, RParameter, RRepeatLoop,
-  RString,
-  RSymbol, RWhileLoop,
-  Type,
-  visit
+  RNodeWithParent
 } from '../../r-bridge'
 import { SingleSlicingCriterion, SlicingCriteria } from './parse'
 import { guard } from '../../util/assert'
 import { getUniqueCombinationsOfSize } from '../../util/arrays'
-import { RPipe } from '../../r-bridge/lang:4.x/ast/model/nodes/RPipe'
 
 /**
  * Defines the filter for collecting all possible slicing criteria.
@@ -53,11 +38,16 @@ export interface SlicingCriteriaFilter extends MergeableRecord {
 /**
  * Will create all possible slicing criteria for the given ast, based on the {@link SlicingCriteriaFilter}.
  * The slicing criteria will be *ordered* (i.e., it will not return `[1:2,3:4]` and `[3:4,1:2]` if `maximumSize` \> 1).
+ * If there are not enough matching nodes within the ast, this will return *no* slicing criteria!
  */
-export function* collectAllSlicingCriteria<OtherInfo>(ast: RNodeWithParent<OtherInfo>, filter: SlicingCriteriaFilter): Generator<SlicingCriteria, void, void> {
+export function* collectAllSlicingCriteria<OtherInfo>(ast: RNodeWithParent<OtherInfo>, filter: Readonly<SlicingCriteriaFilter>): Generator<SlicingCriteria, void, void> {
   guard(filter.minimumSize >= 1, `Minimum size must be at least 1, but was ${filter.minimumSize}`)
   guard(filter.maximumSize >= filter.minimumSize, `Maximum size must be at least minimum size, but was ${filter.maximumSize} < ${filter.minimumSize}`)
   const potentialSlicingNodes = filter.collectAll(ast)
+
+  if(potentialSlicingNodes.length < filter.minimumSize) {
+    return
+  }
 
   for(const combination of getUniqueCombinationsOfSize(potentialSlicingNodes, filter.minimumSize, filter.maximumSize)) {
     yield combination.map(n => `$${n}` as SingleSlicingCriterion)

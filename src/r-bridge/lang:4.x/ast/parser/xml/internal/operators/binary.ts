@@ -139,11 +139,7 @@ function processLhsAndRhsForAssignment(data: ParserData, opName: string, parsedL
     location:  assigned.location,
     content:   assigned.content.str,
     namespace: undefined,
-    info:      {
-      fullRange:        data.currentRange,
-      additionalTokens: [],
-      fullLexeme:       data.currentLexeme
-    }
+    info:      assigned.info
   }
   return isRhs ? [parsedLhs, result] : [result, parsedRhs]
 }

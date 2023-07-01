@@ -246,4 +246,23 @@ x <- 2
 a()(y)
 cat(x)`)
   })
+  describe('Using strings for definitions', () => {
+    const code = `
+'a' <- function() { x <- 3; 4 }
+'a'()
+a()
+a <- function() { x <- 3; 5 }
+'a'()
+a()
+    `
+    assertSliced('Must link with string/string', shell, code, ['3@\'a\''], `'a' <- function() { 4 }
+'a'()`)
+    assertSliced('Must link with string/no-string', shell, code, ['4@a'], `'a' <- function() { 4 }
+a()`)
+    assertSliced('Must link with no-string/string', shell, code, ['6@\'a\''], `a <- function() { 5 }
+'a'()`)
+    // the common case:
+    assertSliced('Must link with no-string/no-string', shell, code, ['7@a'], `a <- function() { 5 }
+a()`)
+  })
 }))

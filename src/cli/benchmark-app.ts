@@ -8,6 +8,7 @@ import { RParseRequestFromFile } from '../r-bridge'
 import fs from 'fs'
 import { displayEnvReplacer } from '../util/json'
 import { date2string } from '../util/time'
+import { guard } from '../util/assert'
 
 // TODO: promote to the normal slicing app with a --benchmark 100 flag afterwards
 // TODO: allow to select slicing criteria filter
@@ -90,7 +91,10 @@ async function benchmark() {
       console.log(`Processing file ${counter}/${limit}: ${file.content}`)
       await slicer.init(file)
 
-      slicer.sliceForAll(DefaultAllVariablesFilter)
+      const count = slicer.sliceForAll(DefaultAllVariablesFilter)
+      if(options.limit) {
+        guard(count > 0, `No possible slices found for ${file.content}, skipping in count`)
+      }
 
       const stats = slicer.finish()
       const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats))

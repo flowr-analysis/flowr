@@ -210,14 +210,19 @@ export class BenchmarkSlicer {
    * Call {@link slice} for all slicing criteria that match the given filter.
    * See {@link collectAllSlicingCriteria} for details.
    *
+   * @returns The number of slices that were produced
+   *
    * @see collectAllSlicingCriteria
    * @see SlicingCriteriaFilter
    */
-  public sliceForAll(filter: SlicingCriteriaFilter) {
+  public sliceForAll(filter: SlicingCriteriaFilter): number {
     this.guardActive()
+    let count = 0
     for(const slicingCriteria of collectAllSlicingCriteria((this.decoratedAst as DecoratedAst).decoratedAst, filter)) {
       this.slice(...slicingCriteria)
+      count++
     }
+    return count
   }
 
   /**

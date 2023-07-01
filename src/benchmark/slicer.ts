@@ -239,4 +239,11 @@ export class BenchmarkSlicer {
     this.stats.commonMeasurements = this.commonMeasurements.get()
     return this.stats
   }
+
+  /**
+   * Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead.
+   */
+  public ensureSessionClosed(): void {
+    this.session.close()
+  }
 }

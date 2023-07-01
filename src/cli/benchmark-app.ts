@@ -84,18 +84,13 @@ async function benchmark() {
     if(counter > limit) {
       break
     }
+    // new slicer for each run
+    const slicer = new BenchmarkSlicer()
     try {
-      const slicer = new BenchmarkSlicer()
-
       console.log(`Processing file ${counter}/${limit}: ${file.content}`)
       await slicer.init(file)
 
-      try {
-        slicer.sliceForAll(DefaultAllVariablesFilter)
-      } catch (e: unknown) {
-        log.error(`[Skipped] Error while processing ${JSON.stringify(file)}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
-        console.log(`  [Error] Skipping (${(e as Error).message})`)
-      }
+      slicer.sliceForAll(DefaultAllVariablesFilter)
 
       const stats = slicer.finish()
       const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats))
@@ -107,9 +102,10 @@ async function benchmark() {
     } catch (e: unknown) {
       log.error(`[Skipped] Error while processing ${JSON.stringify(file)}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
       skipped.push(file)
+      slicer.ensureSessionClosed() // ensure finish
     }
   }
-  console.log(`Skipped ${skipped.length} files: ${skipped.map(f => f.content).join(', ')}`)
+  console.log(`Skipped ${skipped.length} files: [${skipped.map(f => f.content).join(', ')}]`)
 }
 
 void benchmark()

@@ -3,9 +3,9 @@ import {
   NodeId,
   ParentInformation, RAccess, RArgument, RBinaryOp,
   RExpressionList,
-  RForLoop, RFunctionCall, RFunctionDefinition, RIfThenElse, RNode,
+  RForLoop, RFunctionCall, RFunctionDefinition, RIfThenElse, RNamedFunctionCall, RNode,
   RNodeWithParent, RParameter,
-  RRepeatLoop, RWhileLoop, Type
+  RRepeatLoop, RUnnamedFunctionCall, RWhileLoop, Type
 } from '../r-bridge'
 import { foldAstStateful, StatefulFoldFunctions } from '../r-bridge/lang:4.x/ast/model/processing/statefulFold'
 import { log } from '../util/log'
@@ -63,6 +63,14 @@ function isSelected(configuration: ReconstructionConfiguration, n: RNode<ParentI
   return configuration.selection.has(n.info.id) || configuration.autoSelectIf(n)
 }
 
+function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: PrettyPrintLine[]) {
+  return [  // inline pretty print
+    ...lhs.slice(0, lhs.length - 1),
+    { line: `${lhs[lhs.length - 1].line} ${n} ${rhs[0].line}`, indent: 0 },
+    ...indentBy(rhs.slice(1, rhs.length), 1)
+  ]
+}
+
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
   if(isSelected(configuration, n)) {
     return plain(getLexeme(n))
@@ -78,11 +86,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
     return plain(getLexeme(n))
   }
 
-  return [  // inline pretty print
-    ...lhs.slice(0, lhs.length - 1),
-    { line: `${lhs[lhs.length - 1].line} ${n.type === Type.Pipe ? '|>' : n.op} ${rhs[0].line}`, indent: 0 },
-    ...indentBy(rhs.slice(1, rhs.length), 1)
-  ]
+  return reconstructRawBinaryOperator(lhs, n.type === Type.Pipe ? '|>' : n.op, rhs)
 }
 
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
@@ -272,7 +276,26 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 
 }
 
+function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: RFunctionCall<ParentInformation>): Code {
+  guard(args.length === 2, () => `infix special call must have exactly two arguments, got: ${args.length} (${JSON.stringify(args)})`)
+  guard(call.flavour === 'named', `infix special call must be named, got: ${call.flavour}`)
+  const lhs = args[0]
+  const rhs = args[1]
+  if ((lhs === undefined || lhs.length === 0) && (rhs === undefined || rhs.length === 0)) {
+    return []
+  } /* TODO: else if (lhs === undefined || lhs.length === 0) {
+    return rhs as Code
+  } */
+  // else if (rhs === undefined || rhs.length === 0) {
+  // if rhs is undefined we still  have to keep both now, but reconstruct manually :/
+  const get = plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`)
+  return get
+}
+
 function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: (Code | undefined)[], configuration: ReconstructionConfiguration): Code {
+  if(call.infixSpecial === true) {
+    return reconstructSpecialInfixFunctionCall(args, call)
+  }
   if(isSelected(configuration, call)) {
     return plain(getLexeme(call))
   }

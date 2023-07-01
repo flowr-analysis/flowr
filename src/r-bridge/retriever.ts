@@ -58,7 +58,7 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
   // TODO: let commands produce output by cat wrapper/shell.command creator to abstract from this?
   const xml = await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)
   const output = xml.join(shell.options.eol)
-  guard(output !== ERR_MARKER, 'unable to parse R code (see the log for more information)')
+  guard(output !== ERR_MARKER, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
   return output
 }
 

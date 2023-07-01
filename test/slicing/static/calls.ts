@@ -276,9 +276,10 @@ a()`)
 cat(3 %a% 4)
 cat(4 %b% 5)
       `
-    assertSliced('Must link with backticks', shell, code, ['8@%a%'], `\`%a%\` <- function(x, y) { x + y }
+    assertSliced('Must link with backticks', shell, code, ['8:7'], `\`%a%\` <- function(x, y) { x + y }
 cat(3 %a% 4)`)
-    assertSliced('Must link with backticks', shell, code, ['9@%b%'], `'%b%' <- function(x, y) { x * y }
+    assertSliced('Must link with backticks', shell, code, ['9:7'], `'%b%' <- function(x, y) { x * y }
 cat(4 %b% 5)`)
+    assertSliced('Must work with assigned custom pipes too', shell, `a <- b %>% c %>% d`, ['1@a'], `a <- b %>% c %>% d`)
   })
 }))

@@ -336,7 +336,6 @@ export class DataflowGraph {
       { [fromId, toId] = [toId, fromId] }
     }
 
-
     if(promote) {
       attribute ??= (from as ReferenceForEdge).used === 'maybe' ? 'maybe' : (to as ReferenceForEdge).used
 

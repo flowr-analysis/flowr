@@ -80,7 +80,7 @@ async function getSlice() {
     log.error(`[Skipped] Error while processing ${options.input}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
   }
 
-  const sliceStatsAsString = stats2string(slicer.finish())
+  const sliceStatsAsString = await stats2string(slicer.finish())
 
   console.log(sliceStatsAsString)
   if(options.stats) {

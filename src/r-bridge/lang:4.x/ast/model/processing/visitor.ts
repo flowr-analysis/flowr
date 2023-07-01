@@ -1,13 +1,12 @@
 // TODO: promote to visitor?
 import { RNode } from '../model'
-import { ParentInformation } from './decorate'
 import { Type } from '../type'
 import { assertUnreachable } from '../../../../../util/assert'
 
 /** Return `true` to stop visiting from this node (i.e., do not continue to visit this node *and* the children) */
-export type OnVisit<OtherInfo> = (node: RNode<OtherInfo & ParentInformation>) => boolean
+export type OnVisit<OtherInfo> = (node: RNode<OtherInfo>) => boolean
 
-function visitSingle<OtherInfo>(node: RNode<OtherInfo & ParentInformation>, onVisit: OnVisit<OtherInfo & ParentInformation>): void {
+function visitSingle<OtherInfo>(node: RNode<OtherInfo>, onVisit: OnVisit<OtherInfo>): void {
   if(onVisit(node)) {
     return
   }
@@ -83,7 +82,7 @@ function visitSingle<OtherInfo>(node: RNode<OtherInfo & ParentInformation>, onVi
  * @param nodes   - The root id nodes to start collecting from
  * @param onVisit - A function that is called for each node encountered - can be used to stop visiting the subtree starting with this node
  */
-export function visit<OtherInfo>(nodes: RNode<OtherInfo & ParentInformation> | (RNode<OtherInfo & ParentInformation> | null | undefined)[] | undefined, onVisit: OnVisit<OtherInfo & ParentInformation>): void {
+export function visit<OtherInfo>(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined)[] | undefined, onVisit: OnVisit<OtherInfo>): void {
   if(Array.isArray(nodes)) {
     for (const node of nodes) {
       if(node === null || node === undefined) {

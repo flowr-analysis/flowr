@@ -53,8 +53,8 @@ function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string 
  * Converts the given stats to a human-readable string.
  * Calls the {@link summarizePerSliceStats} function internally to summarize the per-slice information.
  */
-export function stats2string(stats: SlicerStats): string {
-  const perSliceData = summarizePerSliceStats(stats.perSliceMeasurements)
+export async function stats2string(stats: SlicerStats): Promise<string> {
+  const perSliceData = await summarizePerSliceStats(stats.perSliceMeasurements)
 
   return `
 Request: ${JSON.stringify(stats.request)}

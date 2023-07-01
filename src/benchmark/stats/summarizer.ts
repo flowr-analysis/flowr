@@ -5,6 +5,13 @@
 import { PerSliceMeasurements, PerSliceStats } from './stats'
 import { SlicingCriteria } from '../../slicing/criterion/parse'
 import { DefaultMap } from '../../util/defaultmap'
+import {
+  getStoredTokenMap,
+  retrieveAstFromRCode,
+  retrieveNumberOfRTokensOfLastParse,
+  RShell,
+  visit
+} from '../../r-bridge'
 
 
 export interface SummarizedMeasurement {
@@ -40,9 +47,12 @@ export interface SummarizedPerSliceStats {
 /**
  * Summarizes the given stats by calculating the min, max, median, mean, and the standard deviation for each measurement.
  */
-export function summarizePerSliceStats(stats: Map<SlicingCriteria, PerSliceStats>): Readonly<SummarizedPerSliceStats> {
+export async function summarizePerSliceStats(stats: Map<SlicingCriteria, PerSliceStats>): Promise<Readonly<SummarizedPerSliceStats>> {
   const collect = new DefaultMap<PerSliceMeasurements, number[]>(() => [])
   const sizeOfSliceCriteria: number[] = []
+  const reParseShellSession = new RShell()
+  reParseShellSession.tryToInjectHomeLibPath()
+  const tokenMap = await getStoredTokenMap(reParseShellSession)
 
   const sliceSize: SliceSizeCollection = {
     lines:            [],
@@ -60,7 +70,22 @@ export function summarizePerSliceStats(stats: Map<SlicingCriteria, PerSliceStats
     const output = perSliceStats.reconstructedCode
     sliceSize.lines.push(output.split('\n').length)
     sliceSize.characters.push(output.length)
-    sliceSize.tokens.push(output.split(' ').length /* TODO: fix */)
+    // reparse the output to get the number of tokens
+    const reParsed = await retrieveAstFromRCode(
+      { request: 'text', content: output, attachSourceInformation: true, ensurePackageInstalled: true },
+      tokenMap,
+      reParseShellSession
+    )
+    let numberOfNormalizedTokens = 0
+    visit(reParsed, _ => {
+      numberOfNormalizedTokens++
+      return false
+    })
+    sliceSize.normalizedTokens.push(numberOfNormalizedTokens)
+
+    const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(reParseShellSession)
+    sliceSize.tokens.push(numberOfRTokens)
+
     sliceSize.dataflowNodes.push(perSliceStats.numberOfDataflowNodesSliced)
     // TODO: collect resulting slice data
   }
@@ -70,6 +95,8 @@ export function summarizePerSliceStats(stats: Map<SlicingCriteria, PerSliceStats
   for(const [criterion, measurements] of collect.entries()) {
     summarized.set(criterion, summarizeMeasurement(measurements))
   }
+
+  reParseShellSession.close()
 
   return {
     numberOfSlices:     stats.size,

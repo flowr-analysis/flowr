@@ -18,11 +18,16 @@ describe('Simple', withShell(shell => {
 a <- list(1,2)
 a[[1]] = 2
 a[[2]] = 3
+b[[4]] = 5
+cat(a)
+a <- list(3,4)
 cat(a)
 `
-    assertSliced('Repeated named access and definition', shell, code, ['5@a'], `a <- list(1,2)
+    assertSliced('Repeated named access and definition', shell, code, ['6@a'], `a <- list(1,2)
 a[[1]] = 2
 a[[2]] = 3
+cat(a)`)
+    assertSliced('Full redefinitions still apply', shell, code, ['8@a'], `a <- list(3,4)
 cat(a)`)
   })
   // TODO: test for(i in 1:10) { print(i); i <- 12 }

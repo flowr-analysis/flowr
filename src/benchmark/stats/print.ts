@@ -24,7 +24,7 @@ function formatNanoseconds(nanoseconds: bigint | number): string {
   if(nanoseconds < 0) {
     return `??`
   }
-  const [seconds, rest] = divWithRest(BigInt(nanoseconds), BigInt(1e9))
+  const [seconds, rest] = divWithRest(typeof nanoseconds === 'number' ? BigInt(Math.round(nanoseconds)) : nanoseconds, BigInt(1e9))
   const [milliseconds, remainingNanoseconds] = divWithRest(rest, BigInt(1e6))
 
   const secondsStr= seconds > 0 ? `${String(seconds).padStart(2, '0')}.` : ''

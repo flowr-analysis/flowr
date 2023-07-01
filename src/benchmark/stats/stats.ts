@@ -1,21 +1,11 @@
 import { SingleSlicingCriterion, SlicingCriteria } from '../../slicing/criterion/parse'
 import { NodeId, RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge'
 
-export type CommonSlicerMeasurements = 'initialize R session'
-  | 'inject home path'
-  | 'ensure installation of xmlparsedata'
-  | 'retrieve token map'
-  | 'retrieve AST from R code'
-  | 'normalize R AST'
-  | 'decorate R AST'
-  | 'produce dataflow information'
-  | 'close R session'
-  | 'total'
+export const CommonSlicerMeasurements = ['initialize R session', 'inject home path', 'ensure installation of xmlparsedata', 'retrieve token map', 'retrieve AST from R code', 'normalize R AST', 'decorate R AST', 'produce dataflow information', 'close R session', 'total'] as const
+export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]
 
-export type PerSliceMeasurements = 'decode slicing criterion'
-  | 'static slicing'
-  | 'reconstruct code'
-  | 'total'
+export const PerSliceMeasurements = ['decode slicing criterion', 'static slicing', 'reconstruct code', 'total'] as const
+export type PerSliceMeasurements = typeof PerSliceMeasurements[number]
 
 export type ElapsedTime = bigint
 

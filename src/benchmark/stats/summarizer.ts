@@ -53,6 +53,7 @@ export interface SummarizedPerSliceStats {
 
 /**
  * Summarizes the given stats by calculating the min, max, median, mean, and the standard deviation for each measurement.
+ * @see Slicer
  */
 export async function summarizeSlicerStats(stats: SlicerStats): Promise<Readonly<SummarizedSlicerStats>> {
   const perSliceStats = stats.perSliceMeasurements
@@ -125,7 +126,8 @@ export async function summarizeSlicerStats(stats: SlicerStats): Promise<Readonly
 }
 
 function summarizeMeasurement(data: number[]): SummarizedMeasurement {
-  const sorted = [...data].sort((a, b) => a - b) // just to avoid in-place modification
+  // just to avoid in-place modification
+  const sorted = [...data].sort((a, b) => a - b)
   const min = sorted[0]
   const max = sorted[sorted.length - 1]
   const median = sorted[Math.floor(sorted.length / 2)]

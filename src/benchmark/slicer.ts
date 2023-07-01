@@ -195,6 +195,7 @@ export class Slicer {
       () => reconstructToCode<NoInfo>(this.decoratedAst as DecoratedAst, slicedOutput)
     )
     totalStopwatch.stop()
+    benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode}`)
 
     stats.measurements = measurements.get()
     // TODO: end statistics

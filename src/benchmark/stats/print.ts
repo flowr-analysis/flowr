@@ -58,7 +58,7 @@ function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string 
  * You may have to {@link summarizeSlicerStats | summarize} the stats first.
  */
 export function stats2string(stats: SummarizedSlicerStats): string {
-  return `
+  let result = `
 Request: ${JSON.stringify(stats.request)}
 Shell init time:              ${print(stats.commonMeasurements,'initialize R session')}
 Retrieval of token map:       ${print(stats.commonMeasurements,'retrieve token map')}
@@ -67,7 +67,9 @@ AST normalization:            ${print(stats.commonMeasurements,'normalize R AST'
 AST decoration:               ${print(stats.commonMeasurements,'decorate R AST')}
 Dataflow creation:            ${print(stats.commonMeasurements,'produce dataflow information')}
 
-Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.perSliceMeasurements.numberOfSlices !== 1 ? 's' : ''}:
+Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.perSliceMeasurements.numberOfSlices !== 1 ? 's' : ''}:`
+  if(stats.perSliceMeasurements.numberOfSlices > 0) {
+    result += `
   Total:                      ${printSummarizedMeasurements(stats.perSliceMeasurements, 'total')}
   Slice decoding:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'decode slicing criterion')}
   Slice creation:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'static slicing')}
@@ -79,17 +81,20 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
     Number of R tokens:       ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.tokens)}
     Normalized R tokens:      ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.normalizedTokens)}
     Number of dataflow nodes: ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.dataflowNodes)}
+`
+  }
 
+  return `${result}
 Shell close:                  ${print(stats.commonMeasurements, 'close R session')}
 Total:                        ${print(stats.commonMeasurements, 'total')}
 
-Input: 
+Input:
   Number of lines:            ${pad(stats.input.numberOfLines)}
   Number of characters:       ${pad(stats.input.numberOfCharacters)}
   Number of tokens:           ${pad(stats.input.numberOfRTokens)}
   Normalized R tokens:        ${pad(stats.input.numberOfNormalizedTokens)}
-  
-Dataflow: 
+
+Dataflow:
   Number of nodes:            ${pad(stats.dataflow.numberOfNodes)}
   Number of edges:            ${pad(stats.dataflow.numberOfEdges)}
   Number of calls:            ${pad(stats.dataflow.numberOfCalls)}

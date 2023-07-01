@@ -5,7 +5,7 @@ import { Type } from '../type'
 import { assertUnreachable } from '../../../../../util/assert'
 
 /** Return `true` to stop visiting from this node (i.e., do not continue to visit this node *and* the children) */
-export type OnVisit<OtherInfo> = (node: RNode<OtherInfo & ParentInformation>) => boolean | undefined
+export type OnVisit<OtherInfo> = (node: RNode<OtherInfo & ParentInformation>) => boolean
 
 function visitSingle<OtherInfo>(node: RNode<OtherInfo & ParentInformation>, onVisit: OnVisit<OtherInfo & ParentInformation>): void {
   if(onVisit(node)) {

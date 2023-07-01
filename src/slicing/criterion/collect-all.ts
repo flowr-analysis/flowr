@@ -4,9 +4,8 @@
  * @module
  */
 import { MergeableRecord } from '../../util/objects'
-import { RNodeWithParent } from '../../r-bridge'
+import { RNodeWithParent, visit } from '../../r-bridge'
 import { SlicingCriteria } from './parse'
-
 
 /**
  * Defines the filter for collecting all possible slicing criteria.
@@ -33,7 +32,23 @@ export interface SlicingCriteriaFilter extends MergeableRecord {
 }
 
 
+function collectAllPotentialIdsForSlicing<OtherInfo>(ast: RNodeWithParent<OtherInfo>, predicate: (n: RNodeWithParent) => boolean): RNodeWithParent<OtherInfo>[] {
+  const potentialSlicingNodes: RNodeWithParent<OtherInfo>[] = []
+  visit(ast, n => {
+    if (predicate(n)) {
+      potentialSlicingNodes.push(n)
+    }
+    return false
+  })
+  return potentialSlicingNodes
+}
+
+/**
+ * Will create all possible slicing criteria for the given ast, based on the {@link SlicingCriteriaFilter}.
+ * The slicing criteria will be *ordered* (i.e., it will not return `[1:2,3:4]` and `[3:4,1:2]` if `maximumSize` \> 1).
+ */
 export function collectAllSlicingCriteria<OtherInfo>(ast: RNodeWithParent<OtherInfo>, filter: SlicingCriteriaFilter): SlicingCriteria[] {
+  const potentialSlicingNodes = collectAllPotentialIdsForSlicing(ast, filter.predicate)
 
   return []
 }

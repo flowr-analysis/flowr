@@ -70,7 +70,7 @@ Slicing summary for ${perSliceData.numberOfSlices} slice${perSliceData.numberOfS
   Slice decoding:             ${printSummarizedMeasurements(perSliceData, 'decode slicing criterion')}
   Slice creation:             ${printSummarizedMeasurements(perSliceData, 'static slicing')}
   Reconstruction:             ${printSummarizedMeasurements(perSliceData, 'reconstruct code')}
-  Used Slice Sizes:           ${printCountSummarizedMeasurements(perSliceData.sliceCriteriaSizes)}
+  Used Slice Criteria Sizes:  ${printCountSummarizedMeasurements(perSliceData.sliceCriteriaSizes)}
   Result Slice Sizes:   
     Number of lines:          ${printCountSummarizedMeasurements(perSliceData.sliceSize.lines)}
     Number of characters:     ${printCountSummarizedMeasurements(perSliceData.sliceSize.characters)}

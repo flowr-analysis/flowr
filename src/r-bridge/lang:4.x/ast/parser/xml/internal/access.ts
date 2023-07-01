@@ -51,7 +51,7 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
   }
 
   const accessed = mappedWithName[0]
-  if(accessed.name !== Type.Expression) {
+  if(accessed.name !== Type.Expression && accessed.name !== Type.ExprHelpAssignWrapper) {
     parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${JSON.stringify(accessed)}`)
     return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
   }

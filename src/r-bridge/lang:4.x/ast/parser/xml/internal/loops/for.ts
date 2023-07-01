@@ -25,7 +25,7 @@ export function tryParseForLoop(
     return executeUnknownHook(data.hooks.loops.onForLoop.unknown, data, { forToken, condition, body })
   } else if (condition.name !== Type.ForCondition) {
     throw new XmlParseError(`expected condition for for-loop but found ${JSON.stringify(condition)}`)
-  } else if (body.name !== Type.Expression) {
+  } else if (body.name !== Type.Expression && body.name !== Type.ExprHelpAssignWrapper) {
     throw new XmlParseError(`expected expr body for for-loop but found ${JSON.stringify(body)}`)
   }
 

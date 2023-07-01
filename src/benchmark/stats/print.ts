@@ -10,7 +10,7 @@ import {
   SummarizedSlicerStats
 } from './summarizer'
 
-const padSize = 10
+const padSize = 15
 
 function pad<T>(string: T) {
   return String(string).padStart(padSize, ' ')

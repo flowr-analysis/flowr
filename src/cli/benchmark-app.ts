@@ -75,29 +75,41 @@ async function benchmark() {
     // shuffle and limit
     // TODO: do not limit here to compensate for failures!
     files.sort(() => Math.random() - 0.5)
-    files.length = options.limit
   }
+  const limit = options.limit ?? files.length
 
-  let counter = 0
+  let counter = 1
+  const skipped: RParseRequestFromFile[] = []
   for(const file of files) {
-    const slicer = new BenchmarkSlicer()
-
-    console.log(`Processing file ${++counter}/${files.length}: ${file.content}`)
-    // TODO: multiple
-    await slicer.init(file)
-
+    if(counter > limit) {
+      break
+    }
     try {
-      slicer.sliceForAll(DefaultAllVariablesFilter)
+      const slicer = new BenchmarkSlicer()
+
+      console.log(`Processing file ${counter}/${limit}: ${file.content}`)
+      await slicer.init(file)
+
+      try {
+        slicer.sliceForAll(DefaultAllVariablesFilter)
+      } catch (e: unknown) {
+        log.error(`[Skipped] Error while processing ${JSON.stringify(file)}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
+        console.log(`  [Error] Skipping (${(e as Error).message})`)
+      }
+
+      const stats = slicer.finish()
+      const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats))
+      console.log(sliceStatsAsString)
+      // append line by line
+      fs.appendFileSync(options.output, JSON.stringify({ filename: file.content, stats }, displayEnvReplacer))
+      // only increment if everything went fine!
+      counter++
     } catch (e: unknown) {
       log.error(`[Skipped] Error while processing ${JSON.stringify(file)}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
+      skipped.push(file)
     }
-
-    const stats = slicer.finish()
-    const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats))
-    console.log(sliceStatsAsString)
-    // append line by line
-    fs.appendFileSync(options.output, JSON.stringify({ filename: file.content, stats }, displayEnvReplacer))
   }
+  console.log(`Skipped ${skipped.length} files: ${skipped.map(f => f.content).join(', ')}`)
 }
 
 void benchmark()

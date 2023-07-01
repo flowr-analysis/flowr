@@ -164,9 +164,10 @@ export class Slicer {
     const measurements = new Measurements<PerSliceMeasurements>()
     const stats: PerSliceStats = {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      measurements:      undefined as never,
-      slicingCriteria:   [],
-      reconstructedCode: ''
+      measurements:                undefined as never,
+      slicingCriteria:             [],
+      numberOfDataflowNodesSliced: 0,
+      reconstructedCode:           ''
     }
     this.perSliceMeasurements.set(slicingCriteria, stats)
 
@@ -188,6 +189,7 @@ export class Slicer {
         mappedIds
       )
     )
+    stats.numberOfDataflowNodesSliced = slicedOutput.size
 
     stats.reconstructedCode = measurements.measure(
       'reconstruct code',

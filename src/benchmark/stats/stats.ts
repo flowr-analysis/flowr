@@ -20,9 +20,10 @@ export type PerSliceMeasurements = 'decode slicing criterion'
 export type ElapsedTime = bigint
 
 export interface PerSliceStats {
-  measurements:      Map<PerSliceMeasurements, ElapsedTime>
-  slicingCriteria:   { criterion: SingleSlicingCriterion, id: NodeId }[]
-  reconstructedCode: string
+  measurements:                Map<PerSliceMeasurements, ElapsedTime>
+  slicingCriteria:             { criterion: SingleSlicingCriterion, id: NodeId }[]
+  reconstructedCode:           string
+  numberOfDataflowNodesSliced: number
   /* TODO: slicedOutput:    Set<NodeId>
    */
 }

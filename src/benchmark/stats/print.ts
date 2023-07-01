@@ -8,6 +8,10 @@ import { SummarizedMeasurement, SummarizedPerSliceStats, summarizePerSliceStats 
 
 const padSize = 10
 
+function pad<T>(string: T) {
+  return String(string).padStart(padSize, ' ')
+}
+
 function divWithRest(dividend: bigint, divisor: bigint): [bigint, bigint] {
   return [dividend / divisor, dividend % divisor]
 }
@@ -24,7 +28,7 @@ function formatNanoseconds(nanoseconds: bigint | number): string {
   const nanoStr = String(remainingNanoseconds).padEnd(3, '0').substring(0, 3)
   const unit = seconds === 0n ? 'ms' : 's'
   // TODO: round correctly?
-  return `${secondsStr}${millisecondsStr}${nanoStr}${unit}`.padStart(padSize, ' ')
+  return pad(`${secondsStr}${millisecondsStr}${nanoStr}${unit}`)
 }
 
 
@@ -54,22 +58,37 @@ export function stats2string(stats: SlicerStats): string {
 
   return `
 Request: ${JSON.stringify(stats.request)}
-Shell init time:        ${print(stats.commonMeasurements,'initialize R session')}
-Retrieval of token map: ${print(stats.commonMeasurements,'retrieve token map')}
-AST retrieval:          ${print(stats.commonMeasurements,'retrieve AST from R code')}
-AST normalization:      ${print(stats.commonMeasurements,'normalize R AST')}
-AST decoration:         ${print(stats.commonMeasurements,'decorate R AST')}
-Dataflow creation:      ${print(stats.commonMeasurements,'produce dataflow information')}
+Shell init time:              ${print(stats.commonMeasurements,'initialize R session')}
+Retrieval of token map:       ${print(stats.commonMeasurements,'retrieve token map')}
+AST retrieval:                ${print(stats.commonMeasurements,'retrieve AST from R code')}
+AST normalization:            ${print(stats.commonMeasurements,'normalize R AST')}
+AST decoration:               ${print(stats.commonMeasurements,'decorate R AST')}
+Dataflow creation:            ${print(stats.commonMeasurements,'produce dataflow information')}
 
 Slicing summary for ${perSliceData.numberOfSlices} slice${perSliceData.numberOfSlices !== 1 ? 's' : ''}:
-  Total:                ${printSummarizedMeasurements(perSliceData, 'total')}
-  Slice decoding:       ${printSummarizedMeasurements(perSliceData, 'decode slicing criterion')}
-  Slice creation:       ${printSummarizedMeasurements(perSliceData, 'static slicing')}
-  Reconstruction:       ${printSummarizedMeasurements(perSliceData, 'reconstruct code')}
-  Used Slice Sizes:     ${printCountSummarizedMeasurements(perSliceData.sliceCriteriaSizes)}
+  Total:                      ${printSummarizedMeasurements(perSliceData, 'total')}
+  Slice decoding:             ${printSummarizedMeasurements(perSliceData, 'decode slicing criterion')}
+  Slice creation:             ${printSummarizedMeasurements(perSliceData, 'static slicing')}
+  Reconstruction:             ${printSummarizedMeasurements(perSliceData, 'reconstruct code')}
+  Used Slice Sizes:           ${printCountSummarizedMeasurements(perSliceData.sliceCriteriaSizes)}
+  Result Slice Sizes:   
+    Number of lines:          ${printCountSummarizedMeasurements(perSliceData.sliceSize.lines)}
+    Number of characters:     ${printCountSummarizedMeasurements(perSliceData.sliceSize.characters)}
+    Number of tokens:         ${printCountSummarizedMeasurements(perSliceData.sliceSize.tokens) /* TODO: separate normalized tokens? */}
+    Number of dataflow nodes: ${printCountSummarizedMeasurements(perSliceData.sliceSize.dataflowNodes)}
 
-Shell close:            ${print(stats.commonMeasurements, 'close R session')}
-Total:                  ${print(stats.commonMeasurements, 'total')}
-Input: ${JSON.stringify(stats.input)})}
-Dataflow: ${JSON.stringify(stats.dataflow)})}`
+Shell close:                  ${print(stats.commonMeasurements, 'close R session')}
+Total:                        ${print(stats.commonMeasurements, 'total')}
+
+Input: 
+  Number of lines:            ${pad(stats.input.numberOfLines)}
+  Number of characters:       ${pad(stats.input.numberOfCharacters)}
+  Number of tokens:           ${pad(stats.input.numberOfRTokens)}
+  Normalized R tokens:        ${pad(stats.input.numberOfNormalizedTokens)}
+  
+Dataflow: 
+  Number of nodes:            ${pad(stats.dataflow.numberOfNodes)}
+  Number of edges:            ${pad(stats.dataflow.numberOfEdges)}
+  Number of calls:            ${pad(stats.dataflow.numberOfCalls)}
+  Number of function defs:    ${pad(stats.dataflow.numberOfFunctionDefinitions)}`
 }

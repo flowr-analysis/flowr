@@ -217,6 +217,7 @@ export class Slicer {
     this.guardActive()
     for(const slicingCriteria of collectAllSlicingCriteria((this.decoratedAst as DecoratedAst).decoratedAst, filter)) {
       this.slice(...slicingCriteria)
+      return // TODO: remove
     }
   }
 

@@ -39,5 +39,38 @@ describe("Parse simple assignments",
         )
       }
     })
+
+    // allow assignments to strings and function calls
+    describe("Assignments to strings", () => {
+      assertAst(
+        `Assign to given string`,
+        shell,
+        `'a' <- 5`,
+        exprList({
+          type:     Type.BinaryOp,
+          location: rangeFrom(1, 5, 1, 6),
+          flavor:   "assignment",
+          lexeme:   '<-',
+          op:       '<-',
+          info:     {},
+          lhs:      {
+            type:      Type.Symbol,
+            location:  rangeFrom(1, 1, 1, 3),
+            namespace: undefined,
+            // TODO: mark quoted
+            lexeme:    "'a'",
+            content:   "a",
+            info:      {}
+          },
+          rhs: {
+            type:     Type.Number,
+            location: rangeFrom(1, 8, 1, 8),
+            lexeme:   "5",
+            content:  numVal(5),
+            info:     {}
+          },
+        })
+      )
+    })
   })
 )

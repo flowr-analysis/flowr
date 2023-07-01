@@ -126,8 +126,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   // mark them as function calls, and append their argument linkages
   const functionNameId = getLastNodeInGraph(functionName)
 
-  guard(functionNameId !== undefined, 'Function call name id not found')
-
+  guard(functionNameId !== undefined, `Function call name id not found but not for ${JSON.stringify(functionCall)}`)
 
   finalGraph.addNode({
     tag:         'function-call',

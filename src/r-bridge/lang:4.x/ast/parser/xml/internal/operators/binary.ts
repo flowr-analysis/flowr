@@ -1,25 +1,23 @@
-import { NamedXmlBasedJson, XmlParseError } from "../../input-format"
-import { parseLog } from "../../parser"
-import {
-  ensureChildrenAreLhsAndRhsOrdered,
-  retrieveMetaStructure,
-  retrieveOpName,
-} from "../meta"
-import { identifySpecialOp } from "./special"
-import { ParserData } from "../../data"
+import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
+import { parseLog } from '../../parser'
+import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../meta'
+import { identifySpecialOp } from './special'
+import { ParserData } from '../../data'
 import { tryParseOneElementBasedOnType } from '../structure'
 import {
-  Type,
-  RNode,
-  RBinaryOp,
   ArithmeticOperatorsRAst,
   AssignmentsRAst,
   BinaryOperatorFlavor,
   ComparisonOperatorsRAst,
-  LogicalOperatorsRAst, ModelFormulaOperatorsRAst
+  LogicalOperatorsRAst,
+  ModelFormulaOperatorsRAst,
+  RBinaryOp,
+  RNode,
+  RPipe,
+  RSymbol,
+  Type
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import { RPipe } from '../../../../model/nodes/RPipe'
 import { guard } from '../../../../../../../util/assert'
 
 /**
@@ -60,14 +58,21 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
   ({ flavor, lhs, rhs, op} = executeHook(data.hooks.operators.onBinary.before, data, { flavor, lhs, op, rhs }))
 
   ensureChildrenAreLhsAndRhsOrdered(data.config, lhs.content, rhs.content)
-  const parsedLhs = tryParseOneElementBasedOnType(data, lhs)
-  const parsedRhs = tryParseOneElementBasedOnType(data, rhs)
+  let parsedLhs = tryParseOneElementBasedOnType(data, lhs)
+  let parsedRhs = tryParseOneElementBasedOnType(data, rhs)
 
   if (parsedLhs === undefined || parsedRhs === undefined) {
     throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, op, rhs])}`)
   }
 
   const operationName = retrieveOpName(data.config, op)
+
+  // special support for strings in assignments
+  if(flavor === 'assignment') {
+    [parsedLhs, parsedRhs] = processLhsAndRhsForAssignment(data, operationName, parsedLhs, parsedRhs)
+  }
+
+
 
   const { location, content } = retrieveMetaStructure(data.config, op.content)
 
@@ -118,5 +123,28 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
     }
   }
   return executeHook(data.hooks.operators.onBinary.after, data, result)
+}
+
+function processLhsAndRhsForAssignment(data: ParserData, opName: string, parsedLhs: RNode, parsedRhs: RNode): [RNode, RNode] {
+  const isRhs = opName === '->' || opName === '->>'
+  const assigned = isRhs ? parsedRhs : parsedLhs
+  if(assigned.type !== Type.String) {
+    return [parsedLhs, parsedRhs]
+  }
+
+  // update the assigned value to be parsed as a symbol
+  const result: RSymbol = {
+    type:      Type.Symbol,
+    lexeme:    assigned.lexeme,
+    location:  assigned.location,
+    content:   assigned.content.str,
+    namespace: undefined,
+    info:      {
+      fullRange:        data.currentRange,
+      additionalTokens: [],
+      fullLexeme:       data.currentLexeme
+    }
+  }
+  return isRhs ? [parsedLhs, result] : [result, parsedRhs]
 }
 

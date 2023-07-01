@@ -1,5 +1,5 @@
 import {
-  DataflowGraph,
+  DataflowGraph, DataflowGraphNodeFunctionDefinition,
   DataflowGraphNodeInfo,
   graphToMermaidUrl,
   initializeCleanEnvironments,
@@ -41,7 +41,7 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
   guard(id.length > 0, `must have at least one seed id to calculate slice`)
   slicerLogger.trace(`calculating slice for ${id.length} seed ids: ${JSON.stringify(id)}`)
 
-  const visited = new Set<Fingerprint>()
+  const visited = new Map<Fingerprint, NodeId>()
   // every node ships the call environment which registers the calling environment
   const visitQueue: NodeToSlice[] = id.map(i => ({ id: i, baseEnvironment: initializeCleanEnvironments(), onlyForSideEffects: false }))
 
@@ -51,7 +51,7 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
     if (current === undefined) {
       continue
     }
-    visited.add(fingerprint(current))
+    visited.set(fingerprint(current), current.id)
 
     const currentInfo = dataflowGraph.get(current.id, true)
 
@@ -86,7 +86,7 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
 }
 
 
-function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, visited: Set<Fingerprint>, visitQueue: NodeToSlice[]) {
+function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, visited: Map<Fingerprint, NodeId>, visitQueue: NodeToSlice[]) {
   // bind with call-local environments during slicing
   const outgoingEdges = dataflowGraph.get(callerInfo.id, true)
   guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`)
@@ -96,18 +96,17 @@ function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeI
   while(baseEnvironment.level < callerInfo.environment.level) {
     baseEnvironment = pushLocalEnvironment(baseEnvironment)
   }
-  const activeEnvironment = overwriteEnvironments(baseEnvironment, callerInfo.environment)
 
+  const activeEnvironment = overwriteEnvironments(baseEnvironment, callerInfo.environment)
   const functionCallDefs = resolveByName(callerInfo.name, LocalScope, activeEnvironment)?.map(d => d.nodeId) ?? []
 
-  functionCallDefs.push(...[...outgoingEdges[1]].filter(([_, e]) => e.types.has('calls')).map(([target]) => target))
+  functionCallDefs.push(...outgoingEdges[1].filter(([_, e]) => e.types.has('calls')).map(([target]) => target))
 
   const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)
 
   for (const [_, functionCallTarget] of functionCallTargets) {
-    guard(functionCallTarget.tag === 'function-definition', () => `expected function definition, but got ${functionCallTarget.tag}`)
     // all those linked within the scopes of other functions are already linked when exiting a function definition
-    for (const openIn of functionCallTarget.subflow.in) {
+    for (const openIn of (functionCallTarget as DataflowGraphNodeFunctionDefinition).subflow.in) {
       const defs = resolveByName(openIn.name, LocalScope, activeEnvironment)
       if (defs === undefined) {
         continue
@@ -121,7 +120,7 @@ function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeI
     }
 
     if(!current.onlyForSideEffects) {
-      for (const exitPoint of functionCallTarget.exitPoints) {
+      for (const exitPoint of (functionCallTarget as DataflowGraphNodeFunctionDefinition).exitPoints) {
         const nodeToSlice = {
           id:                 exitPoint,
           baseEnvironment:    activeEnvironment,

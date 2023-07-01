@@ -22,7 +22,7 @@ import { parseExpression } from '../expression'
 export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | undefined {
   const fnBase = mappedWithName[0]
   if(fnBase.name !== Type.Expression) {
-    parseLog.trace(`expected function call name to be wrapped an expression, yet received ${fnBase.name}`)
+    parseLog.trace('expected function call name to be wrapped an expression, yet received ${fnBase.name}')
     return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
   }
 
@@ -66,7 +66,7 @@ function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): 
 function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | undefined {
   // maybe remove symbol-content again because i just use the root expr of mapped with name
   if(mappedWithName.length < 3) {
-    parseLog.trace(`expected unnamed function call to have 3 elements [like (<func>)], but was not`)
+    parseLog.trace('expected unnamed function call to have 3 elements [like (<func>)], but was not')
     return undefined
   }
   if(mappedWithName[1].name !== Type.ParenLeft || mappedWithName[mappedWithName.length - 1].name !== Type.ParenRight) {

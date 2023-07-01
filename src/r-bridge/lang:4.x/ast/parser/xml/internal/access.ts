@@ -17,11 +17,11 @@ import { splitArrayOn } from '../../../../../../util/arrays'
  * @returns The parsed {@link RAccess} or `undefined` if the given construct is not accessing a value
  */
 export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RAccess | undefined {
-  parseLog.trace(`trying to parse access`)
+  parseLog.trace('trying to parse access')
   mappedWithName = executeHook(data.hooks.onAccess.before, data, mappedWithName)
 
   if(mappedWithName.length < 3) {
-    parseLog.trace(`expected at least three elements are required to parse an access`)
+    parseLog.trace('expected at least three elements are required to parse an access')
     return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
   }
 

@@ -320,30 +320,30 @@ export class DataflowGraph {
   public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute, promote= false): this {
     // dataflowLogger.trace(`trying to add edge from ${JSON.stringify(from)} to ${JSON.stringify(to)} with type ${type} and attribute ${JSON.stringify(attribute)} to graph`)
 
-    let fromId = typeof from === 'object' ? from.nodeId : from
-    let toId = typeof to === 'object' ? to.nodeId : to
+    const fromId = typeof from === 'object' ? from.nodeId : from
+    const toId = typeof to === 'object' ? to.nodeId : to
 
     if(fromId === toId) {
-      log.trace(`ignoring self-edge from ${fromId} to ${toId} (${JSON.stringify(type)}, ${JSON.stringify(attribute)}, ${JSON.stringify(promote)})`)
+      log.trace(`ignoring self-edge from ${fromId} to ${toId} (${type}, ${attribute ?? '?'}, ${promote ? 'y' : 'n'})`)
       return this
-    }
-
-    // sort (on id so that sorting is the same, independent of the attribute)
-    const bidirectional = type === 'same-read-read' || type === 'same-def-def' || type === 'relates'
-
-    if(bidirectional && toId < fromId) {
-      { [from, to] = [to, from] }
-      { [fromId, toId] = [toId, fromId] }
     }
 
     if(promote) {
       attribute ??= (from as ReferenceForEdge).used === 'maybe' ? 'maybe' : (to as ReferenceForEdge).used
 
-      const fromInfo = this.get(fromId, true)
-      const toInfo = this.get(toId, true)
-      if (fromInfo?.[0].when === 'maybe' || toInfo?.[0].when === 'maybe') {
-        log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
-        attribute = 'maybe'
+      // reduce the load on attribute checks
+      if(attribute !== 'maybe') {
+        const fromInfo = this.get(fromId, true)
+        if (fromInfo?.[0].when === 'maybe') {
+          log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
+          attribute = 'maybe'
+        } else {
+          const toInfo = this.get(toId, true)
+          if (toInfo?.[0].when === 'maybe') {
+            log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
+            attribute = 'maybe'
+          }
+        }
       }
     }
 
@@ -362,6 +362,9 @@ export class DataflowGraph {
       } else {
         existingFrom.set(toId, edge)
       }
+      // sort (on id so that sorting is the same, independent of the attribute)
+      const bidirectional = type === 'same-read-read' || type === 'same-def-def' || type === 'relates'
+
       if(bidirectional) {
         const existingTo = this.edges.get(toId)
         if(existingTo === undefined) {
@@ -560,16 +563,16 @@ function equalNodes(our: Map<NodeId, DataflowGraphNodeInfo>, other: Map<NodeId, 
 function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeInfo): DataflowGraphNodeInfo {
   guard(current.tag === next.tag, () => `nodes to be joined for the same id must have the same tag, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`)
   guard(current.name === next.name, () => `nodes to be joined for the same id must have the same name, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`)
-  if(current.tag === 'variable-definition' || current.tag === 'function-definition') {
-    guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same definedAtPosition')
-  }
   guard(current.environment === next.environment, 'nodes to be joined for the same id must have the same environment')
-  if(current.tag === 'function-call') {
+  if(current.tag === 'variable-definition') {
+    guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope')
+  } else if(current.tag === 'function-call') {
     guard(equalFunctionArguments(current.args, (next as DataflowGraphNodeFunctionCall).args), 'nodes to be joined for the same id must have the same function call information')
-  }
-  if(current.tag === 'function-definition') {
+  } else if(current.tag === 'function-definition') {
+    guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope')
     guard(equalExitPoints(current.exitPoints, (next as DataflowGraphNodeFunctionDefinition).exitPoints), 'nodes to be joined must have same exist points')
   }
+
   return {
     ...current // make a copy
   }

@@ -15,7 +15,7 @@ import { guard } from '../../../../../../../util/assert'
  * @param obj  - The json object to extract the meta-information from
  */
 export function parseString(data: ParserData, obj: XmlBasedJson): RString {
-  parseLog.debug(`[string] try: ${JSON.stringify(obj)}`)
+  parseLog.debug('[string]')
   obj = executeHook(data.hooks.values.onString.before, data, obj)
 
   const { location, content } = retrieveMetaStructure(data.config, obj)

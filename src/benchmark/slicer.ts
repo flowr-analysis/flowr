@@ -19,10 +19,10 @@ import { IStoppableStopwatch, Measurements } from './stopwatch'
 import { guard } from '../util/assert'
 import { DataflowInformation } from '../dataflow/internal/info'
 import { produceDataFlowGraph } from '../dataflow'
-import { convertAllSlicingCriteriaToIds, SlicingCriteria } from '../slicing/criteria'
+import { convertAllSlicingCriteriaToIds, SlicingCriteria } from '../slicing/criterion/parse'
 import { staticSlicing } from '../slicing/static'
 import { reconstructToCode } from '../slicing/reconstruct'
-import { CommonSlicerMeasurements, ElapsedTime, PerSliceMeasurements, PerSliceStats, SlicerStats } from './stats'
+import { CommonSlicerMeasurements, ElapsedTime, PerSliceMeasurements, PerSliceStats, SlicerStats } from './stats/stats'
 import fs from 'fs'
 
 
@@ -188,6 +188,14 @@ export class Slicer {
     stats.measurements = measurements.get()
     // TODO: end statistics
   }
+
+  /**
+   * Call {@link slice} for all slicing criteria that match the given filter.
+   */
+  public sliceForAll() {
+
+  }
+
 
   /**
    * Retrieves the final stats and closes the shell session.

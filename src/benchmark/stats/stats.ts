@@ -1,5 +1,5 @@
-import { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criteria'
-import { NodeId, RParseRequestFromFile, RParseRequestFromText } from '../r-bridge'
+import { SingleSlicingCriterion, SlicingCriteria } from '../../slicing/criterion/parse'
+import { NodeId, RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge'
 
 export type CommonSlicerMeasurements = 'initialize R session'
   | 'inject home path'

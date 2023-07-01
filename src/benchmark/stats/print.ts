@@ -2,7 +2,7 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SlicerStats}).
  * @module
  */
-import { guard } from '../util/assert'
+import { guard } from '../../util/assert'
 import { ElapsedTime, SlicerStats } from './stats'
 
 function divWithRest(dividend: bigint, divisor: number): [bigint, bigint] {

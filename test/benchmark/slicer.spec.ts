@@ -1,5 +1,5 @@
 import { Slicer } from '../../src/benchmark/slicer'
-import { stats2string } from '../../src/benchmark/print'
+import { stats2string } from '../../src/benchmark/stats/print'
 import { assert } from 'chai'
 
 describe("The Benchmark Slicer", () => {

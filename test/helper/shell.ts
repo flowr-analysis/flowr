@@ -18,7 +18,7 @@ import {
 import { produceDataFlowGraph } from '../../src/dataflow'
 import { reconstructToCode } from '../../src/slicing/reconstruct'
 import { staticSlicing } from '../../src/slicing/static'
-import { SlicingCriteria, slicingCriterionToId } from '../../src/slicing/criteria'
+import { SlicingCriteria, slicingCriterionToId } from '../../src/slicing/criterion/parse'
 
 let defaultTokenMap: Record<string, string>
 

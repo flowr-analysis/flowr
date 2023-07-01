@@ -14,7 +14,7 @@ import { staticSlicing } from '../slicing/static'
 import { guard } from '../util/assert'
 import { graphToMermaid, produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode } from '../slicing/reconstruct'
-import { convertAllSlicingCriteriaToIds, SlicingCriteria } from '../slicing/criteria'
+import { convertAllSlicingCriteriaToIds, SlicingCriteria } from '../slicing/criterion/parse'
 
 export const toolName = 'slicer'
 

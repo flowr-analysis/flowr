@@ -56,13 +56,14 @@ export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNo
     }
   } else {
     result = {
-      type:   Type.Symbol,
+      type:    Type.Symbol,
       namespace,
       location,
-      content,
+      // remove backticks from symbol
+      content: content.startsWith('`') && content.endsWith('`') ? content.substring(1, content.length - 1) : content,
       // TODO: get correct lexeme from expr wrapper :C
-      lexeme: content,
-      info:   {
+      lexeme:  content,
+      info:    {
         // TODO: include children etc.
         fullRange:        data.currentRange,
         additionalTokens: [],

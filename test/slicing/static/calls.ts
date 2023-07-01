@@ -264,5 +264,21 @@ a()`)
     // the common case:
     assertSliced('Must link with no-string/no-string', shell, code, ['7@a'], `a <- function() { 5 }
 a()`)
+    describe('Using own infix operators', () => {
+      const code = `
+\`%a%\` <- function(x, y) { x + y }
+\`%a%\`(3, 4)
+
+'%b%' <- function(x, y) { x * y }
+'%b%'(3, 4)
+
+cat(3 %a% 4)
+cat(4 %b% 5)
+      `
+      assertSliced('Must link with backticks', shell, code, ['8@%a%'], `\`%a%\` <- function(x, y) { x + y }
+cat(3 %a% 4)`)
+      assertSliced('Must link with backticks', shell, code, ['9@%b%'], `'%b%' <- function(x, y) { x * y }
+cat(4 %b% 5)`)
+    })
   })
 }))

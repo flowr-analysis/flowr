@@ -14,48 +14,9 @@ import {
 import { tryParseIfThenElse, tryParseIfThen } from '../control'
 import { Type, RNode } from '../../../../model'
 import { log } from '../../../../../../../util/log'
+import { parseComment } from '../other'
 
-export function parseBasedOnType(
-  data: ParserData,
-  obj: XmlBasedJson[] | NamedXmlBasedJson[]
-): RNode[] {
-  if (obj.length === 0) {
-    parseLog.warn("no children received, skipping")
-    return []
-  }
-
-  let mappedWithName: NamedXmlBasedJson[]
-
-  if(obj[0].name) {
-    mappedWithName = obj as NamedXmlBasedJson[]
-  } else {
-    mappedWithName = getWithTokenType(
-      data.config.tokenMap,
-      obj as XmlBasedJson[]
-    )
-  }
-
-  log.trace(`[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(", ")}]`)
-
-  const splitOnSemicolon = splitArrayOn(
-    mappedWithName,
-    ({ name }) => name === Type.Semicolon
-  )
-
-  if (splitOnSemicolon.length > 1) {
-    // TODO: check if non-wrapping expr list is correct
-    log.trace(`found ${splitOnSemicolon.length} expressions by semicolon-split, parsing them separately`)
-    return splitOnSemicolon.flatMap(arr=>
-      parseBasedOnType(data, arr)
-    )
-  }
-
-  /*
-   * if splitOnSemicolon.length === 1, we can continue with the normal parsing, but we may have had a trailing semicolon, with this, it is removed as well.
-   * splitOnSemicolon.length === 0 is not possible, as we would have had an empty array before, split does not add elements.
-   */
-  mappedWithName = splitOnSemicolon[0]
-
+function parseMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData) {
   if (mappedWithName.length === 1) {
     const parsed = tryParseOneElementBasedOnType(data, mappedWithName[0])
     return parsed !== undefined ? [parsed] : []
@@ -110,7 +71,7 @@ export function parseBasedOnType(
       mappedWithName[1],
       mappedWithName[2],
       mappedWithName[3],
-      mappedWithName[4],
+      mappedWithName[4]
     ])
     if (ifThen !== undefined) {
       return [ifThen]
@@ -135,7 +96,7 @@ export function parseBasedOnType(
       mappedWithName[3],
       mappedWithName[4],
       mappedWithName[5],
-      mappedWithName[6],
+      mappedWithName[6]
     ])
     if (ifThenElse !== undefined) {
       return [ifThenElse]
@@ -144,6 +105,63 @@ export function parseBasedOnType(
 
   // otherwise perform default parsing
   return parseNodesWithUnknownType(data, mappedWithName)
+}
+
+export function parseBasedOnType(
+  data: ParserData,
+  obj: XmlBasedJson[] | NamedXmlBasedJson[]
+): RNode[] {
+  if (obj.length === 0) {
+    parseLog.warn("no children received, skipping")
+    return []
+  }
+
+  let mappedWithName: NamedXmlBasedJson[]
+
+  if(obj[0].name) {
+    mappedWithName = obj as NamedXmlBasedJson[]
+  } else {
+    mappedWithName = getWithTokenType(
+      data.config.tokenMap,
+      obj as XmlBasedJson[]
+    )
+  }
+
+  log.trace(`[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(", ")}]`)
+
+  const splitOnSemicolon = splitArrayOn(
+    mappedWithName,
+    ({ name }) => name === Type.Semicolon
+  )
+
+  if (splitOnSemicolon.length > 1) {
+    // TODO: check if non-wrapping expr list is correct
+    log.trace(`found ${splitOnSemicolon.length} expressions by semicolon-split, parsing them separately`)
+    return splitOnSemicolon.flatMap(arr=>
+      parseBasedOnType(data, arr)
+    )
+  }
+
+  /*
+   * if splitOnSemicolon.length === 1, we can continue with the normal parsing, but we may have had a trailing semicolon, with this, it is removed as well.
+   * splitOnSemicolon.length === 0 is not possible, as we would have had an empty array before, split does not add elements.
+   */
+  mappedWithName = splitOnSemicolon[0]
+  const comments = []
+  const others  = []
+  for(const elem of mappedWithName) {
+    if(elem.name === Type.Comment) {
+      comments.push(elem)
+    } else {
+      others.push(elem)
+    }
+  }
+
+  const parsedComments = comments.map(c => parseComment(data, c.content))
+
+  const result = parseMappedWithoutSemicolonBasedOnType(others, data)
+  // we hoist comments
+  return [...parsedComments, ...result]
 }
 
 export function parseNodesWithUnknownType(data: ParserData, mappedWithName: NamedXmlBasedJson[]) {

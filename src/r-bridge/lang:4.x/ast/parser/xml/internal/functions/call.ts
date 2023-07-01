@@ -3,7 +3,7 @@ import { guard } from '../../../../../../../util/assert'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseLog } from '../../parser'
-import { tryParseSymbol } from '../values'
+import { parseString, tryParseSymbol } from '../values'
 import { ParserData } from '../../data'
 import { Type, RNode, RFunctionCall, RUnnamedFunctionCall, RNamedFunctionCall } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
@@ -26,6 +26,11 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
     return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
   }
 
+  if(mappedWithName.length < 3 || mappedWithName[1].name !== Type.ParenLeft || mappedWithName[mappedWithName.length - 1].name !== Type.ParenRight) {
+    parseLog.trace(`expected function call to have parenthesis for a call, but was not`)
+    return undefined
+  }
+
   parseLog.trace('trying to parse function call')
   mappedWithName = executeHook(data.hooks.functions.onFunctionCall.before, data, mappedWithName)
 
@@ -38,7 +43,11 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
 
   const namedSymbolContent = getWithTokenType(data.config.tokenMap, symbolContent)
 
-  if(namedSymbolContent.findIndex(x => x.name === Type.FunctionCall) < 0) {
+  if(namedSymbolContent.length === 1 && namedSymbolContent[0].name === Type.String) {
+    // special handling when someone calls a function by string
+    result = parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content)
+  }
+  else if(namedSymbolContent.findIndex(x => x.name === Type.FunctionCall) < 0) {
     parseLog.trace(`is not named function call, as the name is not of type ${Type.FunctionCall}, but: ${namedSymbolContent.map(n => n.name).join(',')}`)
     const mayResult = tryParseUnnamedFunctionCall(data, mappedWithName, location, content)
     if(mayResult === undefined) {
@@ -46,7 +55,7 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
     }
     result = mayResult
   } else {
-    result = parseNamedFunctionCall(data, symbolContent, mappedWithName, location, content)
+    result = parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content)
   }
 
   return executeHook(data.hooks.functions.onFunctionCall.after, data, result)
@@ -67,10 +76,6 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
   // maybe remove symbol-content again because i just use the root expr of mapped with name
   if(mappedWithName.length < 3) {
     parseLog.trace('expected unnamed function call to have 3 elements [like (<func>)], but was not')
-    return undefined
-  }
-  if(mappedWithName[1].name !== Type.ParenLeft || mappedWithName[mappedWithName.length - 1].name !== Type.ParenRight) {
-    parseLog.trace(`expected unnamed function call to have parenthesis for a call, but was not`)
     return undefined
   }
 
@@ -97,10 +102,23 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 }
 
 
-function parseNamedFunctionCall(data: ParserData, symbolContent: XmlBasedJson[], mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RNamedFunctionCall {
-  const functionName = tryParseSymbol(data, getWithTokenType(data.config.tokenMap, symbolContent))
+function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJson[], mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RNamedFunctionCall {
+  let functionName: RNode | undefined
+  if(symbolContent.length === 1 && symbolContent[0].name === Type.String) {
+    const stringBase = parseString(data, symbolContent[0].content)
+    functionName = {
+      type:      Type.Symbol,
+      namespace: undefined,
+      lexeme:    stringBase.lexeme,
+      info:      stringBase.info,
+      location:  stringBase.location,
+      content:   stringBase.content.str
+    }
+  } else {
+    functionName = tryParseSymbol(data, symbolContent)
+  }
   guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')
-  guard(functionName.type === Type.Symbol, () => `expected function name to be a symbol, yet received ${functionName.type}`)
+  guard(functionName.type === Type.Symbol, `expected function name to be a symbol, yet received ${functionName.type}`)
 
   const parsedArguments = parseArguments(mappedWithName, data)
 

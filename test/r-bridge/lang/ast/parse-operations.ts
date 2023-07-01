@@ -135,6 +135,59 @@ describe("Parse simple operations",
           })
         )
       })
+      describe('Using unknown special infix operator', () => {
+        assertAst(
+          '1 %xxx% 2',
+          shell,
+          '1 %xxx% 2',
+          exprList(
+            {
+              type:         Type.FunctionCall,
+              flavour:      'named',
+              info:         {},
+              lexeme:       '%xxx%',
+              functionName: {
+                type:      Type.Symbol,
+                lexeme:    '%xxx%',
+                content:   '%xxx%',
+                namespace: undefined,
+                location:  rangeFrom(1, 3, 1, 7),
+                info:      {}
+              },
+              location:  rangeFrom(1, 3, 1, 7),
+              arguments: [
+                {
+                  type:     Type.Argument,
+                  info:     {},
+                  lexeme:   '1',
+                  name:     undefined,
+                  location: rangeFrom(1, 1, 1, 1),
+                  value:    {
+                    type:     Type.Number,
+                    content:  numVal(1),
+                    info:     {},
+                    lexeme:   "1",
+                    location: rangeFrom(1, 1, 1, 1)
+                  }
+                }, {
+                  type:     Type.Argument,
+                  info:     {},
+                  lexeme:   '2',
+                  name:     undefined,
+                  location: rangeFrom(1, 9, 1, 9),
+                  value:    {
+                    type:     Type.Number,
+                    content:  numVal(2),
+                    info:     {},
+                    lexeme:   "2",
+                    location: rangeFrom(1, 9, 1, 9)
+                  }
+                }
+              ]
+            }
+          )
+        )
+      })
     })
   })
 )

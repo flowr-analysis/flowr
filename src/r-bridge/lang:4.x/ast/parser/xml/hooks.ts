@@ -87,12 +87,12 @@ export interface XmlParserHooks {
     }
   },
   operators: {
-    /** {@link tryParseBinaryOperation}, includes {@link RPipe} */
+    /** {@link tryParseBinaryOperation}, includes {@link RPipe} and {@link RFunctionCall} in case of special infix binary operations */
     onBinary: {
       /** triggered if {@link tryParseBinaryOperation} could not find a matching operator, you probably still want to return `undefined` */
       unknown(data: ParserData, input: { lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson }): AutoIfOmit<RNode | undefined>
       before(data: ParserData, input: { flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson }): AutoIfOmit<{flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson}>
-      after(data: ParserData, result: RBinaryOp | RPipe): AutoIfOmit<RBinaryOp | RPipe>
+      after(data: ParserData, result: RFunctionCall | RBinaryOp | RPipe): AutoIfOmit<RFunctionCall | RBinaryOp | RPipe>
     },
     /** {@link tryParseUnaryOperation} */
     onUnary: {

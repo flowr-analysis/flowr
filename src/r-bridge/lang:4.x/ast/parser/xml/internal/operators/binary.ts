@@ -11,7 +11,7 @@ import {
   ComparisonOperatorsRAst,
   LogicalOperatorsRAst,
   ModelFormulaOperatorsRAst,
-  RBinaryOp,
+  RBinaryOp, RFunctionCall, RNamedFunctionCall,
   RNode,
   RPipe,
   RSymbol,
@@ -53,7 +53,7 @@ export function tryParseBinaryOperation(
   return parseBinaryOp(data, flavor, lhs, op, rhs)
 }
 
-function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RBinaryOp | RPipe {
+function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RFunctionCall | RBinaryOp | RPipe {
   parseLog.debug(`[binary op] trying to parse ${flavor}`);
   ({ flavor, lhs, rhs, op} = executeHook(data.hooks.operators.onBinary.before, data, { flavor, lhs, op, rhs }))
 
@@ -78,6 +78,46 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 
   if (flavor === 'special') {
     flavor = identifySpecialOp(content)
+  }
+
+  if(flavor === 'special') {
+    guard(parsedLhs.location !== undefined && parsedLhs.lexeme !== undefined && parsedRhs.location !== undefined && parsedRhs.lexeme !== undefined,
+      () => `special op lhs and rhs must have a locations and lexemes, but ${JSON.stringify(parsedLhs)} and ${JSON.stringify(parsedRhs)})`)
+    // parse as infix function call!
+    const result: RNamedFunctionCall = {
+      type:         Type.FunctionCall,
+      flavour:      'named',
+      lexeme:       content,
+      location,
+      functionName: {
+        type:      Type.Symbol,
+        location,
+        lexeme:    content,
+        content,
+        namespace: undefined,
+        info:      {}
+      },
+      arguments: [
+        {
+          type:     Type.Argument,
+          location: parsedLhs.location,
+          value:    parsedLhs,
+          name:     undefined,
+          lexeme:   parsedLhs.lexeme,
+          info:     {}
+        },
+        {
+          type:     Type.Argument,
+          location: parsedRhs.location,
+          value:    parsedRhs,
+          name:     undefined,
+          lexeme:   parsedRhs.lexeme,
+          info:     {}
+        }
+      ],
+      info: {}
+    }
+    return executeHook(data.hooks.operators.onBinary.after, data, result)
   }
 
   // TODO: assert exists as known operator

@@ -4,13 +4,32 @@
  * @module
  */
 import { MergeableRecord } from '../../util/objects'
-import { RNodeWithParent, visit } from '../../r-bridge'
+import {
+  FoldFunctions,
+  NodeId,
+  ParentInformation,
+  RAccess, RArgument,
+  RArithmeticBinaryOp, RArithmeticUnaryOp,
+  RAssignmentOp, RBreak, RComment,
+  RComparisonBinaryOp, RExpressionList, RForLoop, RFunctionCall, RFunctionDefinition, RIfThenElse,
+  RLogical,
+  RLogicalBinaryOp, RLogicalUnaryOp,
+  RModelFormulaBinaryOp, RModelFormulaUnaryOp, RNext,
+  RNodeWithParent,
+  RNumber, RParameter, RRepeatLoop,
+  RString,
+  RSymbol, RWhileLoop,
+  Type,
+  visit
+} from '../../r-bridge'
 import { SingleSlicingCriterion, SlicingCriteria } from './parse'
 import { guard } from '../../util/assert'
 import { getUniqueCombinationsOfSize } from '../../util/arrays'
+import { RPipe } from '../../r-bridge/lang:4.x/ast/model/nodes/RPipe'
 
 /**
  * Defines the filter for collecting all possible slicing criteria.
+ * @see DefaultAllVariablesFilter
  */
 export interface SlicingCriteriaFilter extends MergeableRecord {
   /**
@@ -26,23 +45,9 @@ export interface SlicingCriteriaFilter extends MergeableRecord {
    */
   maximumSize: number
   /**
-   * Predicate that defines if a given node is a valid slice point.
-   * While we allow (theoretically) to slice at *every* node with a given {@link SingleSlicingCriterion},
-   * conventional slicing criteria are only interested in "variables".
+   * Function that determines the ids of all nodes that can be used as slicing criteria.
    */
-  predicate:   (n: RNodeWithParent) => boolean
-}
-
-
-function collectAllPotentialIdsForSlicing<OtherInfo>(ast: RNodeWithParent<OtherInfo>, predicate: (n: RNodeWithParent) => boolean): RNodeWithParent<OtherInfo>[] {
-  const potentialSlicingNodes: RNodeWithParent<OtherInfo>[] = []
-  visit(ast, n => {
-    if (predicate(n)) {
-      potentialSlicingNodes.push(n)
-    }
-    return false
-  })
-  return potentialSlicingNodes
+  collectAll:  (root: RNodeWithParent) => NodeId[]
 }
 
 /**
@@ -52,9 +57,9 @@ function collectAllPotentialIdsForSlicing<OtherInfo>(ast: RNodeWithParent<OtherI
 export function* collectAllSlicingCriteria<OtherInfo>(ast: RNodeWithParent<OtherInfo>, filter: SlicingCriteriaFilter): Generator<SlicingCriteria, void, void> {
   guard(filter.minimumSize >= 1, `Minimum size must be at least 1, but was ${filter.minimumSize}`)
   guard(filter.maximumSize >= filter.minimumSize, `Maximum size must be at least minimum size, but was ${filter.maximumSize} < ${filter.minimumSize}`)
-  const potentialSlicingNodes = collectAllPotentialIdsForSlicing(ast, filter.predicate)
+  const potentialSlicingNodes = filter.collectAll(ast)
 
   for(const combination of getUniqueCombinationsOfSize(potentialSlicingNodes, filter.minimumSize, filter.maximumSize)) {
-    yield combination.map(n => `$${n.info.id}` as SingleSlicingCriterion)
+    yield combination.map(n => `$${n}` as SingleSlicingCriterion)
   }
 }

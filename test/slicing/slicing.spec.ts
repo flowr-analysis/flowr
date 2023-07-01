@@ -6,4 +6,7 @@ describe('Slicing', () => {
     require('./static/simple')
     require('./static/calls')
   })
+  describe('Collect All Ids', () => {
+    require('./criterion/collect-all')
+  })
 })

@@ -15,6 +15,7 @@ export type CommonSlicerMeasurements = 'initialize R session'
 export type PerSliceMeasurements = 'decode slicing criterion'
   | 'static slicing'
   | 'reconstruct code'
+  | 'total'
 
 export type ElapsedTime = bigint
 

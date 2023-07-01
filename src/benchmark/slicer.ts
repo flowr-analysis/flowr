@@ -167,6 +167,8 @@ export class Slicer {
     }
     this.perSliceMeasurements.set(slicingCriteria, stats)
 
+    const totalStopwatch = measurements.start('total')
+
     const mappedCriteria = measurements.measure(
       'decode slicing criterion',
       () => convertAllSlicingCriteriaToIds(slicingCriteria, this.decoratedAst as DecoratedAst)
@@ -188,6 +190,7 @@ export class Slicer {
       'reconstruct code',
       () => reconstructToCode<NoInfo>(this.decoratedAst as DecoratedAst, slicedOutput)
     )
+    totalStopwatch.stop()
 
     stats.measurements = measurements.get()
     // TODO: end statistics

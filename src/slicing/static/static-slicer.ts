@@ -41,7 +41,7 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
   guard(id.length > 0, `must have at least one seed id to calculate slice`)
   slicerLogger.trace(`calculating slice for ${id.length} seed ids: ${JSON.stringify(id)}`)
 
-  const visited = new Map<Fingerprint, NodeId>()
+  const visited = new Set<Fingerprint>()
   // every node ships the call environment which registers the calling environment
   const visitQueue: NodeToSlice[] = id.map(i => ({ id: i, baseEnvironment: initializeCleanEnvironments(), onlyForSideEffects: false }))
 
@@ -51,11 +51,11 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
     if (current === undefined) {
       continue
     }
-    visited.set(fingerprint(current), current.id)
+    visited.add(fingerprint(current))
 
     const currentInfo = dataflowGraph.get(current.id, true)
 
-    slicerLogger.trace(`visiting id: ${current.id} (${current.onlyForSideEffects ? 'only for side effects' : 'full'}) with name: ${currentInfo?.[0].name ?? '<unknown>'}`)
+    slicerLogger.trace(`visiting id: ${current.id} with name: ${currentInfo?.[0].name ?? '<unknown>'}`)
 
     if(currentInfo === undefined) {
       slicerLogger.warn(`id: ${current.id} must be in graph but can not be found, keep in slice to be sure`)
@@ -80,13 +80,13 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
     }
   }
 
-  slicerLogger.trace(`static slicing produced: ${JSON.stringify([...visited])}`)
+  // slicerLogger.trace(`static slicing produced: ${JSON.stringify([...visited])}`)
 
   return new Set(visited.values())
 }
 
 
-function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, visited: Map<Fingerprint, NodeId>, visitQueue: NodeToSlice[]) {
+function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, visited: Set<Fingerprint>, visitQueue: NodeToSlice[]) {
   // bind with call-local environments during slicing
   const outgoingEdges = dataflowGraph.get(callerInfo.id, true)
   guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`)

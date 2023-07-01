@@ -74,7 +74,8 @@ Slicing summary for ${perSliceData.numberOfSlices} slice${perSliceData.numberOfS
   Result Slice Sizes:   
     Number of lines:          ${printCountSummarizedMeasurements(perSliceData.sliceSize.lines)}
     Number of characters:     ${printCountSummarizedMeasurements(perSliceData.sliceSize.characters)}
-    Number of tokens:         ${printCountSummarizedMeasurements(perSliceData.sliceSize.tokens) /* TODO: separate normalized tokens? */}
+    Number of R tokens:       ${printCountSummarizedMeasurements(perSliceData.sliceSize.tokens)}
+    Normalized R tokens:      ${printCountSummarizedMeasurements(perSliceData.sliceSize.normalizedTokens)}
     Number of dataflow nodes: ${printCountSummarizedMeasurements(perSliceData.sliceSize.dataflowNodes)}
 
 Shell close:                  ${print(stats.commonMeasurements, 'close R session')}

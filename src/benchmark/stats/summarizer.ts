@@ -17,10 +17,11 @@ export interface SummarizedMeasurement {
 }
 
 interface SliceSizeCollection {
-  lines:         number[]
-  characters:    number[]
-  dataflowNodes: number[]
-  tokens:        number[]
+  lines:            number[]
+  characters:       number[]
+  dataflowNodes:    number[]
+  tokens:           number[]
+  normalizedTokens: number[]
 }
 
 export interface SummarizedPerSliceStats {
@@ -44,10 +45,11 @@ export function summarizePerSliceStats(stats: Map<SlicingCriteria, PerSliceStats
   const sizeOfSliceCriteria: number[] = []
 
   const sliceSize: SliceSizeCollection = {
-    lines:         [],
-    characters:    [],
-    tokens:        [],
-    dataflowNodes: []
+    lines:            [],
+    characters:       [],
+    tokens:           [],
+    normalizedTokens: [],
+    dataflowNodes:    []
   }
 
   for(const [_, perSliceStats] of stats) {
@@ -74,10 +76,11 @@ export function summarizePerSliceStats(stats: Map<SlicingCriteria, PerSliceStats
     sliceCriteriaSizes: summarizeMeasurement(sizeOfSliceCriteria),
     measurements:       summarized,
     sliceSize:          {
-      lines:         summarizeMeasurement(sliceSize.lines),
-      characters:    summarizeMeasurement(sliceSize.characters),
-      tokens:        summarizeMeasurement(sliceSize.tokens),
-      dataflowNodes: summarizeMeasurement(sliceSize.dataflowNodes)
+      lines:            summarizeMeasurement(sliceSize.lines),
+      characters:       summarizeMeasurement(sliceSize.characters),
+      tokens:           summarizeMeasurement(sliceSize.tokens),
+      normalizedTokens: summarizeMeasurement(sliceSize.normalizedTokens),
+      dataflowNodes:    summarizeMeasurement(sliceSize.dataflowNodes)
     }
   }
 }

@@ -144,8 +144,9 @@ describe("Parse simple operations",
             {
               type:         Type.FunctionCall,
               flavour:      'named',
+              infixSpecial: true,
               info:         {},
-              lexeme:       '%xxx%',
+              lexeme:       '1 %xxx% 2',
               functionName: {
                 type:      Type.Symbol,
                 lexeme:    '%xxx%',

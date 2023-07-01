@@ -24,8 +24,10 @@ import { staticSlicing } from '../slicing/static'
 import { reconstructToCode } from '../slicing/reconstruct'
 import { CommonSlicerMeasurements, ElapsedTime, PerSliceMeasurements, PerSliceStats, SlicerStats } from './stats/stats'
 import fs from 'fs'
+import { collectAllSlicingCriteria, SlicingCriteriaFilter } from '../slicing/criterion/collect-all'
+import { log } from '../util/log'
 
-
+export const benchmarkLogger = log.getSubLogger({ name: "benchmark" })
 
 /**
  * A slicer that can be used to slice exactly one file (multiple times).
@@ -151,6 +153,8 @@ export class Slicer {
    * @see SingleSlicingCriterion
    */
   public slice(...slicingCriteria: SlicingCriteria) {
+    benchmarkLogger.trace(`try to slice for criteria ${JSON.stringify(slicingCriteria)}`)
+
     guard(this.stats !== undefined, 'need to call init before slice!')
     guard(!this.perSliceMeasurements.has(slicingCriteria), 'do not slice the same criteria combination twice')
 
@@ -191,11 +195,17 @@ export class Slicer {
 
   /**
    * Call {@link slice} for all slicing criteria that match the given filter.
+   * See {@link collectAllSlicingCriteria} for details.
+   *
+   * @see collectAllSlicingCriteria
+   * @see SlicingCriteriaFilter
    */
-  public sliceForAll() {
-
+  public sliceForAll(filter: SlicingCriteriaFilter) {
+    guard(this.stats !== undefined, 'need to call init before sliceForAll!')
+    for(const slicingCriteria of collectAllSlicingCriteria((this.decoratedAst as DecoratedAst).decoratedAst, filter)) {
+      this.slice(...slicingCriteria)
+    }
   }
-
 
   /**
    * Retrieves the final stats and closes the shell session.

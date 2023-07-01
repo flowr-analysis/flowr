@@ -10,6 +10,7 @@ describe("The Benchmark Slicer", () => {
       slicer.slice('1@a')
       const stats = slicer.finish()
       const statInfo = stats2string(stats)
+      console.log(statInfo)
       assert.strictEqual(stats.input.numberOfLines, 1, statInfo)
       assert.strictEqual(stats.input.numberOfCharacters, 6, statInfo)
       assert.strictEqual(stats.input.numberOfRTokens, 6, statInfo)

@@ -195,7 +195,6 @@ async function getSlice() {
     console.log(`Writing stats for ${request.content} to "${filename}"`)
     fs.writeFileSync(filename, statsOutput)
   }
-
 }
 
 void getSlice()

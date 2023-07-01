@@ -38,7 +38,7 @@ export function splitArrayOn<T>(arr: T[], predicate: (elem: T) => boolean): T[][
 /**
  * Generate all permutations of the given array using Heap's algorithm (with its non-recursive variant).
  *
- * @param arr - the array to permute
+ * @param arr - The array to permute
  * @see getUniqueCombinationsOfSize
  */
 export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {

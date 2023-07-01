@@ -17,8 +17,11 @@ export interface SummarizedMeasurement {
 }
 
 export interface SummarizedPerSliceStats {
-  numberOfSlices: number
-  measurements:   Map<PerSliceMeasurements, SummarizedMeasurement>
+  /** number of total slicing calls */
+  numberOfSlices:     number
+  /** statistics on the used slicing criteria (number of ids within criteria etc.) */
+  sliceCriteriaSizes: SummarizedMeasurement
+  measurements:       Map<PerSliceMeasurements, SummarizedMeasurement>
   // TODO: resulting slice stats
 }
 
@@ -27,10 +30,13 @@ export interface SummarizedPerSliceStats {
  */
 export function summarizePerSliceStats(stats: Map<SlicingCriteria, PerSliceStats>): Readonly<SummarizedPerSliceStats> {
   const collect = new DefaultMap<PerSliceMeasurements, number[]>(() => [])
+  const sizeOfSliceCriteria: number[] = []
+
   for(const [_, perSliceStats] of stats) {
     for(const measure of perSliceStats.measurements) {
       collect.get(measure[0]).push(Number(measure[1]))
     }
+    sizeOfSliceCriteria.push(perSliceStats.slicingCriteria.length)
     // TODO: collect resulting slice data
   }
 
@@ -41,8 +47,9 @@ export function summarizePerSliceStats(stats: Map<SlicingCriteria, PerSliceStats
   }
 
   return {
-    numberOfSlices: stats.size,
-    measurements:   summarized
+    numberOfSlices:     stats.size,
+    sliceCriteriaSizes: summarizeMeausrement(sizeOfSliceCriteria),
+    measurements:       summarized
   }
 }
 

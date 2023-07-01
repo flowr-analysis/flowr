@@ -1,7 +1,6 @@
 import { Slicer } from '../../src/benchmark/slicer'
 import { stats2string } from '../../src/benchmark/stats/print'
 import { assert } from 'chai'
-import { summarizePerSliceStats } from '../../src/benchmark/stats/summarizer'
 
 describe("The Benchmark Slicer", () => {
   describe('Stats by parsing text-based inputs', () => {

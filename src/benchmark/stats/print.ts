@@ -4,7 +4,9 @@
  */
 import { guard } from '../../util/assert'
 import { ElapsedTime, PerSliceMeasurements, SlicerStats } from './stats'
-import { SummarizedPerSliceStats, summarizePerSliceStats } from './summarizer'
+import { SummarizedMeasurement, SummarizedPerSliceStats, summarizePerSliceStats } from './summarizer'
+
+const padSize = 10
 
 function divWithRest(dividend: bigint, divisor: bigint): [bigint, bigint] {
   return [dividend / divisor, dividend % divisor]
@@ -22,7 +24,7 @@ function formatNanoseconds(nanoseconds: bigint | number): string {
   const nanoStr = String(remainingNanoseconds).padEnd(3, '0').substring(0, 3)
   const unit = seconds === 0n ? 'ms' : 's'
   // TODO: round correctly?
-  return `${secondsStr}${millisecondsStr}${nanoStr}${unit}`.padStart(10, ' ')
+  return `${secondsStr}${millisecondsStr}${nanoStr}${unit}`.padStart(padSize, ' ')
 }
 
 
@@ -36,6 +38,11 @@ function printSummarizedMeasurements(stats: SummarizedPerSliceStats, key: PerSli
   const measure = stats.measurements.get(key)
   guard(measure !== undefined, `Measurement for ${JSON.stringify(key)} not found`)
   return `${formatNanoseconds(measure.min)} - ${formatNanoseconds(measure.max)} (median: ${formatNanoseconds(measure.median)}, mean: ${formatNanoseconds(measure.mean)}, std: ${formatNanoseconds(measure.std)})`
+}
+
+function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string {
+  const range = `${stats.min} - ${stats.max}`.padStart(padSize, ' ')
+  return `${range} (median: ${stats.median}, mean: ${stats.mean}, std: ${stats.std})`
 }
 
 /**
@@ -54,11 +61,12 @@ AST normalization:      ${print(stats.commonMeasurements,'normalize R AST')}
 AST decoration:         ${print(stats.commonMeasurements,'decorate R AST')}
 Dataflow creation:      ${print(stats.commonMeasurements,'produce dataflow information')}
 
-Slicing ${perSliceData.numberOfSlices} slice${perSliceData.numberOfSlices !== 1 ? 's' : ''}:
+Slicing summary for ${perSliceData.numberOfSlices} slice${perSliceData.numberOfSlices !== 1 ? 's' : ''}:
   Total:                ${printSummarizedMeasurements(perSliceData, 'total')}
   Slice decoding:       ${printSummarizedMeasurements(perSliceData, 'decode slicing criterion')}
   Slice creation:       ${printSummarizedMeasurements(perSliceData, 'static slicing')}
   Reconstruction:       ${printSummarizedMeasurements(perSliceData, 'reconstruct code')}
+  Used Slice Sizes:     ${printCountSummarizedMeasurements(perSliceData.sliceCriteriaSizes)}
 
 Shell close:            ${print(stats.commonMeasurements, 'close R session')}
 Total:                  ${print(stats.commonMeasurements, 'total')}

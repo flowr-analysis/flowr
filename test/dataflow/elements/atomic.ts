@@ -38,6 +38,13 @@ describe("Atomic dataflow information", withShell((shell) => {
         .addEdge("0", "3", "relates", "always")
         .addEdge("1", "3", "relates", "always")
     )
+    assertDataflow("assign on access", shell,
+      "a[x] <- 5",
+      new DataflowGraph()
+        .addNode({ tag: 'variable-definition', id: "0", name: "a", scope: LocalScope })
+        .addNode({ tag: 'use', id: "1", name: "x" })
+        .addEdge("0", "1", "relates", "always")
+    )
   })
 
   describe("unary operators", () => {

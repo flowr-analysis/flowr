@@ -7,7 +7,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
   const processedAccessed = processDataflowFor(node.accessed, data)
   const nextGraph = processedAccessed.graph
   const outgoing = processedAccessed.out
-  const ingoing = [...processedAccessed.in, ...processedAccessed.activeNodes]
+  const ingoing = processedAccessed.in
   const environments = processedAccessed.environments
 
   const accessedNodes = [...processedAccessed.activeNodes, ...processedAccessed.in, ...processedAccessed.out]
@@ -34,7 +34,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 
   return {
     ast:          data.completeAst,
-    activeNodes:  [],
+    activeNodes:  processedAccessed.activeNodes /* keep active nodes in case of assignments etc */,
     in:           ingoing,
     out:          outgoing,
     environments: environments,

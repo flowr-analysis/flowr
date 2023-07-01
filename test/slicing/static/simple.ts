@@ -14,6 +14,16 @@ describe('Simple', withShell(shell => {
     assertSliced('Constant', shell, 'a <- 4\na <- list(1,2)\na[3]', ['3@a'], 'a <- list(1,2)\na[3]')
     assertSliced('Variable', shell, 'i <- 4\na <- list(1,2)\na[i]', ['3@a'], 'i <- 4\na <- list(1,2)\na[i]')
     assertSliced('Subset Sequence', shell, 'i <- 4\na <- list(1,2)\na[1:i,]', ['3@a'], 'i <- 4\na <- list(1,2)\na[1:i,]')
+    const code = `
+a <- list(1,2)
+a[[1]] = 2
+a[[2]] = 3
+cat(a)
+`
+    assertSliced('Repeated named access and definition', shell, code, ['5@a'], `a <- list(1,2)
+a[[1]] = 2
+a[[2]] = 3
+cat(a)`)
   })
   // TODO: test for(i in 1:10) { print(i); i <- 12 }
   describe('The classic', () => {

@@ -9,11 +9,11 @@ import {
   DecoratedAst,
   getStoredTokenMap,
   NoInfo,
-  normalize,
+  normalize, retrieveNumberOfRTokensOfLastParse,
   retrieveXmlFromRCode,
   RExpressionList,
   RParseRequestFromFile, RParseRequestFromText,
-  RShell, ts2r
+  RShell
 } from '../r-bridge'
 import { IStoppableStopwatch, Measurements } from './stopwatch'
 import { guard } from '../util/assert'
@@ -108,8 +108,7 @@ export class Slicer {
 
     const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8')
     // retrieve number of R tokens - flowr_parsed should still contain the last parsed code
-    const numberOfRTokens = await this.session.sendCommandWithOutput(`cat(nrow(getParseData(flowr_parsed)),${ts2r(this.session.options.eol)})`)
-    guard(numberOfRTokens.length === 1, 'expected exactly one line to obtain the number of R tokens')
+    const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.session)
 
     // collect dataflow graph size
     const nodes = [...this.dataflow.graph.nodes(true)]
@@ -137,7 +136,7 @@ export class Slicer {
       input:                {
         numberOfLines:            loadedContent.split('\n').length,
         numberOfCharacters:       loadedContent.length,
-        numberOfRTokens:          Number(numberOfRTokens[0]),
+        numberOfRTokens:          numberOfRTokens,
         numberOfNormalizedTokens: [...collectAllIds(this.decoratedAst.decoratedAst)].length,
       },
       dataflow: {
@@ -199,7 +198,6 @@ export class Slicer {
 
     stats.measurements = measurements.get()
     // TODO: end statistics
-
     return stats
   }
 

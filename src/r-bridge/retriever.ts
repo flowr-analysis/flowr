@@ -40,7 +40,8 @@ const ERR_MARKER = "err"
  * Provides the capability to parse R files/R code using the R parser.
  * Depends on {@link RShell} to provide a connection to R.
  * <p>
- * throws if the file could not be parsed
+ * Throws if the file could not be parsed.
+ * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell): Promise<string> {
   if (request.ensurePackageInstalled) {
@@ -63,7 +64,8 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
 
 // TODO: type ast etc
 /**
- * uses {@link retrieveXmlFromRCode} and returns the nicely formatted object-AST
+ * Uses {@link retrieveXmlFromRCode} and returns the nicely formatted object-AST.
+ * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export async function retrieveAstFromRCode(request: RParseRequest, tokenMap: Record<string, string>, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> {
   const xml = await retrieveXmlFromRCode(request, shell)
@@ -97,4 +99,13 @@ export async function getStoredTokenMap(shell: RShell): Promise<Record<string, s
     acc[value] = removeTokenMapQuotationMarks(key)
     return acc
   }, {})
+}
+
+/**
+ * Needs to be called *after*  {@link retrieveXmlFromRCode} (or {@link retrieveAstFromRCode})
+ */
+export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise<number> {
+  const result = await shell.sendCommandWithOutput(`cat(nrow(getParseData(flowr_parsed)),${ts2r(shell.options.eol)})`)
+  guard(result.length === 1, 'expected exactly one line to obtain the number of R tokens')
+  return Number(result[0])
 }

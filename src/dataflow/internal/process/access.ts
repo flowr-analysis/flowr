@@ -10,7 +10,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
   const ingoing = processedAccessed.in
   const environments = processedAccessed.environments
 
-  const accessedNodes = [...processedAccessed.activeNodes, ...processedAccessed.in, ...processedAccessed.out]
+  const accessedNodes = processedAccessed.activeNodes
 
   if(node.operator === '[' || node.operator === '[[') {
     for(const access of node.access) {
@@ -22,9 +22,10 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
       outgoing.push(...processedAccess.out)
       const newIngoing = [...processedAccess.in, ...processedAccess.activeNodes]
       for(const newIn of newIngoing) {
-        // TODO: deal with complexity in the future by introduce a new specific node
+        // TODO: deal with complexity in the future by introduce a new specific node?
+
         for(const accessedNode of accessedNodes) {
-          nextGraph.addEdge(accessedNode, newIn, 'relates', 'always')
+          nextGraph.addEdge(accessedNode, newIn, 'read', 'always')
         }
       }
       ingoing.push(...newIngoing)

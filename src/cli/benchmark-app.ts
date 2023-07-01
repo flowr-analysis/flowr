@@ -5,17 +5,23 @@ import { summarizeSlicerStats, BenchmarkSlicer, stats2string } from '../benchmar
 import { DefaultAllVariablesFilter } from '../slicing'
 import { allRFilesFrom } from '../util/files'
 import { RParseRequestFromFile } from '../r-bridge'
+import fs from 'fs'
+import { displayEnvReplacer } from '../util/json'
+import { date2string } from '../util/time'
 
 // TODO: promote to the normal slicing app with a --benchmark 100 flag afterwards
 // TODO: allow to select slicing criteria filter
 
 export const toolName = 'benchmark'
 
+const now = date2string(new Date())
+
 export const optionDefinitions: OptionDefinition[] = [
   { name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
   { name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide.' },
   { name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process (if given, this will choose these files randomly and add the chosen names to the output'},
   { name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
+  { name: 'output',       alias: 'o', type: String,  description: `File to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${now}.json})`, defaultValue: `benchmark-${now}.json`,  typeLabel: '{underline file}' },
   // TODO: criteria, output and rest
 ]
 
@@ -23,6 +29,7 @@ export interface BenchmarkCliOptions {
   verbose: boolean
   help:    boolean
   input:   string[]
+  output:  string
   limit?:  number
 }
 
@@ -57,6 +64,7 @@ log.info('running with options - do not use for final benchmark', options)
 
 
 async function benchmark() {
+  console.log(`Writing output continuously to ${options.output}`)
   // we do not use the limit argument to be able to pick the limit randomly
   const files: RParseRequestFromFile[] = []
   for await (const file of allRFilesFrom(options.input)) {
@@ -87,7 +95,9 @@ async function benchmark() {
 
     const stats = slicer.finish()
     const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats))
-    // console.log(sliceStatsAsString)
+    console.log(sliceStatsAsString)
+    // append line by line
+    fs.appendFileSync(options.output, JSON.stringify({ filename: file.content, stats }, displayEnvReplacer))
   }
 }
 

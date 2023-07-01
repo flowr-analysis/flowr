@@ -12,6 +12,7 @@ import { MergeableRecord } from '../util/objects'
 import { log } from '../util/log'
 import { dataflowLogger } from './index'
 import { DataflowInformation } from './internal/info'
+import { displayEnvReplacer } from '../util/json'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
@@ -471,16 +472,6 @@ export class DataflowGraph {
 }
 
 
-// to get the types within JSON.stringify
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function displayEnvReplacer(key: any, value: any): any {
-  if(value instanceof Map || value instanceof Set) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return [...value]
-  } else {
-    return value
-  }
-}
 
 function equalEdges(id: NodeId, our: [NodeId, DataflowGraphEdge][], other: [NodeId, DataflowGraphEdge][]): boolean {
   if(our.length !== other.length) {

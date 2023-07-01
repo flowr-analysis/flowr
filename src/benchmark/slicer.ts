@@ -49,6 +49,7 @@ export class Slicer {
   private decoratedAst:     DecoratedAst | undefined
   private dataflow:         DataflowInformation | undefined
   private totalStopwatch:   IStoppableStopwatch
+  private finished = false
 
   constructor() {
     this.totalStopwatch = this.commonMeasurements.start('total')
@@ -151,11 +152,13 @@ export class Slicer {
   /**
    * Slice for the given {@link SlicingCriteria}.
    * @see SingleSlicingCriterion
+   *
+   * @returns The per slice stats retrieved for this slicing criteria
    */
-  public slice(...slicingCriteria: SlicingCriteria) {
+  public slice(...slicingCriteria: SlicingCriteria): PerSliceStats {
     benchmarkLogger.trace(`try to slice for criteria ${JSON.stringify(slicingCriteria)}`)
 
-    guard(this.stats !== undefined, 'need to call init before slice!')
+    this.guardActive()
     guard(!this.perSliceMeasurements.has(slicingCriteria), 'do not slice the same criteria combination twice')
 
     const measurements = new Measurements<PerSliceMeasurements>()
@@ -194,6 +197,12 @@ export class Slicer {
 
     stats.measurements = measurements.get()
     // TODO: end statistics
+
+    return stats
+  }
+
+  private guardActive() {
+    guard(this.stats !== undefined && !this.finished, 'need to call init before, and can not do after finish!')
   }
 
   /**
@@ -204,7 +213,7 @@ export class Slicer {
    * @see SlicingCriteriaFilter
    */
   public sliceForAll(filter: SlicingCriteriaFilter) {
-    guard(this.stats !== undefined, 'need to call init before sliceForAll!')
+    this.guardActive()
     for(const slicingCriteria of collectAllSlicingCriteria((this.decoratedAst as DecoratedAst).decoratedAst, filter)) {
       this.slice(...slicingCriteria)
     }
@@ -212,14 +221,20 @@ export class Slicer {
 
   /**
    * Retrieves the final stats and closes the shell session.
+   * Can be called multiple times to retrieve the stored stats, but will only close the session once (the first time).
    */
   public finish(): SlicerStats {
-    guard(this.stats !== undefined, 'need to call init before getStats!')
-    this.commonMeasurements.measure(
-      'close R session',
-      () => this.session.close()
-    )
-    this.totalStopwatch.stop()
+    guard(this.stats !== undefined, 'need to call init before finish')
+
+    if(!this.finished) {
+      this.commonMeasurements.measure(
+        'close R session',
+        () => this.session.close()
+      )
+      this.totalStopwatch.stop()
+      this.finished = true
+    }
+
     this.stats.commonMeasurements = this.commonMeasurements.get()
     return this.stats
   }

@@ -36,7 +36,7 @@ export const benchmarkLogger = log.getSubLogger({ name: "benchmark" })
  * Make sure to call {@link init} to initialize the slicer, before calling {@link slice}.
  * After slicing, call {@link finish} to close the R session and retrieve the stats.
  */
-export class Slicer {
+export class BenchmarkSlicer {
   /** Measures all data that is recorded *once* per slicer (complete setup up to the dataflow graph creation) */
   private readonly commonMeasurements = new Measurements<CommonSlicerMeasurements>()
   private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>

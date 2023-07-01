@@ -3,10 +3,8 @@ import commandLineArgs from 'command-line-args'
 import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import fs from 'fs'
 import { guard } from '../util/assert'
-import { SlicingCriteria } from '../slicing/criterion/parse'
-import { Slicer } from '../benchmark/slicer'
-import { stats2string } from '../benchmark/stats/print'
-import { summarizeSlicerStats } from '../benchmark/stats/summarizer'
+import { SlicingCriteria } from '../slicing'
+import { BenchmarkSlicer, stats2string, summarizeSlicerStats } from '../benchmark'
 
 export const toolName = 'slicer'
 
@@ -61,7 +59,7 @@ log.info('running with options', options)
 
 
 async function getSlice() {
-  const slicer = new Slicer()
+  const slicer = new BenchmarkSlicer()
   guard(options.input !== undefined, `input must be given`)
   guard(options.criterion !== undefined, `a slicing criterion must be given`)
 

@@ -1,7 +1,7 @@
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
 import commandLineUsage, { OptionDefinition } from 'command-line-usage'
-import { summarizeSlicerStats, Slicer, stats2string } from '../benchmark'
+import { summarizeSlicerStats, BenchmarkSlicer, stats2string } from '../benchmark'
 import { DefaultAllVariablesFilter } from '../slicing'
 import { allRFilesFrom } from '../util/files'
 import { RParseRequestFromFile } from '../r-bridge'
@@ -73,7 +73,7 @@ async function benchmark() {
 
   let counter = 0
   for(const file of files) {
-    const slicer = new Slicer()
+    const slicer = new BenchmarkSlicer()
 
     console.log(`Processing file ${++counter}/${files.length}: ${file.content}`)
     // TODO: multiple

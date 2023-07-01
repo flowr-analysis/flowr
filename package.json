@@ -7,6 +7,7 @@
     "main": "ts-node src/app.ts",
     "stats": "ts-node src/cli/statistics-app.ts",
     "slicer": "ts-node src/cli/slicer-app.ts",
+    "benchmark": "ts-node src/cli/benchmark-app.ts",
     "export-quads": "ts-node src/cli/export-quads-app.ts",
     "build": "tsc",
     "doc": "typedoc --options typedoc.json",

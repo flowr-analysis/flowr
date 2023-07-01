@@ -1,46 +1,41 @@
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
 import commandLineUsage, { OptionDefinition } from 'command-line-usage'
-import fs from 'fs'
-import { guard } from '../util/assert'
-import { SlicingCriteria } from '../slicing/criterion/parse'
-import { Slicer } from '../benchmark/slicer'
-import { stats2string } from '../benchmark/stats/print'
-import { summarizeSlicerStats } from '../benchmark/stats/summarizer'
+import { summarizeSlicerStats, Slicer, stats2string } from '../benchmark'
+import { DefaultAllVariablesFilter } from '../slicing'
+import { allRFilesFrom } from '../util/files'
+import { RParseRequestFromFile } from '../r-bridge'
 
-export const toolName = 'slicer'
+// TODO: promote to the normal slicing app with a --benchmark 100 flag afterwards
+// TODO: allow to select slicing criteria filter
+
+export const toolName = 'benchmark'
 
 export const optionDefinitions: OptionDefinition[] = [
-  { name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
+  { name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
   { name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide.' },
-  { name: 'input',        alias: 'i', type: String,  description: '(Required) Pass a single file to slice', multiple: false, defaultOption: true, typeLabel: '{underline files}' },
-  { name: 'criterion',    alias: 'c', type: String,  description: '(Required) Slicing criterion either in the form {underline line:col} or {underline line@variable}, multiple can be separated by \'{bold ;}\'', multiple: false },
-  { name: 'stats',        alias: 's', type: Boolean, description: `Print stats to {italic <output>.stats} (runtimes etc.)`, multiple: false },
-  // { name: 'dataflow',     alias: 'd', type: Boolean, description: `Dump mermaid code for the dataflow to {italic <output>.dataflow}`, multiple: false },
-  // TODO: forward vs. backward slicing
-  { name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to {italic <input>.slice})', typeLabel: '{underline file}' },
+  { name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process (if given, this will choose these files randomly and add the chosen names to the output'},
+  { name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
+  // TODO: criteria, output and rest
 ]
 
-export interface SlicerCliOptions {
-  verbose:   boolean
-  help:      boolean
-  input:     string | undefined
-  criterion: string | undefined
-  output:    string | undefined
-  stats:     boolean
-  // dataflow:  boolean
+export interface BenchmarkCliOptions {
+  verbose: boolean
+  help:    boolean
+  input:   string[]
+  limit?:  number
 }
 
 export const optionHelp = [
   {
-    header:  'Static backwards executable slicer for R',
-    content: 'Slice R code based on a given slicing criterion'
+    header:  'Benchmark the static backwards slicer',
+    content: '[TODO]'
   },
   {
     header:  'Synopsis',
     content: [
-      `$ ${toolName} {bold -i} {italic example.R} {bold --criterion} {italic 7:3}`,
-      `$ ${toolName} {bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}`,
+      // `$ ${toolName} {bold -i} {italic example.R} {bold --criterion} {italic 7:3}`,
+      // `$ ${toolName} {bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}`,
       `$ ${toolName} {bold --help}`
     ]
   },
@@ -50,47 +45,51 @@ export const optionHelp = [
   }
 ]
 
-const options = commandLineArgs(optionDefinitions) as SlicerCliOptions
+const options = commandLineArgs(optionDefinitions) as BenchmarkCliOptions
 
-if(options.help || !options.input || !options.criterion) {
+if(options.help) {
   console.log(commandLineUsage(optionHelp))
   process.exit(0)
 }
+
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
-log.info('running with options', options)
+log.info('running with options - do not use for final benchmark', options)
 
 
-async function getSlice() {
-  const slicer = new Slicer()
-  guard(options.input !== undefined, `input must be given`)
-  guard(options.criterion !== undefined, `a slicing criterion must be given`)
-
-  const output = options.output ?? `${options.input}.slice`
-
-  await slicer.init({ request: 'file', content: options.input })
-
-  const slices = options.criterion.split(';').map(c => c.trim())
-
-  try {
-    const { reconstructedCode, slicingCriteria } = slicer.slice(...slices as SlicingCriteria)
-    const mappedCriteria = slicingCriteria.map(c => `    ${c.criterion} => ${c.id}`).join('\n')
-    console.log(`Mapped criteria:\n${mappedCriteria}`)
-    console.log('Written reconstructed code to', output)
-    fs.writeFileSync(output, reconstructedCode)
-  } catch (e: unknown) {
-    log.error(`[Skipped] Error while processing ${options.input}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
+async function benchmark() {
+  // we do not use the limit argument to be able to pick the limit randomly
+  const files: RParseRequestFromFile[] = []
+  for await (const file of allRFilesFrom(options.input)) {
+    files.push(file)
   }
 
-  const stats = slicer.finish()
-  const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats))
+  if(options.limit) {
+    log.info(`limiting to ${options.limit} files`)
+    // shuffle and limit
+    // TODO: do not limit here to compensate for failures!
+    files.sort(() => Math.random() - 0.5)
+    files.length = options.limit
+  }
 
-  console.log(sliceStatsAsString)
-  if(options.stats) {
-    const filename = `${options.input}.stats`
-    console.log(`Writing stats for ${options.input} to "${filename}"`)
-    fs.writeFileSync(filename, sliceStatsAsString)
+  let counter = 0
+  for(const file of files) {
+    const slicer = new Slicer()
+
+    console.log(`Processing file ${++counter}/${files.length}: ${file.content}`)
+    // TODO: multiple
+    await slicer.init(file)
+
+    try {
+      slicer.sliceForAll(DefaultAllVariablesFilter)
+    } catch (e: unknown) {
+      log.error(`[Skipped] Error while processing ${JSON.stringify(file)}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
+    }
+
+    const stats = slicer.finish()
+    const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats))
+    // console.log(sliceStatsAsString)
   }
 }
 
-void getSlice()
+void benchmark()
 

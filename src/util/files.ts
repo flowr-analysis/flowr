@@ -12,10 +12,10 @@ export interface Table {
 }
 
 /**
- * retrieves all files in the given directory recursively
- * @param dir - directory-path to start the search from
- * @param suffix - suffix of the files to be retrieved
- * based on {@link https://stackoverflow.com/a/45130990}
+ * Retrieves all files in the given directory recursively
+ * @param dir    - Directory-path to start the search from
+ * @param suffix - Suffix of the files to be retrieved
+ * Based on {@link https://stackoverflow.com/a/45130990}
  */
 async function* getFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
   const entries = await fsPromise.readdir(dir, { withFileTypes: true })
@@ -41,7 +41,7 @@ const rFileRegex = /\.[rR]$/
  * @returns Number of files processed (normally &le; `limit`, is &ge; `limit` if limit was reached).
  *          Will be `1`, if `input` is an R file (and `0` if it isn't).
  *
- * @see #getFiles
+ * @see getFiles
  */
 export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile, number> {
   let count = 0
@@ -67,11 +67,11 @@ export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE
 /**
  * Retrieves all R files in a given set of directories and files (asynchronously)
  *
- * @param inputs - files or directories to validate for R-files
- * @param limit - limit the number of files to be retrieved
- * @returns number of files processed (&le; limit)
+ * @param inputs - Files or directories to validate for R-files
+ * @param limit  - Limit the number of files to be retrieved
+ * @returns Number of files processed (&le; limit)
  *
- * @see #allRFiles
+ * @see allRFiles
  */
 export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGenerator<RParseRequestFromFile, number> {
   limit ??= Number.MAX_VALUE

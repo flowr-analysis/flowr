@@ -22,7 +22,7 @@ import { parseExpression } from '../expression'
 export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | undefined {
   const fnBase = mappedWithName[0]
   if(fnBase.name !== Type.Expression) {
-    parseLog.trace(`expected function call name to be wrapped an expression, yet received ${JSON.stringify(fnBase)}`)
+    parseLog.trace(`expected function call name to be wrapped an expression, yet received ${fnBase.name}`)
     return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
   }
 
@@ -56,24 +56,21 @@ function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): 
   const argContainer = mappedWithName.slice(1)
   guard(argContainer.length > 1 && argContainer[0].name === Type.ParenLeft && argContainer[argContainer.length - 1].name === Type.ParenRight, `expected args in parenthesis, but ${JSON.stringify(argContainer)}`)
   const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => x.name === Type.Comma)
-  const parsedArguments: (RNode| undefined)[] = splitArgumentsOnComma.map(x => {
-    // guard(x.length === 1, `expected argument to be a single element wrapped in an expression, yet received ${JSON.stringify(x)}`)
+  return  splitArgumentsOnComma.map(x => {
     // TODO: improve expression unwrap
     parseLog.trace('trying to parse argument')
-    const gotArgument = tryToParseArgument(data, x)
-    return gotArgument
+    return tryToParseArgument(data, x)
   })
-  return parsedArguments
 }
 
 function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | undefined {
   // maybe remove symbol-content again because i just use the root expr of mapped with name
   if(mappedWithName.length < 3) {
-    parseLog.trace(`expected unnamed function call to have 3 elements [like (<func>)], yet received ${JSON.stringify(mappedWithName)}`)
+    parseLog.trace(`expected unnamed function call to have 3 elements [like (<func>)], but was not`)
     return undefined
   }
   if(mappedWithName[1].name !== Type.ParenLeft || mappedWithName[mappedWithName.length - 1].name !== Type.ParenRight) {
-    parseLog.trace(`expected unnamed function call to have parenthesis for a call, yet received ${JSON.stringify(mappedWithName)}`)
+    parseLog.trace(`expected unnamed function call to have parenthesis for a call, but was not`)
     return undefined
   }
 
@@ -103,7 +100,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 function parseNamedFunctionCall(data: ParserData, symbolContent: XmlBasedJson[], mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RNamedFunctionCall {
   const functionName = tryParseSymbol(data, getWithTokenType(data.config.tokenMap, symbolContent))
   guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')
-  guard(functionName.type === Type.Symbol, () => `expected function name to be a symbol, yet received ${JSON.stringify(functionName)}`)
+  guard(functionName.type === Type.Symbol, () => `expected function name to be a symbol, yet received ${functionName.type}`)
 
   const parsedArguments = parseArguments(mappedWithName, data)
 

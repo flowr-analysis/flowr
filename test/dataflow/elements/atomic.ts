@@ -21,17 +21,17 @@ describe("Atomic dataflow information", withShell((shell) => {
     new DataflowGraph().addNode({ tag: 'use', id: "0", name: "xylophone" })
   )
 
-  describe("access", () => {
+  describe('access', () => {
     for(const input of ["a[2]", "a[[2]]", "a$b", "a@b", "a[2][3]"]) {
       assertDataflow('const access', shell,
         input,
-        new DataflowGraph().addNode({ tag: 'use', id: "0", name: "a" })
+        new DataflowGraph().addNode({ tag: 'use', id: "0", name: "a", when: 'maybe' })
       )
     }
     assertDataflow("chained bracket access with variables", shell,
       "a[x][y]",
       new DataflowGraph()
-        .addNode({ tag: 'use', id: "0", name: "a" })
+        .addNode({ tag: 'use', id: "0", name: "a", when: 'maybe'})
         .addNode({ tag: 'use', id: "1", name: "x" })
         .addNode({ tag: 'use', id: "3", name: "y" })
         .addEdge("0", "1", "read", "always")
@@ -40,7 +40,7 @@ describe("Atomic dataflow information", withShell((shell) => {
     assertDataflow("assign on access", shell,
       "a[x] <- 5",
       new DataflowGraph()
-        .addNode({ tag: 'variable-definition', id: "0", name: "a", scope: LocalScope })
+        .addNode({ tag: 'variable-definition', id: "0", name: "a", scope: LocalScope, when: 'maybe' })
         .addNode({ tag: 'use', id: "1", name: "x" })
         .addEdge("0", "1", "read", "always")
     )

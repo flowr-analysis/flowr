@@ -36,13 +36,12 @@ export interface BenchmarkCliOptions {
 export const optionHelp = [
   {
     header:  'Benchmark the static backwards slicer',
-    content: '[TODO]'
+    content: 'Slice given files with additional benchmark information'
   },
   {
     header:  'Synopsis',
     content: [
-      // `$ ${toolName} {bold -i} {italic example.R} {bold --criterion} {italic 7:3}`,
-      // `$ ${toolName} {bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}`,
+      `$ ${toolName} {italic example-folder/}`,
       `$ ${toolName} {bold --help}`
     ]
   },

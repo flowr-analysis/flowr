@@ -2,8 +2,7 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SlicerStats}).
  * @module
  */
-import { PerSliceMeasurements, PerSliceStats } from './stats'
-import { SlicingCriteria } from '../../slicing/criterion/parse'
+import { PerSliceMeasurements, SlicerStats } from './stats'
 import { DefaultMap } from '../../util/defaultmap'
 import {
   getStoredTokenMap,
@@ -31,6 +30,14 @@ interface SliceSizeCollection {
   normalizedTokens: number[]
 }
 
+/**
+ * @see SlicerStats
+ * @see summarizeSlicerStats
+ */
+export type SummarizedSlicerStats = {
+  perSliceMeasurements: SummarizedPerSliceStats
+} & Omit<SlicerStats, 'perSliceMeasurements'>
+
 export interface SummarizedPerSliceStats {
   /** number of total slicing calls */
   numberOfSlices:     number
@@ -47,7 +54,9 @@ export interface SummarizedPerSliceStats {
 /**
  * Summarizes the given stats by calculating the min, max, median, mean, and the standard deviation for each measurement.
  */
-export async function summarizePerSliceStats(stats: Map<SlicingCriteria, PerSliceStats>): Promise<Readonly<SummarizedPerSliceStats>> {
+export async function summarizeSlicerStats(stats: SlicerStats): Promise<Readonly<SummarizedSlicerStats>> {
+  const perSliceStats = stats.perSliceMeasurements
+
   const collect = new DefaultMap<PerSliceMeasurements, number[]>(() => [])
   const sizeOfSliceCriteria: number[] = []
   const reParseShellSession = new RShell()
@@ -62,12 +71,12 @@ export async function summarizePerSliceStats(stats: Map<SlicingCriteria, PerSlic
     dataflowNodes:    []
   }
 
-  for(const [_, perSliceStats] of stats) {
-    for(const measure of perSliceStats.measurements) {
+  for(const [_, perSliceStat] of perSliceStats) {
+    for(const measure of perSliceStat.measurements) {
       collect.get(measure[0]).push(Number(measure[1]))
     }
-    sizeOfSliceCriteria.push(perSliceStats.slicingCriteria.length)
-    const output = perSliceStats.reconstructedCode
+    sizeOfSliceCriteria.push(perSliceStat.slicingCriteria.length)
+    const output = perSliceStat.reconstructedCode
     sliceSize.lines.push(output.split('\n').length)
     sliceSize.characters.push(output.length)
     // reparse the output to get the number of tokens
@@ -86,7 +95,7 @@ export async function summarizePerSliceStats(stats: Map<SlicingCriteria, PerSlic
     const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(reParseShellSession)
     sliceSize.tokens.push(numberOfRTokens)
 
-    sliceSize.dataflowNodes.push(perSliceStats.numberOfDataflowNodesSliced)
+    sliceSize.dataflowNodes.push(perSliceStat.numberOfDataflowNodesSliced)
     // TODO: collect resulting slice data
   }
 
@@ -99,15 +108,18 @@ export async function summarizePerSliceStats(stats: Map<SlicingCriteria, PerSlic
   reParseShellSession.close()
 
   return {
-    numberOfSlices:     stats.size,
-    sliceCriteriaSizes: summarizeMeasurement(sizeOfSliceCriteria),
-    measurements:       summarized,
-    sliceSize:          {
-      lines:            summarizeMeasurement(sliceSize.lines),
-      characters:       summarizeMeasurement(sliceSize.characters),
-      tokens:           summarizeMeasurement(sliceSize.tokens),
-      normalizedTokens: summarizeMeasurement(sliceSize.normalizedTokens),
-      dataflowNodes:    summarizeMeasurement(sliceSize.dataflowNodes)
+    ...stats,
+    perSliceMeasurements: {
+      numberOfSlices:     perSliceStats.size,
+      sliceCriteriaSizes: summarizeMeasurement(sizeOfSliceCriteria),
+      measurements:       summarized,
+      sliceSize:          {
+        lines:            summarizeMeasurement(sliceSize.lines),
+        characters:       summarizeMeasurement(sliceSize.characters),
+        tokens:           summarizeMeasurement(sliceSize.tokens),
+        normalizedTokens: summarizeMeasurement(sliceSize.normalizedTokens),
+        dataflowNodes:    summarizeMeasurement(sliceSize.dataflowNodes)
+      }
     }
   }
 }

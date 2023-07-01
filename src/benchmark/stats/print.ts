@@ -1,10 +1,14 @@
 /**
- * This module is tasked with processing the results of the benchmarking (see {@link SlicerStats}).
+ * This module is tasked with processing the results of the benchmarking (see {@link SummarizedSlicerStats}).
  * @module
  */
 import { guard } from '../../util/assert'
-import { ElapsedTime, PerSliceMeasurements, SlicerStats } from './stats'
-import { SummarizedMeasurement, SummarizedPerSliceStats, summarizePerSliceStats } from './summarizer'
+import { ElapsedTime, PerSliceMeasurements } from './stats'
+import {
+  SummarizedMeasurement,
+  SummarizedPerSliceStats,
+  SummarizedSlicerStats
+} from './summarizer'
 
 const padSize = 10
 
@@ -51,11 +55,9 @@ function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string 
 
 /**
  * Converts the given stats to a human-readable string.
- * Calls the {@link summarizePerSliceStats} function internally to summarize the per-slice information.
+ * You may have to {@link summarizeSlicerStats | summarize} the stats first.
  */
-export async function stats2string(stats: SlicerStats): Promise<string> {
-  const perSliceData = await summarizePerSliceStats(stats.perSliceMeasurements)
-
+export function stats2string(stats: SummarizedSlicerStats): string {
   return `
 Request: ${JSON.stringify(stats.request)}
 Shell init time:              ${print(stats.commonMeasurements,'initialize R session')}
@@ -65,18 +67,18 @@ AST normalization:            ${print(stats.commonMeasurements,'normalize R AST'
 AST decoration:               ${print(stats.commonMeasurements,'decorate R AST')}
 Dataflow creation:            ${print(stats.commonMeasurements,'produce dataflow information')}
 
-Slicing summary for ${perSliceData.numberOfSlices} slice${perSliceData.numberOfSlices !== 1 ? 's' : ''}:
-  Total:                      ${printSummarizedMeasurements(perSliceData, 'total')}
-  Slice decoding:             ${printSummarizedMeasurements(perSliceData, 'decode slicing criterion')}
-  Slice creation:             ${printSummarizedMeasurements(perSliceData, 'static slicing')}
-  Reconstruction:             ${printSummarizedMeasurements(perSliceData, 'reconstruct code')}
-  Used Slice Criteria Sizes:  ${printCountSummarizedMeasurements(perSliceData.sliceCriteriaSizes)}
+Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.perSliceMeasurements.numberOfSlices !== 1 ? 's' : ''}:
+  Total:                      ${printSummarizedMeasurements(stats.perSliceMeasurements, 'total')}
+  Slice decoding:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'decode slicing criterion')}
+  Slice creation:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'static slicing')}
+  Reconstruction:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'reconstruct code')}
+  Used Slice Criteria Sizes:  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceCriteriaSizes)}
   Result Slice Sizes:   
-    Number of lines:          ${printCountSummarizedMeasurements(perSliceData.sliceSize.lines)}
-    Number of characters:     ${printCountSummarizedMeasurements(perSliceData.sliceSize.characters)}
-    Number of R tokens:       ${printCountSummarizedMeasurements(perSliceData.sliceSize.tokens)}
-    Normalized R tokens:      ${printCountSummarizedMeasurements(perSliceData.sliceSize.normalizedTokens)}
-    Number of dataflow nodes: ${printCountSummarizedMeasurements(perSliceData.sliceSize.dataflowNodes)}
+    Number of lines:          ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.lines)}
+    Number of characters:     ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.characters)}
+    Number of R tokens:       ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.tokens)}
+    Normalized R tokens:      ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.normalizedTokens)}
+    Number of dataflow nodes: ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.dataflowNodes)}
 
 Shell close:                  ${print(stats.commonMeasurements, 'close R session')}
 Total:                        ${print(stats.commonMeasurements, 'total')}

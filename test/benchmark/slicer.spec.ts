@@ -1,6 +1,7 @@
 import { Slicer } from '../../src/benchmark/slicer'
 import { stats2string } from '../../src/benchmark/stats/print'
 import { assert } from 'chai'
+import { summarizeSlicerStats } from '../../src/benchmark/stats/summarizer'
 
 describe("The Benchmark Slicer", () => {
   describe('Stats by parsing text-based inputs', () => {
@@ -9,7 +10,7 @@ describe("The Benchmark Slicer", () => {
       await slicer.init({ request: 'text', content: 'a <- b' })
       slicer.slice('1@a')
       const stats = slicer.finish()
-      const statInfo = await stats2string(stats)
+      const statInfo = stats2string(await summarizeSlicerStats(stats))
       console.log(statInfo)
       assert.strictEqual(stats.input.numberOfLines, 1, statInfo)
       assert.strictEqual(stats.input.numberOfCharacters, 6, statInfo)

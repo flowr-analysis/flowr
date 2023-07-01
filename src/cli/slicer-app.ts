@@ -6,6 +6,7 @@ import { guard } from '../util/assert'
 import { SlicingCriteria } from '../slicing/criterion/parse'
 import { Slicer } from '../benchmark/slicer'
 import { stats2string } from '../benchmark/stats/print'
+import { summarizeSlicerStats } from '../benchmark/stats/summarizer'
 
 export const toolName = 'slicer'
 
@@ -80,7 +81,8 @@ async function getSlice() {
     log.error(`[Skipped] Error while processing ${options.input}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
   }
 
-  const sliceStatsAsString = await stats2string(slicer.finish())
+  const stats = slicer.finish()
+  const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats))
 
   console.log(sliceStatsAsString)
   if(options.stats) {

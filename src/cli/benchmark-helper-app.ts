@@ -93,6 +93,11 @@ async function benchmark() {
     // append line by line
     fs.appendFileSync(options.output, `${JSON.stringify({ filename: options.input, stats }, displayEnvReplacer)}\n`)
   } catch (e: unknown) {
+    if(e instanceof Error) {
+      if(!e.message.includes('unable to parse R')) {
+        console.log(`[${options.input}] Non R-Side error : ${e.message}`)
+      }
+    }
     slicer.ensureSessionClosed() // ensure finish
     throw e
   }

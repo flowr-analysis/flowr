@@ -50,17 +50,16 @@ export class LimitBenchmarkPool {
 
   private async runNext() {
     if(this.counter + this.currentlyRunning >= this.limit || this.workingQueue.length <= 0) {
-      console.log(`Skip running next as (counter: ${this.counter}), currently running: ${this.currentlyRunning}, queue: ${this.workingQueue.length}`)
+      console.log(`Skip running next as counter: ${this.counter} and currently running: ${this.currentlyRunning} beat ${this.limit} or ${this.workingQueue.length}`)
       return
     }
-    console.log(`Running next (counter: ${this.counter}), currently running: ${this.currentlyRunning}, queue: ${this.workingQueue.length}`)
 
     this.currentlyRunning += 1
 
     const args = this.workingQueue.pop()
     guard(args !== undefined, () => `arguments should not be undefined in ${JSON.stringify(this.workingQueue)}`)
 
-    console.log(`[${this.counter}] Running ${this.module} with ${JSON.stringify(args)}`)
+    console.log(`[${this.counter}] Running next current: ${this.currentlyRunning}, queue: ${this.workingQueue.length}, limit: ${this.limit} [args: ${JSON.stringify(args)}]`)
 
     const child = cp.fork(this.module, args)
 

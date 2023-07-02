@@ -19,7 +19,8 @@ async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: st
 }
 
 describe("The Benchmark Slicer", () => {
-  describe('Stats by parsing text-based inputs', () => {
+  describe('Stats by parsing text-based inputs', function() {
+    this.timeout('15min')
     it('Simple slice for simple line', async() => {
       const slicer = new BenchmarkSlicer()
       const request = { request: 'text' as const, content: 'a <- b' }

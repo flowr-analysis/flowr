@@ -18,17 +18,19 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
         continue
       }
       const processedAccess = processDataflowFor(access, data)
+
       nextGraph.mergeWith(processedAccess.graph)
-      outgoing.push(...processedAccess.out)
-      const newIngoing = [...processedAccess.in, ...processedAccess.activeNodes]
-      for(const newIn of newIngoing) {
+      // outgoing.push()// TODO: keep track of outgoing within argument assignments?
+      // we link to *out* instead of *in*, as access uses arguments for parsing and the arguments are defined
+      // TODO: improve that
+      for(const newIn of [...processedAccess.out, ...processedAccess.activeNodes]) {
         // TODO: deal with complexity in the future by introduce a new specific node?
 
         for(const accessedNode of accessedNodes) {
           nextGraph.addEdge(accessedNode, newIn, 'read', 'always')
         }
       }
-      ingoing.push(...newIngoing)
+      ingoing.push(...processedAccess.in, ...processedAccess.activeNodes)
       overwriteEnvironments(environments, processedAccess.environments)
     }
   }

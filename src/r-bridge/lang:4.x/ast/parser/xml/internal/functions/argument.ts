@@ -22,7 +22,7 @@ export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]):
   objs = executeHook(data.hooks.functions.onArgument.before, data, objs)
 
   if(objs.length !== 1 && objs.length !== 3) {
-    log.warn(`Either [expr] or [SYMBOL_SUB, EQ_SUB, expr], but got: ${JSON.stringify(objs)}`)
+    log.warn(`Either [expr|value] or [SYMBOL_SUB, EQ_SUB, expr], but got: ${JSON.stringify(objs)}`)
     return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
   }
 

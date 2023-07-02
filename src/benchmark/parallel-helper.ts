@@ -49,10 +49,11 @@ export class LimitBenchmarkPool {
   }
 
   private async runNext() {
-    console.log(`Try running next (counter: ${this.counter}), currently running: ${this.currentlyRunning}, queue: ${this.workingQueue.length}`)
     if(this.counter + this.currentlyRunning >= this.limit || this.workingQueue.length <= 0) {
+      console.log(`Skip running next as (counter: ${this.counter}), currently running: ${this.currentlyRunning}, queue: ${this.workingQueue.length}`)
       return
     }
+    console.log(`Running next (counter: ${this.counter}), currently running: ${this.currentlyRunning}, queue: ${this.workingQueue.length}`)
 
     this.currentlyRunning += 1
 

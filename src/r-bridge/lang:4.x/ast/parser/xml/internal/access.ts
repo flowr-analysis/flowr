@@ -2,11 +2,12 @@ import { NamedXmlBasedJson } from '../input-format'
 import { retrieveMetaStructure } from './meta'
 import { parseLog } from '../parser'
 import { ParserData } from '../data'
-import { Type, RAccess, RNode } from '../../../model'
+import { Type, RAccess, RNode, RArgument } from '../../../model'
 import { executeHook, executeUnknownHook } from '../hooks'
 import { parseBasedOnType } from './structure'
 import { guard } from '../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../util/arrays'
+import { tryToParseArgument } from './functions/argument'
 
 /**
  * Tries to parse the given data as access (e.g., indexing).
@@ -75,9 +76,9 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
       return null
     }
     parseLog.trace(`trying to parse access`)
-    const gotAccess = parseBasedOnType(data, x)
-    guard(gotAccess.length === 1, () => `expected one access result in access, yet received ${JSON.stringify(gotAccess)}`)
-    return gotAccess[0]
+    const gotAccess = parseAccessArgument(operator, data, x)
+    guard(gotAccess !== undefined, () => `expected one access result in access as argument, yet received ${JSON.stringify(gotAccess)}`)
+    return gotAccess
   })
 
   let resultingAccess: (RNode | null)[] | string = parsedAccess
@@ -108,4 +109,17 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
     }
   } as RAccess
   return executeHook(data.hooks.onAccess.after, data, result)
+}
+
+
+function parseAccessArgument(operator: RAccess['operator'], data: ParserData, elements: NamedXmlBasedJson[]): RArgument | RNode | undefined {
+  // within access the content is *not* wrapped within another expression, that means if we have a SYMBOL_SUB we can directly parse the argument,
+  // otherwise we have to add the expression layer
+  // console.log('parseAccessArgument', elements.map(x => x.name))
+  if(operator === '@' || operator === '$') {
+    const parse = parseBasedOnType(data, elements)
+    return parse.length !== 1 ? undefined : parse[0]
+  } else {
+    return tryToParseArgument(data, elements)
+  }
 }

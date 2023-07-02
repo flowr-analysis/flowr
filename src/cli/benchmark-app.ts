@@ -1,15 +1,10 @@
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
 import commandLineUsage, { OptionDefinition } from 'command-line-usage'
-import { summarizeSlicerStats, BenchmarkSlicer, stats2string } from '../benchmark'
-import { DefaultAllVariablesFilter } from '../slicing'
 import { allRFilesFrom } from '../util/files'
 import { RParseRequestFromFile } from '../r-bridge'
-import fs from 'fs'
-import { displayEnvReplacer } from '../util/json'
 import { date2string } from '../util/time'
-import { guard } from '../util/assert'
-import { escape } from '../statistics'
+import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
 
 // TODO: promote to the normal slicing app with a --benchmark 100 flag afterwards
 // TODO: allow to select slicing criteria filter
@@ -80,40 +75,8 @@ async function benchmark() {
   }
   const limit = options.limit ?? files.length
 
-  let counter = 1
-  const skipped: RParseRequestFromFile[] = []
-  for(const file of files) {
-    if(counter > limit) {
-      break
-    }
-    // new slicer for each run
-    const slicer = new BenchmarkSlicer()
-    try {
-      console.log(`Processing file ${counter}/${limit}: ${file.content}`)
-      await slicer.init(file)
-
-      const count = slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`${escape}1F${escape}1G${escape}2KSlicing ${i}/${total} [${JSON.stringify(arr[i])}]`))
-      console.log(`Completed Slicing`)
-      if(options.limit) {
-        guard(count > 0, `No possible slices found for ${file.content}, skipping in count`)
-      }
-
-      const stats = slicer.finish()
-      /* TODO: currently may take forever due to re-parsing necessary
-      const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats))
-      console.log(sliceStatsAsString)
-      */
-      // append line by line
-      fs.appendFileSync(options.output, JSON.stringify({ filename: file.content, stats }, displayEnvReplacer))
-      // only increment if everything went fine!
-      counter++
-    } catch (e: unknown) {
-      log.error(`[Skipped] Error while processing ${JSON.stringify(file)}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
-      skipped.push(file)
-      slicer.ensureSessionClosed() // ensure finish
-    }
-  }
-  console.log(`Skipped ${skipped.length} files: [${skipped.map(f => f.content).join(', ')}]`)
+  const pool = new LimitBenchmarkPool(`${__dirname}/../cli/benchmark-helper-app`, files.map(f => [f.content, '--output', options.output]), limit)
+  await pool.run()
 }
 
 void benchmark()

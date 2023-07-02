@@ -479,8 +479,10 @@ export class DataflowGraph {
     guard(got !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set definition scope to ${reference.scope}`)
     const [node] = got
     if(node.tag === 'function-definition' || node.tag === 'variable-definition') {
-      guard(node.scope === reference.scope && node.when === reference.used, () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
+      guard(node.scope === reference.scope, () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
+      guard(node.when === reference.used || node.when === 'maybe' || reference.used === 'maybe', () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
       node.scope = reference.scope
+      node.when = reference.used === 'maybe' ? 'maybe' : node.when
     } else {
       this.graphNodes.set(reference.nodeId, {
         ...node,

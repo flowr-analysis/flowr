@@ -7,7 +7,6 @@ import { RParseRequestFromFile } from '../r-bridge'
 import fs from 'fs'
 import { displayEnvReplacer } from '../util/json'
 import { guard } from '../util/assert'
-import { escape } from '../statistics'
 
 export const toolName = 'benchmark-single'
 
@@ -15,14 +14,16 @@ export const optionDefinitions: OptionDefinition[] = [
   { name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
   { name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide.' },
   { name: 'input',        alias: 'i', type: String,  description: 'Pass a single file as src to read from', multiple: false, defaultOption: true, typeLabel: '{underline file}' },
+  { name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction', defaultValue: 'all', typeLabel: '{underline all/no}' },
   { name: 'output',       alias: 'o', type: String,  description: `File to write the measurements to (appends a single line in JSON format)`,  typeLabel: '{underline file}' },
 ]
 
 export interface SingleBenchmarkCliOptions {
-  readonly verbose: boolean
-  readonly help:    boolean
-  readonly input?:  string
-  readonly output?: string
+  verbose: boolean
+  help:    boolean
+  input?:  string
+  slice:   string
+  output?: string
 }
 
 export const optionHelp = [
@@ -55,6 +56,8 @@ if(options.verbose) {
   log.error('running with options - do not use for final benchmark', options)
 }
 
+guard(options.slice === 'all' || options.slice === 'no', 'slice must be either all or no')
+
 
 async function benchmark() {
   // we do not use the limit argument to be able to pick the limit randomly
@@ -74,9 +77,13 @@ async function benchmark() {
     await slicer.init(request)
 
     // ${escape}1F${escape}1G${escape}2K for line reset
-    const count = slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`[${options.input as string}] Slicing ${i+1}/${total} [${JSON.stringify(arr[i])}]`))
-    console.log(`[${options.input}] Completed Slicing`)
-    guard(count > 0, `No possible slices found for ${options.input}, skipping in count`)
+    if(options.slice === 'all') {
+      const count = slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`[${options.input as string}] Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`))
+      console.log(`[${options.input}] Completed Slicing`)
+      guard(count > 0, `No possible slices found for ${options.input}, skipping in count`)
+    } else {
+      console.log(`[${options.input}] Skipping Slicing due to --slice=${options.slice}`)
+    }
 
     const stats = slicer.finish()
     /* TODO: currently may take forever due to re-parsing necessary

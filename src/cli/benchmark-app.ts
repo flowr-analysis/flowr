@@ -6,6 +6,7 @@ import { RParseRequestFromFile } from '../r-bridge'
 import { date2string } from '../util/time'
 import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
 import * as os from 'os'
+import { guard } from '../util/assert'
 
 // TODO: promote to the normal slicing app with a --benchmark 100 flag afterwards
 // TODO: allow to select slicing criteria filter
@@ -20,6 +21,7 @@ export const optionDefinitions: OptionDefinition[] = [
   { name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process (if given, this will choose these files randomly and add the chosen names to the output'},
   { name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
   { name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
+  { name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction', defaultValue: 'all', typeLabel: '{underline all/no}' },
   { name: 'output',       alias: 'o', type: String,  description: `File to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${now}.json})`, defaultValue: `benchmark-${now}.json`,  typeLabel: '{underline file}' },
   // TODO: criteria, output and rest
 ]
@@ -29,6 +31,7 @@ export interface BenchmarkCliOptions {
   help:     boolean
   input:    string[]
   output:   string
+  slice:    string
   parallel: number
   limit?:   number
 }
@@ -61,6 +64,8 @@ if(options.help) {
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
 log.info('running with options - do not use for final benchmark', options)
 
+// TODO: unify and generalize
+guard(options.slice === 'all' || options.slice === 'no', 'slice must be either all or no')
 
 async function benchmark() {
   console.log(`Writing output continuously to ${options.output}`)
@@ -80,7 +85,7 @@ async function benchmark() {
 
   const pool = new LimitBenchmarkPool(
     `${__dirname}/../cli/benchmark-helper-app`,
-    files.map(f => [f.content, '--output', options.output]),
+    files.map(f => [f.content, '--output', options.output, '--slice', options.slice]),
     limit,
     options.parallel
   )

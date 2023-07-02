@@ -19,12 +19,16 @@ import { IStoppableStopwatch, Measurements } from './stopwatch'
 import { guard } from '../util/assert'
 import { DataflowInformation } from '../dataflow/internal/info'
 import { produceDataFlowGraph } from '../dataflow'
-import { convertAllSlicingCriteriaToIds, SlicingCriteria } from '../slicing/criterion/parse'
-import { staticSlicing } from '../slicing/static'
-import { reconstructToCode } from '../slicing/reconstruct'
-import { CommonSlicerMeasurements, ElapsedTime, PerSliceMeasurements, PerSliceStats, SlicerStats } from './stats/stats'
+import {
+  convertAllSlicingCriteriaToIds,
+  SlicingCriteria,
+  collectAllSlicingCriteria,
+  SlicingCriteriaFilter,
+  reconstructToCode,
+  staticSlicing
+} from '../slicing'
+import { CommonSlicerMeasurements, ElapsedTime, PerSliceMeasurements, PerSliceStats, SlicerStats } from './stats'
 import fs from 'fs'
-import { collectAllSlicingCriteria, SlicingCriteriaFilter } from '../slicing/criterion/collect-all'
 import { log } from '../util/log'
 
 export const benchmarkLogger = log.getSubLogger({ name: "benchmark" })

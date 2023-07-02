@@ -59,7 +59,7 @@ export class LimitBenchmarkPool {
     const args = this.workingQueue.pop()
     guard(args !== undefined, () => `arguments should not be undefined in ${JSON.stringify(this.workingQueue)}`)
 
-    console.log(`[${this.counter}] Running next, currently running: ${this.currentlyRunning}, queue: ${this.workingQueue.length}, limit: ${this.limit} [args: ${JSON.stringify(args)}]`)
+    console.log(`[${this.counter}/${this.limit}] Running next, currently running: ${this.currentlyRunning}, queue: ${this.workingQueue.length} [args: ${JSON.stringify(args)}]`)
 
     const child = cp.fork(this.module, args)
 

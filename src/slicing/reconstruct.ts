@@ -18,7 +18,7 @@ import {
   Type,
   RPipe,
   foldAstStateful,
-  StatefulFoldFunctions
+  StatefulFoldFunctions, RQuestion
 } from '../r-bridge'
 import { log, LogLevel } from '../util/log'
 import { guard } from '../util/assert'
@@ -157,6 +157,15 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
       ]
     }
   }
+}
+
+function reconstructQuestion(question: RQuestion<ParentInformation>, asked: Code, configuration: ReconstructionConfiguration): Code {
+  if (isSelected(configuration, question)) {
+    return plain(getLexeme(question))
+  } else if (asked.length === 0) {
+    return []
+  }
+  return plain(getLexeme(question))
 }
 
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
@@ -378,7 +387,8 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
     foldModelFormula: foldToConst
   },
   other: {
-    foldComment: reconstructAsLeaf
+    foldComment:  reconstructAsLeaf,
+    foldQuestion: reconstructQuestion
   },
   loop: {
     foldFor:    reconstructForLoop,

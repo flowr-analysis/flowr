@@ -67,6 +67,7 @@ function visitSingle<OtherInfo>(node: RNode<OtherInfo>, onVisit: OnVisit<OtherIn
     case Type.Number:
     case Type.String:
     case Type.Comment:
+    case Type.Question:
     case Type.Break:
     case Type.Next:
       // leafs

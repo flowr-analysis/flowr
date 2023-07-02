@@ -5,6 +5,7 @@ export const enum Type {
   /** `[`, `[[`, `$`, and `@` */
   Access = "access",
   ExpressionList = "exprlist",
+  Question = "?",
   Expression = "expr",
   /*
    * https://github.com/REditorSupport/languageserver/issues/327

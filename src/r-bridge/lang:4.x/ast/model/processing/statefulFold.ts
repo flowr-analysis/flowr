@@ -25,7 +25,7 @@ import {
   RBreak,
   RParameter,
   RArgument,
-  RFunctionDefinition, RAccess, RModelFormulaBinaryOp, RModelFormulaUnaryOp
+  RFunctionDefinition, RAccess, RModelFormulaBinaryOp, RModelFormulaUnaryOp, RQuestion
 } from '../nodes'
 import { RNode } from '../model'
 import { RPipe } from '../nodes/RPipe'
@@ -70,7 +70,8 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
     foldBreak:  (next: RBreak<Info>, down: Down) => Up;
   };
   other: {
-    foldComment: (comment: RComment<Info>, down: Down) => Up;
+    foldComment:  (comment: RComment<Info>, down: Down) => Up;
+    foldQuestion: (question: RQuestion<Info>, asked: Up, down: Down) => Up;
   };
   /** The `otherwise` argument is `undefined` if the `else` branch is missing */
   foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down ) => Up;
@@ -104,6 +105,8 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
       return folds.foldSymbol(ast, down)
     case Type.Comment:
       return folds.other.foldComment(ast, down)
+    case Type.Question:
+      return folds.other.foldQuestion(ast, foldAstStateful(ast.asked, down, folds),  down)
     case Type.Pipe:
       return folds.binaryOp.foldPipe(ast, foldAstStateful(ast.lhs, down, folds), foldAstStateful(ast.rhs, down, folds), down)
     case Type.BinaryOp:

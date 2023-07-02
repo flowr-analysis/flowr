@@ -1,12 +1,13 @@
-import { getKeysGuarded, XmlBasedJson } from '../../input-format'
+import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
-import { parseBasedOnType } from '../structure'
+import { parseBasedOnType, splitComments } from '../structure'
 import { tryToParseFunctionCall, tryToParseFunctionDefinition } from '../functions'
 import { Type, RNode } from '../../../../model'
 import { executeHook } from '../../hooks'
 import { tryParseAccess } from '../access'
+import { parseComment } from '../other'
 
 /**
  * Returns an ExprList if there are multiple children, otherwise returns the single child directly with no expr wrapper
@@ -25,22 +26,30 @@ export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
   } = retrieveMetaStructure(data.config, obj)
 
   const childrenSource = getKeysGuarded<XmlBasedJson[]>(unwrappedObj, data.config.childrenName)
-  const typed = getWithTokenType(data.config.tokenMap, childrenSource)
+  const typed: NamedXmlBasedJson[] = getWithTokenType(data.config.tokenMap, childrenSource)
+
+  const { others, comments } = splitComments(typed)
 
   const childData: ParserData = { ...data, currentRange: location, currentLexeme: content }
 
-  const maybeFunctionCall = tryToParseFunctionCall(childData, typed)
+  const maybeFunctionCall = tryToParseFunctionCall(childData, others)
   if (maybeFunctionCall !== undefined) {
+    const parsedComments = [...maybeFunctionCall.info.additionalTokens ?? [], ...comments.map(x => parseComment(data, x.content))]
+    maybeFunctionCall.info.additionalTokens = parsedComments
     return maybeFunctionCall
   }
 
-  const maybeAccess = tryParseAccess(childData, typed)
+  const maybeAccess = tryParseAccess(childData, others)
   if (maybeAccess !== undefined) {
+    const parsedComments = [...maybeAccess.info.additionalTokens ?? [], ...comments.map(x => parseComment(data, x.content))]
+    maybeAccess.info.additionalTokens = parsedComments
     return maybeAccess
   }
 
-  const maybeFunctionDefinition = tryToParseFunctionDefinition(childData, typed)
+  const maybeFunctionDefinition = tryToParseFunctionDefinition(childData, others)
   if (maybeFunctionDefinition !== undefined) {
+    const parsedComments = [...maybeFunctionDefinition.info.additionalTokens ?? [], ...comments.map(x => parseComment(data, x.content))]
+    maybeFunctionDefinition.info.additionalTokens = parsedComments
     return maybeFunctionDefinition
   }
 

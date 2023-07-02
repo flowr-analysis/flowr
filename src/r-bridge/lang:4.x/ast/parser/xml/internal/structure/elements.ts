@@ -107,6 +107,19 @@ function parseMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJso
   return parseNodesWithUnknownType(data, mappedWithName)
 }
 
+export function splitComments(mappedWithName: NamedXmlBasedJson[]) {
+  const comments = []
+  const others = []
+  for (const elem of mappedWithName) {
+    if (elem.name === Type.Comment) {
+      comments.push(elem)
+    } else {
+      others.push(elem)
+    }
+  }
+  return { comments, others }
+}
+
 export function parseBasedOnType(
   data: ParserData,
   obj: XmlBasedJson[] | NamedXmlBasedJson[]
@@ -147,15 +160,7 @@ export function parseBasedOnType(
    * splitOnSemicolon.length === 0 is not possible, as we would have had an empty array before, split does not add elements.
    */
   mappedWithName = splitOnSemicolon[0]
-  const comments = []
-  const others  = []
-  for(const elem of mappedWithName) {
-    if(elem.name === Type.Comment) {
-      comments.push(elem)
-    } else {
-      others.push(elem)
-    }
-  }
+  const { comments, others } = splitComments(mappedWithName)
 
   const parsedComments = comments.map(c => parseComment(data, c.content))
 

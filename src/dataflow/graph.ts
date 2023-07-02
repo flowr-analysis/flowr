@@ -220,6 +220,12 @@ export class DataflowGraph {
   private graphNodes = new Map<NodeId, DataflowGraphNodeInfo>()
   // TODO: improve access, theoretically we want a multi - default map, right now we do not allow multiple edges
   private edges = new Map<NodeId, Map<NodeId, DataflowGraphEdge>>()
+  // TODO: this should be removed with flattened graph
+  private nodeIdAccessCache = new Map<NodeId, [DataflowGraphNodeInfo, [NodeId, DataflowGraphEdge][]] | null>()
+
+  private invalidateCache() {
+    this.nodeIdAccessCache.clear()
+  }
 
   /**
    * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
@@ -250,33 +256,44 @@ export class DataflowGraph {
   }
 
   /**
-   * Get the {@link DataflowGraphNodeInfo} attached to a node as well as all outgoing edges
+   * Get the {@link DataflowGraphNodeInfo} attached to a node as well as all outgoing edges.
+   * Uses a cache
    *
    * @param id                      - the id of the node to get
    * @param includeDefinedFunctions - if true this will search function definitions as well and not just the toplevel
    * @returns the node info for the given id (if it exists)
    */
   public get(id: NodeId, includeDefinedFunctions = true): [DataflowGraphNodeInfo, [NodeId, DataflowGraphEdge][]] | undefined {
-    if(!includeDefinedFunctions) {
+    if (!includeDefinedFunctions) {
       const got = this.graphNodes.get(id)
       return got === undefined ? undefined : [got, [...this.edges.get(id) ?? []]]
     } else {
-      let info = undefined
-      const edges = new Map<NodeId, DataflowGraphEdge>()
-      for(const [nodeId, probableInfo, graph] of this.nodes(true)) {
-        // TODO: we need to flatten the graph to have all edges in one place
-        const newEdges = graph.edges.get(id)
-        if(newEdges !== undefined) {
-          for(const [id, edge] of newEdges) {
-            edges.set(id, edge)
-          }
-        }
-        if(nodeId === id) {
-          info = probableInfo
+      const cache = this.nodeIdAccessCache.get(id)
+      if (cache !== undefined) {
+        return cache ?? undefined
+      }
+      const got = this.rawGetInAllGraphs(id)
+      this.nodeIdAccessCache.set(id, got ?? null)
+      return got
+    }
+  }
+
+  private rawGetInAllGraphs(id: NodeId): [DataflowGraphNodeInfo, [NodeId, DataflowGraphEdge][]] | undefined {
+    let info = undefined
+    const edges = new Map<NodeId, DataflowGraphEdge>()
+    for (const [nodeId, probableInfo, graph] of this.nodes(true)) {
+      // TODO: we need to flatten the graph to have all edges in one place
+      const newEdges = graph.edges.get(id)
+      if (newEdges !== undefined) {
+        for (const [id, edge] of newEdges) {
+          edges.set(id, edge)
         }
       }
-      return info === undefined ? undefined : [info, [...edges]]
+      if (nodeId === id) {
+        info = probableInfo
+      }
     }
+    return info === undefined ? undefined : [info, [...edges]]
   }
 
   public entries(): IterableIterator<[NodeId, Required<DataflowGraphNodeInfo>]> {
@@ -300,6 +317,7 @@ export class DataflowGraph {
     const environment = node.environment === undefined ? DEFAULT_ENVIRONMENT : cloneEnvironments(node.environment)
     const when = node.when ?? 'always'
     this.graphNodes.set(node.id, { ...node, when, environment })
+    this.invalidateCache()
     return this
   }
 
@@ -358,6 +376,7 @@ export class DataflowGraph {
     const edgeInFrom = existingFrom?.get(toId)
 
     if(edgeInFrom === undefined) {
+      this.invalidateCache()
       if(existingFrom === undefined) {
         this.edges.set(fromId, new Map([[toId, edge]]))
       } else {
@@ -434,6 +453,7 @@ export class DataflowGraph {
         }
       }
     }
+    this.invalidateCache()
     return this
   }
 

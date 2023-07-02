@@ -75,6 +75,12 @@ export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
 export function *getUniqueCombinationsOfSize<T>(array: T[], minSize: number, maxSize: number): Generator<T[], void, void> {
   guard(minSize >= 0 && minSize <= maxSize, 'minSize must be at least 0 and at most maxSize')
   guard(maxSize >= minSize && maxSize <= array.length, 'maxSize must be at least minSize and at most the length of the array')
+  if(minSize === maxSize && minSize === 1) {
+    for(const elem of array) {
+      yield [elem]
+    }
+    return
+  }
 
   function *p(t: T[], i: number, newArr: boolean): Generator<T[], void, void> {
     // start yielding if min size is reached

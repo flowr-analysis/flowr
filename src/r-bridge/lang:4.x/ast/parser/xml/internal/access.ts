@@ -86,8 +86,8 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
   if(operator === '@' || operator === '$') {
     guard(parsedAccess.length === 1, () => `expected one access result in access with ${JSON.stringify(operator)}, yet received ${JSON.stringify(parsedAccess)}`)
     const first = parsedAccess[0]
-    guard(first !== null && (first.type === Type.Symbol || first.type === Type.String), () => `${JSON.stringify(operator)} requires one symbol, yet received ${JSON.stringify(parsedAccess)}`)
-    resultingAccess = first.type === Type.String ? first.content.str : first.content
+    guard(first !== null && (first.type === Type.Symbol || first.type === Type.String || first.type === Type.Logical), () => `${JSON.stringify(operator)} requires one symbol, yet received ${JSON.stringify(parsedAccess)}`)
+    resultingAccess = first.type === Type.String ? first.content.str : first.lexeme
   }
 
   const {

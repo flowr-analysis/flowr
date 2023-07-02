@@ -9,7 +9,12 @@ import { guard } from '../../util/assert'
 import { DecoratedAstMap, NodeId } from '../../r-bridge'
 import { log } from '../../util/log'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
-import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
+import {
+  overwriteEnvironments,
+  popLocalEnvironment,
+  pushLocalEnvironment,
+  resolveByName
+} from '../../dataflow/environments'
 import objectHash from 'object-hash'
 
 export const slicerLogger = log.getSubLogger({ name: "slicer" })
@@ -93,11 +98,18 @@ function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeI
 
   // lift baseEnv on the same level
   let baseEnvironment = current.baseEnvironment
-  while(baseEnvironment.level < callerInfo.environment.level) {
-    baseEnvironment = pushLocalEnvironment(baseEnvironment)
+  let callerEnvironment = callerInfo.environment
+
+  if(baseEnvironment.level !== callerEnvironment.level) {
+    while (baseEnvironment.level < callerEnvironment.level) {
+      baseEnvironment = pushLocalEnvironment(baseEnvironment)
+    }
+    while (baseEnvironment.level > callerEnvironment.level) {
+      callerEnvironment = pushLocalEnvironment(callerEnvironment)
+    }
   }
 
-  const activeEnvironment = overwriteEnvironments(baseEnvironment, callerInfo.environment)
+  const activeEnvironment = overwriteEnvironments(baseEnvironment, callerEnvironment)
   const functionCallDefs = resolveByName(callerInfo.name, LocalScope, activeEnvironment)?.map(d => d.nodeId) ?? []
 
   functionCallDefs.push(...outgoingEdges[1].filter(([_, e]) => e.types.has('calls')).map(([target]) => target))

@@ -49,7 +49,7 @@ export function tryParseForLoop(
         parsedVariable,
         parsedVariable,
         parseBody,
-      ])} for ${JSON.stringify([forToken, condition, body])}`
+      ])}`
     )
   }
 

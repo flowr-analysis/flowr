@@ -63,7 +63,7 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
 
 function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RNode| undefined)[] {
   const argContainer = mappedWithName.slice(1)
-  guard(argContainer.length > 1 && argContainer[0].name === Type.ParenLeft && argContainer[argContainer.length - 1].name === Type.ParenRight, `expected args in parenthesis, but ${JSON.stringify(argContainer)}`)
+  guard(argContainer.length > 1 && argContainer[0].name === Type.ParenLeft && argContainer[argContainer.length - 1].name === Type.ParenRight, `expected args in parenthesis`)
   const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => x.name === Type.Comma)
   return  splitArgumentsOnComma.map(x => {
     // TODO: improve expression unwrap

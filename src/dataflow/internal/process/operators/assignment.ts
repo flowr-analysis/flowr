@@ -111,7 +111,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<
   const writeNodes = produceWrittenNodes(op, target, global, data, funcTypeCheck)
 
   if(writeNodes.length !== 1) {
-    log.warn(`Unexpected write number in assignment ${JSON.stringify(op)}: ${JSON.stringify(writeNodes)}`)
+    log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`)
   }
 
 

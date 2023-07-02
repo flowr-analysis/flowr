@@ -22,7 +22,7 @@ import { parseExpression } from '../expression'
 export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | undefined {
   const fnBase = mappedWithName[0]
   if(fnBase.name !== Type.Expression && fnBase.name !== Type.ExprHelpAssignWrapper) {
-    parseLog.trace('expected function call name to be wrapped an expression, yet received ${fnBase.name}')
+    parseLog.trace(`expected function call name to be wrapped an expression, yet received ${fnBase.name}`)
     return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
   }
 

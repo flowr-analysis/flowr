@@ -55,7 +55,7 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
 
     const currentInfo = dataflowGraph.get(current.id, true)
 
-    slicerLogger.trace(`visiting id: ${current.id} with name: ${currentInfo?.[0].name ?? '<unknown>'}`)
+    // slicerLogger.trace(`visiting id: ${current.id} with name: ${currentInfo?.[0].name ?? '<unknown>'}`)
 
     if(currentInfo === undefined) {
       slicerLogger.warn(`id: ${current.id} must be in graph but can not be found, keep in slice to be sure`)
@@ -74,7 +74,7 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
     for (const [target, edge] of liveEdges) {
       const envEdge = { id: target, baseEnvironment: current.baseEnvironment, onlyForSideEffects: edge.types.has('side-effect-on-call') }
       if (!visited.has(fingerprint(envEdge))) {
-        slicerLogger.trace(`adding id: ${target} to visit queue`)
+        // slicerLogger.trace(`adding id: ${target} to visit queue`)
         visitQueue.push(envEdge)
       }
     }

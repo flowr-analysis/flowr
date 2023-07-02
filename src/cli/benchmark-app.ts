@@ -9,6 +9,7 @@ import fs from 'fs'
 import { displayEnvReplacer } from '../util/json'
 import { date2string } from '../util/time'
 import { guard } from '../util/assert'
+import { escape } from '../statistics'
 
 // TODO: promote to the normal slicing app with a --benchmark 100 flag afterwards
 // TODO: allow to select slicing criteria filter
@@ -91,14 +92,17 @@ async function benchmark() {
       console.log(`Processing file ${counter}/${limit}: ${file.content}`)
       await slicer.init(file)
 
-      const count = slicer.sliceForAll(DefaultAllVariablesFilter)
+      const count = slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`${escape}1F${escape}1G${escape}2KSlicing ${i}/${total} [${JSON.stringify(arr[i])}]`))
+      console.log(`Completed Slicing`)
       if(options.limit) {
         guard(count > 0, `No possible slices found for ${file.content}, skipping in count`)
       }
 
       const stats = slicer.finish()
+      /* TODO: currently may take forever due to re-parsing necessary
       const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats))
       console.log(sliceStatsAsString)
+      */
       // append line by line
       fs.appendFileSync(options.output, JSON.stringify({ filename: file.content, stats }, displayEnvReplacer))
       // only increment if everything went fine!

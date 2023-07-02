@@ -2,7 +2,7 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SlicerStats}).
  * @module
  */
-import { PerSliceMeasurements, SlicerStats } from './stats'
+import { PerSliceMeasurements, PerSliceStats, SlicerStats } from './stats'
 import { DefaultMap } from '../../util/defaultmap'
 import {
   getStoredTokenMap,
@@ -11,7 +11,11 @@ import {
   RShell,
   visit
 } from '../../r-bridge'
+import { SlicingCriteria } from '../../slicing'
+import * as tmp from 'tmp'
+import fs from 'fs'
 
+const tempfile = tmp.fileSync({ postfix: '.R' })
 
 export interface SummarizedMeasurement {
   min:    number
@@ -56,7 +60,7 @@ export interface SummarizedPerSliceStats {
  * Summarizes the given stats by calculating the min, max, median, mean, and the standard deviation for each measurement.
  * @see Slicer
  */
-export async function summarizeSlicerStats(stats: SlicerStats): Promise<Readonly<SummarizedSlicerStats>> {
+export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria: SlicingCriteria, stats: PerSliceStats) => void = () => { /* do nothing */ }): Promise<Readonly<SummarizedSlicerStats>> {
   const perSliceStats = stats.perSliceMeasurements
 
   const collect = new DefaultMap<PerSliceMeasurements, number[]>(() => [])
@@ -75,7 +79,8 @@ export async function summarizeSlicerStats(stats: SlicerStats): Promise<Readonly
   }
 
   let first = true
-  for(const [_, perSliceStat] of perSliceStats) {
+  for(const [criteria, perSliceStat] of perSliceStats) {
+    report(criteria, perSliceStat)
     for(const measure of perSliceStat.measurements) {
       collect.get(measure[0]).push(Number(measure[1]))
     }
@@ -86,8 +91,10 @@ export async function summarizeSlicerStats(stats: SlicerStats): Promise<Readonly
     sliceSize.characters.push(output.length)
     // reparse the output to get the number of tokens
     try {
+      // there seem to be encoding issues, therefore, we dump to a temp file
+      fs.writeFileSync(tempfile.name, output)
       const reParsed = await retrieveAstFromRCode(
-        { request: 'text', content: output, attachSourceInformation: true, ensurePackageInstalled: first },
+        { request: 'file', content: tempfile.name, attachSourceInformation: true, ensurePackageInstalled: first },
         tokenMap,
         reParseShellSession
       )
@@ -102,7 +109,8 @@ export async function summarizeSlicerStats(stats: SlicerStats): Promise<Readonly
       const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(reParseShellSession)
       sliceSize.tokens.push(numberOfRTokens)
     } catch(e: unknown) {
-      console.error('Failed to re-parse the output of the slicer!', e)
+      console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`) //, e
+      console.error(`      Code: ${output}`)
     }
 
     sliceSize.dataflowNodes.push(perSliceStat.numberOfDataflowNodesSliced)

@@ -30,8 +30,8 @@ export interface ClusterReport extends MergeableRecord {
 /**
  * Takes a statistics file like `statistics-out/top-2023-01-01-00-00-00/Assignments/assignmentOperator.txt` and clusters the values by context
  *
- * @param filepath - filepath of the statistics file
- * @param contextIdMap - the id map to use, can use an existing one to reuse ids for same contexts spreading over multiple input files.
+ * @param filepath     - Filepath of the statistics file
+ * @param contextIdMap - The id map to use, can use an existing one to reuse ids for same contexts spreading over multiple input files.
  *  `undefined` is used for unknown contexts. This map allows us to reference contexts with a way shorter identifier (vs. the full file path).
  */
 export function clusterStatisticsOutput(filepath: string, contextIdMap: ClusterContextIdMap = new DefaultMap<string | undefined, NodeId>(deterministicCountingIdGenerator())): ClusterReport {

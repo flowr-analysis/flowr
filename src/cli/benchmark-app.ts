@@ -7,6 +7,7 @@ import { date2string } from '../util/time'
 import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
 import * as os from 'os'
 import { guard } from '../util/assert'
+import { SlicerStats } from '../benchmark'
 
 // TODO: promote to the normal slicing app with a --benchmark 100 flag afterwards
 // TODO: allow to select slicing criteria filter

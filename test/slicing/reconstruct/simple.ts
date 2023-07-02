@@ -81,4 +81,17 @@ describe('Simple', withShell(shell => {
       }
     })
   })
+  /* TODO: error in R lexeme provider
+  describe('Failures in practice', () => {
+    assertReconstructed('Reconstruct expression list in call', shell, `
+a <- foo({
+    a <- b()
+
+    c <- 3
+    })`, '0', `a <- foo({
+a <- b()
+c <- 3
+})`)
+  })
+*/
 }))

@@ -310,7 +310,7 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
   if(call.infixSpecial === true) {
     return reconstructSpecialInfixFunctionCall(args, call)
   }
-  if(isSelected(configuration, call)) {
+  if(call.flavour === 'named' && isSelected(configuration, call)) {
     return plain(getLexeme(call))
   }
   const filteredArgs = args.filter(a => a !== undefined && a.length > 0)
@@ -322,11 +322,15 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 
   if(args.length === 0) {
     guard(functionName.length === 1, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
+    if(call.flavour === 'unnamed' && !functionName[0].line.endsWith(')')) {
+      functionName[0].line = `(${functionName[0].line})`
+    }
+
     if(!functionName[0].line.endsWith('()')) {
       // add empty call braces if not present
       functionName[0].line += '()'
     }
-    return [{ line: `${functionName[0].line}`, indent: functionName[0].indent }]
+    return [{ line: functionName[0].line, indent: functionName[0].indent }]
   } else {
     return plain(getLexeme(call))
   }

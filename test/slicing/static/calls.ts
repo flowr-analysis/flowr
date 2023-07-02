@@ -142,6 +142,17 @@ u <- a()
 u()`)
     })
   })
+  describe('Anonymous functions', () => {
+    assertSliced('Keep anonymous', shell, `
+x <- (function() { 
+  x <- 4
+  x - 5
+  3 
+ })()
+cat(x)
+    `, ['7@x'], `x <- (function() { 3 })()
+cat(x)`)
+  })
   describe('Higher-order functions', () => {
     const code = `a <- function() { x <- 3; i }
 i <- 4

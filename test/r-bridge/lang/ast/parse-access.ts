@@ -342,11 +342,18 @@ describe("Parse value access", withShell(shell => {
         info:      {}
       },
       access: [{
-        type:     Type.Number,
+        type:     Type.Argument,
         location: rangeFrom(1, 4, 1, 4),
         lexeme:   "5",
-        content:  numVal(5),
-        info:     {}
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 4, 1, 4),
+          lexeme:   "5",
+          content:  numVal(5),
+          info:     {}
+        }
       }]
     }))
     assertAst("Multiple", shell, "b[[5,3]]", exprList({
@@ -364,17 +371,31 @@ describe("Parse value access", withShell(shell => {
         info:      {}
       },
       access: [{
-        type:     Type.Number,
+        type:     Type.Argument,
         location: rangeFrom(1, 4, 1, 4),
         lexeme:   "5",
-        content:  numVal(5),
-        info:     {}
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 4, 1, 4),
+          lexeme:   "5",
+          content:  numVal(5),
+          info:     {}
+        }
       }, {
-        type:     Type.Number,
+        type:     Type.Argument,
         location: rangeFrom(1, 6, 1, 6),
         lexeme:   "3",
-        content:  numVal(3),
-        info:     {}
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 6, 1, 6),
+          lexeme:   "3",
+          content:  numVal(3),
+          info:     {}
+        }
       }]
     }))
     assertAst("Multiple with empty", shell, "b[[5,,]]", exprList({
@@ -392,11 +413,19 @@ describe("Parse value access", withShell(shell => {
         info:      {}
       },
       access: [{
-        type:     Type.Number,
+
+        type:     Type.Argument,
         location: rangeFrom(1, 4, 1, 4),
         lexeme:   "5",
-        content:  numVal(5),
-        info:     {}
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 4, 1, 4),
+          lexeme:   "5",
+          content:  numVal(5),
+          info:     {}
+        }
       },null,null]
     }))
   })

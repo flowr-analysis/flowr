@@ -43,8 +43,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
     foldBreak:  onLeaf
   },
   other: {
-    foldComment:  onLeaf,
-    foldQuestion: onLeaf
+    foldComment: onLeaf
   },
   foldIfThenElse: (_: unknown, a: NodeId[], b: NodeId[], c: NodeId[] | undefined) => [...a,...b,...(c??[])],
   foldExprList:   (_: unknown, a: NodeId[][]) => a.flat(),

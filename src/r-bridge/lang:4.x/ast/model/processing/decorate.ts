@@ -124,8 +124,7 @@ export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: Id
       foldModelFormula: unaryOp
     },
     other: {
-      foldComment:  foldLeaf,
-      foldQuestion: foldLeaf
+      foldComment: foldLeaf
     },
     loop: {
       foldFor:    createFoldForForLoop(info),

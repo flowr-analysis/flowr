@@ -37,7 +37,6 @@ const processors: DataflowProcessors<any> = {
   [Type.Break]:              processUninterestingLeaf,
   [Type.Next]:               processUninterestingLeaf,
   [Type.Comment]:            processUninterestingLeaf,
-  [Type.Question]:           processUninterestingLeaf,
   [Type.FunctionCall]:       processFunctionCall,
   [Type.FunctionDefinition]: processFunctionDefinition,
   [Type.Parameter]:          processFunctionParameter,

@@ -72,7 +72,8 @@ export const OperatorDatabase: Record<StringUsedInRCode, OperatorInformationValu
   '=':    { name: 'equal assignment',             stringUsedInRAst: 'EQ_ASSIGN',    stringUsedInternally: '=',    flavorInRAst: 'special',       flavor: 'assignment',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'assignment' },
   /* others */
   /* maybe introduce custom in-r-ast flavor for these? we consider it arithmetic, as it works on numbers => if we change this we have to create custom tests! (with arithmetic, there is the automatic test set) */
-  ':':    { name: 'sequence operator',            stringUsedInRAst: ':',            stringUsedInternally: ':',    flavorInRAst: 'special',       flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' }
+  ':':    { name: 'sequence operator',            stringUsedInRAst: ':',            stringUsedInternally: ':',    flavorInRAst: 'special',       flavor: 'arithmetic',    writtenAs: 'infix',  arity:  OperatorArity.Binary, usedAs: 'operation' },
+  '?':    { name: 'question',                     stringUsedInRAst: '?',            stringUsedInternally: '?',    flavorInRAst: 'special',       flavor: 'logical',       writtenAs: 'prefix', arity:  OperatorArity.Unary,  usedAs: 'operation' } /*TODO*/
 }
 /* eslint-enable */
 

@@ -40,6 +40,29 @@ describe("Parse simple operations",
         })
       }
     })
+    describe("? question", () => {
+      assertAst(
+        `? x`,
+        shell,
+        '? x',
+        exprList({
+          type:     Type.UnaryOp,
+          location: rangeFrom(1, 1, 1, 1),
+          op:       '?',
+          lexeme:   '?',
+          flavor:   'logical', /* TODO */
+          info:     {},
+          operand:  {
+            type:      Type.Symbol,
+            location:  rangeFrom(1, 3, 1, 3),
+            lexeme:    'x',
+            content:   'x',
+            namespace: undefined,
+            info:      {}
+          }
+        })
+      )
+    })
 
     describe('binary operations', () => {
       for (const opSuite of [

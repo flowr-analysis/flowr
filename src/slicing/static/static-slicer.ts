@@ -11,7 +11,6 @@ import { log } from '../../util/log'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
 import {
   overwriteEnvironments,
-  popLocalEnvironment,
   pushLocalEnvironment,
   resolveByName
 } from '../../dataflow/environments'
@@ -32,10 +31,12 @@ interface NodeToSlice {
 
 type Fingerprint = string
 
-function fingerprint(visited: NodeToSlice): Fingerprint {
-  // we do not use ids of envs in case of (in-)finite recursion
-  const envFingerprint = objectHash(visited.baseEnvironment, { excludeKeys: key => key === 'id' })
-  return `${visited.id}-${envFingerprint}-${visited.onlyForSideEffects ? '0' : '1'}`
+function envFingerprint(env: REnvironmentInformation): string {
+  return objectHash(env, { excludeKeys: key => key === 'id' })
+}
+
+function fingerprint(id: NodeId, envFingerprint: string, onlyForSideEffects: boolean): Fingerprint {
+  return `${id}-${envFingerprint}-${onlyForSideEffects ? '0' : '1'}`
 }
 /**
  * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
@@ -56,7 +57,8 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
     if (current === undefined) {
       continue
     }
-    visited.set(fingerprint(current), current.id)
+    const baseEnvFingerprint = envFingerprint(current.baseEnvironment)
+    visited.set(fingerprint(current.id, baseEnvFingerprint, current.onlyForSideEffects), current.id)
 
     const currentInfo = dataflowGraph.get(current.id, true)
 
@@ -75,12 +77,15 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
     const currentNode = dataflowIdMap.get(current.id)
     guard(currentNode !== undefined, () => `id: ${current.id} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
 
-    const liveEdges = [...currentInfo[1]].filter(([_, e]) => e.types.has('read') || e.types.has('defined-by') || e.types.has('argument') || e.types.has('calls') || e.types.has('relates') || (!current.onlyForSideEffects && e.types.has('returns')) || e.types.has('defines-on-call') || e.types.has('side-effect-on-call'))
-    for (const [target, edge] of liveEdges) {
-      const envEdge = { id: target, baseEnvironment: current.baseEnvironment, onlyForSideEffects: edge.types.has('side-effect-on-call') }
-      if (!visited.has(fingerprint(envEdge))) {
-        // slicerLogger.trace(`adding id: ${target} to visit queue`)
-        visitQueue.push(envEdge)
+    for (const [target, edge] of currentInfo[1]) {
+      if (edge.types.has('side-effect-on-call')) {
+        if (!visited.has(fingerprint(target, baseEnvFingerprint, true))) {
+          visitQueue.push({ id: target, baseEnvironment: current.baseEnvironment, onlyForSideEffects: true })
+        }
+      } else if (edge.types.has('read') || edge.types.has('defined-by') || edge.types.has('argument') || edge.types.has('calls') || edge.types.has('relates') || (!current.onlyForSideEffects && edge.types.has('returns')) || edge.types.has('defines-on-call')) {
+        if (!visited.has(fingerprint(target, baseEnvFingerprint, false))) {
+          visitQueue.push({ id: target, baseEnvironment: current.baseEnvironment, onlyForSideEffects: false })
+        }
       }
     }
   }
@@ -110,6 +115,7 @@ function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeI
   }
 
   const activeEnvironment = overwriteEnvironments(baseEnvironment, callerEnvironment)
+  const activeEnvironmentFingerprint = envFingerprint(activeEnvironment)
   const functionCallDefs = resolveByName(callerInfo.name, LocalScope, activeEnvironment)?.map(d => d.nodeId) ?? []
 
   functionCallDefs.push(...outgoingEdges[1].filter(([_, e]) => e.types.has('calls')).map(([target]) => target))
@@ -124,8 +130,8 @@ function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeI
         continue
       }
       for (const def of defs) {
-        const nodeToSlice = { id: def.nodeId, baseEnvironment: activeEnvironment, onlyForSideEffects: current.onlyForSideEffects }
-        if (!visited.has(fingerprint(nodeToSlice))) {
+        if (!visited.has(fingerprint(def.nodeId, activeEnvironmentFingerprint, current.onlyForSideEffects))) {
+          const nodeToSlice = { id: def.nodeId, baseEnvironment: activeEnvironment, onlyForSideEffects: current.onlyForSideEffects }
           visitQueue.push(nodeToSlice)
         }
       }
@@ -133,12 +139,12 @@ function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeI
 
     if(!current.onlyForSideEffects) {
       for (const exitPoint of (functionCallTarget as DataflowGraphNodeFunctionDefinition).exitPoints) {
-        const nodeToSlice = {
-          id:                 exitPoint,
-          baseEnvironment:    activeEnvironment,
-          onlyForSideEffects: current.onlyForSideEffects
-        }
-        if (!visited.has(fingerprint(nodeToSlice))) {
+        if (!visited.has(fingerprint(exitPoint, activeEnvironmentFingerprint, current.onlyForSideEffects))) {
+          const nodeToSlice = {
+            id:                 exitPoint,
+            baseEnvironment:    activeEnvironment,
+            onlyForSideEffects: current.onlyForSideEffects
+          }
           visitQueue.push(nodeToSlice)
         }
       }

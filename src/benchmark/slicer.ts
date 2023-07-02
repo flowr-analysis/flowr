@@ -18,7 +18,7 @@ import {
 import { IStoppableStopwatch, Measurements } from './stopwatch'
 import { guard } from '../util/assert'
 import { DataflowInformation } from '../dataflow/internal/info'
-import { produceDataFlowGraph } from '../dataflow'
+import { graphToMermaid, graphToMermaidUrl, produceDataFlowGraph } from '../dataflow'
 import {
   convertAllSlicingCriteriaToIds,
   SlicingCriteria,
@@ -109,6 +109,7 @@ export class BenchmarkSlicer {
       'produce dataflow information',
       () => produceDataFlowGraph(this.decoratedAst as DecoratedAst)
     )
+    fs.writeFileSync('/tmp/t.mermaid', graphToMermaid(this.dataflow.graph, this.decoratedAst.idMap))
 
     const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8')
     // retrieve number of R tokens - flowr_parsed should still contain the last parsed code

@@ -49,7 +49,6 @@ export interface SummarizedPerSliceStats {
   sliceSize:          {
     [K in keyof SliceSizeCollection]: SummarizedMeasurement
   }
-  // TODO: resulting slice stats
 }
 
 
@@ -75,6 +74,7 @@ export async function summarizeSlicerStats(stats: SlicerStats): Promise<Readonly
     dataflowNodes:    []
   }
 
+  let first = true
   for(const [_, perSliceStat] of perSliceStats) {
     for(const measure of perSliceStat.measurements) {
       collect.get(measure[0]).push(Number(measure[1]))
@@ -87,10 +87,11 @@ export async function summarizeSlicerStats(stats: SlicerStats): Promise<Readonly
     // reparse the output to get the number of tokens
     try {
       const reParsed = await retrieveAstFromRCode(
-        { request: 'text', content: output, attachSourceInformation: true, ensurePackageInstalled: true },
+        { request: 'text', content: output, attachSourceInformation: true, ensurePackageInstalled: first },
         tokenMap,
         reParseShellSession
       )
+      first = false
       let numberOfNormalizedTokens = 0
       visit(reParsed, _ => {
         numberOfNormalizedTokens++

@@ -74,7 +74,6 @@ async function benchmark() {
   if(options.limit) {
     log.info(`limiting to ${options.limit} files`)
     // shuffle and limit
-    // TODO: do not limit here to compensate for failures!
     files.sort(() => Math.random() - 0.5)
   }
   const limit = options.limit ?? files.length

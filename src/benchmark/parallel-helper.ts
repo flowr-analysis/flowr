@@ -4,6 +4,7 @@
  */
 import * as cp from 'child_process'
 import { log } from '../util/log'
+import { guard } from '../util/assert'
 
 type Arguments = string[]
 type WorkingQueue = Arguments[]
@@ -48,18 +49,19 @@ export class LimitBenchmarkPool {
   }
 
   private async runNext() {
-    console.log(`Running next (counter: ${this.counter}), currently running: ${this.currentlyRunning}, queue: ${this.workingQueue.length}`)
+    console.log(`Try running next (counter: ${this.counter}), currently running: ${this.currentlyRunning}, queue: ${this.workingQueue.length}`)
     if(this.counter + this.currentlyRunning >= this.limit || this.workingQueue.length <= 0) {
       return
     }
+
     this.currentlyRunning += 1
 
     const args = this.workingQueue.pop()
-    if(args === undefined) {
-      return
-    }
-    const child = cp.fork(this.module, args)
+    guard(args !== undefined, () => `arguments should not be undefined in ${JSON.stringify(this.workingQueue)}`)
 
+    console.log(`[${this.counter}] Running ${this.module} with ${JSON.stringify(args)}`)
+
+    const child = cp.fork(this.module, args)
 
     child.on('exit', (code, signal) => {
       if(code === 0) {

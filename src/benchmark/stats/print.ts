@@ -7,7 +7,7 @@ import { ElapsedTime, PerSliceMeasurements } from './stats'
 import {
   SummarizedMeasurement,
   SummarizedPerSliceStats,
-  SummarizedSlicerStats
+  SummarizedSlicerStats, UltimateSlicerStats
 } from './summarizer'
 
 const padSize = 15
@@ -42,10 +42,17 @@ function print<K>(measurements: Map<K, ElapsedTime>, key: K) {
   return formatNanoseconds(time)
 }
 
+function formatSummarizedMeasure(measure: SummarizedMeasurement | undefined) {
+  if(measure === undefined) {
+    return `??`
+  }
+  return `${formatNanoseconds(measure.min)} - ${formatNanoseconds(measure.max)} (median: ${formatNanoseconds(measure.median)}, mean: ${formatNanoseconds(measure.mean)}, std: ${formatNanoseconds(measure.std)})`
+}
+
 function printSummarizedMeasurements(stats: SummarizedPerSliceStats, key: PerSliceMeasurements): string {
   const measure = stats.measurements.get(key)
   guard(measure !== undefined, `Measurement for ${JSON.stringify(key)} not found`)
-  return `${formatNanoseconds(measure.min)} - ${formatNanoseconds(measure.max)} (median: ${formatNanoseconds(measure.median)}, mean: ${formatNanoseconds(measure.mean)}, std: ${formatNanoseconds(measure.std)})`
+  return formatSummarizedMeasure(measure)
 }
 
 function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string {
@@ -100,4 +107,43 @@ Dataflow:
   Number of edges:            ${pad(stats.dataflow.numberOfEdges)}
   Number of calls:            ${pad(stats.dataflow.numberOfCalls)}
   Number of function defs:    ${pad(stats.dataflow.numberOfFunctionDefinitions)}`
+}
+
+export function ultimateStats2String(stats: UltimateSlicerStats): string {
+  // Used Slice Criteria Sizes:  ${formatSummarizedMeasure(stats.perSliceMeasurements.sliceCriteriaSizes)}
+  return `
+Shell init time:              ${formatSummarizedMeasure(stats.commonMeasurements.get('initialize R session'))}
+Retrieval of token map:       ${formatSummarizedMeasure(stats.commonMeasurements.get('retrieve token map'))}
+AST retrieval:                ${formatSummarizedMeasure(stats.commonMeasurements.get('retrieve AST from R code'))}
+AST normalization:            ${formatSummarizedMeasure(stats.commonMeasurements.get('normalize R AST'))}
+AST decoration:               ${formatSummarizedMeasure(stats.commonMeasurements.get('decorate R AST'))}
+Dataflow creation:            ${formatSummarizedMeasure(stats.commonMeasurements.get('produce dataflow information'))}
+
+Slice summary for:
+  Total:                      ${formatSummarizedMeasure(stats.perSliceMeasurements.get('total'))}
+  Slice decoding:             ${formatSummarizedMeasure(stats.perSliceMeasurements.get('decode slicing criterion'))}
+  Slice creation:             ${formatSummarizedMeasure(stats.perSliceMeasurements.get('static slicing'))}
+  Reconstruction:             ${formatSummarizedMeasure(stats.perSliceMeasurements.get('reconstruct code'))}
+  Reductions:   
+    Number of lines:          ${formatSummarizedMeasure(stats.reduction.numberOfLines)}
+    Number of lines no auto:  ${formatSummarizedMeasure(stats.reduction.numberOfLinesNoAutoSelection)}
+    Number of characters:     ${formatSummarizedMeasure(stats.reduction.numberOfCharacters)}
+    Number of R tokens:       ${formatSummarizedMeasure(stats.reduction.numberOfRTokens)}
+    Normalized R tokens:      ${formatSummarizedMeasure(stats.reduction.numberOfNormalizedTokens)}
+    Number of dataflow nodes: ${formatSummarizedMeasure(stats.reduction.numberOfDataflowNodes)}
+
+Shell close:                  ${formatSummarizedMeasure(stats.commonMeasurements.get('close R session'))}
+Total:                        ${formatSummarizedMeasure(stats.commonMeasurements.get('total'))}
+
+Input:
+  Number of lines:            ${formatSummarizedMeasure(stats.input.numberOfLines)}
+  Number of characters:       ${formatSummarizedMeasure(stats.input.numberOfCharacters)}
+  Number of tokens:           ${formatSummarizedMeasure(stats.input.numberOfRTokens)}
+  Normalized R tokens:        ${formatSummarizedMeasure(stats.input.numberOfNormalizedTokens)}
+
+Dataflow:
+  Number of nodes:            ${formatSummarizedMeasure(stats.dataflow.numberOfNodes)}
+  Number of edges:            ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
+  Number of calls:            ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
+  Number of function defs:    ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}`
 }

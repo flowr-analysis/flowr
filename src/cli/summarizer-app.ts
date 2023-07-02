@@ -6,10 +6,9 @@ import LineByLine from 'n-readlines'
 import {
   CommonSlicerMeasurements,
   PerSliceMeasurements,
-  PerSliceStats,
-  SlicerStats,
-  stats2string,
-  summarizeSlicerStats
+  PerSliceStats, SlicerStats,
+  stats2string, summarizeAllSummarizedStats, SummarizedSlicerStats,
+  summarizeSlicerStats, ultimateStats2String
 } from '../benchmark'
 import fs from 'fs'
 import { SlicingCriteria } from '../slicing'
@@ -98,8 +97,12 @@ async function summarize() {
   removeIfExists(summarizedRaw)
   const summarizedText = `${outputBase}.log`
   removeIfExists(summarizedText)
+  const ultimateRaw = `${outputBase}-ultimate.json`
+  removeIfExists(ultimateRaw)
 
   let line: false | Buffer
+
+  const allSummarized: SummarizedSlicerStats[] = []
 
   let counter = 0
   // eslint-disable-next-line no-cond-assign
@@ -134,13 +137,19 @@ async function summarize() {
       console.log(`${escape}1F${escape}1G${escape}2K    [${++atSliceNumber}/${totalSlices}] Summarizing ${JSON.stringify(criterion)} (reconstructed has ${stats.reconstructedCode.code.length} characters)`)
     })
 
+    allSummarized.push(summarized)
+
     console.log(`    - Append raw summary to ${summarizedRaw}`)
     fs.appendFileSync(summarizedRaw, `${JSON.stringify({ filename: got.filename, summarize: summarized })}\n`)
 
     console.log(`    - Append textual summary to ${summarizedText}`)
     fs.appendFileSync(summarizedText, `${stats2string(summarized)}\n`)
   }
-  console.log('Done summarizing')
+  console.log('Done summarizing, merging all for total')
+  const ultimate = summarizeAllSummarizedStats(allSummarized)
+  console.log(`Writing ultimate summary to ${ultimateRaw}`)
+  fs.writeFileSync(ultimateRaw, JSON.stringify(ultimate))
+  console.log(ultimateStats2String(ultimate))
 }
 
 void summarize()

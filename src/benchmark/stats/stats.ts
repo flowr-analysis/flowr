@@ -19,6 +19,21 @@ export interface PerSliceStats {
    */
 }
 
+export interface SlicerStatsInput<T = number> {
+  numberOfLines:            T
+  numberOfCharacters:       T
+  numberOfRTokens:          T
+  numberOfNormalizedTokens: T
+}
+
+
+export interface SlicerStatsDataflow<T = number> {
+  numberOfNodes:               T
+  numberOfEdges:               T
+  numberOfCalls:               T
+  numberOfFunctionDefinitions: T
+}
+
 /**
  * The statistics that are collected by the {@link BenchmarkSlicer} and used for benchmarking.
  */
@@ -26,16 +41,6 @@ export interface SlicerStats {
   commonMeasurements:   Map<CommonSlicerMeasurements, ElapsedTime>
   perSliceMeasurements: Map<SlicingCriteria, PerSliceStats>
   request:              RParseRequestFromFile | RParseRequestFromText
-  input: {
-    numberOfLines:            number
-    numberOfCharacters:       number
-    numberOfRTokens:          number
-    numberOfNormalizedTokens: number
-  }
-  dataflow: {
-    numberOfNodes:               number
-    numberOfEdges:               number
-    numberOfCalls:               number
-    numberOfFunctionDefinitions: number
-  }
+  input:                SlicerStatsInput
+  dataflow:             SlicerStatsDataflow
 }

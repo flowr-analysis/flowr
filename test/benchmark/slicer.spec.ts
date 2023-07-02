@@ -82,8 +82,6 @@ cat(d)`
       slicer.slice('7@d')
       const { stats, statInfo } = await retrieveStatsSafe(slicer, request)
 
-      // TODO: test more?
-
       assert.deepStrictEqual(stats.input, {
         numberOfLines:            7,
         numberOfCharacters:       63,

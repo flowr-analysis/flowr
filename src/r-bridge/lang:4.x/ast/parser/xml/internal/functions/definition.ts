@@ -21,7 +21,7 @@ import { log } from '../../../../../../../util/log'
 export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionDefinition | undefined {
   const fnBase = mappedWithName[0]
   if(fnBase.name !== Type.FunctionDefinition && fnBase.name !== Type.LambdaFunctionDefinition) {
-    parseLog.trace(`expected function definition to be identified by keyword, yet received ${JSON.stringify(fnBase)}`)
+    parseLog.trace(`expected function definition to be identified by keyword, yet received ${fnBase.name}`)
     return executeUnknownHook(data.hooks.functions.onFunctionDefinition.unknown, data, mappedWithName)
   }
 
@@ -31,7 +31,7 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
   const { content, location } = retrieveMetaStructure(data.config, fnBase.content)
 
   const openParen = mappedWithName[1]
-  guard(openParen.name === Type.ParenLeft, () => `expected opening parenthesis, yet received ${JSON.stringify(openParen)}`)
+  guard(openParen.name === Type.ParenLeft, () => `expected opening parenthesis, yet received ${openParen.name}`)
 
   const closingParenIndex = mappedWithName.findIndex(x => x.name === Type.ParenRight)
   guard(closingParenIndex !== -1, () => `expected closing parenthesis, yet received ${JSON.stringify(mappedWithName)}`)
@@ -50,10 +50,10 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
   parseLog.trace(`function definition retained ${parameters.length} parameters after parsing, moving to body.`)
 
   const bodyStructure = mappedWithName.slice(closingParenIndex + 1)
-  guard(bodyStructure.length === 1, () => `expected function body to be unique, yet received ${JSON.stringify(bodyStructure)}`)
+  guard(bodyStructure.length === 1, () => `expected function body to be unique, yet received ${bodyStructure.length}`)
 
   const body = parseBasedOnType(data, bodyStructure)
-  guard(body.length === 1, () => `expected function body to yield one normalized expression, but ${JSON.stringify(body)}`)
+  guard(body.length === 1, () => `expected function body to yield one normalized expression, but ${body.length}`)
 
 
   const result: RFunctionDefinition = {

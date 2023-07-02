@@ -20,7 +20,7 @@ import {
   foldAstStateful,
   StatefulFoldFunctions
 } from '../r-bridge'
-import { log } from '../util/log'
+import { log, LogLevel } from '../util/log'
 import { guard } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
 type Selection = Set<NodeId>
@@ -433,7 +433,9 @@ export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Sele
     return result
   }
   const result = foldAstStateful(ast.decoratedAst, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
-  reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
+  if(reconstructLogger.settings.minLevel >= LogLevel.trace) {
+    reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
+  }
   if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
     // remove outer block
     return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), autoSelected }

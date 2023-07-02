@@ -44,7 +44,7 @@ function fingerprint(visited: NodeToSlice): Fingerprint {
  */
 export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowIdMap: DecoratedAstMap<OtherInfo>, id: NodeId[]): Set<NodeId> {
   guard(id.length > 0, `must have at least one seed id to calculate slice`)
-  slicerLogger.trace(`calculating slice for ${id.length} seed ids: ${JSON.stringify(id)}`)
+  slicerLogger.trace(`calculating slice for ${id.length} seed ids: ${id.join(', ')}`)
 
   const visited = new Map<Fingerprint, NodeId>()
   // every node ships the call environment which registers the calling environment

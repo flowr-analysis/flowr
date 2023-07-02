@@ -66,7 +66,7 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
   // TODO: ensure closing is correct
   const remaining = mappedWithName.slice(2, mappedWithName.length - closingLength)
 
-  parseLog.trace(`${remaining.length} remaining arguments for access: ${JSON.stringify(remaining)}`)
+  parseLog.trace(`${remaining.length} remaining arguments for access`)
 
   const splitAccessOnComma = splitArrayOn(remaining, x => x.name === Type.Comma)
 

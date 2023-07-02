@@ -65,13 +65,12 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
 
   switch (op.lexeme) {
     case '<-':
+    case '=':
+    case ':=':
       [target, source] = [lhs, rhs]
       break
     case '<<-':
       [target, source, global] = [lhs, rhs, true]
-      break
-    case '=':
-      [target, source] = [lhs, rhs]
       break
     case '->':
       [target, source, swap] = [rhs, lhs, true]

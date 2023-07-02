@@ -175,8 +175,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
     return [
       { line: `if(${getLexeme(ifThenElse.condition)}) {`, indent: 0 },
       ...indentBy(when, 1),
-      { line: '}', indent: 0 },
-      { line: 'else {', indent: 0 },
+      { line: '} else {', indent: 0 },
       ...indentBy(otherwise, 1),
       { line: '}', indent: 0 }
     ]

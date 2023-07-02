@@ -15,44 +15,64 @@ type WorkingQueue = Arguments[]
 export class LimitBenchmarkPool {
   private readonly workingQueue: WorkingQueue
   private readonly limit:        number
+  private readonly parallel:     number
   private readonly module:       string
   private counter = 0
+  private skipped:               Arguments[] = []
   private currentlyRunning  = 0
 
-  constructor(module: string, queue: WorkingQueue, limit: number) {
+  /**
+   * Create a new parallel helper that runs the given `module` once for each {@link Arguments} in the `queue`.
+   * The `limit` stops the execution if `<limit>` number of runs exited successfully.
+   * The `parallel` parameter limits the number of parallel executions.
+   */
+  constructor(module: string, queue: WorkingQueue, limit: number, parallel: number) {
     this.workingQueue = queue
     this.limit = limit
     this.module = module
+    this.parallel = parallel
   }
 
 
   public async run() {
     const promises: Promise<void>[] = []
-    while(this.currentlyRunning < this.limit && this.workingQueue.length > 0) {
+    // initial run, runNext will schedule itself recursively we use the limit too if there are more cores than limit :D
+    while(this.currentlyRunning < Math.min(this.parallel, this.limit) && this.workingQueue.length > 0) {
       promises.push(this.runNext())
     }
     return await Promise.all(promises)
   }
 
+  public getStats(): { counter: number, skipped: Arguments[]} {
+    return { counter: this.counter, skipped: this.skipped }
+  }
+
   private async runNext() {
+    console.log(`Running next (counter: ${this.counter}), currently running: ${this.currentlyRunning}, queue: ${this.workingQueue.length}`)
+    if(this.counter + this.currentlyRunning >= this.limit || this.workingQueue.length <= 0) {
+      return
+    }
+    this.currentlyRunning += 1
+
     const args = this.workingQueue.pop()
     if(args === undefined) {
       return
     }
     const child = cp.fork(this.module, args)
 
-    this.currentlyRunning += 1
 
     child.on('exit', (code, signal) => {
       if(code === 0) {
         this.counter++
       } else {
         log.error(`Benchmark for ${JSON.stringify(args)} exited with code ${JSON.stringify(code)} (signal: ${JSON.stringify(signal)})`)
+        this.skipped.push(args)
       }
       this.currentlyRunning -= 1
     })
 
-    await new Promise<void>(resolve => child.on('exit', resolve))
+    // schedule re-schedule
+    await new Promise<void>(resolve => child.on('exit', resolve)).then(() => this.runNext())
   }
 
 

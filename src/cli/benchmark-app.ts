@@ -5,6 +5,7 @@ import { allRFilesFrom } from '../util/files'
 import { RParseRequestFromFile } from '../r-bridge'
 import { date2string } from '../util/time'
 import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
+import * as os from 'os'
 
 // TODO: promote to the normal slicing app with a --benchmark 100 flag afterwards
 // TODO: allow to select slicing criteria filter
@@ -18,16 +19,18 @@ export const optionDefinitions: OptionDefinition[] = [
   { name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide.' },
   { name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process (if given, this will choose these files randomly and add the chosen names to the output'},
   { name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
+  { name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
   { name: 'output',       alias: 'o', type: String,  description: `File to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${now}.json})`, defaultValue: `benchmark-${now}.json`,  typeLabel: '{underline file}' },
   // TODO: criteria, output and rest
 ]
 
 export interface BenchmarkCliOptions {
-  verbose: boolean
-  help:    boolean
-  input:   string[]
-  output:  string
-  limit?:  number
+  verbose:  boolean
+  help:     boolean
+  input:    string[]
+  output:   string
+  parallel: number
+  limit?:   number
 }
 
 export const optionHelp = [
@@ -61,6 +64,7 @@ log.info('running with options - do not use for final benchmark', options)
 
 async function benchmark() {
   console.log(`Writing output continuously to ${options.output}`)
+  console.log(`Using ${options.parallel} parallel executors`)
   // we do not use the limit argument to be able to pick the limit randomly
   const files: RParseRequestFromFile[] = []
   for await (const file of allRFilesFrom(options.input)) {
@@ -75,8 +79,15 @@ async function benchmark() {
   }
   const limit = options.limit ?? files.length
 
-  const pool = new LimitBenchmarkPool(`${__dirname}/../cli/benchmark-helper-app`, files.map(f => [f.content, '--output', options.output]), limit)
+  const pool = new LimitBenchmarkPool(
+    `${__dirname}/../cli/benchmark-helper-app`,
+    files.map(f => [f.content, '--output', options.output]),
+    limit,
+    options.parallel
+  )
   await pool.run()
+  const stats = pool.getStats()
+  console.log(`Benchmarked ${stats.counter} files, skipped ${stats.skipped.length} files due to errors`)
 }
 
 void benchmark()

@@ -81,20 +81,24 @@ export async function summarizeSlicerStats(stats: SlicerStats): Promise<Readonly
     sliceSize.lines.push(output.split('\n').length)
     sliceSize.characters.push(output.length)
     // reparse the output to get the number of tokens
-    const reParsed = await retrieveAstFromRCode(
-      { request: 'text', content: output, attachSourceInformation: true, ensurePackageInstalled: true },
-      tokenMap,
-      reParseShellSession
-    )
-    let numberOfNormalizedTokens = 0
-    visit(reParsed, _ => {
-      numberOfNormalizedTokens++
-      return false
-    })
-    sliceSize.normalizedTokens.push(numberOfNormalizedTokens)
+    try {
+      const reParsed = await retrieveAstFromRCode(
+        { request: 'text', content: output, attachSourceInformation: true, ensurePackageInstalled: true },
+        tokenMap,
+        reParseShellSession
+      )
+      let numberOfNormalizedTokens = 0
+      visit(reParsed, _ => {
+        numberOfNormalizedTokens++
+        return false
+      })
+      sliceSize.normalizedTokens.push(numberOfNormalizedTokens)
 
-    const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(reParseShellSession)
-    sliceSize.tokens.push(numberOfRTokens)
+      const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(reParseShellSession)
+      sliceSize.tokens.push(numberOfRTokens)
+    } catch(e: unknown) {
+      console.error('Failed to re-parse the output of the slicer!', e)
+    }
 
     sliceSize.dataflowNodes.push(perSliceStat.numberOfDataflowNodesSliced)
     // TODO: collect resulting slice data

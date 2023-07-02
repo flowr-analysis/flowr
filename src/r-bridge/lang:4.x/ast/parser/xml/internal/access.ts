@@ -46,19 +46,19 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
       closingLength = 2
       break
     default:
-      parseLog.trace(`expected second element to be an access operator, yet received ${JSON.stringify(accessOp)}`)
+      parseLog.trace(`expected second element to be an access operator, yet received ${accessOp.name}`)
       return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
   }
 
   const accessed = mappedWithName[0]
   if(accessed.name !== Type.Expression && accessed.name !== Type.ExprHelpAssignWrapper) {
-    parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${JSON.stringify(accessed)}`)
+    parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${accessed.name}`)
     return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
   }
 
   const parsedAccessed = parseBasedOnType(data, [accessed])
   if(parsedAccessed.length !== 1) {
-    parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${JSON.stringify(accessed)}`)
+    parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${accessed.name}`)
     return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
   }
 
@@ -85,8 +85,8 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
   if(operator === '@' || operator === '$') {
     guard(parsedAccess.length === 1, () => `expected one access result in access with ${JSON.stringify(operator)}, yet received ${JSON.stringify(parsedAccess)}`)
     const first = parsedAccess[0]
-    guard(first !== null && first.type === Type.Symbol, () => `${JSON.stringify(operator)} requires one symbol, yet received ${JSON.stringify(parsedAccess)}`)
-    resultingAccess = first.content
+    guard(first !== null && (first.type === Type.Symbol || first.type === Type.String), () => `${JSON.stringify(operator)} requires one symbol, yet received ${JSON.stringify(parsedAccess)}`)
+    resultingAccess = first.type === Type.String ? first.content.str : first.content
   }
 
   const {

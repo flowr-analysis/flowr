@@ -50,7 +50,8 @@ describe("The Benchmark Slicer", () => {
         characters:       { min: 6, max: 6, median: 6, mean: 6, std: 0 },
         dataflowNodes:    { min: 2, max: 2, median: 2, mean: 2, std: 0 },
         tokens:           { min: 6, max: 6, median: 6, mean: 6, std: 0 },
-        lines:            { min: 1, max: 1, median: 1, mean: 1, std: 0 }
+        lines:            { min: 1, max: 1, median: 1, mean: 1, std: 0 },
+        autoSelected:     { min: 0, max: 0, median: 0, mean: 0, std: 0 }
       }, `sliced only once ${statInfo}`)
 
       assert.deepStrictEqual(stats.perSliceMeasurements.sliceCriteriaSizes, {
@@ -66,7 +67,8 @@ describe("The Benchmark Slicer", () => {
       const slicer = new BenchmarkSlicer()
       const request = {
         request: 'text' as const,
-        content: `a <- 3
+        content: `library(x)
+a <- 3
 b <- a + 4
 c <- 5
 d <- b + 5
@@ -74,24 +76,24 @@ cat(c, d)
 cat(d)`
       }
       await slicer.init(request)
-      slicer.slice('1@a')
-      slicer.slice('1@a', '3@c')
-      slicer.slice('6@d')
+      slicer.slice('2@a')
+      slicer.slice('2@a', '4@c')
+      slicer.slice('7@d')
       const { stats, statInfo } = await retrieveStatsSafe(slicer, request)
 
       // TODO: test more?
 
       assert.deepStrictEqual(stats.input, {
-        numberOfLines:            6,
-        numberOfCharacters:       52,
+        numberOfLines:            7,
+        numberOfCharacters:       63,
         // checked manually
-        numberOfRTokens:          49,
-        numberOfNormalizedTokens: 27
+        numberOfRTokens:          56,
+        numberOfNormalizedTokens: 31
       }, statInfo)
       assert.deepStrictEqual(stats.dataflow, {
-        numberOfNodes:               14,
-        numberOfEdges:               17,
-        numberOfCalls:               2,
+        numberOfNodes:               17,
+        numberOfEdges:               19,
+        numberOfCalls:               3,
         numberOfFunctionDefinitions: 0
       }, statInfo)
 
@@ -99,11 +101,12 @@ cat(d)`
 
       assert.deepStrictEqual(stats.perSliceMeasurements.sliceSize, {
         // only one entry
-        lines:            { min: 1, max: 4,  median: 2,  mean: (1+2+4)/3,  std: 1.247219128924647  },
-        characters:       { min: 6, max: 35, median: 13, mean: 18,         std: 12.355835328567093 },
-        tokens:           { min: 6, max: 33, median: 12, mean: 17,         std: 11.575836902790225 },
-        normalizedTokens: { min: 4, max: 18, median: 7,  mean: (4+7+18)/3, std: 6.018490028422596  },
-        dataflowNodes:    { min: 1, max: 7,  median: 2,  mean: (1+2+7)/3,  std: 2.6246692913372702 }
+        lines:            { min: 2,  max: 5,  median: 3,  mean: (2+3+5)/3,   std: 1.247219128924647  },
+        characters:       { min: 17, max: 46, median: 24, mean: 29,          std: 12.355835328567093 },
+        tokens:           { min: 13, max: 40, median: 19, mean: 24,          std: 11.575836902790225 },
+        normalizedTokens: { min: 8,  max: 22, median: 11, mean: (8+11+22)/3, std: 6.018490028422596  },
+        dataflowNodes:    { min: 1,  max: 7,  median: 2,  mean: (1+2+7)/3,   std: 2.6246692913372702 },
+        autoSelected:     { min: 1,  max: 1,  median: 1,  mean: 1,           std: 0  } // always select one library statement
       }, statInfo)
 
       assert.deepStrictEqual(stats.perSliceMeasurements.sliceCriteriaSizes, {

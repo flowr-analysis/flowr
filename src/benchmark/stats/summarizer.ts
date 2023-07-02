@@ -25,6 +25,8 @@ export interface SummarizedMeasurement {
 interface SliceSizeCollection {
   lines:            number[]
   characters:       number[]
+  /** like library statements during reconstruction */
+  autoSelected:     number[]
   dataflowNodes:    number[]
   tokens:           number[]
   normalizedTokens: number[]
@@ -66,6 +68,7 @@ export async function summarizeSlicerStats(stats: SlicerStats): Promise<Readonly
 
   const sliceSize: SliceSizeCollection = {
     lines:            [],
+    autoSelected:     [],
     characters:       [],
     tokens:           [],
     normalizedTokens: [],
@@ -77,7 +80,8 @@ export async function summarizeSlicerStats(stats: SlicerStats): Promise<Readonly
       collect.get(measure[0]).push(Number(measure[1]))
     }
     sizeOfSliceCriteria.push(perSliceStat.slicingCriteria.length)
-    const output = perSliceStat.reconstructedCode
+    const { code: output, autoSelected } = perSliceStat.reconstructedCode
+    sliceSize.autoSelected.push(autoSelected)
     sliceSize.lines.push(output.split('\n').length)
     sliceSize.characters.push(output.length)
     // reparse the output to get the number of tokens
@@ -121,6 +125,7 @@ export async function summarizeSlicerStats(stats: SlicerStats): Promise<Readonly
       sliceSize:          {
         lines:            summarizeMeasurement(sliceSize.lines),
         characters:       summarizeMeasurement(sliceSize.characters),
+        autoSelected:     summarizeMeasurement(sliceSize.autoSelected),
         tokens:           summarizeMeasurement(sliceSize.tokens),
         normalizedTokens: summarizeMeasurement(sliceSize.normalizedTokens),
         dataflowNodes:    summarizeMeasurement(sliceSize.dataflowNodes)

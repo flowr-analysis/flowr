@@ -1,5 +1,6 @@
 import { SingleSlicingCriterion, SlicingCriteria } from '../../slicing/criterion/parse'
 import { NodeId, RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge'
+import { ReconstructionResult } from '../../slicing'
 
 export const CommonSlicerMeasurements = ['initialize R session', 'inject home path', 'ensure installation of xmlparsedata', 'retrieve token map', 'retrieve AST from R code', 'normalize R AST', 'decorate R AST', 'produce dataflow information', 'close R session', 'total'] as const
 export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]
@@ -12,14 +13,14 @@ export type ElapsedTime = bigint
 export interface PerSliceStats {
   measurements:                Map<PerSliceMeasurements, ElapsedTime>
   slicingCriteria:             { criterion: SingleSlicingCriterion, id: NodeId }[]
-  reconstructedCode:           string
+  reconstructedCode:           ReconstructionResult
   numberOfDataflowNodesSliced: number
   /* TODO: slicedOutput:    Set<NodeId>
    */
 }
 
 /**
- * The statistics that are collected by the {@link Slicer} and used for benchmarking.
+ * The statistics that are collected by the {@link BenchmarkSlicer} and used for benchmarking.
  */
 export interface SlicerStats {
   commonMeasurements:   Map<CommonSlicerMeasurements, ElapsedTime>

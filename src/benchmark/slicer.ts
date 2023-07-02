@@ -166,7 +166,10 @@ export class BenchmarkSlicer {
       measurements:                undefined as never,
       slicingCriteria:             [],
       numberOfDataflowNodesSliced: 0,
-      reconstructedCode:           ''
+      reconstructedCode:           {
+        code:         '',
+        autoSelected: 0
+      }
     }
     this.perSliceMeasurements.set(slicingCriteria, stats)
 

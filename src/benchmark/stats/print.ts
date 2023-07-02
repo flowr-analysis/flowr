@@ -78,6 +78,7 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
   Result Slice Sizes:   
     Number of lines:          ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.lines)}
     Number of characters:     ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.characters)}
+    Number of auto selected:  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.autoSelected)}
     Number of R tokens:       ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.tokens)}
     Normalized R tokens:      ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.normalizedTokens)}
     Number of dataflow nodes: ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.dataflowNodes)}

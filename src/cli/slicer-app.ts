@@ -74,7 +74,8 @@ async function getSlice() {
     const mappedCriteria = slicingCriteria.map(c => `    ${c.criterion} => ${c.id}`).join('\n')
     console.log(`Mapped criteria:\n${mappedCriteria}`)
     console.log('Written reconstructed code to', output)
-    fs.writeFileSync(output, reconstructedCode)
+    console.log(`Automatically selected ${reconstructedCode.autoSelected} statements`)
+    fs.writeFileSync(output, reconstructedCode.code)
   } catch (e: unknown) {
     log.error(`[Skipped] Error while processing ${options.input}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
   }

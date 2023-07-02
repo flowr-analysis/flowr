@@ -1,17 +1,28 @@
 import {
   DecoratedAst,
   NodeId,
-  ParentInformation, RAccess, RArgument, RBinaryOp,
+  ParentInformation,
+  RAccess,
+  RArgument,
+  RBinaryOp,
   RExpressionList,
-  RForLoop, RFunctionCall, RFunctionDefinition, RIfThenElse, RNamedFunctionCall, RNode,
-  RNodeWithParent, RParameter,
-  RRepeatLoop, RUnnamedFunctionCall, RWhileLoop, Type
+  RForLoop,
+  RFunctionCall,
+  RFunctionDefinition,
+  RIfThenElse,
+  RNode,
+  RNodeWithParent,
+  RParameter,
+  RRepeatLoop,
+  RWhileLoop,
+  Type,
+  RPipe,
+  foldAstStateful,
+  StatefulFoldFunctions
 } from '../r-bridge'
-import { foldAstStateful, StatefulFoldFunctions } from '../r-bridge/lang:4.x/ast/model/processing/statefulFold'
 import { log } from '../util/log'
 import { guard } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
-import { RPipe } from '../r-bridge/lang:4.x/ast/model/nodes/RPipe'
 type Selection = Set<NodeId>
 interface PrettyPrintLine {
   line:   string
@@ -275,6 +286,7 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 
 }
 
+
 function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: RFunctionCall<ParentInformation>): Code {
   guard(args.length === 2, () => `infix special call must have exactly two arguments, got: ${args.length} (${JSON.stringify(args)})`)
   guard(call.flavour === 'named', `infix special call must be named, got: ${call.flavour}`)
@@ -287,8 +299,7 @@ function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: R
   } */
   // else if (rhs === undefined || rhs.length === 0) {
   // if rhs is undefined we still  have to keep both now, but reconstruct manually :/
-  const get = plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`)
-  return get
+  return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`)
 }
 
 function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: (Code | undefined)[], configuration: ReconstructionConfiguration): Code {
@@ -392,21 +403,37 @@ function prettyPrintCodeToString(code: Code, lf ='\n'): string {
   return code.map(({ line, indent }) => `${getIndentString(indent)}${line}`).join(lf)
 }
 
+export interface ReconstructionResult {
+  code:         string
+  /** number of nodes that triggered the `autoSelectIf` predicate {@link reconstructToCode} */
+  autoSelected: number
+}
+
 /**
  * Reconstructs parts of a normalized R ast into R code on an expression basis.
  *
  * @param ast          - The ast to be used as a basis for reconstruction
  * @param selection    - The selection of nodes to be reconstructed
  * @param autoSelectIf - A predicate that can be used to force the reconstruction of a node (for example to reconstruct library call statements, see {@link autoSelectLibrary}, {@link doNotAutoSelect})
+ *
+ * @returns Number of times `autoSelectIf` triggered
  */
-export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Selection, autoSelectIf: (node: RNode<ParentInformation>) => boolean = autoSelectLibrary): string {
+export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Selection, autoSelectIf: (node: RNode<ParentInformation>) => boolean = autoSelectLibrary): ReconstructionResult {
   reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
-  const result = foldAstStateful(ast.decoratedAst, { selection, autoSelectIf }, reconstructAstFolds)
+  let autoSelected = 0
+  const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
+    const result = autoSelectIf(node)
+    if(result) {
+      autoSelected++
+    }
+    return result
+  }
+  const result = foldAstStateful(ast.decoratedAst, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
   reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
   if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
     // remove outer block
-    return prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1))
+    return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), autoSelected }
   } else {
-    return prettyPrintCodeToString(result)
+    return { code: prettyPrintCodeToString(result), autoSelected }
   }
 }

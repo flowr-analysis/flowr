@@ -300,13 +300,24 @@ function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: R
   guard(call.flavour === 'named', `infix special call must be named, got: ${call.flavour}`)
   const lhs = args[0]
   const rhs = args[1]
+
   if ((lhs === undefined || lhs.length === 0) && (rhs === undefined || rhs.length === 0)) {
     return []
   } /* TODO: else if (lhs === undefined || lhs.length === 0) {
     return rhs as Code
   } */
+
   // else if (rhs === undefined || rhs.length === 0) {
   // if rhs is undefined we still  have to keep both now, but reconstruct manually :/
+  if(lhs !== undefined && lhs.length > 0) {
+    const lhsText = lhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n')
+    if(rhs !== undefined && rhs.length > 0) {
+      const rhsText = rhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n')
+      return plain(`${lhsText} ${call.functionName.content} ${rhsText}`)
+    } else {
+      return plain(lhsText)
+    }
+  }
   return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`)
 }
 

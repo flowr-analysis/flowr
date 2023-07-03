@@ -85,7 +85,7 @@ async function benchmark() {
       console.log(`[${options.input}] Skipping Slicing due to --slice=${options.slice}`)
     }
 
-    const stats = slicer.finish()
+    const { stats } = slicer.finish()
     /* TODO: currently may take forever due to re-parsing necessary
       const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats))
       console.log(sliceStatsAsString)

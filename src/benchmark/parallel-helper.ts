@@ -20,7 +20,8 @@ export class LimitBenchmarkPool {
   private readonly module:       string
   private counter = 0
   private skipped:               Arguments[] = []
-  private currentlyRunning  = 0
+  private currentlyRunning:      Arguments[] = []
+  private reportingInterval:     NodeJS.Timer | undefined = undefined
 
   /**
    * Create a new parallel helper that runs the given `module` once for each {@link Arguments} in the `queue`.
@@ -34,32 +35,36 @@ export class LimitBenchmarkPool {
     this.parallel = parallel
   }
 
-
-  public async run() {
+  public async run(): Promise<void> {
+    this.reportingInterval = setInterval(() => {
+      console.log(`Waiting for: ${JSON.stringify(this.currentlyRunning)}`)
+    }, 20000)
     const promises: Promise<void>[] = []
     // initial run, runNext will schedule itself recursively we use the limit too if there are more cores than limit :D
-    while(this.currentlyRunning < Math.min(this.parallel, this.limit) && this.workingQueue.length > 0) {
+    while(this.currentlyRunning.length < Math.min(this.parallel, this.limit) && this.workingQueue.length > 0) {
       promises.push(this.runNext())
     }
-    return await Promise.all(promises)
+    await Promise.all(promises)
+    clearInterval(this.reportingInterval)
   }
 
   public getStats(): { counter: number, skipped: Arguments[]} {
     return { counter: this.counter, skipped: this.skipped }
   }
 
-  private async runNext() {
-    if(this.counter + this.currentlyRunning >= this.limit || this.workingQueue.length <= 0) {
-      console.log(`Skip running next as counter: ${this.counter} and currently running: ${this.currentlyRunning} beat ${this.limit} or ${this.workingQueue.length}`)
+  private async runNext(): Promise<void> {
+    if(this.counter + this.currentlyRunning.length >= this.limit || this.workingQueue.length <= 0) {
+      console.log(`Skip running next as counter: ${this.counter} and currently running: ${this.currentlyRunning.length} beat ${this.limit} or ${this.workingQueue.length}`)
       return
     }
 
-    this.currentlyRunning += 1
 
     const args = this.workingQueue.pop()
     guard(args !== undefined, () => `arguments should not be undefined in ${JSON.stringify(this.workingQueue)}`)
 
-    console.log(`[${this.counter}/${this.limit}] Running next, currently running: ${this.currentlyRunning}, queue: ${this.workingQueue.length} [args: ${JSON.stringify(args)}]`)
+    this.currentlyRunning.push(args)
+
+    console.log(`[${this.counter}/${this.limit}] Running next, currently running: ${this.currentlyRunning.length}, queue: ${this.workingQueue.length} [args: ${JSON.stringify(args)}]`)
 
     const child = cp.fork(this.module, args)
 
@@ -70,7 +75,7 @@ export class LimitBenchmarkPool {
         log.error(`Benchmark for ${JSON.stringify(args)} exited with code ${JSON.stringify(code)} (signal: ${JSON.stringify(signal)})`)
         this.skipped.push(args)
       }
-      this.currentlyRunning -= 1
+      this.currentlyRunning.splice(this.currentlyRunning.findIndex(a => a === args), 1)
     })
 
     // schedule re-schedule

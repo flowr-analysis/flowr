@@ -7,7 +7,7 @@ import { date2string } from '../util/time'
 import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
 import * as os from 'os'
 import { guard } from '../util/assert'
-import { SlicerStats } from '../benchmark'
+import fs from 'fs'
 
 // TODO: promote to the normal slicing app with a --benchmark 100 flag afterwards
 // TODO: allow to select slicing criteria filter
@@ -68,7 +68,15 @@ log.info('running with options - do not use for final benchmark', options)
 // TODO: unify and generalize
 guard(options.slice === 'all' || options.slice === 'no', 'slice must be either all or no')
 
+function removeIfExists(summarizedRaw: string) {
+  if (fs.existsSync(summarizedRaw)) {
+    console.log(`Removing existing ${summarizedRaw}`)
+    fs.unlinkSync(summarizedRaw)
+  }
+}
+
 async function benchmark() {
+  removeIfExists(options.output)
   console.log(`Writing output continuously to ${options.output}`)
   console.log(`Using ${options.parallel} parallel executors`)
   // we do not use the limit argument to be able to pick the limit randomly

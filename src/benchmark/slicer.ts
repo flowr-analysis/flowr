@@ -185,6 +185,7 @@ export class BenchmarkSlicer {
       () => convertAllSlicingCriteriaToIds(slicingCriteria, this.decoratedAst as DecoratedAst)
     )
     stats.slicingCriteria = mappedCriteria
+    console.log('mapped criteria', mappedCriteria.map(c => this.decoratedAst?.idMap.get(c.id)?.location))
 
     const mappedIds = mappedCriteria.map(c => c.id)
 

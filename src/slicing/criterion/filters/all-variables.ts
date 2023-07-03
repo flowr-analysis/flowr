@@ -1,9 +1,9 @@
 import {
   foldAst,
-  FoldFunctions,
+  FoldFunctions, isSpecialSymbol,
   NodeId,
   ParentInformation,
-  RFunctionCall, RNodeWithParent
+  RFunctionCall, RNodeWithParent, RSymbol
 } from '../../../r-bridge'
 import { SlicingCriteriaFilter } from '../collect-all'
 import { isNotNull } from '../../../util/assert'
@@ -20,7 +20,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
   foldNumber:  onLeaf,
   foldString:  onLeaf,
   foldLogical: onLeaf,
-  foldSymbol:  (symbol: RNodeWithParent) => [symbol.info.id],
+  foldSymbol:  (symbol: RSymbol<ParentInformation>) => isSpecialSymbol(symbol) ? [] : [symbol.info.id],
   foldAccess:  (_: unknown, name: NodeId[], access: string | (null | NodeId[])[]) => Array.isArray(access) ? [...name, ...access.filter(isNotNull).flat()] : name,
   binaryOp:    {
     foldLogicalOp:    onBinary,

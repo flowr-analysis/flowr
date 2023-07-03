@@ -15,11 +15,11 @@ function assertRetrievedIdsWith(shell: RShell, name: string, input: string, filt
     const decorated = decorateAst(ast)
     const got = [...collectAllSlicingCriteria(decorated.decoratedAst, filter)]
       .flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated))
-      .map(m => m.id)
+      .map(m => ({id: m.id, name: decorated.idMap.get(m.id)?.lexeme}))
     const expectedMapped = expected
       .flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated))
 
-    assert.deepStrictEqual(got, expectedMapped.map(m => m.id), `mapped: ${JSON.stringify(expectedMapped)}`)
+    assert.deepStrictEqual(got, expectedMapped.map(m => ({id: m.id, name: decorated.idMap.get(m.id)?.lexeme})), `mapped: ${JSON.stringify(expectedMapped)}`)
   })
 }
 
@@ -43,5 +43,11 @@ if(TRUE) {
   a - 1 -> a
 }
 foo(5)`, [ '1@a' ], [ '2@b' ], [ '4@a' ], [ '5:5' ], [ '5:9' ], [ '7@foo' ], [ '8@x' ], [ '10:3' ], [ '10:12' ])
+    test(`x = NULL
+u <<- function(a = NULL, b = NA, c, d=7, e=x, f=T, g=FALSE, ...) {
+  g <- 12 * NaN - Inf
+  h <- function(x) { x + 1 }
+  return(h(a + b))
+}`, [ '1@x' ], [ '2@u' ], ['2@x'], [ '3@g' ], [ '4@h' ], [ '4:22' ], [ '5@a' ], [ '5@b' ])
   })
 }))

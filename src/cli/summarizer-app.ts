@@ -179,7 +179,7 @@ function ultimateSummarize() {
           sliceCriteriaSizes: got.summarize.perSliceMeasurements.sliceCriteriaSizes,
           measurements:
             new Map(
-              (got.summarize.perSliceMeasurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][])
+              (got.summarize.perSliceMeasurements.measurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][])
             ),
           reduction:        got.summarize.perSliceMeasurements.reduction,
           failedToRepParse: got.summarize.perSliceMeasurements.failedToRepParse,

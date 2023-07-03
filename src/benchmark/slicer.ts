@@ -220,7 +220,6 @@ export class BenchmarkSlicer {
     benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code}`)
 
     stats.measurements = measurements.get()
-    // TODO: end statistics
     return stats
   }
 

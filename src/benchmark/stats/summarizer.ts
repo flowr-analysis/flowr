@@ -77,12 +77,12 @@ function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerSta
   [k in keyof SliceSizeCollection]: number
 }): Reduction {
   return {
-    numberOfLines:                perSlice.lines / input.numberOfLines,
-    numberOfLinesNoAutoSelection: (perSlice.lines - perSlice.autoSelected) / input.numberOfLines,
-    numberOfCharacters:           perSlice.characters / input.numberOfCharacters,
-    numberOfRTokens:              perSlice.tokens / input.numberOfRTokens,
-    numberOfNormalizedTokens:     perSlice.normalizedTokens / input.numberOfNormalizedTokens,
-    numberOfDataflowNodes:        perSlice.dataflowNodes / dataflow.numberOfNodes
+    numberOfLines:                1 - (perSlice.lines / input.numberOfLines),
+    numberOfLinesNoAutoSelection: 1 - ((perSlice.lines - perSlice.autoSelected) / input.numberOfLines),
+    numberOfCharacters:           1 - (perSlice.characters / input.numberOfCharacters),
+    numberOfRTokens:              1 - (perSlice.tokens / input.numberOfRTokens),
+    numberOfNormalizedTokens:     1 - (perSlice.normalizedTokens / input.numberOfNormalizedTokens),
+    numberOfDataflowNodes:        1 - (perSlice.dataflowNodes / dataflow.numberOfNodes)
   }
 }
 

@@ -74,11 +74,19 @@ export interface SummarizedPerSliceStats {
   }
 }
 
-function saveDivPercentage(a: number, b: number): number | undefined{
-  if(b === 0) {
+function safeDivPercentage(a: number, b: number): number | undefined{
+  if(isNaN(a) || isNaN(b)) {
+    return undefined
+  } else if(b === 0) {
     return a === 0 ? 0 : undefined
   } else {
-    return 1 - (a / b)
+    const result = 1 - (a / b)
+    if(isNaN(result)) {
+      console.error(`NaN for ${a} and ${b}\n`)
+      return undefined
+    } else {
+      return result
+    }
   }
 }
 
@@ -86,12 +94,12 @@ function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerSta
   [k in keyof SliceSizeCollection]: number
 }): Reduction<number | undefined> {
   return {
-    numberOfLines:                saveDivPercentage(perSlice.lines, input.numberOfLines),
-    numberOfLinesNoAutoSelection: saveDivPercentage(perSlice.lines - perSlice.autoSelected, input.numberOfLines),
-    numberOfCharacters:           saveDivPercentage(perSlice.characters, input.numberOfCharacters),
-    numberOfRTokens:              saveDivPercentage(perSlice.tokens, input.numberOfRTokens),
-    numberOfNormalizedTokens:     saveDivPercentage(perSlice.normalizedTokens, input.numberOfNormalizedTokens),
-    numberOfDataflowNodes:        saveDivPercentage(perSlice.dataflowNodes, dataflow.numberOfNodes)
+    numberOfLines:                safeDivPercentage(perSlice.lines, input.numberOfLines),
+    numberOfLinesNoAutoSelection: safeDivPercentage(perSlice.lines - perSlice.autoSelected, input.numberOfLines),
+    numberOfCharacters:           safeDivPercentage(perSlice.characters, input.numberOfCharacters),
+    numberOfRTokens:              safeDivPercentage(perSlice.tokens, input.numberOfRTokens),
+    numberOfNormalizedTokens:     safeDivPercentage(perSlice.normalizedTokens, input.numberOfNormalizedTokens),
+    numberOfDataflowNodes:        safeDivPercentage(perSlice.dataflowNodes, dataflow.numberOfNodes)
   }
 }
 
@@ -220,6 +228,7 @@ export function summarizeMeasurement(data: number[]): SummarizedMeasurement {
 }
 
 export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): SummarizedMeasurement {
+  console.log(data)
   const min = data.map(d => d.min).reduce((a, b) => Math.min(a, b), Infinity)
   const max = data.map(d => d.max).reduce((a, b) => Math.max(a, b), -Infinity)
   // get most average

@@ -55,6 +55,9 @@ function roundTo(num: number, digits = 4): number {
 }
 
 function asPercentage(num: number): string {
+  if(isNaN(num)) {
+    return `??%`
+  }
   return pad(`${roundTo(num * 100, 2)}%`)
 }
 

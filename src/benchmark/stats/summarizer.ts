@@ -21,6 +21,7 @@ import {
 import { SlicingCriteria } from '../../slicing'
 import * as tmp from 'tmp'
 import fs from 'fs'
+import { isNotUndefined } from '../../util/assert'
 
 const tempfile = tmp.fileSync({ postfix: '.R' })
 
@@ -73,24 +74,24 @@ export interface SummarizedPerSliceStats {
   }
 }
 
-function saveDiv(a: number, b: number): number {
+function saveDivPercentage(a: number, b: number): number | undefined{
   if(b === 0) {
-    return a === 0 ? 1 : 0
+    return a === 0 ? 0 : undefined
   } else {
-    return a / b
+    return 1 - (a / b)
   }
 }
 
 function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerStatsDataflow, perSlice: {
   [k in keyof SliceSizeCollection]: number
-}): Reduction {
+}): Reduction<number | undefined> {
   return {
-    numberOfLines:                1 - saveDiv(perSlice.lines, input.numberOfLines),
-    numberOfLinesNoAutoSelection: 1 - saveDiv(perSlice.lines - perSlice.autoSelected, input.numberOfLines),
-    numberOfCharacters:           1 - saveDiv(perSlice.characters, input.numberOfCharacters),
-    numberOfRTokens:              1 - saveDiv(perSlice.tokens, input.numberOfRTokens),
-    numberOfNormalizedTokens:     1 - saveDiv(perSlice.normalizedTokens, input.numberOfNormalizedTokens),
-    numberOfDataflowNodes:        1 - saveDiv(perSlice.dataflowNodes, dataflow.numberOfNodes)
+    numberOfLines:                saveDivPercentage(perSlice.lines, input.numberOfLines),
+    numberOfLinesNoAutoSelection: saveDivPercentage(perSlice.lines - perSlice.autoSelected, input.numberOfLines),
+    numberOfCharacters:           saveDivPercentage(perSlice.characters, input.numberOfCharacters),
+    numberOfRTokens:              saveDivPercentage(perSlice.tokens, input.numberOfRTokens),
+    numberOfNormalizedTokens:     saveDivPercentage(perSlice.normalizedTokens, input.numberOfNormalizedTokens),
+    numberOfDataflowNodes:        saveDivPercentage(perSlice.dataflowNodes, dataflow.numberOfNodes)
   }
 }
 
@@ -108,7 +109,7 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
   reParseShellSession.tryToInjectHomeLibPath()
   const tokenMap = await getStoredTokenMap(reParseShellSession)
 
-  const reductions: Reduction[] = []
+  const reductions: Reduction<number | undefined>[] = []
 
   let failedOutputs = 0
 
@@ -187,12 +188,12 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
       measurements:       summarized,
       failedToRepParse:   failedOutputs,
       reduction:          {
-        numberOfLines:                summarizeMeasurement(reductions.map(r => r.numberOfLines)),
-        numberOfLinesNoAutoSelection: summarizeMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection)),
-        numberOfCharacters:           summarizeMeasurement(reductions.map(r => r.numberOfCharacters)),
-        numberOfRTokens:              summarizeMeasurement(reductions.map(r => r.numberOfRTokens)),
-        numberOfNormalizedTokens:     summarizeMeasurement(reductions.map(r => r.numberOfNormalizedTokens)),
-        numberOfDataflowNodes:        summarizeMeasurement(reductions.map(r => r.numberOfDataflowNodes))
+        numberOfLines:                summarizeMeasurement(reductions.map(r => r.numberOfLines).filter(isNotUndefined)),
+        numberOfLinesNoAutoSelection: summarizeMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection).filter(isNotUndefined)),
+        numberOfCharacters:           summarizeMeasurement(reductions.map(r => r.numberOfCharacters).filter(isNotUndefined)),
+        numberOfRTokens:              summarizeMeasurement(reductions.map(r => r.numberOfRTokens).filter(isNotUndefined)),
+        numberOfNormalizedTokens:     summarizeMeasurement(reductions.map(r => r.numberOfNormalizedTokens).filter(isNotUndefined)),
+        numberOfDataflowNodes:        summarizeMeasurement(reductions.map(r => r.numberOfDataflowNodes).filter(isNotUndefined))
       },
       sliceSize: {
         lines:            summarizeMeasurement(sliceSize.lines),

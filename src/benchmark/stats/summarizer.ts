@@ -73,16 +73,24 @@ export interface SummarizedPerSliceStats {
   }
 }
 
+function saveDiv(a: number, b: number): number {
+  if(b === 0) {
+    return a === 0 ? 1 : 0
+  } else {
+    return a / b
+  }
+}
+
 function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerStatsDataflow, perSlice: {
   [k in keyof SliceSizeCollection]: number
 }): Reduction {
   return {
-    numberOfLines:                1 - (perSlice.lines / input.numberOfLines),
-    numberOfLinesNoAutoSelection: 1 - ((perSlice.lines - perSlice.autoSelected) / input.numberOfLines),
-    numberOfCharacters:           1 - (perSlice.characters / input.numberOfCharacters),
-    numberOfRTokens:              1 - (perSlice.tokens / input.numberOfRTokens),
-    numberOfNormalizedTokens:     1 - (perSlice.normalizedTokens / input.numberOfNormalizedTokens),
-    numberOfDataflowNodes:        1 - (perSlice.dataflowNodes / dataflow.numberOfNodes)
+    numberOfLines:                1 - saveDiv(perSlice.lines, input.numberOfLines),
+    numberOfLinesNoAutoSelection: 1 - saveDiv(perSlice.lines - perSlice.autoSelected, input.numberOfLines),
+    numberOfCharacters:           1 - saveDiv(perSlice.characters, input.numberOfCharacters),
+    numberOfRTokens:              1 - saveDiv(perSlice.tokens, input.numberOfRTokens),
+    numberOfNormalizedTokens:     1 - saveDiv(perSlice.normalizedTokens, input.numberOfNormalizedTokens),
+    numberOfDataflowNodes:        1 - saveDiv(perSlice.dataflowNodes, dataflow.numberOfNodes)
   }
 }
 

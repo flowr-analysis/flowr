@@ -118,7 +118,6 @@ export class BenchmarkSlicer {
       'produce dataflow information',
       () => produceDataFlowGraph(this.decoratedAst as DecoratedAst)
     )
-    fs.writeFileSync('/tmp/t.mermaid', graphToMermaid(this.dataflow.graph, this.decoratedAst.idMap))
 
     const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8')
     // retrieve number of R tokens - flowr_parsed should still contain the last parsed code

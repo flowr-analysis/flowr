@@ -3,8 +3,9 @@ import commandLineArgs from 'command-line-args'
 import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import fs from 'fs'
 import { guard } from '../util/assert'
-import { SlicingCriteria } from '../slicing'
+import { SingleSlicingCriterion, SlicingCriteria } from '../slicing'
 import { BenchmarkSlicer, stats2string, summarizeSlicerStats } from '../benchmark'
+import { NodeId } from '../r-bridge'
 
 export const toolName = 'slicer'
 
@@ -69,10 +70,10 @@ async function getSlice() {
 
   const slices = options.criterion.split(';').map(c => c.trim())
 
+  let mappedSlices: { criterion: SingleSlicingCriterion, id: NodeId }[] = []
   try {
     const { reconstructedCode, slicingCriteria } = slicer.slice(...slices as SlicingCriteria)
-    const mappedCriteria = slicingCriteria.map(c => `    ${c.criterion} => ${c.id}`).join('\n')
-    console.log(`Mapped criteria:\n${mappedCriteria}`)
+    mappedSlices = slicingCriteria
     console.log('Written reconstructed code to', output)
     console.log(`Automatically selected ${reconstructedCode.autoSelected} statements`)
     fs.writeFileSync(output, reconstructedCode.code)
@@ -80,7 +81,9 @@ async function getSlice() {
     log.error(`[Skipped] Error while processing ${options.input}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
   }
 
-  const { stats } = slicer.finish()
+  const { stats, decoratedAst } = slicer.finish()
+  const mappedCriteria = mappedSlices.map(c => `    ${c.criterion} => ${c.id} (${JSON.stringify(decoratedAst.idMap.get(c.id)?.location)})`).join('\n')
+  console.log(`Mapped criteria:\n${mappedCriteria}`)
   const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats))
 
   console.log(sliceStatsAsString)

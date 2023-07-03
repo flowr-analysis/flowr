@@ -22,6 +22,15 @@ describe('Simple', withShell(shell => {
     }
   })
 
+  describe('Access', () => {
+    for (const [code, id, expected] of [
+      ['a[3]', '0', 'a[3]' ],
+      ['a[x]', '1', 'x' ]
+    ]) {
+      assertReconstructed(code, shell, code, id, expected)
+    }
+  })
+
   describe('Loops', () => {
     describe('repeat', () => {
       const pool: [string, string | string[], string][] = [

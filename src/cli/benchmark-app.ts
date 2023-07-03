@@ -92,9 +92,11 @@ async function benchmark() {
   }
   const limit = options.limit ?? files.length
 
+  const verboseAdd = options.verbose ? ['--verbose'] : []
+
   const pool = new LimitBenchmarkPool(
     `${__dirname}/../cli/benchmark-helper-app`,
-    files.map(f => [f.content, '--output', options.output, '--slice', options.slice]),
+    files.map(f => [f.content, '--output', options.output, '--slice', options.slice, ...verboseAdd]),
     limit,
     options.parallel
   )

@@ -152,7 +152,7 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
       }))
     } catch(e: unknown) {
       console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`) //, e
-      console.error(`      Code: ${output}`)
+      console.error(`      Code: ${output}\n`)
     }
 
     sliceSize.dataflowNodes.push(perSliceStat.numberOfDataflowNodesSliced)

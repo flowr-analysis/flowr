@@ -21,7 +21,7 @@ import {
   StatefulFoldFunctions
 } from '../r-bridge'
 import { log, LogLevel } from '../util/log'
-import { guard } from '../util/assert'
+import { guard, isNotNull } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
 type Selection = Set<NodeId>
 interface PrettyPrintLine {
@@ -243,7 +243,11 @@ function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code,
   }
   // TODO: improve
   if (accessed.length === 0) {
-    return []
+    if(typeof access === 'string') {
+      return []
+    } else {
+      return access.filter(isNotNull).flat()
+    }
   }
 
   return plain(getLexeme(node))

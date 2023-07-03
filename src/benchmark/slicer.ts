@@ -13,12 +13,12 @@ import {
   retrieveXmlFromRCode,
   RExpressionList,
   RParseRequestFromFile, RParseRequestFromText,
-  RShell
+  RShell, TokenMap
 } from '../r-bridge'
 import { IStoppableStopwatch, Measurements } from './stopwatch'
 import { guard } from '../util/assert'
 import { DataflowInformation } from '../dataflow/internal/info'
-import { graphToMermaid, graphToMermaidUrl, produceDataFlowGraph } from '../dataflow'
+import { graphToMermaid, produceDataFlowGraph } from '../dataflow'
 import {
   convertAllSlicingCriteriaToIds,
   SlicingCriteria,
@@ -30,8 +30,17 @@ import {
 import { CommonSlicerMeasurements, ElapsedTime, PerSliceMeasurements, PerSliceStats, SlicerStats } from './stats'
 import fs from 'fs'
 import { log } from '../util/log'
+import { MergeableRecord } from '../util/objects'
 
 export const benchmarkLogger = log.getSubLogger({ name: "benchmark" })
+
+export interface BenchmarkSlicerStats extends MergeableRecord {
+  stats:         SlicerStats
+  tokenMap:      Record<string, string>
+  normalizedAst: RExpressionList
+  decoratedAst:  DecoratedAst
+  dataflow:      DataflowInformation
+}
 
 /**
  * A slicer that can be used to slice exactly one file (multiple times).
@@ -185,7 +194,10 @@ export class BenchmarkSlicer {
       () => convertAllSlicingCriteriaToIds(slicingCriteria, this.decoratedAst as DecoratedAst)
     )
     stats.slicingCriteria = mappedCriteria
-    console.log('mapped criteria', mappedCriteria.map(c => this.decoratedAst?.idMap.get(c.id)?.location))
+    benchmarkLogger.info(`mapped slicing criteria: ${mappedCriteria.map(c => {
+      const node = this.decoratedAst?.idMap.get(c.id)
+      return `\n-   id: ${c.id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`
+    }).join('')}`)
 
     const mappedIds = mappedCriteria.map(c => c.id)
 
@@ -204,7 +216,7 @@ export class BenchmarkSlicer {
       () => reconstructToCode<NoInfo>(this.decoratedAst as DecoratedAst, slicedOutput)
     )
     totalStopwatch.stop()
-    benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode}`)
+    benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code}`)
 
     stats.measurements = measurements.get()
     // TODO: end statistics
@@ -242,7 +254,7 @@ export class BenchmarkSlicer {
    * Retrieves the final stats and closes the shell session.
    * Can be called multiple times to retrieve the stored stats, but will only close the session once (the first time).
    */
-  public finish(): SlicerStats {
+  public finish(): BenchmarkSlicerStats {
     guard(this.stats !== undefined, 'need to call init before finish')
 
     if(!this.finished) {
@@ -255,7 +267,13 @@ export class BenchmarkSlicer {
     }
 
     this.stats.commonMeasurements = this.commonMeasurements.get()
-    return this.stats
+    return {
+      stats:         this.stats,
+      dataflow:      this.dataflow as DataflowInformation,
+      decoratedAst:  this.decoratedAst as DecoratedAst,
+      normalizedAst: this.normalizedAst as RExpressionList,
+      tokenMap:      this.tokenMap as TokenMap,
+    }
   }
 
   /**

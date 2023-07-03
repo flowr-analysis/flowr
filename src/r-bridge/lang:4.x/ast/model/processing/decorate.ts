@@ -71,7 +71,7 @@ export interface ParentInformation {
 export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInformation>
 
 
-export type DecoratedAstMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
+export type DecoratedAstMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
 interface FoldInfo<OtherInfo> { idMap: DecoratedAstMap<OtherInfo>, getId: IdGenerator<OtherInfo> }
 
 /**

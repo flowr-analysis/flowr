@@ -8,7 +8,7 @@ import {
 import { assert } from 'chai'
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
-  const rawStats = slicer.finish()
+  const { stats: rawStats } = slicer.finish()
   const stats = await summarizeSlicerStats(rawStats)
   const statInfo = stats2string(stats)
 

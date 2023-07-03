@@ -83,7 +83,9 @@ export function removeTokenMapQuotationMarks(str: string): string {
   }
 }
 
-export async function getStoredTokenMap(shell: RShell): Promise<Record<string, string>> {
+export type TokenMap = Record<string, string>
+
+export async function getStoredTokenMap(shell: RShell): Promise<TokenMap> {
   await shell.ensurePackageInstalled('xmlparsedata', true /* use some kind of environment in the future */)
   // we invert the token map to get a mapping back from the replacement
   const parsed = parseCSV(await shell.sendCommandWithOutput(

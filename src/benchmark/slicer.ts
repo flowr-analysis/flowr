@@ -29,7 +29,7 @@ import {
 } from '../slicing'
 import { CommonSlicerMeasurements, ElapsedTime, PerSliceMeasurements, PerSliceStats, SlicerStats } from './stats'
 import fs from 'fs'
-import { log } from '../util/log'
+import { log, LogLevel } from '../util/log'
 import { MergeableRecord } from '../util/objects'
 
 export const benchmarkLogger = log.getSubLogger({ name: "benchmark" })
@@ -194,10 +194,12 @@ export class BenchmarkSlicer {
       () => convertAllSlicingCriteriaToIds(slicingCriteria, this.decoratedAst as DecoratedAst)
     )
     stats.slicingCriteria = mappedCriteria
-    benchmarkLogger.info(`mapped slicing criteria: ${mappedCriteria.map(c => {
-      const node = this.decoratedAst?.idMap.get(c.id)
-      return `\n-   id: ${c.id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`
-    }).join('')}`)
+    if(benchmarkLogger.settings.minLevel >= LogLevel.info) {
+      benchmarkLogger.info(`mapped slicing criteria: ${mappedCriteria.map(c => {
+        const node = this.decoratedAst?.idMap.get(c.id)
+        return `\n-   id: ${c.id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`
+      }).join('')}`)
+    }
 
     const mappedIds = mappedCriteria.map(c => c.id)
 

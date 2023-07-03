@@ -13,6 +13,7 @@ import {
 import fs from 'fs'
 import { SlicingCriteria } from '../slicing'
 import { escape } from '../statistics'
+import { displayEnvReplacer } from '../util/json'
 
 export const toolName = 'summarizer'
 
@@ -137,7 +138,7 @@ async function summarize() {
     })
 
     console.log(`    - Append raw summary to ${summarizedRaw}`)
-    fs.appendFileSync(summarizedRaw, `${JSON.stringify({ filename: got.filename, summarize: summarized })}\n`)
+    fs.appendFileSync(summarizedRaw, `${JSON.stringify({ filename: got.filename, summarize: summarized }, displayEnvReplacer)}\n`)
 
     console.log(`    - Append textual summary to ${summarizedText}`)
     fs.appendFileSync(summarizedText, `${stats2string(summarized)}\n`)
@@ -191,7 +192,7 @@ function ultimateSummarize() {
   // summarizedRaw
   const ultimate = summarizeAllSummarizedStats(allSummarized)
   console.log(`Writing ultimate summary to ${ultimateRaw}`)
-  fs.writeFileSync(ultimateRaw, JSON.stringify(ultimate))
+  fs.writeFileSync(ultimateRaw, JSON.stringify(ultimate, displayEnvReplacer))
   console.log(ultimateStats2String(ultimate))
 }
 

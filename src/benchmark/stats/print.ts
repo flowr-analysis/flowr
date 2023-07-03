@@ -30,7 +30,7 @@ function formatNanoseconds(nanoseconds: bigint | number): string {
   const secondsStr= seconds > 0 ? `${String(seconds).padStart(2, '0')}.` : ''
   const millisecondsStr = seconds > 0 ? `${String(milliseconds).padStart(3, '0')}:` : `${String(milliseconds)}:`
   const nanoStr = String(remainingNanoseconds).padEnd(3, '0').substring(0, 3)
-  const unit = seconds === 0n ? 'ms' : 's'
+  const unit = seconds === 0n ? 'ms' : ' s' /* space for padding */
   // TODO: round correctly?
   return pad(`${secondsStr}${millisecondsStr}${nanoStr}${unit}`)
 }
@@ -55,14 +55,18 @@ function roundTo(num: number, digits = 4): number {
 }
 
 function asPercentage(num: number): string {
-  return pad(`${roundTo(num * 100)}%`)
+  return pad(`${roundTo(num * 100, 2)}%`)
 }
 
-function formatSummarizedMeasure(measure: SummarizedMeasurement | undefined) {
+function asFloat(num: number): string {
+  return pad(roundTo(num))
+}
+
+function formatSummarizedMeasure(measure: SummarizedMeasurement | undefined, fmt: (num: number) => string = asFloat) {
   if(measure === undefined) {
     return `??`
   }
-  return `${asPercentage(measure.min)} - ${asPercentage(measure.max)} (median: ${asPercentage(measure.median)}, mean: ${asPercentage(measure.mean)}, std: ${asPercentage(measure.std)})`
+  return `${fmt(measure.min)} - ${fmt(measure.max)} (median: ${fmt(measure.median)}, mean: ${fmt(measure.mean)}, std: ${fmt(measure.std)})`
 }
 
 function printSummarizedMeasurements(stats: SummarizedPerSliceStats, key: PerSliceMeasurements): string {
@@ -128,6 +132,7 @@ Dataflow:
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
   // Used Slice Criteria Sizes:  ${formatSummarizedMeasure(stats.perSliceMeasurements.sliceCriteriaSizes)}
   return `
+Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices
 Shell init time:              ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('initialize R session'))}
 Retrieval of token map:       ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve token map'))}
 AST retrieval:                ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve AST from R code'))}
@@ -140,14 +145,14 @@ Slice summary for:
   Slice decoding:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('decode slicing criterion'))}
   Slice creation:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('static slicing'))}
   Reconstruction:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('reconstruct code'))}
-  Failed to Re-Parse:         ${pad(stats.failedToRepParse)} 
-  Reductions:   
-    Number of lines:          ${formatSummarizedMeasure(stats.reduction.numberOfLines)}
-    Number of lines no auto:  ${formatSummarizedMeasure(stats.reduction.numberOfLinesNoAutoSelection)}
-    Number of characters:     ${formatSummarizedMeasure(stats.reduction.numberOfCharacters)}
-    Number of R tokens:       ${formatSummarizedMeasure(stats.reduction.numberOfRTokens)}
-    Normalized R tokens:      ${formatSummarizedMeasure(stats.reduction.numberOfNormalizedTokens)}
-    Number of dataflow nodes: ${formatSummarizedMeasure(stats.reduction.numberOfDataflowNodes)}
+  Failed to Re-Parse:         ${pad(stats.failedToRepParse)}/${stats.totalSlices} 
+  Reductions (reduced by x%):   
+    Number of lines:          ${formatSummarizedMeasure(stats.reduction.numberOfLines, asPercentage)}
+    Number of lines no auto:  ${formatSummarizedMeasure(stats.reduction.numberOfLinesNoAutoSelection, asPercentage)}
+    Number of characters:     ${formatSummarizedMeasure(stats.reduction.numberOfCharacters, asPercentage)}
+    Number of R tokens:       ${formatSummarizedMeasure(stats.reduction.numberOfRTokens, asPercentage)}
+    Normalized R tokens:      ${formatSummarizedMeasure(stats.reduction.numberOfNormalizedTokens, asPercentage)}
+    Number of dataflow nodes: ${formatSummarizedMeasure(stats.reduction.numberOfDataflowNodes, asPercentage)}
 
 Shell close:                  ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('close R session'))}
 Total:                        ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('total'))}

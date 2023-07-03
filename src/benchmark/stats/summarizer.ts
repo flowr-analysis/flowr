@@ -222,6 +222,8 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 
 
 export interface UltimateSlicerStats {
+  totalRequests:        number
+  totalSlices:          number
   commonMeasurements:   Map<CommonSlicerMeasurements, SummarizedMeasurement>
   perSliceMeasurements: Map<PerSliceMeasurements, SummarizedMeasurement>
   /** sum */
@@ -238,6 +240,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
   const inputs: SlicerStatsInput[] = []
   const dataflows: SlicerStatsDataflow[] = []
   let failedToRepParse = 0
+  let totalSlices = 0
 
   for(const stat of stats) {
     for(const [k, v] of stat.commonMeasurements) {
@@ -250,9 +253,12 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
     inputs.push(stat.input)
     dataflows.push(stat.dataflow)
     failedToRepParse += stat.perSliceMeasurements.failedToRepParse
+    totalSlices += stat.perSliceMeasurements.numberOfSlices
   }
 
   return {
+    totalRequests:      stats.length,
+    totalSlices:        totalSlices,
     commonMeasurements: new Map(
       [...commonMeasurements.entries()].map(([k, v]) => [k, summarizeMeasurement(v)])
     ),

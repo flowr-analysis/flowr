@@ -17,7 +17,9 @@ export function xlm2jsonObject(config: XmlParserConfig, xmlString: string): Prom
     explicitChildren:      true,
     // we need this for semicolons etc., while we keep the old broken components we ignore them completely
     preserveChildrenOrder: true,
-    normalize:             true,
+    trim:                  true,
+    includeWhiteChars:     true,
+    normalize:             false,
     strict:                true
   }) as Promise<XmlBasedJson>
 }

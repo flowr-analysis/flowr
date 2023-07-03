@@ -34,22 +34,19 @@ export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
 
   const maybeFunctionCall = tryToParseFunctionCall(childData, others)
   if (maybeFunctionCall !== undefined) {
-    const parsedComments = [...maybeFunctionCall.info.additionalTokens ?? [], ...comments.map(x => parseComment(data, x.content))]
-    maybeFunctionCall.info.additionalTokens = parsedComments
+    maybeFunctionCall.info.additionalTokens = [...maybeFunctionCall.info.additionalTokens ?? [], ...comments.map(x => parseComment(data, x.content))]
     return maybeFunctionCall
   }
 
   const maybeAccess = tryParseAccess(childData, others)
   if (maybeAccess !== undefined) {
-    const parsedComments = [...maybeAccess.info.additionalTokens ?? [], ...comments.map(x => parseComment(data, x.content))]
-    maybeAccess.info.additionalTokens = parsedComments
+    maybeAccess.info.additionalTokens = [...maybeAccess.info.additionalTokens ?? [], ...comments.map(x => parseComment(data, x.content))]
     return maybeAccess
   }
 
   const maybeFunctionDefinition = tryToParseFunctionDefinition(childData, others)
   if (maybeFunctionDefinition !== undefined) {
-    const parsedComments = [...maybeFunctionDefinition.info.additionalTokens ?? [], ...comments.map(x => parseComment(data, x.content))]
-    maybeFunctionDefinition.info.additionalTokens = parsedComments
+    maybeFunctionDefinition.info.additionalTokens = [...maybeFunctionDefinition.info.additionalTokens ?? [], ...comments.map(x => parseComment(data, x.content))]
     return maybeFunctionDefinition
   }
 

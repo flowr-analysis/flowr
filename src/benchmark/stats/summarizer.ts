@@ -67,6 +67,7 @@ export interface SummarizedPerSliceStats {
   sliceCriteriaSizes: SummarizedMeasurement
   measurements:       Map<PerSliceMeasurements, SummarizedMeasurement>
   reduction:          Reduction<SummarizedMeasurement>
+  failedToRepParse:   number
   sliceSize:          {
     [K in keyof SliceSizeCollection]: SummarizedMeasurement
   }
@@ -100,6 +101,8 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
   const tokenMap = await getStoredTokenMap(reParseShellSession)
 
   const reductions: Reduction[] = []
+
+  let failedOutputs = 0
 
   const sliceSize: SliceSizeCollection = {
     lines:            [],
@@ -153,6 +156,7 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
     } catch(e: unknown) {
       console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`) //, e
       console.error(`      Code: ${output}\n`)
+      failedOutputs++
     }
 
     sliceSize.dataflowNodes.push(perSliceStat.numberOfDataflowNodesSliced)
@@ -173,6 +177,7 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
       numberOfSlices:     perSliceStats.size,
       sliceCriteriaSizes: summarizeMeasurement(sizeOfSliceCriteria),
       measurements:       summarized,
+      failedToRepParse:   failedOutputs,
       reduction:          {
         numberOfLines:                summarizeMeasurement(reductions.map(r => r.numberOfLines)),
         numberOfLinesNoAutoSelection: summarizeMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection)),
@@ -219,6 +224,8 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 export interface UltimateSlicerStats {
   commonMeasurements:   Map<CommonSlicerMeasurements, SummarizedMeasurement>
   perSliceMeasurements: Map<PerSliceMeasurements, SummarizedMeasurement>
+  /** sum */
+  failedToRepParse:     number
   reduction:            Reduction<SummarizedMeasurement>
   input:                SlicerStatsInput<SummarizedMeasurement>
   dataflow:             SlicerStatsDataflow<SummarizedMeasurement>
@@ -230,6 +237,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
   const reductions: Reduction<SummarizedMeasurement>[] = []
   const inputs: SlicerStatsInput[] = []
   const dataflows: SlicerStatsDataflow[] = []
+  let failedToRepParse = 0
 
   for(const stat of stats) {
     for(const [k, v] of stat.commonMeasurements) {
@@ -241,6 +249,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
     reductions.push(stat.perSliceMeasurements.reduction)
     inputs.push(stat.input)
     dataflows.push(stat.dataflow)
+    failedToRepParse += stat.perSliceMeasurements.failedToRepParse
   }
 
   return {
@@ -250,6 +259,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
     perSliceMeasurements: new Map(
       [...perSliceMeasurements.entries()].map(([k, v]) => [k, summarizeSummarizedMeasurement(v)])
     ),
+    failedToRepParse,
     reduction: {
       numberOfDataflowNodes:        summarizeSummarizedMeasurement(reductions.map(r => r.numberOfDataflowNodes)),
       numberOfLines:                summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLines)),

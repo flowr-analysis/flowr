@@ -265,6 +265,7 @@ a()
 a <- function() { x <- 3; 5 }
 'a'()
 a()
+\`a\`()
     `
     assertSliced('Must link with string/string', shell, code, ['3@\'a\''], `'a' <- function() { 4 }
 'a'()`)
@@ -275,6 +276,8 @@ a()`)
     // the common case:
     assertSliced('Must link with no-string/no-string', shell, code, ['7@a'], `a <- function() { 5 }
 a()`)
+    assertSliced('Try with special backticks', shell, code, ['8@`a`'], `a <- function() { 5 }
+\`a\`()`)
   })
   describe('Using own infix operators', () => {
     const code = `

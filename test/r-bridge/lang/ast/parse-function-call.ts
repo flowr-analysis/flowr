@@ -333,6 +333,32 @@ describe("Parse function calls", withShell((shell) => {
       })
     )
   })
+  describe("Reserved wrong functions", () => {
+    assertAst(
+      "next()",
+      shell,
+      "next()",
+      exprList({
+        type:     Type.Next,
+        location: rangeFrom(1, 1, 1, 4),
+        lexeme:   "next",
+        info:     {}
+
+      })
+    )
+    assertAst(
+      "break()",
+      shell,
+      "break()",
+      exprList({
+        type:     Type.Break,
+        location: rangeFrom(1, 1, 1, 5),
+        lexeme:   "break",
+        info:     {}
+
+      })
+    )
+  })
   // TODO: identify the correct namespace otherwise (statically this is surely limited :c )
 })
 )

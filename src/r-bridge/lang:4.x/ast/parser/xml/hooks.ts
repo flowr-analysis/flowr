@@ -152,9 +152,9 @@ export interface XmlParserHooks {
     /** {@link tryToParseFunctionCall} */
     onFunctionCall: {
       /** triggered if {@link tryToParseFunctionCall} could not detect a function call, you probably still want to return `undefined` */
-      unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RFunctionCall | undefined>
+      unknown(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<RFunctionCall | RNext | RBreak | undefined>
       before(data: ParserData, mappedWithName: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
-      after(data: ParserData, result: RFunctionCall): AutoIfOmit<RFunctionCall>
+      after(data: ParserData, result: RFunctionCall | RNext | RBreak): AutoIfOmit<RFunctionCall | RNext | RBreak>
     }
     /** {@link tryToParseArgument} */
     onArgument: {

@@ -228,13 +228,13 @@ export function summarizeMeasurement(data: number[]): SummarizedMeasurement {
 }
 
 export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): SummarizedMeasurement {
-  console.log(data)
-  const min = data.map(d => d.min).reduce((a, b) => Math.min(a, b), Infinity)
-  const max = data.map(d => d.max).reduce((a, b) => Math.max(a, b), -Infinity)
+  const min = data.map(d => d.min).filter(isNotUndefined).reduce((a, b) => Math.min(a, b), Infinity)
+  const max = data.map(d => d.max).filter(isNotUndefined).reduce((a, b) => Math.max(a, b), -Infinity)
   // get most average
-  const median = data.map(d => d.median).reduce((a, b) => a + b, 0) / data.length
-  const mean = data.map(d => d.mean).reduce((a, b) => a + b, 0) / data.length
-  const std = Math.sqrt(data.map(d => d.std ** 2).reduce((a, b) => a + b, 0) / data.length)
+  const median = data.map(d => d.median).filter(isNotUndefined).reduce((a, b) => a + b, 0) / data.length
+  const mean = data.map(d => d.mean).filter(isNotUndefined).reduce((a, b) => a + b, 0) / data.length
+  // Method 1 of https://www.statology.org/averaging-standard-deviations/
+  const std = Math.sqrt(data.map(d => d.std ** 2).filter(isNotUndefined).reduce((a, b) => a + b, 0) / data.length)
   return { min, max, median, mean, std }
 }
 

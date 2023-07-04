@@ -153,7 +153,6 @@ function ultimateSummarize() {
   const ultimateRaw = `${outputBase}-ultimate.json`
   removeIfExists(ultimateRaw)
 
-
   let line: false | Buffer
 
 

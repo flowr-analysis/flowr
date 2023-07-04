@@ -22,6 +22,7 @@ export const enum Type {
   String = "STR_CONST",
   BinaryOp = "binaryop",
   UnaryOp = "unaryop",
+  LineDirective = "LINE_DIRECTIVE",
   Comment = "COMMENT",
   /* can be special operators like %*% or %o% */
   Special = "SPECIAL",

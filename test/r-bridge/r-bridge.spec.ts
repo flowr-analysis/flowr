@@ -19,6 +19,7 @@ describe('R-Bridge', () => {
     require('./lang/ast/parse-function-call')
     require('./lang/ast/parse-function-definitions')
     require('./lang/ast/parse-snippets')
+    require('./lang/ast/parse-directives')
   })
   describe('Parser Hooks', () => {
     require('./lang/ast/parse-hooks')

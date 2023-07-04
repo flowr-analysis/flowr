@@ -15,7 +15,7 @@ import {
   RFunctionDefinition,
   RRepeatLoop, RForLoop, RWhileLoop,
   RComment, RFunctionCall, RBreak, RNext,
-  RArgument, RNamedAccess, RIndexAccess
+  RArgument, RNamedAccess, RIndexAccess, RLineDirective
 } from './nodes'
 import { OtherInfoNode } from './nodes/info'
 import { RPipe } from './nodes/RPipe'
@@ -84,11 +84,11 @@ export interface Namespace {
 // TODO: special constants
 export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
 
-export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info>
+export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info> | RLineDirective<Info>
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>
 export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RParameter<Info> | RArgument<Info>
-export type ROther<Info>          = RComment<Info>
+export type ROther<Info>          = RComment<Info> | RLineDirective<Info>
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
                                   | ROther<Info> | RConstructs<Info> | RNamedAccess<Info> | RIndexAccess<Info>
                                   | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>  | RPipe<Info>

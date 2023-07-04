@@ -18,7 +18,7 @@ import {
   RParameter,
   RFunctionDefinition,
   RArgument,
-  UnaryOperatorFlavor, RBreak, RNext, RAccess
+  UnaryOperatorFlavor, RBreak, RNext, RAccess, RLineDirective
 } from '../../model'
 import { RNa } from '../../../values'
 import { ParserData } from './data'
@@ -84,6 +84,11 @@ export interface XmlParserHooks {
     onComment: {
       before(data: ParserData, inputObj: XmlBasedJson): AutoIfOmit<XmlBasedJson>
       after(data: ParserData, result: RComment): AutoIfOmit<RComment>
+    }
+    /** {@link parseLineDirective} */
+    onLineDirective: {
+      before(data: ParserData, inputObj: XmlBasedJson): AutoIfOmit<XmlBasedJson>
+      after(data: ParserData, result: RLineDirective): AutoIfOmit<RLineDirective>
     }
   },
   operators: {
@@ -280,6 +285,10 @@ export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = 
   },
   other: {
     onComment: {
+      before: doNothing,
+      after:  doNothing
+    },
+    onLineDirective: {
       before: doNothing,
       after:  doNothing
     }

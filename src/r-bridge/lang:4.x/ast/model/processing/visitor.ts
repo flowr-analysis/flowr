@@ -69,6 +69,7 @@ function visitSingle<OtherInfo>(node: RNode<OtherInfo>, onVisit: OnVisit<OtherIn
     case Type.Comment:
     case Type.Break:
     case Type.Next:
+    case Type.LineDirective:
       // leafs
       break
     default:

@@ -8,6 +8,7 @@ import { getWithTokenType } from '../meta'
 import { Type, RNode } from '../../../../model'
 import { parseComment } from '../other'
 import { parseBreak, parseNext } from '../loops'
+import { parseLineDirective } from '../other/line-directive'
 
 /**
  * Parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)
@@ -30,6 +31,8 @@ export function tryParseOneElementBasedOnType(data: ParserData, elem: NamedXmlBa
       return undefined
     case Type.Comment:
       return parseComment(data, elem.content)
+    case Type.LineDirective:
+      return parseLineDirective(data, elem.content)
     case Type.ExpressionList:
     case Type.Expression:
     case Type.ExprHelpAssignWrapper:

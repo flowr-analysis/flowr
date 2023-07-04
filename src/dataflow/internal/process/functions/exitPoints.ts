@@ -61,6 +61,7 @@ function visitExitPoints<OtherInfo>(node: RNode<OtherInfo & ParentInformation>):
       break
     // contain noting to return/return `invisible(null)`
     case Type.Comment:
+    case Type.LineDirective:
     case Type.Break:
     case Type.Next:
       return { knownIds: [], potentialIds: [] }

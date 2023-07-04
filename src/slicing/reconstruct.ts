@@ -397,7 +397,8 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
     foldModelFormula: foldToConst
   },
   other: {
-    foldComment: reconstructAsLeaf
+    foldComment:       reconstructAsLeaf,
+    foldLineDirective: reconstructAsLeaf
   },
   loop: {
     foldFor:    reconstructForLoop,

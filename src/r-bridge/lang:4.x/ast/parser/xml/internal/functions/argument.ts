@@ -1,13 +1,12 @@
 import { NamedXmlBasedJson } from '../../input-format'
 import { parseLog } from '../../parser'
 import { retrieveMetaStructure } from '../meta'
-import { RNode, Type, RSymbol } from '../../../../model'
+import { RNode, Type, RSymbol, RArgument } from '../../../../model'
 import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../util/log'
 import { guard } from '../../../../../../../util/assert'
 import { tryParseOneElementBasedOnType } from '../structure'
-import { RArgument } from '../../../../model/nodes/RArgument'
 
 /**
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.
@@ -19,11 +18,11 @@ import { RArgument } from '../../../../model/nodes/RArgument'
  * @returns The parsed argument or `undefined` if the given object is not an argument.
  */
 export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]): RArgument | undefined {
-  parseLog.debug(`[argument] try: ${JSON.stringify(objs)}`)
+  parseLog.debug(`[argument]`)
   objs = executeHook(data.hooks.functions.onArgument.before, data, objs)
 
   if(objs.length !== 1 && objs.length !== 3) {
-    log.warn(`Either [expr] or [SYMBOL_SUB, EQ_SUB, expr], but got: ${JSON.stringify(objs)}`)
+    log.warn(`Either [expr|value] or [SYMBOL_SUB, EQ_SUB, expr], but got: ${objs.map(o => o.name).join(', ')}`)
     return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
   }
 
@@ -50,7 +49,7 @@ export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]):
     }
     parsedValue = parseWithValue(data, objs)
   } else {
-    log.warn(`expected symbol or expr for argument, yet received ${JSON.stringify(objs)}`)
+    log.warn(`expected symbol or expr for argument, yet received ${objs.map(o => o.name).join(',')}`)
     return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
   }
 

@@ -1,12 +1,12 @@
 import { DataflowGraph, DataflowScopeName } from '../graph'
-import { DecoratedAst } from '../../r-bridge'
+import { DecoratedAst, ParentInformation } from '../../r-bridge'
 import { REnvironmentInformation, IdentifierReference } from '../environments'
 import { DataflowProcessorInformation } from '../processor'
 
 /**
  * Continuously updated during the dataflow analysis to hold the current state.
  */
-export interface DataflowInformation<OtherInfo> {
+export interface DataflowInformation<OtherInfo = ParentInformation> {
   readonly ast: DecoratedAst<OtherInfo>
   /** Nodes that have not been identified as read or write and will be so on higher */
   activeNodes:  IdentifierReference[]

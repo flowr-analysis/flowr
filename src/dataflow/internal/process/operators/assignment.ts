@@ -65,13 +65,12 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
 
   switch (op.lexeme) {
     case '<-':
+    case '=':
+    case ':=':
       [target, source] = [lhs, rhs]
       break
     case '<<-':
       [target, source, global] = [lhs, rhs, true]
-      break
-    case '=':
-      [target, source] = [lhs, rhs]
       break
     case '->':
       [target, source, swap] = [rhs, lhs, true]
@@ -111,7 +110,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<
   const writeNodes = produceWrittenNodes(op, target, global, data, funcTypeCheck)
 
   if(writeNodes.length !== 1) {
-    log.warn(`Unexpected write number in assignment ${JSON.stringify(op)}: ${JSON.stringify(writeNodes)}`)
+    log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`)
   }
 
 

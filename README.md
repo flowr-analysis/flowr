@@ -44,6 +44,15 @@ npm run slicer -- --stats --criterion "8:3;3:1;12@product" test/testfiles/exampl
 Inspect the resulting slice at `test/testfiles/example.R.slice`, with the stats at
 `test/testfiles/example.R.stats`.
 
+### Conduct Slice Benchmarking
+
+See,
+
+```shell
+npm run benchmark -- --help 
+```
+
+
 ### Generate Usage Statistics
 
 See

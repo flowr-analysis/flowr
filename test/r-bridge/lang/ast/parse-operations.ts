@@ -40,8 +40,31 @@ describe("Parse simple operations",
         })
       }
     })
+    describe("? question", () => {
+      assertAst(
+        `? x`,
+        shell,
+        '? x',
+        exprList({
+          type:     Type.UnaryOp,
+          location: rangeFrom(1, 1, 1, 1),
+          op:       '?',
+          lexeme:   '?',
+          flavor:   'logical', /* TODO */
+          info:     {},
+          operand:  {
+            type:      Type.Symbol,
+            location:  rangeFrom(1, 3, 1, 3),
+            lexeme:    'x',
+            content:   'x',
+            namespace: undefined,
+            info:      {}
+          }
+        })
+      )
+    })
 
-    describe("binary operations", () => {
+    describe('binary operations', () => {
       for (const opSuite of [
         { label: "arithmetic", pool: RArithmeticBinaryOpPool },
         {
@@ -55,7 +78,7 @@ describe("Parse simple operations",
           }
         })
       }
-      describe(`comparison operations`, () => {
+      describe('comparison operations', () => {
         for (const op of ComparisonOperators) {
           describe(op, () => {
             const simpleInput = `1 ${op} 1`
@@ -89,6 +112,105 @@ describe("Parse simple operations",
             )
           })
         }
+      })
+
+      describe('intermixed with comments', () => {
+        assertAst(
+          '1 + # comment\n2',
+          shell,
+          '1 + # comment\n2',
+          exprList({// hoist children
+            type:     Type.ExpressionList,
+            location: rangeFrom(1, 1, 2, 1),
+            info:     {},
+            lexeme:   '1 + # comment\n2',
+            children: [
+              {
+                type:     Type.Comment,
+                content:  " comment",
+                lexeme:   "# comment",
+                location: rangeFrom(1, 5, 1, 13),
+                info:     {}
+              },
+              {
+                type:     Type.BinaryOp,
+                flavor:   'arithmetic',
+                info:     {},
+                lexeme:   '+',
+                op:       '+',
+                location: rangeFrom(1, 3, 1, 3),
+                lhs:      {
+                  type:     Type.Number,
+                  content:  numVal(1),
+                  info:     {},
+                  lexeme:   "1",
+                  location: rangeFrom(1, 1, 1, 1)
+                },
+                rhs: {
+                  type:     Type.Number,
+                  content:  numVal(2),
+                  info:     {},
+                  lexeme:   "2",
+                  location: rangeFrom(2, 1, 2, 1)
+                }
+              }
+            ]
+          })
+        )
+      })
+      describe('Using unknown special infix operator', () => {
+        assertAst(
+          '1 %xxx% 2',
+          shell,
+          '1 %xxx% 2',
+          exprList(
+            {
+              type:         Type.FunctionCall,
+              flavour:      'named',
+              infixSpecial: true,
+              info:         {},
+              lexeme:       '1 %xxx% 2',
+              functionName: {
+                type:      Type.Symbol,
+                lexeme:    '%xxx%',
+                content:   '%xxx%',
+                namespace: undefined,
+                location:  rangeFrom(1, 3, 1, 7),
+                info:      {}
+              },
+              location:  rangeFrom(1, 3, 1, 7),
+              arguments: [
+                {
+                  type:     Type.Argument,
+                  info:     {},
+                  lexeme:   '1',
+                  name:     undefined,
+                  location: rangeFrom(1, 1, 1, 1),
+                  value:    {
+                    type:     Type.Number,
+                    content:  numVal(1),
+                    info:     {},
+                    lexeme:   "1",
+                    location: rangeFrom(1, 1, 1, 1)
+                  }
+                }, {
+                  type:     Type.Argument,
+                  info:     {},
+                  lexeme:   '2',
+                  name:     undefined,
+                  location: rangeFrom(1, 9, 1, 9),
+                  value:    {
+                    type:     Type.Number,
+                    content:  numVal(2),
+                    info:     {},
+                    lexeme:   "2",
+                    location: rangeFrom(1, 9, 1, 9)
+                  }
+                }
+              ]
+            }
+          )
+        )
       })
     })
   })

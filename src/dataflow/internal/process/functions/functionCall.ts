@@ -95,7 +95,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 
     finalGraph.mergeWith(processed.graph)
 
-    guard(processed.out.length > 0, `Argument ${JSON.stringify(arg)} has no out references, but needs one for the unnamed arg`)
+    guard(processed.out.length > 0, () => `Argument ${JSON.stringify(arg)} has no out references, but needs one for the unnamed arg`)
     callArgs.push(processed.out[0])
 
     // add an argument edge to the final graph
@@ -126,8 +126,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
   // mark them as function calls, and append their argument linkages
   const functionNameId = getLastNodeInGraph(functionName)
 
-  guard(functionNameId !== undefined, 'Function call name id not found')
-
+  guard(functionNameId !== undefined, () => `Function call name id not found for ${JSON.stringify(functionCall)}`)
 
   finalGraph.addNode({
     tag:         'function-call',

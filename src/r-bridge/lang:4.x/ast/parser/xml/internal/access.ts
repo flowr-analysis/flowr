@@ -2,11 +2,12 @@ import { NamedXmlBasedJson } from '../input-format'
 import { retrieveMetaStructure } from './meta'
 import { parseLog } from '../parser'
 import { ParserData } from '../data'
-import { Type, RAccess, RNode } from '../../../model'
+import { Type, RAccess, RNode, RArgument } from '../../../model'
 import { executeHook, executeUnknownHook } from '../hooks'
 import { parseBasedOnType } from './structure'
 import { guard } from '../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../util/arrays'
+import { tryToParseArgument } from './functions/argument'
 
 /**
  * Tries to parse the given data as access (e.g., indexing).
@@ -17,11 +18,11 @@ import { splitArrayOn } from '../../../../../../util/arrays'
  * @returns The parsed {@link RAccess} or `undefined` if the given construct is not accessing a value
  */
 export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RAccess | undefined {
-  parseLog.trace(`trying to parse access`)
+  parseLog.trace('trying to parse access')
   mappedWithName = executeHook(data.hooks.onAccess.before, data, mappedWithName)
 
   if(mappedWithName.length < 3) {
-    parseLog.trace(`expected at least three elements are required to parse an access`)
+    parseLog.trace('expected at least three elements are required to parse an access')
     return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
   }
 
@@ -46,26 +47,26 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
       closingLength = 2
       break
     default:
-      parseLog.trace(`expected second element to be an access operator, yet received ${JSON.stringify(accessOp)}`)
+      parseLog.trace(`expected second element to be an access operator, yet received ${accessOp.name}`)
       return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
   }
 
   const accessed = mappedWithName[0]
-  if(accessed.name !== Type.Expression) {
-    parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${JSON.stringify(accessed)}`)
+  if(accessed.name !== Type.Expression && accessed.name !== Type.ExprHelpAssignWrapper) {
+    parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${accessed.name}`)
     return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
   }
 
   const parsedAccessed = parseBasedOnType(data, [accessed])
   if(parsedAccessed.length !== 1) {
-    parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${JSON.stringify(accessed)}`)
+    parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${accessed.name}`)
     return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
   }
 
   // TODO: ensure closing is correct
   const remaining = mappedWithName.slice(2, mappedWithName.length - closingLength)
 
-  parseLog.trace(`${remaining.length} remaining arguments for access: ${JSON.stringify(remaining)}`)
+  parseLog.trace(`${remaining.length} remaining arguments for access`)
 
   const splitAccessOnComma = splitArrayOn(remaining, x => x.name === Type.Comma)
 
@@ -75,9 +76,9 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
       return null
     }
     parseLog.trace(`trying to parse access`)
-    const gotAccess = parseBasedOnType(data, x)
-    guard(gotAccess.length === 1, () => `expected one access result in access, yet received ${JSON.stringify(gotAccess)}`)
-    return gotAccess[0]
+    const gotAccess = parseAccessArgument(operator, data, x)
+    guard(gotAccess !== undefined, () => `expected one access result in access as argument, yet received ${JSON.stringify(gotAccess)}`)
+    return gotAccess
   })
 
   let resultingAccess: (RNode | null)[] | string = parsedAccess
@@ -85,8 +86,8 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
   if(operator === '@' || operator === '$') {
     guard(parsedAccess.length === 1, () => `expected one access result in access with ${JSON.stringify(operator)}, yet received ${JSON.stringify(parsedAccess)}`)
     const first = parsedAccess[0]
-    guard(first !== null && first.type === Type.Symbol, () => `${JSON.stringify(operator)} requires one symbol, yet received ${JSON.stringify(parsedAccess)}`)
-    resultingAccess = first.content
+    guard(first !== null && (first.type === Type.Symbol || first.type === Type.String || first.type === Type.Logical), () => `${JSON.stringify(operator)} requires one symbol, yet received ${JSON.stringify(parsedAccess)}`)
+    resultingAccess = first.type === Type.String ? first.content.str : first.lexeme
   }
 
   const {
@@ -108,4 +109,17 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
     }
   } as RAccess
   return executeHook(data.hooks.onAccess.after, data, result)
+}
+
+
+function parseAccessArgument(operator: RAccess['operator'], data: ParserData, elements: NamedXmlBasedJson[]): RArgument | RNode | undefined {
+  // within access the content is *not* wrapped within another expression, that means if we have a SYMBOL_SUB we can directly parse the argument,
+  // otherwise we have to add the expression layer
+  // console.log('parseAccessArgument', elements.map(x => x.name))
+  if(operator === '@' || operator === '$') {
+    const parse = parseBasedOnType(data, elements)
+    return parse.length !== 1 ? undefined : parse[0]
+  } else {
+    return tryToParseArgument(data, elements)
+  }
 }

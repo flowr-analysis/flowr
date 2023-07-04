@@ -142,6 +142,17 @@ u <- a()
 u()`)
     })
   })
+  describe('Anonymous functions', () => {
+    assertSliced('Keep anonymous', shell, `
+x <- (function() { 
+  x <- 4
+  x - 5
+  3 
+ })()
+cat(x)
+    `, ['7@x'], `x <- (function() { 3 })()
+cat(x)`)
+  })
   describe('Higher-order functions', () => {
     const code = `a <- function() { x <- 3; i }
 i <- 4
@@ -245,5 +256,44 @@ y <- 5
 x <- 2
 a()(y)
 cat(x)`)
+  })
+  describe('Using strings for definitions', () => {
+    const code = `
+'a' <- function() { x <- 3; 4 }
+'a'()
+a()
+a <- function() { x <- 3; 5 }
+'a'()
+a()
+\`a\`()
+    `
+    assertSliced('Must link with string/string', shell, code, ['3@\'a\''], `'a' <- function() { 4 }
+'a'()`)
+    assertSliced('Must link with string/no-string', shell, code, ['4@a'], `'a' <- function() { 4 }
+a()`)
+    assertSliced('Must link with no-string/string', shell, code, ['6@\'a\''], `a <- function() { 5 }
+'a'()`)
+    // the common case:
+    assertSliced('Must link with no-string/no-string', shell, code, ['7@a'], `a <- function() { 5 }
+a()`)
+    assertSliced('Try with special backticks', shell, code, ['8@`a`'], `a <- function() { 5 }
+\`a\`()`)
+  })
+  describe('Using own infix operators', () => {
+    const code = `
+\`%a%\` <- function(x, y) { x + y }
+\`%a%\`(3, 4)
+
+'%b%' <- function(x, y) { x * y }
+'%b%'(3, 4)
+
+cat(3 %a% 4)
+cat(4 %b% 5)
+      `
+    assertSliced('Must link with backticks', shell, code, ['8:7'], `\`%a%\` <- function(x, y) { x + y }
+cat(3 %a% 4)`)
+    assertSliced('Must link with backticks', shell, code, ['9:7'], `'%b%' <- function(x, y) { x * y }
+cat(4 %b% 5)`)
+    assertSliced('Must work with assigned custom pipes too', shell, `a <- b %>% c %>% d`, ['1@a'], `a <- b %>% c %>% d`)
   })
 }))

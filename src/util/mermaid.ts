@@ -9,6 +9,7 @@ import {
   DataflowScopeName, FunctionArgument, IdentifierReference
 } from '../dataflow'
 import { guard } from './assert'
+import { displayEnvReplacer } from './json'
 
 
 interface MermaidGraph {
@@ -63,16 +64,6 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: Dataflo
   mermaid.lines.push(`${idPrefix}${nodeId} -.-|function| ${subflowId}\n`)
 }
 
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function displayEnvReplacer(key: any, value: any): any {
-  if(value instanceof Map || value instanceof Set) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return [...value]
-  } else {
-    return value
-  }
-}
 
 function printArg(arg: IdentifierReference | '<value>' | 'empty' | undefined): string {
   if(arg === 'empty') {

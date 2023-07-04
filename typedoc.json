@@ -9,7 +9,8 @@
     "src/dataflow",
     "src/r-bridge/",
     "src/slicing/static",
-    "src/statistics"
+    "src/statistics",
+    "src/benchmark"
   ],
   "exclude": [
     "**/node_modules/**/*"

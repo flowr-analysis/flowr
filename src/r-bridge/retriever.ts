@@ -1,5 +1,5 @@
 import { type RShell } from "./shell"
-import { parseCSV, ts2r, XmlParserHooks, RExpressionList, parse } from './lang:4.x'
+import { parseCSV, ts2r, XmlParserHooks, RExpressionList, normalize } from './lang:4.x'
 import { startAndEndsWith } from '../util/strings'
 import { DeepPartial } from 'ts-essentials'
 import { guard } from '../util/assert'
@@ -40,7 +40,8 @@ const ERR_MARKER = "err"
  * Provides the capability to parse R files/R code using the R parser.
  * Depends on {@link RShell} to provide a connection to R.
  * <p>
- * throws if the file could not be parsed
+ * Throws if the file could not be parsed.
+ * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell): Promise<string> {
   if (request.ensurePackageInstalled) {
@@ -57,17 +58,18 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
   // TODO: let commands produce output by cat wrapper/shell.command creator to abstract from this?
   const xml = await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)
   const output = xml.join(shell.options.eol)
-  guard(output !== ERR_MARKER, 'unable to parse R code (see the log for more information)')
+  guard(output !== ERR_MARKER, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
   return output
 }
 
 // TODO: type ast etc
 /**
- * uses {@link retrieveXmlFromRCode} and returns the nicely formatted object-AST
+ * Uses {@link retrieveXmlFromRCode} and returns the nicely formatted object-AST.
+ * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export async function retrieveAstFromRCode(request: RParseRequest, tokenMap: Record<string, string>, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> {
   const xml = await retrieveXmlFromRCode(request, shell)
-  return await parse(xml, tokenMap, hooks)
+  return await normalize(xml, tokenMap, hooks)
 }
 
 /**
@@ -81,7 +83,9 @@ export function removeTokenMapQuotationMarks(str: string): string {
   }
 }
 
-export async function getStoredTokenMap(shell: RShell): Promise<Record<string, string>> {
+export type TokenMap = Record<string, string>
+
+export async function getStoredTokenMap(shell: RShell): Promise<TokenMap> {
   await shell.ensurePackageInstalled('xmlparsedata', true /* use some kind of environment in the future */)
   // we invert the token map to get a mapping back from the replacement
   const parsed = parseCSV(await shell.sendCommandWithOutput(
@@ -97,4 +101,13 @@ export async function getStoredTokenMap(shell: RShell): Promise<Record<string, s
     acc[value] = removeTokenMapQuotationMarks(key)
     return acc
   }, {})
+}
+
+/**
+ * Needs to be called *after*  {@link retrieveXmlFromRCode} (or {@link retrieveAstFromRCode})
+ */
+export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise<number> {
+  const result = await shell.sendCommandWithOutput(`cat(nrow(getParseData(flowr_parsed)),${ts2r(shell.options.eol)})`)
+  guard(result.length === 1, 'expected exactly one line to obtain the number of R tokens')
+  return Number(result[0])
 }

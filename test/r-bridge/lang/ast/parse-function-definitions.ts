@@ -114,8 +114,8 @@ describe("Parse function definitions", withShell((shell) => {
     )
   })
   describe("with special parameters (...)", () => {
-    const asSinglParameter = "function(...) { }"
-    assertAst(`as single arg - ${asSinglParameter}`, shell, asSinglParameter,
+    const asSingleParameter = "function(...) { }"
+    assertAst(`as single arg - ${asSingleParameter}`, shell, asSingleParameter,
       exprList({
         type:       Type.FunctionDefinition,
         location:   rangeFrom(1, 1, 1, 8),

@@ -37,11 +37,18 @@ describe("Parse value access", withShell(shell => {
         info:      {}
       },
       access: [{
-        type:     Type.Number,
+        type:     Type.Argument,
         location: rangeFrom(1, 3, 1, 3),
         lexeme:   "1",
-        content:  numVal(1),
-        info:     {}
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 3, 1, 3),
+          lexeme:   "1",
+          content:  numVal(1),
+          info:     {}
+        }
       }]
     }))
     assertAst("One variable", shell, "a[x]", exprList({
@@ -59,12 +66,19 @@ describe("Parse value access", withShell(shell => {
         info:      {}
       },
       access: [{
-        type:      Type.Symbol,
-        location:  rangeFrom(1, 3, 1, 3),
-        namespace: undefined,
-        lexeme:    "x",
-        content:   "x",
-        info:      {}
+        type:     Type.Argument,
+        location: rangeFrom(1, 3, 1, 3),
+        lexeme:   "x",
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:      Type.Symbol,
+          location:  rangeFrom(1, 3, 1, 3),
+          namespace: undefined,
+          lexeme:    "x",
+          content:   "x",
+          info:      {}
+        }
       }]
     }))
     assertAst("One expression", shell, "a[x + 3]", exprList({
@@ -82,26 +96,33 @@ describe("Parse value access", withShell(shell => {
         info:      {}
       },
       access: [{
-        type:     Type.BinaryOp,
-        location: rangeFrom(1, 5, 1, 5),
-        flavor:   'arithmetic',
-        op:       '+',
-        lexeme:   "+",
+        type:     Type.Argument,
+        location: rangeFrom(1, 3, 1, 7),
+        lexeme:   "x + 3",
+        name:     undefined,
         info:     {},
-        lhs:      {
-          type:      Type.Symbol,
-          location:  rangeFrom(1, 3, 1, 3),
-          namespace: undefined,
-          lexeme:    "x",
-          content:   "x",
-          info:      {}
-        },
-        rhs: {
-          type:     Type.Number,
-          location: rangeFrom(1, 7, 1, 7),
-          lexeme:   "3",
-          content:  numVal(3),
-          info:     {}
+        value:    {
+          type:     Type.BinaryOp,
+          location: rangeFrom(1, 5, 1, 5),
+          flavor:   'arithmetic',
+          op:       '+',
+          lexeme:   "+",
+          info:     {},
+          lhs:      {
+            type:      Type.Symbol,
+            location:  rangeFrom(1, 3, 1, 3),
+            namespace: undefined,
+            lexeme:    "x",
+            content:   "x",
+            info:      {}
+          },
+          rhs: {
+            type:     Type.Number,
+            location: rangeFrom(1, 7, 1, 7),
+            lexeme:   "3",
+            content:  numVal(3),
+            info:     {}
+          }
         }
       }]
     }))
@@ -120,17 +141,31 @@ describe("Parse value access", withShell(shell => {
         info:      {}
       },
       access: [{
-        type:     Type.Number,
+        type:     Type.Argument,
         location: rangeFrom(1, 3, 1, 3),
         lexeme:   "3",
-        content:  numVal(3),
-        info:     {}
-      },{
-        type:     Type.Number,
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 3, 1, 3),
+          lexeme:   "3",
+          content:  numVal(3),
+          info:     {}
+        }
+      }, {
+        type:     Type.Argument,
         location: rangeFrom(1, 5, 1, 5),
         lexeme:   "2",
-        content:  numVal(2),
-        info:     {}
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 5, 1, 5),
+          lexeme:   "2",
+          content:  numVal(2),
+          info:     {}
+        }
       }]
     }))
     assertAst("Multiple with empty", shell, "a[,2,4]", exprList({
@@ -148,17 +183,80 @@ describe("Parse value access", withShell(shell => {
         info:      {}
       },
       access: [null, {
-        type:     Type.Number,
+        type:     Type.Argument,
         location: rangeFrom(1, 4, 1, 4),
         lexeme:   "2",
-        content:  numVal(2),
-        info:     {}
-      },{
-        type:     Type.Number,
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 4, 1, 4),
+          lexeme:   "2",
+          content:  numVal(2),
+          info:     {}
+        }
+      }, {
+        type:     Type.Argument,
         location: rangeFrom(1, 6, 1, 6),
         lexeme:   "4",
-        content:  numVal(4),
-        info:     {}
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 6, 1, 6),
+          lexeme:   "4",
+          content:  numVal(4),
+          info:     {}
+        }
+      }]
+    }))
+    assertAst("Named argument", shell, "a[1,super=4]", exprList({
+      type:     Type.Access,
+      location: rangeFrom(1, 2, 1, 2),
+      lexeme:   '[',
+      operator: '[',
+      info:     {},
+      accessed: {
+        type:      Type.Symbol,
+        location:  rangeFrom(1, 1, 1, 1),
+        namespace: undefined,
+        lexeme:    "a",
+        content:   "a",
+        info:      {}
+      },
+      access: [{
+        type:     Type.Argument,
+        location: rangeFrom(1, 3, 1, 3),
+        lexeme:   "1",
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 3, 1, 3),
+          lexeme:   "1",
+          content:  numVal(1),
+          info:     {}
+        }
+      }, {
+        type:     Type.Argument,
+        location: rangeFrom(1, 5, 1, 9),
+        lexeme:   "super",
+        name:     {
+          type:      Type.Symbol,
+          location:  rangeFrom(1, 5, 1, 9),
+          namespace: undefined,
+          lexeme:    "super",
+          content:   "super",
+          info:      {}
+        },
+        info:  {},
+        value: {
+          type:     Type.Number,
+          location: rangeFrom(1, 11, 1, 11),
+          lexeme:   "4",
+          content:  numVal(4),
+          info:     {}
+        }
       }]
     }))
     assertAst("Chained", shell, "a[1][4]", exprList({
@@ -182,19 +280,33 @@ describe("Parse value access", withShell(shell => {
           info:      {}
         },
         access: [{
-          type:     Type.Number,
+          type:     Type.Argument,
           location: rangeFrom(1, 3, 1, 3),
           lexeme:   "1",
-          content:  numVal(1),
-          info:     {}
+          name:     undefined,
+          info:     {},
+          value:    {
+            type:     Type.Number,
+            location: rangeFrom(1, 3, 1, 3),
+            lexeme:   "1",
+            content:  numVal(1),
+            info:     {}
+          }
         }]
       },
       access: [{
-        type:     Type.Number,
+        type:     Type.Argument,
         location: rangeFrom(1, 6, 1, 6),
         lexeme:   "4",
-        content:  numVal(4),
-        info:     {}
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 6, 1, 6),
+          lexeme:   "4",
+          content:  numVal(4),
+          info:     {}
+        }
       }]
     }))
   })
@@ -230,11 +342,18 @@ describe("Parse value access", withShell(shell => {
         info:      {}
       },
       access: [{
-        type:     Type.Number,
+        type:     Type.Argument,
         location: rangeFrom(1, 4, 1, 4),
         lexeme:   "5",
-        content:  numVal(5),
-        info:     {}
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 4, 1, 4),
+          lexeme:   "5",
+          content:  numVal(5),
+          info:     {}
+        }
       }]
     }))
     assertAst("Multiple", shell, "b[[5,3]]", exprList({
@@ -252,17 +371,31 @@ describe("Parse value access", withShell(shell => {
         info:      {}
       },
       access: [{
-        type:     Type.Number,
+        type:     Type.Argument,
         location: rangeFrom(1, 4, 1, 4),
         lexeme:   "5",
-        content:  numVal(5),
-        info:     {}
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 4, 1, 4),
+          lexeme:   "5",
+          content:  numVal(5),
+          info:     {}
+        }
       }, {
-        type:     Type.Number,
+        type:     Type.Argument,
         location: rangeFrom(1, 6, 1, 6),
         lexeme:   "3",
-        content:  numVal(3),
-        info:     {}
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 6, 1, 6),
+          lexeme:   "3",
+          content:  numVal(3),
+          info:     {}
+        }
       }]
     }))
     assertAst("Multiple with empty", shell, "b[[5,,]]", exprList({
@@ -280,11 +413,19 @@ describe("Parse value access", withShell(shell => {
         info:      {}
       },
       access: [{
-        type:     Type.Number,
+
+        type:     Type.Argument,
         location: rangeFrom(1, 4, 1, 4),
         lexeme:   "5",
-        content:  numVal(5),
-        info:     {}
+        name:     undefined,
+        info:     {},
+        value:    {
+          type:     Type.Number,
+          location: rangeFrom(1, 4, 1, 4),
+          lexeme:   "5",
+          content:  numVal(5),
+          info:     {}
+        }
       },null,null]
     }))
   })

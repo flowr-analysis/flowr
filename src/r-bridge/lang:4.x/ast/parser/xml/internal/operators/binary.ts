@@ -1,25 +1,23 @@
-import { NamedXmlBasedJson, XmlParseError } from "../../input-format"
-import { parseLog } from "../../parser"
-import {
-  ensureChildrenAreLhsAndRhsOrdered,
-  retrieveMetaStructure,
-  retrieveOpName,
-} from "../meta"
-import { identifySpecialOp } from "./special"
-import { ParserData } from "../../data"
+import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
+import { parseLog } from '../../parser'
+import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../meta'
+import { identifySpecialOp } from './special'
+import { ParserData } from '../../data'
 import { tryParseOneElementBasedOnType } from '../structure'
 import {
-  Type,
-  RNode,
-  RBinaryOp,
   ArithmeticOperatorsRAst,
   AssignmentsRAst,
   BinaryOperatorFlavor,
   ComparisonOperatorsRAst,
-  LogicalOperatorsRAst, ModelFormulaOperatorsRAst
+  LogicalOperatorsRAst,
+  ModelFormulaOperatorsRAst,
+  RBinaryOp, RFunctionCall, RNamedFunctionCall,
+  RNode,
+  RPipe,
+  RSymbol,
+  Type
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import { RPipe } from '../../../../model/nodes/RPipe'
 import { guard } from '../../../../../../../util/assert'
 
 /**
@@ -55,13 +53,13 @@ export function tryParseBinaryOperation(
   return parseBinaryOp(data, flavor, lhs, op, rhs)
 }
 
-function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RBinaryOp | RPipe {
+function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RFunctionCall | RBinaryOp | RPipe {
   parseLog.debug(`[binary op] trying to parse ${flavor}`);
   ({ flavor, lhs, rhs, op} = executeHook(data.hooks.operators.onBinary.before, data, { flavor, lhs, op, rhs }))
 
   ensureChildrenAreLhsAndRhsOrdered(data.config, lhs.content, rhs.content)
-  const parsedLhs = tryParseOneElementBasedOnType(data, lhs)
-  const parsedRhs = tryParseOneElementBasedOnType(data, rhs)
+  let parsedLhs = tryParseOneElementBasedOnType(data, lhs)
+  let parsedRhs = tryParseOneElementBasedOnType(data, rhs)
 
   if (parsedLhs === undefined || parsedRhs === undefined) {
     throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, op, rhs])}`)
@@ -69,10 +67,58 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 
   const operationName = retrieveOpName(data.config, op)
 
+  // special support for strings in assignments
+  if(flavor === 'assignment') {
+    [parsedLhs, parsedRhs] = processLhsAndRhsForAssignment(data, operationName, parsedLhs, parsedRhs)
+  }
+
+
+
   const { location, content } = retrieveMetaStructure(data.config, op.content)
 
   if (flavor === 'special') {
     flavor = identifySpecialOp(content)
+  }
+
+  if(flavor === 'special') {
+    guard(parsedLhs.location !== undefined && parsedLhs.lexeme !== undefined && parsedRhs.location !== undefined && parsedRhs.lexeme !== undefined,
+      () => `special op lhs and rhs must have a locations and lexemes, but ${JSON.stringify(parsedLhs)} and ${JSON.stringify(parsedRhs)})`)
+    // parse as infix function call!
+    const result: RNamedFunctionCall = {
+      type:         Type.FunctionCall,
+      flavour:      'named',
+      infixSpecial: true,
+      lexeme:       data.currentLexeme ?? content,
+      location,
+      functionName: {
+        type:      Type.Symbol,
+        location,
+        lexeme:    content,
+        content,
+        namespace: undefined,
+        info:      {}
+      },
+      arguments: [
+        {
+          type:     Type.Argument,
+          location: parsedLhs.location,
+          value:    parsedLhs,
+          name:     undefined,
+          lexeme:   parsedLhs.lexeme,
+          info:     {}
+        },
+        {
+          type:     Type.Argument,
+          location: parsedRhs.location,
+          value:    parsedRhs,
+          name:     undefined,
+          lexeme:   parsedRhs.lexeme,
+          info:     {}
+        }
+      ],
+      info: {}
+    }
+    return executeHook(data.hooks.operators.onBinary.after, data, result)
   }
 
   // TODO: assert exists as known operator
@@ -118,5 +164,24 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
     }
   }
   return executeHook(data.hooks.operators.onBinary.after, data, result)
+}
+
+function processLhsAndRhsForAssignment(data: ParserData, opName: string, parsedLhs: RNode, parsedRhs: RNode): [RNode, RNode] {
+  const isRhs = opName === '->' || opName === '->>'
+  const assigned = isRhs ? parsedRhs : parsedLhs
+  if(assigned.type !== Type.String) {
+    return [parsedLhs, parsedRhs]
+  }
+
+  // update the assigned value to be parsed as a symbol
+  const result: RSymbol = {
+    type:      Type.Symbol,
+    lexeme:    assigned.lexeme,
+    location:  assigned.location,
+    content:   assigned.content.str,
+    namespace: undefined,
+    info:      assigned.info
+  }
+  return isRhs ? [parsedLhs, result] : [result, parsedRhs]
 }
 

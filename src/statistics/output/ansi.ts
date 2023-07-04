@@ -45,7 +45,7 @@ export const voidFormatter: OutputFormatter = new class implements OutputFormatt
   }
 }
 
-const escape = '\x1b['
+export const escape = '\x1b['
 const colorSuffix = 'm'
 export const ansiFormatter = {
   reset(): string {

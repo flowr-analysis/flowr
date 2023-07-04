@@ -1,17 +1,28 @@
 import {
   DecoratedAst,
   NodeId,
-  ParentInformation, RAccess, RArgument, RBinaryOp,
+  ParentInformation,
+  RAccess,
+  RArgument,
+  RBinaryOp,
   RExpressionList,
-  RForLoop, RFunctionCall, RFunctionDefinition, RIfThenElse, RNode,
-  RNodeWithParent, RParameter,
-  RRepeatLoop, RWhileLoop, Type
+  RForLoop,
+  RFunctionCall,
+  RFunctionDefinition,
+  RIfThenElse,
+  RNode,
+  RNodeWithParent,
+  RParameter,
+  RRepeatLoop,
+  RWhileLoop,
+  Type,
+  RPipe,
+  foldAstStateful,
+  StatefulFoldFunctions
 } from '../r-bridge'
-import { foldAstStateful, StatefulFoldFunctions } from '../r-bridge/lang:4.x/ast/model/processing/statefulFold'
-import { log } from '../util/log'
-import { guard } from '../util/assert'
+import { log, LogLevel } from '../util/log'
+import { guard, isNotNull } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
-import { RPipe } from '../r-bridge/lang:4.x/ast/model/nodes/RPipe'
 type Selection = Set<NodeId>
 interface PrettyPrintLine {
   line:   string
@@ -28,9 +39,13 @@ export const reconstructLogger = log.getSubLogger({ name: "reconstruct" })
 const getLexeme = (n: RNodeWithParent) => n.info.fullLexeme ?? n.lexeme ?? ''
 const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code => {
   const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf)
-  const wouldBe = foldToConst(leaf)
-  reconstructLogger.trace(`reconstructAsLeaf: ${leaf.info.id} (${selectionHasLeaf ? 'y' : 'n'}):  ${JSON.stringify(wouldBe)}`)
-  return selectionHasLeaf ? wouldBe : []
+  if(selectionHasLeaf) {
+    return foldToConst(leaf)
+  } else {
+    return []
+  }
+  // reconstructLogger.trace(`reconstructAsLeaf: ${leaf.info.id} (${selectionHasLeaf ? 'y' : 'n'}):  ${JSON.stringify(wouldBe)}`)
+  // return selectionHasLeaf ? wouldBe : []
 }
 
 const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n))
@@ -63,6 +78,14 @@ function isSelected(configuration: ReconstructionConfiguration, n: RNode<ParentI
   return configuration.selection.has(n.info.id) || configuration.autoSelectIf(n)
 }
 
+function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: PrettyPrintLine[]) {
+  return [  // inline pretty print
+    ...lhs.slice(0, lhs.length - 1),
+    { line: `${lhs[lhs.length - 1].line} ${n} ${rhs[0].line}`, indent: 0 },
+    ...indentBy(rhs.slice(1, rhs.length), 1)
+  ]
+}
+
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
   if(isSelected(configuration, n)) {
     return plain(getLexeme(n))
@@ -78,11 +101,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
     return plain(getLexeme(n))
   }
 
-  return [  // inline pretty print
-    ...lhs.slice(0, lhs.length - 1),
-    { line: `${lhs[lhs.length - 1].line} ${n.type === Type.Pipe ? '|>' : n.op} ${rhs[0].line}`, indent: 0 },
-    ...indentBy(rhs.slice(1, rhs.length), 1)
-  ]
+  return reconstructRawBinaryOperator(lhs, n.type === Type.Pipe ? '|>' : n.op, rhs)
 }
 
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
@@ -171,8 +190,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
     return [
       { line: `if(${getLexeme(ifThenElse.condition)}) {`, indent: 0 },
       ...indentBy(when, 1),
-      { line: '}', indent: 0 },
-      { line: 'else {', indent: 0 },
+      { line: '} else {', indent: 0 },
       ...indentBy(otherwise, 1),
       { line: '}', indent: 0 }
     ]
@@ -225,7 +243,11 @@ function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code,
   }
   // TODO: improve
   if (accessed.length === 0) {
-    return []
+    if(typeof access === 'string') {
+      return []
+    } else {
+      return access.filter(isNotNull).flat()
+    }
   }
 
   return plain(getLexeme(node))
@@ -272,8 +294,38 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 
 }
 
+
+function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: RFunctionCall<ParentInformation>): Code {
+  guard(args.length === 2, () => `infix special call must have exactly two arguments, got: ${args.length} (${JSON.stringify(args)})`)
+  guard(call.flavour === 'named', `infix special call must be named, got: ${call.flavour}`)
+  const lhs = args[0]
+  const rhs = args[1]
+
+  if ((lhs === undefined || lhs.length === 0) && (rhs === undefined || rhs.length === 0)) {
+    return []
+  } /* TODO: else if (lhs === undefined || lhs.length === 0) {
+    return rhs as Code
+  } */
+
+  // else if (rhs === undefined || rhs.length === 0) {
+  // if rhs is undefined we still  have to keep both now, but reconstruct manually :/
+  if(lhs !== undefined && lhs.length > 0) {
+    const lhsText = lhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n')
+    if(rhs !== undefined && rhs.length > 0) {
+      const rhsText = rhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n')
+      return plain(`${lhsText} ${call.functionName.content} ${rhsText}`)
+    } else {
+      return plain(lhsText)
+    }
+  }
+  return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`)
+}
+
 function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: (Code | undefined)[], configuration: ReconstructionConfiguration): Code {
-  if(isSelected(configuration, call)) {
+  if(call.infixSpecial === true) {
+    return reconstructSpecialInfixFunctionCall(args, call)
+  }
+  if(call.flavour === 'named' && isSelected(configuration, call)) {
     return plain(getLexeme(call))
   }
   const filteredArgs = args.filter(a => a !== undefined && a.length > 0)
@@ -285,11 +337,15 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 
   if(args.length === 0) {
     guard(functionName.length === 1, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
+    if(call.flavour === 'unnamed' && !functionName[0].line.endsWith(')')) {
+      functionName[0].line = `(${functionName[0].line})`
+    }
+
     if(!functionName[0].line.endsWith('()')) {
       // add empty call braces if not present
       functionName[0].line += '()'
     }
-    return [{ line: `${functionName[0].line}`, indent: functionName[0].indent }]
+    return [{ line: functionName[0].line, indent: functionName[0].indent }]
   } else {
     return plain(getLexeme(call))
   }
@@ -370,21 +426,39 @@ function prettyPrintCodeToString(code: Code, lf ='\n'): string {
   return code.map(({ line, indent }) => `${getIndentString(indent)}${line}`).join(lf)
 }
 
+export interface ReconstructionResult {
+  code:         string
+  /** number of nodes that triggered the `autoSelectIf` predicate {@link reconstructToCode} */
+  autoSelected: number
+}
+
 /**
  * Reconstructs parts of a normalized R ast into R code on an expression basis.
  *
  * @param ast          - The ast to be used as a basis for reconstruction
  * @param selection    - The selection of nodes to be reconstructed
  * @param autoSelectIf - A predicate that can be used to force the reconstruction of a node (for example to reconstruct library call statements, see {@link autoSelectLibrary}, {@link doNotAutoSelect})
+ *
+ * @returns Number of times `autoSelectIf` triggered
  */
-export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Selection, autoSelectIf: (node: RNode<ParentInformation>) => boolean = autoSelectLibrary): string {
+export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Selection, autoSelectIf: (node: RNode<ParentInformation>) => boolean = autoSelectLibrary): ReconstructionResult {
   reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
-  const result = foldAstStateful(ast.decoratedAst, { selection, autoSelectIf }, reconstructAstFolds)
-  reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
+  let autoSelected = 0
+  const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
+    const result = autoSelectIf(node)
+    if(result) {
+      autoSelected++
+    }
+    return result
+  }
+  const result = foldAstStateful(ast.decoratedAst, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
+  if(reconstructLogger.settings.minLevel >= LogLevel.trace) {
+    reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
+  }
   if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
     // remove outer block
-    return prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1))
+    return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), autoSelected }
   } else {
-    return prettyPrintCodeToString(result)
+    return { code: prettyPrintCodeToString(result), autoSelected }
   }
 }

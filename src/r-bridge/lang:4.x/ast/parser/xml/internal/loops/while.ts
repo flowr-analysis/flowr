@@ -34,11 +34,7 @@ export function tryParseWhileLoop(
   }
 
   parseLog.debug(
-    `trying to parse while-loop with ${JSON.stringify([
-      whileToken,
-      condition,
-      body,
-    ])}`
+    `trying to parse while-loop`
   )
 
 

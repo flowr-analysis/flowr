@@ -12,6 +12,7 @@ import { MergeableRecord } from '../util/objects'
 import { log } from '../util/log'
 import { dataflowLogger } from './index'
 import { DataflowInformation } from './internal/info'
+import { displayEnvReplacer } from '../util/json'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
@@ -219,6 +220,12 @@ export class DataflowGraph {
   private graphNodes = new Map<NodeId, DataflowGraphNodeInfo>()
   // TODO: improve access, theoretically we want a multi - default map, right now we do not allow multiple edges
   private edges = new Map<NodeId, Map<NodeId, DataflowGraphEdge>>()
+  // TODO: this should be removed with flattened graph
+  private nodeIdAccessCache = new Map<NodeId, [DataflowGraphNodeInfo, [NodeId, DataflowGraphEdge][]] | null>()
+
+  private invalidateCache() {
+    this.nodeIdAccessCache.clear()
+  }
 
   /**
    * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
@@ -249,33 +256,44 @@ export class DataflowGraph {
   }
 
   /**
-   * Get the {@link DataflowGraphNodeInfo} attached to a node as well as all outgoing edges
+   * Get the {@link DataflowGraphNodeInfo} attached to a node as well as all outgoing edges.
+   * Uses a cache
    *
    * @param id                      - the id of the node to get
    * @param includeDefinedFunctions - if true this will search function definitions as well and not just the toplevel
    * @returns the node info for the given id (if it exists)
    */
   public get(id: NodeId, includeDefinedFunctions = true): [DataflowGraphNodeInfo, [NodeId, DataflowGraphEdge][]] | undefined {
-    if(!includeDefinedFunctions) {
+    if (!includeDefinedFunctions) {
       const got = this.graphNodes.get(id)
       return got === undefined ? undefined : [got, [...this.edges.get(id) ?? []]]
     } else {
-      let info = undefined
-      const edges = new Map<NodeId, DataflowGraphEdge>()
-      for(const [nodeId, probableInfo, graph] of this.nodes(true)) {
-        // TODO: we need to flatten the graph to have all edges in one place
-        const newEdges = graph.edges.get(id)
-        if(newEdges !== undefined) {
-          for(const [id, edge] of newEdges) {
-            edges.set(id, edge)
-          }
-        }
-        if(nodeId === id) {
-          info = probableInfo
+      const cache = this.nodeIdAccessCache.get(id)
+      if (cache !== undefined) {
+        return cache ?? undefined
+      }
+      const got = this.rawGetInAllGraphs(id)
+      this.nodeIdAccessCache.set(id, got ?? null)
+      return got
+    }
+  }
+
+  private rawGetInAllGraphs(id: NodeId): [DataflowGraphNodeInfo, [NodeId, DataflowGraphEdge][]] | undefined {
+    let info = undefined
+    const edges = new Map<NodeId, DataflowGraphEdge>()
+    for (const [nodeId, probableInfo, graph] of this.nodes(true)) {
+      // TODO: we need to flatten the graph to have all edges in one place
+      const newEdges = graph.edges.get(id)
+      if (newEdges !== undefined) {
+        for (const [id, edge] of newEdges) {
+          edges.set(id, edge)
         }
       }
-      return info === undefined ? undefined : [info, [...edges]]
+      if (nodeId === id) {
+        info = probableInfo
+      }
     }
+    return info === undefined ? undefined : [info, [...edges]]
   }
 
   public entries(): IterableIterator<[NodeId, Required<DataflowGraphNodeInfo>]> {
@@ -299,6 +317,7 @@ export class DataflowGraph {
     const environment = node.environment === undefined ? DEFAULT_ENVIRONMENT : cloneEnvironments(node.environment)
     const when = node.when ?? 'always'
     this.graphNodes.set(node.id, { ...node, when, environment })
+    this.invalidateCache()
     return this
   }
 
@@ -320,31 +339,30 @@ export class DataflowGraph {
   public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute, promote= false): this {
     // dataflowLogger.trace(`trying to add edge from ${JSON.stringify(from)} to ${JSON.stringify(to)} with type ${type} and attribute ${JSON.stringify(attribute)} to graph`)
 
-    let fromId = typeof from === 'object' ? from.nodeId : from
-    let toId = typeof to === 'object' ? to.nodeId : to
+    const fromId = typeof from === 'object' ? from.nodeId : from
+    const toId = typeof to === 'object' ? to.nodeId : to
 
     if(fromId === toId) {
-      log.trace(`ignoring self-edge from ${fromId} to ${toId} (${JSON.stringify(type)}, ${JSON.stringify(attribute)}, ${JSON.stringify(promote)})`)
+      log.trace(`ignoring self-edge from ${fromId} to ${toId} (${type}, ${attribute ?? '?'}, ${promote ? 'y' : 'n'})`)
       return this
     }
-
-    // sort (on id so that sorting is the same, independent of the attribute)
-    const bidirectional = type === 'same-read-read' || type === 'same-def-def' || type === 'relates'
-
-    if(bidirectional && toId < fromId) {
-      { [from, to] = [to, from] }
-      { [fromId, toId] = [toId, fromId] }
-    }
-
 
     if(promote) {
       attribute ??= (from as ReferenceForEdge).used === 'maybe' ? 'maybe' : (to as ReferenceForEdge).used
 
-      const fromInfo = this.get(fromId, true)
-      const toInfo = this.get(toId, true)
-      if (fromInfo?.[0].when === 'maybe' || toInfo?.[0].when === 'maybe') {
-        log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
-        attribute = 'maybe'
+      // reduce the load on attribute checks
+      if(attribute !== 'maybe') {
+        const fromInfo = this.get(fromId, true)
+        if (fromInfo?.[0].when === 'maybe') {
+          log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
+          attribute = 'maybe'
+        } else {
+          const toInfo = this.get(toId, true)
+          if (toInfo?.[0].when === 'maybe') {
+            log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
+            attribute = 'maybe'
+          }
+        }
       }
     }
 
@@ -358,11 +376,15 @@ export class DataflowGraph {
     const edgeInFrom = existingFrom?.get(toId)
 
     if(edgeInFrom === undefined) {
+      this.invalidateCache()
       if(existingFrom === undefined) {
         this.edges.set(fromId, new Map([[toId, edge]]))
       } else {
         existingFrom.set(toId, edge)
       }
+      // sort (on id so that sorting is the same, independent of the attribute)
+      const bidirectional = type === 'same-read-read' || type === 'same-def-def' || type === 'relates'
+
       if(bidirectional) {
         const existingTo = this.edges.get(toId)
         if(existingTo === undefined) {
@@ -431,6 +453,7 @@ export class DataflowGraph {
         }
       }
     }
+    this.invalidateCache()
     return this
   }
 
@@ -456,8 +479,10 @@ export class DataflowGraph {
     guard(got !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set definition scope to ${reference.scope}`)
     const [node] = got
     if(node.tag === 'function-definition' || node.tag === 'variable-definition') {
-      guard(node.scope === reference.scope && node.when === reference.used, () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
+      guard(node.scope === reference.scope, () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
+      guard(node.when === reference.used || node.when === 'maybe' || reference.used === 'maybe', () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
       node.scope = reference.scope
+      node.when = reference.used === 'maybe' ? 'maybe' : node.when
     } else {
       this.graphNodes.set(reference.nodeId, {
         ...node,
@@ -469,16 +494,6 @@ export class DataflowGraph {
 }
 
 
-// to get the types within JSON.stringify
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function displayEnvReplacer(key: any, value: any): any {
-  if(value instanceof Map || value instanceof Set) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return [...value]
-  } else {
-    return value
-  }
-}
 
 function equalEdges(id: NodeId, our: [NodeId, DataflowGraphEdge][], other: [NodeId, DataflowGraphEdge][]): boolean {
   if(our.length !== other.length) {
@@ -561,16 +576,16 @@ function equalNodes(our: Map<NodeId, DataflowGraphNodeInfo>, other: Map<NodeId, 
 function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeInfo): DataflowGraphNodeInfo {
   guard(current.tag === next.tag, () => `nodes to be joined for the same id must have the same tag, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`)
   guard(current.name === next.name, () => `nodes to be joined for the same id must have the same name, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`)
-  if(current.tag === 'variable-definition' || current.tag === 'function-definition') {
-    guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same definedAtPosition')
-  }
   guard(current.environment === next.environment, 'nodes to be joined for the same id must have the same environment')
-  if(current.tag === 'function-call') {
+  if(current.tag === 'variable-definition') {
+    guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope')
+  } else if(current.tag === 'function-call') {
     guard(equalFunctionArguments(current.args, (next as DataflowGraphNodeFunctionCall).args), 'nodes to be joined for the same id must have the same function call information')
-  }
-  if(current.tag === 'function-definition') {
+  } else if(current.tag === 'function-definition') {
+    guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope')
     guard(equalExitPoints(current.exitPoints, (next as DataflowGraphNodeFunctionDefinition).exitPoints), 'nodes to be joined must have same exist points')
   }
+
   return {
     ...current // make a copy
   }

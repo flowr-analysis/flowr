@@ -22,7 +22,7 @@ export function tryParseRepeatLoop(data: ParserData, repeatToken: NamedXmlBasedJ
     return executeUnknownHook(data.hooks.loops.onRepeatLoop.unknown, data, { repeatToken, body })
   }
 
-  parseLog.debug(`trying to parse repeat-loop with ${JSON.stringify([repeatToken, body])}`);
+  parseLog.debug(`trying to parse repeat-loop`);
   ({ repeatToken, body } = executeHook(data.hooks.loops.onRepeatLoop.before, data, { repeatToken, body }))
 
   const parseBody = tryParseOneElementBasedOnType(data, body)

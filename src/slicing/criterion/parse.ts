@@ -1,9 +1,10 @@
-import { DecoratedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation, RNodeWithParent, Type } from '../r-bridge'
-import { slicerLogger } from './static'
-import { SourcePosition } from '../util/range'
+import { DecoratedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation, RNodeWithParent, Type } from '../../r-bridge'
+import { slicerLogger } from '../static'
+import { SourcePosition } from '../../util/range'
 
 /** Either `line:column`, `line@variable-name`, or `$id` */
-export type SlicingCriterion = `${number}:${number}` | `${number}@${string}` | `$${number}`
+export type SingleSlicingCriterion = `${number}:${number}` | `${number}@${string}` | `$${number}`
+export type SlicingCriteria = SingleSlicingCriterion[]
 
 /**
  * Thrown if the given slicing criteria can not be found
@@ -18,7 +19,7 @@ export class CriteriaParseError extends Error {
 /**
  * Takes a criterion in the form of `line:column` or `line@variable-name` and returns the corresponding node id
  */
-export function slicingCriterionToId<OtherInfo = NoInfo>(criterion: SlicingCriterion, decorated: DecoratedAst<OtherInfo & ParentInformation>): NodeId {
+export function slicingCriterionToId<OtherInfo = NoInfo>(criterion: SingleSlicingCriterion, decorated: DecoratedAst<OtherInfo & ParentInformation>): NodeId {
   let resolved: NodeId | undefined
   if(criterion.includes(':')) {
     const [line, column] = criterion.split(':').map(c => parseInt(c))
@@ -80,4 +81,8 @@ function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflo
     slicerLogger.trace(`resolve id ${id} (${JSON.stringify(candidate?.info)}) for line ${line} and name ${name}`)
   }
   return id
+}
+
+export function convertAllSlicingCriteriaToIds(criteria: SlicingCriteria, decorated: DecoratedAst): { criterion: SingleSlicingCriterion, id: NodeId }[] {
+  return criteria.map(l => ({ criterion: l, id: slicingCriterionToId(l, decorated) }))
 }

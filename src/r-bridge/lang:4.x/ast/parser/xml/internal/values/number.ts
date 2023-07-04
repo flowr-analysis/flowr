@@ -15,7 +15,7 @@ import { executeHook } from '../../hooks'
  * @param obj  - The json object to extract the meta-information from
  */
 export function parseNumber(data: ParserData, obj: XmlBasedJson): RNumber | RLogical | RSymbol<NoInfo, typeof RNa> {
-  parseLog.debug(`[number] try: ${JSON.stringify(obj)}`)
+  parseLog.debug('[number]')
   obj = executeHook(data.hooks.values.onNumber.before, data, obj)
 
   const { location, content } = retrieveMetaStructure(data.config, obj)

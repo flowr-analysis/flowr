@@ -71,13 +71,13 @@ export interface ParentInformation {
 export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInformation>
 
 
-export type DecoratedAstMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
+export type DecoratedAstMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
 interface FoldInfo<OtherInfo> { idMap: DecoratedAstMap<OtherInfo>, getId: IdGenerator<OtherInfo> }
 
 /**
  * Contains the AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.
  */
-export interface DecoratedAst<OtherInfo> {
+export interface DecoratedAst<OtherInfo = ParentInformation> {
   /** Bidirectional mapping of ids to the corresponding nodes and the other way */
   idMap:        DecoratedAstMap<OtherInfo>
   /** The root of the AST with parent information */
@@ -88,12 +88,12 @@ export interface DecoratedAst<OtherInfo> {
 /**
  * Covert the given AST into a doubly linked tree while assigning ids (so it stays serializable).
  *
- * @param ast   - the root of the AST to convert
- * @param getId - the id generator: must generate a unique id für each passed node
+ * @param ast   - The root of the AST to convert
+ * @param getId - The id generator: must generate a unique id für each passed node
  *
- * @typeParam OtherInfo - the original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)
+ * @typeParam OtherInfo - The original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)
  *
- * @returns a {@link DecoratedAst | decorated AST} based on the input and the id provider.
+ * @returns A {@link DecoratedAst | decorated AST} based on the input and the id provider.
  */
 export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator(0)): DecoratedAst<OtherInfo & ParentInformation> {
   const idMap: DecoratedAstMap<OtherInfo> = new BiMap<NodeId, RNodeWithParent<OtherInfo>>()

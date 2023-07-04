@@ -14,6 +14,42 @@ describe('Simple', withShell(shell => {
     assertSliced('Constant', shell, 'a <- 4\na <- list(1,2)\na[3]', ['3@a'], 'a <- list(1,2)\na[3]')
     assertSliced('Variable', shell, 'i <- 4\na <- list(1,2)\na[i]', ['3@a'], 'i <- 4\na <- list(1,2)\na[i]')
     assertSliced('Subset Sequence', shell, 'i <- 4\na <- list(1,2)\na[1:i,]', ['3@a'], 'i <- 4\na <- list(1,2)\na[1:i,]')
+    describe('definitions', () => {
+      describe('[[', () => {
+        const code = `
+a <- list(1,2)
+a[[1]] = 2
+a[[2]] = 3
+b[[4]] = 5
+cat(a)
+a <- list(3,4)
+cat(a)
+`
+        assertSliced('Repeated named access and definition', shell, code, ['6@a'], `a <- list(1,2)
+a[[1]] = 2
+a[[2]] = 3
+cat(a)`)
+        assertSliced('Full redefinitions still apply', shell, code, ['8@a'], `a <- list(3,4)
+cat(a)`)
+      })
+      describe('$', () => {
+        const codeB = `
+a <- list(a=1,b=2)
+a$a = 2
+a$b = 3
+b[[4]] = 5
+cat(a)
+a <- list(a=3,b=4)
+cat(a)
+`
+        assertSliced('Repeated named access and definition', shell, codeB, ['6@a'], `a <- list(a=1,b=2)
+a$a = 2
+a$b = 3
+cat(a)`)
+        assertSliced('Full redefinitions still apply', shell, codeB, ['8@a'], `a <- list(a=3,b=4)
+cat(a)`)
+      })
+    })
   })
   // TODO: test for(i in 1:10) { print(i); i <- 12 }
   describe('The classic', () => {

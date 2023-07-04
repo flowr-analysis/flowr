@@ -16,9 +16,9 @@ import {
   diffGraphsToMermaidUrl, graphToMermaidUrl, LocalScope
 } from '../../src/dataflow'
 import { produceDataFlowGraph } from '../../src/dataflow'
-import { reconstructToCode } from '../../src/slicing/reconstruct'
-import { staticSlicing } from '../../src/slicing/static'
-import { SlicingCriteria, slicingCriterionToId } from '../../src/slicing/criterion/parse'
+import { reconstructToCode } from '../../src/slicing'
+import { staticSlicing } from '../../src/slicing'
+import { SlicingCriteria, slicingCriterionToId } from '../../src/slicing'
 
 let defaultTokenMap: Record<string, string>
 
@@ -105,7 +105,7 @@ export const retrieveAst = async(shell: RShell, input: string, hooks?: DeepParti
 
 /** call within describeSession */
 export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList): Mocha.Test => {
-  // the ternary operator is to support the legacy way i wrote these tests - by mirroring the input within the name
+  // the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
   return it(name === input ? name : `${name} (input: ${input})`, async function() {
     const ast = await retrieveAst(shell, input)
     assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
@@ -145,7 +145,7 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
 
 
 /** call within describeSession */
-function printIdMapping(ids: NodeId[], map: DecoratedAstMap<NoInfo>): string {
+function printIdMapping(ids: NodeId[], map: DecoratedAstMap): string {
   return ids.map(id => `${id}: ${JSON.stringify(map.get(id)?.lexeme)}`).join(', ')
 }
 export const assertReconstructed = (name: string, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {

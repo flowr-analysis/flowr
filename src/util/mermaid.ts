@@ -179,7 +179,7 @@ export function mermaidCodeToUrl(code: string): string {
  * Converts a dataflow graph to a mermaid url that visualizes the graph.
  *
  * @param graph         - The graph to convert
- * @param dataflowIdMap - Id map to use to get access to the graph id mappings
+ * @param dataflowIdMap - ID map to use to get access to the graph id mappings
  * @param mark          - Special nodes to mark (e.g. those included in the slice)
  */
 export function graphToMermaidUrl(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo>, mark?: Set<NodeId>): string {

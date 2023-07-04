@@ -7,6 +7,7 @@ import { executeHook } from '../../hooks'
 import { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
 
+// noinspection GrazieInspection
 /**
  * Parse the given object as a R string (see {@link string2ts}).
  * This requires you to check the corresponding name beforehand.

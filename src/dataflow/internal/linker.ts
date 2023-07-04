@@ -9,7 +9,7 @@ import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { log } from '../../util/log'
 import { NodeId } from '../../r-bridge'
-import { slicerLogger } from '../../slicing/static'
+import { slicerLogger } from '../../slicing'
 import { dataflowLogger } from '../index'
 
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {

@@ -23,7 +23,7 @@ import {
 import { RNa } from '../../../values'
 import { ParserData } from './data'
 import { DeepReadonly, DeepRequired } from 'ts-essentials'
-import { RPipe } from '../../model/nodes/RPipe'
+import { RPipe } from '../../model'
 
 /** Denotes that if you return `undefined`, the parser will automatically take the original arguments (unchanged) */
 type AutoIfOmit<T> = T | undefined

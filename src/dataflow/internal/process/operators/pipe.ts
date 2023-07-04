@@ -3,7 +3,7 @@ import { DataflowProcessorInformation, processDataflowFor } from '../../../proce
 import { linkIngoingVariablesInSameScope } from '../../linker'
 import { ParentInformation, Type } from '../../../../r-bridge'
 import { overwriteEnvironments } from '../../../environments'
-import { RPipe } from '../../../../r-bridge/lang:4.x/ast/model/nodes/RPipe'
+import { RPipe } from '../../../../r-bridge'
 import { dataflowLogger, graphToMermaidUrl } from '../../../index'
 import { guard } from '../../../../util/assert'
 import { UnnamedArgumentPrefix } from '../functions/argument'

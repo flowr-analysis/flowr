@@ -18,7 +18,7 @@ import {
   RArgument, RNamedAccess, RIndexAccess, RLineDirective
 } from './nodes'
 import { OtherInfoNode } from './nodes/info'
-import { RPipe } from './nodes/RPipe'
+import { RPipe } from './nodes'
 
 /** simply used as an empty interface with no information about additional decorations */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface

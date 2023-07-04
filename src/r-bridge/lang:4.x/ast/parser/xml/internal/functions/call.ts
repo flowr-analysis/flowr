@@ -74,7 +74,7 @@ function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): 
 }
 
 function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | RNext | RBreak | undefined {
-  // maybe remove symbol-content again because i just use the root expr of mapped with name
+  // maybe remove symbol-content again because I just use the root expr of mapped with name
   if(mappedWithName.length < 3) {
     parseLog.trace('expected unnamed function call to have 3 elements [like (<func>)], but was not')
     return undefined

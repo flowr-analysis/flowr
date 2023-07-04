@@ -1,4 +1,4 @@
-import { SingleSlicingCriterion, SlicingCriteria } from '../../slicing/criterion/parse'
+import { SingleSlicingCriterion, SlicingCriteria } from '../../slicing'
 import { NodeId, RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge'
 import { ReconstructionResult } from '../../slicing'
 

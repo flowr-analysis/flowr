@@ -18,7 +18,7 @@ import {
 import { IStoppableStopwatch, Measurements } from './stopwatch'
 import { guard } from '../util/assert'
 import { DataflowInformation } from '../dataflow/internal/info'
-import { graphToMermaid, produceDataFlowGraph } from '../dataflow'
+import { produceDataFlowGraph } from '../dataflow'
 import {
   convertAllSlicingCriteriaToIds,
   SlicingCriteria,

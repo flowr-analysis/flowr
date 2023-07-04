@@ -28,7 +28,7 @@ import {
   RFunctionDefinition, RAccess, RModelFormulaBinaryOp, RModelFormulaUnaryOp, RLineDirective
 } from '../nodes'
 import { RNode } from '../model'
-import { RPipe } from '../nodes/RPipe'
+import { RPipe } from '../nodes'
 
 
 /**

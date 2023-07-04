@@ -22,6 +22,7 @@ import { SlicingCriteria } from '../../slicing'
 import * as tmp from 'tmp'
 import fs from 'fs'
 import { isNotUndefined } from '../../util/assert'
+import { log } from '../../util/log'
 
 const tempfile = tmp.fileSync({ postfix: '.R' })
 
@@ -82,7 +83,7 @@ function safeDivPercentage(a: number, b: number): number | undefined{
   } else {
     const result = 1 - (a / b)
     if(isNaN(result)) {
-      console.error(`NaN for ${a} and ${b}\n`)
+      log.error(`NaN for ${a} and ${b}\n`)
       return undefined
     } else {
       return result

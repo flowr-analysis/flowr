@@ -5,7 +5,16 @@ import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseLog } from '../../parser'
 import { parseString, tryParseSymbol } from '../values'
 import { ParserData } from '../../data'
-import { Type, RNode, RFunctionCall, RUnnamedFunctionCall, RNamedFunctionCall, RNext, RBreak } from '../../../../model'
+import {
+  Type,
+  RNode,
+  RFunctionCall,
+  RUnnamedFunctionCall,
+  RNamedFunctionCall,
+  RNext,
+  RBreak,
+  RArgument
+} from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { tryToParseArgument } from './argument'
 import { SourceRange } from '../../../../../../../util/range'
@@ -62,11 +71,11 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
   return executeHook(data.hooks.functions.onFunctionCall.after, data, result)
 }
 
-function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RNode| undefined)[] {
+function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RArgument | undefined)[] {
   const argContainer = mappedWithName.slice(1)
   guard(argContainer.length > 1 && argContainer[0].name === Type.ParenLeft && argContainer[argContainer.length - 1].name === Type.ParenRight, `expected args in parenthesis`)
   const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => x.name === Type.Comma)
-  return  splitArgumentsOnComma.map(x => {
+  return splitArgumentsOnComma.map(x => {
     // TODO: improve expression unwrap
     parseLog.trace('trying to parse argument')
     return tryToParseArgument(data, x)

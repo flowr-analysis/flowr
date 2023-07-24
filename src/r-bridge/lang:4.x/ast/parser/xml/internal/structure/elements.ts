@@ -120,7 +120,7 @@ export function splitComments(mappedWithName: NamedXmlBasedJson[]) {
   return { comments, others }
 }
 
-export function parseBasedOnType(
+export function normalizeBasedOnType(
   data: ParserData,
   obj: XmlBasedJson[] | NamedXmlBasedJson[]
 ): RNode[] {
@@ -151,7 +151,7 @@ export function parseBasedOnType(
     // TODO: check if non-wrapping expr list is correct
     log.trace(`found ${splitOnSemicolon.length} expressions by semicolon-split, parsing them separately`)
     return splitOnSemicolon.flatMap(arr=>
-      parseBasedOnType(data, arr)
+      normalizeBasedOnType(data, arr)
     )
   }
 

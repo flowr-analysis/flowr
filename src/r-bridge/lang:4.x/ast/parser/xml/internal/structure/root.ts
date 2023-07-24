@@ -1,6 +1,6 @@
 import { getKeysGuarded, XmlBasedJson } from "../../input-format"
 import { assureTokenType } from "../meta"
-import { parseBasedOnType } from "./elements"
+import { normalizeBasedOnType } from "./elements"
 import { ParserData } from "../../data"
 import { Type, RExpressionList } from '../../../../model'
 
@@ -15,7 +15,7 @@ export function parseRootObjToAst(
     exprContent,
     data.config.childrenName
   )
-  const parsedChildren = parseBasedOnType(data, children)
+  const parsedChildren = normalizeBasedOnType(data, children)
 
   // TODO: at total object in any case of error?
   return {

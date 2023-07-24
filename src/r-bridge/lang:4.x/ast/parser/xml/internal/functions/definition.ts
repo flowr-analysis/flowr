@@ -6,7 +6,7 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 import { retrieveMetaStructure } from '../meta'
 import { guard, isNotUndefined } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
-import { parseBasedOnType } from '../structure'
+import { normalizeBasedOnType } from '../structure'
 import { tryToParseParameter } from './parameter'
 import { log } from '../../../../../../../util/log'
 
@@ -52,7 +52,7 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
   const bodyStructure = mappedWithName.slice(closingParenIndex + 1)
   guard(bodyStructure.length === 1, () => `expected function body to be unique, yet received ${bodyStructure.length}`)
 
-  const body = parseBasedOnType(data, bodyStructure)
+  const body = normalizeBasedOnType(data, bodyStructure)
   guard(body.length === 1, () => `expected function body to yield one normalized expression, but ${body.length}`)
 
 

@@ -2,7 +2,7 @@ import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson } from '../../input-for
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
-import { parseBasedOnType, splitComments } from '../structure'
+import { normalizeBasedOnType, splitComments } from '../structure'
 import { tryToParseFunctionCall, tryToParseFunctionDefinition } from '../functions'
 import { Type, RNode } from '../../../../model'
 import { executeHook } from '../../hooks'
@@ -51,7 +51,7 @@ export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
   }
 
 
-  const children = parseBasedOnType(childData, childrenSource)
+  const children = normalizeBasedOnType(childData, childrenSource)
 
   let result: RNode
   if (children.length === 1) {

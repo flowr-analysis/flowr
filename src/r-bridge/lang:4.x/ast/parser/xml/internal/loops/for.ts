@@ -9,7 +9,7 @@ import { parseLog } from "../../parser"
 import { guard } from "../../../../../../../util/assert"
 import { ParserData } from "../../data"
 import { tryParseSymbol } from '../values'
-import { parseBasedOnType, tryParseOneElementBasedOnType } from '../structure'
+import { normalizeBasedOnType, tryParseOneElementBasedOnType } from '../structure'
 import { Type, RSymbol, RForLoop, RNode } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
@@ -88,7 +88,7 @@ function parseForLoopCondition(data: ParserData, forCondition: XmlBasedJson): { 
   guard(variable !== undefined, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
   guard(variable.type === Type.Symbol, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
   // TODO: just parse single element directly
-  const vector = parseBasedOnType(data, [children[inPosition + 1]])
+  const vector = normalizeBasedOnType(data, [children[inPosition + 1]])
   guard(vector.length === 1, () => `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`)
 
   return { variable, vector: vector[0] }

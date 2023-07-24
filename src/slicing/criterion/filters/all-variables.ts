@@ -52,7 +52,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
     foldFunctionDefinition: (_: unknown, a: NodeId[][], b: NodeId[]) => [...a.flat(),...b],
     foldFunctionCall:       (c: RFunctionCall, a: NodeId[], b: (NodeId[] | undefined)[]) => {
       const args = b.flatMap(b => b !== undefined ? b.flat() : [])
-      if(c.flavour === 'named') {
+      if(c.flavor === 'named') {
         return c.functionName.content === 'library' ? args.slice(1) : args
       } else {
         return [...a, ...args]

@@ -115,7 +115,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 
   return {
     type:           Type.FunctionCall,
-    flavour:        'unnamed',
+    flavor:         'unnamed',
     location,
     lexeme:         content,
     calledFunction: calledFunction,
@@ -152,7 +152,7 @@ function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJs
 
   return {
     type:      Type.FunctionCall,
-    flavour:   'named',
+    flavor:    'named',
     location,
     lexeme:    content,
     functionName,

@@ -166,7 +166,7 @@ describe("Parse simple operations",
           exprList(
             {
               type:         Type.FunctionCall,
-              flavour:      'named',
+              flavor:       'named',
               infixSpecial: true,
               info:         {},
               lexeme:       '1 %xxx% 2',

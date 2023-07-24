@@ -86,7 +86,7 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
     // parse as infix function call!
     const result: RNamedFunctionCall = {
       type:         Type.FunctionCall,
-      flavour:      'named',
+      flavor:       'named',
       infixSpecial: true,
       lexeme:       data.currentLexeme ?? content,
       location,

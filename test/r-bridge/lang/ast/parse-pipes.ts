@@ -30,7 +30,7 @@ describe("Parse Pipes", withShell(shell => {
       },
       rhs: {
         type:         Type.FunctionCall,
-        flavour:      "named",
+        flavor:       "named",
         location:     rangeFrom(1, 6, 1, 6),
         lexeme:       'f',
         info:         {},
@@ -83,7 +83,7 @@ describe("Parse Pipes", withShell(shell => {
           },
           rhs: {
             type:         Type.FunctionCall,
-            flavour:      "named",
+            flavor:       "named",
             location:     rangeFrom(1, 6, 1, 6),
             lexeme:       'f',
             arguments:    [],
@@ -101,7 +101,7 @@ describe("Parse Pipes", withShell(shell => {
       },
       rhs: {
         type:         Type.FunctionCall,
-        flavour:      "named",
+        flavor:       "named",
         location:     rangeFrom(1, 13, 1, 13),
         lexeme:       'g',
         arguments:    [],

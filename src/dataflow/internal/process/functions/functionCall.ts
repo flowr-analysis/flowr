@@ -51,7 +51,7 @@ function linkArgumentsForAllNamedArguments<OtherInfo>(resolvedDefinitions: Ident
 }
 
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
-  const named = functionCall.flavour === 'named'
+  const named = functionCall.flavor === 'named'
   const functionName = processDataflowFor(named ? functionCall.functionName : functionCall.calledFunction, data)
 
   let finalEnv = functionName.environments

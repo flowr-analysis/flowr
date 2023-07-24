@@ -14,7 +14,7 @@ function visitSingle<OtherInfo>(node: RNode<OtherInfo>, onVisit: OnVisit<OtherIn
   const type = node.type
   switch (type) {
     case Type.FunctionCall:
-      visit(node.flavour === 'named' ? node.functionName : node.calledFunction, onVisit)
+      visit(node.flavor === 'named' ? node.functionName : node.calledFunction, onVisit)
       visit(node.arguments, onVisit)
       break
     case Type.FunctionDefinition:

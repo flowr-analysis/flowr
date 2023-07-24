@@ -297,7 +297,7 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 
 function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: RFunctionCall<ParentInformation>): Code {
   guard(args.length === 2, () => `infix special call must have exactly two arguments, got: ${args.length} (${JSON.stringify(args)})`)
-  guard(call.flavour === 'named', `infix special call must be named, got: ${call.flavour}`)
+  guard(call.flavor === 'named', `infix special call must be named, got: ${call.flavor}`)
   const lhs = args[0]
   const rhs = args[1]
 
@@ -325,7 +325,7 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
   if(call.infixSpecial === true) {
     return reconstructSpecialInfixFunctionCall(args, call)
   }
-  if(call.flavour === 'named' && isSelected(configuration, call)) {
+  if(call.flavor === 'named' && isSelected(configuration, call)) {
     return plain(getLexeme(call))
   }
   const filteredArgs = args.filter(a => a !== undefined && a.length > 0)
@@ -337,7 +337,7 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 
   if(args.length === 0) {
     guard(functionName.length === 1, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
-    if(call.flavour === 'unnamed' && !functionName[0].line.endsWith(')')) {
+    if(call.flavor === 'unnamed' && !functionName[0].line.endsWith(')')) {
       functionName[0].line = `(${functionName[0].line})`
     }
 
@@ -367,7 +367,7 @@ export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
 
 const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
 export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
-  if(node.type !== Type.FunctionCall || node.flavour !== 'named') {
+  if(node.type !== Type.FunctionCall || node.flavor !== 'named') {
     return false
   }
   return libraryFunctionCall.test(node.functionName.content)

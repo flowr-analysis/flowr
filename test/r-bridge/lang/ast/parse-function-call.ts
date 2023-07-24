@@ -11,7 +11,7 @@ describe("Parse function calls", withShell((shell) => {
       "f()",
       exprList({
         type:         Type.FunctionCall,
-        flavour:      "named",
+        flavor:       "named",
         location:     rangeFrom(1, 1, 1, 1),
         lexeme:       "f", // TODO: make this more sensible?
         info:         {},
@@ -35,7 +35,7 @@ describe("Parse function calls", withShell((shell) => {
       "f(1, 2)",
       exprList({
         type:         Type.FunctionCall,
-        flavour:      "named",
+        flavor:       "named",
         location:     rangeFrom(1, 1, 1, 1),
         lexeme:       "f", // TODO: make this more sensible?
         info:         {},
@@ -86,7 +86,7 @@ describe("Parse function calls", withShell((shell) => {
       "f(1, x=2, 4, y=3)",
       exprList({
         type:         Type.FunctionCall,
-        flavour:      "named",
+        flavor:       "named",
         location:     rangeFrom(1, 1, 1, 1),
         lexeme:       "f", // TODO: make this more sensible?
         info:         {},
@@ -177,7 +177,7 @@ describe("Parse function calls", withShell((shell) => {
       "(function(x) { x })(2)",
       exprList({
         type:           Type.FunctionCall,
-        flavour:        "unnamed",
+        flavor:         "unnamed",
         location:       rangeFrom(1, 1, 1, 19),
         lexeme:         "(function(x) { x })",
         info:           {},
@@ -235,13 +235,13 @@ describe("Parse function calls", withShell((shell) => {
       "a(1)(2)",
       exprList({
         type:           Type.FunctionCall,
-        flavour:        "unnamed",
+        flavor:         "unnamed",
         location:       rangeFrom(1, 1, 1, 4),
         lexeme:         "a(1)",
         info:           {},
         calledFunction: {
           type:         Type.FunctionCall,
-          flavour:      "named",
+          flavor:       "named",
           functionName: {
             type:      Type.Symbol,
             location:  rangeFrom(1, 1, 1, 1),
@@ -294,7 +294,7 @@ describe("Parse function calls", withShell((shell) => {
       "x::f()",
       exprList({
         type:         Type.FunctionCall,
-        flavour:      "named",
+        flavor:       "named",
         location:     rangeFrom(1, 1, 1, 4),
         lexeme:       "x::f", // TODO: make this more sensible?
         info:         {},
@@ -317,7 +317,7 @@ describe("Parse function calls", withShell((shell) => {
       "'f'()",
       exprList({
         type:         Type.FunctionCall,
-        flavour:      "named",
+        flavor:       "named",
         location:     rangeFrom(1, 1, 1, 3),
         lexeme:       "'f'", // TODO: make this more sensible?
         info:         {},

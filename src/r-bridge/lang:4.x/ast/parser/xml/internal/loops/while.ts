@@ -1,12 +1,12 @@
 import { NamedXmlBasedJson, XmlParseError } from "../../input-format"
 import { retrieveMetaStructure } from "../meta"
 import { parseLog } from "../../parser"
-import { tryParseOneElementBasedOnType } from '../structure'
+import { tryNormalizeSingleNode } from '../structure'
 import { ParserData } from "../../data"
 import { Type, RWhileLoop } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
-export function tryParseWhileLoop(
+export function tryNormalizeWhile(
   data: ParserData,
   whileToken: NamedXmlBasedJson,
   leftParen: NamedXmlBasedJson,
@@ -38,8 +38,8 @@ export function tryParseWhileLoop(
   )
 
 
-  const parsedCondition = tryParseOneElementBasedOnType(data, condition)
-  const parseBody = tryParseOneElementBasedOnType(data, body)
+  const parsedCondition = tryNormalizeSingleNode(data, condition)
+  const parseBody = tryNormalizeSingleNode(data, body)
 
   if (parsedCondition === undefined || parseBody === undefined) {
     throw new XmlParseError(

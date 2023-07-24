@@ -7,13 +7,13 @@ import { executeHook } from '../../hooks'
 import { ParserData } from '../../data'
 
 /**
- * Parse the given object as an R comment.
+ * Normalize the given object as an R comment.
  * This requires you to check the corresponding name beforehand.
  *
  * @param data - The data used by the parser (see {@link ParserData})
- * @param obj - the json object to extract the meta-information from
+ * @param obj  - The json object to extract the meta-information from
  */
-export function parseComment(data: ParserData, obj: XmlBasedJson): RComment {
+export function normalizeComment(data: ParserData, obj: XmlBasedJson): RComment {
   parseLog.debug(`[comment]`)
   obj = executeHook(data.hooks.other.onComment.before, data, obj)
 

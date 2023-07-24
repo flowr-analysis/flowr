@@ -9,13 +9,13 @@ import { ParserData } from '../../data'
 const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/
 
 /**
- * Parse the given object as an R line directive (`#line <number> "<file>"`).
+ * Normalize the given object as an R line directive (`#line <number> "<file>"`).
  * This requires you to check the corresponding name beforehand.
  *
  * @param data - The data used by the parser (see {@link ParserData})
  * @param obj  - The json object to extract the meta-information from
  */
-export function parseLineDirective(data: ParserData, obj: XmlBasedJson): RLineDirective {
+export function normalizeLineDirective(data: ParserData, obj: XmlBasedJson): RLineDirective {
   parseLog.debug(`[line-directive]`)
   obj = executeHook(data.hooks.other.onLineDirective.before, data, obj)
 

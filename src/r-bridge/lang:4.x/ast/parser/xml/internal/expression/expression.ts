@@ -7,15 +7,15 @@ import { tryToParseFunctionCall, tryToParseFunctionDefinition } from '../functio
 import { Type, RNode } from '../../../../model'
 import { executeHook } from '../../hooks'
 import { tryParseAccess } from '../access'
-import { parseComment } from '../other'
+import { normalizeComment } from '../other'
 
 /**
- * Returns an ExprList if there are multiple children, otherwise returns the single child directly with no expr wrapper
+ * Returns an expression list if there are multiple children, otherwise returns the single child directly with no expr wrapper
  *
  * @param data - The data used by the parser (see {@link ParserData})
- * @param obj - The json object to extract the meta-information from
+ * @param obj  - The json object to extract the meta-information from
  */
-export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
+export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode {
   parseLog.debug(`Parsing expr`)
   obj = executeHook(data.hooks.expression.onExpression.before, data, obj)
 
@@ -34,19 +34,19 @@ export function parseExpression(data: ParserData, obj: XmlBasedJson): RNode {
 
   const maybeFunctionCall = tryToParseFunctionCall(childData, others)
   if (maybeFunctionCall !== undefined) {
-    maybeFunctionCall.info.additionalTokens = [...maybeFunctionCall.info.additionalTokens ?? [], ...comments.map(x => parseComment(data, x.content))]
+    maybeFunctionCall.info.additionalTokens = [...maybeFunctionCall.info.additionalTokens ?? [], ...comments.map(x => normalizeComment(data, x.content))]
     return maybeFunctionCall
   }
 
   const maybeAccess = tryParseAccess(childData, others)
   if (maybeAccess !== undefined) {
-    maybeAccess.info.additionalTokens = [...maybeAccess.info.additionalTokens ?? [], ...comments.map(x => parseComment(data, x.content))]
+    maybeAccess.info.additionalTokens = [...maybeAccess.info.additionalTokens ?? [], ...comments.map(x => normalizeComment(data, x.content))]
     return maybeAccess
   }
 
   const maybeFunctionDefinition = tryToParseFunctionDefinition(childData, others)
   if (maybeFunctionDefinition !== undefined) {
-    maybeFunctionDefinition.info.additionalTokens = [...maybeFunctionDefinition.info.additionalTokens ?? [], ...comments.map(x => parseComment(data, x.content))]
+    maybeFunctionDefinition.info.additionalTokens = [...maybeFunctionDefinition.info.additionalTokens ?? [], ...comments.map(x => normalizeComment(data, x.content))]
     return maybeFunctionDefinition
   }
 

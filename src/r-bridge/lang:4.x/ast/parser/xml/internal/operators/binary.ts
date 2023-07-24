@@ -3,7 +3,7 @@ import { parseLog } from '../../parser'
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../meta'
 import { identifySpecialOp } from './special'
 import { ParserData } from '../../data'
-import { tryParseOneElementBasedOnType } from '../structure'
+import { tryNormalizeSingleNode } from '../structure'
 import {
   ArithmeticOperatorsRAst,
   AssignmentsRAst,
@@ -24,7 +24,7 @@ import { guard } from '../../../../../../../util/assert'
  * Parsing binary operations includes the pipe, even though the produced PIPE construct is not a binary operation,
  * to ensure it is handled separately from the others (especially in the combination of a pipe bind)
  */
-export function tryParseBinaryOperation(
+export function tryNormalizeBinary(
   data: ParserData,
   lhs: NamedXmlBasedJson,
   operator: NamedXmlBasedJson,
@@ -58,8 +58,8 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
   ({ flavor, lhs, rhs, operator } = executeHook(data.hooks.operators.onBinary.before, data, { flavor, lhs, operator, rhs }))
 
   ensureChildrenAreLhsAndRhsOrdered(data.config, lhs.content, rhs.content)
-  let parsedLhs = tryParseOneElementBasedOnType(data, lhs)
-  let parsedRhs = tryParseOneElementBasedOnType(data, rhs)
+  let parsedLhs = tryNormalizeSingleNode(data, lhs)
+  let parsedRhs = tryNormalizeSingleNode(data, rhs)
 
   if (parsedLhs === undefined || parsedRhs === undefined) {
     throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, operator, rhs])}`)

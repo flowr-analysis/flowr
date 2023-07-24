@@ -1,7 +1,7 @@
 import { NamedXmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure, retrieveOpName } from '../meta'
 import { parseLog } from '../../parser'
-import { tryParseOneElementBasedOnType } from '../structure'
+import { tryNormalizeSingleNode } from '../structure'
 import { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
 import {
@@ -23,7 +23,7 @@ import { executeHook, executeUnknownHook } from '../../hooks'
  *
  * @returns The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
  */
-export function tryParseUnaryOperation(data: ParserData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
+export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
   parseLog.trace(`unary op for ${operator.name} ${operand.name}`)
   let flavor: UnaryOperatorFlavor
   // TODO: filter for unary
@@ -43,7 +43,7 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: N
   parseLog.debug(`[unary op] parse ${flavor}`); // <- semicolon sadly required for not miss-interpreting the destructuring match as call
   ({ flavor, operator, operand} = executeHook(data.hooks.operators.onUnary.before, data, { flavor, operator, operand }))
 
-  const parsedOperand = tryParseOneElementBasedOnType(data, operand)
+  const parsedOperand = tryNormalizeSingleNode(data, operand)
 
   guard(parsedOperand !== undefined, () => 'unexpected under-sided unary op')
 

@@ -3,25 +3,25 @@ import { splitArrayOn } from "../../../../../../../util/arrays"
 import { parseLog } from "../../parser"
 import { getWithTokenType } from "../meta"
 import { ParserData } from "../../data"
-import { tryParseOneElementBasedOnType } from "./single-element"
-import { tryParseSymbol } from '../values'
-import { tryParseUnaryOperation, tryParseBinaryOperation } from '../operators'
+import { tryNormalizeSingleNode } from "./single-element"
+import { tryNormalizeSymbol } from '../values'
+import { tryNormalizeUnary, tryNormalizeBinary } from '../operators'
 import {
-  tryParseRepeatLoop,
-  tryParseForLoop,
-  tryParseWhileLoop
+  tryNormalizeRepeat,
+  tryNormalizeFor,
+  tryNormalizeWhile
 } from '../loops'
-import { tryParseIfThenElse, tryParseIfThen } from '../control'
+import { tryNormalizeIfThenElse, tryNormalizeIfThen } from '../control'
 import { Type, RNode } from '../../../../model'
 import { log } from '../../../../../../../util/log'
-import { parseComment } from '../other'
+import { normalizeComment } from '../other'
 
-function parseMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData) {
+function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData) {
   if (mappedWithName.length === 1) {
-    const parsed = tryParseOneElementBasedOnType(data, mappedWithName[0])
+    const parsed = tryNormalizeSingleNode(data, mappedWithName[0])
     return parsed !== undefined ? [parsed] : []
   } else if (mappedWithName.length === 2) {
-    const unaryOp = tryParseUnaryOperation(
+    const unaryOp = tryNormalizeUnary(
       data,
       mappedWithName[0],
       mappedWithName[1]
@@ -29,7 +29,7 @@ function parseMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJso
     if (unaryOp !== undefined) {
       return [unaryOp]
     }
-    const repeatLoop = tryParseRepeatLoop(
+    const repeatLoop = tryNormalizeRepeat(
       data,
       mappedWithName[0],
       mappedWithName[1]
@@ -38,7 +38,7 @@ function parseMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJso
       return [repeatLoop]
     }
   } else if (mappedWithName.length === 3) {
-    const binary = tryParseBinaryOperation(
+    const binary = tryNormalizeBinary(
       data,
       mappedWithName[0],
       mappedWithName[1],
@@ -48,7 +48,7 @@ function parseMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJso
       return [binary]
     } else {
       // TODO: maybe-monad pass through? or just use undefined (see ts-fp)
-      const forLoop = tryParseForLoop(
+      const forLoop = tryNormalizeFor(
         data,
         mappedWithName[0],
         mappedWithName[1],
@@ -58,7 +58,7 @@ function parseMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJso
         return [forLoop]
       } else {
         // could be a symbol with namespace information
-        const symbol = tryParseSymbol(data, mappedWithName)
+        const symbol = tryNormalizeSymbol(data, mappedWithName)
         if (symbol !== undefined) {
           return [symbol]
         }
@@ -66,7 +66,7 @@ function parseMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJso
       // TODO: try to parse symbols with namespace information
     }
   } else if (mappedWithName.length === 5) {
-    const ifThen = tryParseIfThen(data, [
+    const ifThen = tryNormalizeIfThen(data, [
       mappedWithName[0],
       mappedWithName[1],
       mappedWithName[2],
@@ -76,7 +76,7 @@ function parseMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJso
     if (ifThen !== undefined) {
       return [ifThen]
     } else {
-      const whileLoop = tryParseWhileLoop(
+      const whileLoop = tryNormalizeWhile(
         data,
         mappedWithName[0],
         mappedWithName[1],
@@ -89,7 +89,7 @@ function parseMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJso
       }
     }
   } else if (mappedWithName.length === 7) {
-    const ifThenElse = tryParseIfThenElse(data, [
+    const ifThenElse = tryNormalizeIfThenElse(data, [
       mappedWithName[0],
       mappedWithName[1],
       mappedWithName[2],
@@ -162,9 +162,9 @@ export function normalizeBasedOnType(
   mappedWithName = splitOnSemicolon[0]
   const { comments, others } = splitComments(mappedWithName)
 
-  const parsedComments = comments.map(c => parseComment(data, c.content))
+  const parsedComments = comments.map(c => normalizeComment(data, c.content))
 
-  const result = parseMappedWithoutSemicolonBasedOnType(others, data)
+  const result = normalizeMappedWithoutSemicolonBasedOnType(others, data)
   // we hoist comments
   return [...parsedComments, ...result]
 }
@@ -175,7 +175,7 @@ export function parseNodesWithUnknownType(data: ParserData, mappedWithName: Name
   // TODO: refactor?
   // TODO: allow to configure #name
   for (const elem of mappedWithName) {
-    const retrieved = tryParseOneElementBasedOnType(data, elem)
+    const retrieved = tryNormalizeSingleNode(data, elem)
     if (retrieved !== undefined) {
       parsedNodes.push(retrieved)
     }

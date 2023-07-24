@@ -7,15 +7,14 @@ import { executeHook } from '../../hooks'
 import { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
 
-// noinspection GrazieInspection
 /**
- * Parse the given object as a R string (see {@link string2ts}).
+ * Normalize the given object as a R string (see {@link string2ts}).
  * This requires you to check the corresponding name beforehand.
  *
  * @param data - The data used by the parser (see {@link ParserData})
  * @param obj  - The json object to extract the meta-information from
  */
-export function parseString(data: ParserData, obj: XmlBasedJson): RString {
+export function normalizeString(data: ParserData, obj: XmlBasedJson): RString {
   parseLog.debug('[string]')
   obj = executeHook(data.hooks.values.onString.before, data, obj)
 

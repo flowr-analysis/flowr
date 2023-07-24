@@ -5,7 +5,7 @@ import { executeHook } from '../../hooks'
 import { retrieveMetaStructure } from '../meta'
 import { RBreak, Type } from '../../../../model'
 
-export function parseBreak(data: ParserData, obj: XmlBasedJson): RBreak {
+export function normalizeBreak(data: ParserData, obj: XmlBasedJson): RBreak {
   parseLog.debug(`[break] try: ${JSON.stringify(obj)}`)
   obj = executeHook(data.hooks.loops.onBreak.before, data, obj)
 

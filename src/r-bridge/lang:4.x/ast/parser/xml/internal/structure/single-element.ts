@@ -1,14 +1,14 @@
 import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
-import { parseNumber, parseString, tryParseSymbol } from '../values'
+import { normalizeNumber, normalizeString, tryNormalizeSymbol } from '../values'
 import { guard } from '../../../../../../../util/assert'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
-import { parseExpression } from '../expression'
+import { normalizeExpression } from '../expression'
 import { getWithTokenType } from '../meta'
 import { Type, RNode } from '../../../../model'
-import { parseComment } from '../other'
-import { parseBreak, parseNext } from '../loops'
-import { parseLineDirective } from '../other/line-directive'
+import { normalizeComment } from '../other'
+import { normalizeBreak, normalizeNext } from '../loops'
+import { normalizeLineDirective } from '../other/line-directive'
 
 /**
  * Parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)
@@ -19,7 +19,7 @@ import { parseLineDirective } from '../other/line-directive'
  * @returns `undefined` if no parse result is to be produced (i.e., if it is skipped).
  *          Otherwise, returns the parsed element.
  */
-export function tryParseOneElementBasedOnType(data: ParserData, elem: NamedXmlBasedJson): RNode | undefined {
+export function tryNormalizeSingleNode(data: ParserData, elem: NamedXmlBasedJson): RNode | undefined {
   switch (elem.name) {
     case Type.ParenLeft:
     case Type.ParenRight:
@@ -30,25 +30,25 @@ export function tryParseOneElementBasedOnType(data: ParserData, elem: NamedXmlBa
       parseLog.debug(`skipping brace information for ${JSON.stringify(elem)}`)
       return undefined
     case Type.Comment:
-      return parseComment(data, elem.content)
+      return normalizeComment(data, elem.content)
     case Type.LineDirective:
-      return parseLineDirective(data, elem.content)
+      return normalizeLineDirective(data, elem.content)
     case Type.ExpressionList:
     case Type.Expression:
     case Type.ExprHelpAssignWrapper:
-      return parseExpression(data, elem.content)
+      return normalizeExpression(data, elem.content)
     case Type.Number:
-      return parseNumber(data, elem.content)
+      return normalizeNumber(data, elem.content)
     case Type.String:
-      return parseString(data, elem.content)
+      return normalizeString(data, elem.content)
     case Type.Break:
-      return parseBreak(data, elem.content)
+      return normalizeBreak(data, elem.content)
     case Type.Next:
-      return parseNext(data, elem.content)
+      return normalizeNext(data, elem.content)
     case Type.Symbol:
     case Type.Slot:
     case Type.Null: {
-      const symbol =  tryParseSymbol(data, getWithTokenType(data.config.tokenMap, [elem.content]))
+      const symbol =  tryNormalizeSymbol(data, getWithTokenType(data.config.tokenMap, [elem.content]))
       guard(symbol !== undefined, () => `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
       return symbol
     }

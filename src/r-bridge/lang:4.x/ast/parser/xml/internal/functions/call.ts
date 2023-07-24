@@ -3,7 +3,7 @@ import { guard } from '../../../../../../../util/assert'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseLog } from '../../parser'
-import { parseString, tryParseSymbol } from '../values'
+import { normalizeString, tryNormalizeSymbol } from '../values'
 import { ParserData } from '../../data'
 import {
   Type,
@@ -18,7 +18,7 @@ import {
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { tryToParseArgument } from './argument'
 import { SourceRange } from '../../../../../../../util/range'
-import { parseExpression } from '../expression'
+import { normalizeExpression } from '../expression'
 
 /**
  * Tries to parse the given data as a function call.
@@ -92,7 +92,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
   parseLog.trace('Assuming structure to be a function call')
 
   // we parse an expression to allow function calls
-  const calledFunction = parseExpression(data, mappedWithName[0].content)
+  const calledFunction = normalizeExpression(data, mappedWithName[0].content)
   const parsedArguments = parseArguments(mappedWithName, data)
 
   if(parsedArguments.length === 0) {
@@ -142,7 +142,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJson[], mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RNamedFunctionCall {
   let functionName: RNode | undefined
   if(symbolContent.length === 1 && symbolContent[0].name === Type.String) {
-    const stringBase = parseString(data, symbolContent[0].content)
+    const stringBase = normalizeString(data, symbolContent[0].content)
     functionName = {
       type:      Type.Symbol,
       namespace: undefined,
@@ -152,7 +152,7 @@ function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJs
       content:   stringBase.content.str
     }
   } else {
-    functionName = tryParseSymbol(data, symbolContent)
+    functionName = tryNormalizeSymbol(data, symbolContent)
   }
   guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')
   guard(functionName.type === Type.Symbol, `expected function name to be a symbol, yet received ${functionName.type}`)

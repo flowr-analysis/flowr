@@ -2,7 +2,7 @@ import { NamedXmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
-import { tryParseOneElementBasedOnType } from '../structure'
+import { tryNormalizeSingleNode } from '../structure'
 import { Type, RRepeatLoop } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
 import { executeHook, executeUnknownHook } from '../../hooks'
@@ -16,7 +16,7 @@ import { executeHook, executeUnknownHook } from '../../hooks'
  *
  * @returns The parsed {@link RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
  */
-export function tryParseRepeatLoop(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): RRepeatLoop | undefined {
+export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): RRepeatLoop | undefined {
   if (repeatToken.name !== Type.Repeat) {
     parseLog.debug('encountered non-repeat token for supposed repeat-loop structure')
     return executeUnknownHook(data.hooks.loops.onRepeatLoop.unknown, data, { repeatToken, body })
@@ -25,7 +25,7 @@ export function tryParseRepeatLoop(data: ParserData, repeatToken: NamedXmlBasedJ
   parseLog.debug(`trying to parse repeat-loop`);
   ({ repeatToken, body } = executeHook(data.hooks.loops.onRepeatLoop.before, data, { repeatToken, body }))
 
-  const parseBody = tryParseOneElementBasedOnType(data, body)
+  const parseBody = tryNormalizeSingleNode(data, body)
   guard(parseBody !== undefined, () => `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(body)})`)
 
   const {

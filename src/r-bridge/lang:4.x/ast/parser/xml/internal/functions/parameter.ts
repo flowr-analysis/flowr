@@ -6,7 +6,7 @@ import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../util/log'
 import { guard } from '../../../../../../../util/assert'
-import { tryParseOneElementBasedOnType } from '../structure'
+import { tryNormalizeSingleNode } from '../structure'
 
 /**
  * Either parses `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]` as a parameter of a function definition in R.
@@ -68,5 +68,5 @@ export function tryToParseParameter(data: ParserData, objs: NamedXmlBasedJson[])
 function parseWithDefaultValue(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
   guard(objs[1].name === Type.EqFormals, () => `[arg-default] second element of parameter must be ${Type.EqFormals}, but: ${JSON.stringify(objs)}`)
   guard(objs[2].name === Type.Expression, () => `[arg-default] third element of parameter must be an Expression but: ${JSON.stringify(objs)}`)
-  return tryParseOneElementBasedOnType(data, objs[2])
+  return tryNormalizeSingleNode(data, objs[2])
 }

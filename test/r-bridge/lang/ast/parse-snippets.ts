@@ -24,7 +24,7 @@ max
           type:     Type.BinaryOp,
           flavor:   "assignment",
           lexeme:   "<-",
-          op:       "<-",
+          operator: "<-",
           location: rangeFrom(2, 3, 2, 4),
           info:     {},
           lhs:      {
@@ -47,7 +47,7 @@ max
           type:     Type.BinaryOp,
           flavor:   "assignment",
           lexeme:   "=",
-          op:       "=",
+          operator: "=",
           location: rangeFrom(3, 3, 3, 3),
           info:     {},
           lhs:      {
@@ -75,7 +75,7 @@ max
             type:     Type.BinaryOp,
             flavor:   "comparison",
             lexeme:   ">",
-            op:       ">",
+            operator: ">",
             location: rangeFrom(4, 7, 4, 7),
             info:     {},
             lhs:      {
@@ -105,7 +105,7 @@ max
                 type:     Type.BinaryOp,
                 flavor:   "assignment",
                 lexeme:   "<<-",
-                op:       "<<-",
+                operator: "<<-",
                 location: rangeFrom(5, 7, 5, 9),
                 info:     {},
                 lhs:      {
@@ -129,7 +129,7 @@ max
                 type:     Type.BinaryOp,
                 flavor:   "assignment",
                 lexeme:   "->",
-                op:       "->",
+                operator: "->",
                 location: rangeFrom(6, 5, 6, 6),
                 info:     {},
                 lhs:      {
@@ -154,7 +154,7 @@ max
             type:     Type.BinaryOp,
             flavor:   "assignment",
             lexeme:   "->>",
-            op:       "->>",
+            operator: "->>",
             location: rangeFrom(8, 5, 8, 7),
             info:     {},
             lhs:      {

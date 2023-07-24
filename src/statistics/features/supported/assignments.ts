@@ -45,7 +45,7 @@ const bracketAssignQuery: Query = xpath.parse(`
  `)
 
 function enrichOpForBracketAssign(node: Node): string {
-  let op: string | null = null
+  let operator: string | null = null
   const siblings = node.parentNode?.parentNode?.childNodes
   if(siblings == null) {
     return `${node.textContent ?? '<unknown>'}??`
@@ -55,12 +55,12 @@ function enrichOpForBracketAssign(node: Node): string {
   for (let i = 0; i < siblings.length; i++) {
     const child = siblings.item(i)
     if(child.nodeName === 'LEFT_ASSIGN' || child.nodeName === 'EQ_ASSIGN' || child.nodeName === 'RIGHT_ASSIGN') {
-      op = child.textContent
+      operator = child.textContent
       break
     }
   }
 
-  return `${node.textContent ?? '<unknown>'}${op ?? '??'}`
+  return `${node.textContent ?? '<unknown>'}${operator ?? '??'}`
 }
 
 export const assignments: Feature<AssignmentInfo> = {

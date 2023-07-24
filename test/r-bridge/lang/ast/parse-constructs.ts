@@ -201,7 +201,7 @@ describe('Parse simple constructs', withShell(shell => {
         vector: {
           type:     Type.BinaryOp,
           flavor:   'arithmetic',
-          op:       ':',
+          operator: ':',
           location: rangeFrom(1, 11, 1, 11),
           lexeme:   ':',
           info:     {},

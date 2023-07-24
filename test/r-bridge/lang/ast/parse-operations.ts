@@ -22,7 +22,7 @@ describe("Parse simple operations",
               simpleInput,
               exprList({
                 type:     Type.UnaryOp,
-                op:       op.str,
+                operator: op.str,
                 flavor:   op.flavor,
                 lexeme:   op.str,
                 location: rangeFrom(1, 1, 1, 1 + opOffset),
@@ -48,7 +48,7 @@ describe("Parse simple operations",
         exprList({
           type:     Type.UnaryOp,
           location: rangeFrom(1, 1, 1, 1),
-          op:       '?',
+          operator: '?',
           lexeme:   '?',
           flavor:   'logical', /* TODO */
           info:     {},
@@ -89,7 +89,7 @@ describe("Parse simple operations",
               simpleInput,
               exprList({
                 type:     Type.BinaryOp,
-                op,
+                operator: op,
                 lexeme:   op,
                 flavor:   "comparison",
                 location: rangeFrom(1, 3, 1, 3 + opOffset),
@@ -137,7 +137,7 @@ describe("Parse simple operations",
                 flavor:   'arithmetic',
                 info:     {},
                 lexeme:   '+',
-                op:       '+',
+                operator: '+',
                 location: rangeFrom(1, 3, 1, 3),
                 lhs:      {
                   type:     Type.Number,
@@ -223,7 +223,7 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
     assertAst(simpleInput, shell, simpleInput, exprList(
       {
         type:     Type.BinaryOp,
-        op:       op.str,
+        operator: op.str,
         lexeme:   op.str,
         flavor:   op.flavor,
         location: rangeFrom(1, 3, 1, 3 + opOffset),
@@ -259,14 +259,14 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
       assertAst(defaultPrecedence.input, shell, defaultPrecedence.input, exprList(
         {
           type:     Type.BinaryOp,
-          op:       op.str,
+          operator: op.str,
           lexeme:   op.str,
           flavor:   op.flavor,
           location: rangeFrom(1, 7 + opOffset + defaultPrecedence.offsetC, 1, 7 + 2 * opOffset + defaultPrecedence.offsetC),
           info:     {},
           lhs:      {
             type:     Type.BinaryOp,
-            op:       op.str,
+            operator: op.str,
             lexeme:   op.str,
             flavor:   op.flavor,
             location: rangeFrom(1, 3 + defaultPrecedence.offsetL, 1, 3 + opOffset + defaultPrecedence.offsetL),
@@ -301,7 +301,7 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
     assertAst(invertedPrecedenceInput, shell, invertedPrecedenceInput, exprList(
       {
         type:     Type.BinaryOp,
-        op:       op.str,
+        operator: op.str,
         lexeme:   op.str,
         flavor:   op.flavor,
         location: rangeFrom(1, 3, 1, 3 + opOffset),
@@ -315,7 +315,7 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
         },
         rhs: {
           type:     Type.BinaryOp,
-          op:       op.str,
+          operator: op.str,
           lexeme:   op.str,
           flavor:   op.flavor,
           // TODO: deal with brackets in location?

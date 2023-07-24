@@ -101,7 +101,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
     return plain(getLexeme(n))
   }
 
-  return reconstructRawBinaryOperator(lhs, n.type === Type.Pipe ? '|>' : n.op, rhs)
+  return reconstructRawBinaryOperator(lhs, n.type === Type.Pipe ? '|>' : n.operator, rhs)
 }
 
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {

@@ -36,7 +36,7 @@ describe("Parse function definitions", withShell((shell) => {
           location: rangeFrom(1, 16, 1, 16),
           flavor:   'arithmetic',
           lexeme:   "+",
-          op:       '+',
+          operator: '+',
           info:     {},
           lhs:      {
             type:      Type.Symbol,
@@ -51,7 +51,7 @@ describe("Parse function definitions", withShell((shell) => {
             location: rangeFrom(1, 20, 1, 20),
             flavor:   'arithmetic',
             lexeme:   "*",
-            op:       '*',
+            operator: '*',
             info:     {},
             lhs:      {
               type:     Type.Number,

@@ -31,9 +31,9 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
     foldModelFormula: onBinary
   },
   unaryOp: {
-    foldLogicalOp:    (_: unknown, op: NodeId[]) => op,
-    foldArithmeticOp: (_: unknown, op: NodeId[]) => op,
-    foldModelFormula: (_: unknown, op: NodeId[]) => op
+    foldLogicalOp:    (_: unknown, operator: NodeId[]) => operator,
+    foldArithmeticOp: (_: unknown, operator: NodeId[]) => operator,
+    foldModelFormula: (_: unknown, operator: NodeId[]) => operator
   },
   loop: {
     foldFor:    (_: unknown, a: NodeId[], b: NodeId[], c: NodeId[]) => [...a,...b,...c],

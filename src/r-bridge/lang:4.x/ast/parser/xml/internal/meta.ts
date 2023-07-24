@@ -88,11 +88,11 @@ export function getWithTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: Xml
   }))
 }
 
-export function retrieveOpName(config: XmlParserConfig, op: NamedXmlBasedJson): string {
+export function retrieveOpName(config: XmlParserConfig, operator: NamedXmlBasedJson): string {
   /*
    * only real arithmetic ops have their operation as their own name, the others identify via content
    */
-  return op.content[config.contentName] as string
+  return operator.content[config.contentName] as string
 }
 
 /**

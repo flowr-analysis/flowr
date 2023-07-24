@@ -27,45 +27,45 @@ import { guard } from '../../../../../../../util/assert'
 export function tryParseBinaryOperation(
   data: ParserData,
   lhs: NamedXmlBasedJson,
-  op: NamedXmlBasedJson,
+  operator: NamedXmlBasedJson,
   rhs: NamedXmlBasedJson
 ): RNode | undefined {
-  parseLog.trace(`binary op for ${lhs.name} [${op.name}] ${rhs.name}`)
+  parseLog.trace(`binary op for ${lhs.name} [${operator.name}] ${rhs.name}`)
   let flavor: BinaryOperatorFlavor | 'special' | 'pipe'
-  if (Type.Special === op.name) {
+  if (Type.Special === operator.name) {
     flavor = "special"
-  } else if (ArithmeticOperatorsRAst.has(op.name)) {
+  } else if (ArithmeticOperatorsRAst.has(operator.name)) {
     flavor = "arithmetic"
-  } else if (ComparisonOperatorsRAst.has(op.name)) {
+  } else if (ComparisonOperatorsRAst.has(operator.name)) {
     flavor = "comparison"
-  } else if (LogicalOperatorsRAst.has(op.name)) {
+  } else if (LogicalOperatorsRAst.has(operator.name)) {
     flavor = "logical"
-  }  else if (ModelFormulaOperatorsRAst.has(op.name)) {
+  }  else if (ModelFormulaOperatorsRAst.has(operator.name)) {
     flavor = "model formula"
-  } else if (AssignmentsRAst.has(op.name)) {
+  } else if (AssignmentsRAst.has(operator.name)) {
     flavor = "assignment"
-  } else if(op.name === Type.Pipe) {
+  } else if(operator.name === Type.Pipe) {
     flavor = 'pipe'
   } else {
-    return executeUnknownHook(data.hooks.operators.onBinary.unknown, data, { lhs, op, rhs })
+    return executeUnknownHook(data.hooks.operators.onBinary.unknown, data, { lhs, operator, rhs })
   }
   // TODO: identify op name correctly
-  return parseBinaryOp(data, flavor, lhs, op, rhs)
+  return parseBinaryOp(data, flavor, lhs, operator, rhs)
 }
 
-function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedXmlBasedJson, op: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RFunctionCall | RBinaryOp | RPipe {
+function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedXmlBasedJson, operator: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RFunctionCall | RBinaryOp | RPipe {
   parseLog.debug(`[binary op] trying to parse ${flavor}`);
-  ({ flavor, lhs, rhs, op} = executeHook(data.hooks.operators.onBinary.before, data, { flavor, lhs, op, rhs }))
+  ({ flavor, lhs, rhs, operator } = executeHook(data.hooks.operators.onBinary.before, data, { flavor, lhs, operator, rhs }))
 
   ensureChildrenAreLhsAndRhsOrdered(data.config, lhs.content, rhs.content)
   let parsedLhs = tryParseOneElementBasedOnType(data, lhs)
   let parsedRhs = tryParseOneElementBasedOnType(data, rhs)
 
   if (parsedLhs === undefined || parsedRhs === undefined) {
-    throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, op, rhs])}`)
+    throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, operator, rhs])}`)
   }
 
-  const operationName = retrieveOpName(data.config, op)
+  const operationName = retrieveOpName(data.config, operator)
 
   // special support for strings in assignments
   if(flavor === 'assignment') {
@@ -74,7 +74,7 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 
 
 
-  const { location, content } = retrieveMetaStructure(data.config, op.content)
+  const { location, content } = retrieveMetaStructure(data.config, operator.content)
 
   if (flavor === 'special') {
     flavor = identifySpecialOp(content)
@@ -148,14 +148,14 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
     }
   } else {
     result = {
-      type:   Type.BinaryOp,
+      type:     Type.BinaryOp,
       flavor,
       location,
-      lhs:    parsedLhs,
-      rhs:    parsedRhs,
-      op:     operationName,
-      lexeme: content,
-      info:   {
+      lhs:      parsedLhs,
+      rhs:      parsedRhs,
+      operator: operationName,
+      lexeme:   content,
+      info:     {
         // TODO: include lhs and rhs
         fullRange:        data.currentRange,
         additionalTokens: [],

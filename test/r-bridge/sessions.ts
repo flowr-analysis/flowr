@@ -1,4 +1,4 @@
-import { assert } from 'chai'
+import chai, { assert } from 'chai'
 import fs from 'fs'
 import { randomString } from '../../src/util/random'
 import { testRequiresNetworkConnection } from '../helper/network'
@@ -6,6 +6,8 @@ import { testWithShell, withShell } from '../helper/shell'
 import { isInstallTest } from '../main.spec'
 import { parseCSV } from '../../src/r-bridge'
 import { log, LogLevel } from '../../src/util/log'
+import chaiAsPromised from 'chai-as-promised'
+chai.use(chaiAsPromised)
 
 /** here we use testWithShell to get a fresh shell within each call */
 describe('RShell sessions', function() {
@@ -29,6 +31,16 @@ describe('RShell sessions', function() {
     const lines = await shell.sendCommandWithOutput('a')
     assert.equal(lines.length, 1)
     assert.equal(lines[0], '[1] 2')
+  })
+  testWithShell('trigger timeout', async shell => {
+    await assert.isRejected(
+      shell.sendCommandWithOutput('Sys.sleep(42)', {
+        timeout: {
+          ms:             1,
+          resetOnNewData: false
+        }
+      })
+    )
   })
   testWithShell('clear environment should remove variable information', async shell => {
     shell.continueOnError() // we will produce an error!

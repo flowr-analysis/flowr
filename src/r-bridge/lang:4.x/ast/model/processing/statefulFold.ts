@@ -25,10 +25,14 @@ import {
   RBreak,
   RParameter,
   RArgument,
-  RFunctionDefinition, RAccess, RModelFormulaBinaryOp, RModelFormulaUnaryOp, RLineDirective
+  RFunctionDefinition,
+  RAccess,
+  RModelFormulaBinaryOp,
+  RModelFormulaUnaryOp,
+  RLineDirective,
+  RPipe
 } from '../nodes'
 import { RNode } from '../model'
-import { RPipe } from '../nodes'
 
 
 /**

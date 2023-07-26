@@ -10,6 +10,7 @@ export const optionDefinitions: OptionDefinition[] = [
   { name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide.' },
   { name: 'post-process',             type: Boolean, description: 'If set, will enable post-processing of the given input (clustering, ...). Pass the output-dir of the processing as input.' },
   { name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process'},
+  { name: 'hist-step',                type: Number,  description: 'When post-processing, the step size for the histogram', defaultValue: 0.01, typeLabel: '{underline number}' },
   { name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
   { name: 'output-dir',   alias: 'o', type: String,  description: 'Folder to write the output to', defaultValue: `${process.cwd()}/statistics-out/${date2string(new Date())}`, typeLabel: '{underline folder}' },
   { name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.'},
@@ -21,6 +22,7 @@ export interface StatsCliOptions {
   help:           boolean
   'post-process': boolean
   limit:          number
+  'hist-step':    number
   input:          string[]
   'output-dir':   string
   'no-ansi':      boolean

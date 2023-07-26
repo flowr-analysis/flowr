@@ -1,3 +1,4 @@
+# Identifies N the most used CRAN packages
 library(cranlogs)
 
 # retrieve top N packages

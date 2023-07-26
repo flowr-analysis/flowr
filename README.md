@@ -116,6 +116,10 @@ The (sorted) results should be versioned and can be found in [scripts/top-r-down
    npm run stats -- --post-process "./statistics-out/cran-500" --no-ansi > "./statistics-out/cran-500/cran-500-summary.log"
    ```
    Additionally, the post-processor will create `.dat` files for several (sub-)features which contains histogram information.
+   Depending on the size of the sources, you may want to 
+   
+   * increase the heap-size of node (`export NODE_OPTIONS=--max_old_space_size=8192`).
+   * limit the features to be analyzed by using the `--features` option.
 
 </details>
 

@@ -2,6 +2,8 @@ import { ClusterReport } from './clusterer'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard, isNotUndefined } from '../../util/assert'
 import { Table } from '../../util/files'
+import { BiMap } from '../../util/bimap'
+import fs from 'fs'
 
 /**
  * A conventional histogram (e.g., created by {@link histogramFromNumbers}).
@@ -27,24 +29,32 @@ export interface Histogram {
  * Let's suppose you want histograms for the Assignments feature.
  * By default, for each clustered value, a histogram is produced (can be configured by `filter`).
  *
- * @param report - the report to collect histogram information from
- * @param binSize - size of each bin (see {@link histogramFromNumbers} for details on why we do not specify the bin-count)
- * @param filter - if given, only produce histograms for the given values
+ * @param report  - The report to collect histogram information from
+ * @param binSize - Size of each bin (see {@link histogramFromNumbers} for details on why we do not specify the bin-count)
+ * @param relateValuesToNumberOfLines - If true, each value (like `<-` appeared in file 'x' exactly `N` times) will be divided by the number of lines in the file 'x'.
+ * @param filter  - If given, only produce histograms for the given values
  */
-export function histogramsFromClusters(report: ClusterReport, binSize: number, ...filter: string[]): Histogram[] {
+export function histogramsFromClusters(report: ClusterReport, binSize: number, relateValuesToNumberOfLines: boolean, ...filter: string[]): Histogram[] {
   const contexts = [...report.valueInfoMap.entries()]
+  const filenameFromId = new BiMap(report.contextIdMap.entries())
 
   // first, we collect the number of appearances for each value
   const valueCounts = new DefaultMap<string, number[]>(() => [])
 
   for(const id of report.contextIdMap.values()) {
+    // calculate the number of lines within the file given by the id
+    const filename = filenameFromId.getKey(id)
+    guard(filename !== undefined, `filename for id ${id} is undefined`)
+    const numberOfLines = relateValuesToNumberOfLines ? fs.readFileSync(filename, 'utf-8').split('\n').length : 1
+
     for(const [value, counts] of contexts) {
-      valueCounts.get(value).push(counts.get(id))
+      valueCounts.get(value).push(counts.get(id) / numberOfLines)
     }
   }
 
-  return [...valueCounts.entries()].map(([name, counts]) => filter.length === 0 || filter.includes(name) ? histogramFromNumbers(name, binSize, counts) : undefined)
-    .filter(isNotUndefined)
+  return [...valueCounts.entries()].map(([name, counts]) =>
+    filter.length === 0 || filter.includes(name) ? histogramFromNumbers(name, binSize, counts) : undefined
+  ).filter(isNotUndefined)
 }
 
 /**
@@ -90,11 +100,11 @@ export function histogramFromNumbers(name: string, binSize: number, values: numb
  *
  * The table has the following columns:
  * - `bin` - the corresponding bin number
- * - `from` - the inclusive lower bound of the bin
+ * - `from` - the exclusive lower bound of the bin
  * - `to` - the inclusive upper bound of the bin
  * - a column with the name of each histogram, containing its count of values in the corresponding bin
  *
- * @param histograms - the histogram to convert
+ * @param histograms - the histogram to convert (assumed to have the same ranges and bins)
  * @param countAsDensity - if true, the count is divided by the total number of values (individually for each histogram, similar to pgfplots `hist/density` option)
  */
 export function histograms2table(histograms: Histogram[], countAsDensity = false): Table {
@@ -111,11 +121,11 @@ export function histograms2table(histograms: Histogram[], countAsDensity = false
     const row = new Array(histograms.length + 3) as string[]
     row[0] = String(binIndex)
     if(binIndex === 0) {
-      row[1] = String(histograms[0].min)
-      row[2] = String(histograms[0].min)
+      row[1] = histograms[0].min.toFixed(3)
+      row[2] = histograms[0].min.toFixed(3)
     } else {
-      row[1] = String((binIndex-1) * histograms[0].binSize + histograms[0].min + (binIndex === 1 ? 1 : 0))
-      row[2] = String((binIndex) * histograms[0].binSize + histograms[0].min - 1)
+      row[1] = String((binIndex-1) * histograms[0].binSize + histograms[0].min)
+      row[2] = String((binIndex) * histograms[0].binSize + histograms[0].min)
     }
     // fill remaining columns
     writeRoResultsForHistograms(histograms, binIndex, row, countAsDensity, sums)

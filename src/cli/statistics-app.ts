@@ -44,7 +44,7 @@ if(options['post-process']) {
   console.log(`found ${reports.length} reports`)
   for(const report of reports) {
     printClusterReport(report)
-    const receivedHistograms = histogramsFromClusters(report, 1)
+    const receivedHistograms = histogramsFromClusters(report, 0.01, true)
     const outputPath = `${report.filepath}.dat`
     console.log(`writing histogram data to ${outputPath}`)
     writeTableAsCsv(histograms2table(receivedHistograms, true), outputPath)

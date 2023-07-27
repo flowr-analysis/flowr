@@ -30,6 +30,7 @@ export interface SummarizedMeasurement {
   min:    number
   max:    number
   median: number
+  /** average */
   mean:   number
   /** standard deviation */
   std:    number

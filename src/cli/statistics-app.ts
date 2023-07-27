@@ -48,6 +48,9 @@ if(options['post-process']) {
     const outputPath = `${report.filepath}-${options['hist-step']}.dat`
     console.log(`writing histogram data to ${outputPath}`)
     writeTableAsCsv(histograms2table(receivedHistograms, true), outputPath)
+    for(const hist of receivedHistograms) {
+      console.log(`${hist.name}: --- min: ${hist.min}, max: ${hist.max}, mean: ${hist.mean}, median: ${hist.median}, std: ${hist.std}`)
+    }
     /* writeFileBasedCountToFile(fileBasedCount(report), outputPath) */
   }
   process.exit(0)

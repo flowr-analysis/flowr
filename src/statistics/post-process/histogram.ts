@@ -4,6 +4,7 @@ import { guard, isNotUndefined } from '../../util/assert'
 import { Table } from '../../util/files'
 import { BiMap } from '../../util/bimap'
 import fs from 'fs'
+import { summarizeMeasurement } from '../../benchmark'
 
 /**
  * A conventional histogram (e.g., created by {@link histogramFromNumbers}).
@@ -21,6 +22,12 @@ export interface Histogram {
   min:           number
   /** Maximum value encountered (inclusive maximum of the underlying value range) */
   max:           number
+  /** Average of the included numbers */
+  mean:          number
+  /** Standard deviation of the included numbers */
+  std:           number
+  /** Median of the included numbers */
+  median:        number
 }
 
 /**
@@ -68,29 +75,21 @@ export function histogramFromNumbers(name: string, binSize: number, values: numb
   guard(binSize > 0, `binSize must be greater than 0, but was ${binSize}`)
   guard(values.length > 0, `values must not be empty`)
 
-  let min = values[0]
-  let max = values[0]
-  for(const v of values) {
-    if(v < min) {
-      min = v
-    }
-    if(v > max) {
-      max = v
-    }
-  }
+  const summarized = summarizeMeasurement(values)
 
-  const numberOfBins = Math.ceil((max - min + 1) / binSize) + 1
+  const numberOfBins = Math.ceil((summarized.max - summarized.min + 1) / binSize) + 1
   const histogram = new Array(numberOfBins).fill(0) as number[]
 
   for(const v of values) {
-    const bin = v === min ? 0 : Math.floor((v - min) / binSize) + 1
+    const bin = v === summarized.min ? 0 : Math.floor((v - summarized.min) / binSize) + 1
     histogram[bin]++
   }
 
   return {
     name: name,
     bins: histogram,
-    binSize, min, max
+    binSize,
+    ...summarized
   }
 }
 
@@ -99,13 +98,13 @@ export function histogramFromNumbers(name: string, binSize: number, values: numb
  * They must have the same bin-size for this function to work.
  *
  * The table has the following columns:
- * - `bin` - the corresponding bin number
- * - `from` - the exclusive lower bound of the bin
- * - `to` - the inclusive upper bound of the bin
+ * - `bin`  - The corresponding bin number
+ * - `from` - The exclusive lower bound of the bin
+ * - `to`   - The inclusive upper bound of the bin
  * - a column with the name of each histogram, containing its count of values in the corresponding bin
  *
- * @param histograms - the histogram to convert (assumed to have the same ranges and bins)
- * @param countAsDensity - if true, the count is divided by the total number of values (individually for each histogram, similar to pgfplots `hist/density` option)
+ * @param histograms     - The histogram to convert (assumed to have the same ranges and bins)
+ * @param countAsDensity - If true, the count is divided by the total number of values (individually for each histogram, similar to pgfplots `hist/density` option)
  */
 export function histograms2table(histograms: Histogram[], countAsDensity = false): Table {
   guard(histograms.length > 0, 'there must be at least one histogram to convert to a table')

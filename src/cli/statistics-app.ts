@@ -1,4 +1,4 @@
-import { RShell } from '../r-bridge'
+import { NodeId, RShell } from '../r-bridge'
 import {
   extract,
   postProcessFolder,
@@ -12,13 +12,14 @@ import {
   printFeatureStatistics,
   initFileProvider,
   setFormatter,
-  voidFormatter
+  voidFormatter, ContextsWithCount
 } from '../statistics'
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
 import commandLineUsage from 'command-line-usage'
 import { guard } from '../util/assert'
 import { allRFilesFrom, writeTableAsCsv } from '../util/files'
+import { DefaultMap } from '../util/defaultmap'
 
 const options = commandLineArgs(optionDefinitions) as StatsCliOptions
 
@@ -43,14 +44,22 @@ if(options['post-process']) {
   const reports = postProcessFolder(options.input[0], processedFeatures)
   console.log(`found ${reports.length} reports`)
   for(const report of reports) {
-    printClusterReport(report)
+    const topNames = new Set(printClusterReport(report, 50))
+
+    report.valueInfoMap = new DefaultMap<string, ContextsWithCount>(
+      () => new DefaultMap(() => 0),
+      new Map([...report.valueInfoMap.entries()].filter(([name]) => topNames.has(name)))
+    )
+
     const receivedHistograms = histogramsFromClusters(report, options['hist-step'], true)
-    const outputPath = `${report.filepath}-${options['hist-step']}.dat`
-    console.log(`writing histogram data to ${outputPath}`)
-    writeTableAsCsv(histograms2table(receivedHistograms, true), outputPath)
+
     for(const hist of receivedHistograms) {
       console.log(`${hist.name}: --- min: ${hist.min}, max: ${hist.max}, mean: ${hist.mean}, median: ${hist.median}, std: ${hist.std}`)
     }
+
+    const outputPath = `${report.filepath}-${options['hist-step']}.dat`
+    console.log(`writing histogram data to ${outputPath}`)
+    writeTableAsCsv(histograms2table(receivedHistograms, true), outputPath)
     /* writeFileBasedCountToFile(fileBasedCount(report), outputPath) */
   }
   process.exit(0)

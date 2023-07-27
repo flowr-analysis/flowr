@@ -10,7 +10,7 @@ import { DefaultMap } from '../../util/defaultmap'
 import { deterministicCountingIdGenerator, NodeId } from '../../r-bridge'
 import { MergeableRecord } from '../../util/objects'
 
-type ContextsWithCount = DefaultMap<NodeId, number>
+export type ContextsWithCount = DefaultMap<NodeId, number>
 export type ClusterContextIdMap = DefaultMap<string | undefined, NodeId>
 export type ClusterValueInfoMap = DefaultMap<string, ContextsWithCount>
 

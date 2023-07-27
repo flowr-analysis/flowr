@@ -121,6 +121,8 @@ The (sorted) results should be versioned and can be found in [scripts/top-r-down
    * increase the heap-size of node (`export NODE_OPTIONS=--max_old_space_size=8192`).
    * limit the features to be analyzed by using the `--features` option.
 
+    By default, the post-processing will limit the histograms to the top 50 values, because who needs more histograms?!   
+    
 </details>
 
 ### Export RDF N-Quads

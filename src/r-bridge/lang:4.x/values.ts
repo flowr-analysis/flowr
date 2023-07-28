@@ -50,7 +50,7 @@ export function boolean2ts(value: string): boolean {
   throw new ValueConversionError(`value ${value} is not a legal R boolean`)
 }
 
-export const RNumHexFloatRegex = /^\s*0x(?<intPart>[0-9a-f]+)?(\.(?<floatPart>[0-9a-f]*))?p(?<exp>-?\d+)\s*$/
+export const RNumHexFloatRegex = /^\s*0x(?<intPart>[0-9a-f]+)?(\.(?<floatPart>[0-9a-f]*))?p(?<exp>[-+]?\d+)\s*$/
 
 // TODO: deal with NA etc!
 function getDecimalPlacesWithRadix(floatPart: string, radix: number): number {

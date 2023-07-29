@@ -108,8 +108,8 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
   if(isSelected(configuration, loop)) {
     return plain(getLexeme(loop))
   }
-  if(variable.length === 0 && vector.length === 0) {
-    return body
+  if(body.length === 0 && variable.length === 0 && vector.length === 0) {
+    return []
   } else {
     if(body.length <= 1) {
       // 'inline'
@@ -202,8 +202,8 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
   if(isSelected(configuration, loop)) {
     return plain(getLexeme(loop))
   }
-  if(condition.length === 0) {
-    return body
+  if(body.length === 0 && condition.length === 0) {
+    return []
   } else {
     if(body.length <= 1) {
       // 'inline'

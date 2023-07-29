@@ -1,4 +1,4 @@
-import { NodeId, NoInfo } from '../r-bridge'
+import { mapTypeToNormalizedName, NodeId, NoInfo, RNodeWithParent, RoleInParent, visit } from '../r-bridge'
 import { SourceRange } from './range'
 import {
   BuiltIn,
@@ -202,4 +202,25 @@ export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGr
 
 export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string): string {
   return mermaidCodeToUrl(diffGraphsToMermaid(left, right, dataflowIdMap, prefix))
+}
+
+export function normalizedAstToMermaid(ast: RNodeWithParent, prefix: string): string {
+  let output = prefix + 'flowchart TD\n'
+  visit(ast, (n, context) => {
+    const name = `${mapTypeToNormalizedName(n.type)} (${n.info.id})\\n${n.lexeme ?? ' '}`
+    output += `    n${n.info.id}(["${name}"])\n`
+    if (n.info.parent !== undefined) {
+      const roleSuffix = context.role === RoleInParent.ExpressionListChild ? `-${context.index}` : ''
+      output += `    n${n.info.parent} -->|"${context.role}${roleSuffix}"| n${n.info.id}\n`
+    }
+    return false
+  })
+  return output
+}
+
+/**
+ * Use mermaid to visualize the normalized AST.
+ */
+export function normalizedAstToMermaidUrl(ast: RNodeWithParent, prefix = ''): string {
+  return mermaidCodeToUrl(normalizedAstToMermaid(ast, prefix))
 }

@@ -131,12 +131,11 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
     // TODO: use both info
     const { graph } = produceDataFlowGraph(decoratedAst, LocalScope)
 
-    const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph}, decoratedAst.idMap, `%% ${input.replace(/\n/g, '\n%% ')}\n`)
+    // with the try catch the diff graph is not calculated if everything is fine
     try {
-      assert.isTrue(expected.equals(graph), diff)
+      assert.isTrue(expected.equals(graph))
     } catch (e) {
-      console.error('vis-wanted:\n', graphToMermaidUrl(expected, decoratedAst.idMap))
-      console.error('vis-got:\n', graphToMermaidUrl(graph, decoratedAst.idMap))
+      const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph}, decoratedAst.idMap, `%% ${input.replace(/\n/g, '\n%% ')}\n`)
       console.error('diff:\n', diff)
       throw e
     }

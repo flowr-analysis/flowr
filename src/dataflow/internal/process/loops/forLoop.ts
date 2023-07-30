@@ -5,7 +5,7 @@ import {
 } from '../../linker'
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { appendEnvironments, define, makeAllMaybe } from '../../../environments'
+import { appendEnvironments, define, makeAllMaybe, overwriteEnvironments } from '../../../environments'
 import { ParentInformation, RForLoop } from '../../../../r-bridge'
 import { LocalScope } from '../../../graph'
 
@@ -13,7 +13,7 @@ export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInfor
                                           data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const variable = processDataflowFor(loop.variable, data)
   const vector = processDataflowFor(loop.vector, data)
-  let headEnvironments = appendEnvironments(variable.environments, vector.environments)
+  let headEnvironments = overwriteEnvironments(vector.environments, variable.environments)
   const headGraph= variable.graph.mergeWith(vector.graph)
   // TODO: use attribute? TODO: use writes in vector?
   const writtenVariable = variable.activeNodes

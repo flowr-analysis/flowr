@@ -1,4 +1,4 @@
-import { NodeId, RShell } from '../r-bridge'
+import { RShell } from '../r-bridge'
 import {
   extract,
   postProcessFolder,

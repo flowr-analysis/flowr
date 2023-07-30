@@ -3,10 +3,10 @@ import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { normalizeBasedOnType, splitComments } from '../structure'
-import { tryToParseFunctionCall, tryToParseFunctionDefinition } from '../functions'
+import { tryNormalizeFunctionCall, tryNormalizeFunctionDefinition } from '../functions'
 import { Type, RNode } from '../../../../model'
 import { executeHook } from '../../hooks'
-import { tryParseAccess } from '../access'
+import { tryNormalizeAccess } from '../access'
 import { normalizeComment } from '../other'
 
 /**
@@ -32,19 +32,19 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 
   const childData: ParserData = { ...data, currentRange: location, currentLexeme: content }
 
-  const maybeFunctionCall = tryToParseFunctionCall(childData, others)
+  const maybeFunctionCall = tryNormalizeFunctionCall(childData, others)
   if (maybeFunctionCall !== undefined) {
     maybeFunctionCall.info.additionalTokens = [...maybeFunctionCall.info.additionalTokens ?? [], ...comments.map(x => normalizeComment(data, x.content))]
     return maybeFunctionCall
   }
 
-  const maybeAccess = tryParseAccess(childData, others)
+  const maybeAccess = tryNormalizeAccess(childData, others)
   if (maybeAccess !== undefined) {
     maybeAccess.info.additionalTokens = [...maybeAccess.info.additionalTokens ?? [], ...comments.map(x => normalizeComment(data, x.content))]
     return maybeAccess
   }
 
-  const maybeFunctionDefinition = tryToParseFunctionDefinition(childData, others)
+  const maybeFunctionDefinition = tryNormalizeFunctionDefinition(childData, others)
   if (maybeFunctionDefinition !== undefined) {
     maybeFunctionDefinition.info.additionalTokens = [...maybeFunctionDefinition.info.additionalTokens ?? [], ...comments.map(x => normalizeComment(data, x.content))]
     return maybeFunctionDefinition

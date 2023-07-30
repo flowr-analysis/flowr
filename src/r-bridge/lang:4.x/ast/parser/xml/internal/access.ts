@@ -7,17 +7,17 @@ import { executeHook, executeUnknownHook } from '../hooks'
 import { normalizeBasedOnType } from './structure'
 import { guard } from '../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../util/arrays'
-import { tryToParseArgument } from './functions/argument'
+import { tryToNormalizeArgument } from './functions/argument'
 
 /**
- * Tries to parse the given data as access (e.g., indexing).
+ * Tries to normalize the given data as access (e.g., indexing).
  *
  * @param data           - The data used by the parser (see {@link ParserData})
  * @param mappedWithName - The json object to extract the meta-information from
  *
  * @returns The parsed {@link RAccess} or `undefined` if the given construct is not accessing a value
  */
-export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RAccess | undefined {
+export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RAccess | undefined {
   parseLog.trace('trying to parse access')
   mappedWithName = executeHook(data.hooks.onAccess.before, data, mappedWithName)
 
@@ -120,6 +120,6 @@ function parseAccessArgument(operator: RAccess['operator'], data: ParserData, el
     const parse = normalizeBasedOnType(data, elements)
     return parse.length !== 1 ? undefined : parse[0]
   } else {
-    return tryToParseArgument(data, elements)
+    return tryToNormalizeArgument(data, elements)
   }
 }

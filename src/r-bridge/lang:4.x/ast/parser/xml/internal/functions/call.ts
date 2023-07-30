@@ -16,7 +16,7 @@ import {
   RArgument
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import { tryToParseArgument } from './argument'
+import { tryToNormalizeArgument } from './argument'
 import { SourceRange } from '../../../../../../../util/range'
 import { normalizeExpression } from '../expression'
 
@@ -29,7 +29,7 @@ import { normalizeExpression } from '../expression'
  * @returns The parsed {@link RFunctionCall} (either named or unnamed) or `undefined` if the given construct is not a function call
  * May return a {@link RNext} or {@link RBreak} as `next()` and `break()` work as such.
  */
-export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | RNext | RBreak | undefined {
+export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | RNext | RBreak | undefined {
   const fnBase = mappedWithName[0]
   if(fnBase.name !== Type.Expression && fnBase.name !== Type.ExprHelpAssignWrapper) {
     parseLog.trace(`expected function call name to be wrapped an expression, yet received ${fnBase.name}`)
@@ -78,7 +78,7 @@ function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): 
   return splitArgumentsOnComma.map(x => {
     // TODO: improve expression unwrap
     parseLog.trace('trying to parse argument')
-    return tryToParseArgument(data, x)
+    return tryToNormalizeArgument(data, x)
   })
 }
 

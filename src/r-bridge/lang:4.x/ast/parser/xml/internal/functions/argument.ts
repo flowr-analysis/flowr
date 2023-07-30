@@ -17,7 +17,7 @@ import { tryNormalizeSingleNode } from '../structure'
  *
  * @returns The parsed argument or `undefined` if the given object is not an argument.
  */
-export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]): RArgument | undefined {
+export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson[]): RArgument | undefined {
   parseLog.debug(`[argument]`)
   objs = executeHook(data.hooks.functions.onArgument.before, data, objs)
 

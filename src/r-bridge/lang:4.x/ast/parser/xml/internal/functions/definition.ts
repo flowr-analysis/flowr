@@ -7,7 +7,7 @@ import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { guard, isNotUndefined } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { normalizeBasedOnType } from '../structure'
-import { tryToParseParameter } from './parameter'
+import { tryNormalizeParameter } from './parameter'
 import { log } from '../../../../../../../util/log'
 
 /**
@@ -18,7 +18,7 @@ import { log } from '../../../../../../../util/log'
  *
  * @returns The parsed {@link RFunctionDefinition} or `undefined` if the given construct is not a function definition
  */
-export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionDefinition | undefined {
+export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionDefinition | undefined {
   const fnBase = mappedWithName[0]
   if(fnBase.name !== Type.FunctionDefinition && fnBase.name !== Type.LambdaFunctionDefinition) {
     parseLog.trace(`expected function definition to be identified by keyword, yet received ${fnBase.name}`)
@@ -40,7 +40,7 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
 
   parseLog.trace(`function definition has ${splitParameters.length} parameters (by comma split)`)
 
-  const parameters: (undefined | RParameter)[] = splitParameters.map(x => tryToParseParameter(data, x))
+  const parameters: (undefined | RParameter)[] = splitParameters.map(x => tryNormalizeParameter(data, x))
 
   if(parameters.some(p => p === undefined)) {
     log.error(`function had unexpected unknown parameters: ${JSON.stringify(parameters.filter(isNotUndefined))}, aborting.`)

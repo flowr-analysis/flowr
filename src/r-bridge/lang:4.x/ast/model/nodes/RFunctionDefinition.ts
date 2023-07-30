@@ -1,4 +1,4 @@
-import { Base, Location, NoInfo, RNode } from "../model"
+import { Base, Location, NoInfo } from "../model"
 import { Type } from "../type"
 import { RParameter } from './RParameter'
 import { RExpressionList } from './RExpressionList'

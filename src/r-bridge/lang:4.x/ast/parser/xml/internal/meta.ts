@@ -117,7 +117,7 @@ export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<I
       type:     Type.ExpressionList,
       location: node.location,
       info:     node.info,
-      lexeme:   node.lexeme,
+      lexeme:   undefined,
       children: [node]
     }
   }

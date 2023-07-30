@@ -18,6 +18,7 @@ export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentI
 
   const finalEnvironments = appendEnvironments(condition.environments, body.environments)
 
+  // this is theoretically redundant, but we would have to manually mark all affected edges as maybe this way. This does that for us.
   const remainingInputs = linkInputs([
     ...makeAllMaybe(body.activeNodes, nextGraph, finalEnvironments),
     ...makeAllMaybe(body.in, nextGraph, finalEnvironments)],

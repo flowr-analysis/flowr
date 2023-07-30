@@ -4,12 +4,10 @@ import { linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap } from '..
 import { ParentInformation, RRepeatLoop } from '../../../../r-bridge'
 
 export function processRepeatLoop<OtherInfo>(loop: RRepeatLoop<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
-  console.log('repeat loop', data.environments)
   const body = processDataflowFor(loop.body, data)
 
   const graph = body.graph
   const namedIdShares = produceNameSharedIdMap([...body.in, ...body.activeNodes])
-  console.log([...body.in, ...body.activeNodes])
   linkCircularRedefinitionsWithinALoop(graph, namedIdShares, body.out)
 
   return {

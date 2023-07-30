@@ -8,7 +8,7 @@ describe('for', withShell(shell => {
     `for(i in 0) i `,
     new DataflowGraph()
       .addNode( { tag: 'variable-definition', id: "0", name: "i", scope: LocalScope })
-      .addNode( { tag: 'use', id: "2", name: "i", when: 'maybe', environment: define({ nodeId: "0", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "3", used: 'always' }, LocalScope, initializeCleanEnvironments()) })
+      .addNode( { tag: 'use', id: "2", name: "i", when: 'maybe', environment: define({ nodeId: "0", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "4", used: 'always' }, LocalScope, initializeCleanEnvironments()) })
       .addEdge("2", "0", "read", "maybe")
   )
 
@@ -19,27 +19,27 @@ describe('for', withShell(shell => {
     new DataflowGraph()
       .addNode( { tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
       .addNode( { tag: 'variable-definition', id: "3", name: "i", scope: LocalScope, environment: envWithX() })
-      .addNode( { tag: 'use', id: "7", name: "x", when: 'maybe', environment: define({ nodeId: "3", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "8", used: 'always' }, LocalScope, envWithX()) })
+      .addNode( { tag: 'use', id: "7", name: "x", when: 'maybe', environment: define({ nodeId: "3", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "9", used: 'always' }, LocalScope, envWithX()) })
       .addEdge("7", "0", "read", "maybe")
   )
-  const envWithI = () => define({ nodeId: "0", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "7", used: 'always' }, LocalScope, initializeCleanEnvironments())
+  const envWithI = () => define({ nodeId: "0", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "8", used: 'always' }, LocalScope, initializeCleanEnvironments())
   assertDataflow(`Read after for loop`,
     shell,
     `for(i in 1:10) { x <- 12 }\n x`,
     new DataflowGraph()
       .addNode( { tag: 'variable-definition', id: "0", name: "i", scope: LocalScope })
       .addNode( { tag: 'variable-definition', id: "4", name: "x", scope: LocalScope, when: 'maybe', environment: envWithI() })
-      .addNode( { tag: 'use', id: "8", name: "x", environment: define({ nodeId: "4", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "6", used: 'maybe' }, LocalScope, envWithI()) })
-      .addEdge("8", "4", "read", "maybe")
+      .addNode( { tag: 'use', id: "9", name: "x", environment: define({ nodeId: "4", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "6", used: 'maybe' }, LocalScope, envWithI()) })
+      .addEdge("9", "4", "read", "maybe")
   )
 
 
   const envWithFirstX = () => define({ nodeId: "0", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "2", used: 'always' }, LocalScope, initializeCleanEnvironments())
-  const envInFor = () => define({ nodeId: "3", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "10", used: 'always' }, LocalScope,
+  const envInFor = () => define({ nodeId: "3", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "11", used: 'always' }, LocalScope,
     envWithFirstX()
   )
 
-  const envOutFor = () => define({ nodeId: "3", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "10", used: 'always' }, LocalScope,
+  const envOutFor = () => define({ nodeId: "3", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "11", used: 'always' }, LocalScope,
     define({ nodeId: "0", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "2", used: 'always' }, LocalScope, initializeCleanEnvironments())
   )
 
@@ -54,9 +54,9 @@ describe('for', withShell(shell => {
       .addNode( { tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
       .addNode( { tag: 'variable-definition', id: "3", name: "i", scope: LocalScope, environment: envWithFirstX() })
       .addNode( { tag: 'variable-definition', id: "7", name: "x", when: 'maybe', scope: LocalScope, environment: envInFor() })
-      .addNode( { tag: 'use', id: "11", name: "x", environment: appendEnvironments(envOutFor(), envWithSecondX()) })
-      .addEdge("11", "0", "read", "always")
-      .addEdge("11", "7", "read", "maybe")
+      .addNode( { tag: 'use', id: "12", name: "x", environment: appendEnvironments(envOutFor(), envWithSecondX()) })
+      .addEdge("12", "0", "read", "always")
+      .addEdge("12", "7", "read", "maybe")
       .addEdge("0", "7", "same-def-def", "maybe")
   )
   assertDataflow(`Redefinition within loop`,
@@ -67,9 +67,9 @@ describe('for', withShell(shell => {
       .addNode( { tag: 'variable-definition', id: "3", name: "i", scope: LocalScope, environment: envWithFirstX()})
       .addNode( { tag: 'variable-definition', id: "7", name: "x", scope: LocalScope, when: 'maybe', environment: envInFor() })
       .addNode( { tag: 'use', id: "8", name: "x", when: 'maybe', environment: envInFor() })
-      .addNode( { tag: 'use', id: "11", name: "x", environment: appendEnvironments(envOutFor(), envWithSecondX()) })
-      .addEdge("11", "0", "read", "always")
-      .addEdge("11", "7", "read", "maybe")
+      .addNode( { tag: 'use', id: "12", name: "x", environment: appendEnvironments(envOutFor(), envWithSecondX()) })
+      .addEdge("12", "0", "read", "always")
+      .addEdge("12", "7", "read", "maybe")
       .addEdge("8", "0", "read", "maybe")
       .addEdge("8", "7", "read", "maybe")
       .addEdge("7", "8", "defined-by", "always")

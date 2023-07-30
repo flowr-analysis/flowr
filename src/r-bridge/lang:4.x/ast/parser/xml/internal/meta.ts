@@ -1,6 +1,7 @@
 import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '../input-format'
 import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from '../../../../../../util/range'
 import { XmlParserConfig } from '../config'
+import { RExpressionList, RNode, Type } from '../../../model'
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper
@@ -108,4 +109,17 @@ export function ensureChildrenAreLhsAndRhsOrdered(config: XmlParserConfig, first
   if (!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
     throw new XmlParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`)
   }
+}
+
+export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<Info> {
+  if (node.type !== Type.ExpressionList) {
+    return {
+      type:     Type.ExpressionList,
+      location: node.location,
+      info:     node.info,
+      lexeme:   node.lexeme,
+      children: [node]
+    }
+  }
+  return node
 }

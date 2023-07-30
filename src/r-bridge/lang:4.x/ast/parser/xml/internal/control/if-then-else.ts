@@ -6,6 +6,7 @@ import { tryNormalizeIfThen } from './if-then'
 import { guard } from '../../../../../../../util/assert'
 import { Type, RIfThenElse } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
+import { ensureExpressionList } from '../meta'
 
 /**
  * Try to parse the construct as a {@link RIfThenElse}.
@@ -36,7 +37,7 @@ export function tryNormalizeIfThenElse(data: ParserData,
 
   const result: RIfThenElse = {
     ...parsedIfThen,
-    otherwise: parsedElse
+    otherwise: ensureExpressionList(parsedElse)
   }
   return executeHook(data.hooks.control.onIfThenElse.after, data, result)
 }

@@ -2,6 +2,7 @@ import { exprList, numVal } from "../../../helper/ast-builder"
 import { assertAst, withShell } from "../../../helper/shell"
 import { rangeFrom } from "../../../../src/util/range"
 import { Type } from '../../../../src/r-bridge'
+import { ensureExpressionList } from '../../../../src/r-bridge/lang:4.x/ast/parser/xml/internal'
 
 describe("Parse larger snippets", withShell((shell) => {
   describe("if-then, assignments, symbols, and comparisons", () => {
@@ -150,7 +151,7 @@ max
               },
             ],
           },
-          otherwise: {
+          otherwise: ensureExpressionList({
             type:     Type.BinaryOp,
             flavor:   "assignment",
             lexeme:   "->>",
@@ -173,7 +174,7 @@ max
               location:  rangeFrom(8, 9, 8, 11),
               info:      {}
             },
-          },
+          }),
         },
         {
           type:      Type.Symbol,

@@ -1,5 +1,5 @@
 import { NamedXmlBasedJson } from '../../input-format'
-import { retrieveMetaStructure } from '../meta'
+import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from '../structure'
@@ -36,7 +36,7 @@ export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJ
     type:   Type.Repeat,
     location,
     lexeme: content,
-    body:   parseBody,
+    body:   ensureExpressionList(parseBody),
     info:   {
       // TODO: include children etc.
       fullRange:        data.currentRange,

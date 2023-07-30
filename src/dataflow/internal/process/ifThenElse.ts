@@ -7,6 +7,8 @@ import { ParentInformation, RIfThenElse } from '../../../r-bridge'
 export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   const cond = processDataflowFor(ifThen.condition, data)
 
+  data = { ...data, environments: cond.environments }
+
   let then: DataflowInformation<OtherInfo> | undefined
   let makeThenMaybe = false
   if(ifThen.condition.lexeme !== 'FALSE') {

@@ -4,7 +4,7 @@ import {
   XmlBasedJson,
   XmlParseError,
 } from "../../input-format"
-import { getTokenType, retrieveMetaStructure } from "../meta"
+import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../meta'
 import { parseLog } from "../../parser"
 import { guard } from "../../../../../../../util/assert"
 import { ParserData } from "../../data"
@@ -63,7 +63,7 @@ export function tryNormalizeFor(
     type:     Type.For,
     variable: parsedVariable,
     vector:   parsedVector,
-    body:     parseBody,
+    body:     ensureExpressionList(parseBody),
     lexeme:   content,
     info:     {
       // TODO: include children etc.

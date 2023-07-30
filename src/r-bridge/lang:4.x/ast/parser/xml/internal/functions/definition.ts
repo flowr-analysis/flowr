@@ -3,7 +3,7 @@ import { NamedXmlBasedJson } from '../../input-format'
 import { Type, RParameter, RFunctionDefinition } from '../../../../model'
 import { parseLog } from '../../parser'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import { retrieveMetaStructure } from '../meta'
+import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { guard, isNotUndefined } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { normalizeBasedOnType } from '../structure'
@@ -61,7 +61,7 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
     location,
     lexeme:     content,
     parameters: parameters as RParameter[],
-    body:       body[0],
+    body:       ensureExpressionList(body[0]),
     info:       {
       // TODO: include children etc.
       fullRange:        data.currentRange,

@@ -16,7 +16,7 @@ describe('Function Call', withShell(shell => {
       initializeCleanEnvironments()
     )
     const envWithIA = define(
-      {nodeId: '3', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '8' },
+      {nodeId: '3', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '9' },
       LocalScope,
       envWithFirstI
     )
@@ -24,20 +24,20 @@ describe('Function Call', withShell(shell => {
       new DataflowGraph()
         .addNode({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
         .addNode({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
-        .addNode({ tag: 'use', id: '10', name: 'i', environment: envWithIA })
-        .addNode({ tag: 'use', id: '11', name: `${UnnamedArgumentPrefix}11`, environment: envWithIA })
+        .addNode({ tag: 'use', id: '11', name: 'i', environment: envWithIA })
+        .addNode({ tag: 'use', id: '12', name: `${UnnamedArgumentPrefix}12`, environment: envWithIA })
         .addNode({
           tag:         'function-call',
-          id:          '12',
+          id:          '13',
           name:        'a',
           environment: envWithIA,
           args:        [{
-            nodeId: '11', name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, used: 'always'
+            nodeId: '12', name: `${UnnamedArgumentPrefix}12`, scope: LocalScope, used: 'always'
           }] })
         .addNode({
           tag:         'function-definition',
-          id:          '7',
-          name:        '7',
+          id:          '8',
+          name:        '8',
           scope:       LocalScope,
           exitPoints:  [ '6' ],
           environment: popLocalEnvironment(envWithXParamDefined),
@@ -52,14 +52,14 @@ describe('Function Call', withShell(shell => {
               .addNode({ tag: 'use', id: '6', name: 'x', environment: envWithXParamDefined})
               .addEdge('6', '4', 'read', 'always'),
           }})
-        .addEdge('10', '0', 'read', 'always')
-        .addEdge('3', '7', 'defined-by', 'always')
-        .addEdge('12', '11', 'argument', 'always')
-        .addEdge('11', '10', 'read', 'always')
-        .addEdge('12', '3', 'read', 'always')
-        .addEdge('12', '7', 'calls', 'always')
-        .addEdge('12', '6', 'returns', 'always')
-        .addEdge('11', '4', 'defines-on-call', 'always')
+        .addEdge('11', '0', 'read', 'always')
+        .addEdge('3', '8', 'defined-by', 'always')
+        .addEdge('13', '12', 'argument', 'always')
+        .addEdge('12', '11', 'read', 'always')
+        .addEdge('13', '3', 'read', 'always')
+        .addEdge('13', '8', 'calls', 'always')
+        .addEdge('13', '6', 'returns', 'always')
+        .addEdge('12', '4', 'defines-on-call', 'always')
     )
     const envWithXConstDefined = define(
       {nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
@@ -141,16 +141,16 @@ a(i)`, new DataflowGraph()
     const outGraph = new DataflowGraph()
       .addNode({
         tag:  'function-call',
-        id:   '8',
-        name: `${UnnamedFunctionCallPrefix}8`,
+        id:   '9',
+        name: `${UnnamedFunctionCallPrefix}9`,
         args: [
-          { nodeId: '7', name: `${UnnamedArgumentPrefix}7`, scope: LocalScope, used: 'always' }
+          { nodeId: '8', name: `${UnnamedArgumentPrefix}8`, scope: LocalScope, used: 'always' }
         ]
       })
       .addNode({
         tag:         'function-definition',
-        id:          '5',
-        name:        '5',
+        id:          '6',
+        name:        '6',
         environment: initializeCleanEnvironments(),
         scope:       LocalScope,
         exitPoints:  [ '4' ],
@@ -168,12 +168,12 @@ a(i)`, new DataflowGraph()
             .addEdge('2', '0', 'read', 'always')
         }
       })
-      .addNode({ tag: 'use', id: '7', name: `${UnnamedArgumentPrefix}7`})
-      .addEdge('8', '7', 'argument', 'always')
-      .addEdge('8', '5', 'calls', 'always')
-      .addEdge('8', '4', 'returns', 'always')
-      .addEdge('7', '0', 'defines-on-call', 'always')
-    // TODO: parse OP-Lambda
+      .addNode({ tag: 'use', id: '8', name: `${UnnamedArgumentPrefix}8`})
+      .addEdge('9', '8', 'argument', 'always')
+      .addEdge('9', '6', 'calls', 'always')
+      .addEdge('9', '4', 'returns', 'always')
+      .addEdge('8', '0', 'defines-on-call', 'always')
+
     assertDataflow('Calling with constant argument using lambda', shell, `(\\(x) { x + 1 })(2)`,
       outGraph
     )
@@ -182,7 +182,7 @@ a(i)`, new DataflowGraph()
     )
 
     const envWithADefined = define(
-      {nodeId: '0', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '4' },
+      {nodeId: '0', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '6' },
       LocalScope,
       initializeCleanEnvironments()
     )
@@ -192,14 +192,14 @@ a()()`,
     new DataflowGraph()
       .addNode({
         tag:         'function-call',
-        id:          '7',
-        name:        `${UnnamedFunctionCallPrefix}7`,
+        id:          '9',
+        name:        `${UnnamedFunctionCallPrefix}9`,
         environment: envWithADefined,
         args:        []
       })
       .addNode({
         tag:         'function-call',
-        id:          '6',
+        id:          '8',
         name:        'a',
         environment: envWithADefined,
         args:        []
@@ -207,11 +207,11 @@ a()()`,
       .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
       .addNode({
         tag:         'function-definition',
-        id:          '3',
-        name:        '3',
+        id:          '5',
+        name:        '5',
         environment: initializeCleanEnvironments(),
         scope:       LocalScope,
-        exitPoints:  [ '2' ],
+        exitPoints:  [ '3' ],
         subflow:     {
           out:          [],
           in:           [],
@@ -221,8 +221,8 @@ a()()`,
           graph:        new DataflowGraph()
             .addNode({
               tag:         'function-definition',
-              id:          '2',
-              name:        '2',
+              id:          '3',
+              name:        '3',
               environment: pushLocalEnvironment(initializeCleanEnvironments()),
               scope:       LocalScope,
               exitPoints:  [ '1' ],
@@ -238,13 +238,13 @@ a()()`,
             })
         }
       })
-      .addEdge('7', '6', 'calls', 'always')
-      .addEdge('6', '0', 'read', 'always')
-      .addEdge('0', '3', 'defined-by', 'always')
-      .addEdge('6', '3', 'calls', 'always')
-      .addEdge('6', '2', 'returns', 'always')
-      .addEdge('7', '2', 'calls', 'always')
-      .addEdge('7', '1', 'returns', 'always')
+      .addEdge('9', '8', 'calls', 'always')
+      .addEdge('8', '0', 'read', 'always')
+      .addEdge('0', '5', 'defined-by', 'always')
+      .addEdge('8', '5', 'calls', 'always')
+      .addEdge('8', '3', 'returns', 'always')
+      .addEdge('9', '3', 'calls', 'always')
+      .addEdge('9', '1', 'returns', 'always')
     )
   })
 
@@ -302,12 +302,12 @@ a()()`,
   describe('Late function bindings', () => {
     const innerEnv = pushLocalEnvironment(initializeCleanEnvironments())
     const defWithA = define(
-      { nodeId: '0', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '3' },
+      { nodeId: '0', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '4' },
       LocalScope,
       initializeCleanEnvironments()
     )
     const defWithAY = define(
-      { nodeId: '4', scope: 'local', name: 'y', used: 'always', kind: 'variable', definedAt: '6' },
+      { nodeId: '5', scope: 'local', name: 'y', used: 'always', kind: 'variable', definedAt: '7' },
       LocalScope,
       defWithA
     )
@@ -317,21 +317,21 @@ a()()`,
         .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
         .addNode({
           tag:         'variable-definition',
-          id:          '4',
+          id:          '5',
           name:        'y',
           scope:       LocalScope,
           environment: defWithA})
         .addNode({
           tag:         'function-call',
-          id:          '8',
+          id:          '9',
           name:        'a',
           environment: defWithAY,
           args:        []
         })
         .addNode({
           tag:        'function-definition',
-          id:         '2',
-          name:       '2',
+          id:         '3',
+          name:       '3',
           scope:      LocalScope,
           exitPoints: [ '1' ],
           subflow:    {
@@ -343,15 +343,11 @@ a()()`,
             graph:        new DataflowGraph()
               .addNode({ tag: 'use', id: '1', name: 'y', scope: LocalScope, environment: innerEnv })
           }})
-        .addEdge('0', '2', 'defined-by', 'always')
-        .addEdge('8', '2', 'calls', 'always')
-        .addEdge('8', '0', 'read', 'always')
-        .addEdge('8', '1', 'returns', 'always')
-        // TODO: functions must store the *final* environments with all definitions they produce
-        // TODO: on call the current environments should be used, joined with the def-environment!
+        .addEdge('0', '3', 'defined-by', 'always')
+        .addEdge('9', '3', 'calls', 'always')
+        .addEdge('9', '0', 'read', 'always')
+        .addEdge('9', '1', 'returns', 'always')
     )
-    // a <- function() { x <- function() { y }; y <- 12; return(x) }; a()
-    // a <- function(y) { y }; y <- 12; a()
   })
 
   describe('Deal with empty calls', () => {
@@ -366,7 +362,7 @@ a()()`,
       withXParameter
     )
     const withADefined = define(
-      { nodeId: '0', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '8' },
+      { nodeId: '0', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '9' },
       LocalScope,
       initializeCleanEnvironments()
     )
@@ -374,20 +370,20 @@ a()()`,
 a(,3)`, new DataflowGraph()
       .addNode({
         tag:         'function-call',
-        id:          '12',
+        id:          '13',
         name:        'a',
         environment: withADefined,
         args:        [
           'empty',
-          { nodeId: '11', name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, used: 'always' }
+          { nodeId: '12', name: `${UnnamedArgumentPrefix}12`, scope: LocalScope, used: 'always' }
         ]
       })
       .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
       .addNode({
         tag:         'function-definition',
-        id:          '7',
+        id:          '8',
         scope:       LocalScope,
-        name:        '7',
+        name:        '8',
         exitPoints:  [ '6' ],
         environment: popLocalEnvironment(withXYParameter),
         subflow:     {
@@ -403,13 +399,13 @@ a(,3)`, new DataflowGraph()
             .addEdge('6', '4', 'read', 'always')
         }
       })
-      .addNode({ tag: 'use', id: '11', name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, environment: withADefined })
-      .addEdge('12', '0', 'read', 'always')
-      .addEdge('12', '7', 'calls', 'always')
-      .addEdge('0', '7', 'defined-by', 'always')
-      .addEdge('12', '11', 'argument', 'always')
-      .addEdge('12', '6', 'returns', 'always')
-      .addEdge('11', '4', 'defines-on-call', 'always')
+      .addNode({ tag: 'use', id: '12', name: `${UnnamedArgumentPrefix}12`, scope: LocalScope, environment: withADefined })
+      .addEdge('13', '0', 'read', 'always')
+      .addEdge('13', '8', 'calls', 'always')
+      .addEdge('0', '8', 'defined-by', 'always')
+      .addEdge('13', '12', 'argument', 'always')
+      .addEdge('13', '6', 'returns', 'always')
+      .addEdge('12', '4', 'defines-on-call', 'always')
     )
   })
   describe('Reuse parameters in call', () => {

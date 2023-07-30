@@ -1,6 +1,6 @@
 import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
 import { tryNormalizeSingleNode } from '../structure'
-import { retrieveMetaStructure } from '../meta'
+import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { Type, RIfThenElse } from '../../../../model'
@@ -43,7 +43,7 @@ export function tryNormalizeIfThen(data: ParserData,
   const result: RIfThenElse = {
     type:      Type.If,
     condition: parsedCondition,
-    then:      parsedThen,
+    then:      ensureExpressionList(parsedThen),
     location,
     lexeme:    content,
     info:      {

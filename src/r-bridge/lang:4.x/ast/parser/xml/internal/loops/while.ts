@@ -1,5 +1,5 @@
 import { NamedXmlBasedJson, XmlParseError } from "../../input-format"
-import { retrieveMetaStructure } from "../meta"
+import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from "../../parser"
 import { tryNormalizeSingleNode } from '../structure'
 import { ParserData } from "../../data"
@@ -59,7 +59,7 @@ export function tryNormalizeWhile(
   const result: RWhileLoop = {
     type:      Type.While,
     condition: parsedCondition,
-    body:      parseBody,
+    body:      ensureExpressionList(parseBody),
     lexeme:    content,
     location,
     info:      {

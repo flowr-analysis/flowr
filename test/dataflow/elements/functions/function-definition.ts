@@ -11,8 +11,8 @@ describe('Function Definition', withShell(shell => {
       new DataflowGraph()
         .addNode({
           tag:        'function-definition',
-          id:         "1",
-          name:       "1",
+          id:         "2",
+          name:       "2",
           scope:      LocalScope,
           when:       'always',
           exitPoints: ['0'],
@@ -40,8 +40,8 @@ describe('Function Definition', withShell(shell => {
       new DataflowGraph()
         .addNode({
           tag:        'function-definition',
-          id:         "3",
-          name:       "3",
+          id:         "4",
+          name:       "4",
           scope:      LocalScope,
           when:       'always',
           exitPoints: ['2'],
@@ -75,8 +75,8 @@ describe('Function Definition', withShell(shell => {
       new DataflowGraph()
         .addNode({
           tag:        'function-definition',
-          id:         "6",
-          name:       "6",
+          id:         "7",
+          name:       "7",
           scope:      LocalScope,
           when:       'always',
           exitPoints: ['5'],
@@ -117,8 +117,10 @@ describe('Function Definition', withShell(shell => {
                 when:        'always',
               })
               .addEdge("5", BuiltIn, "read", "always")
+              .addEdge("5", BuiltIn, "calls", "always")
               .addEdge("3", "0", "read", "always")
               .addEdge("5", "4", "argument", "always")
+              .addEdge("5", "4", "returns", "always")
               .addEdge("4", "3", "read", "always"),
             environments: envWithXDefined
           }
@@ -146,8 +148,8 @@ describe('Function Definition', withShell(shell => {
       new DataflowGraph()
         .addNode({
           tag:        'function-definition',
-          id:         "7",
-          name:       "7",
+          id:         "8",
+          name:       "8",
           scope:      LocalScope,
           when:       'always',
           exitPoints: [ '6' ],
@@ -173,8 +175,8 @@ describe('Function Definition', withShell(shell => {
         .addNode( { tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
         .addNode({
           tag:        'function-definition',
-          id:         "4",
-          name:       "4",
+          id:         "5",
+          name:       "5",
           scope:      LocalScope,
           when:       'always',
           exitPoints: [ '3' ],
@@ -196,11 +198,11 @@ describe('Function Definition', withShell(shell => {
 
     assertDataflow(`local define with <- in function, read after`, shell, `function() { x <- 3; }; x`,
       new DataflowGraph()
-        .addNode( { tag: 'use', id: "4", name: "x" })
+        .addNode( { tag: 'use', id: "5", name: "x" })
         .addNode({
           tag:        'function-definition',
-          id:         '3',
-          name:       '3',
+          id:         '4',
+          name:       '4',
           scope:      LocalScope,
           when:       'always',
           exitPoints: [ '2' /* the assignment */ ],
@@ -219,11 +221,11 @@ describe('Function Definition', withShell(shell => {
     )
     assertDataflow(`local define with = in function, read after`, shell, `function() { x = 3; }; x`,
       new DataflowGraph()
-        .addNode( { tag: 'use', id: "4", name: "x" })
+        .addNode( { tag: 'use', id: "5", name: "x" })
         .addNode({
           tag:        'function-definition',
-          id:         "3",
-          name:       "3",
+          id:         "4",
+          name:       "4",
           scope:      LocalScope,
           when:       'always',
           exitPoints: [ '2', ],
@@ -247,11 +249,11 @@ describe('Function Definition', withShell(shell => {
       pushLocalEnvironment(initializeCleanEnvironments()))
     assertDataflow(`local define with -> in function, read after`, shell, `function() { 3 -> x; }; x`,
       new DataflowGraph()
-        .addNode( { tag: 'use', id: "4", name: "x" })
+        .addNode( { tag: 'use', id: "5", name: "x" })
         .addNode({
           tag:        'function-definition',
-          id:         "3",
-          name:       "3",
+          id:         "4",
+          name:       "4",
           scope:      LocalScope,
           when:       'always',
           exitPoints: [ '2' ],
@@ -274,11 +276,11 @@ describe('Function Definition', withShell(shell => {
       pushLocalEnvironment(initializeCleanEnvironments()))
     assertDataflow(`global define with <<- in function, read after`, shell, `function() { x <<- 3; }; x`,
       new DataflowGraph()
-        .addNode( { tag: 'use', id: "4", name: "x" })
+        .addNode( { tag: 'use', id: "5", name: "x" })
         .addNode({
           tag:         'function-definition',
-          id:          "3",
-          name:        "3",
+          id:          "4",
+          name:        "4",
           scope:       LocalScope,
           when:        'always',
           exitPoints:  [ '2' ],
@@ -302,11 +304,11 @@ describe('Function Definition', withShell(shell => {
       pushLocalEnvironment(initializeCleanEnvironments()))
     assertDataflow(`global define with ->> in function, read after`, shell, `function() { 3 ->> x; }; x`,
       new DataflowGraph()
-        .addNode( { tag: 'use', id: "4", name: "x" })
+        .addNode( { tag: 'use', id: "5", name: "x" })
         .addNode({
           tag:         'function-definition',
-          id:          "3",
-          name:        "3",
+          id:          "4",
+          name:        "4",
           scope:       LocalScope,
           when:        'always',
           exitPoints:  [ '2' ],
@@ -450,8 +452,8 @@ describe('Function Definition', withShell(shell => {
         .addNode( { tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
         .addNode({
           tag:        'function-definition',
-          id:         "6",
-          name:       "6",
+          id:         "7",
+          name:       "7",
           scope:      LocalScope,
           when:       'always',
           exitPoints: [ '5' ],
@@ -491,8 +493,8 @@ describe('Function Definition', withShell(shell => {
       new DataflowGraph()
         .addNode({
           tag:        'function-definition',
-          id:         '7',
-          name:       '7',
+          id:         '8',
+          name:       '8',
           exitPoints: ['6'],
           scope:      LocalScope,
           when:       'always',
@@ -598,8 +600,8 @@ describe('Function Definition', withShell(shell => {
       new DataflowGraph()
         .addNode({
           tag:        'function-definition',
-          id:         "8",
-          name:       "8",
+          id:         "9",
+          name:       "9",
           scope:      LocalScope,
           when:       'always',
           exitPoints: ['7'],
@@ -632,11 +634,11 @@ describe('Function Definition', withShell(shell => {
   describe('Late binding of environment variables', () => {
     assertDataflow(`define after function definition`, shell, `function() { x }; x <- 3`,
       new DataflowGraph()
-        .addNode( { tag: 'variable-definition', id: "2", name: "x", scope: LocalScope })
+        .addNode( { tag: 'variable-definition', id: "3", name: "x", scope: LocalScope })
         .addNode({
           tag:        'function-definition',
-          id:         "1",
-          name:       "1",
+          id:         "2",
+          name:       "2",
           scope:      LocalScope,
           when:       'always',
           exitPoints: [ '0' ],
@@ -664,10 +666,9 @@ describe('Function Definition', withShell(shell => {
     )
   })
 
-  /* TODO: make it work with a() call at the end */
   describe('Nested Function Definitions', () => {
     const withXParameterInOuter = define(
-      {nodeId: '1', scope: LocalScope, name: 'x', used: 'always', kind: 'function', definedAt: '8' },
+      {nodeId: '1', scope: LocalScope, name: 'x', used: 'always', kind: 'function', definedAt: '9' },
       LocalScope,
       pushLocalEnvironment(initializeCleanEnvironments()))
     const withinNestedFunctionWithoutParam = pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments()))
@@ -682,12 +683,12 @@ describe('Function Definition', withShell(shell => {
       pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments()))
     )
     const envWithA = define(
-      { nodeId: '0', scope: LocalScope, name: 'a', used: 'always', kind: 'function', definedAt: '12' },
+      { nodeId: '0', scope: LocalScope, name: 'a', used: 'always', kind: 'function', definedAt: '13' },
       LocalScope,
       initializeCleanEnvironments()
     )
     const envWithAB = define(
-      { nodeId: '13', scope: LocalScope, name: 'b', used: 'always', kind: 'variable', definedAt: '15' },
+      { nodeId: '14', scope: LocalScope, name: 'b', used: 'always', kind: 'variable', definedAt: '16' },
       LocalScope,
       envWithA
     )
@@ -696,32 +697,32 @@ describe('Function Definition', withShell(shell => {
         .addNode( { tag: 'variable-definition', id: "0", name: "a", scope: LocalScope })
         .addNode( {
           tag:         'variable-definition',
-          id:          "13",
+          id:          "14",
           name:        "b",
           scope:       LocalScope,
           environment: envWithA
         })
-        .addNode( { tag: 'use', id: "16", name: "a", environment: envWithAB })
-        .addEdge("16", "0", "read", "always")
+        .addNode( { tag: 'use', id: "17", name: "a", environment: envWithAB })
+        .addEdge("17", "0", "read", "always")
         .addNode({
           tag:        'function-definition',
-          id:         "11",
-          name:       "11",
+          id:         "12",
+          name:       "12",
           scope:      LocalScope,
           when:       'always',
-          exitPoints: [ '9' ],
+          exitPoints: [ '10' ],
           subflow:    {
             out:         [],
             activeNodes: [],
             in:          [],
             scope:       LocalScope,
             graph:       new DataflowGraph()
-              .addNode({ tag: 'use', id: "9", name: "x", environment: withXParameterInOuter })
+              .addNode({ tag: 'use', id: "10", name: "x", environment: withXParameterInOuter })
               .addNode({ tag: 'variable-definition', id: "1", name: "x", environment: pushLocalEnvironment(initializeCleanEnvironments()), scope: LocalScope, when: 'always' })
               .addNode({
                 tag:         'function-definition',
-                id:          "7",
-                name:        "7",
+                id:          "8",
+                name:        "8",
                 environment: pushLocalEnvironment(initializeCleanEnvironments()),
                 scope:       LocalScope,
                 when:        'always',
@@ -748,14 +749,12 @@ describe('Function Definition', withShell(shell => {
                   environments: withinNestedFunctionWithDef
                 }
               })
-              .addEdge("9", "1", "read", "always")
-              .addEdge("1", "7", "defined-by", "always"),
+              .addEdge("10", "1", "read", "always")
+              .addEdge("1", "8", "defined-by", "always"),
             environments: withXParameterInOuter
           }
         })
-        .addEdge("0", "11", "defined-by", "always")
+        .addEdge("0", "12", "defined-by", "always")
     )
   })
-  // TODO: named parameters
-  // TODO: tests for nested functions
 }))

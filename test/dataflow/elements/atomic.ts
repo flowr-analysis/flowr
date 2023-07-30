@@ -519,22 +519,5 @@ describe("Atomic dataflow information", withShell((shell) => {
           .addEdge('0', '1', 'defined-by', 'always')
       )
     })
-    describe('fun', () => it('x', async() => {
-      const input = `
-a <- 3
-a <- x * m
-
-if(m > 3) {
-  a <- 5
-}
-
-b <- a + c
-`
-      const ast = await retrieveAst(shell, input)
-      const decorated = decorateAst(ast)
-      console.log(normalizedAstToMermaidUrl(decorated.decoratedAst))
-      // assertAst('x', shell, input, exprList())
-      // assertDataflow('x', shell, input, new DataflowGraph())
-    }))
   })
 }))

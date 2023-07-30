@@ -518,7 +518,7 @@ describe("Atomic dataflow information", withShell((shell) => {
         new DataflowGraph()
           .addNode({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
           .addNode({ tag: 'use', id: '1', name: 'x' })
-          .addNode({ tag: 'use', id: '7', name: 'x', when: 'maybe' })
+          .addNode({ tag: 'use', id: '7', name: 'x', when: 'maybe', environment: define({ name: 'x', nodeId: '0', definedAt: '4', used: 'always', kind: 'variable', scope: LocalScope }, LocalScope, initializeCleanEnvironments()) })
           .addEdge('7', '0', 'read', 'maybe')
           .addEdge('0', '1', 'defined-by', 'always')
       )

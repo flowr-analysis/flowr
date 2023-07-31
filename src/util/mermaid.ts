@@ -4,9 +4,13 @@ import {
   BuiltIn,
   DataflowFunctionFlowInformation,
   DataflowGraph,
-  DataflowGraphEdgeAttribute, DataflowGraphEdgeType, DataflowGraphNodeInfo,
+  DataflowGraphEdgeAttribute,
+  DataflowGraphEdgeType,
+  DataflowGraphNodeInfo,
   DataflowMap,
-  DataflowScopeName, FunctionArgument, IdentifierReference
+  DataflowScopeName,
+  FunctionArgument,
+  IdentifierReference
 } from '../dataflow'
 import { guard } from './assert'
 import { displayEnvReplacer } from './json'
@@ -219,7 +223,7 @@ export function normalizedAstToMermaid(ast: RNodeWithParent, prefix: string): st
     const name = `${mapTypeToNormalizedName(n.type)} (${n.info.id})\\n${n.lexeme ?? ' '}`
     output += `    n${n.info.id}(["${name}"])\n`
     if (n.info.parent !== undefined) {
-      const roleSuffix = context.role === RoleInParent.ExpressionListChild ? `-${context.index}` : ''
+      const roleSuffix = context.role === RoleInParent.ExpressionListChild || context.role === RoleInParent.FunctionCallArgument || context.role === RoleInParent.FunctionDefinitionParameter ? `-${context.index}` : ''
       output += `    n${n.info.parent} -->|"${context.role}${roleSuffix}"| n${n.info.id}\n`
     }
     return false

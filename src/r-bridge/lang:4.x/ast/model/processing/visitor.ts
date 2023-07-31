@@ -18,6 +18,7 @@ export const enum RoleInParent {
   FunctionCallName = 'call-name',
   FunctionCallArgument = 'call-argument',
   FunctionDefinitionBody = 'function-def-body',
+  FunctionDefinitionParameter = 'function-def-param',
   ExpressionListChild = 'expr-list-child',
   BinaryOperationLhs = 'binop-lhs',
   BinaryOperationRhs = 'binop-rhs',
@@ -52,7 +53,8 @@ function visitSingle<OtherInfo>(node: RNode<OtherInfo>, onVisit: OnVisit<OtherIn
       visit(node.arguments, onVisit, { role: RoleInParent.FunctionCallArgument, index: 1 })
       break
     case Type.FunctionDefinition:
-      visit(node.body, onVisit, { role: RoleInParent.FunctionDefinitionBody, index: 0 })
+      visit(node.parameters, onVisit, { role: RoleInParent.FunctionDefinitionParameter, index: 0 })
+      visit(node.body, onVisit, { role: RoleInParent.FunctionDefinitionBody, index: node.parameters.length })
       break
     case Type.ExpressionList:
       visit(node.children, onVisit, { role: RoleInParent.ExpressionListChild, index: 0 })

@@ -95,6 +95,7 @@ function findPromiseLinkagesForParameters<OtherInfo>(parameters: DataflowGraph, 
 export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
   dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
 
+  const originalEnvironments = data.environments
   // within a function def we do not pass on the outer binds as they could be overwritten when called
   data = prepareFunctionEnvironment(data)
 
@@ -176,7 +177,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     out:          [],
     graph,
     /* TODO: have params. the potential to influence their surrounding on def? */
-    environments: popLocalEnvironment(data.environments),
+    environments: originalEnvironments,
     ast:          data.completeAst,
     scope:        data.activeScope
   }

@@ -15,7 +15,7 @@ import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
 import { guard } from '../../../../util/assert'
 
 
-function linkLowestClosureVariables<OtherInfo>(subgraph: DataflowGraph, outEnvironment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>) {
+function updateNestedFunctionClosures<OtherInfo>(subgraph: DataflowGraph, outEnvironment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>) {
   // track *all* function definitions - included those nested within the current graph
   // try to resolve their 'in' by only using the lowest scope which will be popped after this definition
   for (const [id, info] of subgraph.nodes(true)) {
@@ -154,7 +154,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   const exitPoints = retrieveExitPointsOfFunctionDefinition(functionDefinition)
   // if exit points are extra, we must link them to all dataflow nodes they relate to.
   linkExitPointsInGraph(exitPoints, subgraph, data.completeAst.idMap, outEnvironment)
-  linkLowestClosureVariables(subgraph, outEnvironment, data, functionDefinition)
+  updateNestedFunctionClosures(subgraph, outEnvironment, data, functionDefinition)
 
   const graph = new DataflowGraph()
   graph.addNode({

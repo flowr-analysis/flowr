@@ -631,6 +631,95 @@ describe('Function Definition', withShell(shell => {
         })
     )
   })
+  describe('Bind environment to correct exit point', () => {
+    const envWithG = define(
+      { nodeId: '0', scope: LocalScope, name: 'g', used: 'always', kind: 'function', definedAt: '4' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments())
+    )
+    const envWithFirstY = define(
+      { nodeId: '5', scope: LocalScope, name: 'y', used: 'always', kind: 'variable', definedAt: '7' },
+      LocalScope,
+      envWithG
+    )
+    // TODO: merge all environments for each exit point for final environment!
+    const finalEnv = define(
+      { nodeId: '15', scope: LocalScope, name: 'y', used: 'always', kind: 'variable', definedAt: '17' },
+      LocalScope,
+      envWithG
+    )
+    assertDataflow(`Two possible exit points to bind y closure`, shell, `function() {
+  g <- function() { y }
+  y <- 5
+  if(z)
+    return(g)
+  y <- 3
+  g
+}`,
+    new DataflowGraph()
+      .addNode({
+        tag:        'function-definition',
+        id:         "20",
+        name:       "20",
+        scope:      LocalScope,
+        when:       'always',
+        exitPoints: ['12','18'],
+        subflow:    {
+          out:          [],
+          activeNodes:  [],
+          in:           [ {nodeId: '8', name: 'z', used: 'always', scope: LocalScope} ],
+          scope:        LocalScope,
+          environments: finalEnv,
+          graph:        new DataflowGraph()
+            .addNode({ tag: 'variable-definition', id: '0', name: 'g', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(initializeCleanEnvironments()) })
+            .addNode({ tag: 'variable-definition', id: '5', name: 'y', scope: LocalScope, when: 'always', environment: envWithG })
+            .addNode({ tag: 'variable-definition', id: '15', name: 'y', scope: LocalScope, when: 'always', environment: envWithFirstY })
+            .addNode({ tag: 'use', id: '8', name: 'z', scope: LocalScope, when: 'always', environment: envWithFirstY })
+            .addNode({ tag: 'use', id: '10', name: 'g', scope: LocalScope, when: 'always', environment: envWithFirstY })
+            .addNode({ tag: 'use', id: '18', name: 'g', scope: LocalScope, when: 'always', environment: finalEnv })
+            .addNode({ tag: 'use', id: `11`, name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, when: 'always', environment: envWithFirstY })
+            .addNode({
+              tag:         'function-call',
+              id:          '12',
+              name:        'return',
+              scope:       LocalScope,
+              when:        'maybe',
+              environment: envWithFirstY,
+              args:        [ { nodeId: '11', name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, used: 'always'  } ]
+            })
+            .addNode({
+              tag:         'function-definition',
+              id:          '3',
+              name:        '3',
+              scope:       LocalScope,
+              when:        'always',
+              environment: pushLocalEnvironment(initializeCleanEnvironments()),
+              exitPoints:  ['1'],
+              subflow:     {
+                out:          [],
+                activeNodes:  [],
+                in:           [],
+                scope:        LocalScope,
+                environments: pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
+                graph:        new DataflowGraph()
+                  .addNode({ tag: 'use', id: '1', name: 'y', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())) })
+              }
+            })
+            .addEdge('0', '3', 'defined-by', 'always')
+            .addEdge('1', '5', 'read', 'maybe')
+            .addEdge('1', '15', 'read', 'maybe')
+            .addEdge('18', '0', 'read', 'always')
+            .addEdge('10', '0', 'read', 'always')
+            .addEdge('11', '10', 'read', 'always')
+            .addEdge('12', '11', 'argument', 'always')
+            .addEdge('12', '11', 'returns', 'always')
+            .addEdge('12', BuiltIn, 'read', 'maybe')
+            .addEdge('12', BuiltIn, 'calls', 'maybe')
+            .addEdge('5', '15', 'same-def-def', 'always')
+        }
+      })
+    )
+  })
   describe('Late binding of environment variables', () => {
     assertDataflow(`define after function definition`, shell, `function() { x }; x <- 3`,
       new DataflowGraph()

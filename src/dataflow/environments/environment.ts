@@ -64,7 +64,9 @@ export function makeAllMaybe(references: IdentifierReference[] | undefined, grap
     const node = graph.get(ref.nodeId)
     const definitions = resolveByName(ref.name, LocalScope, environments)
     for(const definition of definitions ?? []) {
-      definition.used = 'maybe'
+      if(definition.kind !== 'built-in-function') {
+        definition.used = 'maybe'
+      }
     }
     if(node) {
       node[0].when = 'maybe'

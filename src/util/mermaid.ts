@@ -13,7 +13,8 @@ import { displayEnvReplacer } from './json'
 
 
 interface MermaidGraph {
-  lines:               string[]
+  nodeLines:           string[]
+  edgeLines:           string[]
   hasBuiltIn:          boolean
   includeEnvironments: boolean
   mark:                Set<NodeId> | undefined
@@ -41,13 +42,15 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: Dataflo
     return
   }
   const subflowId = `${idPrefix}flow-${nodeId}`
-  mermaid.lines.push(`\nsubgraph "${subflowId}" [function ${nodeId}]`)
-  mermaid.lines.push(graphToMermaid(subflow.graph, dataflowIdMap, null, idPrefix, mermaid.mark, mermaid.rootGraph))
+  mermaid.nodeLines.push(`\nsubgraph "${subflowId}" [function ${nodeId}]`)
+  const subgraph = graphToMermaidGraph(subflow.graph, dataflowIdMap, null, idPrefix, mermaid.mark, mermaid.rootGraph)
+  mermaid.nodeLines.push(...subgraph.nodeLines)
+  mermaid.edgeLines.push(...subgraph.edgeLines)
   for(const [color, pool] of [['purple', subflow.in], ['green', subflow.out], ['orange', subflow.activeNodes]]) {
     for (const out of pool as IdentifierReference[]) {
       if(!mermaid.mark?.has(out.nodeId)) {
         // in/out/active for unmarked
-        mermaid.lines.push(`    style ${idPrefix}${out.nodeId} stroke:${color as string},stroke-width:4px; `)
+        mermaid.nodeLines.push(`    style ${idPrefix}${out.nodeId} stroke:${color as string},stroke-width:4px; `)
       }
     }
   }
@@ -55,13 +58,13 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: Dataflo
     if(!subflow.graph.hasNode(exitPoint)) {
       const node = dataflowIdMap?.get(exitPoint)
       guard(node !== undefined, 'exit point not found')
-      mermaid.lines.push(` ${idPrefix}${exitPoint}{{"${node.lexeme ?? '??'} (${exitPoint})\n      ${formatRange(dataflowIdMap?.get(exitPoint)?.location)}"}}`)
+      mermaid.nodeLines.push(` ${idPrefix}${exitPoint}{{"${node.lexeme ?? '??'} (${exitPoint})\n      ${formatRange(dataflowIdMap?.get(exitPoint)?.location)}"}}`)
     }
-    mermaid.lines.push(`    style ${idPrefix}${exitPoint} stroke-width:6.5px;`)
+    mermaid.nodeLines.push(`    style ${idPrefix}${exitPoint} stroke-width:6.5px;`)
   }
 
-  mermaid.lines.push('end')
-  mermaid.lines.push(`${idPrefix}${nodeId} -.-|function| ${subflowId}\n`)
+  mermaid.nodeLines.push('end')
+  mermaid.edgeLines.push(`${idPrefix}${nodeId} -.-|function| ${subflowId}\n`)
 }
 
 
@@ -120,13 +123,13 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, mermai
   const { open, close } = mermaidNodeBrackets(def, fCall)
 
   if(mermaid.includeEnvironments) {
-    mermaid.lines.push(`    %% ${id}: ${JSON.stringify(info.environment, displayEnvReplacer)}`)
+    mermaid.nodeLines.push(`    %% ${id}: ${JSON.stringify(info.environment, displayEnvReplacer)}`)
   }
-  mermaid.lines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name)} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
+  mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name)} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
     fCall ? displayFunctionArgMapping(info.args) : ''
   }\`"${close}`)
   if (mark?.has(id)) {
-    mermaid.lines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `)
+    mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `)
   }
 
   const edges = mermaid.rootGraph.get(id, true)
@@ -136,7 +139,7 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, mermai
     const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edge.types, edge.attribute)
     if(!mermaid.presentEdges.has(edgeId)) {
       mermaid.presentEdges.add(edgeId)
-      mermaid.lines.push(`    ${idPrefix}${id} ${dotEdge ? '-.-' : '-->'}|"${[...edge.types].join(', ')} (${edge.attribute})"| ${idPrefix}${target}`)
+      mermaid.edgeLines.push(`    ${idPrefix}${id} ${dotEdge ? '-.-' : '-->'}|"${[...edge.types].join(', ')} (${edge.attribute})"| ${idPrefix}${target}`)
       if (target === BuiltIn) {
         mermaid.hasBuiltIn = true
       }
@@ -147,16 +150,22 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, mermai
   }
 }
 
-export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = '', mark?: Set<NodeId>, rootGraph?: DataflowGraph): string {
-  const mermaid: MermaidGraph = { lines: prefix === null ? [] : [prefix], presentEdges: new Set<string>(), hasBuiltIn: false, mark, rootGraph: rootGraph ?? graph, includeEnvironments: true }
+
+function graphToMermaidGraph(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = '', mark?: Set<NodeId>, rootGraph?: DataflowGraph): MermaidGraph {
+  const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges: new Set<string>(), hasBuiltIn: false, mark, rootGraph: rootGraph ?? graph, includeEnvironments: true }
 
   for (const [id, info] of graph.entries()) {
     nodeToMermaid(graph, info, mermaid, id, idPrefix, dataflowIdMap, mark)
   }
   if(mermaid.hasBuiltIn) {
-    mermaid.lines.push(`    ${idPrefix}${BuiltIn}["Built-in"]`)
+    mermaid.nodeLines.push(`    ${idPrefix}${BuiltIn}["Built-in"]`)
   }
-  return mermaid.lines.join('\n')
+  return mermaid
+}
+
+export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = '', mark?: Set<NodeId>, rootGraph?: DataflowGraph): string {
+  const mermaid = graphToMermaidGraph(graph, dataflowIdMap, prefix, idPrefix, mark, rootGraph)
+  return `${mermaid.nodeLines.join('\n')}\n${mermaid.edgeLines.join('\n')}`
 }
 
 /**

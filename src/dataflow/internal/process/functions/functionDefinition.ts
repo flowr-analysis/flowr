@@ -148,7 +148,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   const flow = {
     activeNodes:  [],
     in:           remainingRead,
-    out:          [ /* TODO: out */ ],
+    out:          [],
     graph:        subgraph,
     environments: outEnvironment,
     ast:          data.completeAst,
@@ -173,7 +173,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   })
   return {
     activeNodes:  [] /* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */,
-    in:           [ /* TODO: keep in of parameters */ ],
+    in:           [],
     out:          [],
     graph,
     /* TODO: have params. the potential to influence their surrounding on def? */

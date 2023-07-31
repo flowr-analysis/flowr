@@ -10,12 +10,12 @@ import {
 } from '../../../environments'
 import { linkInputs } from '../../linker'
 import { DataflowGraph, dataflowLogger, DataflowMap, LocalScope } from '../../../index'
-import { collectAllIds, ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
+import { collectAllIds, NodeId, ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
 import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
 import { guard } from '../../../../util/assert'
 
 
-function updateNestedFunctionClosures<OtherInfo>(subgraph: DataflowGraph, outEnvironment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>) {
+function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph: DataflowGraph, outEnvironment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>) {
   // track *all* function definitions - included those nested within the current graph
   // try to resolve their 'in' by only using the lowest scope which will be popped after this definition
   for (const [id, info] of subgraph.nodes(true)) {
@@ -25,16 +25,19 @@ function updateNestedFunctionClosures<OtherInfo>(subgraph: DataflowGraph, outEnv
     const ingoingRefs = info.subflow.in
     const remainingIn: IdentifierReference[] = []
     for (const ingoing of ingoingRefs) {
-      const env = initializeCleanEnvironments()
-      env.current.memory = outEnvironment.current.memory
-      const resolved = resolveByName(ingoing.name, data.activeScope, env)
-      if (resolved === undefined) {
-        remainingIn.push(ingoing)
-        continue
-      }
-      dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id}`)
-      for (const ref of resolved) {
-        subgraph.addEdge(ingoing, ref, 'read', 'always')
+      for(const exitPoint of exitPoints) {
+        const node = subgraph.get(exitPoint)
+        const env = initializeCleanEnvironments()
+        env.current.memory = node === undefined ? outEnvironment.current.memory : node[0].environment.current.memory
+        const resolved = resolveByName(ingoing.name, data.activeScope, env)
+        if (resolved === undefined) {
+          remainingIn.push(ingoing)
+          continue
+        }
+        dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id}`)
+        for (const ref of resolved) {
+          subgraph.addEdge(ingoing, ref, 'read', exitPoints.length > 1 ? 'maybe' : 'always')
+        }
       }
     }
     dataflowLogger.trace(`Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id}`)
@@ -154,7 +157,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   const exitPoints = retrieveExitPointsOfFunctionDefinition(functionDefinition)
   // if exit points are extra, we must link them to all dataflow nodes they relate to.
   linkExitPointsInGraph(exitPoints, subgraph, data.completeAst.idMap, outEnvironment)
-  updateNestedFunctionClosures(subgraph, outEnvironment, data, functionDefinition)
+  updateNestedFunctionClosures(exitPoints, subgraph, outEnvironment, data, functionDefinition)
 
   const graph = new DataflowGraph()
   graph.addNode({

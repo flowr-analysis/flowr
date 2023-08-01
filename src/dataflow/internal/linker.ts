@@ -136,7 +136,7 @@ function linkArgumentsForAllNamedArguments(targetId: NodeId, idMap: DecoratedAst
  * Returns the called functions within the current graph, which can be used to merge the environments with the call.
  * Furthermore, it links the corresponding arguments.
  */
-export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph, idMap: DecoratedAstMap, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] {
+export function linkFunctionCalls(graph: DataflowGraph, idMap: DecoratedAstMap, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] {
   const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] = []
   for(const [id, info, nodeGraph] of functionCalls) {
     if(info.tag !== 'function-call') {

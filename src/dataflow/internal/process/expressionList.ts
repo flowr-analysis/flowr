@@ -11,7 +11,7 @@ import {
   REnvironmentInformation,
   resolveByName
 } from '../../environments'
-import { linkFunctionCallExitPointsAndCalls, linkReadVariablesInSameScopeWithNames } from '../linker'
+import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
 import { DataflowGraph } from '../../graph'
 import { dataflowLogger } from '../../index'
@@ -101,7 +101,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     processNextExpression(processed, data, environments, listEnvironments, remainingRead, nextGraph)
     const functionCallIds = [...processed.graph.nodes(true)]
       .filter(([_,info]) => info.tag === 'function-call')
-    const calledEnvs = linkFunctionCallExitPointsAndCalls(nextGraph, data.completeAst.idMap, functionCallIds, processed.graph)
+    const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, functionCallIds, processed.graph)
 
     // update the environments for the next iteration with the previous writes
     environments = overwriteEnvironments(environments, processed.environments)

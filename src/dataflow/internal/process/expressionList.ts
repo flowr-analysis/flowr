@@ -101,7 +101,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
     processNextExpression(processed, data, environments, listEnvironments, remainingRead, nextGraph)
     const functionCallIds = [...processed.graph.nodes(true)]
       .filter(([_,info]) => info.tag === 'function-call')
-    const calledEnvs = linkFunctionCallExitPointsAndCalls(nextGraph, functionCallIds, processed.graph)
+    const calledEnvs = linkFunctionCallExitPointsAndCalls(nextGraph, data.completeAst.idMap, functionCallIds, processed.graph)
 
     // update the environments for the next iteration with the previous writes
     environments = overwriteEnvironments(environments, processed.environments)

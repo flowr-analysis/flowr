@@ -61,6 +61,56 @@ describe('Function Call', withShell(shell => {
         .addEdge('13', '6', 'returns', 'always')
         .addEdge('12', '4', 'defines-on-call', 'always')
     )
+    const envWithIAB = define(
+      {nodeId: '10', scope: 'local', name: 'b', used: 'always', kind: 'variable', definedAt: '12' },
+      LocalScope,
+      envWithIA
+    )
+    assertDataflow(`Calling function a with an indirection`, shell, `i <- 4; a <- function(x) { x }\nb <- a\nb(i)`,
+      new DataflowGraph()
+        .addNode({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
+        .addNode({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
+        .addNode({ tag: 'variable-definition', id: '10', name: 'b', scope: LocalScope, environment: envWithIA })
+        .addNode({ tag: 'use', id: '11', name: 'a', scope: LocalScope, environment: envWithIA })
+        .addNode({ tag: 'use', id: '14', name: 'i', environment: envWithIAB })
+        .addNode({ tag: 'use', id: '15', name: `${UnnamedArgumentPrefix}15`, environment: envWithIAB })
+        .addNode({
+          tag:         'function-call',
+          id:          '16',
+          name:        'b',
+          environment: envWithIAB,
+          args:        [{
+            nodeId: '15', name: `${UnnamedArgumentPrefix}15`, scope: LocalScope, used: 'always'
+          }] })
+        .addNode({
+          tag:         'function-definition',
+          id:          '8',
+          name:        '8',
+          scope:       LocalScope,
+          exitPoints:  [ '6' ],
+          environment: popLocalEnvironment(envWithXParamDefined),
+          subflow:     {
+            out:          [],
+            in:           [],
+            activeNodes:  [],
+            scope:        LocalScope,
+            environments: envWithXParamDefined,
+            graph:        new DataflowGraph()
+              .addNode({ tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) })
+              .addNode({ tag: 'use', id: '6', name: 'x', environment: envWithXParamDefined})
+              .addEdge('6', '4', 'read', 'always'),
+          }})
+        .addEdge('14', '0', 'read', 'always')
+        .addEdge('3', '8', 'defined-by', 'always')
+        .addEdge('10', '11', 'defined-by', 'always')
+        .addEdge('11', '3', 'read', 'always')
+        .addEdge('16', '15', 'argument', 'always')
+        .addEdge('15', '14', 'read', 'always')
+        .addEdge('16', '10', 'read', 'always')
+        .addEdge('16', '8', 'calls', 'always')
+        .addEdge('16', '6', 'returns', 'always')
+        .addEdge('15', '4', 'defines-on-call', 'always')
+    )
     const envWithXConstDefined = define(
       {nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
       LocalScope,

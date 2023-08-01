@@ -2,13 +2,18 @@ import {
   DataflowGraph,
   DataflowGraphNodeFunctionCall,
   DataflowGraphNodeInfo,
-  DataflowScopeName
+  DataflowScopeName, FunctionArgument, NamedFunctionArgument, PositionalFunctionArgument
 } from '../graph'
-import { BuiltIn, IdentifierReference, REnvironmentInformation, resolveByName } from '../environments'
+import {
+  BuiltIn,
+  IdentifierReference,
+  REnvironmentInformation,
+  resolveByName
+} from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { log } from '../../util/log'
-import { NodeId } from '../../r-bridge'
+import { DecoratedAstMap, NodeId, ParentInformation, RParameter, Type } from '../../r-bridge'
 import { slicerLogger } from '../../slicing'
 import { dataflowLogger } from '../index'
 
@@ -55,14 +60,90 @@ function specialReturnFunction(info: DataflowGraphNodeFunctionCall, graph: Dataf
   }
 }
 
+
+// TODO: in some way we need to remove the links for the default argument if it is given by the user on call - this could be done with 'when' but for now we do not do it as we expect such situations to be rare
+export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
+  const nameArgMap = new Map<string, IdentifierReference | '<value>'>(args.filter(Array.isArray) as NamedFunctionArgument[])
+  const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.map(p => [p.name.content, p]))
+
+  const specialDotParameter = params.find(p => p.special)
+
+  // all parameters matched by name
+  const matchedParameters = new Set<string>()
+
+
+  // first map names
+  for(const [name, arg] of nameArgMap) {
+    if(arg === '<value>') {
+      dataflowLogger.trace(`skipping value argument for ${name}`)
+      continue
+    }
+    const param = nameParamMap.get(name)
+    if(param !== undefined) {
+      dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`)
+      graph.addEdge(arg.nodeId, param.name.info.id, 'defines-on-call', 'always')
+      matchedParameters.add(name)
+    } else if(specialDotParameter !== undefined) {
+      dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`)
+      graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, 'defines-on-call', 'always')
+    }
+  }
+
+  const remainingParameter = params.filter(p => !matchedParameters.has(p.name.content))
+  const remainingArguments = args.filter(a => !Array.isArray(a)) as (PositionalFunctionArgument | 'empty')[]
+
+  // TODO ...
+  for(let i = 0; i < remainingArguments.length; i++) {
+    const arg: PositionalFunctionArgument | 'empty' = remainingArguments[i]
+    if(arg === '<value>' || arg === 'empty') {
+      dataflowLogger.trace(`skipping value argument for ${i}`)
+      continue
+    }
+    if(remainingParameter.length <= i) {
+      if(specialDotParameter !== undefined) {
+        dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to dot-dot-dot parameter`)
+        graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, 'defines-on-call', 'always')
+      } else {
+        dataflowLogger.error(`skipping argument ${i} as there is no corresponding parameter - R should block that`)
+      }
+      continue
+    }
+    const param = remainingParameter[i]
+    dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to parameter "${param.name.content}"`)
+    graph.addEdge(arg.nodeId, param.name.info.id, 'defines-on-call', 'always')
+  }
+}
+
+
+function linkArgumentsForAllNamedArguments(targetId: NodeId, idMap: DecoratedAstMap, functionCallName: string, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): void {
+  // we get them by just choosing the rhs of the definition - TODO: this should be improved - maybe by a second call track
+  const linkedFunction = idMap.get(targetId)
+  if(linkedFunction === undefined) {
+    dataflowLogger.trace(`no function definition found for ${functionCallName} (${functionRootId})`)
+    return
+  }
+
+  if (linkedFunction.type !== Type.FunctionDefinition) {
+    dataflowLogger.trace(`function call definition base ${functionCallName} does not lead to a function definition (${functionRootId}) but got ${linkedFunction.type}`)
+    return
+  }
+  dataflowLogger.trace(`linking arguments for ${functionCallName} (${functionRootId}) to ${JSON.stringify(linkedFunction.location)}`)
+  linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph)
+}
+
+
 /**
- * Returns the called functions within the current graph, which can be used to merge the environments with the call
+ * Returns the called functions within the current graph, which can be used to merge the environments with the call.
+ * Furthermore, it links the corresponding arguments.
  */
-export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] {
+export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph, idMap: DecoratedAstMap, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] {
   const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] = []
   for(const [id, info, nodeGraph] of functionCalls) {
+    if(info.tag !== 'function-call') {
+      continue
+    }
     // TODO: special handling for others
-    if(info.tag === 'function-call' && info.name === 'return') {
+    if(info.name === 'return') {
       specialReturnFunction(info, graph, id)
       graph.addEdge(id, BuiltIn, 'calls', 'always')
       continue
@@ -75,14 +156,15 @@ export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph, functio
 
     const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
 
-    for(const defs of functionDefs.values()) {
-      guard(defs.tag === 'function-definition', () => `expected function definition, but got ${defs.tag}`)
-      const exitPoints = defs.exitPoints
+    for(const def of functionDefs.values()) {
+      guard(def.tag === 'function-definition', () => `expected function definition, but got ${def.tag}`)
+      const exitPoints = def.exitPoints
       for(const exitPoint of exitPoints) {
         graph.addEdge(id, exitPoint, 'returns', 'always')
       }
-      dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${defs.name}`)
-      graph.addEdge(id, defs.id, 'calls', 'always')
+      dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${def.name}`)
+      graph.addEdge(id, def.id, 'calls', 'always')
+      linkArgumentsForAllNamedArguments(def.id, idMap, def.name, id, info.args, graph)
     }
     if(nodeGraph === thisGraph) {
       calledFunctionDefinitions.push({ functionCall: id,  called: [...functionDefs.values()] })

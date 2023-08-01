@@ -132,6 +132,32 @@ function linkArgumentsForAllNamedArguments(targetId: NodeId, idMap: DecoratedAst
 }
 
 
+function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphNodeFunctionCall, idMap: DecoratedAstMap, nodeGraph: DataflowGraph, thisGraph: DataflowGraph, calledFunctionDefinitions: {
+  functionCall: NodeId;
+  called:       DataflowGraphNodeInfo[]
+}[]) {
+  const edges = graph.get(id, true)
+  guard(edges !== undefined, () => `id ${id} must be present in graph`)
+
+  const functionDefinitionReadIds = [...edges[1]].filter(([_, e]) => e.types.has('read') || e.types.has('calls') || e.types.has('relates')).map(([target, _]) => target)
+
+  const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
+
+  for (const def of functionDefs.values()) {
+    guard(def.tag === 'function-definition', () => `expected function definition, but got ${def.tag}`)
+    const exitPoints = def.exitPoints
+    for (const exitPoint of exitPoints) {
+      graph.addEdge(id, exitPoint, 'returns', 'always')
+    }
+    dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${def.name}`)
+    graph.addEdge(id, def.id, 'calls', 'always')
+    linkArgumentsForAllNamedArguments(def.id, idMap, def.name, id, info.args, graph)
+  }
+  if (nodeGraph === thisGraph) {
+    calledFunctionDefinitions.push({ functionCall: id, called: [...functionDefs.values()] })
+  }
+}
+
 /**
  * Returns the called functions within the current graph, which can be used to merge the environments with the call.
  * Furthermore, it links the corresponding arguments.
@@ -139,36 +165,15 @@ function linkArgumentsForAllNamedArguments(targetId: NodeId, idMap: DecoratedAst
 export function linkFunctionCalls(graph: DataflowGraph, idMap: DecoratedAstMap, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] {
   const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] = []
   for(const [id, info, nodeGraph] of functionCalls) {
-    if(info.tag !== 'function-call') {
-      continue
-    }
+    guard(info.tag === 'function-call', () => `encountered non-function call in function call linkage ${JSON.stringify(info)}`)
+
     // TODO: special handling for others
     if(info.name === 'return') {
       specialReturnFunction(info, graph, id)
       graph.addEdge(id, BuiltIn, 'calls', 'always')
       continue
     }
-
-    const edges = graph.get(id, true)
-    guard(edges !== undefined, () => `id ${id} must be present in graph`)
-
-    const functionDefinitionReadIds = [...edges[1]].filter(([_, e]) => e.types.has('read') || e.types.has('calls') || e.types.has('relates')).map(([target, _]) => target)
-
-    const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
-
-    for(const def of functionDefs.values()) {
-      guard(def.tag === 'function-definition', () => `expected function definition, but got ${def.tag}`)
-      const exitPoints = def.exitPoints
-      for(const exitPoint of exitPoints) {
-        graph.addEdge(id, exitPoint, 'returns', 'always')
-      }
-      dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${def.name}`)
-      graph.addEdge(id, def.id, 'calls', 'always')
-      linkArgumentsForAllNamedArguments(def.id, idMap, def.name, id, info.args, graph)
-    }
-    if(nodeGraph === thisGraph) {
-      calledFunctionDefinitions.push({ functionCall: id,  called: [...functionDefs.values()] })
-    }
+    linkFunctionCall(graph, id, info, idMap, nodeGraph, thisGraph, calledFunctionDefinitions)
   }
   return calledFunctionDefinitions
 }

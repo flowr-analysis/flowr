@@ -9,6 +9,7 @@ import {
 } from '../r-bridge'
 import { DataflowInformation } from './internal/info'
 import { REnvironmentInformation } from './environments'
+import { graphToMermaid, graphToMermaidUrl } from '../util/mermaid'
 
 export interface DataflowProcessorInformation<OtherInfo> {
   /**
@@ -54,7 +55,9 @@ export type DataflowProcessors<OtherInfo> = {
  * @param data - The initial information to be passed down
  */
 export function processDataflowFor<OtherInfo>(current: RNodeWithParent<OtherInfo>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo & ParentInformation> {
-  return data.processors[current.type](current as never, data)
+  const res = data.processors[current.type](current as never, data)
+  console.log('UWU', current.info.id, graphToMermaidUrl(res.graph, data.completeAst.idMap))
+  return res
 }
 
 

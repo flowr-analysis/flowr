@@ -27,7 +27,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
         // TODO: deal with complexity in the future by introduce a new specific node?
 
         for(const accessedNode of accessedNodes) {
-          nextGraph.addEdge(accessedNode, newIn, 'read', 'always')
+          nextGraph.addEdge(accessedNode, newIn, 'reads', 'always')
         }
       }
       ingoing.push(...processedAccess.in, ...processedAccess.activeNodes)

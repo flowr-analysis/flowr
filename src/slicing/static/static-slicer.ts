@@ -82,7 +82,7 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
         if (!visited.has(fingerprint(target, baseEnvFingerprint, true))) {
           visitQueue.push({ id: target, baseEnvironment: current.baseEnvironment, onlyForSideEffects: true })
         }
-      } else if (edge.types.has('read') || edge.types.has('defined-by') || edge.types.has('argument') || edge.types.has('calls') || edge.types.has('relates') || (!current.onlyForSideEffects && edge.types.has('returns')) || edge.types.has('defines-on-call')) {
+      } else if (edge.types.has('reads') || edge.types.has('defined-by') || edge.types.has('argument') || edge.types.has('calls') || edge.types.has('relates') || (!current.onlyForSideEffects && edge.types.has('returns')) || edge.types.has('defines-on-call')) {
         if (!visited.has(fingerprint(target, baseEnvFingerprint, false))) {
           visitQueue.push({ id: target, baseEnvironment: current.baseEnvironment, onlyForSideEffects: false })
         }

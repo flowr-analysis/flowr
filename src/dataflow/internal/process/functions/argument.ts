@@ -12,7 +12,7 @@ export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentIn
 
   for (const ref of ingoingBeforeArgs) {
     // link against the root reference currently I do not know how to deal with nested function calls otherwise
-    graph.addEdge(root.info.id, ref, 'read', 'always')
+    graph.addEdge(root.info.id, ref, 'reads', 'always')
   }
 }
 

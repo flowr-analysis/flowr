@@ -139,7 +139,7 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphN
   const edges = graph.get(id, true)
   guard(edges !== undefined, () => `id ${id} must be present in graph`)
 
-  const functionDefinitionReadIds = [...edges[1]].filter(([_, e]) => e.types.has('read') || e.types.has('calls') || e.types.has('relates')).map(([target, _]) => target)
+  const functionDefinitionReadIds = [...edges[1]].filter(([_, e]) => e.types.has('reads') || e.types.has('calls') || e.types.has('relates')).map(([target, _]) => target)
 
   const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
 
@@ -207,7 +207,7 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
       potential.push(...returnEdges.map(([target]) => target))
       continue
     }
-    const followEdges = outgoingEdges.filter(([_, e]) => e.types.has('read') || e.types.has('defined-by') || e.types.has('defined-by-on-call') || e.types.has('relates') || e.types.has('calls'))
+    const followEdges = outgoingEdges.filter(([_, e]) => e.types.has('reads') || e.types.has('defined-by') || e.types.has('defined-by-on-call') || e.types.has('relates') || e.types.has('calls'))
 
 
     if(currentInfo[0].subflow !== undefined) {
@@ -244,7 +244,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReferen
     } else {
       for (const target of probableTarget) {
         // we can stick with maybe even if readId.attribute is always
-        graph.addEdge(bodyInput, target, 'read', undefined, true)
+        graph.addEdge(bodyInput, target, 'reads', undefined, true)
       }
     }
   }
@@ -272,7 +272,7 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
     for(const out of lastOutgoing.values()) {
       if(out.name === name) {
         for(const target of targets) {
-          graph.addEdge(target.nodeId, out.nodeId, 'read', 'maybe')
+          graph.addEdge(target.nodeId, out.nodeId, 'reads', 'maybe')
         }
       }
     }

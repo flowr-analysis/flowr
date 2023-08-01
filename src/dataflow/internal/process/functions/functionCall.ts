@@ -86,7 +86,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
         remainingReadInArgs.push(ingoing)
       } else {
         for(const resolved of tryToResolve) {
-          finalGraph.addEdge(ingoing.nodeId, resolved.nodeId,'read', 'always')
+          finalGraph.addEdge(ingoing.nodeId, resolved.nodeId,'reads', 'always')
         }
       }
     }

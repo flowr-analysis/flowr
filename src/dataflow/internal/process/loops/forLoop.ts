@@ -45,7 +45,7 @@ export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInfor
     const name = write.name
     const readIdsToLink = nameIdShares.get(name)
     for(const readId of readIdsToLink) {
-      nextGraph.addEdge(readId.nodeId, write.nodeId, 'read', /* TODO */ 'always', true)
+      nextGraph.addEdge(readId.nodeId, write.nodeId, 'reads', /* TODO */ 'always', true)
     }
     // now, we remove the name from the id shares as they are no longer needed
     nameIdShares.delete(name)

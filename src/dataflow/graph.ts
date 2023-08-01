@@ -18,7 +18,7 @@ import { displayEnvReplacer } from '../util/json'
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
 
 export type DataflowGraphEdgeType =
-    | /** The edge determines that source reads target */ 'read'
+    | /** The edge determines that source reads target */ 'reads'
     | /** The edge determines that source is defined by target */ 'defined-by'
     | /** The edge determines that source (probably argument) defines the target (probably parameter), currently automatically created by `addEdge` */ 'defines-on-call'
     | /** Inverse of `defines-on-call` currently only needed to get better results when slicing complex function calls, TODO: remove this in the future when the slicer knows the calling context of the function and can trace links accordingly */ 'defined-by-on-call'

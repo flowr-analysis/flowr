@@ -66,7 +66,7 @@ describe('Function Definition', withShell(shell => {
                 environment: envWithXDefined,
                 when:        'always'
               })
-              .addEdge("2", "0", "read", "always"),
+              .addEdge("2", "0", 'reads', "always"),
             environments: envWithXDefined
           }
         })
@@ -116,12 +116,12 @@ describe('Function Definition', withShell(shell => {
                 environment: envWithXDefined,
                 when:        'always',
               })
-              .addEdge("5", BuiltIn, "read", "always")
+              .addEdge("5", BuiltIn, 'reads', "always")
               .addEdge("5", BuiltIn, "calls", "always")
-              .addEdge("3", "0", "read", "always")
+              .addEdge("3", "0", 'reads', "always")
               .addEdge("5", "4", "argument", "always")
               .addEdge("5", "4", "returns", "always")
-              .addEdge("4", "3", "read", "always"),
+              .addEdge("4", "3", 'reads', "always"),
             environments: envWithXDefined
           }
         })
@@ -163,7 +163,7 @@ describe('Function Definition', withShell(shell => {
               .addNode({ tag: 'variable-definition', id: "2", name: "y", environment: envWithXParam, scope: LocalScope, when: 'always' })
               .addNode({ tag: 'variable-definition', id: "4", name: "z", environment: envWithXYParam, scope: LocalScope, when: 'always' })
               .addNode( { tag: 'use', id: "6", name: "y", environment: envWithXYZParam, when: 'always' })
-              .addEdge("6", "2", "read", "always"),
+              .addEdge("6", "2", 'reads', "always"),
             environments: envWithXYZParam
           }
         })
@@ -346,7 +346,7 @@ describe('Function Definition', withShell(shell => {
             kind:      'variable'
           }, LocalScope, initializeCleanEnvironments())
         })
-        .addEdge("9", "0", "read", "always")
+        .addEdge("9", "0", 'reads', "always")
         .addNode({
           tag:        'function-definition',
           id:         "8",
@@ -375,7 +375,7 @@ describe('Function Definition', withShell(shell => {
                 scope:       LocalScope,
                 when:        'always'
               })
-              .addEdge("6", "3", "read", "always"),
+              .addEdge("6", "3", 'reads', "always"),
             environments: envDefXSingle
           }
         })
@@ -392,7 +392,7 @@ describe('Function Definition', withShell(shell => {
             LocalScope,
             initializeCleanEnvironments())
         })
-        .addEdge("9", "0", "read", "always")
+        .addEdge("9", "0", 'reads', "always")
         .addNode({
           tag:        'function-definition',
           id:         "8",
@@ -435,7 +435,7 @@ describe('Function Definition', withShell(shell => {
                 }, LocalScope, pushLocalEnvironment(initializeCleanEnvironments())),
                 when: 'always'
               })
-              .addEdge("6", "3", "read", "always")
+              .addEdge("6", "3", 'reads', "always")
               .addEdge("3", "4", "defined-by", "always"),
             environments: envDefXSingle
           }
@@ -471,7 +471,7 @@ describe('Function Definition', withShell(shell => {
                 environment: envWithXDefined,
                 when:        'always'
               })
-              .addEdge("5", "3", "read", "always"),
+              .addEdge("5", "3", 'reads', "always"),
             environments: envWithXDefined
           }
         })
@@ -523,9 +523,9 @@ describe('Function Definition', withShell(shell => {
               })
               .addNode({ tag: 'use', id: '4', name: 'a', environment: envWithA, when: 'always' })
               .addNode({ tag: 'use', id: '6', name: 'b', environment: envWithAB, when: 'always' })
-              .addEdge('4', '0', 'read', 'always')
+              .addEdge('4', '0', 'reads', 'always')
               .addEdge('3', '4', 'defined-by', 'maybe' /* default values can be overridden */)
-              .addEdge('6', '3', 'read', 'always')
+              .addEdge('6', '3', 'reads', 'always')
           }
         })
     )
@@ -576,10 +576,10 @@ describe('Function Definition', withShell(shell => {
               .addNode({ tag: 'exit-point', id: '15', name: '+', scope: LocalScope, when: 'always', environment: envWithBothParamSecondB })
               .addEdge('15', '13', 'relates', 'always')
               .addEdge('13', '9', 'same-read-read', 'always')
-              .addEdge('9', '0', 'read', 'always')
-              .addEdge('13', '0', 'read', 'always')
+              .addEdge('9', '0', 'reads', 'always')
+              .addEdge('13', '0', 'reads', 'always')
               .addEdge('0', '1', 'defined-by', 'maybe')
-              .addEdge('1', '6', 'read', 'always')
+              .addEdge('1', '6', 'reads', 'always')
               .addEdge('10', '6', 'same-def-def', 'always')
           }
         })
@@ -625,8 +625,8 @@ describe('Function Definition', withShell(shell => {
               })
               .addNode({ tag: 'use', id: '6', name: `${UnnamedArgumentPrefix}6`, when: 'always', environment: envWithASpecial })
               .addEdge('7', '6', 'argument', 'always')
-              .addEdge('6', '5', 'read', 'always')
-              .addEdge('5', '2', 'read', 'always')
+              .addEdge('6', '5', 'reads', 'always')
+              .addEdge('5', '2', 'reads', 'always')
           }
         })
     )
@@ -706,14 +706,14 @@ describe('Function Definition', withShell(shell => {
               }
             })
             .addEdge('0', '3', 'defined-by', 'always')
-            .addEdge('1', '5', 'read', 'maybe')
-            .addEdge('1', '15', 'read', 'maybe')
-            .addEdge('18', '0', 'read', 'always')
-            .addEdge('10', '0', 'read', 'always')
-            .addEdge('11', '10', 'read', 'always')
+            .addEdge('1', '5', 'reads', 'maybe')
+            .addEdge('1', '15', 'reads', 'maybe')
+            .addEdge('18', '0', 'reads', 'always')
+            .addEdge('10', '0', 'reads', 'always')
+            .addEdge('11', '10', 'reads', 'always')
             .addEdge('12', '11', 'argument', 'always')
             .addEdge('12', '11', 'returns', 'always')
-            .addEdge('12', BuiltIn, 'read', 'maybe')
+            .addEdge('12', BuiltIn, 'reads', 'maybe')
             .addEdge('12', BuiltIn, 'calls', 'maybe')
             .addEdge('5', '15', 'same-def-def', 'always')
         }
@@ -792,7 +792,7 @@ describe('Function Definition', withShell(shell => {
           environment: envWithA
         })
         .addNode( { tag: 'use', id: "17", name: "a", environment: envWithAB })
-        .addEdge("17", "0", "read", "always")
+        .addEdge("17", "0", 'reads', "always")
         .addNode({
           tag:        'function-definition',
           id:         "12",
@@ -838,7 +838,7 @@ describe('Function Definition', withShell(shell => {
                   environments: withinNestedFunctionWithDef
                 }
               })
-              .addEdge("10", "1", "read", "always")
+              .addEdge("10", "1", 'reads', "always")
               .addEdge("1", "8", "defined-by", "always"),
             environments: withXParameterInOuter
           }

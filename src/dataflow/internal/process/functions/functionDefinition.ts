@@ -36,7 +36,7 @@ function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph:
         }
         dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id}`)
         for (const ref of resolved) {
-          subgraph.addEdge(ingoing, ref, 'read', exitPoints.length > 1 ? 'maybe' : 'always')
+          subgraph.addEdge(ingoing, ref, 'reads', exitPoints.length > 1 ? 'maybe' : 'always')
         }
       }
     }
@@ -69,7 +69,7 @@ function findPromiseLinkagesForParameters<OtherInfo>(parameters: DataflowGraph, 
     const resolved = resolveByName(read.name, LocalScope, parameterEnvs)
     if (resolved !== undefined) {
       for(const ref of resolved) {
-        parameters.addEdge(read, ref, 'read', 'always')
+        parameters.addEdge(read, ref, 'reads', 'always')
       }
       continue
     }
@@ -82,11 +82,11 @@ function findPromiseLinkagesForParameters<OtherInfo>(parameters: DataflowGraph, 
       continue
     }
     if(writingOuts[0].used === 'always') {
-      parameters.addEdge(read, writingOuts[0], 'read', 'always')
+      parameters.addEdge(read, writingOuts[0], 'reads', 'always')
       continue
     }
     for(const out of writingOuts) {
-      parameters.addEdge(read, out, 'read', 'maybe')
+      parameters.addEdge(read, out, 'reads', 'maybe')
     }
   }
   return remainingRead

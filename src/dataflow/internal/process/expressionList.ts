@@ -40,7 +40,7 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 
   for (const target of probableTarget) {
     // we can stick with maybe even if readId.attribute is always
-    nextGraph.addEdge(read, target, 'read', undefined, true)
+    nextGraph.addEdge(read, target, 'reads', undefined, true)
   }
 }
 

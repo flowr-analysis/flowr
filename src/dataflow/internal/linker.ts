@@ -115,7 +115,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 }
 
 
-function linkArgumentsForAllNamedArguments(targetId: NodeId, idMap: DecoratedAstMap, functionCallName: string, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): void {
+function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, functionCallName: string, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): void {
   // we get them by just choosing the rhs of the definition - TODO: this should be improved - maybe by a second call track
   const linkedFunction = idMap.get(targetId)
   if(linkedFunction === undefined) {
@@ -151,7 +151,7 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphN
     }
     dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${def.name}`)
     graph.addEdge(id, def.id, 'calls', 'always')
-    linkArgumentsForAllNamedArguments(def.id, idMap, def.name, id, info.args, graph)
+    linkFunctionCallArguments(def.id, idMap, def.name, id, info.args, graph)
   }
   if (nodeGraph === thisGraph) {
     calledFunctionDefinitions.push({ functionCall: id, called: [...functionDefs.values()] })

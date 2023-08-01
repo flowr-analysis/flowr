@@ -119,7 +119,6 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
         argEnv
       )
     }
-    // TODO: bind the argument id to the corresponding argument within the function
   }
 
   // we update all the usage nodes within the dataflow graph of the function name to

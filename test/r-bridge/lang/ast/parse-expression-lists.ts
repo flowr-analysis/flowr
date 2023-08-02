@@ -197,6 +197,37 @@ describe("Parse expression lists",
           info:     {}
         })
       )
+
+
+      assertAst('Inconsistent split with semicolon', shell,
+        '1\n2; 3\n4',
+        exprList({
+          type:     Type.Number,
+          location: rangeFrom(1, 1, 1, 1),
+          lexeme:   "1",
+          content:  numVal(1),
+          info:     {}
+        }, {
+          type:     Type.Number,
+          location: rangeFrom(2, 1, 2, 1),
+          lexeme:   "2",
+          content:  numVal(2),
+          info:     {}
+        }, {
+          type:     Type.Number,
+          location: rangeFrom(2, 4, 2, 4),
+          lexeme:   "3",
+          content:  numVal(3),
+          info:     {}
+        }, {
+          type:     Type.Number,
+          location: rangeFrom(3, 1, 3, 1),
+          lexeme:   "4",
+          content:  numVal(4),
+          info:     {}
+        }
+        )
+      )
     })
   })
 )

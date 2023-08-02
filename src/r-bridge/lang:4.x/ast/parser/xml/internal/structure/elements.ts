@@ -150,9 +150,16 @@ export function normalizeBasedOnType(
   if (splitOnSemicolon.length > 1) {
     // TODO: check if non-wrapping expr list is correct
     log.trace(`found ${splitOnSemicolon.length} expressions by semicolon-split, parsing them separately`)
-    return splitOnSemicolon.flatMap(arr=>
-      normalizeBasedOnType(data, arr)
-    )
+    const flattened = []
+    for (const sub of splitOnSemicolon) {
+      const result = normalizeBasedOnType(data, sub)
+      if(result.length === 1 && result[0].type === Type.ExpressionList) {
+        flattened.push(...result[0].children)
+      } else {
+        flattened.push(...result)
+      }
+    }
+    return flattened
   }
 
   /*

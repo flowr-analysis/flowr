@@ -10,7 +10,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
   const ingoing = processedAccessed.in
   const environments = processedAccessed.environments
 
-  const accessedNodes = processedAccessed.activeNodes
+  const accessedNodes = processedAccessed.unknownReferences
 
   if(node.operator === '[' || node.operator === '[[') {
     for(const access of node.access) {
@@ -23,20 +23,20 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
       // outgoing.push()// TODO: keep track of outgoing within argument assignments?
       // we link to *out* instead of *in*, as access uses arguments for parsing and the arguments are defined
       // TODO: improve that
-      for(const newIn of [...processedAccess.out, ...processedAccess.activeNodes]) {
+      for(const newIn of [...processedAccess.out, ...processedAccess.unknownReferences]) {
         // TODO: deal with complexity in the future by introduce a new specific node?
 
         for(const accessedNode of accessedNodes) {
           nextGraph.addEdge(accessedNode, newIn, 'reads', 'always')
         }
       }
-      ingoing.push(...processedAccess.in, ...processedAccess.activeNodes)
+      ingoing.push(...processedAccess.in, ...processedAccess.unknownReferences)
       overwriteEnvironments(environments, processedAccess.environments)
     }
   }
 
   return {
-    ast:          data.completeAst,
+    ast:               data.completeAst,
     /*
      * keep active nodes in case of assignments etc.
      * We make them maybe as a kind of hack.
@@ -48,11 +48,11 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
      * ```
      * the read for a will use both accesses as potential definitions and not just the last one!
      */
-    activeNodes:  makeAllMaybe(processedAccessed.activeNodes, nextGraph, environments),
-    in:           ingoing,
-    out:          outgoing,
-    environments: environments,
-    scope:        data.activeScope,
-    graph:        nextGraph
+    unknownReferences: makeAllMaybe(processedAccessed.unknownReferences, nextGraph, environments),
+    in:                ingoing,
+    out:               outgoing,
+    environments:      environments,
+    scope:             data.activeScope,
+    graph:             nextGraph
   }
 }

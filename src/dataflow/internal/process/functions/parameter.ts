@@ -10,7 +10,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
   const defaultValue = parameter.defaultValue === undefined ? undefined : processDataflowFor(parameter.defaultValue, data)
   const graph = defaultValue !== undefined ? name.graph.mergeWith(defaultValue.graph) : name.graph
 
-  const writtenNodes: IdentifierDefinition[] = name.activeNodes.map(n => ({
+  const writtenNodes: IdentifierDefinition[] = name.unknownReferences.map(n => ({
     ...n,
     kind:      'parameter',
     used:      'always',
@@ -28,7 +28,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
       if(parameter.defaultValue?.type === Type.FunctionDefinition) {
         graph.addEdge(writtenNode, parameter.defaultValue.info.id, 'defined-by', 'maybe' /* default arguments can be overridden! */)
       } else {
-        const definedBy = [...defaultValue.in, ...defaultValue.activeNodes]
+        const definedBy = [...defaultValue.in, ...defaultValue.unknownReferences]
         for (const node of definedBy) {
           graph.addEdge(writtenNode, node, 'defined-by', 'maybe' /* default arguments can be overridden! */)
         }
@@ -37,12 +37,12 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
   }
 
   return {
-    activeNodes:  [],
-    in:           defaultValue === undefined ? [] : [...defaultValue.in, ...defaultValue.activeNodes, ...name.in],
-    out:          [...(defaultValue?.out ?? []), ...name.out, ...name.activeNodes],
-    graph:        graph,
-    environments: environments, // TODO: merge with arguments
-    ast:          data.completeAst,
-    scope:        data.activeScope
+    unknownReferences: [],
+    in:                defaultValue === undefined ? [] : [...defaultValue.in, ...defaultValue.unknownReferences, ...name.in],
+    out:               [...(defaultValue?.out ?? []), ...name.out, ...name.unknownReferences],
+    graph:             graph,
+    environments:      environments, // TODO: merge with arguments
+    ast:               data.completeAst,
+    scope:             data.activeScope
   }
 }

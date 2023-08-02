@@ -9,7 +9,7 @@ export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo 
   const rhs = processDataflowFor(op.rhs, data)
 
   // TODO: produce special edges like `alias`
-  const ingoing = [...lhs.in, ...rhs.in, ...lhs.activeNodes, ...rhs.activeNodes]
+  const ingoing = [...lhs.in, ...rhs.in, ...lhs.unknownReferences, ...rhs.unknownReferences]
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
@@ -17,13 +17,13 @@ export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo 
   const merger = op.flavor === 'logical' ? appendEnvironments : overwriteEnvironments
 
   return {
-    activeNodes:  [], // binary ops require reads as without assignments there is no definition
-    in:           ingoing,
-    out:          [...lhs.out, ...rhs.out],
-    environments: merger(lhs.environments, rhs.environments),
+    unknownReferences: [], // binary ops require reads as without assignments there is no definition
+    in:                ingoing,
+    out:               [...lhs.out, ...rhs.out],
+    environments:      merger(lhs.environments, rhs.environments),
     // TODO: insert a join node?
-    graph:        nextGraph,
-    scope:        data.activeScope,
-    ast:          data.completeAst
+    graph:             nextGraph,
+    scope:             data.activeScope,
+    ast:               data.completeAst
   }
 }

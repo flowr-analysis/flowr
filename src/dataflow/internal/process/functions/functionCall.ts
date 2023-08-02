@@ -79,7 +79,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
     // add an argument edge to the final graph
     finalGraph.addEdge(functionRootId, processed.out[0], 'argument', 'always')
     // resolve reads within argument
-    for(const ingoing of [...processed.in, ...processed.activeNodes]) {
+    for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
       const tryToResolve = resolveByName(ingoing.name, LocalScope, argEnv)
 
       if(tryToResolve === undefined) {
@@ -124,17 +124,17 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
       linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph)
     }
     // push the called function to the ids:
-    inIds.push(...functionName.in, ...functionName.activeNodes)
+    inIds.push(...functionName.in, ...functionName.unknownReferences)
   }
 
   return {
-    activeNodes:  [],
-    in:           inIds,
-    out:          functionName.out, // we do not keep argument out as it has been linked by the function TODO: deal with foo(a <- 3)
-    graph:        finalGraph,
-    environments: finalEnv,
-    ast:          data.completeAst,
-    scope:        data.activeScope
+    unknownReferences: [],
+    in:                inIds,
+    out:               functionName.out, // we do not keep argument out as it has been linked by the function TODO: deal with foo(a <- 3)
+    graph:             finalGraph,
+    environments:      finalEnv,
+    ast:               data.completeAst,
+    scope:             data.activeScope
   }
 }
 

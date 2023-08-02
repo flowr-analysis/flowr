@@ -10,12 +10,12 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
   }
 
   return {
-    ast:          data.completeAst,
-    activeNodes:  [ { nodeId: symbol.info.id, scope: data.activeScope, name: symbol.content, used: 'always' } ],
-    in:           [],
-    out:          [],
-    environments: data.environments,
-    scope:        data.activeScope,
-    graph:        new DataflowGraph().addNode({ tag: 'use', id: symbol.info.id, name: symbol.content, environment: data.environments })
+    ast:               data.completeAst,
+    unknownReferences: [ { nodeId: symbol.info.id, scope: data.activeScope, name: symbol.content, used: 'always' } ],
+    in:                [],
+    out:               [],
+    environments:      data.environments,
+    scope:             data.activeScope,
+    graph:             new DataflowGraph().addNode({ tag: 'use', id: symbol.info.id, name: symbol.content, environment: data.environments })
   }
 }

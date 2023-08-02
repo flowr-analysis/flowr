@@ -39,13 +39,13 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
     }
   }
   return {
-    activeNodes: [],
-    in:          readTargets,
-    out:         writeTargets,
-    graph:       nextGraph,
+    unknownReferences: [],
+    in:                readTargets,
+    out:               writeTargets,
+    graph:             nextGraph,
     environments,
-    ast:         data.completeAst,
-    scope:       data.activeScope
+    ast:               data.completeAst,
+    scope:             data.activeScope
   }
 }
 
@@ -87,7 +87,7 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
 function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation<OtherInfo>, global: boolean, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
   const writeNodes: IdentifierDefinition[] = []
   const isFunctionDef = functionTypeCheck.type === Type.FunctionDefinition
-  for(const active of target.activeNodes) {
+  for(const active of target.unknownReferences) {
     writeNodes.push({
       ...active,
       scope:     global ? GlobalScope : data.activeScope,
@@ -126,7 +126,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<
   }
 
   return {
-    readTargets:  [...source.activeNodes, ...read, ...readFromSourceWritten],
+    readTargets:  [...source.unknownReferences, ...read, ...readFromSourceWritten],
     writeTargets: [...writeNodes, ...target.out, ...readFromSourceWritten],
     environments: environments,
     swap

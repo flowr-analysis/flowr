@@ -7,16 +7,16 @@ export function processRepeatLoop<OtherInfo>(loop: RRepeatLoop<OtherInfo & Paren
   const body = processDataflowFor(loop.body, data)
 
   const graph = body.graph
-  const namedIdShares = produceNameSharedIdMap([...body.in, ...body.activeNodes])
+  const namedIdShares = produceNameSharedIdMap([...body.in, ...body.unknownReferences])
   linkCircularRedefinitionsWithinALoop(graph, namedIdShares, body.out)
 
   return {
-    activeNodes:  [],
-    in:           [...body.in, ...body.activeNodes],
-    out:          body.out,
-    environments: body.environments,
-    ast:          data.completeAst,
-    scope:        data.activeScope,
-    graph:        body.graph
+    unknownReferences: [],
+    in:                [...body.in, ...body.unknownReferences],
+    out:               body.out,
+    environments:      body.environments,
+    ast:               data.completeAst,
+    scope:             data.activeScope,
+    graph:             body.graph
   }
 }

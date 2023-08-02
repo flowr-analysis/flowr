@@ -26,7 +26,7 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
   const argumentName = argContent ?? `${UnnamedArgumentPrefix}${argument.info.id}`
   graph.addNode({ tag: 'use', id: argument.info.id, name: argumentName, environment: data.environments, when: 'always' })
 
-  const ingoingRefs = [...value.activeNodes, ...value.in, ...(name === undefined ? [] : [...name.in])]
+  const ingoingRefs = [...value.unknownReferences, ...value.in, ...(name === undefined ? [] : [...name.in])]
 
   if(argument.value.type === Type.FunctionDefinition) {
     graph.addEdge(argument.info.id, argument.value.info.id, 'reads', 'always')
@@ -38,14 +38,14 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
   // TODO: defined-by for default values
 
   return {
-    activeNodes:  [],
+    unknownReferences: [],
     // active nodes of the name will be lost as they are only used to reference the corresponding parameter
-    in:           ingoingRefs,
+    in:                ingoingRefs,
     // , ...value.out, ...(name?.out ?? [])
-    out:          [ { name: argumentName, scope: LocalScope, nodeId: argument.info.id, used: 'always'} ],
-    graph:        graph,
-    environments: value.environments, // TODO: merge with name?
-    ast:          data.completeAst,
-    scope:        data.activeScope
+    out:               [ { name: argumentName, scope: LocalScope, nodeId: argument.info.id, used: 'always'} ],
+    graph:             graph,
+    environments:      value.environments, // TODO: merge with name?
+    ast:               data.completeAst,
+    scope:             data.activeScope
   }
 }

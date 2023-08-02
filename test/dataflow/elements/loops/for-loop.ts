@@ -12,6 +12,28 @@ describe('for', withShell(shell => {
       .addEdge("2", "0", 'reads', "maybe")
   )
 
+  describe('Potential redefinition with break', () => {
+    const withXDefined = define({ nodeId: "0", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "2", used: 'always' }, LocalScope, initializeCleanEnvironments())
+    const otherXDefined = define({ nodeId: "7", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "9", used: 'maybe' }, LocalScope, initializeCleanEnvironments())
+    assertDataflow(`Potential redefinition inside the same loop`,
+      shell,
+      `repeat {
+  x <- 2
+  if(z) break
+  x <- 3
+}
+x`,
+      new DataflowGraph()
+        .addNode( { tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
+        .addNode( { tag: 'variable-definition', id: "7", name: "x", scope: LocalScope, environment: withXDefined })
+        .addNode( { tag: 'use', id: "3", name: "z", scope: LocalScope, environment: withXDefined })
+        .addNode( { tag: 'use', id: "12", name: "x", when: 'always', environment: appendEnvironments(withXDefined, otherXDefined) })
+        .addEdge("12", "0", 'reads', "always")
+        .addEdge("12", "7", 'reads', "maybe")
+        .addEdge("0", "7", 'same-def-def', "maybe")
+    )
+  })
+
   const envWithX = () => define({ nodeId: "0", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "2", used: 'always' }, LocalScope, initializeCleanEnvironments())
   assertDataflow(`Read in for Loop`,
     shell,

@@ -105,7 +105,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
   for(const param of functionDefinition.parameters) {
     const processed = processDataflowFor(param, data)
     subgraph.mergeWith(processed.graph)
-    const read = [...processed.in, ...processed.activeNodes]
+    const read = [...processed.in, ...processed.unknownReferences]
     linkInputs(read, data.activeScope, data.environments, readInParameters, subgraph, false)
     data = { ...data, environments: overwriteEnvironments(data.environments, processed.environments) }
   }
@@ -118,7 +118,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 
   readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, body)
 
-  const readInBody = [...body.in, ...body.activeNodes]
+  const readInBody = [...body.in, ...body.unknownReferences]
   // there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
   const remainingRead = linkInputs(readInBody, data.activeScope, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */)
 
@@ -146,13 +146,13 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 
 
   const flow = {
-    activeNodes:  [],
-    in:           remainingRead,
-    out:          [],
-    graph:        subgraph,
-    environments: outEnvironment,
-    ast:          data.completeAst,
-    scope:        data.activeScope
+    unknownReferences: [],
+    in:                remainingRead,
+    out:               [],
+    graph:             subgraph,
+    environments:      outEnvironment,
+    ast:               data.completeAst,
+    scope:             data.activeScope
   }
 
   const exitPoints = retrieveExitPointsOfFunctionDefinition(functionDefinition)
@@ -172,14 +172,14 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
     exitPoints
   })
   return {
-    activeNodes:  [] /* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */,
-    in:           [],
-    out:          [],
+    unknownReferences: [] /* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */,
+    in:                [],
+    out:               [],
     graph,
     /* TODO: have params. the potential to influence their surrounding on def? */
-    environments: originalEnvironments,
-    ast:          data.completeAst,
-    scope:        data.activeScope
+    environments:      originalEnvironments,
+    ast:               data.completeAst,
+    scope:             data.activeScope
   }
 }
 

@@ -39,9 +39,9 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
     ...cond.in,
     ...(makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment) : then?.in ?? []),
     ...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.in, nextGraph, finalEnvironment) : otherwise?.in ?? []),
-    ...cond.activeNodes,
-    ...(makeThenMaybe ? makeAllMaybe(then?.activeNodes, nextGraph, finalEnvironment) : then?.activeNodes ?? []),
-    ...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.activeNodes, nextGraph, finalEnvironment) : otherwise?.activeNodes ?? []),
+    ...cond.unknownReferences,
+    ...(makeThenMaybe ? makeAllMaybe(then?.unknownReferences, nextGraph, finalEnvironment) : then?.unknownReferences ?? []),
+    ...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.unknownReferences, nextGraph, finalEnvironment) : otherwise?.unknownReferences ?? []),
   ]
 
   // we assign all with a maybe marker
@@ -55,12 +55,12 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
   return {
-    activeNodes:  [],
-    in:           ingoing,
-    out:          outgoing,
-    environments: finalEnvironment,
-    graph:        nextGraph,
-    ast:          data.completeAst,
-    scope:        data.activeScope,
+    unknownReferences: [],
+    in:                ingoing,
+    out:               outgoing,
+    environments:      finalEnvironment,
+    graph:             nextGraph,
+    ast:               data.completeAst,
+    scope:             data.activeScope,
   }
 }

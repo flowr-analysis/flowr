@@ -20,20 +20,20 @@ export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentI
 
   // this is theoretically redundant, but we would have to manually mark all affected edges as maybe this way. This does that for us.
   const remainingInputs = linkInputs([
-    ...makeAllMaybe(body.activeNodes, nextGraph, finalEnvironments),
+    ...makeAllMaybe(body.unknownReferences, nextGraph, finalEnvironments),
     ...makeAllMaybe(body.in, nextGraph, finalEnvironments)],
-  data.activeScope, environments, [...condition.in, ...condition.activeNodes], nextGraph, true)
+  data.activeScope, environments, [...condition.in, ...condition.unknownReferences], nextGraph, true)
 
   linkCircularRedefinitionsWithinALoop(nextGraph, produceNameSharedIdMap(remainingInputs), body.out)
 
   return {
-    activeNodes:  [],
-    in:           remainingInputs,
-    out:          [...makeAllMaybe(body.out, nextGraph, finalEnvironments), ...condition.out], // todo: merge etc.
-    graph:        nextGraph,
+    unknownReferences: [],
+    in:                remainingInputs,
+    out:               [...makeAllMaybe(body.out, nextGraph, finalEnvironments), ...condition.out], // todo: merge etc.
+    graph:             nextGraph,
     /* the body might not happen if the condition is false */
-    environments: finalEnvironments,
-    ast:          data.completeAst,
-    scope:        data.activeScope
+    environments:      finalEnvironments,
+    ast:               data.completeAst,
+    scope:             data.activeScope
   }
 }

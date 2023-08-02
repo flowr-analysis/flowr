@@ -13,7 +13,7 @@ export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInfo
   const rhs = processDataflowFor(op.rhs, data)
 
   // in-and outgoing are similar to that of a binary operation, we only 1) expect the rhs to be a function call and 2) modify the arguments.
-  const ingoing = [...lhs.in, ...rhs.in, ...lhs.activeNodes, ...rhs.activeNodes]
+  const ingoing = [...lhs.in, ...rhs.in, ...lhs.unknownReferences, ...rhs.unknownReferences]
   const nextGraph = lhs.graph.mergeWith(rhs.graph)
   linkIngoingVariablesInSameScope(nextGraph, ingoing)
   if(op.rhs.type !== Type.FunctionCall) {
@@ -40,12 +40,12 @@ export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInfo
   }
 
   return {
-    activeNodes:  [],
-    in:           ingoing,
-    out:          [...lhs.out, ...rhs.out],
-    environments: overwriteEnvironments(lhs.environments, rhs.environments),
-    graph:        nextGraph,
-    scope:        data.activeScope,
-    ast:          data.completeAst
+    unknownReferences: [],
+    in:                ingoing,
+    out:               [...lhs.out, ...rhs.out],
+    environments:      overwriteEnvironments(lhs.environments, rhs.environments),
+    graph:             nextGraph,
+    scope:             data.activeScope,
+    ast:               data.completeAst
   }
 }

@@ -3,10 +3,10 @@
  * @module
  */
 import { DataflowInformation, initializeCleanInfo } from '../info'
-import { NodeId, ParentInformation, RExpressionList } from '../../../r-bridge'
+import { NodeId, ParentInformation, RExpressionList, Type, visit } from '../../../r-bridge'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import {
-  IdentifierReference, IEnvironment,
+  IdentifierReference, IEnvironment, makeAllMaybe,
   overwriteEnvironments, popLocalEnvironment,
   REnvironmentInformation,
   resolveByName
@@ -52,7 +52,7 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
                                           remainingRead: Map<string, IdentifierReference[]>,
                                           nextGraph: DataflowGraph) {
   // all inputs that have not been written until know, are read!
-  for (const read of [...currentElement.in, ...currentElement.activeNodes]) {
+  for (const read of [...currentElement.in, ...currentElement.unknownReferences]) {
     linkReadNameToWriteIfPossible(read, data, environments, listEnvironments, remainingRead, nextGraph)
   }
   // add same variable reads for deferred if they are read previously but not dependent
@@ -88,22 +88,38 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
   const out = []
 
   let expressionCounter = 0
+  let foundNextOrBreak = false
   for (const expression of expressions) {
     dataflowLogger.trace(`processing expression ${++expressionCounter} of ${expressions.length}`)
     // use the current environments for processing
     data = { ...data, environments }
     const processed = processDataflowFor(expression, data)
+    if(!foundNextOrBreak) {
+      visit(expression, n => {
+        if (n.type === Type.Next || n.type === Type.Break) {
+          foundNextOrBreak = true
+        }
+        return n.type === Type.For || n.type === Type.While || n.type === Type.Repeat || n.type === Type.FunctionDefinition
+      })
+    }
+    // if the expression contained next or break anywhere before the next loop, the overwrite should be an append because we do not know if the rest is executed
+    // update the environments for the next iteration with the previous writes
+    if(foundNextOrBreak) {
+      processed.out = makeAllMaybe(processed.out, nextGraph, processed.environments)
+      processed.in = makeAllMaybe(processed.in, nextGraph, processed.environments)
+      processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environments)
+    }
+
     nextGraph.mergeWith(processed.graph)
     out.push(...processed.out)
 
-    dataflowLogger.trace(`expression ${expressionCounter} of ${expressions.length} has ${processed.activeNodes.length} active nodes`)
+    dataflowLogger.trace(`expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`)
 
     processNextExpression(processed, data, environments, listEnvironments, remainingRead, nextGraph)
     const functionCallIds = [...processed.graph.nodes(true)]
       .filter(([_,info]) => info.tag === 'function-call')
     const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, functionCallIds, processed.graph)
 
-    // update the environments for the next iteration with the previous writes
     environments = overwriteEnvironments(environments, processed.environments)
 
     // if the called function has global redefinitions, we have to keep them within our environment
@@ -143,12 +159,12 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 
   return {
     /* no active nodes remain, they are consumed within the remaining read collection */
-    activeNodes: [],
-    in:          [...remainingRead.values()].flat(),
+    unknownReferences: [],
+    in:                [...remainingRead.values()].flat(),
     out,
-    ast:         data.completeAst,
+    ast:               data.completeAst,
     environments,
-    scope:       data.activeScope,
-    graph:       nextGraph
+    scope:             data.activeScope,
+    graph:             nextGraph
   }
 }

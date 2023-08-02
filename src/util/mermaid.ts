@@ -50,7 +50,7 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: Dataflo
   const subgraph = graphToMermaidGraph(subflow.graph, dataflowIdMap, null, idPrefix, mermaid.mark, mermaid.rootGraph)
   mermaid.nodeLines.push(...subgraph.nodeLines)
   mermaid.edgeLines.push(...subgraph.edgeLines)
-  for(const [color, pool] of [['purple', subflow.in], ['green', subflow.out], ['orange', subflow.activeNodes]]) {
+  for(const [color, pool] of [['purple', subflow.in], ['green', subflow.out], ['orange', subflow.unknownReferences]]) {
     for (const out of pool as IdentifierReference[]) {
       if(!mermaid.mark?.has(out.nodeId)) {
         // in/out/active for unmarked

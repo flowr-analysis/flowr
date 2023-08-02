@@ -42,12 +42,12 @@ describe('Function Call', withShell(shell => {
           exitPoints:  [ '6' ],
           environment: popLocalEnvironment(envWithXParamDefined),
           subflow:     {
-            out:          [],
-            in:           [],
-            activeNodes:  [],
-            scope:        LocalScope,
-            environments: envWithXParamDefined,
-            graph:        new DataflowGraph()
+            out:               [],
+            in:                [],
+            unknownReferences: [],
+            scope:             LocalScope,
+            environments:      envWithXParamDefined,
+            graph:             new DataflowGraph()
               .addNode({ tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) })
               .addNode({ tag: 'use', id: '6', name: 'x', environment: envWithXParamDefined})
               .addEdge('6', '4', 'reads', 'always'),
@@ -90,12 +90,12 @@ describe('Function Call', withShell(shell => {
           exitPoints:  [ '6' ],
           environment: popLocalEnvironment(envWithXParamDefined),
           subflow:     {
-            out:          [],
-            in:           [],
-            activeNodes:  [],
-            scope:        LocalScope,
-            environments: envWithXParamDefined,
-            graph:        new DataflowGraph()
+            out:               [],
+            in:                [],
+            unknownReferences: [],
+            scope:             LocalScope,
+            environments:      envWithXParamDefined,
+            graph:             new DataflowGraph()
               .addNode({ tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) })
               .addNode({ tag: 'use', id: '6', name: 'x', environment: envWithXParamDefined})
               .addEdge('6', '4', 'reads', 'always'),
@@ -154,12 +154,12 @@ a(i)`, new DataflowGraph()
         scope:       LocalScope,
         exitPoints:  [ '12' ],
         subflow:     {
-          out:          [],
-          in:           [],
-          activeNodes:  [],
-          scope:        LocalScope,
-          environments: envWithLastXDefined,
-          graph:        new DataflowGraph()
+          out:               [],
+          in:                [],
+          unknownReferences: [],
+          scope:             LocalScope,
+          environments:      envWithLastXDefined,
+          graph:             new DataflowGraph()
             .addNode({ tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) })
             .addNode({ tag: 'variable-definition', id: '6', name: 'x', scope: LocalScope, environment: envWithXConstDefined })
             .addNode({ tag: 'variable-definition', id: '9', name: 'x', scope: LocalScope, environment: envWithXDefinedForFunc })
@@ -205,12 +205,12 @@ a(i)`, new DataflowGraph()
         scope:       LocalScope,
         exitPoints:  [ '4' ],
         subflow:     {
-          out:          [],
-          in:           [],
-          activeNodes:  [],
-          scope:        LocalScope,
-          environments: envWithXParameter,
-          graph:        new DataflowGraph()
+          out:               [],
+          in:                [],
+          unknownReferences: [],
+          scope:             LocalScope,
+          environments:      envWithXParameter,
+          graph:             new DataflowGraph()
             .addNode({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) })
             .addNode({ tag: 'use', id: '2', name: 'x', environment: envWithXParameter })
             .addNode({ tag: 'exit-point', id: '4', name: '+', environment: envWithXParameter })
@@ -263,12 +263,12 @@ a()()`,
         scope:       LocalScope,
         exitPoints:  [ '3' ],
         subflow:     {
-          out:          [],
-          in:           [],
-          activeNodes:  [],
-          scope:        LocalScope,
-          environments: pushLocalEnvironment(initializeCleanEnvironments()),
-          graph:        new DataflowGraph()
+          out:               [],
+          in:                [],
+          unknownReferences: [],
+          scope:             LocalScope,
+          environments:      pushLocalEnvironment(initializeCleanEnvironments()),
+          graph:             new DataflowGraph()
             .addNode({
               tag:         'function-definition',
               id:          '3',
@@ -277,12 +277,12 @@ a()()`,
               scope:       LocalScope,
               exitPoints:  [ '1' ],
               subflow:     {
-                out:          [],
-                in:           [],
-                activeNodes:  [],
-                scope:        LocalScope,
-                environments: pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
-                graph:        new DataflowGraph()
+                out:               [],
+                in:                [],
+                unknownReferences: [],
+                scope:             LocalScope,
+                environments:      pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
+                graph:             new DataflowGraph()
                   .addNode({ tag: 'exit-point', id: '1', name: '42', environment: pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())) })
               }
             })
@@ -321,12 +321,12 @@ a()()`,
           scope:      LocalScope,
           exitPoints: [ '1' ],
           subflow:    {
-            out:          [],
-            in:           [],
-            activeNodes:  [],
-            scope:        LocalScope,
-            environments: pushLocalEnvironment(initializeCleanEnvironments()),
-            graph:        new DataflowGraph()
+            out:               [],
+            in:                [],
+            unknownReferences: [],
+            scope:             LocalScope,
+            environments:      pushLocalEnvironment(initializeCleanEnvironments()),
+            graph:             new DataflowGraph()
               .addNode({ tag: 'exit-point', id: '1', name: '3', environment: pushLocalEnvironment(initializeCleanEnvironments()) })
           }})
         .addEdge('4', '3', 'reads', 'always')
@@ -410,12 +410,12 @@ a()()`,
           scope:      LocalScope,
           exitPoints: [ '1' ],
           subflow:    {
-            out:          [],
-            in:           [{ nodeId: '1', name: 'y', scope: LocalScope, used: 'always' }],
-            activeNodes:  [],
-            scope:        LocalScope,
-            environments: innerEnv,
-            graph:        new DataflowGraph()
+            out:               [],
+            in:                [{ nodeId: '1', name: 'y', scope: LocalScope, used: 'always' }],
+            unknownReferences: [],
+            scope:             LocalScope,
+            environments:      innerEnv,
+            graph:             new DataflowGraph()
               .addNode({ tag: 'use', id: '1', name: 'y', scope: LocalScope, environment: innerEnv })
           }})
         .addEdge('0', '3', 'defined-by', 'always')
@@ -462,12 +462,12 @@ a(,3)`, new DataflowGraph()
         exitPoints:  [ '6' ],
         environment: popLocalEnvironment(withXYParameter),
         subflow:     {
-          out:          [],
-          in:           [],
-          activeNodes:  [],
-          scope:        LocalScope,
-          environments: withXYParameter,
-          graph:        new DataflowGraph()
+          out:               [],
+          in:                [],
+          unknownReferences: [],
+          scope:             LocalScope,
+          environments:      withXYParameter,
+          graph:             new DataflowGraph()
             .addNode({ tag: 'variable-definition', id: '1', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) })
             .addNode({ tag: 'variable-definition', id: '4', name: 'y', scope: LocalScope, environment: withXParameter })
             .addNode({ tag: 'use', id: '6', name: 'y', scope: LocalScope, environment: withXYParameter })

@@ -17,11 +17,11 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: ['0'],
           subflow:    {
-            out:         [],
-            activeNodes: [],
-            in:          [{ nodeId: "0", used: 'always', name: 'x', scope: LocalScope }],
-            scope:       LocalScope,
-            graph:       new DataflowGraph().addNode({
+            out:               [],
+            unknownReferences: [],
+            in:                [{ nodeId: "0", used: 'always', name: 'x', scope: LocalScope }],
+            scope:             LocalScope,
+            graph:             new DataflowGraph().addNode({
               tag:         'use',
               id:          "0",
               name:        "x",
@@ -46,11 +46,11 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: ['2'],
           subflow:    {
-            out:         [],
-            activeNodes: [],
-            in:          [],
-            scope:       LocalScope,
-            graph:       new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
               .addNode({
                 tag:         'variable-definition',
                 id:          "0",
@@ -81,11 +81,11 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: ['5'],
           subflow:    {
-            out:         [],
-            activeNodes: [],
-            in:          [],
-            scope:       LocalScope,
-            graph:       new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
               .addNode({
                 tag:         'variable-definition',
                 id:          "0",
@@ -154,11 +154,11 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: [ '6' ],
           subflow:    {
-            out:         [],
-            activeNodes: [],
-            in:          [],
-            scope:       LocalScope,
-            graph:       new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
               .addNode({ tag: 'variable-definition', id: "0", name: "x", environment: envWithoutParams, scope: LocalScope, when: 'always' })
               .addNode({ tag: 'variable-definition', id: "2", name: "y", environment: envWithXParam, scope: LocalScope, when: 'always' })
               .addNode({ tag: 'variable-definition', id: "4", name: "z", environment: envWithXYParam, scope: LocalScope, when: 'always' })
@@ -181,11 +181,11 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: [ '3' ],
           subflow:    {
-            out:         [],
-            activeNodes: [],
-            in:          [ { nodeId: "3", scope: LocalScope, name: "x", used: "always" } ],
-            scope:       LocalScope,
-            graph:       new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [ { nodeId: "3", scope: LocalScope, name: "x", used: "always" } ],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
               .addNode( { tag: 'use', id: "3", name: "x", environment: pushLocalEnvironment(initializeCleanEnvironments()), when: 'always' }),
             environments: pushLocalEnvironment(initializeCleanEnvironments())
           }
@@ -207,11 +207,11 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: [ '2' /* the assignment */ ],
           subflow:    {
-            out:         [],
-            activeNodes: [],
-            in:          [],
-            scope:       LocalScope,
-            graph:       new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
               .addNode({ tag: 'variable-definition', id: "0", name: "x", environment: pushLocalEnvironment(initializeCleanEnvironments()), scope: LocalScope, when: 'always' })
               .addNode({ tag: 'exit-point', id: '2', name: '<-', when: 'always', environment: envWithXDefined })
               .addEdge("2", "0", "relates", "always"),
@@ -230,11 +230,11 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: [ '2', ],
           subflow:    {
-            out:         [],
-            activeNodes: [],
-            in:          [],
-            scope:       LocalScope,
-            graph:       new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
               .addNode({ tag: 'variable-definition', id: "0", name: "x", environment: pushLocalEnvironment(initializeCleanEnvironments()), scope: LocalScope, when: 'always' })
               .addNode({ tag: 'exit-point', id: '2', name: '=', when: 'always', environment: envWithXDefined })
               .addEdge("2", "0", "relates", "always"),
@@ -258,11 +258,11 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: [ '2' ],
           subflow:    {
-            out:         [],
-            activeNodes: [],
-            in:          [],
-            scope:       LocalScope,
-            graph:       new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
               .addNode({ tag: 'variable-definition', id: "1", name: "x", environment: pushLocalEnvironment(initializeCleanEnvironments()), scope: LocalScope, when: 'always' })
               .addNode({ tag: 'exit-point', id: '2', name: '->', when: 'always', environment: envWithXDefinedR })
               .addEdge("2", "1", "relates", "always"),
@@ -286,11 +286,11 @@ describe('Function Definition', withShell(shell => {
           exitPoints:  [ '2' ],
           environment: popLocalEnvironment(envWithXDefinedGlobal),
           subflow:     {
-            out:         [],
-            activeNodes: [],
-            in:          [],
-            scope:       LocalScope,
-            graph:       new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
               .addNode({ tag: 'variable-definition', id: "0", name: "x", environment: pushLocalEnvironment(initializeCleanEnvironments()), scope: GlobalScope, when: 'always' })
               .addNode({ tag: 'exit-point', id: '2', name: '<<-', when: 'always', environment: envWithXDefinedGlobal })
               .addEdge("2", "0", "relates", "always"),
@@ -314,11 +314,11 @@ describe('Function Definition', withShell(shell => {
           exitPoints:  [ '2' ],
           environment: popLocalEnvironment(envWithXDefinedGlobalR),
           subflow:     {
-            out:         [],
-            activeNodes: [],
-            in:          [],
-            scope:       LocalScope,
-            graph:       new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
               .addNode({ tag: 'variable-definition', id: "1", name: "x", environment: pushLocalEnvironment(initializeCleanEnvironments()), scope: GlobalScope, when: 'always' })
               .addNode({ tag: 'exit-point', id: '2', name: '->>', when: 'always', environment: envWithXDefinedGlobalR })
               .addEdge("2", "1", "relates", "always"),
@@ -355,11 +355,11 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: [ '6' ],
           subflow:    {
-            out:         [],
-            activeNodes: [],
-            in:          [],
-            scope:       LocalScope,
-            graph:       new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
               .addNode({
                 tag:         'use',
                 id:          "6",
@@ -401,11 +401,11 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: [ '6' ],
           subflow:    {
-            out:         [],
-            activeNodes: [],
-            in:          [ { nodeId: '4', used: 'always', name: 'x', scope: LocalScope} ],
-            scope:       LocalScope,
-            graph:       new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [ { nodeId: '4', used: 'always', name: 'x', scope: LocalScope} ],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
               .addNode({
                 tag:         'variable-definition',
                 id:          "3",
@@ -458,11 +458,11 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: [ '5' ],
           subflow:    {
-            out:         [],
-            activeNodes: [],
-            in:          [],
-            scope:       LocalScope,
-            graph:       new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
               .addNode({ tag: 'variable-definition', id: "3", name: "x", environment: pushLocalEnvironment(initializeCleanEnvironments()), scope: LocalScope, when: 'always' })
               .addNode({
                 tag:         'use',
@@ -499,12 +499,12 @@ describe('Function Definition', withShell(shell => {
           scope:      LocalScope,
           when:       'always',
           subflow:    {
-            out:          [],
-            activeNodes:  [],
-            in:           [],
-            scope:        LocalScope,
-            environments: envWithAB,
-            graph:        new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            environments:      envWithAB,
+            graph:             new DataflowGraph()
               .addNode({
                 tag:         'variable-definition',
                 id:          '0',
@@ -560,12 +560,12 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: ['15'],
           subflow:    {
-            out:          [],
-            activeNodes:  [],
-            in:           [],
-            scope:        LocalScope,
-            environments: envWithBothParamSecondB,
-            graph:        new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            environments:      envWithBothParamSecondB,
+            graph:             new DataflowGraph()
               .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(initializeCleanEnvironments()) })
               .addNode({ tag: 'variable-definition', id: '3', name: 'm', scope: LocalScope, when: 'always', environment: envWithFirstParam })
               .addNode({ tag: 'variable-definition', id: '10', name: 'b', scope: LocalScope, when: 'always', environment: envWithBothParamFirstB })
@@ -606,12 +606,12 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: ['7'],
           subflow:    {
-            out:          [],
-            activeNodes:  [],
-            in:           [],
-            scope:        LocalScope,
-            environments: envWithASpecial,
-            graph:        new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            environments:      envWithASpecial,
+            graph:             new DataflowGraph()
               .addNode({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(initializeCleanEnvironments()) })
               .addNode({ tag: 'variable-definition', id: '2', name: '...', scope: LocalScope, when: 'always', environment: envWithA })
               .addNode({ tag: 'use', id: '5', name: '...', scope: LocalScope, when: 'always', environment: envWithASpecial })
@@ -665,12 +665,12 @@ describe('Function Definition', withShell(shell => {
         when:       'always',
         exitPoints: ['12','18'],
         subflow:    {
-          out:          [],
-          activeNodes:  [],
-          in:           [ {nodeId: '8', name: 'z', used: 'always', scope: LocalScope} ],
-          scope:        LocalScope,
-          environments: finalEnv,
-          graph:        new DataflowGraph()
+          out:               [],
+          unknownReferences: [],
+          in:                [ {nodeId: '8', name: 'z', used: 'always', scope: LocalScope} ],
+          scope:             LocalScope,
+          environments:      finalEnv,
+          graph:             new DataflowGraph()
             .addNode({ tag: 'variable-definition', id: '0', name: 'g', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(initializeCleanEnvironments()) })
             .addNode({ tag: 'variable-definition', id: '5', name: 'y', scope: LocalScope, when: 'always', environment: envWithG })
             .addNode({ tag: 'variable-definition', id: '15', name: 'y', scope: LocalScope, when: 'always', environment: envWithFirstY })
@@ -696,12 +696,12 @@ describe('Function Definition', withShell(shell => {
               environment: pushLocalEnvironment(initializeCleanEnvironments()),
               exitPoints:  ['1'],
               subflow:     {
-                out:          [],
-                activeNodes:  [],
-                in:           [],
-                scope:        LocalScope,
-                environments: pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
-                graph:        new DataflowGraph()
+                out:               [],
+                unknownReferences: [],
+                in:                [],
+                scope:             LocalScope,
+                environments:      pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
+                graph:             new DataflowGraph()
                   .addNode({ tag: 'use', id: '1', name: 'y', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())) })
               }
             })
@@ -732,9 +732,9 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: [ '0' ],
           subflow:    {
-            out:         [],
-            activeNodes: [],
-            in:          [{
+            out:               [],
+            unknownReferences: [],
+            in:                [{
               nodeId: '0',
               scope:  LocalScope,
               name:   'x',
@@ -801,11 +801,11 @@ describe('Function Definition', withShell(shell => {
           when:       'always',
           exitPoints: [ '10' ],
           subflow:    {
-            out:         [],
-            activeNodes: [],
-            in:          [],
-            scope:       LocalScope,
-            graph:       new DataflowGraph()
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
               .addNode({ tag: 'use', id: "10", name: "x", environment: withXParameterInOuter })
               .addNode({ tag: 'variable-definition', id: "1", name: "x", environment: pushLocalEnvironment(initializeCleanEnvironments()), scope: LocalScope, when: 'always' })
               .addNode({
@@ -817,9 +817,9 @@ describe('Function Definition', withShell(shell => {
                 when:        'always',
                 exitPoints:  [ '6' ],
                 subflow:     {
-                  out:         [],
-                  activeNodes: [],
-                  in:          [{
+                  out:               [],
+                  unknownReferences: [],
+                  in:                [{
                     nodeId: '5',
                     scope:  LocalScope,
                     name:   'x',

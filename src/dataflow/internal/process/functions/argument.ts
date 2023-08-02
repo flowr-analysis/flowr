@@ -28,8 +28,12 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
 
   const ingoingRefs = [...value.activeNodes, ...value.in, ...(name === undefined ? [] : [...name.in])]
 
-  // we only need to link against those which are not already bound to another function call argument
-  linkReadsForArgument(argument, [...ingoingRefs, ...value.out /* value may perform definitions */], graph)
+  if(argument.value.type === Type.FunctionDefinition) {
+    graph.addEdge(argument.info.id, argument.value.info.id, 'reads', 'always')
+  } else {
+    // we only need to link against those which are not already bound to another function call argument
+    linkReadsForArgument(argument, [...ingoingRefs, ...value.out /* value may perform definitions */], graph)
+  }
 
   // TODO: defined-by for default values
 

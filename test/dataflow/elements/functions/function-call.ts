@@ -309,6 +309,31 @@ a()()`,
     )
   })
 
+  describe('Argument which is anonymous function call', () => {
+    assertDataflow(`Calling with a constant function`, shell, `f(function() { 3 })`,
+      new DataflowGraph()
+        .addNode({ tag: 'function-call', id: '5', name: 'f', environment: initializeCleanEnvironments(), args: [{ nodeId: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, used: 'always' }]})
+        .addNode({ tag: 'use', id: '4', name: `${UnnamedArgumentPrefix}4`})
+        .addNode({
+          tag:        'function-definition',
+          id:         '3',
+          name:       '3',
+          scope:      LocalScope,
+          exitPoints: [ '1' ],
+          subflow:    {
+            out:          [],
+            in:           [],
+            activeNodes:  [],
+            scope:        LocalScope,
+            environments: pushLocalEnvironment(initializeCleanEnvironments()),
+            graph:        new DataflowGraph()
+              .addNode({ tag: 'exit-point', id: '1', name: '3', environment: pushLocalEnvironment(initializeCleanEnvironments()) })
+          }})
+        .addEdge('4', '3', 'reads', 'always')
+        .addEdge('5', '4', 'argument', 'always')
+    )
+  })
+
   describe('Multiple out refs in arguments', () => {
     assertDataflow(`Calling 'seq'`, shell, `seq(1, length(pkgnames), by = stepsize)`,
       new DataflowGraph()

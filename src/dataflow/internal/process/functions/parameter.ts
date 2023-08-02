@@ -2,7 +2,7 @@ import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { define, IdentifierDefinition } from '../../../environments'
 import { LocalScope } from '../../../graph'
-import { ParentInformation, RParameter } from '../../../../r-bridge'
+import { ParentInformation, RParameter, Type } from '../../../../r-bridge'
 import { log } from '../../../../util/log'
 
 export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
@@ -25,9 +25,13 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
     environments = define(writtenNode, LocalScope, environments)
 
     if(defaultValue !== undefined) {
-      const definedBy = [...defaultValue.in, ...defaultValue.activeNodes]
-      for(const node of definedBy) {
-        graph.addEdge(writtenNode, node, 'defined-by', 'maybe' /* default arguments can be overridden! */)
+      if(parameter.defaultValue?.type === Type.FunctionDefinition) {
+        graph.addEdge(writtenNode, parameter.defaultValue.info.id, 'defined-by', 'maybe' /* default arguments can be overridden! */)
+      } else {
+        const definedBy = [...defaultValue.in, ...defaultValue.activeNodes]
+        for (const node of definedBy) {
+          graph.addEdge(writtenNode, node, 'defined-by', 'maybe' /* default arguments can be overridden! */)
+        }
       }
     }
   }

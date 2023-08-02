@@ -478,6 +478,41 @@ describe('Function Definition', withShell(shell => {
     )
     // TODO: other tests for scoping within parameters
   })
+  describe('Access dot-dot-dot', () => {
+    const envWithParam = define(
+      {nodeId: '0', scope: 'local', name: '...', used: 'always', kind: 'parameter', definedAt: '1' },
+      LocalScope,
+      pushLocalEnvironment(initializeCleanEnvironments()))
+    assertDataflow(`parameter shadows`, shell, `function(...) { ..11 }`,
+      new DataflowGraph()
+        .addNode({
+          tag:        'function-definition',
+          id:         "4",
+          name:       "4",
+          scope:      LocalScope,
+          when:       'always',
+          exitPoints: [ '2' ],
+          subflow:    {
+            out:               [],
+            unknownReferences: [],
+            in:                [],
+            scope:             LocalScope,
+            graph:             new DataflowGraph()
+              .addNode({ tag: 'variable-definition', id: "0", name: "...", environment: pushLocalEnvironment(initializeCleanEnvironments()), scope: LocalScope, when: 'always' })
+              .addNode({
+                tag:         'use',
+                id:          "2",
+                name:        "..11",
+                environment: envWithParam,
+                when:        'always'
+              })
+              .addEdge("2", "0", 'reads', "always"),
+            environments: envWithParam
+          }
+        })
+    )
+    // TODO: other tests for scoping within parameters
+  })
   describe('Using named arguments', () => {
     const envWithA = define(
       { nodeId: '0', scope: LocalScope, name: 'a', used: 'always', kind: 'parameter', definedAt: '2' },

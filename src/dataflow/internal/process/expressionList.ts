@@ -18,8 +18,9 @@ import { dataflowLogger } from '../../index'
 import { guard } from '../../../util/assert'
 
 
+const DotDotDotAccess = /\.\.\d+/
 function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, data: DataflowProcessorInformation<OtherInfo>, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
-  const readName = read.name
+  const readName = DotDotDotAccess.test(read.name) ? '...' : read.name
 
   const probableTarget = resolveByName(readName, data.activeScope, environments)
 

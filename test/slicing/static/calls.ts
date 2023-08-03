@@ -177,6 +177,11 @@ a <- function(x) {
         return(b())
     }
 a(m)()`)
+    assertSliced('Higher order anonymous function', shell, `a <- function(b) {
+  b
+}
+x <- a(\\() 2 + 3)() + a(\\() 7)()`, ['4@x'], `a <- function(b) { b }
+x <- a(\\() 2 + 3)() + a(\\() 7)()`)
   })
   describe('Recursive functions', () => {
     const code = `f <- function() { f() }

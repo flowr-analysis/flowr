@@ -2,7 +2,7 @@ import {
   DataflowGraph,
   DataflowGraphNodeFunctionCall,
   DataflowGraphNodeInfo,
-  DataflowScopeName, FunctionArgument, NamedFunctionArgument, PositionalFunctionArgument
+  DataflowScopeName, FunctionArgument, LocalScope, NamedFunctionArgument, PositionalFunctionArgument
 } from '../graph'
 import {
   BuiltIn,
@@ -145,6 +145,20 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphN
 
   for (const def of functionDefs.values()) {
     guard(def.tag === 'function-definition', () => `expected function definition, but got ${def.tag}`)
+
+    if(info.environment !== undefined) {
+      // for each open ingoing reference, try to resolve it hear, and if so add a read edge from the call to signal that it reads it
+      for (const ingoing of def.subflow.in) {
+        const defs = resolveByName(ingoing.name, LocalScope, info.environment)
+        if (defs === undefined) {
+          continue
+        }
+        for (const def of defs) {
+          graph.addEdge(id, def, 'reads', 'always')
+        }
+      }
+    }
+
     const exitPoints = def.exitPoints
     for (const exitPoint of exitPoints) {
       graph.addEdge(id, exitPoint, 'returns', 'always')

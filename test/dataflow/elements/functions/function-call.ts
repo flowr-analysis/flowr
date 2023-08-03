@@ -422,6 +422,7 @@ a()()`,
         .addEdge('9', '3', 'calls', 'always')
         .addEdge('9', '0', 'reads', 'always')
         .addEdge('9', '1', 'returns', 'always')
+        .addEdge('9', '5', 'reads', 'always')
     )
   })
 

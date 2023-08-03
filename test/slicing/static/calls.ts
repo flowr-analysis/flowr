@@ -195,7 +195,7 @@ cat(x)`)
 f() 
 cat(x)
     `, ['3@x'], `cat(x)`)
-    assertSliced('Nested Side-Effect', shell, `f <- function() {
+    assertSliced('Nested Side-Effect For Last', shell, `f <- function() {
   a <- function() { x }
   x <- 3
   a()
@@ -207,6 +207,25 @@ b <- f()
         a <- function() { x }
         x <- 2
         a()
+    }
+b <- f()`)
+    // that it contains x <- 2 is an error in the current implementation as this happens due to the 'reads' edge from the closure linking
+    // however, this read edge should not apply when the call happens within the same scope
+    assertSliced('Nested Side-Effect For First', shell, `f <- function() {
+  a <- function() { x }
+  x <- 3
+  b <- a()
+  x <- 2
+  a()
+  b
+}
+b <- f()
+    `, ['9@b'], `f <- function() {
+        a <- function() { x }
+        x <- 3
+        b <- a()
+        x <- 2
+        b
     }
 b <- f()`)
   })

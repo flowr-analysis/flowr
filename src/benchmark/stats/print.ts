@@ -58,7 +58,7 @@ function asPercentage(num: number): string {
   if(isNaN(num)) {
     return `??%`
   }
-  return pad(`${roundTo(num * 100, 2)}%`)
+  return pad(`${roundTo(num * 100, 3)}%`)
 }
 
 function asFloat(num: number): string {

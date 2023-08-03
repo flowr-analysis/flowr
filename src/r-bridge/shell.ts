@@ -372,14 +372,16 @@ class RShellSession {
   }
 
   private setupRSessionLoggers(): void {
-    this.bareSession.stdout.on('data', (data: Buffer) => {
-      this.log.trace(`< ${data.toString()}`)
-    })
+    if(this.log.settings.minLevel >= LogLevel.trace) {
+      this.bareSession.stdout.on('data', (data: Buffer) => {
+        this.log.trace(`< ${data.toString()}`)
+      })
+      this.bareSession.on('close', (code: number) => {
+        this.log.trace(`session exited with code ${code}`)
+      })
+    }
     this.bareSession.stderr.on('data', (data: string) => {
       this.log.warn(`< ${data}`)
-    })
-    this.bareSession.on('close', (code: number) => {
-      this.log.trace(`session exited with code ${code}`)
     })
   }
 

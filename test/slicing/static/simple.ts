@@ -38,6 +38,20 @@ if(i > 3) {
     x <- x * 2
 }
 cat(x)`)
+
+    assertSliced('Independent If-Then with extra requirements', shell, `
+x <- 1
+i <- 3
+if(i > 3) {
+    x <- x * 2
+}
+cat(x)
+    `, ['7@x'], `x <- 1
+i <- 3
+if(i > 3) {
+    x <- x * 2
+}
+cat(x)`)
   })
   describe('Access', () => {
     assertSliced('Constant', shell, 'a <- 4\na <- list(1,2)\na[3]', ['3@a'], 'a <- list(1,2)\na[3]')

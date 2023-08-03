@@ -6,7 +6,7 @@ import {
   LocalScope, REnvironmentInformation
 } from '../../dataflow'
 import { guard } from '../../util/assert'
-import { DecoratedAstMap, NodeId } from '../../r-bridge'
+import { collectAllIds, DecoratedAstMap, NodeId, RNodeWithParent, Type } from '../../r-bridge'
 import { log } from '../../util/log'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
 import {
@@ -88,6 +88,11 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
         }
       }
     }
+    for(const controlFlowDependency of addControlDependencies(currentInfo[0].id, dataflowIdMap)) {
+      if (!visited.has(fingerprint(controlFlowDependency, baseEnvFingerprint, false))) {
+        visitQueue.push({ id: controlFlowDependency, baseEnvironment: current.baseEnvironment, onlyForSideEffects: false })
+      }
+    }
   }
 
   // slicerLogger.trace(`static slicing produced: ${JSON.stringify([...visited])}`)
@@ -95,6 +100,34 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
   return new Set(visited.values())
 }
 
+
+function addAllFrom(current: RNodeWithParent, collected: Set<NodeId>) {
+  for (const id of collectAllIds(current)) {
+    collected.add(id)
+  }
+}
+
+// TODO: just add edge control flow edges to the dataflow graph c: this is horrible!
+function addControlDependencies(source: NodeId, ast: DecoratedAstMap): Set<NodeId> {
+  const start = ast.get(source)
+
+  const collected = new Set<NodeId>()
+
+  let current = start
+  while(current !== undefined) {
+    if(current.type === Type.If) {
+      addAllFrom(current.condition, collected)
+    } else if(current.type === Type.While) {
+      addAllFrom(current.condition, collected)
+    } else if(current.type === Type.For) {
+      addAllFrom(current.variable, collected)
+      // vector not needed, if required, it is  linked by defined-by
+    }
+    // nothing to do for repeat and rest!
+    current = current.info.parent ? ast.get(current.info.parent) : undefined
+  }
+  return collected
+}
 
 function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, visited: Map<Fingerprint, NodeId>, visitQueue: NodeToSlice[]) {
   // bind with call-local environments during slicing

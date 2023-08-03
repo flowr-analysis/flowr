@@ -195,6 +195,20 @@ cat(x)`)
 f() 
 cat(x)
     `, ['3@x'], `cat(x)`)
+    assertSliced('Nested Side-Effect', shell, `f <- function() {
+  a <- function() { x }
+  x <- 3
+  a()
+  x <- 2
+  a()
+}
+b <- f()
+    `, ['8@b'], `f <- function() {
+        a <- function() { x }
+        x <- 2
+        a()
+    }
+b <- f()`)
   })
   describe('Recursive functions', () => {
     const code = `f <- function() { f() }

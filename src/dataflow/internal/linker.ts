@@ -146,8 +146,9 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphN
   for (const def of functionDefs.values()) {
     guard(def.tag === 'function-definition', () => `expected function definition, but got ${def.tag}`)
 
+    // TODO: this is currently just a temporary hack, we need a clean way to separate closures that apply after the function body and the reads that apply within the body
     if(info.environment !== undefined) {
-      // for each open ingoing reference, try to resolve it hear, and if so add a read edge from the call to signal that it reads it
+      // for each open ingoing reference, try to resolve it here, and if so add a read edge from the call to signal that it reads it
       for (const ingoing of def.subflow.in) {
         const defs = resolveByName(ingoing.name, LocalScope, info.environment)
         if (defs === undefined) {

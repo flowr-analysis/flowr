@@ -333,8 +333,6 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
     return []
   }
 
-  guard(functionName.length <= 1, `can not have multiple lines for the function name, got: ${JSON.stringify(functionName)}`)
-
   if(args.length === 0) {
     guard(functionName.length === 1, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
     if(call.flavor === 'unnamed' && !functionName[0].line.endsWith(')')) {

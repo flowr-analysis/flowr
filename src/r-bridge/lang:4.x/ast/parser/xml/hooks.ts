@@ -92,7 +92,7 @@ export interface XmlParserHooks {
     /** {@link normalizeLineDirective} */
     onLineDirective: {
       before(data: ParserData, inputObj: XmlBasedJson): AutoIfOmit<XmlBasedJson>
-      after(data: ParserData, result: RLineDirective): AutoIfOmit<RLineDirective>
+      after(data: ParserData, result: RLineDirective | RComment): AutoIfOmit<RLineDirective | RComment>
     }
   },
   operators: {

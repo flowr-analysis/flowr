@@ -94,10 +94,11 @@ function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected:
   assert.deepStrictEqual(astCopy, expectedCopy, message)
 }
 
-export const retrieveAst = async(shell: RShell, input: string, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> => {
+export const retrieveAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> => {
+  const file = input.startsWith('file://')
   return await retrieveAstFromRCode({
-    request:                 'text',
-    content:                 input,
+    request:                 file ? 'file' : 'text',
+    content:                 file ? input.slice(7) : input,
     attachSourceInformation: true,
     ensurePackageInstalled:  false // should be called within describeSession for that!
   }, defaultTokenMap, shell, hooks)
@@ -162,7 +163,6 @@ export const assertSliced = (name: string, shell: RShell, input: string, criteri
   return it(`${JSON.stringify(criteria)} ${name}`, async function() {
     const ast = await retrieveAst(shell, input)
     const decoratedAst = decorateAst(ast, getId)
-
 
     const dataflow = produceDataFlowGraph(decoratedAst)
 

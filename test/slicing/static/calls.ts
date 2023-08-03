@@ -183,6 +183,19 @@ a(m)()`)
 x <- a(\\() 2 + 3)() + a(\\() 7)()`, ['4@x'], `a <- function(b) { b }
 x <- a(\\() 2 + 3)() + a(\\() 7)()`)
   })
+  describe('Side-Effects', () => {
+    assertSliced('Important Side-Effect', shell, `f <- function() { x <<- 3 }
+f() 
+cat(x)
+    `, ['3@x'], `f <- function() { x <<- 3 }
+f()
+cat(x)`)
+
+    assertSliced('Unimportant Side-Effect', shell, `f <- function() { y <<- 3 }
+f() 
+cat(x)
+    `, ['3@x'], `cat(x)`)
+  })
   describe('Recursive functions', () => {
     const code = `f <- function() { f() }
 f()`

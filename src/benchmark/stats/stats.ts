@@ -20,10 +20,11 @@ export interface PerSliceStats {
 }
 
 export interface SlicerStatsInput<T = number> {
-  numberOfLines:            T
-  numberOfCharacters:       T
-  numberOfRTokens:          T
-  numberOfNormalizedTokens: T
+  numberOfLines:                   T
+  numberOfCharacters:              T
+  numberOfNonWhitespaceCharacters: T
+  numberOfRTokens:                 T
+  numberOfNormalizedTokens:        T
 }
 
 

@@ -27,7 +27,14 @@ import {
   reconstructToCode,
   staticSlicing
 } from '../slicing'
-import { CommonSlicerMeasurements, ElapsedTime, PerSliceMeasurements, PerSliceStats, SlicerStats } from './stats'
+import {
+  CommonSlicerMeasurements,
+  ElapsedTime,
+  withoutWhitespace,
+  PerSliceMeasurements,
+  PerSliceStats,
+  SlicerStats
+} from './stats'
 import fs from 'fs'
 import { log, LogLevel } from '../util/log'
 import { MergeableRecord } from '../util/objects'
@@ -147,10 +154,11 @@ export class BenchmarkSlicer {
       perSliceMeasurements: this.perSliceMeasurements,
       request,
       input:                {
-        numberOfLines:            loadedContent.split('\n').length,
-        numberOfCharacters:       loadedContent.length,
-        numberOfRTokens:          numberOfRTokens,
-        numberOfNormalizedTokens: [...collectAllIds(this.decoratedAst.decoratedAst)].length,
+        numberOfLines:                   loadedContent.split('\n').length,
+        numberOfCharacters:              loadedContent.length,
+        numberOfNonWhitespaceCharacters: withoutWhitespace(loadedContent).length,
+        numberOfRTokens:                 numberOfRTokens,
+        numberOfNormalizedTokens:        [...collectAllIds(this.decoratedAst.decoratedAst)].length,
       },
       dataflow: {
         numberOfNodes:               [...this.dataflow.graph.nodes(true)].length,

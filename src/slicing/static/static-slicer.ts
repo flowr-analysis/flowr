@@ -69,7 +69,7 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
       continue
     }
 
-    if(currentInfo[0].tag === 'function-call') {
+    if(currentInfo[0].tag === 'function-call' && !current.onlyForSideEffects) {
       slicerLogger.trace(`${current.id} is a function call`)
       linkOnFunctionCall(current, currentInfo[0], dataflowGraph, visited, visitQueue)
     }
@@ -163,23 +163,21 @@ function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeI
         continue
       }
       for (const def of defs) {
-        if (!visited.has(fingerprint(def.nodeId, activeEnvironmentFingerprint, current.onlyForSideEffects))) {
-          const nodeToSlice = { id: def.nodeId, baseEnvironment: activeEnvironment, onlyForSideEffects: current.onlyForSideEffects }
+        if (!visited.has(fingerprint(def.nodeId, envFingerprint(baseEnvironment), current.onlyForSideEffects))) {
+          const nodeToSlice = { id: def.nodeId, baseEnvironment, onlyForSideEffects: current.onlyForSideEffects }
           visitQueue.push(nodeToSlice)
         }
       }
     }
 
-    if(!current.onlyForSideEffects) {
-      for (const exitPoint of (functionCallTarget as DataflowGraphNodeFunctionDefinition).exitPoints) {
-        if (!visited.has(fingerprint(exitPoint, activeEnvironmentFingerprint, current.onlyForSideEffects))) {
-          const nodeToSlice = {
-            id:                 exitPoint,
-            baseEnvironment:    activeEnvironment,
-            onlyForSideEffects: current.onlyForSideEffects
-          }
-          visitQueue.push(nodeToSlice)
+    for (const exitPoint of (functionCallTarget as DataflowGraphNodeFunctionDefinition).exitPoints) {
+      if (!visited.has(fingerprint(exitPoint, activeEnvironmentFingerprint, current.onlyForSideEffects))) {
+        const nodeToSlice = {
+          id:                 exitPoint,
+          baseEnvironment:    activeEnvironment,
+          onlyForSideEffects: current.onlyForSideEffects
         }
+        visitQueue.push(nodeToSlice)
       }
     }
   }

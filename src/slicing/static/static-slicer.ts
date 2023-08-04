@@ -15,6 +15,7 @@ import {
   resolveByName
 } from '../../dataflow/environments'
 import objectHash from 'object-hash'
+import { DefaultMap } from '../../util/defaultmap'
 
 export const slicerLogger = log.getSubLogger({ name: "slicer" })
 
@@ -38,6 +39,9 @@ function envFingerprint(env: REnvironmentInformation): string {
 function fingerprint(id: NodeId, envFingerprint: string, onlyForSideEffects: boolean): Fingerprint {
   return `${id}-${envFingerprint}-${onlyForSideEffects ? '0' : '1'}`
 }
+
+export const THRESHOLD = 15
+
 /**
  * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
  * <p>
@@ -48,8 +52,10 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
   slicerLogger.trace(`calculating slice for ${id.length} seed ids: ${id.join(', ')}`)
 
   const seen = new Map<Fingerprint, NodeId>()
+  const idThreshold = new DefaultMap<NodeId, number>(() => 0)
+
   // every node ships the call environment which registers the calling environment
-  const visitQueue: NodeToSlice[] = id.map(i => ({ id: i, baseEnvironment: initializeCleanEnvironments(), onlyForSideEffects: false }))
+  const visitQueue: NodeToSlice[] = id.map(i => ({ id: i, baseEnvironment: initializeCleanEnvironments(), onlyForSideEffects: false, indirection: 0 }))
   const basePrint = envFingerprint(initializeCleanEnvironments())
   for(const id of visitQueue) {
     seen.set(fingerprint(id.id, basePrint, id.onlyForSideEffects), id.id)
@@ -61,10 +67,18 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
     if (current === undefined) {
       continue
     }
+
+    const idCounter = idThreshold.get(current.id)
+    if(idCounter > THRESHOLD) {
+      console.warn(`id: ${current.id} has been visited ${idCounter} times, skipping`)
+      continue
+    } else {
+      idThreshold.set(current.id, idCounter + 1)
+    }
+
     const baseEnvFingerprint = envFingerprint(current.baseEnvironment)
 
     const currentInfo = dataflowGraph.get(current.id, true)
-
     // slicerLogger.trace(`visiting id: ${current.id} with name: ${currentInfo?.[0].name ?? '<unknown>'}`)
 
     if(currentInfo === undefined) {

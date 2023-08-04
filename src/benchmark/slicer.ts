@@ -187,6 +187,7 @@ export class BenchmarkSlicer {
       measurements:                undefined as never,
       slicingCriteria:             [],
       numberOfDataflowNodesSliced: 0,
+      timesHitThreshold:           0,
       reconstructedCode:           {
         code:         '',
         autoSelected: 0
@@ -218,11 +219,12 @@ export class BenchmarkSlicer {
         mappedIds
       )
     )
-    stats.numberOfDataflowNodesSliced = slicedOutput.size
+    stats.numberOfDataflowNodesSliced = slicedOutput.result.size
+    stats.timesHitThreshold = slicedOutput.timesHitThreshold
 
     stats.reconstructedCode = measurements.measure(
       'reconstruct code',
-      () => reconstructToCode<NoInfo>(this.decoratedAst as DecoratedAst, slicedOutput)
+      () => reconstructToCode<NoInfo>(this.decoratedAst as DecoratedAst, slicedOutput.result)
     )
     totalStopwatch.stop()
     benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code}`)

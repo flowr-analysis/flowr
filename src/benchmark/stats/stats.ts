@@ -15,8 +15,7 @@ export interface PerSliceStats {
   slicingCriteria:             { criterion: SingleSlicingCriterion, id: NodeId }[]
   reconstructedCode:           ReconstructionResult
   numberOfDataflowNodesSliced: number
-  /* TODO: slicedOutput:    Set<NodeId>
-   */
+  timesHitThreshold:           number
 }
 
 export interface SlicerStatsInput<T = number> {

@@ -169,7 +169,7 @@ export const assertSliced = (name: string, shell: RShell, input: string, criteri
     try {
       const mappedIds = criteria.map(c => slicingCriterionToId(c, decoratedAst))
 
-      const sliced = staticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds.slice())
+      const { result: sliced } = staticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds.slice())
       const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
 
       assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(mappedIds, decoratedAst.idMap)}), url: ${graphToMermaidUrl(dataflow.graph, decoratedAst.idMap, sliced)}`)

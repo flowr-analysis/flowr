@@ -1,6 +1,6 @@
 import {
   DataflowGraph, DataflowGraphNodeFunctionDefinition,
-  DataflowGraphNodeInfo,
+  DataflowGraphNodeInfo, dataflowLogger,
   graphToMermaidUrl,
   initializeCleanEnvironments,
   LocalScope, REnvironmentInformation
@@ -40,19 +40,19 @@ function fingerprint(id: NodeId, envFingerprint: string, onlyForSideEffects: boo
   return `${id}-${envFingerprint}-${onlyForSideEffects ? '0' : '1'}`
 }
 
-export const THRESHOLD = 15
-
 /**
  * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
  * <p>
  * The returned ids can be used to {@link reconstructToCode | reconstruct the slice to R code}.
  */
-export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowIdMap: DecoratedAstMap<OtherInfo>, id: NodeId[]): Set<NodeId> {
+export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowIdMap: DecoratedAstMap<OtherInfo>, id: NodeId[], threshold = 100): { timesHitThreshold: number, result: Set<NodeId> } {
   guard(id.length > 0, `must have at least one seed id to calculate slice`)
   slicerLogger.trace(`calculating slice for ${id.length} seed ids: ${id.join(', ')}`)
 
   const seen = new Map<Fingerprint, NodeId>()
   const idThreshold = new DefaultMap<NodeId, number>(() => 0)
+
+  let timesHitThreshold = 0
 
   // every node ships the call environment which registers the calling environment
   const visitQueue: NodeToSlice[] = id.map(i => ({ id: i, baseEnvironment: initializeCleanEnvironments(), onlyForSideEffects: false, indirection: 0 }))
@@ -69,8 +69,9 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
     }
 
     const idCounter = idThreshold.get(current.id)
-    if(idCounter > THRESHOLD) {
-      console.warn(`id: ${current.id} has been visited ${idCounter} times, skipping`)
+    if(idCounter > threshold) {
+      dataflowLogger.warn(`id: ${current.id} has been visited ${idCounter} times, skipping`)
+      timesHitThreshold++
       continue
     } else {
       idThreshold.set(current.id, idCounter + 1)
@@ -119,7 +120,7 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
   }
 
   // slicerLogger.trace(`static slicing produced: ${JSON.stringify([...seen])}`)
-  return new Set(seen.values())
+  return { result: new Set(seen.values()), timesHitThreshold }
 }
 
 
@@ -170,7 +171,6 @@ function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeI
   }
 
   const activeEnvironment = overwriteEnvironments(baseEnvironment, callerEnvironment)
-  const activeEnvironmentFingerprint = envFingerprint(activeEnvironment)
   const baseEnvPrint = envFingerprint(baseEnvironment)
 
   const functionCallDefs = resolveByName(callerInfo.name, LocalScope, activeEnvironment)?.map(d => d.nodeId) ?? []
@@ -190,22 +190,21 @@ function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeI
         const print = fingerprint(def.nodeId, baseEnvPrint, current.onlyForSideEffects)
         if (!seen.has(print)) {
           seen.set(print, def.nodeId)
-          const nodeToSlice = { id: def.nodeId, baseEnvironment, onlyForSideEffects: current.onlyForSideEffects }
-          visitQueue.push(nodeToSlice)
+          visitQueue.push({ id: def.nodeId, baseEnvironment, onlyForSideEffects: current.onlyForSideEffects })
         }
       }
     }
 
+    console.log('visiting exit points of', callerInfo.name, (functionCallTarget as DataflowGraphNodeFunctionDefinition).exitPoints)
     for (const exitPoint of (functionCallTarget as DataflowGraphNodeFunctionDefinition).exitPoints) {
-      const print = fingerprint(exitPoint, activeEnvironmentFingerprint, current.onlyForSideEffects)
+      const print = fingerprint(exitPoint, baseEnvPrint, current.onlyForSideEffects)
       if (!seen.has(print)) {
-        const nodeToSlice = {
-          id:                 exitPoint,
-          baseEnvironment:    activeEnvironment,
-          onlyForSideEffects: current.onlyForSideEffects
-        }
         seen.set(print, exitPoint)
-        visitQueue.push(nodeToSlice)
+        visitQueue.push({
+          id:                 exitPoint,
+          baseEnvironment:    baseEnvironment,
+          onlyForSideEffects: current.onlyForSideEffects
+        })
       }
     }
   }

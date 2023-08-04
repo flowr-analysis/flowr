@@ -150,7 +150,8 @@ Slice summary for:
   Slice decoding:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('decode slicing criterion'))}
   Slice creation:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('static slicing'))}
   Reconstruction:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('reconstruct code'))}
-  Failed to Re-Parse:         ${pad(stats.failedToRepParse)}/${stats.totalSlices} 
+  Failed to Re-Parse:         ${pad(stats.failedToRepParse)}/${stats.totalSlices}
+  Times hit Threshold:        ${pad(stats.timesHitThreshold)}/${stats.totalSlices} 
   Reductions (reduced by x%):   
     Number of lines:                     ${formatSummarizedMeasure(stats.reduction.numberOfLines, asPercentage)}
     Number of lines no auto:             ${formatSummarizedMeasure(stats.reduction.numberOfLinesNoAutoSelection, asPercentage)}

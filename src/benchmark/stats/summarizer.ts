@@ -73,6 +73,7 @@ export interface SummarizedPerSliceStats {
   measurements:       Map<PerSliceMeasurements, SummarizedMeasurement>
   reduction:          Reduction<SummarizedMeasurement>
   failedToRepParse:   number
+  timesHitThreshold:  number
   sliceSize:          {
     [K in keyof SliceSizeCollection]: SummarizedMeasurement
   }
@@ -141,12 +142,14 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
   }
 
   let first = true
+  let timesHitThreshold = 0
   for(const [criteria, perSliceStat] of perSliceStats) {
     report(criteria, perSliceStat)
     for(const measure of perSliceStat.measurements) {
       collect.get(measure[0]).push(Number(measure[1]))
     }
     sizeOfSliceCriteria.push(perSliceStat.slicingCriteria.length)
+    timesHitThreshold += perSliceStat.timesHitThreshold > 0 ? 1 : 0
     const { code: output, autoSelected } = perSliceStat.reconstructedCode
     sliceSize.autoSelected.push(autoSelected)
     const lines = output.split('\n').length
@@ -208,6 +211,7 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
       sliceCriteriaSizes: summarizeMeasurement(sizeOfSliceCriteria),
       measurements:       summarized,
       failedToRepParse:   failedOutputs,
+      timesHitThreshold,
       reduction:          {
         numberOfLines:                   summarizeMeasurement(reductions.map(r => r.numberOfLines).filter(isNotUndefined)),
         numberOfLinesNoAutoSelection:    summarizeMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection).filter(isNotUndefined)),
@@ -261,6 +265,8 @@ export interface UltimateSlicerStats {
   perSliceMeasurements: Map<PerSliceMeasurements, SummarizedMeasurement>
   /** sum */
   failedToRepParse:     number
+  /** sum */
+  timesHitThreshold:    number
   reduction:            Reduction<SummarizedMeasurement>
   input:                SlicerStatsInput<SummarizedMeasurement>
   dataflow:             SlicerStatsDataflow<SummarizedMeasurement>
@@ -273,6 +279,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
   const inputs: SlicerStatsInput[] = []
   const dataflows: SlicerStatsDataflow[] = []
   let failedToRepParse = 0
+  let timesHitThreshold = 0
   let totalSlices = 0
 
   for(const stat of stats) {
@@ -287,6 +294,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
     dataflows.push(stat.dataflow)
     failedToRepParse += stat.perSliceMeasurements.failedToRepParse
     totalSlices += stat.perSliceMeasurements.numberOfSlices
+    timesHitThreshold += stat.perSliceMeasurements.timesHitThreshold
   }
 
   return {
@@ -299,6 +307,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
       [...perSliceMeasurements.entries()].map(([k, v]) => [k, summarizeSummarizedMeasurement(v)])
     ),
     failedToRepParse,
+    timesHitThreshold,
     reduction: {
       numberOfDataflowNodes:           summarizeSummarizedMeasurement(reductions.map(r => r.numberOfDataflowNodes)),
       numberOfLines:                   summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLines)),

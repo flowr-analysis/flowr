@@ -37,6 +37,7 @@ export const reconstructLogger = log.getSubLogger({ name: "reconstruct" })
 
 
 const getLexeme = (n: RNodeWithParent) => n.info.fullLexeme ?? n.lexeme ?? ''
+
 const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code => {
   const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf)
   if(selectionHasLeaf) {
@@ -84,6 +85,18 @@ function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: Pr
     { line: `${lhs[lhs.length - 1].line} ${n} ${rhs[0].line}`, indent: 0 },
     ...indentBy(rhs.slice(1, rhs.length), 1)
   ]
+}
+
+
+function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration: ReconstructionConfiguration) {
+  if(configuration.selection.has(leaf.info.id)) {
+    return foldToConst(leaf)
+  }
+  else if(operand.length === 0) {
+    return []
+  } else {
+    return foldToConst(leaf)
+  }
 }
 
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
@@ -159,6 +172,15 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
   }
 }
 
+function removeExpressionListWrap(code: Code) {
+  if(code.length > 0 && code[0].line === '{' && code[code.length - 1].line === '}') {
+    return indentBy(code.slice(1, code.length - 1), -1)
+  } else {
+    return code
+  }
+}
+
+
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
   if (isSelected(configuration, ifThenElse)) {
     return plain(getLexeme(ifThenElse))
@@ -176,22 +198,22 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
     return [
       // TODO: recurse into condition?
       { line: `if(${getLexeme(ifThenElse.condition)}) {`, indent: 0 },
-      ...indentBy(when, 1),
+      ...indentBy(removeExpressionListWrap(when), 1),
       { line: '}', indent: 0 }
     ]
   } else if(when.length === 0) {
     return [
       // TODO: recurse into condition?
       { line: `if(${getLexeme(ifThenElse.condition)}) { } else {`, indent: 0 },
-      ...indentBy(otherwise, 1),
+      ...indentBy(removeExpressionListWrap(otherwise), 1),
       { line: '}', indent: 0 }
     ]
   } else {
     return [
       { line: `if(${getLexeme(ifThenElse.condition)}) {`, indent: 0 },
-      ...indentBy(when, 1),
+      ...indentBy(removeExpressionListWrap(when), 1),
       { line: '} else {', indent: 0 },
-      ...indentBy(otherwise, 1),
+      ...indentBy(removeExpressionListWrap(otherwise), 1),
       { line: '}', indent: 0 }
     ]
   }
@@ -390,9 +412,9 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
     foldModelFormula: reconstructBinaryOp
   },
   unaryOp: {
-    foldArithmeticOp: foldToConst,
-    foldLogicalOp:    foldToConst,
-    foldModelFormula: foldToConst
+    foldArithmeticOp: reconstructUnaryOp,
+    foldLogicalOp:    reconstructUnaryOp,
+    foldModelFormula: reconstructUnaryOp
   },
   other: {
     foldComment:       reconstructAsLeaf,

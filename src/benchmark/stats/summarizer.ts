@@ -187,21 +187,9 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
         dataflowNodes:           perSliceStat.numberOfDataflowNodesSliced
       }))
     } catch(e: unknown) {
-      if(output.length === 0) {
-        reductions.push(calculateReductionForSlice(stats.input, stats.dataflow, {
-          lines:                   lines,
-          characters:              output.length,
-          nonWhitespaceCharacters: nonWhitespace,
-          autoSelected:            autoSelected,
-          tokens:                  0,
-          normalizedTokens:        0,
-          dataflowNodes:           perSliceStat.numberOfDataflowNodesSliced
-        }))
-      } else {
-        console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`) //, e
-        console.error(`      Code: ${output}\n`)
-        failedOutputs++
-      }
+      console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`) //, e
+      console.error(`      Code: ${output}\n`)
+      failedOutputs++
     }
 
     sliceSize.dataflowNodes.push(perSliceStat.numberOfDataflowNodesSliced)

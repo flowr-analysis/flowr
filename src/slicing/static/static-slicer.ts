@@ -131,7 +131,7 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
 
     if(currentInfo[0].tag === 'function-call' && !current.onlyForSideEffects) {
       slicerLogger.trace(`${current.id} is a function call`)
-      linkOnFunctionCall(current, dataflowIdMap, currentInfo[0], dataflowGraph, queue)
+      sliceForCall(current, dataflowIdMap, currentInfo[0], dataflowGraph, queue)
     }
 
     const currentNode = dataflowIdMap.get(current.id)
@@ -200,7 +200,7 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphNodeInfo, baseEnviro
 }
 
 //// returns the new threshold hit count
-function linkOnFunctionCall(current: NodeToSlice, idMap: DecoratedAstMap, callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, queue: VisitingQueue): void {
+function sliceForCall(current: NodeToSlice, idMap: DecoratedAstMap, callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, queue: VisitingQueue): void {
   // bind with call-local environments during slicing
   const outgoingEdges = dataflowGraph.get(callerInfo.id, true)
   guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`)

@@ -287,9 +287,23 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
   }
 }
 
-function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, _parameters: Code[], body: Code, configuration: ReconstructionConfiguration): Code {
+
+function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
+  if(isSelected(configuration, parameter)) {
+    return plain(getLexeme(parameter))
+  }
+
+  if(parameter.defaultValue !== undefined && name.length > 0) {
+    return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`)
+  } else {
+    return name
+  }
+}
+
+
+function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: Code[], body: Code, configuration: ReconstructionConfiguration): Code {
   // if a definition is not selected, we only use the body - slicing will always select the definition
-  if(!isSelected(configuration, definition)) {
+  if(!isSelected(configuration, definition) && functionParameters.every(p => p.length === 0)) {
     return body
   }
   const parameters = reconstructParameters(definition.parameters).join(', ')
@@ -432,7 +446,7 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
   functions:      {
     foldFunctionDefinition: reconstructFunctionDefinition,
     foldFunctionCall:       reconstructFunctionCall,
-    foldParameter:          foldToConst,
+    foldParameter:          reconstructParameter,
     foldArgument:           reconstructArgument
   }
 }

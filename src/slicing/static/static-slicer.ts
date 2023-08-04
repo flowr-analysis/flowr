@@ -47,9 +47,13 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
   guard(id.length > 0, `must have at least one seed id to calculate slice`)
   slicerLogger.trace(`calculating slice for ${id.length} seed ids: ${id.join(', ')}`)
 
-  const visited = new Map<Fingerprint, NodeId>()
+  const seen = new Map<Fingerprint, NodeId>()
   // every node ships the call environment which registers the calling environment
   const visitQueue: NodeToSlice[] = id.map(i => ({ id: i, baseEnvironment: initializeCleanEnvironments(), onlyForSideEffects: false }))
+  const basePrint = envFingerprint(initializeCleanEnvironments())
+  for(const id of visitQueue) {
+    seen.set(fingerprint(id.id, basePrint, id.onlyForSideEffects), id.id)
+  }
 
   while (visitQueue.length > 0) {
     const current = visitQueue.pop()
@@ -58,7 +62,6 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
       continue
     }
     const baseEnvFingerprint = envFingerprint(current.baseEnvironment)
-    visited.set(fingerprint(current.id, baseEnvFingerprint, current.onlyForSideEffects), current.id)
 
     const currentInfo = dataflowGraph.get(current.id, true)
 
@@ -71,7 +74,7 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
 
     if(currentInfo[0].tag === 'function-call' && !current.onlyForSideEffects) {
       slicerLogger.trace(`${current.id} is a function call`)
-      linkOnFunctionCall(current, currentInfo[0], dataflowGraph, visited, visitQueue)
+      linkOnFunctionCall(current, currentInfo[0], dataflowGraph, seen, visitQueue)
     }
 
     const currentNode = dataflowIdMap.get(current.id)
@@ -79,25 +82,30 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
 
     for (const [target, edge] of currentInfo[1]) {
       if (edge.types.has('side-effect-on-call')) {
-        if (!visited.has(fingerprint(target, baseEnvFingerprint, true))) {
+        const sideEffectPrint = fingerprint(target, baseEnvFingerprint, true)
+        if (!seen.has(sideEffectPrint)) {
+          seen.set(sideEffectPrint, target)
           visitQueue.push({ id: target, baseEnvironment: current.baseEnvironment, onlyForSideEffects: true })
         }
       } else if (edge.types.has('reads') || edge.types.has('defined-by') || edge.types.has('argument') || edge.types.has('calls') || edge.types.has('relates') || edge.types.has('defines-on-call')) {
-        if (!visited.has(fingerprint(target, baseEnvFingerprint, false))) {
+        const print = fingerprint(target, baseEnvFingerprint, false)
+        if (!seen.has(print)) {
+          seen.set(print, target)
           visitQueue.push({ id: target, baseEnvironment: current.baseEnvironment, onlyForSideEffects: false })
         }
       }
     }
     for(const controlFlowDependency of addControlDependencies(currentInfo[0].id, dataflowIdMap)) {
-      if (!visited.has(fingerprint(controlFlowDependency, baseEnvFingerprint, false))) {
+      const print = fingerprint(controlFlowDependency, baseEnvFingerprint, false)
+      if (!seen.has(print)) {
+        seen.set(print, controlFlowDependency)
         visitQueue.push({ id: controlFlowDependency, baseEnvironment: current.baseEnvironment, onlyForSideEffects: false })
       }
     }
   }
 
-  // slicerLogger.trace(`static slicing produced: ${JSON.stringify([...visited])}`)
-
-  return new Set(visited.values())
+  // slicerLogger.trace(`static slicing produced: ${JSON.stringify([...seen])}`)
+  return new Set(seen.values())
 }
 
 
@@ -129,7 +137,7 @@ function addControlDependencies(source: NodeId, ast: DecoratedAstMap): Set<NodeI
   return collected
 }
 
-function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, visited: Map<Fingerprint, NodeId>, visitQueue: NodeToSlice[]) {
+function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, seen: Map<Fingerprint, NodeId>, visitQueue: NodeToSlice[]) {
   // bind with call-local environments during slicing
   const outgoingEdges = dataflowGraph.get(callerInfo.id, true)
   guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`)
@@ -149,6 +157,8 @@ function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeI
 
   const activeEnvironment = overwriteEnvironments(baseEnvironment, callerEnvironment)
   const activeEnvironmentFingerprint = envFingerprint(activeEnvironment)
+  const baseEnvPrint = envFingerprint(baseEnvironment)
+
   const functionCallDefs = resolveByName(callerInfo.name, LocalScope, activeEnvironment)?.map(d => d.nodeId) ?? []
 
   functionCallDefs.push(...outgoingEdges[1].filter(([_, e]) => e.types.has('calls')).map(([target]) => target))
@@ -163,7 +173,9 @@ function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeI
         continue
       }
       for (const def of defs) {
-        if (!visited.has(fingerprint(def.nodeId, envFingerprint(baseEnvironment), current.onlyForSideEffects))) {
+        const print = fingerprint(def.nodeId, baseEnvPrint, current.onlyForSideEffects)
+        if (!seen.has(print)) {
+          seen.set(print, def.nodeId)
           const nodeToSlice = { id: def.nodeId, baseEnvironment, onlyForSideEffects: current.onlyForSideEffects }
           visitQueue.push(nodeToSlice)
         }
@@ -171,12 +183,14 @@ function linkOnFunctionCall(current: NodeToSlice, callerInfo: DataflowGraphNodeI
     }
 
     for (const exitPoint of (functionCallTarget as DataflowGraphNodeFunctionDefinition).exitPoints) {
-      if (!visited.has(fingerprint(exitPoint, activeEnvironmentFingerprint, current.onlyForSideEffects))) {
+      const print = fingerprint(exitPoint, activeEnvironmentFingerprint, current.onlyForSideEffects)
+      if (!seen.has(print)) {
         const nodeToSlice = {
           id:                 exitPoint,
           baseEnvironment:    activeEnvironment,
           onlyForSideEffects: current.onlyForSideEffects
         }
+        seen.set(print, exitPoint)
         visitQueue.push(nodeToSlice)
       }
     }

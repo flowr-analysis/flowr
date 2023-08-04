@@ -219,7 +219,8 @@ export class BenchmarkSlicer {
         mappedIds
       )
     )
-    stats.numberOfDataflowNodesSliced = slicedOutput.result.size
+    // if it is not in the dataflow graph it was kept to be safe and should not count to the included nodes
+    stats.numberOfDataflowNodesSliced = [...slicedOutput.result].filter(id => this.dataflow?.graph.hasNode(id)).length
     stats.timesHitThreshold = slicedOutput.timesHitThreshold
 
     stats.reconstructedCode = measurements.measure(

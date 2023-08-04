@@ -22,7 +22,7 @@ foo(x, y)
 foo(x, 3)
     `, ['3@foo'], `foo(x, 3)`)
     assertSliced('Multiple unknown calls sharing known def', shell, `
-x. <- function (x) { x } 
+x. <- function (x) { x }
 foo(x, x.(y))
 foo(x, x.(3))
     `, ['4@foo'], `x. <- function(x) { x }
@@ -30,7 +30,7 @@ foo(x, x.(3))`)
     assertSliced('Using ...', shell, `
 f1 <- function (a,b) { c }
 f2 <- function (...) { f1(...) }
-x <- 3 
+x <- 3
 c <- 4
 y <- 3
 f2(1,x)
@@ -86,6 +86,19 @@ b()`)
     const code = `a <- function(x=4) { x }
 a(x = 3)`
     assertSliced('Must include function definition', shell, code, ['2@a'], code)
+
+    assertSliced('Must work for same named arguments too', shell, 'a <- 3\nb <- foo(a=a)', ['2@b'], 'a <- 3\nb <- foo(a=a)')
+
+    assertSliced('Must work for same named arguments nested', shell, `
+f <- function(some_variable="hello") { 
+  result <- some::other(some_variable=some_variable)
+  result 
+}
+    `, ['4@result'], `function(some_variable="hello") {
+    result <- some::other(some_variable=some_variable)
+    result
+}`)
+
 
     const lateCode = `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }
 f()
@@ -144,10 +157,10 @@ u()`)
   })
   describe('Anonymous functions', () => {
     assertSliced('Keep anonymous', shell, `
-x <- (function() { 
+x <- (function() {
   x <- 4
   x - 5
-  3 
+  3
  })()
 cat(x)
     `, ['7@x'], `x <- (function() { 3 })()
@@ -171,12 +184,64 @@ a <- function(x) {
   b <- function() { function() { x } }
   return(b())
 }
-a(m)()`, ['$23' /* we can't directly slice the second call as the "a" name would take the inner call */], `m <- 12
+a(m)()`, ['$25' /* we can't directly slice the second call as the "a" name would take the inner call */], `m <- 12
 a <- function(x) {
         b <- function() { function() { x } }
         return(b())
     }
 a(m)()`)
+    assertSliced('Higher order anonymous function', shell, `a <- function(b) {
+  b
+}
+x <- a(\\() 2 + 3)() + a(\\() 7)()`, ['4@x'], `a <- function(b) { b }
+x <- a(\\() 2 + 3)() + a(\\() 7)()`)
+  })
+  describe('Side-Effects', () => {
+    assertSliced('Important Side-Effect', shell, `x <- 2
+f <- function() { x <<- 3 }
+f()
+cat(x)
+    `, ['4@x'], `f <- function() { x <<- 3 }
+f()
+cat(x)`)
+
+    assertSliced('Unimportant Side-Effect', shell, `f <- function() { y <<- 3 }
+f()
+cat(x)
+    `, ['3@x'], `cat(x)`)
+    assertSliced('Nested Side-Effect For Last', shell, `f <- function() {
+  a <- function() { x }
+  x <- 3
+  a()
+  x <- 2
+  a()
+}
+b <- f()
+    `, ['8@b'], `f <- function() {
+        a <- function() { x }
+        x <- 2
+        a()
+    }
+b <- f()`)
+    // that it contains x <- 2 is an error in the current implementation as this happens due to the 'reads' edge from the closure linking
+    // however, this read edge should not apply when the call happens within the same scope
+    assertSliced('Nested Side-Effect For First', shell, `f <- function() {
+  a <- function() { x }
+  x <- 3
+  b <- a()
+  x <- 2
+  a()
+  b
+}
+b <- f()
+    `, ['9@b'], `f <- function() {
+        a <- function() { x }
+        x <- 3
+        b <- a()
+        x <- 2
+        b
+    }
+b <- f()`)
   })
   describe('Recursive functions', () => {
     const code = `f <- function() { f() }

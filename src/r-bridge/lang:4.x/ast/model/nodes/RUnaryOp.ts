@@ -5,7 +5,7 @@ import { UnaryOperatorFlavor } from "../operators"
 export interface RUnaryOp<Info = NoInfo> extends Base<Info>, Location {
   readonly type:   Type.UnaryOp;
   readonly flavor: UnaryOperatorFlavor;
-  op:              string;
+  operator:        string;
   operand:         RNode<Info>;
 }
 

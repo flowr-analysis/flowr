@@ -1,6 +1,7 @@
 import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '../input-format'
 import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from '../../../../../../util/range'
 import { XmlParserConfig } from '../config'
+import { RExpressionList, RNode, Type } from '../../../model'
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper
@@ -88,11 +89,11 @@ export function getWithTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: Xml
   }))
 }
 
-export function retrieveOpName(config: XmlParserConfig, op: NamedXmlBasedJson): string {
+export function retrieveOpName(config: XmlParserConfig, operator: NamedXmlBasedJson): string {
   /*
    * only real arithmetic ops have their operation as their own name, the others identify via content
    */
-  return op.content[config.contentName] as string
+  return operator.content[config.contentName] as string
 }
 
 /**
@@ -108,4 +109,17 @@ export function ensureChildrenAreLhsAndRhsOrdered(config: XmlParserConfig, first
   if (!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
     throw new XmlParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`)
   }
+}
+
+export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<Info> {
+  if (node.type !== Type.ExpressionList) {
+    return {
+      type:     Type.ExpressionList,
+      location: node.location,
+      info:     node.info,
+      lexeme:   undefined,
+      children: [node]
+    }
+  }
+  return node
 }

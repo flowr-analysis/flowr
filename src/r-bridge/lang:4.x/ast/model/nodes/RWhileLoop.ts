@@ -1,5 +1,6 @@
 import { Base, Location, NoInfo, RNode } from '../model'
 import { Type } from '../type'
+import { RExpressionList } from './RExpressionList'
 
 /**
  * ```ts
@@ -9,5 +10,5 @@ import { Type } from '../type'
 export interface RWhileLoop<Info = NoInfo> extends Base<Info>, Location {
   readonly type: Type.While
   condition:     RNode<Info>
-  body:          RNode<Info>
+  body:          RExpressionList<Info>
 }

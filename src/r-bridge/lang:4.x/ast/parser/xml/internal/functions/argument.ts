@@ -6,7 +6,7 @@ import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../util/log'
 import { guard } from '../../../../../../../util/assert'
-import { tryParseOneElementBasedOnType } from '../structure'
+import { tryNormalizeSingleNode } from '../structure'
 
 /**
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.
@@ -17,7 +17,7 @@ import { tryParseOneElementBasedOnType } from '../structure'
  *
  * @returns The parsed argument or `undefined` if the given object is not an argument.
  */
-export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]): RArgument | undefined {
+export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson[]): RArgument | undefined {
   parseLog.debug(`[argument]`)
   objs = executeHook(data.hooks.functions.onArgument.before, data, objs)
 
@@ -34,7 +34,7 @@ export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]):
   let name: RSymbol | undefined
   if(symbolOrExpr.name === Type.Expression) {
     name = undefined
-    parsedValue = tryParseOneElementBasedOnType(data, symbolOrExpr)
+    parsedValue = tryNormalizeSingleNode(data, symbolOrExpr)
   } else if(symbolOrExpr.name === Type.SymbolNamedFormals) {
     name =    {
       type:      Type.Symbol,
@@ -75,5 +75,5 @@ export function tryToParseArgument(data: ParserData, objs: NamedXmlBasedJson[]):
 function parseWithValue(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
   guard(objs[1].name === Type.EqNamedArgument, () => `[arg-default] second element of parameter must be ${Type.EqNamedArgument}, but: ${JSON.stringify(objs)}`)
   guard(objs[2].name === Type.Expression, () => `[arg-default] third element of parameter must be an Expression but: ${JSON.stringify(objs)}`)
-  return tryParseOneElementBasedOnType(data, objs[2])
+  return tryNormalizeSingleNode(data, objs[2])
 }

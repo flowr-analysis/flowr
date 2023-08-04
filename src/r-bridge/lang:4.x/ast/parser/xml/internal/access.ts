@@ -4,20 +4,20 @@ import { parseLog } from '../parser'
 import { ParserData } from '../data'
 import { Type, RAccess, RNode, RArgument } from '../../../model'
 import { executeHook, executeUnknownHook } from '../hooks'
-import { parseBasedOnType } from './structure'
+import { normalizeBasedOnType } from './structure'
 import { guard } from '../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../util/arrays'
-import { tryToParseArgument } from './functions/argument'
+import { tryToNormalizeArgument } from './functions/argument'
 
 /**
- * Tries to parse the given data as access (e.g., indexing).
+ * Tries to normalize the given data as access (e.g., indexing).
  *
  * @param data           - The data used by the parser (see {@link ParserData})
  * @param mappedWithName - The json object to extract the meta-information from
  *
  * @returns The parsed {@link RAccess} or `undefined` if the given construct is not accessing a value
  */
-export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RAccess | undefined {
+export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RAccess | undefined {
   parseLog.trace('trying to parse access')
   mappedWithName = executeHook(data.hooks.onAccess.before, data, mappedWithName)
 
@@ -57,7 +57,7 @@ export function tryParseAccess(data: ParserData, mappedWithName: NamedXmlBasedJs
     return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
   }
 
-  const parsedAccessed = parseBasedOnType(data, [accessed])
+  const parsedAccessed = normalizeBasedOnType(data, [accessed])
   if(parsedAccessed.length !== 1) {
     parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${accessed.name}`)
     return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
@@ -117,9 +117,9 @@ function parseAccessArgument(operator: RAccess['operator'], data: ParserData, el
   // otherwise we have to add the expression layer
   // console.log('parseAccessArgument', elements.map(x => x.name))
   if(operator === '@' || operator === '$') {
-    const parse = parseBasedOnType(data, elements)
+    const parse = normalizeBasedOnType(data, elements)
     return parse.length !== 1 ? undefined : parse[0]
   } else {
-    return tryToParseArgument(data, elements)
+    return tryToNormalizeArgument(data, elements)
   }
 }

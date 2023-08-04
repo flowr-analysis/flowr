@@ -2,6 +2,7 @@ import { assertAst, withShell } from '../../../helper/shell'
 import { exprList, numVal } from "../../../helper/ast-builder"
 import { addRanges, rangeFrom } from "../../../../src/util/range"
 import { Type } from '../../../../src/r-bridge'
+import { ensureExpressionList } from '../../../../src/r-bridge/lang:4.x/ast/parser/xml/internal'
 
 const IfThenSpacingVariants = [
   {
@@ -120,13 +121,13 @@ describe('Parse simple constructs', withShell(shell => {
                 content:  true,
                 info:     {}
               },
-              then: {
+              then: ensureExpressionList({
                 type:     Type.Number,
                 location: variant.locationNum,
                 lexeme:   strNum,
                 content:  numVal(variant.num),
                 info:     {}
-              }
+              })
             }))
           }
         })
@@ -160,20 +161,20 @@ describe('Parse simple constructs', withShell(shell => {
                     content:  true,
                     info:     {}
                   },
-                  then: {
+                  then: ensureExpressionList({
                     type:     Type.Number,
                     location: ifThenVariant.locationNum,
                     lexeme:   thenNum,
                     content:  numVal(ifThenVariant.num),
                     info:     {}
-                  },
-                  otherwise: {
+                  }),
+                  otherwise: ensureExpressionList({
                     type:     Type.Number,
                     location: addRanges(elseVariant.locationElse, ifThenVariant.end),
                     lexeme:   elseNum,
                     content:  numVal(elseVariant.num),
                     info:     {}
-                  }
+                  })
                 }))
               }
             }
@@ -201,7 +202,7 @@ describe('Parse simple constructs', withShell(shell => {
         vector: {
           type:     Type.BinaryOp,
           flavor:   'arithmetic',
-          op:       ':',
+          operator: ':',
           location: rangeFrom(1, 11, 1, 11),
           lexeme:   ':',
           info:     {},
@@ -220,13 +221,13 @@ describe('Parse simple constructs', withShell(shell => {
             info:     {}
           }
         },
-        body: {
+        body: ensureExpressionList({
           type:     Type.Number,
           location: rangeFrom(1, 15, 1, 15),
           lexeme:   '2',
           content:  numVal(2),
           info:     {}
-        }
+        })
       })
       )
     })
@@ -236,13 +237,13 @@ describe('Parse simple constructs', withShell(shell => {
         location: rangeFrom(1, 1, 1, 6),
         lexeme:   'repeat',
         info:     {},
-        body:     {
+        body:     ensureExpressionList({
           type:     Type.Number,
           location: rangeFrom(1, 8, 1, 8),
           lexeme:   '2',
           content:  numVal(2),
           info:     {}
-        }
+        })
       }))
       assertAst('Two statement repeat', shell, 'repeat { x; y }', exprList({
         type:     Type.Repeat,
@@ -285,13 +286,13 @@ describe('Parse simple constructs', withShell(shell => {
           content:  true,
           info:     {}
         },
-        body: {
+        body: ensureExpressionList({
           type:     Type.Number,
           location: rangeFrom(1, 14, 1, 15),
           lexeme:   '42',
           content:  numVal(42),
           info:     {}
-        }
+        })
       }))
 
       assertAst('Two statement while', shell, 'while (FALSE) { x; y }', exprList({
@@ -306,7 +307,7 @@ describe('Parse simple constructs', withShell(shell => {
           content:  false,
           info:     {}
         },
-        body: {
+        body: ensureExpressionList({
           type:     Type.ExpressionList,
           location: rangeFrom(1, 15, 1, 22),
           lexeme:   '{ x; y }',
@@ -326,7 +327,7 @@ describe('Parse simple constructs', withShell(shell => {
             content:   'y',
             info:      {}
           }]
-        }
+        })
       }))
     })
     describe('break', () => {
@@ -342,12 +343,12 @@ describe('Parse simple constructs', withShell(shell => {
           content:  true,
           info:     {}
         },
-        body: {
+        body: ensureExpressionList({
           type:     Type.Break,
           location: rangeFrom(1, 14, 1, 18),
           lexeme:   'break',
           info:     {}
-        }
+        })
       }))
     })
     describe('next', () => {
@@ -363,12 +364,12 @@ describe('Parse simple constructs', withShell(shell => {
           content:  true,
           info:     {}
         },
-        body: {
+        body: ensureExpressionList({
           type:     Type.Next,
           location: rangeFrom(1, 14, 1, 17),
           lexeme:   'next',
           info:     {}
-        }
+        })
       }))
     })
   })

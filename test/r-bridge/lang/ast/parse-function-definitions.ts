@@ -2,6 +2,7 @@ import { assertAst, withShell } from "../../../helper/shell"
 import { exprList, numVal, parameter } from '../../../helper/ast-builder'
 import { rangeFrom } from "../../../../src/util/range"
 import { Type } from '../../../../src/r-bridge'
+import { ensureExpressionList } from '../../../../src/r-bridge/lang:4.x/ast/parser/xml/internal'
 
 // TODO: tests for returns
 describe("Parse function definitions", withShell((shell) => {
@@ -31,12 +32,12 @@ describe("Parse function definitions", withShell((shell) => {
         lexeme:     "function",
         parameters: [],
         info:       {},
-        body:       {
+        body:       ensureExpressionList({
           type:     Type.BinaryOp,
           location: rangeFrom(1, 16, 1, 16),
           flavor:   'arithmetic',
           lexeme:   "+",
-          op:       '+',
+          operator: '+',
           info:     {},
           lhs:      {
             type:      Type.Symbol,
@@ -51,7 +52,7 @@ describe("Parse function definitions", withShell((shell) => {
             location: rangeFrom(1, 20, 1, 20),
             flavor:   'arithmetic',
             lexeme:   "*",
-            op:       '*',
+            operator: '*',
             info:     {},
             lhs:      {
               type:     Type.Number,
@@ -68,7 +69,7 @@ describe("Parse function definitions", withShell((shell) => {
               info:     {}
             }
           }
-        }
+        })
       })
     )
   })
@@ -102,14 +103,14 @@ describe("Parse function definitions", withShell((shell) => {
           parameter("b", rangeFrom(1, 16, 1, 16))
         ],
         info: {},
-        body: {
+        body: ensureExpressionList({
           type:      Type.Symbol,
           location:  rangeFrom(1, 21, 1, 21),
           lexeme:    "b",
           content:   "b",
           namespace: undefined,
           info:      {}
-        }
+        })
       })
     )
   })
@@ -122,13 +123,13 @@ describe("Parse function definitions", withShell((shell) => {
         lexeme:     "function",
         parameters: [parameter("...", rangeFrom(1, 10, 1, 12), undefined, true)],
         info:       {},
-        body:       {
+        body:       ensureExpressionList({
           type:     Type.ExpressionList,
           location: rangeFrom(1, 15, 1, 17),
           lexeme:   "{ }",
           children: [],
           info:     {}
-        }
+        })
       })
     )
 
@@ -165,14 +166,14 @@ describe("Parse function definitions", withShell((shell) => {
           parameter("...", rangeFrom(1, 18, 1, 20), undefined, true)
         ],
         info: {},
-        body: {
+        body: ensureExpressionList({
           type:      Type.Symbol,
           location:  rangeFrom(1, 25, 1, 27),
           lexeme:    "...",
           content:   "...",
           namespace: undefined,
           info:      {}
-        }
+        })
       })
     )
   })
@@ -227,14 +228,14 @@ describe("Parse function definitions", withShell((shell) => {
           })
         ],
         info: {},
-        body: {
+        body: ensureExpressionList({
           type:      Type.Symbol,
           location:  rangeFrom(1, 33, 1, 33),
           lexeme:    "x",
           content:   "x",
           namespace: undefined,
           info:      {}
-        }
+        })
       })
     )
   })

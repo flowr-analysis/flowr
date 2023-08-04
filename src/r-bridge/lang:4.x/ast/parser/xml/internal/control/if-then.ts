@@ -1,6 +1,6 @@
 import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
-import { tryParseOneElementBasedOnType } from '../structure'
-import { retrieveMetaStructure } from '../meta'
+import { tryNormalizeSingleNode } from '../structure'
+import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { Type, RIfThenElse } from '../../../../model'
@@ -9,8 +9,8 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 /**
  * Try to parse the construct as a {@link RIfThenElse}.
  */
-export function tryParseIfThen(data: ParserData,
-                               tokens: [
+export function tryNormalizeIfThen(data: ParserData,
+                                   tokens: [
                                    ifToken:    NamedXmlBasedJson,
                                    leftParen:  NamedXmlBasedJson,
                                    condition:  NamedXmlBasedJson,
@@ -30,8 +30,8 @@ export function tryParseIfThen(data: ParserData,
 
   tokens = executeHook(data.hooks.control.onIfThen.before, data, tokens)
 
-  const parsedCondition = tryParseOneElementBasedOnType(data, tokens[2])
-  const parsedThen = tryParseOneElementBasedOnType(data, tokens[4])
+  const parsedCondition = tryNormalizeSingleNode(data, tokens[2])
+  const parsedThen = tryNormalizeSingleNode(data, tokens[4])
 
 
   if (parsedCondition === undefined || parsedThen === undefined) {
@@ -43,7 +43,7 @@ export function tryParseIfThen(data: ParserData,
   const result: RIfThenElse = {
     type:      Type.If,
     condition: parsedCondition,
-    then:      parsedThen,
+    then:      ensureExpressionList(parsedThen),
     location,
     lexeme:    content,
     info:      {

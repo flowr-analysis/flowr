@@ -71,28 +71,34 @@ function processFeatureSubKey(featurePath: string, subKey: string, contextIdMap:
   return clusterStatisticsOutput(targetPath, contextIdMap)
 }
 
-export function printClusterReport(report: ClusterReport) {
+/**
+ * Prints the report to the console, but limits the output to the `limit` entries with the highest counts.
+ * The names of these entries (like `->`) are returned, so they can be used to filter the following histograms.
+ */
+export function printClusterReport(report: ClusterReport, limit = 1000): string[] {
   console.log(`\n\n\n`)
   console.log(report.filepath)
 
-  // TODO: violin plot by file
-  const shortStats = [...report.valueInfoMap.entries()].map(([id, values]) => {
+  // TODO: allow more flexible limits
+  const shortStats = [...report.valueInfoMap.entries()].map(([name, values]) => {
     return {
-      id,
+      name,
       count:  [...values.values()].reduce((a, b) => a + b, 0),
       unique: values.size()
     }
-  }).sort((a, b) => b.count - a.count)
-  const { longestId, longestCount, longestUnique } = shortStats.reduce((acc, {id, count, unique}) => {
+  }).sort((a, b) => b.count - a.count).slice(0, limit)
+
+  const { longestName, longestCount, longestUnique } = shortStats.reduce((acc, {name, count, unique}) => {
     return {
-      longestId:     Math.max(acc.longestId, id.length),
+      longestName:   Math.max(acc.longestName, name.length),
       longestCount:  Math.max(acc.longestCount, count.toLocaleString().length),
       longestUnique: Math.max(acc.longestUnique, unique.toLocaleString().length),
     }
-  }, { longestId: 0, longestCount: 0, longestUnique: 0 })
+  }, { longestName: 0, longestCount: 0, longestUnique: 0 })
 
-  for(const {id, count, unique} of shortStats) {
-    const strId = `${id}`.padEnd(longestId, ' ')
+
+  for(const {name, count, unique} of shortStats) {
+    const strId = `${name}`.padEnd(longestName, ' ')
     const strCount = count.toLocaleString().padStart(longestCount, ' ')
     const strUnique = unique.toLocaleString().padStart(longestUnique, ' ')
     const uniqueSuffix = `\t (${strUnique} ${formatter.format('unique', { color: Colors.white, effect: ColorEffect.foreground })})`
@@ -101,4 +107,5 @@ export function printClusterReport(report: ClusterReport) {
       + (count !== unique ? uniqueSuffix : '')
     )
   }
+  return shortStats.map(({name}) => name)
 }

@@ -1,7 +1,7 @@
 import { NamedXmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure, retrieveOpName } from '../meta'
 import { parseLog } from '../../parser'
-import { tryParseOneElementBasedOnType } from '../structure'
+import { tryNormalizeSingleNode } from '../structure'
 import { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
 import {
@@ -17,48 +17,48 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 /**
  * Parses the construct as a {@link RUnaryOp} (automatically identifies the flavor).
  *
- * @param data - The data used by the parser (see {@link ParserData})
- * @param op - The operator token
- * @param operand - The operand of the unary operator
+ * @param data     - The data used by the parser (see {@link ParserData})
+ * @param operator - The operator token
+ * @param operand  - The operand of the unary operator
  *
  * @returns The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
  */
-export function tryParseUnaryOperation(data: ParserData, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
-  parseLog.trace(`unary op for ${op.name} ${operand.name}`)
+export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
+  parseLog.trace(`unary op for ${operator.name} ${operand.name}`)
   let flavor: UnaryOperatorFlavor
   // TODO: filter for unary
-  if (ArithmeticOperatorsRAst.has(op.name)) {
+  if (ArithmeticOperatorsRAst.has(operator.name)) {
     flavor = 'arithmetic'
-  } else if (LogicalOperatorsRAst.has(op.name)) {
+  } else if (LogicalOperatorsRAst.has(operator.name)) {
     flavor = 'logical'
-  } else if (ModelFormulaOperatorsRAst.has(op.name)) {
+  } else if (ModelFormulaOperatorsRAst.has(operator.name)) {
     flavor = 'model formula'
   } else {
-    return executeUnknownHook(data.hooks.operators.onUnary.unknown, data, { op, operand })
+    return executeUnknownHook(data.hooks.operators.onUnary.unknown, data, { operator, operand })
   }
-  return parseUnaryOp(data, flavor, op, operand)
+  return parseUnaryOp(data, flavor, operator, operand)
 }
 
-function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, op: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
+function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
   parseLog.debug(`[unary op] parse ${flavor}`); // <- semicolon sadly required for not miss-interpreting the destructuring match as call
-  ({ flavor, op, operand} = executeHook(data.hooks.operators.onUnary.before, data, { flavor, op, operand }))
+  ({ flavor, operator, operand} = executeHook(data.hooks.operators.onUnary.before, data, { flavor, operator, operand }))
 
-  const parsedOperand = tryParseOneElementBasedOnType(data, operand)
+  const parsedOperand = tryNormalizeSingleNode(data, operand)
 
   guard(parsedOperand !== undefined, () => 'unexpected under-sided unary op')
 
-  const operationName = retrieveOpName(data.config, op)
-  const { location, content } = retrieveMetaStructure(data.config, op.content)
+  const operationName = retrieveOpName(data.config, operator)
+  const { location, content } = retrieveMetaStructure(data.config, operator.content)
 
   // TODO: assert exists as known operator
   const result: RUnaryOp = {
-    type:    Type.UnaryOp,
+    type:     Type.UnaryOp,
     flavor,
     location,
-    op:      operationName,
-    lexeme:  content,
-    operand: parsedOperand,
-    info:    {
+    operator: operationName,
+    lexeme:   content,
+    operand:  parsedOperand,
+    info:     {
       // TODO: include children etc.
       fullRange:        data.currentRange,
       additionalTokens: [],

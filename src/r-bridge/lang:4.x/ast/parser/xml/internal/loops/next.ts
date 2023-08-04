@@ -5,7 +5,7 @@ import { executeHook } from '../../hooks'
 import { retrieveMetaStructure } from '../meta'
 import { RNext, Type } from '../../../../model'
 
-export function parseNext(data: ParserData, obj: XmlBasedJson): RNext {
+export function normalizeNext(data: ParserData, obj: XmlBasedJson): RNext {
   parseLog.debug(`[next] try: ${JSON.stringify(obj)}`)
   obj = executeHook(data.hooks.loops.onNext.before, data, obj)
 

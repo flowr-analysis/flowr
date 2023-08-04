@@ -27,7 +27,14 @@ import {
   reconstructToCode,
   staticSlicing
 } from '../slicing'
-import { CommonSlicerMeasurements, ElapsedTime, PerSliceMeasurements, PerSliceStats, SlicerStats } from './stats'
+import {
+  CommonSlicerMeasurements,
+  ElapsedTime,
+  withoutWhitespace,
+  PerSliceMeasurements,
+  PerSliceStats,
+  SlicerStats
+} from './stats'
 import fs from 'fs'
 import { log, LogLevel } from '../util/log'
 import { MergeableRecord } from '../util/objects'
@@ -147,10 +154,11 @@ export class BenchmarkSlicer {
       perSliceMeasurements: this.perSliceMeasurements,
       request,
       input:                {
-        numberOfLines:            loadedContent.split('\n').length,
-        numberOfCharacters:       loadedContent.length,
-        numberOfRTokens:          numberOfRTokens,
-        numberOfNormalizedTokens: [...collectAllIds(this.decoratedAst.decoratedAst)].length,
+        numberOfLines:                   loadedContent.split('\n').length,
+        numberOfCharacters:              loadedContent.length,
+        numberOfNonWhitespaceCharacters: withoutWhitespace(loadedContent).length,
+        numberOfRTokens:                 numberOfRTokens,
+        numberOfNormalizedTokens:        [...collectAllIds(this.decoratedAst.decoratedAst)].length,
       },
       dataflow: {
         numberOfNodes:               [...this.dataflow.graph.nodes(true)].length,
@@ -179,6 +187,7 @@ export class BenchmarkSlicer {
       measurements:                undefined as never,
       slicingCriteria:             [],
       numberOfDataflowNodesSliced: 0,
+      timesHitThreshold:           0,
       reconstructedCode:           {
         code:         '',
         autoSelected: 0
@@ -210,11 +219,13 @@ export class BenchmarkSlicer {
         mappedIds
       )
     )
-    stats.numberOfDataflowNodesSliced = slicedOutput.size
+    // if it is not in the dataflow graph it was kept to be safe and should not count to the included nodes
+    stats.numberOfDataflowNodesSliced = [...slicedOutput.result].filter(id => this.dataflow?.graph.hasNode(id)).length
+    stats.timesHitThreshold = slicedOutput.timesHitThreshold
 
     stats.reconstructedCode = measurements.measure(
       'reconstruct code',
-      () => reconstructToCode<NoInfo>(this.decoratedAst as DecoratedAst, slicedOutput)
+      () => reconstructToCode<NoInfo>(this.decoratedAst as DecoratedAst, slicedOutput.result)
     )
     totalStopwatch.stop()
     benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code}`)

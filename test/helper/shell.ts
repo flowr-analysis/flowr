@@ -94,10 +94,11 @@ function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected:
   assert.deepStrictEqual(astCopy, expectedCopy, message)
 }
 
-export const retrieveAst = async(shell: RShell, input: string, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> => {
+export const retrieveAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> => {
+  const file = input.startsWith('file://')
   return await retrieveAstFromRCode({
-    request:                 'text',
-    content:                 input,
+    request:                 file ? 'file' : 'text',
+    content:                 file ? input.slice(7) : input,
     attachSourceInformation: true,
     ensurePackageInstalled:  false // should be called within describeSession for that!
   }, defaultTokenMap, shell, hooks)
@@ -131,12 +132,11 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
     // TODO: use both info
     const { graph } = produceDataFlowGraph(decoratedAst, LocalScope)
 
-    const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph}, decoratedAst.idMap, `%% ${input.replace(/\n/g, '\n%% ')}\n`)
+    // with the try catch the diff graph is not calculated if everything is fine
     try {
-      assert.isTrue(expected.equals(graph), diff)
+      assert.isTrue(expected.equals(graph))
     } catch (e) {
-      console.error('vis-wanted:\n', graphToMermaidUrl(expected, decoratedAst.idMap))
-      console.error('vis-got:\n', graphToMermaidUrl(graph, decoratedAst.idMap))
+      const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph}, decoratedAst.idMap, `%% ${input.replace(/\n/g, '\n%% ')}\n`)
       console.error('diff:\n', diff)
       throw e
     }
@@ -164,13 +164,12 @@ export const assertSliced = (name: string, shell: RShell, input: string, criteri
     const ast = await retrieveAst(shell, input)
     const decoratedAst = decorateAst(ast, getId)
 
-
     const dataflow = produceDataFlowGraph(decoratedAst)
 
     try {
       const mappedIds = criteria.map(c => slicingCriterionToId(c, decoratedAst))
 
-      const sliced = staticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds.slice())
+      const { result: sliced } = staticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds.slice())
       const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
 
       assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(mappedIds, decoratedAst.idMap)}), url: ${graphToMermaidUrl(dataflow.graph, decoratedAst.idMap, sliced)}`)

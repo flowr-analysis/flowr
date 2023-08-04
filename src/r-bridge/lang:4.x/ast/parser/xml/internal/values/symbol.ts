@@ -7,7 +7,7 @@ import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 /**
- * Parse the given object as an R symbol (incorporating namespace information).
+ * Normalize the given object as an R symbol (incorporating namespace information).
  * <p>
  * The special symbols `T` and `F` are parsed as logic values.
  *
@@ -17,7 +17,7 @@ import { executeHook, executeUnknownHook } from '../../hooks'
  * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  */
 // TODO: deal with namespace information
-export function tryParseSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
+export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
   guard(objs.length > 0, 'to parse symbols we need at least one object to work on!')
   parseLog.debug(`trying to parse symbol`)
   objs = executeHook(data.hooks.values.onSymbol.before, data, objs)

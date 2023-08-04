@@ -51,7 +51,7 @@ export type DataflowProcessors<OtherInfo> = {
  * Now this method can be called recursively within the other processors to parse the dataflow for nodes that you can not narrow down.
  *
  * @param current - The current node to start processing from
- * @param data - The initial information to be passed down
+ * @param data    - The initial information to be passed down
  */
 export function processDataflowFor<OtherInfo>(current: RNodeWithParent<OtherInfo>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo & ParentInformation> {
   return data.processors[current.type](current as never, data)

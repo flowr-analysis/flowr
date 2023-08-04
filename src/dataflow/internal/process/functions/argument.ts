@@ -12,7 +12,7 @@ export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentIn
 
   for (const ref of ingoingBeforeArgs) {
     // link against the root reference currently I do not know how to deal with nested function calls otherwise
-    graph.addEdge(root.info.id, ref, 'read', 'always')
+    graph.addEdge(root.info.id, ref, 'reads', 'always')
   }
 }
 
@@ -26,22 +26,26 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
   const argumentName = argContent ?? `${UnnamedArgumentPrefix}${argument.info.id}`
   graph.addNode({ tag: 'use', id: argument.info.id, name: argumentName, environment: data.environments, when: 'always' })
 
-  const ingoingRefs = [...value.activeNodes, ...value.in, ...(name === undefined ? [] : [...name.in])]
+  const ingoingRefs = [...value.unknownReferences, ...value.in, ...(name === undefined ? [] : [...name.in])]
 
-  // we only need to link against those which are not already bound to another function call argument
-  linkReadsForArgument(argument, [...ingoingRefs, ...value.out /* value may perform definitions */], graph)
+  if(argument.value.type === Type.FunctionDefinition) {
+    graph.addEdge(argument.info.id, argument.value.info.id, 'reads', 'always')
+  } else {
+    // we only need to link against those which are not already bound to another function call argument
+    linkReadsForArgument(argument, [...ingoingRefs, ...value.out /* value may perform definitions */], graph)
+  }
 
   // TODO: defined-by for default values
 
   return {
-    activeNodes:  [],
+    unknownReferences: [],
     // active nodes of the name will be lost as they are only used to reference the corresponding parameter
-    in:           ingoingRefs,
+    in:                ingoingRefs,
     // , ...value.out, ...(name?.out ?? [])
-    out:          [ { name: argumentName, scope: LocalScope, nodeId: argument.info.id, used: 'always'} ],
-    graph:        graph,
-    environments: value.environments, // TODO: merge with name?
-    ast:          data.completeAst,
-    scope:        data.activeScope
+    out:               [ { name: argumentName, scope: LocalScope, nodeId: argument.info.id, used: 'always'} ],
+    graph:             graph,
+    environments:      value.environments, // TODO: merge with name?
+    ast:               data.completeAst,
+    scope:             data.activeScope
   }
 }

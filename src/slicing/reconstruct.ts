@@ -37,6 +37,7 @@ export const reconstructLogger = log.getSubLogger({ name: "reconstruct" })
 
 
 const getLexeme = (n: RNodeWithParent) => n.info.fullLexeme ?? n.lexeme ?? ''
+
 const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code => {
   const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf)
   if(selectionHasLeaf) {
@@ -86,6 +87,18 @@ function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: Pr
   ]
 }
 
+
+function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration: ReconstructionConfiguration) {
+  if(configuration.selection.has(leaf.info.id)) {
+    return foldToConst(leaf)
+  }
+  else if(operand.length === 0) {
+    return []
+  } else {
+    return foldToConst(leaf)
+  }
+}
+
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
   if(isSelected(configuration, n)) {
     return plain(getLexeme(n))
@@ -101,15 +114,15 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
     return plain(getLexeme(n))
   }
 
-  return reconstructRawBinaryOperator(lhs, n.type === Type.Pipe ? '|>' : n.op, rhs)
+  return reconstructRawBinaryOperator(lhs, n.type === Type.Pipe ? '|>' : n.operator, rhs)
 }
 
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
   if(isSelected(configuration, loop)) {
     return plain(getLexeme(loop))
   }
-  if(variable.length === 0 && vector.length === 0) {
-    return body
+  if(body.length === 0 && variable.length === 0 && vector.length === 0) {
+    return []
   } else {
     if(body.length <= 1) {
       // 'inline'
@@ -159,6 +172,15 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
   }
 }
 
+function removeExpressionListWrap(code: Code) {
+  if(code.length > 0 && code[0].line === '{' && code[code.length - 1].line === '}') {
+    return indentBy(code.slice(1, code.length - 1), -1)
+  } else {
+    return code
+  }
+}
+
+
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
   if (isSelected(configuration, ifThenElse)) {
     return plain(getLexeme(ifThenElse))
@@ -176,22 +198,22 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
     return [
       // TODO: recurse into condition?
       { line: `if(${getLexeme(ifThenElse.condition)}) {`, indent: 0 },
-      ...indentBy(when, 1),
+      ...indentBy(removeExpressionListWrap(when), 1),
       { line: '}', indent: 0 }
     ]
   } else if(when.length === 0) {
     return [
       // TODO: recurse into condition?
       { line: `if(${getLexeme(ifThenElse.condition)}) { } else {`, indent: 0 },
-      ...indentBy(otherwise, 1),
+      ...indentBy(removeExpressionListWrap(otherwise), 1),
       { line: '}', indent: 0 }
     ]
   } else {
     return [
       { line: `if(${getLexeme(ifThenElse.condition)}) {`, indent: 0 },
-      ...indentBy(when, 1),
+      ...indentBy(removeExpressionListWrap(when), 1),
       { line: '} else {', indent: 0 },
-      ...indentBy(otherwise, 1),
+      ...indentBy(removeExpressionListWrap(otherwise), 1),
       { line: '}', indent: 0 }
     ]
   }
@@ -202,8 +224,8 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
   if(isSelected(configuration, loop)) {
     return plain(getLexeme(loop))
   }
-  if(condition.length === 0) {
-    return body
+  if(body.length === 0 && condition.length === 0) {
+    return []
   } else {
     if(body.length <= 1) {
       // 'inline'
@@ -265,9 +287,23 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
   }
 }
 
-function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, _parameters: Code[], body: Code, configuration: ReconstructionConfiguration): Code {
+
+function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
+  if(isSelected(configuration, parameter)) {
+    return plain(getLexeme(parameter))
+  }
+
+  if(parameter.defaultValue !== undefined && name.length > 0) {
+    return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`)
+  } else {
+    return name
+  }
+}
+
+
+function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: Code[], body: Code, configuration: ReconstructionConfiguration): Code {
   // if a definition is not selected, we only use the body - slicing will always select the definition
-  if(!isSelected(configuration, definition)) {
+  if(!isSelected(configuration, definition) && functionParameters.every(p => p.length === 0)) {
     return body
   }
   const parameters = reconstructParameters(definition.parameters).join(', ')
@@ -297,7 +333,7 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 
 function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: RFunctionCall<ParentInformation>): Code {
   guard(args.length === 2, () => `infix special call must have exactly two arguments, got: ${args.length} (${JSON.stringify(args)})`)
-  guard(call.flavour === 'named', `infix special call must be named, got: ${call.flavour}`)
+  guard(call.flavor === 'named', `infix special call must be named, got: ${call.flavor}`)
   const lhs = args[0]
   const rhs = args[1]
 
@@ -325,7 +361,7 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
   if(call.infixSpecial === true) {
     return reconstructSpecialInfixFunctionCall(args, call)
   }
-  if(call.flavour === 'named' && isSelected(configuration, call)) {
+  if(call.flavor === 'named' && isSelected(configuration, call)) {
     return plain(getLexeme(call))
   }
   const filteredArgs = args.filter(a => a !== undefined && a.length > 0)
@@ -333,11 +369,9 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
     return []
   }
 
-  guard(functionName.length <= 1, `can not have multiple lines for the function name, got: ${JSON.stringify(functionName)}`)
-
   if(args.length === 0) {
     guard(functionName.length === 1, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
-    if(call.flavour === 'unnamed' && !functionName[0].line.endsWith(')')) {
+    if(call.flavor === 'unnamed' && !functionName[0].line.endsWith(')')) {
       functionName[0].line = `(${functionName[0].line})`
     }
 
@@ -367,7 +401,7 @@ export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
 
 const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
 export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
-  if(node.type !== Type.FunctionCall || node.flavour !== 'named') {
+  if(node.type !== Type.FunctionCall || node.flavor !== 'named') {
     return false
   }
   return libraryFunctionCall.test(node.functionName.content)
@@ -392,9 +426,9 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
     foldModelFormula: reconstructBinaryOp
   },
   unaryOp: {
-    foldArithmeticOp: foldToConst,
-    foldLogicalOp:    foldToConst,
-    foldModelFormula: foldToConst
+    foldArithmeticOp: reconstructUnaryOp,
+    foldLogicalOp:    reconstructUnaryOp,
+    foldModelFormula: reconstructUnaryOp
   },
   other: {
     foldComment:       reconstructAsLeaf,
@@ -412,7 +446,7 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
   functions:      {
     foldFunctionDefinition: reconstructFunctionDefinition,
     foldFunctionCall:       reconstructFunctionCall,
-    foldParameter:          foldToConst,
+    foldParameter:          reconstructParameter,
     foldArgument:           reconstructArgument
   }
 }

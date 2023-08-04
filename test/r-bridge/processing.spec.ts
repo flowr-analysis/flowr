@@ -96,9 +96,9 @@ describe("Assign unique Ids and Parents", withShell((shell) => {
     }
     assertIds('Without stop', 'x <- 2', new Set(['0', '1', '2', '3']))
     assertIds('Stop one', 'x <- 2', new Set(['0', '2', '3']), n => n.type === Type.Number)
-    assertIds('Multiple statements', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['0', '1', '2', '3', '4', '5', '6', '7', '8']))
+    assertIds('Multiple statements', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']))
     // if, TRUE, [when]
-    assertIds('Multiple statements blocking binary ops', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['3', '7', '8']), n => n.type === Type.BinaryOp)
+    assertIds('Multiple statements blocking binary ops', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['3', '7', '8', '9']), n => n.type === Type.BinaryOp)
   })
 })
 )

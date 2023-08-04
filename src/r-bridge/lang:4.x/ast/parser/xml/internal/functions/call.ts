@@ -3,13 +3,22 @@ import { guard } from '../../../../../../../util/assert'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseLog } from '../../parser'
-import { parseString, tryParseSymbol } from '../values'
+import { normalizeString, tryNormalizeSymbol } from '../values'
 import { ParserData } from '../../data'
-import { Type, RNode, RFunctionCall, RUnnamedFunctionCall, RNamedFunctionCall, RNext, RBreak } from '../../../../model'
+import {
+  Type,
+  RNode,
+  RFunctionCall,
+  RUnnamedFunctionCall,
+  RNamedFunctionCall,
+  RNext,
+  RBreak,
+  RArgument
+} from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import { tryToParseArgument } from './argument'
+import { tryToNormalizeArgument } from './argument'
 import { SourceRange } from '../../../../../../../util/range'
-import { parseExpression } from '../expression'
+import { normalizeExpression } from '../expression'
 
 /**
  * Tries to parse the given data as a function call.
@@ -20,7 +29,7 @@ import { parseExpression } from '../expression'
  * @returns The parsed {@link RFunctionCall} (either named or unnamed) or `undefined` if the given construct is not a function call
  * May return a {@link RNext} or {@link RBreak} as `next()` and `break()` work as such.
  */
-export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | RNext | RBreak | undefined {
+export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | RNext | RBreak | undefined {
   const fnBase = mappedWithName[0]
   if(fnBase.name !== Type.Expression && fnBase.name !== Type.ExprHelpAssignWrapper) {
     parseLog.trace(`expected function call name to be wrapped an expression, yet received ${fnBase.name}`)
@@ -62,14 +71,14 @@ export function tryToParseFunctionCall(data: ParserData, mappedWithName: NamedXm
   return executeHook(data.hooks.functions.onFunctionCall.after, data, result)
 }
 
-function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RNode| undefined)[] {
+function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RArgument | undefined)[] {
   const argContainer = mappedWithName.slice(1)
   guard(argContainer.length > 1 && argContainer[0].name === Type.ParenLeft && argContainer[argContainer.length - 1].name === Type.ParenRight, `expected args in parenthesis`)
   const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => x.name === Type.Comma)
-  return  splitArgumentsOnComma.map(x => {
+  return splitArgumentsOnComma.map(x => {
     // TODO: improve expression unwrap
     parseLog.trace('trying to parse argument')
-    return tryToParseArgument(data, x)
+    return tryToNormalizeArgument(data, x)
   })
 }
 
@@ -83,7 +92,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
   parseLog.trace('Assuming structure to be a function call')
 
   // we parse an expression to allow function calls
-  const calledFunction = parseExpression(data, mappedWithName[0].content)
+  const calledFunction = normalizeExpression(data, mappedWithName[0].content)
   const parsedArguments = parseArguments(mappedWithName, data)
 
   if(parsedArguments.length === 0) {
@@ -115,7 +124,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 
   return {
     type:           Type.FunctionCall,
-    flavour:        'unnamed',
+    flavor:         'unnamed',
     location,
     lexeme:         content,
     calledFunction: calledFunction,
@@ -133,7 +142,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJson[], mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RNamedFunctionCall {
   let functionName: RNode | undefined
   if(symbolContent.length === 1 && symbolContent[0].name === Type.String) {
-    const stringBase = parseString(data, symbolContent[0].content)
+    const stringBase = normalizeString(data, symbolContent[0].content)
     functionName = {
       type:      Type.Symbol,
       namespace: undefined,
@@ -143,7 +152,7 @@ function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJs
       content:   stringBase.content.str
     }
   } else {
-    functionName = tryParseSymbol(data, symbolContent)
+    functionName = tryNormalizeSymbol(data, symbolContent)
   }
   guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')
   guard(functionName.type === Type.Symbol, `expected function name to be a symbol, yet received ${functionName.type}`)
@@ -152,7 +161,7 @@ function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJs
 
   return {
     type:      Type.FunctionCall,
-    flavour:   'named',
+    flavor:    'named',
     location,
     lexeme:    content,
     functionName,

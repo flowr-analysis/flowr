@@ -30,19 +30,21 @@ export interface SummarizedMeasurement {
   min:    number
   max:    number
   median: number
+  /** average */
   mean:   number
   /** standard deviation */
   std:    number
 }
 
 interface SliceSizeCollection {
-  lines:            number[]
-  characters:       number[]
+  lines:                   number[]
+  characters:              number[]
+  nonWhitespaceCharacters: number[]
   /** like library statements during reconstruction */
-  autoSelected:     number[]
-  dataflowNodes:    number[]
-  tokens:           number[]
-  normalizedTokens: number[]
+  autoSelected:            number[]
+  dataflowNodes:           number[]
+  tokens:                  number[]
+  normalizedTokens:        number[]
 }
 
 /**
@@ -54,12 +56,13 @@ export type SummarizedSlicerStats = {
 } & Omit<SlicerStats, 'perSliceMeasurements'>
 
 export interface Reduction<T = number> {
-  numberOfLines:                T
-  numberOfLinesNoAutoSelection: T
-  numberOfCharacters:           T
-  numberOfRTokens:              T
-  numberOfNormalizedTokens:     T
-  numberOfDataflowNodes:        T
+  numberOfLines:                   T
+  numberOfLinesNoAutoSelection:    T
+  numberOfCharacters:              T
+  numberOfNonWhitespaceCharacters: T
+  numberOfRTokens:                 T
+  numberOfNormalizedTokens:        T
+  numberOfDataflowNodes:           T
 }
 
 export interface SummarizedPerSliceStats {
@@ -70,6 +73,7 @@ export interface SummarizedPerSliceStats {
   measurements:       Map<PerSliceMeasurements, SummarizedMeasurement>
   reduction:          Reduction<SummarizedMeasurement>
   failedToRepParse:   number
+  timesHitThreshold:  number
   sliceSize:          {
     [K in keyof SliceSizeCollection]: SummarizedMeasurement
   }
@@ -95,13 +99,18 @@ function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerSta
   [k in keyof SliceSizeCollection]: number
 }): Reduction<number | undefined> {
   return {
-    numberOfLines:                safeDivPercentage(perSlice.lines, input.numberOfLines),
-    numberOfLinesNoAutoSelection: safeDivPercentage(perSlice.lines - perSlice.autoSelected, input.numberOfLines),
-    numberOfCharacters:           safeDivPercentage(perSlice.characters, input.numberOfCharacters),
-    numberOfRTokens:              safeDivPercentage(perSlice.tokens, input.numberOfRTokens),
-    numberOfNormalizedTokens:     safeDivPercentage(perSlice.normalizedTokens, input.numberOfNormalizedTokens),
-    numberOfDataflowNodes:        safeDivPercentage(perSlice.dataflowNodes, dataflow.numberOfNodes)
+    numberOfLines:                   safeDivPercentage(perSlice.lines, input.numberOfLines),
+    numberOfLinesNoAutoSelection:    safeDivPercentage(perSlice.lines - perSlice.autoSelected, input.numberOfLines),
+    numberOfCharacters:              safeDivPercentage(perSlice.characters, input.numberOfCharacters),
+    numberOfNonWhitespaceCharacters: safeDivPercentage(perSlice.nonWhitespaceCharacters, input.numberOfNonWhitespaceCharacters),
+    numberOfRTokens:                 safeDivPercentage(perSlice.tokens, input.numberOfRTokens),
+    numberOfNormalizedTokens:        safeDivPercentage(perSlice.normalizedTokens, input.numberOfNormalizedTokens),
+    numberOfDataflowNodes:           safeDivPercentage(perSlice.dataflowNodes, dataflow.numberOfNodes)
   }
+}
+
+export function withoutWhitespace(output: string): string {
+  return output.replace(/\s/g,'')
 }
 
 
@@ -123,26 +132,31 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
   let failedOutputs = 0
 
   const sliceSize: SliceSizeCollection = {
-    lines:            [],
-    autoSelected:     [],
-    characters:       [],
-    tokens:           [],
-    normalizedTokens: [],
-    dataflowNodes:    []
+    lines:                   [],
+    autoSelected:            [],
+    characters:              [],
+    nonWhitespaceCharacters: [],
+    tokens:                  [],
+    normalizedTokens:        [],
+    dataflowNodes:           []
   }
 
   let first = true
+  let timesHitThreshold = 0
   for(const [criteria, perSliceStat] of perSliceStats) {
     report(criteria, perSliceStat)
     for(const measure of perSliceStat.measurements) {
       collect.get(measure[0]).push(Number(measure[1]))
     }
     sizeOfSliceCriteria.push(perSliceStat.slicingCriteria.length)
+    timesHitThreshold += perSliceStat.timesHitThreshold > 0 ? 1 : 0
     const { code: output, autoSelected } = perSliceStat.reconstructedCode
     sliceSize.autoSelected.push(autoSelected)
     const lines = output.split('\n').length
     sliceSize.lines.push(lines)
     sliceSize.characters.push(output.length)
+    const nonWhitespace = withoutWhitespace(output).length
+    sliceSize.nonWhitespaceCharacters.push(nonWhitespace)
     // reparse the output to get the number of tokens
     try {
       // there seem to be encoding issues, therefore, we dump to a temp file
@@ -164,12 +178,13 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
       sliceSize.tokens.push(numberOfRTokens)
 
       reductions.push(calculateReductionForSlice(stats.input, stats.dataflow, {
-        lines:            lines,
-        characters:       output.length,
-        autoSelected:     autoSelected,
-        tokens:           numberOfRTokens,
-        normalizedTokens: numberOfNormalizedTokens,
-        dataflowNodes:    perSliceStat.numberOfDataflowNodesSliced
+        lines:                   lines,
+        characters:              output.length,
+        nonWhitespaceCharacters: nonWhitespace,
+        autoSelected:            autoSelected,
+        tokens:                  numberOfRTokens,
+        normalizedTokens:        numberOfNormalizedTokens,
+        dataflowNodes:           perSliceStat.numberOfDataflowNodesSliced
       }))
     } catch(e: unknown) {
       console.error(`    ! Failed to re-parse the output of the slicer for ${JSON.stringify(criteria)}`) //, e
@@ -196,21 +211,24 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
       sliceCriteriaSizes: summarizeMeasurement(sizeOfSliceCriteria),
       measurements:       summarized,
       failedToRepParse:   failedOutputs,
+      timesHitThreshold,
       reduction:          {
-        numberOfLines:                summarizeMeasurement(reductions.map(r => r.numberOfLines).filter(isNotUndefined)),
-        numberOfLinesNoAutoSelection: summarizeMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection).filter(isNotUndefined)),
-        numberOfCharacters:           summarizeMeasurement(reductions.map(r => r.numberOfCharacters).filter(isNotUndefined)),
-        numberOfRTokens:              summarizeMeasurement(reductions.map(r => r.numberOfRTokens).filter(isNotUndefined)),
-        numberOfNormalizedTokens:     summarizeMeasurement(reductions.map(r => r.numberOfNormalizedTokens).filter(isNotUndefined)),
-        numberOfDataflowNodes:        summarizeMeasurement(reductions.map(r => r.numberOfDataflowNodes).filter(isNotUndefined))
+        numberOfLines:                   summarizeMeasurement(reductions.map(r => r.numberOfLines).filter(isNotUndefined)),
+        numberOfLinesNoAutoSelection:    summarizeMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection).filter(isNotUndefined)),
+        numberOfCharacters:              summarizeMeasurement(reductions.map(r => r.numberOfCharacters).filter(isNotUndefined)),
+        numberOfNonWhitespaceCharacters: summarizeMeasurement(reductions.map(r => r.numberOfNonWhitespaceCharacters).filter(isNotUndefined)),
+        numberOfRTokens:                 summarizeMeasurement(reductions.map(r => r.numberOfRTokens).filter(isNotUndefined)),
+        numberOfNormalizedTokens:        summarizeMeasurement(reductions.map(r => r.numberOfNormalizedTokens).filter(isNotUndefined)),
+        numberOfDataflowNodes:           summarizeMeasurement(reductions.map(r => r.numberOfDataflowNodes).filter(isNotUndefined))
       },
       sliceSize: {
-        lines:            summarizeMeasurement(sliceSize.lines),
-        characters:       summarizeMeasurement(sliceSize.characters),
-        autoSelected:     summarizeMeasurement(sliceSize.autoSelected),
-        tokens:           summarizeMeasurement(sliceSize.tokens),
-        normalizedTokens: summarizeMeasurement(sliceSize.normalizedTokens),
-        dataflowNodes:    summarizeMeasurement(sliceSize.dataflowNodes)
+        lines:                   summarizeMeasurement(sliceSize.lines),
+        characters:              summarizeMeasurement(sliceSize.characters),
+        nonWhitespaceCharacters: summarizeMeasurement(sliceSize.nonWhitespaceCharacters),
+        autoSelected:            summarizeMeasurement(sliceSize.autoSelected),
+        tokens:                  summarizeMeasurement(sliceSize.tokens),
+        normalizedTokens:        summarizeMeasurement(sliceSize.normalizedTokens),
+        dataflowNodes:           summarizeMeasurement(sliceSize.dataflowNodes)
       }
     }
   }
@@ -247,6 +265,8 @@ export interface UltimateSlicerStats {
   perSliceMeasurements: Map<PerSliceMeasurements, SummarizedMeasurement>
   /** sum */
   failedToRepParse:     number
+  /** sum */
+  timesHitThreshold:    number
   reduction:            Reduction<SummarizedMeasurement>
   input:                SlicerStatsInput<SummarizedMeasurement>
   dataflow:             SlicerStatsDataflow<SummarizedMeasurement>
@@ -259,6 +279,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
   const inputs: SlicerStatsInput[] = []
   const dataflows: SlicerStatsDataflow[] = []
   let failedToRepParse = 0
+  let timesHitThreshold = 0
   let totalSlices = 0
 
   for(const stat of stats) {
@@ -273,6 +294,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
     dataflows.push(stat.dataflow)
     failedToRepParse += stat.perSliceMeasurements.failedToRepParse
     totalSlices += stat.perSliceMeasurements.numberOfSlices
+    timesHitThreshold += stat.perSliceMeasurements.timesHitThreshold
   }
 
   return {
@@ -285,19 +307,22 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
       [...perSliceMeasurements.entries()].map(([k, v]) => [k, summarizeSummarizedMeasurement(v)])
     ),
     failedToRepParse,
+    timesHitThreshold,
     reduction: {
-      numberOfDataflowNodes:        summarizeSummarizedMeasurement(reductions.map(r => r.numberOfDataflowNodes)),
-      numberOfLines:                summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLines)),
-      numberOfCharacters:           summarizeSummarizedMeasurement(reductions.map(r => r.numberOfCharacters)),
-      numberOfLinesNoAutoSelection: summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection)),
-      numberOfNormalizedTokens:     summarizeSummarizedMeasurement(reductions.map(r => r.numberOfNormalizedTokens)),
-      numberOfRTokens:              summarizeSummarizedMeasurement(reductions.map(r => r.numberOfRTokens)),
+      numberOfDataflowNodes:           summarizeSummarizedMeasurement(reductions.map(r => r.numberOfDataflowNodes)),
+      numberOfLines:                   summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLines)),
+      numberOfCharacters:              summarizeSummarizedMeasurement(reductions.map(r => r.numberOfCharacters)),
+      numberOfNonWhitespaceCharacters: summarizeSummarizedMeasurement(reductions.map(r => r.numberOfNonWhitespaceCharacters)),
+      numberOfLinesNoAutoSelection:    summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection)),
+      numberOfNormalizedTokens:        summarizeSummarizedMeasurement(reductions.map(r => r.numberOfNormalizedTokens)),
+      numberOfRTokens:                 summarizeSummarizedMeasurement(reductions.map(r => r.numberOfRTokens)),
     },
     input: {
-      numberOfLines:            summarizeMeasurement(inputs.map(i => i.numberOfLines)),
-      numberOfCharacters:       summarizeMeasurement(inputs.map(i => i.numberOfCharacters)),
-      numberOfRTokens:          summarizeMeasurement(inputs.map(i => i.numberOfRTokens)),
-      numberOfNormalizedTokens: summarizeMeasurement(inputs.map(i => i.numberOfNormalizedTokens))
+      numberOfLines:                   summarizeMeasurement(inputs.map(i => i.numberOfLines)),
+      numberOfCharacters:              summarizeMeasurement(inputs.map(i => i.numberOfCharacters)),
+      numberOfNonWhitespaceCharacters: summarizeMeasurement(inputs.map(i => i.numberOfNonWhitespaceCharacters)),
+      numberOfRTokens:                 summarizeMeasurement(inputs.map(i => i.numberOfRTokens)),
+      numberOfNormalizedTokens:        summarizeMeasurement(inputs.map(i => i.numberOfNormalizedTokens))
     },
     dataflow: {
       numberOfNodes:               summarizeMeasurement(dataflows.map(d => d.numberOfNodes)),

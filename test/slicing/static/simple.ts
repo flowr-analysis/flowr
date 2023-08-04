@@ -10,6 +10,49 @@ describe('Simple', withShell(shell => {
     assertSliced('if(TRUE)', shell, 'if(TRUE) { x <- 3 } else { x <- 4}\nx', ['2@x'], 'if(TRUE) {\n    x <- 3\n}\nx')
     assertSliced('if(FALSE)', shell, 'if(FALSE) { x <- 3 } else { x <- 4}\nx', ['2@x'], 'if(FALSE) { } else {\n    x <- 4\n}\nx')
   })
+  describe('Independent Control-Flow', () => {
+    assertSliced('For-Loop', shell, `
+x <- 1
+for(i in 1:10) {
+  x <- x * 2
+}
+cat(x)
+    `, ['6@x'], 'x <- 1\nfor(i in 1:10) x <- x * 2\ncat(x)')
+    assertSliced('While-Loop', shell, `
+x <- 1
+while(i > 3) {
+  x <- x * 2
+}
+cat(x)
+    `, ['6@x'], 'x <- 1\nwhile(i > 3) x <- x * 2\ncat(x)')
+
+    // urgh that is fragile
+    assertSliced('If-Then', shell, `
+x <- 1
+if(i > 3) {
+    x <- x * 2
+}
+cat(x)
+    `, ['6@x'], `x <- 1
+if(i > 3) {
+    x <- x * 2
+}
+cat(x)`)
+
+    assertSliced('Independent If-Then with extra requirements', shell, `
+x <- 1
+i <- 3
+if(i > 3) {
+    x <- x * 2
+}
+cat(x)
+    `, ['7@x'], `x <- 1
+i <- 3
+if(i > 3) {
+    x <- x * 2
+}
+cat(x)`)
+  })
   describe('Access', () => {
     assertSliced('Constant', shell, 'a <- 4\na <- list(1,2)\na[3]', ['3@a'], 'a <- list(1,2)\na[3]')
     assertSliced('Variable', shell, 'i <- 4\na <- list(1,2)\na[i]', ['3@a'], 'i <- 4\na <- list(1,2)\na[i]')

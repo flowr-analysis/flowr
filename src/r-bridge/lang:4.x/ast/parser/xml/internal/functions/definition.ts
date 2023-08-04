@@ -3,11 +3,11 @@ import { NamedXmlBasedJson } from '../../input-format'
 import { Type, RParameter, RFunctionDefinition } from '../../../../model'
 import { parseLog } from '../../parser'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import { retrieveMetaStructure } from '../meta'
+import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { guard, isNotUndefined } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
-import { parseBasedOnType } from '../structure'
-import { tryToParseParameter } from './parameter'
+import { normalizeBasedOnType } from '../structure'
+import { tryNormalizeParameter } from './parameter'
 import { log } from '../../../../../../../util/log'
 
 /**
@@ -18,7 +18,7 @@ import { log } from '../../../../../../../util/log'
  *
  * @returns The parsed {@link RFunctionDefinition} or `undefined` if the given construct is not a function definition
  */
-export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionDefinition | undefined {
+export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionDefinition | undefined {
   const fnBase = mappedWithName[0]
   if(fnBase.name !== Type.FunctionDefinition && fnBase.name !== Type.LambdaFunctionDefinition) {
     parseLog.trace(`expected function definition to be identified by keyword, yet received ${fnBase.name}`)
@@ -40,7 +40,7 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
 
   parseLog.trace(`function definition has ${splitParameters.length} parameters (by comma split)`)
 
-  const parameters: (undefined | RParameter)[] = splitParameters.map(x => tryToParseParameter(data, x))
+  const parameters: (undefined | RParameter)[] = splitParameters.map(x => tryNormalizeParameter(data, x))
 
   if(parameters.some(p => p === undefined)) {
     log.error(`function had unexpected unknown parameters: ${JSON.stringify(parameters.filter(isNotUndefined))}, aborting.`)
@@ -52,7 +52,7 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
   const bodyStructure = mappedWithName.slice(closingParenIndex + 1)
   guard(bodyStructure.length === 1, () => `expected function body to be unique, yet received ${bodyStructure.length}`)
 
-  const body = parseBasedOnType(data, bodyStructure)
+  const body = normalizeBasedOnType(data, bodyStructure)
   guard(body.length === 1, () => `expected function body to yield one normalized expression, but ${body.length}`)
 
 
@@ -61,7 +61,7 @@ export function tryToParseFunctionDefinition(data: ParserData, mappedWithName: N
     location,
     lexeme:     content,
     parameters: parameters as RParameter[],
-    body:       body[0],
+    body:       ensureExpressionList(body[0]),
     info:       {
       // TODO: include children etc.
       fullRange:        data.currentRange,

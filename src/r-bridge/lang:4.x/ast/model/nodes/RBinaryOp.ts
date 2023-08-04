@@ -6,7 +6,7 @@ import { BinaryOperatorFlavor } from "../operators"
 export interface RBinaryOp<Info = NoInfo> extends Base<Info>, Location {
   readonly type:   Type.BinaryOp;
   readonly flavor: BinaryOperatorFlavor;
-  op:              string;
+  operator:        string;
   lhs:             RNode<Info>;
   rhs:             RNode<Info>;
 }

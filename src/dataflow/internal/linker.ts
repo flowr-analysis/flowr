@@ -2,13 +2,18 @@ import {
   DataflowGraph,
   DataflowGraphNodeFunctionCall,
   DataflowGraphNodeInfo,
-  DataflowScopeName
+  DataflowScopeName, FunctionArgument, LocalScope, NamedFunctionArgument, PositionalFunctionArgument
 } from '../graph'
-import { BuiltIn, IdentifierReference, REnvironmentInformation, resolveByName } from '../environments'
+import {
+  BuiltIn,
+  IdentifierReference,
+  REnvironmentInformation,
+  resolveByName
+} from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { log } from '../../util/log'
-import { NodeId } from '../../r-bridge'
+import { DecoratedAstMap, NodeId, ParentInformation, RParameter, Type } from '../../r-bridge'
 import { slicerLogger } from '../../slicing'
 import { dataflowLogger } from '../index'
 
@@ -55,38 +60,135 @@ function specialReturnFunction(info: DataflowGraphNodeFunctionCall, graph: Dataf
   }
 }
 
+
+// TODO: in some way we need to remove the links for the default argument if it is given by the user on call - this could be done with 'when' but for now we do not do it as we expect such situations to be rare
+export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
+  const nameArgMap = new Map<string, IdentifierReference | '<value>'>(args.filter(Array.isArray) as NamedFunctionArgument[])
+  const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.map(p => [p.name.content, p]))
+
+  const specialDotParameter = params.find(p => p.special)
+
+  // all parameters matched by name
+  const matchedParameters = new Set<string>()
+
+
+  // first map names
+  for(const [name, arg] of nameArgMap) {
+    if(arg === '<value>') {
+      dataflowLogger.trace(`skipping value argument for ${name}`)
+      continue
+    }
+    const param = nameParamMap.get(name)
+    if(param !== undefined) {
+      dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`)
+      graph.addEdge(arg.nodeId, param.name.info.id, 'defines-on-call', 'always')
+      matchedParameters.add(name)
+    } else if(specialDotParameter !== undefined) {
+      dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`)
+      graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, 'defines-on-call', 'always')
+    }
+  }
+
+  const remainingParameter = params.filter(p => !matchedParameters.has(p.name.content))
+  const remainingArguments = args.filter(a => !Array.isArray(a)) as (PositionalFunctionArgument | 'empty')[]
+
+  // TODO ...
+  for(let i = 0; i < remainingArguments.length; i++) {
+    const arg: PositionalFunctionArgument | 'empty' = remainingArguments[i]
+    if(arg === '<value>' || arg === 'empty') {
+      dataflowLogger.trace(`skipping value argument for ${i}`)
+      continue
+    }
+    if(remainingParameter.length <= i) {
+      if(specialDotParameter !== undefined) {
+        dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to dot-dot-dot parameter`)
+        graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, 'defines-on-call', 'always')
+      } else {
+        dataflowLogger.error(`skipping argument ${i} as there is no corresponding parameter - R should block that`)
+      }
+      continue
+    }
+    const param = remainingParameter[i]
+    dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to parameter "${param.name.content}"`)
+    graph.addEdge(arg.nodeId, param.name.info.id, 'defines-on-call', 'always')
+  }
+}
+
+
+function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, functionCallName: string, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): void {
+  // we get them by just choosing the rhs of the definition - TODO: this should be improved - maybe by a second call track
+  const linkedFunction = idMap.get(targetId)
+  if(linkedFunction === undefined) {
+    dataflowLogger.trace(`no function definition found for ${functionCallName} (${functionRootId})`)
+    return
+  }
+
+  if (linkedFunction.type !== Type.FunctionDefinition) {
+    dataflowLogger.trace(`function call definition base ${functionCallName} does not lead to a function definition (${functionRootId}) but got ${linkedFunction.type}`)
+    return
+  }
+  dataflowLogger.trace(`linking arguments for ${functionCallName} (${functionRootId}) to ${JSON.stringify(linkedFunction.location)}`)
+  linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph)
+}
+
+
+function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphNodeFunctionCall, idMap: DecoratedAstMap, nodeGraph: DataflowGraph, thisGraph: DataflowGraph, calledFunctionDefinitions: {
+  functionCall: NodeId;
+  called:       DataflowGraphNodeInfo[]
+}[]) {
+  const edges = graph.get(id, true)
+  guard(edges !== undefined, () => `id ${id} must be present in graph`)
+
+  const functionDefinitionReadIds = [...edges[1]].filter(([_, e]) => e.types.has('reads') || e.types.has('calls') || e.types.has('relates')).map(([target, _]) => target)
+
+  const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
+
+  for (const def of functionDefs.values()) {
+    guard(def.tag === 'function-definition', () => `expected function definition, but got ${def.tag}`)
+
+    // TODO: this is currently just a temporary hack, we need a clean way to separate closures that apply after the function body and the reads that apply within the body
+    if(info.environment !== undefined) {
+      // for each open ingoing reference, try to resolve it here, and if so add a read edge from the call to signal that it reads it
+      for (const ingoing of def.subflow.in) {
+        const defs = resolveByName(ingoing.name, LocalScope, info.environment)
+        if (defs === undefined) {
+          continue
+        }
+        for (const def of defs) {
+          graph.addEdge(id, def, 'reads', 'always')
+        }
+      }
+    }
+
+    const exitPoints = def.exitPoints
+    for (const exitPoint of exitPoints) {
+      graph.addEdge(id, exitPoint, 'returns', 'always')
+    }
+    dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${def.name}`)
+    graph.addEdge(id, def.id, 'calls', 'always')
+    linkFunctionCallArguments(def.id, idMap, def.name, id, info.args, graph)
+  }
+  if (nodeGraph === thisGraph) {
+    calledFunctionDefinitions.push({ functionCall: id, called: [...functionDefs.values()] })
+  }
+}
+
 /**
- * Returns the called functions within the current graph, which can be used to merge the environments with the call
+ * Returns the called functions within the current graph, which can be used to merge the environments with the call.
+ * Furthermore, it links the corresponding arguments.
  */
-export function linkFunctionCallExitPointsAndCalls(graph: DataflowGraph, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] {
+export function linkFunctionCalls(graph: DataflowGraph, idMap: DecoratedAstMap, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] {
   const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] = []
   for(const [id, info, nodeGraph] of functionCalls) {
+    guard(info.tag === 'function-call', () => `encountered non-function call in function call linkage ${JSON.stringify(info)}`)
+
     // TODO: special handling for others
-    if(info.tag === 'function-call' && info.name === 'return') {
+    if(info.name === 'return') {
       specialReturnFunction(info, graph, id)
       graph.addEdge(id, BuiltIn, 'calls', 'always')
       continue
     }
-
-    const edges = graph.get(id, true)
-    guard(edges !== undefined, () => `id ${id} must be present in graph`)
-
-    const functionDefinitionReadIds = [...edges[1]].filter(([_, e]) => e.types.has('read') || e.types.has('calls') || e.types.has('relates')).map(([target, _]) => target)
-
-    const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
-
-    for(const defs of functionDefs.values()) {
-      guard(defs.tag === 'function-definition', () => `expected function definition, but got ${defs.tag}`)
-      const exitPoints = defs.exitPoints
-      for(const exitPoint of exitPoints) {
-        graph.addEdge(id, exitPoint, 'returns', 'always')
-      }
-      dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${defs.name}`)
-      graph.addEdge(id, defs.id, 'calls', 'always')
-    }
-    if(nodeGraph === thisGraph) {
-      calledFunctionDefinitions.push({ functionCall: id,  called: [...functionDefs.values()] })
-    }
+    linkFunctionCall(graph, id, info, idMap, nodeGraph, thisGraph, calledFunctionDefinitions)
   }
   return calledFunctionDefinitions
 }
@@ -120,7 +222,7 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
       potential.push(...returnEdges.map(([target]) => target))
       continue
     }
-    const followEdges = outgoingEdges.filter(([_, e]) => e.types.has('read') || e.types.has('defined-by') || e.types.has('defined-by-on-call') || e.types.has('relates') || e.types.has('calls'))
+    const followEdges = outgoingEdges.filter(([_, e]) => e.types.has('reads') || e.types.has('defined-by') || e.types.has('defined-by-on-call') || e.types.has('relates'))
 
 
     if(currentInfo[0].subflow !== undefined) {
@@ -157,7 +259,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReferen
     } else {
       for (const target of probableTarget) {
         // we can stick with maybe even if readId.attribute is always
-        graph.addEdge(bodyInput, target, 'read', undefined, true)
+        graph.addEdge(bodyInput, target, 'reads', undefined, true)
       }
     }
   }
@@ -185,7 +287,7 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
     for(const out of lastOutgoing.values()) {
       if(out.name === name) {
         for(const target of targets) {
-          graph.addEdge(target.nodeId, out.nodeId, 'read', 'maybe')
+          graph.addEdge(target.nodeId, out.nodeId, 'reads', 'maybe')
         }
       }
     }

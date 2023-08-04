@@ -71,6 +71,7 @@ function mapPerSliceStats(k: SlicingCriteria, v: PerSliceStats): [SlicingCriteri
   return [k, {
     reconstructedCode: v.reconstructedCode,
     slicingCriteria:   v.slicingCriteria,
+    timesHitThreshold: v.timesHitThreshold,
     measurements:      new Map(
       (v.measurements as unknown as [PerSliceMeasurements, string][])
         .map(([k, v]) => {
@@ -180,9 +181,10 @@ function ultimateSummarize() {
             new Map(
               (got.summarize.perSliceMeasurements.measurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][])
             ),
-          reduction:        got.summarize.perSliceMeasurements.reduction,
-          failedToRepParse: got.summarize.perSliceMeasurements.failedToRepParse,
-          sliceSize:        got.summarize.perSliceMeasurements.sliceSize
+          reduction:         got.summarize.perSliceMeasurements.reduction,
+          timesHitThreshold: got.summarize.perSliceMeasurements.timesHitThreshold,
+          failedToRepParse:  got.summarize.perSliceMeasurements.failedToRepParse,
+          sliceSize:         got.summarize.perSliceMeasurements.sliceSize
         }
       }
     }

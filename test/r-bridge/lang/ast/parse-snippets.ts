@@ -2,6 +2,7 @@ import { exprList, numVal } from "../../../helper/ast-builder"
 import { assertAst, withShell } from "../../../helper/shell"
 import { rangeFrom } from "../../../../src/util/range"
 import { Type } from '../../../../src/r-bridge'
+import { ensureExpressionList } from '../../../../src/r-bridge/lang:4.x/ast/parser/xml/internal'
 
 describe("Parse larger snippets", withShell((shell) => {
   describe("if-then, assignments, symbols, and comparisons", () => {
@@ -24,7 +25,7 @@ max
           type:     Type.BinaryOp,
           flavor:   "assignment",
           lexeme:   "<-",
-          op:       "<-",
+          operator: "<-",
           location: rangeFrom(2, 3, 2, 4),
           info:     {},
           lhs:      {
@@ -47,7 +48,7 @@ max
           type:     Type.BinaryOp,
           flavor:   "assignment",
           lexeme:   "=",
-          op:       "=",
+          operator: "=",
           location: rangeFrom(3, 3, 3, 3),
           info:     {},
           lhs:      {
@@ -75,7 +76,7 @@ max
             type:     Type.BinaryOp,
             flavor:   "comparison",
             lexeme:   ">",
-            op:       ">",
+            operator: ">",
             location: rangeFrom(4, 7, 4, 7),
             info:     {},
             lhs:      {
@@ -105,7 +106,7 @@ max
                 type:     Type.BinaryOp,
                 flavor:   "assignment",
                 lexeme:   "<<-",
-                op:       "<<-",
+                operator: "<<-",
                 location: rangeFrom(5, 7, 5, 9),
                 info:     {},
                 lhs:      {
@@ -129,7 +130,7 @@ max
                 type:     Type.BinaryOp,
                 flavor:   "assignment",
                 lexeme:   "->",
-                op:       "->",
+                operator: "->",
                 location: rangeFrom(6, 5, 6, 6),
                 info:     {},
                 lhs:      {
@@ -150,11 +151,11 @@ max
               },
             ],
           },
-          otherwise: {
+          otherwise: ensureExpressionList({
             type:     Type.BinaryOp,
             flavor:   "assignment",
             lexeme:   "->>",
-            op:       "->>",
+            operator: "->>",
             location: rangeFrom(8, 5, 8, 7),
             info:     {},
             lhs:      {
@@ -173,7 +174,7 @@ max
               location:  rangeFrom(8, 9, 8, 11),
               info:      {}
             },
-          },
+          }),
         },
         {
           type:      Type.Symbol,

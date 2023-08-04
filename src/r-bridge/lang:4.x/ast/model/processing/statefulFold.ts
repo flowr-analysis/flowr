@@ -25,10 +25,14 @@ import {
   RBreak,
   RParameter,
   RArgument,
-  RFunctionDefinition, RAccess, RModelFormulaBinaryOp, RModelFormulaUnaryOp, RLineDirective
+  RFunctionDefinition,
+  RAccess,
+  RModelFormulaBinaryOp,
+  RModelFormulaUnaryOp,
+  RLineDirective,
+  RPipe
 } from '../nodes'
 import { RNode } from '../model'
-import { RPipe } from '../nodes'
 
 
 /**
@@ -122,7 +126,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
     case Type.Repeat:
       return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down)
     case Type.FunctionCall:
-      return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.flavour === 'named' ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => param === undefined ? param : foldAstStateful(param, down, folds)), down)
+      return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.flavor === 'named' ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => param === undefined ? param : foldAstStateful(param, down, folds)), down)
     case Type.FunctionDefinition:
       return folds.functions.foldFunctionDefinition(ast, ast.parameters.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down)
     case Type.Parameter:

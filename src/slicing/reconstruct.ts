@@ -295,6 +295,8 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 
   if(parameter.defaultValue !== undefined && name.length > 0) {
     return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`)
+  } else if(parameter.defaultValue !== undefined && name.length === 0) {
+    return plain(getLexeme(parameter.defaultValue))
   } else {
     return name
   }

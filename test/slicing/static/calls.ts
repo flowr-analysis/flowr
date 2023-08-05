@@ -90,9 +90,9 @@ a(x = 3)`
     assertSliced('Must work for same named arguments too', shell, 'a <- 3\nb <- foo(a=a)', ['2@b'], 'a <- 3\nb <- foo(a=a)')
 
     assertSliced('Must work for same named arguments nested', shell, `
-f <- function(some_variable="hello") { 
+f <- function(some_variable="hello") {
   result <- some::other(some_variable=some_variable)
-  result 
+  result
 }
     `, ['4@result'], `function(some_variable="hello") {
     result <- some::other(some_variable=some_variable)

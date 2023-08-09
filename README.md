@@ -80,7 +80,7 @@ The (sorted) results should be versioned and can be found in [scripts/top-r-down
    For this, you can use the [scripts/download-top-pkg-sources.R](scripts/download-top-pkg-sources.R) script.
    But **make sure**, that you set the `to` variable to the output path you want.
    ```shell
-    cd scripts/ Rscript download-top-pkg-sources.R
+    cd scripts/ && Rscript download-top-pkg-sources.R
    ```
    Downloading and extracting the sources can take a while.
 

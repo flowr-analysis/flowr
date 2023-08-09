@@ -68,7 +68,7 @@ npm run stats -- --help
 
 Each step assumes, that you start in the root directory of this repository. You need a working installation of *R* and *npm*.
 This mainly describes how to extract the statistics from the CRAN package sources, however, starting from step 3,
-the steps are basically the same and only differ in the paths that have to be supplied (the social science sources are attached alongside the master's thesis submission).
+the steps are basically the same and only differ in the paths that have to be supplied (the social science sources are attached alongside the [master's thesis release](https://github.com/Code-Inspect/flowr/releases/tag/v1.0.0)).
 
 1. If you want to **update** the set of packages, use the [scripts/top-downloads.R](scripts/top-downloads.R) script and potentially modify the package limit by setting `N` to a different value.
 The (sorted) results should be versioned and can be found in [scripts/top-r-downloads.txt](scripts/top-r-downloads.txt).

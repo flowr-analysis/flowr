@@ -15,7 +15,7 @@ export interface UsedFunction {
 
 // TODO: get corresponding package with getNamespaceExports etc?
 export interface FunctionUsageInfo extends FeatureInfo {
-  allCalls:                   number
+  allFunctionCalls:           number
   /** abs, expm1, tanpi, ... */
   mathFunctions:              number
   /** nargs, missing, is.character, ... */
@@ -42,7 +42,7 @@ export interface FunctionUsageInfo extends FeatureInfo {
 }
 
 const initialFunctionUsageInfo = (): FunctionUsageInfo => ({
-  allCalls:                   0,
+  allFunctionCalls:           0,
   mathFunctions:              0,
   programmingFunctions:       0,
   sessionManagementFunctions: 0,
@@ -122,7 +122,7 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
   process(existing: FunctionUsageInfo, input: Document, filepath: string | undefined): FunctionUsageInfo {
     const allFunctionCalls = functionCallQuery.select({ node: input })
 
-    existing.allCalls += allFunctionCalls.length
+    existing.allFunctionCalls += allFunctionCalls.length
     append(this.name, 'allFunctionCalls', allFunctionCalls, filepath)
 
     const names = allFunctionCalls.map(extractNodeContent)

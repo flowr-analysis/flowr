@@ -13,7 +13,7 @@ describe('Used Function Calls', withShell(shell => {
       name:     'one call',
       code:     'b()',
       expected: {
-        allCalls: 1
+        allFunctionCalls: 1
       }
     }
   ])

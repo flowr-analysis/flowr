@@ -46,3 +46,5 @@ With this, the artificial message
  
 represents the addition of a new feature and the fix of a corresponding test.  
 
+To skip the `ci`, you can prefix the commit message with `[skip ci]`.
+

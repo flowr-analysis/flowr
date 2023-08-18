@@ -30,9 +30,11 @@
             "FunctionDeclaration": {
                "parameters": "first"
             },
+            "ObjectExpression": 1,
             "SwitchCase": 1
          }
       ],
+      "@typescript-eslint/indent": "error",
       "no-mixed-spaces-and-tabs": ["error", "smart-tabs"],
       "@typescript-eslint/non-nullable-type-assertion-style": "off",
       "@typescript-eslint/no-unsafe-enum-comparison": "off",

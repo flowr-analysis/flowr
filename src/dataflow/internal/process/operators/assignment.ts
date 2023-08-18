@@ -98,9 +98,11 @@ function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInfo
 	return writeNodes
 }
 
-function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>,
-																																																														lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>,
-																																																														data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
+function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
+	op: RAssignmentOp<OtherInfo & ParentInformation>,
+	lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+) {
 	// what is written/read additionally is based on lhs/rhs - assignments read written variables as well
 	const read = [...lhs.in, ...rhs.in]
 	const { source, target, global, swap } = identifySourceAndTarget(op, lhs, rhs)

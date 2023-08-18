@@ -5,8 +5,8 @@
  */
 import { MergeableRecord } from '../../util/objects'
 import {
-  NodeId,
-  RNodeWithParent
+	NodeId,
+	RNodeWithParent
 } from '../../r-bridge'
 import { SingleSlicingCriterion, SlicingCriteria } from './parse'
 import { guard } from '../../util/assert'
@@ -41,15 +41,15 @@ export interface SlicingCriteriaFilter extends MergeableRecord {
  * If there are not enough matching nodes within the ast, this will return *no* slicing criteria!
  */
 export function* collectAllSlicingCriteria<OtherInfo>(ast: RNodeWithParent<OtherInfo>, filter: Readonly<SlicingCriteriaFilter>): Generator<SlicingCriteria, void, void> {
-  guard(filter.minimumSize >= 1, `Minimum size must be at least 1, but was ${filter.minimumSize}`)
-  guard(filter.maximumSize >= filter.minimumSize, `Maximum size must be at least minimum size, but was ${filter.maximumSize} < ${filter.minimumSize}`)
-  const potentialSlicingNodes = filter.collectAll(ast)
+	guard(filter.minimumSize >= 1, `Minimum size must be at least 1, but was ${filter.minimumSize}`)
+	guard(filter.maximumSize >= filter.minimumSize, `Maximum size must be at least minimum size, but was ${filter.maximumSize} < ${filter.minimumSize}`)
+	const potentialSlicingNodes = filter.collectAll(ast)
 
-  if(potentialSlicingNodes.length < filter.minimumSize) {
-    return
-  }
+	if(potentialSlicingNodes.length < filter.minimumSize) {
+		return
+	}
 
-  for(const combination of getUniqueCombinationsOfSize(potentialSlicingNodes, filter.minimumSize, filter.maximumSize)) {
-    yield combination.map(n => `$${n}` as SingleSlicingCriterion)
-  }
+	for(const combination of getUniqueCombinationsOfSize(potentialSlicingNodes, filter.minimumSize, filter.maximumSize)) {
+		yield combination.map(n => `$${n}` as SingleSlicingCriterion)
+	}
 }

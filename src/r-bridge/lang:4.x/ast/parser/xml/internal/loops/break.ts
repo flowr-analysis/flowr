@@ -6,20 +6,20 @@ import { retrieveMetaStructure } from '../meta'
 import { RBreak, Type } from '../../../../model'
 
 export function normalizeBreak(data: ParserData, obj: XmlBasedJson): RBreak {
-  parseLog.debug(`[break] try: ${JSON.stringify(obj)}`)
-  obj = executeHook(data.hooks.loops.onBreak.before, data, obj)
+	parseLog.debug(`[break] try: ${JSON.stringify(obj)}`)
+	obj = executeHook(data.hooks.loops.onBreak.before, data, obj)
 
-  const { location, content } = retrieveMetaStructure(data.config, obj)
+	const { location, content } = retrieveMetaStructure(data.config, obj)
 
-  const result: RBreak = {
-    type:   Type.Break,
-    location,
-    lexeme: content,
-    info:   {
-      fullRange:        location,
-      additionalTokens: [],
-      fullLexeme:       content
-    }
-  }
-  return executeHook(data.hooks.loops.onBreak.after, data, result)
+	const result: RBreak = {
+		type:   Type.Break,
+		location,
+		lexeme: content,
+		info:   {
+			fullRange:        location,
+			additionalTokens: [],
+			fullLexeme:       content
+		}
+	}
+	return executeHook(data.hooks.loops.onBreak.after, data, result)
 }

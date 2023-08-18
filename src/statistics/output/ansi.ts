@@ -40,34 +40,34 @@ export interface OutputFormatter {
 }
 
 export const voidFormatter: OutputFormatter = new class implements OutputFormatter {
-  public format(input: string): string {
-    return input
-  }
+	public format(input: string): string {
+		return input
+	}
 }
 
 export const escape = '\x1b['
 const colorSuffix = 'm'
 export const ansiFormatter = {
-  reset(): string {
-    return `${escape}0${colorSuffix}`
-  },
+	reset(): string {
+		return `${escape}0${colorSuffix}`
+	},
 
-  format(input: string, options?: FormatOptions): string {
-    return `${this.getFormatString(options)}${input}${this.reset()}`
-  },
+	format(input: string, options?: FormatOptions): string {
+		return `${this.getFormatString(options)}${input}${this.reset()}`
+	},
 
-  getFormatString(options?: FormatOptions): string {
-    if(options === undefined) {
-      return ''
-    }
-    const colorString = 'color' in options ? `${options.effect + options.color}` : ''
-    const weightString = 'weight' in options ? `${options.weight}` : ''
-    return `${escape}${colorString}${weightString !== "" ? ';' : ''}${weightString}${colorSuffix}`
-  }
+	getFormatString(options?: FormatOptions): string {
+		if(options === undefined) {
+			return ''
+		}
+		const colorString = 'color' in options ? `${options.effect + options.color}` : ''
+		const weightString = 'weight' in options ? `${options.weight}` : ''
+		return `${escape}${colorString}${weightString !== "" ? ';' : ''}${weightString}${colorSuffix}`
+	}
 }
 
 export let formatter: OutputFormatter = ansiFormatter
 
 export function setFormatter(setFormatter: OutputFormatter): void {
-  formatter = setFormatter
+	formatter = setFormatter
 }

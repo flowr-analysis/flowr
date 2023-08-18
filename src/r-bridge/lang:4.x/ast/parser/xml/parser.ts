@@ -20,11 +20,11 @@ export const parseLog = log.getSubLogger({ name: "ast-parser" })
  * @returns The expression list as the root of the normalized ast
  */
 export async function normalize(xmlString: string, tokenMap: XmlParserConfig['tokenMap'], hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> {
-  const config = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap })
-  const hooksWithDefaults = deepMergeObject(DEFAULT_PARSER_HOOKS, hooks) as XmlParserHooks
+	const config = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap })
+	const hooksWithDefaults = deepMergeObject(DEFAULT_PARSER_HOOKS, hooks) as XmlParserHooks
 
-  const data: ParserData = { config, hooks: hooksWithDefaults, currentRange: undefined, currentLexeme: undefined }
-  const object = await xlm2jsonObject(config, xmlString)
+	const data: ParserData = { config, hooks: hooksWithDefaults, currentRange: undefined, currentLexeme: undefined }
+	const object = await xlm2jsonObject(config, xmlString)
 
-  return parseRootObjToAst(data, object)
+	return parseRootObjToAst(data, object)
 }

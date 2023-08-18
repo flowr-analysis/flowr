@@ -17,39 +17,39 @@ const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/
  * @param obj  - The json object to extract the meta-information from
  */
 export function normalizeLineDirective(data: ParserData, obj: XmlBasedJson): RLineDirective | RComment {
-  parseLog.debug(`[line-directive]`)
-  obj = executeHook(data.hooks.other.onLineDirective.before, data, obj)
+	parseLog.debug(`[line-directive]`)
+	obj = executeHook(data.hooks.other.onLineDirective.before, data, obj)
 
-  const { location, content } = retrieveMetaStructure(data.config, obj)
-  guard(content.startsWith('#line'), 'line directive must start with #line')
-  const match = LineDirectiveRegex.exec(content)
-  let result: RLineDirective | RComment
-  if(match === null) {
-    parseLog.debug(`[line-directive] does not match the regex ${LineDirectiveRegex.source} given ${JSON.stringify(content)}`)
-    result = {
-      type:   Type.Comment,
-      location,
-      lexeme: content,
-      info:   {
-        fullRange:        data.currentRange,
-        additionalTokens: [],
-        fullLexeme:       content
-      },
-      content: content.slice(1)
-    }
-  } else {
-    result = {
-      type:   Type.LineDirective,
-      location,
-      line:   parseInt(match[1]),
-      file:   match[2],
-      lexeme: content,
-      info:   {
-        fullRange:        data.currentRange,
-        additionalTokens: [],
-        fullLexeme:       content
-      }
-    }
-  }
-  return executeHook(data.hooks.other.onLineDirective.after, data, result)
+	const { location, content } = retrieveMetaStructure(data.config, obj)
+	guard(content.startsWith('#line'), 'line directive must start with #line')
+	const match = LineDirectiveRegex.exec(content)
+	let result: RLineDirective | RComment
+	if(match === null) {
+		parseLog.debug(`[line-directive] does not match the regex ${LineDirectiveRegex.source} given ${JSON.stringify(content)}`)
+		result = {
+			type:   Type.Comment,
+			location,
+			lexeme: content,
+			info:   {
+				fullRange:        data.currentRange,
+				additionalTokens: [],
+				fullLexeme:       content
+			},
+			content: content.slice(1)
+		}
+	} else {
+		result = {
+			type:   Type.LineDirective,
+			location,
+			line:   parseInt(match[1]),
+			file:   match[2],
+			lexeme: content,
+			info:   {
+				fullRange:        data.currentRange,
+				additionalTokens: [],
+				fullLexeme:       content
+			}
+		}
+	}
+	return executeHook(data.hooks.other.onLineDirective.after, data, result)
 }

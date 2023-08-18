@@ -1,29 +1,29 @@
 import { NamedXmlBasedJson, XmlBasedJson } from './input-format'
 import {
-  RNumber,
-  NoInfo,
-  RBinaryOp,
-  RComment,
-  RForLoop,
-  RFunctionCall,
-  RIfThenElse,
-  RNode,
-  RRepeatLoop,
-  RString,
-  RUnaryOp,
-  RWhileLoop,
-  RSymbol,
-  RLogical,
-  BinaryOperatorFlavor,
-  RParameter,
-  RFunctionDefinition,
-  RArgument,
-  UnaryOperatorFlavor,
-  RBreak,
-  RNext,
-  RAccess,
-  RLineDirective,
-  RPipe
+	RNumber,
+	NoInfo,
+	RBinaryOp,
+	RComment,
+	RForLoop,
+	RFunctionCall,
+	RIfThenElse,
+	RNode,
+	RRepeatLoop,
+	RString,
+	RUnaryOp,
+	RWhileLoop,
+	RSymbol,
+	RLogical,
+	BinaryOperatorFlavor,
+	RParameter,
+	RFunctionDefinition,
+	RArgument,
+	UnaryOperatorFlavor,
+	RBreak,
+	RNext,
+	RAccess,
+	RLineDirective,
+	RPipe
 } from '../../model'
 import { RNa } from '../../../values'
 import { ParserData } from './data'
@@ -267,111 +267,111 @@ export function executeUnknownHook<T, R>(hook: (data: ParserData, input: T) => A
 const doNothing = () => undefined
 
 export const DEFAULT_PARSER_HOOKS: DeepReadonly<DeepRequired<XmlParserHooks>> = {
-  values: {
-    onNumber: {
-      before: doNothing,
-      after:  doNothing
-    },
-    onString: {
-      before: doNothing,
-      after:  doNothing
-    },
-    onSymbol: {
-      unknown: doNothing,
-      before:  doNothing,
-      after:   doNothing
-    }
-  },
-  onAccess: {
-    unknown: doNothing,
-    before:  doNothing,
-    after:   doNothing
-  },
-  other: {
-    onComment: {
-      before: doNothing,
-      after:  doNothing
-    },
-    onLineDirective: {
-      before: doNothing,
-      after:  doNothing
-    }
-  },
-  control: {
-    onIfThen: {
-      unknown: doNothing,
-      before:  doNothing,
-      after:   doNothing
-    },
-    onIfThenElse: {
-      unknown: doNothing,
-      before:  doNothing,
-      after:   doNothing
-    }
-  },
-  loops: {
-    onForLoop: {
-      unknown: doNothing,
-      before:  doNothing,
-      after:   doNothing
-    },
-    onRepeatLoop: {
-      unknown: doNothing,
-      before:  doNothing,
-      after:   doNothing
-    },
-    onWhileLoop: {
-      unknown: doNothing,
-      before:  doNothing,
-      after:   doNothing
-    },
-    onBreak: {
-      before: doNothing,
-      after:  doNothing
-    },
-    onNext: {
-      before: doNothing,
-      after:  doNothing
-    }
-  },
-  operators: {
-    onBinary: {
-      unknown: doNothing,
-      before:  doNothing,
-      after:   doNothing
-    },
-    onUnary: {
-      unknown: doNothing,
-      before:  doNothing,
-      after:   doNothing
-    }
-  },
-  functions: {
-    onFunctionDefinition: {
-      unknown: doNothing,
-      before:  doNothing,
-      after:   doNothing
-    },
-    onParameter: {
-      unknown: doNothing,
-      before:  doNothing,
-      after:   doNothing
-    },
-    onFunctionCall: {
-      unknown: doNothing,
-      before:  doNothing,
-      after:   doNothing
-    },
-    onArgument: {
-      unknown: doNothing,
-      before:  doNothing,
-      after:   doNothing
-    },
-  },
-  expression: {
-    onExpression: {
-      before: doNothing,
-      after:  doNothing
-    }
-  }
+	values: {
+		onNumber: {
+			before: doNothing,
+			after:  doNothing
+		},
+		onString: {
+			before: doNothing,
+			after:  doNothing
+		},
+		onSymbol: {
+			unknown: doNothing,
+			before:  doNothing,
+			after:   doNothing
+		}
+	},
+	onAccess: {
+		unknown: doNothing,
+		before:  doNothing,
+		after:   doNothing
+	},
+	other: {
+		onComment: {
+			before: doNothing,
+			after:  doNothing
+		},
+		onLineDirective: {
+			before: doNothing,
+			after:  doNothing
+		}
+	},
+	control: {
+		onIfThen: {
+			unknown: doNothing,
+			before:  doNothing,
+			after:   doNothing
+		},
+		onIfThenElse: {
+			unknown: doNothing,
+			before:  doNothing,
+			after:   doNothing
+		}
+	},
+	loops: {
+		onForLoop: {
+			unknown: doNothing,
+			before:  doNothing,
+			after:   doNothing
+		},
+		onRepeatLoop: {
+			unknown: doNothing,
+			before:  doNothing,
+			after:   doNothing
+		},
+		onWhileLoop: {
+			unknown: doNothing,
+			before:  doNothing,
+			after:   doNothing
+		},
+		onBreak: {
+			before: doNothing,
+			after:  doNothing
+		},
+		onNext: {
+			before: doNothing,
+			after:  doNothing
+		}
+	},
+	operators: {
+		onBinary: {
+			unknown: doNothing,
+			before:  doNothing,
+			after:   doNothing
+		},
+		onUnary: {
+			unknown: doNothing,
+			before:  doNothing,
+			after:   doNothing
+		}
+	},
+	functions: {
+		onFunctionDefinition: {
+			unknown: doNothing,
+			before:  doNothing,
+			after:   doNothing
+		},
+		onParameter: {
+			unknown: doNothing,
+			before:  doNothing,
+			after:   doNothing
+		},
+		onFunctionCall: {
+			unknown: doNothing,
+			before:  doNothing,
+			after:   doNothing
+		},
+		onArgument: {
+			unknown: doNothing,
+			before:  doNothing,
+			after:   doNothing
+		},
+	},
+	expression: {
+		onExpression: {
+			before: doNothing,
+			after:  doNothing
+		}
+	}
 } as const

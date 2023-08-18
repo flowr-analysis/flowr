@@ -35,25 +35,25 @@ export interface ClusterReport extends MergeableRecord {
  *  `undefined` is used for unknown contexts. This map allows us to reference contexts with a way shorter identifier (vs. the full file path).
  */
 export function clusterStatisticsOutput(filepath: string, contextIdMap: ClusterContextIdMap = new DefaultMap<string | undefined, NodeId>(deterministicCountingIdGenerator())): ClusterReport {
-  const lineReader = new LineByLine(filepath)
+	const lineReader = new LineByLine(filepath)
 
-  // for each value we store the context ids it was seen in (may list the same context multiple times if more often) - this serves as a counter as well
-  const valueInfoMap: ClusterValueInfoMap = new DefaultMap<string, ContextsWithCount>(() => new DefaultMap(() => 0))
-  let line
+	// for each value we store the context ids it was seen in (may list the same context multiple times if more often) - this serves as a counter as well
+	const valueInfoMap: ClusterValueInfoMap = new DefaultMap<string, ContextsWithCount>(() => new DefaultMap(() => 0))
+	let line
 
-  // eslint-disable-next-line no-cond-assign
-  while (line = lineReader.next()) {
-    const json = JSON.parse(line.toString()) as StatisticsOutputFormat
-    const contextId = contextIdMap.get(json.context)
+	// eslint-disable-next-line no-cond-assign
+	while (line = lineReader.next()) {
+		const json = JSON.parse(line.toString()) as StatisticsOutputFormat
+		const contextId = contextIdMap.get(json.context)
 
-    const value = valueInfoMap.get(json.value)
-    // step the counter accordingly
-    value.set(contextId, value.get(contextId) + 1)
-  }
+		const value = valueInfoMap.get(json.value)
+		// step the counter accordingly
+		value.set(contextId, value.get(contextId) + 1)
+	}
 
-  return {
-    filepath,
-    contextIdMap,
-    valueInfoMap
-  }
+	return {
+		filepath,
+		contextIdMap,
+		valueInfoMap
+	}
 }

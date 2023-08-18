@@ -79,37 +79,37 @@ export const OperatorDatabase: Record<StringUsedInRCode, OperatorInformationValu
 /* eslint-enable */
 
 function buildOperatorRAstCollection(operators: readonly string[]): Set<string> {
-  return new Set<string>(operators.map(op => OperatorDatabase[op].stringUsedInRAst))
+	return new Set<string>(operators.map(op => OperatorDatabase[op].stringUsedInRAst))
 }
 
 export const ArithmeticOperators: readonly string[] = Object.keys(
-  OperatorDatabase
+	OperatorDatabase
 ).filter((op) => OperatorDatabase[op].flavor === "arithmetic")
 // '**' will be treated as '^'
 export const ArithmeticOperatorsRAst = buildOperatorRAstCollection(ArithmeticOperators)
 export const ComparisonOperators: readonly string[] = Object.keys(
-  OperatorDatabase
+	OperatorDatabase
 ).filter((op) => OperatorDatabase[op].flavor === "comparison")
 export const ComparisonOperatorsRAst = buildOperatorRAstCollection(ComparisonOperators)
 export const LogicalOperators: readonly string[] = Object.keys(
-  OperatorDatabase
+	OperatorDatabase
 ).filter((op) => OperatorDatabase[op].flavor === "logical")
 export const LogicalOperatorsRAst = buildOperatorRAstCollection(LogicalOperators)
 
 export const ModelFormulaOperators: readonly string[] = Object.keys(
-  OperatorDatabase
+	OperatorDatabase
 ).filter((op) => OperatorDatabase[op].flavor === "model formula")
 export const ModelFormulaOperatorsRAst = buildOperatorRAstCollection(ModelFormulaOperators)
 
 export const Assignments: readonly string[] = Object.keys(
-  OperatorDatabase
+	OperatorDatabase
 ).filter((op) => OperatorDatabase[op].flavor === "assignment")
 export const AssignmentsRAst = buildOperatorRAstCollection(Assignments)
 
 export const Operators = [
-  ...ArithmeticOperators,
-  ...ComparisonOperators,
-  ...LogicalOperators,
+	...ArithmeticOperators,
+	...ComparisonOperators,
+	...LogicalOperators,
 ] as const
 
 export type Operator = (typeof Operators)[number];

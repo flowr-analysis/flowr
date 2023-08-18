@@ -20,39 +20,39 @@ import { normalizeLineDirective } from '../other/line-directive'
  *          Otherwise, returns the parsed element.
  */
 export function tryNormalizeSingleNode(data: ParserData, elem: NamedXmlBasedJson): RNode | undefined {
-  switch (elem.name) {
-    case Type.ParenLeft:
-    case Type.ParenRight:
-      parseLog.debug(`skipping parenthesis information for ${JSON.stringify(elem)}`)
-      return undefined
-    case Type.BraceLeft:
-    case Type.BraceRight:
-      parseLog.debug(`skipping brace information for ${JSON.stringify(elem)}`)
-      return undefined
-    case Type.Comment:
-      return normalizeComment(data, elem.content)
-    case Type.LineDirective:
-      return normalizeLineDirective(data, elem.content)
-    case Type.ExpressionList:
-    case Type.Expression:
-    case Type.ExprHelpAssignWrapper:
-      return normalizeExpression(data, elem.content)
-    case Type.Number:
-      return normalizeNumber(data, elem.content)
-    case Type.String:
-      return normalizeString(data, elem.content)
-    case Type.Break:
-      return normalizeBreak(data, elem.content)
-    case Type.Next:
-      return normalizeNext(data, elem.content)
-    case Type.Symbol:
-    case Type.Slot:
-    case Type.Null: {
-      const symbol =  tryNormalizeSymbol(data, getWithTokenType(data.config.tokenMap, [elem.content]))
-      guard(symbol !== undefined, () => `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
-      return symbol
-    }
-    default:
-      throw new XmlParseError(`unknown type ${elem.name} for ${JSON.stringify(elem)} in ${JSON.stringify(data)}`)
-  }
+	switch (elem.name) {
+		case Type.ParenLeft:
+		case Type.ParenRight:
+			parseLog.debug(`skipping parenthesis information for ${JSON.stringify(elem)}`)
+			return undefined
+		case Type.BraceLeft:
+		case Type.BraceRight:
+			parseLog.debug(`skipping brace information for ${JSON.stringify(elem)}`)
+			return undefined
+		case Type.Comment:
+			return normalizeComment(data, elem.content)
+		case Type.LineDirective:
+			return normalizeLineDirective(data, elem.content)
+		case Type.ExpressionList:
+		case Type.Expression:
+		case Type.ExprHelpAssignWrapper:
+			return normalizeExpression(data, elem.content)
+		case Type.Number:
+			return normalizeNumber(data, elem.content)
+		case Type.String:
+			return normalizeString(data, elem.content)
+		case Type.Break:
+			return normalizeBreak(data, elem.content)
+		case Type.Next:
+			return normalizeNext(data, elem.content)
+		case Type.Symbol:
+		case Type.Slot:
+		case Type.Null: {
+			const symbol =  tryNormalizeSymbol(data, getWithTokenType(data.config.tokenMap, [elem.content]))
+			guard(symbol !== undefined, () => `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
+			return symbol
+		}
+		default:
+			throw new XmlParseError(`unknown type ${elem.name} for ${JSON.stringify(elem)} in ${JSON.stringify(data)}`)
+	}
 }

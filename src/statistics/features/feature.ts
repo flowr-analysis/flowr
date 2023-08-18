@@ -1,13 +1,13 @@
 import {
-  assignments,
-  comments,
-  controlflow,
-  dataAccess,
-  definedFunctions,
-  loops,
-  usedFunctions,
-  usedPackages,
-  values
+	assignments,
+	comments,
+	controlflow,
+	dataAccess,
+	definedFunctions,
+	loops,
+	usedFunctions,
+	usedPackages,
+	values
 } from './supported'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { MergeableRecord } from '../../util/objects'
@@ -38,15 +38,15 @@ export interface Feature<T extends FeatureInfo> {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const ALL_FEATURES = {
-  usedPackages:     usedPackages,
-  comments:         comments,
-  definedFunctions: definedFunctions,
-  usedFunctions:    usedFunctions,
-  values:           values,
-  assignments:      assignments,
-  loops:            loops,
-  controlflow:      controlflow,
-  dataAccess:       dataAccess
+	usedPackages:     usedPackages,
+	comments:         comments,
+	definedFunctions: definedFunctions,
+	usedFunctions:    usedFunctions,
+	values:           values,
+	assignments:      assignments,
+	loops:            loops,
+	controlflow:      controlflow,
+	dataAccess:       dataAccess
 } as const
 
 export type FeatureKey = keyof typeof ALL_FEATURES

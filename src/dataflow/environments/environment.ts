@@ -53,26 +53,26 @@ export interface IdentifierReference {
 }
 
 export function equalIdentifierReferences(a: IdentifierReference, b: IdentifierReference): boolean {
-  return a.name === b.name && a.scope === b.scope && a.nodeId === b.nodeId && a.used === b.used
+	return a.name === b.name && a.scope === b.scope && a.nodeId === b.nodeId && a.used === b.used
 }
 
 export function makeAllMaybe(references: IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference[] {
-  if(references === undefined) {
-    return []
-  }
-  return references.map(ref => {
-    const node = graph.get(ref.nodeId)
-    const definitions = resolveByName(ref.name, LocalScope, environments)
-    for(const definition of definitions ?? []) {
-      if(definition.kind !== 'built-in-function') {
-        definition.used = 'maybe'
-      }
-    }
-    if(node) {
-      node[0].when = 'maybe'
-    }
-    return { ...ref, used: 'maybe'}
-  })
+	if(references === undefined) {
+		return []
+	}
+	return references.map(ref => {
+		const node = graph.get(ref.nodeId)
+		const definitions = resolveByName(ref.name, LocalScope, environments)
+		for(const definition of definitions ?? []) {
+			if(definition.kind !== 'built-in-function') {
+				definition.used = 'maybe'
+			}
+		}
+		if(node) {
+			node[0].when = 'maybe'
+		}
+		return { ...ref, used: 'maybe'}
+	})
 }
 
 
@@ -93,16 +93,16 @@ export interface IEnvironment {
 let environmentIdCounter = 0
 
 export class Environment implements IEnvironment {
-  readonly name: string
-  readonly id:   string = `${environmentIdCounter++}`
-  parent?:       IEnvironment
-  memory:        Map<Identifier, IdentifierDefinition[]>
+	readonly name: string
+	readonly id:   string = `${environmentIdCounter++}`
+	parent?:       IEnvironment
+	memory:        Map<Identifier, IdentifierDefinition[]>
 
-  constructor(name: string, parent?: IEnvironment) {
-    this.name   = name
-    this.parent = parent
-    this.memory = new Map()
-  }
+	constructor(name: string, parent?: IEnvironment) {
+		this.name   = name
+		this.parent = parent
+		this.memory = new Map()
+	}
 }
 
 /**
@@ -120,101 +120,101 @@ export interface REnvironmentInformation {
 }
 
 export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition[]>([
-  ['return', [{
-    kind:      'built-in-function',
-    scope:     GlobalScope,
-    used:      'always',
-    definedAt: BuiltIn,
-    name:      'return',
-    nodeId:    BuiltIn
-  }]],
-  ['cat', [{
-    kind:      'built-in-function',
-    scope:     GlobalScope,
-    used:      'always',
-    definedAt: BuiltIn,
-    name:      'cat',
-    nodeId:    BuiltIn
-  }]],
-  ['print', [{
-    kind:      'built-in-function',
-    scope:     GlobalScope,
-    used:      'always',
-    definedAt: BuiltIn,
-    name:      'print',
-    nodeId:    BuiltIn
-  }]]
+	['return', [{
+		kind:      'built-in-function',
+		scope:     GlobalScope,
+		used:      'always',
+		definedAt: BuiltIn,
+		name:      'return',
+		nodeId:    BuiltIn
+	}]],
+	['cat', [{
+		kind:      'built-in-function',
+		scope:     GlobalScope,
+		used:      'always',
+		definedAt: BuiltIn,
+		name:      'cat',
+		nodeId:    BuiltIn
+	}]],
+	['print', [{
+		kind:      'built-in-function',
+		scope:     GlobalScope,
+		used:      'always',
+		definedAt: BuiltIn,
+		name:      'print',
+		nodeId:    BuiltIn
+	}]]
 ])
 
 export function initializeCleanEnvironments(): REnvironmentInformation {
-  // TODO baseenv, emptyenv, and assignments directly to the environments (without indirection of assign)
-  // TODO: track parent.env calls?
-  // TODO undocumented user databases in comments? (see 1.2 of R internals with https://www.omegahat.net/RObjectTables/)
-  // .Platform and .Machine
-  // TODO: attach namespace to bind etc.
-  const global = new Environment(GlobalScope)
-  // use a copy
-  global.memory = new Map<Identifier, IdentifierDefinition[]>(DefaultEnvironmentMemory)
-  return {
-    current: global,
-    level:   0
-  }
+	// TODO baseenv, emptyenv, and assignments directly to the environments (without indirection of assign)
+	// TODO: track parent.env calls?
+	// TODO undocumented user databases in comments? (see 1.2 of R internals with https://www.omegahat.net/RObjectTables/)
+	// .Platform and .Machine
+	// TODO: attach namespace to bind etc.
+	const global = new Environment(GlobalScope)
+	// use a copy
+	global.memory = new Map<Identifier, IdentifierDefinition[]>(DefaultEnvironmentMemory)
+	return {
+		current: global,
+		level:   0
+	}
 }
 
 
 export function environmentEqual(a: IEnvironment | undefined, b: IEnvironment | undefined): boolean {
-  if(a === undefined || b === undefined) {
-    dataflowLogger.warn(`Comparing undefined environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
-    return a === b
-  }
-  if(a.name !== b.name || a.memory.size !== b.memory.size) {
-    dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)} due to different names or sizes (${JSON.stringify([...a.memory.entries()])} vs. ${JSON.stringify([...b.memory.entries()])})`)
-    return false
-  }
-  for(const [key, value] of a.memory) {
-    const value2 = b.memory.get(key)
-    if(value2 === undefined || value.length !== value2.length) {
-      dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)} due to different sizes of ${JSON.stringify(key)} (${JSON.stringify(value)} vs. ${JSON.stringify(value2)})`)
-      return false
-    }
+	if(a === undefined || b === undefined) {
+		dataflowLogger.warn(`Comparing undefined environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
+		return a === b
+	}
+	if(a.name !== b.name || a.memory.size !== b.memory.size) {
+		dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)} due to different names or sizes (${JSON.stringify([...a.memory.entries()])} vs. ${JSON.stringify([...b.memory.entries()])})`)
+		return false
+	}
+	for(const [key, value] of a.memory) {
+		const value2 = b.memory.get(key)
+		if(value2 === undefined || value.length !== value2.length) {
+			dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)} due to different sizes of ${JSON.stringify(key)} (${JSON.stringify(value)} vs. ${JSON.stringify(value2)})`)
+			return false
+		}
 
-    for(let i = 0; i < value.length; ++i) {
-      const aVal = value[i]
-      const bVal = value2[i]
-      if(aVal.name !== bVal.name || aVal.nodeId !== bVal.nodeId || aVal.scope !== bVal.scope || aVal.used !== bVal.used || aVal.definedAt !== bVal.definedAt || aVal.kind !== bVal.kind) {
-        dataflowLogger.warn(`Different definitions ${JSON.stringify(aVal)} and ${JSON.stringify(bVal)} within environments`)
-        return false
-      }
-    }
-  }
-  return environmentEqual(a.parent, b.parent)
+		for(let i = 0; i < value.length; ++i) {
+			const aVal = value[i]
+			const bVal = value2[i]
+			if(aVal.name !== bVal.name || aVal.nodeId !== bVal.nodeId || aVal.scope !== bVal.scope || aVal.used !== bVal.used || aVal.definedAt !== bVal.definedAt || aVal.kind !== bVal.kind) {
+				dataflowLogger.warn(`Different definitions ${JSON.stringify(aVal)} and ${JSON.stringify(bVal)} within environments`)
+				return false
+			}
+		}
+	}
+	return environmentEqual(a.parent, b.parent)
 }
 
 export function environmentsEqual(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined): boolean {
-  if(a === undefined || b === undefined) {
-    dataflowLogger.warn(`Comparing undefined environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
-    return a === b
-  }
-  if(!environmentEqual(a.current, b.current)) {
-    dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
-    return false
-  }
-  return true
+	if(a === undefined || b === undefined) {
+		dataflowLogger.warn(`Comparing undefined environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
+		return a === b
+	}
+	if(!environmentEqual(a.current, b.current)) {
+		dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
+		return false
+	}
+	return true
 }
 
 function cloneEnvironment(environment: IEnvironment, recurseParents: boolean): IEnvironment
 function cloneEnvironment(environment: IEnvironment | undefined, recurseParents: boolean): IEnvironment | undefined
 function cloneEnvironment(environment: IEnvironment | undefined, recurseParents: boolean): IEnvironment | undefined {
-  if(environment === undefined) {
-    return undefined
-  }
-  const clone = new Environment(environment.name, recurseParents ? cloneEnvironment(environment.parent, recurseParents) : environment.parent)
-  clone.memory = new Map(JSON.parse(JSON.stringify([...environment.memory])) as [Identifier, IdentifierDefinition[]][])
-  return clone
+	if(environment === undefined) {
+		return undefined
+	}
+	const clone = new Environment(environment.name, recurseParents ? cloneEnvironment(environment.parent, recurseParents) : environment.parent)
+	clone.memory = new Map(JSON.parse(JSON.stringify([...environment.memory])) as [Identifier, IdentifierDefinition[]][])
+	return clone
 }
 export function cloneEnvironments(environment: REnvironmentInformation, recurseParents = true): REnvironmentInformation {
-  return {
-    current: cloneEnvironment(environment.current, recurseParents),
-    level:   environment.level
-  }
+	return {
+		current: cloneEnvironment(environment.current, recurseParents),
+		level:   environment.level
+	}
 }

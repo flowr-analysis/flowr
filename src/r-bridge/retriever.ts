@@ -44,22 +44,22 @@ const ERR_MARKER = "err"
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell): Promise<string> {
-  if (request.ensurePackageInstalled) {
-    await shell.ensurePackageInstalled('xmlparsedata', true)
-  }
+	if (request.ensurePackageInstalled) {
+		await shell.ensurePackageInstalled('xmlparsedata', true)
+	}
 
-  const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
+	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
 
-  shell.sendCommands(`flowr_output <- flowr_parsed <- "${ERR_MARKER}"`,
-    // now, try to retrieve the ast
-    `try(flowr_parsed <- parse(${request.request} = ${JSON.stringify(request.content)}, keep.source = ${ts2r(request.attachSourceInformation)}${suffix}), silent=FALSE)`,
-    `try(flowr_output <- xmlparsedata::xml_parse_data(flowr_parsed, includeText = ${ts2r(request.attachSourceInformation)}, pretty = FALSE), silent=FALSE)`
-  )
-  // TODO: let commands produce output by cat wrapper/shell.command creator to abstract from this?
-  const xml = await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)
-  const output = xml.join(shell.options.eol)
-  guard(output !== ERR_MARKER, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
-  return output
+	shell.sendCommands(`flowr_output <- flowr_parsed <- "${ERR_MARKER}"`,
+		// now, try to retrieve the ast
+		`try(flowr_parsed <- parse(${request.request} = ${JSON.stringify(request.content)}, keep.source = ${ts2r(request.attachSourceInformation)}${suffix}), silent=FALSE)`,
+		`try(flowr_output <- xmlparsedata::xml_parse_data(flowr_parsed, includeText = ${ts2r(request.attachSourceInformation)}, pretty = FALSE), silent=FALSE)`
+	)
+	// TODO: let commands produce output by cat wrapper/shell.command creator to abstract from this?
+	const xml = await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)
+	const output = xml.join(shell.options.eol)
+	guard(output !== ERR_MARKER, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
+	return output
 }
 
 // TODO: type ast etc
@@ -68,46 +68,46 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export async function retrieveAstFromRCode(request: RParseRequest, tokenMap: Record<string, string>, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> {
-  const xml = await retrieveXmlFromRCode(request, shell)
-  return await normalize(xml, tokenMap, hooks)
+	const xml = await retrieveXmlFromRCode(request, shell)
+	return await normalize(xml, tokenMap, hooks)
 }
 
 /**
  * If the string has (R-)quotes around it, they will be removed, otherwise the string is returned unchanged.
  */
 export function removeTokenMapQuotationMarks(str: string): string {
-  if (str.length > 1 && (startAndEndsWith(str, '\'') || startAndEndsWith(str, '"'))) {
-    return str.slice(1, -1)
-  } else {
-    return str
-  }
+	if (str.length > 1 && (startAndEndsWith(str, '\'') || startAndEndsWith(str, '"'))) {
+		return str.slice(1, -1)
+	} else {
+		return str
+	}
 }
 
 export type TokenMap = Record<string, string>
 
 export async function getStoredTokenMap(shell: RShell): Promise<TokenMap> {
-  await shell.ensurePackageInstalled('xmlparsedata', true /* use some kind of environment in the future */)
-  // we invert the token map to get a mapping back from the replacement
-  const parsed = parseCSV(await shell.sendCommandWithOutput(
-    'write.table(xmlparsedata::xml_parse_token_map,sep=",", col.names=FALSE)'
-  ))
+	await shell.ensurePackageInstalled('xmlparsedata', true /* use some kind of environment in the future */)
+	// we invert the token map to get a mapping back from the replacement
+	const parsed = parseCSV(await shell.sendCommandWithOutput(
+		'write.table(xmlparsedata::xml_parse_token_map,sep=",", col.names=FALSE)'
+	))
 
-  if (parsed.some(s => s.length !== 2)) {
-    throw new Error(`Expected two columns in token map, but got ${JSON.stringify(parsed)}`)
-  }
+	if (parsed.some(s => s.length !== 2)) {
+		throw new Error(`Expected two columns in token map, but got ${JSON.stringify(parsed)}`)
+	}
 
-  // we swap key and value to get the other direction, furthermore we remove quotes from keys if they are quoted
-  return parsed.reduce<Record<string, string>>((acc, [key, value]) => {
-    acc[value] = removeTokenMapQuotationMarks(key)
-    return acc
-  }, {})
+	// we swap key and value to get the other direction, furthermore we remove quotes from keys if they are quoted
+	return parsed.reduce<Record<string, string>>((acc, [key, value]) => {
+		acc[value] = removeTokenMapQuotationMarks(key)
+		return acc
+	}, {})
 }
 
 /**
  * Needs to be called *after*  {@link retrieveXmlFromRCode} (or {@link retrieveAstFromRCode})
  */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise<number> {
-  const result = await shell.sendCommandWithOutput(`cat(nrow(getParseData(flowr_parsed)),${ts2r(shell.options.eol)})`)
-  guard(result.length === 1, 'expected exactly one line to obtain the number of R tokens')
-  return Number(result[0])
+	const result = await shell.sendCommandWithOutput(`cat(nrow(getParseData(flowr_parsed)),${ts2r(shell.options.eol)})`)
+	guard(result.length === 1, 'expected exactly one line to obtain the number of R tokens')
+	return Number(result[0])
 }

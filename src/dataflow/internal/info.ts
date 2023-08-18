@@ -23,13 +23,13 @@ export interface DataflowInformation<OtherInfo = ParentInformation> {
 }
 
 export function initializeCleanInfo<OtherInfo>(data: DataflowProcessorInformation<OtherInfo>): DataflowInformation<OtherInfo> {
-  return {
-    ast:               data.completeAst,
-    unknownReferences: [],
-    in:                [],
-    out:               [],
-    scope:             data.activeScope,
-    environments:      data.environments,
-    graph:             new DataflowGraph()
-  }
+	return {
+		ast:               data.completeAst,
+		unknownReferences: [],
+		in:                [],
+		out:               [],
+		scope:             data.activeScope,
+		environments:      data.environments,
+		graph:             new DataflowGraph()
+	}
 }

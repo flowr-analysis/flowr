@@ -19,15 +19,15 @@ export interface UsedPackageInfo extends FeatureInfo {
 }
 
 const initialUsedPackageInfos = (): UsedPackageInfo => ({
-  library:              0,
-  require:              0,
-  loadNamespace:        0,
-  requireNamespace:     0,
-  attachNamespace:      0,
-  withinApply:          0,
-  '::':                 0,
-  ':::':                0,
-  '<loadedByVariable>': 0
+	library:              0,
+	require:              0,
+	loadNamespace:        0,
+	requireNamespace:     0,
+	attachNamespace:      0,
+	withinApply:          0,
+	'::':                 0,
+	':::':                0,
+	'<loadedByVariable>': 0
 })
 
 
@@ -85,50 +85,50 @@ const queryForNsAccess: Query = xpath.parse(`
 `)
 
 const queries: { types: readonly (keyof UsedPackageInfo)[], query: { select(options?: EvalOptions): Node[] } }[] = [
-  {
-    types: [ 'library', 'require' ],
-    query: libraryOrRequire
-  },
-  {
-    types: [ 'loadNamespace', 'requireNamespace', 'attachNamespace' ],
-    query: queryForFunctionCall
-  },
-  {
-    types: [ '::', ':::' ],
-    query: queryForNsAccess
-  }
+	{
+		types: [ 'library', 'require' ],
+		query: libraryOrRequire
+	},
+	{
+		types: [ 'loadNamespace', 'requireNamespace', 'attachNamespace' ],
+		query: queryForFunctionCall
+	},
+	{
+		types: [ '::', ':::' ],
+		query: queryForNsAccess
+	}
 ]
 
 export const usedPackages: Feature<UsedPackageInfo> = {
-  name:        'Used Packages',
-  description: 'All the packages used in the code',
+	name:        'Used Packages',
+	description: 'All the packages used in the code',
 
-  process(existing: UsedPackageInfo, input: Document, filepath: string | undefined): UsedPackageInfo {
-    // we will unify in the end, so we can count, group etc. but we do not re-count multiple packages in the same file
-    for(const q of queries) {
-      for(const fn of q.types) {
-        const nodes = q.query.select({ node: input, variables: { variable: fn } })
-        existing[fn] += nodes.length
-        append(this.name, fn, nodes, filepath, true)
-      }
-    }
+	process(existing: UsedPackageInfo, input: Document, filepath: string | undefined): UsedPackageInfo {
+		// we will unify in the end, so we can count, group etc. but we do not re-count multiple packages in the same file
+		for(const q of queries) {
+			for(const fn of q.types) {
+				const nodes = q.query.select({ node: input, variables: { variable: fn } })
+				existing[fn] += nodes.length
+				append(this.name, fn, nodes, filepath, true)
+			}
+		}
 
-    const nodesForVariableLoad = [
-      ...packageLoadedWithVariableLoadRequire.select({ node: input }),
-      ...packageLoadedWithVariableNamespaces.select({ node: input })
-    ]
-    existing['<loadedByVariable>'] += nodesForVariableLoad.length
-    // should not be unique as variables may be repeated, and we have no idea
-    append(this.name, '<loadedByVariable>', nodesForVariableLoad, filepath)
+		const nodesForVariableLoad = [
+			...packageLoadedWithVariableLoadRequire.select({ node: input }),
+			...packageLoadedWithVariableNamespaces.select({ node: input })
+		]
+		existing['<loadedByVariable>'] += nodesForVariableLoad.length
+		// should not be unique as variables may be repeated, and we have no idea
+		append(this.name, '<loadedByVariable>', nodesForVariableLoad, filepath)
 
-    const withinApplyNodes = withinApply.select({ node: input })
-    existing.withinApply += withinApplyNodes.length
-    append(this.name, 'withinApply', withinApplyNodes, filepath)
+		const withinApplyNodes = withinApply.select({ node: input })
+		existing.withinApply += withinApplyNodes.length
+		append(this.name, 'withinApply', withinApplyNodes, filepath)
 
-    return existing
-  },
+		return existing
+	},
 
-  initialValue: initialUsedPackageInfos
+	initialValue: initialUsedPackageInfos
 }
 
 

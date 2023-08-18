@@ -69,80 +69,80 @@ export const enum Type {
  * Returns the name of the corresponding interface if there is one. Otherwise, this throws an error.
  */
 export function mapTypeToNormalizedName(type: Type): string {
-  switch (type) {
-    case Type.Access:
-      return "RAccess"
-    case Type.Argument:
-      return "RArgument"
-    case Type.BinaryOp:
-      return "RBinaryOp"
-    case Type.Break:
-      return "RBreak"
-    case Type.Comment:
-      return "RComment"
-    case Type.ExpressionList:
-      return "RExpressionList"
-    case Type.For:
-      return "RForLoop"
-    case Type.FunctionCall:
-      return "RFunctionCall"
-    case Type.FunctionDefinition:
-      return "RFunctionDefinition"
-    case Type.If:
-      return "RIfThenElse"
-    case Type.LineDirective:
-      return "RLineDirective"
-    case Type.Logical:
-      return "RLogical"
-    case Type.Next:
-      return "RNext"
-    case Type.Number:
-      return "RNumber"
-    case Type.Parameter:
-      return "RParameter"
-    case Type.Pipe:
-      return "RPipe"
-    case Type.Repeat:
-      return "RRepeatLoop"
-    case Type.String:
-      return "RString"
-    case Type.Symbol:
-      return "RSymbol"
-    case Type.UnaryOp:
-      return "RUnaryOp"
-    case Type.While:
-      return "RWhileLoop"
-    case Type.Expression:
-    case Type.Null:
-    case Type.ExprHelpAssignWrapper:
-    case Type.SymbolFormals:
-    case Type.SymbolNamedFormals:
-    case Type.Special:
-    case Type.ParenLeft:
-    case Type.ParenRight:
-    case Type.BraceLeft:
-    case Type.BraceRight:
-    case Type.DoubleBracketLeft:
-    case Type.BracketLeft:
-    case Type.BracketRight:
-    case Type.Dollar:
-    case Type.At:
-    case Type.Slot:
-    case Type.Semicolon:
-    case Type.ForCondition:
-    case Type.ForIn:
-    case Type.Else:
-    case Type.Comma:
-    case Type.LambdaFunctionDefinition:
-    case Type.SymbolPackage:
-    case Type.NamespaceGet:
-    case Type.EqFormals:
-    case Type.EqNamedArgument:
-    case Type.Delimiter:
-      throw new Error(`Type ${type} is not a valid normalized type`)
-    default:
-      assertUnreachable(type)
-  }
+	switch (type) {
+		case Type.Access:
+			return "RAccess"
+		case Type.Argument:
+			return "RArgument"
+		case Type.BinaryOp:
+			return "RBinaryOp"
+		case Type.Break:
+			return "RBreak"
+		case Type.Comment:
+			return "RComment"
+		case Type.ExpressionList:
+			return "RExpressionList"
+		case Type.For:
+			return "RForLoop"
+		case Type.FunctionCall:
+			return "RFunctionCall"
+		case Type.FunctionDefinition:
+			return "RFunctionDefinition"
+		case Type.If:
+			return "RIfThenElse"
+		case Type.LineDirective:
+			return "RLineDirective"
+		case Type.Logical:
+			return "RLogical"
+		case Type.Next:
+			return "RNext"
+		case Type.Number:
+			return "RNumber"
+		case Type.Parameter:
+			return "RParameter"
+		case Type.Pipe:
+			return "RPipe"
+		case Type.Repeat:
+			return "RRepeatLoop"
+		case Type.String:
+			return "RString"
+		case Type.Symbol:
+			return "RSymbol"
+		case Type.UnaryOp:
+			return "RUnaryOp"
+		case Type.While:
+			return "RWhileLoop"
+		case Type.Expression:
+		case Type.Null:
+		case Type.ExprHelpAssignWrapper:
+		case Type.SymbolFormals:
+		case Type.SymbolNamedFormals:
+		case Type.Special:
+		case Type.ParenLeft:
+		case Type.ParenRight:
+		case Type.BraceLeft:
+		case Type.BraceRight:
+		case Type.DoubleBracketLeft:
+		case Type.BracketLeft:
+		case Type.BracketRight:
+		case Type.Dollar:
+		case Type.At:
+		case Type.Slot:
+		case Type.Semicolon:
+		case Type.ForCondition:
+		case Type.ForIn:
+		case Type.Else:
+		case Type.Comma:
+		case Type.LambdaFunctionDefinition:
+		case Type.SymbolPackage:
+		case Type.NamespaceGet:
+		case Type.EqFormals:
+		case Type.EqNamedArgument:
+		case Type.Delimiter:
+			throw new Error(`Type ${type} is not a valid normalized type`)
+		default:
+			assertUnreachable(type)
+	}
 }
 
 /**
@@ -151,11 +151,11 @@ export function mapTypeToNormalizedName(type: Type): string {
  * @see Type
  */
 export function isSymbol(type: string): boolean {
-  return (
-    type === Type.Symbol ||
+	return (
+		type === Type.Symbol ||
     type === Type.SymbolPackage ||
     type === Type.FunctionCall ||
     type === Type.Null ||
     type === Type.Slot
-  )
+	)
 }

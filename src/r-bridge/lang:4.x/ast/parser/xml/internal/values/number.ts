@@ -15,42 +15,42 @@ import { executeHook } from '../../hooks'
  * @param obj  - The json object to extract the meta-information from
  */
 export function normalizeNumber(data: ParserData, obj: XmlBasedJson): RNumber | RLogical | RSymbol<NoInfo, typeof RNa> {
-  parseLog.debug('[number]')
-  obj = executeHook(data.hooks.values.onNumber.before, data, obj)
+	parseLog.debug('[number]')
+	obj = executeHook(data.hooks.values.onNumber.before, data, obj)
 
-  const { location, content } = retrieveMetaStructure(data.config, obj)
-  const common = {
-    location,
-    lexeme: content,
-    info:   {
-    // TODO: include children etc.
-      fullRange:        data.currentRange,
-      additionalTokens: [],
-      fullLexeme:       data.currentLexeme
-    }
-  }
+	const { location, content } = retrieveMetaStructure(data.config, obj)
+	const common = {
+		location,
+		lexeme: content,
+		info:   {
+			// TODO: include children etc.
+			fullRange:        data.currentRange,
+			additionalTokens: [],
+			fullLexeme:       data.currentLexeme
+		}
+	}
 
-  let result:  RNumber | RLogical | RSymbol<NoInfo, typeof RNa>
-  /* the special symbol */
-  if (isNA(content)) {
-    result = {
-      ...common,
-      namespace: undefined,
-      type:      Type.Symbol,
-      content
-    }
-  } else if (isBoolean(content)) {
-    result = {
-      ...common,
-      type:    Type.Logical,
-      content: boolean2ts(content)
-    }
-  } else {
-    result = {
-      ...common,
-      type:    Type.Number,
-      content: number2ts(content)
-    }
-  }
-  return executeHook(data.hooks.values.onNumber.after, data, result)
+	let result:  RNumber | RLogical | RSymbol<NoInfo, typeof RNa>
+	/* the special symbol */
+	if (isNA(content)) {
+		result = {
+			...common,
+			namespace: undefined,
+			type:      Type.Symbol,
+			content
+		}
+	} else if (isBoolean(content)) {
+		result = {
+			...common,
+			type:    Type.Logical,
+			content: boolean2ts(content)
+		}
+	} else {
+		result = {
+			...common,
+			type:    Type.Number,
+			content: number2ts(content)
+		}
+	}
+	return executeHook(data.hooks.values.onNumber.after, data, result)
 }

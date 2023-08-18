@@ -2,18 +2,18 @@ import { it } from "mocha"
 import { testRequiresNetworkConnection } from "./network"
 import { DeepPartial } from 'ts-essentials'
 import {
-  decorateAst, DecoratedAstMap, deterministicCountingIdGenerator,
-  getStoredTokenMap, IdGenerator, NodeId, NoInfo,
-  retrieveAstFromRCode,
-  RExpressionList,
-  RNode, RNodeWithParent,
-  RShell,
-  XmlParserHooks
+	decorateAst, DecoratedAstMap, deterministicCountingIdGenerator,
+	getStoredTokenMap, IdGenerator, NodeId, NoInfo,
+	retrieveAstFromRCode,
+	RExpressionList,
+	RNode, RNodeWithParent,
+	RShell,
+	XmlParserHooks
 } from '../../src/r-bridge'
 import { assert } from 'chai'
 import {
-  DataflowGraph,
-  diffGraphsToMermaidUrl, graphToMermaidUrl, LocalScope
+	DataflowGraph,
+	diffGraphsToMermaidUrl, graphToMermaidUrl, LocalScope
 } from '../../src/dataflow'
 import { produceDataFlowGraph } from '../../src/dataflow'
 import { reconstructToCode } from '../../src/slicing'
@@ -24,28 +24,28 @@ let defaultTokenMap: Record<string, string>
 
 // we want the token map only once (to speed up tests)!
 before(async function() {
-  this.timeout('15min')
-  const shell = new RShell()
-  try {
-    shell.tryToInjectHomeLibPath()
-    await shell.ensurePackageInstalled('xmlparsedata')
-    defaultTokenMap = await getStoredTokenMap(shell)
-  } finally {
-    shell.close()
-  }
+	this.timeout('15min')
+	const shell = new RShell()
+	try {
+		shell.tryToInjectHomeLibPath()
+		await shell.ensurePackageInstalled('xmlparsedata')
+		defaultTokenMap = await getStoredTokenMap(shell)
+	} finally {
+		shell.close()
+	}
 })
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
-  return it(msg, async function(): Promise<void> {
-    let shell: RShell | null = null
-    try {
-      shell = new RShell()
-      await fn(shell, this)
-    } finally {
-      // ensure we close the shell in error cases too
-      shell?.close()
-    }
-  })
+	return it(msg, async function(): Promise<void> {
+		let shell: RShell | null = null
+		try {
+			shell = new RShell()
+			await fn(shell, this)
+		} finally {
+			// ensure we close the shell in error cases too
+			shell?.close()
+		}
+	})
 }
 
 /**
@@ -54,129 +54,129 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
  * @param packages - packages to be ensured when the shell is created
  */
 export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xmlparsedata']): () => void {
-  // TODO: use this from context? to set this.slow?
-  return function() {
-    const shell = new RShell()
-    // this way we probably do not have to reinstall even if we launch from WebStorm
-    before(async function() {
-      this.timeout('15min')
-      shell.tryToInjectHomeLibPath()
-      for (const pkg of packages) {
-        if (!await shell.isPackageInstalled(pkg)) {
-        // TODO: only check this once? network should not be expected to break during tests
-          await testRequiresNetworkConnection(this)
-        }
-        await shell.ensurePackageInstalled(pkg, true)
-      }
-    })
-    fn(shell)
-    after(() => {
-      shell.close()
-    })
-  }
+	// TODO: use this from context? to set this.slow?
+	return function() {
+		const shell = new RShell()
+		// this way we probably do not have to reinstall even if we launch from WebStorm
+		before(async function() {
+			this.timeout('15min')
+			shell.tryToInjectHomeLibPath()
+			for (const pkg of packages) {
+				if (!await shell.isPackageInstalled(pkg)) {
+					// TODO: only check this once? network should not be expected to break during tests
+					await testRequiresNetworkConnection(this)
+				}
+				await shell.ensurePackageInstalled(pkg, true)
+			}
+		})
+		fn(shell)
+		after(() => {
+			shell.close()
+		})
+	}
 }
 
 // TODO: recursive work?
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function removeSourceInformation<T extends Record<string, any>>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj, (key, value) => {
-    if (key === 'fullRange' || key === 'additionalTokens' || key === 'fullLexeme') {
-      return undefined
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return value
-  })) as T
+	return JSON.parse(JSON.stringify(obj, (key, value) => {
+		if (key === 'fullRange' || key === 'additionalTokens' || key === 'fullLexeme') {
+			return undefined
+		}
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return value
+	})) as T
 }
 
 function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, message?: string): void {
-  const astCopy = removeSourceInformation(ast)
-  const expectedCopy = removeSourceInformation(expected)
-  assert.deepStrictEqual(astCopy, expectedCopy, message)
+	const astCopy = removeSourceInformation(ast)
+	const expectedCopy = removeSourceInformation(expected)
+	assert.deepStrictEqual(astCopy, expectedCopy, message)
 }
 
 export const retrieveAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> => {
-  const file = input.startsWith('file://')
-  return await retrieveAstFromRCode({
-    request:                 file ? 'file' : 'text',
-    content:                 file ? input.slice(7) : input,
-    attachSourceInformation: true,
-    ensurePackageInstalled:  false // should be called within describeSession for that!
-  }, defaultTokenMap, shell, hooks)
+	const file = input.startsWith('file://')
+	return await retrieveAstFromRCode({
+		request:                 file ? 'file' : 'text',
+		content:                 file ? input.slice(7) : input,
+		attachSourceInformation: true,
+		ensurePackageInstalled:  false // should be called within describeSession for that!
+	}, defaultTokenMap, shell, hooks)
 }
 
 /** call within describeSession */
 export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList): Mocha.Test => {
-  // the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
-  return it(name === input ? name : `${name} (input: ${input})`, async function() {
-    const ast = await retrieveAst(shell, input)
-    assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
-  })
+	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
+	return it(name === input ? name : `${name} (input: ${input})`, async function() {
+		const ast = await retrieveAst(shell, input)
+		assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
+	})
 }
 
 // TODO: improve comments and structure
 /** call within describeSession */
 export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: RNode) => RNode<Decorated>, expected: RNodeWithParent<Decorated>): void {
-  it(name, async function() {
-    const baseAst = await retrieveAst(shell, input)
-    const ast = decorator(baseAst)
-    assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
-  })
+	it(name, async function() {
+		const baseAst = await retrieveAst(shell, input)
+		const ast = decorator(baseAst)
+		assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
+	})
 }
 
 // TODO: allow more configuration with title, etc.
 export const assertDataflow = (name: string, shell: RShell, input: string, expected: DataflowGraph, startIndexForDeterministicIds = 0): void => {
-  it(`${name} (input: ${JSON.stringify(input)})`, async function() {
-    const ast = await retrieveAst(shell, input)
-    const decoratedAst = decorateAst(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
+	it(`${name} (input: ${JSON.stringify(input)})`, async function() {
+		const ast = await retrieveAst(shell, input)
+		const decoratedAst = decorateAst(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
 
-    // TODO: use both info
-    const { graph } = produceDataFlowGraph(decoratedAst, LocalScope)
+		// TODO: use both info
+		const { graph } = produceDataFlowGraph(decoratedAst, LocalScope)
 
-    // with the try catch the diff graph is not calculated if everything is fine
-    try {
-      assert.isTrue(expected.equals(graph))
-    } catch (e) {
-      const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph}, decoratedAst.idMap, `%% ${input.replace(/\n/g, '\n%% ')}\n`)
-      console.error('diff:\n', diff)
-      throw e
-    }
-  })
+		// with the try catch the diff graph is not calculated if everything is fine
+		try {
+			assert.isTrue(expected.equals(graph))
+		} catch (e) {
+			const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph}, decoratedAst.idMap, `%% ${input.replace(/\n/g, '\n%% ')}\n`)
+			console.error('diff:\n', diff)
+			throw e
+		}
+	})
 }
 
 
 /** call within describeSession */
 function printIdMapping(ids: NodeId[], map: DecoratedAstMap): string {
-  return ids.map(id => `${id}: ${JSON.stringify(map.get(id)?.lexeme)}`).join(', ')
+	return ids.map(id => `${id}: ${JSON.stringify(map.get(id)?.lexeme)}`).join(', ')
 }
 export const assertReconstructed = (name: string, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
-  const selectedIds = Array.isArray(ids) ? ids : [ids]
-  return it(name, async function() {
-    const ast = await retrieveAst(shell, input)
-    const decoratedAst = decorateAst(ast, getId)
-    const reconstructed = reconstructToCode<NoInfo>(decoratedAst, new Set(selectedIds))
-    assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, decoratedAst.idMap)})`)
-  })
+	const selectedIds = Array.isArray(ids) ? ids : [ids]
+	return it(name, async function() {
+		const ast = await retrieveAst(shell, input)
+		const decoratedAst = decorateAst(ast, getId)
+		const reconstructed = reconstructToCode<NoInfo>(decoratedAst, new Set(selectedIds))
+		assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, decoratedAst.idMap)})`)
+	})
 }
 
 
 export const assertSliced = (name: string, shell: RShell, input: string, criteria: SlicingCriteria, expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
-  return it(`${JSON.stringify(criteria)} ${name}`, async function() {
-    const ast = await retrieveAst(shell, input)
-    const decoratedAst = decorateAst(ast, getId)
+	return it(`${JSON.stringify(criteria)} ${name}`, async function() {
+		const ast = await retrieveAst(shell, input)
+		const decoratedAst = decorateAst(ast, getId)
 
-    const dataflow = produceDataFlowGraph(decoratedAst)
+		const dataflow = produceDataFlowGraph(decoratedAst)
 
-    try {
-      const mappedIds = criteria.map(c => slicingCriterionToId(c, decoratedAst))
+		try {
+			const mappedIds = criteria.map(c => slicingCriterionToId(c, decoratedAst))
 
-      const { result: sliced } = staticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds.slice())
-      const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
+			const { result: sliced } = staticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds.slice())
+			const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
 
-      assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(mappedIds, decoratedAst.idMap)}), url: ${graphToMermaidUrl(dataflow.graph, decoratedAst.idMap, sliced)}`)
-    } catch (e) {
-      console.error('vis-got:\n', graphToMermaidUrl(dataflow.graph, decoratedAst.idMap))
-      throw e
-    }
-  })
+			assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(mappedIds, decoratedAst.idMap)}), url: ${graphToMermaidUrl(dataflow.graph, decoratedAst.idMap, sliced)}`)
+		} catch (e) {
+			console.error('vis-got:\n', graphToMermaidUrl(dataflow.graph, decoratedAst.idMap))
+			throw e
+		}
+	})
 }
 

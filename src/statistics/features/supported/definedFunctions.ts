@@ -22,13 +22,13 @@ export interface FunctionDefinitionInfo extends FeatureInfo {
 }
 
 const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({
-  total:                   0,
-  lambdasOnly:             0,
-  assignedFunctions:       0,
-  usedArgumentNames:       0,
-  functionsDirectlyCalled: 0,
-  nestedFunctions:         0,
-  recursive:               0
+	total:                   0,
+	lambdasOnly:             0,
+	assignedFunctions:       0,
+	usedArgumentNames:       0,
+	functionsDirectlyCalled: 0,
+	nestedFunctions:         0,
+	recursive:               0
 })
 
 // TODO: note that this can not work with assign, setGeneric and so on for now
@@ -66,48 +66,48 @@ const functionCallWithNameQuery: Query = xpath.parse(`
   ../preceding-sibling::expr/*[last()]//SYMBOL_FUNCTION_CALL[text() = $name]
 `)
 function testRecursive(node: Node, name: string): boolean {
-  const result = functionCallWithNameQuery.select({ node, variables: { name } })
-  return result.length > 0
+	const result = functionCallWithNameQuery.select({ node, variables: { name } })
+	return result.length > 0
 
 }
 
 
 export const definedFunctions: Feature<FunctionDefinitionInfo> = {
-  name:        'Defined Functions',
-  description: 'All functions defined within the document',
+	name:        'Defined Functions',
+	description: 'All functions defined within the document',
 
-  process(existing: FunctionDefinitionInfo, input: Document, filepath: string | undefined): FunctionDefinitionInfo {
-    const allFunctions = queryAnyFunctionDefinition.select({ node: input }).length
-    const allLambdas = queryAnyLambdaDefinition.select({ node: input })
+	process(existing: FunctionDefinitionInfo, input: Document, filepath: string | undefined): FunctionDefinitionInfo {
+		const allFunctions = queryAnyFunctionDefinition.select({ node: input }).length
+		const allLambdas = queryAnyLambdaDefinition.select({ node: input })
 
-    append(this.name, 'allLambdas', allLambdas, filepath)
+		append(this.name, 'allLambdas', allLambdas, filepath)
 
-    existing.total += allFunctions + allLambdas.length
-    existing.lambdasOnly += allLambdas.length
+		existing.total += allFunctions + allLambdas.length
+		existing.lambdasOnly += allLambdas.length
 
-    const usedArgumentNames = queryUsedArgumentNames.select({ node: input })
-    existing.usedArgumentNames += usedArgumentNames.length
-    append(this.name, 'usedArgumentNames', usedArgumentNames, filepath)
+		const usedArgumentNames = queryUsedArgumentNames.select({ node: input })
+		existing.usedArgumentNames += usedArgumentNames.length
+		append(this.name, 'usedArgumentNames', usedArgumentNames, filepath)
 
-    existing.functionsDirectlyCalled += defineFunctionsToBeCalled.select({ node: input }).length
-    existing.nestedFunctions += nestedFunctionsQuery.select({ node: input }).length
+		existing.functionsDirectlyCalled += defineFunctionsToBeCalled.select({ node: input }).length
+		existing.nestedFunctions += nestedFunctionsQuery.select({ node: input }).length
 
-    const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input })
-    const assignedNames = assignedFunctions.map(extractNodeContent)
-    existing.assignedFunctions += assignedFunctions.length
-    append(this.name, 'assignedFunctions', assignedNames, filepath)
+		const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input })
+		const assignedNames = assignedFunctions.map(extractNodeContent)
+		existing.assignedFunctions += assignedFunctions.length
+		append(this.name, 'assignedFunctions', assignedNames, filepath)
 
-    const recursiveFunctions = []
-    for(let i = 0; i < assignedFunctions.length; i++) {
-      const name = assignedNames[i]
-      if(testRecursive(assignedFunctions[i], name)) {
-        recursiveFunctions.push(name)
-      }
-    }
-    existing.recursive += recursiveFunctions.length
-    append(this.name, 'recursiveFunctions', recursiveFunctions, filepath)
+		const recursiveFunctions = []
+		for(let i = 0; i < assignedFunctions.length; i++) {
+			const name = assignedNames[i]
+			if(testRecursive(assignedFunctions[i], name)) {
+				recursiveFunctions.push(name)
+			}
+		}
+		existing.recursive += recursiveFunctions.length
+		append(this.name, 'recursiveFunctions', recursiveFunctions, filepath)
 
-    return existing
-  },
-  initialValue: initialFunctionDefinitionInfo
+		return existing
+	},
+	initialValue: initialFunctionDefinitionInfo
 }

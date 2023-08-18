@@ -46,15 +46,15 @@ export interface OutputCollectorConfiguration extends MergeableRecord {
 }
 
 export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguration = {
-  from:      'stdout',
-  postamble: `🐧${'-'.repeat(5)}🐧`,
-  timeout:   {
-    // TODO: allow to configure such things in a configuration file?
-    ms:             750_000,
-    resetOnNewData: true
-  },
-  keepPostamble:           false,
-  automaticallyTrimOutput: true
+	from:      'stdout',
+	postamble: `🐧${'-'.repeat(5)}🐧`,
+	timeout:   {
+		// TODO: allow to configure such things in a configuration file?
+		ms:             750_000,
+		resetOnNewData: true
+	},
+	keepPostamble:           false,
+	automaticallyTrimOutput: true
 }
 
 // TODO: doc
@@ -76,12 +76,12 @@ export interface RShellOptions extends RShellSessionOptions {
 }
 
 export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
-  sessionName:        'default',
-  pathToRExecutable:  'R',
-  commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
-  cwd:                process.cwd(),
-  env:                process.env,
-  eol:                EOL
+	sessionName:        'default',
+	pathToRExecutable:  'R',
+	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
+	cwd:                process.cwd(),
+	env:                process.env,
+	eol:                EOL
 } as const
 
 /**
@@ -94,226 +94,226 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
  * TODO: in the future real language bindings like rpy2? but for ts?
  */
 export class RShell {
-  // TODO: deep readonly?
-  public readonly options: Readonly<RShellOptions>
-  public readonly session: RShellSession
-  private readonly log:    Logger<ILogObj>
+	// TODO: deep readonly?
+	public readonly options: Readonly<RShellOptions>
+	public readonly session: RShellSession
+	private readonly log:    Logger<ILogObj>
 
-  public constructor(options?: Partial<RShellOptions>) {
-    this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
-    this.log = log.getSubLogger({ name: this.options.sessionName })
+	public constructor(options?: Partial<RShellOptions>) {
+		this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
+		this.log = log.getSubLogger({ name: this.options.sessionName })
 
-    this.session = new RShellSession(this.options, this.log)
-  }
+		this.session = new RShellSession(this.options, this.log)
+	}
 
-  /**
+	/**
    * sends the given command directly to the current R session
    * will not do anything to alter input markers!
    */
-  // TODO: rename to execute or so?
-  public sendCommand(command: string): void {
-    if(this.log.settings.minLevel >= LogLevel.trace) {
-      this.log.trace(`> ${JSON.stringify(command)}`)
-    }
-    this._sendCommand(command)
-  }
+	// TODO: rename to execute or so?
+	public sendCommand(command: string): void {
+		if(this.log.settings.minLevel >= LogLevel.trace) {
+			this.log.trace(`> ${JSON.stringify(command)}`)
+		}
+		this._sendCommand(command)
+	}
 
-  // TODO: general varRead which uses r to serialize
-  /**
+	// TODO: general varRead which uses r to serialize
+	/**
    * Send a command and collect the output
    *
    * @param command     - the R command to execute (similar to {@link sendCommand})
    * @param addonConfig - further configuration on how and what to collect: see {@link OutputCollectorConfiguration},
    *                      defaults are set in {@link DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION}
    */
-  public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
-    const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig)
-    if(this.log.settings.minLevel >= LogLevel.trace) {
-      this.log.trace(`> ${JSON.stringify(command)}`)
-    }
-    const output = await this.session.collectLinesUntil(config.from, {
-      predicate:       data => data === config.postamble,
-      includeInResult: config.keepPostamble // we do not want the postamble
-    }, config.timeout, () => {
-      this._sendCommand(command)
-      // TODO: in the future use sync redirect? or pipes with automatic wrapping?
-      if (config.from === 'stderr') {
-        this._sendCommand(`cat("${config.postamble}${this.options.eol}", file=stderr())`)
-      } else {
-        this._sendCommand(`cat("${config.postamble}${this.options.eol}")`)
-      }
-    })
-    if (config.automaticallyTrimOutput) {
-      return output.map(line => line.trim())
-    } else {
-      return output
-    }
-  }
+	public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
+		const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig)
+		if(this.log.settings.minLevel >= LogLevel.trace) {
+			this.log.trace(`> ${JSON.stringify(command)}`)
+		}
+		const output = await this.session.collectLinesUntil(config.from, {
+			predicate:       data => data === config.postamble,
+			includeInResult: config.keepPostamble // we do not want the postamble
+		}, config.timeout, () => {
+			this._sendCommand(command)
+			// TODO: in the future use sync redirect? or pipes with automatic wrapping?
+			if (config.from === 'stderr') {
+				this._sendCommand(`cat("${config.postamble}${this.options.eol}", file=stderr())`)
+			} else {
+				this._sendCommand(`cat("${config.postamble}${this.options.eol}")`)
+			}
+		})
+		if (config.automaticallyTrimOutput) {
+			return output.map(line => line.trim())
+		} else {
+			return output
+		}
+	}
 
-  /**
+	/**
    * execute multiple commands in order
    *
    * @see sendCommand
    */
-  public sendCommands(...commands: string[]): void {
-    for (const element of commands) {
-      this.sendCommand(element)
-    }
-  }
+	public sendCommands(...commands: string[]): void {
+		for (const element of commands) {
+			this.sendCommand(element)
+		}
+	}
 
-  /**
+	/**
    * clears the R environment using the `rm` command.
    */
-  public clearEnvironment(): void {
-    this.log.debug('clearing environment')
-    this._sendCommand('rm(list=ls())')
-  }
+	public clearEnvironment(): void {
+		this.log.debug('clearing environment')
+		this._sendCommand('rm(list=ls())')
+	}
 
-  /**
+	/**
    * usually R will stop execution on errors, with this the R session will try to
    * continue working!
    */
-  public continueOnError(): void {
-    this.log.info('continue in case of Errors')
-    this._sendCommand('options(error=function() {})')
-  }
+	public continueOnError(): void {
+		this.log.info('continue in case of Errors')
+		this._sendCommand('options(error=function() {})')
+	}
 
-  public injectLibPaths(...paths: string[]): void {
-    this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
-    this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
-  }
+	public injectLibPaths(...paths: string[]): void {
+		this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
+		this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
+	}
 
-  // TODO: this is really hacky
-  public tryToInjectHomeLibPath(): void {
-    this.injectLibPaths('~/.r-libs')
-  }
+	// TODO: this is really hacky
+	public tryToInjectHomeLibPath(): void {
+		this.injectLibPaths('~/.r-libs')
+	}
 
-  /**
+	/**
    * checks if a given package is already installed on the system!
    */
-  public async isPackageInstalled(packageName: string): Promise<boolean> {
-    this.log.debug(`checking if package "${packageName}" is installed`)
-    const result = await this.sendCommandWithOutput(
-      `cat(paste0(is.element("${packageName}", installed.packages()[,1])),"${this.options.eol}")`)
-    return result.length === 1 && result[0] === ts2r(true)
-  }
+	public async isPackageInstalled(packageName: string): Promise<boolean> {
+		this.log.debug(`checking if package "${packageName}" is installed`)
+		const result = await this.sendCommandWithOutput(
+			`cat(paste0(is.element("${packageName}", installed.packages()[,1])),"${this.options.eol}")`)
+		return result.length === 1 && result[0] === ts2r(true)
+	}
 
-  public async allInstalledPackages(): Promise<string[]> {
-    this.log.debug('getting all installed packages')
-    const [packages] = await this.sendCommandWithOutput(`cat(paste0(installed.packages()[,1], collapse=","),"${this.options.eol}")`)
-    return packages.split(',')
-  }
+	public async allInstalledPackages(): Promise<string[]> {
+		this.log.debug('getting all installed packages')
+		const [packages] = await this.sendCommandWithOutput(`cat(paste0(installed.packages()[,1], collapse=","),"${this.options.eol}")`)
+		return packages.split(',')
+	}
 
-  // TODO: bioconductor support?
-  /**
+	// TODO: bioconductor support?
+	/**
    * installs the package using a temporary location
    *
    * @param packageName - the package to install
    * @param autoload    - if true, the package will be loaded after installation
    * @param force       - if true, the package will be installed no if it is already on the system and ready to be loaded
    */
-  public async ensurePackageInstalled(packageName: string, autoload = false, force = false): Promise<{
+	public async ensurePackageInstalled(packageName: string, autoload = false, force = false): Promise<{
     packageName:           string
     packageExistedAlready: boolean
     /** the temporary directory used for the installation, undefined if none was used */
     libraryLocation?:      string
   }> {
-    const packageExistedAlready = await this.isPackageInstalled(packageName)
-    if (!force && packageExistedAlready) {
-      this.log.info(`package "${packageName}" is already installed`)
-      if (autoload) {
-        this.sendCommand(`library(${ts2r(packageName)})`)
-      }
-      return {
-        packageName,
-        packageExistedAlready: true
-      }
-    }
+		const packageExistedAlready = await this.isPackageInstalled(packageName)
+		if (!force && packageExistedAlready) {
+			this.log.info(`package "${packageName}" is already installed`)
+			if (autoload) {
+				this.sendCommand(`library(${ts2r(packageName)})`)
+			}
+			return {
+				packageName,
+				packageExistedAlready: true
+			}
+		}
 
-    // obtain a temporary directory
-    this.sendCommand('temp <- tempdir()')
-    const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${ts2r(this.options.eol)})`)
+		// obtain a temporary directory
+		this.sendCommand('temp <- tempdir()')
+		const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${ts2r(this.options.eol)})`)
 
-    this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
+		this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
 
-    const successfulDone = new RegExp(`.*DONE *\\(${packageName}\\)`)
+		const successfulDone = new RegExp(`.*DONE *\\(${packageName}\\)`)
 
-    await this.session.collectLinesUntil('both', {
-      predicate:       data => successfulDone.test(data),
-      includeInResult: false
-    }, {
-      ms:             750_000,
-      resetOnNewData: true
-    }, () => {
-      // the else branch is a cheesy way to work even if the package is already installed!
-      this.sendCommand(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/", quiet=FALSE, lib=temp)`)
-    })
-    if (autoload) {
-      this.sendCommand(`library(${ts2r(packageName)}, lib.loc=${ts2r(tempdir)})`)
-    }
-    return {
-      packageName,
-      libraryLocation: tempdir,
-      packageExistedAlready
-    }
-  }
+		await this.session.collectLinesUntil('both', {
+			predicate:       data => successfulDone.test(data),
+			includeInResult: false
+		}, {
+			ms:             750_000,
+			resetOnNewData: true
+		}, () => {
+			// the else branch is a cheesy way to work even if the package is already installed!
+			this.sendCommand(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/", quiet=FALSE, lib=temp)`)
+		})
+		if (autoload) {
+			this.sendCommand(`library(${ts2r(packageName)}, lib.loc=${ts2r(tempdir)})`)
+		}
+		return {
+			packageName,
+			libraryLocation: tempdir,
+			packageExistedAlready
+		}
+	}
 
-  // TODO: allow to configure repos etc.
-  // TODO: parser for errors
+	// TODO: allow to configure repos etc.
+	// TODO: parser for errors
 
-  /**
+	/**
    * close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
    *
    * @returns true if the operation succeeds, false otherwise
    */
-  public close(): boolean {
-    return this.session.end()
-  }
+	public close(): boolean {
+		return this.session.end()
+	}
 
-  private _sendCommand(command: string): void {
-    this.session.writeLine(command)
-  }
+	private _sendCommand(command: string): void {
+		this.session.writeLine(command)
+	}
 }
 
 /**
  * used to deal with the underlying input-output streams of the R process
  */
 class RShellSession {
-  private readonly bareSession:   ChildProcessWithoutNullStreams
-  private readonly sessionStdOut: readline.Interface
-  private readonly sessionStdErr: readline.Interface
-  private readonly options:       RShellSessionOptions
-  private readonly log:           Logger<ILogObj>
-  private collectionTimeout:      NodeJS.Timeout | undefined
+	private readonly bareSession:   ChildProcessWithoutNullStreams
+	private readonly sessionStdOut: readline.Interface
+	private readonly sessionStdErr: readline.Interface
+	private readonly options:       RShellSessionOptions
+	private readonly log:           Logger<ILogObj>
+	private collectionTimeout:      NodeJS.Timeout | undefined
 
-  public constructor(options: RShellSessionOptions, log: Logger<ILogObj>) {
-    this.bareSession = spawn(options.pathToRExecutable, options.commandLineOptions, {
-      env:         options.env,
-      cwd:         options.cwd,
-      windowsHide: true
-    })
-    this.sessionStdOut = readline.createInterface({
-      input:    this.bareSession.stdout,
-      terminal: false
-    })
-    this.sessionStdErr = readline.createInterface({
-      input:    this.bareSession.stderr,
-      terminal: false
-    })
-    this.options = options
-    this.log = log
-    this.setupRSessionLoggers()
-  }
+	public constructor(options: RShellSessionOptions, log: Logger<ILogObj>) {
+		this.bareSession = spawn(options.pathToRExecutable, options.commandLineOptions, {
+			env:         options.env,
+			cwd:         options.cwd,
+			windowsHide: true
+		})
+		this.sessionStdOut = readline.createInterface({
+			input:    this.bareSession.stdout,
+			terminal: false
+		})
+		this.sessionStdErr = readline.createInterface({
+			input:    this.bareSession.stderr,
+			terminal: false
+		})
+		this.options = options
+		this.log = log
+		this.setupRSessionLoggers()
+	}
 
-  public write(data: string): void {
-    this.bareSession.stdin.write(data)
-  }
+	public write(data: string): void {
+		this.bareSession.stdin.write(data)
+	}
 
-  public writeLine(data: string): void {
-    this.write(`${data}${this.options.eol}`)
-  }
+	public writeLine(data: string): void {
+		this.write(`${data}${this.options.eol}`)
+	}
 
-  /**
+	/**
    * Collect lines from the selected streams until the given condition is met or the timeout is reached
    *
    * This method does allow other listeners to consume the same input
@@ -323,87 +323,87 @@ class RShellSession {
    * @param timeout - Configuration for how and when to timeout
    * @param action  - Event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
    */
-  public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
-    const result: string[] = []
-    let handler: (data: string) => void
+	public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
+		const result: string[] = []
+		let handler: (data: string) => void
 
-    return await new Promise<string[]>((resolve, reject) => {
-      const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
-        reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`))
-      }, timeout.ms)
-      this.collectionTimeout = makeTimer()
+		return await new Promise<string[]>((resolve, reject) => {
+			const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
+				reject(new Error(`timeout of ${timeout.ms}ms reached (${JSON.stringify(result)})`))
+			}, timeout.ms)
+			this.collectionTimeout = makeTimer()
 
-      handler = (data: string): void => {
-        const end = until.predicate(data)
-        if (!end || until.includeInResult) {
-          result.push(data)
-        }
-        if (end) {
-          clearTimeout(this.collectionTimeout)
-          resolve(result)
-        } else if (timeout.resetOnNewData) {
-          clearTimeout(this.collectionTimeout)
-          this.collectionTimeout = makeTimer()
-        }
-      }
-      this.on(from, 'line', handler)
-      action?.()
-    }).finally(() => {
-      this.removeListener(from, 'line', handler)
-    })
-  }
+			handler = (data: string): void => {
+				const end = until.predicate(data)
+				if (!end || until.includeInResult) {
+					result.push(data)
+				}
+				if (end) {
+					clearTimeout(this.collectionTimeout)
+					resolve(result)
+				} else if (timeout.resetOnNewData) {
+					clearTimeout(this.collectionTimeout)
+					this.collectionTimeout = makeTimer()
+				}
+			}
+			this.on(from, 'line', handler)
+			action?.()
+		}).finally(() => {
+			this.removeListener(from, 'line', handler)
+		})
+	}
 
-  /**
+	/**
    * close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
    * TODO: find nice structure for this
    *
    * @returns true if the kill succeeds, false otherwise
    * @see RShell#close
    */
-  end(): boolean {
-    const killResult = this.bareSession.kill()
-    if(this.collectionTimeout !== undefined) {
-      clearTimeout(this.collectionTimeout)
-    }
-    this.sessionStdOut.close()
-    this.sessionStdErr.close()
-    log.info(`killed R session with pid ${this.bareSession.pid ?? '<unknown>'} and result ${killResult ? 'successful' : 'failed'} (including streams)`)
-    return killResult
-  }
+	end(): boolean {
+		const killResult = this.bareSession.kill()
+		if(this.collectionTimeout !== undefined) {
+			clearTimeout(this.collectionTimeout)
+		}
+		this.sessionStdOut.close()
+		this.sessionStdErr.close()
+		log.info(`killed R session with pid ${this.bareSession.pid ?? '<unknown>'} and result ${killResult ? 'successful' : 'failed'} (including streams)`)
+		return killResult
+	}
 
-  private setupRSessionLoggers(): void {
-    if(this.log.settings.minLevel >= LogLevel.trace) {
-      this.bareSession.stdout.on('data', (data: Buffer) => {
-        this.log.trace(`< ${data.toString()}`)
-      })
-      this.bareSession.on('close', (code: number) => {
-        this.log.trace(`session exited with code ${code}`)
-      })
-    }
-    this.bareSession.stderr.on('data', (data: string) => {
-      this.log.warn(`< ${data}`)
-    })
-  }
+	private setupRSessionLoggers(): void {
+		if(this.log.settings.minLevel >= LogLevel.trace) {
+			this.bareSession.stdout.on('data', (data: Buffer) => {
+				this.log.trace(`< ${data.toString()}`)
+			})
+			this.bareSession.on('close', (code: number) => {
+				this.log.trace(`session exited with code ${code}`)
+			})
+		}
+		this.bareSession.stderr.on('data', (data: string) => {
+			this.log.warn(`< ${data}`)
+		})
+	}
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private on(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
-    const both = from === 'both'
-    if (both || from === 'stdout') {
-      this.sessionStdOut.on(event, listener)
-    }
-    if (both || from === 'stderr') {
-      this.sessionStdErr.on(event, listener)
-    }
-  }
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	private on(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
+		const both = from === 'both'
+		if (both || from === 'stdout') {
+			this.sessionStdOut.on(event, listener)
+		}
+		if (both || from === 'stderr') {
+			this.sessionStdErr.on(event, listener)
+		}
+	}
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private removeListener(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
-    const both = from === 'both'
-    if (both || from === 'stdout') {
-      this.sessionStdOut.removeListener(event, listener)
-    }
-    if (both || from === 'stderr') {
-      this.sessionStdErr.removeListener(event, listener)
-    }
-  }
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	private removeListener(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
+		const both = from === 'both'
+		if (both || from === 'stdout') {
+			this.sessionStdOut.removeListener(event, listener)
+		}
+		if (both || from === 'stderr') {
+			this.sessionStdErr.removeListener(event, listener)
+		}
+	}
 }

@@ -46,14 +46,14 @@ export type QuadContextRetriever = ContextForQuad | ((obj: DataForQuad) => Conte
  * A deterministic counting id generator for quads.
  */
 export function defaultQuadIdGenerator(): QuadIdRetriever {
-  let counter = 0
-  const idMap = new DefaultMap<unknown, number>( () => counter++ )
-  return (elem: unknown, context: ContextForQuad) => `${context}/${idMap.get(elem)}`
+	let counter = 0
+	const idMap = new DefaultMap<unknown, number>( () => counter++ )
+	return (elem: unknown, context: ContextForQuad) => `${context}/${idMap.get(elem)}`
 }
 
 const ignoredKeysArray = ['complexNumber', 'markedAsInt', 'info']
 export function defaultQuadIgnoreIf(): QuadIgnoreIf {
-  return (key: string, value: unknown) => value === undefined || ignoredKeysArray.includes(key)
+	return (key: string, value: unknown) => value === undefined || ignoredKeysArray.includes(key)
 }
 
 /**
@@ -81,14 +81,14 @@ export interface QuadSerializationConfiguration extends MergeableRecord {
 }
 
 export const DefaultQuadSerializationConfiguration: Required<QuadSerializationConfiguration> = {
-  ignore:  defaultQuadIgnoreIf(),
-  context: 'unknown-context',
-  getId:   defaultQuadIdGenerator(),
-  domain:  "https://uni-ulm.de/r-ast/"
+	ignore:  defaultQuadIgnoreIf(),
+	context: 'unknown-context',
+	getId:   defaultQuadIdGenerator(),
+	domain:  "https://uni-ulm.de/r-ast/"
 }
 
 function retrieveContext(context: QuadContextRetriever, obj: DataForQuad): string {
-  return typeof context === 'string' ? context : context(obj)
+	return typeof context === 'string' ? context : context(obj)
 }
 
 
@@ -103,80 +103,80 @@ const writer = new Writer( { format: 'N-Quads' })
  * @returns the serialized quads
  */
 export function serialize2quads(obj: RecordForQuad, config: QuadSerializationConfiguration): string {
-  const useConfig = deepMergeObject(DefaultQuadSerializationConfiguration, config)
-  guard(isObjectOrArray(obj), 'cannot serialize non-object to rdf!')
-  guard(!Array.isArray(obj), 'cannot serialize arrays!')
+	const useConfig = deepMergeObject(DefaultQuadSerializationConfiguration, config)
+	guard(isObjectOrArray(obj), 'cannot serialize non-object to rdf!')
+	guard(!Array.isArray(obj), 'cannot serialize arrays!')
 
-  const quads: Quad[] = []
-  serializeObject(obj, quads, useConfig)
-  return writer.quadsToString(quads)
+	const quads: Quad[] = []
+	serializeObject(obj, quads, useConfig)
+	return writer.quadsToString(quads)
 }
 
 
 function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
-  for (const [index, element] of value.entries()) {
-    const context= retrieveContext(config.context, obj)
-    quads.push(quad(
-      namedNode(domain + config.getId(obj, context)),
-      namedNode(domain + key + '-' + String(index)),
-      namedNode(domain + config.getId(element, context)),
-      namedNode(context)
-    ))
-    guard(isObjectOrArray(element), () => `cannot serialize non-object to rdf within array of ${JSON.stringify(value)}!`)
-    serializeObject(element as DataForQuad, quads, config)
-  }
+	for (const [index, element] of value.entries()) {
+		const context= retrieveContext(config.context, obj)
+		quads.push(quad(
+			namedNode(domain + config.getId(obj, context)),
+			namedNode(domain + key + '-' + String(index)),
+			namedNode(domain + config.getId(element, context)),
+			namedNode(context)
+		))
+		guard(isObjectOrArray(element), () => `cannot serialize non-object to rdf within array of ${JSON.stringify(value)}!`)
+		serializeObject(element as DataForQuad, quads, config)
+	}
 }
 
 function processObjectEntries(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
-  const context = retrieveContext(config.context, obj)
-  quads.push(quad(
-    namedNode(domain + config.getId(obj, context)),
-    namedNode(domain + key),
-    namedNode(domain + config.getId(value, context)),
-    namedNode(context)
-  ))
-  serializeObject(value as DataForQuad, quads, config)
+	const context = retrieveContext(config.context, obj)
+	quads.push(quad(
+		namedNode(domain + config.getId(obj, context)),
+		namedNode(domain + key),
+		namedNode(domain + config.getId(value, context)),
+		namedNode(context)
+	))
+	serializeObject(value as DataForQuad, quads, config)
 }
 
 function objToType(value: unknown): NamedNode | undefined {
-  let suffix: string | undefined
-  switch (typeof value) {
-    case 'string': suffix = 'string'; break
-    case 'number': suffix = Number.isInteger(value) ? 'integer' : 'decimal'; break
-    case 'boolean': suffix = 'boolean'; break
-    case 'bigint': suffix = 'integer'; break
-    default: log.warn(`unknown ${typeof value} with ${JSON.stringify(value)}`); break
-  }
-  return suffix ? namedNode(`http://www.w3.org/2001/XMLSchema#${suffix}`) : undefined
+	let suffix: string | undefined
+	switch (typeof value) {
+		case 'string': suffix = 'string'; break
+		case 'number': suffix = Number.isInteger(value) ? 'integer' : 'decimal'; break
+		case 'boolean': suffix = 'boolean'; break
+		case 'bigint': suffix = 'integer'; break
+		default: log.warn(`unknown ${typeof value} with ${JSON.stringify(value)}`); break
+	}
+	return suffix ? namedNode(`http://www.w3.org/2001/XMLSchema#${suffix}`) : undefined
 }
 
 function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
-  const context = retrieveContext(config.context, obj)
-  quads.push(quad(
-    namedNode(domain + config.getId(obj, context)),
-    namedNode(domain + key),
-    literal(String(value), objToType(value)),
-    namedNode(context)
-  ))
+	const context = retrieveContext(config.context, obj)
+	quads.push(quad(
+		namedNode(domain + config.getId(obj, context)),
+		namedNode(domain + key),
+		literal(String(value), objToType(value)),
+		namedNode(context)
+	))
 }
 
 function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
-  if (isObjectOrArray(value)) {
-    if (Array.isArray(value)) {
-      processArrayEntries(key, value, obj, quads, config)
-    } else {
-      processObjectEntries(key, value, obj, quads, config)
-    }
-  } else {
-    processLiteralEntry(value, key, obj, quads, config)
-  }
+	if (isObjectOrArray(value)) {
+		if (Array.isArray(value)) {
+			processArrayEntries(key, value, obj, quads, config)
+		} else {
+			processObjectEntries(key, value, obj, quads, config)
+		}
+	} else {
+		processLiteralEntry(value, key, obj, quads, config)
+	}
 }
 
 function serializeObject(obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>): void {
-  for(const [key, value] of Object.entries(obj)) {
-    if(config.ignore(key, value)) {
-      continue
-    }
-    processObjectEntry(key, value, obj, quads, config)
-  }
+	for(const [key, value] of Object.entries(obj)) {
+		if(config.ignore(key, value)) {
+			continue
+		}
+		processObjectEntry(key, value, obj, quads, config)
+	}
 }

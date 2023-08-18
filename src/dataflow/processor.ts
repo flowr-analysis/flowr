@@ -3,9 +3,9 @@
  */
 import { DataflowScopeName } from './graph'
 import {
-  DecoratedAst,
-  ParentInformation, RNode,
-  RNodeWithParent
+	DecoratedAst,
+	ParentInformation, RNode,
+	RNodeWithParent
 } from '../r-bridge'
 import { DataflowInformation } from './internal/info'
 import { REnvironmentInformation } from './environments'
@@ -54,7 +54,7 @@ export type DataflowProcessors<OtherInfo> = {
  * @param data    - The initial information to be passed down
  */
 export function processDataflowFor<OtherInfo>(current: RNodeWithParent<OtherInfo>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo & ParentInformation> {
-  return data.processors[current.type](current as never, data)
+	return data.processors[current.type](current as never, data)
 }
 
 

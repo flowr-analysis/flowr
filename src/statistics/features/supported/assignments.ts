@@ -11,10 +11,10 @@ export interface AssignmentInfo extends FeatureInfo {
 
 // TODO: integers, constants, etc.
 const initialAssignmentInfo = (): AssignmentInfo => ({
-  assignmentOperator:               0,
-  specialAssignmentOps:             0,
-  nestedOperatorAssignment:         0,
-  directlyNestedOperatorAssignment: 0
+	assignmentOperator:               0,
+	specialAssignmentOps:             0,
+	nestedOperatorAssignment:         0,
+	directlyNestedOperatorAssignment: 0
 })
 
 const defaultOperatorAssignmentQuery: Query = xpath.parse(`//EQ_ASSIGN|//LEFT_ASSIGN|//RIGHT_ASSIGN`)
@@ -45,44 +45,44 @@ const bracketAssignQuery: Query = xpath.parse(`
  `)
 
 function enrichOpForBracketAssign(node: Node): string {
-  let operator: string | null = null
-  const siblings = node.parentNode?.parentNode?.childNodes
-  if(siblings == null) {
-    return `${node.textContent ?? '<unknown>'}??`
-  }
+	let operator: string | null = null
+	const siblings = node.parentNode?.parentNode?.childNodes
+	if(siblings == null) {
+		return `${node.textContent ?? '<unknown>'}??`
+	}
 
-  // next and previous sibling do not work to our liking (they are not entertained by the xpath-ts chain)
-  for (let i = 0; i < siblings.length; i++) {
-    const child = siblings.item(i)
-    if(child.nodeName === 'LEFT_ASSIGN' || child.nodeName === 'EQ_ASSIGN' || child.nodeName === 'RIGHT_ASSIGN') {
-      operator = child.textContent
-      break
-    }
-  }
+	// next and previous sibling do not work to our liking (they are not entertained by the xpath-ts chain)
+	for (let i = 0; i < siblings.length; i++) {
+		const child = siblings.item(i)
+		if(child.nodeName === 'LEFT_ASSIGN' || child.nodeName === 'EQ_ASSIGN' || child.nodeName === 'RIGHT_ASSIGN') {
+			operator = child.textContent
+			break
+		}
+	}
 
-  return `${node.textContent ?? '<unknown>'}${operator ?? '??'}`
+	return `${node.textContent ?? '<unknown>'}${operator ?? '??'}`
 }
 
 export const assignments: Feature<AssignmentInfo> = {
-  name:        'Assignments',
-  description: 'all ways to assign something in R',
+	name:        'Assignments',
+	description: 'all ways to assign something in R',
 
-  process(existing: AssignmentInfo, input: Document, filepath: string | undefined): AssignmentInfo {
-    const assignmentOperators = defaultOperatorAssignmentQuery.select({ node: input })
-    const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input })
-    const directlyNestedOperators = directlyNestedOperatorAssignmentQuery.select({ node: input })
-    const specialAssignmentOps = bracketAssignQuery.select({ node: input }).map(enrichOpForBracketAssign)
+	process(existing: AssignmentInfo, input: Document, filepath: string | undefined): AssignmentInfo {
+		const assignmentOperators = defaultOperatorAssignmentQuery.select({ node: input })
+		const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input })
+		const directlyNestedOperators = directlyNestedOperatorAssignmentQuery.select({ node: input })
+		const specialAssignmentOps = bracketAssignQuery.select({ node: input }).map(enrichOpForBracketAssign)
 
-    existing.nestedOperatorAssignment += nestedOperators.length
-    existing.directlyNestedOperatorAssignment += directlyNestedOperators.length
-    existing.assignmentOperator += assignmentOperators.length
-    existing.specialAssignmentOps += specialAssignmentOps.length
+		existing.nestedOperatorAssignment += nestedOperators.length
+		existing.directlyNestedOperatorAssignment += directlyNestedOperators.length
+		existing.assignmentOperator += assignmentOperators.length
+		existing.specialAssignmentOps += specialAssignmentOps.length
 
-    append(this.name, 'assignmentOperator', assignmentOperators, filepath)
-    append(this.name, 'specialAssignmentOps', specialAssignmentOps, filepath)
+		append(this.name, 'assignmentOperator', assignmentOperators, filepath)
+		append(this.name, 'specialAssignmentOps', specialAssignmentOps, filepath)
 
-    return existing
-  },
+		return existing
+	},
 
-  initialValue: initialAssignmentInfo
+	initialValue: initialAssignmentInfo
 }

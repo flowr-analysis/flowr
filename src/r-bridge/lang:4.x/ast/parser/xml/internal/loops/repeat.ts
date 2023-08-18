@@ -17,32 +17,32 @@ import { executeHook, executeUnknownHook } from '../../hooks'
  * @returns The parsed {@link RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
  */
 export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): RRepeatLoop | undefined {
-  if (repeatToken.name !== Type.Repeat) {
-    parseLog.debug('encountered non-repeat token for supposed repeat-loop structure')
-    return executeUnknownHook(data.hooks.loops.onRepeatLoop.unknown, data, { repeatToken, body })
-  }
+	if (repeatToken.name !== Type.Repeat) {
+		parseLog.debug('encountered non-repeat token for supposed repeat-loop structure')
+		return executeUnknownHook(data.hooks.loops.onRepeatLoop.unknown, data, { repeatToken, body })
+	}
 
-  parseLog.debug(`trying to parse repeat-loop`);
-  ({ repeatToken, body } = executeHook(data.hooks.loops.onRepeatLoop.before, data, { repeatToken, body }))
+	parseLog.debug(`trying to parse repeat-loop`);
+	({ repeatToken, body } = executeHook(data.hooks.loops.onRepeatLoop.before, data, { repeatToken, body }))
 
-  const parseBody = tryNormalizeSingleNode(data, body)
-  guard(parseBody !== undefined, () => `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(body)})`)
+	const parseBody = tryNormalizeSingleNode(data, body)
+	guard(parseBody !== undefined, () => `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(body)})`)
 
-  const {
-    location,
-    content
-  } = retrieveMetaStructure(data.config, repeatToken.content)
-  const result: RRepeatLoop = {
-    type:   Type.Repeat,
-    location,
-    lexeme: content,
-    body:   ensureExpressionList(parseBody),
-    info:   {
-      // TODO: include children etc.
-      fullRange:        data.currentRange,
-      additionalTokens: [],
-      fullLexeme:       data.currentLexeme
-    }
-  }
-  return executeHook(data.hooks.loops.onRepeatLoop.after, data, result)
+	const {
+		location,
+		content
+	} = retrieveMetaStructure(data.config, repeatToken.content)
+	const result: RRepeatLoop = {
+		type:   Type.Repeat,
+		location,
+		lexeme: content,
+		body:   ensureExpressionList(parseBody),
+		info:   {
+			// TODO: include children etc.
+			fullRange:        data.currentRange,
+			additionalTokens: [],
+			fullLexeme:       data.currentLexeme
+		}
+	}
+	return executeHook(data.hooks.loops.onRepeatLoop.after, data, result)
 }

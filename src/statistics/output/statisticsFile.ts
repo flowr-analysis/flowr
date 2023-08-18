@@ -7,16 +7,16 @@ import { DummyAppendProvider, StatisticAppendProvider, StatisticFileProvider } f
  * Returns the content of the node (i.e., the text content excluding the children)
  */
 export function extractNodeContent(node: Node): string {
-  let result = node.textContent
+	let result = node.textContent
 
-  if(node.hasChildNodes()) {
-    const firstChild = node.childNodes.item(0)
-    if(firstChild.nodeType === 3 /* text node */) {
-      result = firstChild.textContent
-    }
-  }
+	if(node.hasChildNodes()) {
+		const firstChild = node.childNodes.item(0)
+		if(firstChild.nodeType === 3 /* text node */) {
+			result = firstChild.textContent
+		}
+	}
 
-  return result?.trim()?.replace('\n', '\\n') ?? '<unknown>'
+	return result?.trim()?.replace('\n', '\\n') ?? '<unknown>'
 }
 
 
@@ -27,8 +27,8 @@ let fileProvider: StatisticAppendProvider = new DummyAppendProvider()
  * Make the statistics write to a given output directory.
  */
 export function initFileProvider(outputDirectory: string) {
-  console.log(`Initializing file provider for output directory ${outputDirectory}`)
-  fileProvider = new StatisticFileProvider(outputDirectory)
+	console.log(`Initializing file provider for output directory ${outputDirectory}`)
+	fileProvider = new StatisticFileProvider(outputDirectory)
 }
 
 /**
@@ -50,20 +50,20 @@ export interface StatisticsOutputFormat {
  * @param unique - should duplicate entries be removed on addition
  */
 export function append<T>(name: string, fn: keyof T, nodes: string[] | Node[], context: string | undefined, unique = false ) {
-  if(nodes.length === 0) {
-    return
-  }
-  let contents = typeof nodes[0] === 'string' ?
+	if(nodes.length === 0) {
+		return
+	}
+	let contents = typeof nodes[0] === 'string' ?
       nodes as string[]
-    : (nodes as Node[]).map(extractNodeContent)
+		: (nodes as Node[]).map(extractNodeContent)
 
-  if(unique) {
-    contents = [...new Set(contents)]
-  }
+	if(unique) {
+		contents = [...new Set(contents)]
+	}
 
-  contents = contents.map(c => JSON.stringify({ value: c, context } as StatisticsOutputFormat))
+	contents = contents.map(c => JSON.stringify({ value: c, context } as StatisticsOutputFormat))
 
-  fileProvider.append(name, fn, contents.join('\n'))
+	fileProvider.append(name, fn, contents.join('\n'))
 }
 
 

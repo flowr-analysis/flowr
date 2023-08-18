@@ -14,24 +14,24 @@ import { dataflowLogger } from '../index'
  * @returns A list of possible definitions of the identifier (one if the definition location is exactly and always known), or `undefined` if the identifier is undefined in the current scope/with the current environment information.
  */
 export function resolveByName(name: Identifier, withinScope: DataflowScopeName, environments: REnvironmentInformation): IdentifierDefinition[] | undefined {
-  if(withinScope !== LocalScope) {
-    throw new Error('Non-local scoping is not yet supported')
-  }
-  return resolve(name, withinScope, environments)
+	if(withinScope !== LocalScope) {
+		throw new Error('Non-local scoping is not yet supported')
+	}
+	return resolve(name, withinScope, environments)
 }
 
 function resolve(name: Identifier, withinScope: DataflowScopeName, environments: REnvironmentInformation) {
-  dataflowLogger.trace(`Resolving local identifier ${name} (scope name: ${withinScope}, local stack size: ${environments.level})`)
+	dataflowLogger.trace(`Resolving local identifier ${name} (scope name: ${withinScope}, local stack size: ${environments.level})`)
 
-  let current: IEnvironment | undefined = environments.current
-  do {
-    const definition = current.memory.get(name)
-    if(definition !== undefined) {
-      return definition
-    }
-    current = current.parent
-  } while(current !== undefined)
+	let current: IEnvironment | undefined = environments.current
+	do {
+		const definition = current.memory.get(name)
+		if(definition !== undefined) {
+			return definition
+		}
+		current = current.parent
+	} while(current !== undefined)
 
-  dataflowLogger.trace(`Unable to find identifier ${name} in stack`)
-  return undefined
+	dataflowLogger.trace(`Unable to find identifier ${name} in stack`)
+	return undefined
 }

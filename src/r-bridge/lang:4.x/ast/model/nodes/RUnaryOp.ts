@@ -3,21 +3,21 @@ import { Type } from "../type"
 import { UnaryOperatorFlavor } from "../operators"
 
 export interface RUnaryOp<Info = NoInfo> extends Base<Info>, Location {
-  readonly type:   Type.UnaryOp;
-  readonly flavor: UnaryOperatorFlavor;
-  operator:        string;
-  operand:         RNode<Info>;
+	readonly type:   Type.UnaryOp;
+	readonly flavor: UnaryOperatorFlavor;
+	operator:        string;
+	operand:         RNode<Info>;
 }
 
 export interface RLogicalUnaryOp<Info = NoInfo> extends RUnaryOp<Info> {
-  flavor: 'logical'
+	flavor: 'logical'
 }
 
 export interface RArithmeticUnaryOp<Info = NoInfo> extends RUnaryOp<Info> {
-  flavor: 'arithmetic'
+	flavor: 'arithmetic'
 }
 
 export interface RModelFormulaUnaryOp<Info = NoInfo> extends RUnaryOp<Info> {
-  flavor: 'model formula'
+	flavor: 'model formula'
 }
 

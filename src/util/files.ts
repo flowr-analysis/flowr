@@ -7,8 +7,8 @@ import { log } from './log'
  * Represents a table, identified by a header and a list of rows.
  */
 export interface Table {
-  header: string[]
-  rows:   string[][]
+	header: string[]
+	rows:   string[][]
 }
 
 /**
@@ -18,15 +18,15 @@ export interface Table {
  * Based on {@link https://stackoverflow.com/a/45130990}
  */
 async function* getFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
-  const entries = await fsPromise.readdir(dir, { withFileTypes: true })
-  for (const subEntries of entries) {
-    const res = path.resolve(dir, subEntries.name)
-    if (subEntries.isDirectory()) {
-      yield* getFiles(res, suffix)
-    } else if(suffix.test(subEntries.name)) {
-      yield res
-    }
-  }
+	const entries = await fsPromise.readdir(dir, { withFileTypes: true })
+	for (const subEntries of entries) {
+		const res = path.resolve(dir, subEntries.name)
+		if (subEntries.isDirectory()) {
+			yield* getFiles(res, suffix)
+		} else if(suffix.test(subEntries.name)) {
+			yield res
+		}
+	}
 }
 
 const rFileRegex = /\.[rR]$/
@@ -44,23 +44,23 @@ const rFileRegex = /\.[rR]$/
  * @see getFiles
  */
 export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile, number> {
-  let count = 0
-  if(fs.statSync(input).isFile()) {
-    if(!rFileRegex.test(input)) {
-      log.warn(`Input ${input} is not an R file`)
-      return 0
-    }
-    yield { request: 'file', content: input }
-    return 1
-  }
+	let count = 0
+	if(fs.statSync(input).isFile()) {
+		if(!rFileRegex.test(input)) {
+			log.warn(`Input ${input} is not an R file`)
+			return 0
+		}
+		yield { request: 'file', content: input }
+		return 1
+	}
 
-  for await (const f of getFiles(input, rFileRegex)) {
-    if (++count > limit) {
-      return count
-    }
-    yield { request: 'file', content: f }
-  }
-  return count
+	for await (const f of getFiles(input, rFileRegex)) {
+		if (++count > limit) {
+			return count
+		}
+		yield { request: 'file', content: f }
+	}
+	return count
 }
 
 
@@ -74,19 +74,19 @@ export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE
  * @see allRFiles
  */
 export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGenerator<RParseRequestFromFile, number> {
-  limit ??= Number.MAX_VALUE
-  if(inputs.length === 0) {
-    log.info('No inputs given, nothing to do')
-    return 0
-  }
-  let count = 0
-  for(const input of inputs) {
-    count += yield* allRFiles(input, limit - count)
-  }
-  return count
+	limit ??= Number.MAX_VALUE
+	if(inputs.length === 0) {
+		log.info('No inputs given, nothing to do')
+		return 0
+	}
+	let count = 0
+	for(const input of inputs) {
+		count += yield* allRFiles(input, limit - count)
+	}
+	return count
 }
 
 export function writeTableAsCsv(table: Table, file: string, sep = ',', newline = '\n') {
-  const csv = [table.header.join(sep), ...table.rows.map(row => row.join(sep))].join(newline)
-  fs.writeFileSync(file, csv)
+	const csv = [table.header.join(sep), ...table.rows.map(row => row.join(sep))].join(newline)
+	fs.writeFileSync(file, csv)
 }

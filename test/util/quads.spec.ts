@@ -4,20 +4,20 @@ import { serialize2quads } from '../../src/util/quads'
 import { assert } from 'chai'
 
 describe('Quad Generation', withShell(shell => {
-  const context = 'test'
-  const domain = 'https://uni-ulm.de/r-ast/'
+	const context = 'test'
+	const domain = 'https://uni-ulm.de/r-ast/'
 
-  const compareQuads = async(code: string, expected: string) => {
-    const ast = await retrieveAst(shell, code)
-    const decorated = decorateAst(ast).decoratedAst
-    const serialized = serialize2quads(decorated, { context, domain })
-    assert.strictEqual(serialized.trim(), expected.trim())
-  }
+	const compareQuads = async(code: string, expected: string) => {
+		const ast = await retrieveAst(shell, code)
+		const decorated = decorateAst(ast).decoratedAst
+		const serialized = serialize2quads(decorated, { context, domain })
+		assert.strictEqual(serialized.trim(), expected.trim())
+	}
 
-  it('should generate quads', async() => {
-    const idPrefix =  `${domain}${context}/`
-    // ids are deterministic, so we can compare the quads
-    await compareQuads('1', `
+	it('should generate quads', async() => {
+		const idPrefix =  `${domain}${context}/`
+		// ids are deterministic, so we can compare the quads
+		await compareQuads('1', `
 <${idPrefix}0> <${domain}type> "exprlist" <test> .
 <${idPrefix}0> <${domain}children-0> <${idPrefix}1> <test> .
 <${idPrefix}1> <${domain}location> <${idPrefix}2> <test> .
@@ -32,5 +32,5 @@ describe('Quad Generation', withShell(shell => {
 <${idPrefix}1> <${domain}content> <${idPrefix}5> <test> .
 <${idPrefix}5> <${domain}num> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
     `)
-  })
+	})
 }))

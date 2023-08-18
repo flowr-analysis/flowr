@@ -1,3 +1,3 @@
 describe('Loops', () => {
-  require('./for-loop')
+	require('./for-loop')
 })

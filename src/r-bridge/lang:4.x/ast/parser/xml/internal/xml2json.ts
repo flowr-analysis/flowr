@@ -9,17 +9,17 @@ import { XmlBasedJson } from "../input-format"
  * @param xmlString - The xml input to parse
  */
 export function xlm2jsonObject(config: XmlParserConfig, xmlString: string): Promise<XmlBasedJson> {
-  return xml2js.parseStringPromise(xmlString, {
-    attrkey:               config.attributeName,
-    charkey:               config.contentName,
-    childkey:              config.childrenName,
-    charsAsChildren:       false,
-    explicitChildren:      true,
-    // we need this for semicolons etc., while we keep the old broken components we ignore them completely
-    preserveChildrenOrder: true,
-    trim:                  true,
-    includeWhiteChars:     true,
-    normalize:             false,
-    strict:                true
-  }) as Promise<XmlBasedJson>
+	return xml2js.parseStringPromise(xmlString, {
+		attrkey:               config.attributeName,
+		charkey:               config.contentName,
+		childkey:              config.childrenName,
+		charsAsChildren:       false,
+		explicitChildren:      true,
+		// we need this for semicolons etc., while we keep the old broken components we ignore them completely
+		preserveChildrenOrder: true,
+		trim:                  true,
+		includeWhiteChars:     true,
+		normalize:             false,
+		strict:                true
+	}) as Promise<XmlBasedJson>
 }

@@ -8,6 +8,6 @@ import { RExpressionList } from './RExpressionList'
  * ```
  */
 export interface RRepeatLoop<Info = NoInfo> extends Base<Info>, Location {
-  readonly type: Type.Repeat
-  body:          RExpressionList<Info>
+	readonly type: Type.Repeat
+	body:          RExpressionList<Info>
 }

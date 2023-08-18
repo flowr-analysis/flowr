@@ -8,13 +8,13 @@ import { RNode } from './model'
  * @param stop  - A function that determines whether to stop collecting at a given node, does not stop by default
  */
 export function collectAllIds<OtherInfo>(nodes: RNode<OtherInfo & ParentInformation> | (RNode<OtherInfo & ParentInformation> | null | undefined)[] | undefined, stop: (node: RNode<OtherInfo & ParentInformation>)  => boolean = () => false): Set<NodeId> {
-  const ids = new Set<NodeId>()
-  visit(nodes, (node) => {
-    if(stop(node)) {
-      return true
-    }
-    ids.add(node.info.id)
-    return false
-  })
-  return ids
+	const ids = new Set<NodeId>()
+	visit(nodes, (node) => {
+		if(stop(node)) {
+			return true
+		}
+		ids.add(node.info.id)
+		return false
+	})
+	return ids
 }

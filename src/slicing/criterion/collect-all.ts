@@ -5,8 +5,8 @@
  */
 import { MergeableRecord } from '../../util/objects'
 import {
-  NodeId,
-  RNodeWithParent
+	NodeId,
+	RNodeWithParent
 } from '../../r-bridge'
 import { SingleSlicingCriterion, SlicingCriteria } from './parse'
 import { guard } from '../../util/assert'
@@ -17,22 +17,22 @@ import { getUniqueCombinationsOfSize } from '../../util/arrays'
  * @see DefaultAllVariablesFilter
  */
 export interface SlicingCriteriaFilter extends MergeableRecord {
-  /**
+	/**
    * Inclusive minimum size of the slicing criteria (number of included slice points).
    * Should be at least `1` to make sense (and of course at most {@link SlicingCriteriaFilter#maximumSize | maximum size}).
    */
-  minimumSize: number
-  /**
+	minimumSize: number
+	/**
    * Inclusive maximum size of the slicing criteria (number of included slice points).
    * Should be at least `1` to make sense (and of course at least {@link SlicingCriteriaFilter#minimumSize | minimum size}).
    * <p>
    * Be really careful with this one, as the number of possible slicing criteria can grow exponentially with the maximum size.
    */
-  maximumSize: number
-  /**
+	maximumSize: number
+	/**
    * Function that determines the ids of all nodes that can be used as slicing criteria.
    */
-  collectAll:  (root: RNodeWithParent) => NodeId[]
+	collectAll:  (root: RNodeWithParent) => NodeId[]
 }
 
 /**
@@ -41,15 +41,15 @@ export interface SlicingCriteriaFilter extends MergeableRecord {
  * If there are not enough matching nodes within the ast, this will return *no* slicing criteria!
  */
 export function* collectAllSlicingCriteria<OtherInfo>(ast: RNodeWithParent<OtherInfo>, filter: Readonly<SlicingCriteriaFilter>): Generator<SlicingCriteria, void, void> {
-  guard(filter.minimumSize >= 1, `Minimum size must be at least 1, but was ${filter.minimumSize}`)
-  guard(filter.maximumSize >= filter.minimumSize, `Maximum size must be at least minimum size, but was ${filter.maximumSize} < ${filter.minimumSize}`)
-  const potentialSlicingNodes = filter.collectAll(ast)
+	guard(filter.minimumSize >= 1, `Minimum size must be at least 1, but was ${filter.minimumSize}`)
+	guard(filter.maximumSize >= filter.minimumSize, `Maximum size must be at least minimum size, but was ${filter.maximumSize} < ${filter.minimumSize}`)
+	const potentialSlicingNodes = filter.collectAll(ast)
 
-  if(potentialSlicingNodes.length < filter.minimumSize) {
-    return
-  }
+	if(potentialSlicingNodes.length < filter.minimumSize) {
+		return
+	}
 
-  for(const combination of getUniqueCombinationsOfSize(potentialSlicingNodes, filter.minimumSize, filter.maximumSize)) {
-    yield combination.map(n => `$${n}` as SingleSlicingCriterion)
-  }
+	for(const combination of getUniqueCombinationsOfSize(potentialSlicingNodes, filter.minimumSize, filter.maximumSize)) {
+		yield combination.map(n => `$${n}` as SingleSlicingCriterion)
+	}
 }

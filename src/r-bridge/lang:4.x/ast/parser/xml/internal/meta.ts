@@ -7,29 +7,29 @@ import { RExpressionList, RNode, Type } from '../../../model'
  * if the passed object is an array with only one element, remove the array wrapper
  */
 export function objectWithArrUnwrap(obj: XmlBasedJson[] | XmlBasedJson): XmlBasedJson {
-  if (Array.isArray(obj)) {
-    if (obj.length !== 1) {
-      throw new XmlParseError(`expected only one element in the wrapped array, yet received ${JSON.stringify(obj)}`)
-    }
-    return obj[0]
-  } else if (typeof obj === 'object') {
-    return obj
-  } else {
-    throw new XmlParseError(`expected array or object, yet received ${JSON.stringify(obj)}`)
-  }
+	if (Array.isArray(obj)) {
+		if (obj.length !== 1) {
+			throw new XmlParseError(`expected only one element in the wrapped array, yet received ${JSON.stringify(obj)}`)
+		}
+		return obj[0]
+	} else if (typeof obj === 'object') {
+		return obj
+	} else {
+		throw new XmlParseError(`expected array or object, yet received ${JSON.stringify(obj)}`)
+	}
 }
 
 /**
  * given a xml element, extract the source location of the corresponding element in the R-ast
  */
 export function extractLocation(ast: XmlBasedJson): SourceRange {
-  const {
-    line1,
-    col1,
-    line2,
-    col2
-  } = getKeysGuarded<string>(ast, 'line1', 'col1', 'line2', 'col2')
-  return rangeFrom(line1, col1, line2, col2)
+	const {
+		line1,
+		col1,
+		line2,
+		col2
+	} = getKeysGuarded<string>(ast, 'line1', 'col1', 'line2', 'col2')
+	return rangeFrom(line1, col1, line2, col2)
 }
 
 /**
@@ -40,35 +40,35 @@ export function extractLocation(ast: XmlBasedJson): SourceRange {
  * @param obj    - The json object to extract the meta-information from
  */
 export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson): {
-  /** the obj passed in, but potentially without surrounding array wrappers (see {@link objectWithArrUnwrap}) */
-  unwrappedObj: XmlBasedJson
-  /** location information of the corresponding R-ast element */
-  location:     SourceRange
-  content:      string
+	/** the obj passed in, but potentially without surrounding array wrappers (see {@link objectWithArrUnwrap}) */
+	unwrappedObj: XmlBasedJson
+	/** location information of the corresponding R-ast element */
+	location:     SourceRange
+	content:      string
 } {
-  const unwrappedObj = objectWithArrUnwrap(obj)
-  const core = getKeysGuarded(unwrappedObj, config.contentName, config.attributeName)
-  const location = extractLocation(core[config.attributeName] as XmlBasedJson)
-  const content = core[config.contentName]
-  return {
-    unwrappedObj,
-    location,
-    content: content as string
-  }
+	const unwrappedObj = objectWithArrUnwrap(obj)
+	const core = getKeysGuarded(unwrappedObj, config.contentName, config.attributeName)
+	const location = extractLocation(core[config.attributeName] as XmlBasedJson)
+	const content = core[config.contentName]
+	return {
+		unwrappedObj,
+		location,
+		content: content as string
+	}
 }
 
 export function revertTokenReplacement(tokenMap: XmlParserConfig['tokenMap'], token: string): string {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- it is still necessary as we do not know if we have a replacement for the given token
-  return tokenMap[token] ?? token
+	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- it is still necessary as we do not know if we have a replacement for the given token
+	return tokenMap[token] ?? token
 }
 
 // TODO: use NamedJsons all the time
 export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson, expectedName: string): void {
-  // TODO: allow us to configure the name?
-  const name = getTokenType(tokenMap, obj)
-  if (name !== expectedName) {
-    throw new XmlParseError(`expected name to be ${expectedName}, yet received ${name} for ${JSON.stringify(obj)}`)
-  }
+	// TODO: allow us to configure the name?
+	const name = getTokenType(tokenMap, obj)
+	if (name !== expectedName) {
+		throw new XmlParseError(`expected name to be ${expectedName}, yet received ${name} for ${JSON.stringify(obj)}`)
+	}
 }
 
 /**
@@ -79,21 +79,21 @@ export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlB
  * @param content  - the json object to extract the token-type from
  */
 export function getTokenType(tokenMap: XmlParserConfig['tokenMap'], content: XmlBasedJson): string {
-  return revertTokenReplacement(tokenMap, getKeysGuarded(content, '#name'))
+	return revertTokenReplacement(tokenMap, getKeysGuarded(content, '#name'))
 }
 
 export function getWithTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson[]) {
-  return obj.map((content) => ({
-    name: getTokenType(tokenMap, content),
-    content
-  }))
+	return obj.map((content) => ({
+		name: getTokenType(tokenMap, content),
+		content
+	}))
 }
 
 export function retrieveOpName(config: XmlParserConfig, operator: NamedXmlBasedJson): string {
-  /*
+	/*
    * only real arithmetic ops have their operation as their own name, the others identify via content
    */
-  return operator.content[config.contentName] as string
+	return operator.content[config.contentName] as string
 }
 
 /**
@@ -104,22 +104,22 @@ export function retrieveOpName(config: XmlParserConfig, operator: NamedXmlBasedJ
  * @param second - the second child which should be the rhs
  */
 export function ensureChildrenAreLhsAndRhsOrdered(config: XmlParserConfig, first: XmlBasedJson, second: XmlBasedJson): void {
-  const firstOtherLoc = extractLocation(first[config.attributeName] as XmlBasedJson)
-  const secondOtherLoc = extractLocation(second[config.attributeName] as XmlBasedJson)
-  if (!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
-    throw new XmlParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`)
-  }
+	const firstOtherLoc = extractLocation(first[config.attributeName] as XmlBasedJson)
+	const secondOtherLoc = extractLocation(second[config.attributeName] as XmlBasedJson)
+	if (!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
+		throw new XmlParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`)
+	}
 }
 
 export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<Info> {
-  if (node.type !== Type.ExpressionList) {
-    return {
-      type:     Type.ExpressionList,
-      location: node.location,
-      info:     node.info,
-      lexeme:   undefined,
-      children: [node]
-    }
-  }
-  return node
+	if (node.type !== Type.ExpressionList) {
+		return {
+			type:     Type.ExpressionList,
+			location: node.location,
+			info:     node.info,
+			lexeme:   undefined,
+			children: [node]
+		}
+	}
+	return node
 }

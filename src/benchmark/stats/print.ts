@@ -5,82 +5,82 @@
 import { guard } from '../../util/assert'
 import { ElapsedTime, PerSliceMeasurements } from './stats'
 import {
-  SummarizedMeasurement,
-  SummarizedPerSliceStats,
-  SummarizedSlicerStats, UltimateSlicerStats
+	SummarizedMeasurement,
+	SummarizedPerSliceStats,
+	SummarizedSlicerStats, UltimateSlicerStats
 } from './summarizer'
 
 const padSize = 15
 
 function pad<T>(string: T) {
-  return String(string).padStart(padSize, ' ')
+	return String(string).padStart(padSize, ' ')
 }
 
 function divWithRest(dividend: bigint, divisor: bigint): [bigint, bigint] {
-  return [dividend / divisor, dividend % divisor]
+	return [dividend / divisor, dividend % divisor]
 }
 
 function formatNanoseconds(nanoseconds: bigint | number): string {
-  if(nanoseconds < 0) {
-    return `??`
-  }
-  const [seconds, rest] = divWithRest(typeof nanoseconds === 'number' ? BigInt(Math.round(nanoseconds)) : nanoseconds, BigInt(1e9))
-  const [milliseconds, remainingNanoseconds] = divWithRest(rest, BigInt(1e6))
+	if(nanoseconds < 0) {
+		return `??`
+	}
+	const [seconds, rest] = divWithRest(typeof nanoseconds === 'number' ? BigInt(Math.round(nanoseconds)) : nanoseconds, BigInt(1e9))
+	const [milliseconds, remainingNanoseconds] = divWithRest(rest, BigInt(1e6))
 
-  const secondsStr= seconds > 0 ? `${String(seconds).padStart(2, '0')}.` : ''
-  const millisecondsStr = seconds > 0 ? `${String(milliseconds).padStart(3, '0')}:` : `${String(milliseconds)}:`
-  const nanoStr = String(remainingNanoseconds).padEnd(3, '0').substring(0, 3)
-  const unit = seconds === 0n ? 'ms' : ' s' /* space for padding */
-  // TODO: round correctly?
-  return pad(`${secondsStr}${millisecondsStr}${nanoStr}${unit}`)
+	const secondsStr= seconds > 0 ? `${String(seconds).padStart(2, '0')}.` : ''
+	const millisecondsStr = seconds > 0 ? `${String(milliseconds).padStart(3, '0')}:` : `${String(milliseconds)}:`
+	const nanoStr = String(remainingNanoseconds).padEnd(3, '0').substring(0, 3)
+	const unit = seconds === 0n ? 'ms' : ' s' /* space for padding */
+	// TODO: round correctly?
+	return pad(`${secondsStr}${millisecondsStr}${nanoStr}${unit}`)
 }
 
 
 function print<K>(measurements: Map<K, ElapsedTime>, key: K) {
-  const time = measurements.get(key)
-  guard(time !== undefined, `Measurement for ${JSON.stringify(key)} not found`)
-  return formatNanoseconds(time)
+	const time = measurements.get(key)
+	guard(time !== undefined, `Measurement for ${JSON.stringify(key)} not found`)
+	return formatNanoseconds(time)
 }
 
 function formatSummarizedTimeMeasure(measure: SummarizedMeasurement | undefined) {
-  if(measure === undefined) {
-    return `??`
-  }
-  return `${formatNanoseconds(measure.min)} - ${formatNanoseconds(measure.max)} (median: ${formatNanoseconds(measure.median)}, mean: ${formatNanoseconds(measure.mean)}, std: ${formatNanoseconds(measure.std)})`
+	if(measure === undefined) {
+		return `??`
+	}
+	return `${formatNanoseconds(measure.min)} - ${formatNanoseconds(measure.max)} (median: ${formatNanoseconds(measure.median)}, mean: ${formatNanoseconds(measure.mean)}, std: ${formatNanoseconds(measure.std)})`
 }
 
 function roundTo(num: number, digits = 4): number {
-  const factor = Math.pow(10, digits)
-  return Math.round(num * factor) / factor
+	const factor = Math.pow(10, digits)
+	return Math.round(num * factor) / factor
 }
 
 function asPercentage(num: number): string {
-  if(isNaN(num)) {
-    return `??%`
-  }
-  return pad(`${roundTo(num * 100, 3)}%`)
+	if(isNaN(num)) {
+		return `??%`
+	}
+	return pad(`${roundTo(num * 100, 3)}%`)
 }
 
 function asFloat(num: number): string {
-  return pad(roundTo(num))
+	return pad(roundTo(num))
 }
 
 function formatSummarizedMeasure(measure: SummarizedMeasurement | undefined, fmt: (num: number) => string = asFloat) {
-  if(measure === undefined) {
-    return `??`
-  }
-  return `${fmt(measure.min)} - ${fmt(measure.max)} (median: ${fmt(measure.median)}, mean: ${fmt(measure.mean)}, std: ${fmt(measure.std)})`
+	if(measure === undefined) {
+		return `??`
+	}
+	return `${fmt(measure.min)} - ${fmt(measure.max)} (median: ${fmt(measure.median)}, mean: ${fmt(measure.mean)}, std: ${fmt(measure.std)})`
 }
 
 function printSummarizedMeasurements(stats: SummarizedPerSliceStats, key: PerSliceMeasurements): string {
-  const measure = stats.measurements.get(key)
-  guard(measure !== undefined, `Measurement for ${JSON.stringify(key)} not found`)
-  return formatSummarizedTimeMeasure(measure)
+	const measure = stats.measurements.get(key)
+	guard(measure !== undefined, `Measurement for ${JSON.stringify(key)} not found`)
+	return formatSummarizedTimeMeasure(measure)
 }
 
 function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string {
-  const range = `${stats.min} - ${stats.max}`.padStart(padSize, ' ')
-  return `${range} (median: ${stats.median}, mean: ${stats.mean}, std: ${stats.std})`
+	const range = `${stats.min} - ${stats.max}`.padStart(padSize, ' ')
+	return `${range} (median: ${stats.median}, mean: ${stats.mean}, std: ${stats.std})`
 }
 
 /**
@@ -88,7 +88,7 @@ function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string 
  * You may have to {@link summarizeSlicerStats | summarize} the stats first.
  */
 export function stats2string(stats: SummarizedSlicerStats): string {
-  let result = `
+	let result = `
 Request: ${JSON.stringify(stats.request)}
 Shell init time:              ${print(stats.commonMeasurements,'initialize R session')}
 Retrieval of token map:       ${print(stats.commonMeasurements,'retrieve token map')}
@@ -98,8 +98,8 @@ AST decoration:               ${print(stats.commonMeasurements,'decorate R AST')
 Dataflow creation:            ${print(stats.commonMeasurements,'produce dataflow information')}
 
 Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.perSliceMeasurements.numberOfSlices !== 1 ? 's' : ''}:`
-  if(stats.perSliceMeasurements.numberOfSlices > 0) {
-    result += `
+	if(stats.perSliceMeasurements.numberOfSlices > 0) {
+		result += `
   Total:                      ${printSummarizedMeasurements(stats.perSliceMeasurements, 'total')}
   Slice decoding:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'decode slicing criterion')}
   Slice creation:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'static slicing')}
@@ -114,9 +114,9 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
     Normalized R tokens:                 ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.normalizedTokens)}
     Number of dataflow nodes:            ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceSize.dataflowNodes)}
 `
-  }
+	}
 
-  return `${result}
+	return `${result}
 Shell close:                  ${print(stats.commonMeasurements, 'close R session')}
 Total:                        ${print(stats.commonMeasurements, 'total')}
 
@@ -135,8 +135,8 @@ Dataflow:
 }
 
 export function ultimateStats2String(stats: UltimateSlicerStats): string {
-  // Used Slice Criteria Sizes:  ${formatSummarizedMeasure(stats.perSliceMeasurements.sliceCriteriaSizes)}
-  return `
+	// Used Slice Criteria Sizes:  ${formatSummarizedMeasure(stats.perSliceMeasurements.sliceCriteriaSizes)}
+	return `
 Summarized: ${stats.totalRequests} requests and ${stats.totalSlices} slices
 Shell init time:              ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('initialize R session'))}
 Retrieval of token map:       ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve token map'))}

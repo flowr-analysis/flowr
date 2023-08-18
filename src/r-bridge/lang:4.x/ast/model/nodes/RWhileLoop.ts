@@ -8,7 +8,7 @@ import { RExpressionList } from './RExpressionList'
  * ```
  */
 export interface RWhileLoop<Info = NoInfo> extends Base<Info>, Location {
-  readonly type: Type.While
-  condition:     RNode<Info>
-  body:          RExpressionList<Info>
+	readonly type: Type.While
+	condition:     RNode<Info>
+	body:          RExpressionList<Info>
 }

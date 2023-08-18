@@ -3,35 +3,35 @@ import * as xpath from 'xpath-ts2'
 import { append } from '../../output'
 
 export interface ControlflowInfo extends FeatureInfo {
-  ifThen:                   number
-  ifThenElse:               number
-  /** can be nested with if-s or if-then-else's */
-  nestedIfThen:             number
-  nestedIfThenElse:         number
-  /** if(TRUE), ... */
-  constantIfThen:           number
-  constantIfThenElse:       number
-  /** if(x), ... */
-  singleVariableIfThen:     number
-  singleVariableIfThenElse: number
-  /** switch(...) */
-  switchCase:               number
-  singleVariableSwitchCase: number
-  constantSwitchCase:       number
+	ifThen:                   number
+	ifThenElse:               number
+	/** can be nested with if-s or if-then-else's */
+	nestedIfThen:             number
+	nestedIfThenElse:         number
+	/** if(TRUE), ... */
+	constantIfThen:           number
+	constantIfThenElse:       number
+	/** if(x), ... */
+	singleVariableIfThen:     number
+	singleVariableIfThenElse: number
+	/** switch(...) */
+	switchCase:               number
+	singleVariableSwitchCase: number
+	constantSwitchCase:       number
 }
 
 const initialControlflowInfo = (): ControlflowInfo => ({
-  ifThen:                   0,
-  ifThenElse:               0,
-  nestedIfThen:             0,
-  nestedIfThenElse:         0,
-  constantIfThen:           0,
-  constantIfThenElse:       0,
-  singleVariableIfThen:     0,
-  singleVariableIfThenElse: 0,
-  switchCase:               0,
-  singleVariableSwitchCase: 0,
-  constantSwitchCase:       0
+	ifThen:                   0,
+	ifThenElse:               0,
+	nestedIfThen:             0,
+	nestedIfThenElse:         0,
+	constantIfThen:           0,
+	constantIfThenElse:       0,
+	singleVariableIfThen:     0,
+	singleVariableIfThenElse: 0,
+	switchCase:               0,
+	singleVariableSwitchCase: 0,
+	constantSwitchCase:       0
 })
 
 const ifThenQuery: Query = xpath.parse(`//IF[not(following-sibling::ELSE)]`)
@@ -56,61 +56,61 @@ const switchQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL[text() = 'switch'
 
 
 function collectForIfThenOptionalElse(existing: ControlflowInfo, name: 'IfThen' | 'IfThenElse',  ifThenOptionalElse: Node, filepath: string | undefined) {
-  // select when condition to check if constant, ...
-  const conditions = selectCondition.select({ node: ifThenOptionalElse })
+	// select when condition to check if constant, ...
+	const conditions = selectCondition.select({ node: ifThenOptionalElse })
 
-  append(controlflow.name, name, conditions, filepath)
+	append(controlflow.name, name, conditions, filepath)
 
-  const constantKey = `constant${name}`
-  const constantConditions = conditions.flatMap(c => constantCondition.select({ node: c }))
+	const constantKey = `constant${name}`
+	const constantConditions = conditions.flatMap(c => constantCondition.select({ node: c }))
 
-  existing[constantKey] += constantConditions.length
-  append(controlflow.name, constantKey, constantConditions, filepath)
+	existing[constantKey] += constantConditions.length
+	append(controlflow.name, constantKey, constantConditions, filepath)
 
-  const singleVariableKey = `singleVariable${name}`
-  const singleVariableConditions = conditions.flatMap(c => singleVariableCondition.select({ node: c }))
-  existing[singleVariableKey] += singleVariableConditions.length
-  append(controlflow.name, singleVariableKey, singleVariableConditions, filepath)
+	const singleVariableKey = `singleVariable${name}`
+	const singleVariableConditions = conditions.flatMap(c => singleVariableCondition.select({ node: c }))
+	existing[singleVariableKey] += singleVariableConditions.length
+	append(controlflow.name, singleVariableKey, singleVariableConditions, filepath)
 
-  const nestedKey = `nested${name}`
-  const nestedIfThen = nestedIfThenQuery.select({ node: ifThenOptionalElse })
+	const nestedKey = `nested${name}`
+	const nestedIfThen = nestedIfThenQuery.select({ node: ifThenOptionalElse })
 
-  existing[nestedKey] += nestedIfThen.length
+	existing[nestedKey] += nestedIfThen.length
 }
 
 export const controlflow: Feature<ControlflowInfo> = {
-  name:        'Controlflow',
-  description: 'Deals with if-then-else and switch-case',
+	name:        'Controlflow',
+	description: 'Deals with if-then-else and switch-case',
 
-  process(existing: ControlflowInfo, input: Document, filepath: string | undefined): ControlflowInfo {
+	process(existing: ControlflowInfo, input: Document, filepath: string | undefined): ControlflowInfo {
 
-    const ifThen = ifThenQuery.select({ node: input })
-    const ifThenElse = ifThenElseQuery.select({ node: input })
+		const ifThen = ifThenQuery.select({ node: input })
+		const ifThenElse = ifThenElseQuery.select({ node: input })
 
-    existing.ifThen += ifThen.length
-    existing.ifThenElse += ifThenElse.length
+		existing.ifThen += ifThen.length
+		existing.ifThenElse += ifThenElse.length
 
-    ifThen.forEach(ifThen => { collectForIfThenOptionalElse(existing, 'IfThen', ifThen, filepath) })
-    ifThenElse.forEach(ifThenElse => { collectForIfThenOptionalElse(existing, 'IfThenElse', ifThenElse, filepath) })
+		ifThen.forEach(ifThen => { collectForIfThenOptionalElse(existing, 'IfThen', ifThen, filepath) })
+		ifThenElse.forEach(ifThenElse => { collectForIfThenOptionalElse(existing, 'IfThenElse', ifThenElse, filepath) })
 
-    const switchCases = switchQuery.select({ node: input })
-    existing.switchCase += switchCases.length
-    append(controlflow.name, 'switchCase', switchCases, filepath)
+		const switchCases = switchQuery.select({ node: input })
+		existing.switchCase += switchCases.length
+		append(controlflow.name, 'switchCase', switchCases, filepath)
 
 
-    const constantSwitchCases = switchCases.flatMap(switchCase =>
-      constantCondition.select({ node: switchCase })
-    )
-    existing.constantSwitchCase += constantSwitchCases.length
-    append(controlflow.name, 'constantSwitchCase', constantSwitchCases, filepath)
+		const constantSwitchCases = switchCases.flatMap(switchCase =>
+			constantCondition.select({ node: switchCase })
+		)
+		existing.constantSwitchCase += constantSwitchCases.length
+		append(controlflow.name, 'constantSwitchCase', constantSwitchCases, filepath)
 
-    const variableSwitchCases = switchCases.flatMap(switchCase =>
-      singleVariableCondition.select({ node: switchCase })
-    )
-    existing.singleVariableSwitchCase += variableSwitchCases.length
-    append(controlflow.name, 'variableSwitchCase', variableSwitchCases, filepath)
+		const variableSwitchCases = switchCases.flatMap(switchCase =>
+			singleVariableCondition.select({ node: switchCase })
+		)
+		existing.singleVariableSwitchCase += variableSwitchCases.length
+		append(controlflow.name, 'variableSwitchCase', variableSwitchCases, filepath)
 
-    return existing
-  },
-  initialValue: initialControlflowInfo
+		return existing
+	},
+	initialValue: initialControlflowInfo
 }

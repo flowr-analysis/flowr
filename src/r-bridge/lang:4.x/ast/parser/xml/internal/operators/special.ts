@@ -1,8 +1,8 @@
 import {
-  ArithmeticOperatorsRAst,
-  BinaryOperatorFlavor,
-  ComparisonOperatorsRAst,
-  LogicalOperatorsRAst
+	ArithmeticOperatorsRAst,
+	BinaryOperatorFlavor,
+	ComparisonOperatorsRAst,
+	LogicalOperatorsRAst
 } from '../../../../model'
 
 /**
@@ -10,13 +10,13 @@ import {
  * operators within our internal AST.
  */
 export function identifySpecialOp(content: string): BinaryOperatorFlavor | 'special' {
-  if (ComparisonOperatorsRAst.has(content)) {
-    return 'comparison'
-  } else if (LogicalOperatorsRAst.has(content)) {
-    return 'logical'
-  } else if (ArithmeticOperatorsRAst.has(content)) {
-    return 'arithmetic'
-  } else {
-    return 'special'
-  }
+	if (ComparisonOperatorsRAst.has(content)) {
+		return 'comparison'
+	} else if (LogicalOperatorsRAst.has(content)) {
+		return 'logical'
+	} else if (ArithmeticOperatorsRAst.has(content)) {
+		return 'arithmetic'
+	} else {
+		return 'special'
+	}
 }

@@ -4,18 +4,18 @@ import { rangeFrom } from "../../../../src/util/range"
 import { Type } from '../../../../src/r-bridge'
 
 describe("Parse the line directive", withShell(shell => {
-  assertAst(
-    `Simple line`,
-    shell,
-    `#line 42 "foo.R"`,
-    exprList({
-      type:     Type.LineDirective,
-      info:     {},
-      lexeme:   `#line 42 "foo.R"`,
-      location: rangeFrom(1, 1, 1, 16),
-      line:     42,
-      file:     "foo.R"
-    })
-  )
+	assertAst(
+		`Simple line`,
+		shell,
+		`#line 42 "foo.R"`,
+		exprList({
+			type:     Type.LineDirective,
+			info:     {},
+			lexeme:   `#line 42 "foo.R"`,
+			location: rangeFrom(1, 1, 1, 16),
+			line:     42,
+			file:     "foo.R"
+		})
+	)
 })
 )

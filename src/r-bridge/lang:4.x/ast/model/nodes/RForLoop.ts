@@ -9,11 +9,11 @@ import { RExpressionList } from './RExpressionList'
  * ```
  */
 export interface RForLoop<Info = NoInfo> extends Base<Info>, Location {
-  readonly type: Type.For
-  /** variable used in for-loop: <p> `for(<variable> in ...) ...`*/
-  variable:      RSymbol<Info>
-  /** vector used in for-loop: <p> `for(... in <vector>) ...`*/
-  vector:        RNode<Info>
-  /** body used in for-loop: <p> `for(... in ...) <body>`*/
-  body:          RExpressionList<Info>
+	readonly type: Type.For
+	/** variable used in for-loop: <p> `for(<variable> in ...) ...`*/
+	variable:      RSymbol<Info>
+	/** vector used in for-loop: <p> `for(... in <vector>) ...`*/
+	vector:        RNode<Info>
+	/** body used in for-loop: <p> `for(... in ...) <body>`*/
+	body:          RExpressionList<Info>
 }

@@ -14,22 +14,22 @@ import { ParserData } from '../../data'
  * @param obj  - The json object to extract the meta-information from
  */
 export function normalizeComment(data: ParserData, obj: XmlBasedJson): RComment {
-  parseLog.debug(`[comment]`)
-  obj = executeHook(data.hooks.other.onComment.before, data, obj)
+	parseLog.debug(`[comment]`)
+	obj = executeHook(data.hooks.other.onComment.before, data, obj)
 
-  const { location, content } = retrieveMetaStructure(data.config, obj)
-  guard(content.startsWith('#'), 'comment must start with #')
+	const { location, content } = retrieveMetaStructure(data.config, obj)
+	guard(content.startsWith('#'), 'comment must start with #')
 
-  const result: RComment = {
-    type:    Type.Comment,
-    location,
-    content: content.slice(1),
-    lexeme:  content,
-    info:    {
-      fullRange:        data.currentRange,
-      additionalTokens: [],
-      fullLexeme:       content
-    }
-  }
-  return executeHook(data.hooks.other.onComment.after, data, result)
+	const result: RComment = {
+		type:    Type.Comment,
+		location,
+		content: content.slice(1),
+		lexeme:  content,
+		info:    {
+			fullRange:        data.currentRange,
+			additionalTokens: [],
+			fullLexeme:       content
+		}
+	}
+	return executeHook(data.hooks.other.onComment.after, data, result)
 }

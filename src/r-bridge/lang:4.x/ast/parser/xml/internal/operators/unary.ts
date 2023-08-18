@@ -5,12 +5,12 @@ import { tryNormalizeSingleNode } from '../structure'
 import { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
 import {
-  Type,
-  RNode,
-  RUnaryOp,
-  ArithmeticOperatorsRAst,
-  LogicalOperatorsRAst,
-  UnaryOperatorFlavor, ModelFormulaOperatorsRAst
+	Type,
+	RNode,
+	RUnaryOp,
+	ArithmeticOperatorsRAst,
+	LogicalOperatorsRAst,
+	UnaryOperatorFlavor, ModelFormulaOperatorsRAst
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
@@ -24,46 +24,46 @@ import { executeHook, executeUnknownHook } from '../../hooks'
  * @returns The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
  */
 export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
-  parseLog.trace(`unary op for ${operator.name} ${operand.name}`)
-  let flavor: UnaryOperatorFlavor
-  // TODO: filter for unary
-  if (ArithmeticOperatorsRAst.has(operator.name)) {
-    flavor = 'arithmetic'
-  } else if (LogicalOperatorsRAst.has(operator.name)) {
-    flavor = 'logical'
-  } else if (ModelFormulaOperatorsRAst.has(operator.name)) {
-    flavor = 'model formula'
-  } else {
-    return executeUnknownHook(data.hooks.operators.onUnary.unknown, data, { operator, operand })
-  }
-  return parseUnaryOp(data, flavor, operator, operand)
+	parseLog.trace(`unary op for ${operator.name} ${operand.name}`)
+	let flavor: UnaryOperatorFlavor
+	// TODO: filter for unary
+	if (ArithmeticOperatorsRAst.has(operator.name)) {
+		flavor = 'arithmetic'
+	} else if (LogicalOperatorsRAst.has(operator.name)) {
+		flavor = 'logical'
+	} else if (ModelFormulaOperatorsRAst.has(operator.name)) {
+		flavor = 'model formula'
+	} else {
+		return executeUnknownHook(data.hooks.operators.onUnary.unknown, data, { operator, operand })
+	}
+	return parseUnaryOp(data, flavor, operator, operand)
 }
 
 function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
-  parseLog.debug(`[unary op] parse ${flavor}`); // <- semicolon sadly required for not miss-interpreting the destructuring match as call
-  ({ flavor, operator, operand} = executeHook(data.hooks.operators.onUnary.before, data, { flavor, operator, operand }))
+	parseLog.debug(`[unary op] parse ${flavor}`); // <- semicolon sadly required for not miss-interpreting the destructuring match as call
+	({ flavor, operator, operand} = executeHook(data.hooks.operators.onUnary.before, data, { flavor, operator, operand }))
 
-  const parsedOperand = tryNormalizeSingleNode(data, operand)
+	const parsedOperand = tryNormalizeSingleNode(data, operand)
 
-  guard(parsedOperand !== undefined, () => 'unexpected under-sided unary op')
+	guard(parsedOperand !== undefined, () => 'unexpected under-sided unary op')
 
-  const operationName = retrieveOpName(data.config, operator)
-  const { location, content } = retrieveMetaStructure(data.config, operator.content)
+	const operationName = retrieveOpName(data.config, operator)
+	const { location, content } = retrieveMetaStructure(data.config, operator.content)
 
-  // TODO: assert exists as known operator
-  const result: RUnaryOp = {
-    type:     Type.UnaryOp,
-    flavor,
-    location,
-    operator: operationName,
-    lexeme:   content,
-    operand:  parsedOperand,
-    info:     {
-      // TODO: include children etc.
-      fullRange:        data.currentRange,
-      additionalTokens: [],
-      fullLexeme:       data.currentLexeme
-    }
-  }
-  return executeHook(data.hooks.operators.onUnary.after, data, result)
+	// TODO: assert exists as known operator
+	const result: RUnaryOp = {
+		type:     Type.UnaryOp,
+		flavor,
+		location,
+		operator: operationName,
+		lexeme:   content,
+		operand:  parsedOperand,
+		info:     {
+			// TODO: include children etc.
+			fullRange:        data.currentRange,
+			additionalTokens: [],
+			fullLexeme:       data.currentLexeme
+		}
+	}
+	return executeHook(data.hooks.operators.onUnary.after, data, result)
 }

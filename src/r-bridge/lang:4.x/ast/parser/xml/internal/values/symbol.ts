@@ -18,59 +18,59 @@ import { executeHook, executeUnknownHook } from '../../hooks'
  */
 // TODO: deal with namespace information
 export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
-  guard(objs.length > 0, 'to parse symbols we need at least one object to work on!')
-  parseLog.debug(`trying to parse symbol`)
-  objs = executeHook(data.hooks.values.onSymbol.before, data, objs)
+	guard(objs.length > 0, 'to parse symbols we need at least one object to work on!')
+	parseLog.debug(`trying to parse symbol`)
+	objs = executeHook(data.hooks.values.onSymbol.before, data, objs)
 
-  let location, content, namespace
+	let location, content, namespace
 
-  if(objs.length === 1 && isSymbol(objs[0].name)) {
-    const meta  = retrieveMetaStructure(data.config, objs[0].content)
-    location    = meta.location
-    content     = meta.content
-    namespace   = undefined
-  } else if(objs.length === 3 && isSymbol(objs[2].name)) {
-    // TODO: guard etc.
-    const meta  = retrieveMetaStructure(data.config, objs[2].content)
-    location    = meta.location
-    content     = meta.content
-    namespace   = retrieveMetaStructure(data.config, objs[0].content).content
-  } else {
-    return executeUnknownHook(data.hooks.values.onSymbol.unknown, data, objs)
-  }
+	if(objs.length === 1 && isSymbol(objs[0].name)) {
+		const meta  = retrieveMetaStructure(data.config, objs[0].content)
+		location    = meta.location
+		content     = meta.content
+		namespace   = undefined
+	} else if(objs.length === 3 && isSymbol(objs[2].name)) {
+		// TODO: guard etc.
+		const meta  = retrieveMetaStructure(data.config, objs[2].content)
+		location    = meta.location
+		content     = meta.content
+		namespace   = retrieveMetaStructure(data.config, objs[0].content).content
+	} else {
+		return executeUnknownHook(data.hooks.values.onSymbol.unknown, data, objs)
+	}
 
-  let result: RSymbol | RLogical
+	let result: RSymbol | RLogical
 
-  if(namespace === undefined && (content === 'T' || content === 'F')) {
-    result = {
-      type:    Type.Logical,
-      content: content === 'T',
-      location,
-      lexeme:  content,
-      info:    {
-        // TODO: include children etc.
-        fullRange:        data.currentRange,
-        additionalTokens: [],
-        fullLexeme:       data.currentLexeme
-      }
-    }
-  } else {
-    result = {
-      type:    Type.Symbol,
-      namespace,
-      location,
-      // remove backticks from symbol
-      content: content.startsWith('`') && content.endsWith('`') ? content.substring(1, content.length - 1) : content,
-      // TODO: get correct lexeme from expr wrapper :C
-      lexeme:  content,
-      info:    {
-        // TODO: include children etc.
-        fullRange:        data.currentRange,
-        additionalTokens: [],
-        fullLexeme:       data.currentLexeme
-      }
-    }
-  }
+	if(namespace === undefined && (content === 'T' || content === 'F')) {
+		result = {
+			type:    Type.Logical,
+			content: content === 'T',
+			location,
+			lexeme:  content,
+			info:    {
+				// TODO: include children etc.
+				fullRange:        data.currentRange,
+				additionalTokens: [],
+				fullLexeme:       data.currentLexeme
+			}
+		}
+	} else {
+		result = {
+			type:    Type.Symbol,
+			namespace,
+			location,
+			// remove backticks from symbol
+			content: content.startsWith('`') && content.endsWith('`') ? content.substring(1, content.length - 1) : content,
+			// TODO: get correct lexeme from expr wrapper :C
+			lexeme:  content,
+			info:    {
+				// TODO: include children etc.
+				fullRange:        data.currentRange,
+				additionalTokens: [],
+				fullLexeme:       data.currentLexeme
+			}
+		}
+	}
 
-  return executeHook(data.hooks.values.onSymbol.after, data, result)
+	return executeHook(data.hooks.values.onSymbol.after, data, result)
 }

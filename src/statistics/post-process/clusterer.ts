@@ -16,15 +16,15 @@ export type ClusterValueInfoMap = DefaultMap<string, ContextsWithCount>
 
 /** Produced by {@link clusterStatisticsOutput} */
 export interface ClusterReport extends MergeableRecord {
-  /** The input file which has been clustered */
-  readonly filepath: string
-  /** Maps each context encountered (i.e., every file which contains something associated with the feature) to a unique id, used in the {@link ClusterReport#valueInfoMap | valueInfoMap}. */
-  contextIdMap:      ClusterContextIdMap
-  /**
+	/** The input file which has been clustered */
+	readonly filepath: string
+	/** Maps each context encountered (i.e., every file which contains something associated with the feature) to a unique id, used in the {@link ClusterReport#valueInfoMap | valueInfoMap}. */
+	contextIdMap:      ClusterContextIdMap
+	/**
    * Counts which contexts contained which values of a feature.
    * For example, that `<-` occurred in files with ids `[12, 42, 19, 19]` (i.e., the context with the id 19 contained it twice).
    */
-  valueInfoMap:      ClusterValueInfoMap
+	valueInfoMap:      ClusterValueInfoMap
 }
 
 /**
@@ -35,25 +35,25 @@ export interface ClusterReport extends MergeableRecord {
  *  `undefined` is used for unknown contexts. This map allows us to reference contexts with a way shorter identifier (vs. the full file path).
  */
 export function clusterStatisticsOutput(filepath: string, contextIdMap: ClusterContextIdMap = new DefaultMap<string | undefined, NodeId>(deterministicCountingIdGenerator())): ClusterReport {
-  const lineReader = new LineByLine(filepath)
+	const lineReader = new LineByLine(filepath)
 
-  // for each value we store the context ids it was seen in (may list the same context multiple times if more often) - this serves as a counter as well
-  const valueInfoMap: ClusterValueInfoMap = new DefaultMap<string, ContextsWithCount>(() => new DefaultMap(() => 0))
-  let line
+	// for each value we store the context ids it was seen in (may list the same context multiple times if more often) - this serves as a counter as well
+	const valueInfoMap: ClusterValueInfoMap = new DefaultMap<string, ContextsWithCount>(() => new DefaultMap(() => 0))
+	let line
 
-  // eslint-disable-next-line no-cond-assign
-  while (line = lineReader.next()) {
-    const json = JSON.parse(line.toString()) as StatisticsOutputFormat
-    const contextId = contextIdMap.get(json.context)
+	// eslint-disable-next-line no-cond-assign
+	while (line = lineReader.next()) {
+		const json = JSON.parse(line.toString()) as StatisticsOutputFormat
+		const contextId = contextIdMap.get(json.context)
 
-    const value = valueInfoMap.get(json.value)
-    // step the counter accordingly
-    value.set(contextId, value.get(contextId) + 1)
-  }
+		const value = valueInfoMap.get(json.value)
+		// step the counter accordingly
+		value.set(contextId, value.get(contextId) + 1)
+	}
 
-  return {
-    filepath,
-    contextIdMap,
-    valueInfoMap
-  }
+	return {
+		filepath,
+		contextIdMap,
+		valueInfoMap
+	}
 }

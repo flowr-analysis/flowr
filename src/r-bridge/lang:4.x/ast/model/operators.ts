@@ -3,9 +3,9 @@ import { MergeableRecord } from "../../../../util/objects"
 export type StringUsedInRCode = string;
 
 export const enum OperatorArity {
-  Unary = 1,
-  Binary = 2,
-  Both = 3,
+	Unary = 1,
+	Binary = 2,
+	Both = 3,
 }
 
 export type UnaryOperatorFlavor = "arithmetic" | "logical" | 'model formula';
@@ -19,15 +19,15 @@ export type OperatorUsedAs = "assignment" | "operation" | "access";
 export type OperatorName = string;
 
 export interface OperatorInformationValue extends MergeableRecord {
-  name:                 OperatorName;
-  stringUsedInRAst:     string;
-  stringUsedInternally: string;
-  // precedence: number // handled by R
-  flavorInRAst:         BinaryOperatorFlavorInAst;
-  flavor:               BinaryOperatorFlavor;
-  writtenAs:            OperatorWrittenAs;
-  arity:                OperatorArity;
-  usedAs:               OperatorUsedAs;
+	name:                 OperatorName;
+	stringUsedInRAst:     string;
+	stringUsedInternally: string;
+	// precedence: number // handled by R
+	flavorInRAst:         BinaryOperatorFlavorInAst;
+	flavor:               BinaryOperatorFlavor;
+	writtenAs:            OperatorWrittenAs;
+	arity:                OperatorArity;
+	usedAs:               OperatorUsedAs;
 }
 
 // TODO: remove flavor separation and use only one (no special)
@@ -79,37 +79,37 @@ export const OperatorDatabase: Record<StringUsedInRCode, OperatorInformationValu
 /* eslint-enable */
 
 function buildOperatorRAstCollection(operators: readonly string[]): Set<string> {
-  return new Set<string>(operators.map(op => OperatorDatabase[op].stringUsedInRAst))
+	return new Set<string>(operators.map(op => OperatorDatabase[op].stringUsedInRAst))
 }
 
 export const ArithmeticOperators: readonly string[] = Object.keys(
-  OperatorDatabase
+	OperatorDatabase
 ).filter((op) => OperatorDatabase[op].flavor === "arithmetic")
 // '**' will be treated as '^'
 export const ArithmeticOperatorsRAst = buildOperatorRAstCollection(ArithmeticOperators)
 export const ComparisonOperators: readonly string[] = Object.keys(
-  OperatorDatabase
+	OperatorDatabase
 ).filter((op) => OperatorDatabase[op].flavor === "comparison")
 export const ComparisonOperatorsRAst = buildOperatorRAstCollection(ComparisonOperators)
 export const LogicalOperators: readonly string[] = Object.keys(
-  OperatorDatabase
+	OperatorDatabase
 ).filter((op) => OperatorDatabase[op].flavor === "logical")
 export const LogicalOperatorsRAst = buildOperatorRAstCollection(LogicalOperators)
 
 export const ModelFormulaOperators: readonly string[] = Object.keys(
-  OperatorDatabase
+	OperatorDatabase
 ).filter((op) => OperatorDatabase[op].flavor === "model formula")
 export const ModelFormulaOperatorsRAst = buildOperatorRAstCollection(ModelFormulaOperators)
 
 export const Assignments: readonly string[] = Object.keys(
-  OperatorDatabase
+	OperatorDatabase
 ).filter((op) => OperatorDatabase[op].flavor === "assignment")
 export const AssignmentsRAst = buildOperatorRAstCollection(Assignments)
 
 export const Operators = [
-  ...ArithmeticOperators,
-  ...ComparisonOperators,
-  ...LogicalOperators,
+	...ArithmeticOperators,
+	...ComparisonOperators,
+	...LogicalOperators,
 ] as const
 
 export type Operator = (typeof Operators)[number];

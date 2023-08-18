@@ -25,7 +25,7 @@
    "rules": {
       "indent": [
          "error",
-         2,
+         "tab",
          {
             "FunctionDeclaration": {
                "parameters": "first"

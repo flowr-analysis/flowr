@@ -1,8 +1,8 @@
 import { guard } from '../util/assert'
 
 export interface IStoppableStopwatch {
-    /** Stop the given stopwatch. */
-    stop(): void
+	/** Stop the given stopwatch. */
+	stop(): void
 }
 
 /** unguarded start-stop wrapper */

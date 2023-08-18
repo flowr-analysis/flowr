@@ -16,7 +16,7 @@ export function tryNormalizeIfThen(data: ParserData,
                                    condition:  NamedXmlBasedJson,
                                    rightParen: NamedXmlBasedJson,
                                    then:       NamedXmlBasedJson
-    ]): RIfThenElse | undefined {
+																																			]): RIfThenElse | undefined {
 	// TODO: guard-like syntax for this too?
 	parseLog.trace(`trying to parse if-then structure`)
 	if (tokens[0].name !== Type.If) {

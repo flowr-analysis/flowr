@@ -30,19 +30,19 @@ export interface NoInfo {
  * This will not be part of most comparisons as it is mainly of interest to the reconstruction of R code.
  */
 interface Source {
-    /**
+	/**
    * The range is different from the assigned {@link Location} as it refers to the complete source range covered by the given
    * element.
    * <p>
    * As an example for the difference, consider a for loop, the location of `for` will be just the three characters,
    * but the *range* will be everything including the loop body.
    */
-    fullRange?:        SourceRange
-    /**
+	fullRange?:        SourceRange
+	/**
    * Similar to {@link Source.fullRange} this contains the complete R lexeme of the given element.
    */
-    fullLexeme?:       string
-    additionalTokens?: OtherInfoNode[]
+	fullLexeme?:       string
+	additionalTokens?: OtherInfoNode[]
 }
 
 /**
@@ -52,15 +52,15 @@ interface Source {
  * @typeParam LexemeType - the type of the lexeme, probably always a `string` or `string | undefined`
  */
 export interface Base<Info, LexemeType = string> extends MergeableRecord {
-    type:   Type
-    /** the original string retrieved from R, can be used for further identification */
-    lexeme: LexemeType
-    /** allows to attach additional information to the node */
-    info:   Info & Source
+	type:   Type
+	/** the original string retrieved from R, can be used for further identification */
+	lexeme: LexemeType
+	/** allows to attach additional information to the node */
+	info:   Info & Source
 }
 
 export interface WithChildren<Info, Children extends Base<Info, string | undefined>> {
-    children: Children[]
+	children: Children[]
 }
 
 // we want it, so we get better merge-graphs
@@ -70,14 +70,14 @@ export interface Leaf<Info = NoInfo, LexemeType = string> extends Base<Info, Lex
 }
 
 export interface Location {
-    location: SourceRange
+	location: SourceRange
 }
 
 export type NamespaceIdentifier = string
 
 export interface Namespace {
-    /* null for unknown atm */
-    namespace: NamespaceIdentifier | undefined
+	/* null for unknown atm */
+	namespace: NamespaceIdentifier | undefined
 }
 
 

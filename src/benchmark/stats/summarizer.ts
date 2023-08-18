@@ -27,24 +27,24 @@ import { log } from '../../util/log'
 const tempfile = tmp.fileSync({ postfix: '.R' })
 
 export interface SummarizedMeasurement {
-    min:    number
-    max:    number
-    median: number
-    /** average */
-    mean:   number
-    /** standard deviation */
-    std:    number
+	min:    number
+	max:    number
+	median: number
+	/** average */
+	mean:   number
+	/** standard deviation */
+	std:    number
 }
 
 interface SliceSizeCollection {
-    lines:                   number[]
-    characters:              number[]
-    nonWhitespaceCharacters: number[]
-    /** like library statements during reconstruction */
-    autoSelected:            number[]
-    dataflowNodes:           number[]
-    tokens:                  number[]
-    normalizedTokens:        number[]
+	lines:                   number[]
+	characters:              number[]
+	nonWhitespaceCharacters: number[]
+	/** like library statements during reconstruction */
+	autoSelected:            number[]
+	dataflowNodes:           number[]
+	tokens:                  number[]
+	normalizedTokens:        number[]
 }
 
 /**
@@ -52,31 +52,31 @@ interface SliceSizeCollection {
  * @see summarizeSlicerStats
  */
 export type SummarizedSlicerStats = {
-    perSliceMeasurements: SummarizedPerSliceStats
+	perSliceMeasurements: SummarizedPerSliceStats
 } & Omit<SlicerStats, 'perSliceMeasurements'>
 
 export interface Reduction<T = number> {
-    numberOfLines:                   T
-    numberOfLinesNoAutoSelection:    T
-    numberOfCharacters:              T
-    numberOfNonWhitespaceCharacters: T
-    numberOfRTokens:                 T
-    numberOfNormalizedTokens:        T
-    numberOfDataflowNodes:           T
+	numberOfLines:                   T
+	numberOfLinesNoAutoSelection:    T
+	numberOfCharacters:              T
+	numberOfNonWhitespaceCharacters: T
+	numberOfRTokens:                 T
+	numberOfNormalizedTokens:        T
+	numberOfDataflowNodes:           T
 }
 
 export interface SummarizedPerSliceStats {
-    /** number of total slicing calls */
-    numberOfSlices:     number
-    /** statistics on the used slicing criteria (number of ids within criteria etc.) */
-    sliceCriteriaSizes: SummarizedMeasurement
-    measurements:       Map<PerSliceMeasurements, SummarizedMeasurement>
-    reduction:          Reduction<SummarizedMeasurement>
-    failedToRepParse:   number
-    timesHitThreshold:  number
-    sliceSize:          {
-        [K in keyof SliceSizeCollection]: SummarizedMeasurement
-    }
+	/** number of total slicing calls */
+	numberOfSlices:     number
+	/** statistics on the used slicing criteria (number of ids within criteria etc.) */
+	sliceCriteriaSizes: SummarizedMeasurement
+	measurements:       Map<PerSliceMeasurements, SummarizedMeasurement>
+	reduction:          Reduction<SummarizedMeasurement>
+	failedToRepParse:   number
+	timesHitThreshold:  number
+	sliceSize:          {
+		[K in keyof SliceSizeCollection]: SummarizedMeasurement
+	}
 }
 
 function safeDivPercentage(a: number, b: number): number | undefined{
@@ -96,7 +96,7 @@ function safeDivPercentage(a: number, b: number): number | undefined{
 }
 
 function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerStatsDataflow, perSlice: {
-    [k in keyof SliceSizeCollection]: number
+	[k in keyof SliceSizeCollection]: number
 }): Reduction<number | undefined> {
 	return {
 		numberOfLines:                   safeDivPercentage(perSlice.lines, input.numberOfLines),
@@ -259,17 +259,17 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 
 
 export interface UltimateSlicerStats {
-    totalRequests:        number
-    totalSlices:          number
-    commonMeasurements:   Map<CommonSlicerMeasurements, SummarizedMeasurement>
-    perSliceMeasurements: Map<PerSliceMeasurements, SummarizedMeasurement>
-    /** sum */
-    failedToRepParse:     number
-    /** sum */
-    timesHitThreshold:    number
-    reduction:            Reduction<SummarizedMeasurement>
-    input:                SlicerStatsInput<SummarizedMeasurement>
-    dataflow:             SlicerStatsDataflow<SummarizedMeasurement>
+	totalRequests:        number
+	totalSlices:          number
+	commonMeasurements:   Map<CommonSlicerMeasurements, SummarizedMeasurement>
+	perSliceMeasurements: Map<PerSliceMeasurements, SummarizedMeasurement>
+	/** sum */
+	failedToRepParse:     number
+	/** sum */
+	timesHitThreshold:    number
+	reduction:            Reduction<SummarizedMeasurement>
+	input:                SlicerStatsInput<SummarizedMeasurement>
+	dataflow:             SlicerStatsDataflow<SummarizedMeasurement>
 }
 
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {

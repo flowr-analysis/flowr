@@ -6,16 +6,16 @@ import { append } from '../../output'
 export type SinglePackageInfo = string
 
 export interface UsedPackageInfo extends FeatureInfo {
-    library:              number
-    require:              number
-    loadNamespace:        number
-    requireNamespace:     number
-    attachNamespace:      number
-    withinApply:          number
-    '::':                 number
-    ':::':                number
-    /** just contains all occurrences where it is impossible to statically determine which package is loaded */
-    '<loadedByVariable>': number
+	library:              number
+	require:              number
+	loadNamespace:        number
+	requireNamespace:     number
+	attachNamespace:      number
+	withinApply:          number
+	'::':                 number
+	':::':                number
+	/** just contains all occurrences where it is impossible to statically determine which package is loaded */
+	'<loadedByVariable>': number
 }
 
 const initialUsedPackageInfos = (): UsedPackageInfo => ({

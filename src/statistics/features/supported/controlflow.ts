@@ -3,21 +3,21 @@ import * as xpath from 'xpath-ts2'
 import { append } from '../../output'
 
 export interface ControlflowInfo extends FeatureInfo {
-    ifThen:                   number
-    ifThenElse:               number
-    /** can be nested with if-s or if-then-else's */
-    nestedIfThen:             number
-    nestedIfThenElse:         number
-    /** if(TRUE), ... */
-    constantIfThen:           number
-    constantIfThenElse:       number
-    /** if(x), ... */
-    singleVariableIfThen:     number
-    singleVariableIfThenElse: number
-    /** switch(...) */
-    switchCase:               number
-    singleVariableSwitchCase: number
-    constantSwitchCase:       number
+	ifThen:                   number
+	ifThenElse:               number
+	/** can be nested with if-s or if-then-else's */
+	nestedIfThen:             number
+	nestedIfThenElse:         number
+	/** if(TRUE), ... */
+	constantIfThen:           number
+	constantIfThenElse:       number
+	/** if(x), ... */
+	singleVariableIfThen:     number
+	singleVariableIfThenElse: number
+	/** switch(...) */
+	switchCase:               number
+	singleVariableSwitchCase: number
+	constantSwitchCase:       number
 }
 
 const initialControlflowInfo = (): ControlflowInfo => ({

@@ -5,20 +5,20 @@ import { append, extractNodeContent } from '../../output'
 export type FunctionNameInfo = string
 
 export interface FunctionDefinitionInfo extends FeatureInfo {
-    // TODO: scoping/namespaces?
-    // TODO: local/global functions etc.
-    /** all, anonymous, assigned, non-assigned, ... */
-    total:                   number
-    /** how many are really using OP-Lambda? */
-    lambdasOnly:             number
-    /** using `<<-`, `<-`, `=`, `->` `->>` */
-    assignedFunctions:       number
-    usedArgumentNames:       number
-    /** anonymous functions invoked directly */
-    functionsDirectlyCalled: number
-    nestedFunctions:         number
-    /** functions that in some easily detectable way call themselves */
-    recursive:               number
+	// TODO: scoping/namespaces?
+	// TODO: local/global functions etc.
+	/** all, anonymous, assigned, non-assigned, ... */
+	total:                   number
+	/** how many are really using OP-Lambda? */
+	lambdasOnly:             number
+	/** using `<<-`, `<-`, `=`, `->` `->>` */
+	assignedFunctions:       number
+	usedArgumentNames:       number
+	/** anonymous functions invoked directly */
+	functionsDirectlyCalled: number
+	nestedFunctions:         number
+	/** functions that in some easily detectable way call themselves */
+	recursive:               number
 }
 
 const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({

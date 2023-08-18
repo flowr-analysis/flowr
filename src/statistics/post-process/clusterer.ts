@@ -16,15 +16,15 @@ export type ClusterValueInfoMap = DefaultMap<string, ContextsWithCount>
 
 /** Produced by {@link clusterStatisticsOutput} */
 export interface ClusterReport extends MergeableRecord {
-    /** The input file which has been clustered */
-    readonly filepath: string
-    /** Maps each context encountered (i.e., every file which contains something associated with the feature) to a unique id, used in the {@link ClusterReport#valueInfoMap | valueInfoMap}. */
-    contextIdMap:      ClusterContextIdMap
-    /**
+	/** The input file which has been clustered */
+	readonly filepath: string
+	/** Maps each context encountered (i.e., every file which contains something associated with the feature) to a unique id, used in the {@link ClusterReport#valueInfoMap | valueInfoMap}. */
+	contextIdMap:      ClusterContextIdMap
+	/**
    * Counts which contexts contained which values of a feature.
    * For example, that `<-` occurred in files with ids `[12, 42, 19, 19]` (i.e., the context with the id 19 contained it twice).
    */
-    valueInfoMap:      ClusterValueInfoMap
+	valueInfoMap:      ClusterValueInfoMap
 }
 
 /**

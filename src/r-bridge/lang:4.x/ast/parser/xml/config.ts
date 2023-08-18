@@ -7,14 +7,14 @@ import { MergeableRecord } from "../../../../../util/objects"
  * @see DEFAULT_XML_PARSER_CONFIG
  */
 export interface XmlParserConfig extends MergeableRecord {
-    /** attributes (line, col, ...) are referenced by the given name */
-    attributeName: string
-    /** the content (lexeme) is referenced by the given name */
-    contentName:   string
-    /** the children are referenced by the given name */
-    childrenName:  string
-    /** Mapping from xml tag name to the real operation of the node */
-    tokenMap:      Record<string, string /* TODO: change this to OP enum or so */>
+	/** attributes (line, col, ...) are referenced by the given name */
+	attributeName: string
+	/** the content (lexeme) is referenced by the given name */
+	contentName:   string
+	/** the children are referenced by the given name */
+	childrenName:  string
+	/** Mapping from xml tag name to the real operation of the node */
+	tokenMap:      Record<string, string /* TODO: change this to OP enum or so */>
 }
 
 /**

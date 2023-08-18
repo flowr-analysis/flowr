@@ -19,11 +19,11 @@ export const optionDefinitions: OptionDefinition[] = [
 ]
 
 export interface SingleBenchmarkCliOptions {
-    verbose: boolean
-    help:    boolean
-    input?:  string
-    slice:   string
-    output?: string
+	verbose: boolean
+	help:    boolean
+	input?:  string
+	slice:   string
+	output?: string
 }
 
 export const optionHelp = [

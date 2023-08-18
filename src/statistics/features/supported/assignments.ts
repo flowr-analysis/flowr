@@ -3,10 +3,10 @@ import * as xpath from 'xpath-ts2'
 import { append } from '../../output'
 
 export interface AssignmentInfo extends FeatureInfo {
-    assignmentOperator:               number
-    nestedOperatorAssignment:         number
-    directlyNestedOperatorAssignment: number
-    specialAssignmentOps:             number
+	assignmentOperator:               number
+	nestedOperatorAssignment:         number
+	directlyNestedOperatorAssignment: number
+	specialAssignmentOps:             number
 }
 
 // TODO: integers, constants, etc.

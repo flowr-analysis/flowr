@@ -25,8 +25,8 @@ import { guard, isNotNull } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
 type Selection = Set<NodeId>
 interface PrettyPrintLine {
-    line:   string
-    indent: number
+	line:   string
+	indent: number
 }
 function plain(text: string): PrettyPrintLine[] {
 	return [{ line: text, indent: 0 }]
@@ -392,9 +392,9 @@ type AutoSelectPredicate = (node: RNode<ParentInformation>) => boolean
 
 // TODO: restrict loaded libraries in some way?
 interface ReconstructionConfiguration extends MergeableRecord {
-    selection:    Selection
-    /** if true, this will force the ast part to be reconstructed, this can be used, for example, to force include `library` statements */
-    autoSelectIf: AutoSelectPredicate
+	selection:    Selection
+	/** if true, this will force the ast part to be reconstructed, this can be used, for example, to force include `library` statements */
+	autoSelectIf: AutoSelectPredicate
 }
 
 export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
@@ -464,9 +464,9 @@ function prettyPrintCodeToString(code: Code, lf ='\n'): string {
 }
 
 export interface ReconstructionResult {
-    code:         string
-    /** number of nodes that triggered the `autoSelectIf` predicate {@link reconstructToCode} */
-    autoSelected: number
+	code:         string
+	/** number of nodes that triggered the `autoSelectIf` predicate {@link reconstructToCode} */
+	autoSelected: number
 }
 
 /**

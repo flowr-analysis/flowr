@@ -3,9 +3,9 @@ import { MergeableRecord } from "../../../../util/objects"
 export type StringUsedInRCode = string;
 
 export const enum OperatorArity {
-    Unary = 1,
-    Binary = 2,
-    Both = 3,
+	Unary = 1,
+	Binary = 2,
+	Both = 3,
 }
 
 export type UnaryOperatorFlavor = "arithmetic" | "logical" | 'model formula';
@@ -19,15 +19,15 @@ export type OperatorUsedAs = "assignment" | "operation" | "access";
 export type OperatorName = string;
 
 export interface OperatorInformationValue extends MergeableRecord {
-    name:                 OperatorName;
-    stringUsedInRAst:     string;
-    stringUsedInternally: string;
-    // precedence: number // handled by R
-    flavorInRAst:         BinaryOperatorFlavorInAst;
-    flavor:               BinaryOperatorFlavor;
-    writtenAs:            OperatorWrittenAs;
-    arity:                OperatorArity;
-    usedAs:               OperatorUsedAs;
+	name:                 OperatorName;
+	stringUsedInRAst:     string;
+	stringUsedInternally: string;
+	// precedence: number // handled by R
+	flavorInRAst:         BinaryOperatorFlavorInAst;
+	flavor:               BinaryOperatorFlavor;
+	writtenAs:            OperatorWrittenAs;
+	arity:                OperatorArity;
+	usedAs:               OperatorUsedAs;
 }
 
 // TODO: remove flavor separation and use only one (no special)

@@ -62,11 +62,11 @@ export const RIntegerMarker = 'L'
 export const RInf = 'Inf'
 
 export interface RNumberValue {
-    num:           number
-    /** see {@link RIntegerMarker}, still, R treats 1.1L as numeric and not especially integer */
-    markedAsInt:   boolean
-    /** see {@link RImaginaryMarker}, compound imaginary numbers are expressions in R */
-    complexNumber: boolean
+	num:           number
+	/** see {@link RIntegerMarker}, still, R treats 1.1L as numeric and not especially integer */
+	markedAsInt:   boolean
+	/** see {@link RImaginaryMarker}, compound imaginary numbers are expressions in R */
+	complexNumber: boolean
 }
 
 export function number2ts(value: string): RNumberValue {
@@ -116,9 +116,9 @@ export function number2ts(value: string): RNumberValue {
 }
 
 export interface RStringValue {
-    str:    string
-    // from the R-language definition a string is either delimited by a pair of single or double quotes
-    quotes: '"' | '\''
+	str:    string
+	// from the R-language definition a string is either delimited by a pair of single or double quotes
+	quotes: '"' | '\''
 }
 
 /**

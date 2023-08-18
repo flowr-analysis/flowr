@@ -52,12 +52,12 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformation>,
 																																												lhs: DataflowInformation<OtherInfo>,
 																																												rhs: DataflowInformation<OtherInfo>) : {
-        source: DataflowInformation<OtherInfo>
-        target: DataflowInformation<OtherInfo>
-        global: boolean
-        /** true if `->` or `->>` */
-        swap:   boolean
-    } {
+		source: DataflowInformation<OtherInfo>
+		target: DataflowInformation<OtherInfo>
+		global: boolean
+		/** true if `->` or `->>` */
+		swap:   boolean
+	} {
 	let source: DataflowInformation<OtherInfo>
 	let target: DataflowInformation<OtherInfo>
 	let global = false

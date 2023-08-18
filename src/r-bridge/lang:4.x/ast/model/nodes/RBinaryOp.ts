@@ -4,29 +4,29 @@ import { Type } from "../type"
 import { BinaryOperatorFlavor } from "../operators"
 
 export interface RBinaryOp<Info = NoInfo> extends Base<Info>, Location {
-    readonly type:   Type.BinaryOp;
-    readonly flavor: BinaryOperatorFlavor;
-    operator:        string;
-    lhs:             RNode<Info>;
-    rhs:             RNode<Info>;
+	readonly type:   Type.BinaryOp;
+	readonly flavor: BinaryOperatorFlavor;
+	operator:        string;
+	lhs:             RNode<Info>;
+	rhs:             RNode<Info>;
 }
 
 export interface RLogicalBinaryOp<Info = NoInfo> extends RBinaryOp<Info> {
-    flavor: 'logical'
+	flavor: 'logical'
 }
 
 export interface RArithmeticBinaryOp<Info = NoInfo> extends RBinaryOp<Info> {
-    flavor: 'arithmetic'
+	flavor: 'arithmetic'
 }
 
 export interface RComparisonBinaryOp<Info = NoInfo> extends RBinaryOp<Info> {
-    flavor: 'comparison'
+	flavor: 'comparison'
 }
 
 export interface RAssignmentOp<Info = NoInfo> extends RBinaryOp<Info> {
-    flavor: 'assignment'
+	flavor: 'assignment'
 }
 
 export interface RModelFormulaBinaryOp<Info = NoInfo> extends RBinaryOp<Info> {
-    flavor: 'model formula'
+	flavor: 'model formula'
 }

@@ -12,22 +12,22 @@ import { summarizeMeasurement } from '../../benchmark'
  * As described in {@link histogramFromNumbers}, there always will be a special bin for minimum.
  */
 export interface Histogram {
-    /** A name intended for humans to know what the histogram is about. */
-    readonly name: string
-    /** Values located in each bin */
-    bins:          number[]
-    /** The configured size of each bin (stored explicitly to avoid semantic confusion with floating point arithmetic/problems with different rounding schemes) */
-    binSize:       number
-    /** Minimum value encountered (inclusive minimum of the underlying value range) */
-    min:           number
-    /** Maximum value encountered (inclusive maximum of the underlying value range) */
-    max:           number
-    /** Average of the included numbers */
-    mean:          number
-    /** Standard deviation of the included numbers */
-    std:           number
-    /** Median of the included numbers */
-    median:        number
+	/** A name intended for humans to know what the histogram is about. */
+	readonly name: string
+	/** Values located in each bin */
+	bins:          number[]
+	/** The configured size of each bin (stored explicitly to avoid semantic confusion with floating point arithmetic/problems with different rounding schemes) */
+	binSize:       number
+	/** Minimum value encountered (inclusive minimum of the underlying value range) */
+	min:           number
+	/** Maximum value encountered (inclusive maximum of the underlying value range) */
+	max:           number
+	/** Average of the included numbers */
+	mean:          number
+	/** Standard deviation of the included numbers */
+	std:           number
+	/** Median of the included numbers */
+	median:        number
 }
 
 /**

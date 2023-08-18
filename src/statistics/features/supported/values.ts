@@ -5,14 +5,14 @@ import { assertUnreachable } from '../../../util/assert'
 import { append } from '../../output'
 
 export interface ValueInfo extends FeatureInfo {
-    allNumerics:      number,
-    imaginaryNumbers: number,
-    integers:         number,
-    floatHex:         number,
+	allNumerics:      number,
+	imaginaryNumbers: number,
+	integers:         number,
+	floatHex:         number,
 
-    logical:          number,
-    specialConstants: number,
-    strings:          number
+	logical:          number,
+	specialConstants: number,
+	strings:          number
 }
 
 const initialValueInfo = (): ValueInfo => ({

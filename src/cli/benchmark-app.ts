@@ -28,13 +28,13 @@ export const optionDefinitions: OptionDefinition[] = [
 ]
 
 export interface BenchmarkCliOptions {
-    verbose:  boolean
-    help:     boolean
-    input:    string[]
-    output:   string
-    slice:    string
-    parallel: number
-    limit?:   number
+	verbose:  boolean
+	help:     boolean
+	input:    string[]
+	output:   string
+	slice:    string
+	parallel: number
+	limit?:   number
 }
 
 export const optionHelp = [

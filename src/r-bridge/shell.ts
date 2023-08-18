@@ -9,20 +9,20 @@ import { log, LogLevel } from '../util/log'
 export type OutputStreamSelector = "stdout" | "stderr" | "both";
 
 export interface CollectorTimeout extends MergeableRecord {
-    /**
+	/**
    * number of milliseconds to wait for the collection to finish
    */
-    ms:             number
-    /**
+	ms:             number
+	/**
    * if true, the timeout will reset whenever we receive new data
    */
-    resetOnNewData: boolean
-    // errorOnTimeout: boolean // TODO: maybe needed in the future as a "greedy" variant?
+	resetOnNewData: boolean
+	// errorOnTimeout: boolean // TODO: maybe needed in the future as a "greedy" variant?
 }
 
 interface CollectorUntil extends MergeableRecord {
-    predicate:       (data: string) => boolean
-    includeInResult: boolean
+	predicate:       (data: string) => boolean
+	includeInResult: boolean
 }
 
 /**
@@ -30,19 +30,19 @@ interface CollectorUntil extends MergeableRecord {
  * The defaults are configured with {@link DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION}
  */
 export interface OutputCollectorConfiguration extends MergeableRecord {
-    /** the streams to use to collect the output from */
-    from:                    OutputStreamSelector
-    /**
+	/** the streams to use to collect the output from */
+	from:                    OutputStreamSelector
+	/**
    * a string marker to signal that the command was executed successfully.
    * must not appear as a standalone line in the output. this is our hacky way of ensuring that we are done.
    */
-    postamble:               string
-    /** internal timeout configuration to use (see {@link CollectorTimeout}) */
-    timeout:                 CollectorTimeout
-    /** should the postamble be included in the result? */
-    keepPostamble:           boolean
-    /** automatically trim all lines in the output (useful to ignore trailing whitespace etc.) */
-    automaticallyTrimOutput: boolean
+	postamble:               string
+	/** internal timeout configuration to use (see {@link CollectorTimeout}) */
+	timeout:                 CollectorTimeout
+	/** should the postamble be included in the result? */
+	keepPostamble:           boolean
+	/** automatically trim all lines in the output (useful to ignore trailing whitespace etc.) */
+	automaticallyTrimOutput: boolean
 }
 
 export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguration = {
@@ -59,11 +59,11 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
 
 // TODO: doc
 export interface RShellSessionOptions extends MergeableRecord {
-    readonly pathToRExecutable:  string
-    readonly commandLineOptions: readonly string[]
-    readonly cwd:                string
-    readonly eol:                string
-    readonly env:                NodeJS.ProcessEnv
+	readonly pathToRExecutable:  string
+	readonly commandLineOptions: readonly string[]
+	readonly cwd:                string
+	readonly eol:                string
+	readonly env:                NodeJS.ProcessEnv
 }
 
 /**
@@ -71,8 +71,8 @@ export interface RShellSessionOptions extends MergeableRecord {
  * See {@link DEFAULT_R_SHELL_OPTIONS} for the default values used by {@link RShell}.
  */
 export interface RShellOptions extends RShellSessionOptions {
-    readonly sessionName: string
-    // TODO: maybe sanitizer in the future?
+	readonly sessionName: string
+	// TODO: maybe sanitizer in the future?
 }
 
 export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
@@ -213,11 +213,11 @@ export class RShell {
    * @param force       - if true, the package will be installed no if it is already on the system and ready to be loaded
    */
 	public async ensurePackageInstalled(packageName: string, autoload = false, force = false): Promise<{
-        packageName:           string
-        packageExistedAlready: boolean
-        /** the temporary directory used for the installation, undefined if none was used */
-        libraryLocation?:      string
-    }> {
+		packageName:           string
+		packageExistedAlready: boolean
+		/** the temporary directory used for the installation, undefined if none was used */
+		libraryLocation?:      string
+	}> {
 		const packageExistedAlready = await this.isPackageInstalled(packageName)
 		if (!force && packageExistedAlready) {
 			this.log.info(`package "${packageName}" is already installed`)

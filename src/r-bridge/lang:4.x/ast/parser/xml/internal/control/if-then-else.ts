@@ -20,7 +20,7 @@ export function tryNormalizeIfThenElse(data: ParserData,
                                        then:       NamedXmlBasedJson,
                                        elseToken:  NamedXmlBasedJson,
                                        elseBlock:  NamedXmlBasedJson
-    ]): RIfThenElse | undefined {
+																																							]): RIfThenElse | undefined {
 	// we start by parsing a regular if-then structure
 	parseLog.trace(`trying to parse if-then-else structure`)
 	tokens = executeHook(data.hooks.control.onIfThenElse.before, data, tokens)

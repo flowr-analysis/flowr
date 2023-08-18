@@ -7,7 +7,7 @@ type FileDescriptor = number
 type AppendFnType = string | number | symbol
 
 export interface StatisticAppendProvider {
-    append(name: string, fn: AppendFnType, content: string): void
+	append(name: string, fn: AppendFnType, content: string): void
 }
 
 export class DummyAppendProvider implements StatisticAppendProvider {

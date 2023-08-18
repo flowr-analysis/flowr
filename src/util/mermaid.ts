@@ -17,15 +17,15 @@ import { displayEnvReplacer } from './json'
 
 
 interface MermaidGraph {
-    nodeLines:           string[]
-    edgeLines:           string[]
-    hasBuiltIn:          boolean
-    includeEnvironments: boolean
-    mark:                Set<NodeId> | undefined
-    /** in the form of from-\>to because I am lazy, see {@link encodeEdge} */
-    presentEdges:        Set<string>
-    // keep for subflows
-    rootGraph:           DataflowGraph
+	nodeLines:           string[]
+	edgeLines:           string[]
+	hasBuiltIn:          boolean
+	includeEnvironments: boolean
+	mark:                Set<NodeId> | undefined
+	/** in the form of from-\>to because I am lazy, see {@link encodeEdge} */
+	presentEdges:        Set<string>
+	// keep for subflows
+	rootGraph:           DataflowGraph
 }
 
 export function formatRange(range: SourceRange | undefined): string {
@@ -200,8 +200,8 @@ export function graphToMermaidUrl(graph: DataflowGraph, dataflowIdMap: DataflowM
 }
 
 export interface LabeledDiffGraph {
-    label: string
-    graph: DataflowGraph
+	label: string
+	graph: DataflowGraph
 }
 
 /** uses same id map but ensures, it is different from the rhs so that mermaid can work with that */

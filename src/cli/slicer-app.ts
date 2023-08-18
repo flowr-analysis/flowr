@@ -21,13 +21,13 @@ export const optionDefinitions: OptionDefinition[] = [
 ]
 
 export interface SlicerCliOptions {
-    verbose:   boolean
-    help:      boolean
-    input:     string | undefined
-    criterion: string | undefined
-    output:    string | undefined
-    stats:     boolean
-    // dataflow:  boolean
+	verbose:   boolean
+	help:      boolean
+	input:     string | undefined
+	criterion: string | undefined
+	output:    string | undefined
+	stats:     boolean
+	// dataflow:  boolean
 }
 
 export const optionHelp = [

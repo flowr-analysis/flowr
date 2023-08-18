@@ -7,6 +7,6 @@ export function isSpecialSymbol(symbol: RSymbol): boolean {
 }
 
 export interface RSymbol<Info = NoInfo, T extends string = string> extends Leaf<Info>, Namespace, Location {
-    readonly type: Type.Symbol;
-    content:       T;
+	readonly type: Type.Symbol;
+	content:       T;
 }

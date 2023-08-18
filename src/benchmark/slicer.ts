@@ -42,11 +42,11 @@ import { MergeableRecord } from '../util/objects'
 export const benchmarkLogger = log.getSubLogger({ name: "benchmark" })
 
 export interface BenchmarkSlicerStats extends MergeableRecord {
-    stats:         SlicerStats
-    tokenMap:      Record<string, string>
-    normalizedAst: RExpressionList
-    decoratedAst:  DecoratedAst
-    dataflow:      DataflowInformation
+	stats:         SlicerStats
+	tokenMap:      Record<string, string>
+	normalizedAst: RExpressionList
+	decoratedAst:  DecoratedAst
+	dataflow:      DataflowInformation
 }
 
 /**

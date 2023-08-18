@@ -7,8 +7,8 @@ import { log } from './log'
  * Represents a table, identified by a header and a list of rows.
  */
 export interface Table {
-    header: string[]
-    rows:   string[][]
+	header: string[]
+	rows:   string[][]
 }
 
 /**

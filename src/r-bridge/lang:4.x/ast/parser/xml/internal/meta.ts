@@ -40,11 +40,11 @@ export function extractLocation(ast: XmlBasedJson): SourceRange {
  * @param obj    - The json object to extract the meta-information from
  */
 export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson): {
-  /** the obj passed in, but potentially without surrounding array wrappers (see {@link objectWithArrUnwrap}) */
-  unwrappedObj: XmlBasedJson
-  /** location information of the corresponding R-ast element */
-  location:     SourceRange
-  content:      string
+    /** the obj passed in, but potentially without surrounding array wrappers (see {@link objectWithArrUnwrap}) */
+    unwrappedObj: XmlBasedJson
+    /** location information of the corresponding R-ast element */
+    location:     SourceRange
+    content:      string
 } {
 	const unwrappedObj = objectWithArrUnwrap(obj)
 	const core = getKeysGuarded(unwrappedObj, config.contentName, config.attributeName)

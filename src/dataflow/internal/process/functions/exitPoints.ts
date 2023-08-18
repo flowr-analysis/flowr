@@ -10,8 +10,8 @@ import { assertUnreachable } from '../../../../util/assert'
 
 // TODO: track next/break and hold after return in expr list
 interface ExitPointsInformation {
-  knownIds:     NodeId[]
-  potentialIds: NodeId[]
+    knownIds:     NodeId[]
+    potentialIds: NodeId[]
 }
 
 export function retrieveExitPointsOfFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>): NodeId[] {

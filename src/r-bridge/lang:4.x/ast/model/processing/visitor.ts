@@ -4,38 +4,38 @@ import { Type } from '../type'
 import { assertUnreachable } from '../../../../../util/assert'
 
 export const enum RoleInParent {
-  /** has no parent */
-  Root = 'root',
-  IfCondition = 'if-cond',
-  IfThen = 'if-then',
-  IfOtherwise = 'if-otherwise',
-  WhileCondition = 'while-cond',
-  WhileBody = 'while-body',
-  RepeatBody = 'repeat-body',
-  ForVariable = 'for-variable',
-  ForVector = 'for-vector',
-  ForBody = 'for-body',
-  FunctionCallName = 'call-name',
-  FunctionCallArgument = 'call-argument',
-  FunctionDefinitionBody = 'function-def-body',
-  FunctionDefinitionParameter = 'function-def-param',
-  ExpressionListChild = 'expr-list-child',
-  BinaryOperationLhs = 'binop-lhs',
-  BinaryOperationRhs = 'binop-rhs',
-  PipeLhs = 'pipe-lhs',
-  PipeRhs = 'pipe-rhs',
-  UnaryOperand = 'unary-operand',
-  ParameterName = 'param-name',
-  ParameterDefaultValue = 'param-value',
-  ArgumentName = 'arg-name',
-  ArgumentValue = 'arg-value',
-  Accessed = 'accessed',
-  IndexAccess = 'index-access'
+    /** has no parent */
+    Root = 'root',
+    IfCondition = 'if-cond',
+    IfThen = 'if-then',
+    IfOtherwise = 'if-otherwise',
+    WhileCondition = 'while-cond',
+    WhileBody = 'while-body',
+    RepeatBody = 'repeat-body',
+    ForVariable = 'for-variable',
+    ForVector = 'for-vector',
+    ForBody = 'for-body',
+    FunctionCallName = 'call-name',
+    FunctionCallArgument = 'call-argument',
+    FunctionDefinitionBody = 'function-def-body',
+    FunctionDefinitionParameter = 'function-def-param',
+    ExpressionListChild = 'expr-list-child',
+    BinaryOperationLhs = 'binop-lhs',
+    BinaryOperationRhs = 'binop-rhs',
+    PipeLhs = 'pipe-lhs',
+    PipeRhs = 'pipe-rhs',
+    UnaryOperand = 'unary-operand',
+    ParameterName = 'param-name',
+    ParameterDefaultValue = 'param-value',
+    ArgumentName = 'arg-name',
+    ArgumentValue = 'arg-value',
+    Accessed = 'accessed',
+    IndexAccess = 'index-access'
 }
 
 export interface ParentContextInfo {
-  readonly role:  RoleInParent
-  readonly index: number
+    readonly role:  RoleInParent
+    readonly index: number
 }
 
 /** Return `true` to stop visiting from this node (i.e., do not continue to visit this node *and* the children) */

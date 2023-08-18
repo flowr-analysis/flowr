@@ -35,10 +35,10 @@ export function initFileProvider(outputDirectory: string) {
  * Format used to dump each entry of a feature during collection.
  */
 export interface StatisticsOutputFormat {
-  /** the collected value (like the assignment operator lexeme, ...) */
-  value:   string
-  /** the context of the information retrieval (e.g. the name of the file that contained the R source code) */
-  context: string | undefined
+    /** the collected value (like the assignment operator lexeme, ...) */
+    value:   string
+    /** the context of the information retrieval (e.g. the name of the file that contained the R source code) */
+    context: string | undefined
 }
 
 /**
@@ -54,7 +54,7 @@ export function append<T>(name: string, fn: keyof T, nodes: string[] | Node[], c
 		return
 	}
 	let contents = typeof nodes[0] === 'string' ?
-      nodes as string[]
+        nodes as string[]
 		: (nodes as Node[]).map(extractNodeContent)
 
 	if(unique) {

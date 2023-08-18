@@ -60,24 +60,24 @@ export function defaultQuadIgnoreIf(): QuadIgnoreIf {
  * See {@link DefaultQuadSerializationConfiguration} for defaults.
  */
 export interface QuadSerializationConfiguration extends MergeableRecord {
-  /**
+    /**
    * Ignore certain keys or values when serializing to quads.
    * @see defaultQuadIgnoreIf
    */
-  ignore?: QuadIgnoreIf
-  /**
+    ignore?: QuadIgnoreIf
+    /**
    * Retrieve a unique id for a given object.
    * @see defaultQuadIdGenerator
    */
-  getId?:  QuadIdRetriever
-  /**
+    getId?:  QuadIdRetriever
+    /**
    * The context of the serialized quads, probably the file-name (constant) or whatever is desired.
    */
-  context: QuadContextRetriever
-  /**
+    context: QuadContextRetriever
+    /**
    * The basic domain name to use for the quads.
    */
-  domain?: string
+    domain?: string
 }
 
 export const DefaultQuadSerializationConfiguration: Required<QuadSerializationConfiguration> = {

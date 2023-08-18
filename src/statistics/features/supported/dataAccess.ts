@@ -3,19 +3,19 @@ import * as xpath from 'xpath-ts2'
 import { append, extractNodeContent } from '../../output'
 
 export interface DataAccess extends FeatureInfo {
-  singleBracket:               number
-  singleBracketEmpty:          number
-  singleBracketConstant:       number
-  singleBracketSingleVariable: number
-  singleBracketCommaAccess:    number
-  doubleBracket:               number
-  doubleBracketEmpty:          number
-  doubleBracketConstant:       number
-  doubleBracketSingleVariable: number
-  doubleBracketCommaAccess:    number
-  chainedOrNestedAccess:       number
-  byName:                      number
-  bySlot:                      number
+    singleBracket:               number
+    singleBracketEmpty:          number
+    singleBracketConstant:       number
+    singleBracketSingleVariable: number
+    singleBracketCommaAccess:    number
+    doubleBracket:               number
+    doubleBracketEmpty:          number
+    doubleBracketConstant:       number
+    doubleBracketSingleVariable: number
+    doubleBracketCommaAccess:    number
+    chainedOrNestedAccess:       number
+    byName:                      number
+    bySlot:                      number
 }
 // TODO: single bracket comma access
 

@@ -22,10 +22,10 @@ export type XmlBasedJsonValue = string | Record<string, unknown> | XmlBasedJson[
  * We expect all xml elements to have a name attached which represents their R token type.
  */
 export interface NamedXmlBasedJson {
-  /** corresponds to the R token type */
-  name:    string,
-  /** remaining content (e.g., children, ...) */
-  content: XmlBasedJson
+    /** corresponds to the R token type */
+    name:    string,
+    /** remaining content (e.g., children, ...) */
+    content: XmlBasedJson
 }
 
 

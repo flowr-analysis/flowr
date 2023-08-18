@@ -11,23 +11,23 @@ import { DataflowInformation } from './internal/info'
 import { REnvironmentInformation } from './environments'
 
 export interface DataflowProcessorInformation<OtherInfo> {
-  /**
+    /**
    * Initial and frozen ast-information
    */
-  readonly completeAst:  DecoratedAst<OtherInfo>
-  /**
+    readonly completeAst:  DecoratedAst<OtherInfo>
+    /**
    * Correctly contains pushed local scopes introduced by `function` scopes.
    * Will by default *not* contain any symbol-bindings introduces along the way, they have to be decorated when moving up the tree.
    */
-  readonly environments: REnvironmentInformation
-  /**
+    readonly environments: REnvironmentInformation
+    /**
    * Name of the currently active scope, (hopefully) always {@link LocalScope | Local}
    */
-  readonly activeScope:  DataflowScopeName
-  /**
+    readonly activeScope:  DataflowScopeName
+    /**
    * Other processors to be called by the given functions
    */
-  readonly processors:   DataflowProcessors<OtherInfo>
+    readonly processors:   DataflowProcessors<OtherInfo>
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation<OtherInfo>
@@ -38,7 +38,7 @@ type NodeWithKey<OtherInfo, Node extends RNode<OtherInfo & ParentInformation>, T
  * This way, a processor mapped to a {@link Type#Symbol} require a {@link RSymbol} as first parameter and so on.
  */
 export type DataflowProcessors<OtherInfo> = {
-  [key in RNode['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, RNodeWithParent<OtherInfo>, key>>
+    [key in RNode['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, RNodeWithParent<OtherInfo>, key>>
 }
 
 /**

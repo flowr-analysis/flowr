@@ -29,22 +29,22 @@ export async function extractSingle(result: FeatureStatistics, shell: RShell, fr
 }
 
 export interface MetaStatistics {
-  /**
+    /**
    * the number of requests that were parsed successfully
    */
-  successfulParsed: number
-  /**
+    successfulParsed: number
+    /**
    * the processing time for each request
    */
-  processingTimeMs: number[]
-  /**
+    processingTimeMs: number[]
+    /**
    * skipped requests
    */
-  skipped:          string[]
-  /**
+    skipped:          string[]
+    /**
    * number of lines with each individual line length consumed for each request
    */
-  lines:            number[][]
+    lines:            number[][]
 }
 
 const initialMetaStatistics: () => MetaStatistics = () => ({

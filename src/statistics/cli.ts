@@ -18,15 +18,15 @@ export const optionDefinitions: OptionDefinition[] = [
 ]
 
 export interface StatsCliOptions {
-  verbose:        boolean
-  help:           boolean
-  'post-process': boolean
-  limit:          number
-  'hist-step':    number
-  input:          string[]
-  'output-dir':   string
-  'no-ansi':      boolean
-  features:       string[]
+    verbose:        boolean
+    help:           boolean
+    'post-process': boolean
+    limit:          number
+    'hist-step':    number
+    input:          string[]
+    'output-dir':   string
+    'no-ansi':      boolean
+    features:       string[]
 }
 
 export const optionHelp = [

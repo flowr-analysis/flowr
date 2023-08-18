@@ -19,19 +19,19 @@ export const BuiltIn = 'built-in'
  * Stores the definition of an identifier within an {@link IEnvironment}
  */
 export interface IdentifierDefinition extends IdentifierReference {
-  kind:      'function' | 'variable' | 'parameter' | 'unknown' | 'built-in-function' | 'argument' /* TODO: 'constant' */
-  /** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
-  definedAt: NodeId
+    kind:      'function' | 'variable' | 'parameter' | 'unknown' | 'built-in-function' | 'argument' /* TODO: 'constant' */
+    /** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
+    definedAt: NodeId
 }
 
 export interface VariableIdentifierDefinition extends IdentifierDefinition {
-  kind: 'variable'
-  type: string /* TODO static typing system */
+    kind: 'variable'
+    type: string /* TODO static typing system */
 }
 
 export interface FunctionIdentifierDefinition extends IdentifierDefinition {
-  kind: 'function'
-  /* TODO: formals etc. */
+    kind: 'function'
+    /* TODO: formals etc. */
 }
 
 /**
@@ -41,15 +41,15 @@ export interface FunctionIdentifierDefinition extends IdentifierDefinition {
  * Similarly, `b` will create a reference.
  */
 export interface IdentifierReference {
-  name:   Identifier,
-  scope:  DataflowScopeName,
-  /** Node which represents the reference in the AST */
-  nodeId: NodeId
-  /**
+    name:   Identifier,
+    scope:  DataflowScopeName,
+    /** Node which represents the reference in the AST */
+    nodeId: NodeId
+    /**
    * Is this reference used in every execution path of the program or only if some of them. This can be too-conservative regarding `maybe`.
    * For example, if we can not detect `if(FALSE)`, this will be `maybe` even if we could statically determine, that the `then` branch is never executed.
    */
-  used:   DataflowGraphEdgeAttribute
+    used:   DataflowGraphEdgeAttribute
 }
 
 export function equalIdentifierReferences(a: IdentifierReference, b: IdentifierReference): boolean {
@@ -77,17 +77,17 @@ export function makeAllMaybe(references: IdentifierReference[] | undefined, grap
 
 
 export interface IEnvironment {
-  /** unique and internally generated identifier -- will not be used for comparison but assists debugging for tracking identities */
-  readonly id:   string
-  readonly name: string
-  /** Lexical parent of the environment, if any (can be manipulated by R code) */
-  parent?:       IEnvironment
-  /**
+    /** unique and internally generated identifier -- will not be used for comparison but assists debugging for tracking identities */
+    readonly id:   string
+    readonly name: string
+    /** Lexical parent of the environment, if any (can be manipulated by R code) */
+    parent?:       IEnvironment
+    /**
    * Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions
    * TODO: mark function, symbol, etc. definitions
    * TODO: base vs. empty environment, TODO: functions for that... make it a top-level class more likely
    */
-  memory:        Map<Identifier, IdentifierDefinition[]>
+    memory:        Map<Identifier, IdentifierDefinition[]>
 }
 
 let environmentIdCounter = 0
@@ -113,10 +113,10 @@ export class Environment implements IEnvironment {
  * One example would be maps holding a potential list of all definitions of a variable, if we do not know the execution path (like with `if(x) A else B`).
  */
 export interface REnvironmentInformation {
-  /**  The currently active environment (the stack is represented by the currently active {@link IEnvironment#parent}). Environments are maintained within the dataflow graph. */
-  readonly current: IEnvironment
-  /** nesting level of the environment, will be `0` for the global/root environment */
-  readonly level:   number
+    /**  The currently active environment (the stack is represented by the currently active {@link IEnvironment#parent}). Environments are maintained within the dataflow graph. */
+    readonly current: IEnvironment
+    /** nesting level of the environment, will be `0` for the global/root environment */
+    readonly level:   number
 }
 
 export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition[]>([

@@ -17,22 +17,22 @@ import { getUniqueCombinationsOfSize } from '../../util/arrays'
  * @see DefaultAllVariablesFilter
  */
 export interface SlicingCriteriaFilter extends MergeableRecord {
-  /**
+    /**
    * Inclusive minimum size of the slicing criteria (number of included slice points).
    * Should be at least `1` to make sense (and of course at most {@link SlicingCriteriaFilter#maximumSize | maximum size}).
    */
-  minimumSize: number
-  /**
+    minimumSize: number
+    /**
    * Inclusive maximum size of the slicing criteria (number of included slice points).
    * Should be at least `1` to make sense (and of course at least {@link SlicingCriteriaFilter#minimumSize | minimum size}).
    * <p>
    * Be really careful with this one, as the number of possible slicing criteria can grow exponentially with the maximum size.
    */
-  maximumSize: number
-  /**
+    maximumSize: number
+    /**
    * Function that determines the ids of all nodes that can be used as slicing criteria.
    */
-  collectAll:  (root: RNodeWithParent) => NodeId[]
+    collectAll:  (root: RNodeWithParent) => NodeId[]
 }
 
 /**

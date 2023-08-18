@@ -2,8 +2,8 @@ import { ClusterReport } from './clusterer'
 import fs from 'fs'
 
 export interface FileBasedTable {
-  header: string[]
-  rows:   string[][]
+    header: string[]
+    rows:   string[][]
 }
 
 /**

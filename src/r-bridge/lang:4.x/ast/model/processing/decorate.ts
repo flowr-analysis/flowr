@@ -62,10 +62,10 @@ export function deterministicLocationIdGenerator<OtherInfo>(start = 0): IdGenera
 }
 
 export interface ParentInformation {
-  /** uniquely identifies an AST-Node */
-  id:     NodeId
-  /** Links to the parent node, using an id so that the AST stays serializable */
-  parent: NodeId | undefined
+    /** uniquely identifies an AST-Node */
+    id:     NodeId
+    /** Links to the parent node, using an id so that the AST stays serializable */
+    parent: NodeId | undefined
 }
 
 export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInformation>
@@ -78,10 +78,10 @@ interface FoldInfo<OtherInfo> { idMap: DecoratedAstMap<OtherInfo>, getId: IdGene
  * Contains the AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.
  */
 export interface DecoratedAst<OtherInfo = ParentInformation> {
-  /** Bidirectional mapping of ids to the corresponding nodes and the other way */
-  idMap:        DecoratedAstMap<OtherInfo>
-  /** The root of the AST with parent information */
-  decoratedAst: RNodeWithParent<OtherInfo>
+    /** Bidirectional mapping of ids to the corresponding nodes and the other way */
+    idMap:        DecoratedAstMap<OtherInfo>
+    /** The root of the AST with parent information */
+    decoratedAst: RNodeWithParent<OtherInfo>
 }
 
 

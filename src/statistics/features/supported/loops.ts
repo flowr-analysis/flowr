@@ -3,11 +3,11 @@ import * as xpath from 'xpath-ts2'
 import { append } from '../../output'
 
 export interface LoopInfo extends FeatureInfo {
-  forLoops:        number
-  whileLoops:      number
-  repeatLoops:     number
-  breakStatements: number
-  nextStatements:  number
+    forLoops:        number
+    whileLoops:      number
+    repeatLoops:     number
+    breakStatements: number
+    nextStatements:  number
 }
 
 const initialLoopInfo = (): LoopInfo => ({

@@ -26,14 +26,14 @@ export type FeatureInfo = Record<string, number> & MergeableRecord
  * @typeParam T - the type of what should be collected for the feature
  */
 export interface Feature<T extends FeatureInfo> {
-  /** a descriptive, yet unique name of the feature */
-  readonly name:        string
-  /** a description of the feature */
-  readonly description: string
-  /** a function that retrieves the feature in the document appends it to the existing feature set (we could use a monoid :D), the filepath corresponds to the active file (if any) */
-  process:              (existing: T, input: Document, filepath: string | undefined) => T
-  /** values to start the existing track from  */
-  initialValue() : T
+    /** a descriptive, yet unique name of the feature */
+    readonly name:        string
+    /** a description of the feature */
+    readonly description: string
+    /** a function that retrieves the feature in the document appends it to the existing feature set (we could use a monoid :D), the filepath corresponds to the active file (if any) */
+    process:              (existing: T, input: Document, filepath: string | undefined) => T
+    /** values to start the existing track from  */
+    initialValue() : T
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,7 +58,7 @@ export type FeatureSelection = Set<FeatureKey>
 export const allFeatureNames: Set<FeatureKey> = new Set<FeatureKey>(Object.keys(ALL_FEATURES) as FeatureKey[])
 
 export type FeatureStatistics = {
-  [K in FeatureKey]: FeatureInfo
+    [K in FeatureKey]: FeatureInfo
 }
 
 export interface Query { select(options?: EvalOptions): Node[] }

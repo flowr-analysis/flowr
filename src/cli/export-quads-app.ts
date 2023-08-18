@@ -18,11 +18,11 @@ export const optionDefinitions: OptionDefinition[] = [
 ]
 
 export interface QuadsCliOptions {
-  verbose: boolean
-  help:    boolean
-  input:   string[]
-  limit:   number
-  output:  string | undefined
+    verbose: boolean
+    help:    boolean
+    input:   string[]
+    limit:   number
+    output:  string | undefined
 }
 
 export const optionHelp = [

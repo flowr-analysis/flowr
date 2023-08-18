@@ -9,11 +9,11 @@ import { RArgument } from './RArgument'
  * @see RUnnamedFunctionCall
  */
 export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location {
-  readonly type:   Type.FunctionCall;
-  readonly flavor: 'named';
-  functionName:    RSymbol<Info>;
-  /** arguments can be undefined, for example when calling as `a(1, ,3)` */
-  arguments:       (RArgument<Info> | undefined)[];
+    readonly type:   Type.FunctionCall;
+    readonly flavor: 'named';
+    functionName:    RSymbol<Info>;
+    /** arguments can be undefined, for example when calling as `a(1, ,3)` */
+    arguments:       (RArgument<Info> | undefined)[];
 }
 
 
@@ -23,13 +23,13 @@ export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location 
  * @see RNamedFunctionCall
  */
 export interface RUnnamedFunctionCall<Info = NoInfo> extends Base<Info>, Location {
-  readonly type:   Type.FunctionCall;
-  readonly flavor: 'unnamed';
-  calledFunction:  RNode<Info>; /* can be either a function definition or another call that returns a function etc. */
-  /** marks function calls like `3 %xxx% 4` which have been written in special infix notation */
-  infixSpecial?:   boolean;
-  /** arguments can be undefined, for example when calling as `a(1, ,3)` */
-  arguments:       (RArgument<Info> | undefined)[];
+    readonly type:   Type.FunctionCall;
+    readonly flavor: 'unnamed';
+    calledFunction:  RNode<Info>; /* can be either a function definition or another call that returns a function etc. */
+    /** marks function calls like `3 %xxx% 4` which have been written in special infix notation */
+    infixSpecial?:   boolean;
+    /** arguments can be undefined, for example when calling as `a(1, ,3)` */
+    arguments:       (RArgument<Info> | undefined)[];
 }
 
 export type RFunctionCall<Info = NoInfo> = RNamedFunctionCall<Info> | RUnnamedFunctionCall<Info>;

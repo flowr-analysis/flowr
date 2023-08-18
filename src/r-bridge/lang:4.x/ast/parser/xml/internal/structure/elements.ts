@@ -136,7 +136,7 @@ export function normalizeBasedOnType(
 	} else {
 		mappedWithName = getWithTokenType(
 			data.config.tokenMap,
-      obj as XmlBasedJson[]
+            obj as XmlBasedJson[]
 		)
 	}
 

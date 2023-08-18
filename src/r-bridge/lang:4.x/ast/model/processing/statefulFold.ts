@@ -47,48 +47,48 @@ export type DownFold<Info, Down> = (node: RNode<Info>, down: Down) => Down
  * The `down` argument holds information obtained during the down-pass, issued by the `down` function.
  */
 export interface StatefulFoldFunctions<Info, Down, Up> {
-  down:        DownFold<Info, Down>
-  foldNumber:  (num: RNumber<Info>, down: Down) => Up;
-  foldString:  (str: RString<Info>, down: Down) => Up;
-  foldLogical: (logical: RLogical<Info>, down: Down) => Up;
-  foldSymbol:  (symbol: RSymbol<Info>, down: Down) => Up;
-  foldAccess:  (node: RAccess<Info>, name: Up, access: string | (null | Up)[], down: Down) => Up;
-  binaryOp: {
-    foldLogicalOp:    (op: RLogicalBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
-    foldArithmeticOp: (op: RArithmeticBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
-    foldComparisonOp: (op: RComparisonBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
-    foldAssignment:   (op: RAssignmentOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
-    foldPipe:         (op: RPipe<Info>, lhs: Up, rhs: Up, down: Down) => Up;
-    foldModelFormula: (op: RModelFormulaBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
-  };
-  unaryOp: {
-    foldLogicalOp:    (op: RLogicalUnaryOp<Info>, operand: Up, down: Down) => Up;
-    foldArithmeticOp: (op: RArithmeticUnaryOp<Info>, operand: Up, down: Down) => Up;
-    foldModelFormula: (op: RModelFormulaUnaryOp<Info>, operand: Up, down: Down) => Up;
-  };
-  loop: {
-    foldFor:    (loop: RForLoop<Info>, variable: Up, vector: Up, body: Up, down: Down) => Up;
-    foldWhile:  (loop: RWhileLoop<Info>, condition: Up, body: Up, down: Down) => Up;
-    foldRepeat: (loop: RRepeatLoop<Info>, body: Up, down: Down) => Up;
-    foldNext:   (next: RNext<Info>, down: Down) => Up;
-    foldBreak:  (next: RBreak<Info>, down: Down) => Up;
-  };
-  other: {
-    foldComment:       (comment: RComment<Info>, down: Down) => Up;
-    foldLineDirective: (comment: RLineDirective<Info>, down: Down) => Up;
-  };
-  /** The `otherwise` argument is `undefined` if the `else` branch is missing */
-  foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down ) => Up;
-  foldExprList:   (exprList: RExpressionList<Info>, expressions: Up[], down: Down) => Up;
-  functions: {
-    foldFunctionDefinition: (definition: RFunctionDefinition<Info>, args: Up[], body: Up, down: Down) => Up;
-    /** folds named and unnamed function calls */
-    foldFunctionCall:       (call: RFunctionCall<Info>, functionNameOrExpression: Up, args: (Up | undefined)[], down: Down) => Up;
-    /** The `name` is `undefined` if the argument is unnamed */
-    foldArgument:           (argument: RArgument<Info>, name: Up | undefined, value: Up, down: Down) => Up;
-    /** The `defaultValue` is `undefined` if the argument was not initialized with a default value */
-    foldParameter:          (parameter: RParameter<Info>, name: Up, defaultValue: Up | undefined, down: Down) => Up;
-  }
+    down:        DownFold<Info, Down>
+    foldNumber:  (num: RNumber<Info>, down: Down) => Up;
+    foldString:  (str: RString<Info>, down: Down) => Up;
+    foldLogical: (logical: RLogical<Info>, down: Down) => Up;
+    foldSymbol:  (symbol: RSymbol<Info>, down: Down) => Up;
+    foldAccess:  (node: RAccess<Info>, name: Up, access: string | (null | Up)[], down: Down) => Up;
+    binaryOp: {
+        foldLogicalOp:    (op: RLogicalBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
+        foldArithmeticOp: (op: RArithmeticBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
+        foldComparisonOp: (op: RComparisonBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
+        foldAssignment:   (op: RAssignmentOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
+        foldPipe:         (op: RPipe<Info>, lhs: Up, rhs: Up, down: Down) => Up;
+        foldModelFormula: (op: RModelFormulaBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
+    };
+    unaryOp: {
+        foldLogicalOp:    (op: RLogicalUnaryOp<Info>, operand: Up, down: Down) => Up;
+        foldArithmeticOp: (op: RArithmeticUnaryOp<Info>, operand: Up, down: Down) => Up;
+        foldModelFormula: (op: RModelFormulaUnaryOp<Info>, operand: Up, down: Down) => Up;
+    };
+    loop: {
+        foldFor:    (loop: RForLoop<Info>, variable: Up, vector: Up, body: Up, down: Down) => Up;
+        foldWhile:  (loop: RWhileLoop<Info>, condition: Up, body: Up, down: Down) => Up;
+        foldRepeat: (loop: RRepeatLoop<Info>, body: Up, down: Down) => Up;
+        foldNext:   (next: RNext<Info>, down: Down) => Up;
+        foldBreak:  (next: RBreak<Info>, down: Down) => Up;
+    };
+    other: {
+        foldComment:       (comment: RComment<Info>, down: Down) => Up;
+        foldLineDirective: (comment: RLineDirective<Info>, down: Down) => Up;
+    };
+    /** The `otherwise` argument is `undefined` if the `else` branch is missing */
+    foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down ) => Up;
+    foldExprList:   (exprList: RExpressionList<Info>, expressions: Up[], down: Down) => Up;
+    functions: {
+        foldFunctionDefinition: (definition: RFunctionDefinition<Info>, args: Up[], body: Up, down: Down) => Up;
+        /** folds named and unnamed function calls */
+        foldFunctionCall:       (call: RFunctionCall<Info>, functionNameOrExpression: Up, args: (Up | undefined)[], down: Down) => Up;
+        /** The `name` is `undefined` if the argument is unnamed */
+        foldArgument:           (argument: RArgument<Info>, name: Up | undefined, value: Up, down: Down) => Up;
+        /** The `defaultValue` is `undefined` if the argument was not initialized with a default value */
+        foldParameter:          (parameter: RParameter<Info>, name: Up, defaultValue: Up | undefined, down: Down) => Up;
+    }
 }
 
 

@@ -5,8 +5,8 @@ import * as xpath from 'xpath-ts2'
 import { append, extractNodeContent } from '../../output'
 
 export interface UsedFunction {
-  package:  SinglePackageInfo,
-  function: FunctionNameInfo
+    package:  SinglePackageInfo,
+    function: FunctionNameInfo
 }
 
 
@@ -15,30 +15,30 @@ export interface UsedFunction {
 
 // TODO: get corresponding package with getNamespaceExports etc?
 export interface FunctionUsageInfo extends FeatureInfo {
-  allFunctionCalls:           number
-  /** abs, expm1, tanpi, ... */
-  mathFunctions:              number
-  /** nargs, missing, is.character, ... */
-  programmingFunctions:       number
-  /** browser, proc.time, gc.time, ... */
-  sessionManagementFunctions: number
-  /** `:`, `~`, `c`, `UseMethod`, `.C`, ... */
-  primitiveFunctions:         number
-  /** e.g. do not evaluate part of functions, `quote`, ... */
-  specialPrimitiveFunctions:  number
-  /** `.Primitive`, `.Internal`, `lazyLoadDBfetch`, ... */
-  internalFunctions:          number
-  /** `body`, `environment`, `formals` */
-  metaFunctions:              number
-  /** return */
-  returnFunction:             number
-  parsingFunctions:           number
-  editFunctions:              number
-  assignFunctions:            number
-  getFunctions:               number
-  helpFunctions:              number
-  optionFunctions:            number
-  // TODO: others from the list
+    allFunctionCalls:           number
+    /** abs, expm1, tanpi, ... */
+    mathFunctions:              number
+    /** nargs, missing, is.character, ... */
+    programmingFunctions:       number
+    /** browser, proc.time, gc.time, ... */
+    sessionManagementFunctions: number
+    /** `:`, `~`, `c`, `UseMethod`, `.C`, ... */
+    primitiveFunctions:         number
+    /** e.g. do not evaluate part of functions, `quote`, ... */
+    specialPrimitiveFunctions:  number
+    /** `.Primitive`, `.Internal`, `lazyLoadDBfetch`, ... */
+    internalFunctions:          number
+    /** `body`, `environment`, `formals` */
+    metaFunctions:              number
+    /** return */
+    returnFunction:             number
+    parsingFunctions:           number
+    editFunctions:              number
+    assignFunctions:            number
+    getFunctions:               number
+    helpFunctions:              number
+    optionFunctions:            number
+    // TODO: others from the list
 }
 
 const initialFunctionUsageInfo = (): FunctionUsageInfo => ({

@@ -26,11 +26,11 @@ export const optionDefinitions: OptionDefinition[] = [
 ]
 
 export interface BenchmarkCliOptions {
-  verbose:         boolean
-  help:            boolean
-  'ultimate-only': boolean
-  input?:          string
-  output?:         string
+    verbose:         boolean
+    help:            boolean
+    'ultimate-only': boolean
+    input?:          string
+    output?:         string
 }
 
 export const optionHelp = [
@@ -53,8 +53,8 @@ export const optionHelp = [
 
 
 interface BenchmarkData {
-  filename: string,
-  stats:    SlicerStats
+    filename: string,
+    stats:    SlicerStats
 }
 
 const options = commandLineArgs(optionDefinitions) as BenchmarkCliOptions

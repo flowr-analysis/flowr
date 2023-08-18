@@ -5,28 +5,28 @@ import { DeepPartial } from 'ts-essentials'
 import { guard } from '../util/assert'
 
 export interface RParseRequestFromFile {
-  request: "file";
-  /** The path to the file (absolute paths are probably best here */
-  content: string;
+    request: "file";
+    /** The path to the file (absolute paths are probably best here */
+    content: string;
 }
 
 export interface RParseRequestFromText {
-  request: 'text'
-  /* Source code to parse (not a file path) */
-  content: string
+    request: 'text'
+    /* Source code to parse (not a file path) */
+    content: string
 }
 
 interface RParseRequestBase {
-  /**
+    /**
    * Should lexeme information be retained in the AST?
    * You most likely want `true` here.
    */
-  attachSourceInformation: boolean
-  /**
+    attachSourceInformation: boolean
+    /**
    * Ensure that all required packages are present and if not install them?
    * The only reason to set this to `false` is probably ina series of parse requests for the same session.
    */
-  ensurePackageInstalled:  boolean
+    ensurePackageInstalled:  boolean
 }
 
 /**

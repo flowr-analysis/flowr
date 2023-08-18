@@ -11,36 +11,36 @@ export type PerSliceMeasurements = typeof PerSliceMeasurements[number]
 export type ElapsedTime = bigint
 
 export interface PerSliceStats {
-  measurements:                Map<PerSliceMeasurements, ElapsedTime>
-  slicingCriteria:             { criterion: SingleSlicingCriterion, id: NodeId }[]
-  reconstructedCode:           ReconstructionResult
-  numberOfDataflowNodesSliced: number
-  timesHitThreshold:           number
+    measurements:                Map<PerSliceMeasurements, ElapsedTime>
+    slicingCriteria:             { criterion: SingleSlicingCriterion, id: NodeId }[]
+    reconstructedCode:           ReconstructionResult
+    numberOfDataflowNodesSliced: number
+    timesHitThreshold:           number
 }
 
 export interface SlicerStatsInput<T = number> {
-  numberOfLines:                   T
-  numberOfCharacters:              T
-  numberOfNonWhitespaceCharacters: T
-  numberOfRTokens:                 T
-  numberOfNormalizedTokens:        T
+    numberOfLines:                   T
+    numberOfCharacters:              T
+    numberOfNonWhitespaceCharacters: T
+    numberOfRTokens:                 T
+    numberOfNormalizedTokens:        T
 }
 
 
 export interface SlicerStatsDataflow<T = number> {
-  numberOfNodes:               T
-  numberOfEdges:               T
-  numberOfCalls:               T
-  numberOfFunctionDefinitions: T
+    numberOfNodes:               T
+    numberOfEdges:               T
+    numberOfCalls:               T
+    numberOfFunctionDefinitions: T
 }
 
 /**
  * The statistics that are collected by the {@link BenchmarkSlicer} and used for benchmarking.
  */
 export interface SlicerStats {
-  commonMeasurements:   Map<CommonSlicerMeasurements, ElapsedTime>
-  perSliceMeasurements: Map<SlicingCriteria, PerSliceStats>
-  request:              RParseRequestFromFile | RParseRequestFromText
-  input:                SlicerStatsInput
-  dataflow:             SlicerStatsDataflow
+    commonMeasurements:   Map<CommonSlicerMeasurements, ElapsedTime>
+    perSliceMeasurements: Map<SlicingCriteria, PerSliceStats>
+    request:              RParseRequestFromFile | RParseRequestFromText
+    input:                SlicerStatsInput
+    dataflow:             SlicerStatsDataflow
 }

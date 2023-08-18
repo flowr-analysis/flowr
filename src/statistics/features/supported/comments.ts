@@ -4,19 +4,19 @@ import { guard, isNotNull, isNotUndefined } from '../../../util/assert'
 import { append } from '../../output'
 
 export interface CommentInfo extends FeatureInfo {
-  totalAmount:       number
-  roxygenComments:   number
-  import:            number
-  importFrom:        number
-  importMethodsFrom: number
-  importClassesFrom: number
-  export:            number
-  exportClass:       number
-  exportMethod:      number
-  exportS3Method:    number
-  exportPattern:     number
-  // TODO: deal with comma extras etc.?
-  useDynLib:         number
+    totalAmount:       number
+    roxygenComments:   number
+    import:            number
+    importFrom:        number
+    importMethodsFrom: number
+    importClassesFrom: number
+    export:            number
+    exportClass:       number
+    exportMethod:      number
+    exportS3Method:    number
+    exportPattern:     number
+    // TODO: deal with comma extras etc.?
+    useDynLib:         number
 }
 
 const initialCommentInfo = (): CommentInfo => ({

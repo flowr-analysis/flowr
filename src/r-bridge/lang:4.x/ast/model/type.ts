@@ -4,64 +4,64 @@ import { assertUnreachable } from '../../../../util/assert'
  * Represents the types known by R (i.e., it may contain more or others than the ones we use)
  */
 export const enum Type {
-  /** `[`, `[[`, `$`, and `@` */
-  Access = "access",
-  ExpressionList = "exprlist",
-  Expression = "expr",
-  /*
+    /** `[`, `[[`, `$`, and `@` */
+    Access = "access",
+    ExpressionList = "exprlist",
+    Expression = "expr",
+    /*
    * https://github.com/REditorSupport/languageserver/issues/327
    * https://github.com/REditorSupport/languageserver/pull/328
    */
-  ExprHelpAssignWrapper = "expr_or_assign_or_help",
-  Symbol = "SYMBOL",
-  SymbolFormals = "SYMBOL_FORMALS",
-  SymbolNamedFormals = "SYMBOL_SUB",
-  /* will be represented as a number in R */
-  Logical = "boolean",
-  /* this will be a symbol for us */
-  Null = "NULL_CONST",
-  Number = "NUM_CONST",
-  String = "STR_CONST",
-  BinaryOp = "binaryop",
-  UnaryOp = "unaryop",
-  LineDirective = "LINE_DIRECTIVE",
-  Comment = "COMMENT",
-  /* can be special operators like %*% or %o% */
-  Special = "SPECIAL",
-  // parens will be removed and dealt with as precedences/arguments automatically
-  ParenLeft = "(",
-  ParenRight = ")",
-  BraceLeft = "{",
-  BraceRight = "}",
-  // TODO: deal with them as access operators, similarly with '[[' etc.
-  DoubleBracketLeft = "LBB",
-  BracketLeft = "[",
-  BracketRight = "]",
-  Dollar = "$",
-  At = "@",
-  Slot = "SLOT",
-  Semicolon = ";",
-  For = "FOR",
-  ForCondition = "forcond",
-  ForIn = "IN",
-  Repeat = "REPEAT",
-  While = "WHILE",
-  If = "IF",
-  Else = "ELSE",
-  Pipe = "PIPE",
-  Comma = ",",
-  FunctionCall = "SYMBOL_FUNCTION_CALL",
-  FunctionDefinition = "FUNCTION",
-  LambdaFunctionDefinition = "\\\\",
-  SymbolPackage = "SYMBOL_PACKAGE",
-  NamespaceGet = "NS_GET",
-  Break = "BREAK",
-  Next = "NEXT",
-  EqFormals = "EQ_FORMALS",
-  EqNamedArgument = "EQ_SUB",
-  Parameter = "Parameter",
-  Argument = "Argument",
-  Delimiter = "Delimiter"
+    ExprHelpAssignWrapper = "expr_or_assign_or_help",
+    Symbol = "SYMBOL",
+    SymbolFormals = "SYMBOL_FORMALS",
+    SymbolNamedFormals = "SYMBOL_SUB",
+    /* will be represented as a number in R */
+    Logical = "boolean",
+    /* this will be a symbol for us */
+    Null = "NULL_CONST",
+    Number = "NUM_CONST",
+    String = "STR_CONST",
+    BinaryOp = "binaryop",
+    UnaryOp = "unaryop",
+    LineDirective = "LINE_DIRECTIVE",
+    Comment = "COMMENT",
+    /* can be special operators like %*% or %o% */
+    Special = "SPECIAL",
+    // parens will be removed and dealt with as precedences/arguments automatically
+    ParenLeft = "(",
+    ParenRight = ")",
+    BraceLeft = "{",
+    BraceRight = "}",
+    // TODO: deal with them as access operators, similarly with '[[' etc.
+    DoubleBracketLeft = "LBB",
+    BracketLeft = "[",
+    BracketRight = "]",
+    Dollar = "$",
+    At = "@",
+    Slot = "SLOT",
+    Semicolon = ";",
+    For = "FOR",
+    ForCondition = "forcond",
+    ForIn = "IN",
+    Repeat = "REPEAT",
+    While = "WHILE",
+    If = "IF",
+    Else = "ELSE",
+    Pipe = "PIPE",
+    Comma = ",",
+    FunctionCall = "SYMBOL_FUNCTION_CALL",
+    FunctionDefinition = "FUNCTION",
+    LambdaFunctionDefinition = "\\\\",
+    SymbolPackage = "SYMBOL_PACKAGE",
+    NamespaceGet = "NS_GET",
+    Break = "BREAK",
+    Next = "NEXT",
+    EqFormals = "EQ_FORMALS",
+    EqNamedArgument = "EQ_SUB",
+    Parameter = "Parameter",
+    Argument = "Argument",
+    Delimiter = "Delimiter"
 }
 
 // TODO: this mapping should be removed once i have split the R-type enum from the one we use to separate the AST

@@ -133,8 +133,8 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, fun
 
 
 function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphNodeFunctionCall, idMap: DecoratedAstMap, nodeGraph: DataflowGraph, thisGraph: DataflowGraph, calledFunctionDefinitions: {
-  functionCall: NodeId;
-  called:       DataflowGraphNodeInfo[]
+    functionCall: NodeId;
+    called:       DataflowGraphNodeInfo[]
 }[]) {
 	const edges = graph.get(id, true)
 	guard(edges !== undefined, () => `id ${id} must be present in graph`)

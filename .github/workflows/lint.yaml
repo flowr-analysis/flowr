@@ -8,7 +8,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: "Setup the Environment"
-        uses: Code-Inspect/flowr/.github/actions/setup.yaml@145-improve-ci
+        uses: Code-Inspect/flowr/.github/actions/setup@145-improve-ci
 
       - name: "Run the linter"
         run:

@@ -1,6 +1,6 @@
 # flowr
 
-[![Deploy Documentation](https://github.com/Code-Inspect/flowr/actions/workflows/deploy-doc.yaml/badge.svg)](https://code-inspect.github.io/flowr/doc) [![codecov](https://codecov.io/bb/Code-Inspect/flowr/branch/main/graph/badge.svg)](https://codecov.io/gh/Code-Inspect/flowr)
+[![Deploy Documentation](https://github.com/Code-Inspect/flowr/actions/workflows/deploy-doc.yaml/badge.svg)](https://code-inspect.github.io/flowr/doc) [![codecov](https://codecov.io/gh/Code-Inspect/flowr/graph/badge.svg)](https://codecov.io/gh/Code-Inspect/flowr)
 
 
 A program slicer and analyzer for R programs.

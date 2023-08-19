@@ -39,7 +39,7 @@ jobs:
     timeout-minutes: ${{ inputs.timeout-minutes }}
     steps:
       - name: "Setup the Environment"
-        uses: Code-Inspect/flowr/.github/actions/setup@145-improve-ci
+        uses: Code-Inspect/flowr/.github/actions/setup@${{ github.ref }}
         with:
           node-version: ${{ inputs.node-version }}
           r-version: ${{ inputs.r-version }}

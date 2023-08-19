@@ -6,14 +6,14 @@ on: [push, workflow_dispatch]
 jobs:
 
   lint:
-    name: "Eslint on flowR (default configuration)"
+    name: "Linting"
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
     with:
       r-version: ''
       action:    lint
 
   test:
-      name: "The (small) test suite"
+      name: "Test suite (default)"
       uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
       with:
         action: test

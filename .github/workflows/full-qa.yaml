@@ -15,7 +15,7 @@ jobs:
         uses: styfle/cancel-workflow-action@0.11.0
 
   test-others:
-    needs: [ 'test-full' ]
+    needs: [ 'cleanup' ]
     strategy:
       fail-fast: false
       matrix:

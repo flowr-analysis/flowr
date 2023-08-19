@@ -1,11 +1,6 @@
 name: "Full QA"
 # Runs only on pull requests to the main branch and on manual triggers
 
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.r-version }}-${{ matrix.os }}
-  cancel-in-progress: true
-
 on:
   pull_request:
     types: [opened, synchronize]
@@ -22,6 +17,9 @@ jobs:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
     name: "Test Suite (full)"
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.r-version }}-${{ matrix.os }}
+      cancel-in-progress: true
     with:
       r-version: ${{ matrix.r-version }}
       image: ${{ matrix.os }}

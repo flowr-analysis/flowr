@@ -37,8 +37,8 @@ jobs:
 
   test:
     needs: [ debug ]
-    name: "Test Suite (default)"
+    name: "Test Suite (full)"
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
     with:
-      action: test
+      action: test-full
       coverage: true

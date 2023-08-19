@@ -14,21 +14,13 @@ jobs:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.11.0
 
-  test-full:
-      needs: [ cleanup ]
-      name: "Test suite (full)"
-      uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
-      with:
-        action: test-full
-        coverage: true
-
   test-others:
     needs: [ 'test-full' ]
     strategy:
       fail-fast: false
       matrix:
         # currently we offer no official support for 3.x TODO: currently  '4.0.5' fails, as we can not detect that there is no pipe!
-        r-version: [ '4.1.0' ]
+        r-version: [ '4.2.3', '4.1.0' ]
         os: [ ubuntu-latest, macos-latest, windows-latest ]
     name: "Test Suite (full)"
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
@@ -36,4 +28,4 @@ jobs:
       r-version: ${{ matrix.r-version }}
       image: ${{ matrix.os }}
       action: test-full
-      coverage: true
+      coverage: false

@@ -10,15 +10,13 @@ on:
       - 'scripts/**'
   workflow_dispatch:
 
-jobs:
-  cleanup:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.11.0
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+
+jobs:
   debug:
-    needs: [ cleanup ]
     runs-on: ubuntu-latest
     steps:
     - name: "Debug state"

@@ -26,6 +26,7 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.r-version }}-${{ matrix.os }}
       cancel-in-progress: true
     with:
+      timeout-minutes: 25
       r-version: ${{ matrix.r-version }}
       image: ${{ matrix.os }}
       action: test-full

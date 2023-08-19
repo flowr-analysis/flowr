@@ -24,7 +24,7 @@ name: "Run one of flowR's npm-actions with a specific version"
         type: boolean
 
 jobs:
-  lint:
+  flowr-action:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:

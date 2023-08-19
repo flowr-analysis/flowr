@@ -1,16 +1,19 @@
 name: "Run eslint on flowR for a specific version"
 
 'on':
-  workflow_dispatch:
+  workflow_call:
     inputs:
       node-version:
         description: "The node version to use"
         required: false
         default: "18.15.x"
+        type: string
       r-version:
         description: "The R version to use"
         required: false
         default: "4.2.3"
+        type: string
+
 
 jobs:
   lint:

@@ -12,6 +12,7 @@
     "summarizer": "ts-node src/cli/summarizer-app.ts",
     "export-quads": "ts-node src/cli/export-quads-app.ts",
     "build": "tsc",
+    "lint": "eslint {src,test}",
     "doc": "typedoc --options typedoc.json",
     "test": "nyc --no-clean mocha --require ts-node/register --timeout 10000 \"test/**/*.spec.ts\"",
     "test-full": "npm run test -- --test-installation"

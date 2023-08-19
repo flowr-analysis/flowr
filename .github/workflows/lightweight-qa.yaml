@@ -4,25 +4,16 @@ name: "Lightweight QA"
 on: [push, workflow_dispatch]
 
 jobs:
-  qa:
 
-    runs-on: ubuntu-22.04
-    timeout-minutes: 35
+  lint:
+    name: "Run eslint on flowR for the default configuration"
+    uses: Code-Inspect/flowr/.github/workflows/util/run.yaml@145-improve-ci
+    with:
+      action: lint
 
-    steps:
-      - name: "Setup the Environment"
-        uses: Code-Inspect/flowr/.github/actions/setup@145-improve-ci
-
-      - name: Install Node Dependencies
-        run: npm ci
-
-      - name: "Run the linter"
-        run: npx eslint {src,test}
-
-      - name: "Run the (small) test suite"
-        run: npm run test
-
-      - name: Upload Coverage Reports to Codecov
-        uses: codecov/codecov-action@v3
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  test:
+      name: "Run the (small) test suite"
+      uses: Code-Inspect/flowr/.github/workflows/util/run.yaml@145-improve-ci
+      with:
+        action: test
+        coverage: true

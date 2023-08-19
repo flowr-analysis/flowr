@@ -5,4 +5,13 @@ on:
     branches: [ main, 145-improve-ci ]
 
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  doc:
+    name: "Build and Deploy Documentation"
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
+    with:
+      action: doc

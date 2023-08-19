@@ -4,6 +4,8 @@ import { REnvironmentInformation } from '../environments'
 import { DataflowGraphEdgeAttribute } from './edge'
 import { DataflowFunctionFlowInformation, DataflowScopeName, FunctionArgument } from './graph'
 
+export type DataflowGraphVertices = Map<NodeId, DataflowGraphVertexInfo>
+
 /**
  * Arguments required to construct a vertex in the dataflow graph.
  *

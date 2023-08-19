@@ -17,7 +17,7 @@ import {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexInfo
+	DataflowGraphVertexInfo, DataflowGraphVertices
 } from './vertex'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
@@ -39,7 +39,8 @@ export type DataflowScopeName =
 
 // TODO: export type DataflowGraphNodeType = 'variable' | 'processing' | 'assignment' | 'if-then-else' | 'loop' | 'function'
 
-export type DataflowFunctionFlowInformation = Omit<DataflowInformation<unknown>, 'ast'>
+export type DataflowFunctionFlowInformation = Omit<DataflowInformation<unknown>, 'ast' | 'graph'>
+& { graph: DataflowGraphVertices }
 
 export type NamedFunctionArgument = [string, IdentifierReference | '<value>']
 export type PositionalFunctionArgument = IdentifierReference | '<value>'
@@ -51,27 +52,21 @@ type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'used'>  | Identifi
 const DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
 
 
+
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
  * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphVertexArgument}
  *
  * The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the nodes of its subgraph.
- * However, all *edges* are hoisted at the top level in the form of an adjacency list.
+ * However, all *edges* are hoisted at the top level in the form of an (attributed) adjacency list.
  * After the dataflow analysis, all sources and targets of the edges *must* be part of the vertices.
  * However, this does not have to hold during the construction as edges may point from or to vertices which are yet to be constructed.
  *
  * All methods return the modified graph to allow for chaining.
  */
 export class DataflowGraph {
-	private graphNodes = new Map<NodeId, DataflowGraphVertexInfo>()
-	// TODO: improve access, theoretically we want a multi - default map, right now we do not allow multiple edges
+	private graphNodes: DataflowGraphVertices = new Map<NodeId, DataflowGraphVertexInfo>()
 	private edges = new Map<NodeId, Map<NodeId, DataflowGraphEdge>>()
-	// TODO: this should be removed with flattened graph
-	private nodeIdAccessCache = new Map<NodeId, [DataflowGraphVertexInfo, [NodeId, DataflowGraphEdge][]] | null>()
-
-	private invalidateCache() {
-		this.nodeIdAccessCache.clear()
-	}
 
 	/**
    * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
@@ -158,12 +153,14 @@ export class DataflowGraph {
 			guard(oldNode.name === node.name, 'node names must match for the same id if added')
 			return this
 		}
-		// dataflowLogger.trace(`[${node.tag}] adding node ${JSON.stringify(node)}`)
-		// deep clone environment
+
+		// keep a clone of the original environment
 		const environment = node.environment === undefined ? DEFAULT_ENVIRONMENT : cloneEnvironments(node.environment)
-		const when = node.when ?? 'always'
-		this.graphNodes.set(node.id, { ...node, when, environment })
-		this.invalidateCache()
+		this.graphNodes.set(node.id, {
+			...node,
+			when: node.when ?? 'always',
+			environment
+		})
 		return this
 	}
 
@@ -222,7 +219,6 @@ export class DataflowGraph {
 		const edgeInFrom = existingFrom?.get(toId)
 
 		if(edgeInFrom === undefined) {
-			this.invalidateCache()
 			if(existingFrom === undefined) {
 				this.edges.set(fromId, new Map([[toId, edge]]))
 			} else {
@@ -299,7 +295,6 @@ export class DataflowGraph {
 				}
 			}
 		}
-		this.invalidateCache()
 		return this
 	}
 

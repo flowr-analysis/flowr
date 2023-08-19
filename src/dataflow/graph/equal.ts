@@ -1,7 +1,7 @@
 import { environmentsEqual, equalIdentifierReferences, IdentifierReference } from '../environments'
 import { NodeId } from '../../r-bridge'
-import { DataflowGraphNodeInfo, FunctionArgument, PositionalFunctionArgument } from './graph'
-import { DataflowGraphEdge, dataflowLogger } from '../index'
+import { FunctionArgument, PositionalFunctionArgument } from './graph'
+import { DataflowGraphEdge, DataflowGraphNodeInfo, dataflowLogger } from '../index'
 import { guard } from '../../util/assert'
 import { displayEnvReplacer } from '../../util/json'
 

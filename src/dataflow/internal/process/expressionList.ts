@@ -14,7 +14,7 @@ import {
 import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
 import { DataflowGraph } from '../../graph'
-import { dataflowLogger } from '../../index'
+import { dataflowLogger, EdgeType } from '../../index'
 import { guard } from '../../../util/assert'
 
 
@@ -41,7 +41,7 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 
 	for (const target of probableTarget) {
 		// we can stick with maybe even if readId.attribute is always
-		nextGraph.addEdge(read, target, 'reads', undefined, true)
+		nextGraph.addEdge(read, target, EdgeType.Reads, undefined, true)
 	}
 }
 
@@ -66,7 +66,7 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
 		if (resolved !== undefined) {
 			// write-write
 			for (const target of resolved) {
-				nextGraph.addEdge(target, writeTarget, 'same-def-def', undefined, true)
+				nextGraph.addEdge(target, writeTarget, EdgeType.SameDefDef, undefined, true)
 			}
 		}
 	}
@@ -137,7 +137,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 				while(current !== undefined) {
 					for(const definitions of current.memory.values()) {
 						for(const def of definitions) {
-							nextGraph.addEdge(def.nodeId, functionCall, 'side-effect-on-call', def.used)
+							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall, def.used)
 						}
 					}
 					current = current.parent

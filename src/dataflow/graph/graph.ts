@@ -1,43 +1,28 @@
 // TODO: modify | alias | etc.
-import { guard } from '../util/assert'
-import { NodeId, RNodeWithParent } from '../r-bridge'
+import { guard } from '../../util/assert'
+import { NodeId, RNodeWithParent } from '../../r-bridge'
 import {
 	cloneEnvironments,
-	environmentsEqual, equalIdentifierReferences, IdentifierDefinition,
-	IdentifierReference, initializeCleanEnvironments,
+	environmentsEqual,
+	equalIdentifierReferences, GlobalScope,
+	IdentifierDefinition,
+	IdentifierReference,
+	initializeCleanEnvironments, LocalScope,
 	REnvironmentInformation
-} from './environments'
-import { BiMap } from '../util/bimap'
-import { MergeableRecord } from '../util/objects'
-import { log } from '../util/log'
-import { dataflowLogger } from './index'
-import { DataflowInformation } from './internal/info'
-import { displayEnvReplacer } from '../util/json'
+} from '../environments'
+import { BiMap } from '../../util/bimap'
+import { MergeableRecord } from '../../util/objects'
+import { log } from '../../util/log'
+import { DataflowGraphEdge, EdgeType, dataflowLogger, DataflowGraphEdgeAttribute } from '../index'
+import { DataflowInformation } from '../internal/info'
+import { displayEnvReplacer } from '../../util/json'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
 
-export type DataflowGraphEdgeType =
-    | /** The edge determines that source reads target */ 'reads'
-    | /** The edge determines that source is defined by target */ 'defined-by'
-    | /** The edge determines that source (probably argument) defines the target (probably parameter), currently automatically created by `addEdge` */ 'defines-on-call'
-    | /** Inverse of `defines-on-call` currently only needed to get better results when slicing complex function calls, TODO: remove this in the future when the slicer knows the calling context of the function and can trace links accordingly */ 'defined-by-on-call'
-    | /** The edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */ 'same-read-read'
-    | /** Similar to `same-read-read` but for def-def constructs without a read in-between */ 'same-def-def'
-    | /** Formal used as argument to a function call */ 'argument'
-    | /** The edge determines that the source is a side effect that happens when the target is called */ 'side-effect-on-call'
-    | /** The edge determines that the source calls the target */ 'calls'
-    | /** The source and edge relate to each other bidirectionally */ 'relates'
-    | /** The source returns target on call */ 'returns'
-
-// context -- is it always read/defined-by // TODO: loops
-export type DataflowGraphEdgeAttribute = 'always' | 'maybe'
 
 
 // TODO: on fold clarify with in and out-local, out-global! (out-function?)
-
-export const GlobalScope = '.GlobalEnv'
-export const LocalScope = 'local'
 
 /**
  * Used to represent usual R scopes
@@ -47,17 +32,6 @@ export type DataflowScopeName =
   | /** unspecified automatic local environment */ typeof LocalScope
   | /** named environments */                      string
 
-
-/**
- * An edge consist of the target node (i.e., the variable or processing node),
- * a type (if it is read or used in the context), and an attribute (if this edge exists for every program execution or
- * if it is only one possible execution path).
- */
-export interface DataflowGraphEdge {
-	// currently multiple edges are represented by multiple types
-	types:     Set<DataflowGraphEdgeType>
-	attribute: DataflowGraphEdgeAttribute
-}
 
 
 // TODO: export type DataflowGraphNodeType = 'variable' | 'processing' | 'assignment' | 'if-then-else' | 'loop' | 'function'
@@ -209,7 +183,7 @@ export type DataflowGraphNodeInfo = Required<DataflowGraphNodeArgument>
 
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
- * We differentiate the directed edges in {@link DataflowGraphEdgeType} and the vertices indicated by {@link DataflowGraphNodeArgument}
+ * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphNodeArgument}
  *
  * The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the nodes of its subgraph.
  * However, all *edges* are hoisted at the top level in the form of an adjacency list.
@@ -324,11 +298,11 @@ export class DataflowGraph {
 	}
 
 	/** Basically only exists for creations in tests, within the dataflow-extraction, this 3-argument variant will determine `attribute` automatically */
-	public addEdge(from: NodeId, to: NodeId, type: DataflowGraphEdgeType, attribute: DataflowGraphEdgeAttribute): this
+	public addEdge(from: NodeId, to: NodeId, type: EdgeType, attribute: DataflowGraphEdgeAttribute): this
 	/** {@inheritDoc} */
-	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: DataflowGraphEdgeType): this
+	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, type: EdgeType): this
 	/** {@inheritDoc} */
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute, promote?: boolean): this
+	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType, attribute?: DataflowGraphEdgeAttribute, promote?: boolean): this
 	/**
    * Will insert a new edge into the graph,
    * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
@@ -338,7 +312,7 @@ export class DataflowGraph {
    * Promote will probably only be used internally and not by tests etc.
    * TODO: ensure that target has a def scope and source does not?
    */
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: DataflowGraphEdgeType, attribute?: DataflowGraphEdgeAttribute, promote= false): this {
+	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType, attribute?: DataflowGraphEdgeAttribute, promote= false): this {
 		// dataflowLogger.trace(`trying to add edge from ${JSON.stringify(from)} to ${JSON.stringify(to)} with type ${type} and attribute ${JSON.stringify(attribute)} to graph`)
 
 		const fromId = typeof from === 'object' ? from.nodeId : from
@@ -396,7 +370,7 @@ export class DataflowGraph {
 				}
 			} else if (type === 'defines-on-call') {
 				const otherEdge: DataflowGraphEdge = { ...edge,
-					types: new Set(['defined-by-on-call'])
+					types: new Set([EdgeType.DefinedByOnCall])
 				}
 				const existingTo = this.edges.get(toId)
 				if(existingTo === undefined) {

@@ -2,6 +2,7 @@ import { ParentInformation, RAccess } from '../../../r-bridge'
 import { DataflowInformation } from '../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import { makeAllMaybe, overwriteEnvironments } from '../../environments'
+import { EdgeType } from '../../graph'
 
 export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
 	const processedAccessed = processDataflowFor(node.accessed, data)
@@ -27,7 +28,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 				// TODO: deal with complexity in the future by introduce a new specific node?
 
 				for(const accessedNode of accessedNodes) {
-					nextGraph.addEdge(accessedNode, newIn, 'reads', 'always')
+					nextGraph.addEdge(accessedNode, newIn, EdgeType.Reads, 'always')
 				}
 			}
 			ingoing.push(...processedAccess.in, ...processedAccess.unknownReferences)

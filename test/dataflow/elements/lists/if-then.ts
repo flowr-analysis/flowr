@@ -1,10 +1,9 @@
 import {
-	DataflowGraph,
-	GlobalScope, initializeCleanEnvironments,
-	LocalScope
+	DataflowGraph, EdgeType,
+	initializeCleanEnvironments
 } from '../../../../src/dataflow'
 import { assertDataflow, withShell } from '../../../helper/shell'
-import { appendEnvironments, define } from '../../../../src/dataflow/environments'
+import { appendEnvironments, define, GlobalScope, LocalScope } from '../../../../src/dataflow/environments'
 
 describe("Lists with if-then constructs", withShell(shell => {
 	for(const assign of [ '<-', '<<-', '=']) {
@@ -22,7 +21,7 @@ describe("Lists with if-then constructs", withShell(shell => {
 							new DataflowGraph()
 								.addNode( { tag: 'variable-definition', id: "0", name: "x", scope: scope })
 								.addNode( { tag: 'use', id: "3", name: "x", environment: define({ nodeId: "0", name: 'x', scope, kind: 'variable', definedAt: "2", used: 'always' }, scope, initializeCleanEnvironments()) })
-								.addEdge("3", "0", 'reads', "always")
+								.addEdge("3", "0", EdgeType.Reads, "always")
 						)
 						assertDataflow(`read previous def in then`,
 							shell,
@@ -30,7 +29,7 @@ describe("Lists with if-then constructs", withShell(shell => {
 							new DataflowGraph()
 								.addNode( { tag: 'variable-definition', id: "0", name: "x", scope: scope })
 								.addNode( { tag: 'use', id: "4", name: "x", when: 'always', environment: define({ nodeId: "0", name: 'x', scope, kind: 'variable', definedAt: "2", used: 'always' }, scope, initializeCleanEnvironments()) })
-								.addEdge("4", "0", 'reads', "always")
+								.addEdge("4", "0", EdgeType.Reads, "always")
 						)
 					})
 				}
@@ -40,7 +39,7 @@ describe("Lists with if-then constructs", withShell(shell => {
 					new DataflowGraph()
 						.addNode( { tag: 'variable-definition', id: "0", name: "x", scope: scope })
 						.addNode( { tag: 'use', id: "6", name: "x", when: 'always', environment: define({ nodeId: "0", name: 'x', scope, kind: 'variable', definedAt: "2", used: 'always' }, scope, initializeCleanEnvironments()) })
-						.addEdge("6", "0", 'reads', "always")
+						.addEdge("6", "0", EdgeType.Reads, "always")
 				)
 			})
 			describe(`write within if`, () => {
@@ -54,7 +53,7 @@ describe("Lists with if-then constructs", withShell(shell => {
 						new DataflowGraph()
 							.addNode( { tag: 'variable-definition', id: "1", name: "x", when: 'always', scope: scope })
 							.addNode( { tag: 'use', id: "6", name: "x", environment: define({ nodeId: "1", name: 'x', scope, kind: 'variable', definedAt: "3", used: 'always' }, scope, initializeCleanEnvironments()) })
-							.addEdge("6", "1", 'reads', "always")
+							.addEdge("6", "1", EdgeType.Reads, "always")
 					)
 				}
 				assertDataflow(`def in else read afterwards`,
@@ -63,7 +62,7 @@ describe("Lists with if-then constructs", withShell(shell => {
 					new DataflowGraph()
 						.addNode( { tag: 'variable-definition', id: "3", name: "x", when: 'always', scope: scope })
 						.addNode( { tag: 'use', id: "8", name: "x", environment: define({ nodeId: "3", name: 'x', scope, kind: 'variable', definedAt: "5", used: 'always' }, scope, initializeCleanEnvironments()) })
-						.addEdge("8", "3", 'reads', "always")
+						.addEdge("8", "3", EdgeType.Reads, "always")
 				)
 
 				const whenEnvironment = define({ nodeId: "1", name: 'x', scope, kind: 'variable', definedAt: "3", used: 'maybe' }, scope, initializeCleanEnvironments())
@@ -77,8 +76,8 @@ describe("Lists with if-then constructs", withShell(shell => {
 						.addNode( { tag: 'variable-definition', id: "1", name: "x", scope: scope, when: 'maybe' })
 						.addNode( { tag: 'variable-definition', id: "5", name: "x", scope: scope, when: 'maybe' })
 						.addNode( { tag: 'use', id: "10", name: "x", environment: appendEnvironments(whenEnvironment, otherwiseEnvironment) })
-						.addEdge("10", "1", 'reads', "maybe")
-						.addEdge("10", "5", 'reads', "maybe")
+						.addEdge("10", "1", EdgeType.Reads, "maybe")
+						.addEdge("10", "5", EdgeType.Reads, "maybe")
 					// TODO: .addEdge('4', '1', 'same-def-def', 'always')
 				)
 			})

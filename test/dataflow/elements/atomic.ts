@@ -4,9 +4,9 @@
  * This will not include functions!
  */
 import { assertDataflow, withShell } from '../../helper/shell'
-import { DataflowGraph, GlobalScope, initializeCleanEnvironments, LocalScope } from '../../../src/dataflow'
+import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../helper/provider'
-import { define } from '../../../src/dataflow/environments'
+import { define, GlobalScope, LocalScope } from '../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 
 describe("Atomic dataflow information", withShell((shell) => {
@@ -27,13 +27,13 @@ describe("Atomic dataflow information", withShell((shell) => {
 				'a[2]',
 				new DataflowGraph().addNode({ tag: 'use', id: "0", name: "a", when: 'maybe' })
 					.addNode({ tag: 'use', id: "2", name: `${UnnamedArgumentPrefix}2` })
-					.addEdge("0", "2", 'reads', "always")
+					.addEdge("0", "2", EdgeType.Reads, "always")
 			)
 			assertDataflow('double constant', shell,
 				'a[[2]]',
 				new DataflowGraph().addNode({ tag: 'use', id: "0", name: "a", when: 'maybe' })
 					.addNode({ tag: 'use', id: "2", name: `${UnnamedArgumentPrefix}2` })
-					.addEdge("0", "2", 'reads', "always")
+					.addEdge("0", "2", EdgeType.Reads, "always")
 			)
 			assertDataflow('dollar constant', shell,
 				'a$b',
@@ -47,15 +47,15 @@ describe("Atomic dataflow information", withShell((shell) => {
 				'a[2][3]',
 				new DataflowGraph().addNode({ tag: 'use', id: "0", name: "a", when: 'maybe' })
 					.addNode({ tag: 'use', id: "2", name: `${UnnamedArgumentPrefix}2` })
-					.addEdge("0", "2", 'reads', "always")
+					.addEdge("0", "2", EdgeType.Reads, "always")
 					.addNode({ tag: 'use', id: "5", name: `${UnnamedArgumentPrefix}5` })
-					.addEdge("0", "5", 'reads', "always")
+					.addEdge("0", "5", EdgeType.Reads, "always")
 			)
 			assertDataflow('chained mixed constant', shell,
 				'a[2]$a',
 				new DataflowGraph().addNode({ tag: 'use', id: "0", name: "a", when: 'maybe' })
 					.addNode({ tag: 'use', id: "2", name: `${UnnamedArgumentPrefix}2` })
-					.addEdge("0", "2", 'reads', "always")
+					.addEdge("0", "2", EdgeType.Reads, "always")
 			)
 		})
 		assertDataflow("chained bracket access with variables", shell,
@@ -66,10 +66,10 @@ describe("Atomic dataflow information", withShell((shell) => {
 				.addNode({ tag: 'use', id: "4", name: "y" })
 				.addNode({ tag: 'use', id: "2", name: `${UnnamedArgumentPrefix}2` })
 				.addNode({ tag: 'use', id: "5", name: `${UnnamedArgumentPrefix}5` })
-				.addEdge("0", "2", 'reads', "always")
-				.addEdge("0", "5", 'reads', "always")
-				.addEdge("2", "1", 'reads', "always")
-				.addEdge("5", "4", 'reads', "always")
+				.addEdge("0", "2", EdgeType.Reads, "always")
+				.addEdge("0", "5", EdgeType.Reads, "always")
+				.addEdge("2", "1", EdgeType.Reads, "always")
+				.addEdge("5", "4", EdgeType.Reads, "always")
 		)
 		assertDataflow("assign on access", shell,
 			"a[x] <- 5",
@@ -77,8 +77,8 @@ describe("Atomic dataflow information", withShell((shell) => {
 				.addNode({ tag: 'variable-definition', id: "0", name: "a", scope: LocalScope, when: 'maybe' })
 				.addNode({ tag: 'use', id: "1", name: "x" })
 				.addNode({ tag: 'use', id: "2", name: `${UnnamedArgumentPrefix}2` })
-				.addEdge("0", "2", 'reads', "always")
-				.addEdge("2", "1", 'reads', "always")
+				.addEdge("0", "2", EdgeType.Reads, "always")
+				.addEdge("2", "1", EdgeType.Reads, "always")
 		)
 	})
 
@@ -117,7 +117,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 							new DataflowGraph()
 								.addNode({ tag: 'use', id: "0", name: "x" })
 								.addNode({ tag: 'use', id: "1", name: "x" })
-								.addEdge("0", "1", "same-read-read", "always")
+								.addEdge("0", "1", EdgeType.SameReadRead, "always")
 						)
 					})
 				}
@@ -137,8 +137,8 @@ describe("Atomic dataflow information", withShell((shell) => {
 						args: [{ name: `${UnnamedArgumentPrefix}1`, scope: LocalScope, nodeId: '1', used: 'always' }]
 					})
 					.addNode({ tag: 'use', id: "1", name: `${UnnamedArgumentPrefix}1` })
-					.addEdge("3", "1", "argument", "always")
-					.addEdge("1", "0", 'reads', "always")
+					.addEdge("3", "1", EdgeType.Argument, "always")
+					.addEdge("1", "0", EdgeType.Reads, "always")
 			)
 			assertDataflow("Nested calling", shell, "x |> f() |> g()",
 				new DataflowGraph()
@@ -157,10 +157,10 @@ describe("Atomic dataflow information", withShell((shell) => {
 					})
 					.addNode({ tag: 'use', id: "1", name: `${UnnamedArgumentPrefix}1` })
 					.addNode({ tag: 'use', id: "5", name: `${UnnamedArgumentPrefix}5` })
-					.addEdge("3", "1", "argument", "always")
-					.addEdge("7", "5", "argument", "always")
-					.addEdge("5", "3", 'reads', "always")
-					.addEdge("1", "0", 'reads', "always")
+					.addEdge("3", "1", EdgeType.Argument, "always")
+					.addEdge("7", "5", EdgeType.Argument, "always")
+					.addEdge("5", "3", EdgeType.Reads, "always")
+					.addEdge("1", "0", EdgeType.Reads, "always")
 			)
 			assertDataflow("Multi-Parameter function", shell, "x |> f(y,z)",
 				new DataflowGraph()
@@ -181,12 +181,12 @@ describe("Atomic dataflow information", withShell((shell) => {
 					.addNode({ tag: 'use', id: "0", name: 'x' })
 					.addNode({ tag: 'use', id: "3", name: 'y' })
 					.addNode({ tag: 'use', id: "5", name: 'z' })
-					.addEdge("7", "1", "argument", "always")
-					.addEdge("7", "4", "argument", "always")
-					.addEdge("7", "6", "argument", "always")
-					.addEdge("1", "0", 'reads', "always")
-					.addEdge("4", "3", 'reads', "always")
-					.addEdge("6", "5", 'reads', "always")
+					.addEdge("7", "1", EdgeType.Argument, "always")
+					.addEdge("7", "4", EdgeType.Argument, "always")
+					.addEdge("7", "6", EdgeType.Argument, "always")
+					.addEdge("1", "0", EdgeType.Reads, "always")
+					.addEdge("4", "3", EdgeType.Reads, "always")
+					.addEdge("6", "5", EdgeType.Reads, "always")
 			)
 		})
 	})
@@ -210,12 +210,12 @@ describe("Atomic dataflow information", withShell((shell) => {
 					dataflowGraph
 						.addNode({ tag: 'use', id: "0", name: "x" })
 						.addNode({ tag: 'variable-definition', id: "1", name: "y", scope })
-						.addEdge("1", "0", "defined-by", "always")
+						.addEdge("1", "0", EdgeType.DefinedBy, "always")
 				} else {
 					dataflowGraph
 						.addNode({ tag: 'variable-definition', id: "0", name: "x", scope })
 						.addNode({ tag: 'use', id: "1", name: "y" })
-						.addEdge("0", "1", "defined-by", "always")
+						.addEdge("0", "1", EdgeType.DefinedBy, "always")
 				}
 				assertDataflow(`${variableAssignment} (variable assignment)`,
 					shell,
@@ -230,12 +230,12 @@ describe("Atomic dataflow information", withShell((shell) => {
 					circularGraph
 						.addNode({ tag: 'use', id: "0", name: "x" })
 						.addNode({ tag: 'variable-definition', id: "1", name: "x", scope })
-						.addEdge("1", "0", "defined-by", "always")
+						.addEdge("1", "0", EdgeType.DefinedBy, "always")
 				} else {
 					circularGraph
 						.addNode({ tag: 'variable-definition', id: "0", name: "x", scope })
 						.addNode({ tag: 'use', id: "1", name: "x" })
-						.addEdge("0", "1", "defined-by", "always")
+						.addEdge("0", "1", EdgeType.DefinedBy, "always")
 				}
 
 				assertDataflow(`${circularAssignment} (circular assignment)`,
@@ -252,14 +252,14 @@ describe("Atomic dataflow information", withShell((shell) => {
 				new DataflowGraph()
 					.addNode({ tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
 					.addNode({ tag: 'variable-definition', id: "1", name: "y", scope: LocalScope })
-					.addEdge("0", "1", "defined-by", "always")
+					.addEdge("0", "1", EdgeType.DefinedBy, "always")
 			)
 			assertDataflow(`"1 -> x -> y"`, shell,
 				"1 -> x -> y",
 				new DataflowGraph()
 					.addNode({ tag: 'variable-definition', id: "1", name: "x", scope: LocalScope })
 					.addNode({ tag: 'variable-definition', id: "3", name: "y", scope: LocalScope })
-					.addEdge("3", "1", "defined-by", "always")
+					.addEdge("3", "1", EdgeType.DefinedBy, "always")
 			)
 			// still by indirection (even though y is overwritten?) TODO: discuss that
 			assertDataflow(`"x <- 1 -> y"`, shell,
@@ -267,7 +267,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 				new DataflowGraph()
 					.addNode({ tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
 					.addNode({ tag: 'variable-definition', id: "2", name: "y", scope: LocalScope })
-					.addEdge("0", "2", "defined-by", "always")
+					.addEdge("0", "2", EdgeType.DefinedBy, "always")
 			)
 			assertDataflow(`"x <- y <- z"`, shell,
 				"x <- y <- z",
@@ -275,9 +275,9 @@ describe("Atomic dataflow information", withShell((shell) => {
 					.addNode({ tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
 					.addNode({ tag: 'variable-definition', id: "1", name: "y", scope: LocalScope })
 					.addNode({ tag: 'use', id: "2", name: "z" })
-					.addEdge("0", "1", "defined-by", "always")
-					.addEdge("1", "2", "defined-by", "always")
-					.addEdge("0", "2", "defined-by", "always")
+					.addEdge("0", "1", EdgeType.DefinedBy, "always")
+					.addEdge("1", "2", EdgeType.DefinedBy, "always")
+					.addEdge("0", "2", EdgeType.DefinedBy, "always")
 			)
 		})
 
@@ -317,7 +317,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 		})
 		describe('assignment with function call', () => {
 			const environmentWithX = define(
-				{ name: 'x', nodeId: '4', kind: 'argument', definedAt: '4', scope: LocalScope, used: 'always' },
+				{ name: 'x', nodeId: '4', kind: EdgeType.Argument, definedAt: '4', scope: LocalScope, used: 'always' },
 				LocalScope,
 				initializeCleanEnvironments()
 			)
@@ -339,12 +339,12 @@ describe("Atomic dataflow information", withShell((shell) => {
 					.addNode({ tag: 'use', id: '6', name: `${UnnamedArgumentPrefix}6`, environment: environmentWithX })
 					.addNode({ tag: 'use', id: '7', name: "z", environment: environmentWithX })
 					.addNode({ tag: 'use', id: '8', name: `${UnnamedArgumentPrefix}8`, environment: environmentWithX })
-					.addEdge('0', '9', 'defined-by', 'always')
-					.addEdge('9', '4', 'argument', 'always')
-					.addEdge('9', '6', 'argument', 'always')
-					.addEdge('9', '8', 'argument', 'always')
-					.addEdge('6', '5', 'reads', 'always')
-					.addEdge('8', '7', 'reads', 'always')
+					.addEdge('0', '9', EdgeType.DefinedBy, 'always')
+					.addEdge('9', '4', EdgeType.Argument, 'always')
+					.addEdge('9', '6', EdgeType.Argument, 'always')
+					.addEdge('9', '8', EdgeType.Argument, 'always')
+					.addEdge('6', '5', EdgeType.Reads, 'always')
+					.addEdge('8', '7', EdgeType.Reads, 'always')
 			)
 		})
 	})
@@ -383,7 +383,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 							.addNode({ tag: 'use', id: "0", name: "x" })
 							.addNode({ tag: 'use', id: "1", name: "y" })
 							.addNode({ tag: 'use', id: "3", name: "x", when: 'maybe' })
-							.addEdge("0", "3", "same-read-read", "maybe")
+							.addEdge("0", "3", EdgeType.SameReadRead, "maybe")
 					)
 					assertDataflow(`all same variables`, shell,
 						`if (x > x) ${b.func("x")}`,
@@ -391,16 +391,16 @@ describe("Atomic dataflow information", withShell((shell) => {
 							.addNode({ tag: 'use', id: "0", name: "x" })
 							.addNode({ tag: 'use', id: "1", name: "x" })
 							.addNode({ tag: 'use', id: "3", name: "x", when: 'maybe' })
-							.addEdge("0", "1", "same-read-read", "always")
+							.addEdge("0", "1", EdgeType.SameReadRead, "always")
 						// TODO: theoretically they just have to be connected
-							.addEdge("0", "3", "same-read-read", "maybe")
+							.addEdge("0", "3", EdgeType.SameReadRead, "maybe")
 					)
 					assertDataflow(`definition in if`, shell,
 						`if (x <- 3) ${b.func("x")}`,
 						new DataflowGraph()
 							.addNode({ tag: 'variable-definition', id: "0", name: "x", scope: LocalScope, when: 'always' })
 							.addNode({ tag: 'use', id: "3", name: "x", when: 'maybe', environment: define({ name: 'x', definedAt: '2', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments())  })
-							.addEdge("3", "0", 'reads', "always")
+							.addEdge("3", "0", EdgeType.Reads, "always")
 					)
 				})
 
@@ -439,8 +439,8 @@ describe("Atomic dataflow information", withShell((shell) => {
 							.addNode({ tag: 'use', id: "1", name: "x" })
 							.addNode({ tag: 'use', id: "3", name: "x", when: 'maybe' })
 							.addNode({ tag: 'use', id: "5", name: "y", when: 'maybe' })
-							.addEdge("1", "3", "same-read-read", "maybe")
-							.addEdge("0", "5", "same-read-read", "maybe")
+							.addEdge("1", "3", EdgeType.SameReadRead, "maybe")
+							.addEdge("0", "5", EdgeType.SameReadRead, "maybe")
 					)
 					assertDataflow(`all same variables`, shell,
 						"if (x > x) { x } else { x }",
@@ -450,9 +450,9 @@ describe("Atomic dataflow information", withShell((shell) => {
 							.addNode({ tag: 'use', id: "3", name: "x", when: 'maybe' })
 							.addNode({ tag: 'use', id: "5", name: "x", when: 'maybe' })
 						// TODO: 0 is just hardcoded, they just have to be connected
-							.addEdge("0", "1", "same-read-read", "always")
-							.addEdge("0", "3", "same-read-read", "maybe")
-							.addEdge("0", "5", "same-read-read", "maybe")
+							.addEdge("0", "1", EdgeType.SameReadRead, "always")
+							.addEdge("0", "3", EdgeType.SameReadRead, "maybe")
+							.addEdge("0", "5", EdgeType.SameReadRead, "maybe")
 					)
 				})
 			})
@@ -471,7 +471,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 				new DataflowGraph()
 					.addNode({ tag: 'variable-definition', id: "0", name: "i", scope: LocalScope })
 					.addNode({ tag: 'use', id: "4", name: "i", when: 'maybe', environment: define({ name: 'i', definedAt: '6', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments()) })
-					.addEdge("4", "0", 'reads', "maybe")
+					.addEdge("4", "0", EdgeType.Reads, "maybe")
 			)
 			// TODO: so many other tests... variable in sequence etc.
 		})
@@ -496,7 +496,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 					.addNode({ tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
 					.addNode({ tag: 'use', id: "1", name: "y" })
 				// TODO: always until encountered conditional break etc?
-					.addEdge("0", "1", "defined-by", "always" /* TODO: maybe ? */)
+					.addEdge("0", "1", EdgeType.DefinedBy, "always" /* TODO: maybe ? */)
 			)
 			// TODO: so many other tests... variable in sequence etc.
 		})
@@ -519,8 +519,8 @@ describe("Atomic dataflow information", withShell((shell) => {
 					.addNode({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
 					.addNode({ tag: 'use', id: '1', name: 'x' })
 					.addNode({ tag: 'use', id: '7', name: 'x', when: 'maybe', environment: define({ name: 'x', nodeId: '0', definedAt: '4', used: 'always', kind: 'variable', scope: LocalScope }, LocalScope, initializeCleanEnvironments()) })
-					.addEdge('7', '0', 'reads', 'maybe')
-					.addEdge('0', '1', 'defined-by', 'always')
+					.addEdge('7', '0', EdgeType.Reads, 'maybe')
+					.addEdge('0', '1', EdgeType.DefinedBy, 'always')
 			)
 		})
 	})

@@ -1,9 +1,9 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { define, IdentifierDefinition } from '../../../environments'
-import { LocalScope } from '../../../graph'
+import { define, IdentifierDefinition, LocalScope } from '../../../environments'
 import { ParentInformation, RParameter, Type } from '../../../../r-bridge'
 import { log } from '../../../../util/log'
+import { EdgeType } from '../../../graph'
 
 export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
 	const name = processDataflowFor(parameter.name, data)
@@ -26,11 +26,11 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 
 		if(defaultValue !== undefined) {
 			if(parameter.defaultValue?.type === Type.FunctionDefinition) {
-				graph.addEdge(writtenNode, parameter.defaultValue.info.id, 'defined-by', 'maybe' /* default arguments can be overridden! */)
+				graph.addEdge(writtenNode, parameter.defaultValue.info.id, EdgeType.DefinedBy, 'maybe' /* default arguments can be overridden! */)
 			} else {
 				const definedBy = [...defaultValue.in, ...defaultValue.unknownReferences]
 				for (const node of definedBy) {
-					graph.addEdge(writtenNode, node, 'defined-by', 'maybe' /* default arguments can be overridden! */)
+					graph.addEdge(writtenNode, node, EdgeType.DefinedBy, 'maybe' /* default arguments can be overridden! */)
 				}
 			}
 		}

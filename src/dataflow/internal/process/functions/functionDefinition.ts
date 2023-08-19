@@ -3,13 +3,15 @@ import { DataflowProcessorInformation, processDataflowFor } from '../../../proce
 import {
 	IdentifierReference,
 	initializeCleanEnvironments,
+	LocalScope,
 	overwriteEnvironments,
 	popLocalEnvironment,
-	pushLocalEnvironment, REnvironmentInformation,
+	pushLocalEnvironment,
+	REnvironmentInformation,
 	resolveByName
 } from '../../../environments'
 import { linkInputs } from '../../linker'
-import { DataflowGraph, dataflowLogger, DataflowMap, LocalScope } from '../../../index'
+import { DataflowGraph, dataflowLogger, DataflowMap, EdgeType } from '../../../index'
 import { collectAllIds, NodeId, ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
 import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
 import { guard } from '../../../../util/assert'
@@ -36,7 +38,7 @@ function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph:
 				}
 				dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id}`)
 				for (const ref of resolved) {
-					subgraph.addEdge(ingoing, ref, 'reads', exitPoints.length > 1 ? 'maybe' : 'always')
+					subgraph.addEdge(ingoing, ref, EdgeType.Reads, exitPoints.length > 1 ? 'maybe' : 'always')
 				}
 			}
 		}
@@ -69,7 +71,7 @@ function findPromiseLinkagesForParameters<OtherInfo>(parameters: DataflowGraph, 
 		const resolved = resolveByName(read.name, LocalScope, parameterEnvs)
 		if (resolved !== undefined) {
 			for(const ref of resolved) {
-				parameters.addEdge(read, ref, 'reads', 'always')
+				parameters.addEdge(read, ref, EdgeType.Reads, 'always')
 			}
 			continue
 		}
@@ -82,11 +84,11 @@ function findPromiseLinkagesForParameters<OtherInfo>(parameters: DataflowGraph, 
 			continue
 		}
 		if(writingOuts[0].used === 'always') {
-			parameters.addEdge(read, writingOuts[0], 'reads', 'always')
+			parameters.addEdge(read, writingOuts[0], EdgeType.Reads, 'always')
 			continue
 		}
 		for(const out of writingOuts) {
-			parameters.addEdge(read, out, 'reads', 'maybe')
+			parameters.addEdge(read, out, EdgeType.Reads, 'maybe')
 		}
 	}
 	return remainingRead
@@ -134,7 +136,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 		if (resolved !== undefined) {
 			// write-write
 			for (const target of resolved) {
-				subgraph.addEdge(target, writeTarget, 'same-def-def', undefined, true)
+				subgraph.addEdge(target, writeTarget, EdgeType.SameDefDef, undefined, true)
 			}
 		}
 	}
@@ -201,7 +203,7 @@ function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowG
 		for(const relatedId of allIds) {
 			// TODO: custom edge type?
 			if(relatedId !== exitPoint) {
-				graph.addEdge(exitPoint, relatedId, 'relates', 'always')
+				graph.addEdge(exitPoint, relatedId, EdgeType.Relates, 'always')
 			}
 		}
 	}

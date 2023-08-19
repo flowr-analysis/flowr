@@ -1,7 +1,7 @@
 import { NodeId } from '../../../../src/r-bridge'
-import { DataflowGraph, initializeCleanEnvironments, LocalScope } from '../../../../src/dataflow'
+import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../src/dataflow'
 import { assertDataflow, withShell } from '../../../helper/shell'
-import { define } from '../../../../src/dataflow/environments'
+import { define, LocalScope } from '../../../../src/dataflow/environments'
 
 describe("Lists with variable references", withShell(shell => {
 	describe(`read-read same variable`, () => {
@@ -9,7 +9,7 @@ describe("Lists with variable references", withShell(shell => {
 			new DataflowGraph()
 				.addNode( { tag: 'use', id: id1, name: "x" })
 				.addNode( { tag: 'use', id: id2, name: "x" })
-				.addEdge(id1, id2, "same-read-read", "always")
+				.addEdge(id1, id2, EdgeType.SameReadRead, "always")
 		assertDataflow(`directly together`, shell,
 			"x\nx",
 			sameGraph("0", "1")
@@ -33,8 +33,8 @@ describe("Lists with variable references", withShell(shell => {
 				.addNode( { tag: 'use', id: "0", name: "x" })
 				.addNode( { tag: 'use', id: "1", name: "x" })
 				.addNode( { tag: 'use', id: "3", name: "x" })
-				.addEdge("0", "1", "same-read-read", "always")
-				.addEdge("0", "3", "same-read-read", "always")
+				.addEdge("0", "1", EdgeType.SameReadRead, "always")
+				.addEdge("0", "3", EdgeType.SameReadRead, "always")
 		)
 	})
 	describe("def-def same variable", () => {
@@ -42,7 +42,7 @@ describe("Lists with variable references", withShell(shell => {
 			new DataflowGraph()
 				.addNode( { tag: 'variable-definition', id: id1, name: "x", scope: LocalScope })
 				.addNode( { tag: 'variable-definition', id: id2, name: "x", scope: LocalScope, environment: define({ nodeId: id1, name: 'x', scope: LocalScope, kind: 'variable', definedAt, used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.addEdge(id1, id2, "same-def-def", "always")
+				.addEdge(id1, id2, EdgeType.SameDefDef, "always")
 		assertDataflow(`directly together`, shell,
 			"x <- 1\nx <- 2",
 			sameGraph("0", "3", "2")
@@ -70,8 +70,8 @@ describe("Lists with variable references", withShell(shell => {
 				.addNode( { tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
 				.addNode( { tag: 'variable-definition', id: "3", name: "x", scope: LocalScope, environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
 				.addNode( { tag: 'variable-definition', id: "7", name: "x", scope: LocalScope, environment: define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.addEdge("0", "3", "same-def-def", "always")
-				.addEdge("3", "7", "same-def-def", "always")
+				.addEdge("0", "3", EdgeType.SameDefDef, "always")
+				.addEdge("3", "7", EdgeType.SameDefDef, "always")
 		)
 	})
 	describe("def followed by read", () => {
@@ -79,7 +79,7 @@ describe("Lists with variable references", withShell(shell => {
 			new DataflowGraph()
 				.addNode( { tag: 'variable-definition', id: id1, name: "x", scope: LocalScope })
 				.addNode( { tag: 'use', id: id2, name: "x", environment: define({ nodeId: id1, name: 'x', scope: LocalScope, kind: 'variable', definedAt, used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.addEdge(id2, id1, 'reads', "always")
+				.addEdge(id2, id1, EdgeType.Reads, "always")
 		assertDataflow(`directly together`, shell,
 			"x <- 1\nx",
 			sameGraph("0", "3", "2")
@@ -102,8 +102,8 @@ describe("Lists with variable references", withShell(shell => {
 				.addNode( { tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
 				.addNode( { tag: 'variable-definition', id: "3", name: "x", scope: LocalScope, environment: define({ nodeId: "0", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "2", used: 'always' }, LocalScope, initializeCleanEnvironments()) })
 				.addNode( { tag: 'use', id: "6", name: "x", environment: define({ nodeId: "3", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "5", used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.addEdge("6", "3", 'reads', "always")
-				.addEdge("0", "3", "same-def-def", "always")
+				.addEdge("6", "3", EdgeType.Reads, "always")
+				.addEdge("0", "3", EdgeType.SameDefDef, "always")
 		)
 		assertDataflow(`multiple redefinition with circular definition`, shell,
 			"x <- 2; x <- x; x",
@@ -112,10 +112,10 @@ describe("Lists with variable references", withShell(shell => {
 				.addNode( { tag: 'variable-definition', id: "3", name: "x", scope: LocalScope, environment: define({ nodeId: "0", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "2", used: 'always' }, LocalScope, initializeCleanEnvironments()) })
 				.addNode( { tag: 'use', id: "4", name: "x" , environment: define({ nodeId: "0", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "2", used: 'always' }, LocalScope, initializeCleanEnvironments()) })
 				.addNode( { tag: 'use', id: "6", name: "x", environment: define({ nodeId: "3", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "5", used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.addEdge("4", "0", 'reads', "always")
-				.addEdge("3", "4", "defined-by", "always")
-				.addEdge("0", "3", "same-def-def", "always")
-				.addEdge("6", "3", 'reads', "always")
+				.addEdge("4", "0", EdgeType.Reads, "always")
+				.addEdge("3", "4", EdgeType.DefinedBy, "always")
+				.addEdge("0", "3", EdgeType.SameDefDef, "always")
+				.addEdge("6", "3", EdgeType.Reads, "always")
 		)
 		assertDataflow(`duplicate circular definition`, shell,
 			"x <- x; x <- x;",
@@ -124,10 +124,10 @@ describe("Lists with variable references", withShell(shell => {
 				.addNode( { tag: 'use', id: "1", name: "x" })
 				.addNode( { tag: 'variable-definition', id: "3", name: "x", scope: LocalScope, environment: define({ nodeId: "0", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "2", used: 'always' }, LocalScope, initializeCleanEnvironments()) })
 				.addNode( { tag: 'use', id: "4", name: "x", environment: define({ nodeId: "0", name: 'x', scope: LocalScope, kind: 'variable', definedAt: "2", used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.addEdge("0", "1", "defined-by", "always")
-				.addEdge("3", "4", "defined-by", "always")
-				.addEdge("4", "0", 'reads', "always")
-				.addEdge("0", "3", "same-def-def", "always")
+				.addEdge("0", "1", EdgeType.DefinedBy, "always")
+				.addEdge("3", "4", EdgeType.DefinedBy, "always")
+				.addEdge("4", "0", EdgeType.Reads, "always")
+				.addEdge("0", "3", EdgeType.SameDefDef, "always")
 		)
 	})
 }))

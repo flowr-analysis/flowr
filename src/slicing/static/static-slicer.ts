@@ -1,19 +1,17 @@
 import {
-	DataflowGraph, DataflowGraphNodeFunctionDefinition,
+	DataflowGraph,
+	DataflowGraphNodeFunctionDefinition,
 	DataflowGraphNodeInfo,
+	EdgeType,
 	graphToMermaidUrl,
 	initializeCleanEnvironments,
-	LocalScope, REnvironmentInformation
+	REnvironmentInformation
 } from '../../dataflow'
 import { guard } from '../../util/assert'
 import { collectAllIds, DecoratedAstMap, NodeId, RNodeWithParent, Type } from '../../r-bridge'
 import { log } from '../../util/log'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
-import {
-	overwriteEnvironments,
-	pushLocalEnvironment,
-	resolveByName
-} from '../../dataflow/environments'
+import { LocalScope, overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
 import objectHash from 'object-hash'
 import { DefaultMap } from '../../util/defaultmap'
 
@@ -138,10 +136,10 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
 		guard(currentNode !== undefined, () => `id: ${current.id} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
 
 		for (const [target, edge] of currentInfo[1]) {
-			if (edge.types.has('side-effect-on-call')) {
+			if (edge.types.has(EdgeType.SideEffectOnCall)) {
 				queue.add(target, current.baseEnvironment, baseEnvFingerprint, true)
 			}
-			if (edge.types.has('reads') || edge.types.has('defined-by') || edge.types.has('argument') || edge.types.has('calls') || edge.types.has('relates') || edge.types.has('defines-on-call')) {
+			if (edge.types.has(EdgeType.Reads) || edge.types.has(EdgeType.DefinedBy) || edge.types.has(EdgeType.Argument) || edge.types.has(EdgeType.Calls) || edge.types.has(EdgeType.Relates) || edge.types.has(EdgeType.DefinesOnCall)) {
 				queue.add(target, current.baseEnvironment, baseEnvFingerprint, false)
 			}
 		}
@@ -213,7 +211,7 @@ function sliceForCall(current: NodeToSlice, idMap: DecoratedAstMap, callerInfo: 
 
 	const functionCallDefs = resolveByName(callerInfo.name, LocalScope, activeEnvironment)?.map(d => d.nodeId) ?? []
 
-	functionCallDefs.push(...outgoingEdges[1].filter(([_, e]) => e.types.has('calls')).map(([target]) => target))
+	functionCallDefs.push(...outgoingEdges[1].filter(([_, e]) => e.types.has(EdgeType.Calls)).map(([target]) => target))
 
 	const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)
 

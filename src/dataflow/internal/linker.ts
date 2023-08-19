@@ -2,20 +2,18 @@ import {
 	DataflowGraph,
 	DataflowGraphNodeFunctionCall,
 	DataflowGraphNodeInfo,
-	DataflowScopeName, FunctionArgument, LocalScope, NamedFunctionArgument, PositionalFunctionArgument
+	DataflowScopeName,
+	FunctionArgument,
+	NamedFunctionArgument,
+	PositionalFunctionArgument
 } from '../graph'
-import {
-	BuiltIn,
-	IdentifierReference,
-	REnvironmentInformation,
-	resolveByName
-} from '../environments'
+import { BuiltIn, IdentifierReference, LocalScope, REnvironmentInformation, resolveByName } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { log } from '../../util/log'
 import { DecoratedAstMap, NodeId, ParentInformation, RParameter, Type } from '../../r-bridge'
 import { slicerLogger } from '../../slicing'
-import { dataflowLogger } from '../index'
+import { dataflowLogger, EdgeType } from '../index'
 
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
 	const nameIdShares = produceNameSharedIdMap(references)
@@ -40,7 +38,7 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
 		const base = ids[0]
 		for (let i = 1; i < ids.length; i++) {
 			// TODO: include the attribute? probably not, as same-edges are independent of structure
-			graph.addEdge(base.nodeId, ids[i].nodeId, 'same-read-read', 'always', true)
+			graph.addEdge(base.nodeId, ids[i].nodeId, EdgeType.SameReadRead, 'always', true)
 		}
 	}
 }
@@ -50,11 +48,11 @@ function specialReturnFunction(info: DataflowGraphNodeFunctionCall, graph: Dataf
 	for (const arg of info.args) {
 		if (Array.isArray(arg)) {
 			if (arg[1] !== '<value>') {
-				graph.addEdge(id, arg[1], 'returns', 'always')
+				graph.addEdge(id, arg[1], EdgeType.Returns, 'always')
 			}
 		} else {
 			if (arg !== '<value>') {
-				graph.addEdge(id, arg, 'returns', 'always')
+				graph.addEdge(id, arg, EdgeType.Returns, 'always')
 			}
 		}
 	}
@@ -81,11 +79,11 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 		const param = nameParamMap.get(name)
 		if(param !== undefined) {
 			dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`)
-			graph.addEdge(arg.nodeId, param.name.info.id, 'defines-on-call', 'always')
+			graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall, 'always')
 			matchedParameters.add(name)
 		} else if(specialDotParameter !== undefined) {
 			dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`)
-			graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, 'defines-on-call', 'always')
+			graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, EdgeType.DefinesOnCall, 'always')
 		}
 	}
 
@@ -102,7 +100,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 		if(remainingParameter.length <= i) {
 			if(specialDotParameter !== undefined) {
 				dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to dot-dot-dot parameter`)
-				graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, 'defines-on-call', 'always')
+				graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, EdgeType.DefinesOnCall, 'always')
 			} else {
 				dataflowLogger.error(`skipping argument ${i} as there is no corresponding parameter - R should block that`)
 			}
@@ -110,7 +108,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 		}
 		const param = remainingParameter[i]
 		dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to parameter "${param.name.content}"`)
-		graph.addEdge(arg.nodeId, param.name.info.id, 'defines-on-call', 'always')
+		graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall, 'always')
 	}
 }
 
@@ -139,7 +137,7 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphN
 	const edges = graph.get(id, true)
 	guard(edges !== undefined, () => `id ${id} must be present in graph`)
 
-	const functionDefinitionReadIds = [...edges[1]].filter(([_, e]) => e.types.has('reads') || e.types.has('calls') || e.types.has('relates')).map(([target, _]) => target)
+	const functionDefinitionReadIds = [...edges[1]].filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.Calls) || e.types.has(EdgeType.Relates)).map(([target, _]) => target)
 
 	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
 
@@ -155,17 +153,17 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphN
 					continue
 				}
 				for (const def of defs) {
-					graph.addEdge(id, def, 'reads', 'always')
+					graph.addEdge(id, def, EdgeType.Reads, 'always')
 				}
 			}
 		}
 
 		const exitPoints = def.exitPoints
 		for (const exitPoint of exitPoints) {
-			graph.addEdge(id, exitPoint, 'returns', 'always')
+			graph.addEdge(id, exitPoint, EdgeType.Returns, 'always')
 		}
 		dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${def.name}`)
-		graph.addEdge(id, def.id, 'calls', 'always')
+		graph.addEdge(id, def.id, EdgeType.Calls, 'always')
 		linkFunctionCallArguments(def.id, idMap, def.name, id, info.args, graph)
 	}
 	if (nodeGraph === thisGraph) {
@@ -185,7 +183,7 @@ export function linkFunctionCalls(graph: DataflowGraph, idMap: DecoratedAstMap, 
 		// TODO: special handling for others
 		if(info.name === 'return') {
 			specialReturnFunction(info, graph, id)
-			graph.addEdge(id, BuiltIn, 'calls', 'always')
+			graph.addEdge(id, BuiltIn, EdgeType.Calls, 'always')
 			continue
 		}
 		linkFunctionCall(graph, id, info, idMap, nodeGraph, thisGraph, calledFunctionDefinitions)
@@ -216,13 +214,13 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
 
 		const outgoingEdges = [...currentInfo[1]]
 
-		const returnEdges = outgoingEdges.filter(([_, e]) => e.types.has('returns'))
+		const returnEdges = outgoingEdges.filter(([_, e]) => e.types.has(EdgeType.Returns))
 		if(returnEdges.length > 0) {
 			// only traverse return edges and do not follow calls etc. as this indicates that we have a function call which returns a result, and not the function call itself
 			potential.push(...returnEdges.map(([target]) => target))
 			continue
 		}
-		const followEdges = outgoingEdges.filter(([_, e]) => e.types.has('reads') || e.types.has('defined-by') || e.types.has('defined-by-on-call') || e.types.has('relates'))
+		const followEdges = outgoingEdges.filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.DefinedBy) || e.types.has(EdgeType.DefinedByOnCall) || e.types.has(EdgeType.Relates))
 
 
 		if(currentInfo[0].subflow !== undefined) {
@@ -259,7 +257,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReferen
 		} else {
 			for (const target of probableTarget) {
 				// we can stick with maybe even if readId.attribute is always
-				graph.addEdge(bodyInput, target, 'reads', undefined, true)
+				graph.addEdge(bodyInput, target, EdgeType.Reads, undefined, true)
 			}
 		}
 	}
@@ -287,7 +285,7 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 		for(const out of lastOutgoing.values()) {
 			if(out.name === name) {
 				for(const target of targets) {
-					graph.addEdge(target.nodeId, out.nodeId, 'reads', 'maybe')
+					graph.addEdge(target.nodeId, out.nodeId, EdgeType.Reads, 'maybe')
 				}
 			}
 		}

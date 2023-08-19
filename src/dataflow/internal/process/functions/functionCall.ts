@@ -1,18 +1,9 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import {
-	define,
-	overwriteEnvironments,
-	resolveByName
-} from '../../../environments'
+import { define, LocalScope, overwriteEnvironments, resolveByName } from '../../../environments'
 import { NodeId, ParentInformation, RFunctionCall, Type } from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
-import {
-	DataflowGraph,
-	dataflowLogger,
-	FunctionArgument,
-	LocalScope
-} from '../../../index'
+import { DataflowGraph, dataflowLogger, EdgeType, FunctionArgument } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
 // TODO: support partial matches: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Argument-matching
 
@@ -52,7 +43,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`
 		dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`)
 		// we know, that it calls the toplevel:
-		finalGraph.addEdge(functionRootId, functionCall.calledFunction.info.id, 'calls', 'always')
+		finalGraph.addEdge(functionRootId, functionCall.calledFunction.info.id, EdgeType.Calls, 'always')
 		// keep the defined function
 		finalGraph.mergeWith(functionName.graph)
 	}
@@ -77,7 +68,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		callArgs.push(processed.out[0])
 
 		// add an argument edge to the final graph
-		finalGraph.addEdge(functionRootId, processed.out[0], 'argument', 'always')
+		finalGraph.addEdge(functionRootId, processed.out[0], EdgeType.Argument, 'always')
 		// resolve reads within argument
 		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
 			const tryToResolve = resolveByName(ingoing.name, LocalScope, argEnv)
@@ -86,7 +77,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 				remainingReadInArgs.push(ingoing)
 			} else {
 				for(const resolved of tryToResolve) {
-					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId,'reads', 'always')
+					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId,EdgeType.Reads, 'always')
 				}
 			}
 		}

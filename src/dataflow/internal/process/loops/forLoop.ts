@@ -5,12 +5,14 @@ import {
 } from '../../linker'
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { appendEnvironments, define, makeAllMaybe, overwriteEnvironments } from '../../../environments'
+import { appendEnvironments, define, LocalScope, makeAllMaybe, overwriteEnvironments } from '../../../environments'
 import { ParentInformation, RForLoop } from '../../../../r-bridge'
-import { LocalScope } from '../../../graph'
+import { EdgeType } from '../../../graph'
 
-export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInformation>,
-																																										data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processForLoop<OtherInfo>(
+	loop: RForLoop<OtherInfo & ParentInformation>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): DataflowInformation<OtherInfo> {
 	const variable = processDataflowFor(loop.variable, data)
 	const vector = processDataflowFor(loop.vector, data)
 	let headEnvironments = overwriteEnvironments(vector.environments, variable.environments)
@@ -39,13 +41,13 @@ export function processForLoop<OtherInfo>(loop: RForLoop<OtherInfo & ParentInfor
 	for(const write of writtenVariable) {
 		// TODO: do not re-join every time!
 		for(const link of [...vector.in, ...vector.unknownReferences]) {
-			nextGraph.addEdge(write.nodeId, link.nodeId, 'defined-by', /* TODO */ 'always', true)
+			nextGraph.addEdge(write.nodeId, link.nodeId, EdgeType.DefinedBy, /* TODO */ 'always', true)
 		}
 
 		const name = write.name
 		const readIdsToLink = nameIdShares.get(name)
 		for(const readId of readIdsToLink) {
-			nextGraph.addEdge(readId.nodeId, write.nodeId, 'reads', /* TODO */ 'always', true)
+			nextGraph.addEdge(readId.nodeId, write.nodeId, EdgeType.Reads, /* TODO */ 'always', true)
 		}
 		// now, we remove the name from the id shares as they are no longer needed
 		nameIdShares.delete(name)

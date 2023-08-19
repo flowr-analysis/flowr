@@ -5,7 +5,7 @@ import {
 	DataflowFunctionFlowInformation,
 	DataflowGraph,
 	DataflowGraphEdgeAttribute,
-	DataflowGraphEdgeType,
+	EdgeType,
 	DataflowGraphNodeInfo,
 	DataflowMap,
 	DataflowScopeName,
@@ -93,9 +93,9 @@ function escapeMarkdown(text: string): string {
 	return text.replace(/([+\-*])/g, '\\$1')
 }
 
-function encodeEdge(from: string, to: string, types: Set<DataflowGraphEdgeType>, attribute: string): string {
+function encodeEdge(from: string, to: string, types: Set<EdgeType>, attribute: string): string {
 	// sort from and to for same edges and relates be order independent
-	if(types.has('same-read-read') || types.has('same-def-def') || types.has('relates')) {
+	if(types.has(EdgeType.SameReadRead) || types.has(EdgeType.SameDefDef) || types.has(EdgeType.Relates)) {
 		if(from > to) {
 			({from, to} = {from: to, to: from})
 		}
@@ -139,7 +139,7 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, mermai
 	const edges = mermaid.rootGraph.get(id, true)
 	guard(edges !== undefined, `node ${id} must be found`)
 	for (const [target, edge] of [...edges[1]]) {
-		const dotEdge = edge.types.has('same-def-def') || edge.types.has('same-read-read') || edge.types.has('relates')
+		const dotEdge = edge.types.has(EdgeType.SameDefDef) || edge.types.has(EdgeType.SameReadRead) || edge.types.has(EdgeType.Relates)
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edge.types, edge.attribute)
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId)

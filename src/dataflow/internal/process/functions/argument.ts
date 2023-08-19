@@ -1,8 +1,8 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { collectAllIds, ParentInformation, RArgument, RNode, Type } from '../../../../r-bridge'
-import { DataflowGraph, LocalScope } from '../../../graph'
-import { IdentifierReference } from '../../../environments'
+import { DataflowGraph, EdgeType } from '../../../graph'
+import { IdentifierReference, LocalScope } from '../../../environments'
 
 export const UnnamedArgumentPrefix = 'unnamed-argument-'
 
@@ -12,7 +12,7 @@ export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentIn
 
 	for (const ref of ingoingBeforeArgs) {
 		// link against the root reference currently I do not know how to deal with nested function calls otherwise
-		graph.addEdge(root.info.id, ref, 'reads', 'always')
+		graph.addEdge(root.info.id, ref, EdgeType.Reads, 'always')
 	}
 }
 
@@ -29,7 +29,7 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
 	const ingoingRefs = [...value.unknownReferences, ...value.in, ...(name === undefined ? [] : [...name.in])]
 
 	if(argument.value.type === Type.FunctionDefinition) {
-		graph.addEdge(argument.info.id, argument.value.info.id, 'reads', 'always')
+		graph.addEdge(argument.info.id, argument.value.info.id, EdgeType.Reads, 'always')
 	} else {
 		// we only need to link against those which are not already bound to another function call argument
 		linkReadsForArgument(argument, [...ingoingRefs, ...value.out /* value may perform definitions */], graph)

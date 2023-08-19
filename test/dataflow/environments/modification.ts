@@ -1,14 +1,14 @@
 import { NodeId } from '../../../src/r-bridge'
-import {
-	DefaultEnvironmentMemory,
-	GlobalScope,
-	IEnvironment,
-	initializeCleanEnvironments,
-	LocalScope
-} from '../../../src/dataflow'
+import { DefaultEnvironmentMemory, IEnvironment, initializeCleanEnvironments } from '../../../src/dataflow'
 import { guard } from '../../../src/util/assert'
 import { expect } from 'chai'
-import { appendEnvironments, define, overwriteEnvironments } from '../../../src/dataflow/environments'
+import {
+	appendEnvironments,
+	define,
+	GlobalScope,
+	LocalScope,
+	overwriteEnvironments
+} from '../../../src/dataflow/environments'
 import { variable } from './environments'
 
 /** if you pass multiple `definedAt`, this will expect the node to have multiple definitions */

@@ -1,5 +1,6 @@
 import { cloneEnvironments, IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
-import { DataflowScopeName, GlobalScope, LocalScope } from '../graph'
+import { DataflowScopeName } from '../graph'
+import { GlobalScope, LocalScope } from './scoping'
 
 /**
  * Insert the given `definition` --- defined within the given scope --- into the passed along `environments` will take care of propagation.

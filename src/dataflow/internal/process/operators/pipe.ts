@@ -1,10 +1,9 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { linkIngoingVariablesInSameScope } from '../../linker'
-import { ParentInformation, Type } from '../../../../r-bridge'
+import { ParentInformation, RPipe, Type } from '../../../../r-bridge'
 import { overwriteEnvironments } from '../../../environments'
-import { RPipe } from '../../../../r-bridge'
-import { dataflowLogger, graphToMermaidUrl } from '../../../index'
+import { dataflowLogger, EdgeType, graphToMermaidUrl } from '../../../index'
 import { guard } from '../../../../util/assert'
 import { UnnamedArgumentPrefix } from '../functions/argument'
 
@@ -36,7 +35,7 @@ export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInfo
 			scope:  data.activeScope,
 			used:   'always'
 		})
-		nextGraph.addEdge(functionCallNode.id, argId, 'argument', 'always')
+		nextGraph.addEdge(functionCallNode.id, argId, EdgeType.Argument, 'always')
 	}
 
 	return {

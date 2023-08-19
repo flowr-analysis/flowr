@@ -1,24 +1,25 @@
-import { it } from "mocha"
-import { testRequiresNetworkConnection } from "./network"
+import { it } from 'mocha'
+import { testRequiresNetworkConnection } from './network'
 import { DeepPartial } from 'ts-essentials'
 import {
-	decorateAst, DecoratedAstMap, deterministicCountingIdGenerator,
-	getStoredTokenMap, IdGenerator, NodeId, NoInfo,
+	decorateAst,
+	DecoratedAstMap,
+	deterministicCountingIdGenerator,
+	getStoredTokenMap,
+	IdGenerator,
+	NodeId,
+	NoInfo,
 	retrieveAstFromRCode,
 	RExpressionList,
-	RNode, RNodeWithParent,
+	RNode,
+	RNodeWithParent,
 	RShell,
 	XmlParserHooks
 } from '../../src/r-bridge'
 import { assert } from 'chai'
-import {
-	DataflowGraph,
-	diffGraphsToMermaidUrl, graphToMermaidUrl, LocalScope
-} from '../../src/dataflow'
-import { produceDataFlowGraph } from '../../src/dataflow'
-import { reconstructToCode } from '../../src/slicing'
-import { staticSlicing } from '../../src/slicing'
-import { SlicingCriteria, slicingCriterionToId } from '../../src/slicing'
+import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl, produceDataFlowGraph } from '../../src/dataflow'
+import { reconstructToCode, SlicingCriteria, slicingCriterionToId, staticSlicing } from '../../src/slicing'
+import { LocalScope } from '../../src/dataflow/environments'
 
 let defaultTokenMap: Record<string, string>
 

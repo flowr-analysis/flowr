@@ -31,4 +31,4 @@ jobs:
 
       - name: "Run the linter"
         run:
-          npx eslint {src,test}
+          npx eslint src/ test/

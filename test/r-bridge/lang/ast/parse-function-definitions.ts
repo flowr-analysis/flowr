@@ -2,7 +2,7 @@ import { assertAst, withShell } from "../../../helper/shell"
 import { exprList, numVal, parameter } from '../../../helper/ast-builder'
 import { rangeFrom } from "../../../../src/util/range"
 import { Type } from '../../../../src/r-bridge'
-import { ensureExpressionList } from '../../../../src/r-bridge/lang:4.x/ast/parser/xml/internal'
+import { ensureExpressionList } from '../../../../src/r-bridge/lang-4.x/ast/parser/xml/internal'
 
 // TODO: tests for returns
 describe("Parse function definitions", withShell((shell) => {

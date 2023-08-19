@@ -1,6 +1,16 @@
 name: "Run eslint on flowR"
 
-'on': push
+'on':
+  workflow_dispatch:
+    inputs:
+      node-version:
+        description: "The node version to use"
+        required: false
+        default: "18.15.x"
+      r-version:
+        description: "The R version to use"
+        required: false
+        default: "4.2.3"
 
 jobs:
   lint:
@@ -9,6 +19,9 @@ jobs:
     steps:
       - name: "Setup the Environment"
         uses: Code-Inspect/flowr/.github/actions/setup@145-improve-ci
+        with:
+          node-version: ${{ github.event.inputs.node-version }}
+          r-version: ${{ github.event.inputs.r-version }}
 
       - name: "Run the linter"
         run:

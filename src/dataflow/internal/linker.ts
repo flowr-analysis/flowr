@@ -1,7 +1,7 @@
 import {
 	DataflowGraph,
-	DataflowGraphNodeFunctionCall,
-	DataflowGraphNodeInfo,
+	DataflowGraphVertexFunctionCall,
+	DataflowGraphVertexInfo,
 	DataflowScopeName,
 	FunctionArgument,
 	NamedFunctionArgument,
@@ -43,7 +43,7 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
 	}
 }
 
-function specialReturnFunction(info: DataflowGraphNodeFunctionCall, graph: DataflowGraph, id: NodeId) {
+function specialReturnFunction(info: DataflowGraphVertexFunctionCall, graph: DataflowGraph, id: NodeId) {
 	guard(info.args.length <= 1, () => `expected up to one argument for return, but got ${info.args.length}`)
 	for (const arg of info.args) {
 		if (Array.isArray(arg)) {
@@ -130,9 +130,9 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, fun
 }
 
 
-function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphNodeFunctionCall, idMap: DecoratedAstMap, nodeGraph: DataflowGraph, thisGraph: DataflowGraph, calledFunctionDefinitions: {
+function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexFunctionCall, idMap: DecoratedAstMap, nodeGraph: DataflowGraph, thisGraph: DataflowGraph, calledFunctionDefinitions: {
 	functionCall: NodeId;
-	called:       DataflowGraphNodeInfo[]
+	called:       DataflowGraphVertexInfo[]
 }[]) {
 	const edges = graph.get(id, true)
 	guard(edges !== undefined, () => `id ${id} must be present in graph`)
@@ -175,8 +175,8 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphN
  * Returns the called functions within the current graph, which can be used to merge the environments with the call.
  * Furthermore, it links the corresponding arguments.
  */
-export function linkFunctionCalls(graph: DataflowGraph, idMap: DecoratedAstMap, functionCalls: [NodeId, DataflowGraphNodeInfo, DataflowGraph][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] {
-	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphNodeInfo[] }[] = []
+export function linkFunctionCalls(graph: DataflowGraph, idMap: DecoratedAstMap, functionCalls: [NodeId, DataflowGraphVertexInfo, DataflowGraph][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] {
+	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = []
 	for(const [id, info, nodeGraph] of functionCalls) {
 		guard(info.tag === 'function-call', () => `encountered non-function call in function call linkage ${JSON.stringify(info)}`)
 
@@ -193,10 +193,10 @@ export function linkFunctionCalls(graph: DataflowGraph, idMap: DecoratedAstMap, 
 
 
 // TODO: abstract away into a 'getAllDefinitionsOf' function
-export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<NodeId>, dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphNodeInfo> {
+export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<NodeId>, dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphVertexInfo> {
 	const potential: NodeId[] = [...functionDefinitionReadIds]
 	const visited = new Set<NodeId>()
-	const result = new Map<NodeId, DataflowGraphNodeInfo>()
+	const result = new Map<NodeId, DataflowGraphVertexInfo>()
 	while(potential.length > 0) {
 		const currentId = potential.pop() as NodeId
 

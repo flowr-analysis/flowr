@@ -6,7 +6,7 @@ import {
 	DataflowGraph,
 	DataflowGraphEdgeAttribute,
 	EdgeType,
-	DataflowGraphNodeInfo,
+	DataflowGraphVertexInfo,
 	DataflowMap,
 	DataflowScopeName,
 	FunctionArgument,
@@ -120,7 +120,7 @@ function mermaidNodeBrackets(def: boolean, fCall: boolean) {
 	return { open, close }
 }
 
-function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphNodeInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap<NoInfo> | undefined, mark: Set<NodeId> | undefined): void {
+function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap<NoInfo> | undefined, mark: Set<NodeId> | undefined): void {
 	const def = info.tag === 'variable-definition' || info.tag === 'function-definition'
 	const fCall = info.tag === 'function-call'
 	const defText = def ? scopeToMermaid(info.scope, info.when) : ''

@@ -5,15 +5,15 @@ import { DataflowGraphEdgeAttribute } from './edge'
 import { DataflowFunctionFlowInformation, DataflowScopeName, FunctionArgument } from './graph'
 
 /**
- * Arguments required to construct a node in the dataflow graph.
+ * Arguments required to construct a vertex in the dataflow graph.
  *
- * @see DataflowGraphNodeUse
- * @see DataflowGraphNodeVariableDefinition
- * @see DataflowGraphNodeFunctionDefinition
+ * @see DataflowGraphVertexUse
+ * @see DataflowGraphVertexVariableDefinition
+ * @see DataflowGraphVertexFunctionDefinition
  */
-interface DataflowGraphNodeBase extends MergeableRecord {
+interface DataflowGraphVertexBase extends MergeableRecord {
 	/**
-	 * Used to identify and separate different types of nodes.
+	 * Used to identify and separate different types of vertices.
 	 */
 	readonly tag: string
 	/**
@@ -37,47 +37,47 @@ interface DataflowGraphNodeBase extends MergeableRecord {
 }
 
 /**
- * Arguments required to construct a node which represents the usage of a variable in the dataflow graph.
+ * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
  */
-export interface DataflowGraphExitPoint extends DataflowGraphNodeBase {
+export interface DataflowGraphExitPoint extends DataflowGraphVertexBase {
 	readonly tag: 'exit-point'
 }
 
 /**
- * Arguments required to construct a node which represents the usage of a variable in the dataflow graph.
+ * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
  */
-export interface DataflowGraphNodeUse extends DataflowGraphNodeBase {
+export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
 	readonly tag: 'use'
 }
 
 /**
- * Arguments required to construct a node which represents the usage of a variable in the dataflow graph.
+ * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
  */
-export interface DataflowGraphNodeFunctionCall extends DataflowGraphNodeBase {
+export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase {
 	readonly tag: 'function-call'
 	args:         FunctionArgument[]
 }
 
 /**
- * Arguments required to construct a node which represents the definition of a variable in the dataflow graph.
+ * Arguments required to construct a vertex which represents the definition of a variable in the dataflow graph.
  */
-export interface DataflowGraphNodeVariableDefinition extends DataflowGraphNodeBase {
+export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVertexBase {
 	readonly tag: 'variable-definition'
 	/**
-	 * The scope in which the node is defined  (can be global or local to the current environment).
+	 * The scope in which the vertex is defined (can be global or local to the current environment).
 	 */
 	scope:        DataflowScopeName
 }
 
-export interface DataflowGraphNodeFunctionDefinition extends DataflowGraphNodeBase {
+export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVertexBase {
 	readonly tag: 'function-definition'
 	/**
-	 * The scope in which the node is defined  (can be global or local to the current environment).
+	 * The scope in which the vertex is defined (can be global or local to the current environment).
 	 */
 	scope:        DataflowScopeName
 	/**
 	 * The static subflow of the function definition, constructed within {@link processFunctionDefinition}.
-	 * If the node is (for example) a function, it can have a subgraph which is used as a template for each call.
+	 * If the vertex is (for example) a function, it can have a subgraph which is used as a template for each call.
 	 */
 	subflow:      DataflowFunctionFlowInformation
 	/**
@@ -87,5 +87,5 @@ export interface DataflowGraphNodeFunctionDefinition extends DataflowGraphNodeBa
 	exitPoints:   NodeId[]
 }
 
-export type DataflowGraphNodeArgument = DataflowGraphNodeUse | DataflowGraphExitPoint | DataflowGraphNodeVariableDefinition | DataflowGraphNodeFunctionDefinition | DataflowGraphNodeFunctionCall
-export type DataflowGraphNodeInfo = Required<DataflowGraphNodeArgument>
+export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphExitPoint | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall
+export type DataflowGraphVertexInfo = Required<DataflowGraphVertexArgument>

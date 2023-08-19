@@ -14,10 +14,10 @@ import { DataflowGraphEdge, EdgeType, DataflowGraphEdgeAttribute } from './edge'
 import { DataflowInformation } from '../internal/info'
 import { equalEdges, equalExitPoints, equalFunctionArguments, equalNodes } from './equal'
 import {
-	DataflowGraphNodeArgument,
-	DataflowGraphNodeFunctionCall,
-	DataflowGraphNodeFunctionDefinition,
-	DataflowGraphNodeInfo
+	DataflowGraphVertexArgument,
+	DataflowGraphVertexFunctionCall,
+	DataflowGraphVertexFunctionDefinition,
+	DataflowGraphVertexInfo
 } from './vertex'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
@@ -53,7 +53,7 @@ const DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
 
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
- * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphNodeArgument}
+ * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphVertexArgument}
  *
  * The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the nodes of its subgraph.
  * However, all *edges* are hoisted at the top level in the form of an adjacency list.
@@ -63,11 +63,11 @@ const DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
  * All methods return the modified graph to allow for chaining.
  */
 export class DataflowGraph {
-	private graphNodes = new Map<NodeId, DataflowGraphNodeInfo>()
+	private graphNodes = new Map<NodeId, DataflowGraphVertexInfo>()
 	// TODO: improve access, theoretically we want a multi - default map, right now we do not allow multiple edges
 	private edges = new Map<NodeId, Map<NodeId, DataflowGraphEdge>>()
 	// TODO: this should be removed with flattened graph
-	private nodeIdAccessCache = new Map<NodeId, [DataflowGraphNodeInfo, [NodeId, DataflowGraphEdge][]] | null>()
+	private nodeIdAccessCache = new Map<NodeId, [DataflowGraphVertexInfo, [NodeId, DataflowGraphEdge][]] | null>()
 
 	private invalidateCache() {
 		this.nodeIdAccessCache.clear()
@@ -77,13 +77,13 @@ export class DataflowGraph {
    * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
    * @returns the ids of all toplevel nodes in the graph, together with their node info and the graph that contains them (in case of subgraphs)
    */
-	public* nodes(includeDefinedFunctions = false): IterableIterator<[NodeId, DataflowGraphNodeInfo, DataflowGraph]> {
-		const nodes: [NodeId, DataflowGraphNodeInfo, DataflowGraph][] = [...this.graphNodes.entries()].map(([id, node]) => [id, node, this])
+	public* nodes(includeDefinedFunctions = false): IterableIterator<[NodeId, DataflowGraphVertexInfo, DataflowGraph]> {
+		const nodes: [NodeId, DataflowGraphVertexInfo, DataflowGraph][] = [...this.graphNodes.entries()].map(([id, node]) => [id, node, this])
 		for(const [id, node, graph] of nodes) {
 			yield [id, node, graph]
 			if(includeDefinedFunctions && node.tag === 'function-definition') {
 				const entries = [...node.subflow.graph.entries()]
-				nodes.push(...entries.map(([id, n]) => [id, n, node.subflow.graph] as [NodeId, DataflowGraphNodeInfo, DataflowGraph]))
+				nodes.push(...entries.map(([id, n]) => [id, n, node.subflow.graph] as [NodeId, DataflowGraphVertexInfo, DataflowGraph]))
 			}
 		}
 	}
@@ -102,14 +102,14 @@ export class DataflowGraph {
 	}
 
 	/**
-   * Get the {@link DataflowGraphNodeInfo} attached to a node as well as all outgoing edges.
+   * Get the {@link DataflowGraphVertexInfo} attached to a node as well as all outgoing edges.
    * Uses a cache
    *
    * @param id                      - the id of the node to get
    * @param includeDefinedFunctions - if true this will search function definitions as well and not just the toplevel
    * @returns the node info for the given id (if it exists)
    */
-	public get(id: NodeId, includeDefinedFunctions = true): [DataflowGraphNodeInfo, [NodeId, DataflowGraphEdge][]] | undefined {
+	public get(id: NodeId, includeDefinedFunctions = true): [DataflowGraphVertexInfo, [NodeId, DataflowGraphEdge][]] | undefined {
 		if (!includeDefinedFunctions) {
 			const got = this.graphNodes.get(id)
 			return got === undefined ? undefined : [got, [...this.edges.get(id) ?? []]]
@@ -124,7 +124,7 @@ export class DataflowGraph {
 		}
 	}
 
-	private rawGetInAllGraphs(id: NodeId): [DataflowGraphNodeInfo, [NodeId, DataflowGraphEdge][]] | undefined {
+	private rawGetInAllGraphs(id: NodeId): [DataflowGraphVertexInfo, [NodeId, DataflowGraphEdge][]] | undefined {
 		let info = undefined
 		const edges = new Map<NodeId, DataflowGraphEdge>()
 		for (const [nodeId, probableInfo, graph] of this.nodes(true)) {
@@ -142,17 +142,17 @@ export class DataflowGraph {
 		return info === undefined ? undefined : [info, [...edges]]
 	}
 
-	public entries(): IterableIterator<[NodeId, Required<DataflowGraphNodeInfo>]> {
+	public entries(): IterableIterator<[NodeId, Required<DataflowGraphVertexInfo>]> {
 		return this.graphNodes.entries()
 	}
 
 	/**
    * Adds a new node to the graph, for ease of use, some arguments are optional and filled automatically.
    *
-   * @see DataflowGraphNodeInfo
-   * @see DataflowGraphNodeArgument
+   * @see DataflowGraphVertexInfo
+   * @see DataflowGraphVertexArgument
    */
-	public addNode(node: DataflowGraphNodeArgument): this {
+	public addNode(node: DataflowGraphVertexArgument): this {
 		const oldNode = this.graphNodes.get(node.id)
 		if(oldNode !== undefined) {
 			guard(oldNode.name === node.name, 'node names must match for the same id if added')
@@ -178,7 +178,7 @@ export class DataflowGraph {
    * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
    * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
    * <p>
-   * If you omit the last argument but set promote, this will make the edge `maybe` if at least one of the {@link IdentifierReference | references} or {@link DataflowGraphNodeInfo | nodes} has a used flag of `maybe`.
+   * If you omit the last argument but set promote, this will make the edge `maybe` if at least one of the {@link IdentifierReference | references} or {@link DataflowGraphVertexInfo | nodes} has a used flag of `maybe`.
    * Promote will probably only be used internally and not by tests etc.
    * TODO: ensure that target has a def scope and source does not?
    */
@@ -339,17 +339,17 @@ export class DataflowGraph {
 	}
 }
 
-function mergeNodeInfos(current: DataflowGraphNodeInfo, next: DataflowGraphNodeInfo): DataflowGraphNodeInfo {
+function mergeNodeInfos(current: DataflowGraphVertexInfo, next: DataflowGraphVertexInfo): DataflowGraphVertexInfo {
 	guard(current.tag === next.tag, () => `nodes to be joined for the same id must have the same tag, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`)
 	guard(current.name === next.name, () => `nodes to be joined for the same id must have the same name, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`)
 	guard(current.environment === next.environment, 'nodes to be joined for the same id must have the same environment')
 	if(current.tag === 'variable-definition') {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope')
 	} else if(current.tag === 'function-call') {
-		guard(equalFunctionArguments(current.args, (next as DataflowGraphNodeFunctionCall).args), 'nodes to be joined for the same id must have the same function call information')
+		guard(equalFunctionArguments(current.args, (next as DataflowGraphVertexFunctionCall).args), 'nodes to be joined for the same id must have the same function call information')
 	} else if(current.tag === 'function-definition') {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope')
-		guard(equalExitPoints(current.exitPoints, (next as DataflowGraphNodeFunctionDefinition).exitPoints), 'nodes to be joined must have same exist points')
+		guard(equalExitPoints(current.exitPoints, (next as DataflowGraphVertexFunctionDefinition).exitPoints), 'nodes to be joined must have same exist points')
 	}
 
 	return {

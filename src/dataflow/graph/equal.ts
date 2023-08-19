@@ -1,7 +1,7 @@
 import { environmentsEqual, equalIdentifierReferences, IdentifierReference } from '../environments'
 import { NodeId } from '../../r-bridge'
 import { FunctionArgument, PositionalFunctionArgument } from './graph'
-import { DataflowGraphEdge, DataflowGraphNodeInfo, dataflowLogger } from '../index'
+import { DataflowGraphEdge, DataflowGraphVertexInfo, dataflowLogger } from '../index'
 import { guard } from '../../util/assert'
 import { displayEnvReplacer } from '../../util/json'
 
@@ -53,7 +53,7 @@ export function equalFunctionArguments(a: false | FunctionArgument[], b: false |
 }
 
 
-export function equalNodes(our: Map<NodeId, DataflowGraphNodeInfo>, other: Map<NodeId, DataflowGraphNodeInfo>): boolean {
+export function equalNodes(our: Map<NodeId, DataflowGraphVertexInfo>, other: Map<NodeId, DataflowGraphVertexInfo>): boolean {
 	if(our.size !== other.size) {
 		dataflowLogger.warn(`graph size does not match: ${our.size} vs ${other.size}`)
 		return false

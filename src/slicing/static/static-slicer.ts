@@ -1,7 +1,7 @@
 import {
 	DataflowGraph,
-	DataflowGraphNodeFunctionDefinition,
-	DataflowGraphNodeInfo,
+	DataflowGraphVertexFunctionDefinition,
+	DataflowGraphVertexInfo,
 	EdgeType,
 	graphToMermaidUrl,
 	initializeCleanEnvironments,
@@ -181,7 +181,7 @@ function addControlDependencies(source: NodeId, ast: DecoratedAstMap): Set<NodeI
 	return collected
 }
 
-function retrieveActiveEnvironment(callerInfo: DataflowGraphNodeInfo, baseEnvironment: REnvironmentInformation) {
+function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvironment: REnvironmentInformation) {
 	let callerEnvironment = callerInfo.environment
 
 	if (baseEnvironment.level !== callerEnvironment.level) {
@@ -198,7 +198,7 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphNodeInfo, baseEnviro
 }
 
 //// returns the new threshold hit count
-function sliceForCall(current: NodeToSlice, idMap: DecoratedAstMap, callerInfo: DataflowGraphNodeInfo, dataflowGraph: DataflowGraph, queue: VisitingQueue): void {
+function sliceForCall(current: NodeToSlice, idMap: DecoratedAstMap, callerInfo: DataflowGraphVertexInfo, dataflowGraph: DataflowGraph, queue: VisitingQueue): void {
 	// bind with call-local environments during slicing
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true)
 	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`)
@@ -217,7 +217,7 @@ function sliceForCall(current: NodeToSlice, idMap: DecoratedAstMap, callerInfo: 
 
 	for (const [_, functionCallTarget] of functionCallTargets) {
 		// all those linked within the scopes of other functions are already linked when exiting a function definition
-		for (const openIn of (functionCallTarget as DataflowGraphNodeFunctionDefinition).subflow.in) {
+		for (const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
 			const defs = resolveByName(openIn.name, LocalScope, activeEnvironment)
 			if (defs === undefined) {
 				continue
@@ -227,7 +227,7 @@ function sliceForCall(current: NodeToSlice, idMap: DecoratedAstMap, callerInfo: 
 			}
 		}
 
-		for (const exitPoint of (functionCallTarget as DataflowGraphNodeFunctionDefinition).exitPoints) {
+		for (const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
 			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, current.onlyForSideEffects)
 		}
 	}

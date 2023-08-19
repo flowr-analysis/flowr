@@ -1,0 +1,25 @@
+name: "Lightweight QA"
+# Runs on each push and tests flowR for the default configuration
+
+on: [push, workflow_dispatch]
+
+jobs:
+  lint:
+
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+
+    steps:
+      - name: "Setup the Environment"
+        uses: Code-Inspect/flowr/.github/actions/setup@145-improve-ci
+
+      - name: "Run the linter"
+        run: npx eslint {src,test}
+
+      - name: "Run the tests"
+        run: npm run test-full
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

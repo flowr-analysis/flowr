@@ -4,7 +4,7 @@ name: "Lightweight QA"
 on: [push, workflow_dispatch]
 
 jobs:
-  lint:
+  qa:
 
     runs-on: ubuntu-22.04
     timeout-minutes: 35
@@ -19,10 +19,10 @@ jobs:
       - name: "Run the linter"
         run: npx eslint {src,test}
 
-      - name: "Run the tests"
-        run: npm run test-full
+      - name: "Run the (small) test suite"
+        run: npm run test
 
-      - name: Upload coverage reports to Codecov
+      - name: Upload Coverage Reports to Codecov
         uses: codecov/codecov-action@v3
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

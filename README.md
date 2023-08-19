@@ -1,5 +1,6 @@
 # flowr
 
+[![codecov](https://codecov.io/bb/Code-Inspect/flowr/branch/main/graph/badge.svg)](https://codecov.io/gh/Code-Inspect/flowr)
 
 
 A program slicer and analyzer for R programs.

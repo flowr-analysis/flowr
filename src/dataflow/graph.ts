@@ -208,13 +208,15 @@ export type DataflowGraphNodeArgument = DataflowGraphNodeUse | DataflowGraphExit
 export type DataflowGraphNodeInfo = Required<DataflowGraphNodeArgument>
 
 /**
- * Holds the dataflow information found within the given AST
- * there is a node for every variable encountered, obeying scoping rules.
- * Edges are extra which may mean that edges for currently non-existing nodes exist (e.g., those bound later during graph construction)
- * <p>
- * The given map holds a key entry for each node with the corresponding node info attached
- * <p>
- * Allows to chain calls for easier usage
+ * The dataflow graph holds the dataflow information found within the given AST.
+ * We differentiate the directed edges in {@link DataflowGraphEdgeType} and the vertices indicated by {@link DataflowGraphNodeArgument}
+ *
+ * The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the nodes of its subgraph.
+ * However, all *edges* are hoisted at the top level in the form of an adjacency list.
+ * After the dataflow analysis, all sources and targets of the edges *must* be part of the vertices.
+ * However, this does not have to hold during the construction as edges may point from or to vertices which are yet to be constructed.
+ *
+ * All methods return the modified graph to allow for chaining.
  */
 export class DataflowGraph {
 	private graphNodes = new Map<NodeId, DataflowGraphNodeInfo>()

@@ -24,6 +24,7 @@ jobs:
         coverage: true
 
   test-others:
+    needs: [ 'lint', 'test-full' ]
     strategy:
       fail-fast: false
       matrix:

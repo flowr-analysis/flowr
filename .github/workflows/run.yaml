@@ -37,7 +37,7 @@ jobs:
       - name: Install Node Dependencies
         run: npm ci
 
-      - name: "Run the corresponding action ${{ inputs.action }}"
+      - name: "Run the corresponding action '${{ inputs.action }}'"
         run:
           npm run ${{ inputs.action }}
 

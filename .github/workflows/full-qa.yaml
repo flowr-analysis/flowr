@@ -17,7 +17,7 @@ jobs:
   lint:
     needs: [ cleanup ]
     name: "Linting"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@${{ github.ref }}
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
     with:
       r-version: ''
       action:    lint
@@ -25,7 +25,7 @@ jobs:
   test-full:
       needs: [ cleanup ]
       name: "Test suite (full)"
-      uses: Code-Inspect/flowr/.github/workflows/run.yaml@${{ github.ref }}
+      uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
       with:
         action: test-full
         coverage: true
@@ -39,7 +39,7 @@ jobs:
         r-version: [ '4.1.0' ]
         os: [ ubuntu-latest, macos-latest, windows-latest ]
     name: "Test Suite (full)"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@${{ github.ref }}
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
     with:
       r-version: ${{ matrix.r-version }}
       image: ${{ matrix.os }}

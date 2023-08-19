@@ -31,7 +31,7 @@ jobs:
     needs: [ debug ]
     if: ${{ github.event_name != 'pull_request' || github.base_ref != 'main' }}
     name: "Linting"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@${{ github.ref }}
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
     with:
       r-version: ''
       action:    lint
@@ -40,7 +40,7 @@ jobs:
     needs: [ debug ]
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
     name: "Test Suite (default)"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@${{ github.ref }}
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
     with:
       action: test
       coverage: true

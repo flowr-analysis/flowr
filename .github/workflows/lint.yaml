@@ -1,0 +1,16 @@
+name: "Run eslint on flowR"
+
+'on': push
+
+jobs:
+  lint:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: "Setup the Environment"
+        uses: Code-Inspect/flowr/.github/workflows/setup.yaml@145-improve-ci
+
+      - name: "Run the linter"
+        run:
+          npx eslint {src,test}

@@ -57,3 +57,18 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+      - name: Commit New Documentation
+        if: ${{ inputs.action == 'doc' }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add "doc/"
+          git commit -m "Update documentation"
+
+      - name: Push New Documentation
+        if: ${{ inputs.action == 'doc' }}
+        uses: ad-m/github-push-action@master
+        with:
+          branch: gh-pages
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: true

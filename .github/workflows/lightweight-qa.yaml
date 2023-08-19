@@ -7,13 +7,13 @@ jobs:
 
   lint:
     name: "Run eslint on flowR for the default configuration"
-    uses: Code-Inspect/flowr/.github/workflows/util/run.yaml@145-improve-ci
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
     with:
       action: lint
 
   test:
       name: "Run the (small) test suite"
-      uses: Code-Inspect/flowr/.github/workflows/util/run.yaml@145-improve-ci
+      uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
       with:
         action: test
         coverage: true

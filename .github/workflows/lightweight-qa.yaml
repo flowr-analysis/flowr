@@ -9,7 +9,8 @@ jobs:
     name: "Eslint on flowR (default configuration)"
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
     with:
-      action: lint
+      r-version: ''
+      action:    lint
 
   test:
       name: "The (small) test suite"

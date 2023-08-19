@@ -7,13 +7,15 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-concurrency:
-  group: 'full-qa-${{ github.ref }}'
-  cancel-in-progress: true
-
 jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.11.0
 
   lint:
+    needs: [ cleanup ]
     name: "Linting"
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@${{ github.ref }}
     with:
@@ -21,6 +23,7 @@ jobs:
       action:    lint
 
   test-full:
+      needs: [ cleanup ]
       name: "Test suite (full)"
       uses: Code-Inspect/flowr/.github/workflows/run.yaml@${{ github.ref }}
       with:

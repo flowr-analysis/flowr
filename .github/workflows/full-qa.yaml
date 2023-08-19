@@ -21,7 +21,7 @@ jobs:
         #   - os: windows-latest
         #     r-version: '4.2.3'
     name: "Test Suite (full)"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.r-version }}-${{ matrix.os }}
       cancel-in-progress: true

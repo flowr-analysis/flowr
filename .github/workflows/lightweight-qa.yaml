@@ -28,7 +28,7 @@ jobs:
   lint:
     needs: [ debug ]
     name: "Linting"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
     with:
       r-version: ''
       action:    lint
@@ -36,7 +36,7 @@ jobs:
   test:
     needs: [ debug ]
     name: "Test Suite (full)"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
     with:
       action: test-full
       coverage: true

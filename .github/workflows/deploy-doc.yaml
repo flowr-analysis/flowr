@@ -12,6 +12,6 @@ concurrency:
 jobs:
   doc:
     name: "Build and Deploy Documentation"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
     with:
       action: doc

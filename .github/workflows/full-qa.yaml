@@ -1,0 +1,38 @@
+name: "Full QA"
+# Runs only on pull requests to the main branch and on manual triggers
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+
+  lint:
+    name: "Linting"
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
+    with:
+      r-version: ''
+      action:    lint
+
+  test-full:
+      name: "Test suite (full)"
+      uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
+      with:
+        action: test-full
+        coverage: true
+
+  test-others:
+    strategy:
+      matrix:
+        # currently we offer no official support for 3.x
+        r-version: [ '4.1.0', '4.0.5' ]
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+    name: "Test suite (full)"
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
+    with:
+      r-version: ${{ matrix.r-version }}
+      image: ${{ matrix.os }}
+      action: test-full
+      coverage: true

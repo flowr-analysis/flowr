@@ -17,6 +17,16 @@ name: "Run one of flowR's npm-actions with a specific version"
         description: "The action to run"
         required: true
         type: string
+      image:
+        description: "The image to use for running"
+        required: false
+        default: "ubuntu-22.04"
+        type: string
+      timeout-minutes:
+        description: "The timeout in minutes"
+        required: false
+        default: 10
+        type: number
       coverage:
         description: "Whether to upload coverage reports at the end"
         required: false
@@ -25,8 +35,8 @@ name: "Run one of flowR's npm-actions with a specific version"
 
 jobs:
   flowr-action:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    runs-on: ${{ inputs.image }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     steps:
       - name: "Setup the Environment"
         uses: Code-Inspect/flowr/.github/actions/setup@145-improve-ci

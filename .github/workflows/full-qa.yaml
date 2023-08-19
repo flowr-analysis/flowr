@@ -1,0 +1,33 @@
+name: "Full QA"
+# Runs only on pull requests to the main branch and on manual triggers
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-full:
+    strategy:
+      fail-fast: false
+      matrix:
+        # currently we offer no official support for 3.x TODO: currently  '4.0.5' fails, as we can not detect that there is no pipe!
+        r-version: [ '4.2.3', '4.1.0' ]
+        os: [ ubuntu-latest ]
+        # include:
+        #   - os: macos-latest
+        #     r-version: '4.2.3'
+        #   - os: windows-latest
+        #     r-version: '4.2.3'
+    name: "Test Suite (full)"
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.r-version }}-${{ matrix.os }}
+      cancel-in-progress: true
+    with:
+      timeout-minutes: 25
+      r-version: ${{ matrix.r-version }}
+      image: ${{ matrix.os }}
+      action: test-full
+      coverage: false

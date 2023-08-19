@@ -1,5 +1,6 @@
 # flowr
 
+[![Deploy Documentation](https://github.com/Code-Inspect/flowr/actions/workflows/deploy-doc.yaml/badge.svg)](https://code-inspect.github.io/flowr/doc) [![codecov](https://codecov.io/bb/Code-Inspect/flowr/branch/main/graph/badge.svg)](https://codecov.io/gh/Code-Inspect/flowr)
 
 
 A program slicer and analyzer for R programs.
@@ -7,7 +8,7 @@ A program slicer and analyzer for R programs.
 ----
 
 *flowr* is actively developed by *Florian Sihler* (contact at: <florian.sihler@uni-ulm.de>) under the 
-[GPLv3 License](LICENSE) as part of his master's thesis.
+[GPLv3 License](LICENSE).
 
 ----
 

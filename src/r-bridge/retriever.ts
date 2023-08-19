@@ -1,5 +1,5 @@
 import { type RShell } from "./shell"
-import { parseCSV, ts2r, XmlParserHooks, RExpressionList, normalize } from './lang:4.x'
+import { parseCSV, ts2r, XmlParserHooks, RExpressionList, normalize } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
 import { DeepPartial } from 'ts-essentials'
 import { guard } from '../util/assert'

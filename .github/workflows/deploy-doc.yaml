@@ -1,0 +1,17 @@
+name: "Deploy Documentation"
+
+on:
+  push:
+    branches: [ main, 145-improve-ci ]
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  doc:
+    name: "Build and Deploy Documentation"
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    with:
+      action: doc

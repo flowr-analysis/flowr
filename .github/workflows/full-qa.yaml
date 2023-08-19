@@ -14,14 +14,6 @@ jobs:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.11.0
 
-  lint:
-    needs: [ cleanup ]
-    name: "Linting"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@145-improve-ci
-    with:
-      r-version: ''
-      action:    lint
-
   test-full:
       needs: [ cleanup ]
       name: "Test suite (full)"
@@ -31,7 +23,7 @@ jobs:
         coverage: true
 
   test-others:
-    needs: [ 'lint', 'test-full' ]
+    needs: [ 'test-full' ]
     strategy:
       fail-fast: false
       matrix:

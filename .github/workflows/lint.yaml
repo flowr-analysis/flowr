@@ -23,6 +23,9 @@ jobs:
           node-version: ${{ github.event.inputs.node-version }}
           r-version: ${{ github.event.inputs.r-version }}
 
+      - name: Install Node Dependencies
+        run: npm ci
+
       - name: "Run the linter"
         run:
           npx eslint {src,test}

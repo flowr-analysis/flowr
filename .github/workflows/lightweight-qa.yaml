@@ -13,6 +13,9 @@ jobs:
       - name: "Setup the Environment"
         uses: Code-Inspect/flowr/.github/actions/setup@145-improve-ci
 
+      - name: Install Node Dependencies
+        run: npm ci
+
       - name: "Run the linter"
         run: npx eslint {src,test}
 

@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: "Setup the environment"
-        uses: Code-Inspect/flowr/.github/workflows/setup.yaml@145-improve-ci
+        uses: Code-Inspect/flowr/.github/actions/setup.yaml@145-improve-ci
         with:
             node-version: ${{ env.NODE_VERSION }}
             r-version: ${{ env.R_VERSION }}

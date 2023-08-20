@@ -18,6 +18,10 @@ import { DefaultMap } from '../../util/defaultmap'
 export const slicerLogger = log.getSubLogger({ name: "slicer" })
 
 
+/**
+ * Represents a node during the slicing process, together with the environment it is traversed in
+ * (modified by function calls) and whether it is only used for its side effects.
+ */
 interface NodeToSlice {
 	id:                 NodeId
 	/** used for calling context etc. */

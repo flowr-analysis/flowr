@@ -51,7 +51,7 @@ export function processForLoop<OtherInfo>(
 		}
 		// now, we remove the name from the id shares as they are no longer needed
 		nameIdShares.delete(name)
-		nextGraph.setDefinitionOfNode(write)
+		nextGraph.setDefinitionOfVertex(write)
 	}
 
 	const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph, outEnvironments)]

@@ -211,7 +211,11 @@ function sliceForCall(current: NodeToSlice, idMap: DecoratedAstMap, callerInfo: 
 
 	const functionCallDefs = resolveByName(callerInfo.name, LocalScope, activeEnvironment)?.map(d => d.nodeId) ?? []
 
-	functionCallDefs.push(...outgoingEdges[1].filter(([_, e]) => e.types.has(EdgeType.Calls)).map(([target]) => target))
+	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
+		if(outgoingEdge.types.has(EdgeType.Calls)) {
+			functionCallDefs.push(target)
+		}
+	}
 
 	const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)
 

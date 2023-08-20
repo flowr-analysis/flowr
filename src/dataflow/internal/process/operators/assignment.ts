@@ -27,7 +27,7 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 	const isFunction = isFunctionSide.type === Type.FunctionDefinition
 
 	for (const write of writeTargets) {
-		nextGraph.setDefinitionOfNode(write)
+		nextGraph.setDefinitionOfVertex(write)
 		// TODO: this can be improved easily
 
 		if (isFunction) {

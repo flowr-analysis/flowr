@@ -1,9 +1,10 @@
 import { environmentsEqual, equalIdentifierReferences, IdentifierReference } from '../environments'
 import { NodeId } from '../../r-bridge'
-import { FunctionArgument, PositionalFunctionArgument } from './graph'
-import { DataflowGraphEdge, DataflowGraphVertexInfo, dataflowLogger } from '../index'
+import { FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
+import { DataflowGraphVertices, dataflowLogger } from '../index'
 import { guard } from '../../util/assert'
 import { displayEnvReplacer } from '../../util/json'
+import { setEquals } from '../../util/set'
 
 function equalFunctionArgumentsReferences(a: IdentifierReference | '<value>', b: IdentifierReference | '<value>'): boolean {
 	if (a === '<value>' || b === '<value>') {
@@ -53,7 +54,7 @@ export function equalFunctionArguments(a: false | FunctionArgument[], b: false |
 }
 
 
-export function equalNodes(our: Map<NodeId, DataflowGraphVertexInfo>, other: Map<NodeId, DataflowGraphVertexInfo>): boolean {
+export function equalVertices(our: DataflowGraphVertices, other: DataflowGraphVertices): boolean {
 	if(our.size !== other.size) {
 		dataflowLogger.warn(`graph size does not match: ${our.size} vs ${other.size}`)
 		return false
@@ -104,7 +105,7 @@ export function equalNodes(our: Map<NodeId, DataflowGraphVertexInfo>, other: Map
 				dataflowLogger.warn(`node ${id} does not match on subflow (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
 				return false
 			}
-			if (!info.subflow.graph.equals(otherInfo.subflow.graph)) {
+			if (!setEquals(info.subflow.graph, otherInfo.subflow.graph)) {
 				dataflowLogger.warn(`node ${id} does not match on subflow graph (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
 				return false
 			}
@@ -116,15 +117,19 @@ export function equalNodes(our: Map<NodeId, DataflowGraphVertexInfo>, other: Map
 
 
 
-export function equalEdges(id: NodeId, our: [NodeId, DataflowGraphEdge][], other: [NodeId, DataflowGraphEdge][]): boolean {
-	if(our.length !== other.length) {
-		dataflowLogger.warn(`total edge size for ${id} does not match: ${our.length} vs ${other.length} (${JSON.stringify(our, displayEnvReplacer)}, ${JSON.stringify(other, displayEnvReplacer)})`)
+export function equalEdges(id: NodeId, our: OutgoingEdges | undefined, other: OutgoingEdges | undefined): boolean {
+	if(our === undefined || other === undefined) {
+		return our === other
+	}
+
+	if(our.size !== other.size) {
+		dataflowLogger.warn(`total edge size for ${id} does not match: ${our.size} vs ${other.size} (${JSON.stringify(our, displayEnvReplacer)}, ${JSON.stringify(other, displayEnvReplacer)})`)
 		return false
 	}
 	// order independent compare
 	for(const [target, edge] of our) {
-		const otherEdge = other.find(([otherTarget, _]) => otherTarget === target)
-		if(otherEdge === undefined || edge.types.size !== otherEdge[1].types.size || [...edge.types].some(e => !otherEdge[1].types.has(e)) || edge.attribute !== otherEdge[1].attribute) {
+		const otherEdge = other.get(target)
+		if(otherEdge === undefined || edge.types.size !== otherEdge.types.size || [...edge.types].some(e => !otherEdge.types.has(e)) || edge.attribute !== otherEdge.attribute) {
 			dataflowLogger.warn(`edge with ${id}->${target} does not match (${JSON.stringify(edge, displayEnvReplacer)} vs ${JSON.stringify(otherEdge, displayEnvReplacer)})`)
 			return false
 		}

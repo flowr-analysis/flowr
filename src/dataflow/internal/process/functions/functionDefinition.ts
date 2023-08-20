@@ -11,7 +11,7 @@ import {
 	resolveByName
 } from '../../../environments'
 import { linkInputs } from '../../linker'
-import { DataflowGraph, dataflowLogger, DataflowMap, EdgeType } from '../../../index'
+import { DataflowFunctionFlowInformation, DataflowGraph, dataflowLogger, DataflowMap, EdgeType } from '../../../index'
 import { collectAllIds, NodeId, ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
 import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
 import { guard } from '../../../../util/assert'
@@ -28,7 +28,7 @@ function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph:
 		const remainingIn: IdentifierReference[] = []
 		for (const ingoing of ingoingRefs) {
 			for(const exitPoint of exitPoints) {
-				const node = subgraph.get(exitPoint)
+				const node = subgraph.get(exitPoint, true)
 				const env = initializeCleanEnvironments()
 				env.current.memory = node === undefined ? outEnvironment.current.memory : node[0].environment.current.memory
 				const resolved = resolveByName(ingoing.name, data.activeScope, env)
@@ -143,17 +143,16 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 
 	const outEnvironment = overwriteEnvironments(paramsEnvironments, bodyEnvironment)
 	for(const read of remainingRead) {
-		subgraph.addNode({ tag: 'use', id: read.nodeId, name: read.name, environment: outEnvironment, when: 'maybe' })
+		subgraph.addVertex({ tag: 'use', id: read.nodeId, name: read.name, environment: outEnvironment, when: 'maybe' })
 	}
 
 
-	const flow = {
+	const flow: DataflowFunctionFlowInformation = {
 		unknownReferences: [],
 		in:                remainingRead,
 		out:               [],
-		graph:             subgraph,
+		graph:             new Set(subgraph.rootIds()),
 		environments:      outEnvironment,
-		ast:               data.completeAst,
 		scope:             data.activeScope
 	}
 
@@ -162,8 +161,8 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 	linkExitPointsInGraph(exitPoints, subgraph, data.completeAst.idMap, outEnvironment)
 	updateNestedFunctionClosures(exitPoints, subgraph, outEnvironment, data, functionDefinition)
 
-	const graph = new DataflowGraph()
-	graph.addNode({
+	const graph = new DataflowGraph().mergeWith(subgraph, false)
+	graph.addVertex({
 		tag:         'function-definition',
 		id:          functionDefinition.info.id,
 		name:        functionDefinition.info.id,
@@ -188,7 +187,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 
 function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowGraph, idMap: DataflowMap<OtherInfo>, environment: REnvironmentInformation): void {
 	for(const exitPoint of exitPoints) {
-		const exitPointNode = graph.get(exitPoint)
+		const exitPointNode = graph.get(exitPoint, true)
 		// if there already is an exit point it is either a variable or already linked
 		if(exitPointNode !== undefined) {
 			continue
@@ -197,9 +196,9 @@ function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowG
 
 		guard(nodeInAst !== undefined, `Could not find exit point node with id ${exitPoint} in ast`)
 		// TODO: check if this is correct as only return calls can have a different environment?
-		graph.addNode({ tag: 'exit-point', id: exitPoint, name: `${nodeInAst.lexeme ?? '??'}`, when: 'always', environment })
+		graph.addVertex({ tag: 'exit-point', id: exitPoint, name: `${nodeInAst.lexeme ?? '??'}`, when: 'always', environment })
 
-		const allIds = [...collectAllIds(nodeInAst)].filter(id => graph.get(id) !== undefined)
+		const allIds = [...collectAllIds(nodeInAst)].filter(id => graph.get(id, true) !== undefined)
 		for(const relatedId of allIds) {
 			// TODO: custom edge type?
 			if(relatedId !== exitPoint) {

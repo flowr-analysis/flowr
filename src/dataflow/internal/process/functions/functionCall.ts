@@ -12,7 +12,7 @@ export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 
 function getLastNodeInGraph<OtherInfo>(functionName: DataflowInformation<OtherInfo & ParentInformation>) {
 	let functionNameId: NodeId | undefined
-	for (const [nodeId] of functionName.graph.nodes()) {
+	for (const [nodeId] of functionName.graph.nodes(false)) {
 		functionNameId = nodeId
 	}
 	return functionNameId
@@ -96,7 +96,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 
 	guard(functionNameId !== undefined, () => `Function call name id not found for ${JSON.stringify(functionCall)}`)
 
-	finalGraph.addNode({
+	finalGraph.addVertex({
 		tag:         'function-call',
 		id:          functionRootId,
 		name:        functionCallName,

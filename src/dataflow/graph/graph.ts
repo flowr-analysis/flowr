@@ -12,13 +12,15 @@ import { BiMap } from '../../util/bimap'
 import { log } from '../../util/log'
 import { DataflowGraphEdge, EdgeType, DataflowGraphEdgeAttribute } from './edge'
 import { DataflowInformation } from '../internal/info'
-import { equalEdges, equalExitPoints, equalFunctionArguments, equalNodes } from './equal'
+import { equalEdges, equalExitPoints, equalFunctionArguments, equalVertices } from './equal'
 import {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo, DataflowGraphVertices
 } from './vertex'
+import { setEquals } from '../../util/set'
+import { dataflowLogger } from '../index'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
@@ -39,8 +41,7 @@ export type DataflowScopeName =
 
 // TODO: export type DataflowGraphNodeType = 'variable' | 'processing' | 'assignment' | 'if-then-else' | 'loop' | 'function'
 
-export type DataflowFunctionFlowInformation = Omit<DataflowInformation<unknown>, 'ast' | 'graph'>
-& { graph: DataflowGraphVertices }
+export type DataflowFunctionFlowInformation = Omit<DataflowInformation<unknown>, 'ast' | 'graph'>  & { graph: Set<NodeId> }
 
 export type NamedFunctionArgument = [string, IdentifierReference | '<value>']
 export type PositionalFunctionArgument = IdentifierReference | '<value>'
@@ -51,13 +52,17 @@ type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'used'>  | Identifi
 
 const DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
 
+/**
+ * Maps the edges target to the edge information
+ */
+export type OutgoingEdges = Map<NodeId, DataflowGraphEdge>
 
 
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
  * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphVertexArgument}
  *
- * The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the nodes of its subgraph.
+ * The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph.
  * However, all *edges* are hoisted at the top level in the form of an (attributed) adjacency list.
  * After the dataflow analysis, all sources and targets of the edges *must* be part of the vertices.
  * However, this does not have to hold during the construction as edges may point from or to vertices which are yet to be constructed.
@@ -65,102 +70,96 @@ const DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
  * All methods return the modified graph to allow for chaining.
  */
 export class DataflowGraph {
-	private graphNodes: DataflowGraphVertices = new Map<NodeId, DataflowGraphVertexInfo>()
-	private edges = new Map<NodeId, Map<NodeId, DataflowGraphEdge>>()
+	/** Contains the vertices of the root level graph (i.e., included those vertices from the complete graph, that are nested within function definitions) */
+	private rootVertices: Set<NodeId> = new Set<NodeId>()
+	// TODO: merge edges and vertices in the same map
+	/** All vertices in the complete graph (including those nested in function definition) */
+	private vertices:     DataflowGraphVertices = new Map<NodeId, DataflowGraphVertexInfo>()
+	/** All edges in the complete graph (including those nested in function definition) */
+	private edges:        Map<NodeId, OutgoingEdges> = new Map<NodeId, Map<NodeId, DataflowGraphEdge>>()
+
+	/**
+	 * Get the {@link DataflowGraphVertexInfo} attached to a node as well as all outgoing edges.
+	 *
+	 * @param id                      - The id of the node to get
+	 * @param includeDefinedFunctions - If true this will search function definitions as well and not just the toplevel
+	 * @returns the node info for the given id (if it exists)
+	 */
+	public get(id: NodeId, includeDefinedFunctions: boolean): [DataflowGraphVertexInfo, OutgoingEdges] | undefined {
+		// if we do not want to include function definitions, only retrieve the value if the id is part of the root vertices
+		const vertex: DataflowGraphVertexInfo | undefined = includeDefinedFunctions || this.rootVertices.has(id) ? this.vertices.get(id) : undefined
+
+		return vertex === undefined ? undefined : [vertex, this.outgoingEdges(id) ?? new Map()]
+	}
+
+	public outgoingEdges(id: NodeId): OutgoingEdges | undefined {
+		return this.edges.get(id)
+	}
+
 
 	/**
    * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
-   * @returns the ids of all toplevel nodes in the graph, together with their node info and the graph that contains them (in case of subgraphs)
+   * @returns the ids of all toplevel nodes in the graph together with their vertex information
    */
-	public* nodes(includeDefinedFunctions = false): IterableIterator<[NodeId, DataflowGraphVertexInfo, DataflowGraph]> {
-		const nodes: [NodeId, DataflowGraphVertexInfo, DataflowGraph][] = [...this.graphNodes.entries()].map(([id, node]) => [id, node, this])
-		for(const [id, node, graph] of nodes) {
-			yield [id, node, graph]
-			if(includeDefinedFunctions && node.tag === 'function-definition') {
-				const entries = [...node.subflow.graph.entries()]
-				nodes.push(...entries.map(([id, n]) => [id, n, node.subflow.graph] as [NodeId, DataflowGraphVertexInfo, DataflowGraph]))
-			}
-		}
-	}
-
-	public hasNode(id: NodeId, includeDefinedFunctions = false): boolean {
-		if(!includeDefinedFunctions) {
-			return this.graphNodes.has(id)
+	public* nodes(includeDefinedFunctions: boolean): IterableIterator<[NodeId, DataflowGraphVertexInfo]> {
+		if(includeDefinedFunctions) {
+			yield* this.vertices.entries()
 		} else {
-			for(const [nodeId, _] of this.nodes(true)) {
-				if(nodeId === id) {
-					return true
-				}
+			for (const id of this.rootVertices) {
+				yield [id, this.vertices.get(id) as DataflowGraphVertexInfo]
 			}
 		}
-		return false
 	}
 
 	/**
-   * Get the {@link DataflowGraphVertexInfo} attached to a node as well as all outgoing edges.
-   * Uses a cache
-   *
-   * @param id                      - the id of the node to get
-   * @param includeDefinedFunctions - if true this will search function definitions as well and not just the toplevel
-   * @returns the node info for the given id (if it exists)
-   */
-	public get(id: NodeId, includeDefinedFunctions = true): [DataflowGraphVertexInfo, [NodeId, DataflowGraphEdge][]] | undefined {
-		if (!includeDefinedFunctions) {
-			const got = this.graphNodes.get(id)
-			return got === undefined ? undefined : [got, [...this.edges.get(id) ?? []]]
-		} else {
-			const cache = this.nodeIdAccessCache.get(id)
-			if (cache !== undefined) {
-				return cache ?? undefined
-			}
-			const got = this.rawGetInAllGraphs(id)
-			this.nodeIdAccessCache.set(id, got ?? null)
-			return got
-		}
-	}
-
-	private rawGetInAllGraphs(id: NodeId): [DataflowGraphVertexInfo, [NodeId, DataflowGraphEdge][]] | undefined {
-		let info = undefined
-		const edges = new Map<NodeId, DataflowGraphEdge>()
-		for (const [nodeId, probableInfo, graph] of this.nodes(true)) {
-			// TODO: we need to flatten the graph to have all edges in one place
-			const newEdges = graph.edges.get(id)
-			if (newEdges !== undefined) {
-				for (const [id, edge] of newEdges) {
-					edges.set(id, edge)
-				}
-			}
-			if (nodeId === id) {
-				info = probableInfo
-			}
-		}
-		return info === undefined ? undefined : [info, [...edges]]
-	}
-
-	public entries(): IterableIterator<[NodeId, Required<DataflowGraphVertexInfo>]> {
-		return this.graphNodes.entries()
+	 * Returns true if the graph contains a node with the given id.
+	 *
+	 * @param id - The id to check for
+	 * @param includeDefinedFunctions - If true this will check function definitions as well and not just the toplevel
+	 */
+	public hasNode(id: NodeId, includeDefinedFunctions: boolean): boolean {
+		return includeDefinedFunctions ? this.vertices.has(id) : this.rootVertices.has(id)
 	}
 
 	/**
-   * Adds a new node to the graph, for ease of use, some arguments are optional and filled automatically.
+	 * Returns true if the root level of the graph contains a node with the given id.
+	 */
+	public isRoot(id: NodeId): boolean {
+		return this.rootVertices.has(id)
+	}
+
+	public rootIds(): ReadonlySet<NodeId> {
+		return this.rootVertices
+	}
+
+	/**
+   * Adds a new vertex to the graph, for ease of use, some arguments are optional and filled automatically.
    *
+	 * @param vertex - The vertex to add
+	 * @param asRoot - If false, this will only add the vertex but do not add it to the {@link rootIds | root vertices} of the graph.
+	 *                 This is probably only of use, when you construct dataflow graphs for tests.
+	 *
    * @see DataflowGraphVertexInfo
    * @see DataflowGraphVertexArgument
    */
-	public addNode(node: DataflowGraphVertexArgument): this {
-		const oldNode = this.graphNodes.get(node.id)
-		if(oldNode !== undefined) {
-			guard(oldNode.name === node.name, 'node names must match for the same id if added')
+	public addVertex(vertex: DataflowGraphVertexArgument, asRoot = true): this {
+		const oldVertex = this.vertices.get(vertex.id)
+		if(oldVertex !== undefined) {
+			guard(oldVertex.name === vertex.name, 'vertex names must match for the same id if added')
 			return this
 		}
 
 		// keep a clone of the original environment
-		const environment = node.environment === undefined ? DEFAULT_ENVIRONMENT : cloneEnvironments(node.environment)
-		this.graphNodes.set(node.id, {
-			...node,
-			when: node.when ?? 'always',
+		const environment = vertex.environment === undefined ? DEFAULT_ENVIRONMENT : cloneEnvironments(vertex.environment)
+
+		this.vertices.set(vertex.id, {
+			...vertex,
+			when: vertex.when ?? 'always',
 			environment
 		})
+		if(asRoot) {
+			this.rootVertices.add(vertex.id)
+		}
 		return this
 	}
 
@@ -177,11 +176,8 @@ export class DataflowGraph {
    * <p>
    * If you omit the last argument but set promote, this will make the edge `maybe` if at least one of the {@link IdentifierReference | references} or {@link DataflowGraphVertexInfo | nodes} has a used flag of `maybe`.
    * Promote will probably only be used internally and not by tests etc.
-   * TODO: ensure that target has a def scope and source does not?
    */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType, attribute?: DataflowGraphEdgeAttribute, promote= false): this {
-		// dataflowLogger.trace(`trying to add edge from ${JSON.stringify(from)} to ${JSON.stringify(to)} with type ${type} and attribute ${JSON.stringify(attribute)} to graph`)
-
 		const fromId = typeof from === 'object' ? from.nodeId : from
 		const toId = typeof to === 'object' ? to.nodeId : to
 
@@ -213,7 +209,6 @@ export class DataflowGraph {
 		const edge: DataflowGraphEdge = { types: new Set([type]), attribute }
 
 		// TODO: make this more performant
-		// we ignore the attribute as it is only promoted to maybe
 
 		const existingFrom = this.edges.get(fromId)
 		const edgeInFrom = existingFrom?.get(toId)
@@ -224,6 +219,7 @@ export class DataflowGraph {
 			} else {
 				existingFrom.set(toId, edge)
 			}
+
 			// sort (on id so that sorting is the same, independent of the attribute)
 			const bidirectional = type === 'same-read-read' || type === 'same-def-def' || type === 'relates'
 
@@ -260,63 +256,82 @@ export class DataflowGraph {
 	}
 
 
-	/** Merges the other graph into *this* one (in-place). The return value is only for convenience. */
-	public mergeWith(...otherGraphs: (DataflowGraph | undefined)[]): this {
-		for(const otherGraph of otherGraphs) {
-			if(otherGraph === undefined) {
-				continue
-			}
-			for(const [id, info] of otherGraph.graphNodes) {
-				const currentInfo = this.graphNodes.get(id)
-				if (currentInfo === undefined) {
-					this.graphNodes.set(id, info)
-				} else {
-					this.graphNodes.set(id, mergeNodeInfos(currentInfo, info))
-				}
-			}
+	/**
+	 * Merges the other graph into *this* one (in-place). The return value is only for convenience.
+	 *
+	 * @param otherGraph        - The graph to merge into this one
+	 * @param mergeRootVertices - If false, this will only merge the vertices and edges but exclude the root vertices this is probably only of use
+	 * 													  in the context of function definitions
+	 */
+	public mergeWith(otherGraph: DataflowGraph | undefined, mergeRootVertices = true): this {
+		if(otherGraph === undefined) {
+			return this
+		}
 
-			// TODO: make more performant
-			for(const [id, edges] of otherGraph.edges.entries()) {
-				for(const [target, edge] of edges) {
-					const existing = this.edges.get(id)
-					if(existing === undefined) {
-						this.edges.set(id, new Map([[target, edge]]))
+		// merge root ids, TODO, maybe just create a new one?
+		if(mergeRootVertices) {
+			for (const root of otherGraph.rootVertices) {
+				this.rootVertices.add(root)
+			}
+		}
+
+		for(const [id, info] of otherGraph.vertices) {
+			const currentInfo = this.vertices.get(id)
+			this.vertices.set(id, currentInfo === undefined ? info : mergeNodeInfos(currentInfo, info))
+		}
+
+		// TODO: make more performant
+		this.mergeEdges(otherGraph)
+		return this
+	}
+
+	private mergeEdges(otherGraph: DataflowGraph) {
+		for (const [id, edges] of otherGraph.edges.entries()) {
+			for (const [target, edge] of edges) {
+				const existing = this.edges.get(id)
+				if (existing === undefined) {
+					this.edges.set(id, new Map([[target, edge]]))
+				} else {
+					const get = existing.get(target)
+					if (get === undefined) {
+						existing.set(target, edge)
 					} else {
-						const get = existing.get(target)
-						if(get === undefined) {
-							existing.set(target, edge)
-						} else {
-							get.types = new Set([...get.types, ...edge.types])
-							if(edge.attribute === 'maybe') {
-								get.attribute = 'maybe'
-							}
+						get.types = new Set([...get.types, ...edge.types])
+						if (edge.attribute === 'maybe') {
+							get.attribute = 'maybe'
 						}
 					}
 				}
 			}
 		}
-		return this
 	}
 
 	// TODO: diff function to get more information?
 	public equals(other: DataflowGraph): boolean {
-		if(!equalNodes(this.graphNodes, other.graphNodes)) {
+		if(!setEquals(this.rootVertices, other.rootVertices)) {
+			dataflowLogger.debug(`root vertices do not match: ${JSON.stringify([...this.rootVertices])} vs. other: ${JSON.stringify([...other.rootVertices])}`)
 			return false
 		}
-		// TODO: we need to remove nesting to avoid this uglyness
-		for(const [id] of this.graphNodes) {
-			const edges = this.get(id)
-			const otherEdges = other.get(id)
-			guard(edges !== undefined && otherEdges !== undefined, () => `edges must be defined for ${id} to compare graphs`)
-			if(!equalEdges(id, edges[1], otherEdges[1])) {
+
+		if(!equalVertices(this.vertices, other.vertices)) {
+			return false
+		}
+
+		for(const id of this.vertices.keys()) {
+			if(!equalEdges(id, this.edges.get(id), other.edges.get(id))) {
 				return false
 			}
 		}
+
 		return true
 	}
 
-	public setDefinitionOfNode(reference: IdentifierReference): void {
-		const got = this.get(reference.nodeId)
+	/**
+	 * Marks a vertex in the graph to be a definition
+	 * @param reference - The reference to the vertex to mark as definition
+	 */
+	public setDefinitionOfVertex(reference: IdentifierReference): void {
+		const got = this.get(reference.nodeId, true)
 		guard(got !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set definition scope to ${reference.scope}`)
 		const [node] = got
 		if(node.tag === 'function-definition' || node.tag === 'variable-definition') {
@@ -325,7 +340,7 @@ export class DataflowGraph {
 			node.scope = reference.scope
 			node.when = reference.used === 'maybe' ? 'maybe' : node.when
 		} else {
-			this.graphNodes.set(reference.nodeId, {
+			this.vertices.set(reference.nodeId, {
 				...node,
 				tag:   'variable-definition',
 				scope: reference.scope,

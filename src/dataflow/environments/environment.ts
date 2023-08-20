@@ -62,7 +62,7 @@ export function makeAllMaybe(references: IdentifierReference[] | undefined, grap
 		return []
 	}
 	return references.map(ref => {
-		const node = graph.get(ref.nodeId)
+		const node = graph.get(ref.nodeId, true)
 		const definitions = resolveByName(ref.name, LocalScope, environments)
 		for(const definition of definitions ?? []) {
 			if(definition.kind !== 'built-in-function') {

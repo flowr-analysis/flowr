@@ -21,7 +21,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 	let environments = name.environments
 	for(const writtenNode of writtenNodes) {
 		log.trace(`parameter ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' no default value'}`)
-		graph.setDefinitionOfNode(writtenNode)
+		graph.setDefinitionOfVertex(writtenNode)
 		environments = define(writtenNode, LocalScope, environments)
 
 		if(defaultValue !== undefined) {

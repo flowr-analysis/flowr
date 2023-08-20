@@ -27,7 +27,7 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
 		}
 	}
 
-	const nextGraph = cond.graph.mergeWith(then?.graph, otherwise?.graph)
+	const nextGraph = cond.graph.mergeWith(then?.graph).mergeWith(otherwise?.graph)
 
 	const thenEnvironment = appendEnvironments(cond.environments, then?.environments)
 	const finalEnvironment = otherwise ? appendEnvironments(thenEnvironment, otherwise.environments) : thenEnvironment

@@ -130,7 +130,7 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, fun
 }
 
 
-function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexFunctionCall, idMap: DecoratedAstMap, nodeGraph: DataflowGraph, thisGraph: DataflowGraph, calledFunctionDefinitions: {
+function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphVertexFunctionCall, idMap: DecoratedAstMap, thisGraph: DataflowGraph, calledFunctionDefinitions: {
 	functionCall: NodeId;
 	called:       DataflowGraphVertexInfo[]
 }[]) {
@@ -166,7 +166,7 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 		graph.addEdge(id, def.id, EdgeType.Calls, 'always')
 		linkFunctionCallArguments(def.id, idMap, def.name, id, info.args, graph)
 	}
-	if (nodeGraph === thisGraph) {
+	if (thisGraph.isRoot(id)) {
 		calledFunctionDefinitions.push({ functionCall: id, called: [...functionDefs.values()] })
 	}
 }
@@ -175,9 +175,9 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
  * Returns the called functions within the current graph, which can be used to merge the environments with the call.
  * Furthermore, it links the corresponding arguments.
  */
-export function linkFunctionCalls(graph: DataflowGraph, idMap: DecoratedAstMap, functionCalls: [NodeId, DataflowGraphVertexInfo, DataflowGraph][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] {
+export function linkFunctionCalls(graph: DataflowGraph, idMap: DecoratedAstMap, functionCalls: [NodeId, DataflowGraphVertexInfo][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] {
 	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = []
-	for(const [id, info, nodeGraph] of functionCalls) {
+	for(const [id, info] of functionCalls) {
 		guard(info.tag === 'function-call', () => `encountered non-function call in function call linkage ${JSON.stringify(info)}`)
 
 		// TODO: special handling for others
@@ -186,7 +186,7 @@ export function linkFunctionCalls(graph: DataflowGraph, idMap: DecoratedAstMap, 
 			graph.addEdge(id, BuiltIn, EdgeType.Calls, 'always')
 			continue
 		}
-		linkFunctionCall(graph, id, info, idMap, nodeGraph, thisGraph, calledFunctionDefinitions)
+		linkFunctionCall(graph, id, info, idMap, thisGraph, calledFunctionDefinitions)
 	}
 	return calledFunctionDefinitions
 }

@@ -3,37 +3,27 @@ import { guard } from '../../util/assert'
 import { NodeId, RNodeWithParent } from '../../r-bridge'
 import {
 	cloneEnvironments,
-	GlobalScope,
 	IdentifierDefinition,
 	IdentifierReference,
-	initializeCleanEnvironments, LocalScope,
+	initializeCleanEnvironments
 } from '../environments'
 import { BiMap } from '../../util/bimap'
 import { log } from '../../util/log'
-import { DataflowGraphEdge, EdgeType, DataflowGraphEdgeAttribute } from './edge'
+import { DataflowGraphEdge, DataflowGraphEdgeAttribute, EdgeType } from './edge'
 import { DataflowInformation } from '../internal/info'
 import { equalEdges, equalExitPoints, equalFunctionArguments, equalVertices } from './equal'
 import {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexInfo, DataflowGraphVertices
+	DataflowGraphVertexInfo,
+	DataflowGraphVertices
 } from './vertex'
 import { setEquals } from '../../util/set'
 import { dataflowLogger } from '../index'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
-
-
-
-/**
- * Used to represent usual R scopes
- */
-export type DataflowScopeName =
-  | /** default R global environment */            typeof GlobalScope
-  | /** unspecified automatic local environment */ typeof LocalScope
-  | /** named environments */                      string
 
 
 
@@ -47,8 +37,6 @@ export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgumen
 
 type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'used'>  | IdentifierDefinition
 
-
-const DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
 
 /**
  * Maps the edges target to the edge information
@@ -68,6 +56,8 @@ export type OutgoingEdges = Map<NodeId, DataflowGraphEdge>
  * All methods return the modified graph to allow for chaining.
  */
 export class DataflowGraph {
+	private static DEFAULT_ENVIRONMENT = initializeCleanEnvironments()
+
 	/** Contains the vertices of the root level graph (i.e., included those vertices from the complete graph, that are nested within function definitions) */
 	private rootVertices:      Set<NodeId> = new Set<NodeId>()
 	// TODO: merge edges and vertices in the same map
@@ -148,7 +138,7 @@ export class DataflowGraph {
 		}
 
 		// keep a clone of the original environment
-		const environment = vertex.environment === undefined ? DEFAULT_ENVIRONMENT : cloneEnvironments(vertex.environment)
+		const environment = vertex.environment === undefined ? DataflowGraph.DEFAULT_ENVIRONMENT : cloneEnvironments(vertex.environment)
 
 		this.vertexInformation.set(vertex.id, {
 			...vertex,

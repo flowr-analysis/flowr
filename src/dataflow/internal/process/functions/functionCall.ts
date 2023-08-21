@@ -1,10 +1,11 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { define, LocalScope, overwriteEnvironments, resolveByName } from '../../../environments'
+import { define, overwriteEnvironments, resolveByName } from '../../../environments'
 import { NodeId, ParentInformation, RFunctionCall, Type } from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
 import { DataflowGraph, dataflowLogger, EdgeType, FunctionArgument } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
+import { LocalScope } from '../../../environments/scopes'
 // TODO: support partial matches: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Argument-matching
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'

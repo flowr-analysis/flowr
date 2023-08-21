@@ -1,6 +1,6 @@
-import { DataflowGraph, DataflowScopeName } from '../graph'
+import { DataflowGraph } from '../graph'
 import { DecoratedAst, ParentInformation } from '../../r-bridge'
-import { REnvironmentInformation, IdentifierReference } from '../environments'
+import { REnvironmentInformation, IdentifierReference, DataflowScopeName } from '../environments'
 import { DataflowProcessorInformation } from '../processor'
 
 /**

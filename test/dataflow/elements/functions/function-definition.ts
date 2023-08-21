@@ -2,12 +2,11 @@ import { assertDataflow, withShell } from '../../../helper/shell'
 import { BuiltIn, DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../src/dataflow'
 import {
 	define,
-	GlobalScope,
-	LocalScope,
 	popLocalEnvironment,
 	pushLocalEnvironment
 } from '../../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/argument'
+import { GlobalScope, LocalScope } from '../../../../src/dataflow/environments/scopes'
 
 // TODO: <- in parameters
 // TODO: allow to access environments in the end

@@ -1,8 +1,6 @@
 import { Environment, REnvironmentInformation } from './environment'
 import { guard } from '../../util/assert'
-
-export const GlobalScope = '.GlobalEnv'
-export const LocalScope = 'local'
+import { LocalScope } from './scopes'
 
 /** Add a new local environment scope to the stack, returns the modified variant - sharing the original environments in the stack (no deep-clone) */
 export function pushLocalEnvironment(base: REnvironmentInformation): REnvironmentInformation {

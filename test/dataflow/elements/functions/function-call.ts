@@ -1,8 +1,9 @@
 import { assertDataflow, withShell } from '../../../helper/shell'
 import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../src/dataflow'
-import { define, LocalScope, popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments'
+import { define, popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/argument'
 import { UnnamedFunctionCallPrefix } from '../../../../src/dataflow/internal/process/functions/functionCall'
+import { LocalScope } from '../../../../src/dataflow/environments/scopes'
 
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {

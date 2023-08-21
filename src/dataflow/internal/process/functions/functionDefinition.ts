@@ -3,7 +3,6 @@ import { DataflowProcessorInformation, processDataflowFor } from '../../../proce
 import {
 	IdentifierReference,
 	initializeCleanEnvironments,
-	LocalScope,
 	overwriteEnvironments,
 	popLocalEnvironment,
 	pushLocalEnvironment,
@@ -15,6 +14,7 @@ import { DataflowFunctionFlowInformation, DataflowGraph, dataflowLogger, Dataflo
 import { collectAllIds, NodeId, ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
 import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
 import { guard } from '../../../../util/assert'
+import { LocalScope } from '../../../environments/scopes'
 
 
 function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph: DataflowGraph, outEnvironment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>) {

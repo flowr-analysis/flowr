@@ -5,14 +5,13 @@ import { EdgeType } from '../../../graph'
 import { guard } from '../../../../util/assert'
 import {
 	define,
-	GlobalScope,
 	IdentifierDefinition,
 	IdentifierReference,
-	LocalScope,
 	overwriteEnvironments
 } from '../../../environments'
 import { log } from '../../../../util/log'
 import { dataflowLogger } from '../../../index'
+import { GlobalScope, LocalScope } from '../../../environments/scopes'
 
 export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
 	dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)

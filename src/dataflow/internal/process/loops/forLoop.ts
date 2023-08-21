@@ -5,9 +5,10 @@ import {
 } from '../../linker'
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { appendEnvironments, define, LocalScope, makeAllMaybe, overwriteEnvironments } from '../../../environments'
+import { appendEnvironments, define, makeAllMaybe, overwriteEnvironments } from '../../../environments'
 import { ParentInformation, RForLoop } from '../../../../r-bridge'
 import { EdgeType } from '../../../graph'
+import { LocalScope } from '../../../environments/scopes'
 
 export function processForLoop<OtherInfo>(
 	loop: RForLoop<OtherInfo & ParentInformation>,

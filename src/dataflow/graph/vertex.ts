@@ -1,8 +1,8 @@
 import { MergeableRecord } from '../../util/objects'
 import { NodeId } from '../../r-bridge'
-import { REnvironmentInformation } from '../environments'
+import { DataflowScopeName, REnvironmentInformation } from '../environments'
 import { DataflowGraphEdgeAttribute } from './edge'
-import { DataflowFunctionFlowInformation, DataflowScopeName, FunctionArgument } from './graph'
+import { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 
 export type DataflowGraphVertices = Map<NodeId, DataflowGraphVertexInfo>
 

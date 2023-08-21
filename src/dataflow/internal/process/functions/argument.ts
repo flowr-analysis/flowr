@@ -2,7 +2,8 @@ import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { collectAllIds, ParentInformation, RArgument, RNode, Type } from '../../../../r-bridge'
 import { DataflowGraph, EdgeType } from '../../../graph'
-import { IdentifierReference, LocalScope } from '../../../environments'
+import { IdentifierReference } from '../../../environments'
+import { LocalScope } from '../../../environments/scopes'
 
 export const UnnamedArgumentPrefix = 'unnamed-argument-'
 

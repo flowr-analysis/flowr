@@ -1,7 +1,8 @@
 import { NodeId } from '../../../../src/r-bridge'
 import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../src/dataflow'
 import { assertDataflow, withShell } from '../../../helper/shell'
-import { define, LocalScope } from '../../../../src/dataflow/environments'
+import { define } from '../../../../src/dataflow/environments'
+import { LocalScope } from '../../../../src/dataflow/environments/scopes'
 
 describe("Lists with variable references", withShell(shell => {
 	describe(`read-read same variable`, () => {

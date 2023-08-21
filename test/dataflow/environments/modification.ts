@@ -2,14 +2,9 @@ import { NodeId } from '../../../src/r-bridge'
 import { DefaultEnvironmentMemory, IEnvironment, initializeCleanEnvironments } from '../../../src/dataflow'
 import { guard } from '../../../src/util/assert'
 import { expect } from 'chai'
-import {
-	appendEnvironments,
-	define,
-	GlobalScope,
-	LocalScope,
-	overwriteEnvironments
-} from '../../../src/dataflow/environments'
+import { appendEnvironments, define, overwriteEnvironments } from '../../../src/dataflow/environments'
 import { variable } from './environments'
+import { GlobalScope, LocalScope } from '../../../src/dataflow/environments/scopes'
 
 /** if you pass multiple `definedAt`, this will expect the node to have multiple definitions */
 function existsDefinedAt(name: string, definedAt: NodeId[], result: IEnvironment | undefined, message?: string) {

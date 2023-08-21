@@ -4,10 +4,10 @@
  * @module
  */
 import { NodeId } from '../../r-bridge'
-import { DataflowGraph, DataflowGraphEdgeAttribute, DataflowScopeName } from '../graph'
+import { DataflowGraph, DataflowGraphEdgeAttribute } from '../graph'
 import { dataflowLogger } from '../index'
 import { resolveByName } from './resolveByName'
-import { GlobalScope, LocalScope } from './scoping'
+import { DataflowScopeName, GlobalScope, LocalScope } from './scopes'
 
 /** identifiers are branded to avoid confusion with other string-like types */
 export type Identifier = string & { __brand?: 'identifier' }

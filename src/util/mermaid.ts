@@ -8,12 +8,12 @@ import {
 	EdgeType,
 	DataflowGraphVertexInfo,
 	DataflowMap,
-	DataflowScopeName,
 	FunctionArgument,
 	IdentifierReference
 } from '../dataflow'
 import { guard } from './assert'
 import { displayEnvReplacer } from './json'
+import { DataflowScopeName } from '../dataflow/environments'
 
 
 interface MermaidGraph {

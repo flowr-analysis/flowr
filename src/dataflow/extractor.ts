@@ -1,6 +1,5 @@
 import { DecoratedAst, ParentInformation, RAssignmentOp, RBinaryOp, Type } from '../r-bridge'
 import { DataflowInformation } from './internal/info'
-import { DataflowScopeName } from './graph'
 import { DataflowProcessorInformation, DataflowProcessors, processDataflowFor } from './processor'
 import { processUninterestingLeaf } from './internal/process/uninterestingLeaf'
 import { processSymbol } from './internal/process/symbol'
@@ -14,11 +13,12 @@ import { processIfThenElse } from './internal/process/ifThenElse'
 import { processFunctionCall } from './internal/process/functions/functionCall'
 import { processFunctionDefinition } from './internal/process/functions/functionDefinition'
 import { processFunctionParameter } from './internal/process/functions/parameter'
-import { initializeCleanEnvironments, LocalScope } from './environments'
+import { DataflowScopeName, initializeCleanEnvironments } from './environments'
 import { processFunctionArgument } from './internal/process/functions/argument'
 import { processAssignment } from './internal/process/operators/assignment'
 import { processAccess } from './internal/process/access'
 import { processPipeOperation } from './internal/process/operators/pipe'
+import { LocalScope } from './environments/scopes'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
 const processors: DataflowProcessors<any> = {

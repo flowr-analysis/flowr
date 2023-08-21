@@ -6,8 +6,9 @@
 import { assertDataflow, withShell } from '../../helper/shell'
 import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../helper/provider'
-import { define, GlobalScope, LocalScope } from '../../../src/dataflow/environments'
+import { define } from '../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
+import { GlobalScope, LocalScope } from '../../../src/dataflow/environments/scopes'
 
 describe("Atomic dataflow information", withShell((shell) => {
 	describe("uninteresting leafs", () => {

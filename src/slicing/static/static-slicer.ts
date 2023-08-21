@@ -11,9 +11,10 @@ import { guard } from '../../util/assert'
 import { collectAllIds, DecoratedAstMap, NodeId, RNodeWithParent, Type } from '../../r-bridge'
 import { log } from '../../util/log'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
-import { LocalScope, overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
+import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
 import objectHash from 'object-hash'
 import { DefaultMap } from '../../util/defaultmap'
+import { LocalScope } from '../../dataflow/environments/scopes'
 
 export const slicerLogger = log.getSubLogger({ name: "slicer" })
 

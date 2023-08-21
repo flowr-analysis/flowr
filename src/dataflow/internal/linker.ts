@@ -2,18 +2,24 @@ import {
 	DataflowGraph,
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexInfo,
-	DataflowScopeName,
 	FunctionArgument,
 	NamedFunctionArgument,
 	PositionalFunctionArgument
 } from '../graph'
-import { BuiltIn, IdentifierReference, LocalScope, REnvironmentInformation, resolveByName } from '../environments'
+import {
+	BuiltIn,
+	DataflowScopeName,
+	IdentifierReference,
+	REnvironmentInformation,
+	resolveByName
+} from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { log } from '../../util/log'
 import { DecoratedAstMap, NodeId, ParentInformation, RParameter, Type } from '../../r-bridge'
 import { slicerLogger } from '../../slicing'
 import { dataflowLogger, EdgeType } from '../index'
+import { LocalScope } from '../environments/scopes'
 
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
 	const nameIdShares = produceNameSharedIdMap(references)

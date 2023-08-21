@@ -19,7 +19,7 @@ import {
 import { assert } from 'chai'
 import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl, produceDataFlowGraph } from '../../src/dataflow'
 import { reconstructToCode, SlicingCriteria, slicingCriterionToId, staticSlicing } from '../../src/slicing'
-import { LocalScope } from '../../src/dataflow/environments'
+import { LocalScope } from '../../src/dataflow/environments/scopes'
 
 let defaultTokenMap: Record<string, string>
 

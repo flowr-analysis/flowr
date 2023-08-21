@@ -117,7 +117,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		dataflowLogger.trace(`expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`)
 
 		processNextExpression(processed, data, environments, listEnvironments, remainingRead, nextGraph)
-		const functionCallIds = [...processed.graph.nodes(true)]
+		const functionCallIds = [...processed.graph.vertices(true)]
 			.filter(([_,info]) => info.tag === 'function-call')
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, functionCallIds, processed.graph)
 

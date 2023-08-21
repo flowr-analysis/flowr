@@ -131,7 +131,7 @@ export class BenchmarkSlicer {
 		const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.session)
 
 		// collect dataflow graph size
-		const vertices = [...this.dataflow.graph.nodes(true)]
+		const vertices = [...this.dataflow.graph.vertices(true)]
 		let numberOfEdges = 0
 		let numberOfCalls = 0
 		let numberOfDefinitions = 0
@@ -158,7 +158,7 @@ export class BenchmarkSlicer {
 				numberOfNormalizedTokens:        [...collectAllIds(this.decoratedAst.decoratedAst)].length,
 			},
 			dataflow: {
-				numberOfNodes:               [...this.dataflow.graph.nodes(true)].length,
+				numberOfNodes:               [...this.dataflow.graph.vertices(true)].length,
 				numberOfEdges:               numberOfEdges,
 				numberOfCalls:               numberOfCalls,
 				numberOfFunctionDefinitions: numberOfDefinitions

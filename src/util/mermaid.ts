@@ -166,7 +166,7 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphVertexInfo, merm
 function graphToMermaidGraph(rootIds: ReadonlySet<NodeId>, graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = '', mark?: Set<NodeId>, rootGraph?: DataflowGraph): MermaidGraph {
 	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges: new Set<string>(), hasBuiltIn: false, mark, rootGraph: rootGraph ?? graph, includeEnvironments: true }
 
-	for (const [id, info] of graph.nodes(true)) {
+	for (const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {
 			nodeToMermaid(graph, info, mermaid, id, idPrefix, dataflowIdMap, mark)
 		}

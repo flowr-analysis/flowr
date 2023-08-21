@@ -20,7 +20,7 @@ import { guard } from '../../../../util/assert'
 function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph: DataflowGraph, outEnvironment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>) {
 	// track *all* function definitions - included those nested within the current graph
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for (const [id, info] of subgraph.nodes(true)) {
+	for (const [id, info] of subgraph.vertices(true)) {
 		if (info.tag !== 'function-definition') {
 			continue
 		}

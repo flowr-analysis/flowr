@@ -12,7 +12,7 @@ export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 
 function getLastNodeInGraph<OtherInfo>(functionName: DataflowInformation<OtherInfo & ParentInformation>) {
 	let functionNameId: NodeId | undefined
-	for (const [nodeId] of functionName.graph.nodes(false)) {
+	for (const [nodeId] of functionName.graph.vertices(false)) {
 		functionNameId = nodeId
 	}
 	return functionNameId

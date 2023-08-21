@@ -27,8 +27,6 @@ export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
 
 
 
-// TODO: on fold clarify with in and out-local, out-global! (out-function?)
-
 /**
  * Used to represent usual R scopes
  */
@@ -114,7 +112,7 @@ export class DataflowGraph {
 	/**
 	 * Returns true if the graph contains a node with the given id.
 	 *
-	 * @param id - The id to check for
+	 * @param id                      - The id to check for
 	 * @param includeDefinedFunctions - If true this will check function definitions as well and not just the toplevel
 	 */
 	public hasNode(id: NodeId, includeDefinedFunctions: boolean): boolean {
@@ -353,6 +351,7 @@ function mergeNodeInfos(current: DataflowGraphVertexInfo, next: DataflowGraphVer
 	guard(current.tag === next.tag, () => `nodes to be joined for the same id must have the same tag, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`)
 	guard(current.name === next.name, () => `nodes to be joined for the same id must have the same name, but ${JSON.stringify(current)} vs ${JSON.stringify(next)}`)
 	guard(current.environment === next.environment, 'nodes to be joined for the same id must have the same environment')
+
 	if(current.tag === 'variable-definition') {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope')
 	} else if(current.tag === 'function-call') {
@@ -362,7 +361,6 @@ function mergeNodeInfos(current: DataflowGraphVertexInfo, next: DataflowGraphVer
 		guard(equalExitPoints(current.exitPoints, (next as DataflowGraphVertexFunctionDefinition).exitPoints), 'nodes to be joined must have same exist points')
 	}
 
-	return {
-		...current // make a copy
-	}
+	// make a copy
+	return { ...current }
 }

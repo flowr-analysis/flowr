@@ -71,7 +71,7 @@ class VisitingQueue {
 
 		const print = fingerprint(target, envFingerprint, onlyForSideEffects)
 
-		if (!this.seen.has(print)) {
+		if(!this.seen.has(print)) {
 			this.seen.set(print, target)
 			this.queue.push({ id: target, baseEnvironment: env, onlyForSideEffects: onlyForSideEffects })
 		}

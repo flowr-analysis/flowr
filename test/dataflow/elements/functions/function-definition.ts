@@ -132,6 +132,63 @@ describe('Function Definition', withShell(shell => {
 				.addEdge("4", "3", EdgeType.Reads, "always")
 		)
 
+		describe('x', () => {
+			assertDataflow(`return parameter named`, shell, `function(x) { return(x=x) }`,
+				new DataflowGraph()
+					.addVertex({
+						tag:        'function-definition',
+						id:         "8",
+						name:       "8",
+						scope:      LocalScope,
+						when:       'always',
+						exitPoints: ['6'],
+						subflow:    {
+							out:               [],
+							unknownReferences: [],
+							in:                [],
+							scope:             LocalScope,
+							graph:             new Set(['5', '6', '4', '0']),
+							environments:      envWithXDefined
+						}
+					}).addVertex({
+						tag:         'variable-definition',
+						id:          "0",
+						name:        "x",
+						environment: pushLocalEnvironment(initializeCleanEnvironments()),
+						scope:       LocalScope,
+						when:        'always'
+					}, false)
+					.addVertex({
+						tag:         'use',
+						id:          "4",
+						name:        "x",
+						environment: envWithXDefined,
+						when:        'always'
+					}, false)
+					.addVertex({
+						tag:         'function-call',
+						id:          "6",
+						name:        'return',
+						environment: envWithXDefined,
+						when:        'always',
+						args:        [['x', { nodeId: "5", used: 'always', name: 'x', scope: LocalScope }]]
+					}, false)
+					.addVertex({
+						tag:         'use',
+						id:          "5",
+						name:        'x',
+						environment: envWithXDefined,
+						when:        'always',
+					}, false)
+					.addEdge("6", BuiltIn, EdgeType.Reads, "always")
+					.addEdge("6", BuiltIn, EdgeType.Calls, "always")
+					.addEdge("4", "0", EdgeType.Reads, "always")
+					.addEdge("6", "5", EdgeType.Argument, "always")
+					.addEdge("6", "5", EdgeType.Returns, "always")
+					.addEdge("5", "4", EdgeType.Reads, "always")
+			)
+		})
+
 		const envWithoutParams = pushLocalEnvironment(initializeCleanEnvironments())
 		const envWithXParam = define(
 			{ nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '1' },

@@ -50,9 +50,10 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
 }
 
 function specialReturnFunction(info: DataflowGraphVertexFunctionCall, graph: DataflowGraph, id: NodeId) {
+	console.log('special return function', info.args)
 	guard(info.args.length <= 1, () => `expected up to one argument for return, but got ${info.args.length}`)
 	for (const arg of info.args) {
-		if (Array.isArray(arg)) {
+		if(Array.isArray(arg)) {
 			if (arg[1] !== '<value>') {
 				graph.addEdge(id, arg[1], EdgeType.Returns, 'always')
 			}

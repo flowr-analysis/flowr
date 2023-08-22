@@ -66,7 +66,11 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		finalGraph.mergeWith(processed.graph)
 
 		guard(processed.out.length > 0, () => `Argument ${JSON.stringify(arg)} has no out references, but needs one for the unnamed arg`)
-		callArgs.push(processed.out[0])
+		if(arg.name === undefined) {
+			callArgs.push(processed.out[0])
+		} else {
+			callArgs.push([arg.name.content, processed.out[0]])
+		}
 
 		// add an argument edge to the final graph
 		finalGraph.addEdge(functionRootId, processed.out[0], EdgeType.Argument, 'always')

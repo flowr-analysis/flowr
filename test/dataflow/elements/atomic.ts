@@ -330,7 +330,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 						id:   '9',
 						name: "foo",
 						args: [
-							{ name: 'x', nodeId: '4', scope: LocalScope, used: 'always' },
+							['x', { name: 'x', nodeId: '4', scope: LocalScope, used: 'always' }],
 							{ name: `${UnnamedArgumentPrefix}6`, nodeId: '6', scope: LocalScope, used: 'always' },
 							{ name: `${UnnamedArgumentPrefix}8`, nodeId: '8', scope: LocalScope, used: 'always' },
 						]

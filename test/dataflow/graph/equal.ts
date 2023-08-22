@@ -33,6 +33,7 @@ describe('Graph Equality', () => {
 				raw('b!=a', b, a, 'should differ', x => assert.isFalse(x))
 			})
 		}
-		neq('Additional vertex', new DataflowGraph(), new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' }))
+		neq('Additional root vertex', new DataflowGraph(), new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' }))
+		neq('Additional non-root vertex', new DataflowGraph(), new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' }, false))
 	})
 })

@@ -1,7 +1,11 @@
-describe("Dataflow", () => {
+describe('Dataflow', () => {
 	require('./environments/environments')
 
-	describe("Extraction", () => {
+	describe('Graph', () => {
+		require('./graph/equal')
+	})
+
+	describe('Extraction', () => {
 		require('./elements/atomic')
 		require('./elements/expression-lists')
 		describe('Functions', () => {

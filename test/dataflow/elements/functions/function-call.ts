@@ -352,7 +352,7 @@ a()()`,
 					args:        [
 						{ nodeId: '2', name: `${UnnamedArgumentPrefix}2`, scope: LocalScope, used: 'always' },
 						{ nodeId: '7', name: `${UnnamedArgumentPrefix}7`, scope: LocalScope, used: 'always' },
-						{ nodeId: '10', name: `by`, scope: LocalScope, used: 'always' },
+						['by', { nodeId: '10', name: `by`, scope: LocalScope, used: 'always' }],
 					]
 				})
 				.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2`})
@@ -505,7 +505,7 @@ a(,3)`, new DataflowGraph()
 				id:   '6',
 				name: 'a',
 				args: [
-					{ nodeId: '3', name: 'x', scope: LocalScope, used: 'always' },
+					['x', { nodeId: '3', name: 'x', scope: LocalScope, used: 'always' }],
 					{ nodeId: '5', name: `${UnnamedArgumentPrefix}5`, scope: LocalScope, used: 'always' },
 				]
 			})

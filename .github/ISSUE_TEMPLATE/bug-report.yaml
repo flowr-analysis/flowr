@@ -21,6 +21,8 @@ body:
     attributes:
       label: What version of R do you have installed?
       placeholder: ex. 4.2.3
+    validations:
+      required: true
   - type: dropdown
     id: flowr-version
     attributes:

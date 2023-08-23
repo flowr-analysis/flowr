@@ -305,8 +305,8 @@ export class DataflowGraph {
 			return false
 		}
 
-		for(const id of this.vertexInformation.keys()) {
-			if(!equalEdges(id, this.edges.get(id), other.edges.get(id))) {
+		for(const [id, edge] of this.edges.entries()) {
+			if(!equalEdges(id, edge, other.edges.get(id))) {
 				return false
 			}
 		}

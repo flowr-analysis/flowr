@@ -50,7 +50,7 @@ describe("Parse simple operations",
 					location: rangeFrom(1, 1, 1, 1),
 					operator: '?',
 					lexeme:   '?',
-					flavor:   'logical', /* TODO */
+					flavor:   'logical',
 					info:     {},
 					operand:  {
 						type:      Type.Symbol,

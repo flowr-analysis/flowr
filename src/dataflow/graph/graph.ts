@@ -21,7 +21,6 @@ import {
 } from './vertex'
 import { setEquals } from '../../util/set'
 import { dataflowLogger } from '../index'
-import { displayEnvReplacer } from '../../util/json'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>

@@ -100,7 +100,6 @@ cat(a)`)
 a <- 5
     `, ['3@a'], 'a <- 5')
 	})
-	// TODO: test for(i in 1:10) { print(i); i <- 12 }
 	describe('The classic', () => {
 		const code = `
 sum <- 0

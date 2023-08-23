@@ -18,7 +18,7 @@ export function processForLoop<OtherInfo>(
 	const vector = processDataflowFor(loop.vector, data)
 	let headEnvironments = overwriteEnvironments(vector.environments, variable.environments)
 	const headGraph= variable.graph.mergeWith(vector.graph)
-	// TODO: use attribute? TODO: use writes in vector?
+
 	const writtenVariable = variable.unknownReferences
 	for(const write of writtenVariable) {
 		headEnvironments = define({ ...write, used: 'always', definedAt: loop.info.id, kind: 'variable' }, LocalScope, headEnvironments)
@@ -42,13 +42,13 @@ export function processForLoop<OtherInfo>(
 	for(const write of writtenVariable) {
 		// TODO: do not re-join every time!
 		for(const link of [...vector.in, ...vector.unknownReferences]) {
-			nextGraph.addEdge(write.nodeId, link.nodeId, EdgeType.DefinedBy, /* TODO */ 'always', true)
+			nextGraph.addEdge(write.nodeId, link.nodeId, EdgeType.DefinedBy, 'always', true)
 		}
 
 		const name = write.name
 		const readIdsToLink = nameIdShares.get(name)
 		for(const readId of readIdsToLink) {
-			nextGraph.addEdge(readId.nodeId, write.nodeId, EdgeType.Reads, /* TODO */ 'always', true)
+			nextGraph.addEdge(readId.nodeId, write.nodeId, EdgeType.Reads, 'always', true)
 		}
 		// now, we remove the name from the id shares as they are no longer needed
 		nameIdShares.delete(name)

@@ -43,8 +43,6 @@ describe('Overwrite', () => {
 		})
 	})
 
-	// TODO: with stack fo local environments
-	// TODO: with named environments
 	describe('Local', () => {
 		it('Different variables', () => {
 			let clean = initializeCleanEnvironments()
@@ -99,8 +97,6 @@ describe('Append', () => {
 		})
 	})
 
-	// TODO: with stack fo local environments
-	// TODO: with named environments
 	describe('Local', () => {
 		it('Different variables', () => {
 			let clean = initializeCleanEnvironments()

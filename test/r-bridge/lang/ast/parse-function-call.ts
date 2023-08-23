@@ -14,7 +14,7 @@ describe("Parse function calls", withShell((shell) => {
 				type:         Type.FunctionCall,
 				flavor:       "named",
 				location:     rangeFrom(1, 1, 1, 1),
-				lexeme:       "f", // TODO: make this more sensible?
+				lexeme:       "f",
 				info:         {},
 				functionName: {
 					type:      Type.Symbol,
@@ -28,7 +28,6 @@ describe("Parse function calls", withShell((shell) => {
 			})
 		)
 	})
-	// TODO: update slice criterion resolution for arguments
 	describe("functions with arguments", () => {
 		assertAst(
 			"f(1, 2)",
@@ -38,7 +37,7 @@ describe("Parse function calls", withShell((shell) => {
 				type:         Type.FunctionCall,
 				flavor:       "named",
 				location:     rangeFrom(1, 1, 1, 1),
-				lexeme:       "f", // TODO: make this more sensible?
+				lexeme:       "f",
 				info:         {},
 				functionName: {
 					type:      Type.Symbol,
@@ -89,7 +88,7 @@ describe("Parse function calls", withShell((shell) => {
 				type:         Type.FunctionCall,
 				flavor:       "named",
 				location:     rangeFrom(1, 1, 1, 1),
-				lexeme:       "f", // TODO: make this more sensible?
+				lexeme:       "f",
 				info:         {},
 				functionName: {
 					type:      Type.Symbol,
@@ -297,7 +296,7 @@ describe("Parse function calls", withShell((shell) => {
 				type:         Type.FunctionCall,
 				flavor:       "named",
 				location:     rangeFrom(1, 1, 1, 4),
-				lexeme:       "x::f", // TODO: make this more sensible?
+				lexeme:       "x::f",
 				info:         {},
 				functionName: {
 					type:      Type.Symbol,
@@ -320,7 +319,7 @@ describe("Parse function calls", withShell((shell) => {
 				type:         Type.FunctionCall,
 				flavor:       "named",
 				location:     rangeFrom(1, 1, 1, 3),
-				lexeme:       "'f'", // TODO: make this more sensible?
+				lexeme:       "'f'",
 				info:         {},
 				functionName: {
 					type:      Type.Symbol,

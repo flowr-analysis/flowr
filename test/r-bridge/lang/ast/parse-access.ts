@@ -3,7 +3,6 @@ import { exprList, numVal } from '../../../helper/ast-builder'
 import { rangeFrom } from '../../../../src/util/range'
 import { Type } from '../../../../src/r-bridge'
 
-// TODO: quote and deparse should break references?
 describe("Parse value access", withShell(shell => {
 	describe('Single bracket', () => {
 		assertAst("Empty", shell, "a[]", exprList({

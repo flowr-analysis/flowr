@@ -46,7 +46,6 @@ export const RNumberPool: { val: RNumberValue, str: string }[] = [
 	{ str: '1e-2i', val: { num: 0.01, complexNumber: true, markedAsInt: false } }
 ]
 
-// TODO: deal with errors in case of "Hell\0o"
 export const RStringPool: { val: RStringValue, str: string }[] = [
 	// the default block
 	{ str: '""', val: { str: '', quotes: '"' } },
@@ -67,7 +66,7 @@ export const RStringPool: { val: RStringValue, str: string }[] = [
 	// embedded comments block
 	{ str: '"a#b"', val: { str: 'a#b', quotes: '"' } },
 	{ str: '"a # comment"', val: { str: 'a # comment', quotes: '"' } },
-	// the advanced escape blocks (TODO: we need them expanded in the future)
+	// the advanced escape blocks
 	{ str: '"\\n"', val: { str: '\\n', quotes: '"' } }, // newline
 	{ str: '"\\r"', val: { str: '\\r', quotes: '"' } }, // carriage return
 	{ str: '"\\t"', val: { str: '\\t', quotes: '"' } }, // horizontal tab
@@ -105,7 +104,6 @@ const canBeAUnaryOp = (op: string): boolean => {
 }
 
 
-// TODO: maybe not feed generators from the model pool? on the other side, the model is our understanding of "truth"
 export const RArithmeticBinaryOpPool: { flavor: 'arithmetic', str: string }[] =
     ArithmeticOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'arithmetic' }))
 

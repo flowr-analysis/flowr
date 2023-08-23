@@ -112,6 +112,5 @@ describe("Constant Parsing",
 				)
 			})
 		})
-		// TODO: vectors etc.
 	})
 )

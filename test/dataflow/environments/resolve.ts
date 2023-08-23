@@ -6,7 +6,6 @@ import { GlobalScope, LocalScope } from '../../../src/dataflow/environments/scop
 
 describe('Resolve', () => {
 	describe('ByName', () => {
-		// TODO: more
 		it('Locally without distracting elements', () => {
 			let env = initializeCleanEnvironments()
 			const xVar = variable('x', '_1')

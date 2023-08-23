@@ -60,7 +60,6 @@ function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequest
 	if(request.request === 'text') {
 		meta.lines.push(request.content.split('\n').map(l => l.length))
 	} else {
-		// TODO: separate between comment and non-comment lines?
 		meta.lines.push(fs.readFileSync(request.content, 'utf-8').split('\n').map(l => l.length))
 	}
 }

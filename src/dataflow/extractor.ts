@@ -49,8 +49,6 @@ export function produceDataFlowGraph<OtherInfo>(ast: DecoratedAst<OtherInfo & Pa
 	return processDataflowFor<OtherInfo>(ast.decoratedAst, { completeAst: ast, activeScope: initialScope, environments: initializeCleanEnvironments(), processors: processors as DataflowProcessors<OtherInfo & ParentInformation> })
 }
 
-// TODO: automatically load namespace exported functions etc.
-
 export function processBinaryOp<OtherInfo>(node: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	if(node.flavor === 'assignment') {
 		return processAssignment(node as RAssignmentOp<OtherInfo & ParentInformation>, data)

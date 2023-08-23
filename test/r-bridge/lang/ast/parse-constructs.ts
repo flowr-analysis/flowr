@@ -110,7 +110,6 @@ describe('Parse simple constructs', withShell(shell => {
 						const strNum = `${variant.num}`
 						assertAst(JSON.stringify(variant.str), shell, variant.str, exprList({
 							type:      Type.If,
-							// TODO: maybe merge in future?
 							location:  rangeFrom(1, 1, 1, 2),
 							lexeme:    'if',
 							info:      {},
@@ -150,7 +149,6 @@ describe('Parse simple constructs', withShell(shell => {
 								const input = `${ifThenVariant.str}${elseVariant.str}`
 								assertAst('if-then-else', shell, input, exprList({
 									type:      Type.If,
-									// TODO: maybe merge in future?
 									location:  rangeFrom(1, 1, 1, 2),
 									lexeme:    'if',
 									info:      {},
@@ -183,7 +181,6 @@ describe('Parse simple constructs', withShell(shell => {
 			}
 		})
 	})
-	// TODO: with and without braces
 	describe('loops', () => {
 		describe('for', () => {
 			assertAst('for(i in 1:10) 2', shell, 'for(i in 1:42)2', exprList({

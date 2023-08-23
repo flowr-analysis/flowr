@@ -31,7 +31,6 @@ export function processForLoop<OtherInfo>(
 	const outEnvironments = appendEnvironments(headEnvironments, body.environments)
 
 	// again within an if-then-else we consider all actives to be read
-	// TODO: deal with ...variable.in it is not really ingoing in the sense of bindings i against it, but it should be for the for-loop
 	// currently i add it at the end, but is this correct?
 	const ingoing = [...vector.in, ...makeAllMaybe(body.in, nextGraph, outEnvironments), ...vector.unknownReferences, ...makeAllMaybe(body.unknownReferences, nextGraph, outEnvironments)]
 

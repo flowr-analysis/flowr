@@ -14,7 +14,7 @@ export interface XmlParserConfig extends MergeableRecord {
 	/** the children are referenced by the given name */
 	childrenName:  string
 	/** Mapping from xml tag name to the real operation of the node */
-	tokenMap:      Record<string, string /* TODO: change this to OP enum or so */>
+	tokenMap:      Record<string, string>
 }
 
 /**

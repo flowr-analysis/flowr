@@ -83,7 +83,6 @@ describe("Assign unique Ids and Parents", withShell((shell) => {
 				})
 			)
 		})
-		// TODO: Tests others
 	})
 	describe("Collect all íds in ast", () => {
 		function assertIds(name: string, input: string, expected: Set<NodeId>, stop?: (node: RNodeWithParent) => boolean) {

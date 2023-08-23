@@ -29,7 +29,7 @@ export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentI
 	return {
 		unknownReferences: [],
 		in:                remainingInputs,
-		out:               [...makeAllMaybe(body.out, nextGraph, finalEnvironments), ...condition.out], // todo: merge etc.
+		out:               [...makeAllMaybe(body.out, nextGraph, finalEnvironments), ...condition.out],
 		graph:             nextGraph,
 		/* the body might not happen if the condition is false */
 		environments:      finalEnvironments,

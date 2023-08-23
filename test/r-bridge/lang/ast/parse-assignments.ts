@@ -57,7 +57,6 @@ describe("Parse simple assignments",
 						type:      Type.Symbol,
 						location:  rangeFrom(1, 1, 1, 3),
 						namespace: undefined,
-						// TODO: mark quoted
 						lexeme:    "'a'",
 						content:   "a",
 						info:      {}

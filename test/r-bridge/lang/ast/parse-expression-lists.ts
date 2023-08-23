@@ -6,7 +6,6 @@ import { Type } from '../../../../src/r-bridge'
 describe("Parse expression lists",
 	withShell((shell) => {
 		describe("Expression lists with newlines and braces", () => {
-			// TODO: find a better way to name these tests
 			// this is already covered by other tests, yet it is good to state it here explicitly (expr list is the default top-level token for R)
 			assertAst(`"42" (single element)`, shell,
 				`42`,
@@ -19,7 +18,6 @@ describe("Parse expression lists",
 				})
 			)
 			// the r standard does not seem to allow '\r\n' or '\n\r'
-			// TODO: split again for R treats lines differently on location compare
 			const twoLine = `42\na`
 			assertAst(`${JSON.stringify(twoLine)} (two lines)`, shell,
 				twoLine,

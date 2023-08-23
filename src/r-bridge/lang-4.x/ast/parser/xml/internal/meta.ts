@@ -62,9 +62,7 @@ export function revertTokenReplacement(tokenMap: XmlParserConfig['tokenMap'], to
 	return tokenMap[token] ?? token
 }
 
-// TODO: use NamedJsons all the time
 export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson, expectedName: string): void {
-	// TODO: allow us to configure the name?
 	const name = getTokenType(tokenMap, obj)
 	if (name !== expectedName) {
 		throw new XmlParseError(`expected name to be ${expectedName}, yet received ${name} for ${JSON.stringify(obj)}`)

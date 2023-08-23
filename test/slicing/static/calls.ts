@@ -14,7 +14,6 @@ a(i)`
 		assertSliced('Function call with constant function', shell, constFunction, ['3:1'], `i <- 4
 a <- function(x) { 1 }
 a(i)`)
-		// TODO: should we really keep that open? edge case?
 		assertSliced('Slice function definition', shell, constFunction, ['2@a'], `a <- function(x) { }`)
 		assertSliced('Slice within function', shell, constFunction, ['2:20'], `x <- 2`)
 		assertSliced('Multiple unknown calls', shell, `
@@ -74,7 +73,6 @@ a(5)`)
 x <- 2
 a()
 b()`
-		// TODO: at the moment we do not remove the second `b` in that case
 		assertSliced('Include only b-definition', shell, code, ['3@a'], `a <- b <- function() { x }
 x <- 2
 a()`)
@@ -123,7 +121,6 @@ f()`)
 	})
 	describe('Functions with nested definitions', () => {
 		describe('Simple Function pass with return', () => {
-			// TODO: limitation, does not work with <<- or anything which modifies the static resolutions at the moment
 			const code = `a <- function() { a <- 2; return(function() { 1 }) }
 b <- a()
 b()`
@@ -248,7 +245,6 @@ b <- f()`)
 f()`
 		assertSliced('Endless recursion', shell, code, ['2@f'], code)
 	})
-	// TODO: we cant slice against objects within external files etc. problems e.g. in Code NAT MC.R of Zenodo 47
 	describe('Uninteresting calls', () => {
 		const code = `
 a <- list(1,2,3,4)

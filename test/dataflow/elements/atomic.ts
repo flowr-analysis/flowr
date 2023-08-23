@@ -9,7 +9,6 @@ import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../
 import { appendEnvironments, define } from '../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../src/dataflow/environments/scopes'
-import { append } from '../../../src/statistics'
 
 describe("Atomic dataflow information", withShell((shell) => {
 	describe("uninteresting leafs", () => {

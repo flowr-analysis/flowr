@@ -87,7 +87,6 @@ describe('RShell sessions', function() {
 		})
 
 		// multiple packages to avoid the chance of them being preinstalled
-		// TODO: use withr to not install on host system and to allow this to work even without force?
 		installationTestSpec()
 	})
 	describe('autoload on package install', () => {

@@ -164,7 +164,6 @@ function addAllFrom(current: RNodeWithParent, collected: Set<NodeId>) {
 	}
 }
 
-// TODO: just add edge control flow edges to the dataflow graph c: this is horrible!
 function addControlDependencies(source: NodeId, ast: DecoratedAstMap): Set<NodeId> {
 	const start = ast.get(source)
 

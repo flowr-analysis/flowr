@@ -39,7 +39,6 @@ export function processForLoop<OtherInfo>(
 	const nameIdShares = produceNameSharedIdMap(ingoing)
 
 	for(const write of writtenVariable) {
-		// TODO: do not re-join every time!
 		for(const link of [...vector.in, ...vector.unknownReferences]) {
 			nextGraph.addEdge(write.nodeId, link.nodeId, EdgeType.DefinedBy, 'always', true)
 		}

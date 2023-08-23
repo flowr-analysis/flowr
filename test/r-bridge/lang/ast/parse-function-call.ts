@@ -359,6 +359,5 @@ describe("Parse function calls", withShell((shell) => {
 			})
 		)
 	})
-	// TODO: identify the correct namespace otherwise (statically this is surely limited :c )
 })
 )

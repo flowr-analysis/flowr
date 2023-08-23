@@ -28,8 +28,6 @@ describe("The Benchmark Slicer", () => {
 			slicer.slice('1@a')
 			const { stats, statInfo } = await retrieveStatsSafe(slicer, request)
 
-			// TODO: test more?
-
 			assert.deepStrictEqual(stats.input, {
 				numberOfLines:                   1,
 				numberOfCharacters:              6,

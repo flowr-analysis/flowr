@@ -79,11 +79,8 @@ describe("Lists with if-then constructs", withShell(shell => {
 						.addVertex( { tag: 'use', id: "10", name: "x", environment: appendEnvironments(whenEnvironment, otherwiseEnvironment) })
 						.addEdge("10", "1", EdgeType.Reads, "maybe")
 						.addEdge("10", "5", EdgeType.Reads, "maybe")
-					// TODO: .addEdge('4', '1', 'same-def-def', 'always')
 				)
 			})
 		})
 	}
-	// TODO: others like same-read-read?
-	// TODO: write-write if
 }))

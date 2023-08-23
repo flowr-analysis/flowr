@@ -55,14 +55,12 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
 		`try(flowr_parsed <- parse(${request.request} = ${JSON.stringify(request.content)}, keep.source = ${ts2r(request.attachSourceInformation)}${suffix}), silent=FALSE)`,
 		`try(flowr_output <- xmlparsedata::xml_parse_data(flowr_parsed, includeText = ${ts2r(request.attachSourceInformation)}, pretty = FALSE), silent=FALSE)`
 	)
-	// TODO: let commands produce output by cat wrapper/shell.command creator to abstract from this?
 	const xml = await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)
 	const output = xml.join(shell.options.eol)
 	guard(output !== ERR_MARKER, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
 	return output
 }
 
-// TODO: type ast etc
 /**
  * Uses {@link retrieveXmlFromRCode} and returns the nicely formatted object-AST.
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.

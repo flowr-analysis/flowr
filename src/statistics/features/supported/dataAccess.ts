@@ -17,7 +17,6 @@ export interface DataAccess extends FeatureInfo {
 	byName:                      number
 	bySlot:                      number
 }
-// TODO: single bracket comma access
 
 const initialDataAccessInfo = (): DataAccess => ({
 	singleBracket:               0,
@@ -44,7 +43,6 @@ const chainedOrNestedAccess: Query = xpath.parse(`
     *[self::OP-LEFT-BRACKET or self::LBB or self::OP-DOLLAR or self::OP-AT][1]
 `)
 
-// TODO: merge with if queries etc?
 const constantAccess: Query = xpath.parse(`
   ./NUM_CONST
   |

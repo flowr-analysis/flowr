@@ -8,8 +8,6 @@ import {
 import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../../src/dataflow/environments/scopes'
 
-// TODO: <- in parameters
-// TODO: allow to access environments in the end
 describe('Function Definition', withShell(shell => {
 	describe('Only functions', () => {
 		assertDataflow(`unknown read in function`, shell, `function() { x }`,
@@ -536,7 +534,6 @@ describe('Function Definition', withShell(shell => {
 				}, false)
 				.addEdge("5", "3", EdgeType.Reads, "always")
 		)
-		// TODO: other tests for scoping within parameters
 	})
 	describe('Access dot-dot-dot', () => {
 		const envWithParam = define(
@@ -571,7 +568,6 @@ describe('Function Definition', withShell(shell => {
 				}, false)
 				.addEdge("2", "0", EdgeType.Reads, "always")
 		)
-		// TODO: other tests for scoping within parameters
 	})
 	describe('Using named arguments', () => {
 		const envWithA = define(
@@ -736,7 +732,6 @@ describe('Function Definition', withShell(shell => {
 			LocalScope,
 			envWithG
 		)
-		// TODO: merge all environments for each exit point for final environment!
 		const finalEnv = define(
 			{ nodeId: '15', scope: LocalScope, name: 'y', used: 'always', kind: 'variable', definedAt: '17' },
 			LocalScope,

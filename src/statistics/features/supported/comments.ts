@@ -15,7 +15,6 @@ export interface CommentInfo extends FeatureInfo {
 	exportMethod:      number
 	exportS3Method:    number
 	exportPattern:     number
-	// TODO: deal with comma extras etc.?
 	useDynLib:         number
 }
 

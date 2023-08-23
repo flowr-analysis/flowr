@@ -125,7 +125,6 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
 		const ast = await retrieveAst(shell, input)
 		const decoratedAst = decorateAst(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
 
-		// TODO: use both info
 		const { graph } = produceDataFlowGraph(decoratedAst, LocalScope)
 
 		// with the try catch the diff graph is not calculated if everything is fine

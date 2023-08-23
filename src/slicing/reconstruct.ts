@@ -55,7 +55,6 @@ function indentBy(lines: Code, indent: number): Code {
 	return lines.map(({ line, indent: i }) => ({ line, indent: i + indent }))
 }
 
-// TODO: pretty print in down
 function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, expressions: Code[], configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, exprList)) {
 		return plain(getLexeme(exprList))
@@ -144,8 +143,6 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	}
 }
 
-// TODO: make sure repeat gets auto-selected
-// TODO: outsource split
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, configuration: ReconstructionConfiguration): Code {
 	if (isSelected(configuration, loop)) {
 		return plain(getLexeme(loop))
@@ -191,19 +188,16 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	}
 	if(otherwise.length === 0 && when.length === 0) {
 		return [
-			// TODO: recurse into condition?
 			{ line: `if(${getLexeme(ifThenElse.condition)}) { }`, indent: 0 }
 		]
 	} else if(otherwise.length === 0) {
 		return [
-			// TODO: recurse into condition?
 			{ line: `if(${getLexeme(ifThenElse.condition)}) {`, indent: 0 },
 			...indentBy(removeExpressionListWrap(when), 1),
 			{ line: '}', indent: 0 }
 		]
 	} else if(when.length === 0) {
 		return [
-			// TODO: recurse into condition?
 			{ line: `if(${getLexeme(ifThenElse.condition)}) { } else {`, indent: 0 },
 			...indentBy(removeExpressionListWrap(otherwise), 1),
 			{ line: '}', indent: 0 }
@@ -263,7 +257,7 @@ function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code,
 	if (isSelected(configuration, node)) {
 		return plain(getLexeme(node))
 	}
-	// TODO: improve
+
 	if (accessed.length === 0) {
 		if(typeof access === 'string') {
 			return []
@@ -341,10 +335,7 @@ function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: R
 
 	if ((lhs === undefined || lhs.length === 0) && (rhs === undefined || rhs.length === 0)) {
 		return []
-	} /* TODO: else if (lhs === undefined || lhs.length === 0) {
-    return rhs as Code
-  } */
-
+	}
 	// else if (rhs === undefined || rhs.length === 0) {
 	// if rhs is undefined we still  have to keep both now, but reconstruct manually :/
 	if(lhs !== undefined && lhs.length > 0) {
@@ -390,7 +381,6 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 type AutoSelectPredicate = (node: RNode<ParentInformation>) => boolean
 
 
-// TODO: restrict loaded libraries in some way?
 interface ReconstructionConfiguration extends MergeableRecord {
 	selection:    Selection
 	/** if true, this will force the ast part to be reconstructed, this can be used, for example, to force include `library` statements */
@@ -424,7 +414,7 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
 		foldArithmeticOp: reconstructBinaryOp,
 		foldComparisonOp: reconstructBinaryOp,
 		foldAssignment:   reconstructBinaryOp,
-		foldPipe:         reconstructBinaryOp, /* TODO: check */
+		foldPipe:         reconstructBinaryOp,
 		foldModelFormula: reconstructBinaryOp
 	},
 	unaryOp: {

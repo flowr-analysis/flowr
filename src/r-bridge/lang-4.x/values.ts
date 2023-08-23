@@ -16,7 +16,6 @@ export function ts2r<T>(value: T): string {
 	} else if (typeof value === 'string') {
 		return `"${value}"`
 	} else if (typeof value === 'number') {
-		// TODO: deal with infinity and NaN
 		return value.toString()
 	} else if (typeof value === 'boolean') {
 		return value ? 'TRUE' : 'FALSE'
@@ -30,7 +29,7 @@ export function ts2r<T>(value: T): string {
 			.join(', ')
 		return `list(${obj})`
 	}
-	// TODO: bigint, function, ...
+
 	throw new ValueConversionError(`cannot convert value of type ${typeof value} to R code`)
 }
 
@@ -52,7 +51,6 @@ export function boolean2ts(value: string): boolean {
 
 export const RNumHexFloatRegex = /^\s*0x(?<intPart>[0-9a-f]+)?(\.(?<floatPart>[0-9a-f]*))?p(?<exp>[-+]?\d+)\s*$/
 
-// TODO: deal with NA etc!
 function getDecimalPlacesWithRadix(floatPart: string, radix: number): number {
 	return [...floatPart].reduce((acc, c, idx) => acc + parseInt(c, radix) / (radix ** (idx + 1)), 0)
 }
@@ -148,6 +146,5 @@ export function isNA(value: string): value is (typeof RNa) {
 }
 
 export function parseCSV(lines: string[]): string[][] {
-	// TODO: make this scalable?
 	return parse(lines.join('\n'), { skipEmptyLines: true }) as string[][]
 }

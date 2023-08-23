@@ -36,6 +36,11 @@
          }
       ],
       "no-mixed-spaces-and-tabs": ["error", "smart-tabs"],
+      // refer to https://github.com/Code-Inspect/flowr/issues/238 for more information: use issues!
+      "no-warning-comments": ["error", {
+         "terms": ["todo", "fixme", "xxx"],
+         "location": "anywhere"
+      }],
       "@typescript-eslint/non-nullable-type-assertion-style": "off",
       "@typescript-eslint/no-unsafe-enum-comparison": "off",
       "@typescript-eslint/key-spacing": [

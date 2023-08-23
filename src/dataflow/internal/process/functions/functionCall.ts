@@ -1,19 +1,11 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import {
-	define,
-	overwriteEnvironments,
-	resolveByName
-} from '../../../environments'
+import { define, overwriteEnvironments, resolveByName } from '../../../environments'
 import { NodeId, ParentInformation, RFunctionCall, Type } from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
-import {
-	DataflowGraph,
-	dataflowLogger,
-	FunctionArgument,
-	LocalScope
-} from '../../../index'
+import { DataflowGraph, dataflowLogger, EdgeType, FunctionArgument } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
+import { LocalScope } from '../../../environments/scopes'
 // TODO: support partial matches: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Argument-matching
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
@@ -21,7 +13,7 @@ export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 
 function getLastNodeInGraph<OtherInfo>(functionName: DataflowInformation<OtherInfo & ParentInformation>) {
 	let functionNameId: NodeId | undefined
-	for (const [nodeId] of functionName.graph.nodes()) {
+	for (const [nodeId] of functionName.graph.vertices(false)) {
 		functionNameId = nodeId
 	}
 	return functionNameId
@@ -52,7 +44,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`
 		dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`)
 		// we know, that it calls the toplevel:
-		finalGraph.addEdge(functionRootId, functionCall.calledFunction.info.id, 'calls', 'always')
+		finalGraph.addEdge(functionRootId, functionCall.calledFunction.info.id, EdgeType.Calls, 'always')
 		// keep the defined function
 		finalGraph.mergeWith(functionName.graph)
 	}
@@ -74,10 +66,14 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		finalGraph.mergeWith(processed.graph)
 
 		guard(processed.out.length > 0, () => `Argument ${JSON.stringify(arg)} has no out references, but needs one for the unnamed arg`)
-		callArgs.push(processed.out[0])
+		if(arg.name === undefined) {
+			callArgs.push(processed.out[0])
+		} else {
+			callArgs.push([arg.name.content, processed.out[0]])
+		}
 
 		// add an argument edge to the final graph
-		finalGraph.addEdge(functionRootId, processed.out[0], 'argument', 'always')
+		finalGraph.addEdge(functionRootId, processed.out[0], EdgeType.Argument, 'always')
 		// resolve reads within argument
 		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
 			const tryToResolve = resolveByName(ingoing.name, LocalScope, argEnv)
@@ -86,7 +82,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 				remainingReadInArgs.push(ingoing)
 			} else {
 				for(const resolved of tryToResolve) {
-					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId,'reads', 'always')
+					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId,EdgeType.Reads, 'always')
 				}
 			}
 		}
@@ -105,7 +101,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 
 	guard(functionNameId !== undefined, () => `Function call name id not found for ${JSON.stringify(functionCall)}`)
 
-	finalGraph.addNode({
+	finalGraph.addVertex({
 		tag:         'function-call',
 		id:          functionRootId,
 		name:        functionCallName,

@@ -1,7 +1,7 @@
 import { collectAllIds, NodeId, ParentInformation, RAssignmentOp, RNode, Type } from '../../../../r-bridge'
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { GlobalScope, LocalScope } from '../../../graph'
+import { EdgeType } from '../../../graph'
 import { guard } from '../../../../util/assert'
 import {
 	define,
@@ -11,6 +11,7 @@ import {
 } from '../../../environments'
 import { log } from '../../../../util/log'
 import { dataflowLogger } from '../../../index'
+import { GlobalScope, LocalScope } from '../../../environments/scopes'
 
 export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
 	dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)
@@ -25,16 +26,16 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 	const isFunction = isFunctionSide.type === Type.FunctionDefinition
 
 	for (const write of writeTargets) {
-		nextGraph.setDefinitionOfNode(write)
+		nextGraph.setDefinitionOfVertex(write)
 		// TODO: this can be improved easily
 
 		if (isFunction) {
-			nextGraph.addEdge(write, isFunctionSide.info.id, 'defined-by', 'always', true)
+			nextGraph.addEdge(write, isFunctionSide.info.id, EdgeType.DefinedBy, 'always', true)
 		} else {
 			const impactReadTargets = determineImpactOfSource(swap ? op.lhs : op.rhs, readTargets)
 
 			for (const read of impactReadTargets) {
-				nextGraph.addEdge(write, read, 'defined-by', undefined, true)
+				nextGraph.addEdge(write, read, EdgeType.DefinedBy, undefined, true)
 			}
 		}
 	}

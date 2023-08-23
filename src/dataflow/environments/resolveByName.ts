@@ -1,6 +1,6 @@
-import { REnvironmentInformation, Identifier, IdentifierDefinition, IEnvironment } from './environment'
-import { DataflowScopeName, LocalScope } from '../graph'
+import { Identifier, IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
 import { dataflowLogger } from '../index'
+import { DataflowScopeName, LocalScope } from './scopes'
 
 // TODO: new log for resolution?
 

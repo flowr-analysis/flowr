@@ -13,8 +13,8 @@ import {
 } from '../../environments'
 import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
-import { DataflowGraph } from '../../graph'
-import { dataflowLogger } from '../../index'
+import { DataflowGraph, DataflowGraphVertexInfo } from '../../graph'
+import { dataflowLogger, EdgeType } from '../../index'
 import { guard } from '../../../util/assert'
 
 
@@ -41,7 +41,7 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 
 	for (const target of probableTarget) {
 		// we can stick with maybe even if readId.attribute is always
-		nextGraph.addEdge(read, target, 'reads', undefined, true)
+		nextGraph.addEdge(read, target, EdgeType.Reads, undefined, true)
 	}
 }
 
@@ -66,10 +66,42 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
 		if (resolved !== undefined) {
 			// write-write
 			for (const target of resolved) {
-				nextGraph.addEdge(target, writeTarget, 'same-def-def', undefined, true)
+				nextGraph.addEdge(target, writeTarget, EdgeType.SameDefDef, undefined, true)
 			}
 		}
 	}
+}
+
+function updateSideEffectsForCalledFunctions(calledEnvs: {
+	functionCall: NodeId;
+	called:       DataflowGraphVertexInfo[]
+}[], environments: REnvironmentInformation, nextGraph: DataflowGraph) {
+	for (const { functionCall, called } of calledEnvs) {
+		for (const calledFn of called) {
+			guard(calledFn.tag === 'function-definition', 'called function must call a function definition')
+			// only merge the environments they have in common
+			let environment = calledFn.environment
+			while (environment.level > environments.level) {
+				environment = popLocalEnvironment(environment)
+			}
+			// update alle definitions to be defined at this function call
+			let current: IEnvironment | undefined = environment.current
+			while (current !== undefined) {
+				for (const definitions of current.memory.values()) {
+					for (const def of definitions) {
+						// TODO: we should find a better and cleaner way to identify if something has been overwritten
+						if (def.kind !== 'built-in-function') {
+							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall, def.used)
+						}
+					}
+				}
+				current = current.parent
+			}
+			// we update all definitions to be linked with teh corresponding function call
+			environments = overwriteEnvironments(environments, environment)
+		}
+	}
+	return environments
 }
 
 export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
@@ -117,35 +149,15 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		dataflowLogger.trace(`expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`)
 
 		processNextExpression(processed, data, environments, listEnvironments, remainingRead, nextGraph)
-		const functionCallIds = [...processed.graph.nodes(true)]
+		const functionCallIds = [...processed.graph.vertices(true)]
 			.filter(([_,info]) => info.tag === 'function-call')
+
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, functionCallIds, processed.graph)
 
 		environments = overwriteEnvironments(environments, processed.environments)
 
 		// if the called function has global redefinitions, we have to keep them within our environment
-		for(const { functionCall, called } of calledEnvs) {
-			for(const calledFn of called) {
-				guard(calledFn.tag === 'function-definition', 'called function must call a function definition')
-				// only merge the environments they have in common
-				let environment = calledFn.environment
-				while (environment.level > environments.level) {
-					environment = popLocalEnvironment(environment)
-				}
-				// update alle definitions to be defined at this function call
-				let current: IEnvironment | undefined = environment.current
-				while(current !== undefined) {
-					for(const definitions of current.memory.values()) {
-						for(const def of definitions) {
-							nextGraph.addEdge(def.nodeId, functionCall, 'side-effect-on-call', def.used)
-						}
-					}
-					current = current.parent
-				}
-				// we update all definitions to be linked with teh corresponding function call
-				environments = overwriteEnvironments(environments, environment)
-			}
-		}
+		environments = updateSideEffectsForCalledFunctions(calledEnvs, environments, nextGraph)
 
 		for(const { nodeId } of processed.out) {
 			listEnvironments.add(nodeId)

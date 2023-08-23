@@ -4,9 +4,10 @@
  * @module
  */
 import { NodeId } from '../../r-bridge'
-import { DataflowGraph, DataflowGraphEdgeAttribute, DataflowScopeName, GlobalScope, LocalScope } from '../graph'
+import { DataflowGraph, DataflowGraphEdgeAttribute } from '../graph'
 import { dataflowLogger } from '../index'
 import { resolveByName } from './resolveByName'
+import { DataflowScopeName, GlobalScope, LocalScope } from './scopes'
 
 /** identifiers are branded to avoid confusion with other string-like types */
 export type Identifier = string & { __brand?: 'identifier' }
@@ -61,7 +62,7 @@ export function makeAllMaybe(references: IdentifierReference[] | undefined, grap
 		return []
 	}
 	return references.map(ref => {
-		const node = graph.get(ref.nodeId)
+		const node = graph.get(ref.nodeId, true)
 		const definitions = resolveByName(ref.name, LocalScope, environments)
 		for(const definition of definitions ?? []) {
 			if(definition.kind !== 'built-in-function') {
@@ -168,7 +169,7 @@ export function environmentEqual(a: IEnvironment | undefined, b: IEnvironment | 
 		return a === b
 	}
 	if(a.name !== b.name || a.memory.size !== b.memory.size) {
-		dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)} due to different names or sizes (${JSON.stringify([...a.memory.entries()])} vs. ${JSON.stringify([...b.memory.entries()])})`)
+		dataflowLogger.warn(`Different environments: ${a.name}!=${b.name} or ${a.memory.size}!=${b.memory.size}; ${JSON.stringify(a)} and ${JSON.stringify(b)} due to different names or sizes (${JSON.stringify([...a.memory.entries()])} vs. ${JSON.stringify([...b.memory.entries()])})`)
 		return false
 	}
 	for(const [key, value] of a.memory) {

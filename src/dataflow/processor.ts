@@ -1,14 +1,13 @@
 /**
  * Based on a two-way fold, this processor will automatically supply scope information
  */
-import { DataflowScopeName } from './graph'
 import {
 	DecoratedAst,
 	ParentInformation, RNode,
 	RNodeWithParent
 } from '../r-bridge'
 import { DataflowInformation } from './internal/info'
-import { REnvironmentInformation } from './environments'
+import { DataflowScopeName, REnvironmentInformation } from './environments'
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	/**

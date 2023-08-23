@@ -1,9 +1,10 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { define, IdentifierDefinition } from '../../../environments'
-import { LocalScope } from '../../../graph'
 import { ParentInformation, RParameter, Type } from '../../../../r-bridge'
 import { log } from '../../../../util/log'
+import { EdgeType } from '../../../graph'
+import { LocalScope } from '../../../environments/scopes'
 
 export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
 	const name = processDataflowFor(parameter.name, data)
@@ -21,16 +22,16 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 	let environments = name.environments
 	for(const writtenNode of writtenNodes) {
 		log.trace(`parameter ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' no default value'}`)
-		graph.setDefinitionOfNode(writtenNode)
+		graph.setDefinitionOfVertex(writtenNode)
 		environments = define(writtenNode, LocalScope, environments)
 
 		if(defaultValue !== undefined) {
 			if(parameter.defaultValue?.type === Type.FunctionDefinition) {
-				graph.addEdge(writtenNode, parameter.defaultValue.info.id, 'defined-by', 'maybe' /* default arguments can be overridden! */)
+				graph.addEdge(writtenNode, parameter.defaultValue.info.id, EdgeType.DefinedBy, 'maybe' /* default arguments can be overridden! */)
 			} else {
 				const definedBy = [...defaultValue.in, ...defaultValue.unknownReferences]
 				for (const node of definedBy) {
-					graph.addEdge(writtenNode, node, 'defined-by', 'maybe' /* default arguments can be overridden! */)
+					graph.addEdge(writtenNode, node, EdgeType.DefinedBy, 'maybe' /* default arguments can be overridden! */)
 				}
 			}
 		}

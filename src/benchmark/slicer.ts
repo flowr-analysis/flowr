@@ -131,17 +131,14 @@ export class BenchmarkSlicer {
 		const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.session)
 
 		// collect dataflow graph size
-		const nodes = [...this.dataflow.graph.nodes(true)]
+		const vertices = [...this.dataflow.graph.vertices(true)]
 		let numberOfEdges = 0
 		let numberOfCalls = 0
 		let numberOfDefinitions = 0
 
-		for(const [n, info, graph] of nodes) {
-			const nodeInGraph = graph.get(n, true)
-			if(nodeInGraph === undefined) {
-				continue
-			}
-			numberOfEdges += nodeInGraph[1].length
+		for(const [n, info] of vertices) {
+			const outgoingEdges = this.dataflow.graph.outgoingEdges(n)
+			numberOfEdges += outgoingEdges?.size ?? 0
 			if(info.tag === 'function-call') {
 				numberOfCalls++
 			} else if(info.tag === 'function-definition') {
@@ -161,7 +158,7 @@ export class BenchmarkSlicer {
 				numberOfNormalizedTokens:        [...collectAllIds(this.decoratedAst.decoratedAst)].length,
 			},
 			dataflow: {
-				numberOfNodes:               [...this.dataflow.graph.nodes(true)].length,
+				numberOfNodes:               [...this.dataflow.graph.vertices(true)].length,
 				numberOfEdges:               numberOfEdges,
 				numberOfCalls:               numberOfCalls,
 				numberOfFunctionDefinitions: numberOfDefinitions
@@ -220,7 +217,7 @@ export class BenchmarkSlicer {
 			)
 		)
 		// if it is not in the dataflow graph it was kept to be safe and should not count to the included nodes
-		stats.numberOfDataflowNodesSliced = [...slicedOutput.result].filter(id => this.dataflow?.graph.hasNode(id)).length
+		stats.numberOfDataflowNodesSliced = [...slicedOutput.result].filter(id => this.dataflow?.graph.hasNode(id, false)).length
 		stats.timesHitThreshold = slicedOutput.timesHitThreshold
 
 		stats.reconstructedCode = measurements.measure(

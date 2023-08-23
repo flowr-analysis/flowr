@@ -1,0 +1,53 @@
+name: Bug Report
+description: File a bug report
+title: "[Bug]: "
+labels: ["bug"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to fill out this bug report!
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Also tell us, what did you expect to happen?
+      placeholder: Tell us what you see!
+      value: "A bug happened!"
+    validations:
+      required: true
+  - type: input
+    id: r-version
+    attributes:
+      label: What version of R do you have installed?
+      placeholder: ex. 4.2.3
+  - type: dropdown
+    id: flowr-version
+    attributes:
+      label: What version of flowR did you use?
+      description: If you used a deveploment version, please select the appropriate entry and specify the commit hash above.
+      options:
+        - 1.0.0 (Master's Thesis)
+        - Development Version
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: Related input code
+      description: If applicable, please copy and paste the input code here, best as a a [MWE](https://stackoverflow.com/help/minimal-reproducible-example).
+      render: R
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      render: Shell
+  - type: checkboxes
+    id: urgent
+    attributes:
+      label: Meta Information
+      options:
+        - label: The Issue is Urgent
+          required: true

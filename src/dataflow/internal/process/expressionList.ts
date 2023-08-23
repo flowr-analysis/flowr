@@ -13,7 +13,7 @@ import {
 } from '../../environments'
 import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
-import { DataflowGraph } from '../../graph'
+import { DataflowGraph, DataflowGraphVertexInfo } from '../../graph'
 import { dataflowLogger, EdgeType } from '../../index'
 import { guard } from '../../../util/assert'
 
@@ -72,6 +72,38 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
 	}
 }
 
+function updateSideEffectsForCalledFunctions(calledEnvs: {
+	functionCall: NodeId;
+	called:       DataflowGraphVertexInfo[]
+}[], environments: REnvironmentInformation, nextGraph: DataflowGraph) {
+	for (const { functionCall, called } of calledEnvs) {
+		for (const calledFn of called) {
+			guard(calledFn.tag === 'function-definition', 'called function must call a function definition')
+			// only merge the environments they have in common
+			let environment = calledFn.environment
+			while (environment.level > environments.level) {
+				environment = popLocalEnvironment(environment)
+			}
+			// update alle definitions to be defined at this function call
+			let current: IEnvironment | undefined = environment.current
+			while (current !== undefined) {
+				for (const definitions of current.memory.values()) {
+					for (const def of definitions) {
+						// TODO: we should find a better and cleaner way to identify if something has been overwritten
+						if (def.kind !== 'built-in-function') {
+							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall, def.used)
+						}
+					}
+				}
+				current = current.parent
+			}
+			// we update all definitions to be linked with teh corresponding function call
+			environments = overwriteEnvironments(environments, environment)
+		}
+	}
+	return environments
+}
+
 export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
 	const expressions = exprList.children
 	dataflowLogger.trace(`processing expression list with ${expressions.length} expressions`)
@@ -125,31 +157,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		environments = overwriteEnvironments(environments, processed.environments)
 
 		// if the called function has global redefinitions, we have to keep them within our environment
-		for(const { functionCall, called } of calledEnvs) {
-			for(const calledFn of called) {
-				guard(calledFn.tag === 'function-definition', 'called function must call a function definition')
-				// only merge the environments they have in common
-				let environment = calledFn.environment
-				while (environment.level > environments.level) {
-					environment = popLocalEnvironment(environment)
-				}
-				// update alle definitions to be defined at this function call
-				let current: IEnvironment | undefined = environment.current
-				while(current !== undefined) {
-					for(const definitions of current.memory.values()) {
-						for(const def of definitions) {
-							// TODO: we should find a better and cleaner way to identify if something has been overwritten
-							if(def.kind !== 'built-in-function') {
-								nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall, def.used)
-							}
-						}
-					}
-					current = current.parent
-				}
-				// we update all definitions to be linked with teh corresponding function call
-				environments = overwriteEnvironments(environments, environment)
-			}
-		}
+		environments = updateSideEffectsForCalledFunctions(calledEnvs, environments, nextGraph)
 
 		for(const { nodeId } of processed.out) {
 			listEnvironments.add(nodeId)

@@ -21,6 +21,7 @@ import {
 } from './vertex'
 import { setEquals } from '../../util/set'
 import { dataflowLogger } from '../index'
+import { displayEnvReplacer } from '../../util/json'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
@@ -302,6 +303,13 @@ export class DataflowGraph {
 		}
 
 		if(!equalVertices(this.vertexInformation, other.vertexInformation)) {
+			return false
+		}
+
+		if(this.edges.size !== other.edges.size) {
+			dataflowLogger.debug(`different numbers of vertices with edges: ${this.edges.size} vs ${other.edges.size}`)
+			dataflowLogger.debug(`this: ${JSON.stringify([...this.edges.entries()], displayEnvReplacer, 2)}`)
+			dataflowLogger.debug(`other: ${JSON.stringify([...other.edges.entries()], displayEnvReplacer, 2)}`)
 			return false
 		}
 

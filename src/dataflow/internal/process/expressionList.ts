@@ -119,6 +119,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		processNextExpression(processed, data, environments, listEnvironments, remainingRead, nextGraph)
 		const functionCallIds = [...processed.graph.vertices(true)]
 			.filter(([_,info]) => info.tag === 'function-call')
+
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, functionCallIds, processed.graph)
 
 		environments = overwriteEnvironments(environments, processed.environments)
@@ -137,7 +138,10 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 				while(current !== undefined) {
 					for(const definitions of current.memory.values()) {
 						for(const def of definitions) {
-							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall, def.used)
+							// TODO: we should find a better and cleaner way to identify if something has been overwritten
+							if(def.kind !== 'built-in-function') {
+								nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall, def.used)
+							}
 						}
 					}
 					current = current.parent

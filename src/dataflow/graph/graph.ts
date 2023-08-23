@@ -308,8 +308,6 @@ export class DataflowGraph {
 
 		if(this.edges.size !== other.edges.size) {
 			dataflowLogger.debug(`different numbers of vertices with edges: ${this.edges.size} vs ${other.edges.size}`)
-			dataflowLogger.debug(`this: ${JSON.stringify([...this.edges.entries()], displayEnvReplacer, 2)}`)
-			dataflowLogger.debug(`other: ${JSON.stringify([...other.edges.entries()], displayEnvReplacer, 2)}`)
 			return false
 		}
 

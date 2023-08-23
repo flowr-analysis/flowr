@@ -21,7 +21,7 @@ describe('Graph Equality', () => {
 		})
 	}
 
-	describe('positive', () => {
+	describe('Positive', () => {
 		const eq = (name: string, a: DataflowGraph, b: DataflowGraph) => {
 			raw(name, a, b, 'should be equal', x => assert.isTrue(x))
 		}
@@ -29,12 +29,29 @@ describe('Graph Equality', () => {
 		eq('Empty graphs', new DataflowGraph(), new DataflowGraph())
 		eq('Same vertex', new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' }), new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' }))
 	})
-	describe('negative', () => {
+	describe('Negative', () => {
 		const neq = (name: string, a: DataflowGraph, b: DataflowGraph) => {
 			raw(name, a, b, 'should differ', x => assert.isFalse(x))
 		}
-		neq('Additional root vertex', new DataflowGraph(), new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' }))
-		neq('Additional non-root vertex', new DataflowGraph(), new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' }, false))
-		neq('Additional edge', new DataflowGraph(), new DataflowGraph().addEdge('0', '1', EdgeType.Reads, 'always'))
+		describe('More elements', () => {
+			neq('Additional root vertex', new DataflowGraph(), new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' }))
+			neq('Additional non-root vertex', new DataflowGraph(), new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' }, false))
+			neq('Additional edge', new DataflowGraph(), new DataflowGraph().addEdge('0', '1', EdgeType.Reads, 'always'))
+		})
+		describe('Different elements', () => {
+			describe('Different vertices', () => {
+				const rhs = new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' })
+				neq('Id', new DataflowGraph().addVertex({ id: '1', name: 'x', tag: 'use' }), rhs)
+				neq('Name', new DataflowGraph().addVertex({ id: '0', name: 'y', tag: 'use' }), rhs)
+				neq('Tag', new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'exit-point' }), rhs)
+			})
+			describe('Different edges', () => {
+				const rhs = new DataflowGraph().addEdge('0', '1', EdgeType.Reads, 'always')
+				neq('Source Id', new DataflowGraph().addEdge('2', '1', EdgeType.Reads, 'always'), rhs)
+				neq('Target Id', new DataflowGraph().addEdge('0', '2', EdgeType.Reads, 'always'), rhs)
+				neq('Type', new DataflowGraph().addEdge('0', '1', EdgeType.Calls, 'always'), rhs)
+				neq('Attribute', new DataflowGraph().addEdge('0', '1', EdgeType.Reads, 'maybe'), rhs)
+			})
+		})
 	})
 })

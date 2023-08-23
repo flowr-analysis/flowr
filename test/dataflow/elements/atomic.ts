@@ -6,9 +6,10 @@
 import { assertDataflow, withShell } from '../../helper/shell'
 import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../helper/provider'
-import { define } from '../../../src/dataflow/environments'
+import { appendEnvironments, define } from '../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../src/dataflow/environments/scopes'
+import { append } from '../../../src/statistics'
 
 describe("Atomic dataflow information", withShell((shell) => {
 	describe("uninteresting leafs", () => {
@@ -458,6 +459,28 @@ describe("Atomic dataflow information", withShell((shell) => {
 				})
 			})
 		}
+	})
+	describe("inline non-strict boolean operations", () => {
+		const environmentWithY = define(
+			{ name: 'y', nodeId: '0', kind: 'variable', definedAt: '2', scope: LocalScope, used: 'always' },
+			LocalScope,
+			initializeCleanEnvironments()
+		)
+		const environmentWithOtherY = define(
+			{ name: 'y', nodeId: '4', kind: 'variable', definedAt: '6', scope: LocalScope, used: 'always' },
+			LocalScope,
+			initializeCleanEnvironments()
+		)
+		assertDataflow(`define call with multiple args should only be defined by the call-return`, shell, `y <- 15; x && (y <- 13); y`,
+			new DataflowGraph()
+				.addVertex({ id: '0', tag: 'variable-definition', name: 'y', scope: LocalScope })
+				.addVertex({ id: '4', tag: 'variable-definition', name: 'y', scope: LocalScope, environment: environmentWithY })
+				.addVertex({ id: '3', tag: 'use', name: 'x', scope: LocalScope, environment: environmentWithY })
+				.addVertex({ id: '8', tag: 'use', name: 'y', scope: LocalScope, environment: appendEnvironments(environmentWithY, environmentWithOtherY) })
+				.addEdge('8', '0', EdgeType.Reads, 'always')
+				.addEdge('8', '4', EdgeType.Reads, 'always')
+				.addEdge('0', '4', EdgeType.SameDefDef, 'always')
+		)
 	})
 
 	describe('loops', () => {

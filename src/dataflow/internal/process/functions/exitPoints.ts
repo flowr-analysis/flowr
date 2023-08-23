@@ -8,7 +8,6 @@ import {
 } from '../../../../r-bridge'
 import { assertUnreachable } from '../../../../util/assert'
 
-// TODO: track next/break and hold after return in expr list
 interface ExitPointsInformation {
 	knownIds:     NodeId[]
 	potentialIds: NodeId[]

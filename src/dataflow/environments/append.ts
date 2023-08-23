@@ -33,7 +33,6 @@ function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironme
 }
 
 
-// TODO if we have something like x && (y <- 13) we still have to track the y assignment as maybe... or?
 /**
  * Adds all writes of `next` to `base` (i.e., the operations of `next` *might* happen).
  */

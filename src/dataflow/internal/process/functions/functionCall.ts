@@ -6,7 +6,6 @@ import { guard } from '../../../../util/assert'
 import { DataflowGraph, dataflowLogger, EdgeType, FunctionArgument } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
 import { LocalScope } from '../../../environments/scopes'
-// TODO: support partial matches: https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Argument-matching
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 
@@ -33,7 +32,6 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 	const remainingReadInArgs = []
 
 	const functionRootId = functionCall.info.id
-	// TODO: split that up so that unnamed function calls will not be resolved!
 
 	let functionCallName: string
 
@@ -115,7 +113,6 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 	inIds.push({ nodeId: functionRootId, name: functionCallName, scope: data.activeScope, used: 'always' })
 
 	if(!named) {
-		// TODO: indirect parameter tracking!
 		if(functionCall.calledFunction.type === Type.FunctionDefinition) {
 			linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph)
 		}
@@ -126,7 +123,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 	return {
 		unknownReferences: [],
 		in:                inIds,
-		out:               functionName.out, // we do not keep argument out as it has been linked by the function TODO: deal with foo(a <- 3)
+		out:               functionName.out, // we do not keep argument out as it has been linked by the function
 		graph:             finalGraph,
 		environments:      finalEnv,
 		ast:               data.completeAst,

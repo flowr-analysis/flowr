@@ -9,9 +9,6 @@ import * as os from 'os'
 import { guard } from '../util/assert'
 import fs from 'fs'
 
-// TODO: promote to the normal slicing app with a --benchmark 100 flag afterwards
-// TODO: allow to select slicing criteria filter
-
 export const toolName = 'benchmark'
 
 const now = date2string(new Date())
@@ -23,8 +20,7 @@ export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
 	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction', defaultValue: 'all', typeLabel: '{underline all/no}' },
-	{ name: 'output',       alias: 'o', type: String,  description: `File to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${now}.json})`, defaultValue: `benchmark-${now}.json`,  typeLabel: '{underline file}' },
-	// TODO: criteria, output and rest
+	{ name: 'output',       alias: 'o', type: String,  description: `File to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${now}.json})`, defaultValue: `benchmark-${now}.json`,  typeLabel: '{underline file}' }
 ]
 
 export interface BenchmarkCliOptions {
@@ -65,7 +61,6 @@ if(options.help) {
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
 log.info('running with options - do not use for final benchmark', options)
 
-// TODO: unify and generalize
 guard(options.slice === 'all' || options.slice === 'no', 'slice must be either all or no')
 
 function removeIfExists(summarizedRaw: string) {

@@ -7,16 +7,13 @@ export function isObjectOrArray(item: unknown): boolean {
 	return typeof item === 'object'
 }
 
-// TODO: maybe improve this in the future?
 export type MergeableRecord = Record<string, unknown>
 export type MergeableArray = unknown[]
 export type Mergeable = MergeableRecord | MergeableArray
 
 /**
- * given two objects deeply merges them, if an object is an array it will merge the array values!
+ * Given two objects deeply merges them, if an object is an array it will merge the array values!
  * Guarantees some type safety by requiring objects to merge to be from the same type (allows undefined)
- *
- * TODO: set etc. support in the future? =\> merge type class like?
  */
 export function deepMergeObject<T extends Mergeable>(base: Required<T>, addon?: T): Required<T>
 export function deepMergeObject<T extends Mergeable>(base: DeepRequired<T>, addon?: T): DeepRequired<T>

@@ -2,13 +2,11 @@ import { Identifier, IdentifierDefinition, IEnvironment, REnvironmentInformation
 import { dataflowLogger } from '../index'
 import { DataflowScopeName, LocalScope } from './scopes'
 
-// TODO: new log for resolution?
-
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.
  *
  * @param name - The name of the identifier to resolve
- * @param withinScope - The scope in which the identifier is used [TODO: allow non-local access]
+ * @param withinScope - The scope in which the identifier is used
  * @param environments - The current environments used for name resolution
  *
  * @returns A list of possible definitions of the identifier (one if the definition location is exactly and always known), or `undefined` if the identifier is undefined in the current scope/with the current environment information.

@@ -100,7 +100,6 @@ export function equalVertices(our: DataflowGraphVertices, other: DataflowGraphVe
 				return false
 			}
 
-			// TODO: improve : info.subflow.out !== otherInfo.subflow.out || info.subflow.in !== otherInfo.subflow.in || info.subflow.unknownReferences !== otherInfo.subflow.unknownReferences ||
 			if (info.subflow.scope !== otherInfo.subflow.scope || !environmentsEqual(info.subflow.environments, otherInfo.subflow.environments)) {
 				dataflowLogger.warn(`node ${id} does not match on subflow (${JSON.stringify(info)} vs ${JSON.stringify(otherInfo)})`)
 				return false
@@ -134,7 +133,6 @@ export function equalEdges(id: NodeId, our: OutgoingEdges | undefined, other: Ou
 			return false
 		}
 	}
-	// TODO: ignore scope?
 	return true
 }
 

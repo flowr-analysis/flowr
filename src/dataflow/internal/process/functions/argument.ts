@@ -36,8 +36,6 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
 		linkReadsForArgument(argument, [...ingoingRefs, ...value.out /* value may perform definitions */], graph)
 	}
 
-	// TODO: defined-by for default values
-
 	return {
 		unknownReferences: [],
 		// active nodes of the name will be lost as they are only used to reference the corresponding parameter
@@ -45,7 +43,7 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
 		// , ...value.out, ...(name?.out ?? [])
 		out:               [ { name: argumentName, scope: LocalScope, nodeId: argument.info.id, used: 'always'} ],
 		graph:             graph,
-		environments:      value.environments, // TODO: merge with name?
+		environments:      value.environments,
 		ast:               data.completeAst,
 		scope:             data.activeScope
 	}

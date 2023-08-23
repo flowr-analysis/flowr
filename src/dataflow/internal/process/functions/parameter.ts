@@ -42,7 +42,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		in:                defaultValue === undefined ? [] : [...defaultValue.in, ...defaultValue.unknownReferences, ...name.in],
 		out:               [...(defaultValue?.out ?? []), ...name.out, ...name.unknownReferences],
 		graph:             graph,
-		environments:      environments, // TODO: merge with arguments
+		environments:      environments,
 		ast:               data.completeAst,
 		scope:             data.activeScope
 	}

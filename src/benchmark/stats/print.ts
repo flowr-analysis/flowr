@@ -31,7 +31,6 @@ function formatNanoseconds(nanoseconds: bigint | number): string {
 	const millisecondsStr = seconds > 0 ? `${String(milliseconds).padStart(3, '0')}:` : `${String(milliseconds)}:`
 	const nanoStr = String(remainingNanoseconds).padEnd(3, '0').substring(0, 3)
 	const unit = seconds === 0n ? 'ms' : ' s' /* space for padding */
-	// TODO: round correctly?
 	return pad(`${secondsStr}${millisecondsStr}${nanoStr}${unit}`)
 }
 

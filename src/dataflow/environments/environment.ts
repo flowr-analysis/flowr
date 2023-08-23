@@ -20,19 +20,9 @@ export const BuiltIn = 'built-in'
  * Stores the definition of an identifier within an {@link IEnvironment}
  */
 export interface IdentifierDefinition extends IdentifierReference {
-	kind:      'function' | 'variable' | 'parameter' | 'unknown' | 'built-in-function' | 'argument' /* TODO: 'constant' */
+	kind:      'function' | 'variable' | 'parameter' | 'unknown' | 'built-in-function' | 'argument'
 	/** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
 	definedAt: NodeId
-}
-
-export interface VariableIdentifierDefinition extends IdentifierDefinition {
-	kind: 'variable'
-	type: string /* TODO static typing system */
-}
-
-export interface FunctionIdentifierDefinition extends IdentifierDefinition {
-	kind: 'function'
-	/* TODO: formals etc. */
 }
 
 /**
@@ -85,8 +75,6 @@ export interface IEnvironment {
 	parent?:       IEnvironment
 	/**
    * Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions
-   * TODO: mark function, symbol, etc. definitions
-   * TODO: base vs. empty environment, TODO: functions for that... make it a top-level class more likely
    */
 	memory:        Map<Identifier, IdentifierDefinition[]>
 }
@@ -148,11 +136,6 @@ export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition
 ])
 
 export function initializeCleanEnvironments(): REnvironmentInformation {
-	// TODO baseenv, emptyenv, and assignments directly to the environments (without indirection of assign)
-	// TODO: track parent.env calls?
-	// TODO undocumented user databases in comments? (see 1.2 of R internals with https://www.omegahat.net/RObjectTables/)
-	// .Platform and .Machine
-	// TODO: attach namespace to bind etc.
 	const global = new Environment(GlobalScope)
 	// use a copy
 	global.memory = new Map<Identifier, IdentifierDefinition[]>(DefaultEnvironmentMemory)

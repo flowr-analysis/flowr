@@ -193,7 +193,6 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 		}
 
 		sliceSize.dataflowNodes.push(perSliceStat.numberOfDataflowNodesSliced)
-		// TODO: collect resulting slice data
 	}
 
 	// summarize all measurements:

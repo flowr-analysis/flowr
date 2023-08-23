@@ -58,7 +58,6 @@ export function tryNormalizeFor(
 		forToken.content
 	)
 
-	// TODO: assert exists as known operator
 	const result: RForLoop = {
 		type:     Type.For,
 		variable: parsedVariable,
@@ -66,7 +65,6 @@ export function tryNormalizeFor(
 		body:     ensureExpressionList(parseBody),
 		lexeme:   content,
 		info:     {
-			// TODO: include children etc.
 			fullRange:        data.currentRange,
 			additionalTokens: [],
 			fullLexeme:       data.currentLexeme,
@@ -87,7 +85,7 @@ function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { varia
 	const variable = tryNormalizeSymbol(data, [children[inPosition - 1]])
 	guard(variable !== undefined, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
 	guard(variable.type === Type.Symbol, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
-	// TODO: just parse single element directly
+
 	const vector = normalizeBasedOnType(data, [children[inPosition + 1]])
 	guard(vector.length === 1, () => `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`)
 

@@ -177,7 +177,6 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 		in:                [],
 		out:               [],
 		graph,
-		/* TODO: have params. the potential to influence their surrounding on def? */
 		environments:      originalEnvironments,
 		ast:               data.completeAst,
 		scope:             data.activeScope
@@ -195,12 +194,10 @@ function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowG
 		const nodeInAst = idMap.get(exitPoint)
 
 		guard(nodeInAst !== undefined, `Could not find exit point node with id ${exitPoint} in ast`)
-		// TODO: check if this is correct as only return calls can have a different environment?
 		graph.addVertex({ tag: 'exit-point', id: exitPoint, name: `${nodeInAst.lexeme ?? '??'}`, when: 'always', environment })
 
 		const allIds = [...collectAllIds(nodeInAst)].filter(id => graph.get(id, true) !== undefined)
 		for(const relatedId of allIds) {
-			// TODO: custom edge type?
 			if(relatedId !== exitPoint) {
 				graph.addEdge(exitPoint, relatedId, EdgeType.Relates, 'always')
 			}

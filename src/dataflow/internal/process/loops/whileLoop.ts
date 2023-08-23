@@ -10,7 +10,6 @@ import { ParentInformation, RWhileLoop } from '../../../../r-bridge'
 export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
 	const condition = processDataflowFor(loop.condition, data)
 	data = { ...data, environments: condition.environments }
-	// TODO: out in for must be active here
 	const body = processDataflowFor(loop.body, data)
 
 	const environments = condition.environments
@@ -29,7 +28,7 @@ export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentI
 	return {
 		unknownReferences: [],
 		in:                remainingInputs,
-		out:               [...makeAllMaybe(body.out, nextGraph, finalEnvironments), ...condition.out], // todo: merge etc.
+		out:               [...makeAllMaybe(body.out, nextGraph, finalEnvironments), ...condition.out],
 		graph:             nextGraph,
 		/* the body might not happen if the condition is false */
 		environments:      finalEnvironments,

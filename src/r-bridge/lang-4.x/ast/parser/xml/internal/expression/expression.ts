@@ -63,7 +63,6 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 			children,
 			lexeme: content,
 			info:   {
-				// TODO: include children etc.
 				fullRange:        childData.currentRange,
 				additionalTokens: [],
 				fullLexeme:       childData.currentLexeme

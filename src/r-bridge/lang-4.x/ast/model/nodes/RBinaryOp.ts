@@ -1,4 +1,3 @@
-// TODO: others?
 import { Base, Location, NoInfo, RNode } from "../model"
 import { Type } from "../type"
 import { BinaryOperatorFlavor } from "../operators"

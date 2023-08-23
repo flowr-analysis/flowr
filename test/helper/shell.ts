@@ -55,7 +55,6 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
  * @param packages - packages to be ensured when the shell is created
  */
 export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xmlparsedata']): () => void {
-	// TODO: use this from context? to set this.slow?
 	return function() {
 		const shell = new RShell()
 		// this way we probably do not have to reinstall even if we launch from WebStorm
@@ -64,7 +63,6 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 			shell.tryToInjectHomeLibPath()
 			for (const pkg of packages) {
 				if (!await shell.isPackageInstalled(pkg)) {
-					// TODO: only check this once? network should not be expected to break during tests
 					await testRequiresNetworkConnection(this)
 				}
 				await shell.ensurePackageInstalled(pkg, true)
@@ -77,7 +75,6 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 	}
 }
 
-// TODO: recursive work?
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function removeSourceInformation<T extends Record<string, any>>(obj: T): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
@@ -114,7 +111,6 @@ export const assertAst = (name: string, shell: RShell, input: string, expected: 
 	})
 }
 
-// TODO: improve comments and structure
 /** call within describeSession */
 export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: RNode) => RNode<Decorated>, expected: RNodeWithParent<Decorated>): void {
 	it(name, async function() {
@@ -124,13 +120,11 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 	})
 }
 
-// TODO: allow more configuration with title, etc.
 export const assertDataflow = (name: string, shell: RShell, input: string, expected: DataflowGraph, startIndexForDeterministicIds = 0): void => {
 	it(`${name} (input: ${JSON.stringify(input)})`, async function() {
 		const ast = await retrieveAst(shell, input)
 		const decoratedAst = decorateAst(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
 
-		// TODO: use both info
 		const { graph } = produceDataFlowGraph(decoratedAst, LocalScope)
 
 		// with the try catch the diff graph is not calculated if everything is fine

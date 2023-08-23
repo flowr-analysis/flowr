@@ -120,7 +120,7 @@ x`,
 			.addVertex( { tag: 'variable-definition', id: "7", name: "x", when: 'maybe', scope: LocalScope, environment: envInLargeFor() })
 			.addVertex( { tag: 'use', id: "8", name: "x", when: 'maybe', environment: envInLargeFor() })
 			.addVertex( { tag: 'variable-definition', id: "10", name: "x", when: 'maybe', scope: LocalScope, environment: envInLargeFor2() })
-			.addVertex( { tag: 'use', id: "11", name: "x", when: 'always' /* TODO: this is wrong, but uncertainty is not fully supported in the impl atm.*/, environment: envInLargeFor2() })
+			.addVertex( { tag: 'use', id: "11", name: "x", when: 'always' /* this is wrong, but uncertainty is not fully supported in the impl atm.*/, environment: envInLargeFor2() })
 			.addVertex( { tag: 'use', id: "15", name: "x", environment: appendEnvironments(envWithFirstX(), envOutLargeFor()) })
 			.addEdge("11", "7", EdgeType.Reads, "always")// second x <- *x* always reads first *x* <- x
 			.addEdge("8", "0", EdgeType.Reads, "maybe")

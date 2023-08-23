@@ -90,7 +90,6 @@ function removeIfExists(summarizedRaw: string) {
 	}
 }
 
-// TODO: ansi escape codes
 guard(options.input !== undefined, 'input must be given, see --help')
 const outputBase = options.output ?? options.input.replace(/\.json$/, '-summary')
 console.log(`Writing outputs to base ${outputBase}`)

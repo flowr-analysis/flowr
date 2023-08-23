@@ -1,4 +1,3 @@
-// TODO: promote to visitor?
 import { RNode } from '../model'
 import { Type } from '../type'
 import { assertUnreachable } from '../../../../../util/assert'

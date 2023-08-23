@@ -86,10 +86,6 @@ async function benchmark() {
 		}
 
 		const { stats } = slicer.finish()
-		/* TODO: currently may take forever due to re-parsing necessary
-      const sliceStatsAsString = stats2string(await summarizeSlicerStats(stats))
-      console.log(sliceStatsAsString)
-      */
 		// append line by line
 		fs.appendFileSync(options.output, `${JSON.stringify({ filename: options.input, stats }, displayEnvReplacer)}\n`)
 	} catch (e: unknown) {

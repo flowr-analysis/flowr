@@ -38,7 +38,6 @@ export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJ
 		lexeme: content,
 		body:   ensureExpressionList(parseBody),
 		info:   {
-			// TODO: include children etc.
 			fullRange:        data.currentRange,
 			additionalTokens: [],
 			fullLexeme:       data.currentLexeme

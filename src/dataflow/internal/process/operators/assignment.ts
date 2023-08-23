@@ -27,7 +27,6 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 
 	for (const write of writeTargets) {
 		nextGraph.setDefinitionOfVertex(write)
-		// TODO: this can be improved easily
 
 		if (isFunction) {
 			nextGraph.addEdge(write, isFunctionSide.info.id, EdgeType.DefinedBy, 'always', true)
@@ -107,7 +106,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
 	// what is written/read additionally is based on lhs/rhs - assignments read written variables as well
 	const read = [...lhs.in, ...rhs.in]
 	const { source, target, global, swap } = identifySourceAndTarget(op, lhs, rhs)
-	// TODO: improve check for function definition
+
 	const funcTypeCheck = swap ? op.lhs : op.rhs
 
 	const writeNodes = produceWrittenNodes(op, target, global, data, funcTypeCheck)

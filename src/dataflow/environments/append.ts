@@ -33,7 +33,6 @@ function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironme
 }
 
 
-// TODO if we have something like x && (y <- 13) we still have to track the y assignment as maybe... or?
 /**
  * Adds all writes of `next` to `base` (i.e., the operations of `next` *might* happen).
  */
@@ -47,7 +46,7 @@ export function appendEnvironments(base: REnvironmentInformation | undefined, ne
 	} else if(next === undefined) {
 		return base
 	}
-	guard(base.level === next.level, "TODO; deal with the case if they differ")
+	guard(base.level === next.level, "environments must have the same level to be handled, it is up to the caller to ensure that")
 
 	return {
 		current: appendIEnvironmentWith(base.current, next.current),

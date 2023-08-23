@@ -63,7 +63,6 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 		return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
 	}
 
-	// TODO: ensure closing is correct
 	const remaining = mappedWithName.slice(2, mappedWithName.length - closingLength)
 
 	parseLog.trace(`${remaining.length} remaining arguments for access`)
@@ -102,7 +101,6 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 		operator,
 		access:   resultingAccess,
 		info:     {
-			// TODO: include children etc.
 			fullRange:        data.currentRange,
 			additionalTokens: [],
 			fullLexeme:       data.currentLexeme

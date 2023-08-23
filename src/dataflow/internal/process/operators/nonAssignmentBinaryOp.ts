@@ -8,7 +8,6 @@ export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo 
 	const lhs = processDataflowFor(op.lhs, data)
 	const rhs = processDataflowFor(op.rhs, data)
 
-	// TODO: produce special edges like `alias`
 	const ingoing = [...lhs.in, ...rhs.in, ...lhs.unknownReferences, ...rhs.unknownReferences]
 	const nextGraph = lhs.graph.mergeWith(rhs.graph)
 	linkIngoingVariablesInSameScope(nextGraph, ingoing)
@@ -21,7 +20,6 @@ export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo 
 		in:                ingoing,
 		out:               [...lhs.out, ...rhs.out],
 		environments:      merger(lhs.environments, rhs.environments),
-		// TODO: insert a join node?
 		graph:             nextGraph,
 		scope:             data.activeScope,
 		ast:               data.completeAst

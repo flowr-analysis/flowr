@@ -10,10 +10,6 @@ export interface UsedFunction {
 }
 
 
-// TODO: general register function to allow to register these counters with optional writes if necessary from all features
-// together with sub-search which works on the result of a given regex
-
-// TODO: get corresponding package with getNamespaceExports etc?
 export interface FunctionUsageInfo extends FeatureInfo {
 	allFunctionCalls:           number
 	/** abs, expm1, tanpi, ... */
@@ -38,7 +34,6 @@ export interface FunctionUsageInfo extends FeatureInfo {
 	getFunctions:               number
 	helpFunctions:              number
 	optionFunctions:            number
-	// TODO: others from the list
 }
 
 const initialFunctionUsageInfo = (): FunctionUsageInfo => ({

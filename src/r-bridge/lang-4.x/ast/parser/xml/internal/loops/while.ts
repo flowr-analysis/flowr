@@ -55,7 +55,6 @@ export function tryNormalizeWhile(
 		whileToken.content
 	)
 
-	// TODO: assert exists as known operator
 	const result: RWhileLoop = {
 		type:      Type.While,
 		condition: parsedCondition,
@@ -63,7 +62,6 @@ export function tryNormalizeWhile(
 		lexeme:    content,
 		location,
 		info:      {
-			// TODO: include children etc.
 			fullRange:        data.currentRange,
 			additionalTokens: [],
 			fullLexeme:       data.currentLexeme

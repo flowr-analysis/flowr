@@ -59,7 +59,6 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 	return out
 }
 
-// TODO if we have something like x && (y <- 13) we still have to track the y assignment as maybe... or?
 
 export function overwriteEnvironments(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation
 export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation

@@ -16,7 +16,6 @@ export function normalizeNext(data: ParserData, obj: XmlBasedJson): RNext {
 		location,
 		lexeme: content,
 		info:   {
-			// TODO: include children etc.
 			fullRange:        data.currentRange,
 			additionalTokens: [],
 			fullLexeme:       data.currentLexeme

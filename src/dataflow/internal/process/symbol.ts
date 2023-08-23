@@ -4,7 +4,6 @@ import { DataflowInformation, initializeCleanInfo } from '../info'
 import { DataflowProcessorInformation } from '../../processor'
 
 export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation<OtherInfo> {
-	// TODO: are there other built-ins?
 	if (symbol.content === RNull || symbol.content === RNa) {
 		return initializeCleanInfo(data)
 	}

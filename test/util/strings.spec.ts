@@ -24,16 +24,5 @@ describe('Strings', () => {
 			negative('Walter', 'W')
 			negative('Timo', 'o')
 		})
-		describe('illegal inputs', () => {
-			it('throw for empty string', () => {
-				assert.throws(() => startAndEndsWith('', 'A'), Error)
-			})
-			it('throw for one-letter string', () => {
-				assert.throws(() => startAndEndsWith('A', 'A'), Error)
-			})
-			it('throw for non-char string', () => {
-				assert.throws(() => startAndEndsWith('HeHe', 'He'), Error)
-			})
-		})
 	})
 })

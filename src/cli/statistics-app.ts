@@ -37,7 +37,6 @@ if(options['no-ansi']) {
 
 const processedFeatures = validateFeatures(options.features)
 
-// TODO: automatic post processing after run?
 if(options['post-process']) {
 	console.log('-----post processing')
 	guard(options.input.length === 1, 'post processing only works with a single input file')

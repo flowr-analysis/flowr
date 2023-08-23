@@ -15,7 +15,7 @@ describe('Simple', withShell(shell => {
 		for (const [code, id, expected] of [
 			['12 + (supi <- 42)', '0', '12 + (supi <- 42)' ],
 			['y <- x <- 42', '1', 'x <- 42' ],
-			['y <- x <- 42', '0', 'y <- x <- 42' ], /* TODO: kill x ?*/
+			['y <- x <- 42', '0', 'y <- x <- 42' ],
 			// we are not smart enough right now to see, that the write is constant.
 			['for (i in 1:20) { x <- 5 }', '4', 'for(i in 1:20) x <- 5' ]
 		]) {
@@ -74,7 +74,6 @@ describe('Simple', withShell(shell => {
 			const pool: [string, string | string[], string][] = [
 				[largeFor, '0', 'for(i in 1:20) {}'],
 				[largeFor, '4', 'for(i in 1:20) y <- 9'],
-				// TODO: always brace option?
 				[largeFor, ['0', '4'], 'for(i in 1:20) y <- 9'],
 				[largeFor, ['0', '4', '7'], `for(i in 1:20) {
     y <- 9
@@ -91,7 +90,6 @@ describe('Simple', withShell(shell => {
 			}
 		})
 	})
-	// TODO: error in R lexeme provider
 	describe('Failures in practice', () => {
 		assertReconstructed('Reconstruct expression list in call', shell, `
 a <- foo({
@@ -106,10 +104,5 @@ c <- 3
 		assertReconstructed('Reconstruct access in pipe', shell, `
 ls <- x[[1]] %>% st_cast()
 class(ls)`, '2', `x[[1]]`)
-
-		/* TODO: fix post thesis
-    assertReconstructed('Reconstruct access in pipe', shell, `
-ls <- x[[1]] %*% st_cast()
-class(ls)`, '2', `x[[1]]`)*/
 	})
 }))

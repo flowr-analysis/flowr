@@ -79,7 +79,6 @@ export function printClusterReport(report: ClusterReport, limit = 1000): string[
 	console.log(`\n\n\n`)
 	console.log(report.filepath)
 
-	// TODO: allow more flexible limits
 	const shortStats = [...report.valueInfoMap.entries()].map(([name, values]) => {
 		return {
 			name,

@@ -81,7 +81,6 @@ export interface Namespace {
 }
 
 
-// TODO: special constants
 export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
 
 export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info> | RLineDirective<Info>
@@ -92,12 +91,3 @@ export type ROther<Info>          = RComment<Info> | RLineDirective<Info>
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
 | ROther<Info> | RConstructs<Info> | RNamedAccess<Info> | RIndexAccess<Info>
 | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>  | RPipe<Info>
-
-/* TODO: blocked in R
-
-if else repeat while function for in next break
-TRUE FALSE NULL Inf NaN
-NA NA_integer_ NA_real_ NA_complex_ NA_character_
-... ..1 ..2 etc.
-
-*/

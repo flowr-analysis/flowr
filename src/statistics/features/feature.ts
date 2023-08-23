@@ -62,8 +62,3 @@ export type FeatureStatistics = {
 }
 
 export interface Query { select(options?: EvalOptions): Node[] }
-
-
-
-// TODO: more advanced file provider that closes all streams in the end and keeps files open/saves checks etc.
-

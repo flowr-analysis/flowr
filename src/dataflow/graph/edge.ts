@@ -9,7 +9,7 @@ export interface DataflowGraphEdge {
 	attribute: DataflowGraphEdgeAttribute
 }
 
-// context -- is it always read/defined-by // TODO: loops
+// context -- is it always read/defined-by
 export type DataflowGraphEdgeAttribute = 'always' | 'maybe'
 
 

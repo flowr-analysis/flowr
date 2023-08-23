@@ -19,7 +19,6 @@ export interface SourceRange {
  * at the moment this does not ensure ordering of start and end!
  */
 export function rangeFrom(line1: number | string, col1: number | string, line2: number | string, col2: number | string): SourceRange {
-	// TODO: do we have to ensure ordering? => Throw an error if this is the case!
 	return {
 		start: {
 			line:   Number(line1),

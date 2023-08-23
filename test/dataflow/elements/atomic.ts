@@ -6,7 +6,7 @@
 import { assertDataflow, withShell } from '../../helper/shell'
 import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../helper/provider'
-import { define } from '../../../src/dataflow/environments'
+import { appendEnvironments, define } from '../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../src/dataflow/environments/scopes'
 
@@ -97,13 +97,12 @@ describe("Atomic dataflow information", withShell((shell) => {
 		}
 	})
 
-	// TODO: these will be more interesting whenever we have more information on the edges (like modification etc.)
+	// these will be more interesting whenever we have more information on the edges (like modification etc.)
 	describe("non-assignment binary operators", () => {
 		for (const opSuite of RNonAssignmentBinaryOpPool) {
 			describe(`${opSuite.label}`, () => {
 				for (const op of opSuite.pool) {
 					describe(`${op.str}`, () => {
-						// TODO: some way to automatically retrieve the id if they are unique? || just allow to omit it?
 						const inputDifferent = `x ${op.str} y`
 						assertDataflow(`${inputDifferent} (different variables)`,
 							shell,
@@ -247,7 +246,6 @@ describe("Atomic dataflow information", withShell((shell) => {
 			})
 		}
 		describe(`nested assignments`, () => {
-			// TODO: dependency between x and y?
 			assertDataflow(`"x <- y <- 1"`, shell,
 				"x <- y <- 1",
 				new DataflowGraph()
@@ -262,7 +260,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 					.addVertex({ tag: 'variable-definition', id: "3", name: "y", scope: LocalScope })
 					.addEdge("3", "1", EdgeType.DefinedBy, "always")
 			)
-			// still by indirection (even though y is overwritten?) TODO: discuss that
+			// still by indirection (even though y is overwritten?)
 			assertDataflow(`"x <- 1 -> y"`, shell,
 				"x <- 1 -> y",
 				new DataflowGraph()
@@ -393,7 +391,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 							.addVertex({ tag: 'use', id: "1", name: "x" })
 							.addVertex({ tag: 'use', id: "3", name: "x", when: 'maybe' })
 							.addEdge("0", "1", EdgeType.SameReadRead, "always")
-						// TODO: theoretically they just have to be connected
+							// theoretically, they just have to be connected, so 0 is just hardcoded
 							.addEdge("0", "3", EdgeType.SameReadRead, "maybe")
 					)
 					assertDataflow(`definition in if`, shell,
@@ -450,7 +448,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 							.addVertex({ tag: 'use', id: "1", name: "x" })
 							.addVertex({ tag: 'use', id: "3", name: "x", when: 'maybe' })
 							.addVertex({ tag: 'use', id: "5", name: "x", when: 'maybe' })
-						// TODO: 0 is just hardcoded, they just have to be connected
+							// 0 is just hardcoded, they actually just have to be connected
 							.addEdge("0", "1", EdgeType.SameReadRead, "always")
 							.addEdge("0", "3", EdgeType.SameReadRead, "maybe")
 							.addEdge("0", "5", EdgeType.SameReadRead, "maybe")
@@ -459,10 +457,31 @@ describe("Atomic dataflow information", withShell((shell) => {
 			})
 		}
 	})
+	describe("inline non-strict boolean operations", () => {
+		const environmentWithY = define(
+			{ name: 'y', nodeId: '0', kind: 'variable', definedAt: '2', scope: LocalScope, used: 'always' },
+			LocalScope,
+			initializeCleanEnvironments()
+		)
+		const environmentWithOtherY = define(
+			{ name: 'y', nodeId: '4', kind: 'variable', definedAt: '6', scope: LocalScope, used: 'always' },
+			LocalScope,
+			initializeCleanEnvironments()
+		)
+		assertDataflow(`define call with multiple args should only be defined by the call-return`, shell, `y <- 15; x && (y <- 13); y`,
+			new DataflowGraph()
+				.addVertex({ id: '0', tag: 'variable-definition', name: 'y', scope: LocalScope })
+				.addVertex({ id: '4', tag: 'variable-definition', name: 'y', scope: LocalScope, environment: environmentWithY })
+				.addVertex({ id: '3', tag: 'use', name: 'x', scope: LocalScope, environment: environmentWithY })
+				.addVertex({ id: '8', tag: 'use', name: 'y', scope: LocalScope, environment: appendEnvironments(environmentWithY, environmentWithOtherY) })
+				.addEdge('8', '0', EdgeType.Reads, 'always')
+				.addEdge('8', '4', EdgeType.Reads, 'always')
+				.addEdge('0', '4', EdgeType.SameDefDef, 'always')
+		)
+	})
 
 	describe('loops', () => {
 		describe("for", () => {
-			// TODO: support for vectors!
 			assertDataflow("simple constant for-loop", shell,
 				`for(i in 1:10) { 1 }`,
 				new DataflowGraph().addVertex({ tag: 'variable-definition', id: "0", name: "i", scope: LocalScope })
@@ -474,11 +493,9 @@ describe("Atomic dataflow information", withShell((shell) => {
 					.addVertex({ tag: 'use', id: "4", name: "i", when: 'maybe', environment: define({ name: 'i', definedAt: '6', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments()) })
 					.addEdge("4", "0", EdgeType.Reads, "maybe")
 			)
-			// TODO: so many other tests... variable in sequence etc.
 		})
 
 		describe("repeat", () => {
-			// TODO: detect that a x <- repeat/while/for/... assignment does not have influence on the lhs as repeat returns NULL?
 			assertDataflow("simple constant repeat", shell,
 				`repeat 2`,
 				new DataflowGraph()
@@ -496,10 +513,8 @@ describe("Atomic dataflow information", withShell((shell) => {
 				new DataflowGraph()
 					.addVertex({ tag: 'variable-definition', id: "0", name: "x", scope: LocalScope })
 					.addVertex({ tag: 'use', id: "1", name: "y" })
-				// TODO: always until encountered conditional break etc?
-					.addEdge("0", "1", EdgeType.DefinedBy, "always" /* TODO: maybe ? */)
+					.addEdge("0", "1", EdgeType.DefinedBy, "always")
 			)
-			// TODO: so many other tests... variable in sequence etc.
 		})
 
 		describe("while", () => {

@@ -30,7 +30,7 @@ describe('Retrieve all slicing locations', withShell(shell => {
 		}
 		test('x <- 1', [ '1@x' ])
 		test('x <- 1\ny <- 2', [ '1@x' ], [ '2@y' ])
-		test('library(foo)', [ ]) // here, foo is not a variable but used as the library name - TODO: we do not deal with character.only at the moment
+		test('library(foo)', [ ]) // here, foo is not a variable but used as the library name
 		test(`a <- 52
 foo(a=3,b<-2,c=4)
 if(TRUE) {

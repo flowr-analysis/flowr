@@ -17,7 +17,6 @@ export interface CollectorTimeout extends MergeableRecord {
    * if true, the timeout will reset whenever we receive new data
    */
 	resetOnNewData: boolean
-	// errorOnTimeout: boolean // TODO: maybe needed in the future as a "greedy" variant?
 }
 
 interface CollectorUntil extends MergeableRecord {
@@ -49,7 +48,6 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
 	from:      'stdout',
 	postamble: `🐧${'-'.repeat(5)}🐧`,
 	timeout:   {
-		// TODO: allow to configure such things in a configuration file?
 		ms:             750_000,
 		resetOnNewData: true
 	},
@@ -57,7 +55,6 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
 	automaticallyTrimOutput: true
 }
 
-// TODO: doc
 export interface RShellSessionOptions extends MergeableRecord {
 	readonly pathToRExecutable:  string
 	readonly commandLineOptions: readonly string[]
@@ -72,7 +69,6 @@ export interface RShellSessionOptions extends MergeableRecord {
  */
 export interface RShellOptions extends RShellSessionOptions {
 	readonly sessionName: string
-	// TODO: maybe sanitizer in the future?
 }
 
 export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
@@ -91,10 +87,8 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
  * At the moment we are using a live R session (and not networking etc.) to communicate with R easily,
  * which allows us to install packages etc. However, this might and probably will change in the future (leaving this
  * as a legacy mode :D)
- * TODO: in the future real language bindings like rpy2? but for ts?
  */
 export class RShell {
-	// TODO: deep readonly?
 	public readonly options: Readonly<RShellOptions>
 	public readonly session: RShellSession
 	private readonly log:    Logger<ILogObj>
@@ -110,7 +104,6 @@ export class RShell {
    * sends the given command directly to the current R session
    * will not do anything to alter input markers!
    */
-	// TODO: rename to execute or so?
 	public sendCommand(command: string): void {
 		if(this.log.settings.minLevel >= LogLevel.trace) {
 			this.log.trace(`> ${JSON.stringify(command)}`)
@@ -118,7 +111,6 @@ export class RShell {
 		this._sendCommand(command)
 	}
 
-	// TODO: general varRead which uses r to serialize
 	/**
    * Send a command and collect the output
    *
@@ -136,7 +128,6 @@ export class RShell {
 			includeInResult: config.keepPostamble // we do not want the postamble
 		}, config.timeout, () => {
 			this._sendCommand(command)
-			// TODO: in the future use sync redirect? or pipes with automatic wrapping?
 			if (config.from === 'stderr') {
 				this._sendCommand(`cat("${config.postamble}${this.options.eol}", file=stderr())`)
 			} else {
@@ -183,7 +174,6 @@ export class RShell {
 		this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
 	}
 
-	// TODO: this is really hacky
 	public tryToInjectHomeLibPath(): void {
 		this.injectLibPaths('~/.r-libs')
 	}
@@ -204,13 +194,12 @@ export class RShell {
 		return packages.split(',')
 	}
 
-	// TODO: bioconductor support?
 	/**
-   * installs the package using a temporary location
+   * Installs the package using a temporary location
    *
-   * @param packageName - the package to install
-   * @param autoload    - if true, the package will be loaded after installation
-   * @param force       - if true, the package will be installed no if it is already on the system and ready to be loaded
+   * @param packageName - The package to install
+   * @param autoload    - If true, the package will be loaded after installation
+   * @param force       - If true, the package will be installed no if it is already on the system and ready to be loaded
    */
 	public async ensurePackageInstalled(packageName: string, autoload = false, force = false): Promise<{
 		packageName:           string
@@ -258,11 +247,8 @@ export class RShell {
 		}
 	}
 
-	// TODO: allow to configure repos etc.
-	// TODO: parser for errors
-
 	/**
-   * close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
+   * Close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
    *
    * @returns true if the operation succeeds, false otherwise
    */
@@ -276,7 +262,7 @@ export class RShell {
 }
 
 /**
- * used to deal with the underlying input-output streams of the R process
+ * Used to deal with the underlying input-output streams of the R process
  */
 class RShellSession {
 	private readonly bareSession:   ChildProcessWithoutNullStreams
@@ -355,7 +341,6 @@ class RShellSession {
 
 	/**
    * close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
-   * TODO: find nice structure for this
    *
    * @returns true if the kill succeeds, false otherwise
    * @see RShell#close

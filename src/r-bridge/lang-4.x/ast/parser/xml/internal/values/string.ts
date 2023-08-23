@@ -34,7 +34,6 @@ export function normalizeString(data: ParserData, obj: XmlBasedJson): RString {
 		content: string2ts(stringContent),
 		lexeme:  stringContent,
 		info:    {
-			// TODO: include children etc.
 			fullRange:        data.currentRange,
 			additionalTokens: [],
 			fullLexeme:       data.currentLexeme

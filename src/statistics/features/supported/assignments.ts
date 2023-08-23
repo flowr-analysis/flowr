@@ -9,7 +9,6 @@ export interface AssignmentInfo extends FeatureInfo {
 	specialAssignmentOps:             number
 }
 
-// TODO: integers, constants, etc.
 const initialAssignmentInfo = (): AssignmentInfo => ({
 	assignmentOperator:               0,
 	specialAssignmentOps:             0,

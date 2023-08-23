@@ -1,4 +1,3 @@
-// TODO: modify | alias | etc.
 import { guard } from '../../util/assert'
 import { NodeId, RNodeWithParent } from '../../r-bridge'
 import {
@@ -26,8 +25,6 @@ import { dataflowLogger } from '../index'
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
 
 
-
-// TODO: export type DataflowGraphNodeType = 'variable' | 'processing' | 'assignment' | 'if-then-else' | 'loop' | 'function'
 
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation<unknown>, 'ast' | 'graph'>  & { graph: Set<NodeId> }
 
@@ -60,7 +57,6 @@ export class DataflowGraph {
 
 	/** Contains the vertices of the root level graph (i.e., included those vertices from the complete graph, that are nested within function definitions) */
 	private rootVertices:      Set<NodeId> = new Set<NodeId>()
-	// TODO: merge edges and vertices in the same map
 	/** All vertices in the complete graph (including those nested in function definition) */
 	private vertexInformation: DataflowGraphVertices = new Map<NodeId, DataflowGraphVertexInfo>()
 	/** All edges in the complete graph (including those nested in function definition) */
@@ -196,8 +192,6 @@ export class DataflowGraph {
 		guard(attribute !== undefined, 'attribute must be set')
 		const edge: DataflowGraphEdge = { types: new Set([type]), attribute }
 
-		// TODO: make this more performant
-
 		const existingFrom = this.edges.get(fromId)
 		const edgeInFrom = existingFrom?.get(toId)
 
@@ -256,7 +250,7 @@ export class DataflowGraph {
 			return this
 		}
 
-		// merge root ids, TODO, maybe just create a new one?
+		// merge root ids
 		if(mergeRootVertices) {
 			for (const root of otherGraph.rootVertices) {
 				this.rootVertices.add(root)
@@ -268,7 +262,6 @@ export class DataflowGraph {
 			this.vertexInformation.set(id, currentInfo === undefined ? info : mergeNodeInfos(currentInfo, info))
 		}
 
-		// TODO: make more performant
 		this.mergeEdges(otherGraph)
 		return this
 	}
@@ -294,7 +287,6 @@ export class DataflowGraph {
 		}
 	}
 
-	// TODO: diff function to get more information?
 	public equals(other: DataflowGraph): boolean {
 		if(!setEquals(this.rootVertices, other.rootVertices)) {
 			dataflowLogger.debug(`root vertices do not match: ${JSON.stringify([...this.rootVertices])} vs. other: ${JSON.stringify([...other.rootVertices])}`)

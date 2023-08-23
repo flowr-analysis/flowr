@@ -250,7 +250,7 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 			{ input: `(1 ${op.str} 1) ${op.str} 42`, offsetL: 1, offsetC: 2, offsetR: 2 },
 			{ input: `(1 ${op.str} 1) ${op.str} (42)`, offsetL: 1, offsetC: 2, offsetR: 3 }
 		]
-		// exponentiation has a different behavior when nested without braces, TODO: will be tested below
+		// exponentiation has a different behavior when nested without braces
 		if (op.str !== '^' && op.str !== '**') {
 			precedenceTests.push({ input: `1 ${op.str} 1 ${op.str} 42`, offsetL: 0, offsetC: 0, offsetR: 0 })
 		}
@@ -318,7 +318,6 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 					operator: op.str,
 					lexeme:   op.str,
 					flavor:   op.flavor,
-					// TODO: deal with brackets in location?
 					location: rangeFrom(1, 8 + opOffset, 1, 8 + 2 * opOffset),
 					info:     {},
 					lhs:      {

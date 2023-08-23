@@ -5,8 +5,6 @@ import { append, extractNodeContent } from '../../output'
 export type FunctionNameInfo = string
 
 export interface FunctionDefinitionInfo extends FeatureInfo {
-	// TODO: scoping/namespaces?
-	// TODO: local/global functions etc.
 	/** all, anonymous, assigned, non-assigned, ... */
 	total:                   number
 	/** how many are really using OP-Lambda? */
@@ -31,8 +29,7 @@ const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({
 	recursive:               0
 })
 
-// TODO: note that this can not work with assign, setGeneric and so on for now
-// TODO: is it faster to wrap with count?
+// note, that this can not work with assign, setGeneric and so on for now
 const queryAnyFunctionDefinition: Query = xpath.parse(`//FUNCTION`)
 const queryAnyLambdaDefinition: Query = xpath.parse(`//OP-LAMBDA`)
 
@@ -59,7 +56,7 @@ const nestedFunctionsQuery: Query = xpath.parse(`
 `)
 
 
-// expects to be invoked in the context of the parent function name // TODO: test if it is really invoked or just used in a function definition/quote etc?
+// expects to be invoked in the context of the parent function name
 const functionCallWithNameQuery: Query = xpath.parse(`
   ../following-sibling::expr/*[last()]//SYMBOL_FUNCTION_CALL[text() = $name]
   |

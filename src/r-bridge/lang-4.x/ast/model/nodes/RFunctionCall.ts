@@ -26,7 +26,7 @@ export interface RUnnamedFunctionCall<Info = NoInfo> extends Base<Info>, Locatio
 	readonly type:   Type.FunctionCall;
 	readonly flavor: 'unnamed';
 	calledFunction:  RNode<Info>; /* can be either a function definition or another call that returns a function etc. */
-	/** marks function calls like `3 %xxx% 4` which have been written in special infix notation */
+	/** marks function calls like `3 %xx% 4` which have been written in special infix notation */
 	infixSpecial?:   boolean;
 	/** arguments can be undefined, for example when calling as `a(1, ,3)` */
 	arguments:       (RArgument<Info> | undefined)[];

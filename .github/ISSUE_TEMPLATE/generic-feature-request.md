@@ -1,5 +1,5 @@
 ---
-name: Generic Feature request
+name: Generic Feature Request
 about: Suggest an idea for this project.
 title: ''
 labels: enhancement

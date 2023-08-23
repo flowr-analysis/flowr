@@ -68,8 +68,6 @@ export interface RNumberValue {
 }
 
 export function number2ts(value: string): RNumberValue {
-	// TODO: check for legality? even though R should have done that already
-
 	// check for hexadecimal number with floating point addon which is supported by R but not by JS :/
 	let lcValue = value.toLowerCase()
 	/* both checks are case-sensitive! */

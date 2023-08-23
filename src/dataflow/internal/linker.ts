@@ -43,7 +43,6 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
 		}
 		const base = ids[0]
 		for (let i = 1; i < ids.length; i++) {
-			// TODO: include the attribute? probably not, as same-edges are independent of structure
 			graph.addEdge(base.nodeId, ids[i].nodeId, EdgeType.SameReadRead, 'always', true)
 		}
 	}
@@ -65,7 +64,6 @@ function specialReturnFunction(info: DataflowGraphVertexFunctionCall, graph: Dat
 }
 
 
-// TODO: in some way we need to remove the links for the default argument if it is given by the user on call - this could be done with 'when' but for now we do not do it as we expect such situations to be rare
 export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
 	const nameArgMap = new Map<string, IdentifierReference | '<value>'>(args.filter(Array.isArray) as NamedFunctionArgument[])
 	const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.map(p => [p.name.content, p]))
@@ -96,7 +94,6 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 	const remainingParameter = params.filter(p => !matchedParameters.has(p.name.content))
 	const remainingArguments = args.filter(a => !Array.isArray(a)) as (PositionalFunctionArgument | 'empty')[]
 
-	// TODO ...
 	for(let i = 0; i < remainingArguments.length; i++) {
 		const arg: PositionalFunctionArgument | 'empty' = remainingArguments[i]
 		if(arg === '<value>' || arg === 'empty') {
@@ -120,7 +117,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 
 
 function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, functionCallName: string, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): void {
-	// we get them by just choosing the rhs of the definition - TODO: this should be improved - maybe by a second call track
+	// we get them by just choosing the rhs of the definition
 	const linkedFunction = idMap.get(targetId)
 	if(linkedFunction === undefined) {
 		dataflowLogger.trace(`no function definition found for ${functionCallName} (${functionRootId})`)
@@ -150,7 +147,6 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 	for (const def of functionDefs.values()) {
 		guard(def.tag === 'function-definition', () => `expected function definition, but got ${def.tag}`)
 
-		// TODO: this is currently just a temporary hack, we need a clean way to separate closures that apply after the function body and the reads that apply within the body
 		if(info.environment !== undefined) {
 			// for each open ingoing reference, try to resolve it here, and if so add a read edge from the call to signal that it reads it
 			for (const ingoing of def.subflow.in) {
@@ -186,7 +182,6 @@ export function linkFunctionCalls(graph: DataflowGraph, idMap: DecoratedAstMap, 
 	for(const [id, info] of functionCalls) {
 		guard(info.tag === 'function-call', () => `encountered non-function call in function call linkage ${JSON.stringify(info)}`)
 
-		// TODO: special handling for others
 		if(info.name === 'return') {
 			specialReturnFunction(info, graph, id)
 			graph.addEdge(id, BuiltIn, EdgeType.Calls, 'always')
@@ -198,7 +193,6 @@ export function linkFunctionCalls(graph: DataflowGraph, idMap: DecoratedAstMap, 
 }
 
 
-// TODO: abstract away into a 'getAllDefinitionsOf' function
 export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<NodeId>, dataflowGraph: DataflowGraph): Map<NodeId, DataflowGraphVertexInfo> {
 	const potential: NodeId[] = [...functionDefinitionReadIds]
 	const visited = new Set<NodeId>()
@@ -232,8 +226,8 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
 		if(currentInfo[0].subflow !== undefined) {
 			result.set(currentId, currentInfo[0])
 		}
+
 		// trace all joined reads
-		// TODO: deal with redefinitions?
 		potential.push(...followEdges.map(([target]) => target).filter(id => !visited.has(id)))
 	}
 	return result

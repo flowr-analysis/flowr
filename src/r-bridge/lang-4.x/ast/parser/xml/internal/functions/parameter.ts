@@ -55,7 +55,6 @@ export function tryNormalizeParameter(data: ParserData, objs: NamedXmlBasedJson[
 		},
 		defaultValue,
 		info: {
-			// TODO: add default value to both
 			fullRange:        location,
 			fullLexeme:       content,
 			additionalTokens: []

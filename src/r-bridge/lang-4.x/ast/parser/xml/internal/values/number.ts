@@ -23,7 +23,6 @@ export function normalizeNumber(data: ParserData, obj: XmlBasedJson): RNumber | 
 		location,
 		lexeme: content,
 		info:   {
-			// TODO: include children etc.
 			fullRange:        data.currentRange,
 			additionalTokens: [],
 			fullLexeme:       data.currentLexeme

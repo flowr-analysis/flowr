@@ -17,7 +17,6 @@ export interface CollectorTimeout extends MergeableRecord {
    * if true, the timeout will reset whenever we receive new data
    */
 	resetOnNewData: boolean
-	// errorOnTimeout: boolean // TODO: maybe needed in the future as a "greedy" variant?
 }
 
 interface CollectorUntil extends MergeableRecord {
@@ -70,7 +69,6 @@ export interface RShellSessionOptions extends MergeableRecord {
  */
 export interface RShellOptions extends RShellSessionOptions {
 	readonly sessionName: string
-	// TODO: maybe sanitizer in the future?
 }
 
 export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
@@ -89,10 +87,8 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
  * At the moment we are using a live R session (and not networking etc.) to communicate with R easily,
  * which allows us to install packages etc. However, this might and probably will change in the future (leaving this
  * as a legacy mode :D)
- * TODO: in the future real language bindings like rpy2? but for ts?
  */
 export class RShell {
-	// TODO: deep readonly?
 	public readonly options: Readonly<RShellOptions>
 	public readonly session: RShellSession
 	private readonly log:    Logger<ILogObj>
@@ -108,7 +104,6 @@ export class RShell {
    * sends the given command directly to the current R session
    * will not do anything to alter input markers!
    */
-	// TODO: rename to execute or so?
 	public sendCommand(command: string): void {
 		if(this.log.settings.minLevel >= LogLevel.trace) {
 			this.log.trace(`> ${JSON.stringify(command)}`)
@@ -116,7 +111,6 @@ export class RShell {
 		this._sendCommand(command)
 	}
 
-	// TODO: general varRead which uses r to serialize
 	/**
    * Send a command and collect the output
    *

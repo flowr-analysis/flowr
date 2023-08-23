@@ -46,12 +46,14 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 }
 
 
-function processNextExpression<OtherInfo>(currentElement: DataflowInformation<OtherInfo>,
-																																										data: DataflowProcessorInformation<OtherInfo>,
-																																										environments: REnvironmentInformation,
-																																										listEnvironments: Set<NodeId>,
-																																										remainingRead: Map<string, IdentifierReference[]>,
-																																										nextGraph: DataflowGraph) {
+function processNextExpression<OtherInfo>(
+	currentElement: DataflowInformation<OtherInfo>,
+	data: DataflowProcessorInformation<OtherInfo>,
+	environments: REnvironmentInformation,
+	listEnvironments: Set<NodeId>,
+	remainingRead: Map<string, IdentifierReference[]>,
+	nextGraph: DataflowGraph
+) {
 	// all inputs that have not been written until know, are read!
 	for (const read of [...currentElement.in, ...currentElement.unknownReferences]) {
 		linkReadNameToWriteIfPossible(read, data, environments, listEnvironments, remainingRead, nextGraph)
@@ -59,8 +61,6 @@ function processNextExpression<OtherInfo>(currentElement: DataflowInformation<Ot
 	// add same variable reads for deferred if they are read previously but not dependent
 	for (const writeTarget of currentElement.out) {
 		const writeName = writeTarget.name
-
-		// TODO: must something happen to the remaining reads?
 
 		const resolved = resolveByName(writeName, data.activeScope, environments)
 		if (resolved !== undefined) {
@@ -89,7 +89,6 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 			while (current !== undefined) {
 				for (const definitions of current.memory.values()) {
 					for (const def of definitions) {
-						// TODO: we should find a better and cleaner way to identify if something has been overwritten
 						if (def.kind !== 'built-in-function') {
 							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall, def.used)
 						}

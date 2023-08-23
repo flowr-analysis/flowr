@@ -63,7 +63,6 @@ export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName:
 		parameters: parameters as RParameter[],
 		body:       ensureExpressionList(body[0]),
 		info:       {
-			// TODO: include children etc.
 			fullRange:        data.currentRange,
 			additionalTokens: [],
 			fullLexeme:       data.currentLexeme

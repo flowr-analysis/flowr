@@ -32,9 +32,7 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
 	const thenEnvironment = appendEnvironments(cond.environments, then?.environments)
 	const finalEnvironment = otherwise ? appendEnvironments(thenEnvironment, otherwise.environments) : thenEnvironment
 
-	// TODO: allow to also attribute in-put with maybe and always
 	// again within an if-then-else we consider all actives to be read
-	// TODO: clean up maybe set
 	const ingoing: IdentifierReference[] = [
 		...cond.in,
 		...(makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment) : then?.in ?? []),

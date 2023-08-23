@@ -76,7 +76,6 @@ function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): 
 	guard(argContainer.length > 1 && argContainer[0].name === Type.ParenLeft && argContainer[argContainer.length - 1].name === Type.ParenRight, `expected args in parenthesis`)
 	const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => x.name === Type.Comma)
 	return splitArgumentsOnComma.map(x => {
-		// TODO: improve expression unwrap
 		parseLog.trace('trying to parse argument')
 		return tryToNormalizeArgument(data, x)
 	})
@@ -130,7 +129,6 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 		calledFunction: calledFunction,
 		arguments:      parsedArguments,
 		info:           {
-			// TODO: include children etc.
 			fullRange:        data.currentRange,
 			additionalTokens: [],
 			fullLexeme:       data.currentLexeme
@@ -167,7 +165,6 @@ function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJs
 		functionName,
 		arguments: parsedArguments,
 		info:      {
-			// TODO: include children etc.
 			fullRange:        data.currentRange,
 			additionalTokens: [],
 			fullLexeme:       data.currentLexeme

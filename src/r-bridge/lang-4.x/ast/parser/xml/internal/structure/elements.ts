@@ -47,7 +47,6 @@ function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBase
 		if (binary !== undefined) {
 			return [binary]
 		} else {
-			// TODO: maybe-monad pass through? or just use undefined (see ts-fp)
 			const forLoop = tryNormalizeFor(
 				data,
 				mappedWithName[0],
@@ -63,7 +62,6 @@ function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBase
 					return [symbol]
 				}
 			}
-			// TODO: try to parse symbols with namespace information
 		}
 	} else if (mappedWithName.length === 5) {
 		const ifThen = tryNormalizeIfThen(data, [
@@ -148,7 +146,6 @@ export function normalizeBasedOnType(
 	)
 
 	if (splitOnSemicolon.length > 1) {
-		// TODO: check if non-wrapping expr list is correct
 		log.trace(`found ${splitOnSemicolon.length} expressions by semicolon-split, parsing them separately`)
 		const flattened = []
 		for (const sub of splitOnSemicolon) {
@@ -179,8 +176,6 @@ export function normalizeBasedOnType(
 export function parseNodesWithUnknownType(data: ParserData, mappedWithName: NamedXmlBasedJson[]) {
 	const parsedNodes: RNode[] = []
 	// used to indicate the new root node of this set of nodes
-	// TODO: refactor?
-	// TODO: allow to configure #name
 	for (const elem of mappedWithName) {
 		const retrieved = tryNormalizeSingleNode(data, elem)
 		if (retrieved !== undefined) {

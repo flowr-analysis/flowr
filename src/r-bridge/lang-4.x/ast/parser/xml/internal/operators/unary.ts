@@ -26,7 +26,6 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
 	parseLog.trace(`unary op for ${operator.name} ${operand.name}`)
 	let flavor: UnaryOperatorFlavor
-	// TODO: filter for unary
 	if (ArithmeticOperatorsRAst.has(operator.name)) {
 		flavor = 'arithmetic'
 	} else if (LogicalOperatorsRAst.has(operator.name)) {
@@ -50,7 +49,6 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: N
 	const operationName = retrieveOpName(data.config, operator)
 	const { location, content } = retrieveMetaStructure(data.config, operator.content)
 
-	// TODO: assert exists as known operator
 	const result: RUnaryOp = {
 		type:     Type.UnaryOp,
 		flavor,
@@ -59,7 +57,6 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: N
 		lexeme:   content,
 		operand:  parsedOperand,
 		info:     {
-			// TODO: include children etc.
 			fullRange:        data.currentRange,
 			additionalTokens: [],
 			fullLexeme:       data.currentLexeme

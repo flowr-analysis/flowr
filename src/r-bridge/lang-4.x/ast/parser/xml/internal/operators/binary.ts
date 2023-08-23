@@ -49,7 +49,6 @@ export function tryNormalizeBinary(
 	} else {
 		return executeUnknownHook(data.hooks.operators.onBinary.unknown, data, { lhs, operator, rhs })
 	}
-	// TODO: identify op name correctly
 	return parseBinaryOp(data, flavor, lhs, operator, rhs)
 }
 
@@ -121,7 +120,6 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 		return executeHook(data.hooks.operators.onBinary.after, data, result)
 	}
 
-	// TODO: assert exists as known operator
 	let result: RBinaryOp | RPipe
 	if(flavor === 'pipe') {
 		guard(parsedLhs.location !== undefined, () => `pipe lhs must have a location, but ${JSON.stringify(parsedLhs)})`)
@@ -140,7 +138,6 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 			rhs:    parsedRhs,
 			lexeme: content,
 			info:   {
-				// TODO: include lhs and rhs
 				fullRange:        data.currentRange,
 				additionalTokens: [],
 				fullLexeme:       data.currentLexeme
@@ -156,7 +153,6 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 			operator: operationName,
 			lexeme:   content,
 			info:     {
-				// TODO: include lhs and rhs
 				fullRange:        data.currentRange,
 				additionalTokens: [],
 				fullLexeme:       data.currentLexeme

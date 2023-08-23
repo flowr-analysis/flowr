@@ -17,7 +17,6 @@ export function parseRootObjToAst(
 	)
 	const parsedChildren = normalizeBasedOnType(data, children)
 
-	// TODO: at total object in any case of error?
 	return {
 		type:     Type.ExpressionList,
 		children: parsedChildren,

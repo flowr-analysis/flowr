@@ -5,6 +5,7 @@ import { parseLog } from '../../parser'
 import { isSymbol, Type, RSymbol, RLogical, RNode } from '../../../../model'
 import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
+import { startAndEndsWith } from '../../../../../../../util/strings'
 
 /**
  * Normalize the given object as an R symbol (incorporating namespace information).
@@ -16,7 +17,6 @@ import { executeHook, executeUnknownHook } from '../../hooks'
  *
  * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  */
-// TODO: deal with namespace information
 export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
 	guard(objs.length > 0, 'to parse symbols we need at least one object to work on!')
 	parseLog.debug(`trying to parse symbol`)
@@ -30,7 +30,6 @@ export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]):
 		content     = meta.content
 		namespace   = undefined
 	} else if(objs.length === 3 && isSymbol(objs[2].name)) {
-		// TODO: guard etc.
 		const meta  = retrieveMetaStructure(data.config, objs[2].content)
 		location    = meta.location
 		content     = meta.content
@@ -48,7 +47,6 @@ export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]):
 			location,
 			lexeme:  content,
 			info:    {
-				// TODO: include children etc.
 				fullRange:        data.currentRange,
 				additionalTokens: [],
 				fullLexeme:       data.currentLexeme
@@ -60,11 +58,9 @@ export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]):
 			namespace,
 			location,
 			// remove backticks from symbol
-			content: content.startsWith('`') && content.endsWith('`') ? content.substring(1, content.length - 1) : content,
-			// TODO: get correct lexeme from expr wrapper :C
+			content: startAndEndsWith(content, '`') ? content.substring(1, content.length - 1) : content,
 			lexeme:  content,
 			info:    {
-				// TODO: include children etc.
 				fullRange:        data.currentRange,
 				additionalTokens: [],
 				fullLexeme:       data.currentLexeme

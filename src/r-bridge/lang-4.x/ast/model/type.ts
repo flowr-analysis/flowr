@@ -33,7 +33,6 @@ export const enum Type {
 	ParenRight = ")",
 	BraceLeft = "{",
 	BraceRight = "}",
-	// TODO: deal with them as access operators, similarly with '[[' etc.
 	DoubleBracketLeft = "LBB",
 	BracketLeft = "[",
 	BracketRight = "]",
@@ -64,7 +63,6 @@ export const enum Type {
 	Delimiter = "Delimiter"
 }
 
-// TODO: this mapping should be removed once i have split the R-type enum from the one we use to separate the AST
 /**
  * Returns the name of the corresponding interface if there is one. Otherwise, this throws an error.
  */

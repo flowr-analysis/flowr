@@ -62,7 +62,6 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 		name,
 		value:  parsedValue,
 		info:   {
-			// TODO:correct values
 			fullRange:        location,
 			fullLexeme:       content,
 			additionalTokens: []

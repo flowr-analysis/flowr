@@ -60,12 +60,12 @@ jobs:
   deploy-doc:
     needs: [ test, full-test ]
     name: "Deploy Documentation (only on main)"
-    if: ${{ inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+    if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
     uses: Code-Inspect/flowr/.github/workflows/deploy-doc.yaml@main
 
   deploy-docker:
     needs: [ test, full-test ]
     name: "Deploy Docker (only on main)"
-    if: ${{ inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+    if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
     uses: Code-Inspect/flowr/.github/workflows/deploy-docker.yaml@main
     secrets: inherit

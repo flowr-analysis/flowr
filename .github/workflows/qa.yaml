@@ -13,11 +13,12 @@ on:
     types: [ opened, synchronize ]
     branches: [ main ]
   workflow_dispatch:
-    force-full:
-      description: "Force all steps"
-      required: true
-      default: false
-      type: boolean
+    inputs:
+      force-full:
+        description: "Force all steps"
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -1,12 +1,11 @@
 name: "Deploy Documentation"
 
-on:
-  push:
-    branches: [ main ]
+'on':
+  workflow_call:
 
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: doc-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

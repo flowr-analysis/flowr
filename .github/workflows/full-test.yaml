@@ -1,11 +1,7 @@
-name: "Full QA"
-# Runs only on pull requests to the main branch and on manual triggers
-
-on:
-  pull_request:
-    types: [opened, synchronize]
-    branches: [ main ]
-  workflow_dispatch:
+name: "Full Test"
+# Should only run on pull request to main or if forced
+'on':
+  workflow_call:
 
 jobs:
   test-full:

@@ -3,7 +3,7 @@ message_file = ARGV[0]
 message = File.read(message_file)
 
 # sloppy i know, but at least we have some guards
-$regex = /^(\[(no|skip) ci\] )?(((feat|tests?|lint|refactor|ci|git|special|doc|typo|log|ts|fix|wip)(-fix|-fail)?(, ?)?)+: |Merge (remote-tracking )?branch|Auto-merging).+/
+$regex = /^(\[(no|skip) ci\] )?(((feat|tests?|lint|refactor|ci|git|special|doc|typo|log|ts|fix|wip|docker|dep)(-fix|-fail)?(, ?)?)+: |Merge (remote-tracking )?branch|Auto-merging).+/
 
 if !$regex.match(message)
   puts "[POLICY] Your message is not formatted correctly. Respect the regex: '#{$regex}'!"

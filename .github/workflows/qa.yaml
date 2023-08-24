@@ -1,0 +1,69 @@
+name: "QA (and potentially deploy)"
+# Runs on each push and tests flowR for the default configuration
+# Depending on the targets etc. this may perform many more checks!
+
+on:
+  push:
+    paths-ignore:
+      - '**/*.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'scripts/**'
+  pull_request:
+    types: [ opened, synchronize ]
+    branches: [ main ]
+  workflow_dispatch:
+    force-full:
+      description: "Force all steps"
+      required: true
+      default: false
+      type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  debug:
+    name: "Debug"
+    runs-on: ubuntu-latest
+    steps:
+    - name: "Debug state"
+      run: |
+        echo "Event: ${{ github.event_name }}"
+        echo "Ref: ${{ github.ref }}"
+        echo "Base Ref: ${{ github.base_ref }}"
+
+  lint:
+    needs: [ debug ]
+    name: "Linting"
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    with:
+      r-version: ''
+      action:    lint
+
+  test:
+    needs: [ debug ]
+    name: "Test Suite (full)"
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    with:
+      action: test-full
+      coverage: true
+
+  full-test:
+    needs: [ lint ]
+    name: "Run Full Test Suite (only on PR to main)"
+    # if: ${{ inputs.force-full || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') }}
+    uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
+
+  deploy-doc:
+    needs: [ test, full-test ]
+    name: "Deploy Documentation (only on main)"
+    # if: ${{ inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+    uses: Code-Inspect/flowr/.github/workflows/deploy-doc.yaml@main
+
+  deploy-docker:
+    needs: [ test, full-test ]
+    name: "Deploy Docker (only on main)"
+    # if: ${{ inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+    uses: Code-Inspect/flowr/.github/workflows/deploy-docker.yaml@main

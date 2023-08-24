@@ -1,8 +1,13 @@
 {
+  "buildOptions": {
+    "incremental": true
+  },
   "compilerOptions": {
     "esModuleInterop": true,
-    "target": "esnext",
+    "target": "ESNext",
+    "module": "commonjs",
     "moduleResolution": "node",
+    "skipLibCheck": true,
     "sourceMap": true,
     "outDir": "./dist/",
     "strict": true

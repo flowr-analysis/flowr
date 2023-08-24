@@ -25,6 +25,7 @@ concurrency:
 
 jobs:
   debug:
+    name: "Debug"
     runs-on: ubuntu-latest
     steps:
     - name: "Debug state"

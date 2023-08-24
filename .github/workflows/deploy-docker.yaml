@@ -5,7 +5,7 @@ name: "Deploy Docker"
 
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: docker-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

@@ -5,7 +5,7 @@ name: "Deploy Documentation"
 
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: doc-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

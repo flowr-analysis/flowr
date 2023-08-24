@@ -12,7 +12,7 @@ export const toolName = 'benchmark-single'
 
 export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
-	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide.' },
+	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a single file as src to read from', multiple: false, defaultOption: true, typeLabel: '{underline file}' },
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction', defaultValue: 'all', typeLabel: '{underline all/no}' },
 	{ name: 'output',       alias: 'o', type: String,  description: `File to write the measurements to (appends a single line in JSON format)`,  typeLabel: '{underline file}' },

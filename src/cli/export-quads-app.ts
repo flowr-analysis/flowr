@@ -11,7 +11,7 @@ export const toolName = 'export-quads'
 
 export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
-	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide.' },
+	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
 	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process'},
 	{ name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to {italic out.quads})', typeLabel: '{underline file}' },

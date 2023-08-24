@@ -7,7 +7,7 @@ export const toolName = 'stats'
 const featureNameList = [...allFeatureNames].map(s => `"${s}"`).join(', ')
 export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
-	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide.' },
+	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'post-process',             type: Boolean, description: 'If set, will enable post-processing of the given input (clustering, ...). Pass the output-dir of the processing as input.' },
 	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process'},
 	{ name: 'hist-step',                type: Number,  description: 'When post-processing, the step size for the histogram', defaultValue: 0.01, typeLabel: '{underline number}' },

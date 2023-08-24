@@ -1,7 +1,7 @@
 import { type RShell } from "./shell"
 import { parseCSV, ts2r, XmlParserHooks, RExpressionList, normalize } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
-import { DeepPartial } from 'ts-essentials'
+import { DeepPartial, DeepReadonly } from 'ts-essentials'
 import { guard } from '../util/assert'
 
 export interface RParseRequestFromFile {
@@ -81,7 +81,7 @@ export function removeTokenMapQuotationMarks(str: string): string {
 	}
 }
 
-export type TokenMap = Record<string, string>
+export type TokenMap = DeepReadonly<Record<string, string>>
 
 export async function getStoredTokenMap(shell: RShell): Promise<TokenMap> {
 	await shell.ensurePackageInstalled('xmlparsedata', true /* use some kind of environment in the future */)

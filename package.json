@@ -4,7 +4,7 @@
   "description": "Program Slicer and Analyzer for R Programs",
   "main": "dist/cli/slicer-app.js",
   "scripts": {
-    "main": "ts-node src/app.ts",
+    "main": "ts-node src/flowr.ts",
     "stats": "ts-node src/cli/statistics-app.ts",
     "slicer": "ts-node src/cli/slicer-app.ts",
     "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",

@@ -34,5 +34,5 @@ jobs:
           docker tag flowr "${TAG}":"$VERSION"
           docker tag flowr "${TAG}":latest
           docker images "$TAG"
-          echo "${{ secrets.DH_PASSWD }}" | docker login --username ${{ secrets.DH_NAME }} --password-stdin
+          echo "${{ secrets.DH_PASSWD }}" | docker login -u ${{ secrets.DH_NAME }} --password-stdin
           docker push $TAG

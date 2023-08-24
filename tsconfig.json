@@ -3,6 +3,7 @@
     "esModuleInterop": true,
     "target": "esnext",
     "moduleResolution": "node",
+    "skipLibCheck": true,
     "sourceMap": true,
     "outDir": "./dist/",
     "strict": true

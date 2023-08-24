@@ -1,7 +1,11 @@
 {
+  "buildOptions": {
+    "incremental": true
+  },
   "compilerOptions": {
     "esModuleInterop": true,
-    "target": "esnext",
+    "target": "ESNext",
+    "module": "commonjs",
     "moduleResolution": "node",
     "skipLibCheck": true,
     "sourceMap": true,
@@ -9,6 +13,9 @@
     "strict": true
   },
   "lib": [ "esnext", "dom" ],
+  "include": [
+    "src/**/*"
+  ],
   "exclude": [
     "node_modules",
     "node_modules/*"

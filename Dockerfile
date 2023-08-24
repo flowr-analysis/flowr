@@ -17,12 +17,12 @@ LABEL author="Florian Sihler" git="https://github.com/Code-Inspect/flowr"
 
 WORKDIR /app
 
-COPY --from=builder /app/dist /app/dist
+RUN apk add --no-cache R
+
 # we keep the package.json for module resolution
 COPY package.json LICENSE /app/
-
 RUN cd /app/dist/ && npm install --only=production && cd ../
 
-RUN apk add --no-cache R
+COPY --from=builder /app/dist /app/dist
 
 CMD ["node", "/app/dist/cli/slicer-app.js", "--", "--help"]

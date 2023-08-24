@@ -1,4 +1,4 @@
-name: "QA (and potential deploy)"
+name: "QA (and potentially deploy)"
 # Runs on each push and tests flowR for the default configuration
 # Depending on the targets etc. this may perform many more checks!
 

@@ -31,8 +31,8 @@ jobs:
         run: |
           TAG="eagleoutice/flowr"
           VERSION="${{ github.sha }}"
-          docker tag flowr ${TAG}:$VERSION
-          docker tag flowr ${TAG}:latest
-          docker images $TAG
-          echo ${{ secrets.DH_PASSWD }} | docker login -u ${{ secrets.DH_NAME }} --password-stdin
+          docker tag flowr "${TAG}":"$VERSION"
+          docker tag flowr "${TAG}":latest
+          docker images "$TAG"
+          echo "${{ secrets.DH_PASSWD }}" | docker login -u "${{ secrets.DH_NAME }}" --password-stdin
           docker push $TAG

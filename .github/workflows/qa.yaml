@@ -68,3 +68,4 @@ jobs:
     name: "Deploy Docker (only on main)"
     if: ${{ inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     uses: Code-Inspect/flowr/.github/workflows/deploy-docker.yaml@main
+    secrets: inherit

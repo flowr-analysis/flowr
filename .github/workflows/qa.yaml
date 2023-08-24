@@ -59,10 +59,10 @@ jobs:
     needs: [ full-test ]
     name: "Deploy Documentation (only on main)"
     if: ${{ inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
-    uses: Code-Inspect/flowr/.github/workflows/deploy-doc.yaml@main
+    uses: Code-Inspect/flowr/.github/workflows/deploy-doc.yaml@243-ship-a-docker-container-of-flowr-so-that-others-can-use-flowr-more-easily
 
   deploy-docker:
     needs: [ full-test ]
     name: "Deploy Docker (only on main)"
     if: ${{ inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
-    uses: Code-Inspect/flowr/.github/workflows/deploy-docker.yaml@main
+    uses: Code-Inspect/flowr/.github/workflows/deploy-docker.yaml@243-ship-a-docker-container-of-flowr-so-that-others-can-use-flowr-more-easily

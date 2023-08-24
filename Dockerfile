@@ -21,7 +21,7 @@ RUN apk add --no-cache R
 
 # we keep the package.json for module resolution
 COPY package.json LICENSE /app/
-RUN cd /app/dist/ && npm install --only=production && cd ../
+RUN npm install --only=production
 
 COPY --from=builder /app/dist /app/dist
 

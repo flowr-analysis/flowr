@@ -54,16 +54,16 @@ jobs:
     needs: [ lint ]
     name: "Run Full Test Suite (only on PR to main)"
     # if: ${{ inputs.force-full || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') }}
-    uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@243-ship-a-docker-container-of-flowr-so-that-others-can-use-flowr-more-easily
+    uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
 
   deploy-doc:
     needs: [ test, full-test ]
     name: "Deploy Documentation (only on main)"
     # if: ${{ inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
-    uses: Code-Inspect/flowr/.github/workflows/deploy-doc.yaml@243-ship-a-docker-container-of-flowr-so-that-others-can-use-flowr-more-easily
+    uses: Code-Inspect/flowr/.github/workflows/deploy-doc.yaml@main
 
   deploy-docker:
     needs: [ test, full-test ]
     name: "Deploy Docker (only on main)"
     # if: ${{ inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
-    uses: Code-Inspect/flowr/.github/workflows/deploy-docker.yaml@243-ship-a-docker-container-of-flowr-so-that-others-can-use-flowr-more-easily
+    uses: Code-Inspect/flowr/.github/workflows/deploy-docker.yaml@main

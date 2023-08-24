@@ -1,5 +1,6 @@
-name: "Lightweight QA"
+name: "QA"
 # Runs on each push and tests flowR for the default configuration
+# Depending on the targets etc. this may perform many more checks!
 
 on:
   push:
@@ -8,12 +9,19 @@ on:
       - 'LICENSE'
       - '.gitignore'
       - 'scripts/**'
+  pull_request:
+    types: [ opened, synchronize ]
+    branches: [ main ]
   workflow_dispatch:
+    force-full:
+      description: "Force all steps"
+      required: true
+      default: false
+      type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 
 jobs:
   debug:
@@ -40,3 +48,15 @@ jobs:
     with:
       action: test-full
       coverage: true
+
+  full-test:
+    needs: [ lint, test ]
+    name: "Run Full Test Suite (only on PR to main)"
+    if: ${{ inputs.force-full || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') }}
+    uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
+
+  deploy-doc:
+    needs: [ full-test ]
+    name: "Deploy Documentation (only on main)"
+    if: ${{ inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+    uses: Code-Inspect/flowr/.github/workflows/deploy-doc.yaml@main

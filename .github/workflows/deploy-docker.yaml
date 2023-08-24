@@ -1,0 +1,38 @@
+name: "Deploy Docker"
+
+'on':
+  workflow_call:
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  doc:
+    name: "Build and Deploy the flowR Docker Container"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Set up Git repository
+        uses: actions/checkout@v3
+        with:
+          lfs: false
+          submodules: false
+
+      - name: Build the image
+        run: |
+          docker build -t flowr -f Dockerfile .
+
+      - name: Test that the image works
+        run: |
+          docker run --rm flowr
+
+      - name: Deploy the image
+        run: |
+          TAG="eagleoutice/flowr"
+          VERSION="${{ github.sha }}"
+          docker tag flowr ${TAG}:$VERSION
+          docker tag flowr ${TAG}:latest
+          docker images $TAG
+          echo ${{ secrets.DH_PASSWD }} | docker login -u ${{ secrets.DH_NAME }} --password-stdin
+          docker push $TAG

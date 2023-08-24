@@ -5,24 +5,16 @@
  * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
  * TODO: this should allow to use flowR as some kind of server that repeatedly can answer
  */
-import * as readline from 'readline'
 import { log, LogLevel } from './util/log'
-import { getStoredTokenMap, retrieveAstFromRCode, RShell, TokenMap } from './r-bridge'
+import { RShell } from './r-bridge'
 import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import commandLineArgs from 'command-line-args'
-import cp from 'child_process'
 import { guard } from './util/assert'
 import { FontWeights, formatter, setFormatter, voidFormatter } from './statistics'
-import { repl } from './cli/repl'
+import { repl, validScripts, waitOnScript } from './cli/repl'
 
 
-const validScripts = new Map<string, string>()
-validScripts.set('benchmark',        'cli/benchmark-app')
-validScripts.set('benchmark-helper', 'cli/benchmark-helper-app')
-validScripts.set('stats',            'cli/statistics-app')
-validScripts.set('slicer',           'cli/slicer-app')
-validScripts.set('summarizer',       'cli/summarizer-app')
-validScripts.set('export-quads',     'cli/export-quads-app')
+
 const scriptsText = Array.from(validScripts.keys()).join(', ')
 
 export const toolName = 'flowr'
@@ -70,21 +62,10 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter)
 }
 
-async function waitOnScript(module: string, args: string[]): Promise<void> {
-	const child = cp.fork(module, args)
-	child.on('exit', (code, signal) => {
-		if (code) {
-			console.error(`Script ${module} exited with code ${JSON.stringify(code)} and signal ${JSON.stringify(signal)}`)
-			process.exit(code)
-		}
-	})
-	await new Promise<void>(resolve => child.on('exit', resolve))
-}
-
 
 async function main() {
 	if(options.script) {
-		const target = validScripts.get(options.script)
+		const target = validScripts.get(options.script)?.target
 		guard(target !== undefined, `Unknown script ${options.script}, pick one of ${scriptsText}.`)
 		console.log(`Running script '${formatter.format(options.script, { weight: FontWeights.bold })}'`)
 		log.debug(`Script maps to "${target}"`)

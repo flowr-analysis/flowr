@@ -30,7 +30,7 @@ jobs:
       - name: Deploy the image
         run: |
           TAG="eagleoutice/flowr"
-          VERSION="${{ github.sha }}"
+          VERSION="$(date "+%Y%m%d")"
           docker tag flowr "${TAG}":"$VERSION"
           docker tag flowr "${TAG}":latest
           docker images "$TAG"

@@ -5,7 +5,7 @@
  */
 import { getStoredTokenMap, RShell, TokenMap } from '../r-bridge'
 import readline from 'readline/promises'
-import { bold, ColorEffect, Colors, FontStyles, formatter, italic } from '../statistics'
+import { bold, ColorEffect, Colors, formatter, italic } from '../statistics'
 import { log } from '../util/log'
 import cp from 'child_process'
 import { splitArguments } from '../util/args'

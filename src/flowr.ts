@@ -3,7 +3,6 @@
  *
  * If started with arguments it may be used to run a single of the flowR scripts.
  * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
- * TODO: this should allow to use flowR as some kind of server that repeatedly can answer
  */
 import { log, LogLevel } from './util/log'
 import { RShell } from './r-bridge'
@@ -17,7 +16,6 @@ const scriptsText = Array.from(validScripts.keys()).join(', ')
 
 export const toolName = 'flowr'
 
-// TODO: allow to give a port to connect to which allows to send request and send answers
 export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging (will be passed to the corresponding script)' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide (or the guide of the corresponding script)' },

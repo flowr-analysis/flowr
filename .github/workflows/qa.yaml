@@ -38,6 +38,7 @@ jobs:
   lint:
     needs: [ debug ]
     name: "Linting"
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
     with:
       r-version: ''
@@ -45,7 +46,8 @@ jobs:
 
   test:
     needs: [ debug ]
-    name: "Test Suite (full)"
+    name: "Test Suite (coverage)"
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
     with:
       action: test-full

@@ -3,7 +3,7 @@ import path from 'path'
 import { log } from '../../util/log'
 import fs from 'fs'
 import { ClusterContextIdMap, ClusterReport, clusterStatisticsOutput } from './clusterer'
-import { ColorEffect, Colors, defaultStatisticsFileSuffix, FontWeights, formatter } from '../output'
+import { ColorEffect, Colors, defaultStatisticsFileSuffix, FontStyles, formatter } from '../output'
 import { deterministicCountingIdGenerator, NodeId } from '../../r-bridge'
 import { DefaultMap } from '../../util/defaultmap'
 
@@ -101,7 +101,7 @@ export function printClusterReport(report: ClusterReport, limit = 1000): string[
 		const strCount = count.toLocaleString().padStart(longestCount, ' ')
 		const strUnique = unique.toLocaleString().padStart(longestUnique, ' ')
 		const uniqueSuffix = `\t (${strUnique} ${formatter.format('unique', { color: Colors.white, effect: ColorEffect.foreground })})`
-		console.log(`\t${formatter.format(strId, { weight: FontWeights.bold })}\t ${strCount} ` +
+		console.log(`\t${formatter.format(strId, { style: FontStyles.bold })}\t ${strCount} ` +
       `${formatter.format('total', { color: Colors.white, effect: ColorEffect.foreground })}`
       + (count !== unique ? uniqueSuffix : '')
 		)

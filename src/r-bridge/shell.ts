@@ -42,8 +42,6 @@ export interface OutputCollectorConfiguration extends MergeableRecord {
 	keepPostamble:           boolean
 	/** automatically trim all lines in the output (useful to ignore trailing whitespace etc.) */
 	automaticallyTrimOutput: boolean
-	/** if true, the collector will stop waiting for output if an error occurs */
-	errorStopsWaiting:       boolean
 }
 
 export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguration = {
@@ -58,13 +56,16 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
 	errorStopsWaiting:       true
 }
 
-// TODO: keep alive option
 export interface RShellSessionOptions extends MergeableRecord {
 	readonly pathToRExecutable:  string
 	readonly commandLineOptions: readonly string[]
 	readonly cwd:                string
 	readonly eol:                string
 	readonly env:                NodeJS.ProcessEnv
+	/** If set, the R session will be restarted if it exits due to an error */
+	readonly revive:             'never' | 'on-error' | 'always'
+	/** Called when the R session is restarted, this makes only sense if `revive` is not set to `'never'` */
+	readonly onRevive:           (code: number, signal: string | null) => void
 }
 
 /**
@@ -81,7 +82,9 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
 	cwd:                process.cwd(),
 	env:                process.env,
-	eol:                EOL
+	eol:                EOL,
+	revive:             'never',
+	onRevive:           () => { /* do nothing */ }
 } as const
 
 /**
@@ -94,7 +97,7 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
  */
 export class RShell {
 	public readonly options: Readonly<RShellOptions>
-	public readonly session: RShellSession
+	private session:         RShellSession
 	private readonly log:    Logger<ILogObj>
 
 	public constructor(options?: Partial<RShellOptions>) {
@@ -102,6 +105,22 @@ export class RShell {
 		this.log = log.getSubLogger({ name: this.options.sessionName })
 
 		this.session = new RShellSession(this.options, this.log)
+		this.revive()
+	}
+
+	private revive() {
+		if (this.options.revive === 'never') {
+			return
+		}
+
+		this.session.onExit((code, signal) => {
+			if (this.options.revive === 'always' || (this.options.revive === 'on-error' && code !== 0)) {
+				this.log.warn(`R session exited with code ${code}, reviving!`)
+				this.options.onRevive(code, signal)
+				this.session = new RShellSession(this.options, this.log)
+				this.revive()
+			}
+		})
 	}
 
 	/**
@@ -131,7 +150,7 @@ export class RShell {
 		const output = await this.session.collectLinesUntil(config.from, {
 			predicate:       data => data === config.postamble,
 			includeInResult: config.keepPostamble // we do not want the postamble
-		}, true, config.timeout, () => {
+		}, config.timeout, () => {
 			this._sendCommand(command)
 			if (config.from === 'stderr') {
 				this._sendCommand(`cat("${config.postamble}${this.options.eol}", file=stderr())`)
@@ -235,7 +254,7 @@ export class RShell {
 		await this.session.collectLinesUntil('both', {
 			predicate:       data => successfulDone.test(data),
 			includeInResult: false
-		}, true, {
+		}, {
 			ms:             750_000,
 			resetOnNewData: true
 		}, () => {
@@ -291,6 +310,7 @@ class RShellSession {
 			input:    this.bareSession.stderr,
 			terminal: false
 		})
+		this.onExit(() => { this.end() })
 		this.options = options
 		this.log = log
 		this.setupRSessionLoggers()
@@ -311,11 +331,10 @@ class RShellSession {
    *
    * @param from        - The stream(s) to collect the information from
    * @param until       - If the predicate returns true, this will stop the collection and resolve the promise
-	 * @param stopOnError - If true, the collector will stop waiting for output if an error occurs
    * @param timeout     - Configuration for how and when to timeout
    * @param action      - Event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
    */
-	public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, stopOnError: boolean, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
+	public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
 		const result: string[] = []
 		let handler: (data: string) => void
 		let error: (code: number) => void
@@ -340,21 +359,13 @@ class RShellSession {
 				}
 			}
 
-			error = code => {
-				if(code !== 0) {
-					resolve(result)
-				}
-			}
-			if(stopOnError) {
-				this.onExit(error)
-			}
+			error = () => { resolve(result) }
+			this.onExit(error)
 			this.on(from, 'line', handler)
 			action?.()
 		}).finally(() => {
 			this.removeListener(from, 'line', handler)
-			if(stopOnError) {
-				this.bareSession.removeListener('exit', error)
-			}
+			this.bareSession.removeListener('exit', error)
 		})
 	}
 
@@ -389,7 +400,7 @@ class RShellSession {
 		})
 	}
 
-	public onExit(callback: (code: number, signal: string) => void): void {
+	public onExit(callback: (code: number, signal: string | null) => void): void {
 		this.bareSession.on('exit', callback)
 	}
 

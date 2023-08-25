@@ -10,10 +10,8 @@ import { RShell } from './r-bridge'
 import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import commandLineArgs from 'command-line-args'
 import { guard } from './util/assert'
-import { FontWeights, formatter, setFormatter, voidFormatter } from './statistics'
+import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from './statistics'
 import { repl, validScripts, waitOnScript } from './cli/repl'
-
-
 
 const scriptsText = Array.from(validScripts.keys()).join(', ')
 
@@ -65,9 +63,10 @@ if(options['no-ansi']) {
 
 async function main() {
 	if(options.script) {
-		const target = validScripts.get(options.script)?.target
+		let target = validScripts.get(options.script)?.target
 		guard(target !== undefined, `Unknown script ${options.script}, pick one of ${scriptsText}.`)
-		console.log(`Running script '${formatter.format(options.script, { weight: FontWeights.bold })}'`)
+		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.bold })}'`)
+		target = `cli/${target}`
 		log.debug(`Script maps to "${target}"`)
 		await waitOnScript(`${__dirname}/${target}`, process.argv.slice(3))
 		process.exit(0)
@@ -81,7 +80,14 @@ async function main() {
 	log.logToFile()
 
 	// we keep an active shell session to allow other parse investigations :)
-	const shell = new RShell()
+	const shell = new RShell({
+		revive:   'always',
+		onRevive: (code, signal) => {
+			const signalText = signal == null ? '' : ` and signal ${signal}`
+			console.log(formatter.format(`R process exited with code ${code}${signalText}. Restarting...`, { color: Colors.magenta, effect: ColorEffect.foreground }))
+			console.log(italic(`If you want to exit, press either Ctrl+C twice, or enter ${bold(':quit')}`))
+		},
+	})
 	shell.tryToInjectHomeLibPath()
 
 	await repl(shell)

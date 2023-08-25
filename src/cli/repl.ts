@@ -5,21 +5,22 @@
  */
 import { getStoredTokenMap, RShell, TokenMap } from '../r-bridge'
 import readline from 'readline/promises'
-import { ColorEffect, Colors, FontWeights, formatter } from '../statistics'
+import { bold, ColorEffect, Colors, FontStyles, formatter, italic } from '../statistics'
 import { log } from '../util/log'
 import cp from 'child_process'
 import { splitArguments } from '../util/args'
 
 // TODO: find one location for all of these documentation etc.
 export const validScripts = new Map<string, { target: string, description: string }>()
-validScripts.set('slicer',           { target: 'cli/slicer-app', description: 'Slice a given file' })
-validScripts.set('benchmark',        { target: 'cli/benchmark-app', description: 'Allows to benchmark the static program slicer' })
-validScripts.set('summarizer',       { target: 'cli/summarizer-app', description: 'Summarize the results of the benchmark' })
+validScripts.set('slicer',           { target: 'slicer-app', description: 'Slice a given file' })
+validScripts.set('benchmark',        { target: 'benchmark-app', description: 'Allows to benchmark the static program slicer' })
+validScripts.set('summarizer',       { target: 'summarizer-app', description: 'Summarize the results of the benchmark' })
 // validScripts.set('benchmark-helper', { target: 'cli/benchmark-helper-app', description: '' })
-validScripts.set('stats',            { target: 'cli/statistics-app', description: 'Generate statistics of used features in R code' })
-validScripts.set('export-quads',     { target: 'cli/export-quads-app', description: 'Export quads of the normalized AST of a given R code file' })
+validScripts.set('stats',            { target: 'statistics-app', description: 'Generate statistics of used features in R code' })
+validScripts.set('export-quads',     { target: 'export-quads-app', description: 'Export quads of the normalized AST of a given R code file' })
 
 export async function waitOnScript(module: string, args: string[]): Promise<void> {
+	log.info(`starting script ${module} with args ${JSON.stringify(args)}`)
 	const child = cp.fork(module, args)
 	child.on('exit', (code, signal) => {
 		if (code) {
@@ -40,10 +41,6 @@ const rawPrompt = 'R>'
 // is a function as the 'formatter' is configured only after the cli options have been read
 const prompt = () => `${formatter.format(rawPrompt, { color: Colors.cyan, effect: ColorEffect.foreground })} `
 
-const it = (s: string) => formatter.format(s, { weight: FontWeights.italic })
-const b = (s: string) => formatter.format(s, { weight: FontWeights.bold })
-
-
 // another funny custom argument processor
 const replProcessors = new Map<string, ReplProcessor>()
 replProcessors.set('help', {
@@ -52,18 +49,18 @@ replProcessors.set('help', {
 	fn:          () => {
 		console.log(`
 You can always just enter a R expression which gets evaluated:
-${rawPrompt} ${b('1 + 1')}
-${it('[1] 2')}
+${rawPrompt} ${bold('1 + 1')}
+${italic('[1] 2')}
 
-Besides that, you can use the following commands. The scripts ${it('can')} accept further arguments. There are the following basic commands:
+Besides that, you can use the following commands. The scripts ${italic('can')} accept further arguments. There are the following basic commands:
 ${
 	Array.from(replProcessors.entries()).filter(([, {script}]) => !script).map(
-		([command, { description }]) => `  ${b(padCmd(':' + command))}${description}`).join('\n')			
+		([command, { description }]) => `  ${bold(padCmd(':' + command))}${description}`).join('\n')			
 }
-Furthermore, you can directly call the following scripts which accept arguments. If you are unsure, try to add ${it('--help')} after the command.
+Furthermore, you can directly call the following scripts which accept arguments. If you are unsure, try to add ${italic('--help')} after the command.
 ${
 	Array.from(replProcessors.entries()).filter(([, {script}]) => script).map(
-		([command, { description }]) => `  ${b(padCmd(':' + command))}${description}`).join('\n')
+		([command, { description }]) => `  ${bold(padCmd(':' + command))}${description}`).join('\n')
 }
 `)
 	}
@@ -102,12 +99,12 @@ export function replCompleter(line: string): [string[], string] {
  * - Starting with a colon `:`, indicating a command (probe `:help`, and refer to {@link replProcessors}) </li>
  * - Starting with anything else, indicating default R code to be directly executed. If you kill the underlying shell, that is on you! </li>
  *
- * @param shell     - The shell to use
+ * @param shell     - The shell to use, if you do not pass one it will automatically create a new one with the `revive` option set to 'always'
  * @param tokenMap  - The pre-retrieved token map, if you pass none, it will be retrieved automatically (using the default {@link getStoredTokenMap}).
  * @param rl        - A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with `console.log`.
  *                    If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
  */
-export async function repl(shell: RShell, tokenMap?: TokenMap, rl = readline.createInterface({
+export async function repl(shell = new RShell({ revive: 'always' }), tokenMap?: TokenMap, rl = readline.createInterface({
 	input:                   process.stdin,
 	output:                  process.stdout,
 	tabSize:                 4,
@@ -138,7 +135,7 @@ export async function repl(shell: RShell, tokenMap?: TokenMap, rl = readline.cre
 					from:                    'both',
 					automaticallyTrimOutput: true
 				})
-				console.log(`${it(result.join('\n'))}\n`)
+				console.log(`${italic(result.join('\n'))}\n`)
 			} catch(e) {
 				// TODO: deal with them
 			}

@@ -1,6 +1,6 @@
 
 // noinspection JSUnusedGlobalSymbols
-export enum FontWeights {
+export enum FontStyles {
 	bold = 1,
 	faint = 2,
 	italic = 3
@@ -32,7 +32,7 @@ export interface ColorFormatOptions {
 }
 
 export interface WeightFormatOptions {
-	weight: FontWeights
+	style: FontStyles
 }
 
 export interface OutputFormatter {
@@ -43,6 +43,20 @@ export const voidFormatter: OutputFormatter = new class implements OutputFormatt
 	public format(input: string): string {
 		return input
 	}
+}
+
+/**
+ * This does not work if the {@link setFormatter | formatter} is void. Tries to format the text with a bold font weight.
+ */
+export function italic(s: string, options?: FormatOptions): string {
+	return formatter.format(s, { style: FontStyles.italic, ...options })
+}
+
+/**
+ * This does not work if the {@link setFormatter | formatter} is void. Tries to format the text with an italic font shape.
+ */
+export function bold(s: string, options?: FormatOptions): string {
+	return formatter.format(s, { style: FontStyles.bold, ...options })
 }
 
 export const escape = '\x1b['
@@ -61,7 +75,7 @@ export const ansiFormatter = {
 			return ''
 		}
 		const colorString = 'color' in options ? `${options.effect + options.color}` : ''
-		const weightString = 'weight' in options ? `${options.weight}` : ''
+		const weightString = 'style' in options ? `${options.style}` : ''
 		return `${escape}${colorString}${weightString !== "" ? ';' : ''}${weightString}${colorSuffix}`
 	}
 }

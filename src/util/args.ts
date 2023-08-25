@@ -5,7 +5,7 @@
  */
 
 /**
- * Given an input string like `a "b c" d` this splits the arguments similar to common shell interpreters (i.e., `a`, `"b c"`, and `d`).
+ * Given an input string like `a "b c" d` this splits the arguments similar to common shell interpreters (i.e., `a`, `b c`, and `d`).
  */
 export function splitArguments(inputString: string): string[] {
 	const args = []
@@ -22,7 +22,6 @@ export function splitArguments(inputString: string): string[] {
 			current = ''
 		} else if (c === '"' || c === "'") {
 			inQuotes = !inQuotes
-			current += c
 		} else if (c === '\\') {
 			escaped = true
 		} else {

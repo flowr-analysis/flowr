@@ -42,6 +42,8 @@ export interface OutputCollectorConfiguration extends MergeableRecord {
 	keepPostamble:           boolean
 	/** automatically trim all lines in the output (useful to ignore trailing whitespace etc.) */
 	automaticallyTrimOutput: boolean
+	/** if true, the collector will stop waiting for output if an error occurs */
+	errorStopsWaiting:       boolean
 }
 
 export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguration = {
@@ -52,9 +54,11 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
 		resetOnNewData: true
 	},
 	keepPostamble:           false,
-	automaticallyTrimOutput: true
+	automaticallyTrimOutput: true,
+	errorStopsWaiting:       true
 }
 
+// TODO: keep alive option
 export interface RShellSessionOptions extends MergeableRecord {
 	readonly pathToRExecutable:  string
 	readonly commandLineOptions: readonly string[]
@@ -123,10 +127,11 @@ export class RShell {
 		if(this.log.settings.minLevel >= LogLevel.trace) {
 			this.log.trace(`> ${JSON.stringify(command)}`)
 		}
+
 		const output = await this.session.collectLinesUntil(config.from, {
 			predicate:       data => data === config.postamble,
 			includeInResult: config.keepPostamble // we do not want the postamble
-		}, config.timeout, () => {
+		}, true, config.timeout, () => {
 			this._sendCommand(command)
 			if (config.from === 'stderr') {
 				this._sendCommand(`cat("${config.postamble}${this.options.eol}", file=stderr())`)
@@ -230,7 +235,7 @@ export class RShell {
 		await this.session.collectLinesUntil('both', {
 			predicate:       data => successfulDone.test(data),
 			includeInResult: false
-		}, {
+		}, true, {
 			ms:             750_000,
 			resetOnNewData: true
 		}, () => {
@@ -304,14 +309,16 @@ class RShellSession {
    *
    * This method does allow other listeners to consume the same input
    *
-   * @param from    - The stream(s) to collect the information from
-   * @param until   - If the predicate returns true, this will stop the collection and resolve the promise
-   * @param timeout - Configuration for how and when to timeout
-   * @param action  - Event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
+   * @param from        - The stream(s) to collect the information from
+   * @param until       - If the predicate returns true, this will stop the collection and resolve the promise
+	 * @param stopOnError - If true, the collector will stop waiting for output if an error occurs
+   * @param timeout     - Configuration for how and when to timeout
+   * @param action      - Event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
    */
-	public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
+	public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, stopOnError: boolean, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
 		const result: string[] = []
 		let handler: (data: string) => void
+		let error: (code: number) => void
 
 		return await new Promise<string[]>((resolve, reject) => {
 			const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
@@ -332,10 +339,22 @@ class RShellSession {
 					this.collectionTimeout = makeTimer()
 				}
 			}
+
+			error = code => {
+				if(code !== 0) {
+					resolve(result)
+				}
+			}
+			if(stopOnError) {
+				this.onExit(error)
+			}
 			this.on(from, 'line', handler)
 			action?.()
 		}).finally(() => {
 			this.removeListener(from, 'line', handler)
+			if(stopOnError) {
+				this.bareSession.removeListener('exit', error)
+			}
 		})
 	}
 
@@ -368,6 +387,10 @@ class RShellSession {
 		this.bareSession.stderr.on('data', (data: string) => {
 			this.log.warn(`< ${data}`)
 		})
+	}
+
+	public onExit(callback: (code: number, signal: string) => void): void {
+		this.bareSession.on('exit', callback)
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any

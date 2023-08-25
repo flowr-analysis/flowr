@@ -8,6 +8,7 @@ import readline from 'readline/promises'
 import { ColorEffect, Colors, FontWeights, formatter } from '../statistics'
 import { log } from '../util/log'
 import cp from 'child_process'
+import { splitArguments } from '../util/args'
 
 // TODO: find one location for all of these documentation etc.
 export const validScripts = new Map<string, { target: string, description: string }>()
@@ -77,7 +78,7 @@ for(const [script, { target, description}] of validScripts) {
 	replProcessors.set(script, {
 		description,
 		script: true,
-		fn:     (_s, _t, remainingLine) => { waitOnScript(`${__dirname}/${target}`, remainingLine) }
+		fn:     async(_s, _t, remainingLine) => { await waitOnScript(`${__dirname}/${target}`, splitArguments(remainingLine)) }
 	})
 }
 
@@ -126,14 +127,17 @@ export async function repl(shell: RShell, tokenMap?: TokenMap, rl = readline.cre
 			const command = answer.slice(1).split(' ')[0].toLowerCase()
 			const processor = replProcessors.get(command)
 			if(processor) {
-				await processor.fn(shell, tokenMap)
+				await processor.fn(shell, tokenMap, answer.slice(command.length + 2).trim())
 			} else {
 				// TODO: display more information?
 				console.log(`the command '${command}' is unknown, try :help`)
 			}
 		} else {
 			try {
-				const result = await shell.sendCommandWithOutput(answer)
+				const result = await shell.sendCommandWithOutput(answer, {
+					from:                    'both',
+					automaticallyTrimOutput: true
+				})
 				console.log(`${it(result.join('\n'))}\n`)
 			} catch(e) {
 				// TODO: deal with them

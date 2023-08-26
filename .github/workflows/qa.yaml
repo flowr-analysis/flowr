@@ -56,7 +56,7 @@ jobs:
   full-test:
     needs: [ lint ]
     name: "Run Full Test Suite (only on PR to main)"
-    if: ${{ inputs.force-full || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') }}
+    if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')) }}
     uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
 
   deploy-doc:

@@ -105,6 +105,7 @@ export const retrieveAst = async(shell: RShell, input: `file://${string}` | stri
 }
 
 export interface TestConfiguration extends MergeableRecord {
+	/** the (inclusive) minimum version of R required to run this test, e.g., {@link MIN_VERSION_PIPE} */
 	minRVersion:            string | undefined,
 	needsNetworkConnection: boolean,
 }
@@ -120,7 +121,7 @@ async function ensureConfig(shell: RShell, test: Mocha.Context, userConfig?: Par
 		await testRequiresNetworkConnection(test)
 	}
 	if(config.minRVersion !== undefined) {
-		await testRequiresRVersion(shell, config.minRVersion, test)
+		await testRequiresRVersion(shell, `>=${config.minRVersion}`, test)
 	}
 }
 

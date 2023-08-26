@@ -144,8 +144,8 @@ export class RShell {
 		// retrieve raw version:
 		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
 		this.log.trace(`raw version: ${JSON.stringify(result)}`)
-		const version = semver.coerce(result[0])
-		return result.length === 1 ? version : null
+		this.version = semver.coerce(result[0])
+		return result.length === 1 ? this.version : null
 	}
 
 	/**

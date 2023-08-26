@@ -1,6 +1,5 @@
 import { RShell } from '../../src/r-bridge'
 import semver from 'semver/preload'
-import { MIN_VERSION_PIPE } from '../../src/r-bridge/lang-4.x/ast/model/versions'
 
 /**
  * Automatically skip a test if it does not satisfy the given version pattern (for a [semver](https://www.npmjs.com/package/semver) version).
@@ -12,11 +11,7 @@ import { MIN_VERSION_PIPE } from '../../src/r-bridge/lang-4.x/ast/model/versions
 export const testRequiresRVersion = async(shell: RShell, versionToSatisfy: string, test: Mocha.Context): Promise<void> => {
 	const version = await shell.usedRVersion()
 	if (version === null || !semver.satisfies(version, versionToSatisfy)) {
-		console.warn(`Skipping test because ${JSON.stringify(version)} does not satisfy ${JSON.stringify(versionToSatisfy)}.`)
+		console.warn(`Skipping test because ${JSON.stringify(version?.raw)} does not satisfy ${JSON.stringify(versionToSatisfy)}.`)
 		test.skip()
 	}
-}
-
-export const testRequiresPipeOperator = async(shell: RShell, test: Mocha.Context): Promise<void> => {
-	await testRequiresRVersion(shell, `>= ${MIN_VERSION_PIPE}`, test)
 }

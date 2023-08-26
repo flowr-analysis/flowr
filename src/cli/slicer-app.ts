@@ -6,8 +6,7 @@ import { guard } from '../util/assert'
 import { SingleSlicingCriterion, SlicingCriteria } from '../slicing'
 import { BenchmarkSlicer, stats2string, summarizeSlicerStats } from '../benchmark'
 import { NodeId } from '../r-bridge'
-
-export const toolName = 'slicer'
+import { scripts } from './scripts-info'
 
 export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
@@ -31,15 +30,15 @@ export interface SlicerCliOptions {
 
 export const optionHelp = [
 	{
-		header:  'Static backwards executable slicer for R',
+		header:  scripts.slicer.description,
 		content: 'Slice R code based on a given slicing criterion'
 	},
 	{
 		header:  'Synopsis',
 		content: [
-			`$ ${toolName} {bold -i} {italic example.R} {bold --criterion} {italic 7:3}`,
-			`$ ${toolName} {bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}`,
-			`$ ${toolName} {bold --help}`
+			`$ ${scripts.slicer.toolName} {bold -i} {italic example.R} {bold --criterion} {italic 7:3}`,
+			`$ ${scripts.slicer.toolName} {bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}`,
+			`$ ${scripts.slicer.toolName} {bold --help}`
 		]
 	},
 	{

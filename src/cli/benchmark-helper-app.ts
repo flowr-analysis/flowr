@@ -7,8 +7,7 @@ import { RParseRequestFromFile } from '../r-bridge'
 import fs from 'fs'
 import { displayEnvReplacer } from '../util/json'
 import { guard } from '../util/assert'
-
-export const toolName = 'benchmark-single'
+import { scripts } from './scripts-info'
 
 export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
@@ -28,14 +27,14 @@ export interface SingleBenchmarkCliOptions {
 
 export const optionHelp = [
 	{
-		header:  'Helper Script to Benchmark the Slicer',
+		header:  scripts['benchmark-helper'].description,
 		content: 'Will slice for all possible variables, signal by exit code if slicing was successful, and can be run standalone'
 	},
 	{
 		header:  'Synopsis',
 		content: [
-			`$ ${toolName} {italic example-file.R} --output {italic output.json}`,
-			`$ ${toolName} {bold --help}`
+			`$ ${scripts['benchmark-helper'].toolName} {italic example-file.R} --output {italic output.json}`,
+			`$ ${scripts['benchmark-helper'].toolName} {bold --help}`
 		]
 	},
 	{

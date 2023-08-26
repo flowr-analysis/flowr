@@ -10,9 +10,10 @@ import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import commandLineArgs from 'command-line-args'
 import { guard } from './util/assert'
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from './statistics'
-import { repl, validScripts, waitOnScript } from './cli/repl'
+import { repl, waitOnScript } from './cli/repl'
+import { ScriptInformation, scripts } from './cli/scripts-info'
 
-const scriptsText = Array.from(validScripts.keys()).join(', ')
+const scriptsText = Array.from(Object.entries(scripts).filter(([, {type}]) => type === 'master script'), ([k,]) => k).join(', ')
 
 export const toolName = 'flowr'
 
@@ -61,7 +62,7 @@ if(options['no-ansi']) {
 
 async function main() {
 	if(options.script) {
-		let target = validScripts.get(options.script)?.target
+		let target = (scripts as Record<string, ScriptInformation>)[options.script].target as string | undefined
 		guard(target !== undefined, `Unknown script ${options.script}, pick one of ${scriptsText}.`)
 		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.bold })}'`)
 		target = `cli/${target}`

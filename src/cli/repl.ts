@@ -9,15 +9,7 @@ import { bold, ColorEffect, Colors, formatter, italic } from '../statistics'
 import { log } from '../util/log'
 import cp from 'child_process'
 import { splitArguments } from '../util/args'
-
-// TODO: find one location for all of these documentation etc.
-export const validScripts = new Map<string, { target: string, description: string }>()
-validScripts.set('slicer',           { target: 'slicer-app', description: 'Slice a given file' })
-validScripts.set('benchmark',        { target: 'benchmark-app', description: 'Allows to benchmark the static program slicer' })
-validScripts.set('summarizer',       { target: 'summarizer-app', description: 'Summarize the results of the benchmark' })
-// validScripts.set('benchmark-helper', { target: 'cli/benchmark-helper-app', description: '' })
-validScripts.set('stats',            { target: 'statistics-app', description: 'Generate statistics of used features in R code' })
-validScripts.set('export-quads',     { target: 'export-quads-app', description: 'Export quads of the normalized AST of a given R code file' })
+import { scripts } from './scripts-info'
 
 export async function waitOnScript(module: string, args: string[]): Promise<void> {
 	log.info(`starting script ${module} with args ${JSON.stringify(args)}`)
@@ -71,12 +63,16 @@ replProcessors.set('quit', {
 	fn:          () => { log.info('bye'); process.exit(0) }
 })
 
-for(const [script, { target, description}] of validScripts) {
-	replProcessors.set(script, {
-		description,
-		script: true,
-		fn:     async(_s, _t, remainingLine) => { await waitOnScript(`${__dirname}/${target}`, splitArguments(remainingLine)) }
-	})
+for(const [script, { target, description, type}] of Object.entries(scripts)) {
+	if(type === 'master script') {
+		replProcessors.set(script, {
+			description,
+			script: true,
+			fn:     async(_s, _t, remainingLine) => {
+				await waitOnScript(`${__dirname}/${target}`, splitArguments(remainingLine))
+			}
+		})
+	}
 }
 
 
@@ -126,8 +122,7 @@ export async function repl(shell = new RShell({ revive: 'always' }), tokenMap?: 
 			if(processor) {
 				await processor.fn(shell, tokenMap, answer.slice(command.length + 2).trim())
 			} else {
-				// TODO: display more information?
-				console.log(`the command '${command}' is unknown, try :help`)
+				console.log(`the command '${command}' is unknown, try ${bold(':help')} for more information`)
 			}
 		} else {
 			try {

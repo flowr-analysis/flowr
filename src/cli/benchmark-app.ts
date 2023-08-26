@@ -8,8 +8,7 @@ import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
 import * as os from 'os'
 import { guard } from '../util/assert'
 import fs from 'fs'
-
-export const toolName = 'benchmark'
+import { scripts } from './scripts-info'
 
 const now = date2string(new Date())
 
@@ -35,14 +34,14 @@ export interface BenchmarkCliOptions {
 
 export const optionHelp = [
 	{
-		header:  'Benchmark the static backwards slicer',
+		header:  scripts.benchmark.description,
 		content: 'Slice given files with additional benchmark information'
 	},
 	{
 		header:  'Synopsis',
 		content: [
-			`$ ${toolName} {italic example-folder/}`,
-			`$ ${toolName} {bold --help}`
+			`$ ${scripts.benchmark.toolName} {italic example-folder/}`,
+			`$ ${scripts.benchmark.toolName} {bold --help}`
 		]
 	},
 	{

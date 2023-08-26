@@ -14,8 +14,7 @@ import fs from 'fs'
 import { SlicingCriteria } from '../slicing'
 import { escape } from '../statistics'
 import { displayEnvReplacer } from '../util/json'
-
-export const toolName = 'summarizer'
+import { scripts } from './scripts-info'
 
 export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',       alias: 'v', type: Boolean, description: 'Run with verbose logging' },
@@ -35,14 +34,14 @@ export interface BenchmarkCliOptions {
 
 export const optionHelp = [
 	{
-		header:  'The summarizer',
+		header:  scripts.summarizer.description,
 		content: 'Summarize and explain the results of the benchmark tool. Summarizes in two stages: first per-request, and then overall'
 	},
 	{
 		header:  'Synopsis',
 		content: [
-			`$ ${toolName} {italic benchmark.json}`,
-			`$ ${toolName} {bold --help}`
+			`$ ${scripts.summarizer.toolName} {italic benchmark.json}`,
+			`$ ${scripts.summarizer.toolName} {bold --help}`
 		]
 	},
 	{

@@ -5,8 +5,7 @@ import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import { serialize2quads } from '../util/quads'
 import fs from 'fs'
 import { allRFilesFrom } from '../util/files'
-
-export const toolName = 'export-quads'
+import { scripts } from './scripts-info'
 
 
 export const optionDefinitions: OptionDefinition[] = [
@@ -27,14 +26,14 @@ export interface QuadsCliOptions {
 
 export const optionHelp = [
 	{
-		header:  'Convert R-Code to Quads',
+		header:  scripts['export-quads'].description,
 		content: 'Generate RDF N-Quads from the AST of a given R script'
 	},
 	{
 		header:  'Synopsis',
 		content: [
-			`$ ${toolName} {bold -i} {italic example.R} {bold --output} {italic "example.quads"}`,
-			`$ ${toolName} {bold --help}`
+			`$ ${scripts['export-quads'].toolName} {bold -i} {italic example.R} {bold --output} {italic "example.quads"}`,
+			`$ ${scripts['export-quads'].toolName} {bold --help}`
 		]
 	},
 	{

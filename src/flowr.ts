@@ -10,8 +10,9 @@ import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import commandLineArgs from 'command-line-args'
 import { guard } from './util/assert'
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from './statistics'
-import { repl, waitOnScript } from './cli/repl'
+import { repl } from './cli/repl/core'
 import { ScriptInformation, scripts } from './cli/scripts-info'
+import { waitOnScript } from './cli/repl'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, {type}]) => type === 'master script'), ([k,]) => k).join(', ')
 

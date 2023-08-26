@@ -6,6 +6,7 @@ import * as readline from "node:readline"
 import { ts2r } from './lang-4.x'
 import { log, LogLevel } from '../util/log'
 import { SemVer } from 'semver'
+import semver from 'semver/preload'
 
 export type OutputStreamSelector = "stdout" | "stderr" | "both";
 
@@ -135,11 +136,11 @@ export class RShell {
 		this._sendCommand(command)
 	}
 
-	public async usedRVersion(): Promise<SemVer | undefined> {
+	public async usedRVersion(): Promise<SemVer | null> {
 		// retrieve raw version:
-		const result = await this.sendCommandWithOutput('cat(paste0(R.version$major,".",R.version$minor))')
+		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
 		this.log.trace(`raw version: ${JSON.stringify(result)}`)
-		return result.length === 1 ? new SemVer(result[0]) : undefined
+		return result.length === 1 ? semver.coerce(result[0]) : null
 	}
 
 	/**

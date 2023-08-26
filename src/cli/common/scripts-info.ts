@@ -9,7 +9,7 @@ import { DeepReadonly } from 'ts-essentials'
 import {
 	benchmarkHelperOptions,
 	benchmarkOptions,
-	exportQuadsOptions,
+	exportQuadsOptions, StepOptions,
 	slicerOptions, statisticOptions,
 	summarizerOptions
 } from './options'
@@ -85,6 +85,14 @@ const _scripts = {
 		description:  'Generate usage Statistics for R scripts',
 		options:      statisticOptions,
 		usageExample: 'stats -i example.R --output-dir "output-folder/"',
+		type:         'master script',
+	},
+	'step': {
+		toolName:     'step',
+		target:       'step-app',
+		description:  'Allows to slice like the normal slicer script, but allows to export only some steps.',
+		options:      StepOptions,
+		usageExample: 'step -s parse file:example.R',
 		type:         'master script',
 	}
 }

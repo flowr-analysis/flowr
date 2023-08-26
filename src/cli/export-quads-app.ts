@@ -6,15 +6,7 @@ import { serialize2quads } from '../util/quads'
 import fs from 'fs'
 import { allRFilesFrom } from '../util/files'
 import { scripts } from './common'
-
-
-export const optionDefinitions: OptionDefinition[] = [
-	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
-	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
-	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process'},
-	{ name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to {italic out.quads})', typeLabel: '{underline file}' },
-]
+import { exportQuadsOptions } from './common/options'
 
 export interface QuadsCliOptions {
 	verbose: boolean
@@ -38,11 +30,11 @@ export const optionHelp = [
 	},
 	{
 		header:     'Options',
-		optionList: optionDefinitions
+		optionList: exportQuadsOptions
 	}
 ]
 
-const options = commandLineArgs(optionDefinitions) as QuadsCliOptions
+const options = commandLineArgs(exportQuadsOptions) as QuadsCliOptions
 
 if(options.help) {
 	console.log(commandLineUsage(optionHelp))

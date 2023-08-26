@@ -1,6 +1,6 @@
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
-import commandLineUsage, { OptionDefinition } from 'command-line-usage'
+import commandLineUsage from 'command-line-usage'
 import { guard } from '../util/assert'
 import LineByLine from 'n-readlines'
 import {
@@ -15,14 +15,7 @@ import { SlicingCriteria } from '../slicing'
 import { escape } from '../statistics'
 import { displayEnvReplacer } from '../util/json'
 import { scripts } from './common'
-
-export const optionDefinitions: OptionDefinition[] = [
-	{ name: 'verbose',       alias: 'v', type: Boolean, description: 'Run with verbose logging' },
-	{ name: 'help',          alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'ultimate-only', alias: 'u', type: Boolean, description: 'Only perform the second summary-stage, with this, the input is used to find the summary-output.' },
-	{ name: 'input',         alias: 'i', type: String,  description: 'The {italic output.json} produced by the benchmark tool', defaultOption: true, multiple: false, typeLabel: '{underline file.json}' },
-	{ name: 'output',        alias: 'o', type: String,  description: `Basename of the summaries (defaults to {italic <input>-summary})`, typeLabel: '{underline file}' },
-]
+import { summarizerOptions } from './common/options'
 
 export interface BenchmarkCliOptions {
 	verbose:         boolean
@@ -46,7 +39,7 @@ export const optionHelp = [
 	},
 	{
 		header:     'Options',
-		optionList: optionDefinitions
+		optionList: summarizerOptions
 	}
 ]
 
@@ -56,7 +49,7 @@ interface BenchmarkData {
 	stats:    SlicerStats
 }
 
-const options = commandLineArgs(optionDefinitions) as BenchmarkCliOptions
+const options = commandLineArgs(summarizerOptions) as BenchmarkCliOptions
 
 if(options.help) {
 	console.log(commandLineUsage(optionHelp))

@@ -1,26 +1,13 @@
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
-import commandLineUsage, { OptionDefinition } from 'command-line-usage'
+import commandLineUsage from 'command-line-usage'
 import { allRFilesFrom } from '../util/files'
 import { RParseRequestFromFile } from '../r-bridge'
-import { date2string } from '../util/time'
 import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
-import * as os from 'os'
 import { guard } from '../util/assert'
 import fs from 'fs'
-import { scripts } from './common/scripts-info'
-
-const now = date2string(new Date())
-
-export const optionDefinitions: OptionDefinition[] = [
-	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
-	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process (if given, this will choose these files randomly and add the chosen names to the output'},
-	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
-	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
-	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction', defaultValue: 'all', typeLabel: '{underline all/no}' },
-	{ name: 'output',       alias: 'o', type: String,  description: `File to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${now}.json})`, defaultValue: `benchmark-${now}.json`,  typeLabel: '{underline file}' }
-]
+import { scripts } from './common'
+import { benchmarkOptions } from './common/options'
 
 export interface BenchmarkCliOptions {
 	verbose:  boolean
@@ -46,11 +33,11 @@ export const optionHelp = [
 	},
 	{
 		header:     'Options',
-		optionList: optionDefinitions
+		optionList: benchmarkOptions
 	}
 ]
 
-const options = commandLineArgs(optionDefinitions) as BenchmarkCliOptions
+const options = commandLineArgs(benchmarkOptions) as BenchmarkCliOptions
 
 if(options.help) {
 	console.log(commandLineUsage(optionHelp))

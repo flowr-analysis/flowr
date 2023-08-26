@@ -6,12 +6,13 @@
 import { MergeableRecord } from '../../util/objects'
 import { OptionDefinition } from 'command-line-usage'
 import { DeepReadonly } from 'ts-essentials'
-import { optionDefinitions as benchmarkOptions } from '../benchmark-app'
-import { optionDefinitions as benchmarkHelperOptions } from '../benchmark-helper-app'
-import { optionDefinitions as slicerOptions } from '../slicer-app'
-import { optionDefinitions as summarizerOptions } from '../summarizer-app'
-import { optionDefinitions as quadsOptions } from '../export-quads-app'
-import { optionDefinitions as statsOptions } from '../../statistics'
+import {
+	benchmarkHelperOptions,
+	benchmarkOptions,
+	exportQuadsOptions,
+	slicerOptions, statisticOptions,
+	summarizerOptions
+} from './options'
 
 
 interface BaseScriptInformation extends MergeableRecord {
@@ -75,14 +76,14 @@ const _scripts = {
 		target:       'export-quads-app',
 		description:  'Export quads of the normalized AST of a given R code file',
 		usageExample: 'export-quads "example.R" --output "example.quads"',
-		options:      quadsOptions,
+		options:      exportQuadsOptions,
 		type:         'master script',
 	},
 	'stats': {
 		toolName:     'stats',
 		target:       'statistics-app',
 		description:  'Generate usage Statistics for R scripts',
-		options:      statsOptions,
+		options:      statisticOptions,
 		usageExample: 'stats -i example.R --output-dir "output-folder/"',
 		type:         'master script',
 	}

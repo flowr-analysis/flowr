@@ -1,22 +1,13 @@
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
-import commandLineUsage, { OptionDefinition } from 'command-line-usage'
+import commandLineUsage from 'command-line-usage'
 import fs from 'fs'
 import { guard } from '../util/assert'
 import { SingleSlicingCriterion, SlicingCriteria } from '../slicing'
 import { BenchmarkSlicer, stats2string, summarizeSlicerStats } from '../benchmark'
 import { NodeId } from '../r-bridge'
 import { scripts } from './common'
-
-export const optionDefinitions: OptionDefinition[] = [
-	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
-	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'input',        alias: 'i', type: String,  description: '(Required) Pass a single file to slice', multiple: false, defaultOption: true, typeLabel: '{underline files}' },
-	{ name: 'criterion',    alias: 'c', type: String,  description: '(Required) Slicing criterion either in the form {underline line:col} or {underline line@variable}, multiple can be separated by \'{bold ;}\'', multiple: false },
-	{ name: 'stats',        alias: 's', type: Boolean, description: `Print stats and write them to {italic <output>.stats} (runtimes etc.)`, multiple: false },
-	// { name: 'dataflow',     alias: 'd', type: Boolean, description: `Dump mermaid code for the dataflow to {italic <output>.dataflow}`, multiple: false },
-	{ name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to the commandline)', typeLabel: '{underline file}' },
-]
+import { slicerOptions } from './common/options'
 
 export interface SlicerCliOptions {
 	verbose:   boolean
@@ -43,11 +34,11 @@ export const optionHelp = [
 	},
 	{
 		header:     'Options',
-		optionList: optionDefinitions
+		optionList: slicerOptions
 	}
 ]
 
-const options = commandLineArgs(optionDefinitions) as SlicerCliOptions
+const options = commandLineArgs(slicerOptions) as SlicerCliOptions
 
 if(options.help || !options.input || !options.criterion) {
 	console.log(commandLineUsage(optionHelp))

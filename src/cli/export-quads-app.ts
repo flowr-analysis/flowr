@@ -5,7 +5,7 @@ import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import { serialize2quads } from '../util/quads'
 import fs from 'fs'
 import { allRFilesFrom } from '../util/files'
-import { scripts } from './scripts-info'
+import { register } from './common/scripts-info'
 
 
 export const optionDefinitions: OptionDefinition[] = [
@@ -15,6 +15,18 @@ export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process'},
 	{ name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to {italic out.quads})', typeLabel: '{underline file}' },
 ]
+
+const toolName = 'export-quads'
+const description = 'Export quads of the normalized AST of a given R code file'
+
+register('export-quads',  {
+	toolName,
+	target:       'export-quads-app',
+	description,
+	usageExample: `${toolName} "example.R" --output "example.quads"`,
+	options:      optionDefinitions,
+	type:         'master script',
+})
 
 export interface QuadsCliOptions {
 	verbose: boolean
@@ -26,14 +38,14 @@ export interface QuadsCliOptions {
 
 export const optionHelp = [
 	{
-		header:  scripts['export-quads'].description,
+		header:  description,
 		content: 'Generate RDF N-Quads from the AST of a given R script'
 	},
 	{
 		header:  'Synopsis',
 		content: [
-			`$ ${scripts['export-quads'].toolName} {bold -i} {italic example.R} {bold --output} {italic "example.quads"}`,
-			`$ ${scripts['export-quads'].toolName} {bold --help}`
+			`$ ${toolName} {bold -i} {italic example.R} {bold --output} {italic "example.quads"}`,
+			`$ ${toolName} {bold --help}`
 		]
 	},
 	{

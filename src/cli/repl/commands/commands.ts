@@ -1,5 +1,5 @@
 import { quitCommand } from './quit'
-import { scripts } from '../../scripts-info'
+import { scripts } from '../../common/scripts-info'
 import { waitOnScript } from '../execute'
 import { splitArguments } from '../../../util/args'
 import { ReplCommand } from './main'

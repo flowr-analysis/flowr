@@ -8,7 +8,7 @@ import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
 import * as os from 'os'
 import { guard } from '../util/assert'
 import fs from 'fs'
-import { scripts } from './scripts-info'
+import { register, scripts } from './common/scripts-info'
 
 const now = date2string(new Date())
 
@@ -22,6 +22,18 @@ export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'output',       alias: 'o', type: String,  description: `File to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${now}.json})`, defaultValue: `benchmark-${now}.json`,  typeLabel: '{underline file}' }
 ]
 
+const toolName = 'benchmark'
+const description = 'Benchmark the static backwards slicer'
+
+register('benchmark', {
+	toolName,
+	target:       'benchmark-app',
+	description,
+	type:         'master script',
+	usageExample: `${toolName} "example-folder/"`,
+	options:      optionDefinitions
+})
+
 export interface BenchmarkCliOptions {
 	verbose:  boolean
 	help:     boolean
@@ -34,14 +46,14 @@ export interface BenchmarkCliOptions {
 
 export const optionHelp = [
 	{
-		header:  scripts.benchmark.description,
+		header:  description,
 		content: 'Slice given files with additional benchmark information'
 	},
 	{
 		header:  'Synopsis',
 		content: [
-			`$ ${scripts.benchmark.toolName} {italic example-folder/}`,
-			`$ ${scripts.benchmark.toolName} {bold --help}`
+			`$ ${toolName} {italic example-folder/}`,
+			`$ ${toolName} {bold --help}`
 		]
 	},
 	{

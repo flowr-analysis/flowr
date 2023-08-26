@@ -1,9 +1,11 @@
 import { allFeatureNames, FeatureKey } from './features'
 import { OptionDefinition } from 'command-line-usage'
 import { date2string } from '../util/time'
-import { scripts } from '../cli/scripts-info'
+
 
 export const toolName = 'stats'
+export const description = 'Generate usage Statistics for R scripts'
+
 
 const featureNameList = [...allFeatureNames].map(s => `"${s}"`).join(', ')
 export const optionDefinitions: OptionDefinition[] = [
@@ -32,16 +34,16 @@ export interface StatsCliOptions {
 
 export const optionHelp = [
 	{
-		header:  scripts.stats.description,
+		header:  description,
 		content: 'Given input files or folders, this will collect usage statistics for the given features and write them to a file'
 	},
 	{
 		header:  'Synopsis',
 		content: [
-			`$ ${scripts.stats.toolName} {bold -i} {italic example.R} {bold -i} {italic example2.R} {bold --output-dir} {italic "output-folder/"}`,
-			`$ ${scripts.stats.toolName} {italic "folder1/"} {bold --features} {italic all} {bold --output-dir} {italic "output-folder/"}`,
-			`$ ${scripts.stats.toolName} {bold --post-process} {italic "output-folder"} {bold --features} {italic assignments}`,
-			`$ ${scripts.stats.toolName} {bold --help}`
+			`$ ${toolName} {bold -i} {italic example.R} {bold -i} {italic example2.R} {bold --output-dir} {italic "output-folder/"}`,
+			`$ ${toolName} {italic "folder1/"} {bold --features} {italic all} {bold --output-dir} {italic "output-folder/"}`,
+			`$ ${toolName} {bold --post-process} {italic "output-folder"} {bold --features} {italic assignments}`,
+			`$ ${toolName} {bold --help}`
 		]
 	},
 	{

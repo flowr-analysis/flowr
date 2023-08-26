@@ -11,7 +11,7 @@ import commandLineArgs from 'command-line-args'
 import { guard } from './util/assert'
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from './statistics'
 import { repl } from './cli/repl/core'
-import { ScriptInformation, scripts } from './cli/scripts-info'
+import { ScriptInformation, scripts } from './cli/common/scripts-info'
 import { waitOnScript } from './cli/repl'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, {type}]) => type === 'master script'), ([k,]) => k).join(', ')
@@ -62,7 +62,7 @@ if(options['no-ansi']) {
 
 async function main() {
 	if(options.script) {
-		let target = (scripts as Record<string, ScriptInformation>)[options.script].target as string | undefined
+		let target = scripts.get(options.script)?.target
 		guard(target !== undefined, `Unknown script ${options.script}, pick one of ${scriptsText}.`)
 		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.bold })}'`)
 		target = `cli/${target}`

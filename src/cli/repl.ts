@@ -132,7 +132,7 @@ export async function repl(shell = new RShell({ revive: 'always' }), tokenMap?: 
 				})
 				console.log(`${italic(result.join('\n'))}\n`)
 			} catch(e) {
-				// TODO: deal with them
+				console.error(`Error while executing '${answer}': ${(e as Error).message}`)
 			}
 		}
 	}

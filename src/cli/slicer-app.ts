@@ -6,7 +6,7 @@ import { guard } from '../util/assert'
 import { SingleSlicingCriterion, SlicingCriteria } from '../slicing'
 import { BenchmarkSlicer, stats2string, summarizeSlicerStats } from '../benchmark'
 import { NodeId } from '../r-bridge'
-import { register, scripts } from './common/scripts-info'
+import { scripts } from './common'
 
 export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
@@ -17,18 +17,6 @@ export const optionDefinitions: OptionDefinition[] = [
 	// { name: 'dataflow',     alias: 'd', type: Boolean, description: `Dump mermaid code for the dataflow to {italic <output>.dataflow}`, multiple: false },
 	{ name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to the commandline)', typeLabel: '{underline file}' },
 ]
-
-const toolName = 'slicer'
-const description = 'Static backwards executable slicer for R'
-
-register('slicer',  {
-	toolName,
-	target:       'slicer-app',
-	description,
-	options:      optionDefinitions,
-	usageExample: `${toolName} -c "12@product" test/testfiles/example.R`,
-	type:         'master script',
-})
 
 export interface SlicerCliOptions {
 	verbose:   boolean
@@ -42,15 +30,15 @@ export interface SlicerCliOptions {
 
 export const optionHelp = [
 	{
-		header:  description,
+		header:  scripts.slicer.description,
 		content: 'Slice R code based on a given slicing criterion'
 	},
 	{
 		header:  'Synopsis',
 		content: [
-			`$ ${toolName} {bold -c} {italic "12@product"} {italic test/testfiles/example.R}`,
-			`$ ${toolName} {bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}`,
-			`$ ${toolName} {bold --help}`
+			`$ ${scripts.slicer.toolName} {bold -c} {italic "12@product"} {italic test/testfiles/example.R}`,
+			`$ ${scripts.slicer.toolName} {bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}`,
+			`$ ${scripts.slicer.toolName} {bold --help}`
 		]
 	},
 	{

@@ -13,6 +13,7 @@ import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter,
 import { repl } from './cli/repl/core'
 import { ScriptInformation, scripts } from './cli/common/scripts-info'
 import { waitOnScript } from './cli/repl'
+import { DeepReadonly } from 'ts-essentials'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, {type}]) => type === 'master script'), ([k,]) => k).join(', ')
 
@@ -62,7 +63,7 @@ if(options['no-ansi']) {
 
 async function main() {
 	if(options.script) {
-		let target = scripts.get(options.script)?.target
+		let target = (scripts as DeepReadonly<Record<string, ScriptInformation>>)[options.script].target as string | undefined
 		guard(target !== undefined, `Unknown script ${options.script}, pick one of ${scriptsText}.`)
 		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.bold })}'`)
 		target = `cli/${target}`

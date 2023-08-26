@@ -14,7 +14,7 @@ import fs from 'fs'
 import { SlicingCriteria } from '../slicing'
 import { escape } from '../statistics'
 import { displayEnvReplacer } from '../util/json'
-import { register } from './common/scripts-info'
+import { scripts } from './common'
 
 export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',       alias: 'v', type: Boolean, description: 'Run with verbose logging' },
@@ -23,18 +23,6 @@ export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'input',         alias: 'i', type: String,  description: 'The {italic output.json} produced by the benchmark tool', defaultOption: true, multiple: false, typeLabel: '{underline file.json}' },
 	{ name: 'output',        alias: 'o', type: String,  description: `Basename of the summaries (defaults to {italic <input>-summary})`, typeLabel: '{underline file}' },
 ]
-
-const toolName = 'summarizer'
-const description = 'Summarize the results of the benchmark'
-
-register('summarizer',  {
-	toolName,
-	target:       'summarizer-app',
-	description,
-	options:      optionDefinitions,
-	usageExample: `${toolName} "benchmark.json"`,
-	type:         'master script',
-})
 
 export interface BenchmarkCliOptions {
 	verbose:         boolean
@@ -46,14 +34,14 @@ export interface BenchmarkCliOptions {
 
 export const optionHelp = [
 	{
-		header:  description,
+		header:  scripts.summarizer.description,
 		content: 'Summarize and explain the results of the benchmark tool. Summarizes in two stages: first per-request, and then overall'
 	},
 	{
 		header:  'Synopsis',
 		content: [
-			`$ ${toolName} {italic benchmark.json}`,
-			`$ ${toolName} {bold --help}`
+			`$ ${scripts.summarizer.toolName} {italic benchmark.json}`,
+			`$ ${scripts.summarizer.toolName} {bold --help}`
 		]
 	},
 	{

@@ -12,7 +12,7 @@ import {
 	printFeatureStatistics,
 	initFileProvider,
 	setFormatter,
-	voidFormatter, ContextsWithCount, toolName, description
+	voidFormatter, ContextsWithCount,
 } from '../statistics'
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
@@ -20,16 +20,6 @@ import commandLineUsage from 'command-line-usage'
 import { guard } from '../util/assert'
 import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 import { DefaultMap } from '../util/defaultmap'
-import { register } from './common/scripts-info'
-
-register('stats',  {
-	toolName,
-	target:       'statistics-app',
-	description,
-	options:      optionDefinitions,
-	usageExample: `${toolName} -i example.R --output-dir "output-folder/"`,
-	type:         'master script',
-})
 
 const options = commandLineArgs(optionDefinitions) as StatsCliOptions
 

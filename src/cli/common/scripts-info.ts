@@ -5,6 +5,13 @@
  */
 import { MergeableRecord } from '../../util/objects'
 import { OptionDefinition } from 'command-line-usage'
+import { DeepReadonly } from 'ts-essentials'
+import { optionDefinitions as benchmarkOptions } from '../benchmark-app'
+import { optionDefinitions as benchmarkHelperOptions } from '../benchmark-helper-app'
+import { optionDefinitions as slicerOptions } from '../slicer-app'
+import { optionDefinitions as summarizerOptions } from '../summarizer-app'
+import { optionDefinitions as quadsOptions } from '../export-quads-app'
+import { optionDefinitions as statsOptions } from '../../statistics'
 
 
 interface BaseScriptInformation extends MergeableRecord {
@@ -26,10 +33,60 @@ export interface HelperScriptInformation extends BaseScriptInformation {
 
 export type ScriptInformation = MasterScriptInformation | HelperScriptInformation
 
+/**
+ * We hold `_scripts` internally, as the modifiable variant and export the readonly scripts
+ */
+const _scripts = {
+	'slicer': {
+		toolName:     'slicer',
+		target:       'slicer-app',
+		description:  'Static backwards executable slicer for R',
+		options:      slicerOptions,
+		usageExample: 'slicer -c "12@product" test/testfiles/example.R',
+		type:         'master script',
+	},
+	'benchmark': {
+		toolName:     'benchmark',
+		target:       'benchmark-app',
+		description:  'Benchmark the static backwards slicer',
+		type:         'master script',
+		usageExample: 'benchmark "example-folder/"',
+		options:      benchmarkOptions
+	},
+	'benchmark-helper': {
+		toolName:      'benchmark-single',
+		target:        'benchmark-helper-app',
+		description:   'Helper Script to Benchmark the Slicer',
+		usageExample:  'benchmark-single "example.R" --output "example.json"',
+		options:       benchmarkHelperOptions,
+		type:          'helper script',
+		masterScripts: [ 'benchmark' ]
+	},
+	'summarizer': {
+		toolName:     'summarizer',
+		target:       'summarizer-app',
+		description:  'Summarize the results of the benchmark',
+		options:      summarizerOptions,
+		usageExample: 'summarizer "benchmark.json"',
+		type:         'master script',
+	},
+	'export-quads': {
+		toolName:     'export-quads',
+		target:       'export-quads-app',
+		description:  'Export quads of the normalized AST of a given R code file',
+		usageExample: 'export-quads "example.R" --output "example.quads"',
+		options:      quadsOptions,
+		type:         'master script',
+	},
+	'stats': {
+		toolName:     'stats',
+		target:       'statistics-app',
+		description:  'Generate usage Statistics for R scripts',
+		options:      statsOptions,
+		usageExample: 'stats -i example.R --output-dir "output-folder/"',
+		type:         'master script',
+	}
+} as const
 
-export const scripts = new Map<string, ScriptInformation>()
-
-export function register(name: string, information: ScriptInformation) {
-	scripts.set(name, information)
-}
+export const scripts = _scripts as DeepReadonly<Record<keyof typeof _scripts, ScriptInformation>>
 

@@ -7,7 +7,7 @@ import { RParseRequestFromFile } from '../r-bridge'
 import fs from 'fs'
 import { displayEnvReplacer } from '../util/json'
 import { guard } from '../util/assert'
-import { register } from './common/scripts-info'
+import { scripts } from './common'
 
 export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
@@ -16,19 +16,6 @@ export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction', defaultValue: 'all', typeLabel: '{underline all/no}' },
 	{ name: 'output',       alias: 'o', type: String,  description: `File to write the measurements to (appends a single line in JSON format)`,  typeLabel: '{underline file}' },
 ]
-
-const toolName = 'benchmark-single'
-const description = 'Helper Script to Benchmark the Slicer'
-
-register('benchmark-single', {
-	toolName,
-	target:        'benchmark-helper-app',
-	description,
-	usageExample:  `${toolName} "example.R" --output "example.json"`,
-	options:       optionDefinitions,
-	type:          'helper script',
-	masterScripts: [ 'benchmark' ]
-})
 
 export interface SingleBenchmarkCliOptions {
 	verbose: boolean
@@ -40,14 +27,14 @@ export interface SingleBenchmarkCliOptions {
 
 export const optionHelp = [
 	{
-		header:  description,
+		header:  scripts['benchmark-helper'].description,
 		content: 'Will slice for all possible variables, signal by exit code if slicing was successful, and can be run standalone'
 	},
 	{
 		header:  'Synopsis',
 		content: [
-			`$ ${toolName} {italic example-file.R} --output {italic output.json}`,
-			`$ ${toolName} {bold --help}`
+			`$ ${scripts['benchmark-helper'].toolName} {italic example-file.R} --output {italic output.json}`,
+			`$ ${scripts['benchmark-helper'].toolName} {bold --help}`
 		]
 	},
 	{

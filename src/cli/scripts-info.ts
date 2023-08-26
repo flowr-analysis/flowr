@@ -24,8 +24,6 @@ export interface HelperScriptInformation extends BaseScriptInformation {
 
 export type ScriptInformation = MasterScriptInformation | HelperScriptInformation
 
-// TODO: include the options so we can autocomplete them
-
 /**
  * We hold `_scripts` internally, to get the keys of the exposed `scripts` type correct
  */

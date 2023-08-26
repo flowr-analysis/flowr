@@ -101,6 +101,7 @@ export class RShell {
 	public readonly options: Readonly<RShellOptions>
 	private session:         RShellSession
 	private readonly log:    Logger<ILogObj>
+	private version:         SemVer | null = null
 
 	public constructor(options?: Partial<RShellOptions>) {
 		this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
@@ -136,12 +137,15 @@ export class RShell {
 		this._sendCommand(command)
 	}
 
-	// TODO: cache?
 	public async usedRVersion(): Promise<SemVer | null> {
+		if(this.version !== null) {
+			return this.version
+		}
 		// retrieve raw version:
 		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
 		this.log.trace(`raw version: ${JSON.stringify(result)}`)
-		return result.length === 1 ? semver.coerce(result[0]) : null
+		const version = semver.coerce(result[0])
+		return result.length === 1 ? version : null
 	}
 
 	/**

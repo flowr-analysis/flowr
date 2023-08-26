@@ -2,6 +2,7 @@ import { assertAst, withShell } from "../../../helper/shell"
 import { exprList } from '../../../helper/ast-builder'
 import { rangeFrom } from '../../../../src/util/range'
 import { Type } from '../../../../src/r-bridge'
+import { MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions'
 
 describe("Parse Pipes", withShell(shell => {
 	assertAst(
@@ -44,7 +45,8 @@ describe("Parse Pipes", withShell(shell => {
 					info:      {},
 				}
 			}
-		})
+		}),
+		{ minRVersion: MIN_VERSION_PIPE }
 	)
 	assertAst(
 		"x |> f() |> g()",
@@ -115,7 +117,8 @@ describe("Parse Pipes", withShell(shell => {
 					info:      {}
 				}
 			}
-		})
+		}),
+		{ minRVersion: MIN_VERSION_PIPE }
 	)
 }))
 

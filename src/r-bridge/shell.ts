@@ -136,6 +136,7 @@ export class RShell {
 		this._sendCommand(command)
 	}
 
+	// TODO: cache?
 	public async usedRVersion(): Promise<SemVer | null> {
 		// retrieve raw version:
 		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)

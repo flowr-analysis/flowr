@@ -9,6 +9,7 @@ import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../
 import { appendEnvironments, define } from '../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../src/dataflow/environments/scopes'
+import { MIN_VERSION_PIPE } from '../../../src/r-bridge/lang-4.x/ast/model/versions'
 
 describe("Atomic dataflow information", withShell((shell) => {
 	describe("uninteresting leafs", () => {
@@ -138,7 +139,8 @@ describe("Atomic dataflow information", withShell((shell) => {
 					})
 					.addVertex({ tag: 'use', id: "1", name: `${UnnamedArgumentPrefix}1` })
 					.addEdge("3", "1", EdgeType.Argument, "always")
-					.addEdge("1", "0", EdgeType.Reads, "always")
+					.addEdge("1", "0", EdgeType.Reads, "always"),
+				{ minRVersion: MIN_VERSION_PIPE }
 			)
 			assertDataflow("Nested calling", shell, "x |> f() |> g()",
 				new DataflowGraph()
@@ -160,7 +162,8 @@ describe("Atomic dataflow information", withShell((shell) => {
 					.addEdge("3", "1", EdgeType.Argument, "always")
 					.addEdge("7", "5", EdgeType.Argument, "always")
 					.addEdge("5", "3", EdgeType.Reads, "always")
-					.addEdge("1", "0", EdgeType.Reads, "always")
+					.addEdge("1", "0", EdgeType.Reads, "always"),
+				{ minRVersion: MIN_VERSION_PIPE }
 			)
 			assertDataflow("Multi-Parameter function", shell, "x |> f(y,z)",
 				new DataflowGraph()
@@ -186,7 +189,8 @@ describe("Atomic dataflow information", withShell((shell) => {
 					.addEdge("7", "6", EdgeType.Argument, "always")
 					.addEdge("1", "0", EdgeType.Reads, "always")
 					.addEdge("4", "3", EdgeType.Reads, "always")
-					.addEdge("6", "5", EdgeType.Reads, "always")
+					.addEdge("6", "5", EdgeType.Reads, "always"),
+				{ minRVersion: MIN_VERSION_PIPE }
 			)
 		})
 	})

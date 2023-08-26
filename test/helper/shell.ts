@@ -20,6 +20,8 @@ import { assert } from 'chai'
 import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl, produceDataFlowGraph } from '../../src/dataflow'
 import { reconstructToCode, SlicingCriteria, slicingCriterionToId, staticSlicing } from '../../src/slicing'
 import { LocalScope } from '../../src/dataflow/environments/scopes'
+import { testRequiresRVersion } from './version'
+import { deepMergeObject, MergeableRecord } from '../../src/util/objects'
 
 let defaultTokenMap: Record<string, string>
 
@@ -102,26 +104,50 @@ export const retrieveAst = async(shell: RShell, input: `file://${string}` | stri
 	}, defaultTokenMap, shell, hooks)
 }
 
+export interface TestConfiguration extends MergeableRecord {
+	minRVersion:            string | undefined,
+	needsNetworkConnection: boolean,
+}
+
+export const defaultTestConfiguration: TestConfiguration = {
+	minRVersion:            undefined,
+	needsNetworkConnection: false,
+}
+
+async function ensureConfig(shell: RShell, test: Mocha.Context, userConfig?: Partial<TestConfiguration>): Promise<void> {
+	const config = deepMergeObject(defaultTestConfiguration, userConfig)
+	if(config.needsNetworkConnection) {
+		await testRequiresNetworkConnection(test)
+	}
+	if(config.minRVersion !== undefined) {
+		await testRequiresRVersion(shell, config.minRVersion, test)
+	}
+}
+
 /** call within describeSession */
-export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList): Mocha.Test => {
+export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration>): Mocha.Test => {
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
 	return it(name === input ? name : `${name} (input: ${input})`, async function() {
+		await ensureConfig(shell, this, userConfig)
 		const ast = await retrieveAst(shell, input)
 		assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
 	})
 }
 
 /** call within describeSession */
-export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: RNode) => RNode<Decorated>, expected: RNodeWithParent<Decorated>): void {
+export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: RNode) => RNode<Decorated>, expected: RNodeWithParent<Decorated>, userConfig?: Partial<TestConfiguration>): void {
 	it(name, async function() {
+		await ensureConfig(shell, this, userConfig)
 		const baseAst = await retrieveAst(shell, input)
 		const ast = decorator(baseAst)
 		assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
 	})
 }
 
-export const assertDataflow = (name: string, shell: RShell, input: string, expected: DataflowGraph, startIndexForDeterministicIds = 0): void => {
+export const assertDataflow = (name: string, shell: RShell, input: string, expected: DataflowGraph, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void => {
 	it(`${name} (input: ${JSON.stringify(input)})`, async function() {
+		await ensureConfig(shell, this, userConfig)
+
 		const ast = await retrieveAst(shell, input)
 		const decoratedAst = decorateAst(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
 
@@ -143,9 +169,11 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
 function printIdMapping(ids: NodeId[], map: DecoratedAstMap): string {
 	return ids.map(id => `${id}: ${JSON.stringify(map.get(id)?.lexeme)}`).join(', ')
 }
-export const assertReconstructed = (name: string, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
+export const assertReconstructed = (name: string, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfiguration>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
 	const selectedIds = Array.isArray(ids) ? ids : [ids]
 	return it(name, async function() {
+		await ensureConfig(shell, this, userConfig)
+
 		const ast = await retrieveAst(shell, input)
 		const decoratedAst = decorateAst(ast, getId)
 		const reconstructed = reconstructToCode<NoInfo>(decoratedAst, new Set(selectedIds))

@@ -59,7 +59,6 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter)
 }
 
-
 async function main() {
 	if(options.script) {
 		let target = (scripts as Record<string, ScriptInformation>)[options.script].target as string | undefined
@@ -88,6 +87,16 @@ async function main() {
 		},
 	})
 	shell.tryToInjectHomeLibPath()
+
+	const end = () => {
+		console.log(`\n${italic('Exiting...')}`)
+		shell.close()
+		process.exit(0)
+	}
+
+	// hook some handlers
+	process.on('SIGINT', end)
+	process.on('SIGTERM', end)
 
 	await repl(shell)
 }

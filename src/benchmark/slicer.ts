@@ -11,7 +11,6 @@ import {
 	NoInfo,
 	normalize, retrieveNumberOfRTokensOfLastParse,
 	retrieveXmlFromRCode,
-	RExpressionList,
 	RParseRequestFromFile, RParseRequestFromText,
 	RShell, TokenMap
 } from '../r-bridge'
@@ -25,7 +24,7 @@ import {
 	collectAllSlicingCriteria,
 	SlicingCriteriaFilter,
 	reconstructToCode,
-	staticSlicing
+	staticSlicing, SliceResult, ReconstructionResult
 } from '../slicing'
 import {
 	CommonSlicerMeasurements,
@@ -41,12 +40,34 @@ import { MergeableRecord } from '../util/objects'
 
 export const benchmarkLogger = log.getSubLogger({ name: "benchmark" })
 
+/**
+ * Returns the stats but also the result of all setup steps (parsing, normalization, and the dataflow analysis) during the slicing.
+ * This is useful for debugging and visualizing the slicing process.
+ */
 export interface BenchmarkSlicerStats extends MergeableRecord {
-	stats:         SlicerStats
-	tokenMap:      Record<string, string>
-	normalizedAst: RExpressionList
-	decoratedAst:  DecoratedAst
-	dataflow:      DataflowInformation
+	/** the measurements obtained during the benchmark */
+	stats:        SlicerStats
+	/** the used token map when translating what was parsed from R */
+	tokenMap:     Record<string, string>
+	/** the initial and unmodified AST produced by the R side/the 'parse' step */
+	ast:          string
+	/** the normalized AST produced by the 'normalization' step, including its parent decoration */
+	decoratedAst: DecoratedAst
+	/** the dataflow graph produced by the 'dataflow' step */
+	dataflow:     DataflowInformation
+}
+
+/**
+ * Additionally to {@link BenchmarkSlicerStats}, this contains the results of a *single* slice.
+ * In other words, it holds the results of the slice and reconstruct steps.
+ */
+export interface BenchmarkSingleSliceStats extends MergeableRecord {
+	/** the measurements obtained during the single slice */
+	stats: PerSliceStats
+	/** the result of the 'slice' step */
+	slice: SliceResult
+	/** the final code, as the result of the 'reconstruct' step */
+	code:  ReconstructionResult
 }
 
 /**
@@ -64,7 +85,6 @@ export class BenchmarkSlicer {
 	private stats:            SlicerStats | undefined
 	private tokenMap:         Record<string, string> | undefined
 	private loadedXml:        string | undefined
-	private normalizedAst:    RExpressionList | undefined
 	private decoratedAst:     DecoratedAst | undefined
 	private dataflow:         DataflowInformation | undefined
 	private totalStopwatch:   IStoppableStopwatch
@@ -109,14 +129,14 @@ export class BenchmarkSlicer {
 			}, this.session)
 		)
 
-		this.normalizedAst = await this.commonMeasurements.measureAsync(
+		const normalizedAst = await this.commonMeasurements.measureAsync(
 			'normalize R AST',
 			() => normalize(this.loadedXml as string, this.tokenMap as Record<string, string>)
 		)
 
 		this.decoratedAst = this.commonMeasurements.measure(
 			'decorate R AST',
-			() => decorateAst(this.normalizedAst as RExpressionList)
+			() => decorateAst(normalizedAst )
 		)
 
 		this.dataflow = this.commonMeasurements.measure(
@@ -170,7 +190,7 @@ export class BenchmarkSlicer {
    *
    * @returns The per slice stats retrieved for this slicing criteria
    */
-	public slice(...slicingCriteria: SlicingCriteria): PerSliceStats {
+	public slice(...slicingCriteria: SlicingCriteria): BenchmarkSingleSliceStats {
 		benchmarkLogger.trace(`try to slice for criteria ${JSON.stringify(slicingCriteria)}`)
 
 		this.guardActive()
@@ -226,7 +246,11 @@ export class BenchmarkSlicer {
 		benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code}`)
 
 		stats.measurements = measurements.get()
-		return stats
+		return {
+			stats,
+			slice: slicedOutput,
+			code:  stats.reconstructedCode
+		}
 	}
 
 	private guardActive() {
@@ -274,11 +298,11 @@ export class BenchmarkSlicer {
 
 		this.stats.commonMeasurements = this.commonMeasurements.get()
 		return {
-			stats:         this.stats,
-			dataflow:      this.dataflow as DataflowInformation,
-			decoratedAst:  this.decoratedAst as DecoratedAst,
-			normalizedAst: this.normalizedAst as RExpressionList,
-			tokenMap:      this.tokenMap as TokenMap,
+			stats:        this.stats,
+			ast:          this.loadedXml as string,
+			dataflow:     this.dataflow as DataflowInformation,
+			decoratedAst: this.decoratedAst as DecoratedAst,
+			tokenMap:     this.tokenMap as TokenMap,
 		}
 	}
 

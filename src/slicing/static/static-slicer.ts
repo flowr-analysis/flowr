@@ -44,8 +44,19 @@ function fingerprint(id: NodeId, envFingerprint: string, onlyForSideEffects: boo
 }
 
 
-interface SliceResult {
+/**
+ * The result of the slice step
+ */
+export interface SliceResult {
+	/**
+	 * Number of times the set threshold was hit (i.e., the same node was visited too often).
+	 * While any number above 0 might indicate a wrong slice, it does not have to as usually even revisiting the same node does not
+	 * often cause more ids to be included in the slice.
+	 */
 	timesHitThreshold: number
+	/**
+	 * The ids of the nodes in the normalized ast that are part of the slice.
+	 */
 	result:            Set<NodeId>
 }
 

@@ -37,7 +37,6 @@ export function helpForOptions(script: keyof typeof scripts, content: HelpConten
 }
 
 
-// TODO: document that it requires help and verbose
 export function processCommandLineArgs<T extends CommonOptions>(script: keyof typeof scripts, requireAdditionally: (keyof T)[], help: HelpContent): T {
 	const options = commandLineArgs(scripts[script].options) as T
 

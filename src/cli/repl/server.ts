@@ -17,8 +17,8 @@ interface ResponseMessage<T> {
 	message: T
 }
 
-interface NormalizedAstRequestMessage extends RequestMessage {
+export interface NormalizedAstRequestMessage extends RequestMessage {
 	command: 'normalized'
 }
 
-type NormalizedAstResponseMessage = ResponseMessage<RExpressionList>
+export type NormalizedAstResponseMessage = ResponseMessage<RExpressionList>

@@ -5,7 +5,6 @@
  */
 import { MergeableRecord } from '../../util/objects'
 import { OptionDefinition } from 'command-line-usage'
-import { DeepReadonly } from 'ts-essentials'
 import {
 	benchmarkHelperOptions,
 	benchmarkOptions,

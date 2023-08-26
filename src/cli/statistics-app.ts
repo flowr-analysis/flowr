@@ -12,15 +12,11 @@ import {
 } from '../statistics'
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
-import commandLineUsage from 'command-line-usage'
 import { guard } from '../util/assert'
 import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 import { DefaultMap } from '../util/defaultmap'
 import { statisticOptions } from './common/options'
-
-
-export const toolName = 'stats'
-export const description = 'Generate usage Statistics for R scripts'
+import { helpForOptions } from './common'
 
 export interface StatsCliOptions {
 	verbose:        boolean
@@ -33,27 +29,6 @@ export interface StatsCliOptions {
 	'no-ansi':      boolean
 	features:       string[]
 }
-
-export const optionHelp = [
-	{
-		header:  description,
-		content: 'Given input files or folders, this will collect usage statistics for the given features and write them to a file'
-	},
-	{
-		header:  'Synopsis',
-		content: [
-			`$ ${toolName} {bold -i} {italic example.R} {bold -i} {italic example2.R} {bold --output-dir} {italic "output-folder/"}`,
-			`$ ${toolName} {italic "folder1/"} {bold --features} {italic all} {bold --output-dir} {italic "output-folder/"}`,
-			`$ ${toolName} {bold --post-process} {italic "output-folder"} {bold --features} {italic assignments}`,
-			`$ ${toolName} {bold --help}`
-		]
-	},
-	{
-		header:     'Options',
-		optionList: statisticOptions
-	}
-]
-
 
 export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])): Set<FeatureKey> {
 	for (const feature of features) {
@@ -74,7 +49,15 @@ export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])):
 const options = commandLineArgs(statisticOptions) as StatsCliOptions
 
 if(options.help) {
-	console.log(commandLineUsage(optionHelp))
+	console.log(helpForOptions('stats', {
+		subtitle: 'Given input files or folders, this will collect usage statistics for the given features and write them to a file',
+		examples: [
+			'{bold -i} {italic example.R} {bold -i} {italic example2.R} {bold --output-dir} {italic "output-folder/"}',
+			'{italic "folder1/"} {bold --features} {italic all} {bold --output-dir} {italic "output-folder/"}',
+			'{bold --post-process} {italic "output-folder"} {bold --features} {italic assignments}',
+			'{bold --help}'
+		]
+	}))
 	process.exit(0)
 }
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)

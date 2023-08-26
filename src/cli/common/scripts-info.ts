@@ -87,7 +87,7 @@ const _scripts = {
 		usageExample: 'stats -i example.R --output-dir "output-folder/"',
 		type:         'master script',
 	}
-} as const
+}
 
-export const scripts = _scripts as DeepReadonly<Record<keyof typeof _scripts, ScriptInformation>>
+export const scripts = _scripts as Record<keyof typeof _scripts, ScriptInformation>
 

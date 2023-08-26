@@ -1,12 +1,11 @@
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
-import commandLineUsage from 'command-line-usage'
 import { allRFilesFrom } from '../util/files'
 import { RParseRequestFromFile } from '../r-bridge'
 import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
 import { guard } from '../util/assert'
 import fs from 'fs'
-import { scripts } from './common'
+import { helpForOptions } from './common'
 import { benchmarkOptions } from './common/options'
 
 export interface BenchmarkCliOptions {
@@ -19,28 +18,16 @@ export interface BenchmarkCliOptions {
 	limit?:   number
 }
 
-export const optionHelp = [
-	{
-		header:  scripts.benchmark.description,
-		content: 'Slice given files with additional benchmark information'
-	},
-	{
-		header:  'Synopsis',
-		content: [
-			`$ ${scripts.benchmark.toolName} {italic example-folder/}`,
-			`$ ${scripts.benchmark.toolName} {bold --help}`
-		]
-	},
-	{
-		header:     'Options',
-		optionList: benchmarkOptions
-	}
-]
-
 const options = commandLineArgs(benchmarkOptions) as BenchmarkCliOptions
 
 if(options.help) {
-	console.log(commandLineUsage(optionHelp))
+	console.log(helpForOptions('benchmark', {
+		subtitle: 'Slice given files with additional benchmark information',
+		examples: [
+			'{italic example-folder/}',
+			'{bold --help}'
+		]
+	}))
 	process.exit(0)
 }
 

@@ -1,6 +1,5 @@
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
-import commandLineUsage from 'command-line-usage'
 import { guard } from '../util/assert'
 import LineByLine from 'n-readlines'
 import {
@@ -14,7 +13,7 @@ import fs from 'fs'
 import { SlicingCriteria } from '../slicing'
 import { escape } from '../statistics'
 import { displayEnvReplacer } from '../util/json'
-import { scripts } from './common'
+import { helpForOptions } from './common'
 import { summarizerOptions } from './common/options'
 
 export interface BenchmarkCliOptions {
@@ -25,25 +24,6 @@ export interface BenchmarkCliOptions {
 	output?:         string
 }
 
-export const optionHelp = [
-	{
-		header:  scripts.summarizer.description,
-		content: 'Summarize and explain the results of the benchmark tool. Summarizes in two stages: first per-request, and then overall'
-	},
-	{
-		header:  'Synopsis',
-		content: [
-			`$ ${scripts.summarizer.toolName} {italic benchmark.json}`,
-			`$ ${scripts.summarizer.toolName} {bold --help}`
-		]
-	},
-	{
-		header:     'Options',
-		optionList: summarizerOptions
-	}
-]
-
-
 interface BenchmarkData {
 	filename: string,
 	stats:    SlicerStats
@@ -52,7 +32,13 @@ interface BenchmarkData {
 const options = commandLineArgs(summarizerOptions) as BenchmarkCliOptions
 
 if(options.help) {
-	console.log(commandLineUsage(optionHelp))
+	console.log(helpForOptions('summarizer', {
+		subtitle: 'Summarize and explain the results of the benchmark tool. Summarizes in two stages: first per-request, and then overall',
+		examples: [
+			'{italic benchmark.json}',
+			'{bold --help}'
+		]
+	}))
 	process.exit(0)
 }
 

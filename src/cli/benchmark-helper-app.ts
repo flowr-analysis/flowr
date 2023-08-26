@@ -1,13 +1,12 @@
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
-import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import { BenchmarkSlicer } from '../benchmark'
 import { DefaultAllVariablesFilter } from '../slicing'
 import { RParseRequestFromFile } from '../r-bridge'
 import fs from 'fs'
 import { displayEnvReplacer } from '../util/json'
 import { guard } from '../util/assert'
-import { scripts } from './common'
+import { helpForOptions } from './common'
 import { benchmarkHelperOptions } from './common/options'
 
 
@@ -19,28 +18,16 @@ export interface SingleBenchmarkCliOptions {
 	output?: string
 }
 
-export const optionHelp = [
-	{
-		header:  scripts['benchmark-helper'].description,
-		content: 'Will slice for all possible variables, signal by exit code if slicing was successful, and can be run standalone'
-	},
-	{
-		header:  'Synopsis',
-		content: [
-			`$ ${scripts['benchmark-helper'].toolName} {italic example-file.R} --output {italic output.json}`,
-			`$ ${scripts['benchmark-helper'].toolName} {bold --help}`
-		]
-	},
-	{
-		header:     'Options',
-		optionList: benchmarkHelperOptions
-	}
-]
-
 const options = commandLineArgs(benchmarkHelperOptions) as SingleBenchmarkCliOptions
 
 if(options.help) {
-	console.log(commandLineUsage(optionHelp))
+	console.log(helpForOptions('benchmark-helper', {
+		subtitle: 'Will slice for all possible variables, signal by exit code if slicing was successful, and can be run standalone',
+		examples: [
+			'{italic example-file.R} --output {italic output.json}',
+			'{bold --help}'
+		]
+	}))
 	process.exit(0)
 }
 

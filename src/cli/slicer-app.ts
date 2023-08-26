@@ -1,12 +1,11 @@
 import { log, LogLevel } from '../util/log'
 import commandLineArgs from 'command-line-args'
-import commandLineUsage from 'command-line-usage'
 import fs from 'fs'
 import { guard } from '../util/assert'
 import { SingleSlicingCriterion, SlicingCriteria } from '../slicing'
 import { BenchmarkSlicer, stats2string, summarizeSlicerStats } from '../benchmark'
 import { NodeId } from '../r-bridge'
-import { scripts } from './common'
+import { helpForOptions } from './common'
 import { slicerOptions } from './common/options'
 
 export interface SlicerCliOptions {
@@ -19,29 +18,17 @@ export interface SlicerCliOptions {
 	// dataflow:  boolean
 }
 
-export const optionHelp = [
-	{
-		header:  scripts.slicer.description,
-		content: 'Slice R code based on a given slicing criterion'
-	},
-	{
-		header:  'Synopsis',
-		content: [
-			`$ ${scripts.slicer.toolName} {bold -c} {italic "12@product"} {italic test/testfiles/example.R}`,
-			`$ ${scripts.slicer.toolName} {bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}`,
-			`$ ${scripts.slicer.toolName} {bold --help}`
-		]
-	},
-	{
-		header:     'Options',
-		optionList: slicerOptions
-	}
-]
-
 const options = commandLineArgs(slicerOptions) as SlicerCliOptions
 
 if(options.help || !options.input || !options.criterion) {
-	console.log(commandLineUsage(optionHelp))
+	console.log(helpForOptions('slicer', {
+		subtitle: 'Slice R code based on a given slicing criterion',
+		examples: [
+			'{bold -c} {italic "12@product"} {italic test/testfiles/example.R}',
+			'{bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}',
+			'{bold --help}'
+		]
+	}))
 	process.exit(0)
 }
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)

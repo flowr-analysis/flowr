@@ -5,7 +5,7 @@ import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import { serialize2quads } from '../util/quads'
 import fs from 'fs'
 import { allRFilesFrom } from '../util/files'
-import { scripts } from './common'
+import { helpForOptions, scripts } from './common'
 import { exportQuadsOptions } from './common/options'
 
 export interface QuadsCliOptions {
@@ -16,28 +16,16 @@ export interface QuadsCliOptions {
 	output:  string | undefined
 }
 
-export const optionHelp = [
-	{
-		header:  scripts['export-quads'].description,
-		content: 'Generate RDF N-Quads from the AST of a given R script'
-	},
-	{
-		header:  'Synopsis',
-		content: [
-			`$ ${scripts['export-quads'].toolName} {bold -i} {italic example.R} {bold --output} {italic "example.quads"}`,
-			`$ ${scripts['export-quads'].toolName} {bold --help}`
-		]
-	},
-	{
-		header:     'Options',
-		optionList: exportQuadsOptions
-	}
-]
-
 const options = commandLineArgs(exportQuadsOptions) as QuadsCliOptions
 
 if(options.help) {
-	console.log(commandLineUsage(optionHelp))
+	console.log(helpForOptions('export-quads', {
+		subtitle: 'Generate RDF N-Quads from the AST of a given R script',
+		examples: [
+			'{bold -i} {italic example.R} {bold --output} {italic "example.quads"}',
+			'{bold --help}'
+		]
+	}))
 	process.exit(0)
 }
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)

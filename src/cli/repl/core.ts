@@ -7,7 +7,7 @@ import { getStoredTokenMap, RShell, TokenMap } from '../../r-bridge'
 import readline from 'readline/promises'
 import { bold, italic } from '../../statistics'
 import { prompt } from './prompt'
-import { commands, ReplCommand } from './commands/main'
+import { commands, ReplCommand } from './commands'
 
 
 

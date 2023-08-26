@@ -1,13 +1,10 @@
+import { quitCommand } from './quit'
+import { scripts } from '../../scripts-info'
+import { waitOnScript } from '../execute'
+import { splitArguments } from '../../../util/args'
+import { ReplCommand } from './main'
 import { rawPrompt } from '../prompt'
 import { bold, italic } from '../../../statistics'
-import { commands, ReplCommand } from './main'
-
-
-
-const longestKey = Array.from(Object.keys(commands), k => k.length).reduce((p, n) => Math.max(p, n), 0)
-function padCmd<T>(string: T) {
-	return String(string).padEnd(longestKey + 2, ' ')
-}
 
 export const helpCommand: ReplCommand = {
 	description:  'Show help information',
@@ -15,7 +12,7 @@ export const helpCommand: ReplCommand = {
 	usageExample: ':help',
 	fn:           () => {
 		console.log(`
-You can always just enter a R expression which gets evaluated:
+You can always just enter R expressions which get evaluated right away:
 ${rawPrompt} ${bold('1 + 1')}
 ${italic('[1] 2')}
 
@@ -33,3 +30,29 @@ ${
 	}
 }
 
+
+
+export const commands: Record<string, ReplCommand> = {
+	'help': helpCommand,
+	'quit': quitCommand
+}
+
+
+for(const [script, { target, description, type}] of Object.entries(scripts)) {
+	if(type === 'master script') {
+		commands[script] = {
+			description,
+			script:       true,
+			usageExample: `:${script} --help`,
+			fn:           async(_s, _t, remainingLine) => {
+				await waitOnScript(`${__dirname}/../../${target}`, splitArguments(remainingLine))
+			}
+		}
+	}
+}
+
+
+const longestKey = Array.from(Object.keys(commands), k => k.length).reduce((p, n) => Math.max(p, n), 0)
+function padCmd<T>(string: T) {
+	return String(string).padEnd(longestKey + 2, ' ')
+}

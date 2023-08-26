@@ -63,7 +63,6 @@ export class BenchmarkSlicer {
 	private readonly session: RShell
 	private stats:            SlicerStats | undefined
 	private tokenMap:         Record<string, string> | undefined
-	private usedRequest:      RParseRequestFromFile | RParseRequestFromText | undefined
 	private loadedXml:        string | undefined
 	private normalizedAst:    RExpressionList | undefined
 	private decoratedAst:     DecoratedAst | undefined
@@ -84,13 +83,12 @@ export class BenchmarkSlicer {
 	}
 
 	/**
-   * Initialize the slicer on the given request.
-   * Can only be called once for each instance.
-   */
+	 * Initialize the slicer on the given request.
+	 * Can only be called once for each instance.
+	 */
 	public async init(request: RParseRequestFromFile | RParseRequestFromText) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice')
 
-		this.usedRequest = request
 
 		await this.commonMeasurements.measureAsync(
 			'ensure installation of xmlparsedata',

@@ -1,8 +1,6 @@
 {
-  "buildOptions": {
-    "incremental": true
-  },
   "compilerOptions": {
+    "incremental": true,
     "esModuleInterop": true,
     "target": "ESNext",
     "module": "commonjs",

@@ -26,4 +26,4 @@ RUN npm install --only=production
 COPY --from=builder /app/dist /app/dist
 RUN rm -rf /app/dist/tsconfig.tsbuildinfo
 
-CMD ["node", "/app/dist/cli/slicer-app.js", "--", "--help"]
+ENTRYPOINT ["node", "/app/dist/flowr.js"]

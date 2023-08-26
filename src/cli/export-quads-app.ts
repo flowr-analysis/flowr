@@ -1,12 +1,9 @@
 import { decorateAst, getStoredTokenMap, retrieveAstFromRCode, RParseRequestFromFile, RShell } from '../r-bridge'
-import { log, LogLevel } from '../util/log'
-import commandLineArgs from 'command-line-args'
-import commandLineUsage, { OptionDefinition } from 'command-line-usage'
+import { log } from '../util/log'
 import { serialize2quads } from '../util/quads'
 import fs from 'fs'
 import { allRFilesFrom } from '../util/files'
-import { helpForOptions, scripts } from './common'
-import { exportQuadsOptions } from './common/options'
+import { processCommandLineArgs } from './common'
 
 export interface QuadsCliOptions {
 	verbose: boolean
@@ -16,20 +13,13 @@ export interface QuadsCliOptions {
 	output:  string | undefined
 }
 
-const options = commandLineArgs(exportQuadsOptions) as QuadsCliOptions
-
-if(options.help) {
-	console.log(helpForOptions('export-quads', {
-		subtitle: 'Generate RDF N-Quads from the AST of a given R script',
-		examples: [
-			'{bold -i} {italic example.R} {bold --output} {italic "example.quads"}',
-			'{bold --help}'
-		]
-	}))
-	process.exit(0)
-}
-log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
-log.info('running with options', options)
+const options = processCommandLineArgs<QuadsCliOptions>('export-quads', [],{
+	subtitle: 'Generate RDF N-Quads from the AST of a given R script',
+	examples: [
+		'{bold -i} {italic example.R} {bold --output} {italic "example.quads"}',
+		'{bold --help}'
+	]
+})
 
 const shell = new RShell()
 shell.tryToInjectHomeLibPath()

@@ -10,13 +10,11 @@ import {
 	setFormatter,
 	voidFormatter, ContextsWithCount, allFeatureNames, FeatureKey
 } from '../statistics'
-import { log, LogLevel } from '../util/log'
-import commandLineArgs from 'command-line-args'
+import { log } from '../util/log'
 import { guard } from '../util/assert'
 import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 import { DefaultMap } from '../util/defaultmap'
-import { statisticOptions } from './common/options'
-import { helpForOptions } from './common'
+import { processCommandLineArgs } from './common'
 
 export interface StatsCliOptions {
 	verbose:        boolean
@@ -46,22 +44,21 @@ export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])):
 }
 
 
-const options = commandLineArgs(statisticOptions) as StatsCliOptions
+const options = processCommandLineArgs<StatsCliOptions>('stats', [],{
+	subtitle: 'Given input files or folders, this will collect usage statistics for the given features and write them to a file',
+	examples: [
+		'{bold -i} {italic example.R} {bold -i} {italic example2.R} {bold --output-dir} {italic "output-folder/"}',
+		'{italic "folder1/"} {bold --features} {italic all} {bold --output-dir} {italic "output-folder/"}',
+		'{bold --post-process} {italic "output-folder"} {bold --features} {italic assignments}',
+		'{bold --help}'
+	]
+})
 
-if(options.help) {
-	console.log(helpForOptions('stats', {
-		subtitle: 'Given input files or folders, this will collect usage statistics for the given features and write them to a file',
-		examples: [
-			'{bold -i} {italic example.R} {bold -i} {italic example2.R} {bold --output-dir} {italic "output-folder/"}',
-			'{italic "folder1/"} {bold --features} {italic all} {bold --output-dir} {italic "output-folder/"}',
-			'{bold --post-process} {italic "output-folder"} {bold --features} {italic assignments}',
-			'{bold --help}'
-		]
-	}))
+if(options.input.length === 0) {
+	console.error('No input files given. Nothing to do. See \'--help\' if this is an error.')
 	process.exit(0)
 }
-log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
-log.info('running with options', options)
+
 if(options['no-ansi']) {
 	log.info('disabling ansi colors')
 	setFormatter(voidFormatter)

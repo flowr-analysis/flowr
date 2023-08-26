@@ -1,13 +1,11 @@
-import { log, LogLevel } from '../util/log'
-import commandLineArgs from 'command-line-args'
+import { log } from '../util/log'
 import { BenchmarkSlicer } from '../benchmark'
 import { DefaultAllVariablesFilter } from '../slicing'
 import { RParseRequestFromFile } from '../r-bridge'
 import fs from 'fs'
 import { displayEnvReplacer } from '../util/json'
 import { guard } from '../util/assert'
-import { helpForOptions } from './common'
-import { benchmarkHelperOptions } from './common/options'
+import { processCommandLineArgs } from './common'
 
 
 export interface SingleBenchmarkCliOptions {
@@ -18,22 +16,16 @@ export interface SingleBenchmarkCliOptions {
 	output?: string
 }
 
-const options = commandLineArgs(benchmarkHelperOptions) as SingleBenchmarkCliOptions
+const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
+	subtitle: 'Will slice for all possible variables, signal by exit code if slicing was successful, and can be run standalone',
+	examples: [
+		'{italic example-file.R} --output {italic output.json}',
+		'{bold --help}'
+	]
+})
 
-if(options.help) {
-	console.log(helpForOptions('benchmark-helper', {
-		subtitle: 'Will slice for all possible variables, signal by exit code if slicing was successful, and can be run standalone',
-		examples: [
-			'{italic example-file.R} --output {italic output.json}',
-			'{bold --help}'
-		]
-	}))
-	process.exit(0)
-}
-
-log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
 if(options.verbose) {
-	log.error('running with options - do not use for final benchmark', options)
+	log.error('running with *verbose* setting - do not use for final benchmark', options)
 }
 
 guard(options.slice === 'all' || options.slice === 'no', 'slice must be either all or no')

@@ -1,12 +1,10 @@
-import { log, LogLevel } from '../util/log'
-import commandLineArgs from 'command-line-args'
+import { log } from '../util/log'
 import { allRFilesFrom } from '../util/files'
 import { RParseRequestFromFile } from '../r-bridge'
 import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
 import { guard } from '../util/assert'
 import fs from 'fs'
-import { helpForOptions } from './common'
-import { benchmarkOptions } from './common/options'
+import { processCommandLineArgs } from './common'
 
 export interface BenchmarkCliOptions {
 	verbose:  boolean
@@ -18,21 +16,19 @@ export interface BenchmarkCliOptions {
 	limit?:   number
 }
 
-const options = commandLineArgs(benchmarkOptions) as BenchmarkCliOptions
 
-if(options.help) {
-	console.log(helpForOptions('benchmark', {
-		subtitle: 'Slice given files with additional benchmark information',
-		examples: [
-			'{italic example-folder/}',
-			'{bold --help}'
-		]
-	}))
+const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [],{
+	subtitle: 'Slice given files with additional benchmark information',
+	examples: [
+		'{italic example-folder/}',
+		'{bold --help}'
+	]
+})
+
+if(options.input.length === 0) {
+	console.error('No input files given. Nothing to do. See \'--help\' if this is an error.')
 	process.exit(0)
 }
-
-log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
-log.info('running with options - do not use for final benchmark', options)
 
 guard(options.slice === 'all' || options.slice === 'no', 'slice must be either all or no')
 

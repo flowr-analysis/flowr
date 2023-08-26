@@ -1,12 +1,10 @@
-import { log, LogLevel } from '../util/log'
-import commandLineArgs from 'command-line-args'
+import { log } from '../util/log'
 import fs from 'fs'
 import { guard } from '../util/assert'
 import { SingleSlicingCriterion, SlicingCriteria } from '../slicing'
 import { BenchmarkSlicer, stats2string, summarizeSlicerStats } from '../benchmark'
 import { NodeId } from '../r-bridge'
-import { helpForOptions } from './common'
-import { slicerOptions } from './common/options'
+import { processCommandLineArgs } from './common'
 
 export interface SlicerCliOptions {
 	verbose:   boolean
@@ -18,22 +16,15 @@ export interface SlicerCliOptions {
 	// dataflow:  boolean
 }
 
-const options = commandLineArgs(slicerOptions) as SlicerCliOptions
 
-if(options.help || !options.input || !options.criterion) {
-	console.log(helpForOptions('slicer', {
-		subtitle: 'Slice R code based on a given slicing criterion',
-		examples: [
-			'{bold -c} {italic "12@product"} {italic test/testfiles/example.R}',
-			'{bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}',
-			'{bold --help}'
-		]
-	}))
-	process.exit(0)
-}
-log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
-log.info('running with options', options)
-
+const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'criterion'],{
+	subtitle: 'Slice R code based on a given slicing criterion',
+	examples: [
+		'{bold -c} {italic "12@product"} {italic test/testfiles/example.R}',
+		'{bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}',
+		'{bold --help}'
+	]
+})
 
 async function getSlice() {
 	const slicer = new BenchmarkSlicer()

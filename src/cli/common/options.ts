@@ -3,6 +3,12 @@ import os from 'os'
 import { date2string } from '../../util/time'
 import { allFeatureNames } from '../../statistics'
 
+export interface CommonOptions {
+	verbose: boolean
+	help:    boolean
+}
+
+
 const now = date2string(new Date())
 
 export const benchmarkOptions: OptionDefinition[] = [

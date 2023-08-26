@@ -1,5 +1,3 @@
-import { log, LogLevel } from '../util/log'
-import commandLineArgs from 'command-line-args'
 import { guard } from '../util/assert'
 import LineByLine from 'n-readlines'
 import {
@@ -13,14 +11,13 @@ import fs from 'fs'
 import { SlicingCriteria } from '../slicing'
 import { escape } from '../statistics'
 import { displayEnvReplacer } from '../util/json'
-import { helpForOptions } from './common'
-import { summarizerOptions } from './common/options'
+import { processCommandLineArgs } from './common'
 
 export interface BenchmarkCliOptions {
 	verbose:         boolean
 	help:            boolean
 	'ultimate-only': boolean
-	input?:          string
+	input:           string
 	output?:         string
 }
 
@@ -29,21 +26,13 @@ interface BenchmarkData {
 	stats:    SlicerStats
 }
 
-const options = commandLineArgs(summarizerOptions) as BenchmarkCliOptions
-
-if(options.help) {
-	console.log(helpForOptions('summarizer', {
-		subtitle: 'Summarize and explain the results of the benchmark tool. Summarizes in two stages: first per-request, and then overall',
-		examples: [
-			'{italic benchmark.json}',
-			'{bold --help}'
-		]
-	}))
-	process.exit(0)
-}
-
-log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
-log.info('running with options - do not use for final benchmark', options)
+const options = processCommandLineArgs<BenchmarkCliOptions>('summarizer', ['input'],{
+	subtitle: 'Summarize and explain the results of the benchmark tool. Summarizes in two stages: first per-request, and then overall',
+	examples: [
+		'{italic benchmark.json}',
+		'{bold --help}'
+	]
+})
 
 function mapPerSliceStats(k: SlicingCriteria, v: PerSliceStats): [SlicingCriteria, PerSliceStats] {
 	return [k, {
@@ -68,14 +57,13 @@ function removeIfExists(summarizedRaw: string) {
 	}
 }
 
-guard(options.input !== undefined, 'input must be given, see --help')
 const outputBase = options.output ?? options.input.replace(/\.json$/, '-summary')
 console.log(`Writing outputs to base ${outputBase}`)
 const summarizedRaw = `${outputBase}.json`
 
 
 async function summarize() {
-	const reader = new LineByLine(options.input as string)
+	const reader = new LineByLine(options.input )
 	removeIfExists(summarizedRaw)
 	const summarizedText = `${outputBase}.log`
 	removeIfExists(summarizedText)
@@ -125,7 +113,7 @@ async function summarize() {
 }
 
 function ultimateSummarize() {
-	console.log(`Summarizing all summaries from ${options.input as string}...`)
+	console.log(`Summarizing all summaries from ${options.input }...`)
 
 	const reader = new LineByLine(summarizedRaw)
 	const ultimateRaw = `${outputBase}-ultimate.json`

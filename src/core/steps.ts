@@ -2,7 +2,15 @@
  * This file defines *all* steps of the slicing process and the data they require.
  */
 import { MergeableRecord } from '../util/objects'
-import { decorateAst, normalize, retrieveXmlFromRCode } from '../r-bridge'
+import {
+	decorateAst,
+	getStoredTokenMap,
+	normalize,
+	retrieveXmlFromRCode,
+	RParseRequest,
+	RShell,
+	TokenMap
+} from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
 import { convertAllSlicingCriteriaToIds, reconstructToCode, staticSlicing } from '../slicing'
 
@@ -78,19 +86,48 @@ const steps = {
 	} as ISubStep<typeof reconstructToCode>
 } as const
 
-/*
-export type SubStepName = typeof steps[number]['name']
-export type SubStep<name extends SubStepName> = Extract<typeof steps[number], { name: name }>
+export type SubStepName = keyof typeof steps
+export type SubStep<name extends SubStepName> = typeof steps[name]
+export type SubStepProcessor<name extends SubStepName> = SubStep<name>['processor']
 
-export function doSubStep<Name extends SubStepName, Step extends SubStep<Name>, Fn extends Step['processor']>(subStep: Name, input: Parameters<Fn>): ReturnType<Fn> {
-	return subStep.processor(input)
+export function doSubStep<Name extends SubStepName, Processor extends SubStepProcessor<Name>>(subStep: Name, ...input: Parameters<Processor>[0]): ReturnType<Processor> {
+	return steps[subStep].processor(input as never) as ReturnType<Processor>
 }
 
-const test = doSubStep('parse', {})
+// const test = doSubStep('parse', { request: 'text', content: 'x', attachSourceInformation: true, ensurePackageInstalled: true}, new RShell())
 
 
 // TODO: use undefined for default
 
-export function getResultOfSteps<InterestedIn extends(typeof STEP_NAMES[number])[], Output>(steps: InterestedIn): Output {
+type StepResults<InterestedIn extends SubStepName> = InterestedIn extends never ? Record<string, never> : { [K in InterestedIn]: Awaited<ReturnType<SubStepProcessor<K>>> }
+
+export async function getResultOfSubSteps<InterestedIn extends SubStepName[]>(steps: InterestedIn, request: RParseRequest, shell: RShell = new RShell(),  tokenMap?: TokenMap): Promise<StepResults<typeof steps[number]> | undefined> {
+	const stepSet = new Set(steps)
+	tokenMap ??= await getStoredTokenMap(shell)
+
+	type Out = StepResults<typeof steps[number]>
+
+	const result = {} as Record<string, unknown>
+	const finished = () => stepSet.size === Object.keys(result).length
+
+	if(steps.length === 0) {
+		return {} as Out
+	}
+
+	// we always have to parse
+	const rAst = await doSubStep('parse', request, shell)
+	if(stepSet.has('parse')) {
+		result.parse = rAst
+	}
+	if(finished()) {
+		return result as Out
+	}
+
+	// if they want more, we have to normalize
+	const normalizedAst = await doSubStep('normalize ast', rAst, tokenMap)
+	if(stepSet.has('normalize ast')) {
+		result.normalizedAst = normalizedAst
+	}
 }
-*/
+
+const test = getResultOfSubSteps(['normalize ast'], { request: 'text', content: 'x', attachSourceInformation: true, ensurePackageInstalled: true})

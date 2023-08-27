@@ -1,2 +1,2 @@
-export { SteppingSlicer, SteppingSlicerInput } from './steppingSlicer'
+export { SteppingSlicer, SteppingSlicerInput } from './slicer'
 export * from './steps'

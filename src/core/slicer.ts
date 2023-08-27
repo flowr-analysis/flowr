@@ -1,4 +1,12 @@
-import { DecoratedAst, NodeId, RExpressionList, RParseRequest, RShell, TokenMap } from '../r-bridge'
+import {
+	DecoratedAst,
+	NodeId,
+	RExpressionList,
+	RParseRequest,
+	RShell,
+	TokenMap,
+	XmlParserHooks
+} from '../r-bridge'
 import {
 	doSubStep,
 	StepRequired,
@@ -8,28 +16,11 @@ import {
 	SubStepProcessor
 } from './steps'
 import { guard } from '../util/assert'
-import { MergeableRecord } from '../util/objects'
 import { SlicingCriteria } from '../slicing'
 import { DataflowGraph } from '../dataflow'
-
-type StepResults<InterestedIn extends SubStepName> = InterestedIn extends never ? Record<string, never> : { [K in InterestedIn]: Awaited<ReturnType<SubStepProcessor<K>>> }
-
-/**
- * We split the types, as if you are only interested in what can be done per-file, you do not need a slicing criterion
- */
-interface BaseSteppingSlicerInput<InterestedIn extends SubStepName[]> extends MergeableRecord {
-	stepsOfInterest: InterestedIn
-	shell:           RShell
-	tokenMap:        TokenMap
-	request:         RParseRequest
-}
-
-interface SliceSteppingSlicerInput<InterestedIn extends SubStepName[]> extends BaseSteppingSlicerInput<InterestedIn> {
-	criterion: SlicingCriteria
-}
-
-export type SteppingSlicerInput<InterestedIn extends SubStepName[]> = InterestedIn extends (keyof typeof STEPS_PER_FILE)[] ?
-	BaseSteppingSlicerInput<InterestedIn> : SliceSteppingSlicerInput<InterestedIn>
+import { DeepPartial } from 'ts-essentials'
+import { SteppingSlicerInput } from './intput'
+import { StepResults } from './output'
 
 /**
  * This is ultimately the root representation of flowR's slicing procedure.
@@ -69,16 +60,18 @@ export type SteppingSlicerInput<InterestedIn extends SubStepName[]> = Interested
  *
  * @see retrieveResultOfStep
  * @see SteppingSlicer#doNextStep
+ * @see SubStepName
  */
 export class SteppingSlicer<InterestedIn extends SubStepName[]> {
 	public readonly maximumNumberOfStepsPerFile = Object.keys(STEPS_PER_FILE).length
 	public readonly maximumNumberOfStepsPerSlice = Object.keys(STEPS_PER_SLICE).length
 
 	private readonly shell:           RShell
-	private readonly tokenMap:        TokenMap
+	private readonly tokenMap?:       TokenMap
 	private readonly stepsOfInterest: Set<InterestedIn[number]>
 	private readonly request:         RParseRequest
 	private readonly criterion?:      SlicingCriteria
+	private readonly hooks?:          DeepPartial<XmlParserHooks>
 
 	private results = {} as Record<string, unknown>
 
@@ -86,18 +79,29 @@ export class SteppingSlicer<InterestedIn extends SubStepName[]> {
 	private stepCounter = 0
 	private wantedCounter = 0
 
-	constructor(input: SteppingSlicerInput<InterestedIn>) {
+	constructor(input: SteppingSlicerInput<InterestedIn> & { stepsOfInterest: InterestedIn }) {
 		this.shell = input.shell
 		this.tokenMap = input.tokenMap
 		this.request = input.request
+		this.hooks = input.hooks
 		this.stepsOfInterest = new Set(input.stepsOfInterest)
-		this.criterion = (input as SliceSteppingSlicerInput<InterestedIn>).criterion
+		this.criterion = input.criterion
 	}
 
+	/**
+	 * Retrieve the current stage the stepping slicer is in.
+	 * @see StepRequired
+	 * @see switchToSliceStage
+	 */
 	public getCurrentStage(): StepRequired {
 		return this.stage
 	}
 
+	/**
+	 * Switch to the next stage of the stepping slicer.
+	 * @see SteppingSlicer
+	 * @see getCurrentStage
+	 */
 	public switchToSliceStage(): void {
 		guard(this.stepCounter === this.maximumNumberOfStepsPerFile, 'First need to complete all steps before switching')
 		guard(this.stage === 'once-per-file', 'Cannot switch to next stage, already in once-per-slice stage')
@@ -161,7 +165,8 @@ export class SteppingSlicer<InterestedIn extends SubStepName[]> {
 				break
 			case 1:
 				step = guardStep('normalize ast')
-				result = await doSubStep(step, this.results.parse as string, this.tokenMap)
+				guard(this.tokenMap !== undefined, 'Cannot normalize ast without a token map')
+				result = await doSubStep(step, this.results.parse as string, this.tokenMap, this.hooks)
 				break
 			case 2:
 				step = guardStep('decorate')
@@ -196,9 +201,11 @@ export class SteppingSlicer<InterestedIn extends SubStepName[]> {
  * Essentially a comfort variant of the {@link SteppingSlicer} which is used under the hood.
  * It performs all steps up to the given `step` and returns the corresponding result.
  * In other words, if you pass `'dataflow'` as the step, this returns the dataflow graph.
+ *
+ * @see SubStepName
  */
-export async function retrieveResultOfStep(step: SubStepName, input: Omit<SteppingSlicerInput<SubStepName[]>, 'stepsOfInterest'>): Promise<StepResults<typeof step>> {
-	const slicer = new SteppingSlicer({ ...input, stepsOfInterest: [step] } as SteppingSlicerInput<SubStepName[]>)
+export async function retrieveResultOfStep<GivenName extends SubStepName>(step: GivenName, input: SteppingSlicerInput<GivenName[]>): Promise<StepResults<typeof step>> {
+	const slicer = new SteppingSlicer({ ...input, stepsOfInterest: [step] })
 	// we do not have to check if the name is the desired one, as this is already done with it being the 'step(s) of interest'
 	while(slicer.hasNextStep()) {
 		await slicer.nextStep()

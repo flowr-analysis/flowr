@@ -1,6 +1,14 @@
 /**
  * This file defines *all* steps of the slicing process and the data they require.
+ *
+ * Note, that the order of elements here also describes the *desired* order of their desired execution for readability.
+ * However, it is the {@link SteppingSlicer} which controls the order of execution and the steps required to achieve a given result.
+ *
+ * If you add a new step, you have to (at least) update the {@link SteppingSlicer} as well as the corresponding type predicate {@link SteppingSlicerInput}.
+ *
+ * @module
  */
+
 import { MergeableRecord } from '../util/objects'
 import {
 	decorateAst,
@@ -36,10 +44,6 @@ interface ISubStep<Fn extends StepFunction> extends MergeableRecord {
 
 // TODO: update the benchmark slicer accordingly
 // TODO: allow to append a *formatter* that can produce text/mermaid etc. output from the result for each step
-/**
- * Note, that the order of elements here also describes the *desired* order of their desired execution for readability.
- * However, it is the {@link SteppingSlicer} which controls the order of execution and the steps required to achieve a given result.
- */
 export const STEPS_PER_FILE = {
 	'parse': {
 		step:        'parse',

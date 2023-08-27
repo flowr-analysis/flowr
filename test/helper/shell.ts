@@ -12,7 +12,7 @@ import {
 	retrieveAstFromRCode,
 	RExpressionList,
 	RNode,
-	RNodeWithParent,
+	RNodeWithParent, RParseRequest,
 	RShell,
 	XmlParserHooks
 } from '../../src/r-bridge'
@@ -22,6 +22,7 @@ import { reconstructToCode, SlicingCriteria, slicingCriterionToId, staticSlicing
 import { LocalScope } from '../../src/dataflow/environments/scopes'
 import { testRequiresRVersion } from './version'
 import { deepMergeObject, MergeableRecord } from '../../src/util/objects'
+import { retrieveResultOfStep } from '../../src/core/slicer'
 
 let defaultTokenMap: Record<string, string>
 
@@ -94,14 +95,24 @@ function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected:
 	assert.deepStrictEqual(astCopy, expectedCopy, message)
 }
 
-export const retrieveAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> => {
+function requestFromInput(input: `file://${string}` | string): RParseRequest {
 	const file = input.startsWith('file://')
-	return await retrieveAstFromRCode({
+	return {
 		request:                 file ? 'file' : 'text',
 		content:                 file ? input.slice(7) : input,
 		attachSourceInformation: true,
 		ensurePackageInstalled:  false // should be called within describeSession for that!
-	}, defaultTokenMap, shell, hooks)
+	}
+}
+
+export const retrieveAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> => {
+	const request = requestFromInput(input)
+	return (await retrieveResultOfStep('normalize ast', {
+		shell,
+		request,
+		tokenMap: defaultTokenMap,
+		hooks
+	}))['normalize ast']
 }
 
 export interface TestConfiguration extends MergeableRecord {
@@ -126,7 +137,7 @@ async function ensureConfig(shell: RShell, test: Mocha.Context, userConfig?: Par
 }
 
 /** call within describeSession */
-export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration>): Mocha.Test => {
+export function assertAst(name: string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration>): Mocha.Test {
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
 	return it(name === input ? name : `${name} (input: ${input})`, async function() {
 		await ensureConfig(shell, this, userConfig)
@@ -135,7 +146,7 @@ export const assertAst = (name: string, shell: RShell, input: string, expected: 
 	})
 }
 
-/** call within describeSession */
+/** call within describeSession: TODO: remove the decorator and always use our decoration step */
 export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: RNode) => RNode<Decorated>, expected: RNodeWithParent<Decorated>, userConfig?: Partial<TestConfiguration>): void {
 	it(name, async function() {
 		await ensureConfig(shell, this, userConfig)
@@ -145,14 +156,17 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 	})
 }
 
-export const assertDataflow = (name: string, shell: RShell, input: string, expected: DataflowGraph, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void => {
+// TODO: make generics more readable
+export function assertDataflow(name: string, shell: RShell, input: string, expected: DataflowGraph, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
 	it(`${name} (input: ${JSON.stringify(input)})`, async function() {
 		await ensureConfig(shell, this, userConfig)
 
-		const ast = await retrieveAst(shell, input)
-		const decoratedAst = decorateAst(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
-
-		const { graph } = produceDataFlowGraph(decoratedAst, LocalScope)
+		const info = await retrieveResultOfStep('dataflow', {
+			request:  requestFromInput(input),
+			shell,
+			tokenMap: defaultTokenMap,
+			getId:    deterministicCountingIdGenerator(startIndexForDeterministicIds),
+		})
 
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
@@ -170,7 +184,7 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
 function printIdMapping(ids: NodeId[], map: DecoratedAstMap): string {
 	return ids.map(id => `${id}: ${JSON.stringify(map.get(id)?.lexeme)}`).join(', ')
 }
-export const assertReconstructed = (name: string, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfiguration>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
+export function assertReconstructed(name: string, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfiguration>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
 	const selectedIds = Array.isArray(ids) ? ids : [ids]
 	return it(name, async function() {
 		await ensureConfig(shell, this, userConfig)
@@ -183,7 +197,7 @@ export const assertReconstructed = (name: string, shell: RShell, input: string, 
 }
 
 
-export const assertSliced = (name: string, shell: RShell, input: string, criteria: SlicingCriteria, expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
+export function assertSliced(name: string, shell: RShell, input: string, criteria: SlicingCriteria, expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
 	return it(`${JSON.stringify(criteria)} ${name}`, async function() {
 		const ast = await retrieveAst(shell, input)
 		const decoratedAst = decorateAst(ast, getId)

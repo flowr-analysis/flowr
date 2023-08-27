@@ -1,6 +1,7 @@
 import { processCommandLineArgs } from './common'
-import { stepOutputFormats } from './common/options'
+import { stepAllowedSteps, stepOutputFormats } from './common/options'
 import { retrieveXmlFromRCode, RParseRequest, RShell } from '../r-bridge'
+import { guard } from '../util/assert'
 
 export interface StepCliOptions {
 	verbose:   boolean
@@ -14,7 +15,7 @@ export interface StepCliOptions {
 
 
 const options = processCommandLineArgs<StepCliOptions>('step', ['input', 'step'],{
-	subtitle: 'Return the parsed AST of the given R file',
+	subtitle: 'Besides slicing, this returns the intermediate results of others steps',
 	examples: [
 		'{bold --step} {italic parse} {italic test/testfiles/example.R}',
 		'{italic test/testfiles/example.R} {bold --format} {italic mermaid-url} {bold --step} {italic parse;normalize;reconstruct} ',
@@ -31,6 +32,12 @@ const request: RParseRequest = {
 	ensurePackageInstalled:  true
 }
 
+const desiredSteps = new Set()
+for(const potentialStep of options.step.split(';').map(s => s.trim().toLowerCase())) {
+	guard((stepAllowedSteps as readonly string[]).includes(potentialStep), `Unknown step ${potentialStep}`)
+	desiredSteps.add(potentialStep)
+}
+
 async function getSteps() {
 	const shell = new RShell()
 	shell.tryToInjectHomeLibPath()
@@ -38,7 +45,6 @@ async function getSteps() {
 	// we always have to parse the file
 	const rAst = await retrieveXmlFromRCode(request, shell)
 
-	console.log(rAst)
 
 	shell.close()
 }

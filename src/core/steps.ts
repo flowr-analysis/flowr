@@ -4,12 +4,8 @@
 import { MergeableRecord } from '../util/objects'
 import {
 	decorateAst,
-	getStoredTokenMap,
 	normalize,
-	retrieveXmlFromRCode,
-	RParseRequest,
-	RShell,
-	TokenMap
+	retrieveXmlFromRCode
 } from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
 import { convertAllSlicingCriteriaToIds, reconstructToCode, staticSlicing } from '../slicing'
@@ -20,6 +16,8 @@ import { convertAllSlicingCriteriaToIds, reconstructToCode, staticSlicing } from
 export const STEP_NAMES = ['parse', 'normalize', 'decorate', 'dataflow', 'slice', 'reconstruct'] as const
 
 type StepFunction = (...args: never[]) => unknown
+
+export type StepRequired = 'once-per-file' | 'once-per-slice'
 
 /**
  * Defines what is to be known of a single step in the slicing process.
@@ -33,16 +31,16 @@ interface ISubStep<Fn extends StepFunction> extends MergeableRecord {
 	/** The main processor that essentially performs the logic of this step */
 	processor:   (input: Parameters<Fn>) => ReturnType<Fn>
 	/* does this step has to be repeated for each new slice or can it be performed only once in the initialization */
-	required:    'once-per-file' | 'once-per-slice'
+	required:    StepRequired
 }
 
-// type Steps= { [ K in 'parse' ]: Step<K> }
 // TODO: update the benchmark slicer accordingly
 // TODO: allow to append a *formatter* that can produce text/mermaid etc. output from the result for each step
 /**
- * note, that the order of elements here also describes the order of their desired execution
+ * Note, that the order of elements here also describes the *desired* order of their desired execution for readability.
+ * However, it is the {@link SteppingSlicer} which controls the order of execution and the steps required to achieve a given result.
  */
-const steps = {
+export const STEPS_PER_FILE = {
 	'parse': {
 		step:        'parse',
 		description: 'Parse the given R code into an AST',
@@ -65,7 +63,11 @@ const steps = {
 		description: 'Construct the dataflow graph',
 		processor:   input => produceDataFlowGraph(...input),
 		required:    'once-per-file',
-	} as ISubStep<typeof produceDataFlowGraph>,
+	} as ISubStep<typeof produceDataFlowGraph>
+} as const
+
+
+export const STEPS_PER_SLICE = {
 	'decode criteria': {
 		step:        'slice',
 		description: 'Decode the slicing criteria into a collection of node ids',
@@ -86,48 +88,13 @@ const steps = {
 	} as ISubStep<typeof reconstructToCode>
 } as const
 
-export type SubStepName = keyof typeof steps
-export type SubStep<name extends SubStepName> = typeof steps[name]
+export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const
+
+export type SubStepName = keyof typeof STEPS
+export type SubStep<name extends SubStepName> = typeof STEPS[name]
 export type SubStepProcessor<name extends SubStepName> = SubStep<name>['processor']
 
 export function doSubStep<Name extends SubStepName, Processor extends SubStepProcessor<Name>>(subStep: Name, ...input: Parameters<Processor>[0]): ReturnType<Processor> {
-	return steps[subStep].processor(input as never) as ReturnType<Processor>
+	return STEPS[subStep].processor(input as never) as ReturnType<Processor>
 }
 
-// const test = doSubStep('parse', { request: 'text', content: 'x', attachSourceInformation: true, ensurePackageInstalled: true}, new RShell())
-
-
-// TODO: use undefined for default
-
-type StepResults<InterestedIn extends SubStepName> = InterestedIn extends never ? Record<string, never> : { [K in InterestedIn]: Awaited<ReturnType<SubStepProcessor<K>>> }
-
-export async function getResultOfSubSteps<InterestedIn extends SubStepName[]>(steps: InterestedIn, request: RParseRequest, shell: RShell = new RShell(),  tokenMap?: TokenMap): Promise<StepResults<typeof steps[number]> | undefined> {
-	const stepSet = new Set(steps)
-	tokenMap ??= await getStoredTokenMap(shell)
-
-	type Out = StepResults<typeof steps[number]>
-
-	const result = {} as Record<string, unknown>
-	const finished = () => stepSet.size === Object.keys(result).length
-
-	if(steps.length === 0) {
-		return {} as Out
-	}
-
-	// we always have to parse
-	const rAst = await doSubStep('parse', request, shell)
-	if(stepSet.has('parse')) {
-		result.parse = rAst
-	}
-	if(finished()) {
-		return result as Out
-	}
-
-	// if they want more, we have to normalize
-	const normalizedAst = await doSubStep('normalize ast', rAst, tokenMap)
-	if(stepSet.has('normalize ast')) {
-		result.normalizedAst = normalizedAst
-	}
-}
-
-const test = getResultOfSubSteps(['normalize ast'], { request: 'text', content: 'x', attachSourceInformation: true, ensurePackageInstalled: true})

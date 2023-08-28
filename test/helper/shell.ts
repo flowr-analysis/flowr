@@ -20,7 +20,7 @@ import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl, produceDataFl
 import { reconstructToCode, SlicingCriteria, slicingCriterionToId, staticSlicing } from '../../src/slicing'
 import { testRequiresRVersion } from './version'
 import { deepMergeObject, MergeableRecord } from '../../src/util/objects'
-import { SteppingSlicer } from '../../src/core'
+import { executeSingleSubStep, SteppingSlicer } from '../../src/core'
 
 let defaultTokenMap: Record<string, string>
 
@@ -146,12 +146,20 @@ export function assertAst(name: string, shell: RShell, input: string, expected: 
 }
 
 /** call within describeSession */
-export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: RNode) => RNode<Decorated>, expected: RNodeWithParent<Decorated>, userConfig?: Partial<TestConfiguration>): void {
+export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, expected: RNodeWithParent<Decorated>, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
 	it(name, async function() {
 		await ensureConfig(shell, this, userConfig)
-		const baseAst = await retrieveAst(shell, input)
-		const ast = decorator(baseAst)
-		assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
+		const result = await new SteppingSlicer({
+			stepOfInterest: 'decorate',
+			getId:          deterministicCountingIdGenerator(startIndexForDeterministicIds),
+			shell,
+			tokenMap:       defaultTokenMap,
+			request:        requestFromInput(input),
+		}).allRemainingSteps()
+
+		const ast = result.decorate.decoratedAst
+
+		assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(result['normalize ast'])})`)
 	})
 }
 
@@ -188,15 +196,24 @@ export function assertDataflow(name: string, shell: RShell, input: string, expec
 function printIdMapping(ids: NodeId[], map: DecoratedAstMap): string {
 	return ids.map(id => `${id}: ${JSON.stringify(map.get(id)?.lexeme)}`).join(', ')
 }
+
+/**
+ * Please note, that theis executes the reconstruction step separately, as it predefines the result of the slice with the given ids.
+ */
 export function assertReconstructed(name: string, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfiguration>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
 	const selectedIds = Array.isArray(ids) ? ids : [ids]
 	return it(name, async function() {
 		await ensureConfig(shell, this, userConfig)
 
-		const ast = await retrieveAst(shell, input)
-		const decoratedAst = decorateAst(ast, getId)
-		const reconstructed = reconstructToCode<NoInfo>(decoratedAst, new Set(selectedIds))
-		assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, decoratedAst.idMap)})`)
+		const result = await new SteppingSlicer({
+			stepOfInterest: 'decorate',
+			getId:          getId,
+			request:        requestFromInput(input),
+			shell,
+			tokenMap:       defaultTokenMap,
+		}).allRemainingSteps()
+		const reconstructed = executeSingleSubStep('reconstruct', result.decorate,  new Set(selectedIds))
+		assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, result.decorate.idMap)})`)
 	})
 }
 

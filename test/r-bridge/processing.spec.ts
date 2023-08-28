@@ -5,7 +5,6 @@ import {
 	Type,
 	decorateAst,
 	RNodeWithParent,
-	deterministicCountingIdGenerator,
 	collectAllIds,
 	NodeId
 } from '../../src/r-bridge'
@@ -14,10 +13,7 @@ import { assert } from 'chai'
 describe("Assign unique Ids and Parents", withShell((shell) => {
 	describe("Testing deterministic counting Id assignment", () => {
 		const assertDecorated = (name: string, input: string, expected: RNodeWithParent): void => {
-			assertDecoratedAst(name, shell, input,
-				(ast) => decorateAst(ast, deterministicCountingIdGenerator()).decoratedAst,
-				expected
-			)
+			assertDecoratedAst(name, shell, input, expected)
 		}
 		// decided to test with ast parsing, as we are dependent on these changes in reality
 		describe("Single nodes (leafs)", () => {

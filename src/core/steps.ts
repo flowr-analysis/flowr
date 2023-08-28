@@ -7,12 +7,15 @@
  * If you add a new step, you have to (at least) update the {@link SteppingSlicer} as well as the corresponding type predicate {@link SteppingSlicerInput}.
  * Furthermore, if your step is the new *last* step, please update {@link LAST_STEP}.
  *
+ * TODO: add a visualizer for each step for the given format
+ * TODO: add a differ for each step?
+ *
  * @module
  */
 
 import { MergeableRecord } from '../util/objects'
 import {
-	decorateAst,
+	decorateAst, NoInfo,
 	normalize,
 	retrieveXmlFromRCode
 } from '../r-bridge'
@@ -59,9 +62,9 @@ export const STEPS_PER_FILE = {
 	'decorate': {
 		step:        'normalize',
 		description: 'Transform flowR\'s AST into a doubly linked tree with parent references (second step of the normalization)',
-		processor:   decorateAst,
+		processor:   decorateAst<NoInfo>,
 		required:    'once-per-file'
-	} as ISubStep<typeof decorateAst>,
+	} as ISubStep<typeof decorateAst<NoInfo>>,
 	'dataflow': {
 		description: 'Construct the dataflow graph',
 		processor:   produceDataFlowGraph,
@@ -98,7 +101,7 @@ export type SubStepName = keyof typeof STEPS
 export type SubStep<name extends SubStepName> = typeof STEPS[name]
 export type SubStepProcessor<name extends SubStepName> = SubStep<name>['processor']
 
-export function doSubStep<Name extends SubStepName, Processor extends SubStepProcessor<Name>>(subStep: Name, ...input: Parameters<Processor>): ReturnType<Processor> {
+export function executeSingleSubStep<Name extends SubStepName, Processor extends SubStepProcessor<Name>>(subStep: Name, ...input: Parameters<Processor>): ReturnType<Processor> {
 	return STEPS[subStep].processor(...input as unknown as never[]) as ReturnType<Processor>
 }
 

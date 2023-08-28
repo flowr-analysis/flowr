@@ -1,14 +1,14 @@
 import {
 	DecoratedAst, IdGenerator,
-	NodeId, RNode,
+	NodeId, NoInfo, RNode,
 	RParseRequest,
 	RShell,
 	TokenMap,
 	XmlParserHooks
 } from '../r-bridge'
 import {
-	doSubStep, LAST_STEP,
-	StepRequired,
+	executeSingleSubStep, LAST_STEP,
+	StepRequired, STEPS,
 	STEPS_PER_FILE,
 	STEPS_PER_SLICE,
 	SubStepName,
@@ -81,7 +81,7 @@ import { StepResults } from './output'
  * @see SteppingSlicer#doNextStep
  * @see SubStepName
  */
-export class SteppingSlicer<InterestedIn extends SubStepName> {
+export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 	public readonly maximumNumberOfStepsPerFile = Object.keys(STEPS_PER_FILE).length
 	public readonly maximumNumberOfStepsPerSlice = Object.keys(STEPS_PER_SLICE).length
 
@@ -90,18 +90,18 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 	private readonly stepOfInterest: InterestedIn
 	private readonly request:        RParseRequest
 	private readonly hooks?:         DeepPartial<XmlParserHooks>
-	private readonly getId?:         IdGenerator<unknown>
+	private readonly getId?:         IdGenerator<NoInfo>
 
 	private criterion?: SlicingCriteria
 
-	private results = {} as Record<string, unknown>
+	private results = {} as Record<keyof typeof STEPS, unknown>
 
 	private stage: StepRequired = 'once-per-file'
 	private stepCounter = 0
 	private reachedWanted = false
 
 	/**
-	 * Create a new stepping slicer. For more details onthe arguments please see {@link SteppingSlicerInput}.
+	 * Create a new stepping slicer. For more details on the arguments please see {@link SteppingSlicerInput}.
 	 */
 	constructor(input: SteppingSlicerInput<InterestedIn>) {
 		this.shell = input.shell
@@ -109,7 +109,7 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 		this.request = input.request
 		this.hooks = input.hooks
 		this.getId = input.getId
-		this.stepOfInterest = input.stepOfInterest ?? LAST_STEP as InterestedIn
+		this.stepOfInterest = (input.stepOfInterest ?? LAST_STEP) as InterestedIn
 		this.criterion = input.criterion
 	}
 
@@ -163,13 +163,7 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 	}> {
 		guard(this.hasNextStep(), 'No more steps to do')
 
-		const guardStep = expectedStepName === undefined ?
-			<K extends SubStepName>(name: K): K => name
-			:
-			<K extends SubStepName>(name: K): K => {
-				guard(expectedStepName === name, `Expected step ${expectedStepName} but got ${step}`)
-				return name
-			}
+		const guardStep = this.getGuardStep(expectedStepName)
 
 		const { step, result } = await this.doNextStep(guardStep)
 
@@ -182,6 +176,16 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 		return { name: step, result: result as Awaited<ReturnType<SubStepProcessor<typeof step>>> }
 	}
 
+	private getGuardStep(expectedStepName: SubStepName | undefined) {
+		return expectedStepName === undefined ?
+			<K extends SubStepName>(name: K): K => name
+			:
+			<K extends SubStepName>(name: K): K => {
+				guard(expectedStepName === name, `Expected step ${expectedStepName} but got ${name}`)
+				return name
+			}
+	}
+
 	private async doNextStep(guardStep: <K extends SubStepName>(name: K) => K) {
 		let step: SubStepName
 		let result: unknown
@@ -189,33 +193,33 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 		switch(this.stepCounter) {
 			case 0:
 				step = guardStep('parse')
-				result = await doSubStep(step, this.request, this.shell)
+				result = await executeSingleSubStep(step, this.request, this.shell)
 				break
 			case 1:
 				step = guardStep('normalize ast')
 				guard(this.tokenMap !== undefined, 'Cannot normalize ast without a token map')
-				result = await doSubStep(step, this.results.parse as string, this.tokenMap, this.hooks)
+				result = await executeSingleSubStep(step, this.results.parse as string, this.tokenMap, this.hooks)
 				break
 			case 2:
 				step = guardStep('decorate')
-				result = doSubStep(step, this.results['normalize ast'] as RNode, this.getId)
+				result = executeSingleSubStep(step, this.results['normalize ast'] as RNode, this.getId)
 				break
 			case 3:
 				step = guardStep('dataflow')
-				result = doSubStep(step, this.results.decorate as DecoratedAst)
+				result = executeSingleSubStep(step, this.results.decorate as DecoratedAst)
 				break
 			case 4:
 				guard(this.criterion !== undefined, 'Cannot decode criteria without a criterion')
 				step = guardStep('decode criteria')
-				result = doSubStep(step, this.criterion, this.results.decorate as DecoratedAst)
+				result = executeSingleSubStep(step, this.criterion, this.results.decorate as DecoratedAst)
 				break
 			case 5:
 				step = guardStep('slice')
-				result = doSubStep(step, this.results.dataflow as DataflowGraph, (this.results.decorate as DecoratedAst).idMap, this.results['decode criteria'] as NodeId[])
+				result = executeSingleSubStep(step, this.results.dataflow as DataflowGraph, (this.results.decorate as DecoratedAst).idMap, this.results['decode criteria'] as NodeId[])
 				break
 			case 6:
 				step = guardStep('reconstruct')
-				result = doSubStep(step, this.results.decorate as DecoratedAst, this.results.slice as Set<NodeId>)
+				result = executeSingleSubStep(step, this.results.decorate as DecoratedAst, this.results.slice as Set<NodeId>)
 				break
 			default:
 				throw new Error(`Unknown step ${this.stepCounter}, reaching this should not happen!`)

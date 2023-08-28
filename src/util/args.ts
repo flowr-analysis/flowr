@@ -16,7 +16,15 @@ export function splitArguments(inputString: string): string[] {
 	for(const c of inputString) {
 		if(escaped) {
 			escaped = false
-			current += c
+			switch(c) {
+				case'n': current += '\n'; break
+				case't': current += '\t'; break
+				case'r': current += '\r'; break
+				case'v': current += '\v'; break
+				case'f': current += '\f'; break
+				case'b': current += '\b'; break
+				default: current += c
+			}
 		} else if(c === ' ' && !inQuotes && current !== '') {
 			args.push(current)
 			current = ''

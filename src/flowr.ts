@@ -66,6 +66,10 @@ if(options['no-ansi']) {
 
 async function printVersionInformation() {
 	console.log(`flowR: ${String(version)}`)
+	const shell = new RShell()
+	process.on('exit', () => shell.close())
+	const rVersion = await shell.usedRVersion()
+	console.log(`R: ${rVersion?.format() ?? 'unknown'}`)
 }
 
 

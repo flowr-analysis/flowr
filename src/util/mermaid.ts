@@ -12,7 +12,7 @@ import {
 	IdentifierReference
 } from '../dataflow'
 import { guard } from './assert'
-import { displayEnvReplacer } from './json'
+import { jsonReplacer } from './json'
 import { DataflowScopeName } from '../dataflow/environments'
 
 
@@ -134,7 +134,7 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphVertexInfo, merm
 	const { open, close } = mermaidNodeBrackets(def, fCall)
 
 	if(mermaid.includeEnvironments) {
-		mermaid.nodeLines.push(`    %% ${id}: ${JSON.stringify(info.environment, displayEnvReplacer)}`)
+		mermaid.nodeLines.push(`    %% ${id}: ${JSON.stringify(info.environment, jsonReplacer)}`)
 	}
 	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name)} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''

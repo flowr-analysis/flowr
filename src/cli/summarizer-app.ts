@@ -10,7 +10,7 @@ import {
 import fs from 'fs'
 import { SlicingCriteria } from '../slicing'
 import { escape } from '../statistics'
-import { displayEnvReplacer } from '../util/json'
+import { jsonReplacer } from '../util/json'
 import { processCommandLineArgs } from './common'
 
 export interface BenchmarkCliOptions {
@@ -104,7 +104,7 @@ async function summarize() {
 		})
 
 		console.log(`    - Append raw summary to ${summarizedRaw}`)
-		fs.appendFileSync(summarizedRaw, `${JSON.stringify({ filename: got.filename, summarize: summarized }, displayEnvReplacer)}\n`)
+		fs.appendFileSync(summarizedRaw, `${JSON.stringify({ filename: got.filename, summarize: summarized }, jsonReplacer)}\n`)
 
 		console.log(`    - Append textual summary to ${summarizedText}`)
 		fs.appendFileSync(summarizedText, `${stats2string(summarized)}\n`)
@@ -156,7 +156,7 @@ function ultimateSummarize() {
 	// summarizedRaw
 	const ultimate = summarizeAllSummarizedStats(allSummarized)
 	console.log(`Writing ultimate summary to ${ultimateRaw}`)
-	fs.writeFileSync(ultimateRaw, JSON.stringify(ultimate, displayEnvReplacer))
+	fs.writeFileSync(ultimateRaw, JSON.stringify(ultimate, jsonReplacer))
 	console.log(ultimateStats2String(ultimate))
 }
 

@@ -3,7 +3,7 @@ import { NodeId } from '../../r-bridge'
 import { FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
 import { DataflowGraphVertices, dataflowLogger } from '../index'
 import { guard } from '../../util/assert'
-import { displayEnvReplacer } from '../../util/json'
+import { jsonReplacer } from '../../util/json'
 import { setEquals } from '../../util/set'
 
 function equalFunctionArgumentsReferences(a: IdentifierReference | '<value>', b: IdentifierReference | '<value>'): boolean {
@@ -122,14 +122,14 @@ export function equalEdges(id: NodeId, our: OutgoingEdges | undefined, other: Ou
 	}
 
 	if(our.size !== other.size) {
-		dataflowLogger.warn(`total edge size for ${id} does not match: ${our.size} vs ${other.size} (${JSON.stringify(our, displayEnvReplacer)}, ${JSON.stringify(other, displayEnvReplacer)})`)
+		dataflowLogger.warn(`total edge size for ${id} does not match: ${our.size} vs ${other.size} (${JSON.stringify(our, jsonReplacer)}, ${JSON.stringify(other, jsonReplacer)})`)
 		return false
 	}
 	// order independent compare
 	for(const [target, edge] of our) {
 		const otherEdge = other.get(target)
 		if(otherEdge === undefined || edge.types.size !== otherEdge.types.size || [...edge.types].some(e => !otherEdge.types.has(e)) || edge.attribute !== otherEdge.attribute) {
-			dataflowLogger.warn(`edge with ${id}->${target} does not match (${JSON.stringify(edge, displayEnvReplacer)} vs ${JSON.stringify(otherEdge, displayEnvReplacer)})`)
+			dataflowLogger.warn(`edge with ${id}->${target} does not match (${JSON.stringify(edge, jsonReplacer)} vs ${JSON.stringify(otherEdge, jsonReplacer)})`)
 			return false
 		}
 	}

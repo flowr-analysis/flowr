@@ -41,15 +41,15 @@ export const benchmarkLogger = log.getSubLogger({ name: "benchmark" })
  */
 export interface BenchmarkSlicerStats extends MergeableRecord {
 	/** the measurements obtained during the benchmark */
-	stats:        SlicerStats
+	stats:     SlicerStats
 	/** the used token map when translating what was parsed from R */
-	tokenMap:     Record<string, string>
+	tokenMap:  Record<string, string>
 	/** the initial and unmodified AST produced by the R side/the 'parse' step */
-	ast:          string
+	parse:     string
 	/** the normalized AST produced by the 'normalization' step, including its parent decoration */
-	decoratedAst: NormalizedAst
+	normalize: NormalizedAst
 	/** the dataflow graph produced by the 'dataflow' step */
-	dataflow:     DataflowInformation
+	dataflow:  DataflowInformation
 }
 
 /**
@@ -306,11 +306,11 @@ export class BenchmarkSlicer {
 
 		this.stats.commonMeasurements = this.commonMeasurements.get()
 		return {
-			stats:        this.stats,
-			ast:          this.loadedXml as string,
-			dataflow:     this.dataflow as DataflowInformation,
-			decoratedAst: this.normalizedAst as NormalizedAst,
-			tokenMap:     this.tokenMap as TokenMap,
+			stats:     this.stats,
+			parse:     this.loadedXml as string,
+			dataflow:  this.dataflow as DataflowInformation,
+			normalize: this.normalizedAst as NormalizedAst,
+			tokenMap:  this.tokenMap as TokenMap,
 		}
 	}
 

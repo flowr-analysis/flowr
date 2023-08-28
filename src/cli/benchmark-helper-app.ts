@@ -3,7 +3,7 @@ import { BenchmarkSlicer } from '../benchmark'
 import { DefaultAllVariablesFilter } from '../slicing'
 import { RParseRequestFromFile } from '../r-bridge'
 import fs from 'fs'
-import { displayEnvReplacer } from '../util/json'
+import { jsonReplacer } from '../util/json'
 import { guard } from '../util/assert'
 import { processCommandLineArgs } from './common'
 
@@ -59,7 +59,7 @@ async function benchmark() {
 
 		const { stats } = slicer.finish()
 		// append line by line
-		fs.appendFileSync(options.output, `${JSON.stringify({ filename: options.input, stats }, displayEnvReplacer)}\n`)
+		fs.appendFileSync(options.output, `${JSON.stringify({ filename: options.input, stats }, jsonReplacer)}\n`)
 	} catch(e: unknown) {
 		if(e instanceof Error) {
 			if(!e.message.includes('unable to parse R')) {

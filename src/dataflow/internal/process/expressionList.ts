@@ -28,7 +28,7 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId))) {
 		if(remainingRead.has(readName)) {
 			remainingRead.get(readName)?.push(read)
-		} else{
+		} else {
 			remainingRead.set(readName, [read])
 		}
 	}

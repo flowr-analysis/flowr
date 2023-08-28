@@ -64,8 +64,7 @@ export function rangeComparator(r1: SourceRange | undefined, r2: SourceRange | u
 		return -1
 	} else if(r1.start.line === r2.start.line) {
 		return r1.start.column - r2.start.column
-		// TODO: eslint should make spaces after else and ?case?
-	} else{
+	} else {
 		return r1.start.line - r2.start.line
 	}
 }

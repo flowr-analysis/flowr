@@ -38,7 +38,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 	if(named) {
 		functionCallName = functionCall.functionName.content
 		dataflowLogger.debug(`Using ${functionRootId} (name: ${functionCallName}) as root for the function call`)
-	} else{
+	} else {
 		functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`
 		dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`)
 		// we know, that it calls the toplevel:
@@ -66,7 +66,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		guard(processed.out.length > 0, () => `Argument ${JSON.stringify(arg)} has no out references, but needs one for the unnamed arg`)
 		if(arg.name === undefined) {
 			callArgs.push(processed.out[0])
-		} else{
+		} else {
 			callArgs.push([arg.name.content, processed.out[0]])
 		}
 
@@ -78,7 +78,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 
 			if(tryToResolve === undefined) {
 				remainingReadInArgs.push(ingoing)
-			} else{
+			} else {
 				for(const resolved of tryToResolve) {
 					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId,EdgeType.Reads, 'always')
 				}

@@ -94,7 +94,7 @@ export function number2ts(value: string): RNumberValue {
 			complexNumber,
 			markedAsInt
 		}
-	} else{
+	} else {
 		const {
 			intPart,
 			floatPart,

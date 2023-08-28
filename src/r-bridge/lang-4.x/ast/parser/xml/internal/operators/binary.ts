@@ -46,7 +46,7 @@ export function tryNormalizeBinary(
 		flavor = "assignment"
 	} else if(operator.name === Type.Pipe) {
 		flavor = 'pipe'
-	} else{
+	} else {
 		return executeUnknownHook(data.hooks.operators.onBinary.unknown, data, { lhs, operator, rhs })
 	}
 	return parseBinaryOp(data, flavor, lhs, operator, rhs)
@@ -143,7 +143,7 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 				fullLexeme:       data.currentLexeme
 			}
 		}
-	} else{
+	} else {
 		result = {
 			type:     Type.BinaryOp,
 			flavor,

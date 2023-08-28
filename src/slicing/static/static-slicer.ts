@@ -89,7 +89,7 @@ class VisitingQueue {
 			slicerLogger.warn(`id: ${target} has been visited ${idCounter} times, skipping`)
 			this.timesHitThreshold++
 			return
-		} else{
+		} else {
 			this.idThreshold.set(target, idCounter + 1)
 		}
 

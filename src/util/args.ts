@@ -17,12 +17,12 @@ export function splitArguments(inputString: string): string[] {
 		if(escaped) {
 			escaped = false
 			switch(c) {
-				case'n': current += '\n'; break
-				case't': current += '\t'; break
-				case'r': current += '\r'; break
-				case'v': current += '\v'; break
-				case'f': current += '\f'; break
-				case'b': current += '\b'; break
+				case 'n': current += '\n'; break
+				case 't': current += '\t'; break
+				case 'r': current += '\r'; break
+				case 'v': current += '\v'; break
+				case 'f': current += '\f'; break
+				case 'b': current += '\b'; break
 				default: current += c
 			}
 		} else if(c === ' ' && !inQuotes && current !== '') {
@@ -32,7 +32,7 @@ export function splitArguments(inputString: string): string[] {
 			inQuotes = !inQuotes
 		} else if(c === '\\') {
 			escaped = true
-		} else{
+		} else {
 			current += c
 		}
 	}

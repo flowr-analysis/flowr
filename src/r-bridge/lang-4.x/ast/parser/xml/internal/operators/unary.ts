@@ -32,7 +32,7 @@ export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson,
 		flavor = 'logical'
 	} else if(ModelFormulaOperatorsRAst.has(operator.name)) {
 		flavor = 'model formula'
-	} else{
+	} else {
 		return executeUnknownHook(data.hooks.operators.onUnary.unknown, data, { operator, operand })
 	}
 	return parseUnaryOp(data, flavor, operator, operand)

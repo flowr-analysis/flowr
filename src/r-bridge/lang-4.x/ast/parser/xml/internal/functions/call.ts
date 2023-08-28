@@ -64,7 +64,7 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 			return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
 		}
 		result = mayResult
-	} else{
+	} else {
 		result = parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content)
 	}
 
@@ -149,7 +149,7 @@ function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJs
 			location:  stringBase.location,
 			content:   stringBase.content.str
 		}
-	} else{
+	} else {
 		functionName = tryNormalizeSymbol(data, symbolContent)
 	}
 	guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')

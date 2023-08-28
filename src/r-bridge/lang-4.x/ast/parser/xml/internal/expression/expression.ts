@@ -56,7 +56,7 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 	let result: RNode
 	if(children.length === 1) {
 		result = children[0]
-	} else{
+	} else {
 		result = {
 			type:   Type.ExpressionList,
 			location,

@@ -44,7 +44,7 @@ export function normalizeNumber(data: ParserData, obj: XmlBasedJson): RNumber | 
 			type:    Type.Logical,
 			content: boolean2ts(content)
 		}
-	} else{
+	} else {
 		result = {
 			...common,
 			type:    Type.Number,

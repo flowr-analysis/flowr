@@ -17,7 +17,7 @@ export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInfo
 	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 	if(op.rhs.type !== Type.FunctionCall) {
 		dataflowLogger.warn(`Expected rhs of pipe to be a function call, but got ${op.rhs.type} instead.`)
-	} else{
+	} else {
 		const maybeFunctionCallNode = nextGraph.get(op.rhs.info.id, true)
 		guard(maybeFunctionCallNode !== undefined, () => `Expected function call node with id ${op.rhs.info.id} to be present in graph, but got undefined instead (graph: ${graphToMermaidUrl(nextGraph, data.completeAst.idMap)}).`)
 

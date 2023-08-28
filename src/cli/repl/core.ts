@@ -54,10 +54,10 @@ export async function repl(shell = new RShell({ revive: 'always' }), tokenMap?: 
 			const processor = commands[command] as (ReplCommand | undefined)
 			if(processor) {
 				await processor.fn(shell, tokenMap, answer.slice(command.length + 2).trim())
-			} else{
+			} else {
 				console.log(`the command '${command}' is unknown, try ${bold(':help')} for more information`)
 			}
-		} else{
+		} else {
 			try {
 				const result = await shell.sendCommandWithOutput(answer, {
 					from:                    'both',

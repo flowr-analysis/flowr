@@ -260,7 +260,7 @@ function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		let decorated: RFunctionCall<OtherInfo & ParentInformation>
 		if(data.flavor === 'named') {
 			decorated = { ...data, info: { ...data.info, id, parent: undefined }, functionName, arguments: args } as RNamedFunctionCall<OtherInfo & ParentInformation>
-		} else{
+		} else {
 			decorated = { ...data, info: { ...data.info, id, parent: undefined }, calledFunction: functionName, arguments: args } as RUnnamedFunctionCall<OtherInfo & ParentInformation>
 		}
 		info.idMap.set(id, decorated)

@@ -168,13 +168,13 @@ export class RShell {
 			this._sendCommand(command)
 			if(config.from === 'stderr') {
 				this._sendCommand(`cat("${config.postamble}${this.options.eol}", file=stderr())`)
-			} else{
+			} else {
 				this._sendCommand(`cat("${config.postamble}${this.options.eol}")`)
 			}
 		})
 		if(config.automaticallyTrimOutput) {
 			return output.map(line => line.trim())
-		} else{
+		} else {
 			return output
 		}
 	}

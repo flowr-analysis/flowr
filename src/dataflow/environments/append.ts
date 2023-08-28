@@ -20,7 +20,7 @@ function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironme
 		const old = map.get(key)
 		if(old) {
 			map.set(key, uniqueMergeValues(old, value))
-		} else{
+		} else {
 			map.set(key, value)
 		}
 	}

@@ -42,7 +42,7 @@ export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable 
 		deepMergeObjectWithResult(addon, base, result)
 	} else if(baseIsArray && addonIsArray) {
 		return [...base, ...addon]
-	} else{
+	} else {
 		throw new Error('cannot merge object with array!')
 	}
 
@@ -54,10 +54,10 @@ function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord
 		if(isObjectOrArray(addon[key])) {
 			if(!(key in base)) {
 				Object.assign(result, { [key]: addon[key] })
-			} else{
+			} else {
 				result[key] = deepMergeObject(base[key] as Mergeable, addon[key] as Mergeable)
 			}
-		} else{
+		} else {
 			assertSameType(result[key], addon[key])
 			Object.assign(result, { [key]: addon[key] })
 		}

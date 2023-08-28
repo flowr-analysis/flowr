@@ -24,7 +24,7 @@ export function splitArrayOn<T>(arr: T[], predicate: (elem: T) => boolean): T[][
 			result.push(current)
 			current = []
 			fired = true
-		} else{
+		} else {
 			current.push(elem)
 		}
 	}
@@ -50,7 +50,7 @@ export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
 		if(c[i] >= i) {
 			c[i] = 0
 			++i
-		} else{
+		} else {
 			// save the swap to 0 (https://stackoverflow.com/questions/9960908/permutations-in-javascript/37580979#37580979)
 			const k = i % 2 && c[i]
 			const p = arr[i]

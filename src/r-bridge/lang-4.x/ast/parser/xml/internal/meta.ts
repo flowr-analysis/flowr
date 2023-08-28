@@ -14,7 +14,7 @@ export function objectWithArrUnwrap(obj: XmlBasedJson[] | XmlBasedJson): XmlBase
 		return obj[0]
 	} else if(typeof obj === 'object') {
 		return obj
-	} else{
+	} else {
 		throw new XmlParseError(`expected array or object, yet received ${JSON.stringify(obj)}`)
 	}
 }

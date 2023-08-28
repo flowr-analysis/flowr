@@ -84,12 +84,12 @@ function safeDivPercentage(a: number, b: number): number | undefined{
 		return undefined
 	} else if(b === 0) {
 		return a === 0 ? 0 : undefined
-	} else{
+	} else {
 		const result = 1 - (a / b)
 		if(isNaN(result)) {
 			log.error(`NaN for ${a} and ${b}\n`)
 			return undefined
-		} else{
+		} else {
 			return result
 		}
 	}

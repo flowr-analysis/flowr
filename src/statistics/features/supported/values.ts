@@ -65,11 +65,11 @@ export const values: Feature<ValueInfo> = {
 		numerics.map(n => [n, classifyNumericConstants(n.textContent ?? '<unknown>', existing)] as const)
 			.forEach(([n, type]) => {
 				switch(type) {
-					case'allNumerics':
+					case 'allNumerics':
 						numbers.push(n); break
-					case'logical':
+					case 'logical':
 						specialLogicalSymbols.push(n); break
-					case'special-constants':
+					case 'special-constants':
 						specialConstants.push(n); break
 					default:
 						assertUnreachable(type)

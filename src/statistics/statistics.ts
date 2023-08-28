@@ -59,7 +59,7 @@ function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequest
 	meta.successfulParsed++
 	if(request.request === 'text') {
 		meta.lines.push(request.content.split('\n').map(l => l.length))
-	} else{
+	} else {
 		meta.lines.push(fs.readFileSync(request.content, 'utf-8').split('\n').map(l => l.length))
 	}
 }

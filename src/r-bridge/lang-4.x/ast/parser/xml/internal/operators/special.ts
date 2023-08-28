@@ -16,7 +16,7 @@ export function identifySpecialOp(content: string): BinaryOperatorFlavor | 'spec
 		return 'logical'
 	} else if(ArithmeticOperatorsRAst.has(content)) {
 		return 'arithmetic'
-	} else{
+	} else {
 		return 'special'
 	}
 }

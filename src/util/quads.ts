@@ -141,10 +141,10 @@ function processObjectEntries(key: string, value: unknown, obj: DataForQuad, qua
 function objToType(value: unknown): NamedNode | undefined {
 	let suffix: string | undefined
 	switch(typeof value) {
-		case'string': suffix = 'string'; break
-		case'number': suffix = Number.isInteger(value) ? 'integer' : 'decimal'; break
-		case'boolean': suffix = 'boolean'; break
-		case'bigint': suffix = 'integer'; break
+		case 'string': suffix = 'string'; break
+		case 'number': suffix = Number.isInteger(value) ? 'integer' : 'decimal'; break
+		case 'boolean': suffix = 'boolean'; break
+		case 'bigint': suffix = 'integer'; break
 		default: log.warn(`unknown ${typeof value} with ${JSON.stringify(value)}`); break
 	}
 	return suffix ? namedNode(`http://www.w3.org/2001/XMLSchema#${suffix}`) : undefined
@@ -164,10 +164,10 @@ function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads
 	if(isObjectOrArray(value)) {
 		if(Array.isArray(value)) {
 			processArrayEntries(key, value, obj, quads, config)
-		} else{
+		} else {
 			processObjectEntries(key, value, obj, quads, config)
 		}
-	} else{
+	} else {
 		processLiteralEntry(value, key, obj, quads, config)
 	}
 }

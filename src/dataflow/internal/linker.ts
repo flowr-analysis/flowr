@@ -55,7 +55,7 @@ function specialReturnFunction(info: DataflowGraphVertexFunctionCall, graph: Dat
 			if(arg[1] !== '<value>') {
 				graph.addEdge(id, arg[1], EdgeType.Returns, 'always')
 			}
-		} else{
+		} else {
 			if(arg !== '<value>') {
 				graph.addEdge(id, arg, EdgeType.Returns, 'always')
 			}
@@ -104,7 +104,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 			if(specialDotParameter !== undefined) {
 				dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to dot-dot-dot parameter`)
 				graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, EdgeType.DefinesOnCall, 'always')
-			} else{
+			} else {
 				dataflowLogger.error(`skipping argument ${i} as there is no corresponding parameter - R should block that`)
 			}
 			continue
@@ -254,7 +254,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReferen
 				bodyInput.used = 'maybe'
 			}
 			givenInputs.push(bodyInput)
-		} else{
+		} else {
 			for(const target of probableTarget) {
 				// we can stick with maybe even if readId.attribute is always
 				graph.addEdge(bodyInput, target, EdgeType.Reads, undefined, true)

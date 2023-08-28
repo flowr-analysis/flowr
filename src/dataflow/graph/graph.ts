@@ -88,7 +88,7 @@ export class DataflowGraph {
 	public* vertices(includeDefinedFunctions: boolean): IterableIterator<[NodeId, DataflowGraphVertexInfo]> {
 		if(includeDefinedFunctions) {
 			yield* this.vertexInformation.entries()
-		} else{
+		} else {
 			for(const id of this.rootVertices) {
 				yield [id, this.vertexInformation.get(id) as DataflowGraphVertexInfo]
 			}
@@ -179,7 +179,7 @@ export class DataflowGraph {
 				if(fromInfo?.[0].when === 'maybe') {
 					log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
 					attribute = 'maybe'
-				} else{
+				} else {
 					const toInfo = this.get(toId, true)
 					if(toInfo?.[0].when === 'maybe') {
 						log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
@@ -198,7 +198,7 @@ export class DataflowGraph {
 		if(edgeInFrom === undefined) {
 			if(existingFrom === undefined) {
 				this.edges.set(fromId, new Map([[toId, edge]]))
-			} else{
+			} else {
 				existingFrom.set(toId, edge)
 			}
 
@@ -209,7 +209,7 @@ export class DataflowGraph {
 				const existingTo = this.edges.get(toId)
 				if(existingTo === undefined) {
 					this.edges.set(toId, new Map([[fromId, edge]]))
-				} else{
+				} else {
 					existingTo.set(fromId, edge)
 				}
 			} else if(type === 'defines-on-call') {
@@ -219,11 +219,11 @@ export class DataflowGraph {
 				const existingTo = this.edges.get(toId)
 				if(existingTo === undefined) {
 					this.edges.set(toId, new Map([[fromId, otherEdge]]))
-				} else{
+				} else {
 					existingTo.set(fromId, otherEdge)
 				}
 			}
-		} else{
+		} else {
 			if(attribute === 'maybe') {
 				// as the data is shared, we can just set it for one direction
 				edgeInFrom.attribute = 'maybe'
@@ -272,11 +272,11 @@ export class DataflowGraph {
 				const existing = this.edges.get(id)
 				if(existing === undefined) {
 					this.edges.set(id, new Map([[target, edge]]))
-				} else{
+				} else {
 					const get = existing.get(target)
 					if(get === undefined) {
 						existing.set(target, edge)
-					} else{
+					} else {
 						get.types = new Set([...get.types, ...edge.types])
 						if(edge.attribute === 'maybe') {
 							get.attribute = 'maybe'
@@ -324,7 +324,7 @@ export class DataflowGraph {
 			guard(node.when === reference.used || node.when === 'maybe' || reference.used === 'maybe', () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
 			node.scope = reference.scope
 			node.when = reference.used === 'maybe' ? 'maybe' : node.when
-		} else{
+		} else {
 			this.vertexInformation.set(reference.nodeId, {
 				...node,
 				tag:   'variable-definition',

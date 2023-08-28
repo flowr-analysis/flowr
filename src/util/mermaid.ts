@@ -120,7 +120,7 @@ function mermaidNodeBrackets(def: boolean, fCall: boolean) {
 	} else if(fCall) {
 		open = '[['
 		close = ']]'
-	} else{
+	} else {
 		open = '(['
 		close = '])'
 	}

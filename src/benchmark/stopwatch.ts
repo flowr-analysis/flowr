@@ -1,5 +1,4 @@
 import { guard } from '../util/assert'
-import { STEPS } from '../core'
 
 export interface IStoppableStopwatch {
 	/** Stop the given stopwatch. */

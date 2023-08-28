@@ -46,7 +46,7 @@ function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBase
 		)
 		if(binary !== undefined) {
 			return [binary]
-		} else{
+		} else {
 			const forLoop = tryNormalizeFor(
 				data,
 				mappedWithName[0],
@@ -55,7 +55,7 @@ function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBase
 			)
 			if(forLoop !== undefined) {
 				return [forLoop]
-			} else{
+			} else {
 				// could be a symbol with namespace information
 				const symbol = tryNormalizeSymbol(data, mappedWithName)
 				if(symbol !== undefined) {
@@ -73,7 +73,7 @@ function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBase
 		])
 		if(ifThen !== undefined) {
 			return [ifThen]
-		} else{
+		} else {
 			const whileLoop = tryNormalizeWhile(
 				data,
 				mappedWithName[0],
@@ -111,7 +111,7 @@ export function splitComments(mappedWithName: NamedXmlBasedJson[]) {
 	for(const elem of mappedWithName) {
 		if(elem.name === Type.Comment) {
 			comments.push(elem)
-		} else{
+		} else {
 			others.push(elem)
 		}
 	}
@@ -131,7 +131,7 @@ export function normalizeBasedOnType(
 
 	if(obj[0].name) {
 		mappedWithName = obj as NamedXmlBasedJson[]
-	} else{
+	} else {
 		mappedWithName = getWithTokenType(
 			data.config.tokenMap,
 			obj as XmlBasedJson[]
@@ -152,7 +152,7 @@ export function normalizeBasedOnType(
 			const result = normalizeBasedOnType(data, sub)
 			if(result.length === 1 && result[0].type === Type.ExpressionList) {
 				flattened.push(...result[0].children)
-			} else{
+			} else {
 				flattened.push(...result)
 			}
 		}

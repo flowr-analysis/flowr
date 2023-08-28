@@ -49,7 +49,7 @@ export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, .
 
 	if(key.length === 1) {
 		return check(key[0])
-	} else{
+	} else {
 		return key.reduce<Record<string, T>>((acc, key) => {
 			acc[key] = check(key)
 			return acc

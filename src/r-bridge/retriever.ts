@@ -1,5 +1,5 @@
 import { type RShell } from "./shell"
-import { parseCSV, ts2r, XmlParserHooks, RExpressionList, normalize, NormalizedAst } from './lang-4.x'
+import { parseCSV, ts2r, XmlParserHooks, normalize, NormalizedAst } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
 import { DeepPartial, DeepReadonly } from 'ts-essentials'
 import { guard } from '../util/assert'
@@ -76,7 +76,7 @@ export async function retrieveNormalizedAstFromRCode(request: RParseRequest, tok
 export function removeTokenMapQuotationMarks(str: string): string {
 	if(str.length > 1 && (startAndEndsWith(str, '\'') || startAndEndsWith(str, '"'))) {
 		return str.slice(1, -1)
-	} else{
+	} else {
 		return str
 	}
 }

@@ -122,7 +122,7 @@ export function histograms2table(histograms: Histogram[], countAsDensity = false
 		if(binIndex === 0) {
 			row[1] = histograms[0].min.toFixed(3)
 			row[2] = histograms[0].min.toFixed(3)
-		} else{
+		} else {
 			row[1] = String((binIndex-1) * histograms[0].binSize + histograms[0].min)
 			row[2] = String((binIndex) * histograms[0].binSize + histograms[0].min)
 		}
@@ -155,7 +155,7 @@ function writeRoResultsForHistograms(histograms: Histogram[], binIndex: number, 
 		// does not have to be performant...
 		if(binIndex >= bins.length) {
 			row[j + 3] = '0' /* in a histogram, 0 is the best default value for bins that are not present -- no value appeared in the corresponding bin */
-		} else{
+		} else {
 			row[j + 3] = String(countAsDensity ? bins[binIndex] / sums[j] : bins[binIndex])
 		}
 	}

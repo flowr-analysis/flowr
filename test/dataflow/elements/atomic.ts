@@ -215,7 +215,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 						.addVertex({ tag: 'use', id: "0", name: "x" })
 						.addVertex({ tag: 'variable-definition', id: "1", name: "y", scope })
 						.addEdge("1", "0", EdgeType.DefinedBy, "always")
-				} else{
+				} else {
 					dataflowGraph
 						.addVertex({ tag: 'variable-definition', id: "0", name: "x", scope })
 						.addVertex({ tag: 'use', id: "1", name: "y" })
@@ -235,7 +235,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 						.addVertex({ tag: 'use', id: "0", name: "x" })
 						.addVertex({ tag: 'variable-definition', id: "1", name: "x", scope })
 						.addEdge("1", "0", EdgeType.DefinedBy, "always")
-				} else{
+				} else {
 					circularGraph
 						.addVertex({ tag: 'variable-definition', id: "0", name: "x", scope })
 						.addVertex({ tag: 'use', id: "1", name: "x" })

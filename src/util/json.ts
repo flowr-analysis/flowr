@@ -6,7 +6,7 @@ export function jsonReplacer(key: any, value: any): any {
 		return [...value]
 	} else if(typeof value === 'bigint') {
 		return `${value.toString()}n`
-	} else{
+	} else {
 		return value
 	}
 }

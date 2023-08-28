@@ -37,7 +37,7 @@ export function normalizeLineDirective(data: ParserData, obj: XmlBasedJson): RLi
 			},
 			content: content.slice(1)
 		}
-	} else{
+	} else {
 		result = {
 			type:   Type.LineDirective,
 			location,

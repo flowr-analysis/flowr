@@ -42,7 +42,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 				}
 			}
 			map.set(key, [...updatedOld])
-		} else{
+		} else {
 			map.set(key, values)
 		}
 	}
@@ -50,7 +50,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 	let parent: IEnvironment | undefined
 	if(includeParent) {
 		parent = base.parent === undefined ? undefined : overwriteIEnvironmentWith(base.parent, next.parent)
-	} else{
+	} else {
 		parent = base.parent
 	}
 

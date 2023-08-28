@@ -96,7 +96,7 @@ function processMatchForDynLib(match: RegExpExecArray): string[] {
 	const functions = match.groups?.fn?.trim().split(/\s+/) ?? []
 	if(functions.length === 0) {
 		return [packageName]
-	} else{
+	} else {
 		return functions.map(fn => `${JSON.stringify(packageName)},${fn}`)
 	}
 }

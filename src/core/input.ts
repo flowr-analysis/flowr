@@ -33,12 +33,7 @@ interface NormalizeSteppingSlicerInput<InterestedIn extends SubStepName | undefi
 	tokenMap: TokenMap
 }
 
-interface DecorateSteppingSlicerInput<InterestedIn extends SubStepName | undefined> extends NormalizeSteppingSlicerInput<InterestedIn> {
-	getId: IdGenerator<unknown>
-}
-
-
-interface SliceSteppingSlicerInput<InterestedIn extends SubStepName | undefined> extends DecorateSteppingSlicerInput<InterestedIn> {
+interface SliceSteppingSlicerInput<InterestedIn extends SubStepName | undefined> extends NormalizeSteppingSlicerInput<InterestedIn> {
 	criterion: SlicingCriteria
 }
 
@@ -52,8 +47,8 @@ export type SteppingSlicerInput<InterestedIn extends SubStepName | undefined = u
 		'slice' extends InterestedIn ? SliceSteppingSlicerInput<InterestedIn> :
 			'decode criteria' extends InterestedIn ? SliceSteppingSlicerInput<InterestedIn> :
 				// we are interested in a step that does not require the slicing criteria but at least needs to normalize
-				'dataflow' extends InterestedIn ? DecorateSteppingSlicerInput<InterestedIn> :
-					'decorate' extends InterestedIn ? DecorateSteppingSlicerInput<InterestedIn> :
+				'dataflow' extends InterestedIn ? NormalizeSteppingSlicerInput<InterestedIn> :
+					'decorate' extends InterestedIn ? NormalizeSteppingSlicerInput<InterestedIn> :
 						// we are interested in normalize step which does not yet require the id generator
 						'normalize ast' extends InterestedIn ? NormalizeSteppingSlicerInput<InterestedIn> :
 							// we are only interested in the parse step

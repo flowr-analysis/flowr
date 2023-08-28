@@ -145,10 +145,10 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 	 * Returns true only if 1) there are more steps to-do for the current stage and 2) we have not yet reached the step we are interested in
 	 */
 	public hasNextStep(): boolean {
-		return (this.stage === 'once-per-file' ?
+		return !this.reachedWanted && (this.stage === 'once-per-file' ?
 			this.stepCounter < this.maximumNumberOfStepsPerFile
 			: this.stepCounter < this.maximumNumberOfStepsPerSlice
-		) && !this.reachedWanted
+		)
 	}
 
 	/**
@@ -175,7 +175,7 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 
 		this.results[step] = result
 		this.stepCounter += 1
-		if (this.stepOfInterest === step) {
+		if(this.stepOfInterest === step) {
 			this.reachedWanted = true
 		}
 
@@ -198,7 +198,6 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 				break
 			case 2:
 				step = guardStep('decorate')
-				guard(this.getId !== undefined, 'Cannot decorate ast without an id generator')
 				result = doSubStep(step, this.results['normalize ast'] as RNode, this.getId)
 				break
 			case 3:
@@ -206,7 +205,6 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 				result = doSubStep(step, this.results.decorate as DecoratedAst)
 				break
 			case 4:
-				guard(this.stage === 'once-per-slice', 'Cannot decode criteria in once-per-file stage')
 				guard(this.criterion !== undefined, 'Cannot decode criteria without a criterion')
 				step = guardStep('decode criteria')
 				result = doSubStep(step, this.criterion, this.results.decorate as DecoratedAst)
@@ -250,12 +248,12 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 	 * However, passing false allows you to only execute the steps of the 'once-per-file' stage (i.e., the steps that can be cached).
 	 */
 	public async allRemainingSteps(switchStage = true): Promise<StepResults<InterestedIn>> {
-		while (this.hasNextStep()) {
+		while(this.hasNextStep()) {
 			await this.nextStep()
 		}
 		if(switchStage && !this.reachedWanted && this.stage === 'once-per-file') {
 			this.switchToSliceStage()
-			while (this.hasNextStep()) {
+			while(this.hasNextStep()) {
 				await this.nextStep()
 			}
 		}

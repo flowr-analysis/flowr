@@ -34,6 +34,22 @@ interface RParseRequestBase {
  */
 export type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseRequestBase
 
+export function requestFromInput(input: `file://${string}`): RParseRequestFromFile & RParseRequestBase
+export function requestFromInput(input: string): RParseRequestFromText & RParseRequestBase
+
+/**
+ * Creates a {@link RParseRequest} from a given input.
+ */
+export function requestFromInput(input: `file://${string}` | string): RParseRequest {
+	const file = input.startsWith('file://')
+	return {
+		request:                 file ? 'file' : 'text',
+		content:                 file ? input.slice(7) : input,
+		attachSourceInformation: true,
+		ensurePackageInstalled:  false // should be called within describeSession for that!
+	}
+}
+
 const ERR_MARKER = "err"
 
 /**

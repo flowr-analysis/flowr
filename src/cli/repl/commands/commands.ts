@@ -6,6 +6,7 @@ import { ReplCommand } from './main'
 import { rawPrompt } from '../prompt'
 import { bold, italic } from '../../../statistics'
 import { versionCommand } from './version'
+import { parseCommand } from './parse'
 
 export const helpCommand: ReplCommand = {
 	description:  'Show help information',
@@ -36,7 +37,8 @@ ${
 export const commands: Record<string, ReplCommand> = {
 	'help':    helpCommand,
 	'quit':    quitCommand,
-	'version': versionCommand
+	'version': versionCommand,
+	'parse':   parseCommand
 }
 
 

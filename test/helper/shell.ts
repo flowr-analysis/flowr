@@ -7,10 +7,10 @@ import {
 	getStoredTokenMap,
 	IdGenerator,
 	NodeId,
-	NoInfo,
+	NoInfo, requestFromInput,
 	RExpressionList,
 	RNode,
-	RNodeWithParent, RParseRequest,
+	RNodeWithParent,
 	RShell, TokenMap,
 	XmlParserHooks
 } from '../../src/r-bridge'
@@ -104,16 +104,6 @@ function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected:
 		}
 		throw e
 	 }
-}
-
-function requestFromInput(input: `file://${string}` | string): RParseRequest {
-	const file = input.startsWith('file://')
-	return {
-		request:                 file ? 'file' : 'text',
-		content:                 file ? input.slice(7) : input,
-		attachSourceInformation: true,
-		ensurePackageInstalled:  false // should be called within describeSession for that!
-	}
 }
 
 export const retrieveNormalizedAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RNodeWithParent> => {

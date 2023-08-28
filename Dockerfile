@@ -23,7 +23,7 @@ RUN apk add --no-cache R
 COPY package.json LICENSE /app/
 RUN npm install --only=production
 
-COPY --from=builder /app/dist /app/dist
+COPY --from=builder /app/dist/src /app/dist
 RUN rm -rf /app/dist/tsconfig.tsbuildinfo
 
 ENTRYPOINT ["node", "/app/dist/flowr.js"]

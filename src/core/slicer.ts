@@ -71,7 +71,7 @@ import { DataflowInformation } from '../dataflow/internal/info'
  * const result2 = await slicer.allRemainingSteps()
  * ```
  *
- * **Note:** Even though, using the stepping slicer introduces some performance overhead, we consider
+ * @note Even though, using the stepping slicer introduces some performance overhead, we consider
  * it to be the baseline for performance benchmarking. It may very well be possible to squeeze out some more performance by
  * directly constructing the steps in the right order. However, we consider this to be negligible when compared with the time required
  * for, for example, the dataflow analysis.
@@ -234,7 +234,7 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 	 *       (i.e., this is what you want if you have never executed {@link nextStep} and you want to execute *all* steps).
 	 *       However, passing false allows you to only execute the steps of the 'once-per-file' stage (i.e., the steps that can be cached).
 	 *
-	 * **Note:** There is a small type difference if you pass 'false' and already have manually switched to the 'once-per-slice' stage.
+	 * @note There is a small type difference if you pass 'false' and already have manually switched to the 'once-per-slice' stage.
 	 *       Because now, the results of these steps are no longer part of the result type (although they are still included).
 	 *       In such a case, you may be better off with simply passing 'true' as the function will detect that the stage is already switched.
 	 *       We could solve this type problem by separating the SteppingSlicer class into two for each stage, but this would break the improved readability and unified handling

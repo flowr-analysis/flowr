@@ -99,6 +99,6 @@ export type SubStep<name extends SubStepName> = typeof STEPS[name]
 export type SubStepProcessor<name extends SubStepName> = SubStep<name>['processor']
 
 export function doSubStep<Name extends SubStepName, Processor extends SubStepProcessor<Name>>(subStep: Name, ...input: Parameters<Processor>): ReturnType<Processor> {
-	return STEPS[subStep].processor(input as never) as ReturnType<Processor>
+	return STEPS[subStep].processor(...input as unknown as never[]) as ReturnType<Processor>
 }
 

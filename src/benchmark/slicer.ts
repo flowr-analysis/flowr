@@ -136,7 +136,7 @@ export class BenchmarkSlicer {
 
 		this.decoratedAst = this.commonMeasurements.measure(
 			'decorate R AST',
-			() => decorateAst(normalizedAst )
+			() => decorateAst(normalizedAst)
 		)
 
 		this.dataflow = this.commonMeasurements.measure(

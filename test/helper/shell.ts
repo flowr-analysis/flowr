@@ -9,7 +9,6 @@ import {
 	IdGenerator,
 	NodeId,
 	NoInfo,
-	retrieveAstFromRCode,
 	RExpressionList,
 	RNode,
 	RNodeWithParent, RParseRequest,
@@ -19,10 +18,9 @@ import {
 import { assert } from 'chai'
 import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl, produceDataFlowGraph } from '../../src/dataflow'
 import { reconstructToCode, SlicingCriteria, slicingCriterionToId, staticSlicing } from '../../src/slicing'
-import { LocalScope } from '../../src/dataflow/environments/scopes'
 import { testRequiresRVersion } from './version'
 import { deepMergeObject, MergeableRecord } from '../../src/util/objects'
-import { retrieveResultOfStep, SteppingSlicer } from '../../src/core/slicer'
+import { SteppingSlicer } from '../../src/core'
 
 let defaultTokenMap: Record<string, string>
 
@@ -107,12 +105,13 @@ function requestFromInput(input: `file://${string}` | string): RParseRequest {
 
 export const retrieveAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> => {
 	const request = requestFromInput(input)
-	return (await retrieveResultOfStep('normalize ast', {
+	return (await new SteppingSlicer({
+		stepOfInterest: 'normalize ast',
 		shell,
 		request,
-		tokenMap: defaultTokenMap,
+		tokenMap:       defaultTokenMap,
 		hooks
-	}))['normalize ast']
+	}).allRemainingSteps())['normalize ast']
 }
 
 export interface TestConfiguration extends MergeableRecord {

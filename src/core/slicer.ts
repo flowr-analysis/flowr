@@ -1,7 +1,6 @@
 import {
-	DecoratedAst,
-	NodeId,
-	RExpressionList,
+	DecoratedAst, IdGenerator,
+	NodeId, RNode,
 	RParseRequest,
 	RShell,
 	TokenMap,
@@ -19,7 +18,7 @@ import { guard } from '../util/assert'
 import { SlicingCriteria } from '../slicing'
 import { DataflowGraph } from '../dataflow'
 import { DeepPartial } from 'ts-essentials'
-import { SteppingSlicerInput } from './intput'
+import { SteppingSlicerInput } from './input'
 import { StepResults } from './output'
 
 /**
@@ -91,6 +90,7 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 	private readonly stepOfInterest: InterestedIn
 	private readonly request:        RParseRequest
 	private readonly hooks?:         DeepPartial<XmlParserHooks>
+	private readonly getId?:         IdGenerator<unknown>
 
 	private criterion?: SlicingCriteria
 
@@ -108,6 +108,7 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 		this.tokenMap = input.tokenMap
 		this.request = input.request
 		this.hooks = input.hooks
+		this.getId = input.getId
 		this.stepOfInterest = input.stepOfInterest ?? LAST_STEP as InterestedIn
 		this.criterion = input.criterion
 	}
@@ -163,9 +164,9 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 		guard(this.hasNextStep(), 'No more steps to do')
 
 		const guardStep = expectedStepName === undefined ?
-			(name: SubStepName) => name
+			<K extends SubStepName>(name: K): K => name
 			:
-			(name: SubStepName): SubStepName => {
+			<K extends SubStepName>(name: K): K => {
 				guard(expectedStepName === name, `Expected step ${expectedStepName} but got ${step}`)
 				return name
 			}
@@ -181,7 +182,7 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 		return { name: step, result: result as Awaited<ReturnType<SubStepProcessor<typeof step>>> }
 	}
 
-	private async doNextStep(guardStep: (name: SubStepName) => SubStepName) {
+	private async doNextStep(guardStep: <K extends SubStepName>(name: K) => K) {
 		let step: SubStepName
 		let result: unknown
 
@@ -197,7 +198,8 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 				break
 			case 2:
 				step = guardStep('decorate')
-				result = doSubStep(step, this.results.normalizeAst as RExpressionList)
+				guard(this.getId !== undefined, 'Cannot decorate ast without an id generator')
+				result = doSubStep(step, this.results['normalize ast'] as RNode, this.getId)
 				break
 			case 3:
 				step = guardStep('dataflow')
@@ -251,7 +253,7 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 		while (this.hasNextStep()) {
 			await this.nextStep()
 		}
-		if(switchStage && this.stage === 'once-per-file') {
+		if(switchStage && !this.reachedWanted && this.stage === 'once-per-file') {
 			this.switchToSliceStage()
 			while (this.hasNextStep()) {
 				await this.nextStep()

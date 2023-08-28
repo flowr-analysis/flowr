@@ -24,7 +24,7 @@ interface BaseSteppingSlicerInput<InterestedIn extends SubStepName | undefined> 
 	/** These hooks only make sense if you at least want to normalize the parsed R AST. They can augment the normalization process */
 	hooks?:          DeepPartial<XmlParserHooks>
 	/** This id generator is only necessary if you want to retrieve a dataflow from the parsed R AST, it determines the id generator to use and if you are unsure, use the {@link deterministicCountingIdGenerator}*/
-	getId?:          IdGenerator<NoInfo>
+	getId?:          IdGenerator<unknown>
 	/** The slicing criterion is only of interest if you actually want to slice the R code */
 	criterion?:      SlicingCriteria
 }
@@ -34,7 +34,7 @@ interface NormalizeSteppingSlicerInput<InterestedIn extends SubStepName | undefi
 }
 
 interface DecorateSteppingSlicerInput<InterestedIn extends SubStepName | undefined> extends NormalizeSteppingSlicerInput<InterestedIn> {
-	getId: IdGenerator<NoInfo>
+	getId: IdGenerator<unknown>
 }
 
 

@@ -1,5 +1,5 @@
 import {
-	DecoratedAst,
+	NormalizedAst,
 	NodeId,
 	ParentInformation,
 	RAccess,
@@ -470,7 +470,7 @@ export interface ReconstructionResult {
  *
  * @returns Number of times `autoSelectIf` triggered
  */
-export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
+export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
 	reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
 	let autoSelected = 0
 	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
@@ -480,7 +480,7 @@ export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Sele
 		}
 		return result
 	}
-	const result = foldAstStateful(ast.decoratedAst, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
+	const result = foldAstStateful(ast.ast, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
 	if(reconstructLogger.settings.minLevel >= LogLevel.trace) {
 		reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
 	}

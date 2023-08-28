@@ -15,7 +15,6 @@
 
 import { MergeableRecord } from '../util/objects'
 import {
-	decorateAst, NoInfo,
 	normalize,
 	retrieveXmlFromRCode
 } from '../r-bridge'
@@ -36,9 +35,9 @@ export type StepRequired = 'once-per-file' | 'once-per-slice'
 
 /**
  * Defines what is to be known of a single step in the slicing process.
- * These steps may be more fine-grained than the overall steps defined of flowR. These are linked within `step`
  */
-export interface ISubStep<Fn extends StepFunction> extends MergeableRecord {
+export interface IStep<Fn extends StepFunction> extends MergeableRecord {
+	// TODO: remove
 	/** The step that this (sub-)step depends on */
 	step:        typeof STEP_NAMES[number],
 	/** Human-readable description of this (sub-)step */
@@ -62,8 +61,8 @@ export const STEPS_PER_FILE = {
 		printer:     {
 			[StepOutputFormat.internal]: internalPrinter
 		}
-	} satisfies ISubStep<typeof retrieveXmlFromRCode> as ISubStep<typeof retrieveXmlFromRCode>,
-	'normalize ast': {
+	} satisfies IStep<typeof retrieveXmlFromRCode> as IStep<typeof retrieveXmlFromRCode>,
+	'normalize': {
 		step:        'normalize',
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
 		processor:   normalize,
@@ -71,16 +70,7 @@ export const STEPS_PER_FILE = {
 		printer:     {
 			[StepOutputFormat.internal]: internalPrinter
 		}
-	} satisfies ISubStep<typeof normalize> as ISubStep<typeof normalize>,
-	'decorate': {
-		step:        'normalize',
-		description: 'Transform flowR\'s AST into a doubly linked tree with parent references (second step of the normalization)',
-		processor:   decorateAst<NoInfo>,
-		required:    'once-per-file',
-		printer:     {
-			[StepOutputFormat.internal]: internalPrinter
-		}
-	} satisfies ISubStep<typeof decorateAst<NoInfo>> as ISubStep<typeof decorateAst<NoInfo>>,
+	} satisfies IStep<typeof normalize> as IStep<typeof normalize>,
 	'dataflow': {
 		step:        'dataflow',
 		description: 'Construct the dataflow graph',
@@ -89,7 +79,7 @@ export const STEPS_PER_FILE = {
 		printer:     {
 			[StepOutputFormat.internal]: internalPrinter
 		}
-	} satisfies ISubStep<typeof produceDataFlowGraph> as ISubStep<typeof produceDataFlowGraph>
+	} satisfies IStep<typeof produceDataFlowGraph> as IStep<typeof produceDataFlowGraph>
 } as const
 
 
@@ -102,7 +92,7 @@ export const STEPS_PER_SLICE = {
 		printer:     {
 			[StepOutputFormat.internal]: internalPrinter
 		}
-	} satisfies ISubStep<typeof convertAllSlicingCriteriaToIds> as ISubStep<typeof convertAllSlicingCriteriaToIds>,
+	} satisfies IStep<typeof convertAllSlicingCriteriaToIds> as IStep<typeof convertAllSlicingCriteriaToIds>,
 	'slice': {
 		step:        'slice',
 		description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
@@ -111,7 +101,7 @@ export const STEPS_PER_SLICE = {
 		printer:     {
 			[StepOutputFormat.internal]: internalPrinter
 		}
-	} satisfies ISubStep<typeof staticSlicing> as ISubStep<typeof staticSlicing>,
+	} satisfies IStep<typeof staticSlicing> as IStep<typeof staticSlicing>,
 	'reconstruct': {
 		step:        'reconstruct',
 		description: 'Reconstruct R code from the static slice',
@@ -120,7 +110,7 @@ export const STEPS_PER_SLICE = {
 		printer:     {
 			[StepOutputFormat.internal]: internalPrinter
 		}
-	} satisfies ISubStep<typeof reconstructToCode> as ISubStep<typeof reconstructToCode>
+	} satisfies IStep<typeof reconstructToCode> as IStep<typeof reconstructToCode>
 } as const
 
 export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const

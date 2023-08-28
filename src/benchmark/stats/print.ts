@@ -93,7 +93,6 @@ Shell init time:              ${print(stats.commonMeasurements,'initialize R ses
 Retrieval of token map:       ${print(stats.commonMeasurements,'retrieve token map')}
 AST retrieval:                ${print(stats.commonMeasurements,'retrieve AST from R code')}
 AST normalization:            ${print(stats.commonMeasurements,'normalize R AST')}
-AST decoration:               ${print(stats.commonMeasurements,'decorate R AST')}
 Dataflow creation:            ${print(stats.commonMeasurements,'produce dataflow information')}
 
 Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.perSliceMeasurements.numberOfSlices !== 1 ? 's' : ''}:`
@@ -141,7 +140,6 @@ Shell init time:              ${formatSummarizedTimeMeasure(stats.commonMeasurem
 Retrieval of token map:       ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve token map'))}
 AST retrieval:                ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('retrieve AST from R code'))}
 AST normalization:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('normalize R AST'))}
-AST decoration:               ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('decorate R AST'))}
 Dataflow creation:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('produce dataflow information'))}
 
 Slice summary for:

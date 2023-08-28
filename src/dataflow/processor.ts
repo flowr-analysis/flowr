@@ -2,7 +2,7 @@
  * Based on a two-way fold, this processor will automatically supply scope information
  */
 import {
-	DecoratedAst,
+	NormalizedAst,
 	ParentInformation, RNode,
 	RNodeWithParent
 } from '../r-bridge'
@@ -13,7 +13,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	/**
    * Initial and frozen ast-information
    */
-	readonly completeAst:  DecoratedAst<OtherInfo>
+	readonly completeAst:  NormalizedAst<OtherInfo>
 	/**
    * Correctly contains pushed local scopes introduced by `function` scopes.
    * Will by default *not* contain any symbol-bindings introduces along the way, they have to be decorated when moving up the tree.

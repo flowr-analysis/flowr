@@ -1,5 +1,5 @@
 import { DataflowGraph } from '../graph'
-import { DecoratedAst, ParentInformation } from '../../r-bridge'
+import { NormalizedAst, ParentInformation } from '../../r-bridge'
 import { REnvironmentInformation, IdentifierReference, DataflowScopeName } from '../environments'
 import { DataflowProcessorInformation } from '../processor'
 
@@ -7,7 +7,7 @@ import { DataflowProcessorInformation } from '../processor'
  * Continuously updated during the dataflow analysis to hold the current state.
  */
 export interface DataflowInformation<OtherInfo = ParentInformation> {
-	readonly ast:      DecoratedAst<OtherInfo>
+	readonly ast:      NormalizedAst<OtherInfo>
 	/** Nodes that have not been identified as read or write and will be so on higher */
 	unknownReferences: IdentifierReference[]
 	/** Nodes which are read */

@@ -1,4 +1,4 @@
-import { decorateAst, getStoredTokenMap, retrieveAstFromRCode, RParseRequestFromFile, RShell } from '../r-bridge'
+import { decorateAst, getStoredTokenMap, retrieveNormalizedAstFromRCode, RParseRequestFromFile, RShell } from '../r-bridge'
 import { log } from '../util/log'
 import { serialize2quads } from '../util/quads'
 import fs from 'fs'
@@ -25,13 +25,12 @@ const shell = new RShell()
 shell.tryToInjectHomeLibPath()
 
 async function writeQuadForSingleFile(request: RParseRequestFromFile, tokens: Record<string, string>, output: string) {
-	const ast = await retrieveAstFromRCode({
+	const normalized = await retrieveNormalizedAstFromRCode({
 		...request,
 		attachSourceInformation: true,
 		ensurePackageInstalled:  true
 	}, tokens, shell)
-	const decorated = decorateAst(ast).decoratedAst
-	const serialized = serialize2quads(decorated, { context: request.content })
+	const serialized = serialize2quads(normalized.ast, { context: request.content })
 	log.info(`Appending quads to ${output}`)
 	fs.appendFileSync(output, serialized)
 }

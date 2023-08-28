@@ -1,11 +1,11 @@
-import { retrieveAst, withShell } from '../../../helper/shell'
+import { retrieveNormalizedAst, withShell } from '../../../helper/shell'
 import { assert } from 'chai'
 
 describe("Check hooks are called appropriately", withShell(shell => {
 	it('Call the number hook!', async() => {
 		let before = false
 		let after = false
-		await retrieveAst(shell, "1", {
+		await retrieveNormalizedAst(shell, "1", {
 			values: {
 				onNumber: {
 					before: () => { before = true; return undefined },

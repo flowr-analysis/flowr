@@ -1,5 +1,5 @@
 import { type RShell } from "./shell"
-import { parseCSV, ts2r, XmlParserHooks, RExpressionList, normalize } from './lang-4.x'
+import { parseCSV, ts2r, XmlParserHooks, RExpressionList, normalize, NormalizedAst } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
 import { DeepPartial, DeepReadonly } from 'ts-essentials'
 import { guard } from '../util/assert'
@@ -65,7 +65,7 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
  * Uses {@link retrieveXmlFromRCode} and returns the nicely formatted object-AST.
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
-export async function retrieveAstFromRCode(request: RParseRequest, tokenMap: Record<string, string>, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> {
+export async function retrieveNormalizedAstFromRCode(request: RParseRequest, tokenMap: Record<string, string>, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<NormalizedAst> {
 	const xml = await retrieveXmlFromRCode(request, shell)
 	return await normalize(xml, tokenMap, hooks)
 }
@@ -102,7 +102,7 @@ export async function getStoredTokenMap(shell: RShell): Promise<TokenMap> {
 }
 
 /**
- * Needs to be called *after*  {@link retrieveXmlFromRCode} (or {@link retrieveAstFromRCode})
+ * Needs to be called *after*  {@link retrieveXmlFromRCode} (or {@link retrieveNormalizedAstFromRCode})
  */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise<number> {
 	const result = await shell.sendCommandWithOutput(`cat(nrow(getParseData(flowr_parsed)),${ts2r(shell.options.eol)})`)

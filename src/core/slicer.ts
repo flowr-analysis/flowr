@@ -1,6 +1,6 @@
 import {
-	DecoratedAst, IdGenerator,
-	NoInfo, RNode,
+	NormalizedAst, IdGenerator,
+	NoInfo,
 	RParseRequest,
 	RShell,
 	TokenMap,
@@ -11,7 +11,7 @@ import {
 	StepRequired, STEPS,
 	STEPS_PER_FILE,
 	STEPS_PER_SLICE,
-	SubStepName, SubStepProcessor, SubStepResult
+	SubStepName, SubStepResult
 } from './steps'
 import { guard } from '../util/assert'
 import { DecodedCriteria, SliceResult, SlicingCriteria } from '../slicing'
@@ -204,30 +204,26 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 				result = await executeSingleSubStep(step, this.request, this.shell)
 				break
 			case 1:
-				step = guardStep('normalize ast')
+				step = guardStep('normalize')
 				guard(this.tokenMap !== undefined, 'Cannot normalize ast without a token map')
-				result = await executeSingleSubStep(step, this.results.parse as string, this.tokenMap, this.hooks)
+				result = await executeSingleSubStep(step, this.results.parse as string, this.tokenMap, this.hooks, this.getId)
 				break
 			case 2:
-				step = guardStep('decorate')
-				result = executeSingleSubStep(step, this.results['normalize ast'] as RNode, this.getId)
+				step = guardStep('dataflow')
+				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst)
 				break
 			case 3:
-				step = guardStep('dataflow')
-				result = executeSingleSubStep(step, this.results.decorate as DecoratedAst)
-				break
-			case 4:
 				guard(this.criterion !== undefined, 'Cannot decode criteria without a criterion')
 				step = guardStep('decode criteria')
-				result = executeSingleSubStep(step, this.criterion, this.results.decorate as DecoratedAst)
+				result = executeSingleSubStep(step, this.criterion, this.results.normalize as NormalizedAst)
+				break
+			case 4:
+				step = guardStep('slice')
+				result = executeSingleSubStep(step, (this.results.dataflow as DataflowInformation).graph, (this.results.normalize as NormalizedAst<NoInfo>).idMap, (this.results['decode criteria'] as DecodedCriteria).map(({id}) => id))
 				break
 			case 5:
-				step = guardStep('slice')
-				result = executeSingleSubStep(step, (this.results.dataflow as DataflowInformation).graph, (this.results.decorate as DecoratedAst<NoInfo>).idMap, (this.results['decode criteria'] as DecodedCriteria).map(({id}) => id))
-				break
-			case 6:
 				step = guardStep('reconstruct')
-				result = executeSingleSubStep(step, this.results.decorate as DecoratedAst<NoInfo>, (this.results.slice as SliceResult).result)
+				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst<NoInfo>, (this.results.slice as SliceResult).result)
 				break
 			default:
 				throw new Error(`Unknown step ${this.stepCounter}, reaching this should not happen!`)

@@ -82,9 +82,9 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function removeSourceInformation<T extends Record<string, any>>(obj: T): T {
+function removeInformation<T extends Record<string, any>>(obj: T): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
-		if(key === 'fullRange' || key === 'additionalTokens' || key === 'fullLexeme') {
+		if(key === 'fullRange' || key === 'additionalTokens' || key === 'fullLexeme' || key === 'id' || key === 'parent') {
 			return undefined
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
@@ -92,10 +92,18 @@ function removeSourceInformation<T extends Record<string, any>>(obj: T): T {
 	})) as T
 }
 
-function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, message?: string): void {
-	const astCopy = removeSourceInformation(ast)
-	const expectedCopy = removeSourceInformation(expected)
-	assert.deepStrictEqual(astCopy, expectedCopy, message)
+
+function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, message?: () => string): void {
+	const astCopy = removeInformation(ast)
+	const expectedCopy = removeInformation(expected)
+	 try {
+		 assert.deepStrictEqual(astCopy, expectedCopy)
+	 } catch(e) {
+		if(message) {
+			console.error(message())
+		}
+		throw e
+	 }
 }
 
 function requestFromInput(input: `file://${string}` | string): RParseRequest {
@@ -108,15 +116,15 @@ function requestFromInput(input: `file://${string}` | string): RParseRequest {
 	}
 }
 
-export const retrieveAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> => {
+export const retrieveNormalizedAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RNodeWithParent> => {
 	const request = requestFromInput(input)
 	return (await new SteppingSlicer({
-		stepOfInterest: 'normalize ast',
+		stepOfInterest: 'normalize',
 		shell,
 		request,
 		tokenMap:       await defaultTokenMap(),
 		hooks
-	}).allRemainingSteps())['normalize ast']
+	}).allRemainingSteps()).normalize.ast
 }
 
 export interface TestConfiguration extends MergeableRecord {
@@ -145,8 +153,8 @@ export function assertAst(name: string, shell: RShell, input: string, expected: 
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
 	return it(name === input ? name : `${name} (input: ${input})`, async function() {
 		await ensureConfig(shell, this, userConfig)
-		const ast = await retrieveAst(shell, input)
-		assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
+		const ast = await retrieveNormalizedAst(shell, input)
+		assertAstEqualIgnoreSourceInformation(ast, expected, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
 	})
 }
 
@@ -155,16 +163,16 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 	it(name, async function() {
 		await ensureConfig(shell, this, userConfig)
 		const result = await new SteppingSlicer({
-			stepOfInterest: 'decorate',
+			stepOfInterest: 'normalize',
 			getId:          deterministicCountingIdGenerator(startIndexForDeterministicIds),
 			shell,
 			tokenMap:       await defaultTokenMap(),
 			request:        requestFromInput(input),
 		}).allRemainingSteps()
 
-		const ast = result.decorate.decoratedAst
+		const ast = result.normalize.ast
 
-		assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(result['normalize ast'])})`)
+		assertAstEqualIgnoreSourceInformation(ast, expected, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
 	})
 }
 
@@ -187,7 +195,7 @@ export function assertDataflow(name: string, shell: RShell, input: string, expec
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected },
 				{ label: 'got', graph: info.dataflow.graph},
-				info.decorate.idMap,
+				info.normalize.idMap,
 				`%% ${input.replace(/\n/g, '\n%% ')}\n`
 			)
 			console.error('diff:\n', diff)
@@ -211,14 +219,14 @@ export function assertReconstructed(name: string, shell: RShell, input: string, 
 		await ensureConfig(shell, this, userConfig)
 
 		const result = await new SteppingSlicer({
-			stepOfInterest: 'decorate',
+			stepOfInterest: 'normalize',
 			getId:          getId,
 			request:        requestFromInput(input),
 			shell,
 			tokenMap:       await defaultTokenMap(),
 		}).allRemainingSteps()
-		const reconstructed = executeSingleSubStep('reconstruct', result.decorate,  new Set(selectedIds))
-		assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, result.decorate.idMap)})`)
+		const reconstructed = executeSingleSubStep('reconstruct', result.normalize,  new Set(selectedIds))
+		assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, result.normalize.idMap)})`)
 	})
 }
 
@@ -236,9 +244,12 @@ export function assertSliced(name: string, shell: RShell, input: string, criteri
 
 
 		try {
-			assert.strictEqual(result.reconstruct.code, expected, `got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(result['decode criteria'].map(({ id }) => id), result.decorate.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, result.decorate.idMap, result.slice.result)}`)
+			assert.strictEqual(
+				result.reconstruct.code, expected,
+				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(result['decode criteria'].map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, result.normalize.idMap, result.slice.result)}`
+			)
 		} catch(e) {
-			console.error('vis-got:\n', graphToMermaidUrl(result.dataflow.graph, result.decorate.idMap))
+			console.error('vis-got:\n', graphToMermaidUrl(result.dataflow.graph, result.normalize.idMap))
 			throw e
 		}
 	})

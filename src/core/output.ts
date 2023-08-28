@@ -12,9 +12,8 @@ export type StepResults<InterestedIn extends SubStepName | undefined> = Interest
 
 type StepResultsHelper<InterestedIn extends SubStepName> = {
 	'parse':           Out<'parse'>
-	'normalize ast':   StepResults<'parse'> & Out<'normalize ast'>
-	'decorate':        StepResults<'normalize ast'> & Out<'decorate'>
-	'dataflow':        StepResults<'decorate'> & Out<'dataflow'>
+	'normalize':       StepResults<'parse'> & Out<'normalize'>
+	'dataflow':        StepResults<'normalize'> & Out<'dataflow'>
 	'decode criteria': StepResults<'dataflow'> & Out<'decode criteria'>
 	'slice':           StepResults<'decode criteria'> & Out<'slice'>
 	'reconstruct':     StepResults<'slice'> & Out<'reconstruct'>

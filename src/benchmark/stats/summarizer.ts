@@ -13,7 +13,7 @@ import {
 import { DefaultMap } from '../../util/defaultmap'
 import {
 	getStoredTokenMap,
-	retrieveAstFromRCode,
+	retrieveNormalizedAstFromRCode,
 	retrieveNumberOfRTokensOfLastParse,
 	RShell,
 	visit
@@ -161,14 +161,14 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 		try {
 			// there seem to be encoding issues, therefore, we dump to a temp file
 			fs.writeFileSync(tempfile.name, output)
-			const reParsed = await retrieveAstFromRCode(
+			const reParsed = await retrieveNormalizedAstFromRCode(
 				{ request: 'file', content: tempfile.name, attachSourceInformation: true, ensurePackageInstalled: first },
 				tokenMap,
 				reParseShellSession
 			)
 			first = false
 			let numberOfNormalizedTokens = 0
-			visit(reParsed, _ => {
+			visit(reParsed.ast, _ => {
 				numberOfNormalizedTokens++
 				return false
 			})

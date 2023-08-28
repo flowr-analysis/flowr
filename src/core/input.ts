@@ -31,7 +31,7 @@ interface BaseSteppingSlicerInput<InterestedIn extends SubStepName | undefined> 
 	autoSelectIf?:   AutoSelectPredicate
 }
 
-interface NormalizeSteppingSlicerInput<InterestedIn extends 'dataflow' | 'decorate' | 'normalize ast'> extends BaseSteppingSlicerInput<InterestedIn> {
+interface NormalizeSteppingSlicerInput<InterestedIn extends 'dataflow' | 'normalize'> extends BaseSteppingSlicerInput<InterestedIn> {
 	stepOfInterest: InterestedIn
 	tokenMap:       TokenMap
 }

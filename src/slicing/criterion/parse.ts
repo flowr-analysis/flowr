@@ -1,4 +1,4 @@
-import { DecoratedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation, RNodeWithParent, Type } from '../../r-bridge'
+import { NormalizedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation, RNodeWithParent, Type } from '../../r-bridge'
 import { slicerLogger } from '../static'
 import { SourcePosition } from '../../util/range'
 
@@ -19,7 +19,7 @@ export class CriteriaParseError extends Error {
 /**
  * Takes a criterion in the form of `line:column` or `line@variable-name` and returns the corresponding node id
  */
-export function slicingCriterionToId<OtherInfo = NoInfo>(criterion: SingleSlicingCriterion, decorated: DecoratedAst<OtherInfo & ParentInformation>): NodeId {
+export function slicingCriterionToId<OtherInfo = NoInfo>(criterion: SingleSlicingCriterion, decorated: NormalizedAst<OtherInfo & ParentInformation>): NodeId {
 	let resolved: NodeId | undefined
 	if(criterion.includes(':')) {
 		const [line, column] = criterion.split(':').map(c => parseInt(c))
@@ -90,6 +90,6 @@ export interface DecodedCriterion {
 
 export type DecodedCriteria = DecodedCriterion[]
 
-export function convertAllSlicingCriteriaToIds(criteria: SlicingCriteria, decorated: DecoratedAst): DecodedCriteria {
+export function convertAllSlicingCriteriaToIds(criteria: SlicingCriteria, decorated: NormalizedAst): DecodedCriteria {
 	return criteria.map(l => ({ criterion: l, id: slicingCriterionToId(l, decorated) }))
 }

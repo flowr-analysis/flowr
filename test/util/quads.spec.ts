@@ -1,4 +1,4 @@
-import { retrieveAst, withShell } from '../helper/shell'
+import { retrieveNormalizedAst, withShell } from '../helper/shell'
 import { decorateAst } from '../../src/r-bridge'
 import { serialize2quads } from '../../src/util/quads'
 import { assert } from 'chai'
@@ -8,8 +8,8 @@ describe('Quad Generation', withShell(shell => {
 	const domain = 'https://uni-ulm.de/r-ast/'
 
 	const compareQuads = async(code: string, expected: string) => {
-		const ast = await retrieveAst(shell, code)
-		const decorated = decorateAst(ast).decoratedAst
+		const ast = await retrieveNormalizedAst(shell, code)
+		const decorated = decorateAst(ast).ast
 		const serialized = serialize2quads(decorated, { context, domain })
 		assert.strictEqual(serialized.trim(), expected.trim())
 	}

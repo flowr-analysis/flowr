@@ -1,6 +1,6 @@
 import { processCommandLineArgs } from './common'
 import { stepAllowedSteps, stepOutputFormats } from './common/options'
-import { retrieveXmlFromRCode, RParseRequest, RShell } from '../r-bridge'
+import { RParseRequest, RShell } from '../r-bridge'
 import { guard } from '../util/assert'
 
 export interface StepCliOptions {

@@ -5,7 +5,7 @@
 
 import {
 	collectAllIds,
-	DecoratedAst,
+	NormalizedAst,
 	getStoredTokenMap,
 	retrieveNumberOfRTokensOfLastParse,
 	RParseRequestFromFile, RParseRequestFromText,
@@ -47,7 +47,7 @@ export interface BenchmarkSlicerStats extends MergeableRecord {
 	/** the initial and unmodified AST produced by the R side/the 'parse' step */
 	ast:          string
 	/** the normalized AST produced by the 'normalization' step, including its parent decoration */
-	decoratedAst: DecoratedAst
+	decoratedAst: NormalizedAst
 	/** the dataflow graph produced by the 'dataflow' step */
 	dataflow:     DataflowInformation
 }
@@ -83,7 +83,7 @@ export class BenchmarkSlicer {
 	private loadedXml:      string | undefined
 	private tokenMap:       Record<string, string> | undefined
 	private dataflow:       DataflowInformation | undefined
-	private decoratedAst:   DecoratedAst | undefined
+	private normalizedAst:  NormalizedAst | undefined
 	private totalStopwatch: IStoppableStopwatch
 	private finished = false
 	// Yes this is dirty, but we know that we assign the stepper during the initialization and this saves us from having to check for nullability every time
@@ -132,8 +132,7 @@ export class BenchmarkSlicer {
 		})
 
 		this.loadedXml = await this.measureCommonStep('parse', 'retrieve AST from R code')
-		await this.measureCommonStep('normalize ast', 'normalize R AST')
-		this.decoratedAst = await this.measureCommonStep('decorate', 'decorate R AST')
+		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST')
 		this.dataflow = await this.measureCommonStep('dataflow', 'produce dataflow information')
 
 		this.stepper.switchToSliceStage()
@@ -146,7 +145,7 @@ export class BenchmarkSlicer {
 		// retrieve number of R tokens - flowr_parsed should still contain the last parsed code
 		const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.shell)
 
-		guard(this.decoratedAst !== undefined, 'decoratedAst should be defined after initialization')
+		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined after initialization')
 		guard(this.dataflow !== undefined, 'dataflow should be defined after initialization')
 
 		// collect dataflow graph size
@@ -174,7 +173,7 @@ export class BenchmarkSlicer {
 				numberOfCharacters:              loadedContent.length,
 				numberOfNonWhitespaceCharacters: withoutWhitespace(loadedContent).length,
 				numberOfRTokens:                 numberOfRTokens,
-				numberOfNormalizedTokens:        [...collectAllIds(this.decoratedAst.decoratedAst)].length
+				numberOfNormalizedTokens:        [...collectAllIds(this.normalizedAst.ast)].length
 			},
 			dataflow: {
 				numberOfNodes:               [...this.dataflow.graph.vertices(true)].length,
@@ -220,7 +219,7 @@ export class BenchmarkSlicer {
 		stats.slicingCriteria = decoded
 		if(benchmarkLogger.settings.minLevel >= LogLevel.info) {
 			benchmarkLogger.info(`mapped slicing criteria: ${decoded.map(c => {
-				const node = this.decoratedAst?.idMap.get(c.id)
+				const node = this.normalizedAst?.idMap.get(c.id)
 				return `\n-   id: ${c.id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`
 			}).join('')}`)
 		}
@@ -280,7 +279,7 @@ export class BenchmarkSlicer {
 	public async sliceForAll(filter: SlicingCriteriaFilter, report: (current: number, total: number, allCriteria: SlicingCriteria[]) => void = () => { /* do nothing */ }): Promise<number> {
 		this.guardActive()
 		let count = 0
-		const allCriteria = [...collectAllSlicingCriteria((this.decoratedAst as DecoratedAst).decoratedAst, filter)]
+		const allCriteria = [...collectAllSlicingCriteria((this.normalizedAst as NormalizedAst).ast, filter)]
 		for(const slicingCriteria of allCriteria) {
 			report(count, allCriteria.length, allCriteria)
 			await this.slice(...slicingCriteria)
@@ -310,7 +309,7 @@ export class BenchmarkSlicer {
 			stats:        this.stats,
 			ast:          this.loadedXml as string,
 			dataflow:     this.dataflow as DataflowInformation,
-			decoratedAst: this.decoratedAst as DecoratedAst,
+			decoratedAst: this.normalizedAst as NormalizedAst,
 			tokenMap:     this.tokenMap as TokenMap,
 		}
 	}

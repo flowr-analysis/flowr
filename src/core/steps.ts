@@ -9,8 +9,6 @@
  *
  * Please note that the combination of `satisfies` and `as` seems to be required.
  * With `satisfies` we make sure that the respective element has all the keys it requires, and the `as` force the type to be exactly the given one
- * TODO: add a visualizer for each step for the given format
- * TODO: add a differ for each step?
  *
  * @module
  */
@@ -24,13 +22,14 @@ import {
 import { produceDataFlowGraph } from '../dataflow'
 import { convertAllSlicingCriteriaToIds, reconstructToCode, staticSlicing } from '../slicing'
 import { internalPrinter, ISubStepPrinter, StepOutputFormat } from './print/print'
+import { parseResultToText } from './print/parse'
 
 /**
  * The names of all main steps of the slicing process.
  */
 export const STEP_NAMES = ['parse', 'normalize', 'decorate', 'dataflow', 'slice', 'reconstruct'] as const
 
-type StepFunction = (...args: never[]) => unknown
+export type StepFunction = (...args: never[]) => unknown
 
 export type StepRequired = 'once-per-file' | 'once-per-slice'
 
@@ -50,7 +49,7 @@ export interface ISubStep<Fn extends StepFunction> extends MergeableRecord {
 	/* does this step has to be repeated for each new slice or can it be performed only once in the initialization */
 	required:    StepRequired
 	printer: {
-		[K in StepOutputFormat]?: ISubStepPrinter<Awaited<ReturnType<Fn>>, K>
+		[K in StepOutputFormat]?: ISubStepPrinter<Fn, K, unknown[]>
 	}
 }
 
@@ -62,7 +61,8 @@ export const STEPS_PER_FILE = {
 		processor:   retrieveXmlFromRCode,
 		required:    'once-per-file',
 		printer:     {
-			[StepOutputFormat.internal]: internalPrinter
+			[StepOutputFormat.internal]: internalPrinter,
+			[StepOutputFormat.text]:     parseResultToText
 		}
 	} satisfies ISubStep<typeof retrieveXmlFromRCode> as ISubStep<typeof retrieveXmlFromRCode>,
 	'normalize ast': {

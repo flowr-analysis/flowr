@@ -1,3 +1,5 @@
+import { StepFunction } from '../steps'
+
 /**
  * Defines the output format of a step that you are interested in.
  */
@@ -42,4 +44,6 @@ export function internalPrinter<Input>(input: Input): Input {
  * A mapping function that maps the result of a step (i.e., the dataflow graph)
  * to another representation (linked by {@link StepOutputFormat} in an {@link ISubStep}).
  */
-export type ISubStepPrinter<Input, Format extends StepOutputFormat> = (input: Input) => Format extends StepOutputFormat.internal ? Input : string
+export type ISubStepPrinter<StepInput extends StepFunction, Format extends StepOutputFormat, AdditionalInput extends unknown[]> =
+	Format extends StepOutputFormat.internal ? (input: Awaited<ReturnType<StepInput>>) => Awaited<ReturnType<StepInput>> :
+		(input: Awaited<ReturnType<StepInput>>, ...additional: AdditionalInput) => Promise<string>

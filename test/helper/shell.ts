@@ -23,7 +23,10 @@ import { executeSingleSubStep, LAST_STEP, SteppingSlicer } from '../../src/core'
 
 let _defaultTokenMap: TokenMap | undefined
 
-// we want the token map only once (to speed up tests)!
+/**
+ * Essentially provides the token map as a singleton.
+ * We want the token map only once (to speed up tests)!
+ */
 async function defaultTokenMap(): Promise<TokenMap> {
 	if(_defaultTokenMap === undefined) {
 		const shell = new RShell()

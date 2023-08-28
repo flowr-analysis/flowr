@@ -7,6 +7,8 @@
  * If you add a new step, you have to (at least) update the {@link SteppingSlicer} as well as the corresponding type predicate {@link SteppingSlicerInput}.
  * Furthermore, if your step is the new *last* step, please update {@link LAST_STEP}.
  *
+ * Please note that the combination of `satisfies` and `as` seems to be required.
+ * With `satisfies` we make sure that the respective element has all the keys it requires, and the `as` force the type to be exactly the given one
  * TODO: add a visualizer for each step for the given format
  * TODO: add a differ for each step?
  *
@@ -31,11 +33,50 @@ type StepFunction = (...args: never[]) => unknown
 
 export type StepRequired = 'once-per-file' | 'once-per-slice'
 
+
+/**
+ * Defines the output format of a step that you are interested in.
+ */
+export const enum StepOutputFormat {
+	/**
+	 * [Internal]
+	 * This output format is special as it corresponds to whatever the step would normally produce - unchanged - as a typescript object.
+	 * There is no special way to influence this output format, and it is not to be serialized.
+	 */
+	internal,
+	/**
+	 * A human-readable textual representation of the result. Depending on the (sub-)step this may be of lesser use as the results
+	 * of the dataflow analysis are not easily readable in text form.
+	 */
+	text,
+	/**
+	 * This is usually a one-to-one serialization of the internal format, although it is possible that some recursive references are broken.
+	 */
+	json,
+	/**
+	 * If possible, this will produce a mermaid graph of the result and contain the mermaid code.
+	 * This is only really possible for some of the step (e.g., the dataflow analysis).
+	 */
+	mermaid,
+	/**
+	 * This is an extension of the {@link mermaid} format. Instead of returning
+	 * the mermaid code, it will return an url to mermaid live.
+	 */
+	mermaidUrl
+}
+
+/**
+ * Helper function to support the {@link internal} format, as it is simply returning the input.
+ */
+function internalPrinter<Input>(input: Input): Input {
+	return input
+}
+
 /**
  * Defines what is to be known of a single step in the slicing process.
  * These steps may be more fine-grained than the overall steps defined of flowR. These are linked within `step`
  */
-interface ISubStep<Fn extends StepFunction> extends MergeableRecord {
+export interface ISubStep<Fn extends StepFunction> extends MergeableRecord {
 	/** The step that this (sub-)step depends on */
 	step:        typeof STEP_NAMES[number],
 	/** Human-readable description of this (sub-)step */
@@ -44,32 +85,53 @@ interface ISubStep<Fn extends StepFunction> extends MergeableRecord {
 	processor:   (...input: Parameters<Fn>) => ReturnType<Fn>
 	/* does this step has to be repeated for each new slice or can it be performed only once in the initialization */
 	required:    StepRequired
+	printer: {
+		[K in StepOutputFormat]?: (input: Awaited<ReturnType<Fn>>) => K extends StepOutputFormat.internal ? Awaited<ReturnType<Fn>> : string
+	}
 }
+
+export interface ISubStepPrinter<Input, Format extends StepOutputFormat> {
+	print(input: Input): Format extends 'internal' ? Input : string
+}
+
 
 export const STEPS_PER_FILE = {
 	'parse': {
 		step:        'parse',
 		description: 'Parse the given R code into an AST',
 		processor:   retrieveXmlFromRCode,
-		required:    'once-per-file'
-	} as ISubStep<typeof retrieveXmlFromRCode>,
+		required:    'once-per-file',
+		printer:     {
+			[StepOutputFormat.internal]: internalPrinter
+		}
+	} satisfies ISubStep<typeof retrieveXmlFromRCode> as ISubStep<typeof retrieveXmlFromRCode>,
 	'normalize ast': {
 		step:        'normalize',
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
 		processor:   normalize,
-		required:    'once-per-file'
-	} as ISubStep<typeof normalize>,
+		required:    'once-per-file',
+		printer:     {
+			[StepOutputFormat.internal]: internalPrinter
+		}
+	} satisfies ISubStep<typeof normalize> as ISubStep<typeof normalize>,
 	'decorate': {
 		step:        'normalize',
 		description: 'Transform flowR\'s AST into a doubly linked tree with parent references (second step of the normalization)',
 		processor:   decorateAst<NoInfo>,
-		required:    'once-per-file'
-	} as ISubStep<typeof decorateAst<NoInfo>>,
+		required:    'once-per-file',
+		printer:     {
+			[StepOutputFormat.internal]: internalPrinter
+		}
+	} satisfies ISubStep<typeof decorateAst<NoInfo>> as ISubStep<typeof decorateAst<NoInfo>>,
 	'dataflow': {
+		step:        'dataflow',
 		description: 'Construct the dataflow graph',
 		processor:   produceDataFlowGraph,
 		required:    'once-per-file',
-	} as ISubStep<typeof produceDataFlowGraph>
+		printer:     {
+			[StepOutputFormat.internal]: internalPrinter
+		}
+	} satisfies ISubStep<typeof produceDataFlowGraph> as ISubStep<typeof produceDataFlowGraph>
 } as const
 
 
@@ -79,19 +141,28 @@ export const STEPS_PER_SLICE = {
 		description: 'Decode the slicing criteria into a collection of node ids',
 		processor:   convertAllSlicingCriteriaToIds,
 		required:    'once-per-slice',
-	} as ISubStep<typeof convertAllSlicingCriteriaToIds>,
+		printer:     {
+			[StepOutputFormat.internal]: internalPrinter
+		}
+	} satisfies ISubStep<typeof convertAllSlicingCriteriaToIds> as ISubStep<typeof convertAllSlicingCriteriaToIds>,
 	'slice': {
 		step:        'slice',
 		description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
 		processor:   staticSlicing,
 		required:    'once-per-slice',
-	} as ISubStep<typeof staticSlicing>,
+		printer:     {
+			[StepOutputFormat.internal]: internalPrinter
+		}
+	} satisfies ISubStep<typeof staticSlicing> as ISubStep<typeof staticSlicing>,
 	'reconstruct': {
 		step:        'reconstruct',
 		description: 'Reconstruct R code from the static slice',
 		processor:   reconstructToCode,
 		required:    'once-per-slice',
-	} as ISubStep<typeof reconstructToCode>
+		printer:     {
+			[StepOutputFormat.internal]: internalPrinter
+		}
+	} satisfies ISubStep<typeof reconstructToCode> as ISubStep<typeof reconstructToCode>
 } as const
 
 export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const

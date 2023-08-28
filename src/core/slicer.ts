@@ -1,6 +1,6 @@
 import {
 	DecoratedAst, IdGenerator,
-	NodeId, NoInfo, ParentInformation, RNode,
+	NoInfo, RNode,
 	RParseRequest,
 	RShell,
 	TokenMap,
@@ -11,8 +11,7 @@ import {
 	StepRequired, STEPS,
 	STEPS_PER_FILE,
 	STEPS_PER_SLICE,
-	SubStepName,
-	SubStepProcessor
+	SubStepName
 } from './steps'
 import { guard } from '../util/assert'
 import { DecodedCriteria, SliceResult, SlicingCriteria } from '../slicing'
@@ -152,20 +151,12 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 	}
 
 	/**
-	 * Execute the next step (guarded with {@link hasNextStep}) and return the name of the step that was executed, as well as its result.
-	 * The `step` parameter is a safeguard if you want to retrieve the result.
-	 * If given, it causes the execution to fail if the next step is not the one you expect.
-	 * *Without step, please refrain from accessing the result.*
+	 * Execute the next step (guarded with {@link hasNextStep}) and return the name of the step that was executed so you can guard if the step differs from what you are interested in.
 	 */
-	public async nextStep(expectedStepName?: SubStepName): Promise<{
-		name:   typeof expectedStepName extends undefined ? SubStepName : typeof expectedStepName
-		result: typeof expectedStepName extends undefined ? unknown : Awaited<ReturnType<SubStepProcessor<Exclude<typeof expectedStepName, undefined>>>>
-	}> {
+	public async nextStep(): Promise<SubStepName> {
 		guard(this.hasNextStep(), 'No more steps to do')
 
-		const guardStep = this.getGuardStep(expectedStepName)
-
-		const { step, result } = await this.doNextStep(guardStep)
+		const { step, result } = await this.doNextStep()
 
 		this.results[step] = result
 		this.stepCounter += 1
@@ -173,52 +164,42 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 			this.reachedWanted = true
 		}
 
-		return { name: step, result: result as Awaited<ReturnType<SubStepProcessor<typeof step>>> }
+		return step
 	}
 
-	private getGuardStep(expectedStepName: SubStepName | undefined) {
-		return expectedStepName === undefined ?
-			<K extends SubStepName>(name: K): K => name
-			:
-			<K extends SubStepName>(name: K): K => {
-				guard(expectedStepName === name, `Expected step ${expectedStepName} but got ${name}`)
-				return name
-			}
-	}
-
-	private async doNextStep(guardStep: <K extends SubStepName>(name: K) => K) {
+	private async doNextStep() {
 		let step: SubStepName
 		let result: unknown
 
 		switch(this.stepCounter) {
 			case 0:
-				step = guardStep('parse')
+				step = 'parse'
 				result = await executeSingleSubStep(step, this.request, this.shell)
 				break
 			case 1:
-				step = guardStep('normalize ast')
+				step = 'normalize ast'
 				guard(this.tokenMap !== undefined, 'Cannot normalize ast without a token map')
 				result = await executeSingleSubStep(step, this.results.parse as string, this.tokenMap, this.hooks)
 				break
 			case 2:
-				step = guardStep('decorate')
+				step = 'decorate'
 				result = executeSingleSubStep(step, this.results['normalize ast'] as RNode, this.getId)
 				break
 			case 3:
-				step = guardStep('dataflow')
+				step = 'dataflow'
 				result = executeSingleSubStep(step, this.results.decorate as DecoratedAst)
 				break
 			case 4:
 				guard(this.criterion !== undefined, 'Cannot decode criteria without a criterion')
-				step = guardStep('decode criteria')
+				step = 'decode criteria'
 				result = executeSingleSubStep(step, this.criterion, this.results.decorate as DecoratedAst)
 				break
 			case 5:
-				step = guardStep('slice')
+				step = 'slice'
 				result = executeSingleSubStep(step, (this.results.dataflow as DataflowInformation).graph, (this.results.decorate as DecoratedAst<NoInfo>).idMap, (this.results['decode criteria'] as DecodedCriteria).map(({id}) => id))
 				break
 			case 6:
-				step = guardStep('reconstruct')
+				step = 'reconstruct'
 				result = executeSingleSubStep(step, this.results.decorate as DecoratedAst<NoInfo>, (this.results.slice as SliceResult).result)
 				break
 			default:

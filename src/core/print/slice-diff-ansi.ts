@@ -22,8 +22,8 @@ function mergeJointRangesInSorted(loc: { location: SourceRange; selected: boolea
 }
 
 function highlight(s: string, selected: boolean): string {
-	const primary = ansiFormatter.format(s, { style: FontStyles.bold })
-	return selected ? ansiFormatter.format(primary, { color: Colors.yellow, effect: ColorEffect.foreground, style: FontStyles.underline }) : primary
+	const primary = ansiFormatter.format(s, {color: Colors.yellow, effect: ColorEffect.foreground,  style: FontStyles.bold })
+	return selected ? ansiFormatter.format(primary, { style: FontStyles.underline }) : primary
 }
 
 export function sliceDiffAnsi(slice: Set<NodeId>, normalized: NormalizedAst, criteriaIds: Set<NodeId>, originalCode: string) {

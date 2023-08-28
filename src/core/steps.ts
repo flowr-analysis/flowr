@@ -22,7 +22,6 @@ import {
 import { produceDataFlowGraph } from '../dataflow'
 import { convertAllSlicingCriteriaToIds, reconstructToCode, staticSlicing } from '../slicing'
 import { internalPrinter, ISubStepPrinter, StepOutputFormat } from './print/print'
-import { parseResultToText } from './print/parse'
 
 /**
  * The names of all main steps of the slicing process.
@@ -61,8 +60,7 @@ export const STEPS_PER_FILE = {
 		processor:   retrieveXmlFromRCode,
 		required:    'once-per-file',
 		printer:     {
-			[StepOutputFormat.internal]: internalPrinter,
-			[StepOutputFormat.text]:     parseResultToText
+			[StepOutputFormat.internal]: internalPrinter
 		}
 	} satisfies ISubStep<typeof retrieveXmlFromRCode> as ISubStep<typeof retrieveXmlFromRCode>,
 	'normalize ast': {
@@ -132,6 +130,7 @@ export const LAST_STEP = 'reconstruct' as const
 export type SubStepName = keyof typeof STEPS
 export type SubStep<name extends SubStepName> = typeof STEPS[name]
 export type SubStepProcessor<name extends SubStepName> = SubStep<name>['processor']
+export type SubStepResult<name extends SubStepName> = Awaited<ReturnType<SubStepProcessor<name>>>
 
 export function executeSingleSubStep<Name extends SubStepName, Processor extends SubStepProcessor<Name>>(subStep: Name, ...input: Parameters<Processor>): ReturnType<Processor> {
 	return STEPS[subStep].processor(...input as unknown as never[]) as ReturnType<Processor>

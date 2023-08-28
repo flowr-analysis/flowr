@@ -11,7 +11,7 @@ import {
 	StepRequired, STEPS,
 	STEPS_PER_FILE,
 	STEPS_PER_SLICE,
-	SubStepName
+	SubStepName, SubStepProcessor, SubStepResult
 } from './steps'
 import { guard } from '../util/assert'
 import { DecodedCriteria, SliceResult, SlicingCriteria } from '../slicing'
@@ -132,11 +132,18 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 		this.stage = 'once-per-slice'
 	}
 
+
+	public getResults(intermediate?:false): StepResults<InterestedIn>
+	public getResults(intermediate: true): Partial<StepResults<InterestedIn>>
 	/**
 	 * Returns the result of the step of interest, as well as the results of all steps before it.
+	 *
+	 * @param intermediate - normally you can only receive the results *after* the stepper completed the step of interested.
+	 * 		 However, if you pass `true` to this parameter, you can also receive the results *before* the step of interest,
+	 * 		 although the typing system then can not guarantee which of the steps have already happened.
 	 */
-	public getResults(): StepResults<InterestedIn> {
-		guard(this.reachedWanted, 'Before reading the results, we need to reach the step we are interested in')
+	public getResults(intermediate = false): StepResults<InterestedIn> | Partial<StepResults<InterestedIn>> {
+		guard(intermediate || this.reachedWanted, 'Before reading the results, we need to reach the step we are interested in')
 		return this.results as StepResults<InterestedIn>
 	}
 
@@ -151,12 +158,22 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 	}
 
 	/**
-	 * Execute the next step (guarded with {@link hasNextStep}) and return the name of the step that was executed so you can guard if the step differs from what you are interested in.
+	 * Execute the next step (guarded with {@link hasNextStep}) and return the name of the step that was executed, so you can guard if the step differs from what you are interested in.
+	 * Furthermore, it returns the step's result.
+	 *
+	 * The `step` parameter is a safeguard if you want to retrieve the result.
+	 * If given, it causes the execution to fail if the next step is not the one you expect.
+	 * *Without step, please refrain from accessing the result.*
 	 */
-	public async nextStep(): Promise<SubStepName> {
+	public async nextStep<PassedName extends SubStepName>(expectedStepName?: PassedName): Promise<{
+		name:   typeof expectedStepName extends undefined ? SubStepName : PassedName
+		result: typeof expectedStepName extends undefined ? unknown : SubStepResult<Exclude<PassedName, undefined>>
+	}> {
 		guard(this.hasNextStep(), 'No more steps to do')
 
-		const { step, result } = await this.doNextStep()
+		const guardStep = this.getGuardStep(expectedStepName)
+
+		const { step, result } = await this.doNextStep(guardStep)
 
 		this.results[step] = result
 		this.stepCounter += 1
@@ -164,42 +181,52 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 			this.reachedWanted = true
 		}
 
-		return step
+		return { name: step as PassedName, result: result as SubStepResult<PassedName> }
 	}
 
-	private async doNextStep() {
+	private getGuardStep(expectedStepName: SubStepName | undefined) {
+		return expectedStepName === undefined ?
+			<K extends SubStepName>(name: K): K => name
+			:
+			<K extends SubStepName>(name: K): K => {
+				guard(expectedStepName === name, `Expected step ${expectedStepName} but got ${name}`)
+				return name
+			}
+	}
+
+	private async doNextStep(guardStep: <K extends SubStepName>(name: K) => K) {
 		let step: SubStepName
 		let result: unknown
 
 		switch(this.stepCounter) {
 			case 0:
-				step = 'parse'
+				step = guardStep('parse')
 				result = await executeSingleSubStep(step, this.request, this.shell)
 				break
 			case 1:
-				step = 'normalize ast'
+				step = guardStep('normalize ast')
 				guard(this.tokenMap !== undefined, 'Cannot normalize ast without a token map')
 				result = await executeSingleSubStep(step, this.results.parse as string, this.tokenMap, this.hooks)
 				break
 			case 2:
-				step = 'decorate'
+				step = guardStep('decorate')
 				result = executeSingleSubStep(step, this.results['normalize ast'] as RNode, this.getId)
 				break
 			case 3:
-				step = 'dataflow'
+				step = guardStep('dataflow')
 				result = executeSingleSubStep(step, this.results.decorate as DecoratedAst)
 				break
 			case 4:
 				guard(this.criterion !== undefined, 'Cannot decode criteria without a criterion')
-				step = 'decode criteria'
+				step = guardStep('decode criteria')
 				result = executeSingleSubStep(step, this.criterion, this.results.decorate as DecoratedAst)
 				break
 			case 5:
-				step = 'slice'
+				step = guardStep('slice')
 				result = executeSingleSubStep(step, (this.results.dataflow as DataflowInformation).graph, (this.results.decorate as DecoratedAst<NoInfo>).idMap, (this.results['decode criteria'] as DecodedCriteria).map(({id}) => id))
 				break
 			case 6:
-				step = 'reconstruct'
+				step = guardStep('reconstruct')
 				result = executeSingleSubStep(step, this.results.decorate as DecoratedAst<NoInfo>, (this.results.slice as SliceResult).result)
 				break
 			default:

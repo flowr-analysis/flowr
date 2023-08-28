@@ -5,26 +5,20 @@
 
 import {
 	collectAllIds,
-	decorateAst,
 	DecoratedAst,
 	getStoredTokenMap,
-	NoInfo,
-	normalize, retrieveNumberOfRTokensOfLastParse,
-	retrieveXmlFromRCode,
+	retrieveNumberOfRTokensOfLastParse,
 	RParseRequestFromFile, RParseRequestFromText,
 	RShell, TokenMap
 } from '../r-bridge'
 import { IStoppableStopwatch, Measurements } from './stopwatch'
 import { guard } from '../util/assert'
 import { DataflowInformation } from '../dataflow/internal/info'
-import { produceDataFlowGraph } from '../dataflow'
 import {
-	convertAllSlicingCriteriaToIds,
 	SlicingCriteria,
 	collectAllSlicingCriteria,
 	SlicingCriteriaFilter,
-	reconstructToCode,
-	staticSlicing, SliceResult, ReconstructionResult
+	SliceResult, ReconstructionResult
 } from '../slicing'
 import {
 	CommonSlicerMeasurements,
@@ -37,6 +31,7 @@ import {
 import fs from 'fs'
 import { log, LogLevel } from '../util/log'
 import { MergeableRecord } from '../util/objects'
+import { LAST_STEP, SteppingSlicer, STEPS, SubStepResult } from '../core'
 
 export const benchmarkLogger = log.getSubLogger({ name: "benchmark" })
 
@@ -76,29 +71,33 @@ export interface BenchmarkSingleSliceStats extends MergeableRecord {
  *
  * Make sure to call {@link init} to initialize the slicer, before calling {@link slice}.
  * After slicing, call {@link finish} to close the R session and retrieve the stats.
+ *
+ * @note Under the hood, the benchmark slicer maintains a {@link SteppingSlicer}.
  */
 export class BenchmarkSlicer {
 	/** Measures all data that is recorded *once* per slicer (complete setup up to the dataflow graph creation) */
 	private readonly commonMeasurements = new Measurements<CommonSlicerMeasurements>()
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>
-	private readonly session: RShell
-	private stats:            SlicerStats | undefined
-	private tokenMap:         Record<string, string> | undefined
-	private loadedXml:        string | undefined
-	private decoratedAst:     DecoratedAst | undefined
-	private dataflow:         DataflowInformation | undefined
-	private totalStopwatch:   IStoppableStopwatch
+	private readonly shell: RShell
+	private stats:          SlicerStats | undefined
+	private loadedXml:      string | undefined
+	private tokenMap:       Record<string, string> | undefined
+	private dataflow:       DataflowInformation | undefined
+	private decoratedAst:   DecoratedAst | undefined
+	private totalStopwatch: IStoppableStopwatch
 	private finished = false
+	// Yes this is dirty, but we know that we assign the stepper during the initialization and this saves us from having to check for nullability every time
+	private stepper:        SteppingSlicer<typeof LAST_STEP> = null as unknown as SteppingSlicer<typeof LAST_STEP>
 
 	constructor() {
 		this.totalStopwatch = this.commonMeasurements.start('total')
-		this.session = this.commonMeasurements.measure(
+		this.shell = this.commonMeasurements.measure(
 			'initialize R session',
 			() => new RShell()
 		)
 		this.commonMeasurements.measure(
 			'inject home path',
-			() => this.session.tryToInjectHomeLibPath()
+			() => this.shell.tryToInjectHomeLibPath()
 		)
 	}
 
@@ -112,41 +111,43 @@ export class BenchmarkSlicer {
 
 		await this.commonMeasurements.measureAsync(
 			'ensure installation of xmlparsedata',
-			() => this.session.ensurePackageInstalled('xmlparsedata', true),
+			() => this.shell.ensurePackageInstalled('xmlparsedata', true),
 		)
 
 		this.tokenMap = await this.commonMeasurements.measureAsync(
 			'retrieve token map',
-			() => getStoredTokenMap(this.session)
+			() => getStoredTokenMap(this.shell)
 		)
 
-		this.loadedXml = await this.commonMeasurements.measureAsync(
-			'retrieve AST from R code',
-			() => retrieveXmlFromRCode({
+		this.stepper = new SteppingSlicer({
+			shell:   this.shell,
+			request: {
 				...request,
 				attachSourceInformation: true,
 				ensurePackageInstalled:  true
-			}, this.session)
-		)
+			},
+			stepOfInterest: LAST_STEP,
+			criterion:      [],
+			tokenMap:       this.tokenMap
+		})
 
-		const normalizedAst = await this.commonMeasurements.measureAsync(
-			'normalize R AST',
-			() => normalize(this.loadedXml as string, this.tokenMap as Record<string, string>)
-		)
+		this.loadedXml = await this.measureCommonStep('parse', 'retrieve AST from R code')
+		await this.measureCommonStep('normalize ast', 'normalize R AST')
+		this.decoratedAst = await this.measureCommonStep('decorate', 'decorate R AST')
+		this.dataflow = await this.measureCommonStep('dataflow', 'produce dataflow information')
 
-		this.decoratedAst = this.commonMeasurements.measure(
-			'decorate R AST',
-			() => decorateAst(normalizedAst)
-		)
+		this.stepper.switchToSliceStage()
 
-		this.dataflow = this.commonMeasurements.measure(
-			'produce dataflow information',
-			() => produceDataFlowGraph(this.decoratedAst as DecoratedAst)
-		)
+		await this.calculateStatsAfterInit(request)
+	}
 
+	private async calculateStatsAfterInit(request: RParseRequestFromFile | RParseRequestFromText) {
 		const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8')
 		// retrieve number of R tokens - flowr_parsed should still contain the last parsed code
-		const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.session)
+		const numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.shell)
+
+		guard(this.decoratedAst !== undefined, 'decoratedAst should be defined after initialization')
+		guard(this.dataflow !== undefined, 'dataflow should be defined after initialization')
 
 		// collect dataflow graph size
 		const vertices = [...this.dataflow.graph.vertices(true)]
@@ -173,7 +174,7 @@ export class BenchmarkSlicer {
 				numberOfCharacters:              loadedContent.length,
 				numberOfNonWhitespaceCharacters: withoutWhitespace(loadedContent).length,
 				numberOfRTokens:                 numberOfRTokens,
-				numberOfNormalizedTokens:        [...collectAllIds(this.decoratedAst.decoratedAst)].length,
+				numberOfNormalizedTokens:        [...collectAllIds(this.decoratedAst.decoratedAst)].length
 			},
 			dataflow: {
 				numberOfNodes:               [...this.dataflow.graph.vertices(true)].length,
@@ -190,7 +191,7 @@ export class BenchmarkSlicer {
    *
    * @returns The per slice stats retrieved for this slicing criteria
    */
-	public slice(...slicingCriteria: SlicingCriteria): BenchmarkSingleSliceStats {
+	public async slice(...slicingCriteria: SlicingCriteria): Promise<BenchmarkSingleSliceStats> {
 		benchmarkLogger.trace(`try to slice for criteria ${JSON.stringify(slicingCriteria)}`)
 
 		this.guardActive()
@@ -210,40 +211,31 @@ export class BenchmarkSlicer {
 		}
 		this.perSliceMeasurements.set(slicingCriteria, stats)
 
+		this.stepper.updateCriterion(slicingCriteria)
+
 		const totalStopwatch = measurements.start('total')
 
-		const mappedCriteria = measurements.measure(
-			'decode slicing criterion',
-			() => convertAllSlicingCriteriaToIds(slicingCriteria, this.decoratedAst as DecoratedAst)
-		)
-		stats.slicingCriteria = mappedCriteria
+		const decoded = await this.measureSliceStep('decode criteria', measurements, 'decode slicing criterion')
+
+		stats.slicingCriteria = decoded
 		if(benchmarkLogger.settings.minLevel >= LogLevel.info) {
-			benchmarkLogger.info(`mapped slicing criteria: ${mappedCriteria.map(c => {
+			benchmarkLogger.info(`mapped slicing criteria: ${decoded.map(c => {
 				const node = this.decoratedAst?.idMap.get(c.id)
 				return `\n-   id: ${c.id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`
 			}).join('')}`)
 		}
 
-		const mappedIds = mappedCriteria.map(c => c.id)
+		const slicedOutput = await this.measureSliceStep('slice', measurements, 'static slicing')
+		stats.reconstructedCode = await this.measureSliceStep('reconstruct', measurements, 'reconstruct code')
 
-		const slicedOutput = measurements.measure(
-			'static slicing',
-			() => staticSlicing(
-				(this.dataflow as DataflowInformation).graph,
-				(this.decoratedAst as DecoratedAst).idMap,
-				mappedIds
-			)
-		)
-		// if it is not in the dataflow graph it was kept to be safe and should not count to the included nodes
-		stats.numberOfDataflowNodesSliced = [...slicedOutput.result].filter(id => this.dataflow?.graph.hasNode(id, false)).length
-		stats.timesHitThreshold = slicedOutput.timesHitThreshold
-
-		stats.reconstructedCode = measurements.measure(
-			'reconstruct code',
-			() => reconstructToCode<NoInfo>(this.decoratedAst as DecoratedAst, slicedOutput.result)
-		)
 		totalStopwatch.stop()
+
 		benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code}`)
+		const results = this.stepper.getResults(false)
+
+		// if it is not in the dataflow graph it was kept to be safe and should not count to the included nodes
+		stats.numberOfDataflowNodesSliced = [...slicedOutput.result].filter(id => results.dataflow.graph.hasNode(id, false)).length
+		stats.timesHitThreshold = slicedOutput.timesHitThreshold
 
 		stats.measurements = measurements.get()
 		return {
@@ -251,6 +243,23 @@ export class BenchmarkSlicer {
 			slice: slicedOutput,
 			code:  stats.reconstructedCode
 		}
+	}
+
+	/** Bridging the gap between the new internal and the old names for the benchmarking */
+	private async measureCommonStep<Step extends keyof typeof STEPS>(expectedStep: Step, keyToMeasure: CommonSlicerMeasurements): Promise<SubStepResult<Step>> {
+		const { result } = await this.commonMeasurements.measureAsync(
+			keyToMeasure, () => this.stepper.nextStep(expectedStep)
+		)
+
+		return result as SubStepResult<Step>
+	}
+
+	private async measureSliceStep<Step extends keyof typeof STEPS>(expectedStep: Step, measure: Measurements<PerSliceMeasurements>, keyToMeasure: PerSliceMeasurements): Promise<SubStepResult<Step>> {
+		const { result } = await measure.measureAsync(
+			keyToMeasure, () => this.stepper.nextStep(expectedStep)
+		)
+
+		return result as SubStepResult<Step>
 	}
 
 	private guardActive() {
@@ -268,13 +277,13 @@ export class BenchmarkSlicer {
    * @see collectAllSlicingCriteria
    * @see SlicingCriteriaFilter
    */
-	public sliceForAll(filter: SlicingCriteriaFilter, report: (current: number, total: number, allCriteria: SlicingCriteria[]) => void = () => { /* do nothing */ }): number {
+	public async sliceForAll(filter: SlicingCriteriaFilter, report: (current: number, total: number, allCriteria: SlicingCriteria[]) => void = () => { /* do nothing */ }): Promise<number> {
 		this.guardActive()
 		let count = 0
 		const allCriteria = [...collectAllSlicingCriteria((this.decoratedAst as DecoratedAst).decoratedAst, filter)]
 		for(const slicingCriteria of allCriteria) {
 			report(count, allCriteria.length, allCriteria)
-			this.slice(...slicingCriteria)
+			await this.slice(...slicingCriteria)
 			count++
 		}
 		return count
@@ -290,7 +299,7 @@ export class BenchmarkSlicer {
 		if(!this.finished) {
 			this.commonMeasurements.measure(
 				'close R session',
-				() => this.session.close()
+				() => this.shell.close()
 			)
 			this.totalStopwatch.stop()
 			this.finished = true
@@ -310,6 +319,6 @@ export class BenchmarkSlicer {
    * Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead.
    */
 	public ensureSessionClosed(): void {
-		this.session.close()
+		this.shell.close()
 	}
 }

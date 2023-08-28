@@ -1,4 +1,5 @@
 import { guard } from '../util/assert'
+import { STEPS } from '../core'
 
 export interface IStoppableStopwatch {
 	/** Stop the given stopwatch. */
@@ -65,6 +66,9 @@ export class Measurements<T> {
 	/**
    * Similar to {@link measure}, but await the promise as part of the measurement
    *
+	 * @param key - The key to write the resulting measurement to
+	 * @param fn  - The function to measure
+	 *
    * @see measure
    */
 	public async measureAsync<Out>(key: T, fn: () => Promise<Out>): Promise<Out> {

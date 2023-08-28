@@ -43,7 +43,7 @@ async function getSteps() {
 	shell.tryToInjectHomeLibPath()
 
 	// we always have to parse the file
-	const rAst = await retrieveXmlFromRCode(request, shell)
+	// const rAst = await retrieveXmlFromRCode(request, shell)
 
 
 	shell.close()

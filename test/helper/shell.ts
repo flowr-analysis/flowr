@@ -145,7 +145,7 @@ export function assertAst(name: string, shell: RShell, input: string, expected: 
 	})
 }
 
-/** call within describeSession: TODO: remove the decorator and always use our decoration step */
+/** call within describeSession */
 export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: RNode) => RNode<Decorated>, expected: RNodeWithParent<Decorated>, userConfig?: Partial<TestConfiguration>): void {
 	it(name, async function() {
 		await ensureConfig(shell, this, userConfig)
@@ -155,7 +155,6 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 	})
 }
 
-// TODO: make generics more readable
 export function assertDataflow(name: string, shell: RShell, input: string, expected: DataflowGraph, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
 	it(`${name} (input: ${JSON.stringify(input)})`, async function() {
 		await ensureConfig(shell, this, userConfig)

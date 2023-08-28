@@ -8,14 +8,14 @@ import { processCommandLineArgs } from './common'
 import { jsonReplacer } from '../util/json'
 
 export interface SlicerCliOptions {
-	verbose:   boolean
-	help:      boolean
-	input:     string | undefined
-	criterion: string | undefined
-	output:    string | undefined
-	stats:     boolean
-	api:       boolean
-	// dataflow:  boolean
+	verbose:         boolean
+	help:            boolean
+	input:           string | undefined
+	criterion:       string | undefined
+	output:          string | undefined
+	'input-is-text': boolean
+	stats:           boolean
+	api:             boolean
 }
 
 
@@ -23,6 +23,8 @@ const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'cr
 	subtitle: 'Slice R code based on a given slicing criterion',
 	examples: [
 		'{bold -c} {italic "12@product"} {italic test/testfiles/example.R}',
+		// why double escaped :C
+		'{bold -c} {italic "3@a"} {bold -r} {italic "a <- 3\\\\nb <- 4\\\\nprint(a)"}',
 		'{bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}',
 		'{bold --help}'
 	]
@@ -33,7 +35,7 @@ async function getSlice() {
 	guard(options.input !== undefined, `input must be given`)
 	guard(options.criterion !== undefined, `a slicing criterion must be given`)
 
-	await slicer.init({ request: 'file', content: options.input })
+	await slicer.init(options['input-is-text'] ? { request: 'text', content: options.input } : { request: 'file', content: options.input })
 
 	let mappedSlices: { criterion: SingleSlicingCriterion, id: NodeId }[] = []
 	let reconstruct: ReconstructionResult | undefined = undefined

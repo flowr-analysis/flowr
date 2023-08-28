@@ -95,7 +95,8 @@ export const STEPS_PER_SLICE = {
 } as const
 
 export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const
-export const LAST_STEP: keyof typeof STEPS = 'reconstruct' as const
+export const LAST_PER_FILE_STEP = 'dataflow' as const
+export const LAST_STEP = 'reconstruct' as const
 
 export type SubStepName = keyof typeof STEPS
 export type SubStep<name extends SubStepName> = typeof STEPS[name]

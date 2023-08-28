@@ -1,13 +1,13 @@
 import {
 	DecoratedAst, IdGenerator,
-	NodeId, NoInfo, RNode,
+	NodeId, NoInfo, ParentInformation, RNode,
 	RParseRequest,
 	RShell,
 	TokenMap,
 	XmlParserHooks
 } from '../r-bridge'
 import {
-	executeSingleSubStep, LAST_STEP,
+	executeSingleSubStep, LAST_PER_FILE_STEP, LAST_STEP,
 	StepRequired, STEPS,
 	STEPS_PER_FILE,
 	STEPS_PER_SLICE,
@@ -15,11 +15,11 @@ import {
 	SubStepProcessor
 } from './steps'
 import { guard } from '../util/assert'
-import { SlicingCriteria } from '../slicing'
-import { DataflowGraph } from '../dataflow'
+import { DecodedCriteria, SliceResult, SlicingCriteria } from '../slicing'
 import { DeepPartial } from 'ts-essentials'
 import { SteppingSlicerInput } from './input'
 import { StepResults } from './output'
+import { DataflowInformation } from '../dataflow/internal/info'
 
 /**
  * This is ultimately the root of flowR's static slicing procedure.
@@ -82,8 +82,8 @@ import { StepResults } from './output'
  * @see SubStepName
  */
 export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
-	public readonly maximumNumberOfStepsPerFile = Object.keys(STEPS_PER_FILE).length
-	public readonly maximumNumberOfStepsPerSlice = Object.keys(STEPS_PER_SLICE).length
+	public static readonly maximumNumberOfStepsPerFile = Object.keys(STEPS_PER_FILE).length
+	public static readonly maximumNumberOfStepsPerSlice = SteppingSlicer.maximumNumberOfStepsPerFile + Object.keys(STEPS_PER_SLICE).length
 
 	private readonly shell:          RShell
 	private readonly tokenMap?:      TokenMap
@@ -128,7 +128,7 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 	 * @see getCurrentStage
 	 */
 	public switchToSliceStage(): void {
-		guard(this.stepCounter === this.maximumNumberOfStepsPerFile, 'First need to complete all steps before switching')
+		guard(this.stepCounter === SteppingSlicer.maximumNumberOfStepsPerFile, 'First need to complete all steps before switching')
 		guard(this.stage === 'once-per-file', 'Cannot switch to next stage, already in once-per-slice stage')
 		this.stage = 'once-per-slice'
 	}
@@ -146,8 +146,8 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 	 */
 	public hasNextStep(): boolean {
 		return !this.reachedWanted && (this.stage === 'once-per-file' ?
-			this.stepCounter < this.maximumNumberOfStepsPerFile
-			: this.stepCounter < this.maximumNumberOfStepsPerSlice
+			this.stepCounter < SteppingSlicer.maximumNumberOfStepsPerFile
+			: this.stepCounter < SteppingSlicer.maximumNumberOfStepsPerSlice
 		)
 	}
 
@@ -215,11 +215,11 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 				break
 			case 5:
 				step = guardStep('slice')
-				result = executeSingleSubStep(step, this.results.dataflow as DataflowGraph, (this.results.decorate as DecoratedAst).idMap, this.results['decode criteria'] as NodeId[])
+				result = executeSingleSubStep(step, (this.results.dataflow as DataflowInformation).graph, (this.results.decorate as DecoratedAst<NoInfo>).idMap, (this.results['decode criteria'] as DecodedCriteria).map(({id}) => id))
 				break
 			case 6:
 				step = guardStep('reconstruct')
-				result = executeSingleSubStep(step, this.results.decorate as DecoratedAst, this.results.slice as Set<NodeId>)
+				result = executeSingleSubStep(step, this.results.decorate as DecoratedAst<NoInfo>, (this.results.slice as SliceResult).result)
 				break
 			default:
 				throw new Error(`Unknown step ${this.stepCounter}, reaching this should not happen!`)
@@ -234,9 +234,9 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 	 * @param newCriterion - the new slicing criterion to use for the next slice
 	 */
 	public updateCriterion(newCriterion: SlicingCriteria): void {
-		guard(this.stepCounter >= this.maximumNumberOfStepsPerFile , 'Cannot reset slice prior to once-per-slice stage')
+		guard(this.stepCounter >= SteppingSlicer.maximumNumberOfStepsPerFile , 'Cannot reset slice prior to once-per-slice stage')
 		this.criterion = newCriterion
-		this.stepCounter = this.maximumNumberOfStepsPerFile
+		this.stepCounter = SteppingSlicer.maximumNumberOfStepsPerFile
 		this.results['decode criteria'] = undefined
 		this.results.slice = undefined
 		this.results.reconstruct = undefined
@@ -245,17 +245,25 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 		}
 	}
 
+	public async allRemainingSteps(canSwitchStage: false): Promise<StepResults<InterestedIn extends keyof typeof STEPS_PER_SLICE | undefined ? typeof LAST_PER_FILE_STEP : InterestedIn>>
+	public async allRemainingSteps(canSwitchStage?: true): Promise<StepResults<InterestedIn>>
 	/**
 	 * Execute all remaining steps and automatically call {@link switchToSliceStage} if necessary.
-	 * @param switchStage - if true, automatically switch to the slice stage if necessary
-	 * (i.e., this is what you want if you have never executed {@link nextStep} and you want to execute *all* steps).
-	 * However, passing false allows you to only execute the steps of the 'once-per-file' stage (i.e., the steps that can be cached).
+	 * @param canSwitchStage - if true, automatically switch to the slice stage if necessary
+	 *       (i.e., this is what you want if you have never executed {@link nextStep} and you want to execute *all* steps).
+	 *       However, passing false allows you to only execute the steps of the 'once-per-file' stage (i.e., the steps that can be cached).
+	 *
+	 * **Note:** There is a small type difference if you pass 'false' and already have manually switched to the 'once-per-slice' stage.
+	 *       Because now, the results of these steps are no longer part of the result type (although they are still included).
+	 *       In such a case, you may be better off with simply passing 'true' as the function will detect that the stage is already switched.
+	 *       We could solve this type problem by separating the SteppingSlicer class into two for each stage, but this would break the improved readability and unified handling
+	 *       of the slicer that I wanted to achieve with this class.
 	 */
-	public async allRemainingSteps(switchStage = true): Promise<StepResults<InterestedIn>> {
+	public async allRemainingSteps(canSwitchStage = true): Promise<StepResults<InterestedIn | typeof LAST_PER_FILE_STEP>> {
 		while(this.hasNextStep()) {
 			await this.nextStep()
 		}
-		if(switchStage && !this.reachedWanted && this.stage === 'once-per-file') {
+		if(canSwitchStage && !this.reachedWanted && this.stage === 'once-per-file') {
 			this.switchToSliceStage()
 			while(this.hasNextStep()) {
 				await this.nextStep()

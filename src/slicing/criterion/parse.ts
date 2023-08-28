@@ -83,6 +83,13 @@ function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflo
 	return id
 }
 
-export function convertAllSlicingCriteriaToIds(criteria: SlicingCriteria, decorated: DecoratedAst): { criterion: SingleSlicingCriterion, id: NodeId }[] {
+export interface DecodedCriterion {
+	criterion: SingleSlicingCriterion,
+	id:        NodeId
+}
+
+export type DecodedCriteria = DecodedCriterion[]
+
+export function convertAllSlicingCriteriaToIds(criteria: SlicingCriteria, decorated: DecoratedAst): DecodedCriteria {
 	return criteria.map(l => ({ criterion: l, id: slicingCriterionToId(l, decorated) }))
 }

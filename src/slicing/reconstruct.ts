@@ -378,7 +378,8 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 	}
 }
 
-type AutoSelectPredicate = (node: RNode<ParentInformation>) => boolean
+/** The structure of the predicate that should be used to determine if a given normalized node should be included in the reconstructed code independent of if it is selected by the slice or not */
+export type AutoSelectPredicate = (node: RNode<ParentInformation>) => boolean
 
 
 interface ReconstructionConfiguration extends MergeableRecord {
@@ -392,6 +393,7 @@ export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
 }
 
 const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
+
 export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
 	if(node.type !== Type.FunctionCall || node.flavor !== 'named') {
 		return false
@@ -468,7 +470,7 @@ export interface ReconstructionResult {
  *
  * @returns Number of times `autoSelectIf` triggered
  */
-export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Selection, autoSelectIf: (node: RNode<ParentInformation>) => boolean = autoSelectLibrary): ReconstructionResult {
+export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
 	reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
 	let autoSelected = 0
 	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {

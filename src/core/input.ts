@@ -1,8 +1,8 @@
 import { MergeableRecord } from '../util/objects'
 import { IdGenerator, NoInfo, RParseRequest, RShell, TokenMap, XmlParserHooks } from '../r-bridge'
 import { DeepPartial } from 'ts-essentials'
-import { SlicingCriteria } from '../slicing'
-import { SubStepName } from './steps'
+import { AutoSelectPredicate, SlicingCriteria } from '../slicing'
+import { STEPS_PER_SLICE, SubStepName } from './steps'
 
 /**
  * We split the types, as if you are only interested in what can be done per-file, you do not need a slicing criterion.
@@ -23,10 +23,12 @@ interface BaseSteppingSlicerInput<InterestedIn extends SubStepName | undefined> 
 	tokenMap?:       TokenMap
 	/** These hooks only make sense if you at least want to normalize the parsed R AST. They can augment the normalization process */
 	hooks?:          DeepPartial<XmlParserHooks>
-	/** This id generator is only necessary if you want to retrieve a dataflow from the parsed R AST, it determines the id generator to use and if you are unsure, use the {@link deterministicCountingIdGenerator}*/
+	/** This id generator is only necessary if you want to retrieve a dataflow from the parsed R AST, it determines the id generator to use and by default uses the {@link deterministicCountingIdGenerator}*/
 	getId?:          IdGenerator<NoInfo>
 	/** The slicing criterion is only of interest if you actually want to slice the R code */
 	criterion?:      SlicingCriteria
+	/** If you want to auto-select something in the reconstruction add it here, otherwise, it will use the default defined alongside {@link reconstructToCode}*/
+	autoSelectIf?:   AutoSelectPredicate
 }
 
 interface NormalizeSteppingSlicerInput<InterestedIn extends 'dataflow' | 'decorate' | 'normalize ast'> extends BaseSteppingSlicerInput<InterestedIn> {
@@ -45,6 +47,6 @@ interface SliceSteppingSlicerInput<InterestedIn extends 'reconstruct' | 'slice' 
  * All arguments are documented alongside {@link BaseSteppingSlicerInput}.
  */
 export type SteppingSlicerInput<InterestedIn extends SubStepName | undefined = undefined> =
-		InterestedIn extends 'reconstruct' | 'slice' | 'decode criteria' | undefined ? SliceSteppingSlicerInput<InterestedIn> :
+		InterestedIn extends keyof typeof STEPS_PER_SLICE | undefined ? SliceSteppingSlicerInput<InterestedIn> :
 			InterestedIn extends 'dataflow' | 'decorate' | 'normalize ast' ? NormalizeSteppingSlicerInput<InterestedIn> :
 				BaseSteppingSlicerInput<InterestedIn>

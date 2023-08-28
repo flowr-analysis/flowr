@@ -53,7 +53,7 @@ export const STEPS_PER_FILE = {
 		printer:     {
 			[StepOutputFormat.internal]: internalPrinter
 		}
-	} satisfies IStep<typeof retrieveXmlFromRCode> as IStep<typeof retrieveXmlFromRCode>,
+	} satisfies IStep<typeof retrieveXmlFromRCode>,
 	'normalize': {
 		step:        'normalize',
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
@@ -62,7 +62,7 @@ export const STEPS_PER_FILE = {
 		printer:     {
 			[StepOutputFormat.internal]: internalPrinter
 		}
-	} satisfies IStep<typeof normalize> as IStep<typeof normalize>,
+	} satisfies IStep<typeof normalize>,
 	'dataflow': {
 		step:        'dataflow',
 		description: 'Construct the dataflow graph',
@@ -71,9 +71,8 @@ export const STEPS_PER_FILE = {
 		printer:     {
 			[StepOutputFormat.internal]: internalPrinter
 		}
-	} satisfies IStep<typeof produceDataFlowGraph> as IStep<typeof produceDataFlowGraph>
+	} satisfies IStep<typeof produceDataFlowGraph>
 } as const
-
 
 export const STEPS_PER_SLICE = {
 	'slice': {
@@ -84,7 +83,7 @@ export const STEPS_PER_SLICE = {
 		printer:     {
 			[StepOutputFormat.internal]: internalPrinter
 		}
-	} satisfies IStep<typeof staticSlicing> as IStep<typeof staticSlicing>,
+	} satisfies IStep<typeof staticSlicing>,
 	'reconstruct': {
 		step:        'reconstruct',
 		description: 'Reconstruct R code from the static slice',
@@ -93,7 +92,7 @@ export const STEPS_PER_SLICE = {
 		printer:     {
 			[StepOutputFormat.internal]: internalPrinter
 		}
-	} satisfies IStep<typeof reconstructToCode> as IStep<typeof reconstructToCode>
+	} satisfies IStep<typeof reconstructToCode>
 } as const
 
 export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const
@@ -106,6 +105,7 @@ export type SubStepProcessor<name extends SubStepName> = SubStep<name>['processo
 export type SubStepResult<name extends SubStepName> = Awaited<ReturnType<SubStepProcessor<name>>>
 
 export function executeSingleSubStep<Name extends SubStepName, Processor extends SubStepProcessor<Name>>(subStep: Name, ...input: Parameters<Processor>): ReturnType<Processor> {
+	// @ts-expect-error - this is safe, as we know that the function arguments are correct by 'satisfies', this saves an explicit cast with 'as'
 	return STEPS[subStep].processor(...input as unknown as never[]) as ReturnType<Processor>
 }
 

@@ -38,7 +38,7 @@ interface ISubStep<Fn extends StepFunction> extends MergeableRecord {
 	/** Human-readable description of this (sub-)step */
 	description: string
 	/** The main processor that essentially performs the logic of this step */
-	processor:   (input: Parameters<Fn>) => ReturnType<Fn>
+	processor:   (...input: Parameters<Fn>) => ReturnType<Fn>
 	/* does this step has to be repeated for each new slice or can it be performed only once in the initialization */
 	required:    StepRequired
 }
@@ -47,24 +47,24 @@ export const STEPS_PER_FILE = {
 	'parse': {
 		step:        'parse',
 		description: 'Parse the given R code into an AST',
-		processor:   input => retrieveXmlFromRCode(...input),
+		processor:   retrieveXmlFromRCode,
 		required:    'once-per-file'
 	} as ISubStep<typeof retrieveXmlFromRCode>,
 	'normalize ast': {
 		step:        'normalize',
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
-		processor:   input => normalize(...input),
+		processor:   normalize,
 		required:    'once-per-file'
 	} as ISubStep<typeof normalize>,
 	'decorate': {
 		step:        'normalize',
 		description: 'Transform flowR\'s AST into a doubly linked tree with parent references (second step of the normalization)',
-		processor:   input => decorateAst(...input),
+		processor:   decorateAst,
 		required:    'once-per-file'
 	} as ISubStep<typeof decorateAst>,
 	'dataflow': {
 		description: 'Construct the dataflow graph',
-		processor:   input => produceDataFlowGraph(...input),
+		processor:   produceDataFlowGraph,
 		required:    'once-per-file',
 	} as ISubStep<typeof produceDataFlowGraph>
 } as const
@@ -74,19 +74,19 @@ export const STEPS_PER_SLICE = {
 	'decode criteria': {
 		step:        'slice',
 		description: 'Decode the slicing criteria into a collection of node ids',
-		processor:   input => convertAllSlicingCriteriaToIds(...input),
+		processor:   convertAllSlicingCriteriaToIds,
 		required:    'once-per-slice',
 	} as ISubStep<typeof convertAllSlicingCriteriaToIds>,
 	'slice': {
 		step:        'slice',
 		description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
-		processor:   input => staticSlicing(...input),
+		processor:   staticSlicing,
 		required:    'once-per-slice',
 	} as ISubStep<typeof staticSlicing>,
 	'reconstruct': {
 		step:        'reconstruct',
 		description: 'Reconstruct R code from the static slice',
-		processor:   input => reconstructToCode(...input),
+		processor:   reconstructToCode,
 		required:    'once-per-slice',
 	} as ISubStep<typeof reconstructToCode>
 } as const
@@ -98,7 +98,7 @@ export type SubStepName = keyof typeof STEPS
 export type SubStep<name extends SubStepName> = typeof STEPS[name]
 export type SubStepProcessor<name extends SubStepName> = SubStep<name>['processor']
 
-export function doSubStep<Name extends SubStepName, Processor extends SubStepProcessor<Name>>(subStep: Name, ...input: Parameters<Processor>[0]): ReturnType<Processor> {
+export function doSubStep<Name extends SubStepName, Processor extends SubStepProcessor<Name>>(subStep: Name, ...input: Parameters<Processor>): ReturnType<Processor> {
 	return STEPS[subStep].processor(input as never) as ReturnType<Processor>
 }
 

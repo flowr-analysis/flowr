@@ -2,13 +2,13 @@ import { MergeableRecord } from '../util/objects'
 import { IdGenerator, NoInfo, RParseRequest, RShell, TokenMap, XmlParserHooks } from '../r-bridge'
 import { DeepPartial } from 'ts-essentials'
 import { AutoSelectPredicate, SlicingCriteria } from '../slicing'
-import { STEPS_PER_SLICE, SubStepName } from './steps'
+import { STEPS_PER_SLICE, StepName } from './steps'
 
 /**
  * We split the types, as if you are only interested in what can be done per-file, you do not need a slicing criterion.
  * Furthermore, if you are only interested in the parse result, you do not require the token map and you can not pass hooks
  */
-interface BaseSteppingSlicerInput<InterestedIn extends SubStepName | undefined> extends MergeableRecord {
+interface BaseSteppingSlicerInput<InterestedIn extends StepName | undefined> extends MergeableRecord {
 	/**
 	 * The step you are actually interested in.
 	 * If you pass 'dataflow', the stepper will stop after analyzing the dataflow.
@@ -46,7 +46,7 @@ interface SliceSteppingSlicerInput<InterestedIn extends 'reconstruct' | 'slice' 
  * For a given set of steps of interest, this essentially (statically) determines the required inputs for the {@link SteppingSlicer}.
  * All arguments are documented alongside {@link BaseSteppingSlicerInput}.
  */
-export type SteppingSlicerInput<InterestedIn extends SubStepName | undefined = undefined> =
+export type SteppingSlicerInput<InterestedIn extends StepName | undefined = undefined> =
 		InterestedIn extends keyof typeof STEPS_PER_SLICE | undefined ? SliceSteppingSlicerInput<InterestedIn> :
 			InterestedIn extends 'dataflow' | 'decorate' | 'normalize ast' ? NormalizeSteppingSlicerInput<InterestedIn> :
 				BaseSteppingSlicerInput<InterestedIn>

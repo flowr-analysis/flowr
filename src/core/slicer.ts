@@ -11,7 +11,7 @@ import {
 	StepRequired, STEPS,
 	STEPS_PER_FILE,
 	STEPS_PER_SLICE,
-	SubStepName, SubStepResult
+	StepName, StepResult
 } from './steps'
 import { guard } from '../util/assert'
 import { SliceResult, SlicingCriteria } from '../slicing'
@@ -78,9 +78,9 @@ import { DataflowInformation } from '../dataflow/internal/info'
  *
  * @see retrieveResultOfStep
  * @see SteppingSlicer#doNextStep
- * @see SubStepName
+ * @see StepName
  */
-export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
+export class SteppingSlicer<InterestedIn extends StepName | undefined> {
 	public static readonly maximumNumberOfStepsPerFile = Object.keys(STEPS_PER_FILE).length
 	public static readonly maximumNumberOfStepsPerSlice = SteppingSlicer.maximumNumberOfStepsPerFile + Object.keys(STEPS_PER_SLICE).length
 
@@ -165,9 +165,9 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 	 * If given, it causes the execution to fail if the next step is not the one you expect.
 	 * *Without step, please refrain from accessing the result.*
 	 */
-	public async nextStep<PassedName extends SubStepName>(expectedStepName?: PassedName): Promise<{
-		name:   typeof expectedStepName extends undefined ? SubStepName : PassedName
-		result: typeof expectedStepName extends undefined ? unknown : SubStepResult<Exclude<PassedName, undefined>>
+	public async nextStep<PassedName extends StepName>(expectedStepName?: PassedName): Promise<{
+		name:   typeof expectedStepName extends undefined ? StepName : PassedName
+		result: typeof expectedStepName extends undefined ? unknown : StepResult<Exclude<PassedName, undefined>>
 	}> {
 		guard(this.hasNextStep(), 'No more steps to do')
 
@@ -181,21 +181,21 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 			this.reachedWanted = true
 		}
 
-		return { name: step as PassedName, result: result as SubStepResult<PassedName> }
+		return { name: step as PassedName, result: result as StepResult<PassedName> }
 	}
 
-	private getGuardStep(expectedStepName: SubStepName | undefined) {
+	private getGuardStep(expectedStepName: StepName | undefined) {
 		return expectedStepName === undefined ?
-			<K extends SubStepName>(name: K): K => name
+			<K extends StepName>(name: K): K => name
 			:
-			<K extends SubStepName>(name: K): K => {
+			<K extends StepName>(name: K): K => {
 				guard(expectedStepName === name, `Expected step ${expectedStepName} but got ${name}`)
 				return name
 			}
 	}
 
-	private async doNextStep(guardStep: <K extends SubStepName>(name: K) => K) {
-		let step: SubStepName
+	private async doNextStep(guardStep: <K extends StepName>(name: K) => K) {
+		let step: StepName
 		let result: unknown
 
 		switch(this.stepCounter) {

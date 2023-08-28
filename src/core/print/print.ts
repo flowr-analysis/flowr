@@ -11,7 +11,7 @@ export const enum StepOutputFormat {
 	 */
 	internal,
 	/**
-	 * A human-readable textual representation of the result. Depending on the (sub-)step this may be of lesser use as the results
+	 * A human-readable textual representation of the result. Depending on the step this may be of lesser use as the results
 	 * of the dataflow analysis are not easily readable in text form.
 	 */
 	text,
@@ -34,7 +34,7 @@ export const enum StepOutputFormat {
 /**
  * Helper function to support the {@link internal} format, as it is simply returning the input.
  *
- * @see ISubStepPrinter
+ * @see IStepPrinter
  */
 export function internalPrinter<Input>(input: Input): Input {
 	return input
@@ -44,6 +44,6 @@ export function internalPrinter<Input>(input: Input): Input {
  * A mapping function that maps the result of a step (i.e., the dataflow graph)
  * to another representation (linked by {@link StepOutputFormat} in an {@link ISubStep}).
  */
-export type ISubStepPrinter<StepInput extends StepFunction, Format extends StepOutputFormat, AdditionalInput extends unknown[]> =
+export type IStepPrinter<StepInput extends StepFunction, Format extends StepOutputFormat, AdditionalInput extends unknown[]> =
 	Format extends StepOutputFormat.internal ? (input: Awaited<ReturnType<StepInput>>) => Awaited<ReturnType<StepInput>> :
 		(input: Awaited<ReturnType<StepInput>>, ...additional: AdditionalInput) => Promise<string>

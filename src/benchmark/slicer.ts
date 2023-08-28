@@ -31,7 +31,7 @@ import {
 import fs from 'fs'
 import { log, LogLevel } from '../util/log'
 import { MergeableRecord } from '../util/objects'
-import { LAST_STEP, SteppingSlicer, STEPS, SubStepResult } from '../core'
+import { LAST_STEP, SteppingSlicer, STEPS, StepResult } from '../core'
 
 export const benchmarkLogger = log.getSubLogger({ name: "benchmark" })
 
@@ -245,20 +245,20 @@ export class BenchmarkSlicer {
 	}
 
 	/** Bridging the gap between the new internal and the old names for the benchmarking */
-	private async measureCommonStep<Step extends keyof typeof STEPS>(expectedStep: Step, keyToMeasure: CommonSlicerMeasurements): Promise<SubStepResult<Step>> {
+	private async measureCommonStep<Step extends keyof typeof STEPS>(expectedStep: Step, keyToMeasure: CommonSlicerMeasurements): Promise<StepResult<Step>> {
 		const { result } = await this.commonMeasurements.measureAsync(
 			keyToMeasure, () => this.stepper.nextStep(expectedStep)
 		)
 
-		return result as SubStepResult<Step>
+		return result as StepResult<Step>
 	}
 
-	private async measureSliceStep<Step extends keyof typeof STEPS>(expectedStep: Step, measure: Measurements<PerSliceMeasurements>, keyToMeasure: PerSliceMeasurements): Promise<SubStepResult<Step>> {
+	private async measureSliceStep<Step extends keyof typeof STEPS>(expectedStep: Step, measure: Measurements<PerSliceMeasurements>, keyToMeasure: PerSliceMeasurements): Promise<StepResult<Step>> {
 		const { result } = await measure.measureAsync(
 			keyToMeasure, () => this.stepper.nextStep(expectedStep)
 		)
 
-		return result as SubStepResult<Step>
+		return result as StepResult<Step>
 	}
 
 	private guardActive() {

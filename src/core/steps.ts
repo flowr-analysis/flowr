@@ -20,26 +20,31 @@ import {
 } from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode, staticSlicing } from '../slicing'
-import { internalPrinter, ISubStepPrinter, StepOutputFormat } from './print/print'
+import { internalPrinter, IStepPrinter, StepOutputFormat } from './print/print'
 
+/**
+ * This represents close a function that we know completely nothing about.
+ * Nevertheless, this is the basis of what a step processor should look like.
+ */
 export type StepFunction = (...args: never[]) => unknown
-
+/**
+ * This represents the required execution frequency of a step.
+ */
 export type StepRequired = 'once-per-file' | 'once-per-slice'
-
 
 
 /**
  * Defines what is to be known of a single step in the slicing process.
  */
 export interface IStep<Fn extends StepFunction> extends MergeableRecord {
-	/** Human-readable description of this (sub-)step */
+	/** Human-readable description of this step */
 	description: string
 	/** The main processor that essentially performs the logic of this step */
 	processor:   (...input: Parameters<Fn>) => ReturnType<Fn>
 	/* does this step has to be repeated for each new slice or can it be performed only once in the initialization */
 	required:    StepRequired
 	printer: {
-		[K in StepOutputFormat]?: ISubStepPrinter<Fn, K, unknown[]>
+		[K in StepOutputFormat]?: IStepPrinter<Fn, K, unknown[]>
 	}
 }
 
@@ -94,12 +99,12 @@ export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const
 export const LAST_PER_FILE_STEP = 'dataflow' as const
 export const LAST_STEP = 'reconstruct' as const
 
-export type SubStepName = keyof typeof STEPS
-export type SubStep<name extends SubStepName> = typeof STEPS[name]
-export type SubStepProcessor<name extends SubStepName> = SubStep<name>['processor']
-export type SubStepResult<name extends SubStepName> = Awaited<ReturnType<SubStepProcessor<name>>>
+export type StepName = keyof typeof STEPS
+export type Step<name extends StepName> = typeof STEPS[name]
+export type StepProcessor<name extends StepName> = Step<name>['processor']
+export type StepResult<name extends StepName> = Awaited<ReturnType<StepProcessor<name>>>
 
-export function executeSingleSubStep<Name extends SubStepName, Processor extends SubStepProcessor<Name>>(subStep: Name, ...input: Parameters<Processor>): ReturnType<Processor> {
+export function executeSingleSubStep<Name extends StepName, Processor extends StepProcessor<Name>>(subStep: Name, ...input: Parameters<Processor>): ReturnType<Processor> {
 	// @ts-expect-error - this is safe, as we know that the function arguments are correct by 'satisfies', this saves an explicit cast with 'as'
 	return STEPS[subStep].processor(...input as unknown as never[]) as ReturnType<Processor>
 }

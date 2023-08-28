@@ -26,13 +26,13 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
 	parseLog.trace(`unary op for ${operator.name} ${operand.name}`)
 	let flavor: UnaryOperatorFlavor
-	if (ArithmeticOperatorsRAst.has(operator.name)) {
+	if(ArithmeticOperatorsRAst.has(operator.name)) {
 		flavor = 'arithmetic'
-	} else if (LogicalOperatorsRAst.has(operator.name)) {
+	} else if(LogicalOperatorsRAst.has(operator.name)) {
 		flavor = 'logical'
-	} else if (ModelFormulaOperatorsRAst.has(operator.name)) {
+	} else if(ModelFormulaOperatorsRAst.has(operator.name)) {
 		flavor = 'model formula'
-	} else {
+	} else{
 		return executeUnknownHook(data.hooks.operators.onUnary.unknown, data, { operator, operand })
 	}
 	return parseUnaryOp(data, flavor, operator, operand)

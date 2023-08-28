@@ -11,19 +11,19 @@ class ValueConversionError extends Error {
  * transforms a value to something R can understand (e.g., booleans to TRUE/FALSE)
  */
 export function ts2r<T>(value: T): string {
-	if (typeof value === 'undefined') {
+	if(typeof value === 'undefined') {
 		return 'NA'
-	} else if (typeof value === 'string') {
+	} else if(typeof value === 'string') {
 		return `"${value}"`
-	} else if (typeof value === 'number') {
+	} else if(typeof value === 'number') {
 		return value.toString()
-	} else if (typeof value === 'boolean') {
+	} else if(typeof value === 'boolean') {
 		return value ? 'TRUE' : 'FALSE'
-	} else if (value === null) {
+	} else if(value === null) {
 		return 'NULL'
-	} else if (Array.isArray(value)) {
+	} else if(Array.isArray(value)) {
 		return `c(${value.map(ts2r).join(', ')})`
-	} else if (typeof value === 'object') {
+	} else if(typeof value === 'object') {
 		const obj = Object.entries(value)
 			.map(([key, value]) => `${key} = ${ts2r(value)}`)
 			.join(', ')
@@ -41,9 +41,9 @@ export function isBoolean(value: string): boolean {
 }
 
 export function boolean2ts(value: string): boolean {
-	if (value === RTrue) {
+	if(value === RTrue) {
 		return true
-	} else if (value === RFalse) {
+	} else if(value === RFalse) {
 		return false
 	}
 	throw new ValueConversionError(`value ${value} is not a legal R boolean`)
@@ -75,11 +75,11 @@ export function number2ts(value: string): RNumberValue {
 	const markedAsInt = last === RIntegerMarker
 	const complexNumber = last === RImaginaryMarker
 
-	if (markedAsInt || complexNumber) {
+	if(markedAsInt || complexNumber) {
 		lcValue = lcValue.slice(0, -1)
 	}
 
-	if (value === RInf) {
+	if(value === RInf) {
 		return {
 			num: Infinity,
 			complexNumber,
@@ -88,13 +88,13 @@ export function number2ts(value: string): RNumberValue {
 	}
 
 	const floatHex = lcValue.match(RNumHexFloatRegex)
-	if (floatHex == null) {
+	if(floatHex == null) {
 		return {
 			num: Number(lcValue),
 			complexNumber,
 			markedAsInt
 		}
-	} else {
+	} else{
 		const {
 			intPart,
 			floatPart,
@@ -123,11 +123,11 @@ export interface RStringValue {
  * @throws {@link ValueConversionError} if the string has an unknown starting quote
  */
 export function string2ts(value: string): RStringValue {
-	if (value.length < 2) {
+	if(value.length < 2) {
 		throw new ValueConversionError(`cannot parse string '${value}' as it is too short`)
 	}
 	const quotes = value[0]
-	if (quotes !== '"' && quotes !== '\'') {
+	if(quotes !== '"' && quotes !== '\'') {
 		throw new ValueConversionError(`expected string to start with a known quote (' or "), yet received ${value}`)
 	}
 	return {

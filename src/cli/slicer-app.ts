@@ -43,10 +43,10 @@ async function getSlice() {
 			console.log('Written reconstructed code to', options.output)
 			console.log(`Automatically selected ${reconstructedCode.autoSelected} statements`)
 			fs.writeFileSync(options.output, reconstructedCode.code)
-		} else {
+		} else{
 			console.log(reconstructedCode.code)
 		}
-	} catch (e: unknown) {
+	} catch(e: unknown) {
 		log.error(`[Skipped] Error while processing ${options.input}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
 	}
 

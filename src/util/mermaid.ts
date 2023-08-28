@@ -29,7 +29,7 @@ interface MermaidGraph {
 }
 
 export function formatRange(range: SourceRange | undefined): string {
-	if (range === undefined) {
+	if(range === undefined) {
 		return '??'
 	}
 
@@ -42,8 +42,8 @@ function scopeToMermaid(scope: DataflowScopeName, when: DataflowGraphEdgeAttribu
 }
 
 function createArtificialExitPoints(exitPoints: NodeId[], mermaid: MermaidGraph, dataflowIdMap: DataflowMap<NoInfo>, idPrefix: string) {
-	for (const exitPoint of exitPoints) {
-		if (!mermaid.rootGraph.hasNode(exitPoint, true)) {
+	for(const exitPoint of exitPoints) {
+		if(!mermaid.rootGraph.hasNode(exitPoint, true)) {
 			const node = dataflowIdMap.get(exitPoint)
 			guard(node !== undefined, 'exit point not found')
 			mermaid.nodeLines.push(` ${idPrefix}${exitPoint}{{"${node.lexeme ?? '??'} (${exitPoint})\n      ${formatRange(dataflowIdMap.get(exitPoint)?.location)}"}}`)
@@ -62,7 +62,7 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: Dataflo
 	mermaid.nodeLines.push(...subgraph.nodeLines)
 	mermaid.edgeLines.push(...subgraph.edgeLines)
 	for(const [color, pool] of [['purple', subflow.in], ['green', subflow.out], ['orange', subflow.unknownReferences]]) {
-		for (const out of pool as IdentifierReference[]) {
+		for(const out of pool as IdentifierReference[]) {
 			if(!mermaid.mark?.has(out.nodeId)) {
 				// in/out/active for unmarked
 				mermaid.nodeLines.push(`    style ${idPrefix}${out.nodeId} stroke:${color as string},stroke-width:4px; `)
@@ -114,13 +114,13 @@ function encodeEdge(from: string, to: string, types: Set<EdgeType>, attribute: s
 function mermaidNodeBrackets(def: boolean, fCall: boolean) {
 	let open: string
 	let close: string
-	if (def) {
+	if(def) {
 		open = '['
 		close = ']'
-	} else if (fCall) {
+	} else if(fCall) {
 		open = '[['
 		close = ']]'
-	} else {
+	} else{
 		open = '(['
 		close = '])'
 	}
@@ -139,24 +139,24 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphVertexInfo, merm
 	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name)} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''
 	}\`"${close}`)
-	if (mark?.has(id)) {
+	if(mark?.has(id)) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:black,stroke-width:7px; `)
 	}
 
 	const edges = mermaid.rootGraph.get(id, true)
 	guard(edges !== undefined, `node ${id} must be found`)
-	for (const [target, edge] of [...edges[1]]) {
+	for(const [target, edge] of [...edges[1]]) {
 		const dotEdge = edge.types.has(EdgeType.SameDefDef) || edge.types.has(EdgeType.SameReadRead) || edge.types.has(EdgeType.Relates)
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edge.types, edge.attribute)
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId)
 			mermaid.edgeLines.push(`    ${idPrefix}${id} ${dotEdge ? '-.-' : '-->'}|"${[...edge.types].join(', ')} (${edge.attribute})"| ${idPrefix}${target}`)
-			if (target === BuiltIn) {
+			if(target === BuiltIn) {
 				mermaid.hasBuiltIn = true
 			}
 		}
 	}
-	if (info.tag === 'function-definition') {
+	if(info.tag === 'function-definition') {
 		subflowToMermaid(id, info.exitPoints, info.subflow, dataflowIdMap, mermaid, idPrefix)
 	}
 }
@@ -166,7 +166,7 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphVertexInfo, merm
 function graphToMermaidGraph(rootIds: ReadonlySet<NodeId>, graph: DataflowGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string | null = 'flowchart TD', idPrefix = '', mark?: Set<NodeId>, rootGraph?: DataflowGraph): MermaidGraph {
 	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges: new Set<string>(), hasBuiltIn: false, mark, rootGraph: rootGraph ?? graph, includeEnvironments: true }
 
-	for (const [id, info] of graph.vertices(true)) {
+	for(const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {
 			nodeToMermaid(graph, info, mermaid, id, idPrefix, dataflowIdMap, mark)
 		}
@@ -232,7 +232,7 @@ export function normalizedAstToMermaid(ast: RNodeWithParent, prefix: string): st
 	visit(ast, (n, context) => {
 		const name = `${mapTypeToNormalizedName(n.type)} (${n.info.id})\\n${n.lexeme ?? ' '}`
 		output += `    n${n.info.id}(["${name}"])\n`
-		if (n.info.parent !== undefined) {
+		if(n.info.parent !== undefined) {
 			const roleSuffix = context.role === RoleInParent.ExpressionListChild || context.role === RoleInParent.FunctionCallArgument || context.role === RoleInParent.FunctionDefinitionParameter ? `-${context.index}` : ''
 			output += `    n${n.info.parent} -->|"${context.role}${roleSuffix}"| n${n.info.id}\n`
 		}

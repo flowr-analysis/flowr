@@ -14,7 +14,7 @@ export function randomString(length: number, symbols = ALPHABET): string {
 	guard(symbols.length > 0, 'there must be at least one symbol to use')
 
 	let result = ''
-	for (let i = 0; i < length; i++) {
+	for(let i = 0; i < length; i++) {
 		result += symbols[Math.floor(Math.random() * symbols.length)]
 	}
 	return result

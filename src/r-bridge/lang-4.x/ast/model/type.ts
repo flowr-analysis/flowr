@@ -67,7 +67,7 @@ export const enum Type {
  * Returns the name of the corresponding interface if there is one. Otherwise, this throws an error.
  */
 export function mapTypeToNormalizedName(type: Type): string {
-	switch (type) {
+	switch(type) {
 		case Type.Access:
 			return "RAccess"
 		case Type.Argument:

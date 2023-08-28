@@ -20,16 +20,16 @@ export function splitArguments(inputString: string): string[] {
 		} else if(c === ' ' && !inQuotes && current !== '') {
 			args.push(current)
 			current = ''
-		} else if (c === '"' || c === "'") {
+		} else if(c === '"' || c === "'") {
 			inQuotes = !inQuotes
-		} else if (c === '\\') {
+		} else if(c === '\\') {
 			escaped = true
-		} else {
+		} else{
 			current += c
 		}
 	}
 
-	if (current !== '') {
+	if(current !== '') {
 		args.push(current)
 	}
 

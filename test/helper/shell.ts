@@ -62,8 +62,8 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 		before(async function() {
 			this.timeout('15min')
 			shell.tryToInjectHomeLibPath()
-			for (const pkg of packages) {
-				if (!await shell.isPackageInstalled(pkg)) {
+			for(const pkg of packages) {
+				if(!await shell.isPackageInstalled(pkg)) {
 					await testRequiresNetworkConnection(this)
 				}
 				await shell.ensurePackageInstalled(pkg, true)
@@ -79,7 +79,7 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function removeSourceInformation<T extends Record<string, any>>(obj: T): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
-		if (key === 'fullRange' || key === 'additionalTokens' || key === 'fullLexeme') {
+		if(key === 'fullRange' || key === 'additionalTokens' || key === 'fullLexeme') {
 			return undefined
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
@@ -171,7 +171,7 @@ export function assertDataflow(name: string, shell: RShell, input: string, expec
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
 			assert.isTrue(expected.equals(info.dataflow.graph))
-		} catch (e) {
+		} catch(e) {
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected },
 				{ label: 'got', graph: info.dataflow.graph},
@@ -216,7 +216,7 @@ export function assertSliced(name: string, shell: RShell, input: string, criteri
 			const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
 
 			assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(mappedIds, decoratedAst.idMap)}), url: ${graphToMermaidUrl(dataflow.graph, decoratedAst.idMap, sliced)}`)
-		} catch (e) {
+		} catch(e) {
 			console.error('vis-got:\n', graphToMermaidUrl(dataflow.graph, decoratedAst.idMap))
 			throw e
 		}

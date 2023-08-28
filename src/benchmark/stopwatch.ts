@@ -78,7 +78,7 @@ export class Measurements<T> {
    */
 	public get(): Map<T, bigint> {
 		const result = new Map<T, bigint>()
-		for (const [key, stopwatch] of this.measurements) {
+		for(const [key, stopwatch] of this.measurements) {
 			result.set(key, stopwatch.get())
 		}
 		return result

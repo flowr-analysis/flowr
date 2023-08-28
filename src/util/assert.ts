@@ -28,7 +28,7 @@ export type GuardMessage = string | (() => string)
  * @throws GuardError - if the assertion fails
  */
 export function guard(assertion: boolean, message: GuardMessage = 'Assertion failed'): asserts assertion {
-	if (!assertion) {
+	if(!assertion) {
 		throw new GuardError( typeof message === 'string' ? message : message())
 	}
 }

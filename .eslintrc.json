@@ -79,9 +79,6 @@
                 "do": {
                     "after": false
                 },
-                "try": {
-                    "after": false
-                },
                 "catch": {
                     "after": false
                 },

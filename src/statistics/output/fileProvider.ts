@@ -59,7 +59,7 @@ export class StatisticFileProvider implements StatisticAppendProvider{
 	private getHandle(name: string, fn: string): FileDescriptor {
 		const key = `${name}-${fn}`
 		const fileHandle = this.connections.get(key)
-		if (fileHandle) {
+		if(fileHandle) {
 			return fileHandle
 		}
 
@@ -67,7 +67,7 @@ export class StatisticFileProvider implements StatisticAppendProvider{
 		const filepath = this.statisticsFile(name, String(fn))
 
 		const dirpath = path.dirname(filepath)
-		if (!fs.existsSync(dirpath)) {
+		if(!fs.existsSync(dirpath)) {
 			fs.mkdirSync(dirpath, { recursive: true })
 		}
 		const fileDescriptor = fs.openSync(filepath, 'a')

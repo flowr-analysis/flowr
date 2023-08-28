@@ -52,7 +52,7 @@ export function produceDataFlowGraph<OtherInfo>(ast: DecoratedAst<OtherInfo & Pa
 export function processBinaryOp<OtherInfo>(node: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	if(node.flavor === 'assignment') {
 		return processAssignment(node as RAssignmentOp<OtherInfo & ParentInformation>, data)
-	} else {
+	} else{
 		return processNonAssignmentBinaryOp(node, data)
 	}
 }

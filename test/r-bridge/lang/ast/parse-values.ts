@@ -25,7 +25,7 @@ describe("Constant Parsing",
 			)
 
 			describe("numbers", () => {
-				for (const number of RNumberPool) {
+				for(const number of RNumberPool) {
 					const range = rangeFrom(1, 1, 1, number.str.length)
 					assertAst(
 						number.str,
@@ -42,7 +42,7 @@ describe("Constant Parsing",
 				}
 			})
 			describe("strings", () => {
-				for (const string of RStringPool) {
+				for(const string of RStringPool) {
 					const range = rangeFrom(1, 1, 1, string.str.length)
 					assertAst(
 						string.str,
@@ -59,7 +59,7 @@ describe("Constant Parsing",
 				}
 			})
 			describe("symbols", () => {
-				for (const symbol of RSymbolPool) {
+				for(const symbol of RSymbolPool) {
 					const range = rangeFrom(
 						1,
 						symbol.symbolStart,

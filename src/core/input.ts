@@ -1,5 +1,5 @@
 import { MergeableRecord } from '../util/objects'
-import { IdGenerator, NoInfo, RParseRequest, RShell, TokenMap, XmlParserHooks } from '../r-bridge'
+import { IdGenerator, RParseRequest, RShell, TokenMap, XmlParserHooks } from '../r-bridge'
 import { DeepPartial } from 'ts-essentials'
 import { SlicingCriteria } from '../slicing'
 import { SubStepName } from './steps'

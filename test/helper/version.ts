@@ -10,7 +10,7 @@ import semver from 'semver/preload'
  */
 export const testRequiresRVersion = async(shell: RShell, versionToSatisfy: string, test: Mocha.Context): Promise<void> => {
 	const version = await shell.usedRVersion()
-	if (version === null || !semver.satisfies(version, versionToSatisfy)) {
+	if(version === null || !semver.satisfies(version, versionToSatisfy)) {
 		console.warn(`Skipping test because ${JSON.stringify(version?.raw)} does not satisfy ${JSON.stringify(versionToSatisfy)}.`)
 		test.skip()
 	}

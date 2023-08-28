@@ -17,16 +17,16 @@ import { log } from '../../../../../../../util/log'
 import { normalizeComment } from '../other'
 
 function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData) {
-	if (mappedWithName.length === 1) {
+	if(mappedWithName.length === 1) {
 		const parsed = tryNormalizeSingleNode(data, mappedWithName[0])
 		return parsed !== undefined ? [parsed] : []
-	} else if (mappedWithName.length === 2) {
+	} else if(mappedWithName.length === 2) {
 		const unaryOp = tryNormalizeUnary(
 			data,
 			mappedWithName[0],
 			mappedWithName[1]
 		)
-		if (unaryOp !== undefined) {
+		if(unaryOp !== undefined) {
 			return [unaryOp]
 		}
 		const repeatLoop = tryNormalizeRepeat(
@@ -34,36 +34,36 @@ function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBase
 			mappedWithName[0],
 			mappedWithName[1]
 		)
-		if (repeatLoop !== undefined) {
+		if(repeatLoop !== undefined) {
 			return [repeatLoop]
 		}
-	} else if (mappedWithName.length === 3) {
+	} else if(mappedWithName.length === 3) {
 		const binary = tryNormalizeBinary(
 			data,
 			mappedWithName[0],
 			mappedWithName[1],
 			mappedWithName[2]
 		)
-		if (binary !== undefined) {
+		if(binary !== undefined) {
 			return [binary]
-		} else {
+		} else{
 			const forLoop = tryNormalizeFor(
 				data,
 				mappedWithName[0],
 				mappedWithName[1],
 				mappedWithName[2]
 			)
-			if (forLoop !== undefined) {
+			if(forLoop !== undefined) {
 				return [forLoop]
-			} else {
+			} else{
 				// could be a symbol with namespace information
 				const symbol = tryNormalizeSymbol(data, mappedWithName)
-				if (symbol !== undefined) {
+				if(symbol !== undefined) {
 					return [symbol]
 				}
 			}
 		}
-	} else if (mappedWithName.length === 5) {
+	} else if(mappedWithName.length === 5) {
 		const ifThen = tryNormalizeIfThen(data, [
 			mappedWithName[0],
 			mappedWithName[1],
@@ -71,9 +71,9 @@ function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBase
 			mappedWithName[3],
 			mappedWithName[4]
 		])
-		if (ifThen !== undefined) {
+		if(ifThen !== undefined) {
 			return [ifThen]
-		} else {
+		} else{
 			const whileLoop = tryNormalizeWhile(
 				data,
 				mappedWithName[0],
@@ -82,11 +82,11 @@ function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBase
 				mappedWithName[3],
 				mappedWithName[4]
 			)
-			if (whileLoop !== undefined) {
+			if(whileLoop !== undefined) {
 				return [whileLoop]
 			}
 		}
-	} else if (mappedWithName.length === 7) {
+	} else if(mappedWithName.length === 7) {
 		const ifThenElse = tryNormalizeIfThenElse(data, [
 			mappedWithName[0],
 			mappedWithName[1],
@@ -96,7 +96,7 @@ function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBase
 			mappedWithName[5],
 			mappedWithName[6]
 		])
-		if (ifThenElse !== undefined) {
+		if(ifThenElse !== undefined) {
 			return [ifThenElse]
 		}
 	}
@@ -108,10 +108,10 @@ function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBase
 export function splitComments(mappedWithName: NamedXmlBasedJson[]) {
 	const comments = []
 	const others = []
-	for (const elem of mappedWithName) {
-		if (elem.name === Type.Comment) {
+	for(const elem of mappedWithName) {
+		if(elem.name === Type.Comment) {
 			comments.push(elem)
-		} else {
+		} else{
 			others.push(elem)
 		}
 	}
@@ -122,7 +122,7 @@ export function normalizeBasedOnType(
 	data: ParserData,
 	obj: XmlBasedJson[] | NamedXmlBasedJson[]
 ): RNode[] {
-	if (obj.length === 0) {
+	if(obj.length === 0) {
 		parseLog.warn("no children received, skipping")
 		return []
 	}
@@ -131,7 +131,7 @@ export function normalizeBasedOnType(
 
 	if(obj[0].name) {
 		mappedWithName = obj as NamedXmlBasedJson[]
-	} else {
+	} else{
 		mappedWithName = getWithTokenType(
 			data.config.tokenMap,
 			obj as XmlBasedJson[]
@@ -145,14 +145,14 @@ export function normalizeBasedOnType(
 		({ name }) => name === Type.Semicolon
 	)
 
-	if (splitOnSemicolon.length > 1) {
+	if(splitOnSemicolon.length > 1) {
 		log.trace(`found ${splitOnSemicolon.length} expressions by semicolon-split, parsing them separately`)
 		const flattened = []
-		for (const sub of splitOnSemicolon) {
+		for(const sub of splitOnSemicolon) {
 			const result = normalizeBasedOnType(data, sub)
 			if(result.length === 1 && result[0].type === Type.ExpressionList) {
 				flattened.push(...result[0].children)
-			} else {
+			} else{
 				flattened.push(...result)
 			}
 		}
@@ -176,9 +176,9 @@ export function normalizeBasedOnType(
 export function parseNodesWithUnknownType(data: ParserData, mappedWithName: NamedXmlBasedJson[]) {
 	const parsedNodes: RNode[] = []
 	// used to indicate the new root node of this set of nodes
-	for (const elem of mappedWithName) {
+	for(const elem of mappedWithName) {
 		const retrieved = tryNormalizeSingleNode(data, elem)
-		if (retrieved !== undefined) {
+		if(retrieved !== undefined) {
 			parsedNodes.push(retrieved)
 		}
 	}

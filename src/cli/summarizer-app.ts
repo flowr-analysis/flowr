@@ -51,7 +51,7 @@ function mapPerSliceStats(k: SlicingCriteria, v: PerSliceStats): [SlicingCriteri
 }
 
 function removeIfExists(summarizedRaw: string) {
-	if (fs.existsSync(summarizedRaw)) {
+	if(fs.existsSync(summarizedRaw)) {
 		console.log(`Removing existing ${summarizedRaw}`)
 		fs.unlinkSync(summarizedRaw)
 	}
@@ -161,7 +161,7 @@ function ultimateSummarize() {
 }
 
 async function run() {
-	if (!options['ultimate-only']) {
+	if(!options['ultimate-only']) {
 		await summarize()
 	}
 

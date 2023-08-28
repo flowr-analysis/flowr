@@ -8,7 +8,7 @@ export async function waitOnScript(module: string, args: string[]): Promise<void
 	log.info(`starting script ${module} with args ${JSON.stringify(args)}`)
 	const child = cp.fork(module, args)
 	child.on('exit', (code, signal) => {
-		if (code) {
+		if(code) {
 			console.error(`Script ${module} exited with code ${JSON.stringify(code)} and signal ${JSON.stringify(signal)}`)
 			process.exit(code)
 		}

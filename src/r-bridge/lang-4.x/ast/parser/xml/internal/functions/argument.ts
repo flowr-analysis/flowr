@@ -48,7 +48,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 			}
 		}
 		parsedValue = parseWithValue(data, objs)
-	} else {
+	} else{
 		log.warn(`expected symbol or expr for argument, yet received ${objs.map(o => o.name).join(',')}`)
 		return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
 	}

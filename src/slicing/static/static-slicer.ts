@@ -77,7 +77,7 @@ class VisitingQueue {
 			slicerLogger.warn(`id: ${target} has been visited ${idCounter} times, skipping`)
 			this.timesHitThreshold++
 			return
-		} else {
+		} else{
 			this.idThreshold.set(target, idCounter + 1)
 		}
 
@@ -120,16 +120,16 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
 	// every node ships the call environment which registers the calling environment
 	{
 		const basePrint = envFingerprint(initializeCleanEnvironments())
-		for (const startId of startIds) {
+		for(const startId of startIds) {
 			queue.add(startId, initializeCleanEnvironments(), basePrint, false)
 		}
 	}
 
 
-	while (queue.has()) {
+	while(queue.has()) {
 		const current = queue.next()
 
-		if (current === undefined) {
+		if(current === undefined) {
 			continue
 		}
 
@@ -151,11 +151,11 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
 		const currentNode = dataflowIdMap.get(current.id)
 		guard(currentNode !== undefined, () => `id: ${current.id} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
 
-		for (const [target, edge] of currentInfo[1]) {
-			if (edge.types.has(EdgeType.SideEffectOnCall)) {
+		for(const [target, edge] of currentInfo[1]) {
+			if(edge.types.has(EdgeType.SideEffectOnCall)) {
 				queue.add(target, current.baseEnvironment, baseEnvFingerprint, true)
 			}
-			if (edge.types.has(EdgeType.Reads) || edge.types.has(EdgeType.DefinedBy) || edge.types.has(EdgeType.Argument) || edge.types.has(EdgeType.Calls) || edge.types.has(EdgeType.Relates) || edge.types.has(EdgeType.DefinesOnCall)) {
+			if(edge.types.has(EdgeType.Reads) || edge.types.has(EdgeType.DefinedBy) || edge.types.has(EdgeType.Argument) || edge.types.has(EdgeType.Calls) || edge.types.has(EdgeType.Relates) || edge.types.has(EdgeType.DefinesOnCall)) {
 				queue.add(target, current.baseEnvironment, baseEnvFingerprint, false)
 			}
 		}
@@ -170,7 +170,7 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
 
 
 function addAllFrom(current: RNodeWithParent, collected: Set<NodeId>) {
-	for (const id of collectAllIds(current)) {
+	for(const id of collectAllIds(current)) {
 		collected.add(id)
 	}
 }
@@ -199,11 +199,11 @@ function addControlDependencies(source: NodeId, ast: DecoratedAstMap): Set<NodeI
 function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvironment: REnvironmentInformation) {
 	let callerEnvironment = callerInfo.environment
 
-	if (baseEnvironment.level !== callerEnvironment.level) {
-		while (baseEnvironment.level < callerEnvironment.level) {
+	if(baseEnvironment.level !== callerEnvironment.level) {
+		while(baseEnvironment.level < callerEnvironment.level) {
 			baseEnvironment = pushLocalEnvironment(baseEnvironment)
 		}
-		while (baseEnvironment.level > callerEnvironment.level) {
+		while(baseEnvironment.level > callerEnvironment.level) {
 			callerEnvironment = pushLocalEnvironment(callerEnvironment)
 		}
 	}
@@ -234,19 +234,19 @@ function sliceForCall(current: NodeToSlice, idMap: DecoratedAstMap, callerInfo: 
 
 	const functionCallTargets = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), dataflowGraph)
 
-	for (const [_, functionCallTarget] of functionCallTargets) {
+	for(const [_, functionCallTarget] of functionCallTargets) {
 		// all those linked within the scopes of other functions are already linked when exiting a function definition
-		for (const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
+		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
 			const defs = resolveByName(openIn.name, LocalScope, activeEnvironment)
-			if (defs === undefined) {
+			if(defs === undefined) {
 				continue
 			}
-			for (const def of defs) {
+			for(const def of defs) {
 				queue.add(def.nodeId, baseEnvironment, baseEnvPrint, current.onlyForSideEffects)
 			}
 		}
 
-		for (const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
+		for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
 			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, current.onlyForSideEffects)
 		}
 	}

@@ -64,7 +64,7 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 			return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
 		}
 		result = mayResult
-	} else {
+	} else{
 		result = parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content)
 	}
 
@@ -96,7 +96,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 
 	if(parsedArguments.length === 0) {
 		// sadly, next() and break() work
-		if (calledFunction.type === Type.Next) {
+		if(calledFunction.type === Type.Next) {
 			return {
 				type:   Type.Next,
 				lexeme: content,
@@ -149,7 +149,7 @@ function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJs
 			location:  stringBase.location,
 			content:   stringBase.content.str
 		}
-	} else {
+	} else{
 		functionName = tryNormalizeSymbol(data, symbolContent)
 	}
 	guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')

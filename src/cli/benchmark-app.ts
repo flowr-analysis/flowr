@@ -33,7 +33,7 @@ if(options.input.length === 0) {
 guard(options.slice === 'all' || options.slice === 'no', 'slice must be either all or no')
 
 function removeIfExists(summarizedRaw: string) {
-	if (fs.existsSync(summarizedRaw)) {
+	if(fs.existsSync(summarizedRaw)) {
 		console.log(`Removing existing ${summarizedRaw}`)
 		fs.unlinkSync(summarizedRaw)
 	}

@@ -44,7 +44,7 @@ const ERR_MARKER = "err"
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell): Promise<string> {
-	if (request.ensurePackageInstalled) {
+	if(request.ensurePackageInstalled) {
 		await shell.ensurePackageInstalled('xmlparsedata', true)
 	}
 
@@ -74,9 +74,9 @@ export async function retrieveAstFromRCode(request: RParseRequest, tokenMap: Rec
  * If the string has (R-)quotes around it, they will be removed, otherwise the string is returned unchanged.
  */
 export function removeTokenMapQuotationMarks(str: string): string {
-	if (str.length > 1 && (startAndEndsWith(str, '\'') || startAndEndsWith(str, '"'))) {
+	if(str.length > 1 && (startAndEndsWith(str, '\'') || startAndEndsWith(str, '"'))) {
 		return str.slice(1, -1)
-	} else {
+	} else{
 		return str
 	}
 }
@@ -90,7 +90,7 @@ export async function getStoredTokenMap(shell: RShell): Promise<TokenMap> {
 		'write.table(xmlparsedata::xml_parse_token_map,sep=",", col.names=FALSE)'
 	))
 
-	if (parsed.some(s => s.length !== 2)) {
+	if(parsed.some(s => s.length !== 2)) {
 		throw new Error(`Expected two columns in token map, but got ${JSON.stringify(parsed)}`)
 	}
 

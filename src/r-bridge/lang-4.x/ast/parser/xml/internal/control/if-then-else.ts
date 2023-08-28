@@ -26,7 +26,7 @@ export function tryNormalizeIfThenElse(data: ParserData,
 	tokens = executeHook(data.hooks.control.onIfThenElse.before, data, tokens)
 
 	const parsedIfThen = tryNormalizeIfThen(data, [tokens[0], tokens[1], tokens[2], tokens[3], tokens[4]])
-	if (parsedIfThen === undefined) {
+	if(parsedIfThen === undefined) {
 		return executeUnknownHook(data.hooks.control.onIfThenElse.unknown, data, tokens)
 	}
 	parseLog.trace(`if-then part successful, now parsing else part`)

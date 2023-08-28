@@ -186,7 +186,7 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 		let step: SubStepName
 		let result: unknown
 
-		switch (this.stepCounter) {
+		switch(this.stepCounter) {
 			case 0:
 				step = guardStep('parse')
 				result = await doSubStep(step, this.request, this.shell)

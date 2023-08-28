@@ -23,12 +23,12 @@ export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable 
 export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined {
 	assertSameType(base, addon)
 	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-	if (base === undefined || base === null) {
+	if(base === undefined || base === null) {
 		return addon
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-	} else if (addon === undefined || addon === null) {
+	} else if(addon === undefined || addon === null) {
 		return base
-	} else if (!isObjectOrArray(base) || !isObjectOrArray(addon)) {
+	} else if(!isObjectOrArray(base) || !isObjectOrArray(addon)) {
 		// this case should be guarded by type guards, but in case we do not know
 		throw new Error('illegal types for deepMergeObject!')
 	}
@@ -38,11 +38,11 @@ export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable 
 	const baseIsArray = Array.isArray(base)
 	const addonIsArray = Array.isArray(addon)
 
-	if (!baseIsArray && !addonIsArray) {
+	if(!baseIsArray && !addonIsArray) {
 		deepMergeObjectWithResult(addon, base, result)
-	} else if (baseIsArray && addonIsArray) {
+	} else if(baseIsArray && addonIsArray) {
 		return [...base, ...addon]
-	} else {
+	} else{
 		throw new Error('cannot merge object with array!')
 	}
 
@@ -51,13 +51,13 @@ export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable 
 
 function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord, result: MergeableRecord): void {
 	Object.keys(addon).forEach(key => {
-		if (isObjectOrArray(addon[key])) {
-			if (!(key in base)) {
+		if(isObjectOrArray(addon[key])) {
+			if(!(key in base)) {
 				Object.assign(result, { [key]: addon[key] })
-			} else {
+			} else{
 				result[key] = deepMergeObject(base[key] as Mergeable, addon[key] as Mergeable)
 			}
-		} else {
+		} else{
 			assertSameType(result[key], addon[key])
 			Object.assign(result, { [key]: addon[key] })
 		}
@@ -65,7 +65,7 @@ function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord
 }
 
 function assertSameType(base: unknown, addon: unknown): void {
-	if (base !== undefined && addon !== undefined && typeof base !== typeof addon) {
+	if(base !== undefined && addon !== undefined && typeof base !== typeof addon) {
 		throw new Error(`cannot merge different types! ${typeof base} (${JSON.stringify(base)}) !== ${typeof addon} (${JSON.stringify(addon)})`)
 	}
 }

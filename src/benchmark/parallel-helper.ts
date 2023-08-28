@@ -71,7 +71,7 @@ export class LimitBenchmarkPool {
 		child.on('exit', (code, signal) => {
 			if(code === 0) {
 				this.counter++
-			} else {
+			} else{
 				log.error(`Benchmark for ${JSON.stringify(args)} exited with code ${JSON.stringify(code)} (signal: ${JSON.stringify(signal)})`)
 				this.skipped.push(args)
 			}

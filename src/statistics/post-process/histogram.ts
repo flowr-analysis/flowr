@@ -122,7 +122,7 @@ export function histograms2table(histograms: Histogram[], countAsDensity = false
 		if(binIndex === 0) {
 			row[1] = histograms[0].min.toFixed(3)
 			row[2] = histograms[0].min.toFixed(3)
-		} else {
+		} else{
 			row[1] = String((binIndex-1) * histograms[0].binSize + histograms[0].min)
 			row[2] = String((binIndex) * histograms[0].binSize + histograms[0].min)
 		}
@@ -140,9 +140,9 @@ export function histograms2table(histograms: Histogram[], countAsDensity = false
 function guardForLargestBinSize(histograms: Histogram[]) {
 	const first = histograms[0]
 	let mostBins = first.bins.length
-	for (let i = 1; i < histograms.length; i++) {
+	for(let i = 1; i < histograms.length; i++) {
 		guard(histograms[i].binSize === first.binSize, `histograms must have the same bin-size, but ${histograms[i].name} has ${histograms[i].binSize} instead of ${first.binSize}`)
-		if (histograms[i].bins.length > mostBins) {
+		if(histograms[i].bins.length > mostBins) {
 			mostBins = histograms[i].bins.length
 		}
 	}
@@ -150,12 +150,12 @@ function guardForLargestBinSize(histograms: Histogram[]) {
 }
 
 function writeRoResultsForHistograms(histograms: Histogram[], binIndex: number, row: string[], countAsDensity: boolean, sums: number[]) {
-	for (let j = 0; j < histograms.length; j++) {
+	for(let j = 0; j < histograms.length; j++) {
 		const bins = histograms[j].bins
 		// does not have to be performant...
-		if (binIndex >= bins.length) {
+		if(binIndex >= bins.length) {
 			row[j + 3] = '0' /* in a histogram, 0 is the best default value for bins that are not present -- no value appeared in the corresponding bin */
-		} else {
+		} else{
 			row[j + 3] = String(countAsDensity ? bins[binIndex] / sums[j] : bins[binIndex])
 		}
 	}

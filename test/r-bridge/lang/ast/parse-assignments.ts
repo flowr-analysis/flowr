@@ -7,7 +7,7 @@ import { Type } from '../../../../src/r-bridge'
 describe("Parse simple assignments",
 	withShell((shell) => {
 		describe("constant assignments", () => {
-			for (const op of RAssignmentOpPool) {
+			for(const op of RAssignmentOpPool) {
 				const opOffset = op.str.length - 1
 				assertAst(
 					`Assign to 5`,

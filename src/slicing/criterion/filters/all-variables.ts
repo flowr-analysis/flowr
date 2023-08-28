@@ -54,7 +54,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 			const args = b.flatMap(b => b !== undefined ? b.flat() : [])
 			if(c.flavor === 'named') {
 				return c.functionName.content === 'library' ? args.slice(1) : args
-			} else {
+			} else{
 				return [...a, ...args]
 			}
 		},

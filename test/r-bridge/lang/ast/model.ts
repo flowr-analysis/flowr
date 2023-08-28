@@ -13,7 +13,7 @@ describe('Model specific tests', () => {
 			})
 		}
 		describe('one ranges always returns the same', () => {
-			for (const range of [
+			for(const range of [
 				rangeFrom(0, 0, 0, 0),
 				rangeFrom(1, 1, 1, 1),
 				rangeFrom(1, 1, 5, 2),
@@ -50,7 +50,7 @@ describe('Model specific tests', () => {
 			const a = rangeFrom(1, 2, 1, 2)
 			const b = rangeFrom(4, 2, 5, 9)
 			const c = rangeFrom(42, 3, 6, 6)
-			for (const perm of allPermutations([a, b, c])) {
+			for(const perm of allPermutations([a, b, c])) {
 				assertMerged(perm, rangeFrom(1, 2, 6, 6))
 			}
 		})

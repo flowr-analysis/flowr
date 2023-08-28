@@ -33,18 +33,18 @@ const shortLogicalSymbolQuery: Query = xpath.parse(`//SYMBOL[text() = 'T' or tex
 
 
 function classifyNumericConstants(numeric: string, existing: ValueInfo): 'allNumerics' | 'logical' | 'special-constants' {
-	if (numeric === 'TRUE' || numeric === 'FALSE') {
+	if(numeric === 'TRUE' || numeric === 'FALSE') {
 		return 'logical'
 	}
-	if (numeric === 'NA' || numeric === 'NaN' || numeric === 'NULL' || numeric === 'Inf' || numeric === '-Inf') {
+	if(numeric === 'NA' || numeric === 'NaN' || numeric === 'NULL' || numeric === 'Inf' || numeric === '-Inf') {
 		return 'special-constants'
 	}
 
-	if (numeric.includes('i')) {
+	if(numeric.includes('i')) {
 		existing.imaginaryNumbers++
-	} else if (numeric.endsWith('L')) {
+	} else if(numeric.endsWith('L')) {
 		existing.integers++
-	} else if (RNumHexFloatRegex.test(numeric)) {
+	} else if(RNumHexFloatRegex.test(numeric)) {
 		existing.floatHex++
 	}
 
@@ -64,12 +64,12 @@ export const values: Feature<ValueInfo> = {
 		const numbers: Node[] = []
 		numerics.map(n => [n, classifyNumericConstants(n.textContent ?? '<unknown>', existing)] as const)
 			.forEach(([n, type]) => {
-				switch (type) {
-					case 'allNumerics':
+				switch(type) {
+					case'allNumerics':
 						numbers.push(n); break
-					case 'logical':
+					case'logical':
 						specialLogicalSymbols.push(n); break
-					case 'special-constants':
+					case'special-constants':
 						specialConstants.push(n); break
 					default:
 						assertUnreachable(type)

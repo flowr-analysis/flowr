@@ -9,20 +9,20 @@ describe("Random", () => {
 			assert.equal(randomString(7, ["a"]), "aaaaaaa")
 		})
 		it("correct length", () => {
-			for (let stringLength = 0; stringLength < 50; stringLength++) {
-				for (let repetition = 0; repetition < 20; repetition++) {
+			for(let stringLength = 0; stringLength < 50; stringLength++) {
+				for(let repetition = 0; repetition < 20; repetition++) {
 					assert.equal(randomString(stringLength).length, stringLength)
 				}
 			}
 		})
 		it("only contain valid characters", () => {
-			for (const source of [
+			for(const source of [
 				ALPHABET,
 				ALPHABET.slice(0, 26),
 				["1", "2", "3", "x"],
 			]) {
-				for (let stringLength = 0; stringLength < 20; stringLength++) {
-					for (let repetition = 0; repetition < 5; repetition++) {
+				for(let stringLength = 0; stringLength < 20; stringLength++) {
+					for(let repetition = 0; repetition < 5; repetition++) {
 						[...randomString(stringLength, source)].forEach((char) => {
 							assert.include(source, char, `for length ${stringLength}`)
 						})
@@ -32,7 +32,7 @@ describe("Random", () => {
 		})
 		describe("guard against illegal arguments", () => {
 			it("negative", function() {
-				for (const length of [-Infinity, -42, -2, -1]) {
+				for(const length of [-Infinity, -42, -2, -1]) {
 					assert.throws(
 						() => randomString(length),
 						Error,
@@ -42,7 +42,7 @@ describe("Random", () => {
 				}
 			})
 			it("NaN and Infinity", function() {
-				for (const length of [Infinity, NaN]) {
+				for(const length of [Infinity, NaN]) {
 					assert.throws(
 						() => randomString(length),
 						Error,
@@ -52,7 +52,7 @@ describe("Random", () => {
 				}
 			})
 			it("Floating Point", function() {
-				for (const length of [2.3, 42.42, Math.PI]) {
+				for(const length of [2.3, 42.42, Math.PI]) {
 					assert.throws(
 						() => randomString(length),
 						Error,

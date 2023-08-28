@@ -13,10 +13,10 @@ describe("Ranges", () => {
 	describe("rangeFrom", () => {
 		it("correct arguments", () => {
 			const pool = [-1, 0, 1, 2, 99]
-			for (const startLine of pool) {
-				for (const startColumn of pool) {
-					for (const endLine of pool) {
-						for (const endColumn of pool) {
+			for(const startLine of pool) {
+				for(const startColumn of pool) {
+					for(const endLine of pool) {
+						for(const endColumn of pool) {
 							assert.deepStrictEqual(
 								rangeFrom(startLine, startColumn, endLine, endColumn),
 								{
@@ -57,7 +57,7 @@ describe("Ranges", () => {
 			expected: SourceRange,
 			...a: SourceRange[]
 		): void => {
-			for (const permutation of allPermutations(a)) {
+			for(const permutation of allPermutations(a)) {
 				assertMerged(expected, ...permutation)
 			}
 		}
@@ -65,7 +65,7 @@ describe("Ranges", () => {
 			assert.throws(() => mergeRanges(), Error, undefined, "no range to merge")
 		})
 		it("identical ranges", () => {
-			for (const range of [rangeFrom(1, 1, 1, 1), rangeFrom(1, 2, 3, 4)]) {
+			for(const range of [rangeFrom(1, 1, 1, 1), rangeFrom(1, 2, 3, 4)]) {
 				assertIndependentOfOrder(range, range, range)
 			}
 		})
@@ -124,7 +124,7 @@ describe("Ranges", () => {
 			})
 		}
 		describe("identical ranges", () => {
-			for (const sameRange of [rangeFrom(1, 1, 1, 1), rangeFrom(2, 1, 4, 7)]) {
+			for(const sameRange of [rangeFrom(1, 1, 1, 1), rangeFrom(2, 1, 4, 7)]) {
 				assertStarts(sameRange, sameRange, false)
 			}
 		})

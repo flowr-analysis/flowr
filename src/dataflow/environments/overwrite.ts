@@ -10,7 +10,7 @@ function anyIsMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
 		return true
 	}
 	let same = true
-	for (let i = 1; i < values.length; i++) {
+	for(let i = 1; i < values.length; i++) {
 		const used = values[i].used
 		if(used === 'maybe') {
 			return true
@@ -29,20 +29,20 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 	guard(base !== undefined && next !== undefined, 'can not overwrite environments with undefined')
 	guard(base.name === next.name, 'cannot overwrite environments with different names')
 	const map = new Map(base.memory)
-	for (const [key, values] of next.memory) {
+	for(const [key, values] of next.memory) {
 		const hasMaybe = anyIsMaybeGuardingSame(values)
 		if(hasMaybe) {
 			const old = map.get(key)
 			// we need to make a copy to avoid side effects for old reference in other environments
 			const updatedOld: IdentifierDefinition[] = old ?? []
-			for (const v of values) {
+			for(const v of values) {
 				const index = updatedOld.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)
 				if(index < 0) {
 					updatedOld.push(v)
 				}
 			}
 			map.set(key, [...updatedOld])
-		} else {
+		} else{
 			map.set(key, values)
 		}
 	}
@@ -50,7 +50,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 	let parent: IEnvironment | undefined
 	if(includeParent) {
 		parent = base.parent === undefined ? undefined : overwriteIEnvironmentWith(base.parent, next.parent)
-	} else {
+	} else{
 		parent = base.parent
 	}
 

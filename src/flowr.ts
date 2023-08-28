@@ -72,7 +72,7 @@ async function main() {
 		process.exit(0)
 	}
 
-	if (options.help) {
+	if(options.help) {
 		console.log(commandLineUsage(optionHelp))
 		process.exit(0)
 	}

@@ -41,11 +41,11 @@ describe('Objects', () => {
 		}
 		describe('objects only', () => {
 			describe('with empty', () => {
-				for (const empty of [null, undefined, {}] as Mergeable[]) {
+				for(const empty of [null, undefined, {}] as Mergeable[]) {
 					const emptyStr = JSON.stringify(empty)
 					describe(`using ${emptyStr}`, () => {
 						merged(empty, empty, empty, `two ${emptyStr} objects`)
-						for (const obj of [{ a: 1 }, { a: 1, b: 2 }, { a: 1, b: 2, c: { d: 3, e: 4 } }]) {
+						for(const obj of [{ a: 1 }, { a: 1, b: 2 }, { a: 1, b: 2, c: { d: 3, e: 4 } }]) {
 							describe(JSON.stringify(obj), () => {
 								merged(obj, empty, obj, 'obj with empty')
 								merged(empty, obj, obj, 'empty with obj')
@@ -73,11 +73,11 @@ describe('Objects', () => {
 		})
 		describe('arrays only', () => {
 			describe('with empty', () => {
-				for (const empty of [null, undefined, []] as Mergeable[]) {
+				for(const empty of [null, undefined, []] as Mergeable[]) {
 					const emptyStr = JSON.stringify(empty)
 					describe(`using ${emptyStr}`, () => {
 						merged(empty, empty, empty, `two ${emptyStr} arrays`)
-						for (const arr of [[1], [1, 2], [1, 2, 3]]) {
+						for(const arr of [[1], [1, 2], [1, 2, 3]]) {
 							describe(JSON.stringify(arr), () => {
 								merged(arr, empty, arr, 'arr with empty')
 								merged(empty, arr, arr, 'empty with arr')

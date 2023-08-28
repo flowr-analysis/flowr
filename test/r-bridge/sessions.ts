@@ -73,17 +73,17 @@ describe('RShell sessions', function() {
 		})
 		it('is installed', async() => {
 			// of course someone could remove the packages in that instant, but for testing it should be fine
-			for (const nameOfInstalledPackage of installed) {
+			for(const nameOfInstalledPackage of installed) {
 				const isInstalled = await shell.isPackageInstalled(nameOfInstalledPackage)
 				assert.isTrue(isInstalled, `package ${nameOfInstalledPackage} should be installed due to allInstalledPackages`)
 			}
 		})
 		it('is not installed', async() => {
 			let unknownPackageName: string
-			do {
+			do{
 				unknownPackageName = randomString(10)
 			}
-			while (installed.includes(unknownPackageName))
+			while(installed.includes(unknownPackageName))
 
 			const isInstalled = await shell.isPackageInstalled(unknownPackageName)
 			assert.isFalse(isInstalled, `package ${unknownPackageName} should not be installed`)
@@ -133,14 +133,14 @@ describe('RShell sessions', function() {
 })
 
 function installationTestSpec(): void {
-	for (const pkg of ['xmlparsedata', 'glue']) { // we use for instead of foreach to avoid index syntax issues
+	for(const pkg of ['xmlparsedata', 'glue']) { // we use for instead of foreach to avoid index syntax issues
 		testWithShell(`install ${pkg}`, async function(shell, test) {
 			isInstallTest(test)
 			await testRequiresNetworkConnection(test)
 			const pkgLoadInfo = await shell.ensurePackageInstalled(pkg, false, true)
 			assert.equal(pkgLoadInfo.packageName, pkg)
 			// clean up the temporary directory
-			if (pkgLoadInfo.libraryLocation !== undefined) {
+			if(pkgLoadInfo.libraryLocation !== undefined) {
 				fs.rmSync(pkgLoadInfo.libraryLocation, { recursive: true, force: true })
 			}
 		}).timeout('15min')

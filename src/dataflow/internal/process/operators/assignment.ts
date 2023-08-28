@@ -25,15 +25,15 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 	const isFunctionSide = swap ? op.lhs : op.rhs
 	const isFunction = isFunctionSide.type === Type.FunctionDefinition
 
-	for (const write of writeTargets) {
+	for(const write of writeTargets) {
 		nextGraph.setDefinitionOfVertex(write)
 
-		if (isFunction) {
+		if(isFunction) {
 			nextGraph.addEdge(write, isFunctionSide.info.id, EdgeType.DefinedBy, 'always', true)
-		} else {
+		} else{
 			const impactReadTargets = determineImpactOfSource(swap ? op.lhs : op.rhs, readTargets)
 
-			for (const read of impactReadTargets) {
+			for(const read of impactReadTargets) {
 				nextGraph.addEdge(write, read, EdgeType.DefinedBy, undefined, true)
 			}
 		}
@@ -63,19 +63,19 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
 	let global = false
 	let swap = false
 
-	switch (op.lexeme) {
-		case '<-':
-		case '=':
-		case ':=':
+	switch(op.lexeme) {
+		case'<-':
+		case'=':
+		case':=':
 			[target, source] = [lhs, rhs]
 			break
-		case '<<-':
+		case'<<-':
 			[target, source, global] = [lhs, rhs, true]
 			break
-		case '->':
+		case'->':
 			[target, source, swap] = [rhs, lhs, true]
 			break
-		case '->>':
+		case'->>':
 			[target, source, global, swap] = [rhs, lhs, true, true]
 			break
 		default:
@@ -157,7 +157,7 @@ function determineImpactOfSource<OtherInfo>(source: RNode<OtherInfo & ParentInfo
 	}
 	if(allIds.size === 0) {
 		return []
-	} else {
+	} else{
 		return readTargets.filter(ref => allIds.has(ref.nodeId))
 	}
 }

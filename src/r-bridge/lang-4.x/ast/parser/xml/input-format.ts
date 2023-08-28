@@ -41,15 +41,15 @@ export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, .
 	const keys = Object.keys(obj)
 
 	const check = (key: string): T => {
-		if (!keys.includes(key)) {
+		if(!keys.includes(key)) {
 			throw new XmlParseError(`expected obj to have key ${key}, yet received ${JSON.stringify(obj)}`)
 		}
 		return obj[key] as T
 	}
 
-	if (key.length === 1) {
+	if(key.length === 1) {
 		return check(key[0])
-	} else {
+	} else{
 		return key.reduce<Record<string, T>>((acc, key) => {
 			acc[key] = check(key)
 			return acc

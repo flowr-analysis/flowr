@@ -43,7 +43,7 @@ async function getQuads() {
 	for await (const request of allRFilesFrom(options.input, options.limit)) {
 		try {
 			await writeQuadForSingleFile(request, tokens, output)
-		} catch (e: unknown) {
+		} catch(e: unknown) {
 			log.error(`[Skipped] Error while processing ${request.content}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
 			skipped++
 		}

@@ -31,7 +31,7 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 	let operator: RAccess['operator']
 	let closingLength = 0
 
-	switch (accessOp.name) {
+	switch(accessOp.name) {
 		case Type.BracketLeft:
 			operator = '['
 			closingLength = 1
@@ -117,7 +117,7 @@ function parseAccessArgument(operator: RAccess['operator'], data: ParserData, el
 	if(operator === '@' || operator === '$') {
 		const parse = normalizeBasedOnType(data, elements)
 		return parse.length !== 1 ? undefined : parse[0]
-	} else {
+	} else{
 		return tryToNormalizeArgument(data, elements)
 	}
 }

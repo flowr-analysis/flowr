@@ -112,12 +112,12 @@ export class RShell {
 	}
 
 	private revive() {
-		if (this.options.revive === 'never') {
+		if(this.options.revive === 'never') {
 			return
 		}
 
 		this.session.onExit((code, signal) => {
-			if (this.options.revive === 'always' || (this.options.revive === 'on-error' && code !== 0)) {
+			if(this.options.revive === 'always' || (this.options.revive === 'on-error' && code !== 0)) {
 				this.log.warn(`R session exited with code ${code}, reviving!`)
 				this.options.onRevive(code, signal)
 				this.session = new RShellSession(this.options, this.log)
@@ -166,15 +166,15 @@ export class RShell {
 			includeInResult: config.keepPostamble // we do not want the postamble
 		}, config.timeout, () => {
 			this._sendCommand(command)
-			if (config.from === 'stderr') {
+			if(config.from === 'stderr') {
 				this._sendCommand(`cat("${config.postamble}${this.options.eol}", file=stderr())`)
-			} else {
+			} else{
 				this._sendCommand(`cat("${config.postamble}${this.options.eol}")`)
 			}
 		})
-		if (config.automaticallyTrimOutput) {
+		if(config.automaticallyTrimOutput) {
 			return output.map(line => line.trim())
-		} else {
+		} else{
 			return output
 		}
 	}
@@ -185,7 +185,7 @@ export class RShell {
    * @see sendCommand
    */
 	public sendCommands(...commands: string[]): void {
-		for (const element of commands) {
+		for(const element of commands) {
 			this.sendCommand(element)
 		}
 	}
@@ -246,9 +246,9 @@ export class RShell {
 		libraryLocation?:      string
 	}> {
 		const packageExistedAlready = await this.isPackageInstalled(packageName)
-		if (!force && packageExistedAlready) {
+		if(!force && packageExistedAlready) {
 			this.log.info(`package "${packageName}" is already installed`)
-			if (autoload) {
+			if(autoload) {
 				this.sendCommand(`library(${ts2r(packageName)})`)
 			}
 			return {
@@ -275,7 +275,7 @@ export class RShell {
 			// the else branch is a cheesy way to work even if the package is already installed!
 			this.sendCommand(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/", quiet=FALSE, lib=temp)`)
 		})
-		if (autoload) {
+		if(autoload) {
 			this.sendCommand(`library(${ts2r(packageName)}, lib.loc=${ts2r(tempdir)})`)
 		}
 		return {
@@ -361,13 +361,13 @@ class RShellSession {
 
 			handler = (data: string): void => {
 				const end = until.predicate(data)
-				if (!end || until.includeInResult) {
+				if(!end || until.includeInResult) {
 					result.push(data)
 				}
-				if (end) {
+				if(end) {
 					clearTimeout(this.collectionTimeout)
 					resolve(result)
-				} else if (timeout.resetOnNewData) {
+				} else if(timeout.resetOnNewData) {
 					clearTimeout(this.collectionTimeout)
 					this.collectionTimeout = makeTimer()
 				}
@@ -421,10 +421,10 @@ class RShellSession {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private on(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
 		const both = from === 'both'
-		if (both || from === 'stdout') {
+		if(both || from === 'stdout') {
 			this.sessionStdOut.on(event, listener)
 		}
-		if (both || from === 'stderr') {
+		if(both || from === 'stderr') {
 			this.sessionStdErr.on(event, listener)
 		}
 	}
@@ -432,10 +432,10 @@ class RShellSession {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private removeListener(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
 		const both = from === 'both'
-		if (both || from === 'stdout') {
+		if(both || from === 'stdout') {
 			this.sessionStdOut.removeListener(event, listener)
 		}
-		if (both || from === 'stderr') {
+		if(both || from === 'stderr') {
 			this.sessionStdErr.removeListener(event, listener)
 		}
 	}

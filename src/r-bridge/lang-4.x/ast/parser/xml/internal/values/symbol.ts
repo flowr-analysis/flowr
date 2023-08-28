@@ -34,7 +34,7 @@ export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]):
 		location    = meta.location
 		content     = meta.content
 		namespace   = retrieveMetaStructure(data.config, objs[0].content).content
-	} else {
+	} else{
 		return executeUnknownHook(data.hooks.values.onSymbol.unknown, data, objs)
 	}
 
@@ -52,7 +52,7 @@ export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]):
 				fullLexeme:       data.currentLexeme
 			}
 		}
-	} else {
+	} else{
 		result = {
 			type:    Type.Symbol,
 			namespace,

@@ -36,7 +36,7 @@ interface NormalizeSteppingSlicerInput<InterestedIn extends 'dataflow' | 'normal
 	tokenMap:       TokenMap
 }
 
-interface SliceSteppingSlicerInput<InterestedIn extends 'reconstruct' | 'slice' | 'decode criteria' | undefined> extends BaseSteppingSlicerInput<InterestedIn> {
+interface SliceSteppingSlicerInput<InterestedIn extends 'reconstruct' | 'slice' | undefined> extends BaseSteppingSlicerInput<InterestedIn> {
 	stepOfInterest?: InterestedIn
 	tokenMap:        TokenMap
 	criterion:       SlicingCriteria

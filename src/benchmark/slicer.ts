@@ -214,23 +214,23 @@ export class BenchmarkSlicer {
 
 		const totalStopwatch = measurements.start('total')
 
-		const decoded = await this.measureSliceStep('decode criteria', measurements, 'decode slicing criterion')
-
-		stats.slicingCriteria = decoded
-		if(benchmarkLogger.settings.minLevel >= LogLevel.info) {
-			benchmarkLogger.info(`mapped slicing criteria: ${decoded.map(c => {
-				const node = this.normalizedAst?.idMap.get(c.id)
-				return `\n-   id: ${c.id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`
-			}).join('')}`)
-		}
 
 		const slicedOutput = await this.measureSliceStep('slice', measurements, 'static slicing')
+		stats.slicingCriteria = slicedOutput.decodedCriteria
+
 		stats.reconstructedCode = await this.measureSliceStep('reconstruct', measurements, 'reconstruct code')
 
 		totalStopwatch.stop()
 
 		benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code}`)
 		const results = this.stepper.getResults(false)
+
+		if(benchmarkLogger.settings.minLevel >= LogLevel.info) {
+			benchmarkLogger.info(`mapped slicing criteria: ${slicedOutput.decodedCriteria.map(c => {
+				const node = results.normalize.idMap.get(c.id)
+				return `\n-   id: ${c.id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`
+			}).join('')}`)
+		}
 
 		// if it is not in the dataflow graph it was kept to be safe and should not count to the included nodes
 		stats.numberOfDataflowNodesSliced = [...slicedOutput.result].filter(id => results.dataflow.graph.hasNode(id, false)).length

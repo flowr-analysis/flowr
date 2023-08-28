@@ -8,13 +8,21 @@ import {
 	REnvironmentInformation
 } from '../../dataflow'
 import { guard } from '../../util/assert'
-import { collectAllIds, DecoratedAstMap, NodeId, RNodeWithParent, Type } from '../../r-bridge'
+import {
+	collectAllIds,
+	DecoratedAstMap,
+	NodeId,
+	NormalizedAst,
+	RNodeWithParent,
+	Type
+} from '../../r-bridge'
 import { log } from '../../util/log'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
 import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
 import objectHash from 'object-hash'
 import { DefaultMap } from '../../util/defaultmap'
 import { LocalScope } from '../../dataflow/environments/scopes'
+import { convertAllSlicingCriteriaToIds, DecodedCriteria, SlicingCriteria } from '../criterion'
 
 export const slicerLogger = log.getSubLogger({ name: "slicer" })
 
@@ -58,6 +66,10 @@ export interface SliceResult {
 	 * The ids of the nodes in the normalized ast that are part of the slice.
 	 */
 	result:            Set<NodeId>
+	/**
+	 * The mapping produced to decode the entered criteria
+	 */
+	decodedCriteria:   DecodedCriteria
 }
 
 class VisitingQueue {
@@ -97,7 +109,7 @@ class VisitingQueue {
 		return this.queue.length > 0
 	}
 
-	public status(): Readonly<SliceResult> {
+	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result'>> {
 		return {
 			timesHitThreshold: this.timesHitThreshold,
 			result:            new Set(this.seen.values())
@@ -111,17 +123,19 @@ class VisitingQueue {
  * <p>
  * The returned ids can be used to {@link reconstructToCode | reconstruct the slice to R code}.
  */
-export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowIdMap: DecoratedAstMap<OtherInfo>, startIds: NodeId[], threshold = 75): Readonly<SliceResult> {
-	guard(startIds.length > 0, `must have at least one seed id to calculate slice`)
-	slicerLogger.trace(`calculating slice for ${startIds.length} seed ids: ${startIds.join(', ')}`)
+export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
+	guard(criteria.length > 0, `must have at least one seed id to calculate slice`)
+	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, ast)
+	const idMap = ast.idMap
+	slicerLogger.trace(`calculating slice for ${decodedCriteria.length} seed ids: ${decodedCriteria.join(', ')}`)
 
 	const queue = new VisitingQueue(threshold)
 
 	// every node ships the call environment which registers the calling environment
 	{
 		const basePrint = envFingerprint(initializeCleanEnvironments())
-		for(const startId of startIds) {
-			queue.add(startId, initializeCleanEnvironments(), basePrint, false)
+		for(const startId of decodedCriteria) {
+			queue.add(startId.id, initializeCleanEnvironments(), basePrint, false)
 		}
 	}
 
@@ -145,11 +159,11 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
 
 		if(currentInfo[0].tag === 'function-call' && !current.onlyForSideEffects) {
 			slicerLogger.trace(`${current.id} is a function call`)
-			sliceForCall(current, dataflowIdMap, currentInfo[0], dataflowGraph, queue)
+			sliceForCall(current, idMap, currentInfo[0], dataflowGraph, queue)
 		}
 
-		const currentNode = dataflowIdMap.get(current.id)
-		guard(currentNode !== undefined, () => `id: ${current.id} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, dataflowIdMap)}`)
+		const currentNode = idMap.get(current.id)
+		guard(currentNode !== undefined, () => `id: ${current.id} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, idMap)}`)
 
 		for(const [target, edge] of currentInfo[1]) {
 			if(edge.types.has(EdgeType.SideEffectOnCall)) {
@@ -159,13 +173,13 @@ export function staticSlicing<OtherInfo>(dataflowGraph: DataflowGraph, dataflowI
 				queue.add(target, current.baseEnvironment, baseEnvFingerprint, false)
 			}
 		}
-		for(const controlFlowDependency of addControlDependencies(currentInfo[0].id, dataflowIdMap)) {
+		for(const controlFlowDependency of addControlDependencies(currentInfo[0].id, idMap)) {
 			queue.add(controlFlowDependency, current.baseEnvironment, baseEnvFingerprint, false)
 		}
 	}
 
 	// slicerLogger.trace(`static slicing produced: ${JSON.stringify([...seen])}`)
-	return queue.status()
+	return { ...queue.status(), decodedCriteria }
 }
 
 

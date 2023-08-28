@@ -14,7 +14,7 @@ import {
 	SubStepName, SubStepResult
 } from './steps'
 import { guard } from '../util/assert'
-import { DecodedCriteria, SliceResult, SlicingCriteria } from '../slicing'
+import { SliceResult, SlicingCriteria } from '../slicing'
 import { DeepPartial } from 'ts-essentials'
 import { SteppingSlicerInput } from './input'
 import { StepResults } from './output'
@@ -214,14 +214,10 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 				break
 			case 3:
 				guard(this.criterion !== undefined, 'Cannot decode criteria without a criterion')
-				step = guardStep('decode criteria')
-				result = executeSingleSubStep(step, this.criterion, this.results.normalize as NormalizedAst)
+				step = guardStep('slice')
+				result = executeSingleSubStep(step, (this.results.dataflow as DataflowInformation).graph, this.results.normalize as NormalizedAst, this.criterion)
 				break
 			case 4:
-				step = guardStep('slice')
-				result = executeSingleSubStep(step, (this.results.dataflow as DataflowInformation).graph, (this.results.normalize as NormalizedAst<NoInfo>).idMap, (this.results['decode criteria'] as DecodedCriteria).map(({id}) => id))
-				break
-			case 5:
 				step = guardStep('reconstruct')
 				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst<NoInfo>, (this.results.slice as SliceResult).result)
 				break
@@ -241,10 +237,9 @@ export class SteppingSlicer<InterestedIn extends SubStepName | undefined> {
 		guard(this.stepCounter >= SteppingSlicer.maximumNumberOfStepsPerFile , 'Cannot reset slice prior to once-per-slice stage')
 		this.criterion = newCriterion
 		this.stepCounter = SteppingSlicer.maximumNumberOfStepsPerFile
-		this.results['decode criteria'] = undefined
 		this.results.slice = undefined
 		this.results.reconstruct = undefined
-		if(this.stepOfInterest === 'decode criteria' || this.stepOfInterest === 'slice' || this.stepOfInterest === 'reconstruct') {
+		if(this.stepOfInterest === 'slice' || this.stepOfInterest === 'reconstruct') {
 			this.reachedWanted = false
 		}
 	}

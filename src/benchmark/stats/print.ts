@@ -99,7 +99,6 @@ Slicing summary for ${stats.perSliceMeasurements.numberOfSlices} slice${stats.pe
 	if(stats.perSliceMeasurements.numberOfSlices > 0) {
 		result += `
   Total:                      ${printSummarizedMeasurements(stats.perSliceMeasurements, 'total')}
-  Slice decoding:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'decode slicing criterion')}
   Slice creation:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'static slicing')}
   Reconstruction:             ${printSummarizedMeasurements(stats.perSliceMeasurements, 'reconstruct code')}
   Used Slice Criteria Sizes:  ${printCountSummarizedMeasurements(stats.perSliceMeasurements.sliceCriteriaSizes)}
@@ -144,7 +143,6 @@ Dataflow creation:            ${formatSummarizedTimeMeasure(stats.commonMeasurem
 
 Slice summary for:
   Total:                      ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('total'))}
-  Slice decoding:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('decode slicing criterion'))}
   Slice creation:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('static slicing'))}
   Reconstruction:             ${formatSummarizedTimeMeasure(stats.perSliceMeasurements.get('reconstruct code'))}
   Failed to Re-Parse:         ${pad(stats.failedToRepParse)}/${stats.totalSlices}

@@ -11,11 +11,10 @@ export type StepResults<InterestedIn extends SubStepName | undefined> = Interest
 		: StepResultsHelper<Exclude<InterestedIn, undefined>>
 
 type StepResultsHelper<InterestedIn extends SubStepName> = {
-	'parse':           Out<'parse'>
-	'normalize':       StepResults<'parse'> & Out<'normalize'>
-	'dataflow':        StepResults<'normalize'> & Out<'dataflow'>
-	'decode criteria': StepResults<'dataflow'> & Out<'decode criteria'>
-	'slice':           StepResults<'decode criteria'> & Out<'slice'>
-	'reconstruct':     StepResults<'slice'> & Out<'reconstruct'>
+	'parse':       Out<'parse'>
+	'normalize':   StepResults<'parse'> & Out<'normalize'>
+	'dataflow':    StepResults<'normalize'> & Out<'dataflow'>
+	'slice':       StepResults<'dataflow'> & Out<'slice'>
+	'reconstruct': StepResults<'slice'> & Out<'reconstruct'>
 }[InterestedIn]
 

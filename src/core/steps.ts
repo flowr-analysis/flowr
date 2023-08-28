@@ -19,13 +19,8 @@ import {
 	retrieveXmlFromRCode
 } from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
-import { convertAllSlicingCriteriaToIds, reconstructToCode, staticSlicing } from '../slicing'
+import { reconstructToCode, staticSlicing } from '../slicing'
 import { internalPrinter, ISubStepPrinter, StepOutputFormat } from './print/print'
-
-/**
- * The names of all main steps of the slicing process.
- */
-export const STEP_NAMES = ['parse', 'normalize', 'decorate', 'dataflow', 'slice', 'reconstruct'] as const
 
 export type StepFunction = (...args: never[]) => unknown
 
@@ -37,9 +32,6 @@ export type StepRequired = 'once-per-file' | 'once-per-slice'
  * Defines what is to be known of a single step in the slicing process.
  */
 export interface IStep<Fn extends StepFunction> extends MergeableRecord {
-	// TODO: remove
-	/** The step that this (sub-)step depends on */
-	step:        typeof STEP_NAMES[number],
 	/** Human-readable description of this (sub-)step */
 	description: string
 	/** The main processor that essentially performs the logic of this step */
@@ -84,15 +76,6 @@ export const STEPS_PER_FILE = {
 
 
 export const STEPS_PER_SLICE = {
-	'decode criteria': {
-		step:        'slice',
-		description: 'Decode the slicing criteria into a collection of node ids',
-		processor:   convertAllSlicingCriteriaToIds,
-		required:    'once-per-slice',
-		printer:     {
-			[StepOutputFormat.internal]: internalPrinter
-		}
-	} satisfies IStep<typeof convertAllSlicingCriteriaToIds> as IStep<typeof convertAllSlicingCriteriaToIds>,
 	'slice': {
 		step:        'slice',
 		description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',

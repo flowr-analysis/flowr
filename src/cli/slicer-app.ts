@@ -37,7 +37,7 @@ async function getSlice() {
 
 	let mappedSlices: { criterion: SingleSlicingCriterion, id: NodeId }[] = []
 	try {
-		const { stats: { reconstructedCode, slicingCriteria } } = slicer.slice(...slices as SlicingCriteria)
+		const { stats: { reconstructedCode, slicingCriteria } } = await slicer.slice(...slices as SlicingCriteria)
 		mappedSlices = slicingCriteria
 		if(options.output) {
 			console.log('Written reconstructed code to', options.output)

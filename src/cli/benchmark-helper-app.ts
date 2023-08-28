@@ -50,7 +50,7 @@ async function benchmark() {
 
 		// ${escape}1F${escape}1G${escape}2K for line reset
 		if(options.slice === 'all') {
-			const count = slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`[${options.input as string}] Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`))
+			const count = await slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`[${options.input as string}] Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`))
 			console.log(`[${options.input}] Completed Slicing`)
 			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`)
 		} else{

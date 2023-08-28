@@ -57,6 +57,49 @@
          "error",
          "never"
       ],
+      "keyword-spacing": "off",
+      "@typescript-eslint/keyword-spacing": [
+         "error",
+         {
+            "before": true,
+            "after": true,
+            "overrides": {
+                "if": {
+                    "after": false
+                },
+                "else": {
+                   "after": false
+                },
+                "for": {
+                    "after": false
+                },
+                "while": {
+                    "after": false
+                },
+                "do": {
+                    "after": false
+                },
+                "try": {
+                    "after": false
+                },
+                "catch": {
+                    "after": false
+                },
+                "switch": {
+                    "after": false
+                },
+                "case": {
+                   "after": false
+                },
+                "default": {
+                   "after": false
+                },
+                "throw": {
+                    "after": false
+                }
+            }
+         }
+      ],
       "@typescript-eslint/space-before-function-paren": [
          "error",
          "never"

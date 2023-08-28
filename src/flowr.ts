@@ -38,7 +38,7 @@ export interface FlowrCliOptions {
 
 export const optionHelp = [
 	{
-		header:  'flowR',
+		header:  `flowR (version ${String(version)})`,
 		content: 'A static dataflow analyzer and program slicer for R programs'
 	},
 	{

@@ -2,6 +2,7 @@
   "compilerOptions": {
     "incremental": true,
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "target": "ESNext",
     "module": "commonjs",
     "moduleResolution": "node",

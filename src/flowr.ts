@@ -14,6 +14,7 @@ import { repl } from './cli/repl/core'
 import { ScriptInformation, scripts } from './cli/common/scripts-info'
 import { waitOnScript } from './cli/repl'
 import { DeepReadonly } from 'ts-essentials'
+import { version } from '../package.json'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, {type}]) => type === 'master script'), ([k,]) => k).join(', ')
 
@@ -22,12 +23,14 @@ export const toolName = 'flowr'
 export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging (will be passed to the corresponding script)' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide (or the guide of the corresponding script)' },
+	{ name: 'version',      alias: 'V', type: Boolean, description: 'Provide information about the version of flowR as well as its underlying R system and exit.' },
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.'},
 	{ name: 'script',       alias: 's', type: String,  description: `The sub-script to run (${scriptsText})`, multiple: false, defaultOption: true, typeLabel: '{underline files}', defaultValue: undefined },
 ]
 
 export interface FlowrCliOptions {
 	verbose:   boolean
+	version:   boolean
 	help:      boolean
 	'no-ansi': boolean
 	script:    string | undefined
@@ -42,6 +45,7 @@ export const optionHelp = [
 		header:  'Synopsis',
 		content: [
 			`$ ${toolName} {bold --help}`,
+			`$ ${toolName} {bold --version}`,
 			`$ ${toolName} {bold slicer} {bold --help}`,
 		]
 	},
@@ -61,6 +65,11 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter)
 }
 
+async function printVersionInformation() {
+	console.log(`flowR: ${String(version)}`)
+}
+
+
 async function main() {
 	if(options.script) {
 		let target = (scripts as DeepReadonly<Record<string, ScriptInformation>>)[options.script].target as string | undefined
@@ -74,6 +83,11 @@ async function main() {
 
 	if(options.help) {
 		console.log(commandLineUsage(optionHelp))
+		process.exit(0)
+	}
+
+	if(options.version) {
+		await printVersionInformation()
 		process.exit(0)
 	}
 

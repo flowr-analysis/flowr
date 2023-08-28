@@ -10,9 +10,11 @@ export interface SlicerCliOptions {
 	verbose:   boolean
 	help:      boolean
 	input:     string | undefined
+	// TODO: can be empty to not provide steps?
 	criterion: string | undefined
 	output:    string | undefined
 	stats:     boolean
+	api:       boolean
 	// dataflow:  boolean
 }
 

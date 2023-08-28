@@ -41,10 +41,10 @@ export const slicerOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'input',        alias: 'i', type: String,  description: '(Required) Pass a single file to slice', multiple: false, defaultOption: true, typeLabel: '{underline files}' },
-	{ name: 'criterion',    alias: 'c', type: String,  description: '(Required) Slicing criterion either in the form {underline line:col} or {underline line@variable}, multiple can be separated by \'{bold ;}\'', multiple: false },
+	{ name: 'criterion',    alias: 'c', type: String,  description: '(Required) Slicing criterion either in the form {underline line:col} or {underline line@variable}, multiple can be separated by \'{bold ;}\'. If you do not want to slice but only process the file, pass an empty string.', multiple: false },
 	{ name: 'stats',        alias: 's', type: Boolean, description: `Print stats and write them to {italic <output>.stats} (runtimes etc.)`, multiple: false },
-	// { name: 'dataflow',     alias: 'd', type: Boolean, description: `Dump mermaid code for the dataflow to {italic <output>.dataflow}`, multiple: false },
 	{ name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to the commandline)', typeLabel: '{underline file}' },
+	{ name: 'api',                      type: Boolean, description: 'Instead of human-readable output, dump a lot of json with the results of all intermediate steps.' },
 ]
 
 
@@ -67,17 +67,5 @@ export const summarizerOptions: OptionDefinition[] = [
 	{ name: 'ultimate-only', alias: 'u', type: Boolean, description: 'Only perform the second summary-stage, with this, the input is used to find the summary-output.' },
 	{ name: 'input',         alias: 'i', type: String,  description: 'The {italic output.json} produced by the benchmark tool', defaultOption: true, multiple: false, typeLabel: '{underline file.json}' },
 	{ name: 'output',        alias: 'o', type: String,  description: `Basename of the summaries (defaults to {italic <input>-summary})`, typeLabel: '{underline file}' },
-]
-
-export const stepOutputFormats = ['text', 'json', 'mermaid', 'mermaid-url'] as const
-export const stepAllowedSteps = ['parse', 'normalize', 'dataflow', 'slice', 'reconstruct'] as const
-export const StepOptions: OptionDefinition[] = [
-	{ name: 'verbose',       alias: 'v', type: Boolean, description: 'Run with verbose logging' },
-	{ name: 'help',          alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'input',         alias: 'i', type: String,  description: 'The data to process. If it starts with \'file:\' it is to be a path to an existing R file. Otherwise, it will be parsed as an R expression.', defaultOption: true, multiple: false, typeLabel: '{underline file:example.R}' },
-	{ name: 'output',        alias: 'o', type: String,  description: 'File to write the output to (defaults to the commandline)', typeLabel: '{underline file.R}' },
-	{ name: 'format',        alias: 'f', type: String,  description: `The format to use for the output (choose from ${stepOutputFormats.join(', ')})`, defaultValue: 'text' },
-	{ name: 'step',          alias: 's', type: String,  description: `The step to output (${stepAllowedSteps.join(', ')}). You can pass multiple using a semicolon ';'. If you do, this always returns a json mapping the steps to what you want.` },
-	{ name: 'criterion',     alias: 'c', type: String,  description: 'The slicing criterion either in the form {underline line:col} or {underline line@variable}, multiple can be separated by \'{bold ;}\'. This is only required if you are interested in the slicing or dataflow step.', multiple: false },
 ]
 

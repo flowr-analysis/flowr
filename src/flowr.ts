@@ -14,6 +14,7 @@ import { repl, waitOnScript } from './cli/repl'
 import { ScriptInformation, scripts } from './cli/common'
 import { DeepReadonly } from 'ts-essentials'
 import { version } from '../package.json'
+import { printVersionInformation } from './cli/repl/commands/version'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, {type}]) => type === 'master script'), ([k,]) => k).join(', ')
 
@@ -62,14 +63,6 @@ log.info('running with options', options)
 if(options['no-ansi']) {
 	log.info('disabling ansi colors')
 	setFormatter(voidFormatter)
-}
-
-async function printVersionInformation() {
-	console.log(`flowR: ${String(version)}`)
-	const shell = new RShell()
-	process.on('exit', () => shell.close())
-	const rVersion = await shell.usedRVersion()
-	console.log(`R: ${rVersion?.format() ?? 'unknown'}`)
 }
 
 

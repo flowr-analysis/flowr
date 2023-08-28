@@ -1,10 +1,11 @@
 import { quitCommand } from './quit'
-import { scripts } from '../../common/scripts-info'
+import { scripts } from '../../common'
 import { waitOnScript } from '../execute'
 import { splitArguments } from '../../../util/args'
 import { ReplCommand } from './main'
 import { rawPrompt } from '../prompt'
 import { bold, italic } from '../../../statistics'
+import { versionCommand } from './version'
 
 export const helpCommand: ReplCommand = {
 	description:  'Show help information',
@@ -33,8 +34,9 @@ ${
 
 
 export const commands: Record<string, ReplCommand> = {
-	'help': helpCommand,
-	'quit': quitCommand
+	'help':    helpCommand,
+	'quit':    quitCommand,
+	'version': versionCommand
 }
 
 

@@ -8,7 +8,7 @@ import {
 	XmlParserHooks
 } from '../r-bridge'
 import {
-	doSubStep,
+	doSubStep, LAST_STEP,
 	StepRequired,
 	STEPS_PER_FILE,
 	STEPS_PER_SLICE,
@@ -23,14 +23,14 @@ import { SteppingSlicerInput } from './intput'
 import { StepResults } from './output'
 
 /**
- * This is ultimately the root representation of flowR's slicing procedure.
+ * This is ultimately the root of flowR's static slicing procedure.
  * It clearly defines the steps that are to be executed and splits them into two stages.
  * - `once-per-file`: for steps that are executed once per file. These can be performed *without* the knowledge of a slicing criteria,
  *   and they can be cached and re-used if you want to slice the same file multiple times.
  * - `once-per-slice`: for steps that are executed once per slice. These can only be performed *with* a slicing criteria.
  *
  * Furthermore, this stepper follows an iterable fashion to be *as flexible as possible* (e.g., to be instrumented with measurements).
- * So, you can essentially use the stepping slicer like this:
+ * So, you can use the stepping slicer like this:
  *
  * ```ts
  * const slicer = new SteppingSlicer({ ... })
@@ -43,15 +43,35 @@ import { StepResults } from './output'
  * while(slicer.hasNextStep()) {
  *     await slicer.nextStep()
  * }
+ *
+ * const result = slicer.getResults()
  * ```
  *
  * Of course, you might think, that this is rather overkill if you simply want to receive the slice of a given input source or in general
  * the result of any step. And this is true. Therefore, if you do not want to perform some kind of magic in-between steps, you can use the
- * {@link retrieveResultOfStep} function.
+ * **{@link allRemainingSteps}** function like this:
  *
- * Giving the steps of interest allows you to filter 1) the steps that are executed and 2) the results that are returned.
- * So, if you pass `['slice', 'reconstruct']` as the steps of interest, you will only receive the results of these two steps (however,
- * the stepping slicer *still* performs all previous steps as they are required to obtain the slice and its reconstruction).
+ * ```ts
+ * const slicer = new SteppingSlicer({ ... })
+ * const result = await slicer.allRemainingSteps()
+ * ```
+ *
+ * As the name suggest, you can combine this name with previous calls to {@link nextStep} to only execute the remaining steps.
+ *
+ * Giving the **step of interest** allows you to declare the maximum step to execute.
+ * So, if you pass `dataflow` as the step of interest, the stepping slicer will stop after the dataflow step.
+ * If you do not pass a step, the stepping slicer will execute all steps.
+ *
+ * By default, the {@link SteppingSlicer} does not offer an automatic way to repeat the per-slice steps for multiple slices (this is mostly to prevent accidental errors).
+ * However, you can use the **{@link updateCriterion}** function to reset the per-slice steps and re-execute them for a new slice. This allows something like the following:
+ *
+ * ```ts
+ * const slicer = new SteppingSlicer({ ... })
+ * const result = await slicer.allRemainingSteps()
+ *
+ * slicer.updateCriterion(...)
+ * const result2 = await slicer.allRemainingSteps()
+ * ```
  *
  * **Note:** Even though, using the stepping slicer introduces some performance overhead, we consider
  * it to be the baseline for performance benchmarking. It may very well be possible to squeeze out some more performance by
@@ -62,29 +82,30 @@ import { StepResults } from './output'
  * @see SteppingSlicer#doNextStep
  * @see SubStepName
  */
-export class SteppingSlicer<InterestedIn extends SubStepName[]> {
+export class SteppingSlicer<InterestedIn extends SubStepName> {
 	public readonly maximumNumberOfStepsPerFile = Object.keys(STEPS_PER_FILE).length
 	public readonly maximumNumberOfStepsPerSlice = Object.keys(STEPS_PER_SLICE).length
 
-	private readonly shell:           RShell
-	private readonly tokenMap?:       TokenMap
-	private readonly stepsOfInterest: Set<InterestedIn[number]>
-	private readonly request:         RParseRequest
-	private readonly criterion?:      SlicingCriteria
-	private readonly hooks?:          DeepPartial<XmlParserHooks>
+	private readonly shell:          RShell
+	private readonly tokenMap?:      TokenMap
+	private readonly stepOfInterest: InterestedIn
+	private readonly request:        RParseRequest
+	private readonly hooks?:         DeepPartial<XmlParserHooks>
+
+	private criterion?: SlicingCriteria
 
 	private results = {} as Record<string, unknown>
 
 	private stage: StepRequired = 'once-per-file'
 	private stepCounter = 0
-	private wantedCounter = 0
+	private reachedWanted = false
 
-	constructor(input: SteppingSlicerInput<InterestedIn> & { stepsOfInterest: InterestedIn }) {
+	constructor(input: SteppingSlicerInput<InterestedIn>) {
 		this.shell = input.shell
 		this.tokenMap = input.tokenMap
 		this.request = input.request
 		this.hooks = input.hooks
-		this.stepsOfInterest = new Set(input.stepsOfInterest)
+		this.stepOfInterest = input.stepOfInterest ?? LAST_STEP as InterestedIn
 		this.criterion = input.criterion
 	}
 
@@ -108,19 +129,19 @@ export class SteppingSlicer<InterestedIn extends SubStepName[]> {
 		this.stage = 'once-per-slice'
 	}
 
-	public getResults(): StepResults<InterestedIn[number]> {
-		guard(this.wantedCounter === this.stepsOfInterest.size, 'First we need to retrieve all desired steps')
-		return this.results as StepResults<InterestedIn[number]>
+	public getResults(): StepResults<InterestedIn> {
+		guard(this.reachedWanted, 'Before reading the results, we need to reach the step we are interested in')
+		return this.results as StepResults<InterestedIn>
 	}
 
 	/**
-	 * Returns true only if 1) there are more steps to-do for the current stage and 2) there are still steps of interest
+	 * Returns true only if 1) there are more steps to-do for the current stage and 2) we have not yet reached the step we are interested in
 	 */
 	public hasNextStep(): boolean {
 		return (this.stage === 'once-per-file' ?
 			this.stepCounter < this.maximumNumberOfStepsPerFile
 			: this.stepCounter < this.maximumNumberOfStepsPerSlice
-		) && this.wantedCounter < this.stepsOfInterest.size
+		) && !this.reachedWanted
 	}
 
 	/**
@@ -139,7 +160,7 @@ export class SteppingSlicer<InterestedIn extends SubStepName[]> {
 			(name: SubStepName) => name
 			:
 			(name: SubStepName): SubStepName => {
-				guard( expectedStepName === name, `Expected step ${expectedStepName} but got ${step}`)
+				guard(expectedStepName === name, `Expected step ${expectedStepName} but got ${step}`)
 				return name
 			}
 
@@ -147,11 +168,11 @@ export class SteppingSlicer<InterestedIn extends SubStepName[]> {
 
 		this.results[step] = result
 		this.stepCounter += 1
-		if(this.stepsOfInterest.has(step)) {
-			this.wantedCounter += 1
+		if (this.stepOfInterest === step) {
+			this.reachedWanted = true
 		}
 
-		return { name: step, result: result as Awaited<ReturnType<SubStepProcessor<typeof step>>>}
+		return { name: step, result: result as Awaited<ReturnType<SubStepProcessor<typeof step>>> }
 	}
 
 	private async doNextStep(guardStep: (name: SubStepName) => SubStepName) {
@@ -195,24 +216,41 @@ export class SteppingSlicer<InterestedIn extends SubStepName[]> {
 		}
 		return { step, result }
 	}
-}
 
-/**
- * Essentially a comfort variant of the {@link SteppingSlicer} which is used under the hood.
- * It performs all steps up to the given `step` and returns the corresponding result.
- * In other words, if you pass `'dataflow'` as the step, this returns the dataflow graph.
- *
- * @see SubStepName
- */
-export async function retrieveResultOfStep<GivenName extends SubStepName>(step: GivenName, input: SteppingSlicerInput<GivenName[]>): Promise<StepResults<typeof step>> {
-	const slicer = new SteppingSlicer({ ...input, stepsOfInterest: [step] })
-	// we do not have to check if the name is the desired one, as this is already done with it being the 'step(s) of interest'
-	while(slicer.hasNextStep()) {
-		await slicer.nextStep()
+	/**
+	 * This only makes sense if you have already sliced a file (e.g., by running up to the `slice` step) and want to do so again while caching the results.
+	 * Or if for whatever reason you did not pass a criterion with the constructor.
+	 *
+	 * @param newCriterion - the new slicing criterion to use for the next slice
+	 */
+	public updateCriterion(newCriterion: SlicingCriteria): void {
+		guard(this.stepCounter >= this.maximumNumberOfStepsPerFile , 'Cannot reset slice prior to once-per-slice stage')
+		this.criterion = newCriterion
+		this.stepCounter = this.maximumNumberOfStepsPerFile
+		this.results['decode criteria'] = undefined
+		this.results.slice = undefined
+		this.results.reconstruct = undefined
+		if(this.stepOfInterest === 'decode criteria' || this.stepOfInterest === 'slice' || this.stepOfInterest === 'reconstruct') {
+			this.reachedWanted = false
+		}
 	}
-	slicer.switchToSliceStage()
-	while(slicer.hasNextStep()) {
-		await slicer.nextStep()
+
+	/**
+	 * Execute all remaining steps and automatically call {@link switchToSliceStage} if necessary.
+	 * @param switchStage - if true, automatically switch to the slice stage if necessary
+	 * (i.e., this is what you want if you have never executed {@link nextStep} and you want to execute *all* steps).
+	 * However, passing false allows you to only execute the steps of the 'once-per-file' stage (i.e., the steps that can be cached).
+	 */
+	public async allRemainingSteps(switchStage = true): Promise<StepResults<InterestedIn>> {
+		while (this.hasNextStep()) {
+			await this.nextStep()
+		}
+		if(switchStage && this.stage === 'once-per-file') {
+			this.switchToSliceStage()
+			while (this.hasNextStep()) {
+				await this.nextStep()
+			}
+		}
+		return this.getResults()
 	}
-	return slicer.getResults()
 }

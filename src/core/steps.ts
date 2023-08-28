@@ -5,6 +5,7 @@
  * However, it is the {@link SteppingSlicer} which controls the order of execution and the steps required to achieve a given result.
  *
  * If you add a new step, you have to (at least) update the {@link SteppingSlicer} as well as the corresponding type predicate {@link SteppingSlicerInput}.
+ * Furthermore, if your step is the new *last* step, please update {@link LAST_STEP}.
  *
  * @module
  */
@@ -93,6 +94,7 @@ export const STEPS_PER_SLICE = {
 } as const
 
 export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const
+export const LAST_STEP: keyof typeof STEPS = 'reconstruct' as const
 
 export type SubStepName = keyof typeof STEPS
 export type SubStep<name extends SubStepName> = typeof STEPS[name]

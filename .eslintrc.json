@@ -67,9 +67,6 @@
                 "if": {
                     "after": false
                 },
-                "else": {
-                   "after": false
-                },
                 "for": {
                     "after": false
                 },
@@ -84,9 +81,6 @@
                 },
                 "switch": {
                     "after": false
-                },
-                "case": {
-                   "after": false
                 },
                 "default": {
                    "after": false

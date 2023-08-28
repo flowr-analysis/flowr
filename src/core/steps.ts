@@ -46,7 +46,6 @@ export interface IStep<Fn extends StepFunction> extends MergeableRecord {
 
 export const STEPS_PER_FILE = {
 	'parse': {
-		step:        'parse',
 		description: 'Parse the given R code into an AST',
 		processor:   retrieveXmlFromRCode,
 		required:    'once-per-file',
@@ -55,7 +54,6 @@ export const STEPS_PER_FILE = {
 		}
 	} satisfies IStep<typeof retrieveXmlFromRCode>,
 	'normalize': {
-		step:        'normalize',
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
 		processor:   normalize,
 		required:    'once-per-file',
@@ -64,7 +62,6 @@ export const STEPS_PER_FILE = {
 		}
 	} satisfies IStep<typeof normalize>,
 	'dataflow': {
-		step:        'dataflow',
 		description: 'Construct the dataflow graph',
 		processor:   produceDataFlowGraph,
 		required:    'once-per-file',
@@ -76,7 +73,6 @@ export const STEPS_PER_FILE = {
 
 export const STEPS_PER_SLICE = {
 	'slice': {
-		step:        'slice',
 		description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
 		processor:   staticSlicing,
 		required:    'once-per-slice',
@@ -85,7 +81,6 @@ export const STEPS_PER_SLICE = {
 		}
 	} satisfies IStep<typeof staticSlicing>,
 	'reconstruct': {
-		step:        'reconstruct',
 		description: 'Reconstruct R code from the static slice',
 		processor:   reconstructToCode,
 		required:    'once-per-slice',

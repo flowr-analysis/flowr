@@ -100,6 +100,9 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 	private stepCounter = 0
 	private reachedWanted = false
 
+	/**
+	 * Create a new stepping slicer. For more details onthe arguments please see {@link SteppingSlicerInput}.
+	 */
 	constructor(input: SteppingSlicerInput<InterestedIn>) {
 		this.shell = input.shell
 		this.tokenMap = input.tokenMap
@@ -129,6 +132,9 @@ export class SteppingSlicer<InterestedIn extends SubStepName> {
 		this.stage = 'once-per-slice'
 	}
 
+	/**
+	 * Returns the result of the step of interest, as well as the results of all steps before it.
+	 */
 	public getResults(): StepResults<InterestedIn> {
 		guard(this.reachedWanted, 'Before reading the results, we need to reach the step we are interested in')
 		return this.results as StepResults<InterestedIn>

@@ -22,7 +22,7 @@ import { reconstructToCode, SlicingCriteria, slicingCriterionToId, staticSlicing
 import { LocalScope } from '../../src/dataflow/environments/scopes'
 import { testRequiresRVersion } from './version'
 import { deepMergeObject, MergeableRecord } from '../../src/util/objects'
-import { retrieveResultOfStep } from '../../src/core/slicer'
+import { retrieveResultOfStep, SteppingSlicer } from '../../src/core/slicer'
 
 let defaultTokenMap: Record<string, string>
 
@@ -161,18 +161,24 @@ export function assertDataflow(name: string, shell: RShell, input: string, expec
 	it(`${name} (input: ${JSON.stringify(input)})`, async function() {
 		await ensureConfig(shell, this, userConfig)
 
-		const info = await retrieveResultOfStep('dataflow', {
-			request:  requestFromInput(input),
+		const info = await new SteppingSlicer({
+			stepOfInterest: 'dataflow',
+			request:        requestFromInput(input),
 			shell,
-			tokenMap: defaultTokenMap,
-			getId:    deterministicCountingIdGenerator(startIndexForDeterministicIds),
-		})
+			tokenMap:       defaultTokenMap,
+			getId:          deterministicCountingIdGenerator(startIndexForDeterministicIds),
+		}).allRemainingSteps()
 
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
-			assert.isTrue(expected.equals(graph))
+			assert.isTrue(expected.equals(info.dataflow.graph))
 		} catch (e) {
-			const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph}, decoratedAst.idMap, `%% ${input.replace(/\n/g, '\n%% ')}\n`)
+			const diff = diffGraphsToMermaidUrl(
+				{ label: 'expected', graph: expected },
+				{ label: 'got', graph: info.dataflow.graph},
+				info.decorate.idMap,
+				`%% ${input.replace(/\n/g, '\n%% ')}\n`
+			)
 			console.error('diff:\n', diff)
 			throw e
 		}

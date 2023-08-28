@@ -43,7 +43,8 @@ interface SliceSteppingSlicerInput<InterestedIn extends SubStepName | undefined>
 }
 
 /**
- * For a given set of steps of interest, this essentially (statically) determines the required inputs for the {@link SteppingSlicer}
+ * For a given set of steps of interest, this essentially (statically) determines the required inputs for the {@link SteppingSlicer}.
+ * All arguments are documented alongside {@link BaseSteppingSlicerInput}.
  */
 export type SteppingSlicerInput<InterestedIn extends SubStepName | undefined = undefined> =
 // we are interested in a step that requires the slicing criteria

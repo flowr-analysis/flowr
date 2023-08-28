@@ -43,8 +43,6 @@ interface ISubStep<Fn extends StepFunction> extends MergeableRecord {
 	required:    StepRequired
 }
 
-// TODO: update the benchmark slicer accordingly
-// TODO: allow to append a *formatter* that can produce text/mermaid etc. output from the result for each step
 export const STEPS_PER_FILE = {
 	'parse': {
 		step:        'parse',

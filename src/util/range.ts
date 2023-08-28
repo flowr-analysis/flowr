@@ -47,6 +47,25 @@ export function rangeStartsCompletelyBefore(r1: SourceRange, r2: SourceRange): b
 	return r1.end.line < r2.start.line || (r1.end.line === r2.start.line && r1.end.column < r2.start.column)
 }
 
+// TODO: test and document
+export function rangesOverlap(r1: SourceRange, r2: SourceRange): boolean {
+	return r1.start.line <= r2.end.line && r2.start.line <= r1.end.line && r1.start.column <= r2.end.column && r2.start.column <= r1.end.column
+}
+
 export function addRanges(r1: SourceRange, r2: SourceRange): SourceRange {
 	return rangeFrom(r1.start.line + r2.start.line, r1.start.column + r2.start.column, r1.end.line + r2.end.line, r1.end.column + r2.end.column)
+}
+
+// TODO: test and document sorts ascending
+export function rangeComparator(r1: SourceRange | undefined, r2: SourceRange | undefined): number {
+	if(r1 === undefined) {
+		return 1
+	} else if(r2 === undefined) {
+		return -1
+	} else if(r1.start.line === r2.start.line) {
+		return r1.start.column - r2.start.column
+		// TODO: eslint should make spaces after else and ?case?
+	} else{
+		return r1.start.line - r2.start.line
+	}
 }

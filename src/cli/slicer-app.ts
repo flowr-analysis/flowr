@@ -1,11 +1,12 @@
 import { log } from '../util/log'
 import fs from 'fs'
 import { guard } from '../util/assert'
-import { ReconstructionResult, SingleSlicingCriterion, SlicingCriteria } from '../slicing'
+import { ReconstructionResult, SingleSlicingCriterion, SliceResult, SlicingCriteria } from '../slicing'
 import { BenchmarkSlicer, stats2string, summarizeSlicerStats } from '../benchmark'
 import { NodeId } from '../r-bridge'
 import { processCommandLineArgs } from './common'
 import { jsonReplacer } from '../util/json'
+import { sliceDiffAnsi } from '../core/print/slice-diff-ansi'
 
 export interface SlicerCliOptions {
 	verbose:         boolean
@@ -13,6 +14,7 @@ export interface SlicerCliOptions {
 	input:           string | undefined
 	criterion:       string | undefined
 	output:          string | undefined
+	diff:            boolean
 	'input-is-text': boolean
 	stats:           boolean
 	api:             boolean
@@ -24,7 +26,7 @@ const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'cr
 	examples: [
 		'{bold -c} {italic "12@product"} {italic test/testfiles/example.R}',
 		// why double escaped :C
-		'{bold -c} {italic "3@a"} {bold -r} {italic "a <- 3\\\\nb <- 4\\\\nprint(a)"}',
+		'{bold -c} {italic "3@a"} {bold -r} {italic "a <- 3\\\\nb <- 4\\\\nprint(a)"} {bold --diff}',
 		'{bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}',
 		'{bold --help}'
 	]
@@ -41,19 +43,21 @@ async function getSlice() {
 	let reconstruct: ReconstructionResult | undefined = undefined
 
 	const doSlicing = options.criterion.trim() !== ''
+	let slice: SliceResult | undefined = undefined
 
 	if(doSlicing) {
 		const slices = options.criterion.split(';').map(c => c.trim())
 
 		try {
-			const { stats: { reconstructedCode, slicingCriteria } } = await slicer.slice(...slices as SlicingCriteria)
+			const { stats: { reconstructedCode, slicingCriteria }, slice: sliced } = await slicer.slice(...slices as SlicingCriteria)
+			slice = sliced
 			mappedSlices = slicingCriteria
 			reconstruct = reconstructedCode
 			if(options.output) {
 				console.log('Written reconstructed code to', options.output)
 				console.log(`Automatically selected ${reconstructedCode.autoSelected} statements`)
 				fs.writeFileSync(options.output, reconstructedCode.code)
-			} else if(!options.api) {
+			} else if(!options.api && !options.diff) {
 				console.log(reconstructedCode.code)
 			}
 		} catch(e: unknown) {
@@ -79,11 +83,17 @@ async function getSlice() {
 		}
 
 		console.log(JSON.stringify(output, jsonReplacer))
-	} else if(options.stats) {
-		console.log(sliceStatsAsString)
-		const filename = `${options.input}.stats`
-		console.log(`Writing stats for ${options.input} to "${filename}"`)
-		fs.writeFileSync(filename, sliceStatsAsString)
+	} else{
+		if(doSlicing && options.diff) {
+			const originalCode = options['input-is-text'] ? options.input : fs.readFileSync(options.input).toString()
+			console.log(sliceDiffAnsi((slice as SliceResult).result, normalize, new Set(mappedSlices.map(({id}) => id)), originalCode))
+		}
+		if(options.stats) {
+			console.log(sliceStatsAsString)
+			const filename = `${options.input}.stats`
+			console.log(`Writing stats for ${options.input} to "${filename}"`)
+			fs.writeFileSync(filename, sliceStatsAsString)
+		}
 	}
 }
 

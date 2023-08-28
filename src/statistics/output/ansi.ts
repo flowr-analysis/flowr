@@ -1,13 +1,14 @@
 
 // noinspection JSUnusedGlobalSymbols
-export enum FontStyles {
+export const enum FontStyles {
 	bold = 1,
 	faint = 2,
-	italic = 3
+	italic = 3,
+	underline = 4,
 }
 
 // noinspection JSUnusedGlobalSymbols
-export enum Colors {
+export const enum Colors {
 	black = 0,
 	red = 1,
 	green = 2,

@@ -47,8 +47,9 @@ export function rangeStartsCompletelyBefore(r1: SourceRange, r2: SourceRange): b
 	return r1.end.line < r2.start.line || (r1.end.line === r2.start.line && r1.end.column < r2.start.column)
 }
 
-// TODO: make linting separate in CI? so that full test etc does notdirectly depend on it?
-// TODO: test and document
+/**
+ * Checks if the two ranges overlap.
+ */
 export function rangesOverlap(r1: SourceRange, r2: SourceRange): boolean {
 	return r1.start.line <= r2.end.line && r2.start.line <= r1.end.line && r1.start.column <= r2.end.column && r2.start.column <= r1.end.column
 }

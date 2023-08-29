@@ -2,7 +2,7 @@ import { assert } from "chai"
 import {
 	addRanges,
 	mergeRanges, rangeCompare,
-	rangeFrom,
+	rangeFrom, rangesOverlap,
 	rangeStartsCompletelyBefore,
 	SourceRange
 } from '../../src/util/range'
@@ -44,7 +44,7 @@ describe("Ranges", () => {
 			}
 		})
 	})
-	describe("rangeComparator", () => {
+	describe("rangeCompare", () => {
 		function assertCompare(name: string, left: SourceRange, right: SourceRange, expected: number) {
 			it(name, () => {
 				assert.strictEqual(
@@ -63,6 +63,26 @@ describe("Ranges", () => {
 		assertCompare("identical ranges", rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 1), 0)
 		assertCompare("smaller start line", rangeFrom(1, 1, 1, 1), rangeFrom(2, 1, 2, 1), -1)
 		assertCompare("smaller start character", rangeFrom(1, 1, 1, 1), rangeFrom(1, 2, 1, 2), -1)
+	})
+	describe("rangesOverlap", () => {
+		function assertOverlap(name: string, left: SourceRange, right: SourceRange, expected: boolean) {
+			it(name, () => {
+				assert.strictEqual(
+					rangesOverlap(left, right),
+					expected,
+					`rangesOverlap(${JSON.stringify(left)}, ${JSON.stringify(right)})`
+				)
+				assert.strictEqual(
+					rangesOverlap(right, left), expected,
+					`rangesOverlap(${JSON.stringify(right)}, ${JSON.stringify(left)})`
+				)
+			})
+		}
+
+		assertOverlap("identical ranges", rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 1), true)
+		assertOverlap("overlapping end character", rangeFrom(1, 2, 1, 2), rangeFrom(1, 1, 1, 2), true)
+		assertOverlap("overlapping end line", rangeFrom(1, 1, 2, 1), rangeFrom(2, 1, 2, 2), true)
+		assertOverlap("not overlapping", rangeFrom(1, 1, 2, 1), rangeFrom(2, 2, 3, 1), false)
 	})
 	describe("mergeRanges", () => {
 		function assertMerged(expected: SourceRange, ...a: SourceRange[]) {

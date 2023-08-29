@@ -118,6 +118,7 @@ async function main() {
 
 	const tokenMap = await getStoredTokenMap(shell)
 
+	// TODO: allow multiple options with semicolon?
 	if(options.execute) {
 		await replProcessAnswer(options.execute, shell, tokenMap)
 	} else {

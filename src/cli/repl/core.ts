@@ -10,6 +10,7 @@ import { prompt } from './prompt'
 import { commandNames, getCommand } from './commands'
 import { ReadLineOptions } from 'node:readline'
 import { splitAtEscapeSensitive } from '../../util/args'
+import { executeRShellCommand } from './commands/execute'
 
 const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
 
@@ -39,15 +40,7 @@ async function replProcessStatement(statement: string, shell: RShell, tokenMap: 
 			console.log(`the command '${command}' is unknown, try ${bold(':help')} for more information`)
 		}
 	} else {
-		try {
-			const result = await shell.sendCommandWithOutput(statement, {
-				from:                    'both',
-				automaticallyTrimOutput: true
-			})
-			console.log(`${italic(result.join('\n'))}\n`)
-		} catch(e) {
-			console.error(`Error while executing '${statement}': ${(e as Error).message}`)
-		}
+		await executeRShellCommand(shell, statement)
 	}
 }
 

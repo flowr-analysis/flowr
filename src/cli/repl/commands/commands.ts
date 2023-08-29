@@ -7,6 +7,8 @@ import { rawPrompt } from '../prompt'
 import { bold, italic } from '../../../statistics'
 import { versionCommand } from './version'
 import { parseCommand } from './parse'
+import { guard } from '../../../util/assert'
+import { executeCommand } from './execute'
 
 function printHelpForScript(script: [string, ReplCommand]): string {
 	const base = `  ${bold(padCmd(':' + script[0]))}${script[1].description}`
@@ -33,11 +35,13 @@ ${
 	Array.from(Object.entries(commands)).filter(([, {script}]) => !script).map(
 		printHelpForScript).join('\n')
 }
+
 Furthermore, you can directly call the following scripts which accept arguments. If you are unsure, try to add ${italic('--help')} after the command.
 ${
 	Array.from(Object.entries(commands)).filter(([, {script}]) => script).map(
 		([command, { description }]) => `  ${bold(padCmd(':' + command))}${description}`).join('\n')
 }
+
 You can combine commands by separating them with a semicolon ${bold(';')}.
 `)
 	}
@@ -49,7 +53,8 @@ const commands: Record<string, ReplCommand> = {
 	'help':    helpCommand,
 	'quit':    quitCommand,
 	'version': versionCommand,
-	'parse':   parseCommand
+	'parse':   parseCommand,
+	'execute': executeCommand
 }
 
 for(const [script, { target, description, type}] of Object.entries(scripts)) {
@@ -75,8 +80,10 @@ export const commandNames: string[] = []
 const commandMapping: Record<string, string> = {}
 
 for(const [command, { aliases }] of Object.entries(commands)) {
+	guard(commandMapping[command] as string | undefined === undefined, `Command ${command} is already registered!`)
 	commandMapping[command] = command
 	for(const alias of aliases) {
+		guard(commandMapping[alias] as string | undefined === undefined, `Command (alias) ${alias} is already registered!`)
 		commandMapping[alias] = command
 	}
 	commandNames.push(command)

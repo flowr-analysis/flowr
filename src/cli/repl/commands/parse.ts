@@ -23,28 +23,25 @@ function toDepthMap(xml: XmlBasedJson, config: XmlParserConfig): DepthList {
 	const root = getKeysGuarded<XmlBasedJson>(xml, Type.ExpressionList)
 	const visit = [ { depth: 0, node: root } ]
 	const result: DepthList = []
+
 	while(visit.length > 0) {
 		const current = visit.pop()
 		if(current === undefined) {
 			continue
 		}
-		const children = current.node[config.childrenName] as XmlBasedJson[] | undefined
 
-		result.push({ ...current, leaf: children === undefined || children.length === 0 })
+		const children = current.node[config.childrenName] as XmlBasedJson[] | undefined ?? []
+		result.push({ ...current, leaf: children.length === 0 })
+		children.reverse()
 
-		if(children !== undefined) {
-			visit.push(...children.map(c => ({
-				depth: current.depth + 1,
-				node:  c
-			})))
-		}
+		const nextDepth = current.depth + 1
+
+		visit.push(...children.map(c => ({ depth: nextDepth, node: c })))
 	}
 	return result
 }
 
-const lineStyle = () => formatter.getFormatString({ style: FontStyles.faint })
-
-function lastElementInNesting(i: number, list: DepthList, depth: number): boolean {
+function lastElementInNesting(i: number, list: Readonly<DepthList>, depth: number): boolean {
 	for(let j = i + 1; j < list.length; j++) {
 		if(list[j].depth < depth) {
 			return true
@@ -57,16 +54,19 @@ function lastElementInNesting(i: number, list: DepthList, depth: number): boolea
 	return true
 }
 
-function depthListToAsciiArt(list: DepthList, config: XmlParserConfig): string {
+function depthListToAsciiArt(list: Readonly<DepthList>, config: XmlParserConfig): string {
 	let result = ''
+
+	const lineStyle = formatter.getFormatString({ style: FontStyles.faint })
+
 	const deadDepths = new Set<number>()
-	for(let i = 0; i < list.length; i++) {
+	let i = 0
+	for(const { depth, node, leaf } of list) {
 		const nextDepth = i + 1 < list.length ? list[i + 1].depth : 0
-		const { depth, node, leaf } = list[i]
 
 		deadDepths.delete(depth)
 
-		result += `${i === 0 ? '' : '\n'}${lineStyle()}`
+		result += `${i === 0 ? '' : '\n'}${lineStyle}`
 		// we know there never is something on the same level as the expression list
 		for(let d = 1; d < depth; d++) {
 			result += deadDepths.has(d) ? '  ' : '│ '
@@ -79,7 +79,11 @@ function depthListToAsciiArt(list: DepthList, config: XmlParserConfig): string {
 		let location = ''
 		if(locationRaw !== undefined) {
 			const extracted = extractLocation(locationRaw)
-			location = ` (${extracted.start.line}:${extracted.start.column}─${extracted.end.line}:${extracted.end.column})`
+			if(extracted.start.line === extracted.end.line && extracted.start.column === extracted.end.column) {
+				location = ` (${extracted.start.line}:${extracted.start.column})`
+			} else {
+				location = ` (${extracted.start.line}:${extracted.start.column}─${extracted.end.line}:${extracted.end.column})`
+			}
 		}
 
 		const type = getTokenType(config.tokenMap, node)
@@ -104,6 +108,7 @@ function depthListToAsciiArt(list: DepthList, config: XmlParserConfig): string {
 			result += formatter.format(type, { style: FontStyles.bold })
 		}
 
+		i ++
 	}
 	return result
 }

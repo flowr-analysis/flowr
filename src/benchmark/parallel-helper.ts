@@ -45,7 +45,7 @@ export class LimitBenchmarkPool {
 			promises.push(this.runNext())
 		}
 		await Promise.all(promises)
-		clearInterval(this.reportingInterval)
+		clearInterval(this.reportingInterval as NodeJS.Timeout)
 	}
 
 	public getStats(): { counter: number, skipped: Arguments[]} {

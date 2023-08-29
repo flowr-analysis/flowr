@@ -80,7 +80,7 @@ import { DataflowInformation } from '../dataflow/internal/info'
  * @see SteppingSlicer#doNextStep
  * @see StepName
  */
-export class SteppingSlicer<InterestedIn extends StepName | undefined> {
+export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof LAST_STEP> {
 	public static readonly maximumNumberOfStepsPerFile = Object.keys(STEPS_PER_FILE).length
 	public static readonly maximumNumberOfStepsPerSlice = SteppingSlicer.maximumNumberOfStepsPerFile + Object.keys(STEPS_PER_SLICE).length
 
@@ -244,7 +244,7 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined> {
 		}
 	}
 
-	public async allRemainingSteps(canSwitchStage: false): Promise<StepResults<InterestedIn extends keyof typeof STEPS_PER_SLICE | undefined ? typeof LAST_PER_FILE_STEP : InterestedIn>>
+	public async allRemainingSteps(canSwitchStage: false): Promise<Partial<StepResults<InterestedIn extends keyof typeof STEPS_PER_SLICE | undefined ? typeof LAST_PER_FILE_STEP : InterestedIn>>>
 	public async allRemainingSteps(canSwitchStage?: true): Promise<StepResults<InterestedIn>>
 	/**
 	 * Execute all remaining steps and automatically call {@link switchToSliceStage} if necessary.
@@ -258,7 +258,7 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined> {
 	 *       We could solve this type problem by separating the SteppingSlicer class into two for each stage, but this would break the improved readability and unified handling
 	 *       of the slicer that I wanted to achieve with this class.
 	 */
-	public async allRemainingSteps(canSwitchStage = true): Promise<StepResults<InterestedIn | typeof LAST_PER_FILE_STEP>> {
+	public async allRemainingSteps(canSwitchStage = true): Promise<StepResults<InterestedIn | typeof LAST_PER_FILE_STEP> | Partial<StepResults<InterestedIn | typeof LAST_PER_FILE_STEP>>> {
 		while(this.hasNextStep()) {
 			await this.nextStep()
 		}
@@ -268,6 +268,6 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined> {
 				await this.nextStep()
 			}
 		}
-		return this.getResults()
+		return this.reachedWanted ? this.getResults() : this.getResults(true)
 	}
 }

@@ -55,11 +55,37 @@ function lastElementInNesting(i: number, list: Readonly<DepthList>, depth: numbe
 }
 
 
-// TODO: separate ascii art printer with the depth map creation so we can reuse
+function initialIndentation(i: number, depth: number, deadDepths: Set<number>, nextDepth: number, list: Readonly<DepthList>): string {
+	let result = `${i === 0 ? '' : '\n'}${formatter.getFormatString({ style: FontStyles.faint })}`
+	// we know there never is something on the same level as the expression list
+	for(let d = 1; d < depth; d++) {
+		result += deadDepths.has(d) ? '  ' : '│ '
+	}
+
+	if(nextDepth < depth) {
+		result += `╰ `
+	} else if(i > 0) {
+		// check if we are maybe the last one with this depth until someone with a lower depth comes around
+		const isLast = lastElementInNesting(i, list, depth)
+		result += isLast ? '╰ ' : '├ '
+		if(isLast) {
+			deadDepths.add(depth)
+		}
+	}
+	return result
+}
+
+function retrieveLocationString(locationRaw: XmlBasedJson) {
+	const extracted = extractLocation(locationRaw)
+	if(extracted.start.line === extracted.end.line && extracted.start.column === extracted.end.column) {
+		return ` (${extracted.start.line}:${extracted.start.column})`
+	} else {
+		return ` (${extracted.start.line}:${extracted.start.column}─${extracted.end.line}:${extracted.end.column})`
+	}
+}
+
 function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig): string {
 	let result = ''
-
-	const lineStyle = formatter.getFormatString({ style: FontStyles.faint })
 
 	const deadDepths = new Set<number>()
 	let i = 0
@@ -67,38 +93,16 @@ function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig)
 		const nextDepth = i + 1 < list.length ? list[i + 1].depth : 0
 
 		deadDepths.delete(depth)
-
-		result += `${i === 0 ? '' : '\n'}${lineStyle}`
-		// we know there never is something on the same level as the expression list
-		for(let d = 1; d < depth; d++) {
-			result += deadDepths.has(d) ? '  ' : '│ '
-		}
-
-		if(nextDepth < depth) {
-			result += `╰ `
-		} else if(i > 0) {
-			// check if we are maybe the last one with this depth until someone with a lower depth comes around
-			const isLast = lastElementInNesting(i, list, depth)
-			result += isLast ? '╰ ' : '├ '
-			if(isLast) {
-				deadDepths.add(depth)
-			}
-		}
+		result += initialIndentation(i, depth, deadDepths, nextDepth, list)
 
 		result += formatter.reset()
 
-		// TODO: port this to the normal extraction so it does not fail?
 		const raw = objectWithArrUnwrap(node)
 		const content = raw[config.contentName] as string | undefined
 		const locationRaw = raw[config.attributeName] as XmlBasedJson | undefined
 		let location = ''
 		if(locationRaw !== undefined) {
-			const extracted = extractLocation(locationRaw)
-			if(extracted.start.line === extracted.end.line && extracted.start.column === extracted.end.column) {
-				location = ` (${extracted.start.line}:${extracted.start.column})`
-			} else {
-				location = ` (${extracted.start.line}:${extracted.start.column}─${extracted.end.line}:${extracted.end.column})`
-			}
+			location = retrieveLocationString(locationRaw)
 		}
 
 		const type = getTokenType(config.tokenMap, node)

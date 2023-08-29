@@ -9,6 +9,7 @@ import { versionCommand } from './version'
 import { parseCommand } from './parse'
 import { guard } from '../../../util/assert'
 import { executeCommand } from './execute'
+import { normalizeCommand, normalizeStarCommand } from './normalize'
 
 function printHelpForScript(script: [string, ReplCommand]): string {
 	const base = `  ${bold(padCmd(':' + script[0]))}${script[1].description}`
@@ -50,11 +51,13 @@ You can combine commands by separating them with a semicolon ${bold(';')}.
 
 
 const commands: Record<string, ReplCommand> = {
-	'help':    helpCommand,
-	'quit':    quitCommand,
-	'version': versionCommand,
-	'parse':   parseCommand,
-	'execute': executeCommand
+	'help':       helpCommand,
+	'quit':       quitCommand,
+	'version':    versionCommand,
+	'execute':    executeCommand,
+	'parse':      parseCommand,
+	'normalize':  normalizeCommand,
+	'normalize*': normalizeStarCommand
 }
 
 for(const [script, { target, description, type}] of Object.entries(scripts)) {

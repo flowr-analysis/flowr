@@ -227,7 +227,7 @@ export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDif
 	return mermaidCodeToUrl(diffGraphsToMermaid(left, right, dataflowIdMap, prefix))
 }
 
-export function normalizedAstToMermaid(ast: RNodeWithParent, prefix: string): string {
+export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = ''): string {
 	let output = prefix + 'flowchart TD\n'
 	visit(ast, (n, context) => {
 		const name = `${mapTypeToNormalizedName(n.type)} (${n.info.id})\\n${n.lexeme ?? ' '}`

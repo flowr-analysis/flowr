@@ -54,7 +54,10 @@ function lastElementInNesting(i: number, list: Readonly<DepthList>, depth: numbe
 	return true
 }
 
-function depthListToAsciiArt(list: Readonly<DepthList>, config: XmlParserConfig): string {
+
+// TODO: separate ascii art printer with the depth map creation so we can reuse
+// TODO: add mermaid link?
+function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig): string {
 	let result = ''
 
 	const lineStyle = formatter.getFormatString({ style: FontStyles.faint })
@@ -73,11 +76,11 @@ function depthListToAsciiArt(list: Readonly<DepthList>, config: XmlParserConfig)
 		}
 
 		if(nextDepth < depth) {
-			result += `└ `
+			result += `╰ `
 		} else if(i > 0) {
 			// check if we are maybe the last one with this depth until someone with a lower depth comes around
 			const isLast = lastElementInNesting(i, list, depth)
-			result += isLast ? '└ ' : '├ '
+			result += isLast ? '╰ ' : '├ '
 			if(isLast) {
 				deadDepths.add(depth)
 			}
@@ -129,6 +132,6 @@ export const parseCommand: ReplCommand = {
 		const config = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap })
 		const object = await xlm2jsonObject(config, result.parse)
 
-		console.log(depthListToAsciiArt(toDepthMap(object, config), config))
+		console.log(depthListToTextTree(toDepthMap(object, config), config))
 	}
 }

@@ -10,6 +10,7 @@ import { parseCommand } from './parse'
 import { guard } from '../../../util/assert'
 import { executeCommand } from './execute'
 import { normalizeCommand, normalizeStarCommand } from './normalize'
+import { dataflowCommand, dataflowStarCommand } from './dataflow'
 
 function printHelpForScript(script: [string, ReplCommand]): string {
 	const base = `  ${bold(padCmd(':' + script[0]))}${script[1].description}`
@@ -57,7 +58,9 @@ const commands: Record<string, ReplCommand> = {
 	'execute':    executeCommand,
 	'parse':      parseCommand,
 	'normalize':  normalizeCommand,
-	'normalize*': normalizeStarCommand
+	'normalize*': normalizeStarCommand,
+	'dataflow':   dataflowCommand,
+	'dataflow*':  dataflowStarCommand
 }
 
 for(const [script, { target, description, type}] of Object.entries(scripts)) {

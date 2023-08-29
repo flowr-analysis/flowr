@@ -2,7 +2,7 @@ import { MergeableRecord } from '../util/objects'
 import { IdGenerator, NoInfo, RParseRequest, RShell, TokenMap, XmlParserHooks } from '../r-bridge'
 import { DeepPartial } from 'ts-essentials'
 import { AutoSelectPredicate, SlicingCriteria } from '../slicing'
-import { STEPS_PER_SLICE, StepName } from './steps'
+import { STEPS_PER_SLICE, StepName, STEPS_PER_FILE } from './steps'
 
 /**
  * We split the types, as if you are only interested in what can be done per-file, you do not need a slicing criterion.
@@ -48,5 +48,5 @@ interface SliceSteppingSlicerInput<InterestedIn extends 'reconstruct' | 'slice' 
  */
 export type SteppingSlicerInput<InterestedIn extends StepName | undefined = undefined> =
 		InterestedIn extends keyof typeof STEPS_PER_SLICE | undefined ? SliceSteppingSlicerInput<InterestedIn> :
-			InterestedIn extends 'dataflow' | 'decorate' | 'normalize ast' ? NormalizeSteppingSlicerInput<InterestedIn> :
+			InterestedIn extends Exclude<keyof typeof STEPS_PER_FILE, 'parse'> ? NormalizeSteppingSlicerInput<InterestedIn> :
 				BaseSteppingSlicerInput<InterestedIn>

@@ -8,6 +8,8 @@ import readline from 'readline/promises'
 import { bold, italic } from '../../statistics'
 import { prompt } from './prompt'
 import { commands, ReplCommand } from './commands'
+import { ReadLineOptions } from 'node:readline'
+import { DeepReadonly } from 'ts-essentials'
 
 
 
@@ -21,6 +23,38 @@ export function replCompleter(line: string): [string[], string] {
 	return [replCompleterKeywords.filter(k => k.startsWith(line)), line]
 }
 
+export const DEFAULT_REPL_READLINE_CONFIGURATION: ReadLineOptions = {
+	input:                   process.stdin,
+	output:                  process.stdout,
+	tabSize:                 4,
+	terminal:                true,
+	removeHistoryDuplicates: true,
+	completer:               replCompleter
+}
+
+// TODO: allow to capture and post-process the output for testing?
+export async function replProcessAnswer(answer: string, shell: RShell, tokenMap: TokenMap): Promise<void> {
+	if(answer.startsWith(':')) {
+		const command = answer.slice(1).split(' ')[0].toLowerCase()
+		const processor = commands[command] as (ReplCommand | undefined)
+		if(processor) {
+			await processor.fn(shell, tokenMap, answer.slice(command.length + 2).trim())
+		} else {
+			console.log(`the command '${command}' is unknown, try ${bold(':help')} for more information`)
+		}
+	} else {
+		try {
+			const result = await shell.sendCommandWithOutput(answer, {
+				from:                    'both',
+				automaticallyTrimOutput: true
+			})
+			console.log(`${italic(result.join('\n'))}\n`)
+		} catch(e) {
+			console.error(`Error while executing '${answer}': ${(e as Error).message}`)
+		}
+	}
+}
+
 /**
  * Provides a never-ending repl (read-evaluate-print loop) processor that can be used to interact with a {@link RShell} as well as all flowR scripts.
  *
@@ -32,15 +66,10 @@ export function replCompleter(line: string): [string[], string] {
  * @param tokenMap  - The pre-retrieved token map, if you pass none, it will be retrieved automatically (using the default {@link getStoredTokenMap}).
  * @param rl        - A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with `console.log`.
  *                    If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
+ *                    For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}.
+ *
  */
-export async function repl(shell = new RShell({ revive: 'always' }), tokenMap?: TokenMap, rl = readline.createInterface({
-	input:                   process.stdin,
-	output:                  process.stdout,
-	tabSize:                 4,
-	terminal:                true,
-	removeHistoryDuplicates: true,
-	completer:               replCompleter
-})) {
+export async function repl(shell = new RShell({ revive: 'always' }), tokenMap?: TokenMap, rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION)) {
 
 	tokenMap ??= await getStoredTokenMap(shell)
 
@@ -49,24 +78,6 @@ export async function repl(shell = new RShell({ revive: 'always' }), tokenMap?: 
 	while(true) {
 		const answer: string = await rl.question(prompt())
 
-		if(answer.startsWith(':')) {
-			const command = answer.slice(1).split(' ')[0].toLowerCase()
-			const processor = commands[command] as (ReplCommand | undefined)
-			if(processor) {
-				await processor.fn(shell, tokenMap, answer.slice(command.length + 2).trim())
-			} else {
-				console.log(`the command '${command}' is unknown, try ${bold(':help')} for more information`)
-			}
-		} else {
-			try {
-				const result = await shell.sendCommandWithOutput(answer, {
-					from:                    'both',
-					automaticallyTrimOutput: true
-				})
-				console.log(`${italic(result.join('\n'))}\n`)
-			} catch(e) {
-				console.error(`Error while executing '${answer}': ${(e as Error).message}`)
-			}
-		}
+		await replProcessAnswer(answer, shell, tokenMap)
 	}
 }

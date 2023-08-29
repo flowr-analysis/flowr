@@ -5,12 +5,12 @@
  * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
  */
 import { log, LogLevel } from './util/log'
-import { RShell } from './r-bridge'
+import { getStoredTokenMap, RShell } from './r-bridge'
 import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import commandLineArgs from 'command-line-args'
 import { guard } from './util/assert'
 import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from './statistics'
-import { repl, waitOnScript } from './cli/repl'
+import { repl, replProcessAnswer, waitOnScript } from './cli/repl'
 import { ScriptInformation, scripts } from './cli/common'
 import { DeepReadonly } from 'ts-essentials'
 import { version } from '../package.json'
@@ -24,6 +24,7 @@ export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging (will be passed to the corresponding script)' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide (or the guide of the corresponding script)' },
 	{ name: 'version',      alias: 'V', type: Boolean, description: 'Provide information about the version of flowR as well as its underlying R system and exit.' },
+	{ name: 'execute',      alias: 'e', type: String,  description: 'Execute the given command and exit.', typeLabel: '{underline command}', multiple: false },
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.'},
 	{ name: 'script',       alias: 's', type: String,  description: `The sub-script to run (${scriptsText})`, multiple: false, defaultOption: true, typeLabel: '{underline files}', defaultValue: undefined },
 ]
@@ -33,6 +34,7 @@ export interface FlowrCliOptions {
 	version:   boolean
 	help:      boolean
 	'no-ansi': boolean
+	execute:   string | undefined
 	script:    string | undefined
 }
 
@@ -46,6 +48,7 @@ export const optionHelp = [
 		content: [
 			`$ ${toolName} {bold --help}`,
 			`$ ${toolName} {bold --version}`,
+			`$ ${toolName} {bold --execute} {italic ":parse 2 - 4"}`,
 			`$ ${toolName} {bold slicer} {bold --help}`,
 		]
 	},
@@ -101,7 +104,9 @@ async function main() {
 	shell.tryToInjectHomeLibPath()
 
 	const end = () => {
-		console.log(`\n${italic('Exiting...')}`)
+		if(options.execute === undefined) {
+			console.log(`\n${italic('Exiting...')}`)
+		}
 		shell.close()
 		process.exit(0)
 	}
@@ -109,8 +114,16 @@ async function main() {
 	// hook some handlers
 	process.on('SIGINT', end)
 	process.on('SIGTERM', end)
+	process.on('exit', end)
 
-	await repl(shell)
+	const tokenMap = await getStoredTokenMap(shell)
+
+	if(options.execute) {
+		await replProcessAnswer(options.execute, shell, tokenMap)
+	} else {
+		await repl(shell, tokenMap)
+	}
+	process.exit(0)
 }
 
 void main()

@@ -7,14 +7,13 @@ import { getStoredTokenMap, RShell, TokenMap } from '../../r-bridge'
 import readline from 'readline/promises'
 import { bold, italic } from '../../statistics'
 import { prompt } from './prompt'
-import { commands, ReplCommand } from './commands'
+import { commandNames, getCommand } from './commands'
 import { ReadLineOptions } from 'node:readline'
-import { DeepReadonly } from 'ts-essentials'
 
 
 
 
-const replCompleterKeywords = Array.from(Object.keys(commands), s => `:${s}`)
+const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
 
 /**
  * Used by the repl to provide automatic completions for a given (partial) input line
@@ -36,7 +35,7 @@ export const DEFAULT_REPL_READLINE_CONFIGURATION: ReadLineOptions = {
 export async function replProcessAnswer(answer: string, shell: RShell, tokenMap: TokenMap): Promise<void> {
 	if(answer.startsWith(':')) {
 		const command = answer.slice(1).split(' ')[0].toLowerCase()
-		const processor = commands[command] as (ReplCommand | undefined)
+		const processor = getCommand(command)
 		if(processor) {
 			await processor.fn(shell, tokenMap, answer.slice(command.length + 2).trim())
 		} else {

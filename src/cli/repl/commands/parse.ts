@@ -72,6 +72,19 @@ function depthListToAsciiArt(list: Readonly<DepthList>, config: XmlParserConfig)
 			result += deadDepths.has(d) ? '  ' : '│ '
 		}
 
+		if(nextDepth < depth) {
+			result += `└ `
+		} else if(i > 0) {
+			// check if we are maybe the last one with this depth until someone with a lower depth comes around
+			const isLast = lastElementInNesting(i, list, depth)
+			result += isLast ? '└ ' : '├ '
+			if(isLast) {
+				deadDepths.add(depth)
+			}
+		}
+
+		result += formatter.reset()
+
 		// TODO: port this to the normal extraction so it does not fail?
 		const raw = objectWithArrUnwrap(node)
 		const content = raw[config.contentName] as string | undefined
@@ -88,19 +101,6 @@ function depthListToAsciiArt(list: Readonly<DepthList>, config: XmlParserConfig)
 
 		const type = getTokenType(config.tokenMap, node)
 
-		if(nextDepth < depth) {
-			result += `└ `
-		} else if(i > 0) {
-			// check if we are maybe the last one with this depth until someone with a lower depth comes around
-			const isLast = lastElementInNesting(i, list, depth)
-			result += isLast ? '└ ' : '├ '
-			if(isLast) {
-				deadDepths.add(depth)
-			}
-		}
-
-		result += formatter.reset()
-
 		if(leaf) {
 			const suffix = `${formatter.format(content ? JSON.stringify(content) : '', { style: FontStyles.bold })}${formatter.format(location, { style: FontStyles.italic })}`
 			result += `${type} ${suffix}`
@@ -114,10 +114,10 @@ function depthListToAsciiArt(list: Readonly<DepthList>, config: XmlParserConfig)
 }
 
 
-// TODO: aliasses
 export const parseCommand: ReplCommand = {
 	description:  'Prints ASCII Art of the parsed, unmodified AST. Start with \'file://\' to indicate a file path',
 	usageExample: ':parse',
+	aliases:      [ 'p' ],
 	script:       false,
 	fn:           async(shell, tokenMap, remainingLine) => {
 		const result = await new SteppingSlicer({

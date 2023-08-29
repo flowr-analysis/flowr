@@ -15,6 +15,7 @@ export async function printVersionInformation(shell?: RShell) {
 
 export const versionCommand: ReplCommand = {
 	description:  'Prints the version of flowR as well as the current version of R',
+	aliases:      [],
 	usageExample: ':version',
 	script:       false,
 	fn:           shell => printVersionInformation(shell)

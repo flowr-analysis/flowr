@@ -114,7 +114,6 @@ async function main() {
 	// hook some handlers
 	process.on('SIGINT', end)
 	process.on('SIGTERM', end)
-	process.on('exit', end)
 
 	const tokenMap = await getStoredTokenMap(shell)
 

@@ -38,11 +38,21 @@ export interface WeightFormatOptions {
 
 export interface OutputFormatter {
 	format(input: string, options?: FormatOptions): string
+	getFormatString(options?: FormatOptions): string
+	reset(): string
 }
 
 export const voidFormatter: OutputFormatter = new class implements OutputFormatter {
 	public format(input: string): string {
 		return input
+	}
+
+	public getFormatString(_options?: FormatOptions): string {
+		return ''
+	}
+
+	public reset(): string {
+		return ''
 	}
 }
 

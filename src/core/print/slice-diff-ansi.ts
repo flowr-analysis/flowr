@@ -1,5 +1,5 @@
 import { NodeId, NormalizedAst } from '../../r-bridge'
-import { mergeRanges, rangeComparator, rangesOverlap, SourceRange } from '../../util/range'
+import { mergeRanges, rangeCompare, rangesOverlap, SourceRange } from '../../util/range'
 import { isNotUndefined } from '../../util/assert'
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../statistics'
 
@@ -36,7 +36,7 @@ export function sliceDiffAnsi(slice: Set<NodeId>, normalized: NormalizedAst, cri
 	}
 
 	// we sort all locations from back to front so that replacements do not screw up the indices
-	importantLocations.sort((a, b) => -rangeComparator(a.location, b.location))
+	importantLocations.sort((a, b) => -rangeCompare(a.location, b.location))
 
 	// we need to merge all ranges that overlap, otherwise even reversed traversal can still crew us up
 	importantLocations = mergeJointRangesInSorted(importantLocations)

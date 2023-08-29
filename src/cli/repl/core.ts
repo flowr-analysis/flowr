@@ -44,7 +44,6 @@ async function replProcessStatement(statement: string, shell: RShell, tokenMap: 
 	}
 }
 
-// TODO: allow to capture and post-process the output for testing?
 export async function replProcessAnswer(answer: string, shell: RShell, tokenMap: TokenMap): Promise<void> {
 
 	const statements = splitAtEscapeSensitive(answer, ';')

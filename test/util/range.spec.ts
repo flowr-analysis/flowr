@@ -1,11 +1,11 @@
 import { assert } from "chai"
 import {
 	addRanges,
-	mergeRanges,
+	mergeRanges, rangeCompare,
 	rangeFrom,
 	rangeStartsCompletelyBefore,
-	SourceRange,
-} from "../../src/util/range"
+	SourceRange
+} from '../../src/util/range'
 import { allPermutations } from "../../src/util/arrays"
 import { formatRange } from '../../src/dataflow'
 
@@ -43,6 +43,26 @@ describe("Ranges", () => {
 				}
 			}
 		})
+	})
+	describe("rangeComparator", () => {
+		function assertCompare(name: string, left: SourceRange, right: SourceRange, expected: number) {
+			it(name, () => {
+				assert.strictEqual(
+					rangeCompare(left, right),
+					expected,
+					`rangeCompare(${JSON.stringify(left)}, ${JSON.stringify(right)})`
+				)
+				assert.strictEqual(
+					rangeCompare(right, left),
+					-expected,
+					`rangeCompare(${JSON.stringify(right)}, ${JSON.stringify(left)})`
+				)
+			})
+		}
+
+		assertCompare("identical ranges", rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 1), 0)
+		assertCompare("smaller start line", rangeFrom(1, 1, 1, 1), rangeFrom(2, 1, 2, 1), -1)
+		assertCompare("smaller start character", rangeFrom(1, 1, 1, 1), rangeFrom(1, 2, 1, 2), -1)
 	})
 	describe("mergeRanges", () => {
 		function assertMerged(expected: SourceRange, ...a: SourceRange[]) {

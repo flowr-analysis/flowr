@@ -56,7 +56,6 @@ function lastElementInNesting(i: number, list: Readonly<DepthList>, depth: numbe
 
 
 // TODO: separate ascii art printer with the depth map creation so we can reuse
-// TODO: add mermaid link?
 function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig): string {
 	let result = ''
 

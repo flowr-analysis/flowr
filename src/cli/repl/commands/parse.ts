@@ -47,11 +47,11 @@ function depthListToAsciiArt(list: DepthList, config: XmlParserConfig): string {
 	for(let i = 0; i < list.length; i++) {
 		const nextDepth = i + 1 < list.length ? list[i + 1].depth : 0
 		const { depth, node } = list[i]
-		result += `\n${lineStyle()}${'│ '.repeat(Math.max(depth, 0))}`
+		result += `\n${lineStyle()}${'│ '.repeat(Math.max(depth - 1, 0))}`
 		if(nextDepth < depth) {
 			result += `└ `
 		} else {
-			result += `├ `
+			result += i === 0 ? '' : `├ `
 		}
 
 

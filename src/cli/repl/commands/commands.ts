@@ -18,7 +18,7 @@ function printHelpForScript(script: [string, ReplCommand]): string {
 		return base
 	}
 	const aliases = script[1].aliases
-	return `${base} (aliase${aliases.length > 1 ? 's' : ''}: ${aliases.map(a => bold(':' + a)).join(', ')})`
+	return `${base} (alias${aliases.length > 1 ? 'es' : ''}: ${aliases.map(a => bold(':' + a)).join(', ')})`
 }
 
 export const helpCommand: ReplCommand = {

@@ -24,7 +24,7 @@ export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging (will be passed to the corresponding script)' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide (or the guide of the corresponding script)' },
 	{ name: 'version',      alias: 'V', type: Boolean, description: 'Provide information about the version of flowR as well as its underlying R system and exit.' },
-	{ name: 'execute',      alias: 'e', type: String,  description: 'Execute the given command and exit.', typeLabel: '{underline command}', multiple: false },
+	{ name: 'execute',      alias: 'e', type: String,  description: 'Execute the given command and exit. Use a semicolon ";" to separate multiple commands.', typeLabel: '{underline command}', multiple: false },
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.'},
 	{ name: 'script',       alias: 's', type: String,  description: `The sub-script to run (${scriptsText})`, multiple: false, defaultOption: true, typeLabel: '{underline files}', defaultValue: undefined },
 ]
@@ -117,7 +117,6 @@ async function main() {
 
 	const tokenMap = await getStoredTokenMap(shell)
 
-	// TODO: allow multiple options with semicolon?
 	if(options.execute) {
 		await replProcessAnswer(options.execute, shell, tokenMap)
 	} else {

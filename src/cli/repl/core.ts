@@ -9,9 +9,7 @@ import { bold, italic } from '../../statistics'
 import { prompt } from './prompt'
 import { commandNames, getCommand } from './commands'
 import { ReadLineOptions } from 'node:readline'
-
-
-
+import { splitAtEscapeSensitive } from '../../util/args'
 
 const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
 
@@ -31,26 +29,35 @@ export const DEFAULT_REPL_READLINE_CONFIGURATION: ReadLineOptions = {
 	completer:               replCompleter
 }
 
-// TODO: allow to capture and post-process the output for testing?
-export async function replProcessAnswer(answer: string, shell: RShell, tokenMap: TokenMap): Promise<void> {
-	if(answer.startsWith(':')) {
-		const command = answer.slice(1).split(' ')[0].toLowerCase()
+async function replProcessStatement(statement: string, shell: RShell, tokenMap: TokenMap) {
+	if(statement.startsWith(':')) {
+		const command = statement.slice(1).split(' ')[0].toLowerCase()
 		const processor = getCommand(command)
 		if(processor) {
-			await processor.fn(shell, tokenMap, answer.slice(command.length + 2).trim())
+			await processor.fn(shell, tokenMap, statement.slice(command.length + 2).trim())
 		} else {
 			console.log(`the command '${command}' is unknown, try ${bold(':help')} for more information`)
 		}
 	} else {
 		try {
-			const result = await shell.sendCommandWithOutput(answer, {
+			const result = await shell.sendCommandWithOutput(statement, {
 				from:                    'both',
 				automaticallyTrimOutput: true
 			})
 			console.log(`${italic(result.join('\n'))}\n`)
 		} catch(e) {
-			console.error(`Error while executing '${answer}': ${(e as Error).message}`)
+			console.error(`Error while executing '${statement}': ${(e as Error).message}`)
 		}
+	}
+}
+
+// TODO: allow to capture and post-process the output for testing?
+export async function replProcessAnswer(answer: string, shell: RShell, tokenMap: TokenMap): Promise<void> {
+
+	const statements = splitAtEscapeSensitive(answer, ';')
+
+	for(const statement of statements) {
+		await replProcessStatement(statement, shell, tokenMap)
 	}
 }
 

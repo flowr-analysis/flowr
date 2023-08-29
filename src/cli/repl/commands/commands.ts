@@ -1,7 +1,7 @@
 import { quitCommand } from './quit'
 import { scripts } from '../../common'
 import { waitOnScript } from '../execute'
-import { splitArguments } from '../../../util/args'
+import { splitAtEscapeSensitive } from '../../../util/args'
 import { ReplCommand } from './main'
 import { rawPrompt } from '../prompt'
 import { bold, italic } from '../../../statistics'
@@ -38,6 +38,7 @@ ${
 	Array.from(Object.entries(commands)).filter(([, {script}]) => script).map(
 		([command, { description }]) => `  ${bold(padCmd(':' + command))}${description}`).join('\n')
 }
+You can combine commands by separating them with a semicolon ${bold(';')}.
 `)
 	}
 }
@@ -59,7 +60,7 @@ for(const [script, { target, description, type}] of Object.entries(scripts)) {
 			script:       true,
 			usageExample: `:${script} --help`,
 			fn:           async(_s, _t, remainingLine) => {
-				await waitOnScript(`${__dirname}/../../${target}`, splitArguments(remainingLine))
+				await waitOnScript(`${__dirname}/../../${target}`, splitAtEscapeSensitive(remainingLine))
 			}
 		}
 	}

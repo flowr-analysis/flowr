@@ -5,7 +5,7 @@
  */
 import { getStoredTokenMap, RShell, TokenMap } from '../../r-bridge'
 import readline from 'readline/promises'
-import { bold, italic } from '../../statistics'
+import { bold } from '../../statistics'
 import { prompt } from './prompt'
 import { commandNames, getCommand } from './commands'
 import { ReadLineOptions } from 'node:readline'

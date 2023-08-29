@@ -11,7 +11,6 @@ export interface FlowrBaseMessage {
 	type: string
 }
 
-// TODO: caching :D
 export interface FlowrHelloResponseMessage extends FlowrBaseMessage{
 	type:     'hello',
 	versions: VersionInformation

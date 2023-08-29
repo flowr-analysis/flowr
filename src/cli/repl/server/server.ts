@@ -9,14 +9,12 @@ import {
 } from './messages'
 import { LAST_STEP, SteppingSlicer, STEPS_PER_SLICE } from '../../../core'
 import { jsonReplacer } from '../../../util/json'
-import { SlicingCriteria } from '../../../slicing'
 
 export class FlowRServer {
 	private readonly server:    net.Server
 	private readonly shell:     RShell
 	private readonly tokenMap:  TokenMap
 	private versionInformation: VersionInformation | undefined
-	// TODO: manually shut down everything?
 	private connections = new Set<FlowRServerConnection>()
 
 	constructor(shell: RShell, tokenMap: TokenMap) {
@@ -48,7 +46,6 @@ export class FlowRServer {
 			this.connections.add(connection)
 			c.on('close', () => {
 				this.connections.delete(connection)
-				// TODO: unify connect and left output
 				console.log(`Client disconnected: ${c.remoteAddress ?? '?'}@${c.remotePort ?? '?'}`)
 			})
 		}
@@ -81,7 +78,6 @@ class FlowRServerConnection {
 		this.socket.on('data', data => this.handleData(String(data)))
 	}
 
-	// TODO: do we have to deal with partial messages?
 	private handleData(message: string) {
 		const hopefullyRequest = JSON.parse(message) as FlowrRequestMessage | Record<string, unknown>
 		switch(hopefullyRequest.type) {
@@ -101,13 +97,9 @@ class FlowRServerConnection {
 	}
 
 
-	// TODO: do not crash with errors!
 
-	// TODO: add name to clients?
-	// TODO: integrate this with lsp?
 	private handleFileAnalysisRequest(request: FileAnalysisRequestMessage) {
 		console.log(`[${request.filetoken}] Received file analysis request for ${request.filename}`)
-		// TODO: guard with json schema so that all are correctly keys given
 		if(this.fileMap.has(request.filetoken)) {
 			console.log(`File token ${request.filetoken} already exists. Overwriting.`)
 		}
@@ -122,7 +114,6 @@ class FlowRServerConnection {
 				ensurePackageInstalled:  true
 			},
 			criterion: [] // currently unknown
-			// TODO: allow to configure the rest?
 		})
 		this.fileMap.set(request.filetoken, {
 			filename: request.filename,
@@ -139,7 +130,7 @@ class FlowRServerConnection {
 	}
 
 	private handleSliceRequest(request: SliceRequestMessage) {
-		console.log(`[${request.filetoken}] Received slice request with criteria ${request.criterion}`)
+		console.log(`[${request.filetoken}] Received slice request with criteria ${JSON.stringify(request.criterion)}`)
 
 		const fileInformation = this.fileMap.get(request.filetoken)
 		if(!fileInformation) {
@@ -149,16 +140,11 @@ class FlowRServerConnection {
 			})
 			return
 		}
-		// TODO: remove failed messages as they are part of error?
-		// TODO: ensure correct criteria
-		// TODO: cache slices?
-		// TODO: unique message ids in requests and answsers to link them?
 		fileInformation.slicer.updateCriterion(request.criterion)
 		void fileInformation.slicer.allRemainingSteps(true).then(results => {
 			sendMessage(this.socket, {
 				type:    'response-slice',
 				success: true,
-				// TODO: is there a better way?
 				results: Object.fromEntries(Object.entries(results).filter(([k,]) => Object.hasOwn(STEPS_PER_SLICE, k)))
 			})
 		})

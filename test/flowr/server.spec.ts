@@ -52,9 +52,11 @@ describe('FlowR Server', withShell(shell => {
 
 		assert.strictEqual(response.type, 'response-file-analysis', 'Expected the second message to be a response-file-analysis message')
 		assert.strictEqual(response.id, '42', 'Expected the second message to have the same id as the request')
-		assert.deepStrictEqual(JSON.stringify(response.results, jsonReplacer),
-			JSON.stringify(results, jsonReplacer)
-				.replace(".GlobalEnv\",\"id\":\"6\"", ".GlobalEnv\",\"id\":\"3\""), 'Expected the second message to have the same results as the slicer')
+		// this is really ugly and only to unify the ids
+		assert.deepStrictEqual(JSON.stringify(response.results, jsonReplacer)
+			.replace(/\.GlobalEnv","id":"\d+"/, ".GlobalEnv\","),
+		JSON.stringify(results, jsonReplacer)
+			.replace(/\.GlobalEnv","id":"\d+"/, ".GlobalEnv\","), 'Expected the second message to have the same results as the slicer')
 
 	}))
 }))

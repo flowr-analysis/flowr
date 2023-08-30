@@ -1,5 +1,4 @@
 import { DataflowGraph } from '../graph'
-import { NormalizedAst, ParentInformation } from '../../r-bridge'
 import { REnvironmentInformation, IdentifierReference, DataflowScopeName } from '../environments'
 import { DataflowProcessorInformation } from '../processor'
 

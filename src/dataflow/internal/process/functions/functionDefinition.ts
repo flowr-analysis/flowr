@@ -64,7 +64,7 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
  * <p>
  * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers a first definitions</b>
  */
-function findPromiseLinkagesForParameters<OtherInfo>(parameters: DataflowGraph, readInParameters: IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation): IdentifierReference[] {
+function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParameters: IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation): IdentifierReference[] {
 	// first we try to bind again within parameters - if we have it, fine
 	const remainingRead: IdentifierReference[] = []
 	for(const read of readInParameters) {

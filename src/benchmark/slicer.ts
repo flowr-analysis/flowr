@@ -87,7 +87,7 @@ export class BenchmarkSlicer {
 	private totalStopwatch: IStoppableStopwatch
 	private finished = false
 	// Yes this is dirty, but we know that we assign the stepper during the initialization and this saves us from having to check for nullability every time
-	private stepper:        SteppingSlicer<typeof LAST_STEP> = null as unknown as SteppingSlicer<typeof LAST_STEP>
+	private stepper:        SteppingSlicer = null as unknown as SteppingSlicer
 
 	constructor() {
 		this.totalStopwatch = this.commonMeasurements.start('total')

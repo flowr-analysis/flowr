@@ -6,6 +6,9 @@ import { FileAnalysisRequestMessage, requestAnalysisMessage } from './messages/a
 import { requestSliceMessage, SliceRequestMessage } from './messages/slice'
 import { FlowrErrorMessage } from './messages/error'
 import { Socket } from './net'
+import { serverLog } from './server'
+import { FlowrLogger } from '../../../util/log'
+import { ILogObj, Logger } from 'tslog'
 
 export interface FlowRFileInformation {
 	filename: string,
@@ -17,6 +20,7 @@ export class FlowRServerConnection {
 	private readonly shell:    RShell
 	private readonly tokenMap: TokenMap
 	private readonly name:     string
+	private readonly logger:   Logger<ILogObj>
 
 	// maps token to information
 	private readonly fileMap = new Map<string, FlowRFileInformation>()
@@ -28,6 +32,7 @@ export class FlowRServerConnection {
 		this.tokenMap = tokenMap
 		this.shell = shell
 		this.name = name
+		this.logger = serverLog.getSubLogger({ name })
 		this.socket.on('data', data => this.handleData(String(data)))
 	}
 
@@ -35,11 +40,11 @@ export class FlowRServerConnection {
 	private handleData(message: string) {
 		if(!message.endsWith('\n')) {
 			this.currentMessageBuffer += message
-			console.log(`[${this.name}] Received partial message. Buffering ${this.currentMessageBuffer.length}.`)
+			this.logger.trace(`[${this.name}] Received partial message. Buffering ${this.currentMessageBuffer.length}.`)
 			return
 		}
 		message = this.currentMessageBuffer + message
-		console.log(`[${this.name}] Received message: ${message}`)
+		this.logger.debug(`[${this.name}] Received message: ${message}`)
 
 		this.currentMessageBuffer = ''
 		const request = validateBaseMessageFormat(message)
@@ -72,10 +77,10 @@ export class FlowRServerConnection {
 			return
 		}
 		const message = requestResult.message
-		console.log(`[${this.name}] Received file analysis request for ${message.filename} (token: ${message.filetoken})`)
+		this.logger.info(`[${this.name}] Received file analysis request for ${message.filename} (token: ${message.filetoken})`)
 
 		if(this.fileMap.has(message.filetoken)) {
-			console.log(`File token ${message.filetoken} already exists. Overwriting.`)
+			this.logger.warn(`File token ${message.filetoken} already exists. Overwriting.`)
 		}
 		const slicer = new SteppingSlicer({
 			stepOfInterest: LAST_STEP,
@@ -108,7 +113,7 @@ export class FlowRServerConnection {
 		const request = requestResult.message
 
 
-		console.log(`[${request.filetoken}] Received slice request with criteria ${JSON.stringify(request.criterion)}`)
+		this.logger.info(`[${request.filetoken}] Received slice request with criteria ${JSON.stringify(request.criterion)}`)
 
 		const fileInformation = this.fileMap.get(request.filetoken)
 		if(!fileInformation) {

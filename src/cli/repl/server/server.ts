@@ -5,6 +5,10 @@ import { getUnnamedSocketName, sendMessage } from './send'
 import { FlowrHelloResponseMessage } from './messages/hello'
 import { FlowrErrorMessage } from './messages/error'
 import { NetServer, Server, Socket } from './net'
+import { FlowrLogger } from '../../../util/log'
+
+// we detach from the main logger so that it can have its own switch
+export const serverLog = new FlowrLogger({ name: "server" })
 
 function notYetInitialized(c: Socket, id: string | undefined) {
 	sendMessage<FlowrErrorMessage>(c, {
@@ -44,7 +48,7 @@ export class FlowRServer {
 	public async start(port: number) {
 		this.versionInformation = await retrieveVersionInformation(this.shell)
 		this.server.start(port)
-		console.log(`Server listening on port ${port}`)
+		serverLog.info(`Server listening on port ${port}`)
 	}
 
 	private onConnect(c: Socket) {
@@ -53,13 +57,13 @@ export class FlowRServer {
 			return
 		}
 		const name = `client-${this.nameCounter++}`
-		console.log(`Client connected: ${getUnnamedSocketName(c)} as "${name}"`)
+		serverLog.info(`Client connected: ${getUnnamedSocketName(c)} as "${name}"`)
 
 		this.connections.set(name, new FlowRServerConnection(c, name, this.shell, this.tokenMap))
 		helloClient(c, name, this.versionInformation)
 		c.on('close', () => {
 			this.connections.delete(name)
-			console.log(`Client "${name}" disconnected (${getUnnamedSocketName(c)})`)
+			serverLog.info(`Client "${name}" disconnected (${getUnnamedSocketName(c)})`)
 		})
 	}
 }

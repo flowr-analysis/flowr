@@ -3,6 +3,7 @@ import { FlowrBaseMessage } from './messages'
 
 export interface FlowrHelloResponseMessage extends FlowrBaseMessage{
 	type:       'hello',
+	id:         undefined,
 	/** a unique name assigned to each client it has no semantic meaning and is only used for debugging */
 	clientName: string,
 	versions:   VersionInformation

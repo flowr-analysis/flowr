@@ -4,7 +4,7 @@ import { RShell, TokenMap } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
 import { FileAnalysisRequestMessage, requestAnalysisMessage } from './messages/analysis'
-import { SliceRequestMessage } from './messages/slice'
+import { requestSliceMessage, SliceRequestMessage } from './messages/slice'
 import { FlowrErrorMessage } from './messages/error'
 
 export interface FlowRFileInformation {
@@ -47,6 +47,7 @@ export class FlowRServerConnection {
 				break
 			default:
 				sendMessage<FlowrErrorMessage>(this.socket, {
+					id:     request.message.id,
 					type:   'error',
 					fatal:  true,
 					reason: `The message type ${JSON.stringify(request.type ?? 'undefined')} is not supported.`
@@ -55,20 +56,16 @@ export class FlowRServerConnection {
 		}
 	}
 
-	// TODO: do not crash with errors!
-
-	// TODO: add name to clients?
 	// TODO: integrate this with lsp?
 	private handleFileAnalysisRequest(base: FileAnalysisRequestMessage) {
 		const requestResult = validateMessage(base, requestAnalysisMessage)
 		if(requestResult.type === 'error') {
-			answerForValidationError(this.socket, requestResult)
+			answerForValidationError(this.socket, requestResult, base.id)
 			return
 		}
 		const message = requestResult.message
 		console.log(`[${this.name}] Received file analysis request for ${message.filename} (token: ${message.filetoken})`)
 
-		// TODO: guard with json schema so that all are correctly keys given
 		if(this.fileMap.has(message.filetoken)) {
 			console.log(`File token ${message.filetoken} already exists. Overwriting.`)
 		}
@@ -92,34 +89,41 @@ export class FlowRServerConnection {
 
 		void slicer.allRemainingSteps(false).then(results => {
 			sendMessage(this.socket, {
-				type:    'response-file-analysis',
-				success: true,
+				type: 'response-file-analysis',
+				id:   message.id,
 				results
 			})
 		})
 	}
 
-	private handleSliceRequest(request: SliceRequestMessage) {
+	private handleSliceRequest(base: SliceRequestMessage) {
+		const requestResult = validateMessage(base, requestSliceMessage)
+		if(requestResult.type === 'error') {
+			answerForValidationError(this.socket, requestResult, base.id)
+			return
+		}
+
+		const request = requestResult.message
+
+
 		console.log(`[${request.filetoken}] Received slice request with criteria ${JSON.stringify(request.criterion)}`)
 
 		const fileInformation = this.fileMap.get(request.filetoken)
 		if(!fileInformation) {
 			sendMessage<FlowrErrorMessage>(this.socket, {
+				id:     request.id,
 				type:   'error',
 				fatal:  false,
 				reason: `The file token ${request.filetoken} has never been analyzed.`
 			})
 			return
 		}
-		// TODO: remove failed messages as they are part of error?
-		// TODO: ensure correct criteria
 		// TODO: cache slices?
-		// TODO: unique message ids in requests and answsers to link them?
 		fileInformation.slicer.updateCriterion(request.criterion)
 		void fileInformation.slicer.allRemainingSteps(true).then(results => {
 			sendMessage(this.socket, {
 				type:    'response-slice',
-				success: true,
+				id:      request.id,
 				// TODO: is there a better way?
 				results: Object.fromEntries(Object.entries(results).filter(([k,]) => Object.hasOwn(STEPS_PER_SLICE, k)))
 			})

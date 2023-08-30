@@ -14,6 +14,7 @@ export const requestAnalysisMessage: RequestMessageDefinition<FileAnalysisReques
 	type:   'request-file-analysis',
 	schema: Joi.object({
 		type:      Joi.string().valid('request-file-analysis').required(),
+		id:        Joi.string().optional(),
 		filetoken: Joi.string().required(),
 		filename:  Joi.string().required(),
 		content:   Joi.string().required()

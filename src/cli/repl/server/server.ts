@@ -7,8 +7,9 @@ import { FlowrHelloResponseMessage } from './messages/hello'
 import { FlowrErrorMessage } from './messages/error'
 
 // TODO: allow to mock server
-function notYetInitialized(c: net.Socket) {
+function notYetInitialized(c: net.Socket, id: string | undefined) {
 	sendMessage<FlowrErrorMessage>(c, {
+		id,
 		type:   'error',
 		fatal:  true,
 		reason: 'Server not initialized yet (or failed to), please try again later.'
@@ -18,6 +19,7 @@ function notYetInitialized(c: net.Socket) {
 
 function helloClient(c: net.Socket, name: string, versionInformation: VersionInformation) {
 	sendMessage<FlowrHelloResponseMessage>(c, {
+		id:         undefined,
 		type:       'hello',
 		clientName: name,
 		versions:   versionInformation
@@ -50,7 +52,7 @@ export class FlowRServer {
 
 	private onConnect(c: net.Socket) {
 		if(!this.versionInformation) {
-			notYetInitialized(c)
+			notYetInitialized(c, undefined)
 			return
 		}
 		// TODO: produce better unique names? :D

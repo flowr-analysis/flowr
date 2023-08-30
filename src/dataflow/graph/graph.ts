@@ -26,7 +26,7 @@ export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
 
 
 
-export type DataflowFunctionFlowInformation = Omit<DataflowInformation<unknown>, 'ast' | 'graph'>  & { graph: Set<NodeId> }
+export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph'>  & { graph: Set<NodeId> }
 
 export type NamedFunctionArgument = [string, IdentifierReference | '<value>']
 export type PositionalFunctionArgument = IdentifierReference | '<value>'

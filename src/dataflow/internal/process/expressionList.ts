@@ -47,7 +47,7 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 
 
 function processNextExpression<OtherInfo>(
-	currentElement: DataflowInformation<OtherInfo>,
+	currentElement: DataflowInformation,
 	data: DataflowProcessorInformation<OtherInfo>,
 	environments: REnvironmentInformation,
 	listEnvironments: Set<NodeId>,
@@ -103,7 +103,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	return environments
 }
 
-export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const expressions = exprList.children
 	dataflowLogger.trace(`processing expression list with ${expressions.length} expressions`)
 	if(expressions.length === 0) {
@@ -174,7 +174,6 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		unknownReferences: [],
 		in:                [...remainingRead.values()].flat(),
 		out,
-		ast:               data.completeAst,
 		environments,
 		scope:             data.activeScope,
 		graph:             nextGraph

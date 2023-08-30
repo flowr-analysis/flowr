@@ -3,12 +3,10 @@ import { NormalizedAst, ParentInformation } from '../../r-bridge'
 import { REnvironmentInformation, IdentifierReference, DataflowScopeName } from '../environments'
 import { DataflowProcessorInformation } from '../processor'
 
-// TODO: remove ast here and make it otherwise available as this does not change!
 /**
  * Continuously updated during the dataflow analysis to hold the current state.
  */
-export interface DataflowInformation<OtherInfo = ParentInformation> {
-	readonly ast:      NormalizedAst<OtherInfo>
+export interface DataflowInformation {
 	/** Nodes that have not been identified as read or write and will be so on higher */
 	unknownReferences: IdentifierReference[]
 	/** Nodes which are read */
@@ -23,9 +21,8 @@ export interface DataflowInformation<OtherInfo = ParentInformation> {
 	graph:             DataflowGraph
 }
 
-export function initializeCleanInfo<OtherInfo>(data: DataflowProcessorInformation<OtherInfo>): DataflowInformation<OtherInfo> {
+export function initializeCleanInfo<T>(data: DataflowProcessorInformation<T>): DataflowInformation {
 	return {
-		ast:               data.completeAst,
 		unknownReferences: [],
 		in:                [],
 		out:               [],

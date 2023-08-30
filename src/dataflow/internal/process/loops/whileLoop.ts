@@ -7,7 +7,7 @@ import {
 import { linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../linker'
 import { ParentInformation, RWhileLoop } from '../../../../r-bridge'
 
-export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const condition = processDataflowFor(loop.condition, data)
 	data = { ...data, environments: condition.environments }
 	const body = processDataflowFor(loop.body, data)
@@ -32,7 +32,6 @@ export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentI
 		graph:             nextGraph,
 		/* the body might not happen if the condition is false */
 		environments:      finalEnvironments,
-		ast:               data.completeAst,
 		scope:             data.activeScope
 	}
 }

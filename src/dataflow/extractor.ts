@@ -45,7 +45,7 @@ const processors: DataflowProcessors<any> = {
 	[Type.ExpressionList]:     processExpressionList,
 }
 
-export function produceDataFlowGraph<OtherInfo>(ast: NormalizedAst<OtherInfo & ParentInformation>, initialScope: DataflowScopeName = LocalScope): DataflowInformation<OtherInfo & ParentInformation> {
+export function produceDataFlowGraph<OtherInfo>(ast: NormalizedAst<OtherInfo & ParentInformation>, initialScope: DataflowScopeName = LocalScope): DataflowInformation {
 	return processDataflowFor<OtherInfo>(ast.ast, { completeAst: ast, activeScope: initialScope, environments: initializeCleanEnvironments(), processors: processors as DataflowProcessors<OtherInfo & ParentInformation> })
 }
 

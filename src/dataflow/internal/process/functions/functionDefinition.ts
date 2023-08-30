@@ -64,7 +64,7 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
  * <p>
  * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers a first definitions</b>
  */
-function findPromiseLinkagesForParameters<OtherInfo>(parameters: DataflowGraph, readInParameters: IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation<OtherInfo>): IdentifierReference[] {
+function findPromiseLinkagesForParameters<OtherInfo>(parameters: DataflowGraph, readInParameters: IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation): IdentifierReference[] {
 	// first we try to bind again within parameters - if we have it, fine
 	const remainingRead: IdentifierReference[] = []
 	for(const read of readInParameters) {
@@ -94,7 +94,7 @@ function findPromiseLinkagesForParameters<OtherInfo>(parameters: DataflowGraph, 
 	return remainingRead
 }
 
-export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
 
 	const originalEnvironments = data.environments
@@ -178,7 +178,6 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 		out:               [],
 		graph,
 		environments:      originalEnvironments,
-		ast:               data.completeAst,
 		scope:             data.activeScope
 	}
 }

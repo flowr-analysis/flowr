@@ -7,7 +7,7 @@ import { dataflowLogger, EdgeType, graphToMermaidUrl } from '../../../index'
 import { guard } from '../../../../util/assert'
 import { UnnamedArgumentPrefix } from '../functions/argument'
 
-export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const lhs = processDataflowFor(op.lhs, data)
 	const rhs = processDataflowFor(op.rhs, data)
 
@@ -45,6 +45,5 @@ export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInfo
 		environments:      overwriteEnvironments(lhs.environments, rhs.environments),
 		graph:             nextGraph,
 		scope:             data.activeScope,
-		ast:               data.completeAst
 	}
 }

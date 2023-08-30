@@ -4,12 +4,12 @@ import { appendEnvironments, IdentifierReference, makeAllMaybe } from '../../env
 import { linkIngoingVariablesInSameScope } from '../linker'
 import { ParentInformation, RIfThenElse } from '../../../r-bridge'
 
-export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const cond = processDataflowFor(ifThen.condition, data)
 
 	data = { ...data, environments: cond.environments }
 
-	let then: DataflowInformation<OtherInfo> | undefined
+	let then: DataflowInformation | undefined
 	let makeThenMaybe = false
 	if(ifThen.condition.lexeme !== 'FALSE') {
 		then = processDataflowFor(ifThen.then, data)
@@ -18,7 +18,7 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
 		}
 	}
 
-	let otherwise: DataflowInformation<OtherInfo> | undefined
+	let otherwise: DataflowInformation | undefined
 	let makeOtherwiseMaybe = false
 	if(ifThen.otherwise !== undefined  && ifThen.condition.lexeme !== 'TRUE') {
 		otherwise = processDataflowFor(ifThen.otherwise, data)
@@ -58,7 +58,6 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
 		out:               outgoing,
 		environments:      finalEnvironment,
 		graph:             nextGraph,
-		ast:               data.completeAst,
 		scope:             data.activeScope,
 	}
 }

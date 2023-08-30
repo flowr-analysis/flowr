@@ -30,7 +30,6 @@ export function answerForValidationError(client: net.Socket, result: ValidationE
 		type:   'error',
 		fatal:  false,
 		id:     id,
-		// TODO: add more information?
 		reason: `Invalid message format: ${result.reason.message}`
 	})
 }

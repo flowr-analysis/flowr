@@ -32,7 +32,6 @@ export class FlowRServer {
 	private readonly tokenMap:  TokenMap
 	private versionInformation: VersionInformation | undefined
 
-	// TODO: manually shut down everything?
 	/** maps names to the respective connection */
 	private connections = new Map<string, FlowRServerConnection>()
 	private nameCounter = 0
@@ -46,7 +45,6 @@ export class FlowRServer {
 	public async start(port: number) {
 		this.versionInformation = await retrieveVersionInformation(this.shell)
 		this.server.listen(port)
-		// TODO: update stuff like this to a normal logger?
 		console.log(`Server listening on port ${port}`)
 	}
 
@@ -55,7 +53,6 @@ export class FlowRServer {
 			notYetInitialized(c, undefined)
 			return
 		}
-		// TODO: produce better unique names? :D
 		const name = `client-${this.nameCounter++}`
 		console.log(`Client connected: ${getUnnamedSocketName(c)} as "${name}"`)
 

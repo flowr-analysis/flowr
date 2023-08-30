@@ -31,7 +31,6 @@ export class FlowRServerConnection {
 		this.socket.on('data', data => this.handleData(String(data)))
 	}
 
-	// TODO: do we have to deal with partial messages?
 	private currentMessageBuffer = ''
 	private handleData(message: string) {
 		if(!message.endsWith('\n')) {
@@ -66,7 +65,6 @@ export class FlowRServerConnection {
 		}
 	}
 
-	// TODO: integrate this with lsp?
 	private handleFileAnalysisRequest(base: FileAnalysisRequestMessage) {
 		const requestResult = validateMessage(base, requestAnalysisMessage)
 		if(requestResult.type === 'error') {
@@ -85,7 +83,6 @@ export class FlowRServerConnection {
 			tokenMap:       this.tokenMap,
 			request:        requestFromInput(message.content ?? `file://${message.filepath as string}`),
 			criterion:      [] // currently unknown
-			// TODO: allow to configure the rest?
 		})
 		this.fileMap.set(message.filetoken, {
 			filename: message.filename,
@@ -123,13 +120,12 @@ export class FlowRServerConnection {
 			})
 			return
 		}
-		// TODO: cache slices?
+
 		fileInformation.slicer.updateCriterion(request.criterion)
 		void fileInformation.slicer.allRemainingSteps(true).then(results => {
 			sendMessage(this.socket, {
 				type:    'response-slice',
 				id:      request.id,
-				// TODO: is there a better way?
 				results: Object.fromEntries(Object.entries(results).filter(([k,]) => Object.hasOwn(STEPS_PER_SLICE, k)))
 			})
 		})

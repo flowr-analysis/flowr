@@ -1,13 +1,12 @@
 import * as net from 'node:net'
 import { RShell, TokenMap } from '../../../r-bridge'
 import { retrieveVersionInformation, VersionInformation } from '../commands/version'
-import {
-	FlowrErrorMessage, FlowrHelloResponseMessage,
-	getUnnamedSocketName,
-	sendMessage,
-} from './messages'
 import { FlowRServerConnection } from './connection'
+import { getUnnamedSocketName, sendMessage } from './send'
+import { FlowrHelloResponseMessage } from './messages/hello'
+import { FlowrErrorMessage } from './messages/error'
 
+// TODO: allow to mock server
 function notYetInitialized(c: net.Socket) {
 	sendMessage<FlowrErrorMessage>(c, {
 		type:   'error',

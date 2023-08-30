@@ -1,12 +1,11 @@
 import { LAST_STEP, SteppingSlicer, STEPS_PER_SLICE } from '../../../core'
 import net from 'node:net'
 import { RShell, TokenMap } from '../../../r-bridge'
-import {
-	answerForValidationError, FileAnalysisRequestMessage, FileAnalysisResponseMessage,
-	FlowrErrorMessage, FlowrHelloResponseMessage, requestAnalysisMessage,
-	sendMessage,
-	SliceRequestMessage, validateBaseMessageFormat, validateMessage
-} from './messages'
+import { sendMessage } from './send'
+import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
+import { FileAnalysisRequestMessage, requestAnalysisMessage } from './messages/analysis'
+import { SliceRequestMessage } from './messages/slice'
+import { FlowrErrorMessage } from './messages/error'
 
 export interface FlowRFileInformation {
 	filename: string,

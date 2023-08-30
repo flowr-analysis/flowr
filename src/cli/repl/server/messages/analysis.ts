@@ -6,7 +6,10 @@ export interface FileAnalysisRequestMessage extends FlowrBaseMessage {
 	type:      'request-file-analysis',
 	filetoken: string,
 	filename:  string,
-	content:   string
+	/** the contents of the file, give either this or the `filepath`. */
+	content?:  string
+	/** the filepath on the local machine, accessible to flowR, or simply. Give either this or the `content` */
+	filepath?: string
 }
 
 
@@ -17,8 +20,9 @@ export const requestAnalysisMessage: RequestMessageDefinition<FileAnalysisReques
 		id:        Joi.string().optional(),
 		filetoken: Joi.string().required(),
 		filename:  Joi.string().required(),
-		content:   Joi.string().required()
-	})
+		content:   Joi.string().optional(),
+		filepath:  Joi.string().optional()
+	}).xor('content', 'filepath')
 }
 
 

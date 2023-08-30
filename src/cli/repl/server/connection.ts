@@ -1,6 +1,6 @@
 import { LAST_STEP, SteppingSlicer, STEPS_PER_SLICE } from '../../../core'
 import net from 'node:net'
-import { RShell, TokenMap } from '../../../r-bridge'
+import { requestFromInput, RShell, TokenMap } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
 import { FileAnalysisRequestMessage, requestAnalysisMessage } from './messages/analysis'
@@ -32,7 +32,17 @@ export class FlowRServerConnection {
 	}
 
 	// TODO: do we have to deal with partial messages?
+	private currentMessageBuffer = ''
 	private handleData(message: string) {
+		if(!message.endsWith('\n')) {
+			this.currentMessageBuffer += message
+			console.log(`[${this.name}] Received partial message. Buffering ${this.currentMessageBuffer.length}.`)
+			return
+		}
+		message = this.currentMessageBuffer + message
+		console.log(`[${this.name}] Received message: ${message}`)
+
+		this.currentMessageBuffer = ''
 		const request = validateBaseMessageFormat(message)
 		if(request.type === 'error') {
 			answerForValidationError(this.socket, request)
@@ -73,13 +83,8 @@ export class FlowRServerConnection {
 			stepOfInterest: LAST_STEP,
 			shell:          this.shell,
 			tokenMap:       this.tokenMap,
-			request:        {
-				request:                 'text',
-				content:                 message.content,
-				attachSourceInformation: true,
-				ensurePackageInstalled:  true
-			},
-			criterion: [] // currently unknown
+			request:        requestFromInput(message.content ?? `file://${message.filepath as string}`),
+			criterion:      [] // currently unknown
 			// TODO: allow to configure the rest?
 		})
 		this.fileMap.set(message.filetoken, {

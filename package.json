@@ -57,6 +57,7 @@
     "command-line-args": "^5.2.1",
     "command-line-usage": "^7.0.1",
     "csv-parse": "^5.4.0",
+    "joi": "^17.10.0",
     "n-readlines": "^1.0.1",
     "n3": "^1.17.1",
     "object-hash": "^3.0.0",

@@ -4,8 +4,10 @@
  * @module
  */
 import Joi from 'joi'
-import { SliceRequestMessage } from './slice'
 
+/**
+ * If you send a message it must *not* contain a newline but the message must be terminated by a newline.
+ */
 export interface FlowrBaseMessage {
 	type: string
 	/**

@@ -3,6 +3,7 @@ import { NormalizedAst, ParentInformation } from '../../r-bridge'
 import { REnvironmentInformation, IdentifierReference, DataflowScopeName } from '../environments'
 import { DataflowProcessorInformation } from '../processor'
 
+// TODO: remove ast here and make it otherwise available as this does not change!
 /**
  * Continuously updated during the dataflow analysis to hold the current state.
  */

@@ -4,6 +4,10 @@ import Joi from 'joi'
 
 export interface FileAnalysisRequestMessage extends FlowrBaseMessage {
 	type:      'request-file-analysis',
+	/**
+	 * This is a unique token that you assign to subsequently slice the respective files.
+	 * If you pass the same token multiple times, previous results will be overwritten.
+	 */
 	filetoken: string,
 	filename:  string,
 	/** the contents of the file, give either this or the `filepath`. */

@@ -1,13 +1,12 @@
 import { LAST_STEP, SteppingSlicer, STEPS_PER_SLICE } from '../../../core'
-import { requestFromInput, RShell, TokenMap } from '../../../r-bridge'
+import { RShell, TokenMap } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
 import { FileAnalysisRequestMessage, requestAnalysisMessage } from './messages/analysis'
-import { requestSliceMessage, SliceRequestMessage } from './messages/slice'
+import { requestSliceMessage, SliceRequestMessage, SliceResponseMessage } from './messages/slice'
 import { FlowrErrorMessage } from './messages/error'
 import { Socket } from './net'
 import { serverLog } from './server'
-import { FlowrLogger } from '../../../util/log'
 import { ILogObj, Logger } from 'tslog'
 
 export interface FlowRFileInformation {
@@ -86,8 +85,14 @@ export class FlowRServerConnection {
 			stepOfInterest: LAST_STEP,
 			shell:          this.shell,
 			tokenMap:       this.tokenMap,
-			request:        requestFromInput(message.content ?? `file://${message.filepath as string}`),
-			criterion:      [] // currently unknown
+			// we have to make sure, that the content is not interpreted as a file path if it starts with 'file://' therefore, we do it manually
+			request:        {
+				request:                 message.content === undefined ? 'file' : 'text',
+				content:                 message.content ?? message.filepath as string,
+				attachSourceInformation: true,
+				ensurePackageInstalled:  false
+			},
+			criterion: [] // currently unknown
 		})
 		this.fileMap.set(message.filetoken, {
 			filename: message.filename,
@@ -128,10 +133,10 @@ export class FlowRServerConnection {
 
 		fileInformation.slicer.updateCriterion(request.criterion)
 		void fileInformation.slicer.allRemainingSteps(true).then(results => {
-			sendMessage(this.socket, {
+			sendMessage<SliceResponseMessage>(this.socket, {
 				type:    'response-slice',
 				id:      request.id,
-				results: Object.fromEntries(Object.entries(results).filter(([k,]) => Object.hasOwn(STEPS_PER_SLICE, k)))
+				results: Object.fromEntries(Object.entries(results).filter(([k,]) => Object.hasOwn(STEPS_PER_SLICE, k))) as SliceResponseMessage['results']
 			})
 		})
 	}

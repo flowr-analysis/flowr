@@ -58,7 +58,7 @@ export class FakeSocket implements Socket {
 	}
 
 	public send(data: string) {
-		this.dataHandler?.(Buffer.Buffer.from(data))
+		this.dataHandler?.(Buffer.Buffer.from(`${data}\n`))
 	}
 
 	public async waitForMessage(type: FlowrBaseMessage['type']): Promise<void> {

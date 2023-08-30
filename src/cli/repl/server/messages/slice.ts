@@ -5,6 +5,7 @@ import Joi from 'joi'
 
 export interface SliceRequestMessage extends FlowrBaseMessage {
 	type:      'request-slice',
+	/** The {@link FileAnalysisRequestMessage#filetoken} of the file to slice */
 	filetoken: string,
 	criterion: SlicingCriteria
 }

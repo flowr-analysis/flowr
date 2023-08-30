@@ -27,7 +27,7 @@ let _defaultTokenMap: TokenMap | undefined
  * Essentially provides the token map as a singleton.
  * We want the token map only once (to speed up tests)!
  */
-async function defaultTokenMap(): Promise<TokenMap> {
+export async function defaultTokenMap(): Promise<TokenMap> {
 	if(_defaultTokenMap === undefined) {
 		const shell = new RShell()
 		try {

@@ -1,15 +1,18 @@
 // we use this file to configure the logging used when running tests
 
 import { log, LogLevel } from '../src/util/log'
+import { serverLog } from '../src/cli/repl/server/server'
 
 before(() => {
-	log.updateSettings(logger => {
-		if(!process.argv.includes('--verbose')) {
-			logger.settings.minLevel = LogLevel.error
-		} else {
-			log.logToFile()
-		}
-	})
+	for(const logger of [log, serverLog]) {
+		logger.updateSettings(logger => {
+			if(!process.argv.includes('--verbose')) {
+				logger.settings.minLevel = LogLevel.error
+			} else {
+				log.logToFile()
+			}
+		})
+	}
 })
 
 /** controlled with `--test-installation` */

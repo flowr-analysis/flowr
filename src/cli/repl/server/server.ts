@@ -39,8 +39,9 @@ export class FlowRServer {
 	private connections = new Map<string, FlowRServerConnection>()
 	private nameCounter = 0
 
-	constructor(shell: RShell, tokenMap: TokenMap, server = new NetServer(c => this.onConnect(c))) {
+	constructor(shell: RShell, tokenMap: TokenMap, server: Server = new NetServer()) {
 		this.server = server
+		this.server.onConnect(c => this.onConnect(c))
 		this.shell = shell
 		this.tokenMap = tokenMap
 	}

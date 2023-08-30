@@ -1,13 +1,12 @@
-import * as net from 'node:net'
 import { RShell, TokenMap } from '../../../r-bridge'
 import { retrieveVersionInformation, VersionInformation } from '../commands/version'
 import { FlowRServerConnection } from './connection'
 import { getUnnamedSocketName, sendMessage } from './send'
 import { FlowrHelloResponseMessage } from './messages/hello'
 import { FlowrErrorMessage } from './messages/error'
+import { NetServer, Server, Socket } from './net'
 
-// TODO: allow to mock server
-function notYetInitialized(c: net.Socket, id: string | undefined) {
+function notYetInitialized(c: Socket, id: string | undefined) {
 	sendMessage<FlowrErrorMessage>(c, {
 		id,
 		type:   'error',
@@ -17,7 +16,7 @@ function notYetInitialized(c: net.Socket, id: string | undefined) {
 	c.end()
 }
 
-function helloClient(c: net.Socket, name: string, versionInformation: VersionInformation) {
+function helloClient(c: Socket, name: string, versionInformation: VersionInformation) {
 	sendMessage<FlowrHelloResponseMessage>(c, {
 		id:         undefined,
 		type:       'hello',
@@ -27,7 +26,7 @@ function helloClient(c: net.Socket, name: string, versionInformation: VersionInf
 }
 
 export class FlowRServer {
-	private readonly server:    net.Server
+	private readonly server:    Server
 	private readonly shell:     RShell
 	private readonly tokenMap:  TokenMap
 	private versionInformation: VersionInformation | undefined
@@ -36,19 +35,19 @@ export class FlowRServer {
 	private connections = new Map<string, FlowRServerConnection>()
 	private nameCounter = 0
 
-	constructor(shell: RShell, tokenMap: TokenMap) {
-		this.server = net.createServer(c => this.onConnect(c))
+	constructor(shell: RShell, tokenMap: TokenMap, server = new NetServer(c => this.onConnect(c))) {
+		this.server = server
 		this.shell = shell
 		this.tokenMap = tokenMap
 	}
 
 	public async start(port: number) {
 		this.versionInformation = await retrieveVersionInformation(this.shell)
-		this.server.listen(port)
+		this.server.start(port)
 		console.log(`Server listening on port ${port}`)
 	}
 
-	private onConnect(c: net.Socket) {
+	private onConnect(c: Socket) {
 		if(!this.versionInformation) {
 			notYetInitialized(c, undefined)
 			return

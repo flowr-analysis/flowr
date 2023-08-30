@@ -1,8 +1,8 @@
 import Joi from 'joi'
-import net from 'node:net'
 import { sendMessage } from './send'
 import { baseMessage, FlowrBaseMessage, RequestMessageDefinition } from './messages/messages'
 import { FlowrErrorMessage } from './messages/error'
+import { Socket } from './net'
 
 export interface ValidationErrorResult { type: 'error', reason: Joi.ValidationError | Error }
 export interface SuccessValidationResult<T extends FlowrBaseMessage> { type: 'success', message: T }
@@ -25,7 +25,7 @@ export function validateMessage<T extends FlowrBaseMessage>(input: FlowrBaseMess
 	}
 }
 
-export function answerForValidationError(client: net.Socket, result: ValidationErrorResult, id?: string): void {
+export function answerForValidationError(client: Socket, result: ValidationErrorResult, id?: string): void {
 	sendMessage<FlowrErrorMessage>(client, {
 		type:   'error',
 		fatal:  false,

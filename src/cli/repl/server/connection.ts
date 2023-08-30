@@ -1,11 +1,11 @@
 import { LAST_STEP, SteppingSlicer, STEPS_PER_SLICE } from '../../../core'
-import net from 'node:net'
 import { requestFromInput, RShell, TokenMap } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
 import { FileAnalysisRequestMessage, requestAnalysisMessage } from './messages/analysis'
 import { requestSliceMessage, SliceRequestMessage } from './messages/slice'
 import { FlowrErrorMessage } from './messages/error'
+import { Socket } from './net'
 
 export interface FlowRFileInformation {
 	filename: string,
@@ -13,7 +13,7 @@ export interface FlowRFileInformation {
 }
 
 export class FlowRServerConnection {
-	private readonly socket:   net.Socket
+	private readonly socket:   Socket
 	private readonly shell:    RShell
 	private readonly tokenMap: TokenMap
 	private readonly name:     string
@@ -23,7 +23,7 @@ export class FlowRServerConnection {
 
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
-	constructor(socket: net.Socket, name: string, shell: RShell, tokenMap: TokenMap) {
+	constructor(socket: Socket, name: string, shell: RShell, tokenMap: TokenMap) {
 		this.socket = socket
 		this.tokenMap = tokenMap
 		this.shell = shell

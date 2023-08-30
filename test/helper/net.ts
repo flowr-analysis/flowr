@@ -90,8 +90,9 @@ export function withSocket(shell: RShell, fn: (socket: FakeSocket, server: FakeS
 		const net = new FakeServer()
 		const server = new FlowRServer(shell, await defaultTokenMap(), net)
 		await server.start(42)
-		const exampleSocket = new FakeSocket()
-		net.connectClient(exampleSocket)
-		await fn(exampleSocket, net)
+		const socket = new FakeSocket()
+		net.connectClient(socket)
+		await socket.waitForMessage('hello')
+		await fn(socket, net)
 	}
 }

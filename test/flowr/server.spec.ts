@@ -6,7 +6,6 @@ import { assert } from 'chai'
 
 describe('FlowR Server', withShell(shell => {
 	it('Correct Hello Message', withSocket(shell,async socket => {
-		await socket.waitForMessage('hello')
 		const messages = socket.getMessages()
 		assert.strictEqual(messages.length, 1, 'Expected exactly one message to hello the client')
 

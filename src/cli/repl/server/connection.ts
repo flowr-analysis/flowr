@@ -9,9 +9,9 @@ import { Socket } from './net'
 import { serverLog } from './server'
 import { ILogObj, Logger } from 'tslog'
 
-export interface FlowRFileInformation {
-	filename: string,
-	slicer: 	 SteppingSlicer
+export interface FlowRFileOrRequestInformation {
+	filename?: string,
+	slicer:    SteppingSlicer
 }
 
 export class FlowRServerConnection {
@@ -22,7 +22,7 @@ export class FlowRServerConnection {
 	private readonly logger:   Logger<ILogObj>
 
 	// maps token to information
-	private readonly fileMap = new Map<string, FlowRFileInformation>()
+	private readonly fileMap = new Map<string, FlowRFileOrRequestInformation>()
 
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
@@ -76,7 +76,7 @@ export class FlowRServerConnection {
 			return
 		}
 		const message = requestResult.message
-		this.logger.info(`[${this.name}] Received file analysis request for ${message.filename} (token: ${message.filetoken})`)
+		this.logger.info(`[${this.name}] Received file analysis request for ${message.filename ?? 'unknown file'} (token: ${message.filetoken})`)
 
 		if(this.fileMap.has(message.filetoken)) {
 			this.logger.warn(`File token ${message.filetoken} already exists. Overwriting.`)

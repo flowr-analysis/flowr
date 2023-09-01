@@ -4,6 +4,7 @@ import { define, popLocalEnvironment, pushLocalEnvironment } from '../../../../s
 import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/argument'
 import { UnnamedFunctionCallPrefix } from '../../../../src/dataflow/internal/process/functions/functionCall'
 import { LocalScope } from '../../../../src/dataflow/environments/scopes'
+import { MIN_VERSION_LAMBDA } from '../../../../src/r-bridge/lang-4.x/ast/model/versions'
 
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {
@@ -227,7 +228,8 @@ a(i)`, new DataflowGraph()
 			.addEdge('8', '0', EdgeType.DefinesOnCall, 'always')
 
 		assertDataflow('Calling with constant argument using lambda', shell, `(\\(x) { x + 1 })(2)`,
-			outGraph
+			outGraph,
+			{ minRVersion: MIN_VERSION_LAMBDA }
 		)
 		assertDataflow('Calling with constant argument', shell, `(function(x) { x + 1 })(2)`,
 			outGraph

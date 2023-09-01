@@ -3,10 +3,16 @@ import { LAST_PER_FILE_STEP, LAST_STEP, StepResults } from '../../../../core'
 import { FlowrBaseMessage, RequestMessageDefinition } from './messages'
 import Joi from 'joi'
 
+/**
+ * Can only be sent after you have sent the {@link FileAnalysisRequestMessage}.
+ * Using the same `filetoken` as in the {@link FileAnalysisRequestMessage} you
+ * can slice the respective file given the respective criteria.
+ */
 export interface SliceRequestMessage extends FlowrBaseMessage {
 	type:      'request-slice',
-	/** The {@link FileAnalysisRequestMessage#filetoken} of the file to slice */
+	/** The {@link FileAnalysisRequestMessage#filetoken} of the file/data to slice */
 	filetoken: string,
+	/** The slicing criteria to use */
 	criterion: SlicingCriteria
 }
 

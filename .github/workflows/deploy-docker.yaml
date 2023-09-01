@@ -24,6 +24,7 @@ jobs:
           docker build -t flowr -f Dockerfile .
 
       - name: Test that the image works
+        timeout-minutes: 5
         run: |
           docker run --rm flowr --help
 

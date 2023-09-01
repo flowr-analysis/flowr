@@ -34,7 +34,7 @@ export const RNumberPool: { val: RNumberValue, str: string }[] = [
 	{ str: '0x.p-5', val: { num: 0, complexNumber: false, markedAsInt: false } },
 	// the explicit integer block
 	{ str: '1L', val: { num: 1, complexNumber: false, markedAsInt: true } },
-	{ str: '0x10L', val: { num: 16, complexNumber: false, markedAsInt: true } },
+	// { str: '0x10L', val: { num: 16, complexNumber: false, markedAsInt: true } },
 	{ str: '1000000L', val: { num: 1000000, complexNumber: false, markedAsInt: true } },
 	{ str: '1e6L', val: { num: 1000000, complexNumber: false, markedAsInt: true } },
 	{ str: '1.L', val: { num: 1, complexNumber: false, markedAsInt: true } },

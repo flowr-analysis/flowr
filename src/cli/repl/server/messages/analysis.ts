@@ -41,6 +41,9 @@ export const requestAnalysisMessage: RequestMessageDefinition<FileAnalysisReques
  * Answer for a successful {@link FileAnalysisRequestMessage}.
  * It contains the results of the analysis in JSON format.
  *
+ * The `idMap` of the normalization step (see {@link NormalizedAst}) is not serialized as it would essentially
+ * repeat the complete normalized AST.
+ *
  * @note the serialization of maps and sets is controlled by the {@link jsonReplacer} as part of {@link sendMessage}.
  */
 export interface FileAnalysisResponseMessage extends FlowrBaseMessage {

@@ -101,9 +101,15 @@ export class FlowRServerConnection {
 
 		void slicer.allRemainingSteps(false).then(results => {
 			sendMessage(this.socket, {
-				type: 'response-file-analysis',
-				id:   message.id,
-				results
+				type:    'response-file-analysis',
+				id:      message.id,
+				results: {
+					...results,
+					normalize: {
+						...results.normalize,
+						idMap: undefined
+					}
+				}
 			})
 		})
 	}

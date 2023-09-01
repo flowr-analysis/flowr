@@ -4,7 +4,7 @@ import { retrieveVersionInformation } from '../../src/cli/repl/commands/version'
 import { FlowrHelloResponseMessage } from '../../src/cli/repl/server/messages/hello'
 import { assert } from 'chai'
 import { FileAnalysisResponseMessage } from '../../src/cli/repl/server/messages/analysis'
-import { requestFromInput } from '../../src/r-bridge'
+import { DecoratedAstMap, ParentInformation, requestFromInput } from '../../src/r-bridge'
 import { LAST_PER_FILE_STEP, SteppingSlicer } from '../../src/core'
 import { jsonReplacer } from '../../src/util/json'
 
@@ -49,6 +49,8 @@ describe('FlowR Server', withShell(shell => {
 			tokenMap:       await defaultTokenMap(),
 			request:        requestFromInput('1 + 1'),
 		}).allRemainingSteps()
+		// really ugly
+		results.normalize.idMap = undefined as unknown as DecoratedAstMap<ParentInformation>
 
 		assert.strictEqual(response.type, 'response-file-analysis', 'Expected the second message to be a response-file-analysis message')
 		assert.strictEqual(response.id, '42', 'Expected the second message to have the same id as the request')

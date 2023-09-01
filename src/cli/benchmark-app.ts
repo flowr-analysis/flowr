@@ -1,27 +1,10 @@
-import { log, LogLevel } from '../util/log'
-import commandLineArgs from 'command-line-args'
-import commandLineUsage, { OptionDefinition } from 'command-line-usage'
+import { log } from '../util/log'
 import { allRFilesFrom } from '../util/files'
 import { RParseRequestFromFile } from '../r-bridge'
-import { date2string } from '../util/time'
 import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
-import * as os from 'os'
 import { guard } from '../util/assert'
 import fs from 'fs'
-
-export const toolName = 'benchmark'
-
-const now = date2string(new Date())
-
-export const optionDefinitions: OptionDefinition[] = [
-	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
-	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide.' },
-	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process (if given, this will choose these files randomly and add the chosen names to the output'},
-	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
-	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
-	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction', defaultValue: 'all', typeLabel: '{underline all/no}' },
-	{ name: 'output',       alias: 'o', type: String,  description: `File to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${now}.json})`, defaultValue: `benchmark-${now}.json`,  typeLabel: '{underline file}' }
-]
+import { processCommandLineArgs } from './common'
 
 export interface BenchmarkCliOptions {
 	verbose:  boolean
@@ -33,38 +16,24 @@ export interface BenchmarkCliOptions {
 	limit?:   number
 }
 
-export const optionHelp = [
-	{
-		header:  'Benchmark the static backwards slicer',
-		content: 'Slice given files with additional benchmark information'
-	},
-	{
-		header:  'Synopsis',
-		content: [
-			`$ ${toolName} {italic example-folder/}`,
-			`$ ${toolName} {bold --help}`
-		]
-	},
-	{
-		header:     'Options',
-		optionList: optionDefinitions
-	}
-]
 
-const options = commandLineArgs(optionDefinitions) as BenchmarkCliOptions
+const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [],{
+	subtitle: 'Slice given files with additional benchmark information',
+	examples: [
+		'{italic example-folder/}',
+		'{bold --help}'
+	]
+})
 
-if(options.help) {
-	console.log(commandLineUsage(optionHelp))
+if(options.input.length === 0) {
+	console.error('No input files given. Nothing to do. See \'--help\' if this is an error.')
 	process.exit(0)
 }
-
-log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
-log.info('running with options - do not use for final benchmark', options)
 
 guard(options.slice === 'all' || options.slice === 'no', 'slice must be either all or no')
 
 function removeIfExists(summarizedRaw: string) {
-	if (fs.existsSync(summarizedRaw)) {
+	if(fs.existsSync(summarizedRaw)) {
 		console.log(`Removing existing ${summarizedRaw}`)
 		fs.unlinkSync(summarizedRaw)
 	}

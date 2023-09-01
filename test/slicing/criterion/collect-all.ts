@@ -6,14 +6,14 @@ import {
 	SlicingCriteria
 } from '../../../src/slicing'
 import { decorateAst, RShell } from '../../../src/r-bridge'
-import { retrieveAst, withShell } from '../../helper/shell'
+import { retrieveNormalizedAst, withShell } from '../../helper/shell'
 import { assert } from 'chai'
 
 function assertRetrievedIdsWith(shell: RShell, name: string, input: string, filter: SlicingCriteriaFilter, ...expected: SlicingCriteria[]) {
 	return it(name, async() => {
-		const ast = await retrieveAst(shell, input)
+		const ast = await retrieveNormalizedAst(shell, input)
 		const decorated = decorateAst(ast)
-		const got = [...collectAllSlicingCriteria(decorated.decoratedAst, filter)]
+		const got = [...collectAllSlicingCriteria(decorated.ast, filter)]
 			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated))
 			.map(m => ({id: m.id, name: decorated.idMap.get(m.id)?.lexeme}))
 		const expectedMapped = expected

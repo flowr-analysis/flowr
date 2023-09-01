@@ -11,7 +11,7 @@ describe("Lists with if-then constructs", withShell(shell => {
 		const scope = assign === '<<-' ? GlobalScope : LocalScope
 		describe(`using ${assign}`, () => {
 			describe(`reads within if`, () => {
-				for (const b of [
+				for(const b of [
 					{ label: "without else", text: "" },
 					{ label: "with else", text: " else { 1 }" },
 				]) {
@@ -44,7 +44,7 @@ describe("Lists with if-then constructs", withShell(shell => {
 				)
 			})
 			describe(`write within if`, () => {
-				for (const b of [
+				for(const b of [
 					{ label: "without else", text: "" },
 					{ label: "with else", text: " else { 1 }" },
 				]) {

@@ -2,39 +2,45 @@ import { it } from 'mocha'
 import { testRequiresNetworkConnection } from './network'
 import { DeepPartial } from 'ts-essentials'
 import {
-	decorateAst,
 	DecoratedAstMap,
 	deterministicCountingIdGenerator,
 	getStoredTokenMap,
 	IdGenerator,
 	NodeId,
-	NoInfo,
-	retrieveAstFromRCode,
+	NoInfo, requestFromInput,
 	RExpressionList,
 	RNode,
 	RNodeWithParent,
-	RShell,
+	RShell, TokenMap,
 	XmlParserHooks
 } from '../../src/r-bridge'
 import { assert } from 'chai'
-import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl, produceDataFlowGraph } from '../../src/dataflow'
-import { reconstructToCode, SlicingCriteria, slicingCriterionToId, staticSlicing } from '../../src/slicing'
-import { LocalScope } from '../../src/dataflow/environments/scopes'
+import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../src/dataflow'
+import { SlicingCriteria } from '../../src/slicing'
+import { testRequiresRVersion } from './version'
+import { deepMergeObject, MergeableRecord } from '../../src/util/objects'
+import { executeSingleSubStep, LAST_STEP, SteppingSlicer } from '../../src/core'
 
-let defaultTokenMap: Record<string, string>
+let _defaultTokenMap: TokenMap | undefined
 
-// we want the token map only once (to speed up tests)!
-before(async function() {
-	this.timeout('15min')
-	const shell = new RShell()
-	try {
-		shell.tryToInjectHomeLibPath()
-		await shell.ensurePackageInstalled('xmlparsedata')
-		defaultTokenMap = await getStoredTokenMap(shell)
-	} finally {
-		shell.close()
+/**
+ * Essentially provides the token map as a singleton.
+ * We want the token map only once (to speed up tests)!
+ */
+export async function defaultTokenMap(): Promise<TokenMap> {
+	if(_defaultTokenMap === undefined) {
+		const shell = new RShell()
+		try {
+			shell.tryToInjectHomeLibPath()
+			await shell.ensurePackageInstalled('xmlparsedata')
+			_defaultTokenMap = await getStoredTokenMap(shell)
+		} finally {
+			shell.close()
+		}
 	}
-})
+	return _defaultTokenMap
+}
+
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -61,8 +67,8 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 		before(async function() {
 			this.timeout('15min')
 			shell.tryToInjectHomeLibPath()
-			for (const pkg of packages) {
-				if (!await shell.isPackageInstalled(pkg)) {
+			for(const pkg of packages) {
+				if(!await shell.isPackageInstalled(pkg)) {
 					await testRequiresNetworkConnection(this)
 				}
 				await shell.ensurePackageInstalled(pkg, true)
@@ -76,9 +82,9 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function removeSourceInformation<T extends Record<string, any>>(obj: T): T {
+function removeInformation<T extends Record<string, any>>(obj: T): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
-		if (key === 'fullRange' || key === 'additionalTokens' || key === 'fullLexeme') {
+		if(key === 'fullRange' || key === 'additionalTokens' || key === 'fullLexeme' || key === 'id' || key === 'parent') {
 			return undefined
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
@@ -86,52 +92,102 @@ function removeSourceInformation<T extends Record<string, any>>(obj: T): T {
 	})) as T
 }
 
-function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, message?: string): void {
-	const astCopy = removeSourceInformation(ast)
-	const expectedCopy = removeSourceInformation(expected)
-	assert.deepStrictEqual(astCopy, expectedCopy, message)
+
+function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, message?: () => string): void {
+	const astCopy = removeInformation(ast)
+	const expectedCopy = removeInformation(expected)
+	 try {
+		 assert.deepStrictEqual(astCopy, expectedCopy)
+	 } catch(e) {
+		if(message) {
+			console.error(message())
+		}
+		throw e
+	 }
 }
 
-export const retrieveAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> => {
-	const file = input.startsWith('file://')
-	return await retrieveAstFromRCode({
-		request:                 file ? 'file' : 'text',
-		content:                 file ? input.slice(7) : input,
-		attachSourceInformation: true,
-		ensurePackageInstalled:  false // should be called within describeSession for that!
-	}, defaultTokenMap, shell, hooks)
+export const retrieveNormalizedAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RNodeWithParent> => {
+	const request = requestFromInput(input)
+	return (await new SteppingSlicer({
+		stepOfInterest: 'normalize',
+		shell,
+		request,
+		tokenMap:       await defaultTokenMap(),
+		hooks
+	}).allRemainingSteps()).normalize.ast
+}
+
+export interface TestConfiguration extends MergeableRecord {
+	/** the (inclusive) minimum version of R required to run this test, e.g., {@link MIN_VERSION_PIPE} */
+	minRVersion:            string | undefined,
+	needsNetworkConnection: boolean,
+}
+
+export const defaultTestConfiguration: TestConfiguration = {
+	minRVersion:            undefined,
+	needsNetworkConnection: false,
+}
+
+async function ensureConfig(shell: RShell, test: Mocha.Context, userConfig?: Partial<TestConfiguration>): Promise<void> {
+	const config = deepMergeObject(defaultTestConfiguration, userConfig)
+	if(config.needsNetworkConnection) {
+		await testRequiresNetworkConnection(test)
+	}
+	if(config.minRVersion !== undefined) {
+		await testRequiresRVersion(shell, `>=${config.minRVersion}`, test)
+	}
 }
 
 /** call within describeSession */
-export const assertAst = (name: string, shell: RShell, input: string, expected: RExpressionList): Mocha.Test => {
+export function assertAst(name: string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration>): Mocha.Test {
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
 	return it(name === input ? name : `${name} (input: ${input})`, async function() {
-		const ast = await retrieveAst(shell, input)
-		assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
+		await ensureConfig(shell, this, userConfig)
+		const ast = await retrieveNormalizedAst(shell, input)
+		assertAstEqualIgnoreSourceInformation(ast, expected, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
 	})
 }
 
 /** call within describeSession */
-export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, decorator: (input: RNode) => RNode<Decorated>, expected: RNodeWithParent<Decorated>): void {
+export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input: string, expected: RNodeWithParent<Decorated>, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
 	it(name, async function() {
-		const baseAst = await retrieveAst(shell, input)
-		const ast = decorator(baseAst)
-		assertAstEqualIgnoreSourceInformation(ast, expected, `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)} (baseAst before decoration: ${JSON.stringify(baseAst)})`)
+		await ensureConfig(shell, this, userConfig)
+		const result = await new SteppingSlicer({
+			stepOfInterest: 'normalize',
+			getId:          deterministicCountingIdGenerator(startIndexForDeterministicIds),
+			shell,
+			tokenMap:       await defaultTokenMap(),
+			request:        requestFromInput(input),
+		}).allRemainingSteps()
+
+		const ast = result.normalize.ast
+
+		assertAstEqualIgnoreSourceInformation(ast, expected, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
 	})
 }
 
-export const assertDataflow = (name: string, shell: RShell, input: string, expected: DataflowGraph, startIndexForDeterministicIds = 0): void => {
+export function assertDataflow(name: string, shell: RShell, input: string, expected: DataflowGraph, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
 	it(`${name} (input: ${JSON.stringify(input)})`, async function() {
-		const ast = await retrieveAst(shell, input)
-		const decoratedAst = decorateAst(ast, deterministicCountingIdGenerator(startIndexForDeterministicIds))
+		await ensureConfig(shell, this, userConfig)
 
-		const { graph } = produceDataFlowGraph(decoratedAst, LocalScope)
+		const info = await new SteppingSlicer({
+			stepOfInterest: 'dataflow',
+			request:        requestFromInput(input),
+			shell,
+			tokenMap:       await defaultTokenMap(),
+			getId:          deterministicCountingIdGenerator(startIndexForDeterministicIds),
+		}).allRemainingSteps()
 
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
-			assert.isTrue(expected.equals(graph))
-		} catch (e) {
-			const diff = diffGraphsToMermaidUrl({ label: 'expected', graph: expected }, { label: 'got', graph}, decoratedAst.idMap, `%% ${input.replace(/\n/g, '\n%% ')}\n`)
+			assert.isTrue(expected.equals(info.dataflow.graph))
+		} catch(e) {
+			const diff = diffGraphsToMermaidUrl(
+				{ label: 'expected', graph: expected },
+				{ label: 'got', graph: info.dataflow.graph},
+				info.normalize.idMap,
+				`%% ${input.replace(/\n/g, '\n%% ')}\n`
+			)
 			console.error('diff:\n', diff)
 			throw e
 		}
@@ -143,33 +199,47 @@ export const assertDataflow = (name: string, shell: RShell, input: string, expec
 function printIdMapping(ids: NodeId[], map: DecoratedAstMap): string {
 	return ids.map(id => `${id}: ${JSON.stringify(map.get(id)?.lexeme)}`).join(', ')
 }
-export const assertReconstructed = (name: string, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
+
+/**
+ * Please note, that theis executes the reconstruction step separately, as it predefines the result of the slice with the given ids.
+ */
+export function assertReconstructed(name: string, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfiguration>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
 	const selectedIds = Array.isArray(ids) ? ids : [ids]
 	return it(name, async function() {
-		const ast = await retrieveAst(shell, input)
-		const decoratedAst = decorateAst(ast, getId)
-		const reconstructed = reconstructToCode<NoInfo>(decoratedAst, new Set(selectedIds))
-		assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, decoratedAst.idMap)})`)
+		await ensureConfig(shell, this, userConfig)
+
+		const result = await new SteppingSlicer({
+			stepOfInterest: 'normalize',
+			getId:          getId,
+			request:        requestFromInput(input),
+			shell,
+			tokenMap:       await defaultTokenMap(),
+		}).allRemainingSteps()
+		const reconstructed = executeSingleSubStep('reconstruct', result.normalize,  new Set(selectedIds))
+		assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, result.normalize.idMap)})`)
 	})
 }
 
 
-export const assertSliced = (name: string, shell: RShell, input: string, criteria: SlicingCriteria, expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test => {
+export function assertSliced(name: string, shell: RShell, input: string, criteria: SlicingCriteria, expected: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
 	return it(`${JSON.stringify(criteria)} ${name}`, async function() {
-		const ast = await retrieveAst(shell, input)
-		const decoratedAst = decorateAst(ast, getId)
+		const result = await new SteppingSlicer({
+			stepOfInterest: LAST_STEP,
+			getId,
+			request:        requestFromInput(input),
+			shell,
+			tokenMap:       await defaultTokenMap(),
+			criterion:      criteria,
+		}).allRemainingSteps()
 
-		const dataflow = produceDataFlowGraph(decoratedAst)
 
 		try {
-			const mappedIds = criteria.map(c => slicingCriterionToId(c, decoratedAst))
-
-			const { result: sliced } = staticSlicing(dataflow.graph, decoratedAst.idMap, mappedIds.slice())
-			const reconstructed = reconstructToCode<NoInfo>(decoratedAst, sliced)
-
-			assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(mappedIds, decoratedAst.idMap)}), url: ${graphToMermaidUrl(dataflow.graph, decoratedAst.idMap, sliced)}`)
-		} catch (e) {
-			console.error('vis-got:\n', graphToMermaidUrl(dataflow.graph, decoratedAst.idMap))
+			assert.strictEqual(
+				result.reconstruct.code, expected,
+				`got: ${result.reconstruct.code}, vs. expected: ${expected}, for input ${input} (slice: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, result.normalize.idMap, true, result.slice.result)}`
+			)
+		} catch(e) {
+			console.error('vis-got:\n', graphToMermaidUrl(result.dataflow.graph, result.normalize.idMap))
 			throw e
 		}
 	})

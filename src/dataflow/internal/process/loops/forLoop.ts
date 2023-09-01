@@ -13,7 +13,7 @@ import { LocalScope } from '../../../environments/scopes'
 export function processForLoop<OtherInfo>(
 	loop: RForLoop<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
-): DataflowInformation<OtherInfo> {
+): DataflowInformation {
 	const variable = processDataflowFor(loop.variable, data)
 	const vector = processDataflowFor(loop.vector, data)
 	let headEnvironments = overwriteEnvironments(vector.environments, variable.environments)
@@ -66,7 +66,6 @@ export function processForLoop<OtherInfo>(
 		out:               outgoing,
 		graph:             nextGraph,
 		environments:      outEnvironments,
-		ast:               data.completeAst,
 		scope:             data.activeScope
 	}
 }

@@ -6,7 +6,7 @@ import { log } from '../../../../util/log'
 import { EdgeType } from '../../../graph'
 import { LocalScope } from '../../../environments/scopes'
 
-export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const name = processDataflowFor(parameter.name, data)
 	const defaultValue = parameter.defaultValue === undefined ? undefined : processDataflowFor(parameter.defaultValue, data)
 	const graph = defaultValue !== undefined ? name.graph.mergeWith(defaultValue.graph) : name.graph
@@ -30,7 +30,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 				graph.addEdge(writtenNode, parameter.defaultValue.info.id, EdgeType.DefinedBy, 'maybe' /* default arguments can be overridden! */)
 			} else {
 				const definedBy = [...defaultValue.in, ...defaultValue.unknownReferences]
-				for (const node of definedBy) {
+				for(const node of definedBy) {
 					graph.addEdge(writtenNode, node, EdgeType.DefinedBy, 'maybe' /* default arguments can be overridden! */)
 				}
 			}
@@ -43,7 +43,6 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		out:               [...(defaultValue?.out ?? []), ...name.out, ...name.unknownReferences],
 		graph:             graph,
 		environments:      environments,
-		ast:               data.completeAst,
 		scope:             data.activeScope
 	}
 }

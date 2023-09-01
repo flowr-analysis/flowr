@@ -5,30 +5,60 @@ import {
 	printClusterReport,
 	histogramsFromClusters,
 	histograms2table,
-	optionDefinitions,
-	optionHelp,
-	StatsCliOptions,
-	validateFeatures,
 	printFeatureStatistics,
 	initFileProvider,
 	setFormatter,
-	voidFormatter, ContextsWithCount
+	voidFormatter, ContextsWithCount, allFeatureNames, FeatureKey
 } from '../statistics'
-import { log, LogLevel } from '../util/log'
-import commandLineArgs from 'command-line-args'
-import commandLineUsage from 'command-line-usage'
+import { log } from '../util/log'
 import { guard } from '../util/assert'
 import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 import { DefaultMap } from '../util/defaultmap'
+import { processCommandLineArgs } from './common'
 
-const options = commandLineArgs(optionDefinitions) as StatsCliOptions
+export interface StatsCliOptions {
+	verbose:        boolean
+	help:           boolean
+	'post-process': boolean
+	limit:          number
+	'hist-step':    number
+	input:          string[]
+	'output-dir':   string
+	'no-ansi':      boolean
+	features:       string[]
+}
 
-if(options.help) {
-	console.log(commandLineUsage(optionHelp))
+export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])): Set<FeatureKey> {
+	for(const feature of features) {
+		if(feature === 'all') {
+			if(features.length > 1) {
+				console.error(`Feature "all" must be the only feature given, got ${features.join(', ')}`)
+				process.exit(1)
+			}
+		} else if(!allFeatureNames.has(feature as FeatureKey)) {
+			console.error(`Feature ${feature} is unknown, supported are ${[...allFeatureNames].join(', ')} or "all"`)
+			process.exit(1)
+		}
+	}
+	return features[0] === 'all' ? allFeatureNames : new Set(features as FeatureKey[])
+}
+
+
+const options = processCommandLineArgs<StatsCliOptions>('stats', [],{
+	subtitle: 'Given input files or folders, this will collect usage statistics for the given features and write them to a file',
+	examples: [
+		'{bold -i} {italic example.R} {bold -i} {italic example2.R} {bold --output-dir} {italic "output-folder/"}',
+		'{italic "folder1/"} {bold --features} {italic all} {bold --output-dir} {italic "output-folder/"}',
+		'{bold --post-process} {italic "output-folder"} {bold --features} {italic assignments}',
+		'{bold --help}'
+	]
+})
+
+if(options.input.length === 0) {
+	console.error('No input files given. Nothing to do. See \'--help\' if this is an error.')
 	process.exit(0)
 }
-log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
-log.info('running with options', options)
+
 if(options['no-ansi']) {
 	log.info('disabling ansi colors')
 	setFormatter(voidFormatter)

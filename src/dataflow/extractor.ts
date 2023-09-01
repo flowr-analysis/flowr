@@ -1,4 +1,4 @@
-import { DecoratedAst, ParentInformation, RAssignmentOp, RBinaryOp, Type } from '../r-bridge'
+import { NormalizedAst, ParentInformation, RAssignmentOp, RBinaryOp, Type } from '../r-bridge'
 import { DataflowInformation } from './internal/info'
 import { DataflowProcessorInformation, DataflowProcessors, processDataflowFor } from './processor'
 import { processUninterestingLeaf } from './internal/process/uninterestingLeaf'
@@ -45,8 +45,8 @@ const processors: DataflowProcessors<any> = {
 	[Type.ExpressionList]:     processExpressionList,
 }
 
-export function produceDataFlowGraph<OtherInfo>(ast: DecoratedAst<OtherInfo & ParentInformation>, initialScope: DataflowScopeName = LocalScope): DataflowInformation<OtherInfo & ParentInformation> {
-	return processDataflowFor<OtherInfo>(ast.decoratedAst, { completeAst: ast, activeScope: initialScope, environments: initializeCleanEnvironments(), processors: processors as DataflowProcessors<OtherInfo & ParentInformation> })
+export function produceDataFlowGraph<OtherInfo>(ast: NormalizedAst<OtherInfo & ParentInformation>, initialScope: DataflowScopeName = LocalScope): DataflowInformation {
+	return processDataflowFor<OtherInfo>(ast.ast, { completeAst: ast, activeScope: initialScope, environments: initializeCleanEnvironments(), processors: processors as DataflowProcessors<OtherInfo & ParentInformation> })
 }
 
 export function processBinaryOp<OtherInfo>(node: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {

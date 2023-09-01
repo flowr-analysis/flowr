@@ -4,7 +4,7 @@ import { DataflowProcessorInformation, processDataflowFor } from '../../processo
 import { makeAllMaybe, overwriteEnvironments } from '../../environments'
 import { EdgeType } from '../../graph'
 
-export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const processedAccessed = processDataflowFor(node.accessed, data)
 	const nextGraph = processedAccessed.graph
 	const outgoing = processedAccessed.out
@@ -34,7 +34,6 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 	}
 
 	return {
-		ast:               data.completeAst,
 		/*
      * keep active nodes in case of assignments etc.
      * We make them maybe as a kind of hack.

@@ -19,8 +19,8 @@ export function splitArrayOn<T>(arr: T[], predicate: (elem: T) => boolean): T[][
 	const result: T[][] = []
 	let current: T[] = []
 	let fired = false
-	for (const elem of arr) {
-		if (predicate(elem)) {
+	for(const elem of arr) {
+		if(predicate(elem)) {
 			result.push(current)
 			current = []
 			fired = true
@@ -46,8 +46,8 @@ export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
 	const c = new Array(arr.length).fill(0) as number[]
 	let i = 1
 
-	while (i < arr.length) {
-		if (c[i] >= i) {
+	while(i < arr.length) {
+		if(c[i] >= i) {
 			c[i] = 0
 			++i
 		} else {
@@ -84,7 +84,7 @@ export function *getUniqueCombinationsOfSize<T>(array: T[], minSize: number, max
 
 	function *p(t: T[], i: number, newArr: boolean): Generator<T[], void, void> {
 		// start yielding if min size is reached
-		if (t.length >= minSize) {
+		if(t.length >= minSize) {
 			// only yield if the array has been modified
 			if(newArr) {
 				yield t
@@ -94,7 +94,7 @@ export function *getUniqueCombinationsOfSize<T>(array: T[], minSize: number, max
 				return
 			}
 		}
-		if (i >= array.length) {
+		if(i >= array.length) {
 			return
 		}
 		yield* p(t.concat(array[i]), i + 1, true)

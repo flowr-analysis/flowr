@@ -9,10 +9,11 @@ import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../
 import { appendEnvironments, define } from '../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../src/dataflow/environments/scopes'
+import { MIN_VERSION_PIPE } from '../../../src/r-bridge/lang-4.x/ast/model/versions'
 
 describe("Atomic dataflow information", withShell((shell) => {
 	describe("uninteresting leafs", () => {
-		for (const input of ["42", '"test"', "TRUE", "NA", "NULL"]) {
+		for(const input of ["42", '"test"', "TRUE", "NA", "NULL"]) {
 			assertDataflow(input, shell, input, new DataflowGraph())
 		}
 	})
@@ -84,9 +85,9 @@ describe("Atomic dataflow information", withShell((shell) => {
 	})
 
 	describe("unary operators", () => {
-		for (const opSuite of RUnaryOpPool) {
+		for(const opSuite of RUnaryOpPool) {
 			describe(`${opSuite.label} operations`, () => {
-				for (const op of opSuite.pool) {
+				for(const op of opSuite.pool) {
 					const inputDifferent = `${op.str}x`
 					assertDataflow(`${op.str}x`, shell,
 						inputDifferent,
@@ -99,9 +100,9 @@ describe("Atomic dataflow information", withShell((shell) => {
 
 	// these will be more interesting whenever we have more information on the edges (like modification etc.)
 	describe("non-assignment binary operators", () => {
-		for (const opSuite of RNonAssignmentBinaryOpPool) {
+		for(const opSuite of RNonAssignmentBinaryOpPool) {
 			describe(`${opSuite.label}`, () => {
-				for (const op of opSuite.pool) {
+				for(const op of opSuite.pool) {
 					describe(`${op.str}`, () => {
 						const inputDifferent = `x ${op.str} y`
 						assertDataflow(`${inputDifferent} (different variables)`,
@@ -138,7 +139,8 @@ describe("Atomic dataflow information", withShell((shell) => {
 					})
 					.addVertex({ tag: 'use', id: "1", name: `${UnnamedArgumentPrefix}1` })
 					.addEdge("3", "1", EdgeType.Argument, "always")
-					.addEdge("1", "0", EdgeType.Reads, "always")
+					.addEdge("1", "0", EdgeType.Reads, "always"),
+				{ minRVersion: MIN_VERSION_PIPE }
 			)
 			assertDataflow("Nested calling", shell, "x |> f() |> g()",
 				new DataflowGraph()
@@ -160,7 +162,8 @@ describe("Atomic dataflow information", withShell((shell) => {
 					.addEdge("3", "1", EdgeType.Argument, "always")
 					.addEdge("7", "5", EdgeType.Argument, "always")
 					.addEdge("5", "3", EdgeType.Reads, "always")
-					.addEdge("1", "0", EdgeType.Reads, "always")
+					.addEdge("1", "0", EdgeType.Reads, "always"),
+				{ minRVersion: MIN_VERSION_PIPE }
 			)
 			assertDataflow("Multi-Parameter function", shell, "x |> f(y,z)",
 				new DataflowGraph()
@@ -186,13 +189,14 @@ describe("Atomic dataflow information", withShell((shell) => {
 					.addEdge("7", "6", EdgeType.Argument, "always")
 					.addEdge("1", "0", EdgeType.Reads, "always")
 					.addEdge("4", "3", EdgeType.Reads, "always")
-					.addEdge("6", "5", EdgeType.Reads, "always")
+					.addEdge("6", "5", EdgeType.Reads, "always"),
+				{ minRVersion: MIN_VERSION_PIPE }
 			)
 		})
 	})
 
 	describe("assignments", () => {
-		for (const op of RAssignmentOpPool) {
+		for(const op of RAssignmentOpPool) {
 			describe(`${op.str}`, () => {
 				const scope = op.str.length > 2 ? GlobalScope : LocalScope // love it
 				const swapSourceAndTarget = op.str === "->" || op.str === "->>"
@@ -206,7 +210,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 
 				const variableAssignment = `x ${op.str} y`
 				const dataflowGraph = new DataflowGraph()
-				if (swapSourceAndTarget) {
+				if(swapSourceAndTarget) {
 					dataflowGraph
 						.addVertex({ tag: 'use', id: "0", name: "x" })
 						.addVertex({ tag: 'variable-definition', id: "1", name: "y", scope })
@@ -226,7 +230,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 				const circularAssignment = `x ${op.str} x`
 
 				const circularGraph = new DataflowGraph()
-				if (swapSourceAndTarget) {
+				if(swapSourceAndTarget) {
 					circularGraph
 						.addVertex({ tag: 'use', id: "0", name: "x" })
 						.addVertex({ tag: 'variable-definition', id: "1", name: "x", scope })
@@ -282,14 +286,14 @@ describe("Atomic dataflow information", withShell((shell) => {
 
 		describe(`known impact assignments`, () => {
 			describe('loops return invisible null', () => {
-				for (const assignment of [ { str: '<-', defId: ['0','0','0'], readId: ['1','1','1'], swap: false },
+				for(const assignment of [ { str: '<-', defId: ['0','0','0'], readId: ['1','1','1'], swap: false },
 					{ str: '<<-', defId: ['0','0','0'], readId: ['1','1','1'], swap: false }, { str: '=', defId: ['0','0','0'], readId: ['1','1','1'], swap: false },
 					/* two for parenthesis necessary for precedence */
 					{ str: '->', defId: ['3', '4', '7'], readId: ['0','0','0'], swap: true }, { str: '->>', defId: ['3', '4', '7'], readId: ['0','0','0'], swap: true }] ) {
 					describe(`${assignment.str}`, () => {
 						const scope = assignment.str.length > 2 ? GlobalScope : LocalScope
 
-						for (const wrapper of [(x: string) => x, (x: string) => `{ ${x} }`]) {
+						for(const wrapper of [(x: string) => x, (x: string) => `{ ${x} }`]) {
 							const build = (a: string, b: string) => assignment.swap ? `(${wrapper(b)}) ${assignment.str} ${a}` : `${a} ${assignment.str} ${wrapper(b)}`
 
 							const repeatCode = build('x', 'repeat x')
@@ -350,7 +354,7 @@ describe("Atomic dataflow information", withShell((shell) => {
 
 	describe("if-then-else", () => {
 		// spacing issues etc. are dealt with within the parser, however, braces are not allowed to introduce scoping artifacts
-		for (const b of [
+		for(const b of [
 			{ label: "without braces", func: (x: string) => `${x}` },
 			{ label: "with braces", func: (x: string) => `{ ${x} }` },
 		]) {

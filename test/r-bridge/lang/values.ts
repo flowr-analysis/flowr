@@ -75,7 +75,7 @@ describe('Bidirectional Value Translation', () => {
 			})
 		})
 		describe('numbers', () => {
-			for (const number of RNumberPool) {
+			for(const number of RNumberPool) {
 				it(`${number.str} => ${number.val.num}`, () => {
 					assert.deepStrictEqual(number2ts(number.str), number.val)
 				})
@@ -89,7 +89,7 @@ describe('Bidirectional Value Translation', () => {
 			it('deny wrongly quoted strings', () => {
 				assert.throws(() => string2ts('abc'), Error)
 			})
-			for (const string of RStringPool) {
+			for(const string of RStringPool) {
 				it(`${string.str} => ${string.val.str}`, () => {
 					assert.deepStrictEqual(string2ts(string.str), string.val)
 				})

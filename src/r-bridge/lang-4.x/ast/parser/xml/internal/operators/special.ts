@@ -10,11 +10,11 @@ import {
  * operators within our internal AST.
  */
 export function identifySpecialOp(content: string): BinaryOperatorFlavor | 'special' {
-	if (ComparisonOperatorsRAst.has(content)) {
+	if(ComparisonOperatorsRAst.has(content)) {
 		return 'comparison'
-	} else if (LogicalOperatorsRAst.has(content)) {
+	} else if(LogicalOperatorsRAst.has(content)) {
 		return 'logical'
-	} else if (ArithmeticOperatorsRAst.has(content)) {
+	} else if(ArithmeticOperatorsRAst.has(content)) {
 		return 'arithmetic'
 	} else {
 		return 'special'

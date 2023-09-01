@@ -17,7 +17,7 @@ export async function extractSingle(result: FeatureStatistics, shell: RShell, fr
 	const doc = parser.parseFromString(xml, 'text/xml')
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	for (const [key, feature] of Object.entries(ALL_FEATURES) as [FeatureKey, Feature<any>][]) {
+	for(const [key, feature] of Object.entries(ALL_FEATURES) as [FeatureKey, Feature<any>][]) {
 		if(features !== 'all' && !features.has(key)) {
 			continue
 		}
@@ -67,7 +67,7 @@ function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequest
 export function staticRequests(...requests: (RParseRequestFromText | RParseRequestFromFile)[]): AsyncGenerator<RParseRequestFromText | RParseRequestFromFile> {
 	// eslint-disable-next-line @typescript-eslint/require-await
 	return async function* () {
-		for (const request of requests) {
+		for(const request of requests) {
 			yield request
 		}
 	}()
@@ -100,7 +100,7 @@ export async function extract<T extends RParseRequestFromText | RParseRequestFro
 			}, features)
 			processMetaOnSuccessful(meta, request)
 			first = false
-		} catch (e) {
+		} catch(e) {
 			log.error('for request: ', request, e)
 			meta.skipped.push(request.content)
 		}

@@ -26,7 +26,7 @@ export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
 
 
 
-export type DataflowFunctionFlowInformation = Omit<DataflowInformation<unknown>, 'ast' | 'graph'>  & { graph: Set<NodeId> }
+export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph'>  & { graph: Set<NodeId> }
 
 export type NamedFunctionArgument = [string, IdentifierReference | '<value>']
 export type PositionalFunctionArgument = IdentifierReference | '<value>'
@@ -89,7 +89,7 @@ export class DataflowGraph {
 		if(includeDefinedFunctions) {
 			yield* this.vertexInformation.entries()
 		} else {
-			for (const id of this.rootVertices) {
+			for(const id of this.rootVertices) {
 				yield [id, this.vertexInformation.get(id) as DataflowGraphVertexInfo]
 			}
 		}
@@ -176,12 +176,12 @@ export class DataflowGraph {
 			// reduce the load on attribute checks
 			if(attribute !== 'maybe') {
 				const fromInfo = this.get(fromId, true)
-				if (fromInfo?.[0].when === 'maybe') {
+				if(fromInfo?.[0].when === 'maybe') {
 					log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
 					attribute = 'maybe'
 				} else {
 					const toInfo = this.get(toId, true)
-					if (toInfo?.[0].when === 'maybe') {
+					if(toInfo?.[0].when === 'maybe') {
 						log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
 						attribute = 'maybe'
 					}
@@ -212,7 +212,7 @@ export class DataflowGraph {
 				} else {
 					existingTo.set(fromId, edge)
 				}
-			} else if (type === 'defines-on-call') {
+			} else if(type === 'defines-on-call') {
 				const otherEdge: DataflowGraphEdge = { ...edge,
 					types: new Set([EdgeType.DefinedByOnCall])
 				}
@@ -252,7 +252,7 @@ export class DataflowGraph {
 
 		// merge root ids
 		if(mergeRootVertices) {
-			for (const root of otherGraph.rootVertices) {
+			for(const root of otherGraph.rootVertices) {
 				this.rootVertices.add(root)
 			}
 		}
@@ -267,18 +267,18 @@ export class DataflowGraph {
 	}
 
 	private mergeEdges(otherGraph: DataflowGraph) {
-		for (const [id, edges] of otherGraph.edges.entries()) {
-			for (const [target, edge] of edges) {
+		for(const [id, edges] of otherGraph.edges.entries()) {
+			for(const [target, edge] of edges) {
 				const existing = this.edges.get(id)
-				if (existing === undefined) {
+				if(existing === undefined) {
 					this.edges.set(id, new Map([[target, edge]]))
 				} else {
 					const get = existing.get(target)
-					if (get === undefined) {
+					if(get === undefined) {
 						existing.set(target, edge)
 					} else {
 						get.types = new Set([...get.types, ...edge.types])
-						if (edge.attribute === 'maybe') {
+						if(edge.attribute === 'maybe') {
 							get.attribute = 'maybe'
 						}
 					}

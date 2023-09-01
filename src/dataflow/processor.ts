@@ -2,7 +2,7 @@
  * Based on a two-way fold, this processor will automatically supply scope information
  */
 import {
-	DecoratedAst,
+	NormalizedAst,
 	ParentInformation, RNode,
 	RNodeWithParent
 } from '../r-bridge'
@@ -13,7 +13,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	/**
    * Initial and frozen ast-information
    */
-	readonly completeAst:  DecoratedAst<OtherInfo>
+	readonly completeAst:  NormalizedAst<OtherInfo>
 	/**
    * Correctly contains pushed local scopes introduced by `function` scopes.
    * Will by default *not* contain any symbol-bindings introduces along the way, they have to be decorated when moving up the tree.
@@ -29,7 +29,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	readonly processors:   DataflowProcessors<OtherInfo>
 }
 
-export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation<OtherInfo>
+export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation
 
 type NodeWithKey<OtherInfo, Node extends RNode<OtherInfo & ParentInformation>, TypeKey> = Node['type'] extends TypeKey ? Node : never
 
@@ -52,7 +52,7 @@ export type DataflowProcessors<OtherInfo> = {
  * @param current - The current node to start processing from
  * @param data    - The initial information to be passed down
  */
-export function processDataflowFor<OtherInfo>(current: RNodeWithParent<OtherInfo>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo & ParentInformation> {
+export function processDataflowFor<OtherInfo>(current: RNodeWithParent<OtherInfo>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	return data.processors[current.type](current as never, data)
 }
 

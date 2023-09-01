@@ -96,7 +96,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 
 	if(parsedArguments.length === 0) {
 		// sadly, next() and break() work
-		if (calledFunction.type === Type.Next) {
+		if(calledFunction.type === Type.Next) {
 			return {
 				type:   Type.Next,
 				lexeme: content,

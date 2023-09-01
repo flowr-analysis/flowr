@@ -11,9 +11,9 @@ import { rangeFrom } from "../../../../src/util/range"
 describe("Parse simple operations",
 	withShell((shell) => {
 		describe("unary operations", () => {
-			for (const opSuite of RUnaryOpPool) {
+			for(const opSuite of RUnaryOpPool) {
 				describe(`${opSuite.label} operations`, () => {
-					for (const op of opSuite.pool) {
+					for(const op of opSuite.pool) {
 						const simpleInput = `${op.str}42`
 						const opOffset = op.str.length - 1
 						assertAst(
@@ -65,7 +65,7 @@ describe("Parse simple operations",
 		})
 
 		describe('binary operations', () => {
-			for (const opSuite of [
+			for(const opSuite of [
 				{ label: "arithmetic", pool: RArithmeticBinaryOpPool },
 				{
 					label: "logical",
@@ -73,13 +73,13 @@ describe("Parse simple operations",
 				},
 			]) {
 				describe(`${opSuite.label} operations`, () => {
-					for (const op of opSuite.pool) {
+					for(const op of opSuite.pool) {
 						describePrecedenceTestsForOp(op, shell)
 					}
 				})
 			}
 			describe('comparison operations', () => {
-				for (const op of ComparisonOperators) {
+				for(const op of ComparisonOperators) {
 					describe(op, () => {
 						const simpleInput = `1 ${op} 1`
 						const opOffset = op.length - 1
@@ -251,11 +251,11 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 			{ input: `(1 ${op.str} 1) ${op.str} (42)`, offsetL: 1, offsetC: 2, offsetR: 3 }
 		]
 		// exponentiation has a different behavior when nested without braces
-		if (op.str !== '^' && op.str !== '**') {
+		if(op.str !== '^' && op.str !== '**') {
 			precedenceTests.push({ input: `1 ${op.str} 1 ${op.str} 42`, offsetL: 0, offsetC: 0, offsetR: 0 })
 		}
 
-		for (const defaultPrecedence of precedenceTests) {
+		for(const defaultPrecedence of precedenceTests) {
 			assertAst(defaultPrecedence.input, shell, defaultPrecedence.input, exprList(
 				{
 					type:     Type.BinaryOp,

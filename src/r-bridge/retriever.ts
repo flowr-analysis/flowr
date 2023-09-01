@@ -1,7 +1,7 @@
 import { type RShell } from "./shell"
-import { parseCSV, ts2r, XmlParserHooks, RExpressionList, normalize } from './lang-4.x'
+import { parseCSV, ts2r, XmlParserHooks, normalize, NormalizedAst } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
-import { DeepPartial } from 'ts-essentials'
+import { DeepPartial, DeepReadonly } from 'ts-essentials'
 import { guard } from '../util/assert'
 
 export interface RParseRequestFromFile {
@@ -34,6 +34,22 @@ interface RParseRequestBase {
  */
 export type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseRequestBase
 
+export function requestFromInput(input: `file://${string}`): RParseRequestFromFile & RParseRequestBase
+export function requestFromInput(input: string): RParseRequestFromText & RParseRequestBase
+
+/**
+ * Creates a {@link RParseRequest} from a given input.
+ */
+export function requestFromInput(input: `file://${string}` | string): RParseRequest {
+	const file = input.startsWith('file://')
+	return {
+		request:                 file ? 'file' : 'text',
+		content:                 file ? input.slice(7) : input,
+		attachSourceInformation: true,
+		ensurePackageInstalled:  false // should be called within describeSession for that!
+	}
+}
+
 const ERR_MARKER = "err"
 
 /**
@@ -44,7 +60,7 @@ const ERR_MARKER = "err"
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell): Promise<string> {
-	if (request.ensurePackageInstalled) {
+	if(request.ensurePackageInstalled) {
 		await shell.ensurePackageInstalled('xmlparsedata', true)
 	}
 
@@ -65,7 +81,7 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
  * Uses {@link retrieveXmlFromRCode} and returns the nicely formatted object-AST.
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
-export async function retrieveAstFromRCode(request: RParseRequest, tokenMap: Record<string, string>, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<RExpressionList> {
+export async function retrieveNormalizedAstFromRCode(request: RParseRequest, tokenMap: Record<string, string>, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<NormalizedAst> {
 	const xml = await retrieveXmlFromRCode(request, shell)
 	return await normalize(xml, tokenMap, hooks)
 }
@@ -74,14 +90,14 @@ export async function retrieveAstFromRCode(request: RParseRequest, tokenMap: Rec
  * If the string has (R-)quotes around it, they will be removed, otherwise the string is returned unchanged.
  */
 export function removeTokenMapQuotationMarks(str: string): string {
-	if (str.length > 1 && (startAndEndsWith(str, '\'') || startAndEndsWith(str, '"'))) {
+	if(str.length > 1 && (startAndEndsWith(str, '\'') || startAndEndsWith(str, '"'))) {
 		return str.slice(1, -1)
 	} else {
 		return str
 	}
 }
 
-export type TokenMap = Record<string, string>
+export type TokenMap = DeepReadonly<Record<string, string>>
 
 export async function getStoredTokenMap(shell: RShell): Promise<TokenMap> {
 	await shell.ensurePackageInstalled('xmlparsedata', true /* use some kind of environment in the future */)
@@ -90,7 +106,7 @@ export async function getStoredTokenMap(shell: RShell): Promise<TokenMap> {
 		'write.table(xmlparsedata::xml_parse_token_map,sep=",", col.names=FALSE)'
 	))
 
-	if (parsed.some(s => s.length !== 2)) {
+	if(parsed.some(s => s.length !== 2)) {
 		throw new Error(`Expected two columns in token map, but got ${JSON.stringify(parsed)}`)
 	}
 
@@ -102,7 +118,7 @@ export async function getStoredTokenMap(shell: RShell): Promise<TokenMap> {
 }
 
 /**
- * Needs to be called *after*  {@link retrieveXmlFromRCode} (or {@link retrieveAstFromRCode})
+ * Needs to be called *after*  {@link retrieveXmlFromRCode} (or {@link retrieveNormalizedAstFromRCode})
  */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise<number> {
 	const result = await shell.sendCommandWithOutput(`cat(nrow(getParseData(flowr_parsed)),${ts2r(shell.options.eol)})`)

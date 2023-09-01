@@ -101,12 +101,12 @@ const ElseBracesVariants = [{
 describe('Parse simple constructs', withShell(shell => {
 	describe('if', () => {
 		describe('if-then', () => {
-			for (const pool of [{name: 'braces', variants: IfThenBraceVariants}, {
+			for(const pool of [{name: 'braces', variants: IfThenBraceVariants}, {
 				name:     'spacing',
 				variants: IfThenSpacingVariants
 			}]) {
 				describe(`${pool.name} variants`, () => {
-					for (const variant of pool.variants) {
+					for(const variant of pool.variants) {
 						const strNum = `${variant.num}`
 						assertAst(JSON.stringify(variant.str), shell, variant.str, exprList({
 							type:      Type.If,
@@ -133,17 +133,17 @@ describe('Parse simple constructs', withShell(shell => {
 			}
 		})
 		describe('if-then-else', () => {
-			for (const elsePool of [{name: 'braces', variants: ElseBracesVariants}, {
+			for(const elsePool of [{name: 'braces', variants: ElseBracesVariants}, {
 				name:     'spacing',
 				variants: ElseSpacingVariants
 			}]) {
-				for (const ifThenPool of [{name: 'braces', variants: IfThenBraceVariants}, {
+				for(const ifThenPool of [{name: 'braces', variants: IfThenBraceVariants}, {
 					name:     'spacing',
 					variants: IfThenSpacingVariants
 				}]) {
 					describe(`if-then: ${ifThenPool.name}, else: ${elsePool.name}`, () => {
-						for (const elseVariant of elsePool.variants) {
-							for (const ifThenVariant of ifThenPool.variants) {
+						for(const elseVariant of elsePool.variants) {
+							for(const ifThenVariant of ifThenPool.variants) {
 								const thenNum = `${ifThenVariant.num}`
 								const elseNum = `${elseVariant.num}`
 								const input = `${ifThenVariant.str}${elseVariant.str}`

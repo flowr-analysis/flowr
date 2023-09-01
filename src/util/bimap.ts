@@ -10,8 +10,8 @@ export class BiMap<K, V> implements Map<K, V> {
 	private readonly v2k = new Map<V, K>()
 
 	constructor(base?: Iterable<[K, V]>) {
-		if (base != null) {
-			for (const [k, v] of base) {
+		if(base != null) {
+			for(const [k, v] of base) {
 				this.set(k, v)
 			}
 		}
@@ -29,7 +29,7 @@ export class BiMap<K, V> implements Map<K, V> {
 
 	public delete(key: K): boolean {
 		const value = this.k2v.get(key)
-		if (value === undefined) {
+		if(value === undefined) {
 			return false
 		}
 		this.k2v.delete(key)

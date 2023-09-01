@@ -3,7 +3,7 @@ import { REnvironmentInformation, IEnvironment, IdentifierDefinition, Environmen
 
 function uniqueMergeValues(old: IdentifierDefinition[], value: IdentifierDefinition[]): IdentifierDefinition[] {
 	const result = old
-	for (const v of value) {
+	for(const v of value) {
 		const find = result.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt)
 		if(find < 0) {
 			result.push(v)
@@ -16,7 +16,7 @@ function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironme
 	guard(base !== undefined && next !== undefined, 'can not append environments with undefined')
 	guard(base.name === next.name, 'cannot overwrite environments with different names')
 	const map = new Map(base.memory)
-	for (const [key, value] of next.memory) {
+	for(const [key, value] of next.memory) {
 		const old = map.get(key)
 		if(old) {
 			map.set(key, uniqueMergeValues(old, value))

@@ -37,12 +37,12 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 }
 
 export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, nameIdShares: DefaultMap<string, IdentifierReference[]>) {
-	for (const ids of nameIdShares.values()) {
-		if (ids.length <= 1) {
+	for(const ids of nameIdShares.values()) {
+		if(ids.length <= 1) {
 			continue
 		}
 		const base = ids[0]
-		for (let i = 1; i < ids.length; i++) {
+		for(let i = 1; i < ids.length; i++) {
 			graph.addEdge(base.nodeId, ids[i].nodeId, EdgeType.SameReadRead, 'always', true)
 		}
 	}
@@ -50,13 +50,13 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
 
 function specialReturnFunction(info: DataflowGraphVertexFunctionCall, graph: DataflowGraph, id: NodeId) {
 	guard(info.args.length <= 1, () => `expected up to one argument for return, but got ${info.args.length}`)
-	for (const arg of info.args) {
+	for(const arg of info.args) {
 		if(Array.isArray(arg)) {
-			if (arg[1] !== '<value>') {
+			if(arg[1] !== '<value>') {
 				graph.addEdge(id, arg[1], EdgeType.Returns, 'always')
 			}
 		} else {
-			if (arg !== '<value>') {
+			if(arg !== '<value>') {
 				graph.addEdge(id, arg, EdgeType.Returns, 'always')
 			}
 		}
@@ -124,7 +124,7 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, fun
 		return
 	}
 
-	if (linkedFunction.type !== Type.FunctionDefinition) {
+	if(linkedFunction.type !== Type.FunctionDefinition) {
 		dataflowLogger.trace(`function call definition base ${functionCallName} does not lead to a function definition (${functionRootId}) but got ${linkedFunction.type}`)
 		return
 	}
@@ -144,31 +144,31 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 
 	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)
 
-	for (const def of functionDefs.values()) {
+	for(const def of functionDefs.values()) {
 		guard(def.tag === 'function-definition', () => `expected function definition, but got ${def.tag}`)
 
 		if(info.environment !== undefined) {
 			// for each open ingoing reference, try to resolve it here, and if so add a read edge from the call to signal that it reads it
-			for (const ingoing of def.subflow.in) {
+			for(const ingoing of def.subflow.in) {
 				const defs = resolveByName(ingoing.name, LocalScope, info.environment)
-				if (defs === undefined) {
+				if(defs === undefined) {
 					continue
 				}
-				for (const def of defs) {
+				for(const def of defs) {
 					graph.addEdge(id, def, EdgeType.Reads, 'always')
 				}
 			}
 		}
 
 		const exitPoints = def.exitPoints
-		for (const exitPoint of exitPoints) {
+		for(const exitPoint of exitPoints) {
 			graph.addEdge(id, exitPoint, EdgeType.Returns, 'always')
 		}
 		dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${def.name}`)
 		graph.addEdge(id, def.id, EdgeType.Calls, 'always')
 		linkFunctionCallArguments(def.id, idMap, def.name, id, info.args, graph)
 	}
-	if (thisGraph.isRoot(id)) {
+	if(thisGraph.isRoot(id)) {
 		calledFunctionDefinitions.push({ functionCall: id, called: [...functionDefs.values()] })
 	}
 }
@@ -246,16 +246,16 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
  * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
  */
 export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReference[], scope: DataflowScopeName, environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
-	for (const bodyInput of referencesToLinkAgainstEnvironment) {
+	for(const bodyInput of referencesToLinkAgainstEnvironment) {
 		const probableTarget = resolveByName(bodyInput.name, scope, environmentInformation)
-		if (probableTarget === undefined) {
+		if(probableTarget === undefined) {
 			log.trace(`found no target for ${bodyInput.name} in ${scope}`)
 			if(maybeForRemaining) {
 				bodyInput.used = 'maybe'
 			}
 			givenInputs.push(bodyInput)
 		} else {
-			for (const target of probableTarget) {
+			for(const target of probableTarget) {
 				// we can stick with maybe even if readId.attribute is always
 				graph.addEdge(bodyInput, target, EdgeType.Reads, undefined, true)
 			}

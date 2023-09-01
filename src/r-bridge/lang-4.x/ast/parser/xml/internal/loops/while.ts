@@ -14,18 +14,18 @@ export function tryNormalizeWhile(
 	rightParen: NamedXmlBasedJson,
 	body: NamedXmlBasedJson
 ): RWhileLoop | undefined {
-	if (whileToken.name !== Type.While) {
+	if(whileToken.name !== Type.While) {
 		parseLog.debug(
 			"encountered non-while token for supposed while-loop structure"
 		)
 		return executeUnknownHook(data.hooks.loops.onWhileLoop.unknown, data, { whileToken, leftParen, condition, rightParen, body })
-	} else if (leftParen.name !== Type.ParenLeft) {
+	} else if(leftParen.name !== Type.ParenLeft) {
 		throw new XmlParseError(
 			`expected left-parenthesis for while but found ${JSON.stringify(
 				leftParen
 			)}`
 		)
-	} else if (rightParen.name !== Type.ParenRight) {
+	} else if(rightParen.name !== Type.ParenRight) {
 		throw new XmlParseError(
 			`expected right-parenthesis for while but found ${JSON.stringify(
 				rightParen
@@ -41,7 +41,7 @@ export function tryNormalizeWhile(
 	const parsedCondition = tryNormalizeSingleNode(data, condition)
 	const parseBody = tryNormalizeSingleNode(data, body)
 
-	if (parsedCondition === undefined || parseBody === undefined) {
+	if(parsedCondition === undefined || parseBody === undefined) {
 		throw new XmlParseError(
 			`unexpected under-sided while-loop, received ${JSON.stringify([
 				parsedCondition,

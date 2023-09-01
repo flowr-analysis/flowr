@@ -3,7 +3,7 @@ import { DataflowProcessorInformation, processDataflowFor } from '../../../proce
 import { linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap } from '../../linker'
 import { ParentInformation, RRepeatLoop } from '../../../../r-bridge'
 
-export function processRepeatLoop<OtherInfo>(loop: RRepeatLoop<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processRepeatLoop<OtherInfo>(loop: RRepeatLoop<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const body = processDataflowFor(loop.body, data)
 
 	const graph = body.graph
@@ -15,7 +15,6 @@ export function processRepeatLoop<OtherInfo>(loop: RRepeatLoop<OtherInfo & Paren
 		in:                [...body.in, ...body.unknownReferences],
 		out:               body.out,
 		environments:      body.environments,
-		ast:               data.completeAst,
 		scope:             data.activeScope,
 		graph:             body.graph
 	}

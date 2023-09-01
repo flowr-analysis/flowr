@@ -11,13 +11,13 @@ export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentIn
 	const allIdsBeforeArguments = new Set(collectAllIds(root, n => n.type === Type.Argument && n.info.id !== root.info.id))
 	const ingoingBeforeArgs = ingoingRefs.filter(r => allIdsBeforeArguments.has(r.nodeId))
 
-	for (const ref of ingoingBeforeArgs) {
+	for(const ref of ingoingBeforeArgs) {
 		// link against the root reference currently I do not know how to deal with nested function calls otherwise
 		graph.addEdge(root.info.id, ref, EdgeType.Reads, 'always')
 	}
 }
 
-export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const name = argument.name === undefined ? undefined : processDataflowFor(argument.name, data)
 	const value = processDataflowFor(argument.value, data)
 	// we do not keep the graph of the name, as this is no node that should ever exist
@@ -44,7 +44,6 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
 		out:               [ { name: argumentName, scope: LocalScope, nodeId: argument.info.id, used: 'always'} ],
 		graph:             graph,
 		environments:      value.environments,
-		ast:               data.completeAst,
 		scope:             data.activeScope
 	}
 }

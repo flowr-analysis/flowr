@@ -17,7 +17,7 @@ async function expectFeature<T extends FeatureKey>(shell: RShell, feature: T, co
  */
 export function testForFeatureForInput<T extends FeatureKey>(shell: RShell, feature: T, tests: { name: string, code: string, expected: Partial<FeatureValue<T>> }[]) {
 	const featureInfo = ALL_FEATURES[feature]
-	for (const test of tests) {
+	for(const test of tests) {
 		const expected = deepMergeObject(featureInfo.initialValue(), test.expected) as FeatureValue<T>
 		it(test.name, async() => {
 			await expectFeature(shell, feature, test.code, expected)

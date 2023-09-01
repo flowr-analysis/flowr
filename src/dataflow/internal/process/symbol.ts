@@ -3,13 +3,12 @@ import { DataflowGraph } from '../../graph'
 import { DataflowInformation, initializeCleanInfo } from '../info'
 import { DataflowProcessorInformation } from '../../processor'
 
-export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation<OtherInfo> {
-	if (symbol.content === RNull || symbol.content === RNa) {
+export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
+	if(symbol.content === RNull || symbol.content === RNa) {
 		return initializeCleanInfo(data)
 	}
 
 	return {
-		ast:               data.completeAst,
 		unknownReferences: [ { nodeId: symbol.info.id, scope: data.activeScope, name: symbol.content, used: 'always' } ],
 		in:                [],
 		out:               [],

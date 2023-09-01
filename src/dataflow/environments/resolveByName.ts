@@ -22,7 +22,7 @@ function resolve(name: Identifier, withinScope: DataflowScopeName, environments:
 	dataflowLogger.trace(`Resolving local identifier ${name} (scope name: ${withinScope}, local stack size: ${environments.level})`)
 
 	let current: IEnvironment | undefined = environments.current
-	do {
+	do{
 		const definition = current.memory.get(name)
 		if(definition !== undefined) {
 			return definition

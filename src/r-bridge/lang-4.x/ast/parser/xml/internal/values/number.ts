@@ -31,14 +31,14 @@ export function normalizeNumber(data: ParserData, obj: XmlBasedJson): RNumber | 
 
 	let result:  RNumber | RLogical | RSymbol<NoInfo, typeof RNa>
 	/* the special symbol */
-	if (isNA(content)) {
+	if(isNA(content)) {
 		result = {
 			...common,
 			namespace: undefined,
 			type:      Type.Symbol,
 			content
 		}
-	} else if (isBoolean(content)) {
+	} else if(isBoolean(content)) {
 		result = {
 			...common,
 			type:    Type.Logical,

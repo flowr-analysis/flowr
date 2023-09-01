@@ -19,9 +19,9 @@ export interface Table {
  */
 async function* getFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
 	const entries = await fsPromise.readdir(dir, { withFileTypes: true })
-	for (const subEntries of entries) {
+	for(const subEntries of entries) {
 		const res = path.resolve(dir, subEntries.name)
-		if (subEntries.isDirectory()) {
+		if(subEntries.isDirectory()) {
 			yield* getFiles(res, suffix)
 		} else if(suffix.test(subEntries.name)) {
 			yield res
@@ -55,7 +55,7 @@ export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE
 	}
 
 	for await (const f of getFiles(input, rFileRegex)) {
-		if (++count > limit) {
+		if(++count > limit) {
 			return count
 		}
 		yield { request: 'file', content: f }

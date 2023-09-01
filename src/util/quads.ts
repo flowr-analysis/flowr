@@ -114,7 +114,7 @@ export function serialize2quads(obj: RecordForQuad, config: QuadSerializationCon
 
 
 function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
-	for (const [index, element] of value.entries()) {
+	for(const [index, element] of value.entries()) {
 		const context= retrieveContext(config.context, obj)
 		quads.push(quad(
 			namedNode(domain + config.getId(obj, context)),
@@ -140,7 +140,7 @@ function processObjectEntries(key: string, value: unknown, obj: DataForQuad, qua
 
 function objToType(value: unknown): NamedNode | undefined {
 	let suffix: string | undefined
-	switch (typeof value) {
+	switch(typeof value) {
 		case 'string': suffix = 'string'; break
 		case 'number': suffix = Number.isInteger(value) ? 'integer' : 'decimal'; break
 		case 'boolean': suffix = 'boolean'; break
@@ -161,8 +161,8 @@ function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quad
 }
 
 function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
-	if (isObjectOrArray(value)) {
-		if (Array.isArray(value)) {
+	if(isObjectOrArray(value)) {
+		if(Array.isArray(value)) {
 			processArrayEntries(key, value, obj, quads, config)
 		} else {
 			processObjectEntries(key, value, obj, quads, config)

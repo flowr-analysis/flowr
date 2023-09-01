@@ -24,7 +24,7 @@ export class LimitBenchmarkPool {
 	private reportingInterval:     NodeJS.Timer | undefined = undefined
 
 	/**
-   * Create a new parallel helper that runs the given `module` once for each {@link Arguments} in the `queue`.
+   * Create a new parallel helper that runs the given `module` once for each list of {@link Arguments} in the `queue`.
    * The `limit` stops the execution if `<limit>` number of runs exited successfully.
    * The `parallel` parameter limits the number of parallel executions.
    */
@@ -45,7 +45,7 @@ export class LimitBenchmarkPool {
 			promises.push(this.runNext())
 		}
 		await Promise.all(promises)
-		clearInterval(this.reportingInterval)
+		clearInterval(this.reportingInterval as NodeJS.Timeout)
 	}
 
 	public getStats(): { counter: number, skipped: Arguments[]} {

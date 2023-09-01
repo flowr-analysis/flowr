@@ -20,7 +20,7 @@ import { normalizeLineDirective } from '../other/line-directive'
  *          Otherwise, returns the parsed element.
  */
 export function tryNormalizeSingleNode(data: ParserData, elem: NamedXmlBasedJson): RNode | undefined {
-	switch (elem.name) {
+	switch(elem.name) {
 		case Type.ParenLeft:
 		case Type.ParenRight:
 			parseLog.debug(`skipping parenthesis information for ${JSON.stringify(elem)}`)

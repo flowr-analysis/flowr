@@ -94,7 +94,7 @@ function processExports(existing: CommentInfo, comments: string[]) {
 function processMatchForDynLib(match: RegExpExecArray): string[] {
 	const packageName = match.groups?.package ?? '<unknown>'
 	const functions = match.groups?.fn?.trim().split(/\s+/) ?? []
-	if (functions.length === 0) {
+	if(functions.length === 0) {
 		return [packageName]
 	} else {
 		return functions.map(fn => `${JSON.stringify(packageName)},${fn}`)

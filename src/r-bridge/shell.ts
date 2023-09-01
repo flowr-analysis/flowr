@@ -5,6 +5,8 @@ import { EOL } from "os"
 import * as readline from "node:readline"
 import { ts2r } from './lang-4.x'
 import { log, LogLevel } from '../util/log'
+import { SemVer } from 'semver'
+import semver from 'semver/preload'
 
 export type OutputStreamSelector = "stdout" | "stderr" | "both";
 
@@ -52,7 +54,8 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
 		resetOnNewData: true
 	},
 	keepPostamble:           false,
-	automaticallyTrimOutput: true
+	automaticallyTrimOutput: true,
+	errorStopsWaiting:       true
 }
 
 export interface RShellSessionOptions extends MergeableRecord {
@@ -61,6 +64,10 @@ export interface RShellSessionOptions extends MergeableRecord {
 	readonly cwd:                string
 	readonly eol:                string
 	readonly env:                NodeJS.ProcessEnv
+	/** If set, the R session will be restarted if it exits due to an error */
+	readonly revive:             'never' | 'on-error' | 'always'
+	/** Called when the R session is restarted, this makes only sense if `revive` is not set to `'never'` */
+	readonly onRevive:           (code: number, signal: string | null) => void
 }
 
 /**
@@ -77,7 +84,9 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
 	cwd:                process.cwd(),
 	env:                process.env,
-	eol:                EOL
+	eol:                EOL,
+	revive:             'never',
+	onRevive:           () => { /* do nothing */ }
 } as const
 
 /**
@@ -90,14 +99,31 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
  */
 export class RShell {
 	public readonly options: Readonly<RShellOptions>
-	public readonly session: RShellSession
+	private session:         RShellSession
 	private readonly log:    Logger<ILogObj>
+	private version:         SemVer | null = null
 
 	public constructor(options?: Partial<RShellOptions>) {
 		this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
 		this.log = log.getSubLogger({ name: this.options.sessionName })
 
 		this.session = new RShellSession(this.options, this.log)
+		this.revive()
+	}
+
+	private revive() {
+		if(this.options.revive === 'never') {
+			return
+		}
+
+		this.session.onExit((code, signal) => {
+			if(this.options.revive === 'always' || (this.options.revive === 'on-error' && code !== 0)) {
+				this.log.warn(`R session exited with code ${code}, reviving!`)
+				this.options.onRevive(code, signal)
+				this.session = new RShellSession(this.options, this.log)
+				this.revive()
+			}
+		})
 	}
 
 	/**
@@ -109,6 +135,17 @@ export class RShell {
 			this.log.trace(`> ${JSON.stringify(command)}`)
 		}
 		this._sendCommand(command)
+	}
+
+	public async usedRVersion(): Promise<SemVer | null> {
+		if(this.version !== null) {
+			return this.version
+		}
+		// retrieve raw version:
+		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
+		this.log.trace(`raw version: ${JSON.stringify(result)}`)
+		this.version = semver.coerce(result[0])
+		return result.length === 1 ? this.version : null
 	}
 
 	/**
@@ -123,18 +160,19 @@ export class RShell {
 		if(this.log.settings.minLevel >= LogLevel.trace) {
 			this.log.trace(`> ${JSON.stringify(command)}`)
 		}
+
 		const output = await this.session.collectLinesUntil(config.from, {
 			predicate:       data => data === config.postamble,
 			includeInResult: config.keepPostamble // we do not want the postamble
 		}, config.timeout, () => {
 			this._sendCommand(command)
-			if (config.from === 'stderr') {
+			if(config.from === 'stderr') {
 				this._sendCommand(`cat("${config.postamble}${this.options.eol}", file=stderr())`)
 			} else {
 				this._sendCommand(`cat("${config.postamble}${this.options.eol}")`)
 			}
 		})
-		if (config.automaticallyTrimOutput) {
+		if(config.automaticallyTrimOutput) {
 			return output.map(line => line.trim())
 		} else {
 			return output
@@ -147,7 +185,7 @@ export class RShell {
    * @see sendCommand
    */
 	public sendCommands(...commands: string[]): void {
-		for (const element of commands) {
+		for(const element of commands) {
 			this.sendCommand(element)
 		}
 	}
@@ -208,9 +246,9 @@ export class RShell {
 		libraryLocation?:      string
 	}> {
 		const packageExistedAlready = await this.isPackageInstalled(packageName)
-		if (!force && packageExistedAlready) {
+		if(!force && packageExistedAlready) {
 			this.log.info(`package "${packageName}" is already installed`)
-			if (autoload) {
+			if(autoload) {
 				this.sendCommand(`library(${ts2r(packageName)})`)
 			}
 			return {
@@ -237,7 +275,7 @@ export class RShell {
 			// the else branch is a cheesy way to work even if the package is already installed!
 			this.sendCommand(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/", quiet=FALSE, lib=temp)`)
 		})
-		if (autoload) {
+		if(autoload) {
 			this.sendCommand(`library(${ts2r(packageName)}, lib.loc=${ts2r(tempdir)})`)
 		}
 		return {
@@ -286,6 +324,7 @@ class RShellSession {
 			input:    this.bareSession.stderr,
 			terminal: false
 		})
+		this.onExit(() => { this.end() })
 		this.options = options
 		this.log = log
 		this.setupRSessionLoggers()
@@ -304,14 +343,15 @@ class RShellSession {
    *
    * This method does allow other listeners to consume the same input
    *
-   * @param from    - The stream(s) to collect the information from
-   * @param until   - If the predicate returns true, this will stop the collection and resolve the promise
-   * @param timeout - Configuration for how and when to timeout
-   * @param action  - Event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
+   * @param from        - The stream(s) to collect the information from
+   * @param until       - If the predicate returns true, this will stop the collection and resolve the promise
+   * @param timeout     - Configuration for how and when to timeout
+   * @param action      - Event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
    */
 	public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
 		const result: string[] = []
 		let handler: (data: string) => void
+		let error: (code: number) => void
 
 		return await new Promise<string[]>((resolve, reject) => {
 			const makeTimer = (): NodeJS.Timeout => setTimeout(() => {
@@ -321,21 +361,25 @@ class RShellSession {
 
 			handler = (data: string): void => {
 				const end = until.predicate(data)
-				if (!end || until.includeInResult) {
+				if(!end || until.includeInResult) {
 					result.push(data)
 				}
-				if (end) {
+				if(end) {
 					clearTimeout(this.collectionTimeout)
 					resolve(result)
-				} else if (timeout.resetOnNewData) {
+				} else if(timeout.resetOnNewData) {
 					clearTimeout(this.collectionTimeout)
 					this.collectionTimeout = makeTimer()
 				}
 			}
+
+			error = () => { resolve(result) }
+			this.onExit(error)
 			this.on(from, 'line', handler)
 			action?.()
 		}).finally(() => {
 			this.removeListener(from, 'line', handler)
+			this.bareSession.removeListener('exit', error)
 		})
 	}
 
@@ -370,13 +414,17 @@ class RShellSession {
 		})
 	}
 
+	public onExit(callback: (code: number, signal: string | null) => void): void {
+		this.bareSession.on('exit', callback)
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private on(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
 		const both = from === 'both'
-		if (both || from === 'stdout') {
+		if(both || from === 'stdout') {
 			this.sessionStdOut.on(event, listener)
 		}
-		if (both || from === 'stderr') {
+		if(both || from === 'stderr') {
 			this.sessionStdErr.on(event, listener)
 		}
 	}
@@ -384,10 +432,10 @@ class RShellSession {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private removeListener(from: OutputStreamSelector, event: string, listener: (...data: any[]) => void): void {
 		const both = from === 'both'
-		if (both || from === 'stdout') {
+		if(both || from === 'stdout') {
 			this.sessionStdOut.removeListener(event, listener)
 		}
-		if (both || from === 'stderr') {
+		if(both || from === 'stderr') {
 			this.sessionStdErr.removeListener(event, listener)
 		}
 	}

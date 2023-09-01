@@ -13,7 +13,7 @@ import { log } from '../../../../util/log'
 import { dataflowLogger } from '../../../index'
 import { GlobalScope, LocalScope } from '../../../environments/scopes'
 
-export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)
 	const lhs = processDataflowFor(op.lhs, data)
 	const rhs = processDataflowFor(op.rhs, data)
@@ -25,15 +25,15 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 	const isFunctionSide = swap ? op.lhs : op.rhs
 	const isFunction = isFunctionSide.type === Type.FunctionDefinition
 
-	for (const write of writeTargets) {
+	for(const write of writeTargets) {
 		nextGraph.setDefinitionOfVertex(write)
 
-		if (isFunction) {
+		if(isFunction) {
 			nextGraph.addEdge(write, isFunctionSide.info.id, EdgeType.DefinedBy, 'always', true)
 		} else {
 			const impactReadTargets = determineImpactOfSource(swap ? op.lhs : op.rhs, readTargets)
 
-			for (const read of impactReadTargets) {
+			for(const read of impactReadTargets) {
 				nextGraph.addEdge(write, read, EdgeType.DefinedBy, undefined, true)
 			}
 		}
@@ -44,26 +44,25 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 		out:               writeTargets,
 		graph:             nextGraph,
 		environments,
-		ast:               data.completeAst,
 		scope:             data.activeScope
 	}
 }
 
 function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformation>,
-																																												lhs: DataflowInformation<OtherInfo>,
-																																												rhs: DataflowInformation<OtherInfo>) : {
-		source: DataflowInformation<OtherInfo>
-		target: DataflowInformation<OtherInfo>
+																																												lhs: DataflowInformation,
+																																												rhs: DataflowInformation) : {
+		source: DataflowInformation
+		target: DataflowInformation
 		global: boolean
 		/** true if `->` or `->>` */
 		swap:   boolean
 	} {
-	let source: DataflowInformation<OtherInfo>
-	let target: DataflowInformation<OtherInfo>
+	let source: DataflowInformation
+	let target: DataflowInformation
 	let global = false
 	let swap = false
 
-	switch (op.lexeme) {
+	switch(op.lexeme) {
 		case '<-':
 		case '=':
 		case ':=':
@@ -84,7 +83,7 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
 	return { source, target, global, swap }
 }
 
-function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation<OtherInfo>, global: boolean, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation, global: boolean, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
 	const writeNodes: IdentifierDefinition[] = []
 	const isFunctionDef = functionTypeCheck.type === Type.FunctionDefinition
 	for(const active of target.unknownReferences) {
@@ -100,7 +99,7 @@ function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInfo
 
 function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
 	op: RAssignmentOp<OtherInfo & ParentInformation>,
-	lhs: DataflowInformation<OtherInfo>, rhs: DataflowInformation<OtherInfo>,
+	lhs: DataflowInformation, rhs: DataflowInformation,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ) {
 	// what is written/read additionally is based on lhs/rhs - assignments read written variables as well

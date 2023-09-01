@@ -98,7 +98,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, folds: DeepReadonly<StatefulFoldFunctions<Info, Down, Up>>): Up {
 	const type = ast.type
 	down = folds.down(ast, down)
-	switch (type) {
+	switch(type) {
 		case Type.Number:
 			return folds.foldNumber(ast, down)
 		case Type.String:
@@ -147,7 +147,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 }
 
 function foldBinaryOp<Info, Down, Up>(ast: RBinaryOp<Info>, down: Down, folds: StatefulFoldFunctions<Info, Down, Up>): Up {
-	switch (ast.flavor) {
+	switch(ast.flavor) {
 		case 'logical':
 			return folds.binaryOp.foldLogicalOp(ast as RLogicalBinaryOp<Info>, foldAstStateful(ast.lhs, down, folds), foldAstStateful(ast.rhs, down, folds), down)
 		case 'arithmetic':
@@ -165,7 +165,7 @@ function foldBinaryOp<Info, Down, Up>(ast: RBinaryOp<Info>, down: Down, folds: S
 
 
 function foldUnaryOp<Info, Down, Up>(ast: RUnaryOp<Info>, down: Down, folds: StatefulFoldFunctions<Info, Down, Up>): Up {
-	switch (ast.flavor) {
+	switch(ast.flavor) {
 		case 'logical':
 			return folds.unaryOp.foldLogicalOp(ast as RLogicalUnaryOp<Info>, foldAstStateful(ast.operand, down, folds), down)
 		case 'arithmetic':

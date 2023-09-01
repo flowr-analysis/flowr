@@ -1,22 +1,12 @@
-import { log, LogLevel } from '../util/log'
-import commandLineArgs from 'command-line-args'
-import commandLineUsage, { OptionDefinition } from 'command-line-usage'
+import { log } from '../util/log'
 import { BenchmarkSlicer } from '../benchmark'
 import { DefaultAllVariablesFilter } from '../slicing'
 import { RParseRequestFromFile } from '../r-bridge'
 import fs from 'fs'
-import { displayEnvReplacer } from '../util/json'
+import { jsonReplacer } from '../util/json'
 import { guard } from '../util/assert'
+import { processCommandLineArgs } from './common'
 
-export const toolName = 'benchmark-single'
-
-export const optionDefinitions: OptionDefinition[] = [
-	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
-	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide.' },
-	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a single file as src to read from', multiple: false, defaultOption: true, typeLabel: '{underline file}' },
-	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction', defaultValue: 'all', typeLabel: '{underline all/no}' },
-	{ name: 'output',       alias: 'o', type: String,  description: `File to write the measurements to (appends a single line in JSON format)`,  typeLabel: '{underline file}' },
-]
 
 export interface SingleBenchmarkCliOptions {
 	verbose: boolean
@@ -26,34 +16,16 @@ export interface SingleBenchmarkCliOptions {
 	output?: string
 }
 
-export const optionHelp = [
-	{
-		header:  'Helper Script to Benchmark the Slicer',
-		content: 'Will slice for all possible variables, signal by exit code if slicing was successful, and can be run standalone'
-	},
-	{
-		header:  'Synopsis',
-		content: [
-			`$ ${toolName} {italic example-file.R} --output {italic output.json}`,
-			`$ ${toolName} {bold --help}`
-		]
-	},
-	{
-		header:     'Options',
-		optionList: optionDefinitions
-	}
-]
+const options = processCommandLineArgs<SingleBenchmarkCliOptions>('benchmark-helper', [],{
+	subtitle: 'Will slice for all possible variables, signal by exit code if slicing was successful, and can be run standalone',
+	examples: [
+		'{italic example-file.R} --output {italic output.json}',
+		'{bold --help}'
+	]
+})
 
-const options = commandLineArgs(optionDefinitions) as SingleBenchmarkCliOptions
-
-if(options.help) {
-	console.log(commandLineUsage(optionHelp))
-	process.exit(0)
-}
-
-log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
 if(options.verbose) {
-	log.error('running with options - do not use for final benchmark', options)
+	log.error('running with *verbose* setting - do not use for final benchmark', options)
 }
 
 guard(options.slice === 'all' || options.slice === 'no', 'slice must be either all or no')
@@ -78,7 +50,7 @@ async function benchmark() {
 
 		// ${escape}1F${escape}1G${escape}2K for line reset
 		if(options.slice === 'all') {
-			const count = slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`[${options.input as string}] Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`))
+			const count = await slicer.sliceForAll(DefaultAllVariablesFilter, (i, total, arr) => console.log(`[${options.input as string}] Slicing ${i + 1}/${total} [${JSON.stringify(arr[i])}]`))
 			console.log(`[${options.input}] Completed Slicing`)
 			guard(count > 0, `No possible slices found for ${options.input}, skipping in count`)
 		} else {
@@ -87,8 +59,8 @@ async function benchmark() {
 
 		const { stats } = slicer.finish()
 		// append line by line
-		fs.appendFileSync(options.output, `${JSON.stringify({ filename: options.input, stats }, displayEnvReplacer)}\n`)
-	} catch (e: unknown) {
+		fs.appendFileSync(options.output, `${JSON.stringify({ filename: options.input, stats }, jsonReplacer)}\n`)
+	} catch(e: unknown) {
 		if(e instanceof Error) {
 			if(!e.message.includes('unable to parse R')) {
 				console.log(`[${options.input}] Non R-Side error : ${e.message}`)

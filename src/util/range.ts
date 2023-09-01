@@ -47,6 +47,26 @@ export function rangeStartsCompletelyBefore(r1: SourceRange, r2: SourceRange): b
 	return r1.end.line < r2.start.line || (r1.end.line === r2.start.line && r1.end.column < r2.start.column)
 }
 
+/**
+ * Checks if the two ranges overlap.
+ */
+export function rangesOverlap(r1: SourceRange, r2: SourceRange): boolean {
+	return r1.start.line <= r2.end.line && r2.start.line <= r1.end.line && r1.start.column <= r2.end.column && r2.start.column <= r1.end.column
+}
+
 export function addRanges(r1: SourceRange, r2: SourceRange): SourceRange {
 	return rangeFrom(r1.start.line + r2.start.line, r1.start.column + r2.start.column, r1.end.line + r2.end.line, r1.end.column + r2.end.column)
+}
+
+/**
+ * Provides a comparator for {@link SourceRange}s that sorts them in ascending order.
+ *
+ * @returns a positive number if `r1` comes after `r2`, a negative number if `r1` comes before `r2`, and `0` if they are equal
+ */
+export function rangeCompare(r1: SourceRange, r2: SourceRange): number {
+	if(r1.start.line === r2.start.line) {
+		return r1.start.column - r2.start.column
+	} else {
+		return r1.start.line - r2.start.line
+	}
 }

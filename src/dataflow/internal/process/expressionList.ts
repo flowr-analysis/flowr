@@ -26,7 +26,7 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 
 	// record if at least one has not been defined
 	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId))) {
-		if (remainingRead.has(readName)) {
+		if(remainingRead.has(readName)) {
 			remainingRead.get(readName)?.push(read)
 		} else {
 			remainingRead.set(readName, [read])
@@ -35,11 +35,11 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 
 	// keep it, for we have no target, as read-ids are unique within same fold, this should work for same links
 	// we keep them if they are defined outside the current parent and maybe throw them away later
-	if (probableTarget === undefined) {
+	if(probableTarget === undefined) {
 		return
 	}
 
-	for (const target of probableTarget) {
+	for(const target of probableTarget) {
 		// we can stick with maybe even if readId.attribute is always
 		nextGraph.addEdge(read, target, EdgeType.Reads, undefined, true)
 	}
@@ -47,7 +47,7 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 
 
 function processNextExpression<OtherInfo>(
-	currentElement: DataflowInformation<OtherInfo>,
+	currentElement: DataflowInformation,
 	data: DataflowProcessorInformation<OtherInfo>,
 	environments: REnvironmentInformation,
 	listEnvironments: Set<NodeId>,
@@ -55,17 +55,17 @@ function processNextExpression<OtherInfo>(
 	nextGraph: DataflowGraph
 ) {
 	// all inputs that have not been written until know, are read!
-	for (const read of [...currentElement.in, ...currentElement.unknownReferences]) {
+	for(const read of [...currentElement.in, ...currentElement.unknownReferences]) {
 		linkReadNameToWriteIfPossible(read, data, environments, listEnvironments, remainingRead, nextGraph)
 	}
 	// add same variable reads for deferred if they are read previously but not dependent
-	for (const writeTarget of currentElement.out) {
+	for(const writeTarget of currentElement.out) {
 		const writeName = writeTarget.name
 
 		const resolved = resolveByName(writeName, data.activeScope, environments)
-		if (resolved !== undefined) {
+		if(resolved !== undefined) {
 			// write-write
-			for (const target of resolved) {
+			for(const target of resolved) {
 				nextGraph.addEdge(target, writeTarget, EdgeType.SameDefDef, undefined, true)
 			}
 		}
@@ -76,20 +76,20 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	functionCall: NodeId;
 	called:       DataflowGraphVertexInfo[]
 }[], environments: REnvironmentInformation, nextGraph: DataflowGraph) {
-	for (const { functionCall, called } of calledEnvs) {
-		for (const calledFn of called) {
+	for(const { functionCall, called } of calledEnvs) {
+		for(const calledFn of called) {
 			guard(calledFn.tag === 'function-definition', 'called function must call a function definition')
 			// only merge the environments they have in common
 			let environment = calledFn.environment
-			while (environment.level > environments.level) {
+			while(environment.level > environments.level) {
 				environment = popLocalEnvironment(environment)
 			}
 			// update alle definitions to be defined at this function call
 			let current: IEnvironment | undefined = environment.current
-			while (current !== undefined) {
-				for (const definitions of current.memory.values()) {
-					for (const def of definitions) {
-						if (def.kind !== 'built-in-function') {
+			while(current !== undefined) {
+				for(const definitions of current.memory.values()) {
+					for(const def of definitions) {
+						if(def.kind !== 'built-in-function') {
 							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall, def.used)
 						}
 					}
@@ -103,7 +103,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	return environments
 }
 
-export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const expressions = exprList.children
 	dataflowLogger.trace(`processing expression list with ${expressions.length} expressions`)
 	if(expressions.length === 0) {
@@ -121,14 +121,14 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 
 	let expressionCounter = 0
 	let foundNextOrBreak = false
-	for (const expression of expressions) {
+	for(const expression of expressions) {
 		dataflowLogger.trace(`processing expression ${++expressionCounter} of ${expressions.length}`)
 		// use the current environments for processing
 		data = { ...data, environments }
 		const processed = processDataflowFor(expression, data)
 		if(!foundNextOrBreak) {
 			visit(expression, n => {
-				if (n.type === Type.Next || n.type === Type.Break) {
+				if(n.type === Type.Next || n.type === Type.Break) {
 					foundNextOrBreak = true
 				}
 				return n.type === Type.For || n.type === Type.While || n.type === Type.Repeat || n.type === Type.FunctionDefinition
@@ -174,7 +174,6 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		unknownReferences: [],
 		in:                [...remainingRead.values()].flat(),
 		out,
-		ast:               data.completeAst,
 		environments,
 		scope:             data.activeScope,
 		graph:             nextGraph

@@ -51,7 +51,7 @@ function enrichOpForBracketAssign(node: Node): string {
 	}
 
 	// next and previous sibling do not work to our liking (they are not entertained by the xpath-ts chain)
-	for (let i = 0; i < siblings.length; i++) {
+	for(let i = 0; i < siblings.length; i++) {
 		const child = siblings.item(i)
 		if(child.nodeName === 'LEFT_ASSIGN' || child.nodeName === 'EQ_ASSIGN' || child.nodeName === 'RIGHT_ASSIGN') {
 			operator = child.textContent

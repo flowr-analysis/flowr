@@ -2,20 +2,18 @@
   "includeVersion": true,
   "plugin": [
     "typedoc-umlclass",
-    "typedoc-plugin-missing-exports"
+    "typedoc-plugin-missing-exports",
+    "typedoc-theme-hierarchy"
   ],
   "entryPoints": [
-    "src/app.ts",
-    "src/dataflow",
-    "src/r-bridge/",
-    "src/slicing/static",
-    "src/statistics",
-    "src/benchmark"
+    "src",
+    "test/helper"
   ],
+  "entryPointStrategy": "expand",
   "exclude": [
     "**/node_modules/**/*"
   ],
-  "theme": "default",
+  "theme": "hierarchy",
   "out": "doc",
   "readme": "README.md",
   "umlClassDiagram": {
@@ -35,10 +33,10 @@
   "categorizeByGroup": true,
   "sort": [ "static-first", "alphabetical" ],
   "visibilityFilters": {
-    "protected": false,
-    "private": false,
+    "protected": true,
+    "private": true,
     "inherited": true,
-    "external": false
+    "external": true
   },
   "validation": {
     "notExported": true,

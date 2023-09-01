@@ -18,12 +18,12 @@ export function tryNormalizeIfThen(data: ParserData,
                                    then:       NamedXmlBasedJson
 																																			]): RIfThenElse | undefined {
 	parseLog.trace(`trying to parse if-then structure`)
-	if (tokens[0].name !== Type.If) {
+	if(tokens[0].name !== Type.If) {
 		parseLog.debug('encountered non-if token for supposed if-then structure')
 		return executeUnknownHook(data.hooks.control.onIfThen.unknown, data, tokens)
-	} else if (tokens[1].name !== Type.ParenLeft) {
+	} else if(tokens[1].name !== Type.ParenLeft) {
 		throw new XmlParseError(`expected left-parenthesis for if but found ${JSON.stringify(tokens[1])}`)
-	} else if (tokens[3].name !== Type.ParenRight) {
+	} else if(tokens[3].name !== Type.ParenRight) {
 		throw new XmlParseError(`expected right-parenthesis for if but found ${JSON.stringify(tokens[3])}`)
 	}
 
@@ -33,7 +33,7 @@ export function tryNormalizeIfThen(data: ParserData,
 	const parsedThen = tryNormalizeSingleNode(data, tokens[4])
 
 
-	if (parsedCondition === undefined || parsedThen === undefined) {
+	if(parsedCondition === undefined || parsedThen === undefined) {
 		throw new XmlParseError(`unexpected missing parts of if, received ${JSON.stringify([parsedCondition, parsedThen])} for ${JSON.stringify(tokens)}`)
 	}
 

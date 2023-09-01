@@ -88,6 +88,10 @@
        {
            "tagName": "@interface",
            "syntaxKind": "modifier"
+       },
+       {
+           "tagName": "@note",
+           "syntaxKind": "block"
        }
    ]
 }

@@ -2,7 +2,7 @@ import { assertReconstructed, withShell } from '../../helper/shell'
 
 describe('Simple', withShell(shell => {
 	describe('Constant assignments', () => {
-		for (const code of [
+		for(const code of [
 			'x <- 5',
 			'x <- 5; y <- 9',
 			'{ x <- 5 }',
@@ -12,7 +12,7 @@ describe('Simple', withShell(shell => {
 		}
 	})
 	describe('Nested Assignments', () => {
-		for (const [code, id, expected] of [
+		for(const [code, id, expected] of [
 			['12 + (supi <- 42)', '0', '12 + (supi <- 42)' ],
 			['y <- x <- 42', '1', 'x <- 42' ],
 			['y <- x <- 42', '0', 'y <- x <- 42' ],
@@ -24,7 +24,7 @@ describe('Simple', withShell(shell => {
 	})
 
 	describe('Access', () => {
-		for (const [code, id, expected] of [
+		for(const [code, id, expected] of [
 			['a[3]', '0', 'a[3]' ],
 			['a[x]', '1', 'x' ]
 		]) {
@@ -39,7 +39,7 @@ describe('Simple', withShell(shell => {
 				['repeat { x <- 5; y <- 9 }', '0', 'repeat x <- 5'],
 				['repeat { x <- 5; y <- 9 }', ['0', '1', '4'], 'repeat {\n    x <- 5\n    9\n}']
 			]
-			for (const [code, id, expected] of pool) {
+			for(const [code, id, expected] of pool) {
 				assertReconstructed(code, shell, code, id, expected)
 			}
 		})
@@ -58,7 +58,7 @@ describe('Simple', withShell(shell => {
 				['while(x + 2 > 3) { x <- 0 }', ['5'], 'while(x + 2 > 3) x <- 0'],
 				['while(x + 2 > 3) { x <- 0 }', ['0', '5'], 'while(x + 2 > 3) x <- 0']
 			]
-			for (const [code, id, expected] of pool) {
+			for(const [code, id, expected] of pool) {
 				assertReconstructed(code, shell, code, id, expected)
 			}
 		})
@@ -85,7 +85,7 @@ describe('Simple', withShell(shell => {
 }`],
 			]
 
-			for (const [code, id, expected] of pool) {
+			for(const [code, id, expected] of pool) {
 				assertReconstructed(`${JSON.stringify(id)}: ${code}`, shell, code, id, expected)
 			}
 		})

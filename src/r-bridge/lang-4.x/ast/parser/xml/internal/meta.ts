@@ -7,12 +7,12 @@ import { RExpressionList, RNode, Type } from '../../../model'
  * if the passed object is an array with only one element, remove the array wrapper
  */
 export function objectWithArrUnwrap(obj: XmlBasedJson[] | XmlBasedJson): XmlBasedJson {
-	if (Array.isArray(obj)) {
-		if (obj.length !== 1) {
+	if(Array.isArray(obj)) {
+		if(obj.length !== 1) {
 			throw new XmlParseError(`expected only one element in the wrapped array, yet received ${JSON.stringify(obj)}`)
 		}
 		return obj[0]
-	} else if (typeof obj === 'object') {
+	} else if(typeof obj === 'object') {
 		return obj
 	} else {
 		throw new XmlParseError(`expected array or object, yet received ${JSON.stringify(obj)}`)
@@ -64,7 +64,7 @@ export function revertTokenReplacement(tokenMap: XmlParserConfig['tokenMap'], to
 
 export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson, expectedName: string): void {
 	const name = getTokenType(tokenMap, obj)
-	if (name !== expectedName) {
+	if(name !== expectedName) {
 		throw new XmlParseError(`expected name to be ${expectedName}, yet received ${name} for ${JSON.stringify(obj)}`)
 	}
 }
@@ -104,13 +104,13 @@ export function retrieveOpName(config: XmlParserConfig, operator: NamedXmlBasedJ
 export function ensureChildrenAreLhsAndRhsOrdered(config: XmlParserConfig, first: XmlBasedJson, second: XmlBasedJson): void {
 	const firstOtherLoc = extractLocation(first[config.attributeName] as XmlBasedJson)
 	const secondOtherLoc = extractLocation(second[config.attributeName] as XmlBasedJson)
-	if (!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
+	if(!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
 		throw new XmlParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`)
 	}
 }
 
 export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<Info> {
-	if (node.type !== Type.ExpressionList) {
+	if(node.type !== Type.ExpressionList) {
 		return {
 			type:     Type.ExpressionList,
 			location: node.location,

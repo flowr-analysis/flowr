@@ -1,5 +1,5 @@
 import {
-	DecoratedAst,
+	NormalizedAst,
 	NodeId,
 	ParentInformation,
 	RAccess,
@@ -126,7 +126,7 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 		if(body.length <= 1) {
 			// 'inline'
 			return [{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
-		} else if (body[0].line === '{' && body[body.length - 1].line === '}') {
+		} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
 			// 'block'
 			return [
 				{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) {`, indent: 0 },
@@ -144,15 +144,15 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 }
 
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, configuration: ReconstructionConfiguration): Code {
-	if (isSelected(configuration, loop)) {
+	if(isSelected(configuration, loop)) {
 		return plain(getLexeme(loop))
-	} else if (body.length === 0) {
+	} else if(body.length === 0) {
 		return []
 	} else {
 		if(body.length <= 1) {
 			// 'inline'
 			return [{ line: `repeat ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
-		} else if (body[0].line === '{' && body[body.length - 1].line === '}') {
+		} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
 			// 'block'
 			return [
 				{ line: `repeat {`, indent: 0 },
@@ -179,7 +179,7 @@ function removeExpressionListWrap(code: Code) {
 
 
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
-	if (isSelected(configuration, ifThenElse)) {
+	if(isSelected(configuration, ifThenElse)) {
 		return plain(getLexeme(ifThenElse))
 	}
 	otherwise ??= []
@@ -224,7 +224,7 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 		if(body.length <= 1) {
 			// 'inline'
 			return [{ line: `while(${getLexeme(loop.condition)}) ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
-		} else if (body[0].line === '{' && body[body.length - 1].line === '}') {
+		} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
 			// 'block'
 			return [
 				{ line: `while(${getLexeme(loop.condition)}) {`, indent: 0 },
@@ -254,11 +254,11 @@ function reconstructParameters(parameters: RParameter<ParentInformation>[]): str
 
 
 function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: string | (Code | null)[], configuration: ReconstructionConfiguration): Code {
-	if (isSelected(configuration, node)) {
+	if(isSelected(configuration, node)) {
 		return plain(getLexeme(node))
 	}
 
-	if (accessed.length === 0) {
+	if(accessed.length === 0) {
 		if(typeof access === 'string') {
 			return []
 		} else {
@@ -308,7 +308,7 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 		const bodyStr = body.length === 0 ? '' : `${body[0].line} ` /* add suffix space */
 		// we keep the braces in every case because I do not like no-brace functions
 		return [{ line: `function(${parameters}) { ${bodyStr}}`, indent: 0 }]
-	} else if (body[0].line === '{' && body[body.length - 1].line === '}') {
+	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
 		// 'block'
 		return [
 			{ line: `function(${parameters}) {`, indent: 0 },
@@ -333,7 +333,7 @@ function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: R
 	const lhs = args[0]
 	const rhs = args[1]
 
-	if ((lhs === undefined || lhs.length === 0) && (rhs === undefined || rhs.length === 0)) {
+	if((lhs === undefined || lhs.length === 0) && (rhs === undefined || rhs.length === 0)) {
 		return []
 	}
 	// else if (rhs === undefined || rhs.length === 0) {
@@ -378,7 +378,8 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 	}
 }
 
-type AutoSelectPredicate = (node: RNode<ParentInformation>) => boolean
+/** The structure of the predicate that should be used to determine if a given normalized node should be included in the reconstructed code independent of if it is selected by the slice or not */
+export type AutoSelectPredicate = (node: RNode<ParentInformation>) => boolean
 
 
 interface ReconstructionConfiguration extends MergeableRecord {
@@ -392,6 +393,7 @@ export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
 }
 
 const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
+
 export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
 	if(node.type !== Type.FunctionCall || node.flavor !== 'named') {
 		return false
@@ -468,7 +470,7 @@ export interface ReconstructionResult {
  *
  * @returns Number of times `autoSelectIf` triggered
  */
-export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Selection, autoSelectIf: (node: RNode<ParentInformation>) => boolean = autoSelectLibrary): ReconstructionResult {
+export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
 	reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
 	let autoSelected = 0
 	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
@@ -478,7 +480,7 @@ export function reconstructToCode<Info>(ast: DecoratedAst<Info>, selection: Sele
 		}
 		return result
 	}
-	const result = foldAstStateful(ast.decoratedAst, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
+	const result = foldAstStateful(ast.ast, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
 	if(reconstructLogger.settings.minLevel >= LogLevel.trace) {
 		reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
 	}

@@ -4,7 +4,7 @@ import { assert } from 'chai'
 function test(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, text: string) {
 	try {
 		cmp(a.equals(b))
-	} catch (e) {
+	} catch(e) {
 		// only calculate the dataflow graphs if it fails
 		const diff = diffGraphsToMermaidUrl({ label: 'left', graph: a }, { label: 'right', graph: b }, undefined, '')
 		console.error(text + '; diff:\n', diff)

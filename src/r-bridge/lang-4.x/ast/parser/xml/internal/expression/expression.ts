@@ -33,19 +33,19 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 	const childData: ParserData = { ...data, currentRange: location, currentLexeme: content }
 
 	const maybeFunctionCall = tryNormalizeFunctionCall(childData, others)
-	if (maybeFunctionCall !== undefined) {
+	if(maybeFunctionCall !== undefined) {
 		maybeFunctionCall.info.additionalTokens = [...maybeFunctionCall.info.additionalTokens ?? [], ...comments.map(x => normalizeComment(data, x.content))]
 		return maybeFunctionCall
 	}
 
 	const maybeAccess = tryNormalizeAccess(childData, others)
-	if (maybeAccess !== undefined) {
+	if(maybeAccess !== undefined) {
 		maybeAccess.info.additionalTokens = [...maybeAccess.info.additionalTokens ?? [], ...comments.map(x => normalizeComment(data, x.content))]
 		return maybeAccess
 	}
 
 	const maybeFunctionDefinition = tryNormalizeFunctionDefinition(childData, others)
-	if (maybeFunctionDefinition !== undefined) {
+	if(maybeFunctionDefinition !== undefined) {
 		maybeFunctionDefinition.info.additionalTokens = [...maybeFunctionDefinition.info.additionalTokens ?? [], ...comments.map(x => normalizeComment(data, x.content))]
 		return maybeFunctionDefinition
 	}
@@ -54,7 +54,7 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 	const children = normalizeBasedOnType(childData, childrenSource)
 
 	let result: RNode
-	if (children.length === 1) {
+	if(children.length === 1) {
 		result = children[0]
 	} else {
 		result = {

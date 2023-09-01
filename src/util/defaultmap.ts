@@ -32,7 +32,7 @@ export class DefaultMap<K, V = K> {
    */
 	public get(k: K): V {
 		const potential = this.internal.get(k)
-		if (potential !== undefined) {
+		if(potential !== undefined) {
 			return potential
 		} else {
 			const defaultValue = this.generator(k)

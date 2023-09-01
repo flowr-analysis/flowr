@@ -10,13 +10,13 @@ export function define(definition: IdentifierDefinition, withinScope: DataflowSc
 	if(withinScope === LocalScope) {
 		newEnvironments = cloneEnvironments(environments, false)
 		newEnvironments.current.memory.set(definition.name, [definition])
-	} else if (withinScope === GlobalScope) {
+	} else if(withinScope === GlobalScope) {
 		newEnvironments = cloneEnvironments(environments, true)
 		let current: IEnvironment | undefined = newEnvironments.current
-		do {
+		do{
 			current.memory.set(definition.name, [definition])
 			current = current.parent
-		} while (current !== undefined)
+		} while(current !== undefined)
 	}
 	return newEnvironments
 }

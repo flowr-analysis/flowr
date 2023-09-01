@@ -25,7 +25,7 @@ describe("The Benchmark Slicer", () => {
 			const slicer = new BenchmarkSlicer()
 			const request = { request: 'text' as const, content: 'a <- b' }
 			await slicer.init(request)
-			slicer.slice('1@a')
+			await slicer.slice('1@a')
 			const { stats, statInfo } = await retrieveStatsSafe(slicer, request)
 
 			assert.deepStrictEqual(stats.input, {
@@ -77,9 +77,9 @@ cat(c, d)
 cat(d)`
 			}
 			await slicer.init(request)
-			slicer.slice('2@a')
-			slicer.slice('2@a', '4@c')
-			slicer.slice('7@d')
+			await slicer.slice('2@a')
+			await slicer.slice('2@a', '4@c')
+			await slicer.slice('7@d')
 			const { stats, statInfo } = await retrieveStatsSafe(slicer, request)
 
 			assert.deepStrictEqual(stats.input, {

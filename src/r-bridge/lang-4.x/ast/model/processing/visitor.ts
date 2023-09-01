@@ -46,7 +46,7 @@ function visitSingle<OtherInfo>(node: RNode<OtherInfo>, onVisit: OnVisit<OtherIn
 	}
 
 	const type = node.type
-	switch (type) {
+	switch(type) {
 		case Type.FunctionCall:
 			visit(node.flavor === 'named' ? node.functionName : node.calledFunction, onVisit, { role: RoleInParent.FunctionCallName, index: 0 })
 			visit(node.arguments, onVisit, { role: RoleInParent.FunctionCallArgument, index: 1 })
@@ -125,7 +125,7 @@ function visitSingle<OtherInfo>(node: RNode<OtherInfo>, onVisit: OnVisit<OtherIn
 export function visit<OtherInfo>(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined)[] | undefined, onVisit: OnVisit<OtherInfo>, initialContext: ParentContextInfo = { role: RoleInParent.Root, index: 0 }): void {
 	if(Array.isArray(nodes)) {
 		let index = initialContext.index - 1 /* initial increment */
-		for (const node of nodes) {
+		for(const node of nodes) {
 			index++
 			if(node === null || node === undefined) {
 				continue

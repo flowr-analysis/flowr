@@ -10,16 +10,16 @@ import { LocalScope } from '../../../environments/scopes'
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 
 
-function getLastNodeInGraph<OtherInfo>(functionName: DataflowInformation<OtherInfo & ParentInformation>) {
+function getLastNodeInGraph(functionName: DataflowInformation) {
 	let functionNameId: NodeId | undefined
-	for (const [nodeId] of functionName.graph.vertices(false)) {
+	for(const [nodeId] of functionName.graph.vertices(false)) {
 		functionNameId = nodeId
 	}
 	return functionNameId
 }
 
 
-export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const named = functionCall.flavor === 'named'
 	const functionName = processDataflowFor(named ? functionCall.functionName : functionCall.calledFunction, data)
 
@@ -126,7 +126,6 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		out:               functionName.out, // we do not keep argument out as it has been linked by the function
 		graph:             finalGraph,
 		environments:      finalEnv,
-		ast:               data.completeAst,
 		scope:             data.activeScope
 	}
 }

@@ -31,7 +31,7 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 	let operator: RAccess['operator']
 	let closingLength = 0
 
-	switch (accessOp.name) {
+	switch(accessOp.name) {
 		case Type.BracketLeft:
 			operator = '['
 			closingLength = 1

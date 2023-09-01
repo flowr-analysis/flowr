@@ -32,17 +32,17 @@ export function tryNormalizeBinary(
 ): RNode | undefined {
 	parseLog.trace(`binary op for ${lhs.name} [${operator.name}] ${rhs.name}`)
 	let flavor: BinaryOperatorFlavor | 'special' | 'pipe'
-	if (Type.Special === operator.name) {
+	if(Type.Special === operator.name) {
 		flavor = "special"
-	} else if (ArithmeticOperatorsRAst.has(operator.name)) {
+	} else if(ArithmeticOperatorsRAst.has(operator.name)) {
 		flavor = "arithmetic"
-	} else if (ComparisonOperatorsRAst.has(operator.name)) {
+	} else if(ComparisonOperatorsRAst.has(operator.name)) {
 		flavor = "comparison"
-	} else if (LogicalOperatorsRAst.has(operator.name)) {
+	} else if(LogicalOperatorsRAst.has(operator.name)) {
 		flavor = "logical"
-	}  else if (ModelFormulaOperatorsRAst.has(operator.name)) {
+	}  else if(ModelFormulaOperatorsRAst.has(operator.name)) {
 		flavor = "model formula"
-	} else if (AssignmentsRAst.has(operator.name)) {
+	} else if(AssignmentsRAst.has(operator.name)) {
 		flavor = "assignment"
 	} else if(operator.name === Type.Pipe) {
 		flavor = 'pipe'
@@ -60,7 +60,7 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 	let parsedLhs = tryNormalizeSingleNode(data, lhs)
 	let parsedRhs = tryNormalizeSingleNode(data, rhs)
 
-	if (parsedLhs === undefined || parsedRhs === undefined) {
+	if(parsedLhs === undefined || parsedRhs === undefined) {
 		throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, operator, rhs])}`)
 	}
 
@@ -75,7 +75,7 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 
 	const { location, content } = retrieveMetaStructure(data.config, operator.content)
 
-	if (flavor === 'special') {
+	if(flavor === 'special') {
 		flavor = identifySpecialOp(content)
 	}
 

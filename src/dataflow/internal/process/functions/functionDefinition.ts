@@ -20,24 +20,24 @@ import { LocalScope } from '../../../environments/scopes'
 function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph: DataflowGraph, outEnvironment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>) {
 	// track *all* function definitions - included those nested within the current graph
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for (const [id, info] of subgraph.vertices(true)) {
-		if (info.tag !== 'function-definition') {
+	for(const [id, info] of subgraph.vertices(true)) {
+		if(info.tag !== 'function-definition') {
 			continue
 		}
 		const ingoingRefs = info.subflow.in
 		const remainingIn: IdentifierReference[] = []
-		for (const ingoing of ingoingRefs) {
+		for(const ingoing of ingoingRefs) {
 			for(const exitPoint of exitPoints) {
 				const node = subgraph.get(exitPoint, true)
 				const env = initializeCleanEnvironments()
 				env.current.memory = node === undefined ? outEnvironment.current.memory : node[0].environment.current.memory
 				const resolved = resolveByName(ingoing.name, data.activeScope, env)
-				if (resolved === undefined) {
+				if(resolved === undefined) {
 					remainingIn.push(ingoing)
 					continue
 				}
 				dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${functionDefinition.info.id}`)
-				for (const ref of resolved) {
+				for(const ref of resolved) {
 					subgraph.addEdge(ingoing, ref, EdgeType.Reads, exitPoints.length > 1 ? 'maybe' : 'always')
 				}
 			}
@@ -49,7 +49,7 @@ function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph:
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	let env = initializeCleanEnvironments()
-	for (let i = 0; i < data.environments.level + 1 /* add another env */; i++) {
+	for(let i = 0; i < data.environments.level + 1 /* add another env */; i++) {
 		env = pushLocalEnvironment(env)
 	}
 	return { ...data, environments: env }
@@ -64,12 +64,12 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
  * <p>
  * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers a first definitions</b>
  */
-function findPromiseLinkagesForParameters<OtherInfo>(parameters: DataflowGraph, readInParameters: IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation<OtherInfo>): IdentifierReference[] {
+function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParameters: IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation): IdentifierReference[] {
 	// first we try to bind again within parameters - if we have it, fine
 	const remainingRead: IdentifierReference[] = []
 	for(const read of readInParameters) {
 		const resolved = resolveByName(read.name, LocalScope, parameterEnvs)
-		if (resolved !== undefined) {
+		if(resolved !== undefined) {
 			for(const ref of resolved) {
 				parameters.addEdge(read, ref, EdgeType.Reads, 'always')
 			}
@@ -94,7 +94,7 @@ function findPromiseLinkagesForParameters<OtherInfo>(parameters: DataflowGraph, 
 	return remainingRead
 }
 
-export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation<OtherInfo> {
+export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
 
 	const originalEnvironments = data.environments
@@ -129,13 +129,13 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 	dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads`)
 
 	// link same-def-def with arguments
-	for (const writeTarget of body.out) {
+	for(const writeTarget of body.out) {
 		const writeName = writeTarget.name
 
 		const resolved = resolveByName(writeName, data.activeScope, paramsEnvironments)
-		if (resolved !== undefined) {
+		if(resolved !== undefined) {
 			// write-write
-			for (const target of resolved) {
+			for(const target of resolved) {
 				subgraph.addEdge(target, writeTarget, EdgeType.SameDefDef, undefined, true)
 			}
 		}
@@ -178,7 +178,6 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 		out:               [],
 		graph,
 		environments:      originalEnvironments,
-		ast:               data.completeAst,
 		scope:             data.activeScope
 	}
 }

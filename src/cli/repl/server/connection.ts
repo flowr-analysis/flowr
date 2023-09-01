@@ -63,7 +63,7 @@ export class FlowRServerConnection {
 					id:     request.message.id,
 					type:   'error',
 					fatal:  true,
-					reason: `The message type ${JSON.stringify(request.type ?? 'undefined')} is not supported.`
+					reason: `The message type ${JSON.stringify(request.message.type ?? 'undefined')} is not supported.`
 				})
 				this.socket.end()
 		}

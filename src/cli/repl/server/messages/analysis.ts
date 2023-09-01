@@ -2,6 +2,10 @@ import { FlowrBaseMessage, RequestMessageDefinition } from './messages'
 import { LAST_PER_FILE_STEP, StepResults } from '../../../../core'
 import Joi from 'joi'
 
+/**
+ * Send by the client to request an analysis of a given file.
+ * Answered by either an {@link FlowrErrorMessage} or a {@link FileAnalysisResponseMessage}.
+ */
 export interface FileAnalysisRequestMessage extends FlowrBaseMessage {
 	type:      'request-file-analysis',
 	/**
@@ -9,10 +13,14 @@ export interface FileAnalysisRequestMessage extends FlowrBaseMessage {
 	 * If you pass the same token multiple times, previous results will be overwritten.
 	 */
 	filetoken: string,
-	filename:  string,
-	/** the contents of the file, give either this or the `filepath`. */
+	/**
+	 * A human-readable file name. If you present a `filepath` or read from a file this should be straightforward.
+	 * However, the name is only for debugging and bears no semantic meaning.
+	 */
+	filename?: string,
+	/** The contents of the file, or a R expression itself (like `1 + 1`), give either this or the `filepath`. */
 	content?:  string
-	/** the filepath on the local machine, accessible to flowR, or simply. Give either this or the `content` */
+	/** The filepath on the local machine, accessible to flowR, or simply. Give either this or the `content` */
 	filepath?: string
 }
 
@@ -23,15 +31,23 @@ export const requestAnalysisMessage: RequestMessageDefinition<FileAnalysisReques
 		type:      Joi.string().valid('request-file-analysis').required(),
 		id:        Joi.string().optional(),
 		filetoken: Joi.string().required(),
-		filename:  Joi.string().required(),
+		filename:  Joi.string().optional(),
 		content:   Joi.string().optional(),
 		filepath:  Joi.string().optional()
 	}).xor('content', 'filepath')
 }
 
-
+/**
+ * Answer for a successful {@link FileAnalysisRequestMessage}.
+ * It contains the results of the analysis in JSON format.
+ *
+ * @note the serialization of maps and sets is controlled by the {@link jsonReplacer} as part of {@link sendMessage}.
+ */
 export interface FileAnalysisResponseMessage extends FlowrBaseMessage {
 	type:    'response-file-analysis',
+	/**
+	 * See the {@link SteppingSlicer} and {@link StepResults} for details on the results.
+	 */
 	results: StepResults<typeof LAST_PER_FILE_STEP>
 }
 

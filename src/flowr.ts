@@ -137,6 +137,17 @@ async function mainRepl() {
 async function mainServer() {
 	const shell = retrieveShell()
 	const tokenMap = await getStoredTokenMap(shell)
+	const end = () => {
+		if(options.execute === undefined) {
+			console.log(`\n${italic('Exiting...')}`)
+		}
+		shell.close()
+		process.exit(0)
+	}
+
+	// hook some handlers
+	process.on('SIGINT', end)
+	process.on('SIGTERM', end)
 	await new FlowRServer(shell, tokenMap).start(options.port)
 }
 

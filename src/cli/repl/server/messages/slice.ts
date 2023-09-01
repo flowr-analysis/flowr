@@ -16,12 +16,6 @@ export interface SliceRequestMessage extends FlowrBaseMessage {
 	criterion: SlicingCriteria
 }
 
-export interface SliceResponseMessage extends FlowrBaseMessage {
-	type:    'response-slice',
-	/** only contains the results of the slice steps to not repeat ourselves */
-	results: Omit<StepResults<typeof LAST_STEP>, keyof StepResults<typeof LAST_PER_FILE_STEP>>
-}
-
 export const requestSliceMessage: RequestMessageDefinition<SliceRequestMessage> = {
 	type:   'request-slice',
 	schema: Joi.object({
@@ -30,4 +24,15 @@ export const requestSliceMessage: RequestMessageDefinition<SliceRequestMessage> 
 		filetoken: Joi.string().required(),
 		criterion: Joi.array().items(Joi.string().regex(/\d+:\d+|\d+@.*|\$\d+/)).min(0).required()
 	})
+}
+
+
+/**
+ * Similar to {@link FileAnalysisResponseMessage} this only contains the results of
+ * the slice steps.
+ */
+export interface SliceResponseMessage extends FlowrBaseMessage {
+	type:    'response-slice',
+	/** only contains the results of the slice steps to not repeat ourselves */
+	results: Omit<StepResults<typeof LAST_STEP>, keyof StepResults<typeof LAST_PER_FILE_STEP>>
 }

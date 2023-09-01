@@ -25,7 +25,7 @@ jobs:
 
       - name: Test that the image works
         run: |
-          docker run --rm flowr
+          docker run --rm flowr --help
 
       - name: Deploy the image
         run: |

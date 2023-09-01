@@ -26,13 +26,15 @@ jobs:
       - name: Test that the image works
         timeout-minutes: 5
         run: |
-          docker run --rm flowr --help
+          docker run --rm flowr --version
 
       - name: Deploy the image
         run: |
           TAG="eagleoutice/flowr"
-          VERSION="$(date "+%Y%m%d")"
-          docker tag flowr "${TAG}":"$VERSION"
+          VERSION="$(date '+%Y%m%d')"
+          FLOWR_VERSION="$(docker run --rm flowr --version |  grep -oP 'flowR:\s*\K[^ ]+')"
+          docker tag flowr "${TAG}":"date-$VERSION"
+          docker tag flowr "${TAG}":"flowr-$FLOWR_VERSION"
           docker tag flowr "${TAG}":latest
           docker images "$TAG"
           echo ${{ secrets.DH_PASSWD }} | docker login -u ${{ secrets.DH_NAME }} --password-stdin

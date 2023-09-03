@@ -8,6 +8,13 @@ import { FlowrErrorMessage } from './messages/error'
 import { Socket } from './net'
 import { serverLog } from './server'
 import { ILogObj, Logger } from 'tslog'
+import {
+	ExecuteReplExpressionEndMessage,
+	ExecuteReplExpressionIntermediateMessage,
+	ExecuteReplExpressionRequestMessage
+} from './messages/repl'
+import { replProcessAnswer } from '../core'
+import { ansiFormatter, voidFormatter } from '../../../statistics'
 
 export interface FlowRFileInformation {
 	filename: string,
@@ -58,12 +65,15 @@ export class FlowRServerConnection {
 			case 'request-slice':
 				this.handleSliceRequest(request.message as SliceRequestMessage)
 				break
+			case 'request-repl-execution':
+				this.handleRepl(request.message as ExecuteReplExpressionRequestMessage)
+				break
 			default:
 				sendMessage<FlowrErrorMessage>(this.socket, {
 					id:     request.message.id,
 					type:   'error',
 					fatal:  true,
-					reason: `The message type ${JSON.stringify(request.type ?? 'undefined')} is not supported.`
+					reason: `The message type ${JSON.stringify(request.type as string | undefined ?? 'undefined')} is not supported.`
 				})
 				this.socket.end()
 		}
@@ -116,8 +126,6 @@ export class FlowRServerConnection {
 		}
 
 		const request = requestResult.message
-
-
 		this.logger.info(`[${request.filetoken}] Received slice request with criteria ${JSON.stringify(request.criterion)}`)
 
 		const fileInformation = this.fileMap.get(request.filetoken)
@@ -137,6 +145,29 @@ export class FlowRServerConnection {
 				type:    'response-slice',
 				id:      request.id,
 				results: Object.fromEntries(Object.entries(results).filter(([k,]) => Object.hasOwn(STEPS_PER_SLICE, k))) as SliceResponseMessage['results']
+			})
+		})
+	}
+
+
+	private handleRepl(base: ExecuteReplExpressionRequestMessage) {
+		const out = (stream: 'stdout' | 'stderr', msg: string) => {
+			sendMessage<ExecuteReplExpressionIntermediateMessage>(this.socket, {
+				type:   'response-repl-execution',
+				id:     base.id,
+				result: msg,
+				stream
+			})
+		}
+
+		void replProcessAnswer({
+			formatter: base.ansi ? ansiFormatter : voidFormatter,
+			stdout:    msg => out('stdout', msg),
+			stderr:    msg => out('stderr', msg)
+		}, base.expression, this.shell, this.tokenMap).then(() => {
+			sendMessage<ExecuteReplExpressionEndMessage>(this.socket, {
+				type: 'end-repl-execution',
+				id:   base.id
 			})
 		})
 	}

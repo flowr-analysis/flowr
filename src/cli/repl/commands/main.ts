@@ -1,12 +1,16 @@
 import { RShell, TokenMap } from '../../../r-bridge'
+import { formatter, OutputFormatter } from '../../../statistics'
 
 /**
  * Defines the main interface for output of the repl.
  * This allows us to redirect it (e.g., in the case of a server connection or tests).
  *
+ * The formatter allows to dynamically change the use of ansi escape sequences (see {@link OutputFormatter})
+ *
  * @see standardReplOutput
  */
 export interface ReplOutput {
+	formatter: OutputFormatter
 	stdout(msg: string): void
 	stderr(msg: string): void
 }
@@ -16,8 +20,9 @@ export interface ReplOutput {
  * @see ReplOutput
  */
 export const standardReplOutput: ReplOutput = {
-	stdout: console.log,
-	stderr: console.error
+	formatter: formatter,
+	stdout:    console.log,
+	stderr:    console.error
 }
 
 /**

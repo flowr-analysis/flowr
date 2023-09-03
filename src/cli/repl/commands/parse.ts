@@ -125,7 +125,7 @@ export const parseCommand: ReplCommand = {
 	usageExample: ':parse',
 	aliases:      [ 'p' ],
 	script:       false,
-	fn:           async(shell, tokenMap, remainingLine) => {
+	fn:           async(output, shell, tokenMap, remainingLine) => {
 		const result = await new SteppingSlicer({
 			stepOfInterest: 'parse',
 			shell, tokenMap,
@@ -135,6 +135,6 @@ export const parseCommand: ReplCommand = {
 		const config = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap })
 		const object = await xlm2jsonObject(config, result.parse)
 
-		console.log(depthListToTextTree(toDepthMap(object, config), config))
+		output.stdout(depthListToTextTree(toDepthMap(object, config), config))
 	}
 }

@@ -26,8 +26,8 @@ export const helpCommand: ReplCommand = {
 	script:       false,
 	usageExample: ':help',
 	aliases:      [ 'h', '?' ],
-	fn:           () => {
-		console.log(`
+	fn:           output => {
+		output.stdout(`
 You can always just enter R expressions which get evaluated right away:
 ${rawPrompt} ${bold('1 + 1')}
 ${italic('[1] 2')}
@@ -49,8 +49,9 @@ You can combine commands by separating them with a semicolon ${bold(';')}.
 	}
 }
 
-
-
+/**
+ * All commands that should be available in the REPL.
+ */
 const commands: Record<string, ReplCommand> = {
 	'help':       helpCommand,
 	'quit':       quitCommand,
@@ -70,10 +71,11 @@ for(const [script, { target, description, type}] of Object.entries(scripts)) {
 			aliases:      [],
 			script:       true,
 			usageExample: `:${script} --help`,
-			fn:           async(_s, _t, remainingLine) => {
+			fn:           async(output, _s, _t, remainingLine) => {
 				await waitOnScript(
 					`${__dirname}/../../${target}`,
-					splitAtEscapeSensitive(remainingLine)
+					splitAtEscapeSensitive(remainingLine),
+					stdio => stdioCaptureProcessor(stdio, msg => output.stdout(msg), msg => output.stderr(msg))
 				)
 			}
 		}

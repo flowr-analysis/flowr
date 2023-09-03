@@ -9,7 +9,7 @@ export async function executeRShellCommand(output: ReplOutput, shell: RShell, st
 			from:                    'both',
 			automaticallyTrimOutput: true
 		})
-		output.stdout(`${italic(result.join('\n'))}\n`)
+		output.stdout(`${italic(result.join('\n'), output.formatter)}\n`)
 	} catch(e) {
 		output.stderr(`Error while executing '${statement}': ${(e as Error).message}`)
 	}

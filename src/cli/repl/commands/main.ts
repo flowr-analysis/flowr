@@ -38,6 +38,9 @@ export interface ReplCommand {
 	script:       boolean
 	/** Example of how to use the command, for example `:slicer --help` */
 	usageExample: string
-	/** Function to execute when the command is invoked, it must not write to the command line but instead use the output handler */
+	/**
+	 * Function to execute when the command is invoked, it must not write to the command line but instead use the output handler.
+	 * Furthermore, it has to obey the formatter defined in the {@link ReplOutput}.
+	 */
 	fn:           (output: ReplOutput, shell: RShell, tokenMap: TokenMap, remainingLine: string) => Promise<void> | void
 }

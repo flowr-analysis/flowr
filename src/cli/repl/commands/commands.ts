@@ -1,6 +1,6 @@
 import { quitCommand } from './quit'
 import { scripts } from '../../common'
-import { waitOnScript } from '../execute'
+import { stdioCaptureProcessor, waitOnScript } from '../execute'
 import { splitAtEscapeSensitive } from '../../../util/args'
 import { ReplCommand } from './main'
 import { rawPrompt } from '../prompt'
@@ -71,7 +71,10 @@ for(const [script, { target, description, type}] of Object.entries(scripts)) {
 			script:       true,
 			usageExample: `:${script} --help`,
 			fn:           async(_s, _t, remainingLine) => {
-				await waitOnScript(`${__dirname}/../../${target}`, splitAtEscapeSensitive(remainingLine))
+				await waitOnScript(
+					`${__dirname}/../../${target}`,
+					splitAtEscapeSensitive(remainingLine)
+				)
 			}
 		}
 	}

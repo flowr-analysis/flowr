@@ -5,8 +5,13 @@ import { guard } from '../../../util/assert'
 
 type Version = `${number}.${number}.${number}`
 
+/**
+ * Describes the version of flowR and the used R interpreter.
+ */
 export interface VersionInformation {
+	/** The version of flowR */
 	flowr: Version,
+	/** The version of R identified by the underlying {@link RShell} */
 	r:     Version | 'unknown'
 }
 

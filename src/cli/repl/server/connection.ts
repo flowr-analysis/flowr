@@ -16,9 +16,9 @@ import {
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
 
-export interface FlowRFileInformation {
-	filename: string,
-	slicer: 	 SteppingSlicer
+export interface FlowRFileOrRequestInformation {
+	filename?: string,
+	slicer:    SteppingSlicer
 }
 
 export class FlowRServerConnection {
@@ -29,7 +29,7 @@ export class FlowRServerConnection {
 	private readonly logger:   Logger<ILogObj>
 
 	// maps token to information
-	private readonly fileMap = new Map<string, FlowRFileInformation>()
+	private readonly fileMap = new Map<string, FlowRFileOrRequestInformation>()
 
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
@@ -73,7 +73,7 @@ export class FlowRServerConnection {
 					id:     request.message.id,
 					type:   'error',
 					fatal:  true,
-					reason: `The message type ${JSON.stringify(request.type as string | undefined ?? 'undefined')} is not supported.`
+					reason: `The message type ${JSON.stringify(request.message.type as string | undefined ?? 'undefined')} is not supported.`
 				})
 				this.socket.end()
 		}
@@ -86,7 +86,7 @@ export class FlowRServerConnection {
 			return
 		}
 		const message = requestResult.message
-		this.logger.info(`[${this.name}] Received file analysis request for ${message.filename} (token: ${message.filetoken})`)
+		this.logger.info(`[${this.name}] Received file analysis request for ${message.filename ?? 'unknown file'} (token: ${message.filetoken})`)
 
 		if(this.fileMap.has(message.filetoken)) {
 			this.logger.warn(`File token ${message.filetoken} already exists. Overwriting.`)
@@ -111,9 +111,15 @@ export class FlowRServerConnection {
 
 		void slicer.allRemainingSteps(false).then(results => {
 			sendMessage(this.socket, {
-				type: 'response-file-analysis',
-				id:   message.id,
-				results
+				type:    'response-file-analysis',
+				id:      message.id,
+				results: {
+					...results,
+					normalize: {
+						...results.normalize,
+						idMap: undefined
+					}
+				}
 			})
 		})
 	}

@@ -13,12 +13,20 @@ import {
 	RIfThenElse,
 	RParameter,
 	RFunctionDefinition,
-	RRepeatLoop, RForLoop, RWhileLoop,
-	RComment, RFunctionCall, RBreak, RNext,
-	RArgument, RNamedAccess, RIndexAccess, RLineDirective
+	RRepeatLoop,
+	RForLoop,
+	RWhileLoop,
+	RComment,
+	RFunctionCall,
+	RBreak,
+	RNext,
+	RArgument,
+	RNamedAccess,
+	RIndexAccess,
+	RLineDirective,
+	RPipe
 } from './nodes'
 import { OtherInfoNode } from './nodes/info'
-import { RPipe } from './nodes'
 
 /** simply used as an empty interface with no information about additional decorations */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface

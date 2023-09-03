@@ -190,8 +190,8 @@ a(m)()`)
 		assertSliced('Higher order anonymous function', shell, `a <- function(b) {
   b
 }
-x <- a(\\() 2 + 3)() + a(\\() 7)()`, ['4@x'], `a <- function(b) { b }
-x <- a(\\() 2 + 3)() + a(\\() 7)()`)
+x <- a(function() 2 + 3)() + a(function() 7)()`, ['4@x'], `a <- function(b) { b }
+x <- a(function() 2 + 3)() + a(function() 7)()`)
 	})
 	describe('Side-Effects', () => {
 		assertSliced('Important Side-Effect', shell, `x <- 2

@@ -45,9 +45,17 @@ async function replProcessStatement(output: ReplOutput, statement: string, shell
 	}
 }
 
-export async function replProcessAnswer(output: ReplOutput, answer: string, shell: RShell, tokenMap: TokenMap): Promise<void> {
+/**
+ * This function interprets the given `expr` as a REPL command (see {@link repl} for more on the semantics).
+ *
+ * @param output   - Defines two methods that every function in the repl uses to output its data.
+ * @param expr     - The expression to process.
+ * @param shell    - The {@link RShell} to use (see {@link repl}).
+ * @param tokenMap - The {@link TokenMap} of the given shell.
+ */
+export async function replProcessAnswer(output: ReplOutput, expr: string, shell: RShell, tokenMap: TokenMap): Promise<void> {
 
-	const statements = splitAtEscapeSensitive(answer, ';')
+	const statements = splitAtEscapeSensitive(expr, ';')
 
 	for(const statement of statements) {
 		await replProcessStatement(output, statement, shell, tokenMap)
@@ -67,6 +75,8 @@ export async function replProcessAnswer(output: ReplOutput, answer: string, shel
  *                    If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
  *                    For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}.
  * @param output    - Defines two methods that every function in the repl uses to output its data.
+ *
+ * For the execution, this function makes use of {@link replProcessAnswer}
  *
  */
 export async function repl(shell = new RShell({ revive: 'always' }), tokenMap?: TokenMap, rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION), output = standardReplOutput) {

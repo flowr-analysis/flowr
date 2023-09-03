@@ -10,7 +10,7 @@ export interface ExecuteReplExpressionRequestMessage extends FlowrBaseMessage {
 }
 
 // TODO: document that all use same shell
-export const executeReplExpressionMessage: RequestMessageDefinition<ExecuteReplExpressionRequestMessage> = {
+export const requestExecuteReplExpressionMessage: RequestMessageDefinition<ExecuteReplExpressionRequestMessage> = {
 	type:   'request-repl-execution',
 	schema: Joi.object({
 		type:       Joi.string().valid('request-repl-execution').required(),

@@ -11,7 +11,7 @@ import { ILogObj, Logger } from 'tslog'
 import {
 	ExecuteReplExpressionEndMessage,
 	ExecuteReplExpressionIntermediateMessage,
-	ExecuteReplExpressionRequestMessage
+	ExecuteReplExpressionRequestMessage, requestExecuteReplExpressionMessage
 } from './messages/repl'
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
@@ -151,23 +151,32 @@ export class FlowRServerConnection {
 
 
 	private handleRepl(base: ExecuteReplExpressionRequestMessage) {
+		const requestResult = validateMessage(base, requestExecuteReplExpressionMessage)
+
+		if(requestResult.type === 'error') {
+			answerForValidationError(this.socket, requestResult, base.id)
+			return
+		}
+
+		const request = requestResult.message
+
 		const out = (stream: 'stdout' | 'stderr', msg: string) => {
 			sendMessage<ExecuteReplExpressionIntermediateMessage>(this.socket, {
 				type:   'response-repl-execution',
-				id:     base.id,
+				id:     request.id,
 				result: msg,
 				stream
 			})
 		}
 
 		void replProcessAnswer({
-			formatter: base.ansi ? ansiFormatter : voidFormatter,
+			formatter: request.ansi ? ansiFormatter : voidFormatter,
 			stdout:    msg => out('stdout', msg),
 			stderr:    msg => out('stderr', msg)
-		}, base.expression, this.shell, this.tokenMap).then(() => {
+		}, request.expression, this.shell, this.tokenMap).then(() => {
 			sendMessage<ExecuteReplExpressionEndMessage>(this.socket, {
 				type: 'end-repl-execution',
-				id:   base.id
+				id:   request.id
 			})
 		})
 	}

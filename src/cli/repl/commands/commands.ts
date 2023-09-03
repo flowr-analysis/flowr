@@ -72,7 +72,6 @@ for(const [script, { target, description, type}] of Object.entries(scripts)) {
 			script:       true,
 			usageExample: `:${script} --help`,
 			fn:           async(output, _s, _t, remainingLine) => {
-				// TODO: obey selected ansi formatter
 				await waitOnScript(
 					`${__dirname}/../../${target}`,
 					splitAtEscapeSensitive(remainingLine),

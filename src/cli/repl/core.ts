@@ -11,7 +11,6 @@ import { commandNames, getCommand, ReplOutput, standardReplOutput } from './comm
 import { ReadLineOptions } from 'node:readline'
 import { splitAtEscapeSensitive } from '../../util/args'
 import { executeRShellCommand } from './commands/execute'
-import { MergeableRecord } from '../../util/objects'
 
 const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
 

@@ -1,5 +1,6 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
+import { linkIngoingVariablesInSameScope } from '../../linker'
 import { ParentInformation, RPipe, Type } from '../../../../r-bridge'
 import { overwriteEnvironments } from '../../../environments'
 import { dataflowLogger, EdgeType, graphToMermaidUrl } from '../../../index'
@@ -13,7 +14,7 @@ export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInfo
 	// in-and outgoing are similar to that of a binary operation, we only 1) expect the rhs to be a function call and 2) modify the arguments.
 	const ingoing = [...lhs.in, ...rhs.in, ...lhs.unknownReferences, ...rhs.unknownReferences]
 	const nextGraph = lhs.graph.mergeWith(rhs.graph)
-
+	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 	if(op.rhs.type !== Type.FunctionCall) {
 		dataflowLogger.warn(`Expected rhs of pipe to be a function call, but got ${op.rhs.type} instead.`)
 	} else {

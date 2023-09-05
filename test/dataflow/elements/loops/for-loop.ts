@@ -31,6 +31,7 @@ x`,
 				.addVertex( { tag: 'use', id: "12", name: "x", when: 'always', environment: appendEnvironments(withXDefined, otherXDefined) })
 				.addEdge("12", "0", EdgeType.Reads, "always")
 				.addEdge("12", "7", EdgeType.Reads, "maybe")
+				.addEdge("0", "7", EdgeType.SameDefDef, "maybe")
 		)
 	})
 
@@ -79,6 +80,7 @@ x`,
 			.addVertex( { tag: 'use', id: "12", name: "x", environment: appendEnvironments(envOutFor(), envWithSecondX()) })
 			.addEdge("12", "0", EdgeType.Reads, "always")
 			.addEdge("12", "7", EdgeType.Reads, "maybe")
+			.addEdge("0", "7", EdgeType.SameDefDef, "maybe")
 	)
 	assertDataflow(`Redefinition within loop`,
 		shell,
@@ -94,6 +96,7 @@ x`,
 			.addEdge("8", "0", EdgeType.Reads, "maybe")
 			.addEdge("8", "7", EdgeType.Reads, "maybe")
 			.addEdge("7", "8", EdgeType.DefinedBy, "always")
+			.addEdge("0", "7", EdgeType.SameDefDef, "maybe")
 	)
 
 	const envInLargeFor = () => define({ nodeId: "3", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "14", used: 'always' }, LocalScope,
@@ -126,6 +129,9 @@ x`,
 			.addEdge("15", "10", EdgeType.Reads, "maybe")
 			.addEdge("7", "8", EdgeType.DefinedBy, "always")
 			.addEdge("10", "11", EdgeType.DefinedBy, "always")
+			.addEdge("0", "7", EdgeType.SameDefDef, "maybe")
+			.addEdge("0", "10", EdgeType.SameDefDef, "maybe")
+			.addEdge("7", "10", EdgeType.SameDefDef, "always") // both in same loop execution
 	)
 
 	const forLoopWithI = () => define({ nodeId: "0", name: 'i', scope: LocalScope, kind: 'variable', definedAt: "9", used: 'always' }, LocalScope,
@@ -149,5 +155,6 @@ x`,
 			.addEdge("4", "0", EdgeType.Reads, "maybe")
 			.addEdge("10", "5", EdgeType.Reads, "maybe")
 			.addEdge("10", "0", EdgeType.Reads, "maybe")
+			.addEdge("5", "0", EdgeType.SameDefDef, "always")
 	)
 }))

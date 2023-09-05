@@ -667,10 +667,12 @@ describe('Function Definition', withShell(shell => {
 				.addVertex({ tag: 'use', id: '13', name: 'a', scope: LocalScope, when: 'always', environment: envWithBothParamSecondB }, false)
 				.addVertex({ tag: 'exit-point', id: '15', name: '+', scope: LocalScope, when: 'always', environment: envWithBothParamSecondB }, false)
 				.addEdge('15', '13', EdgeType.Relates, 'always')
+				.addEdge('13', '9', EdgeType.SameReadRead, 'always')
 				.addEdge('9', '0', EdgeType.Reads, 'always')
 				.addEdge('13', '0', EdgeType.Reads, 'always')
 				.addEdge('0', '1', EdgeType.DefinedBy, 'maybe')
 				.addEdge('1', '6', EdgeType.Reads, 'always')
+				.addEdge('10', '6', EdgeType.SameDefDef, 'always')
 		)
 	})
 	describe('Using special argument', () => {
@@ -803,6 +805,7 @@ describe('Function Definition', withShell(shell => {
 			.addEdge('12', '11', EdgeType.Returns, 'always')
 			.addEdge('12', BuiltIn, EdgeType.Reads, 'maybe')
 			.addEdge('12', BuiltIn, EdgeType.Calls, 'maybe')
+			.addEdge('5', '15', EdgeType.SameDefDef, 'always')
 
 			.addVertex({ tag: 'use', id: '1', name: 'y', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())) }, false)
 		)
@@ -932,6 +935,7 @@ describe('Function Definition', withShell(shell => {
 				.addVertex({ tag: 'variable-definition', id: "4", name: "x", environment: withinNestedFunctionWithParam, scope: LocalScope, when: 'always' }, false)
 				.addVertex({ tag: 'variable-definition', id: "2", name: "x", environment: withinNestedFunctionWithoutParam, scope: LocalScope, when: 'always' }, false)
 				.addEdge("4", "5", EdgeType.DefinedBy, "always")
+				.addEdge("2", "4", EdgeType.SameDefDef, 'always')
 		)
 	})
 }))

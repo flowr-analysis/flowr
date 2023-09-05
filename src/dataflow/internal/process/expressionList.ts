@@ -11,7 +11,7 @@ import {
 	REnvironmentInformation,
 	resolveByName
 } from '../../environments'
-import { linkFunctionCalls } from '../linker'
+import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
 import { DataflowGraph, DataflowGraphVertexInfo } from '../../graph'
 import { dataflowLogger, EdgeType } from '../../index'
@@ -57,6 +57,18 @@ function processNextExpression<OtherInfo>(
 	// all inputs that have not been written until know, are read!
 	for(const read of [...currentElement.in, ...currentElement.unknownReferences]) {
 		linkReadNameToWriteIfPossible(read, data, environments, listEnvironments, remainingRead, nextGraph)
+	}
+	// add same variable reads for deferred if they are read previously but not dependent
+	for(const writeTarget of currentElement.out) {
+		const writeName = writeTarget.name
+
+		const resolved = resolveByName(writeName, data.activeScope, environments)
+		if(resolved !== undefined) {
+			// write-write
+			for(const target of resolved) {
+				nextGraph.addEdge(target, writeTarget, EdgeType.SameDefDef, undefined, true)
+			}
+		}
 	}
 }
 
@@ -151,6 +163,9 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		}
 	}
 
+
+	// now, we have to link same reads
+	linkReadVariablesInSameScopeWithNames(nextGraph, new DefaultMap(() => [], remainingRead))
 
 	dataflowLogger.trace(`expression list exits with ${remainingRead.size} remaining read names`)
 

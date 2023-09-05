@@ -1,5 +1,6 @@
 import {
 	linkCircularRedefinitionsWithinALoop,
+	linkIngoingVariablesInSameScope,
 	produceNameSharedIdMap
 } from '../../linker'
 import { DataflowInformation } from '../../info'
@@ -53,6 +54,8 @@ export function processForLoop<OtherInfo>(
 	}
 
 	const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph, outEnvironments)]
+
+	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out)
 

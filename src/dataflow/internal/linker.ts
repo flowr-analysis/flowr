@@ -21,6 +21,11 @@ import { slicerLogger } from '../../slicing'
 import { dataflowLogger, EdgeType } from '../index'
 import { LocalScope } from '../environments/scopes'
 
+export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
+	const nameIdShares = produceNameSharedIdMap(references)
+	linkReadVariablesInSameScopeWithNames(graph, nameIdShares)
+}
+
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
 export function produceNameSharedIdMap(references: IdentifierReference[]): NameIdMap {
@@ -29,6 +34,18 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 		nameIdShares.get(reference.name).push(reference)
 	}
 	return nameIdShares
+}
+
+export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, nameIdShares: DefaultMap<string, IdentifierReference[]>) {
+	for(const ids of nameIdShares.values()) {
+		if(ids.length <= 1) {
+			continue
+		}
+		const base = ids[0]
+		for(let i = 1; i < ids.length; i++) {
+			graph.addEdge(base.nodeId, ids[i].nodeId, EdgeType.SameReadRead, 'always', true)
+		}
+	}
 }
 
 function specialReturnFunction(info: DataflowGraphVertexFunctionCall, graph: DataflowGraph, id: NodeId) {

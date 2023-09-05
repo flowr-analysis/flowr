@@ -128,6 +128,19 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 
 	dataflowLogger.trace(`Function definition with id ${functionDefinition.info.id} has ${remainingRead.length} remaining reads`)
 
+	// link same-def-def with arguments
+	for(const writeTarget of body.out) {
+		const writeName = writeTarget.name
+
+		const resolved = resolveByName(writeName, data.activeScope, paramsEnvironments)
+		if(resolved !== undefined) {
+			// write-write
+			for(const target of resolved) {
+				subgraph.addEdge(target, writeTarget, EdgeType.SameDefDef, undefined, true)
+			}
+		}
+	}
+
 	const outEnvironment = overwriteEnvironments(paramsEnvironments, bodyEnvironment)
 	for(const read of remainingRead) {
 		subgraph.addVertex({ tag: 'use', id: read.nodeId, name: read.name, environment: outEnvironment, when: 'maybe' })

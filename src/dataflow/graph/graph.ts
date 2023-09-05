@@ -203,7 +203,7 @@ export class DataflowGraph {
 			}
 
 			// sort (on id so that sorting is the same, independent of the attribute)
-			const bidirectional = type === 'relates'
+			const bidirectional = type === 'same-read-read' || type === 'same-def-def' || type === 'relates'
 
 			if(bidirectional) {
 				const existingTo = this.edges.get(toId)

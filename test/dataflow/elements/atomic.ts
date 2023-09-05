@@ -118,7 +118,6 @@ describe("Atomic dataflow information", withShell((shell) => {
 							new DataflowGraph()
 								.addVertex({ tag: 'use', id: "0", name: "x" })
 								.addVertex({ tag: 'use', id: "1", name: "x" })
-								.addEdge("0", "1", EdgeType.SameReadRead, "always")
 						)
 					})
 				}
@@ -386,7 +385,6 @@ describe("Atomic dataflow information", withShell((shell) => {
 							.addVertex({ tag: 'use', id: "0", name: "x" })
 							.addVertex({ tag: 'use', id: "1", name: "y" })
 							.addVertex({ tag: 'use', id: "3", name: "x", when: 'maybe' })
-							.addEdge("0", "3", EdgeType.SameReadRead, "maybe")
 					)
 					assertDataflow(`all same variables`, shell,
 						`if (x > x) ${b.func("x")}`,
@@ -394,9 +392,6 @@ describe("Atomic dataflow information", withShell((shell) => {
 							.addVertex({ tag: 'use', id: "0", name: "x" })
 							.addVertex({ tag: 'use', id: "1", name: "x" })
 							.addVertex({ tag: 'use', id: "3", name: "x", when: 'maybe' })
-							.addEdge("0", "1", EdgeType.SameReadRead, "always")
-							// theoretically, they just have to be connected, so 0 is just hardcoded
-							.addEdge("0", "3", EdgeType.SameReadRead, "maybe")
 					)
 					assertDataflow(`definition in if`, shell,
 						`if (x <- 3) ${b.func("x")}`,
@@ -442,8 +437,6 @@ describe("Atomic dataflow information", withShell((shell) => {
 							.addVertex({ tag: 'use', id: "1", name: "x" })
 							.addVertex({ tag: 'use', id: "3", name: "x", when: 'maybe' })
 							.addVertex({ tag: 'use', id: "5", name: "y", when: 'maybe' })
-							.addEdge("1", "3", EdgeType.SameReadRead, "maybe")
-							.addEdge("0", "5", EdgeType.SameReadRead, "maybe")
 					)
 					assertDataflow(`all same variables`, shell,
 						"if (x > x) { x } else { x }",
@@ -452,10 +445,6 @@ describe("Atomic dataflow information", withShell((shell) => {
 							.addVertex({ tag: 'use', id: "1", name: "x" })
 							.addVertex({ tag: 'use', id: "3", name: "x", when: 'maybe' })
 							.addVertex({ tag: 'use', id: "5", name: "x", when: 'maybe' })
-							// 0 is just hardcoded, they actually just have to be connected
-							.addEdge("0", "1", EdgeType.SameReadRead, "always")
-							.addEdge("0", "3", EdgeType.SameReadRead, "maybe")
-							.addEdge("0", "5", EdgeType.SameReadRead, "maybe")
 					)
 				})
 			})
@@ -480,7 +469,6 @@ describe("Atomic dataflow information", withShell((shell) => {
 				.addVertex({ id: '8', tag: 'use', name: 'y', scope: LocalScope, environment: appendEnvironments(environmentWithY, environmentWithOtherY) })
 				.addEdge('8', '0', EdgeType.Reads, 'always')
 				.addEdge('8', '4', EdgeType.Reads, 'always')
-				.addEdge('0', '4', EdgeType.SameDefDef, 'always')
 		)
 	})
 

@@ -1,7 +1,6 @@
 import { DataflowInformation } from '../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import { appendEnvironments, IdentifierReference, makeAllMaybe } from '../../environments'
-import { linkIngoingVariablesInSameScope } from '../linker'
 import { ParentInformation, RIfThenElse } from '../../../r-bridge'
 
 export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
@@ -49,8 +48,6 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
 		...(makeThenMaybe ? makeAllMaybe(then?.out, nextGraph, finalEnvironment) : then?.out ?? []),
 		...(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment) : otherwise?.out ?? []),
 	]
-
-	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
 	return {
 		unknownReferences: [],

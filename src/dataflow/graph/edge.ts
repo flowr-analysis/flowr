@@ -21,10 +21,6 @@ export enum EdgeType {
 	Reads = 'reads',
 	/** The edge determines that source is defined by target */
 	DefinedBy = 'defined-by',
-	/** The edge determines that both nodes reference the same variable in a lexical/scoping sense, source and target are interchangeable (reads for at construction unbound variables) */
-	SameReadRead = 'same-read-read',
-	/** Similar to `same-read-read` but for def-def constructs without a read in-between */
-	SameDefDef = 'same-def-def',
 	/** The edge determines that the source calls the target */
 	Calls = 'calls',
 	/** The source returns target on call */

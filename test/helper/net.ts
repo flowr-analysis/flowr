@@ -2,8 +2,10 @@ import { OnConnect, Server, Socket } from '../../src/cli/repl/server/net'
 import * as Buffer from 'buffer'
 import { FlowrBaseMessage } from '../../src/cli/repl'
 import { RShell } from '../../src/r-bridge'
-import { FlowRServer } from '../../src/cli/repl/server/server'
+import { FlowRServer, serverLog } from '../../src/cli/repl/server/server'
 import { defaultTokenMap } from './shell'
+import { jsonReplacer } from '../../src/util/json'
+import { guard } from '../../src/util/assert'
 
 export class FakeServer implements Server {
 	private connectHandler: OnConnect | undefined
@@ -22,15 +24,19 @@ export class FakeServer implements Server {
 	}
 }
 
+export function fakeSend<T extends FlowrBaseMessage>(c: FakeSocket, message: T): void {
+	const msg = JSON.stringify(message, jsonReplacer)
+	c.send(`${msg}\n`)
+}
+
 export class FakeSocket implements Socket {
-	public readonly remoteAddress= 'fake-remote-address'
+	public readonly remoteAddress = 'fake-address'
 	public readonly remotePort = 1234
 
 	private dataHandler:    ((data: Buffer) => void) | undefined
 	private messageHandler: ((message: FlowrBaseMessage) => void) | undefined
 
 	private closeHandler: (() => void) | undefined
-
 
 	private messages: FlowrBaseMessage[] = []
 
@@ -45,14 +51,12 @@ export class FakeSocket implements Socket {
 		this.closeHandler?.()
 	}
 
-
-
 	public on(event: "close", listener: () => void): void
 	public on(event: "data", listener: (data: Buffer) => void): void
 	public on(event: "close" | "data", listener: (() => void) | ((data: Buffer) => void)): void {
 		if(event === 'close') {
 			this.closeHandler = listener as () => void
-		} else  {
+		} else {
 			this.dataHandler = listener as (data: Buffer) => void
 		}
 	}
@@ -79,11 +83,25 @@ export class FakeSocket implements Socket {
 		})
 	}
 
-	public getMessages(): readonly FlowrBaseMessage[] {
+	/**
+	 * Returns all messages received by the respective socket.
+	 *
+	 * @param expected - if given, this enforces the respective type field to be as given.
+	 * 									 In case of failure, this will throw an exception.
+	 */
+	public getMessages(expected?: FlowrBaseMessage['type'][]): readonly FlowrBaseMessage[] {
+		if(expected) {
+			guard(expected.length === this.messages.length, () => `expected ${expected.length}, but received ${this.messages.length} messages: ${JSON.stringify(this.messages)}`)
+			for(let i = 0; i < expected.length; i++) {
+				const type = this.messages[i].type
+				guard(type === expected[i], `expected type differs for message ${i}: ${type} != ${expected[i]}`)
+			}
+		}
+
 		return this.messages
+
 	}
 }
-
 
 export function withSocket(shell: RShell, fn: (socket: FakeSocket, server: FakeServer) => Promise<void>): () => Promise<void>  {
 	return async function() {

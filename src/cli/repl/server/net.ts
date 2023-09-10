@@ -10,6 +10,10 @@ export interface Server {
 	start(port: number): void
 }
 
+/**
+ * The socket abstraction of *flowR*.
+ * Essentially a subset of what the default `net.Socket` of `node` provides.
+ */
 export interface Socket {
 	remoteAddress?: string
 	remotePort?:    number

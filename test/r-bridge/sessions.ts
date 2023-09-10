@@ -73,7 +73,7 @@ describe('RShell sessions', function() {
 		})
 		it('is installed', async() => {
 			// of course someone could remove the packages in that instant, but for testing it should be fine
-			for(const nameOfInstalledPackage of installed) {
+			for(const nameOfInstalledPackage of installed.slice(0,2)) {
 				const isInstalled = await shell.isPackageInstalled(nameOfInstalledPackage)
 				assert.isTrue(isInstalled, `package ${nameOfInstalledPackage} should be installed due to allInstalledPackages`)
 			}

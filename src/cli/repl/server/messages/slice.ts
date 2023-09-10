@@ -1,6 +1,6 @@
 import { SlicingCriteria } from '../../../../slicing'
 import { LAST_PER_FILE_STEP, LAST_STEP, StepResults } from '../../../../core'
-import { FlowrBaseMessage, RequestMessageDefinition } from './messages'
+import { IdMessageBase, MessageDefinition } from './messages'
 import Joi from 'joi'
 
 /**
@@ -8,7 +8,7 @@ import Joi from 'joi'
  * Using the same `filetoken` as in the {@link FileAnalysisRequestMessage} you
  * can slice the respective file given the respective criteria.
  */
-export interface SliceRequestMessage extends FlowrBaseMessage {
+export interface SliceRequestMessage extends IdMessageBase {
 	type:      'request-slice',
 	/** The {@link FileAnalysisRequestMessage#filetoken} of the file/data to slice */
 	filetoken: string,
@@ -16,7 +16,7 @@ export interface SliceRequestMessage extends FlowrBaseMessage {
 	criterion: SlicingCriteria
 }
 
-export const requestSliceMessage: RequestMessageDefinition<SliceRequestMessage> = {
+export const requestSliceMessage: MessageDefinition<SliceRequestMessage> = {
 	type:   'request-slice',
 	schema: Joi.object({
 		type:      Joi.string().valid('request-slice').required(),
@@ -31,7 +31,7 @@ export const requestSliceMessage: RequestMessageDefinition<SliceRequestMessage> 
  * Similar to {@link FileAnalysisResponseMessage} this only contains the results of
  * the slice steps.
  */
-export interface SliceResponseMessage extends FlowrBaseMessage {
+export interface SliceResponseMessage extends IdMessageBase {
 	type:    'response-slice',
 	/** only contains the results of the slice steps to not repeat ourselves */
 	results: Omit<StepResults<typeof LAST_STEP>, keyof StepResults<typeof LAST_PER_FILE_STEP>>

@@ -1,10 +1,10 @@
 import { VersionInformation } from '../../commands/version'
-import { FlowrBaseMessage } from './messages'
+import { IdMessageBase } from './messages'
 
 /**
  * The hello message is automatically send by the sever upon connection.
  */
-export interface FlowrHelloResponseMessage extends FlowrBaseMessage {
+export interface FlowrHelloResponseMessage extends IdMessageBase {
 	type:       'hello',
 	/** The hello message never has an id, it is always undefined */
 	id:         undefined,

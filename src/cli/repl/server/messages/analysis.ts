@@ -1,4 +1,4 @@
-import { FlowrBaseMessage, RequestMessageDefinition } from './messages'
+import { IdMessageBase, MessageDefinition } from './messages'
 import { LAST_PER_FILE_STEP, StepResults } from '../../../../core'
 import Joi from 'joi'
 
@@ -6,7 +6,7 @@ import Joi from 'joi'
  * Send by the client to request an analysis of a given file.
  * Answered by either an {@link FlowrErrorMessage} or a {@link FileAnalysisResponseMessage}.
  */
-export interface FileAnalysisRequestMessage extends FlowrBaseMessage {
+export interface FileAnalysisRequestMessage extends IdMessageBase {
 	type:      'request-file-analysis',
 	/**
 	 * This is a unique token that you assign to subsequently slice the respective files.
@@ -25,7 +25,7 @@ export interface FileAnalysisRequestMessage extends FlowrBaseMessage {
 }
 
 
-export const requestAnalysisMessage: RequestMessageDefinition<FileAnalysisRequestMessage> = {
+export const requestAnalysisMessage: MessageDefinition<FileAnalysisRequestMessage> = {
 	type:   'request-file-analysis',
 	schema: Joi.object({
 		type:      Joi.string().valid('request-file-analysis').required(),
@@ -46,7 +46,7 @@ export const requestAnalysisMessage: RequestMessageDefinition<FileAnalysisReques
  *
  * @note the serialization of maps and sets is controlled by the {@link jsonReplacer} as part of {@link sendMessage}.
  */
-export interface FileAnalysisResponseMessage extends FlowrBaseMessage {
+export interface FileAnalysisResponseMessage extends IdMessageBase {
 	type:    'response-file-analysis',
 	/**
 	 * See the {@link SteppingSlicer} and {@link StepResults} for details on the results.

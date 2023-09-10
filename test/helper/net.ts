@@ -1,8 +1,8 @@
 import { OnConnect, Server, Socket } from '../../src/cli/repl/server/net'
 import * as Buffer from 'buffer'
-import { FlowrBaseMessage } from '../../src/cli/repl'
+import { IdMessageBase } from '../../src/cli/repl'
 import { RShell } from '../../src/r-bridge'
-import { FlowRServer, serverLog } from '../../src/cli/repl/server/server'
+import { FlowRServer } from '../../src/cli/repl/server/server'
 import { defaultTokenMap } from './shell'
 import { jsonReplacer } from '../../src/util/json'
 import { guard } from '../../src/util/assert'
@@ -24,7 +24,7 @@ export class FakeServer implements Server {
 	}
 }
 
-export function fakeSend<T extends FlowrBaseMessage>(c: FakeSocket, message: T): void {
+export function fakeSend<T extends IdMessageBase>(c: FakeSocket, message: T): void {
 	const msg = JSON.stringify(message, jsonReplacer)
 	c.send(`${msg}\n`)
 }
@@ -34,15 +34,15 @@ export class FakeSocket implements Socket {
 	public readonly remotePort = 1234
 
 	private dataHandler:    ((data: Buffer) => void) | undefined
-	private messageHandler: ((message: FlowrBaseMessage) => void) | undefined
+	private messageHandler: ((message: IdMessageBase) => void) | undefined
 
 	private closeHandler: (() => void) | undefined
 
-	private messages: FlowrBaseMessage[] = []
+	private messages: IdMessageBase[] = []
 
 	// for messages sent by the server
 	public write(data: string): void {
-		const message = JSON.parse(data) as FlowrBaseMessage
+		const message = JSON.parse(data) as IdMessageBase
 		this.messages.push(message)
 		this.messageHandler?.(message)
 	}
@@ -65,7 +65,7 @@ export class FakeSocket implements Socket {
 		this.dataHandler?.(Buffer.Buffer.from(`${data}\n`))
 	}
 
-	public async waitForMessage(type: FlowrBaseMessage['type']): Promise<void> {
+	public async waitForMessage(type: IdMessageBase['type']): Promise<void> {
 		return new Promise(resolve => {
 			// check if the message was already sent
 			for(const message of this.messages) {
@@ -75,7 +75,7 @@ export class FakeSocket implements Socket {
 				}
 			}
 			// otherwise wait
-			this.messageHandler = (message: FlowrBaseMessage) => {
+			this.messageHandler = (message: IdMessageBase) => {
 				if(message.type === type) {
 					resolve()
 				}
@@ -89,7 +89,7 @@ export class FakeSocket implements Socket {
 	 * @param expected - if given, this enforces the respective type field to be as given.
 	 * 									 In case of failure, this will throw an exception.
 	 */
-	public getMessages(expected?: FlowrBaseMessage['type'][]): readonly FlowrBaseMessage[] {
+	public getMessages(expected?: IdMessageBase['type'][]): readonly IdMessageBase[] {
 		if(expected) {
 			guard(expected.length === this.messages.length, () => `expected ${expected.length}, but received ${this.messages.length} messages: ${JSON.stringify(this.messages)}`)
 			for(let i = 0; i < expected.length; i++) {

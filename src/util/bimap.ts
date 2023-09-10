@@ -3,11 +3,11 @@
  *
  * All map-related functions are based on the normal Key -&gt; Value map
  */
-export class BiMap<K, V extends object> implements Map<K, V> {
+export class BiMap<K, V> implements Map<K, V> {
 	public readonly [Symbol.toStringTag]: string = 'BiMap'
 	public size = 0
 	private readonly k2v = new Map<K, V>()
-	private v2k = new WeakMap<V, K>()
+	private readonly v2k = new Map<V, K>()
 
 	constructor(base?: Iterable<[K, V]>) {
 		if(base != null) {
@@ -24,7 +24,7 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 	public clear(): void {
 		this.size = 0
 		this.k2v.clear()
-		this.v2k = new WeakMap<V, K>()
+		this.v2k.clear()
 	}
 
 	public delete(key: K): boolean {

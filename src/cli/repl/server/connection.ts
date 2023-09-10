@@ -9,9 +9,9 @@ import { Socket } from './net'
 import { serverLog } from './server'
 import { ILogObj, Logger } from 'tslog'
 import {
-	ExecuteReplExpressionEndMessage,
-	ExecuteReplExpressionIntermediateMessage,
-	ExecuteReplExpressionRequestMessage, requestExecuteReplExpressionMessage
+	ExecuteEndMessage,
+	ExecuteIntermediateResponseMessage,
+	ExecuteRequestMessage, requestExecuteReplExpressionMessage
 } from './messages/repl'
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
@@ -66,7 +66,7 @@ export class FlowRServerConnection {
 				this.handleSliceRequest(request.message as SliceRequestMessage)
 				break
 			case 'request-repl-execution':
-				this.handleRepl(request.message as ExecuteReplExpressionRequestMessage)
+				this.handleRepl(request.message as ExecuteRequestMessage)
 				break
 			default:
 				sendMessage<FlowrErrorMessage>(this.socket, {
@@ -156,7 +156,7 @@ export class FlowRServerConnection {
 	}
 
 
-	private handleRepl(base: ExecuteReplExpressionRequestMessage) {
+	private handleRepl(base: ExecuteRequestMessage) {
 		const requestResult = validateMessage(base, requestExecuteReplExpressionMessage)
 
 		if(requestResult.type === 'error') {
@@ -167,7 +167,7 @@ export class FlowRServerConnection {
 		const request = requestResult.message
 
 		const out = (stream: 'stdout' | 'stderr', msg: string) => {
-			sendMessage<ExecuteReplExpressionIntermediateMessage>(this.socket, {
+			sendMessage<ExecuteIntermediateResponseMessage>(this.socket, {
 				type:   'response-repl-execution',
 				id:     request.id,
 				result: msg,
@@ -180,7 +180,7 @@ export class FlowRServerConnection {
 			stdout:    msg => out('stdout', msg),
 			stderr:    msg => out('stderr', msg)
 		}, request.expression, this.shell, this.tokenMap).then(() => {
-			sendMessage<ExecuteReplExpressionEndMessage>(this.socket, {
+			sendMessage<ExecuteEndMessage>(this.socket, {
 				type: 'end-repl-execution',
 				id:   request.id
 			})

@@ -8,9 +8,9 @@ import { DecoratedAstMap, ParentInformation, requestFromInput } from '../../src/
 import { LAST_PER_FILE_STEP, SteppingSlicer } from '../../src/core'
 import { jsonReplacer } from '../../src/util/json'
 import {
-	ExecuteReplExpressionEndMessage,
-	ExecuteReplExpressionIntermediateMessage,
-	ExecuteReplExpressionRequestMessage
+	ExecuteEndMessage,
+	ExecuteIntermediateResponseMessage,
+	ExecuteRequestMessage
 } from '../../src/cli/repl/server/messages/repl'
 
 describe('FlowR Server', withShell(shell => {
@@ -32,7 +32,7 @@ describe('FlowR Server', withShell(shell => {
 	}))
 
 	it('Process simple REPL Message', withSocket(shell, async socket => {
-		fakeSend<ExecuteReplExpressionRequestMessage>(socket, {
+		fakeSend<ExecuteRequestMessage>(socket, {
 			type:       'request-repl-execution',
 			ansi:       false,
 			id:         '0',
@@ -43,14 +43,14 @@ describe('FlowR Server', withShell(shell => {
 
 		const messages = socket.getMessages()
 
-		assert.deepStrictEqual(messages[1] as ExecuteReplExpressionIntermediateMessage, {
+		assert.deepStrictEqual(messages[1] as ExecuteIntermediateResponseMessage, {
 			type:   'response-repl-execution',
 			id:     '0',
 			stream: 'stdout',
 			result: '[1] 2\n'
 		}, 'response message should contain request id, result should be not in standard error (no failure), and it should be the correct result')
 
-		assert.deepStrictEqual(messages[2] as ExecuteReplExpressionEndMessage, {
+		assert.deepStrictEqual(messages[2] as ExecuteEndMessage, {
 			type: 'end-repl-execution',
 			id:   '0',
 		}, 'the end message should have the same id as the response (and come after the response)')

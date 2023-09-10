@@ -6,10 +6,10 @@ import Joi from 'joi'
  * We strongly recommend that you make use of a unique {@link FlowrBaseMessage#id}
  * in case the message responses happen in parallel.
  *
- * @see ExecuteReplExpressionIntermediateMessage
- * @see ExecuteReplExpressionEndMessage
+ * @see ExecuteIntermediateResponseMessage
+ * @see ExecuteEndMessage
  */
-export interface ExecuteReplExpressionRequestMessage extends FlowrBaseMessage {
+export interface ExecuteRequestMessage extends FlowrBaseMessage {
 	type:       'request-repl-execution',
 	/** Should ansi formatting be enabled for the response? Is `false` by default.  */
 	ansi?:      boolean,
@@ -17,7 +17,7 @@ export interface ExecuteReplExpressionRequestMessage extends FlowrBaseMessage {
 	expression: string
 }
 
-export const requestExecuteReplExpressionMessage: RequestMessageDefinition<ExecuteReplExpressionRequestMessage> = {
+export const requestExecuteReplExpressionMessage: RequestMessageDefinition<ExecuteRequestMessage> = {
 	type:   'request-repl-execution',
 	schema: Joi.object({
 		type:       Joi.string().valid('request-repl-execution').required(),
@@ -29,19 +29,19 @@ export const requestExecuteReplExpressionMessage: RequestMessageDefinition<Execu
 
 /**
  * This message may be sent multiple times, triggered for every "output" performed by the execution.
- * {@link ExecuteReplExpressionEndMessage} marks the end of these messages.
+ * {@link ExecuteEndMessage} marks the end of these messages.
  */
-export interface ExecuteReplExpressionIntermediateMessage extends FlowrBaseMessage {
+export interface ExecuteIntermediateResponseMessage extends FlowrBaseMessage {
 	type:   'response-repl-execution'
 	stream: 'stdout' | 'stderr'
 	result: string
 }
 
 /**
- * Marks the end of the execution of the respective {@link ExecuteReplExpressionRequestMessage}.
+ * Marks the end of the execution of the respective {@link ExecuteRequestMessage}.
  * The underlying TCP connection should ensure the ordering so that this message is the last.
  */
-export interface ExecuteReplExpressionEndMessage extends FlowrBaseMessage {
+export interface ExecuteEndMessage extends FlowrBaseMessage {
 	type: 'end-repl-execution'
 }
 

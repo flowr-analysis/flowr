@@ -94,7 +94,7 @@ export class FakeSocket implements Socket {
 			guard(expected.length === this.messages.length, () => `expected ${expected.length}, but received ${this.messages.length} messages: ${JSON.stringify(this.messages)}`)
 			for(let i = 0; i < expected.length; i++) {
 				const type = this.messages[i].type
-				guard(type === expected[i], `expected type differs for message ${i}: ${type} != ${expected[i]}`)
+				guard(type === expected[i], `expected type differs for message ${i}: ${type ?? '?'} != ${expected[i] ?? '?'}`)
 			}
 		}
 

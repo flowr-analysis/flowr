@@ -3,9 +3,17 @@
  */
 import net from 'node:net'
 
+/** Function handler that should be triggered when the respective socket connects */
 export type OnConnect = (c: Socket) => void
 
+/**
+ * A generic server interface that allows us to mock the server's behavior in tests.
+ */
 export interface Server {
+	/**
+	 * Register a function to be called when a new socket connects.
+	 * This should be only called once per server.
+	 */
 	onConnect(handler: OnConnect): void
 	start(port: number): void
 }

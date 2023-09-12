@@ -16,11 +16,10 @@ import {
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
 
-export interface FlowRFileOrRequestInformation {
-	filename?: string,
-	slicer:    SteppingSlicer
-}
-
+/**
+ * Each connection handles a single client, answering to its requests.
+ * There is no need to construct this class manually, {@link FlowRServer} will do it for you.
+ */
 export class FlowRServerConnection {
 	private readonly socket:   Socket
 	private readonly shell:    RShell
@@ -29,8 +28,10 @@ export class FlowRServerConnection {
 	private readonly logger:   Logger<ILogObj>
 
 	// maps token to information
-	private readonly fileMap = new Map<string, FlowRFileOrRequestInformation>()
-
+	private readonly fileMap = new Map<string, {
+		filename?: string,
+		slicer:    SteppingSlicer
+	}>()
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
 	constructor(socket: Socket, name: string, shell: RShell, tokenMap: TokenMap) {

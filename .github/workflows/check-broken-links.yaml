@@ -1,0 +1,22 @@
+name: check for broken links
+
+'on':
+  pull_request:
+    types: [ opened, synchronize ]
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Markup Link Checker (mlc)
+        uses: Wandalen/wretry.action@v1.3.0
+        with:
+          action: becheran/mlc@v0.16.2
+          with: |
+            args: ./README.md
+          attempt_limit: 3
+          attempt_delay: 2000

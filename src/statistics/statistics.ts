@@ -76,10 +76,11 @@ export function staticRequests(...requests: (RParseRequestFromText | RParseReque
 /**
  * extract all statistic information from a set of requests using the presented R session
  */
-export async function extract<T extends RParseRequestFromText | RParseRequestFromFile>(shell: RShell,
-																																																																																							onRequest: (request: T) => void,
-																																																																																							features: FeatureSelection,
-																																																																																							requests: AsyncGenerator<T>
+export async function extractUsageStatistics<T extends RParseRequestFromText | RParseRequestFromFile>(
+	shell: RShell,
+	onRequest: (request: T) => void,
+	features: FeatureSelection,
+	requests: AsyncGenerator<T>
 ): Promise<{ features: FeatureStatistics, meta: MetaStatistics }> {
 	let result = {} as FeatureStatistics
 	for(const key of Object.keys(ALL_FEATURES)) {

@@ -1,4 +1,4 @@
-[![flowR Logo](img/flowR.png)](https://github.com/Code-Inspect/flowr/wiki)
+[![flowR Logo](img/flowR.png)](https://github.com/Code-Inspect/flowr)
 
 
 ***This wiki page is currently under construction***

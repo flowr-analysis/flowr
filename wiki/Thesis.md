@@ -12,15 +12,15 @@ Each step assumes, that you start in the root directory of this repository. You 
 This mainly describes how to extract the statistics from the CRAN package sources, however, starting from step&nbsp;3,
 the steps are basically the same and only differ in the paths that have to be supplied (the social science sources are attached alongside the [master's thesis release](https://github.com/Code-Inspect/flowr/releases/tag/v1.0.0)).
 
-1. If you want to **update** the set of packages, use the [scripts/top-downloads.R](scripts/top-downloads.R) script and potentially modify the package limit by setting `N` to a different value.
-The (sorted) results should be versioned and can be found in [scripts/top-r-downloads.txt](scripts/top-r-downloads.txt).
+1. If you want to **update** the set of packages, use the [scripts/top-downloads.R](../scripts/top-downloads.R) script and potentially modify the package limit by setting `N` to a different value.
+The (sorted) results should be versioned and can be found in [scripts/top-r-downloads.txt](../scripts/top-r-downloads.txt).
 
     ```shell
     cd scripts/ && Rscript top-downloads.R
     ```
 
 2. If you haven't done so already, or updated the package list in the previous step, **download** the package sources.
-   For this, you can use the [scripts/download-top-pkg-sources.R](scripts/download-top-pkg-sources.R) script.
+   For this, you can use the [scripts/download-top-pkg-sources.R](../scripts/download-top-pkg-sources.R) script.
    But **make sure**, that you set the `to` variable to the output path you want.
 
    ```shell
@@ -54,7 +54,7 @@ The (sorted) results should be versioned and can be found in [scripts/top-r-down
 
    - **On a folder subset**\
      You may very well have downloaded all or more package sources than you want to analyze.
-     The [scripts/extract-top-stats.sh](scripts/extract-top-stats.sh) shell script may help selecting a subset of packages.
+     The [scripts/extract-top-stats.sh](../scripts/extract-top-stats.sh) shell script may help selecting a subset of packages.
 
    Theoretically, you should be able to stop the extraction at any time and still get usable information with the next step,
    of course limited to only those files that have been processed so far.

@@ -60,7 +60,7 @@ At the time of writing this, there is currently no page for frequently encounter
 ## 📜 Developing for *flowR*
 
 If you want to develop for *flowR*, see the [core](https://github.com/Code-Inspect/flowr/wiki/Core) wiki page.
-For details on *how* to contribute, please refer to the [CONTRIBUTING.md](https://github.com/Code-Inspect/flowr/blob/main/CONTRIBUTING.md) in the repository.
+For details on *how* to contribute, please refer to the [CONTRIBUTING.md](https://github.com/Code-Inspect/flowr/blob/main/.github/CONTRIBUTING.md) in the repository.
 
 -----
 <a id="note1" href="#note1ref">&lt;1&gt;</a>: Currently, *flowR* is only tested with R version  `4.3.1 (2023-06-16) -- "Beagle Scouts"`

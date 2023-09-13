@@ -8,12 +8,18 @@ import { FlowrErrorMessage } from './messages/error'
 import { Socket } from './net'
 import { serverLog } from './server'
 import { ILogObj, Logger } from 'tslog'
+import {
+	ExecuteEndMessage,
+	ExecuteIntermediateResponseMessage,
+	ExecuteRequestMessage, requestExecuteReplExpressionMessage
+} from './messages/repl'
+import { replProcessAnswer } from '../core'
+import { ansiFormatter, voidFormatter } from '../../../statistics'
 
-export interface FlowRFileOrRequestInformation {
-	filename?: string,
-	slicer:    SteppingSlicer
-}
-
+/**
+ * Each connection handles a single client, answering to its requests.
+ * There is no need to construct this class manually, {@link FlowRServer} will do it for you.
+ */
 export class FlowRServerConnection {
 	private readonly socket:   Socket
 	private readonly shell:    RShell
@@ -22,8 +28,10 @@ export class FlowRServerConnection {
 	private readonly logger:   Logger<ILogObj>
 
 	// maps token to information
-	private readonly fileMap = new Map<string, FlowRFileOrRequestInformation>()
-
+	private readonly fileMap = new Map<string, {
+		filename?: string,
+		slicer:    SteppingSlicer
+	}>()
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
 	constructor(socket: Socket, name: string, shell: RShell, tokenMap: TokenMap) {
@@ -58,12 +66,15 @@ export class FlowRServerConnection {
 			case 'request-slice':
 				this.handleSliceRequest(request.message as SliceRequestMessage)
 				break
+			case 'request-repl-execution':
+				this.handleRepl(request.message as ExecuteRequestMessage)
+				break
 			default:
 				sendMessage<FlowrErrorMessage>(this.socket, {
 					id:     request.message.id,
 					type:   'error',
 					fatal:  true,
-					reason: `The message type ${JSON.stringify(request.message.type ?? 'undefined')} is not supported.`
+					reason: `The message type ${JSON.stringify(request.message.type as string | undefined ?? 'undefined')} is not supported.`
 				})
 				this.socket.end()
 		}
@@ -122,8 +133,6 @@ export class FlowRServerConnection {
 		}
 
 		const request = requestResult.message
-
-
 		this.logger.info(`[${request.filetoken}] Received slice request with criteria ${JSON.stringify(request.criterion)}`)
 
 		const fileInformation = this.fileMap.get(request.filetoken)
@@ -143,6 +152,38 @@ export class FlowRServerConnection {
 				type:    'response-slice',
 				id:      request.id,
 				results: Object.fromEntries(Object.entries(results).filter(([k,]) => Object.hasOwn(STEPS_PER_SLICE, k))) as SliceResponseMessage['results']
+			})
+		})
+	}
+
+
+	private handleRepl(base: ExecuteRequestMessage) {
+		const requestResult = validateMessage(base, requestExecuteReplExpressionMessage)
+
+		if(requestResult.type === 'error') {
+			answerForValidationError(this.socket, requestResult, base.id)
+			return
+		}
+
+		const request = requestResult.message
+
+		const out = (stream: 'stdout' | 'stderr', msg: string) => {
+			sendMessage<ExecuteIntermediateResponseMessage>(this.socket, {
+				type:   'response-repl-execution',
+				id:     request.id,
+				result: msg,
+				stream
+			})
+		}
+
+		void replProcessAnswer({
+			formatter: request.ansi ? ansiFormatter : voidFormatter,
+			stdout:    msg => out('stdout', msg),
+			stderr:    msg => out('stderr', msg)
+		}, request.expression, this.shell, this.tokenMap).then(() => {
+			sendMessage<ExecuteEndMessage>(this.socket, {
+				type: 'end-repl-execution',
+				id:   request.id
 			})
 		})
 	}

@@ -16,10 +16,10 @@ export const normalizeCommand: ReplCommand = {
 	usageExample: ':normalize',
 	aliases:      [ 'n' ],
 	script:       false,
-	fn:           async(shell, tokenMap, remainingLine) => {
+	fn:           async(output, shell, tokenMap, remainingLine) => {
 		const result = await normalize(shell, tokenMap, remainingLine)
 
-		console.log(normalizedAstToMermaid(result.normalize.ast))
+		output.stdout(normalizedAstToMermaid(result.normalize.ast))
 	}
 }
 
@@ -28,9 +28,9 @@ export const normalizeStarCommand: ReplCommand = {
 	usageExample: ':normalize',
 	aliases:      [ 'n*' ],
 	script:       false,
-	fn:           async(shell, tokenMap, remainingLine) => {
+	fn:           async(output, shell, tokenMap, remainingLine) => {
 		const result = await normalize(shell, tokenMap, remainingLine)
 
-		console.log(normalizedAstToMermaidUrl(result.normalize.ast))
+		output.stdout(normalizedAstToMermaidUrl(result.normalize.ast))
 	}
 }

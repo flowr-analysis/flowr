@@ -12,7 +12,7 @@ import {
 	objectWithArrUnwrap,
 	xlm2jsonObject
 } from '../../../r-bridge/lang-4.x/ast/parser/xml/internal'
-import { FontStyles, formatter } from '../../../statistics'
+import { FontStyles, OutputFormatter } from '../../../statistics'
 import { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../core'
 import { deepMergeObject } from '../../../util/objects'
@@ -55,8 +55,8 @@ function lastElementInNesting(i: number, list: Readonly<DepthList>, depth: numbe
 }
 
 
-function initialIndentation(i: number, depth: number, deadDepths: Set<number>, nextDepth: number, list: Readonly<DepthList>): string {
-	let result = `${i === 0 ? '' : '\n'}${formatter.getFormatString({ style: FontStyles.faint })}`
+function initialIndentation(i: number, depth: number, deadDepths: Set<number>, nextDepth: number, list: Readonly<DepthList>, f: OutputFormatter): string {
+	let result = `${i === 0 ? '' : '\n'}${f.getFormatString({ style: FontStyles.faint })}`
 	// we know there never is something on the same level as the expression list
 	for(let d = 1; d < depth; d++) {
 		result += deadDepths.has(d) ? '  ' : '│ '
@@ -84,7 +84,7 @@ function retrieveLocationString(locationRaw: XmlBasedJson) {
 	}
 }
 
-function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig): string {
+function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig, f: OutputFormatter): string {
 	let result = ''
 
 	const deadDepths = new Set<number>()
@@ -93,9 +93,9 @@ function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig)
 		const nextDepth = i + 1 < list.length ? list[i + 1].depth : 0
 
 		deadDepths.delete(depth)
-		result += initialIndentation(i, depth, deadDepths, nextDepth, list)
+		result += initialIndentation(i, depth, deadDepths, nextDepth, list, f)
 
-		result += formatter.reset()
+		result += f.reset()
 
 		const raw = objectWithArrUnwrap(node)
 		const content = raw[config.contentName] as string | undefined
@@ -108,10 +108,10 @@ function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig)
 		const type = getTokenType(config.tokenMap, node)
 
 		if(leaf) {
-			const suffix = `${formatter.format(content ? JSON.stringify(content) : '', { style: FontStyles.bold })}${formatter.format(location, { style: FontStyles.italic })}`
+			const suffix = `${f.format(content ? JSON.stringify(content) : '', { style: FontStyles.bold })}${f.format(location, { style: FontStyles.italic })}`
 			result += `${type} ${suffix}`
 		} else {
-			result += formatter.format(type, { style: FontStyles.bold })
+			result += f.format(type, { style: FontStyles.bold })
 		}
 
 		i ++
@@ -125,7 +125,7 @@ export const parseCommand: ReplCommand = {
 	usageExample: ':parse',
 	aliases:      [ 'p' ],
 	script:       false,
-	fn:           async(shell, tokenMap, remainingLine) => {
+	fn:           async(output, shell, tokenMap, remainingLine) => {
 		const result = await new SteppingSlicer({
 			stepOfInterest: 'parse',
 			shell, tokenMap,
@@ -135,6 +135,6 @@ export const parseCommand: ReplCommand = {
 		const config = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap })
 		const object = await xlm2jsonObject(config, result.parse)
 
-		console.log(depthListToTextTree(toDepthMap(object, config), config))
+		output.stdout(depthListToTextTree(toDepthMap(object, config), config, output.formatter))
 	}
 }

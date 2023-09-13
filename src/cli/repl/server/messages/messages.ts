@@ -4,11 +4,19 @@
  * @module
  */
 import Joi from 'joi'
+import { FlowrHelloResponseMessage } from './hello'
+import { FileAnalysisRequestMessage, FileAnalysisResponseMessage } from './analysis'
+import { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './repl'
+import { SliceRequestMessage, SliceResponseMessage } from './slice'
+import { FlowrErrorMessage } from './error'
 
 /**
  * If you send a message it must *not* contain a newline but the message must be terminated by a newline.
  */
-export interface FlowrBaseMessage {
+export interface IdMessageBase {
+	/**
+	 * The at this time unknown type
+	 */
 	type: string
 	/**
 	 * The id that links a request with its responses, it is up to the calling client to make sure it is unique.
@@ -18,7 +26,13 @@ export interface FlowrBaseMessage {
 	id:   string | undefined
 }
 
-export const baseMessage: RequestMessageDefinition<FlowrBaseMessage> = {
+export interface MessageDefinition<T extends FlowrMessage | IdMessageBase> {
+	type:   T['type'] | undefined
+	schema: Joi.Schema
+}
+
+
+export const baseMessage: MessageDefinition<IdMessageBase> = {
 	type:   '**base**',
 	schema: Joi.object({
 		type: Joi.string().required(),
@@ -26,9 +40,11 @@ export const baseMessage: RequestMessageDefinition<FlowrBaseMessage> = {
 	}).unknown(true)
 }
 
-export interface RequestMessageDefinition<T extends FlowrBaseMessage> {
-	type:   T['type']
-	schema: Joi.Schema
-}
-
-
+/**
+ * This is the main message type that should be used to represent a message in *flowR*
+ */
+export type FlowrMessage = FlowrHelloResponseMessage
+| FileAnalysisRequestMessage | FileAnalysisResponseMessage
+| ExecuteRequestMessage | ExecuteIntermediateResponseMessage | ExecuteEndMessage
+| SliceRequestMessage | SliceResponseMessage
+| FlowrErrorMessage

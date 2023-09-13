@@ -19,10 +19,10 @@ export const dataflowCommand: ReplCommand = {
 	usageExample: ':dataflow',
 	aliases:      [ 'd', 'df' ],
 	script:       false,
-	fn:           async(shell, tokenMap, remainingLine) => {
+	fn:           async(output, shell, tokenMap, remainingLine) => {
 		const result = await dataflow(shell, tokenMap, remainingLine)
 
-		console.log(graphToMermaid(result.dataflow.graph, result.normalize.idMap, undefined, undefined, false))
+		output.stdout(graphToMermaid(result.dataflow.graph, result.normalize.idMap, undefined, undefined, false))
 	}
 }
 
@@ -31,9 +31,9 @@ export const dataflowStarCommand: ReplCommand = {
 	usageExample: ':dataflow',
 	aliases:      [ 'd*', 'df*' ],
 	script:       false,
-	fn:           async(shell, tokenMap, remainingLine) => {
+	fn:           async(output, shell, tokenMap, remainingLine) => {
 		const result = await dataflow(shell, tokenMap, remainingLine)
 
-		console.log(graphToMermaidUrl(result.dataflow.graph, result.normalize.idMap, false))
+		output.stdout(graphToMermaidUrl(result.dataflow.graph, result.normalize.idMap, false))
 	}
 }

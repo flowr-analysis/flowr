@@ -59,15 +59,15 @@ export const voidFormatter: OutputFormatter = new class implements OutputFormatt
 /**
  * This does not work if the {@link setFormatter | formatter} is void. Tries to format the text with a bold font weight.
  */
-export function italic(s: string, options?: FormatOptions): string {
-	return formatter.format(s, { style: FontStyles.italic, ...options })
+export function italic(s: string, f: OutputFormatter = formatter, options?: FormatOptions): string {
+	return f.format(s, { style: FontStyles.italic, ...options })
 }
 
 /**
  * This does not work if the {@link setFormatter | formatter} is void. Tries to format the text with an italic font shape.
  */
-export function bold(s: string, options?: FormatOptions): string {
-	return formatter.format(s, { style: FontStyles.bold, ...options })
+export function bold(s: string, f: OutputFormatter = formatter, options?: FormatOptions): string {
+	return f.format(s, { style: FontStyles.bold, ...options })
 }
 
 export const escape = '\x1b['

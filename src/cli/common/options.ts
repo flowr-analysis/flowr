@@ -3,13 +3,23 @@ import os from 'os'
 import { date2string } from '../../util/time'
 import { allFeatureNames } from '../../statistics'
 
+/**
+ * This interface describes options, that every script *must* provide.
+ */
 export interface CommonOptions {
+	/** Enables the most verbose logging option available. */
 	verbose: boolean
+	/**
+	 * Shows the respective help including usage examples,
+	 * see {@link processCommandLineArgs} or {@link helpForOptions} for more information.
+	 */
 	help:    boolean
 }
 
-
-const now = date2string(new Date())
+/**
+ * This string contains a string representation of the loading time of this module.
+ */
+const START_STR = date2string(new Date())
 
 export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
@@ -18,7 +28,7 @@ export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
 	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction', defaultValue: 'all', typeLabel: '{underline all/no}' },
-	{ name: 'output',       alias: 'o', type: String,  description: `File to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${now}.json})`, defaultValue: `benchmark-${now}.json`,  typeLabel: '{underline file}' }
+	{ name: 'output',       alias: 'o', type: String,  description: `File to write all the measurements to in a per-file-basis (defaults to {italic benchmark-${START_STR}.json})`, defaultValue: `benchmark-${START_STR}.json`,  typeLabel: '{underline file}' }
 ]
 
 export const benchmarkHelperOptions: OptionDefinition[] = [

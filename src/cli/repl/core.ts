@@ -7,7 +7,7 @@ import { getStoredTokenMap, RShell, TokenMap } from '../../r-bridge'
 import readline from 'readline/promises'
 import { bold } from '../../statistics'
 import { prompt } from './prompt'
-import { commandNames, getCommand } from './commands'
+import { commandNames, getCommand, ReplOutput, standardReplOutput } from './commands'
 import { ReadLineOptions } from 'node:readline'
 import { splitAtEscapeSensitive } from '../../util/args'
 import { executeRShellCommand } from './commands/execute'
@@ -30,26 +30,34 @@ export const DEFAULT_REPL_READLINE_CONFIGURATION: ReadLineOptions = {
 	completer:               replCompleter
 }
 
-async function replProcessStatement(statement: string, shell: RShell, tokenMap: TokenMap) {
+async function replProcessStatement(output: ReplOutput, statement: string, shell: RShell, tokenMap: TokenMap) {
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase()
 		const processor = getCommand(command)
 		if(processor) {
-			await processor.fn(shell, tokenMap, statement.slice(command.length + 2).trim())
+			await processor.fn(output, shell, tokenMap, statement.slice(command.length + 2).trim())
 		} else {
 			console.log(`the command '${command}' is unknown, try ${bold(':help')} for more information`)
 		}
 	} else {
-		await executeRShellCommand(shell, statement)
+		await executeRShellCommand(output, shell, statement)
 	}
 }
 
-export async function replProcessAnswer(answer: string, shell: RShell, tokenMap: TokenMap): Promise<void> {
+/**
+ * This function interprets the given `expr` as a REPL command (see {@link repl} for more on the semantics).
+ *
+ * @param output   - Defines two methods that every function in the repl uses to output its data.
+ * @param expr     - The expression to process.
+ * @param shell    - The {@link RShell} to use (see {@link repl}).
+ * @param tokenMap - The {@link TokenMap} of the given shell.
+ */
+export async function replProcessAnswer(output: ReplOutput, expr: string, shell: RShell, tokenMap: TokenMap): Promise<void> {
 
-	const statements = splitAtEscapeSensitive(answer, ';')
+	const statements = splitAtEscapeSensitive(expr, ';')
 
 	for(const statement of statements) {
-		await replProcessStatement(statement, shell, tokenMap)
+		await replProcessStatement(output, statement, shell, tokenMap)
 	}
 }
 
@@ -62,12 +70,15 @@ export async function replProcessAnswer(answer: string, shell: RShell, tokenMap:
  *
  * @param shell     - The shell to use, if you do not pass one it will automatically create a new one with the `revive` option set to 'always'
  * @param tokenMap  - The pre-retrieved token map, if you pass none, it will be retrieved automatically (using the default {@link getStoredTokenMap}).
- * @param rl        - A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with `console.log`.
+ * @param rl        - A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
  *                    If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
  *                    For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}.
+ * @param output    - Defines two methods that every function in the repl uses to output its data.
+ *
+ * For the execution, this function makes use of {@link replProcessAnswer}
  *
  */
-export async function repl(shell = new RShell({ revive: 'always' }), tokenMap?: TokenMap, rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION)) {
+export async function repl(shell = new RShell({ revive: 'always' }), tokenMap?: TokenMap, rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION), output = standardReplOutput) {
 
 	tokenMap ??= await getStoredTokenMap(shell)
 
@@ -76,6 +87,6 @@ export async function repl(shell = new RShell({ revive: 'always' }), tokenMap?: 
 	while(true) {
 		const answer: string = await rl.question(prompt())
 
-		await replProcessAnswer(answer, shell, tokenMap)
+		await replProcessAnswer(output, answer, shell, tokenMap)
 	}
 }

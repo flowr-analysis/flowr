@@ -10,25 +10,11 @@ import { FlowrLogger } from '../../../util/log'
 // we detach from the main logger so that it can have its own switch
 export const serverLog = new FlowrLogger({ name: "server" })
 
-function notYetInitialized(c: Socket, id: string | undefined) {
-	sendMessage<FlowrErrorMessage>(c, {
-		id,
-		type:   'error',
-		fatal:  true,
-		reason: 'Server not initialized yet (or failed to), please try again later.'
-	})
-	c.end()
-}
-
-function helloClient(c: Socket, name: string, versionInformation: VersionInformation) {
-	sendMessage<FlowrHelloResponseMessage>(c, {
-		id:         undefined,
-		type:       'hello',
-		clientName: name,
-		versions:   versionInformation
-	})
-}
-
+/**
+ * This class controls the TCP server, which can be started by calling {@link start}.
+ * Afterward, each incoming connection will be greeted with {@link helloClient} and from
+ * thereon be handled by a {@link FlowRServerConnection}.
+ */
 export class FlowRServer {
 	private readonly server:    Server
 	private readonly shell:     RShell
@@ -69,3 +55,22 @@ export class FlowRServer {
 	}
 }
 
+
+function notYetInitialized(c: Socket, id: string | undefined) {
+	sendMessage<FlowrErrorMessage>(c, {
+		id,
+		type:   'error',
+		fatal:  true,
+		reason: 'Server not initialized yet (or failed to), please try again later.'
+	})
+	c.end()
+}
+
+function helloClient(c: Socket, name: string, versionInformation: VersionInformation) {
+	sendMessage<FlowrHelloResponseMessage>(c, {
+		id:         undefined,
+		type:       'hello',
+		clientName: name,
+		versions:   versionInformation
+	})
+}

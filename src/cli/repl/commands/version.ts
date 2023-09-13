@@ -1,4 +1,4 @@
-import { ReplCommand } from './main'
+import { ReplCommand, ReplOutput } from './main'
 import { RShell } from '../../../r-bridge'
 import { version } from '../../../../package.json'
 import { guard } from '../../../util/assert'
@@ -31,10 +31,10 @@ export async function retrieveVersionInformation(shell?: RShell): Promise<Versio
 	return { flowr: flowr as Version, r: r as Version }
 }
 
-export async function printVersionInformation(shell?: RShell) {
+export async function printVersionInformation(output: ReplOutput, shell?: RShell) {
 	const { flowr, r } = await retrieveVersionInformation(shell)
-	console.log(`flowR: ${flowr}`)
-	console.log(`R: ${r}`)
+	output.stdout(`flowR: ${flowr}`)
+	output.stdout(`R: ${r}`)
 }
 
 
@@ -43,5 +43,5 @@ export const versionCommand: ReplCommand = {
 	aliases:      [],
 	usageExample: ':version',
 	script:       false,
-	fn:           shell => printVersionInformation(shell)
+	fn:           (output, shell) => printVersionInformation(output, shell)
 }

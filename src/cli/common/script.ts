@@ -10,6 +10,10 @@ import { log, LogLevel } from '../../util/log'
 import commandLineArgs from 'command-line-args'
 import { italic } from '../../statistics'
 
+/**
+ * Just a helping data structure to allow the user to provide example usages of the respective script.
+ * The subtitle will be displayed next to the title.
+ */
 export interface HelpContent {
 	subtitle: string,
 	examples: string[],

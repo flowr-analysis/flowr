@@ -1,17 +1,17 @@
 import { RShell } from '../../../r-bridge'
 import { italic } from '../../../statistics'
-import { ReplCommand } from './main'
+import { ReplCommand, ReplOutput } from './main'
 
 
-export async function executeRShellCommand(shell: RShell, statement: string) {
+export async function executeRShellCommand(output: ReplOutput, shell: RShell, statement: string) {
 	try {
 		const result = await shell.sendCommandWithOutput(statement, {
 			from:                    'both',
 			automaticallyTrimOutput: true
 		})
-		console.log(`${italic(result.join('\n'))}\n`)
+		output.stdout(`${italic(result.join('\n'), output.formatter)}\n`)
 	} catch(e) {
-		console.error(`Error while executing '${statement}': ${(e as Error).message}`)
+		output.stderr(`Error while executing '${statement}': ${(e as Error).message}`)
 	}
 }
 
@@ -21,7 +21,7 @@ export const executeCommand: ReplCommand = {
 	usageExample: ':execute',
 	aliases:      [ 'e', 'r' ],
 	script:       false,
-	fn:           async(shell, _tokenMap, remainingLine) => {
-		await executeRShellCommand(shell, remainingLine)
+	fn:           async(output, shell, _tokenMap, remainingLine) => {
+		await executeRShellCommand(output, shell, remainingLine)
 	}
 }

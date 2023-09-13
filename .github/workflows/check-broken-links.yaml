@@ -40,6 +40,8 @@ jobs:
 
       - name: Publish the Wiki
         uses: SwiftDocOrg/github-wiki-publish-action@v1
+        # we do not need to republish if nothing changes
+        if: ${{ github.event_name != 'schedule' }}
         with:
           path: "wiki/"
         env:

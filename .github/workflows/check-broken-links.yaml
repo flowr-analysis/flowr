@@ -40,8 +40,8 @@ jobs:
 
       - name: Publish the Wiki
         uses: SwiftDocOrg/github-wiki-publish-action@v1
-        # we do not need to republish if nothing changes
-        if: ${{ github.event_name != 'schedule' }}
+        # we do not need to republish if nothing changes furthermore, do not publish on PR as this should be done by the push on main!
+        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         with:
           path: "wiki/"
         env:

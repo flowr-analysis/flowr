@@ -5,6 +5,9 @@ name: check for broken links
     types: [ opened, synchronize ]
     branches: [ main ]
   workflow_dispatch:
+  schedule:
+    # every monday at night
+    - cron: '0 1 * * 1'
 
 jobs:
   build:

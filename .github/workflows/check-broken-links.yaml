@@ -1,0 +1,48 @@
+name: check for broken links
+
+'on':
+  push:
+    paths:
+      - '**/*.md'
+      - 'wiki/**'
+  pull_request:
+    types: [ opened, synchronize ]
+    branches: [ main ]
+  workflow_dispatch:
+  schedule:
+    # every monday at night
+    - cron: '0 1 * * 1'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the README for broken links
+        uses: Wandalen/wretry.action@v1.3.0
+        with:
+          action: becheran/mlc@v0.16.2
+          with: |
+            args: README.md
+          attempt_limit: 3
+          attempt_delay: 2000
+
+      - name: Check the Wiki pages for broken links
+        uses: Wandalen/wretry.action@v1.3.0
+        if: ${{ always() && !failure() }}
+        with:
+          action: becheran/mlc@v0.16.2
+          with: |
+            args: wiki/
+          attempt_limit: 3
+          attempt_delay: 2000
+
+      - name: Publish the Wiki
+        uses: SwiftDocOrg/github-wiki-publish-action@v1
+        # we do not need to republish if nothing changes furthermore, do not publish on PR as this should be done by the push on main!
+        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
+        with:
+          path: "wiki/"
+        env:
+          GH_PERSONAL_ACCESS_TOKEN: ${{ secrets.GH_DEPLOY_WIKI }}

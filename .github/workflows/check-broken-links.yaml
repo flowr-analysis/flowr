@@ -20,6 +20,6 @@ jobs:
         with:
           action: becheran/mlc@v0.16.2
           with: |
-            args: ./README.md
+            args: README.md wiki/
           attempt_limit: 3
           attempt_delay: 2000

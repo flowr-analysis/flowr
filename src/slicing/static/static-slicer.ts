@@ -14,7 +14,7 @@ import {
 	NodeId,
 	NormalizedAst,
 	RNodeWithParent,
-	Type
+	RType
 } from '../../r-bridge'
 import { log } from '../../util/log'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
@@ -196,11 +196,11 @@ function addControlDependencies(source: NodeId, ast: DecoratedAstMap): Set<NodeI
 
 	let current = start
 	while(current !== undefined) {
-		if(current.type === Type.If) {
+		if(current.type === RType.IfThenElse) {
 			addAllFrom(current.condition, collected)
-		} else if(current.type === Type.While) {
+		} else if(current.type === RType.WhileLoop) {
 			addAllFrom(current.condition, collected)
-		} else if(current.type === Type.For) {
+		} else if(current.type === RType.ForLoop) {
 			addAllFrom(current.variable, collected)
 			// vector not needed, if required, it is  linked by defined-by
 		}
@@ -222,8 +222,7 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvi
 		}
 	}
 
-	const activeEnvironment = overwriteEnvironments(baseEnvironment, callerEnvironment)
-	return activeEnvironment
+	return overwriteEnvironments(baseEnvironment, callerEnvironment)
 }
 
 //// returns the new threshold hit count

@@ -67,7 +67,7 @@ export const optionHelp = [
 
 const options = commandLineArgs(optionDefinitions) as FlowrCliOptions
 
-log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.trace : LogLevel.error)
+log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.Trace : LogLevel.Error)
 log.info('running with options', options)
 
 if(options['no-ansi']) {
@@ -82,7 +82,7 @@ function retrieveShell(): RShell {
 		revive:   'always',
 		onRevive: (code, signal) => {
 			const signalText = signal == null ? '' : ` and signal ${signal}`
-			console.log(formatter.format(`R process exited with code ${code}${signalText}. Restarting...`, { color: Colors.magenta, effect: ColorEffect.foreground }))
+			console.log(formatter.format(`R process exited with code ${code}${signalText}. Restarting...`, { color: Colors.Magenta, effect: ColorEffect.Foreground }))
 			console.log(italic(`If you want to exit, press either Ctrl+C twice, or enter ${bold(':quit')}`))
 		},
 	})
@@ -94,7 +94,7 @@ async function mainRepl() {
 	if(options.script) {
 		let target = (scripts as DeepReadonly<Record<string, ScriptInformation>>)[options.script].target as string | undefined
 		guard(target !== undefined, `Unknown script ${options.script}, pick one of ${scriptsText}.`)
-		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.bold })}'`)
+		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.Bold })}'`)
 		target = `cli/${target}`
 		log.debug(`Script maps to "${target}"`)
 		await waitOnScript(`${__dirname}/${target}`, process.argv.slice(3))

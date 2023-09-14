@@ -1,4 +1,4 @@
-import { collectAllIds, NodeId, ParentInformation, RAssignmentOp, RNode, Type } from '../../../../r-bridge'
+import { collectAllIds, NodeId, ParentInformation, RAssignmentOp, RNode, RType } from '../../../../r-bridge'
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { EdgeType } from '../../../graph'
@@ -23,7 +23,7 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 	// deal with special cases based on the source node and the determined read targets
 
 	const isFunctionSide = swap ? op.lhs : op.rhs
-	const isFunction = isFunctionSide.type === Type.FunctionDefinition
+	const isFunction = isFunctionSide.type === RType.FunctionDefinition
 
 	for(const write of writeTargets) {
 		nextGraph.setDefinitionOfVertex(write)
@@ -85,7 +85,7 @@ function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformat
 
 function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation, global: boolean, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
 	const writeNodes: IdentifierDefinition[] = []
-	const isFunctionDef = functionTypeCheck.type === Type.FunctionDefinition
+	const isFunctionDef = functionTypeCheck.type === RType.FunctionDefinition
 	for(const active of target.unknownReferences) {
 		writeNodes.push({
 			...active,
@@ -144,11 +144,11 @@ function determineImpactOfSource<OtherInfo>(source: RNode<OtherInfo & ParentInfo
 	// yet, we need to keep the ids of these elements
 	const keepEndIds: NodeId[] = []
 	const allIds = new Set(collectAllIds(source, n => {
-		if(n.type === Type.FunctionCall || n.type === Type.FunctionDefinition) {
+		if(n.type === RType.FunctionCall || n.type === RType.FunctionDefinition) {
 			keepEndIds.push(n.info.id)
 			return true
 		}
-		return n.type === Type.For || n.type === Type.While || n.type === Type.Repeat
+		return n.type === RType.ForLoop || n.type === RType.WhileLoop || n.type === RType.RepeatLoop
 	})
 	)
 	for(const id of keepEndIds) {

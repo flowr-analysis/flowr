@@ -1,5 +1,5 @@
 import { XmlBasedJson } from '../../input-format'
-import { RComment, RLineDirective, Type } from '../../../../model'
+import { RComment, RLineDirective, RType } from '../../../../model'
 import { parseLog } from '../../parser'
 import { retrieveMetaStructure } from '../meta'
 import { guard } from '../../../../../../../util/assert'
@@ -27,7 +27,7 @@ export function normalizeLineDirective(data: ParserData, obj: XmlBasedJson): RLi
 	if(match === null) {
 		parseLog.debug(`[line-directive] does not match the regex ${LineDirectiveRegex.source} given ${JSON.stringify(content)}`)
 		result = {
-			type:   Type.Comment,
+			type:   RType.Comment,
 			location,
 			lexeme: content,
 			info:   {
@@ -39,7 +39,7 @@ export function normalizeLineDirective(data: ParserData, obj: XmlBasedJson): RLi
 		}
 	} else {
 		result = {
-			type:   Type.LineDirective,
+			type:   RType.LineDirective,
 			location,
 			line:   parseInt(match[1]),
 			file:   match[2],

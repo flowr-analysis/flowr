@@ -1,5 +1,5 @@
 import { RNode } from '../model'
-import { Type } from '../type'
+import { RType } from '../type'
 import { assertUnreachable } from '../../../../../util/assert'
 
 export const enum RoleInParent {
@@ -47,67 +47,67 @@ function visitSingle<OtherInfo>(node: RNode<OtherInfo>, onVisit: OnVisit<OtherIn
 
 	const type = node.type
 	switch(type) {
-		case Type.FunctionCall:
+		case RType.FunctionCall:
 			visit(node.flavor === 'named' ? node.functionName : node.calledFunction, onVisit, { role: RoleInParent.FunctionCallName, index: 0 })
 			visit(node.arguments, onVisit, { role: RoleInParent.FunctionCallArgument, index: 1 })
 			break
-		case Type.FunctionDefinition:
+		case RType.FunctionDefinition:
 			visit(node.parameters, onVisit, { role: RoleInParent.FunctionDefinitionParameter, index: 0 })
 			visit(node.body, onVisit, { role: RoleInParent.FunctionDefinitionBody, index: node.parameters.length })
 			break
-		case Type.ExpressionList:
+		case RType.ExpressionList:
 			visit(node.children, onVisit, { role: RoleInParent.ExpressionListChild, index: 0 })
 			break
-		case Type.For:
+		case RType.ForLoop:
 			visit(node.variable, onVisit, { role: RoleInParent.ForVariable, index: 0 })
 			visit(node.vector, onVisit, { role: RoleInParent.ForVector, index: 1 })
 			visit(node.body, onVisit, { role: RoleInParent.ForBody, index: 2 })
 			break
-		case Type.While:
+		case RType.WhileLoop:
 			visit(node.condition, onVisit, { role: RoleInParent.WhileCondition, index: 0 })
 			visit(node.body, onVisit, { role: RoleInParent.WhileBody, index: 1 })
 			break
-		case Type.Repeat:
+		case RType.RepeatLoop:
 			visit(node.body, onVisit, { role: RoleInParent.RepeatBody, index: 0 })
 			break
-		case Type.If:
+		case RType.IfThenElse:
 			visit(node.condition, onVisit, { role: RoleInParent.IfCondition, index: 0 })
 			visit(node.then, onVisit, { role: RoleInParent.IfThen, index: 1 })
 			visit(node.otherwise, onVisit, { role: RoleInParent.IfOtherwise, index: 2 })
 			break
-		case Type.Pipe:
+		case RType.Pipe:
 			visit(node.lhs, onVisit, { role: RoleInParent.PipeLhs, index: 0 })
 			visit(node.rhs, onVisit, { role: RoleInParent.PipeRhs, index: 1 })
 			break
-		case Type.BinaryOp:
+		case RType.BinaryOp:
 			visit(node.lhs, onVisit, { role: RoleInParent.BinaryOperationLhs, index: 0 })
 			visit(node.rhs, onVisit, { role: RoleInParent.BinaryOperationRhs, index: 1 })
 			break
-		case Type.UnaryOp:
+		case RType.UnaryOp:
 			visit(node.operand, onVisit, { role: RoleInParent.UnaryOperand, index: 0 })
 			break
-		case Type.Parameter:
+		case RType.Parameter:
 			visit(node.name, onVisit, { role: RoleInParent.ParameterName, index: 0 })
 			visit(node.defaultValue, onVisit, { role: RoleInParent.ParameterDefaultValue, index: 1 })
 			break
-		case Type.Argument:
+		case RType.Argument:
 			visit(node.name, onVisit, { role: RoleInParent.ArgumentName, index: 0 })
 			visit(node.value, onVisit, { role: RoleInParent.ArgumentValue, index: 1 })
 			break
-		case Type.Access:
+		case RType.Access:
 			visit(node.accessed, onVisit, { role: RoleInParent.Accessed, index: 0 })
 			if(node.operator === '[' || node.operator === '[[') {
 				visit(node.access, onVisit, { role: RoleInParent.IndexAccess, index: 1 })
 			}
 			break
-		case Type.Symbol:
-		case Type.Logical:
-		case Type.Number:
-		case Type.String:
-		case Type.Comment:
-		case Type.Break:
-		case Type.Next:
-		case Type.LineDirective:
+		case RType.Symbol:
+		case RType.Logical:
+		case RType.Number:
+		case RType.String:
+		case RType.Comment:
+		case RType.Break:
+		case RType.Next:
+		case RType.LineDirective:
 			// leafs
 			break
 		default:

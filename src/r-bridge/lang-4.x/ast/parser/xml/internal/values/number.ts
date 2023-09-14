@@ -2,7 +2,7 @@ import { XmlBasedJson } from '../../input-format'
 import { boolean2ts, isBoolean, isNA, number2ts, RNa } from '../../../../../values'
 import { parseLog } from '../../parser'
 import { retrieveMetaStructure } from '../meta'
-import { Type, RLogical, RSymbol, NoInfo, RNumber } from '../../../../model'
+import { RType, RLogical, RSymbol, NoInfo, RNumber } from '../../../../model'
 import { ParserData } from '../../data'
 import { executeHook } from '../../hooks'
 
@@ -35,19 +35,19 @@ export function normalizeNumber(data: ParserData, obj: XmlBasedJson): RNumber | 
 		result = {
 			...common,
 			namespace: undefined,
-			type:      Type.Symbol,
+			type:      RType.Symbol,
 			content
 		}
 	} else if(isBoolean(content)) {
 		result = {
 			...common,
-			type:    Type.Logical,
+			type:    RType.Logical,
 			content: boolean2ts(content)
 		}
 	} else {
 		result = {
 			...common,
-			type:    Type.Number,
+			type:    RType.Number,
 			content: number2ts(content)
 		}
 	}

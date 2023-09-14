@@ -6,7 +6,7 @@
 import { NodeId } from '../../r-bridge'
 import { DataflowGraph, DataflowGraphEdgeAttribute } from '../graph'
 import { dataflowLogger } from '../index'
-import { resolveByName } from './resolveByName'
+import { resolveByName } from './resolve-by-name'
 import { DataflowScopeName, GlobalScope, LocalScope } from './scopes'
 
 /** identifiers are branded to avoid confusion with other string-like types */

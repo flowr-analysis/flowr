@@ -2,7 +2,7 @@ import { XmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure } from '../meta'
 import { string2ts } from '../../../../../values'
 import { parseLog } from '../../parser'
-import { Type, RString } from '../../../../model'
+import { RType, RString } from '../../../../model'
 import { executeHook } from '../../hooks'
 import { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
@@ -29,7 +29,7 @@ export function normalizeString(data: ParserData, obj: XmlBasedJson): RString {
 	}
 
 	const result: RString = {
-		type:    Type.String,
+		type:    RType.String,
 		location,
 		content: string2ts(stringContent),
 		lexeme:  stringContent,

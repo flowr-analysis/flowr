@@ -225,7 +225,7 @@ export class BenchmarkSlicer {
 		benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code}`)
 		const results = this.stepper.getResults(false)
 
-		if(benchmarkLogger.settings.minLevel >= LogLevel.info) {
+		if(benchmarkLogger.settings.minLevel >= LogLevel.Info) {
 			benchmarkLogger.info(`mapped slicing criteria: ${slicedOutput.decodedCriteria.map(c => {
 				const node = results.normalize.idMap.get(c.id)
 				return `\n-   id: ${c.id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`

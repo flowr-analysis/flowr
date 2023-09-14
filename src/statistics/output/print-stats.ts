@@ -33,7 +33,7 @@ export function printFeatureStatistics(statistics: {features: FeatureStatistics,
 		}
 		const meta = ALL_FEATURES[feature]
 		console.log(`\n\n-----${meta.name}-------------`)
-		console.log(formatter.format(meta.description, { color: Colors.white, effect: ColorEffect.foreground }))
+		console.log(formatter.format(meta.description, { color: Colors.White, effect: ColorEffect.Foreground }))
 		printFeatureStatisticsEntry(statistics.features[feature])
 		console.log('\n\n')
 	}

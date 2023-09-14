@@ -1,6 +1,6 @@
 import { Base, Location, NoInfo } from '../model'
-import { Type } from '../type'
-import { RExpressionList } from './RExpressionList'
+import { RType } from '../type'
+import { RExpressionList } from './r-expression-list'
 
 /**
  * ```ts
@@ -8,6 +8,6 @@ import { RExpressionList } from './RExpressionList'
  * ```
  */
 export interface RRepeatLoop<Info = NoInfo> extends Base<Info>, Location {
-	readonly type: Type.Repeat
+	readonly type: RType.RepeatLoop
 	body:          RExpressionList<Info>
 }

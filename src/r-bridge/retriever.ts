@@ -50,7 +50,7 @@ export function requestFromInput(input: `file://${string}` | string): RParseRequ
 	}
 }
 
-const ERR_MARKER = "err"
+const ErrorMarker = "err"
 
 /**
  * Provides the capability to parse R files/R code using the R parser.
@@ -66,14 +66,14 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
 
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
 
-	shell.sendCommands(`flowr_output <- flowr_parsed <- "${ERR_MARKER}"`,
+	shell.sendCommands(`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
 		// now, try to retrieve the ast
 		`try(flowr_parsed <- parse(${request.request} = ${JSON.stringify(request.content)}, keep.source = ${ts2r(request.attachSourceInformation)}${suffix}), silent=FALSE)`,
 		`try(flowr_output <- xmlparsedata::xml_parse_data(flowr_parsed, includeText = ${ts2r(request.attachSourceInformation)}, pretty = FALSE), silent=FALSE)`
 	)
 	const xml = await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)
 	const output = xml.join(shell.options.eol)
-	guard(output !== ERR_MARKER, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
+	guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
 	return output
 }
 

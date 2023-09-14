@@ -3,7 +3,7 @@ import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from "../../parser"
 import { tryNormalizeSingleNode } from '../structure'
 import { ParserData } from "../../data"
-import { Type, RWhileLoop } from '../../../../model'
+import { RType, RWhileLoop, RawRType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 export function tryNormalizeWhile(
@@ -14,18 +14,18 @@ export function tryNormalizeWhile(
 	rightParen: NamedXmlBasedJson,
 	body: NamedXmlBasedJson
 ): RWhileLoop | undefined {
-	if(whileToken.name !== Type.While) {
+	if(whileToken.name !== RawRType.While) {
 		parseLog.debug(
 			"encountered non-while token for supposed while-loop structure"
 		)
 		return executeUnknownHook(data.hooks.loops.onWhileLoop.unknown, data, { whileToken, leftParen, condition, rightParen, body })
-	} else if(leftParen.name !== Type.ParenLeft) {
+	} else if(leftParen.name !== RawRType.ParenLeft) {
 		throw new XmlParseError(
 			`expected left-parenthesis for while but found ${JSON.stringify(
 				leftParen
 			)}`
 		)
-	} else if(rightParen.name !== Type.ParenRight) {
+	} else if(rightParen.name !== RawRType.ParenRight) {
 		throw new XmlParseError(
 			`expected right-parenthesis for while but found ${JSON.stringify(
 				rightParen
@@ -56,7 +56,7 @@ export function tryNormalizeWhile(
 	)
 
 	const result: RWhileLoop = {
-		type:      Type.While,
+		type:      RType.WhileLoop,
 		condition: parsedCondition,
 		body:      ensureExpressionList(parseBody),
 		lexeme:    content,

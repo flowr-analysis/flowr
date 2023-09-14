@@ -1,9 +1,9 @@
 import { Base, Location, NoInfo, RNode } from "../model"
-import { Type } from "../type"
-import { RExpressionList } from './RExpressionList'
+import { RType } from "../type"
+import { RExpressionList } from './r-expression-list'
 
 export interface RIfThenElse<Info = NoInfo> extends Base<Info>, Location {
-	readonly type: Type.If;
+	readonly type: RType.IfThenElse;
 	condition:     RNode<Info>;
 	then:          RExpressionList<Info>;
 	otherwise?:    RExpressionList<Info>;

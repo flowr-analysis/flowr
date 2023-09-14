@@ -1,7 +1,7 @@
 import { assertAst, withShell } from "../../../helper/shell"
 import { exprList, numVal } from "../../../helper/ast-builder"
 import { rangeFrom } from "../../../../src/util/range"
-import { Type } from '../../../../src/r-bridge'
+import { RType } from '../../../../src/r-bridge'
 
 describe("Parse expression lists",
 	withShell((shell) => {
@@ -10,7 +10,7 @@ describe("Parse expression lists",
 			assertAst(`"42" (single element)`, shell,
 				`42`,
 				exprList({
-					type:     Type.Number,
+					type:     RType.Number,
 					location: rangeFrom(1, 1, 1, 2),
 					lexeme:   "42",
 					content:  numVal(42),
@@ -23,14 +23,14 @@ describe("Parse expression lists",
 				twoLine,
 				exprList(
 					{
-						type:     Type.Number,
+						type:     RType.Number,
 						location: rangeFrom(1, 1, 1, 2),
 						lexeme:   "42",
 						content:  numVal(42),
 						info:     {}
 					},
 					{
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(2, 1, 2, 1),
 						namespace: undefined,
 						lexeme:    "a",
@@ -45,7 +45,7 @@ describe("Parse expression lists",
 				manyLines,
 				exprList(
 					{
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(1, 1, 1, 1),
 						namespace: undefined,
 						lexeme:    "a",
@@ -53,7 +53,7 @@ describe("Parse expression lists",
 						info:      {}
 					},
 					{
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(2, 1, 2, 1),
 						namespace: undefined,
 						lexeme:    "b",
@@ -61,7 +61,7 @@ describe("Parse expression lists",
 						info:      {}
 					},
 					{
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(3, 1, 3, 1),
 						namespace: undefined,
 						lexeme:    "c",
@@ -69,7 +69,7 @@ describe("Parse expression lists",
 						info:      {}
 					},
 					{
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(4, 1, 4, 1),
 						namespace: undefined,
 						lexeme:    "d",
@@ -77,7 +77,7 @@ describe("Parse expression lists",
 						info:      {}
 					},
 					{
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(5, 1, 5, 2),
 						namespace: undefined,
 						lexeme:    "n2",
@@ -85,7 +85,7 @@ describe("Parse expression lists",
 						info:      {}
 					},
 					{
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(6, 1, 6, 1),
 						namespace: undefined,
 						lexeme:    "z",
@@ -99,20 +99,20 @@ describe("Parse expression lists",
 			assertAst(`${JSON.stringify(twoLineWithBraces)} (two lines with braces)`, shell,
 				twoLineWithBraces,
 				exprList({
-					type:     Type.ExpressionList,
+					type:     RType.ExpressionList,
 					location: rangeFrom(1, 1, 2, 3),
 					lexeme:   "{ 42\na }",
 					info:     {},
 					children: [
 						{
-							type:     Type.Number,
+							type:     RType.Number,
 							location: rangeFrom(1, 3, 1, 4),
 							lexeme:   "42",
 							content:  numVal(42),
 							info:     {}
 						},
 						{
-							type:      Type.Symbol,
+							type:      RType.Symbol,
 							location:  rangeFrom(2, 1, 2, 1),
 							namespace: undefined,
 							lexeme:    "a",
@@ -129,20 +129,20 @@ describe("Parse expression lists",
 				multipleBraces,
 				exprList(
 					{
-						type:     Type.ExpressionList,
+						type:     RType.ExpressionList,
 						location: rangeFrom(1, 1, 2, 3),
 						lexeme:   "{ 42\na }",
 						info:     {},
 						children: [
 							{
-								type:     Type.Number,
+								type:     RType.Number,
 								location: rangeFrom(1, 3, 1, 4),
 								lexeme:   "42",
 								content:  numVal(42),
 								info:     {}
 							},
 							{
-								type:      Type.Symbol,
+								type:      RType.Symbol,
 								location:  rangeFrom(2, 1, 2, 1),
 								namespace: undefined,
 								lexeme:    "a",
@@ -152,7 +152,7 @@ describe("Parse expression lists",
 						],
 					},
 					{
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(3, 3, 3, 3),
 						namespace: undefined,
 						lexeme:    "x",
@@ -168,14 +168,14 @@ describe("Parse expression lists",
 				`42;a`,
 				exprList(
 					{
-						type:     Type.Number,
+						type:     RType.Number,
 						location: rangeFrom(1, 1, 1, 2),
 						lexeme:   "42",
 						content:  numVal(42),
 						info:     {}
 					},
 					{
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(1, 4, 1, 4),
 						namespace: undefined,
 						lexeme:    "a",
@@ -188,7 +188,7 @@ describe("Parse expression lists",
 			assertAst(`"{ 3; }" (empty)`, shell,
 				`{ 3; }`,
 				exprList({
-					type:     Type.Number,
+					type:     RType.Number,
 					location: rangeFrom(1, 3, 1, 3),
 					lexeme:   "3",
 					content:  numVal(3),
@@ -200,25 +200,25 @@ describe("Parse expression lists",
 			assertAst('Inconsistent split with semicolon', shell,
 				'1\n2; 3\n4',
 				exprList({
-					type:     Type.Number,
+					type:     RType.Number,
 					location: rangeFrom(1, 1, 1, 1),
 					lexeme:   "1",
 					content:  numVal(1),
 					info:     {}
 				}, {
-					type:     Type.Number,
+					type:     RType.Number,
 					location: rangeFrom(2, 1, 2, 1),
 					lexeme:   "2",
 					content:  numVal(2),
 					info:     {}
 				}, {
-					type:     Type.Number,
+					type:     RType.Number,
 					location: rangeFrom(2, 4, 2, 4),
 					lexeme:   "3",
 					content:  numVal(3),
 					info:     {}
 				}, {
-					type:     Type.Number,
+					type:     RType.Number,
 					location: rangeFrom(3, 1, 3, 1),
 					lexeme:   "4",
 					content:  numVal(4),

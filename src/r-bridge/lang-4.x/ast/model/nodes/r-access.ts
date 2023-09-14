@@ -1,11 +1,11 @@
 import { Base, Location, NoInfo, RNode } from "../model"
-import { Type } from "../type"
+import { RType } from "../type"
 
 /**
  * Represents an R Indexing operation with `$`, `@`, `[[`, or `[`.
  */
 interface RAccessBase<Info = NoInfo> extends Base<Info>, Location {
-	readonly type: Type.Access;
+	readonly type: RType.Access;
 	/** the accessed container/variable/expression */
 	accessed:      RNode<Info>;
 	operator:      '[' | '[[' | '$' | '@';

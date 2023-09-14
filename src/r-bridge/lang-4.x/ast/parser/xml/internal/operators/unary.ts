@@ -5,7 +5,7 @@ import { tryNormalizeSingleNode } from '../structure'
 import { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
 import {
-	Type,
+	RType,
 	RNode,
 	RUnaryOp,
 	ArithmeticOperatorsRAst,
@@ -50,7 +50,7 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: N
 	const { location, content } = retrieveMetaStructure(data.config, operator.content)
 
 	const result: RUnaryOp = {
-		type:     Type.UnaryOp,
+		type:     RType.UnaryOp,
 		flavor,
 		location,
 		operator: operationName,

@@ -12,7 +12,7 @@ import {
 import { linkInputs } from '../../linker'
 import { DataflowFunctionFlowInformation, DataflowGraph, dataflowLogger, DataflowMap, EdgeType } from '../../../index'
 import { collectAllIds, NodeId, ParentInformation, RFunctionDefinition } from '../../../../r-bridge'
-import { retrieveExitPointsOfFunctionDefinition } from './exitPoints'
+import { retrieveExitPointsOfFunctionDefinition } from './exit-points'
 import { guard } from '../../../../util/assert'
 import { LocalScope } from '../../../environments/scopes'
 

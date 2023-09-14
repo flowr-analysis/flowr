@@ -2,7 +2,7 @@ import { assertDecoratedAst, retrieveNormalizedAst, withShell } from '../helper/
 import { numVal } from "../helper/ast-builder"
 import { rangeFrom } from "../../src/util/range"
 import {
-	Type,
+	RType,
 	decorateAst,
 	RNodeWithParent,
 	collectAllIds,
@@ -18,7 +18,7 @@ describe("Assign unique Ids and Parents", withShell((shell) => {
 		// decided to test with ast parsing, as we are dependent on these changes in reality
 		describe("Single nodes (leafs)", () => {
 			const exprList = (...children: RNodeWithParent[]): RNodeWithParent => ({
-				type:   Type.ExpressionList,
+				type:   RType.ExpressionList,
 				lexeme: undefined,
 				info:   {
 					parent: undefined,
@@ -28,7 +28,7 @@ describe("Assign unique Ids and Parents", withShell((shell) => {
 			})
 			assertDecorated("String", '"hello"',
 				exprList({
-					type:     Type.String,
+					type:     RType.String,
 					location: rangeFrom(1, 1, 1, 7),
 					lexeme:   '"hello"',
 					content:  {
@@ -43,7 +43,7 @@ describe("Assign unique Ids and Parents", withShell((shell) => {
 			)
 			assertDecorated("Number", "42",
 				exprList({
-					type:     Type.Number,
+					type:     RType.Number,
 					location: rangeFrom(1, 1, 1, 2),
 					lexeme:   "42",
 					content:  numVal(42),
@@ -55,7 +55,7 @@ describe("Assign unique Ids and Parents", withShell((shell) => {
 			)
 			assertDecorated("Logical", "FALSE",
 				exprList({
-					type:     Type.Logical,
+					type:     RType.Logical,
 					location: rangeFrom(1, 1, 1, 5),
 					lexeme:   "FALSE",
 					content:  false,
@@ -67,7 +67,7 @@ describe("Assign unique Ids and Parents", withShell((shell) => {
 			)
 			assertDecorated("Symbol", "k",
 				exprList({
-					type:      Type.Symbol,
+					type:      RType.Symbol,
 					location:  rangeFrom(1, 1, 1, 1),
 					namespace: undefined,
 					lexeme:    "k",
@@ -90,10 +90,10 @@ describe("Assign unique Ids and Parents", withShell((shell) => {
 			})
 		}
 		assertIds('Without stop', 'x <- 2', new Set(['0', '1', '2', '3']))
-		assertIds('Stop one', 'x <- 2', new Set(['0', '2', '3']), n => n.type === Type.Number)
+		assertIds('Stop one', 'x <- 2', new Set(['0', '2', '3']), n => n.type === RType.Number)
 		assertIds('Multiple statements', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']))
 		// if, TRUE, [when]
-		assertIds('Multiple statements blocking binary ops', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['3', '7', '8', '9']), n => n.type === Type.BinaryOp)
+		assertIds('Multiple statements blocking binary ops', 'x <- 2; if(TRUE) { a <- 4 }', new Set(['3', '7', '8', '9']), n => n.type === RType.BinaryOp)
 	})
 })
 )

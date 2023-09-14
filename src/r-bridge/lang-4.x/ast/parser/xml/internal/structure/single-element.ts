@@ -5,7 +5,7 @@ import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { normalizeExpression } from '../expression'
 import { getWithTokenType } from '../meta'
-import { Type, RNode } from '../../../../model'
+import { RNode, RawRType } from '../../../../model'
 import { normalizeComment } from '../other'
 import { normalizeBreak, normalizeNext } from '../loops'
 import { normalizeLineDirective } from '../other/line-directive'
@@ -21,33 +21,33 @@ import { normalizeLineDirective } from '../other/line-directive'
  */
 export function tryNormalizeSingleNode(data: ParserData, elem: NamedXmlBasedJson): RNode | undefined {
 	switch(elem.name) {
-		case Type.ParenLeft:
-		case Type.ParenRight:
+		case RawRType.ParenLeft:
+		case RawRType.ParenRight:
 			parseLog.debug(`skipping parenthesis information for ${JSON.stringify(elem)}`)
 			return undefined
-		case Type.BraceLeft:
-		case Type.BraceRight:
+		case RawRType.BraceLeft:
+		case RawRType.BraceRight:
 			parseLog.debug(`skipping brace information for ${JSON.stringify(elem)}`)
 			return undefined
-		case Type.Comment:
+		case RawRType.Comment:
 			return normalizeComment(data, elem.content)
-		case Type.LineDirective:
+		case RawRType.LineDirective:
 			return normalizeLineDirective(data, elem.content)
-		case Type.ExpressionList:
-		case Type.Expression:
-		case Type.ExprHelpAssignWrapper:
+		case RawRType.ExpressionList:
+		case RawRType.Expression:
+		case RawRType.ExprOfAssignOrHelp:
 			return normalizeExpression(data, elem.content)
-		case Type.Number:
+		case RawRType.NumericConst:
 			return normalizeNumber(data, elem.content)
-		case Type.String:
+		case RawRType.StringConst:
 			return normalizeString(data, elem.content)
-		case Type.Break:
+		case RawRType.Break:
 			return normalizeBreak(data, elem.content)
-		case Type.Next:
+		case RawRType.Next:
 			return normalizeNext(data, elem.content)
-		case Type.Symbol:
-		case Type.Slot:
-		case Type.Null: {
+		case RawRType.Symbol:
+		case RawRType.Slot:
+		case RawRType.NullConst: {
 			const symbol =  tryNormalizeSymbol(data, getWithTokenType(data.config.tokenMap, [elem.content]))
 			guard(symbol !== undefined, () => `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
 			return symbol

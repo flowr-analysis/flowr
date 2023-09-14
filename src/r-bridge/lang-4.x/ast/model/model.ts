@@ -1,5 +1,5 @@
 import { SourceRange } from "../../../../util/range"
-import { Type } from "./type"
+import { RType } from "./type"
 import { MergeableRecord } from "../../../../util/objects"
 import { RNa, RNull } from "../../values"
 import {
@@ -60,7 +60,7 @@ interface Source {
  * @typeParam LexemeType - the type of the lexeme, probably always a `string` or `string | undefined`
  */
 export interface Base<Info, LexemeType = string> extends MergeableRecord {
-	type:   Type
+	type:   RType
 	/** the original string retrieved from R, can be used for further identification */
 	lexeme: LexemeType
 	/** allows to attach additional information to the node */

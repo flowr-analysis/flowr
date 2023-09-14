@@ -1,17 +1,17 @@
-import { NormalizedAst, ParentInformation, RAssignmentOp, RBinaryOp, Type } from '../r-bridge'
+import { NormalizedAst, ParentInformation, RAssignmentOp, RBinaryOp, RType } from '../r-bridge'
 import { DataflowInformation } from './internal/info'
 import { DataflowProcessorInformation, DataflowProcessors, processDataflowFor } from './processor'
-import { processUninterestingLeaf } from './internal/process/uninterestingLeaf'
+import { processUninterestingLeaf } from './internal/process/uninteresting-leaf'
 import { processSymbol } from './internal/process/symbol'
-import { processNonAssignmentBinaryOp } from './internal/process/operators/nonAssignmentBinaryOp'
-import { processUnaryOp } from './internal/process/operators/unaryOp'
-import { processExpressionList } from './internal/process/expressionList'
-import { processRepeatLoop } from './internal/process/loops/repeatLoop'
-import { processForLoop } from './internal/process/loops/forLoop'
-import { processWhileLoop } from './internal/process/loops/whileLoop'
-import { processIfThenElse } from './internal/process/ifThenElse'
-import { processFunctionCall } from './internal/process/functions/functionCall'
-import { processFunctionDefinition } from './internal/process/functions/functionDefinition'
+import { processNonAssignmentBinaryOp } from './internal/process/operators/non-assignment-binary-op'
+import { processUnaryOp } from './internal/process/operators/unary-op'
+import { processExpressionList } from './internal/process/expression-list'
+import { processRepeatLoop } from './internal/process/loops/repeat-loop'
+import { processForLoop } from './internal/process/loops/for-loop'
+import { processWhileLoop } from './internal/process/loops/while-loop'
+import { processIfThenElse } from './internal/process/if-then-else'
+import { processFunctionCall } from './internal/process/functions/function-call'
+import { processFunctionDefinition } from './internal/process/functions/function-definition'
 import { processFunctionParameter } from './internal/process/functions/parameter'
 import { DataflowScopeName, initializeCleanEnvironments } from './environments'
 import { processFunctionArgument } from './internal/process/functions/argument'
@@ -22,27 +22,27 @@ import { LocalScope } from './environments/scopes'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
 const processors: DataflowProcessors<any> = {
-	[Type.Number]:             processUninterestingLeaf,
-	[Type.String]:             processUninterestingLeaf,
-	[Type.Logical]:            processUninterestingLeaf,
-	[Type.Access]:             processAccess,
-	[Type.Symbol]:             processSymbol,
-	[Type.BinaryOp]:           processBinaryOp,
-	[Type.Pipe]:               processPipeOperation,
-	[Type.UnaryOp]:            processUnaryOp,
-	[Type.For]:                processForLoop,
-	[Type.While]:              processWhileLoop,
-	[Type.Repeat]:             processRepeatLoop,
-	[Type.If]:                 processIfThenElse,
-	[Type.Break]:              processUninterestingLeaf,
-	[Type.Next]:               processUninterestingLeaf,
-	[Type.Comment]:            processUninterestingLeaf,
-	[Type.LineDirective]:      processUninterestingLeaf,
-	[Type.FunctionCall]:       processFunctionCall,
-	[Type.FunctionDefinition]: processFunctionDefinition,
-	[Type.Parameter]:          processFunctionParameter,
-	[Type.Argument]:           processFunctionArgument,
-	[Type.ExpressionList]:     processExpressionList,
+	[RType.Number]:             processUninterestingLeaf,
+	[RType.String]:             processUninterestingLeaf,
+	[RType.Logical]:            processUninterestingLeaf,
+	[RType.Access]:             processAccess,
+	[RType.Symbol]:             processSymbol,
+	[RType.BinaryOp]:           processBinaryOp,
+	[RType.Pipe]:               processPipeOperation,
+	[RType.UnaryOp]:            processUnaryOp,
+	[RType.ForLoop]:            processForLoop,
+	[RType.WhileLoop]:          processWhileLoop,
+	[RType.RepeatLoop]:         processRepeatLoop,
+	[RType.IfThenElse]:         processIfThenElse,
+	[RType.Break]:              processUninterestingLeaf,
+	[RType.Next]:               processUninterestingLeaf,
+	[RType.Comment]:            processUninterestingLeaf,
+	[RType.LineDirective]:      processUninterestingLeaf,
+	[RType.FunctionCall]:       processFunctionCall,
+	[RType.FunctionDefinition]: processFunctionDefinition,
+	[RType.Parameter]:          processFunctionParameter,
+	[RType.Argument]:           processFunctionArgument,
+	[RType.ExpressionList]:     processExpressionList,
 }
 
 export function produceDataFlowGraph<OtherInfo>(ast: NormalizedAst<OtherInfo & ParentInformation>, initialScope: DataflowScopeName = LocalScope): DataflowInformation {

@@ -1,4 +1,4 @@
 export * from './fold'
 export * from './decorate'
-export * from './statefulFold'
+export * from './stateful-fold'
 export * from './visitor'

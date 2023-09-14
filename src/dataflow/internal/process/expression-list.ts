@@ -3,7 +3,7 @@
  * @module
  */
 import { DataflowInformation, initializeCleanInfo } from '../info'
-import { NodeId, ParentInformation, RExpressionList, Type, visit } from '../../../r-bridge'
+import { NodeId, ParentInformation, RExpressionList, RType, visit } from '../../../r-bridge'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import {
 	IdentifierReference, IEnvironment, makeAllMaybe,
@@ -18,9 +18,9 @@ import { dataflowLogger, EdgeType } from '../../index'
 import { guard } from '../../../util/assert'
 
 
-const DotDotDotAccess = /\.\.\d+/
+const dotDotDotAccess = /\.\.\d+/
 function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, data: DataflowProcessorInformation<OtherInfo>, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
-	const readName = DotDotDotAccess.test(read.name) ? '...' : read.name
+	const readName = dotDotDotAccess.test(read.name) ? '...' : read.name
 
 	const probableTarget = resolveByName(readName, data.activeScope, environments)
 
@@ -126,16 +126,18 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		// use the current environments for processing
 		data = { ...data, environments }
 		const processed = processDataflowFor(expression, data)
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
 		if(!foundNextOrBreak) {
 			visit(expression, n => {
-				if(n.type === Type.Next || n.type === Type.Break) {
+				if(n.type === RType.Next || n.type === RType.Break) {
 					foundNextOrBreak = true
 				}
-				return n.type === Type.For || n.type === Type.While || n.type === Type.Repeat || n.type === Type.FunctionDefinition
+				return n.type === RType.ForLoop || n.type === RType.WhileLoop || n.type === RType.RepeatLoop || n.type === RType.FunctionDefinition
 			})
 		}
 		// if the expression contained next or break anywhere before the next loop, the overwrite should be an append because we do not know if the rest is executed
 		// update the environments for the next iteration with the previous writes
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
 		if(foundNextOrBreak) {
 			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environments)
 			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environments)

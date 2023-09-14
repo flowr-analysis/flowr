@@ -1,7 +1,7 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { define, IdentifierDefinition } from '../../../environments'
-import { ParentInformation, RParameter, Type } from '../../../../r-bridge'
+import { ParentInformation, RParameter, RType } from '../../../../r-bridge'
 import { log } from '../../../../util/log'
 import { EdgeType } from '../../../graph'
 import { LocalScope } from '../../../environments/scopes'
@@ -26,7 +26,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		environments = define(writtenNode, LocalScope, environments)
 
 		if(defaultValue !== undefined) {
-			if(parameter.defaultValue?.type === Type.FunctionDefinition) {
+			if(parameter.defaultValue?.type === RType.FunctionDefinition) {
 				graph.addEdge(writtenNode, parameter.defaultValue.info.id, EdgeType.DefinedBy, 'maybe' /* default arguments can be overridden! */)
 			} else {
 				const definedBy = [...defaultValue.in, ...defaultValue.unknownReferences]

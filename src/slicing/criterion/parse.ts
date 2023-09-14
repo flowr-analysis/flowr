@@ -1,4 +1,4 @@
-import { NormalizedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation, RNodeWithParent, Type } from '../../r-bridge'
+import { NormalizedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation, RNodeWithParent, RType } from '../../r-bridge'
 import { slicerLogger } from '../static'
 import { SourcePosition } from '../../util/range'
 
@@ -48,7 +48,7 @@ function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: Decora
 
 		slicerLogger.trace(`can resolve id ${id} (${JSON.stringify(nodeInfo.location)}) for location ${JSON.stringify(location)}`)
 		// function calls have the same location as the symbol they refer to, so we need to prefer the function call
-		if(candidate !== undefined && nodeInfo.type !== Type.FunctionCall && nodeInfo.type !== Type.Argument || nodeInfo.type === Type.ExpressionList) {
+		if(candidate !== undefined && nodeInfo.type !== RType.FunctionCall && nodeInfo.type !== RType.Argument || nodeInfo.type === RType.ExpressionList) {
 			continue
 		}
 
@@ -71,7 +71,7 @@ function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflo
 
 		slicerLogger.trace(`can resolve id ${id} (${JSON.stringify(nodeInfo)}) for line ${line} and name ${name}`)
 		// function calls have the same location as the symbol they refer to, so we need to prefer the function call
-		if(candidate !== undefined && nodeInfo.type !== Type.FunctionCall && nodeInfo.type !== Type.Argument || nodeInfo.type === Type.ExpressionList) {
+		if(candidate !== undefined && nodeInfo.type !== RType.FunctionCall && nodeInfo.type !== RType.Argument || nodeInfo.type === RType.ExpressionList) {
 			continue
 		}
 		candidate = nodeInfo

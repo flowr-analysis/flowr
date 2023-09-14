@@ -1,7 +1,7 @@
 import { NamedXmlBasedJson } from '../../input-format'
 import { parseLog } from '../../parser'
 import { retrieveMetaStructure } from '../meta'
-import { RNode, Type, RParameter } from '../../../../model'
+import { RNode, RType, RParameter, RawRType } from '../../../../model'
 import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../util/log'
@@ -28,7 +28,7 @@ export function tryNormalizeParameter(data: ParserData, objs: NamedXmlBasedJson[
 
 
 	const symbol = objs[0]
-	if(symbol.name !== Type.SymbolFormals) {
+	if(symbol.name !== RawRType.SymbolFormals) {
 		log.warn(`expected symbol for parameter, yet received ${JSON.stringify(objs)}`)
 		return executeUnknownHook(data.hooks.functions.onParameter.unknown, data, objs)
 	}
@@ -38,12 +38,12 @@ export function tryNormalizeParameter(data: ParserData, objs: NamedXmlBasedJson[
 	const { location, content } = retrieveMetaStructure(data.config, symbol.content)
 
 	const result: RParameter = {
-		type:    Type.Parameter,
+		type:    RType.Parameter,
 		location,
 		special: content === '...',
 		lexeme:  content,
 		name:    {
-			type:      Type.Symbol,
+			type:      RType.Symbol,
 			location, content,
 			namespace: undefined,
 			lexeme:    content,
@@ -65,7 +65,7 @@ export function tryNormalizeParameter(data: ParserData, objs: NamedXmlBasedJson[
 }
 
 function parseWithDefaultValue(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
-	guard(objs[1].name === Type.EqFormals, () => `[arg-default] second element of parameter must be ${Type.EqFormals}, but: ${JSON.stringify(objs)}`)
-	guard(objs[2].name === Type.Expression, () => `[arg-default] third element of parameter must be an Expression but: ${JSON.stringify(objs)}`)
+	guard(objs[1].name === RawRType.EqualFormals, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`)
+	guard(objs[2].name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression but: ${JSON.stringify(objs)}`)
 	return tryNormalizeSingleNode(data, objs[2])
 }

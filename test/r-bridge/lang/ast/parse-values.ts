@@ -6,7 +6,7 @@ import {
 } from "../../../helper/provider"
 import { exprList } from "../../../helper/ast-builder"
 import { rangeFrom } from "../../../../src/util/range"
-import { retrieveXmlFromRCode, Type } from '../../../../src/r-bridge'
+import { retrieveXmlFromRCode, RType } from '../../../../src/r-bridge'
 import chai, { assert } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 chai.use(chaiAsPromised)
@@ -32,7 +32,7 @@ describe("Constant Parsing",
 						shell,
 						number.str,
 						exprList({
-							type:     Type.Number,
+							type:     RType.Number,
 							location: range,
 							lexeme:   number.str,
 							content:  number.val,
@@ -49,7 +49,7 @@ describe("Constant Parsing",
 						shell,
 						string.str,
 						exprList({
-							type:     Type.String,
+							type:     RType.String,
 							location: range,
 							lexeme:   string.str,
 							content:  string.val,
@@ -71,7 +71,7 @@ describe("Constant Parsing",
 						shell,
 						symbol.str,
 						exprList({
-							type:      Type.Symbol,
+							type:      RType.Symbol,
 							namespace: symbol.namespace,
 							location:  range,
 							lexeme:    symbol.val,
@@ -88,7 +88,7 @@ describe("Constant Parsing",
 						shell,
 						lexeme,
 						exprList({
-							type:     Type.Logical,
+							type:     RType.Logical,
 							location: rangeFrom(1, 1, 1, lexeme.length),
 							lexeme,
 							content,
@@ -103,7 +103,7 @@ describe("Constant Parsing",
 					shell,
 					"# Hello World",
 					exprList({
-						type:     Type.Comment,
+						type:     RType.Comment,
 						location: rangeFrom(1, 1, 1, 13),
 						lexeme:   "# Hello World",
 						content:  " Hello World",

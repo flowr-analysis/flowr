@@ -1,4 +1,4 @@
-import { DummyAppendProvider, StatisticAppendProvider, StatisticFileProvider } from './fileProvider'
+import { DummyAppendProvider, StatisticAppendProvider, StatisticFileProvider } from './file-provider'
 
 
 /**

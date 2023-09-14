@@ -131,7 +131,7 @@ export class RShell {
    * will not do anything to alter input markers!
    */
 	public sendCommand(command: string): void {
-		if(this.log.settings.minLevel >= LogLevel.trace) {
+		if(this.log.settings.minLevel >= LogLevel.Trace) {
 			this.log.trace(`> ${JSON.stringify(command)}`)
 		}
 		this._sendCommand(command)
@@ -157,7 +157,7 @@ export class RShell {
    */
 	public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
 		const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig)
-		if(this.log.settings.minLevel >= LogLevel.trace) {
+		if(this.log.settings.minLevel >= LogLevel.Trace) {
 			this.log.trace(`> ${JSON.stringify(command)}`)
 		}
 
@@ -401,7 +401,7 @@ class RShellSession {
 	}
 
 	private setupRSessionLoggers(): void {
-		if(this.log.settings.minLevel >= LogLevel.trace) {
+		if(this.log.settings.minLevel >= LogLevel.Trace) {
 			this.bareSession.stdout.on('data', (data: Buffer) => {
 				this.log.trace(`< ${data.toString()}`)
 			})

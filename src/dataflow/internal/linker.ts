@@ -16,7 +16,7 @@ import {
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { log } from '../../util/log'
-import { DecoratedAstMap, NodeId, ParentInformation, RParameter, Type } from '../../r-bridge'
+import { DecoratedAstMap, NodeId, ParentInformation, RParameter, RType } from '../../r-bridge'
 import { slicerLogger } from '../../slicing'
 import { dataflowLogger, EdgeType } from '../index'
 import { LocalScope } from '../environments/scopes'
@@ -124,7 +124,7 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: DecoratedAstMap, fun
 		return
 	}
 
-	if(linkedFunction.type !== Type.FunctionDefinition) {
+	if(linkedFunction.type !== RType.FunctionDefinition) {
 		dataflowLogger.trace(`function call definition base ${functionCallName} does not lead to a function definition (${functionRootId}) but got ${linkedFunction.type}`)
 		return
 	}

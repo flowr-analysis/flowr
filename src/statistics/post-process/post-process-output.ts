@@ -100,9 +100,9 @@ export function printClusterReport(report: ClusterReport, limit = 1000): string[
 		const strId = `${name}`.padEnd(longestName, ' ')
 		const strCount = count.toLocaleString().padStart(longestCount, ' ')
 		const strUnique = unique.toLocaleString().padStart(longestUnique, ' ')
-		const uniqueSuffix = `\t (${strUnique} ${formatter.format('unique', { color: Colors.white, effect: ColorEffect.foreground })})`
-		console.log(`\t${formatter.format(strId, { style: FontStyles.bold })}\t ${strCount} ` +
-      `${formatter.format('total', { color: Colors.white, effect: ColorEffect.foreground })}`
+		const uniqueSuffix = `\t (${strUnique} ${formatter.format('unique', { color: Colors.White, effect: ColorEffect.Foreground })})`
+		console.log(`\t${formatter.format(strId, { style: FontStyles.Bold })}\t ${strCount} ` +
+      `${formatter.format('total', { color: Colors.White, effect: ColorEffect.Foreground })}`
       + (count !== unique ? uniqueSuffix : '')
 		)
 	}

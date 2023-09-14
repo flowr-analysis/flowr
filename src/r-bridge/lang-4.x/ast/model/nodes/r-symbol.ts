@@ -1,5 +1,5 @@
 import { Leaf, Location, Namespace, NoInfo } from "../model"
-import { Type } from "../type"
+import { RType } from "../type"
 import { RNa, RNull } from '../../../values'
 
 export function isSpecialSymbol(symbol: RSymbol): boolean {
@@ -7,6 +7,6 @@ export function isSpecialSymbol(symbol: RSymbol): boolean {
 }
 
 export interface RSymbol<Info = NoInfo, T extends string = string> extends Leaf<Info>, Namespace, Location {
-	readonly type: Type.Symbol;
+	readonly type: RType.Symbol;
 	content:       T;
 }

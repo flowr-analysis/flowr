@@ -3,7 +3,7 @@ import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from "../../parser"
 import { tryNormalizeSingleNode } from '../structure'
 import { ParserData } from "../../data"
-import { Type, RWhileLoop, RawRType } from '../../../../model'
+import { RType, RWhileLoop, RawRType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 export function tryNormalizeWhile(
@@ -56,7 +56,7 @@ export function tryNormalizeWhile(
 	)
 
 	const result: RWhileLoop = {
-		type:      Type.WhileLoop,
+		type:      RType.WhileLoop,
 		condition: parsedCondition,
 		body:      ensureExpressionList(parseBody),
 		lexeme:    content,

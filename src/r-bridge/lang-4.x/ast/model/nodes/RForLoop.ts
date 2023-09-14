@@ -1,5 +1,5 @@
 import { Base, Location, NoInfo, RNode } from '../model'
-import { Type } from '../type'
+import { RType } from '../type'
 import { RSymbol } from './RSymbol'
 import { RExpressionList } from './RExpressionList'
 
@@ -9,7 +9,7 @@ import { RExpressionList } from './RExpressionList'
  * ```
  */
 export interface RForLoop<Info = NoInfo> extends Base<Info>, Location {
-	readonly type: Type.ForLoop
+	readonly type: RType.ForLoop
 	/** variable used in for-loop: <p> `for(<variable> in ...) ...`*/
 	variable:      RSymbol<Info>
 	/** vector used in for-loop: <p> `for(... in <vector>) ...`*/

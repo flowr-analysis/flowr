@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../helper/shell'
 import { exprList, numVal } from "../../../helper/ast-builder"
 import { addRanges, rangeFrom } from "../../../../src/util/range"
-import { Type } from '../../../../src/r-bridge'
+import { RType } from '../../../../src/r-bridge'
 import { ensureExpressionList } from '../../../../src/r-bridge/lang-4.x/ast/parser/xml/internal'
 
 const IfThenSpacingVariants = [
@@ -109,19 +109,19 @@ describe('Parse simple constructs', withShell(shell => {
 					for(const variant of pool.variants) {
 						const strNum = `${variant.num}`
 						assertAst(JSON.stringify(variant.str), shell, variant.str, exprList({
-							type:      Type.IfThenElse,
+							type:      RType.IfThenElse,
 							location:  rangeFrom(1, 1, 1, 2),
 							lexeme:    'if',
 							info:      {},
 							condition: {
-								type:     Type.Logical,
+								type:     RType.Logical,
 								location: variant.locationTrue,
 								lexeme:   'TRUE',
 								content:  true,
 								info:     {}
 							},
 							then: ensureExpressionList({
-								type:     Type.Number,
+								type:     RType.Number,
 								location: variant.locationNum,
 								lexeme:   strNum,
 								content:  numVal(variant.num),
@@ -148,26 +148,26 @@ describe('Parse simple constructs', withShell(shell => {
 								const elseNum = `${elseVariant.num}`
 								const input = `${ifThenVariant.str}${elseVariant.str}`
 								assertAst('if-then-else', shell, input, exprList({
-									type:      Type.IfThenElse,
+									type:      RType.IfThenElse,
 									location:  rangeFrom(1, 1, 1, 2),
 									lexeme:    'if',
 									info:      {},
 									condition: {
-										type:     Type.Logical,
+										type:     RType.Logical,
 										location: ifThenVariant.locationTrue,
 										lexeme:   'TRUE',
 										content:  true,
 										info:     {}
 									},
 									then: ensureExpressionList({
-										type:     Type.Number,
+										type:     RType.Number,
 										location: ifThenVariant.locationNum,
 										lexeme:   thenNum,
 										content:  numVal(ifThenVariant.num),
 										info:     {}
 									}),
 									otherwise: ensureExpressionList({
-										type:     Type.Number,
+										type:     RType.Number,
 										location: addRanges(elseVariant.locationElse, ifThenVariant.end),
 										lexeme:   elseNum,
 										content:  numVal(elseVariant.num),
@@ -184,12 +184,12 @@ describe('Parse simple constructs', withShell(shell => {
 	describe('loops', () => {
 		describe('for', () => {
 			assertAst('for(i in 1:10) 2', shell, 'for(i in 1:42)2', exprList({
-				type:     Type.ForLoop,
+				type:     RType.ForLoop,
 				location: rangeFrom(1, 1, 1, 3),
 				lexeme:   'for',
 				info:     {},
 				variable: {
-					type:      Type.Symbol,
+					type:      RType.Symbol,
 					location:  rangeFrom(1, 5, 1, 5),
 					namespace: undefined,
 					lexeme:    'i',
@@ -197,21 +197,21 @@ describe('Parse simple constructs', withShell(shell => {
 					info:      {}
 				},
 				vector: {
-					type:     Type.BinaryOp,
+					type:     RType.BinaryOp,
 					flavor:   'arithmetic',
 					operator: ':',
 					location: rangeFrom(1, 11, 1, 11),
 					lexeme:   ':',
 					info:     {},
 					lhs:      {
-						type:     Type.Number,
+						type:     RType.Number,
 						location: rangeFrom(1, 10, 1, 10),
 						lexeme:   '1',
 						content:  numVal(1),
 						info:     {}
 					},
 					rhs: {
-						type:     Type.Number,
+						type:     RType.Number,
 						location: rangeFrom(1, 12, 1, 13),
 						lexeme:   '42',
 						content:  numVal(42),
@@ -219,7 +219,7 @@ describe('Parse simple constructs', withShell(shell => {
 					}
 				},
 				body: ensureExpressionList({
-					type:     Type.Number,
+					type:     RType.Number,
 					location: rangeFrom(1, 15, 1, 15),
 					lexeme:   '2',
 					content:  numVal(2),
@@ -230,12 +230,12 @@ describe('Parse simple constructs', withShell(shell => {
 		})
 		describe('repeat', () => {
 			assertAst('Single instruction repeat', shell, 'repeat 2', exprList({
-				type:     Type.RepeatLoop,
+				type:     RType.RepeatLoop,
 				location: rangeFrom(1, 1, 1, 6),
 				lexeme:   'repeat',
 				info:     {},
 				body:     ensureExpressionList({
-					type:     Type.Number,
+					type:     RType.Number,
 					location: rangeFrom(1, 8, 1, 8),
 					lexeme:   '2',
 					content:  numVal(2),
@@ -243,24 +243,24 @@ describe('Parse simple constructs', withShell(shell => {
 				})
 			}))
 			assertAst('Two statement repeat', shell, 'repeat { x; y }', exprList({
-				type:     Type.RepeatLoop,
+				type:     RType.RepeatLoop,
 				location: rangeFrom(1, 1, 1, 6),
 				lexeme:   'repeat',
 				info:     {},
 				body:     {
-					type:     Type.ExpressionList,
+					type:     RType.ExpressionList,
 					location: rangeFrom(1, 8, 1, 15),
 					lexeme:   '{ x; y }',
 					info:     {},
 					children: [{
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(1, 10, 1, 10),
 						namespace: undefined,
 						lexeme:    'x',
 						content:   'x',
 						info:      {},
 					}, {
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(1, 13, 1, 13),
 						namespace: undefined,
 						lexeme:    'y',
@@ -272,19 +272,19 @@ describe('Parse simple constructs', withShell(shell => {
 		})
 		describe('while', () => {
 			assertAst('while (TRUE) 42', shell, 'while (TRUE) 42', exprList({
-				type:      Type.WhileLoop,
+				type:      RType.WhileLoop,
 				location:  rangeFrom(1, 1, 1, 5),
 				lexeme:    'while',
 				info:      {},
 				condition: {
-					type:     Type.Logical,
+					type:     RType.Logical,
 					location: rangeFrom(1, 8, 1, 11),
 					lexeme:   'TRUE',
 					content:  true,
 					info:     {}
 				},
 				body: ensureExpressionList({
-					type:     Type.Number,
+					type:     RType.Number,
 					location: rangeFrom(1, 14, 1, 15),
 					lexeme:   '42',
 					content:  numVal(42),
@@ -293,31 +293,31 @@ describe('Parse simple constructs', withShell(shell => {
 			}))
 
 			assertAst('Two statement while', shell, 'while (FALSE) { x; y }', exprList({
-				type:      Type.WhileLoop,
+				type:      RType.WhileLoop,
 				location:  rangeFrom(1, 1, 1, 5),
 				lexeme:    'while',
 				info:      {},
 				condition: {
-					type:     Type.Logical,
+					type:     RType.Logical,
 					location: rangeFrom(1, 8, 1, 12),
 					lexeme:   'FALSE',
 					content:  false,
 					info:     {}
 				},
 				body: ensureExpressionList({
-					type:     Type.ExpressionList,
+					type:     RType.ExpressionList,
 					location: rangeFrom(1, 15, 1, 22),
 					lexeme:   '{ x; y }',
 					info:     {},
 					children: [{
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(1, 17, 1, 17),
 						namespace: undefined,
 						lexeme:    'x',
 						content:   'x',
 						info:      {}
 					}, {
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(1, 20, 1, 20),
 						namespace: undefined,
 						lexeme:    'y',
@@ -329,19 +329,19 @@ describe('Parse simple constructs', withShell(shell => {
 		})
 		describe('break', () => {
 			assertAst('while (TRUE) break', shell, 'while (TRUE) break', exprList({
-				type:      Type.WhileLoop,
+				type:      RType.WhileLoop,
 				location:  rangeFrom(1, 1, 1, 5),
 				lexeme:    'while',
 				info:      {},
 				condition: {
-					type:     Type.Logical,
+					type:     RType.Logical,
 					location: rangeFrom(1, 8, 1, 11),
 					lexeme:   'TRUE',
 					content:  true,
 					info:     {}
 				},
 				body: ensureExpressionList({
-					type:     Type.Break,
+					type:     RType.Break,
 					location: rangeFrom(1, 14, 1, 18),
 					lexeme:   'break',
 					info:     {}
@@ -350,19 +350,19 @@ describe('Parse simple constructs', withShell(shell => {
 		})
 		describe('next', () => {
 			assertAst('Next in while', shell, 'while (TRUE) next', exprList({
-				type:      Type.WhileLoop,
+				type:      RType.WhileLoop,
 				location:  rangeFrom(1, 1, 1, 5),
 				lexeme:    'while',
 				info:      {},
 				condition: {
-					type:     Type.Logical,
+					type:     RType.Logical,
 					location: rangeFrom(1, 8, 1, 11),
 					lexeme:   'TRUE',
 					content:  true,
 					info:     {}
 				},
 				body: ensureExpressionList({
-					type:     Type.Next,
+					type:     RType.Next,
 					location: rangeFrom(1, 14, 1, 17),
 					lexeme:   'next',
 					info:     {}

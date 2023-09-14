@@ -1,5 +1,5 @@
 import { XmlBasedJson } from '../../input-format'
-import { RComment, Type } from '../../../../model'
+import { RComment, RType } from '../../../../model'
 import { parseLog } from '../../parser'
 import { retrieveMetaStructure } from '../meta'
 import { guard } from '../../../../../../../util/assert'
@@ -21,7 +21,7 @@ export function normalizeComment(data: ParserData, obj: XmlBasedJson): RComment 
 	guard(content.startsWith('#'), 'comment must start with #')
 
 	const result: RComment = {
-		type:    Type.Comment,
+		type:    RType.Comment,
 		location,
 		content: content.slice(1),
 		lexeme:  content,

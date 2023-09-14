@@ -2,7 +2,7 @@ import { NamedXmlBasedJson } from '../input-format'
 import { retrieveMetaStructure } from './meta'
 import { parseLog } from '../parser'
 import { ParserData } from '../data'
-import { Type, RAccess, RNode, RArgument, RawRType } from '../../../model'
+import { RType, RAccess, RNode, RArgument, RawRType } from '../../../model'
 import { executeHook, executeUnknownHook } from '../hooks'
 import { normalizeBasedOnType } from './structure'
 import { guard } from '../../../../../../util/assert'
@@ -85,8 +85,8 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 	if(operator === '@' || operator === '$') {
 		guard(parsedAccess.length === 1, () => `expected one access result in access with ${JSON.stringify(operator)}, yet received ${JSON.stringify(parsedAccess)}`)
 		const first = parsedAccess[0]
-		guard(first !== null && (first.type === Type.Symbol || first.type === Type.String || first.type === Type.Logical), () => `${JSON.stringify(operator)} requires one symbol, yet received ${JSON.stringify(parsedAccess)}`)
-		resultingAccess = first.type === Type.String ? first.content.str : first.lexeme
+		guard(first !== null && (first.type === RType.Symbol || first.type === RType.String || first.type === RType.Logical), () => `${JSON.stringify(operator)} requires one symbol, yet received ${JSON.stringify(parsedAccess)}`)
+		resultingAccess = first.type === RType.String ? first.content.str : first.lexeme
 	}
 
 	const {
@@ -94,7 +94,7 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 	} = retrieveMetaStructure(data.config, accessOp.content)
 
 	const result = {
-		type:     Type.Access,
+		type:     RType.Access,
 		location,
 		lexeme:   content,
 		accessed: parsedAccessed[0],

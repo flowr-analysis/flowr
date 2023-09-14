@@ -34,7 +34,7 @@ export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherI
 type NodeWithKey<OtherInfo, Node extends RNode<OtherInfo & ParentInformation>, TypeKey> = Node['type'] extends TypeKey ? Node : never
 
 /**
- * This way, a processor mapped to a {@link Type#Symbol} require a {@link RSymbol} as first parameter and so on.
+ * This way, a processor mapped to a {@link RType#Symbol} require a {@link RSymbol} as first parameter and so on.
  */
 export type DataflowProcessors<OtherInfo> = {
 	[key in RNode['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, RNodeWithParent<OtherInfo>, key>>

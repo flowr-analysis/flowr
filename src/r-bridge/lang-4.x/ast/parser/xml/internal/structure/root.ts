@@ -2,14 +2,14 @@ import { getKeysGuarded, XmlBasedJson } from "../../input-format"
 import { assureTokenType } from "../meta"
 import { normalizeBasedOnType } from "./elements"
 import { ParserData } from "../../data"
-import { Type, RExpressionList } from '../../../../model'
+import { RType, RExpressionList, RawRType } from '../../../../model'
 
 export function parseRootObjToAst(
 	data: ParserData,
 	obj: XmlBasedJson
 ): RExpressionList {
-	const exprContent = getKeysGuarded<XmlBasedJson>(obj, Type.ExpressionList)
-	assureTokenType(data.config.tokenMap, exprContent, Type.ExpressionList)
+	const exprContent = getKeysGuarded<XmlBasedJson>(obj, RawRType.ExpressionList)
+	assureTokenType(data.config.tokenMap, exprContent, RawRType.ExpressionList)
 
 	const children = getKeysGuarded<XmlBasedJson[]>(
 		exprContent,
@@ -18,7 +18,7 @@ export function parseRootObjToAst(
 	const parsedChildren = normalizeBasedOnType(data, children)
 
 	return {
-		type:     Type.ExpressionList,
+		type:     RType.ExpressionList,
 		children: parsedChildren,
 		lexeme:   undefined,
 		info:     {

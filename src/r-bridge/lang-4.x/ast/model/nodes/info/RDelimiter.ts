@@ -1,4 +1,4 @@
-import { Type } from '../../type'
+import { RType } from '../../type'
 import { MergeableRecord } from '../../../../../../util/objects'
 
 
@@ -7,7 +7,7 @@ import { MergeableRecord } from '../../../../../../util/objects'
  * but helpful during reconstruction.
  */
 export interface RDelimiter extends MergeableRecord, Location {
-	readonly type:    Type.Delimiter;
+	readonly type:    RType.Delimiter;
 	readonly lexeme:  string;
 	readonly subtype: string; // can be one of Type, but I do not guard it atm.
 }

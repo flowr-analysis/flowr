@@ -1,5 +1,5 @@
 import { Base, Location, NoInfo, RNode } from '../model'
-import { Type } from "../type"
+import { RType } from "../type"
 import { RSymbol } from "./RSymbol"
 import { RArgument } from './RArgument'
 
@@ -9,7 +9,7 @@ import { RArgument } from './RArgument'
  * @see RUnnamedFunctionCall
  */
 export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location {
-	readonly type:   Type.FunctionCall;
+	readonly type:   RType.FunctionCall;
 	readonly flavor: 'named';
 	functionName:    RSymbol<Info>;
 	/** arguments can be undefined, for example when calling as `a(1, ,3)` */
@@ -23,7 +23,7 @@ export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location 
  * @see RNamedFunctionCall
  */
 export interface RUnnamedFunctionCall<Info = NoInfo> extends Base<Info>, Location {
-	readonly type:   Type.FunctionCall;
+	readonly type:   RType.FunctionCall;
 	readonly flavor: 'unnamed';
 	calledFunction:  RNode<Info>; /* can be either a function definition or another call that returns a function etc. */
 	/** marks function calls like `3 %xx% 4` which have been written in special infix notation */

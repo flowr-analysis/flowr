@@ -3,7 +3,7 @@ import { XmlBasedJson } from '../../input-format'
 import { parseLog } from '../../parser'
 import { executeHook } from '../../hooks'
 import { retrieveMetaStructure } from '../meta'
-import { RBreak, Type } from '../../../../model'
+import { RBreak, RType } from '../../../../model'
 
 export function normalizeBreak(data: ParserData, obj: XmlBasedJson): RBreak {
 	parseLog.debug(`[break] try: ${JSON.stringify(obj)}`)
@@ -12,7 +12,7 @@ export function normalizeBreak(data: ParserData, obj: XmlBasedJson): RBreak {
 	const { location, content } = retrieveMetaStructure(data.config, obj)
 
 	const result: RBreak = {
-		type:   Type.Break,
+		type:   RType.Break,
 		location,
 		lexeme: content,
 		info:   {

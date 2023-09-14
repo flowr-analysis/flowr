@@ -1,7 +1,7 @@
 import { NamedXmlBasedJson } from '../../input-format'
 import { parseLog } from '../../parser'
 import { retrieveMetaStructure } from '../meta'
-import { RNode, Type, RParameter, RawRType } from '../../../../model'
+import { RNode, RType, RParameter, RawRType } from '../../../../model'
 import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../util/log'
@@ -38,12 +38,12 @@ export function tryNormalizeParameter(data: ParserData, objs: NamedXmlBasedJson[
 	const { location, content } = retrieveMetaStructure(data.config, symbol.content)
 
 	const result: RParameter = {
-		type:    Type.Parameter,
+		type:    RType.Parameter,
 		location,
 		special: content === '...',
 		lexeme:  content,
 		name:    {
-			type:      Type.Symbol,
+			type:      RType.Symbol,
 			location, content,
 			namespace: undefined,
 			lexeme:    content,

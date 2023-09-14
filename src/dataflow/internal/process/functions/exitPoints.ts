@@ -4,7 +4,7 @@ import {
 	RExpressionList,
 	RFunctionDefinition, RIfThenElse, RLoopConstructs,
 	RNode,
-	Type
+	RType
 } from '../../../../r-bridge'
 import { assertUnreachable } from '../../../../util/assert'
 
@@ -21,9 +21,9 @@ export function retrieveExitPointsOfFunctionDefinition<OtherInfo>(functionDefini
 function visitExitPoints<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): ExitPointsInformation {
 	const type = node.type
 	switch(type) {
-		case Type.ExpressionList:
+		case RType.ExpressionList:
 			return visitExpressionList(node)
-		case Type.FunctionCall:
+		case RType.FunctionCall:
 			if(node.flavor === 'named' && node.functionName.content === 'return') {
 				return {
 					knownIds:     [ node.info.id ],
@@ -31,38 +31,38 @@ function visitExitPoints<OtherInfo>(node: RNode<OtherInfo & ParentInformation>):
 				}
 			}
 			break
-		case Type.FunctionDefinition:
+		case RType.FunctionDefinition:
 			// do not further investigate
 			break
-		case Type.ForLoop:
-		case Type.WhileLoop:
-		case Type.RepeatLoop:
+		case RType.ForLoop:
+		case RType.WhileLoop:
+		case RType.RepeatLoop:
 			// loops return invisible null, as we do not trace values, but they may contain return statements
 			return visitLoops(node)
-		case Type.IfThenElse:
+		case RType.IfThenElse:
 			return visitIf(node)
-		case Type.Pipe:
-		case Type.BinaryOp:
+		case RType.Pipe:
+		case RType.BinaryOp:
 			// assignments return invisible rhs
 			return knownIdsOfChildren(node.info.id, node.lhs, node.rhs)
-		case Type.UnaryOp:
+		case RType.UnaryOp:
 			return knownIdsOfChildren(node.info.id, node.operand)
-		case Type.Parameter:
+		case RType.Parameter:
 			return node.defaultValue ? knownIdsOfChildren(node.info.id, node.defaultValue) : { knownIds: [], potentialIds: [] }
-		case Type.Argument:
+		case RType.Argument:
 			return knownIdsOfChildren(node.info.id, node.value)
-		case Type.Symbol:
-		case Type.Logical:
-		case Type.Number:
-		case Type.String:
-		case Type.Access:
+		case RType.Symbol:
+		case RType.Logical:
+		case RType.Number:
+		case RType.String:
+		case RType.Access:
 			// just use this node
 			break
 			// contain noting to return/return `invisible(null)`
-		case Type.Comment:
-		case Type.LineDirective:
-		case Type.Break:
-		case Type.Next:
+		case RType.Comment:
+		case RType.LineDirective:
+		case RType.Break:
+		case RType.Next:
 			return { knownIds: [], potentialIds: [] }
 		default:
 			assertUnreachable(type)
@@ -87,10 +87,10 @@ function visitLoops<OtherInfo>(loop: RLoopConstructs<OtherInfo & ParentInformati
 	const result = visitExitPoints(loop.body)
 	// conditions may contain return statements which we have to keep
 	let otherKnownIds: NodeId[] = []
-	if(loop.type === Type.ForLoop) {
+	if(loop.type === RType.ForLoop) {
 		otherKnownIds = visitExitPoints(loop.variable).knownIds
 		otherKnownIds.push(...visitExitPoints(loop.vector).knownIds)
-	} else if(loop.type === Type.WhileLoop) {
+	} else if(loop.type === RType.WhileLoop) {
 		otherKnownIds = visitExitPoints(loop.condition).knownIds
 	}
 	return {
@@ -107,7 +107,7 @@ function visitExpressionList<OtherInfo>(node: RExpressionList<OtherInfo & Parent
 	for(const child of node.children) {
 		const { knownIds, potentialIds } = visitExitPoints(child)
 		known.push(...knownIds)
-		if(child.type !== Type.Comment) {
+		if(child.type !== RType.Comment) {
 			lastPotentialIds = potentialIds
 		}
 	}

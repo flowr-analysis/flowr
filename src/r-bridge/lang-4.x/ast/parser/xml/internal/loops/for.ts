@@ -10,7 +10,7 @@ import { guard } from "../../../../../../../util/assert"
 import { ParserData } from "../../data"
 import { tryNormalizeSymbol } from '../values'
 import { normalizeBasedOnType, tryNormalizeSingleNode } from '../structure'
-import { Type, RSymbol, RForLoop, RNode, RawRType } from '../../../../model'
+import { RType, RSymbol, RForLoop, RNode, RawRType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 export function tryNormalizeFor(
@@ -59,7 +59,7 @@ export function tryNormalizeFor(
 	)
 
 	const result: RForLoop = {
-		type:     Type.ForLoop,
+		type:     RType.ForLoop,
 		variable: parsedVariable,
 		vector:   parsedVector,
 		body:     ensureExpressionList(parseBody),
@@ -84,7 +84,7 @@ function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { varia
 	guard(inPosition > 0 && inPosition < children.length - 1, () => `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`)
 	const variable = tryNormalizeSymbol(data, [children[inPosition - 1]])
 	guard(variable !== undefined, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
-	guard(variable.type === Type.Symbol, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
+	guard(variable.type === RType.Symbol, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
 
 	const vector = normalizeBasedOnType(data, [children[inPosition + 1]])
 	guard(vector.length === 1, () => `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`)

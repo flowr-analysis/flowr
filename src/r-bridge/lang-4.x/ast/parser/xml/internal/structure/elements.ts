@@ -12,7 +12,7 @@ import {
 	tryNormalizeWhile
 } from '../loops'
 import { tryNormalizeIfThenElse, tryNormalizeIfThen } from '../control'
-import { Type, RNode, RawRType } from '../../../../model'
+import { RType, RNode, RawRType } from '../../../../model'
 import { log } from '../../../../../../../util/log'
 import { normalizeComment } from '../other'
 
@@ -109,7 +109,7 @@ export function splitComments(mappedWithName: NamedXmlBasedJson[]) {
 	const comments = []
 	const others = []
 	for(const elem of mappedWithName) {
-		if(elem.name === Type.Comment) {
+		if(elem.name === RawRType.Comment) {
 			comments.push(elem)
 		} else {
 			others.push(elem)
@@ -150,7 +150,7 @@ export function normalizeBasedOnType(
 		const flattened = []
 		for(const sub of splitOnSemicolon) {
 			const result = normalizeBasedOnType(data, sub)
-			if(result.length === 1 && result[0].type === Type.ExpressionList) {
+			if(result.length === 1 && result[0].type === RType.ExpressionList) {
 				flattened.push(...result[0].children)
 			} else {
 				flattened.push(...result)

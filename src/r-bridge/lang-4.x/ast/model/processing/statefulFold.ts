@@ -1,6 +1,6 @@
 import { assertUnreachable } from "../../../../../util/assert"
 import { DeepReadonly } from "ts-essentials"
-import { Type } from "../type"
+import { RType } from "../type"
 import {
 	RExpressionList,
 	RNumber,
@@ -99,47 +99,47 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 	const type = ast.type
 	down = folds.down(ast, down)
 	switch(type) {
-		case Type.Number:
+		case RType.Number:
 			return folds.foldNumber(ast, down)
-		case Type.String:
+		case RType.String:
 			return folds.foldString(ast, down)
-		case Type.Logical:
+		case RType.Logical:
 			return folds.foldLogical(ast, down)
-		case Type.Symbol:
+		case RType.Symbol:
 			return folds.foldSymbol(ast, down)
-		case Type.Comment:
+		case RType.Comment:
 			return folds.other.foldComment(ast, down)
-		case Type.LineDirective:
+		case RType.LineDirective:
 			return folds.other.foldLineDirective(ast, down)
-		case Type.Pipe:
+		case RType.Pipe:
 			return folds.binaryOp.foldPipe(ast, foldAstStateful(ast.lhs, down, folds), foldAstStateful(ast.rhs, down, folds), down)
-		case Type.BinaryOp:
+		case RType.BinaryOp:
 			return foldBinaryOp(ast, down, folds)
-		case Type.UnaryOp:
+		case RType.UnaryOp:
 			return foldUnaryOp(ast, down, folds)
-		case Type.Access:
+		case RType.Access:
 			return folds.foldAccess(ast, foldAstStateful(ast.accessed, down, folds), ast.operator === '[' || ast.operator === '[[' ? ast.access.map(access => access === null ? null : foldAstStateful(access, down, folds)) : ast.access as string, down)
-		case Type.ForLoop:
+		case RType.ForLoop:
 			return folds.loop.foldFor(ast, foldAstStateful(ast.variable, down, folds), foldAstStateful(ast.vector, down, folds), foldAstStateful(ast.body, down, folds), down)
-		case Type.WhileLoop:
+		case RType.WhileLoop:
 			return folds.loop.foldWhile(ast, foldAstStateful(ast.condition, down, folds), foldAstStateful(ast.body, down, folds), down)
-		case Type.RepeatLoop:
+		case RType.RepeatLoop:
 			return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down)
-		case Type.FunctionCall:
+		case RType.FunctionCall:
 			return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.flavor === 'named' ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => param === undefined ? param : foldAstStateful(param, down, folds)), down)
-		case Type.FunctionDefinition:
+		case RType.FunctionDefinition:
 			return folds.functions.foldFunctionDefinition(ast, ast.parameters.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down)
-		case Type.Parameter:
+		case RType.Parameter:
 			return folds.functions.foldParameter(ast, foldAstStateful(ast.name, down, folds), ast.defaultValue ? foldAstStateful(ast.defaultValue, down, folds) : undefined, down)
-		case Type.Argument:
+		case RType.Argument:
 			return folds.functions.foldArgument(ast, ast.name ? foldAstStateful(ast.name, down, folds) : undefined, foldAstStateful(ast.value, down, folds), down)
-		case Type.Next:
+		case RType.Next:
 			return folds.loop.foldNext(ast, down)
-		case Type.Break:
+		case RType.Break:
 			return folds.loop.foldBreak(ast, down)
-		case Type.IfThenElse:
+		case RType.IfThenElse:
 			return folds.foldIfThenElse(ast, foldAstStateful(ast.condition, down, folds), foldAstStateful(ast.then, down, folds), ast.otherwise === undefined ? undefined : foldAstStateful(ast.otherwise, down, folds), down)
-		case Type.ExpressionList:
+		case RType.ExpressionList:
 			return folds.foldExprList(ast, ast.children.map(expr => foldAstStateful(expr, down, folds)), down)
 		default:
 			assertUnreachable(type)

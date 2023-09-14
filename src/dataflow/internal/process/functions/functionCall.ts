@@ -1,7 +1,7 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { define, overwriteEnvironments, resolveByName } from '../../../environments'
-import { NodeId, ParentInformation, RFunctionCall, Type } from '../../../../r-bridge'
+import { NodeId, ParentInformation, RFunctionCall, RType } from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
 import { DataflowGraph, dataflowLogger, EdgeType, FunctionArgument } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
@@ -84,7 +84,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 				}
 			}
 		}
-		if(arg.type === Type.Argument && arg.name !== undefined) {
+		if(arg.type === RType.Argument && arg.name !== undefined) {
 			argEnv = define(
 				{ ...processed.out[0], definedAt: arg.info.id, kind: 'argument' },
 				LocalScope,
@@ -113,7 +113,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 	inIds.push({ nodeId: functionRootId, name: functionCallName, scope: data.activeScope, used: 'always' })
 
 	if(!named) {
-		if(functionCall.calledFunction.type === Type.FunctionDefinition) {
+		if(functionCall.calledFunction.type === RType.FunctionDefinition) {
 			linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph)
 		}
 		// push the called function to the ids:

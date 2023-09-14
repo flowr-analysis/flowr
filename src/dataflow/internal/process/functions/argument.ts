@@ -1,6 +1,6 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { collectAllIds, ParentInformation, RArgument, RNode, Type } from '../../../../r-bridge'
+import { collectAllIds, ParentInformation, RArgument, RNode, RType } from '../../../../r-bridge'
 import { DataflowGraph, EdgeType } from '../../../graph'
 import { IdentifierReference } from '../../../environments'
 import { LocalScope } from '../../../environments/scopes'
@@ -8,7 +8,7 @@ import { LocalScope } from '../../../environments/scopes'
 export const UnnamedArgumentPrefix = 'unnamed-argument-'
 
 export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: IdentifierReference[], graph: DataflowGraph) {
-	const allIdsBeforeArguments = new Set(collectAllIds(root, n => n.type === Type.Argument && n.info.id !== root.info.id))
+	const allIdsBeforeArguments = new Set(collectAllIds(root, n => n.type === RType.Argument && n.info.id !== root.info.id))
 	const ingoingBeforeArgs = ingoingRefs.filter(r => allIdsBeforeArguments.has(r.nodeId))
 
 	for(const ref of ingoingBeforeArgs) {
@@ -29,7 +29,7 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
 
 	const ingoingRefs = [...value.unknownReferences, ...value.in, ...(name === undefined ? [] : [...name.in])]
 
-	if(argument.value.type === Type.FunctionDefinition) {
+	if(argument.value.type === RType.FunctionDefinition) {
 		graph.addEdge(argument.info.id, argument.value.info.id, EdgeType.Reads, 'always')
 	} else {
 		// we only need to link against those which are not already bound to another function call argument

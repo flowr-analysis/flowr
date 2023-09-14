@@ -1,3 +1,5 @@
+import { RawRType } from '../../model'
+
 /**
  * Thrown if the given input xml is not valid/contains unexpected elements.
  */
@@ -23,7 +25,7 @@ export type XmlBasedJsonValue = string | Record<string, unknown> | XmlBasedJson[
  */
 export interface NamedXmlBasedJson {
 	/** corresponds to the R token type */
-	name:    string,
+	name:    RawRType,
 	/** remaining content (e.g., children, ...) */
 	content: XmlBasedJson
 }

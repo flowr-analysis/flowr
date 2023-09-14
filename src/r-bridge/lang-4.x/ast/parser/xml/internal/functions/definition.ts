@@ -1,6 +1,6 @@
 import { ParserData } from '../../data'
 import { NamedXmlBasedJson } from '../../input-format'
-import { Type, RParameter, RFunctionDefinition, RawRType } from '../../../../model'
+import { RType, RParameter, RFunctionDefinition, RawRType } from '../../../../model'
 import { parseLog } from '../../parser'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
@@ -57,7 +57,7 @@ export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName:
 
 
 	const result: RFunctionDefinition = {
-		type:       Type.FunctionDefinition,
+		type:       RType.FunctionDefinition,
 		location,
 		lexeme:     content,
 		parameters: parameters as RParameter[],

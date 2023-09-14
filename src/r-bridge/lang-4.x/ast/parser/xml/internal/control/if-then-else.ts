@@ -4,7 +4,7 @@ import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { tryNormalizeIfThen } from './if-then'
 import { guard } from '../../../../../../../util/assert'
-import { Type, RIfThenElse, RawRType } from '../../../../model'
+import { RType, RIfThenElse, RawRType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { ensureExpressionList } from '../meta'
 

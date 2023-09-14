@@ -1,7 +1,7 @@
 import { NamedXmlBasedJson } from '../../input-format'
 import { parseLog } from '../../parser'
 import { retrieveMetaStructure } from '../meta'
-import { RNode, Type, RSymbol, RArgument, RawRType } from '../../../../model'
+import { RNode, RType, RSymbol, RArgument, RawRType } from '../../../../model'
 import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../util/log'
@@ -35,9 +35,9 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 	if(symbolOrExpr.name === RawRType.Expression) {
 		name = undefined
 		parsedValue = tryNormalizeSingleNode(data, symbolOrExpr)
-	} else if(symbolOrExpr.name === RawRType.SymbolFormals) {
+	} else if(symbolOrExpr.name === RawRType.SymbolSub) {
 		name =    {
-			type:      Type.Symbol,
+			type:      RType.Symbol,
 			location, content,
 			namespace: undefined,
 			lexeme:    content,
@@ -56,7 +56,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 	guard(parsedValue !== undefined, () => `[argument] parsed value must not be undefined, yet: ${JSON.stringify(objs)}`)
 
 	const result: RArgument = {
-		type:   Type.Argument,
+		type:   RType.Argument,
 		location,
 		lexeme: content,
 		name,
@@ -72,7 +72,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 }
 
 function parseWithValue(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
-	guard(objs[1].name === RawRType.EqualFormals, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`)
+	guard(objs[1].name === RawRType.EqualSub, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`)
 	guard(objs[2].name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression but: ${JSON.stringify(objs)}`)
 	return tryNormalizeSingleNode(data, objs[2])
 }

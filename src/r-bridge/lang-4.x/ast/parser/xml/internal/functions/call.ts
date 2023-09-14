@@ -6,7 +6,7 @@ import { parseLog } from '../../parser'
 import { normalizeString, tryNormalizeSymbol } from '../values'
 import { ParserData } from '../../data'
 import {
-	Type,
+	RType,
 	RNode,
 	RFunctionCall,
 	RUnnamedFunctionCall,
@@ -53,12 +53,12 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 
 	const namedSymbolContent = getWithTokenType(data.config.tokenMap, symbolContent)
 
-	if(namedSymbolContent.length === 1 && namedSymbolContent[0].name === Type.String) {
+	if(namedSymbolContent.length === 1 && namedSymbolContent[0].name === RawRType.StringConst) {
 		// special handling when someone calls a function by string
 		result = parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content)
 	}
-	else if(namedSymbolContent.findIndex(x => x.name === Type.FunctionCall) < 0) {
-		parseLog.trace(`is not named function call, as the name is not of type ${Type.FunctionCall}, but: ${namedSymbolContent.map(n => n.name).join(',')}`)
+	else if(namedSymbolContent.findIndex(x => x.name === RawRType.SymbolFunctionCall) < 0) {
+		parseLog.trace(`is not named function call, as the name is not of type ${RType.FunctionCall}, but: ${namedSymbolContent.map(n => n.name).join(',')}`)
 		const mayResult = tryParseUnnamedFunctionCall(data, mappedWithName, location, content)
 		if(mayResult === undefined) {
 			return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
@@ -96,9 +96,9 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 
 	if(parsedArguments.length === 0) {
 		// sadly, next() and break() work
-		if(calledFunction.type === Type.Next) {
+		if(calledFunction.type === RType.Next) {
 			return {
-				type:   Type.Next,
+				type:   RType.Next,
 				lexeme: content,
 				location,
 				info:   {
@@ -107,9 +107,9 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 					fullLexeme:       data.currentLexeme
 				}
 			}
-		} else if(calledFunction.type === Type.Break) {
+		} else if(calledFunction.type === RType.Break) {
 			return {
-				type:   Type.Break,
+				type:   RType.Break,
 				lexeme: content,
 				location,
 				info:   {
@@ -122,7 +122,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 	}
 
 	return {
-		type:           Type.FunctionCall,
+		type:           RType.FunctionCall,
 		flavor:         'unnamed',
 		location,
 		lexeme:         content,
@@ -139,10 +139,10 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 
 function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJson[], mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RNamedFunctionCall {
 	let functionName: RNode | undefined
-	if(symbolContent.length === 1 && symbolContent[0].name === Type.String) {
+	if(symbolContent.length === 1 && symbolContent[0].name === RawRType.StringConst) {
 		const stringBase = normalizeString(data, symbolContent[0].content)
 		functionName = {
-			type:      Type.Symbol,
+			type:      RType.Symbol,
 			namespace: undefined,
 			lexeme:    stringBase.lexeme,
 			info:      stringBase.info,
@@ -153,12 +153,12 @@ function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJs
 		functionName = tryNormalizeSymbol(data, symbolContent)
 	}
 	guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')
-	guard(functionName.type === Type.Symbol, `expected function name to be a symbol, yet received ${functionName.type}`)
+	guard(functionName.type === RType.Symbol, `expected function name to be a symbol, yet received ${functionName.type}`)
 
 	const parsedArguments = parseArguments(mappedWithName, data)
 
 	return {
-		type:      Type.FunctionCall,
+		type:      RType.FunctionCall,
 		flavor:    'named',
 		location,
 		lexeme:    content,

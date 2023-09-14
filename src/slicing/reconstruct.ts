@@ -15,7 +15,7 @@ import {
 	RParameter,
 	RRepeatLoop,
 	RWhileLoop,
-	Type,
+	RType,
 	RPipe,
 	foldAstStateful,
 	StatefulFoldFunctions
@@ -113,7 +113,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 		return plain(getLexeme(n))
 	}
 
-	return reconstructRawBinaryOperator(lhs, n.type === Type.Pipe ? '|>' : n.operator, rhs)
+	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)
 }
 
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
@@ -395,7 +395,7 @@ export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
 const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
 
 export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
-	if(node.type !== Type.FunctionCall || node.flavor !== 'named') {
+	if(node.type !== RType.FunctionCall || node.flavor !== 'named') {
 		return false
 	}
 	return libraryFunctionCall.test(node.functionName.content)

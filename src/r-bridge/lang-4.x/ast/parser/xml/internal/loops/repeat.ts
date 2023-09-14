@@ -3,7 +3,7 @@ import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from '../structure'
-import { Type, RRepeatLoop } from '../../../../model'
+import { RType, RRepeatLoop, RawRType } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
@@ -17,7 +17,7 @@ import { executeHook, executeUnknownHook } from '../../hooks'
  * @returns The parsed {@link RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
  */
 export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): RRepeatLoop | undefined {
-	if(repeatToken.name !== Type.RepeatLoop) {
+	if(repeatToken.name !== RawRType.Repeat) {
 		parseLog.debug('encountered non-repeat token for supposed repeat-loop structure')
 		return executeUnknownHook(data.hooks.loops.onRepeatLoop.unknown, data, { repeatToken, body })
 	}
@@ -33,7 +33,7 @@ export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJ
 		content
 	} = retrieveMetaStructure(data.config, repeatToken.content)
 	const result: RRepeatLoop = {
-		type:   Type.RepeatLoop,
+		type:   RType.RepeatLoop,
 		location,
 		lexeme: content,
 		body:   ensureExpressionList(parseBody),

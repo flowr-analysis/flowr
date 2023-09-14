@@ -5,7 +5,7 @@ import {
 	RLogicalBinaryOpPool,
 	RUnaryOpPool,
 } from "../../../helper/provider"
-import { type RShell, Type, ComparisonOperators } from '../../../../src/r-bridge'
+import { type RShell, RType, ComparisonOperators } from '../../../../src/r-bridge'
 import { rangeFrom } from "../../../../src/util/range"
 
 describe("Parse simple operations",
@@ -21,14 +21,14 @@ describe("Parse simple operations",
 							shell,
 							simpleInput,
 							exprList({
-								type:     Type.UnaryOp,
+								type:     RType.UnaryOp,
 								operator: op.str,
 								flavor:   op.flavor,
 								lexeme:   op.str,
 								location: rangeFrom(1, 1, 1, 1 + opOffset),
 								info:     {},
 								operand:  {
-									type:     Type.Number,
+									type:     RType.Number,
 									location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
 									lexeme:   "42",
 									content:  numVal(42),
@@ -46,14 +46,14 @@ describe("Parse simple operations",
 				shell,
 				'? x',
 				exprList({
-					type:     Type.UnaryOp,
+					type:     RType.UnaryOp,
 					location: rangeFrom(1, 1, 1, 1),
 					operator: '?',
 					lexeme:   '?',
 					flavor:   'logical',
 					info:     {},
 					operand:  {
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(1, 3, 1, 3),
 						lexeme:    'x',
 						content:   'x',
@@ -88,21 +88,21 @@ describe("Parse simple operations",
 							shell,
 							simpleInput,
 							exprList({
-								type:     Type.BinaryOp,
+								type:     RType.BinaryOp,
 								operator: op,
 								lexeme:   op,
 								flavor:   "comparison",
 								location: rangeFrom(1, 3, 1, 3 + opOffset),
 								info:     {},
 								lhs:      {
-									type:     Type.Number,
+									type:     RType.Number,
 									location: rangeFrom(1, 1, 1, 1),
 									lexeme:   "1",
 									content:  numVal(1),
 									info:     {}
 								},
 								rhs: {
-									type:     Type.Number,
+									type:     RType.Number,
 									location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
 									lexeme:   "1",
 									content:  numVal(1),
@@ -120,34 +120,34 @@ describe("Parse simple operations",
 					shell,
 					'1 + # comment\n2',
 					exprList({// hoist children
-						type:     Type.ExpressionList,
+						type:     RType.ExpressionList,
 						location: rangeFrom(1, 1, 2, 1),
 						info:     {},
 						lexeme:   '1 + # comment\n2',
 						children: [
 							{
-								type:     Type.Comment,
+								type:     RType.Comment,
 								content:  " comment",
 								lexeme:   "# comment",
 								location: rangeFrom(1, 5, 1, 13),
 								info:     {}
 							},
 							{
-								type:     Type.BinaryOp,
+								type:     RType.BinaryOp,
 								flavor:   'arithmetic',
 								info:     {},
 								lexeme:   '+',
 								operator: '+',
 								location: rangeFrom(1, 3, 1, 3),
 								lhs:      {
-									type:     Type.Number,
+									type:     RType.Number,
 									content:  numVal(1),
 									info:     {},
 									lexeme:   "1",
 									location: rangeFrom(1, 1, 1, 1)
 								},
 								rhs: {
-									type:     Type.Number,
+									type:     RType.Number,
 									content:  numVal(2),
 									info:     {},
 									lexeme:   "2",
@@ -165,13 +165,13 @@ describe("Parse simple operations",
 					'1 %xx% 2',
 					exprList(
 						{
-							type:         Type.FunctionCall,
+							type:         RType.FunctionCall,
 							flavor:       'named',
 							infixSpecial: true,
 							info:         {},
 							lexeme:       '1 %xx% 2',
 							functionName: {
-								type:      Type.Symbol,
+								type:      RType.Symbol,
 								lexeme:    '%xx%',
 								content:   '%xx%',
 								namespace: undefined,
@@ -181,26 +181,26 @@ describe("Parse simple operations",
 							location:  rangeFrom(1, 3, 1, 6),
 							arguments: [
 								{
-									type:     Type.Argument,
+									type:     RType.Argument,
 									info:     {},
 									lexeme:   '1',
 									name:     undefined,
 									location: rangeFrom(1, 1, 1, 1),
 									value:    {
-										type:     Type.Number,
+										type:     RType.Number,
 										content:  numVal(1),
 										info:     {},
 										lexeme:   "1",
 										location: rangeFrom(1, 1, 1, 1)
 									}
 								}, {
-									type:     Type.Argument,
+									type:     RType.Argument,
 									info:     {},
 									lexeme:   '2',
 									name:     undefined,
 									location: rangeFrom(1, 8, 1, 8),
 									value:    {
-										type:     Type.Number,
+										type:     RType.Number,
 										content:  numVal(2),
 										info:     {},
 										lexeme:   "2",
@@ -222,21 +222,21 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 		const opOffset = op.str.length - 1
 		assertAst(simpleInput, shell, simpleInput, exprList(
 			{
-				type:     Type.BinaryOp,
+				type:     RType.BinaryOp,
 				operator: op.str,
 				lexeme:   op.str,
 				flavor:   op.flavor,
 				location: rangeFrom(1, 3, 1, 3 + opOffset),
 				info:     {},
 				lhs:      {
-					type:     Type.Number,
+					type:     RType.Number,
 					location: rangeFrom(1, 1, 1, 1),
 					lexeme:   '1',
 					content:  numVal(1),
 					info:     {}
 				},
 				rhs: {
-					type:     Type.Number,
+					type:     RType.Number,
 					location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
 					lexeme:   '1',
 					content:  numVal(1),
@@ -258,28 +258,28 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 		for(const defaultPrecedence of precedenceTests) {
 			assertAst(defaultPrecedence.input, shell, defaultPrecedence.input, exprList(
 				{
-					type:     Type.BinaryOp,
+					type:     RType.BinaryOp,
 					operator: op.str,
 					lexeme:   op.str,
 					flavor:   op.flavor,
 					location: rangeFrom(1, 7 + opOffset + defaultPrecedence.offsetC, 1, 7 + 2 * opOffset + defaultPrecedence.offsetC),
 					info:     {},
 					lhs:      {
-						type:     Type.BinaryOp,
+						type:     RType.BinaryOp,
 						operator: op.str,
 						lexeme:   op.str,
 						flavor:   op.flavor,
 						location: rangeFrom(1, 3 + defaultPrecedence.offsetL, 1, 3 + opOffset + defaultPrecedence.offsetL),
 						info:     {},
 						lhs:      {
-							type:     Type.Number,
+							type:     RType.Number,
 							location: rangeFrom(1, 1 + defaultPrecedence.offsetL, 1, 1 + defaultPrecedence.offsetL),
 							lexeme:   '1',
 							content:  numVal(1),
 							info:     {}
 						},
 						rhs: {
-							type:     Type.Number,
+							type:     RType.Number,
 							location: rangeFrom(1, 5 + opOffset + defaultPrecedence.offsetL, 1, 5 + opOffset + defaultPrecedence.offsetL),
 							lexeme:   '1',
 							content:  numVal(1),
@@ -287,7 +287,7 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 						}
 					},
 					rhs: {
-						type:     Type.Number,
+						type:     RType.Number,
 						location: rangeFrom(1, 9 + 2 * opOffset + defaultPrecedence.offsetR, 1, 10 + 2 * opOffset + defaultPrecedence.offsetR),
 						lexeme:   '42',
 						content:  numVal(42),
@@ -300,35 +300,35 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 		const invertedPrecedenceInput = `1 ${op.str} (1 ${op.str} 42)`
 		assertAst(invertedPrecedenceInput, shell, invertedPrecedenceInput, exprList(
 			{
-				type:     Type.BinaryOp,
+				type:     RType.BinaryOp,
 				operator: op.str,
 				lexeme:   op.str,
 				flavor:   op.flavor,
 				location: rangeFrom(1, 3, 1, 3 + opOffset),
 				info:     {},
 				lhs:      {
-					type:     Type.Number,
+					type:     RType.Number,
 					location: rangeFrom(1, 1, 1, 1),
 					content:  numVal(1),
 					lexeme:   '1',
 					info:     {}
 				},
 				rhs: {
-					type:     Type.BinaryOp,
+					type:     RType.BinaryOp,
 					operator: op.str,
 					lexeme:   op.str,
 					flavor:   op.flavor,
 					location: rangeFrom(1, 8 + opOffset, 1, 8 + 2 * opOffset),
 					info:     {},
 					lhs:      {
-						type:     Type.Number,
+						type:     RType.Number,
 						location: rangeFrom(1, 6 + opOffset, 1, 6 + opOffset),
 						content:  numVal(1),
 						lexeme:   '1',
 						info:     {}
 					},
 					rhs: {
-						type:     Type.Number,
+						type:     RType.Number,
 						location: rangeFrom(1, 10 + 2 * opOffset, 1, 11 + 2 * opOffset),
 						content:  numVal(42),
 						lexeme:   '42',

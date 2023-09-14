@@ -1,7 +1,7 @@
 import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '../input-format'
 import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from '../../../../../../util/range'
 import { XmlParserConfig } from '../config'
-import { RExpressionList, RNode, Type } from '../../../model'
+import { RawRType, RExpressionList, RNode, RType } from '../../../model'
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper
@@ -62,7 +62,7 @@ export function revertTokenReplacement(tokenMap: XmlParserConfig['tokenMap'], to
 	return tokenMap[token] ?? token
 }
 
-export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson, expectedName: string): void {
+export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson, expectedName: RawRType): void {
 	const name = getTokenType(tokenMap, obj)
 	if(name !== expectedName) {
 		throw new XmlParseError(`expected name to be ${expectedName}, yet received ${name} for ${JSON.stringify(obj)}`)
@@ -76,8 +76,8 @@ export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlB
  * @param tokenMap - used to revert token types (i.e., revert `xmlparsedata`)
  * @param content  - the json object to extract the token-type from
  */
-export function getTokenType(tokenMap: XmlParserConfig['tokenMap'], content: XmlBasedJson): string {
-	return revertTokenReplacement(tokenMap, getKeysGuarded(content, '#name'))
+export function getTokenType(tokenMap: XmlParserConfig['tokenMap'], content: XmlBasedJson): RawRType {
+	return revertTokenReplacement(tokenMap, getKeysGuarded(content, '#name')) as RawRType
 }
 
 export function getWithTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson[]) {
@@ -110,9 +110,9 @@ export function ensureChildrenAreLhsAndRhsOrdered(config: XmlParserConfig, first
 }
 
 export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<Info> {
-	if(node.type !== Type.ExpressionList) {
+	if(node.type !== RType.ExpressionList) {
 		return {
-			type:     Type.ExpressionList,
+			type:     RType.ExpressionList,
 			location: node.location,
 			info:     node.info,
 			lexeme:   undefined,

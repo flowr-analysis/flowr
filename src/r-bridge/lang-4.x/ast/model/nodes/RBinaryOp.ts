@@ -1,9 +1,9 @@
 import { Base, Location, NoInfo, RNode } from "../model"
-import { Type } from "../type"
+import { RType } from "../type"
 import { BinaryOperatorFlavor } from "../operators"
 
 export interface RBinaryOp<Info = NoInfo> extends Base<Info>, Location {
-	readonly type:   Type.BinaryOp;
+	readonly type:   RType.BinaryOp;
 	readonly flavor: BinaryOperatorFlavor;
 	operator:        string;
 	lhs:             RNode<Info>;

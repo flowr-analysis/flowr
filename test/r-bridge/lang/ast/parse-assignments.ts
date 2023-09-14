@@ -2,7 +2,7 @@ import { assertAst, withShell } from "../../../helper/shell"
 import { exprList, numVal } from "../../../helper/ast-builder"
 import { RAssignmentOpPool } from "../../../helper/provider"
 import { rangeFrom } from "../../../../src/util/range"
-import { Type } from '../../../../src/r-bridge'
+import { RType } from '../../../../src/r-bridge'
 
 describe("Parse simple assignments",
 	withShell((shell) => {
@@ -14,14 +14,14 @@ describe("Parse simple assignments",
 					shell,
 					`x ${op.str} 5`,
 					exprList({
-						type:     Type.BinaryOp,
+						type:     RType.BinaryOp,
 						location: rangeFrom(1, 3, 1, 3 + opOffset),
 						flavor:   "assignment",
 						lexeme:   op.str,
 						operator: op.str,
 						info:     {},
 						lhs:      {
-							type:      Type.Symbol,
+							type:      RType.Symbol,
 							location:  rangeFrom(1, 1, 1, 1),
 							namespace: undefined,
 							lexeme:    "x",
@@ -29,7 +29,7 @@ describe("Parse simple assignments",
 							info:      {}
 						},
 						rhs: {
-							type:     Type.Number,
+							type:     RType.Number,
 							location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
 							lexeme:   "5",
 							content:  numVal(5),
@@ -47,14 +47,14 @@ describe("Parse simple assignments",
 				shell,
 				`'a' <- 5`,
 				exprList({
-					type:     Type.BinaryOp,
+					type:     RType.BinaryOp,
 					location: rangeFrom(1, 5, 1, 6),
 					flavor:   "assignment",
 					lexeme:   '<-',
 					operator: '<-',
 					info:     {},
 					lhs:      {
-						type:      Type.Symbol,
+						type:      RType.Symbol,
 						location:  rangeFrom(1, 1, 1, 3),
 						namespace: undefined,
 						lexeme:    "'a'",
@@ -62,7 +62,7 @@ describe("Parse simple assignments",
 						info:      {}
 					},
 					rhs: {
-						type:     Type.Number,
+						type:     RType.Number,
 						location: rangeFrom(1, 8, 1, 8),
 						lexeme:   "5",
 						content:  numVal(5),

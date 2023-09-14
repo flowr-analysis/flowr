@@ -3,7 +3,7 @@ import { tryNormalizeSingleNode } from '../structure'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
-import { Type, RIfThenElse, RawRType } from '../../../../model'
+import { RType, RIfThenElse, RawRType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 /**
@@ -41,7 +41,7 @@ export function tryNormalizeIfThen(
 	const { location, content} = retrieveMetaStructure(data.config, tokens[0].content)
 
 	const result: RIfThenElse = {
-		type:      Type.IfThenElse,
+		type:      RType.IfThenElse,
 		condition: parsedCondition,
 		then:      ensureExpressionList(parsedThen),
 		location,

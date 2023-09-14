@@ -2,7 +2,7 @@ import { NamedXmlBasedJson } from '../../input-format'
 import { guard } from '../../../../../../../util/assert'
 import { retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
-import { isSymbol, Type, RSymbol, RLogical, RNode } from '../../../../model'
+import { isSymbol, RType, RSymbol, RLogical, RNode } from '../../../../model'
 import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { startAndEndsWith } from '../../../../../../../util/strings'
@@ -42,7 +42,7 @@ export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]):
 
 	if(namespace === undefined && (content === 'T' || content === 'F')) {
 		result = {
-			type:    Type.Logical,
+			type:    RType.Logical,
 			content: content === 'T',
 			location,
 			lexeme:  content,
@@ -54,7 +54,7 @@ export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]):
 		}
 	} else {
 		result = {
-			type:    Type.Symbol,
+			type:    RType.Symbol,
 			namespace,
 			location,
 			// remove backticks from symbol

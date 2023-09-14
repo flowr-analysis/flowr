@@ -1,7 +1,7 @@
 /**
  * Token types as they are produced by the R parser
  *
- * @see #Type
+ * @see #RType
  */
 export const enum RawRType {
 	/** T1 */
@@ -85,7 +85,7 @@ export const enum RawRType {
 	/** T40 */
 	Function = "FUNCTION",
 	/** T41 */
-	Lambda = "\\",
+	Lambda = "\\\\",
 	/** T42 */
 	DoubleBracketLeft = "LBB",
 	/** T43 */
@@ -145,7 +145,7 @@ export const enum RawRType {
  *
  * @see #RawRType
  */
-export const enum Type {
+export const enum RType {
 	/** {@link RAccess} */
 	Access = "RAccess",
 	/** {@link RArgument} */

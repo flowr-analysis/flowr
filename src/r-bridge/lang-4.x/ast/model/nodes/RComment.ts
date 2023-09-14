@@ -1,7 +1,7 @@
 import { Leaf, Location, NoInfo } from "../model"
-import { Type } from "../type"
+import { RType } from "../type"
 
 export interface RComment<Info = NoInfo> extends Location, Leaf<Info> {
-	readonly type: Type.Comment;
+	readonly type: RType.Comment;
 	content:       string;
 }

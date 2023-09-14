@@ -14,7 +14,7 @@ import {
 	NodeId,
 	NormalizedAst,
 	RNodeWithParent,
-	Type
+	RType
 } from '../../r-bridge'
 import { log } from '../../util/log'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
@@ -196,11 +196,11 @@ function addControlDependencies(source: NodeId, ast: DecoratedAstMap): Set<NodeI
 
 	let current = start
 	while(current !== undefined) {
-		if(current.type === Type.IfThenElse) {
+		if(current.type === RType.IfThenElse) {
 			addAllFrom(current.condition, collected)
-		} else if(current.type === Type.WhileLoop) {
+		} else if(current.type === RType.WhileLoop) {
 			addAllFrom(current.condition, collected)
-		} else if(current.type === Type.ForLoop) {
+		} else if(current.type === RType.ForLoop) {
 			addAllFrom(current.variable, collected)
 			// vector not needed, if required, it is  linked by defined-by
 		}

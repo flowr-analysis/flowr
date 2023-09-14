@@ -1,8 +1,8 @@
 import { Base, Location, NoInfo, RNode, WithChildren } from "../model"
-import { Type } from "../type"
+import { RType } from "../type"
 
 export interface RExpressionList<Info = NoInfo> extends WithChildren<Info, RNode<Info>>, Base<Info, string | undefined>, Partial<Location> {
-	readonly type:     Type.ExpressionList;
+	readonly type:     RType.ExpressionList;
 	readonly content?: string;
 }
 

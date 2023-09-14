@@ -4,7 +4,7 @@ import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { normalizeBasedOnType, splitComments } from '../structure'
 import { tryNormalizeFunctionCall, tryNormalizeFunctionDefinition } from '../functions'
-import { Type, RNode } from '../../../../model'
+import { RType, RNode } from '../../../../model'
 import { executeHook } from '../../hooks'
 import { tryNormalizeAccess } from '../access'
 import { normalizeComment } from '../other'
@@ -58,7 +58,7 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 		result = children[0]
 	} else {
 		result = {
-			type:   Type.ExpressionList,
+			type:   RType.ExpressionList,
 			location,
 			children,
 			lexeme: content,

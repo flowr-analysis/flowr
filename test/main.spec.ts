@@ -7,7 +7,7 @@ before(() => {
 	for(const logger of [log, serverLog]) {
 		logger.updateSettings(logger => {
 			if(!process.argv.includes('--verbose')) {
-				logger.settings.minLevel = LogLevel.error
+				logger.settings.minLevel = LogLevel.Error
 			} else {
 				log.logToFile()
 			}

@@ -1,28 +1,28 @@
 
 // noinspection JSUnusedGlobalSymbols
 export const enum FontStyles {
-	bold = 1,
-	faint = 2,
-	italic = 3,
-	underline = 4,
+	Bold = 1,
+	Faint = 2,
+	Italic = 3,
+	Underline = 4,
 }
 
 // noinspection JSUnusedGlobalSymbols
 export const enum Colors {
-	black = 0,
-	red = 1,
-	green = 2,
-	yellow = 3,
-	blue = 4,
-	magenta = 5,
-	cyan = 6,
-	white = 7
+	Black = 0,
+	Red = 1,
+	Green = 2,
+	Yellow = 3,
+	Blue = 4,
+	Magenta = 5,
+	Cyan = 6,
+	White = 7
 }
 
 // noinspection JSUnusedGlobalSymbols
 export enum ColorEffect {
-	foreground = 30,
-	background = 40,
+	Foreground = 30,
+	Background = 40,
 }
 
 export type FormatOptions = ColorFormatOptions | WeightFormatOptions | ColorFormatOptions & WeightFormatOptions
@@ -60,14 +60,14 @@ export const voidFormatter: OutputFormatter = new class implements OutputFormatt
  * This does not work if the {@link setFormatter | formatter} is void. Tries to format the text with a bold font weight.
  */
 export function italic(s: string, f: OutputFormatter = formatter, options?: FormatOptions): string {
-	return f.format(s, { style: FontStyles.italic, ...options })
+	return f.format(s, { style: FontStyles.Italic, ...options })
 }
 
 /**
  * This does not work if the {@link setFormatter | formatter} is void. Tries to format the text with an italic font shape.
  */
 export function bold(s: string, f: OutputFormatter = formatter, options?: FormatOptions): string {
-	return f.format(s, { style: FontStyles.bold, ...options })
+	return f.format(s, { style: FontStyles.Bold, ...options })
 }
 
 export const escape = '\x1b['

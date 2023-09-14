@@ -4,7 +4,7 @@ import { isNotUndefined } from '../../util/assert'
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../statistics'
 
 function grayOut(): string {
-	return ansiFormatter.getFormatString({ color: Colors.white, effect: ColorEffect.foreground, style: FontStyles.faint })
+	return ansiFormatter.getFormatString({ color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Faint })
 }
 
 function mergeJointRangesInSorted(loc: { location: SourceRange; selected: boolean }[]) {
@@ -22,8 +22,8 @@ function mergeJointRangesInSorted(loc: { location: SourceRange; selected: boolea
 }
 
 function highlight(s: string, selected: boolean): string {
-	const primary = ansiFormatter.format(s, {color: Colors.yellow, effect: ColorEffect.foreground,  style: FontStyles.bold })
-	return selected ? ansiFormatter.format(primary, { style: FontStyles.underline }) : primary
+	const primary = ansiFormatter.format(s, {color: Colors.Yellow, effect: ColorEffect.Foreground,  style: FontStyles.Bold })
+	return selected ? ansiFormatter.format(primary, { style: FontStyles.Underline }) : primary
 }
 
 export function sliceDiffAnsi(slice: Set<NodeId>, normalized: NormalizedAst, criteriaIds: Set<NodeId>, originalCode: string) {

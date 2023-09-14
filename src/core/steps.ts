@@ -55,7 +55,7 @@ export const STEPS_PER_FILE = {
 		processor:   retrieveXmlFromRCode,
 		required:    'once-per-file',
 		printer:     {
-			[StepOutputFormat.internal]: internalPrinter
+			[StepOutputFormat.Internal]: internalPrinter
 		}
 	} satisfies IStep<typeof retrieveXmlFromRCode>,
 	'normalize': {
@@ -63,7 +63,7 @@ export const STEPS_PER_FILE = {
 		processor:   normalize,
 		required:    'once-per-file',
 		printer:     {
-			[StepOutputFormat.internal]: internalPrinter
+			[StepOutputFormat.Internal]: internalPrinter
 		}
 	} satisfies IStep<typeof normalize>,
 	'dataflow': {
@@ -71,7 +71,7 @@ export const STEPS_PER_FILE = {
 		processor:   produceDataFlowGraph,
 		required:    'once-per-file',
 		printer:     {
-			[StepOutputFormat.internal]: internalPrinter
+			[StepOutputFormat.Internal]: internalPrinter
 		}
 	} satisfies IStep<typeof produceDataFlowGraph>
 } as const
@@ -82,7 +82,7 @@ export const STEPS_PER_SLICE = {
 		processor:   staticSlicing,
 		required:    'once-per-slice',
 		printer:     {
-			[StepOutputFormat.internal]: internalPrinter
+			[StepOutputFormat.Internal]: internalPrinter
 		}
 	} satisfies IStep<typeof staticSlicing>,
 	'reconstruct': {
@@ -90,7 +90,7 @@ export const STEPS_PER_SLICE = {
 		processor:   reconstructToCode,
 		required:    'once-per-slice',
 		printer:     {
-			[StepOutputFormat.internal]: internalPrinter
+			[StepOutputFormat.Internal]: internalPrinter
 		}
 	} satisfies IStep<typeof reconstructToCode>
 } as const
@@ -100,9 +100,9 @@ export const LAST_PER_FILE_STEP = 'dataflow' as const
 export const LAST_STEP = 'reconstruct' as const
 
 export type StepName = keyof typeof STEPS
-export type Step<name extends StepName> = typeof STEPS[name]
-export type StepProcessor<name extends StepName> = Step<name>['processor']
-export type StepResult<name extends StepName> = Awaited<ReturnType<StepProcessor<name>>>
+export type Step<Name extends StepName> = typeof STEPS[Name]
+export type StepProcessor<Name extends StepName> = Step<Name>['processor']
+export type StepResult<Name extends StepName> = Awaited<ReturnType<StepProcessor<Name>>>
 
 export function executeSingleSubStep<Name extends StepName, Processor extends StepProcessor<Name>>(subStep: Name, ...input: Parameters<Processor>): ReturnType<Processor> {
 	// @ts-expect-error - this is safe, as we know that the function arguments are correct by 'satisfies', this saves an explicit cast with 'as'

@@ -56,7 +56,7 @@ function lastElementInNesting(i: number, list: Readonly<DepthList>, depth: numbe
 
 
 function initialIndentation(i: number, depth: number, deadDepths: Set<number>, nextDepth: number, list: Readonly<DepthList>, f: OutputFormatter): string {
-	let result = `${i === 0 ? '' : '\n'}${f.getFormatString({ style: FontStyles.faint })}`
+	let result = `${i === 0 ? '' : '\n'}${f.getFormatString({ style: FontStyles.Faint })}`
 	// we know there never is something on the same level as the expression list
 	for(let d = 1; d < depth; d++) {
 		result += deadDepths.has(d) ? '  ' : '│ '
@@ -108,10 +108,10 @@ function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig,
 		const type = getTokenType(config.tokenMap, node)
 
 		if(leaf) {
-			const suffix = `${f.format(content ? JSON.stringify(content) : '', { style: FontStyles.bold })}${f.format(location, { style: FontStyles.italic })}`
+			const suffix = `${f.format(content ? JSON.stringify(content) : '', { style: FontStyles.Bold })}${f.format(location, { style: FontStyles.Italic })}`
 			result += `${type} ${suffix}`
 		} else {
-			result += f.format(type, { style: FontStyles.bold })
+			result += f.format(type, { style: FontStyles.Bold })
 		}
 
 		i ++

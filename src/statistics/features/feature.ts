@@ -50,7 +50,7 @@ export const ALL_FEATURES = {
 } as const
 
 export type FeatureKey = keyof typeof ALL_FEATURES
-export type FeatureValue<k extends FeatureKey> = ReturnType<typeof ALL_FEATURES[k]['process']>
+export type FeatureValue<K extends FeatureKey> = ReturnType<typeof ALL_FEATURES[K]['process']>
 
 /** If the user passes `all`, this should be every feature present in {@link ALL_FEATURES} (see {@link allFeatureNames})*/
 export type FeatureSelection = Set<FeatureKey>

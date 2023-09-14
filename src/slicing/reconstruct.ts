@@ -481,7 +481,7 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 		return result
 	}
 	const result = foldAstStateful(ast.ast, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
-	if(reconstructLogger.settings.minLevel >= LogLevel.trace) {
+	if(reconstructLogger.settings.minLevel >= LogLevel.Trace) {
 		reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
 	}
 	if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {

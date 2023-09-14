@@ -185,16 +185,16 @@
       "@typescript-eslint/naming-convention": [
         "error",
         {
-          "selector": "default",
-          "format": [
-            "camelCase"
-          ],
+          "selector": "variable",
+          "modifiers": ["const", "global", "exported" ],
+          "format": [ "camelCase","PascalCase", "UPPER_CASE" ],
           "leadingUnderscore": "allow",
           "trailingUnderscore": "allow"
         },
         {
           "selector": "variable",
-          "format": [ "camelCase", "UPPER_CASE" ],
+          "modifiers": ["const"],
+          "format": [ "camelCase", "PascalCase" ],
           "leadingUnderscore": "allow",
           "trailingUnderscore": "allow"
         },

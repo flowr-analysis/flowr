@@ -101,7 +101,7 @@ describe('RShell sessions', function() {
 		installationTestSpec()
 	})
 	describe('autoload on package install', () => {
-		log.updateSettings(l => { l.settings.minLevel = LogLevel.debug })
+		log.updateSettings(l => { l.settings.minLevel = LogLevel.Debug })
 		testWithShell('package is loaded', async shell => {
 			const pkg = 'xmlparsedata'
 			shell.tryToInjectHomeLibPath()

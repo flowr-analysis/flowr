@@ -1,7 +1,7 @@
 import { Base, Location, NoInfo, RNode } from '../model'
 import { RType } from '../type'
-import { RSymbol } from './RSymbol'
-import { RExpressionList } from './RExpressionList'
+import { RSymbol } from './r-symbol'
+import { RExpressionList } from './r-expression-list'
 
 /**
  * ```ts

@@ -1,4 +1,4 @@
 export * from './clusterer'
-export * from './postProcessOutput'
+export * from './post-process-output'
 export * from './histogram'
-export * from './fileBasedCount'
+export * from './file-based-count'

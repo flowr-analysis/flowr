@@ -84,7 +84,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 				}
 			}
 		}
-		if(arg.type === RType.Argument && arg.name !== undefined) {
+		if(arg.type as RType === RType.Argument && arg.name !== undefined) {
 			argEnv = define(
 				{ ...processed.out[0], definedAt: arg.info.id, kind: 'argument' },
 				LocalScope,

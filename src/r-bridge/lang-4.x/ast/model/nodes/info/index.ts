@@ -11,6 +11,6 @@
 
 import { RNode } from '../../model'
 
-export * from './RDelimiter'
+export * from './r-delimiter'
 
 export type OtherInfoNode = RNode

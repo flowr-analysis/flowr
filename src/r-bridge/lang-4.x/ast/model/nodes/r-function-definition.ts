@@ -1,7 +1,7 @@
 import { Base, Location, NoInfo } from "../model"
 import { RType } from "../type"
-import { RParameter } from './RParameter'
-import { RExpressionList } from './RExpressionList'
+import { RParameter } from './r-parameter'
+import { RExpressionList } from './r-expression-list'
 
 export interface RFunctionDefinition<Info = NoInfo> extends Base<Info>, Location {
 	readonly type: RType.FunctionDefinition;

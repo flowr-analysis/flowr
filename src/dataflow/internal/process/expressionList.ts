@@ -126,6 +126,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		// use the current environments for processing
 		data = { ...data, environments }
 		const processed = processDataflowFor(expression, data)
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
 		if(!foundNextOrBreak) {
 			visit(expression, n => {
 				if(n.type === Type.Next || n.type === Type.Break) {
@@ -136,6 +137,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		}
 		// if the expression contained next or break anywhere before the next loop, the overwrite should be an append because we do not know if the rest is executed
 		// update the environments for the next iteration with the previous writes
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
 		if(foundNextOrBreak) {
 			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environments)
 			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environments)

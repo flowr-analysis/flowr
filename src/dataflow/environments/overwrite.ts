@@ -15,6 +15,7 @@ function anyIsMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
 		if(used === 'maybe') {
 			return true
 		}
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case we want to add more attributes in the future
 		if(used !== attr) {
 			same = false
 		}

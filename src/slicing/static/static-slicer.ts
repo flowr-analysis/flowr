@@ -222,8 +222,7 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvi
 		}
 	}
 
-	const activeEnvironment = overwriteEnvironments(baseEnvironment, callerEnvironment)
-	return activeEnvironment
+	return overwriteEnvironments(baseEnvironment, callerEnvironment)
 }
 
 //// returns the new threshold hit count

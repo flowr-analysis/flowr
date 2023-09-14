@@ -18,7 +18,7 @@ export interface FileAnalysisRequestMessage extends IdMessageBase {
 	 * However, the name is only for debugging and bears no semantic meaning.
 	 */
 	filename?: string,
-	/** The contents of the file, or a R expression itself (like `1 + 1`), give either this or the `filepath`. */
+	/** The contents of the file, or an R expression itself (like `1 + 1`), give either this or the `filepath`. */
 	content?:  string
 	/** The filepath on the local machine, accessible to flowR, or simply. Give either this or the `content` */
 	filepath?: string

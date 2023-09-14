@@ -181,7 +181,34 @@
           "varsIgnorePattern": "^_"
         }
       ],
-      "tsdoc/syntax": "error"
+      "tsdoc/syntax": "error",
+      "@typescript-eslint/naming-convention": [
+        "error",
+        {
+          "selector": "default",
+          "format": [
+            "camelCase"
+          ],
+          "leadingUnderscore": "allow",
+          "trailingUnderscore": "allow"
+        },
+        {
+          "selector": "variable",
+          "format": [ "camelCase", "UPPER_CASE" ],
+          "leadingUnderscore": "allow",
+          "trailingUnderscore": "allow"
+        },
+        {
+          "selector": "enumMember",
+          "format": [ "StrictPascalCase" ],
+          "leadingUnderscore": "forbid",
+          "trailingUnderscore": "forbid"
+        },
+        {
+          "selector": "typeLike",
+          "format": [ "PascalCase" ]
+        }
+      ]
     }
   },
   "devDependencies": {

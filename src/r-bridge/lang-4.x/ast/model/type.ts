@@ -1,9 +1,11 @@
 import { assertUnreachable } from '../../../../util/assert'
 
 /**
- * TokenTypes as they are produced by the R parser
+ * Token types as they are produced by the R parser
+ *
+ * @see #Type
  */
-export const enum RawR {
+export const enum RawRType {
 	/** T1 */
 	NullConst = "NULL_CONST",
 	/** T2 */
@@ -71,11 +73,11 @@ export const enum RawR {
 	/** T33 */
 	For = "FOR",
 	/** T34 */
-	ForCond = "forcond",
+	ForCondition = "forcond",
 	/** T35 */
 	If = "IF",
 	/** T36 */
-	In = "IN",
+	ForIn = "IN",
 	/** T37 */
 	Next = "NEXT",
 	/** T38 */
@@ -87,7 +89,7 @@ export const enum RawR {
 	/** T41 */
 	Lambda = "\\",
 	/** T42 */
-	Lbb = "LBB",
+	DoubleBracketLeft = "LBB",
 	/** T43 */
 	Slot = "SLOT",
 	/** T44 */
@@ -129,167 +131,78 @@ export const enum RawR {
 	/** T62 */
 	BraceRight = "}",
 	/** T63 */
-	Expr = "expr",
-	/** T64 */
+	Expression = "expr",
+	/** T64
+	 *
+	 * https://github.com/REditorSupport/languageserver/issues/327
+	 * https://github.com/REditorSupport/languageserver/pull/328
+	 */
 	ExprOfAssignOrHelp = "expr_or_assign_or_help",
 	/** T65 */
 	Exprlist = "exprlist",
 }
 
 /**
- * Represents the types known by R (i.e., it may contain more or others than the ones we use)
+ * Types as we use them for our normalized AST
+ *
+ * @see #RawRType
  */
 export const enum Type {
-	/** `[`, `[[`, `$`, and `@` */
-	Access = "access",
-	ExpressionList = "exprlist",
-	Expression = "expr",
-	/*
-   * https://github.com/REditorSupport/languageserver/issues/327
-   * https://github.com/REditorSupport/languageserver/pull/328
-   */
-	ExprHelpAssignWrapper = "expr_or_assign_or_help",
-	Symbol = "SYMBOL",
-	SymbolFormals = "SYMBOL_FORMALS",
-	SymbolNamedFormals = "SYMBOL_SUB",
-	/* will be represented as a number in R */
-	Logical = "boolean",
-	/* this will be a symbol for us */
-	Null = "NULL_CONST",
-	Number = "NUM_CONST",
-	String = "STR_CONST",
-	BinaryOp = "binaryop",
-	UnaryOp = "unaryop",
-	LineDirective = "LINE_DIRECTIVE",
-	Comment = "COMMENT",
-	/* can be special operators like %*% or %o% */
-	Special = "SPECIAL",
-	// parens will be removed and dealt with as precedences/arguments automatically
-	ParenLeft = "(",
-	ParenRight = ")",
-	BraceLeft = "{",
-	BraceRight = "}",
-	DoubleBracketLeft = "LBB",
-	BracketLeft = "[",
-	BracketRight = "]",
-	Dollar = "$",
-	At = "@",
-	Slot = "SLOT",
-	Semicolon = ";",
-	For = "FOR",
-	ForCondition = "forcond",
-	ForIn = "IN",
-	Repeat = "REPEAT",
-	While = "WHILE",
-	If = "IF",
-	Else = "ELSE",
-	Pipe = "PIPE",
-	Comma = ",",
-	FunctionCall = "SYMBOL_FUNCTION_CALL",
-	FunctionDefinition = "FUNCTION",
-	LambdaFunctionDefinition = "\\\\",
-	SymbolPackage = "SYMBOL_PACKAGE",
-	NamespaceGet = "NS_GET",
-	Break = "BREAK",
-	Next = "NEXT",
-	EqFormals = "EQ_FORMALS",
-	EqNamedArgument = "EQ_SUB",
-	Parameter = "Parameter",
-	Argument = "Argument",
-	Delimiter = "Delimiter"
-}
-
-/**
- * Returns the name of the corresponding interface if there is one. Otherwise, this throws an error.
- */
-export function mapTypeToNormalizedName(type: Type): string {
-	switch(type) {
-		case Type.Access:
-			return "RAccess"
-		case Type.Argument:
-			return "RArgument"
-		case Type.BinaryOp:
-			return "RBinaryOp"
-		case Type.Break:
-			return "RBreak"
-		case Type.Comment:
-			return "RComment"
-		case Type.ExpressionList:
-			return "RExpressionList"
-		case Type.For:
-			return "RForLoop"
-		case Type.FunctionCall:
-			return "RFunctionCall"
-		case Type.FunctionDefinition:
-			return "RFunctionDefinition"
-		case Type.If:
-			return "RIfThenElse"
-		case Type.LineDirective:
-			return "RLineDirective"
-		case Type.Logical:
-			return "RLogical"
-		case Type.Next:
-			return "RNext"
-		case Type.Number:
-			return "RNumber"
-		case Type.Parameter:
-			return "RParameter"
-		case Type.Pipe:
-			return "RPipe"
-		case Type.Repeat:
-			return "RRepeatLoop"
-		case Type.String:
-			return "RString"
-		case Type.Symbol:
-			return "RSymbol"
-		case Type.UnaryOp:
-			return "RUnaryOp"
-		case Type.While:
-			return "RWhileLoop"
-		case Type.Expression:
-		case Type.Null:
-		case Type.ExprHelpAssignWrapper:
-		case Type.SymbolFormals:
-		case Type.SymbolNamedFormals:
-		case Type.Special:
-		case Type.ParenLeft:
-		case Type.ParenRight:
-		case Type.BraceLeft:
-		case Type.BraceRight:
-		case Type.DoubleBracketLeft:
-		case Type.BracketLeft:
-		case Type.BracketRight:
-		case Type.Dollar:
-		case Type.At:
-		case Type.Slot:
-		case Type.Semicolon:
-		case Type.ForCondition:
-		case Type.ForIn:
-		case Type.Else:
-		case Type.Comma:
-		case Type.LambdaFunctionDefinition:
-		case Type.SymbolPackage:
-		case Type.NamespaceGet:
-		case Type.EqFormals:
-		case Type.EqNamedArgument:
-		case Type.Delimiter:
-			throw new Error(`Type ${type} is not a valid normalized type`)
-		default:
-			assertUnreachable(type)
-	}
+	/** {@link RAccess} */
+	Access = "RAccess",
+	/** {@link RArgument} */
+	Argument = "RArgument",
+	/** {@link RBinaryOp} */
+	BinaryOp = "RBinaryOp",
+	/** {@link RExpressionList} */
+	ExpressionList = "RExpressionList",
+	/** {@link RForLoop} */
+	ForLoop = "RForLoop",
+	/** {@link RFunctionCall} */
+	FunctionCall = "RFunctionCall",
+	/** {@link RFunctionDefinition} */
+	FunctionDefinition = "RFunctionDefinition",
+	/** {@link RIfThenElse} */
+	IfThenElse = "RIfThenElse",
+	/** {@link RParameter} */
+	Parameter = "RParameter",
+	/** {@link RPipe} */
+	Pipe = "RPipe",
+	/** {@link RRepeatLoop} */
+	RepeatLoop = "RRepeatLoop",
+	/** {@link RUnaryOp} */
+	UnaryOp = "RUnaryOp",
+	/** {@link RWhileLoop} */
+	WhileLoop = "RWhileLoop",
+	/** {@link RBreak} */
+	Break = "RBreak",
+	/** {@link RComment} */
+	Comment = "RComment",
+	/** {@link RLineDirective} */
+	LineDirective = "RLineDirective",
+	/** {@link RLogical} */
+	Logical = "RLogical",
+	/** {@link RNext} */
+	Next = "RNext",
+	/** {@link RNumber} */
+	Number = "RNumber",
+	/** {@link RString} */
+	String = "RString",
+	/** {@link RSymbol} */
+	Symbol = "RSymbol",
 }
 
 /**
  * Validates, whether the given type can be used as a symbol in R
  *
- * @see Type
+ * @see RawRType
  */
 export function isSymbol(type: string): boolean {
 	return (
-		type === Type.Symbol ||
-    type === Type.SymbolPackage ||
-    type === Type.FunctionCall ||
-    type === Type.Null ||
-    type === Type.Slot
+		type === RawRType.Symbol ||
+    type === RawRType.SymbolPackage ||
+    type === RawRType.SymbolFunctionCall ||
+    type === RawRType.NullConst ||
+    type === RawRType.Slot
 	)
 }

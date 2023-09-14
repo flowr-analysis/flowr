@@ -1,4 +1,4 @@
-import { mapTypeToNormalizedName, NodeId, NoInfo, RNodeWithParent, RoleInParent, visit } from '../r-bridge'
+import { NodeId, NoInfo, RNodeWithParent, RoleInParent, visit } from '../r-bridge'
 import { SourceRange } from './range'
 import {
 	BuiltIn,
@@ -231,7 +231,7 @@ export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDif
 export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = ''): string {
 	let output = prefix + 'flowchart TD\n'
 	visit(ast, (n, context) => {
-		const name = `${mapTypeToNormalizedName(n.type)} (${n.info.id})\\n${n.lexeme ?? ' '}`
+		const name = `${n.type} (${n.info.id})\\n${n.lexeme ?? ' '}`
 		output += `    n${n.info.id}(["${name}"])\n`
 		if(n.info.parent !== undefined) {
 			const roleSuffix = context.role === RoleInParent.ExpressionListChild || context.role === RoleInParent.FunctionCallArgument || context.role === RoleInParent.FunctionDefinitionParameter ? `-${context.index}` : ''

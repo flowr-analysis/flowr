@@ -34,12 +34,12 @@ function visitExitPoints<OtherInfo>(node: RNode<OtherInfo & ParentInformation>):
 		case Type.FunctionDefinition:
 			// do not further investigate
 			break
-		case Type.For:
-		case Type.While:
-		case Type.Repeat:
+		case Type.ForLoop:
+		case Type.WhileLoop:
+		case Type.RepeatLoop:
 			// loops return invisible null, as we do not trace values, but they may contain return statements
 			return visitLoops(node)
-		case Type.If:
+		case Type.IfThenElseThenElse:
 			return visitIf(node)
 		case Type.Pipe:
 		case Type.BinaryOp:
@@ -87,10 +87,10 @@ function visitLoops<OtherInfo>(loop: RLoopConstructs<OtherInfo & ParentInformati
 	const result = visitExitPoints(loop.body)
 	// conditions may contain return statements which we have to keep
 	let otherKnownIds: NodeId[] = []
-	if(loop.type === Type.For) {
+	if(loop.type === Type.ForLoop) {
 		otherKnownIds = visitExitPoints(loop.variable).knownIds
 		otherKnownIds.push(...visitExitPoints(loop.vector).knownIds)
-	} else if(loop.type === Type.While) {
+	} else if(loop.type === Type.WhileLoop) {
 		otherKnownIds = visitExitPoints(loop.condition).knownIds
 	}
 	return {

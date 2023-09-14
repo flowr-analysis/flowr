@@ -2,7 +2,7 @@ import { NamedXmlBasedJson } from '../input-format'
 import { retrieveMetaStructure } from './meta'
 import { parseLog } from '../parser'
 import { ParserData } from '../data'
-import { Type, RAccess, RNode, RArgument } from '../../../model'
+import { Type, RAccess, RNode, RArgument, RawRType } from '../../../model'
 import { executeHook, executeUnknownHook } from '../hooks'
 import { normalizeBasedOnType } from './structure'
 import { guard } from '../../../../../../util/assert'
@@ -32,17 +32,17 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 	let closingLength = 0
 
 	switch(accessOp.name) {
-		case Type.BracketLeft:
+		case RawRType.BracketLeft:
 			operator = '['
 			closingLength = 1
 			break
-		case Type.Dollar:
+		case RawRType.Dollar:
 			operator = '$'
 			break
-		case Type.At:
+		case RawRType.At:
 			operator = '@'
 			break
-		case Type.DoubleBracketLeft:
+		case RawRType.DoubleBracketLeft:
 			operator = '[['
 			closingLength = 2
 			break
@@ -52,7 +52,7 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 	}
 
 	const accessed = mappedWithName[0]
-	if(accessed.name !== Type.Expression && accessed.name !== Type.ExprHelpAssignWrapper) {
+	if(accessed.name !== RawRType.Expression && accessed.name !== RawRType.ExprOfAssignOrHelp) {
 		parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${accessed.name}`)
 		return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
 	}
@@ -67,7 +67,7 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 
 	parseLog.trace(`${remaining.length} remaining arguments for access`)
 
-	const splitAccessOnComma = splitArrayOn(remaining, x => x.name === Type.Comma)
+	const splitAccessOnComma = splitArrayOn(remaining, x => x.name === RawRType.Comma)
 
 	const parsedAccess: (RNode | null)[] = splitAccessOnComma.map(x => {
 		if(x.length === 0) {

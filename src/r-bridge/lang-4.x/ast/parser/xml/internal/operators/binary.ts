@@ -10,7 +10,7 @@ import {
 	BinaryOperatorFlavor,
 	ComparisonOperatorsRAst,
 	LogicalOperatorsRAst,
-	ModelFormulaOperatorsRAst,
+	ModelFormulaOperatorsRAst, RawRType,
 	RBinaryOp, RFunctionCall, RNamedFunctionCall,
 	RNode,
 	RPipe,
@@ -32,7 +32,7 @@ export function tryNormalizeBinary(
 ): RNode | undefined {
 	parseLog.trace(`binary op for ${lhs.name} [${operator.name}] ${rhs.name}`)
 	let flavor: BinaryOperatorFlavor | 'special' | 'pipe'
-	if(Type.Special === operator.name) {
+	if(RawRType.Special === operator.name) {
 		flavor = "special"
 	} else if(ArithmeticOperatorsRAst.has(operator.name)) {
 		flavor = "arithmetic"

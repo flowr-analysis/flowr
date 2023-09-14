@@ -109,7 +109,7 @@ describe('Parse simple constructs', withShell(shell => {
 					for(const variant of pool.variants) {
 						const strNum = `${variant.num}`
 						assertAst(JSON.stringify(variant.str), shell, variant.str, exprList({
-							type:      Type.If,
+							type:      Type.IfThenElse,
 							location:  rangeFrom(1, 1, 1, 2),
 							lexeme:    'if',
 							info:      {},
@@ -148,7 +148,7 @@ describe('Parse simple constructs', withShell(shell => {
 								const elseNum = `${elseVariant.num}`
 								const input = `${ifThenVariant.str}${elseVariant.str}`
 								assertAst('if-then-else', shell, input, exprList({
-									type:      Type.If,
+									type:      Type.IfThenElse,
 									location:  rangeFrom(1, 1, 1, 2),
 									lexeme:    'if',
 									info:      {},

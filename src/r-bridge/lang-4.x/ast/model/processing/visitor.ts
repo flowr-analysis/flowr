@@ -70,7 +70,7 @@ function visitSingle<OtherInfo>(node: RNode<OtherInfo>, onVisit: OnVisit<OtherIn
 		case Type.Repeat:
 			visit(node.body, onVisit, { role: RoleInParent.RepeatBody, index: 0 })
 			break
-		case Type.If:
+		case Type.IfThenElse:
 			visit(node.condition, onVisit, { role: RoleInParent.IfCondition, index: 0 })
 			visit(node.then, onVisit, { role: RoleInParent.IfThen, index: 1 })
 			visit(node.otherwise, onVisit, { role: RoleInParent.IfOtherwise, index: 2 })

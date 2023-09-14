@@ -137,7 +137,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 			return folds.loop.foldNext(ast, down)
 		case Type.Break:
 			return folds.loop.foldBreak(ast, down)
-		case Type.If:
+		case Type.IfThenElse:
 			return folds.foldIfThenElse(ast, foldAstStateful(ast.condition, down, folds), foldAstStateful(ast.then, down, folds), ast.otherwise === undefined ? undefined : foldAstStateful(ast.otherwise, down, folds), down)
 		case Type.ExpressionList:
 			return folds.foldExprList(ast, ast.children.map(expr => foldAstStateful(expr, down, folds)), down)

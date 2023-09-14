@@ -12,7 +12,7 @@ import {
 	tryNormalizeWhile
 } from '../loops'
 import { tryNormalizeIfThenElse, tryNormalizeIfThen } from '../control'
-import { Type, RNode } from '../../../../model'
+import { Type, RNode, RawRType } from '../../../../model'
 import { log } from '../../../../../../../util/log'
 import { normalizeComment } from '../other'
 
@@ -142,7 +142,7 @@ export function normalizeBasedOnType(
 
 	const splitOnSemicolon = splitArrayOn(
 		mappedWithName,
-		({ name }) => name === Type.Semicolon
+		({ name }) => name === RawRType.Semicolon
 	)
 
 	if(splitOnSemicolon.length > 1) {

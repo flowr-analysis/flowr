@@ -68,7 +68,7 @@ max
 					},
 				},
 				{
-					type:      Type.If,
+					type:      Type.IfThenElse,
 					lexeme:    "if",
 					location:  rangeFrom(4, 1, 4, 2),
 					info:      {},

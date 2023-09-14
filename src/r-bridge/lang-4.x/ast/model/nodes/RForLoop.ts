@@ -9,7 +9,7 @@ import { RExpressionList } from './RExpressionList'
  * ```
  */
 export interface RForLoop<Info = NoInfo> extends Base<Info>, Location {
-	readonly type: Type.For
+	readonly type: Type.ForLoop
 	/** variable used in for-loop: <p> `for(<variable> in ...) ...`*/
 	variable:      RSymbol<Info>
 	/** vector used in for-loop: <p> `for(... in <vector>) ...`*/

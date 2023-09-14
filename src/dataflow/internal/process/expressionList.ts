@@ -132,7 +132,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 				if(n.type === Type.Next || n.type === Type.Break) {
 					foundNextOrBreak = true
 				}
-				return n.type === Type.For || n.type === Type.While || n.type === Type.Repeat || n.type === Type.FunctionDefinition
+				return n.type === Type.ForLoop || n.type === Type.WhileLoop || n.type === Type.RepeatLoop || n.type === Type.FunctionDefinition
 			})
 		}
 		// if the expression contained next or break anywhere before the next loop, the overwrite should be an append because we do not know if the rest is executed

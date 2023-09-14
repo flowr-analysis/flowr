@@ -10,7 +10,7 @@ import { guard } from "../../../../../../../util/assert"
 import { ParserData } from "../../data"
 import { tryNormalizeSymbol } from '../values'
 import { normalizeBasedOnType, tryNormalizeSingleNode } from '../structure'
-import { Type, RSymbol, RForLoop, RNode } from '../../../../model'
+import { Type, RSymbol, RForLoop, RNode, RawRType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 export function tryNormalizeFor(
@@ -20,12 +20,12 @@ export function tryNormalizeFor(
 	body: NamedXmlBasedJson
 ): RForLoop | undefined {
 	// funny, for does not use top-level parenthesis
-	if(forToken.name !== Type.For) {
+	if(forToken.name !== RawRType.For) {
 		parseLog.debug("encountered non-for token for supposed for-loop structure")
 		return executeUnknownHook(data.hooks.loops.onForLoop.unknown, data, { forToken, condition: head, body })
-	} else if(head.name !== Type.ForCondition) {
+	} else if(head.name !== RawRType.ForCondition) {
 		throw new XmlParseError(`expected condition for for-loop but found ${JSON.stringify(head)}`)
-	} else if(body.name !== Type.Expression && body.name !== Type.ExprHelpAssignWrapper) {
+	} else if(body.name !== RawRType.Expression && body.name !== RawRType.ExprOfAssignOrHelp) {
 		throw new XmlParseError(`expected expr body for for-loop but found ${JSON.stringify(body)}`)
 	}
 
@@ -59,7 +59,7 @@ export function tryNormalizeFor(
 	)
 
 	const result: RForLoop = {
-		type:     Type.For,
+		type:     Type.ForLoop,
 		variable: parsedVariable,
 		vector:   parsedVector,
 		body:     ensureExpressionList(parseBody),
@@ -80,7 +80,7 @@ function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { varia
 		name: getTokenType(data.config.tokenMap, content),
 		content
 	}))
-	const inPosition = children.findIndex(elem => elem.name === Type.ForIn)
+	const inPosition = children.findIndex(elem => elem.name === RawRType.ForIn)
 	guard(inPosition > 0 && inPosition < children.length - 1, () => `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`)
 	const variable = tryNormalizeSymbol(data, [children[inPosition - 1]])
 	guard(variable !== undefined, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)

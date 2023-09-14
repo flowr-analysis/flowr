@@ -13,7 +13,7 @@ import {
 	RNamedFunctionCall,
 	RNext,
 	RBreak,
-	RArgument
+	RArgument, RawRType
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { tryToNormalizeArgument } from './argument'
@@ -31,12 +31,12 @@ import { normalizeExpression } from '../expression'
  */
 export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | RNext | RBreak | undefined {
 	const fnBase = mappedWithName[0]
-	if(fnBase.name !== Type.Expression && fnBase.name !== Type.ExprHelpAssignWrapper) {
+	if(fnBase.name !== RawRType.Expression && fnBase.name !== RawRType.ExprOfAssignOrHelp) {
 		parseLog.trace(`expected function call name to be wrapped an expression, yet received ${fnBase.name}`)
 		return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
 	}
 
-	if(mappedWithName.length < 3 || mappedWithName[1].name !== Type.ParenLeft || mappedWithName[mappedWithName.length - 1].name !== Type.ParenRight) {
+	if(mappedWithName.length < 3 || mappedWithName[1].name !== RawRType.ParenLeft || mappedWithName[mappedWithName.length - 1].name !== RawRType.ParenRight) {
 		parseLog.trace(`expected function call to have parenthesis for a call, but was not`)
 		return undefined
 	}
@@ -73,8 +73,8 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 
 function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RArgument | undefined)[] {
 	const argContainer = mappedWithName.slice(1)
-	guard(argContainer.length > 1 && argContainer[0].name === Type.ParenLeft && argContainer[argContainer.length - 1].name === Type.ParenRight, `expected args in parenthesis`)
-	const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => x.name === Type.Comma)
+	guard(argContainer.length > 1 && argContainer[0].name === RawRType.ParenLeft && argContainer[argContainer.length - 1].name === RawRType.ParenRight, `expected args in parenthesis`)
+	const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => x.name === RawRType.Comma)
 	return splitArgumentsOnComma.map(x => {
 		parseLog.trace('trying to parse argument')
 		return tryToNormalizeArgument(data, x)

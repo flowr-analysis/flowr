@@ -148,7 +148,7 @@ function determineImpactOfSource<OtherInfo>(source: RNode<OtherInfo & ParentInfo
 			keepEndIds.push(n.info.id)
 			return true
 		}
-		return n.type === Type.For || n.type === Type.While || n.type === Type.Repeat
+		return n.type === Type.ForLoop || n.type === Type.WhileLoop || n.type === Type.RepeatLoop
 	})
 	)
 	for(const id of keepEndIds) {

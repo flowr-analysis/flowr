@@ -196,7 +196,7 @@ function addControlDependencies(source: NodeId, ast: DecoratedAstMap): Set<NodeI
 
 	let current = start
 	while(current !== undefined) {
-		if(current.type === Type.If) {
+		if(current.type === Type.IfThenElse) {
 			addAllFrom(current.condition, collected)
 		} else if(current.type === Type.While) {
 			addAllFrom(current.condition, collected)

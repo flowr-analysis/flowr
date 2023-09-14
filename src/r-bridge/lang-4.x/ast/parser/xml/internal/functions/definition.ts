@@ -1,6 +1,6 @@
 import { ParserData } from '../../data'
 import { NamedXmlBasedJson } from '../../input-format'
-import { Type, RParameter, RFunctionDefinition } from '../../../../model'
+import { Type, RParameter, RFunctionDefinition, RawRType } from '../../../../model'
 import { parseLog } from '../../parser'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
@@ -20,7 +20,7 @@ import { log } from '../../../../../../../util/log'
  */
 export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionDefinition | undefined {
 	const fnBase = mappedWithName[0]
-	if(fnBase.name !== Type.FunctionDefinition && fnBase.name !== Type.LambdaFunctionDefinition) {
+	if(fnBase.name !== RawRType.Function && fnBase.name !== RawRType.Lambda) {
 		parseLog.trace(`expected function definition to be identified by keyword, yet received ${fnBase.name}`)
 		return executeUnknownHook(data.hooks.functions.onFunctionDefinition.unknown, data, mappedWithName)
 	}
@@ -31,12 +31,12 @@ export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName:
 	const { content, location } = retrieveMetaStructure(data.config, fnBase.content)
 
 	const openParen = mappedWithName[1]
-	guard(openParen.name === Type.ParenLeft, () => `expected opening parenthesis, yet received ${openParen.name}`)
+	guard(openParen.name === RawRType.ParenLeft, () => `expected opening parenthesis, yet received ${openParen.name}`)
 
-	const closingParenIndex = mappedWithName.findIndex(x => x.name === Type.ParenRight)
+	const closingParenIndex = mappedWithName.findIndex(x => x.name === RawRType.ParenRight)
 	guard(closingParenIndex !== -1, () => `expected closing parenthesis, yet received ${JSON.stringify(mappedWithName)}`)
 
-	const splitParameters = splitArrayOn(mappedWithName.slice(2, closingParenIndex), x => x.name === Type.Comma)
+	const splitParameters = splitArrayOn(mappedWithName.slice(2, closingParenIndex), x => x.name === RawRType.Comma)
 
 	parseLog.trace(`function definition has ${splitParameters.length} parameters (by comma split)`)
 

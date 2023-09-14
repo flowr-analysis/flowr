@@ -762,7 +762,7 @@ await new SteppingSlicer({
   hooks: {
     values: {
       onString: {
-        after: () => { counter++; return undefined },
+        after: () => { counter++ },
       }
     }
   }
@@ -771,8 +771,7 @@ await new SteppingSlicer({
 // console.log(counter)
 ```
 
-The `before` hook is called before
-
+The `after` hook is called after the normalization has created the respective normalized string node, so we can be sure that the node was indeed a string! Besides incrementing the respective counter, we could return a value that the normalization should use instead (but we do not do that in this example). See the [documentation](https://code-inspect.github.io/flowr/doc/interfaces/src_r_bridge_lang_4_x_ast_parser_xml_hooks.XmlParserHooks.html) for more information.
 
 ### Generate Statistics with `extractUsageStatistics()`
 

@@ -1,6 +1,6 @@
 import { defaultTokenMap, retrieveNormalizedAst, withShell } from '../../../helper/shell'
 import { assert } from 'chai'
-import { getStoredTokenMap, ParserData, requestFromInput, XmlBasedJson } from '../../../../src/r-bridge'
+import { requestFromInput } from '../../../../src/r-bridge'
 import { SteppingSlicer } from '../../../../src/core'
 
 describe("Check hooks are called appropriately", withShell(shell => {

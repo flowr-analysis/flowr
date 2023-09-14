@@ -4,7 +4,7 @@ FROM node:20 AS builder
 
 WORKDIR /app
 
-COPY ./src/ /app/src/
+COPY ../src /app/src/
 COPY ./package*.json ./tsconfig.json /app/
 
 RUN npm install
@@ -20,7 +20,7 @@ WORKDIR /app
 RUN apk add --no-cache R
 
 # we keep the package.json for module resolution
-COPY package.json LICENSE /app/
+COPY ../package.json LICENSE /app/
 RUN npm install --only=production
 
 COPY --from=builder /app/dist/src /app/dist

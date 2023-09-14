@@ -21,7 +21,7 @@ jobs:
 
       - name: Build the image
         run: |
-          docker build -t flowr -f Dockerfile .
+          docker build -t flowr -f scripts/Dockerfile .
 
       - name: Test that the image works
         timeout-minutes: 5

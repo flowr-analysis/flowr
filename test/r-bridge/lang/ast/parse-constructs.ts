@@ -184,7 +184,7 @@ describe('Parse simple constructs', withShell(shell => {
 	describe('loops', () => {
 		describe('for', () => {
 			assertAst('for(i in 1:10) 2', shell, 'for(i in 1:42)2', exprList({
-				type:     Type.For,
+				type:     Type.ForLoop,
 				location: rangeFrom(1, 1, 1, 3),
 				lexeme:   'for',
 				info:     {},
@@ -230,7 +230,7 @@ describe('Parse simple constructs', withShell(shell => {
 		})
 		describe('repeat', () => {
 			assertAst('Single instruction repeat', shell, 'repeat 2', exprList({
-				type:     Type.Repeat,
+				type:     Type.RepeatLoop,
 				location: rangeFrom(1, 1, 1, 6),
 				lexeme:   'repeat',
 				info:     {},
@@ -243,7 +243,7 @@ describe('Parse simple constructs', withShell(shell => {
 				})
 			}))
 			assertAst('Two statement repeat', shell, 'repeat { x; y }', exprList({
-				type:     Type.Repeat,
+				type:     Type.RepeatLoop,
 				location: rangeFrom(1, 1, 1, 6),
 				lexeme:   'repeat',
 				info:     {},
@@ -272,7 +272,7 @@ describe('Parse simple constructs', withShell(shell => {
 		})
 		describe('while', () => {
 			assertAst('while (TRUE) 42', shell, 'while (TRUE) 42', exprList({
-				type:      Type.While,
+				type:      Type.WhileLoop,
 				location:  rangeFrom(1, 1, 1, 5),
 				lexeme:    'while',
 				info:      {},
@@ -293,7 +293,7 @@ describe('Parse simple constructs', withShell(shell => {
 			}))
 
 			assertAst('Two statement while', shell, 'while (FALSE) { x; y }', exprList({
-				type:      Type.While,
+				type:      Type.WhileLoop,
 				location:  rangeFrom(1, 1, 1, 5),
 				lexeme:    'while',
 				info:      {},
@@ -329,7 +329,7 @@ describe('Parse simple constructs', withShell(shell => {
 		})
 		describe('break', () => {
 			assertAst('while (TRUE) break', shell, 'while (TRUE) break', exprList({
-				type:      Type.While,
+				type:      Type.WhileLoop,
 				location:  rangeFrom(1, 1, 1, 5),
 				lexeme:    'while',
 				info:      {},
@@ -350,7 +350,7 @@ describe('Parse simple constructs', withShell(shell => {
 		})
 		describe('next', () => {
 			assertAst('Next in while', shell, 'while (TRUE) next', exprList({
-				type:      Type.While,
+				type:      Type.WhileLoop,
 				location:  rangeFrom(1, 1, 1, 5),
 				lexeme:    'while',
 				info:      {},

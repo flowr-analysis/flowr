@@ -1,5 +1,3 @@
-import { assertUnreachable } from '../../../../util/assert'
-
 /**
  * Token types as they are produced by the R parser
  *
@@ -9,15 +7,15 @@ export const enum RawRType {
 	/** T1 */
 	NullConst = "NULL_CONST",
 	/** T2 */
-	NumConst = "NUM_CONST",
+	NumericConst = "NUM_CONST",
 	/** T3 */
-	StrConst = "STR_CONST",
+	StringConst = "STR_CONST",
 	/** T4 */
-	EqAssign = "EQ_ASSIGN",
+	EqualAssign = "EQ_ASSIGN",
 	/** T5 */
-	EqFormals = "EQ_FORMALS",
+	EqualFormals = "EQ_FORMALS",
 	/** T6 */
-	EqSub = "EQ_SUB",
+	EqualSub = "EQ_SUB",
 	/** T7 */
 	LeftAssign = "LEFT_ASSIGN",
 	/** T8 */
@@ -139,7 +137,7 @@ export const enum RawRType {
 	 */
 	ExprOfAssignOrHelp = "expr_or_assign_or_help",
 	/** T65 */
-	Exprlist = "exprlist",
+	ExpressionList = "exprlist",
 }
 
 /**
@@ -190,6 +188,8 @@ export const enum Type {
 	String = "RString",
 	/** {@link RSymbol} */
 	Symbol = "RSymbol",
+	/* ------ special types ------ */
+	Delimiter = "RDelimiter",
 }
 
 /**

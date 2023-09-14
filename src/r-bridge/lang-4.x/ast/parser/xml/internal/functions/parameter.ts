@@ -65,7 +65,7 @@ export function tryNormalizeParameter(data: ParserData, objs: NamedXmlBasedJson[
 }
 
 function parseWithDefaultValue(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
-	guard(objs[1].name === RawRType.EqFormals, () => `[arg-default] second element of parameter must be ${RawRType.EqFormals}, but: ${JSON.stringify(objs)}`)
+	guard(objs[1].name === RawRType.EqualFormals, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`)
 	guard(objs[2].name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression but: ${JSON.stringify(objs)}`)
 	return tryNormalizeSingleNode(data, objs[2])
 }

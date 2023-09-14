@@ -119,11 +119,11 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 			return foldUnaryOp(ast, down, folds)
 		case Type.Access:
 			return folds.foldAccess(ast, foldAstStateful(ast.accessed, down, folds), ast.operator === '[' || ast.operator === '[[' ? ast.access.map(access => access === null ? null : foldAstStateful(access, down, folds)) : ast.access as string, down)
-		case Type.For:
+		case Type.ForLoop:
 			return folds.loop.foldFor(ast, foldAstStateful(ast.variable, down, folds), foldAstStateful(ast.vector, down, folds), foldAstStateful(ast.body, down, folds), down)
-		case Type.While:
+		case Type.WhileLoop:
 			return folds.loop.foldWhile(ast, foldAstStateful(ast.condition, down, folds), foldAstStateful(ast.body, down, folds), down)
-		case Type.Repeat:
+		case Type.RepeatLoop:
 			return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down)
 		case Type.FunctionCall:
 			return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.flavor === 'named' ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => param === undefined ? param : foldAstStateful(param, down, folds)), down)

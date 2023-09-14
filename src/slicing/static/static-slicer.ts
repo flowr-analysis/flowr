@@ -198,9 +198,9 @@ function addControlDependencies(source: NodeId, ast: DecoratedAstMap): Set<NodeI
 	while(current !== undefined) {
 		if(current.type === Type.IfThenElse) {
 			addAllFrom(current.condition, collected)
-		} else if(current.type === Type.While) {
+		} else if(current.type === Type.WhileLoop) {
 			addAllFrom(current.condition, collected)
-		} else if(current.type === Type.For) {
+		} else if(current.type === Type.ForLoop) {
 			addAllFrom(current.variable, collected)
 			// vector not needed, if required, it is  linked by defined-by
 		}

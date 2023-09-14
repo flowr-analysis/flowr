@@ -39,7 +39,7 @@ function visitExitPoints<OtherInfo>(node: RNode<OtherInfo & ParentInformation>):
 		case Type.RepeatLoop:
 			// loops return invisible null, as we do not trace values, but they may contain return statements
 			return visitLoops(node)
-		case Type.IfThenElseThenElse:
+		case Type.IfThenElse:
 			return visitIf(node)
 		case Type.Pipe:
 		case Type.BinaryOp:

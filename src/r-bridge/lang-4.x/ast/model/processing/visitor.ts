@@ -58,16 +58,16 @@ function visitSingle<OtherInfo>(node: RNode<OtherInfo>, onVisit: OnVisit<OtherIn
 		case Type.ExpressionList:
 			visit(node.children, onVisit, { role: RoleInParent.ExpressionListChild, index: 0 })
 			break
-		case Type.For:
+		case Type.ForLoop:
 			visit(node.variable, onVisit, { role: RoleInParent.ForVariable, index: 0 })
 			visit(node.vector, onVisit, { role: RoleInParent.ForVector, index: 1 })
 			visit(node.body, onVisit, { role: RoleInParent.ForBody, index: 2 })
 			break
-		case Type.While:
+		case Type.WhileLoop:
 			visit(node.condition, onVisit, { role: RoleInParent.WhileCondition, index: 0 })
 			visit(node.body, onVisit, { role: RoleInParent.WhileBody, index: 1 })
 			break
-		case Type.Repeat:
+		case Type.RepeatLoop:
 			visit(node.body, onVisit, { role: RoleInParent.RepeatBody, index: 0 })
 			break
 		case Type.IfThenElse:

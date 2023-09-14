@@ -19,7 +19,7 @@ export function tryNormalizeIfThen(
 		 then:       NamedXmlBasedJson
 	]): RIfThenElse | undefined {
 	parseLog.trace(`trying to parse if-then structure`)
-	if(tokens[0].name !== RawRType.IfThenElse) {
+	if(tokens[0].name !== RawRType.If) {
 		parseLog.debug('encountered non-if token for supposed if-then structure')
 		return executeUnknownHook(data.hooks.control.onIfThen.unknown, data, tokens)
 	} else if(tokens[1].name !== RawRType.ParenLeft) {
@@ -41,7 +41,7 @@ export function tryNormalizeIfThen(
 	const { location, content} = retrieveMetaStructure(data.config, tokens[0].content)
 
 	const result: RIfThenElse = {
-		type:      Type.IfThenElseThenElse,
+		type:      Type.IfThenElse,
 		condition: parsedCondition,
 		then:      ensureExpressionList(parsedThen),
 		location,

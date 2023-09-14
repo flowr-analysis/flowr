@@ -33,7 +33,7 @@ const processors: DataflowProcessors<any> = {
 	[Type.ForLoop]:            processForLoop,
 	[Type.WhileLoop]:          processWhileLoop,
 	[Type.RepeatLoop]:         processRepeatLoop,
-	[Type.IfThenElseThenElse]: processIfThenElse,
+	[Type.IfThenElse]:         processIfThenElse,
 	[Type.Break]:              processUninterestingLeaf,
 	[Type.Next]:               processUninterestingLeaf,
 	[Type.Comment]:            processUninterestingLeaf,

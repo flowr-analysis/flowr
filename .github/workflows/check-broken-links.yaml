@@ -6,7 +6,7 @@ name: check for broken links
       - '**/*.md'
       - 'wiki/**'
   pull_request:
-    types: [ opened, synchronize ]
+    types: [ opened ]
     branches: [ main ]
   workflow_dispatch:
   schedule:

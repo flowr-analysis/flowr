@@ -26,9 +26,16 @@
     "check-coverage": false,
     "skip-full": false,
     "lines": 70,
-    "extension": [".ts"],
+    "extension": [
+      ".ts"
+    ],
     "include": "src/**/*.ts",
-    "reporter": ["html", "text", "lcov", "cobertura"]
+    "reporter": [
+      "html",
+      "text",
+      "lcov",
+      "cobertura"
+    ]
   },
   "typedocOptions": {
     "includeVersion": true,
@@ -63,7 +70,10 @@
     "searchInComments": true,
     "useTsLinkResolution": true,
     "categorizeByGroup": true,
-    "sort": [ "static-first", "alphabetical" ],
+    "sort": [
+      "static-first",
+      "alphabetical"
+    ],
     "visibilityFilters": {
       "protected": true,
       "private": true,
@@ -99,7 +109,8 @@
     "parser": "@typescript-eslint/parser",
     "plugins": [
       "@typescript-eslint",
-      "eslint-plugin-tsdoc"
+      "eslint-plugin-tsdoc",
+      "check-file"
     ],
     "rules": {
       "indent": "off",
@@ -114,11 +125,21 @@
           "SwitchCase": 1
         }
       ],
-      "no-mixed-spaces-and-tabs": ["error", "smart-tabs"],
-      "no-warning-comments": ["error", {
-        "terms": ["todo", "fixme", "xxx"],
-        "location": "anywhere"
-      }],
+      "no-mixed-spaces-and-tabs": [
+        "error",
+        "smart-tabs"
+      ],
+      "no-warning-comments": [
+        "error",
+        {
+          "terms": [
+            "todo",
+            "fixme",
+            "xxx"
+          ],
+          "location": "anywhere"
+        }
+      ],
       "@typescript-eslint/non-nullable-type-assertion-style": "off",
       "@typescript-eslint/no-unsafe-enum-comparison": "off",
       "@typescript-eslint/key-spacing": [
@@ -136,6 +157,18 @@
         "never"
       ],
       "keyword-spacing": "off",
+      "check-file/filename-naming-convention": [
+        "error",
+        {
+          "**/*.ts": "+([A-Za-z])*(_+([A-Za-z]))"
+        }
+      ],
+      "check-file/folder-match-with-fex": [
+        "error",
+        {
+          "*.spec.{js,jsx,ts,tsx}": "test/**"
+        }
+      ],
       "@typescript-eslint/keyword-spacing": [
         "error",
         {
@@ -186,27 +219,44 @@
         "error",
         {
           "selector": "variable",
-          "modifiers": ["const", "global", "exported" ],
-          "format": [ "camelCase","PascalCase", "UPPER_CASE" ],
+          "modifiers": [
+            "const",
+            "global",
+            "exported"
+          ],
+          "format": [
+            "camelCase",
+            "PascalCase",
+            "UPPER_CASE"
+          ],
           "leadingUnderscore": "allow",
           "trailingUnderscore": "allow"
         },
         {
           "selector": "variable",
-          "modifiers": ["const"],
-          "format": [ "camelCase", "PascalCase" ],
+          "modifiers": [
+            "const"
+          ],
+          "format": [
+            "camelCase",
+            "PascalCase"
+          ],
           "leadingUnderscore": "allow",
           "trailingUnderscore": "allow"
         },
         {
           "selector": "enumMember",
-          "format": [ "StrictPascalCase" ],
+          "format": [
+            "StrictPascalCase"
+          ],
           "leadingUnderscore": "forbid",
           "trailingUnderscore": "forbid"
         },
         {
           "selector": "typeLike",
-          "format": [ "PascalCase" ]
+          "format": [
+            "PascalCase"
+          ]
         }
       ]
     }
@@ -229,6 +279,7 @@
     "chai-as-promised": "^7.1.1",
     "eslint": "^8.37.0",
     "eslint-config-standard-with-typescript": "^34.0.1",
+    "eslint-plugin-check-file": "^2.6.2",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-n": "^15.7.0",
     "eslint-plugin-promise": "^6.1.1",

@@ -1,5 +1,5 @@
-import { SinglePackageInfo } from './usedPackages'
-import { FunctionNameInfo } from './definedFunctions'
+import { SinglePackageInfo } from './used-packages'
+import { FunctionNameInfo } from './defined-functions'
 import { Feature, FeatureInfo, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { append, extractNodeContent } from '../../output'

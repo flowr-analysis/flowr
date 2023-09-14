@@ -2,7 +2,6 @@ import {
 	DEFAULT_XML_PARSER_CONFIG,
 	getKeysGuarded, RawRType,
 	requestFromInput,
-	RType,
 	XmlBasedJson,
 	XmlParserConfig
 } from '../../../r-bridge'

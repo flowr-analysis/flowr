@@ -2,7 +2,7 @@ import { assertDataflow, withShell } from '../../../helper/shell'
 import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../src/dataflow'
 import { define, popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/argument'
-import { UnnamedFunctionCallPrefix } from '../../../../src/dataflow/internal/process/functions/functionCall'
+import { UnnamedFunctionCallPrefix } from '../../../../src/dataflow/internal/process/functions/function-call'
 import { LocalScope } from '../../../../src/dataflow/environments/scopes'
 import { MIN_VERSION_LAMBDA } from '../../../../src/r-bridge/lang-4.x/ast/model/versions'
 

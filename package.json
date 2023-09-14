@@ -160,7 +160,7 @@
       "check-file/filename-naming-convention": [
         "error",
         {
-          "**/*.ts": "+([A-Za-z])*((_|.)+([A-Za-z]))"
+          "**/*.ts": "*([A-Z])*([a-z])*((-|.)+(*([A-Z])*([a-z])))"
         }
       ],
       "check-file/folder-match-with-fex": [

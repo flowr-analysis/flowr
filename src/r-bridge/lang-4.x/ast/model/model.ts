@@ -28,7 +28,7 @@ import {
 } from './nodes'
 import { OtherInfoNode } from './nodes/info'
 
-/** simply used as an empty interface with no information about additional decorations */
+/** Simply an empty interface used to say that there are additional decorations (see {@link Base}). */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface NoInfo {
 }
@@ -50,6 +50,9 @@ interface Source {
    * Similar to {@link Source.fullRange} this contains the complete R lexeme of the given element.
    */
 	fullLexeme?:       string
+	/**
+	 * This may contain additional elements that were part of the original R code, but are not part of the normalized R-ast.
+	 */
 	additionalTokens?: OtherInfoNode[]
 }
 

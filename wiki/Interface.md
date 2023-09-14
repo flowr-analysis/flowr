@@ -14,6 +14,7 @@ Although far from being as detailed as the in-depth explanation of [*flowR*](htt
   - [Slicing With The `SteppingSlicer`](#slicing-with-the-steppingslicer)
     - [Understanding the Steps](#understanding-the-steps)
     - [Benchmark the Slicer With The `BenchmarkSlicer`](#benchmark-the-slicer-with-the-benchmarkslicer)
+  - [Augmenting the Normalization](#augmenting-the-normalization)
   - [Generate Statistics with `extractUsageStatistics()`](#generate-statistics-with-extractusagestatistics)
 <!-- TOC -->
 
@@ -664,7 +665,7 @@ The [`RShell`](https://code-inspect.github.io/flowr/doc/classes/src_r_bridge_she
 For now there are no alternatives (although we plan on providing more flexible drop-in replacements).
 
 > 💡 Information\
-> Each `RShell` controls a new instance of the R&nbsp;interpreter, make sure to call `RShell::close()` after you are done.
+> Each `RShell` controls a new instance of the R&nbsp;interpreter, make sure to call `RShell::close()` when you are done.
 
 
 You can start a new "session" simply by constructing a new object with `new RShell()`.
@@ -742,6 +743,35 @@ Please create a new `BenchmarkSlicer` object per input file (this will probably 
 > Calling `BenchmarkSlicer::finish` will automatically take care of closing the underlying shell session.
 > However, if you want to be sure (or need it in case of exceptions), you can use `BenchmarkSlicer::ensureSessionClosed`.
 
+### Augmenting the Normalization
+
+The normalization of a given input is essentially handled by the [`normalize` function](https://code-inspect.github.io/flowr/doc/functions/src_r_bridge.normalize.html) although it is better to use the abstraction of the `SteppingSlicer` and use `executeSingleSubStep('normalize', <remaining arguments>)` to invoke the respective step.
+The call accepts a collection of *hooks* (the configuration of the `SteppingSlicer` allows them as well).
+
+These hooks allow the modification of the inputs and outputs of the normalization. If you want to count the amount of strings encountered while parsing, you can use something like this:
+
+```ts
+const shell = new RShell()
+const tokenMap = await getStoredTokenMap(shell)
+
+let counter = 0
+
+await new SteppingSlicer({
+  stepOfInterest: 'normalize', shell, tokenMap,
+  request: requestFromInput('x <- "foo"'),
+  hooks: {
+    values: {
+      onString: {
+        after: () => { counter++; return undefined },
+      }
+    }
+  }
+}).allRemainingSteps()
+
+// console.log(counter)
+```
+
+The `before` hook is called before
 
 
 ### Generate Statistics with `extractUsageStatistics()`

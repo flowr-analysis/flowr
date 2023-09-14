@@ -115,7 +115,6 @@
         }
       ],
       "no-mixed-spaces-and-tabs": ["error", "smart-tabs"],
-      // refer to https://github.com/Code-Inspect/flowr/issues/238 for more information: use issues!
       "no-warning-comments": ["error", {
         "terms": ["todo", "fixme", "xxx"],
         "location": "anywhere"

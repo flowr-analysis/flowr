@@ -30,7 +30,7 @@ describe("Check hooks are called appropriately", withShell(shell => {
 			hooks:          {
 				values: {
 					onString: {
-						after: () => { counter++; return undefined },
+						after: () => { counter++ },
 					}
 				}
 			}

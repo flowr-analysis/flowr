@@ -50,7 +50,8 @@
     ],
     "entryPointStrategy": "expand",
     "exclude": [
-      "**/node_modules/**/*"
+      "**/node_modules/**/*",
+      "**/index.ts"
     ],
     "theme": "hierarchy",
     "out": "doc",

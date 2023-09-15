@@ -1,0 +1,37 @@
+name: "Release"
+
+'on':
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  # only currently so I can test in the ci
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: startsWith(github.event.head_commit.message, '[release:minor]') |
+        startsWith(github.event.head_commit.message, '[release:major]') |
+        startsWith(github.event.head_commit.message, '[release:patch]')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: git config
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+      - run: npm ci
+      - run: |
+          msg="${{ github.event.head_commit.message }}"
+          step=$(echo "$msg" | sed -n 's/\[release:\(patch|minor|major\)].*/\1/p')
+          npm run release -- $step 
+
+  deploy-docker:
+    needs: [ release ]
+    name: "Deploy Docker (only on main)"
+    if: startsWith(github.event.head_commit.message, '[release:minor]') |
+      startsWith(github.event.head_commit.message, '[release:major]') |
+      startsWith(github.event.head_commit.message, '[release:patch]')
+    uses: Code-Inspect/flowr/.github/workflows/deploy-docker.yaml@main
+    secrets: inherit

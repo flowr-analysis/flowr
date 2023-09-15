@@ -7,6 +7,7 @@
     "main": "ts-node src/flowr.ts",
     "stats": "ts-node src/cli/statistics-app.ts",
     "slicer": "ts-node src/cli/slicer-app.ts",
+    "release": "release-it --ci --dry-run",
     "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
     "benchmark": "ts-node src/cli/benchmark-app.ts",
     "summarizer": "ts-node src/cli/summarizer-app.ts",
@@ -262,6 +263,37 @@
       ]
     }
   },
+  "release-it": {
+    "git": {
+      "commitMessage": "[skip ci] Release v${version}",
+      "requireCleanWorkingDir": true,
+      "tagName": "v${version}",
+      "commit": true,
+      "tag": true,
+      "push": true
+    },
+    "github": {
+      "release": true,
+      "tokenRef": "RELEASE_TOKEN",
+      "releaseName": "Release v${version}",
+      "web": false,
+      "autoGenerate": true,
+      "comments": {
+        "submit": true,
+        "issue": "_This issue has been resolved in v${version} (see [${releaseName}](${releaseUrl}))._",
+        "pr": "_This pull request is included in v${version} (see [${releaseName}](${releaseUrl}))._"
+      }
+    },
+    "npm": {
+      "publish": false
+    },
+    "hooks": {
+      "before:init": ["npm run lint", "npm run test-full"],
+      "after:bump": "npm run build",
+      "after:git:release": "echo After git push, before github release",
+      "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
+    }
+  },
   "devDependencies": {
     "@types/chai": "^4.3.5",
     "@types/chai-as-promised": "^7.1.5",
@@ -288,6 +320,7 @@
     "mocha": "^10.2.0",
     "mocha-multi-reporters": "^1.5.1",
     "nyc": "^15.1.0",
+    "release-it": "^16.1.5",
     "ts-essentials": "^9.3.2",
     "ts-node": "^10.9.1",
     "typedoc": "^0.24.8",

@@ -1,5 +1,6 @@
 name: "Full Test"
-# Should only run on pull request to main or if forced
+
+# Should only run on pull request to main or if forced (but even then as part of the QA workflow)
 'on':
   workflow_call:
 

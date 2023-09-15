@@ -75,7 +75,8 @@ export type DecoratedAstMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<
 interface FoldInfo<OtherInfo> { idMap: DecoratedAstMap<OtherInfo>, getId: IdGenerator<OtherInfo> }
 
 /**
- * Contains the AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.
+ * Contains the normalized AST as a doubly linked tree
+ * and a map from ids to nodes so that parent links can be chased easily.
  */
 export interface NormalizedAst<OtherInfo = ParentInformation> {
 	/** Bidirectional mapping of ids to the corresponding nodes and the other way */

@@ -265,9 +265,11 @@
   },
   "release-it": {
     "git": {
-      "commitMessage": "Release v${version}",
+      "commitMessage": "[skip ci] Release v${version}",
       "tagName": "v${version}",
-      "commit": true
+      "commit": true,
+      "tag": true,
+      "push": true
     },
     "github": {
       "release": true,

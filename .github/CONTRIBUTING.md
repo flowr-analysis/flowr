@@ -31,8 +31,6 @@ Currently, the following types are at your disposal (more may have been or are s
 | `ts`                                            | Performed something typescript-specific (e.g., reconfigured the `tsconfig.json`).                  |
 | `wip`                                           | *Use this only in combination with another type*. It marks the commit to be unfinished.            |
 | `special`                                       | *Use this only if none of the other categories apply*. Explain the details in your commit message. |
-| `release:patch`/`release:minor`/`release:major` | It marks the commit to be a new release.                                                           |     
-
 
 You can suffix each type with either 
 
@@ -55,3 +53,8 @@ To skip the `ci`, you can prefix the commit message with `[skip ci]`.
 ## ToDo Comments
 
 As indicated by [#238](https://github.com/Code-Inspect/flowr/issues/238) I decided to forbid `TODO`, `FIXME`, and `XXX` comments in code in favor of explicit *issues* directly on GitHub. Please do not try to get around that rule.
+
+## Releases
+
+Releases are to be scheduled by the administrators of the repository. Please do not try to create a release yourself.
+

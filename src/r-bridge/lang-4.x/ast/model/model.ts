@@ -74,31 +74,91 @@ export interface WithChildren<Info, Children extends Base<Info, string | undefin
 	children: Children[]
 }
 
-// we want it, so we get better merge-graphs
+/**
+ * A helper interface we use to "mark" leaf nodes.
+ * <p>
+ * Please be aware, that this is not marking from a language perspective,
+ * as it is equivalent to the {@link Base} interface.
+ * It is intended to help humans understand the code.
+ */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface Leaf<Info = NoInfo, LexemeType = string> extends Base<Info, LexemeType> {
 
 }
 
+/**
+ * Indicates, that the respective {@link Base} node has known source code
+ * location information.
+ */
 export interface Location {
+	/**
+	 * The location may differ from what is stated in {@link Source#fullRange} as it
+	 * represents the location identified by the R parser.
+	 *
+	 * @see Source#fullRange
+	 */
 	location: SourceRange
 }
 
+/**
+ * Represents the type of namespaces in the R programming language.
+ * At the moment, this is only the name of the namespace.
+ */
 export type NamespaceIdentifier = string
 
+/**
+ * Similar to {@link Location} this is an interface that indicates that
+ * the respective {@link Base} node has a respective property (a namespace).
+ */
 export interface Namespace {
-	/* null for unknown atm */
+	/**
+	 * The namespace attached to the given node
+	 * (e.g., a namespaced symbol in `x::y`).
+	 */
 	namespace: NamespaceIdentifier | undefined
 }
 
 
+/**
+ * This subtype of {@link RNode} represents all types of constants
+ * represented in the normalized AST.
+ */
 export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info> | RSymbol<Info, typeof RNull | typeof RNa>
-
+/**
+ * This subtype of {@link RNode} represents all types of {@link Leaf} nodes in the
+ * normalized AST.
+ */
 export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info> | RLineDirective<Info>
+/**
+ * This subtype of {@link RNode} represents all looping constructs in the normalized AST.
+ */
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>
+/**
+ * As an extension to {@link RLoopConstructs}, this subtype of {@link RNode} includes
+ * the {@link RIfThenElse} construct as well.
+ */
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>
+/**
+ * This subtype of {@link RNode} represents all types related to functions
+ * (calls and definitions) in the normalized AST.
+ */
 export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RParameter<Info> | RArgument<Info>
+/**
+ * This subtype of {@link RNode} represents all types of otherwise hard to categorize
+ * nodes in the normalized AST. At the moment these are the comment-like nodes.
+ */
 export type ROther<Info>          = RComment<Info> | RLineDirective<Info>
+
+/**
+ * The `RNode` type is the union of all possible nodes in the R-ast.
+ * It should be used whenever you either not care what kind of
+ * node you are dealing with or if you want to handle all possible nodes.
+ * <p>
+ *
+ * All other subtypes (like {@link RLoopConstructs}) listed above
+ * can be used to restrict the kind of node. They do not have to be
+ * exclusive, some nodes can appear in multiple subtypes.
+ */
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
 | ROther<Info> | RConstructs<Info> | RNamedAccess<Info> | RIndexAccess<Info>
 | RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>  | RPipe<Info>

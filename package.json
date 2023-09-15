@@ -270,13 +270,21 @@
       "commit": true
     },
     "github": {
-      "release": true
+      "release": true,
+      "tokenRef": "RELEASE_TOKEN",
+      "releaseName": "Release v${version}",
+      "autoGenerate": true,
+      "comments": {
+        "submit": true,
+        "issue": "_This issue has been resolved in v${version} (see [${releaseName}](${releaseUrl}))._",
+        "pr": "_This pull request is included in v${version} (see [${releaseName}](${releaseUrl}))._"
+      }
     },
     "npm": {
       "publish": false
     },
     "hooks": {
-      "before:init": ["npm run lint", "npm test"],
+      "before:init": ["npm run lint", "npm run test-full"],
       "after:bump": "npm run build",
       "after:git:release": "echo After git push, before github release",
       "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."

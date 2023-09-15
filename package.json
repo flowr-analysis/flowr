@@ -1,6 +1,6 @@
 {
   "name": "flowr",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Program Slicer and Analyzer for R Programs",
   "main": "dist/cli/slicer-app.js",
   "scripts": {
@@ -288,7 +288,10 @@
       "publish": false
     },
     "hooks": {
-      "before:init": ["npm run lint", "npm run test-full"],
+      "before:init": [
+        "npm run lint",
+        "npm run test-full"
+      ],
       "after:bump": "npm run build",
       "after:git:release": "echo After git push, before github release",
       "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."

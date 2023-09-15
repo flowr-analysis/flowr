@@ -7,6 +7,7 @@ import { ts2r } from './lang-4.x'
 import { log, LogLevel } from '../util/log'
 import { SemVer } from 'semver'
 import semver from 'semver/preload'
+import { getPlatform } from '../util/os'
 
 export type OutputStreamSelector = "stdout" | "stderr" | "both";
 
@@ -213,7 +214,7 @@ export class RShell {
 	}
 
 	public tryToInjectHomeLibPath(): void {
-		this.injectLibPaths('~/.r-libs')
+		this.injectLibPaths(getPlatform() === 'windows' ? 'C:/R/library' : '~/.r-libs')
 	}
 
 	/**

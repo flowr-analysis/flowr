@@ -266,6 +266,8 @@ export class RShell {
 			}
 		}
 
+		this.sendCommand('pkgbuild::find_rtools()')
+
 		// obtain a temporary directory
 		this.sendCommand('temp <- tempdir()')
 		const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${ts2r(this.options.eol)})`)

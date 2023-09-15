@@ -4,6 +4,8 @@ name: "Release"
   push:
     branches:
       - main
+  workflow_dispatch:
+# only currently so i can test in the ci
 
 jobs:
   release:
@@ -18,7 +20,10 @@ jobs:
           git config user.name "${GITHUB_ACTOR}"
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
       - run: npm ci
-      - run: npm run release
+      - run: |
+          msg="${{ github.event.head_commit.message }}"
+          step=$(echo "$msg" | sed -n 's/\[release:\([^]]*\)].*/\1/p')
+          npm run release -- $step 
 
   deploy-docker:
     needs: [ release ]

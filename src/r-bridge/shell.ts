@@ -111,7 +111,7 @@ export class RShell {
 		this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
 		this.log = log.getSubLogger({ name: this.options.sessionName })
 		if(this.log.settings.minLevel >= LogLevel.Debug) {
-			this.log.debug(`Running with options: ${JSON.stringify(options)}`)
+			this.log.debug(`Running with options: ${JSON.stringify(this.options)}`)
 		}
 
 		this.session = new RShellSession(this.options, this.log)

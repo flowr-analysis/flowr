@@ -20,18 +20,16 @@ body:
     id: r-version
     attributes:
       label: What version of R do you have installed?
-      description: You can use `R --version` to find out.
+      description: "You can use `R --version` to find out (with docker: `docker run --rm flowr --version`)".
       placeholder: ex. 4.2.3
     validations:
-      required: true
-  - type: dropdown
+      required: false
+  - type: input
     id: flowr-version
     attributes:
       label: What version of flowR did you use?
-      description: If you used a development version, please select the appropriate entry and specify the commit hash above.
-      options:
-        - 1.0.0 (Master's Thesis)
-        - Development Version
+      description: "You can run flowr as `flowr --version` to find out (with docker: `docker run --rm flowr --version`)".
+      placeholder: ex. 1.1.0 or 'dev-<commit-hash>'
     validations:
       required: true
   - type: textarea

@@ -88,7 +88,7 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 	cwd:                process.cwd(),
 	env:                process.env,
 	eol:                EOL,
-	homeLibPath:        getPlatform() === 'windows' ? 'C:\\R\\library' : '~/.r-libs',
+	homeLibPath:        getPlatform() === 'windows' ? 'C:/R/library' : '~/.r-libs',
 	revive:             'never',
 	onRevive:           () => { /* do nothing */ }
 } as const

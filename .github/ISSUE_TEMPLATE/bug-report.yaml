@@ -20,6 +20,7 @@ body:
     id: r-version
     attributes:
       label: What version of R do you have installed?
+      description: You can use `R --version` to find out.
       placeholder: ex. 4.2.3
     validations:
       required: true

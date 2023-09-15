@@ -1,24 +1,24 @@
-export type Os = 'mac-os' | 'linux' | 'windows' | 'unknown';
+export type Os = 'mac-os' | 'linux' | 'windows' | 'unknown'
 
-let platformCache: Os | null = null;
+let platformCache: Os | null = null
 
 export function getPlatform(): Os {
 	if(platformCache !== null) {
-		return platformCache;
+		return platformCache
 	}
 
-	let OS =  process.platform;
-	if(OS === 'darwin') {
-		platformCache = 'mac-os';
+	const platform =  process.platform
+	if(platform === 'darwin') {
+		platformCache = 'mac-os'
 	}
-	else if(OS === 'linux') {
-		platformCache = 'linux';
+	else if(platform === 'linux') {
+		platformCache = 'linux'
 	}
-	else if(OS === 'win32') {
-		platformCache = 'windows';
+	else if(platform === 'win32') {
+		platformCache = 'windows'
 	} else {
-		platformCache = 'unknown';
+		platformCache = 'unknown'
 	}
 
-	return platformCache;
+	return platformCache
 }

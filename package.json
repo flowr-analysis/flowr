@@ -7,7 +7,7 @@
     "main": "ts-node src/flowr.ts",
     "stats": "ts-node src/cli/statistics-app.ts",
     "slicer": "ts-node src/cli/slicer-app.ts",
-    "release": "release-it --ci --dry-run",
+    "release": "release-it --ci",
     "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
     "benchmark": "ts-node src/cli/benchmark-app.ts",
     "summarizer": "ts-node src/cli/summarizer-app.ts",

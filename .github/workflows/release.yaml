@@ -36,6 +36,8 @@ jobs:
           fi
           
           npm run release -- $step --github.releaseName="${title}"
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
   deploy-docker:
     needs: [ release ]

@@ -118,7 +118,8 @@ export class RShell {
 	private revive() {
 		if(getPlatform() !== 'linux') {
 			this.log.trace('non-linux system, setting the package source check to "never"')
-			this.sendCommand('options(install.packages.check.source = "never")')
+			this.sendCommands('options(install.packages.check.source = "never")',
+				'options(install.packages.compile.from.source = "always")')
 		}
 
 		if(this.options.revive === 'never') {

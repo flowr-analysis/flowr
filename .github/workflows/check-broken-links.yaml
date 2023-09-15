@@ -1,4 +1,4 @@
-name: check for broken links
+name: Check for Broken Links
 
 'on':
   push:

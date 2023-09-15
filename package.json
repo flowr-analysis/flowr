@@ -7,7 +7,7 @@
     "main": "ts-node src/flowr.ts",
     "stats": "ts-node src/cli/statistics-app.ts",
     "slicer": "ts-node src/cli/slicer-app.ts",
-    "release": "release-it --dry-run",
+    "release": "release-it --ci --dry-run",
     "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
     "benchmark": "ts-node src/cli/benchmark-app.ts",
     "summarizer": "ts-node src/cli/summarizer-app.ts",
@@ -276,6 +276,7 @@
       "release": true,
       "tokenRef": "RELEASE_TOKEN",
       "releaseName": "Release v${version}",
+      "web": false,
       "autoGenerate": true,
       "comments": {
         "submit": true,

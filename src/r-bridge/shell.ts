@@ -220,7 +220,9 @@ export class RShell {
 	}
 
 	public tryToInjectHomeLibPath(): void {
-		this.injectLibPaths(this.options.homeLibPath)
+		if(getPlatform() !== 'windows') {
+			this.injectLibPaths(this.options.homeLibPath)
+		}
 	}
 
 	/**

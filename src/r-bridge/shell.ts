@@ -69,6 +69,8 @@ export interface RShellSessionOptions extends MergeableRecord {
 	readonly revive:             'never' | 'on-error' | 'always'
 	/** Called when the R session is restarted, this makes only sense if `revive` is not set to `'never'` */
 	readonly onRevive:           (code: number, signal: string | null) => void
+	/** The path to the library directory */
+	readonly homeLibPath:        string
 }
 
 /**
@@ -86,6 +88,7 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 	cwd:                process.cwd(),
 	env:                process.env,
 	eol:                EOL,
+	homeLibPath:        getPlatform() === 'windows' ? 'C:/R/library' : '~/.r-libs',
 	revive:             'never',
 	onRevive:           () => { /* do nothing */ }
 } as const
@@ -214,7 +217,7 @@ export class RShell {
 	}
 
 	public tryToInjectHomeLibPath(): void {
-		this.injectLibPaths(getPlatform() === 'windows' ? 'C:/R/library' : '~/.r-libs')
+		this.injectLibPaths(this.options.homeLibPath)
 	}
 
 	/**

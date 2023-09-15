@@ -670,7 +670,6 @@ Temporary Items
 # See https://github.com/joeblau/gitignore.io/issues/186 and https://github.com/joeblau/gitignore.io/issues/360
 
 .idea/*
-!.idea/inspectionProfiles
 
 # Reason: https://github.com/joeblau/gitignore.io/issues/186#issuecomment-249601023
 

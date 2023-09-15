@@ -22,7 +22,7 @@ Currently, the following types are at your disposal (more may have been or are s
 | `refactor`     | Represents a refactoring of existing code.                                                         |
 | `ci`           | Updated the ci pipeline of *flowR*.                                                                |
 | `docker`       | Regards the docker version of *flowR*.                                                             |
-| `dep`          | Regards the explicit update of dependencies.                                                       |
+| `dep`          | Regards the explicit update of dependencies (or the addition of new dependencies.                  |
 | `git`          | Performed something git-specific (like updating the git-hooks).                                    |
 | `lint`         | Adapted or updated linter-issues.                                                                  |
 | `doc`          | Updated the documentation of *flowR*.                                                              |

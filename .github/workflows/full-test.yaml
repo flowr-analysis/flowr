@@ -10,8 +10,8 @@ jobs:
       fail-fast: false
       matrix:
         # currently we offer no official support for 3.x
-        # r-version: [ '4.2.3', '4.0.0' ]
-        # os: [ ubuntu-latest ]
+        r-version: [ '4.2.3', '4.0.0' ]
+        os: [ ubuntu-latest ]
         include:
         #   - os: macos-latest
         #     r-version: '4.2.3'
@@ -26,5 +26,5 @@ jobs:
       timeout-minutes: 25
       r-version: ${{ matrix.r-version }}
       image: ${{ matrix.os }}
-      action: test-full -- --verbose
+      action: test-full
       coverage: false

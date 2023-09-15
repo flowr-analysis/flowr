@@ -50,7 +50,8 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
     with:
-      action: test-full
+      action: test-full -- --verbose
+      image: windows-latest
       coverage: true
 
   full-test:

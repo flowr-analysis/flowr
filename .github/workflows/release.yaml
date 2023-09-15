@@ -5,7 +5,7 @@ name: "Release"
     branches:
       - main
   workflow_dispatch:
-# only currently so i can test in the ci
+  # only currently so I can test in the ci
 
 jobs:
   release:

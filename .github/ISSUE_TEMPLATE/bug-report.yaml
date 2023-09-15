@@ -28,7 +28,7 @@ body:
     id: flowr-version
     attributes:
       label: What version of flowR did you use?
-      description: If you used a deveploment version, please select the appropriate entry and specify the commit hash above.
+      description: If you used a development version, please select the appropriate entry and specify the commit hash above.
       options:
         - 1.0.0 (Master's Thesis)
         - Development Version
@@ -38,7 +38,7 @@ body:
     id: code
     attributes:
       label: Related input code
-      description: If applicable, please copy and paste the input code here, best as a a [MWE](https://stackoverflow.com/help/minimal-reproducible-example).
+      description: If applicable, please copy and paste the input code here, best as a [MWE](https://stackoverflow.com/help/minimal-reproducible-example).
       render: R
   - type: textarea
     id: logs

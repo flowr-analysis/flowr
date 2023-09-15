@@ -15,22 +15,23 @@ We structure our commit messages (enforced by our git-hooks) using the format `<
 Currently, the following types are at your disposal (more may have been or are still available, but please restrict yourself to the following):
 
 
-| name           | description                                                                                        |
-|:---------------|----------------------------------------------------------------------------------------------------|
-| `feat`         | Introduced a new feature.                                                                          |
-| `test`/`tests` | Introduced new or modified existing tests.                                                         | 
-| `refactor`     | Represents a refactoring of existing code.                                                         |
-| `ci`           | Updated the ci pipeline of *flowR*.                                                                |
-| `docker`       | Regards the docker version of *flowR*.                                                             |
-| `dep`          | Regards the explicit update of dependencies (or the addition of new dependencies.                  |
-| `git`          | Performed something git-specific (like updating the git-hooks).                                    |
-| `lint`         | Adapted or updated linter-issues.                                                                  |
-| `doc`          | Updated the documentation of *flowR*.                                                              |
-| `typo`         | Dealt with a small typo/a grammatical mistake.                                                     |
-| `log`          | Improved or updated the logging of *flowR*.                                                        |
-| `ts`           | Performed something typescript-specific (e.g., reconfigured the `tsconfig.json`).                  |
-| `wip`          | *Use this only in combination with another type*. It marks the commit to be unfinished.            |
-| `special`      | *Use this only if none of the other categories apply*. Explain the details in your commit message. |
+| name                                            | description                                                                                        |
+|:------------------------------------------------|----------------------------------------------------------------------------------------------------|
+| `feat`                                          | Introduced a new feature.                                                                          |
+| `test`/`tests`                                  | Introduced new or modified existing tests.                                                         | 
+| `refactor`                                      | Represents a refactoring of existing code.                                                         |
+| `ci`                                            | Updated the ci pipeline of *flowR*.                                                                |
+| `docker`                                        | Regards the docker version of *flowR*.                                                             |
+| `dep`                                           | Regards the explicit update of dependencies (or the addition of new dependencies.                  |
+| `git`                                           | Performed something git-specific (like updating the git-hooks).                                    |
+| `lint`                                          | Adapted or updated linter-issues.                                                                  |
+| `doc`                                           | Updated the documentation of *flowR*.                                                              |
+| `typo`                                          | Dealt with a small typo/a grammatical mistake.                                                     |
+| `log`                                           | Improved or updated the logging of *flowR*.                                                        |
+| `ts`                                            | Performed something typescript-specific (e.g., reconfigured the `tsconfig.json`).                  |
+| `wip`                                           | *Use this only in combination with another type*. It marks the commit to be unfinished.            |
+| `special`                                       | *Use this only if none of the other categories apply*. Explain the details in your commit message. |
+| `release:patch`/`release:minor`/`release:major` | It marks the commit to be a new release.                                                           |     
 
 
 You can suffix each type with either 

@@ -266,6 +266,7 @@
   "release-it": {
     "git": {
       "commitMessage": "[skip ci] Release v${version}",
+      "requireCleanWorkingDir": true,
       "tagName": "v${version}",
       "commit": true,
       "tag": true,

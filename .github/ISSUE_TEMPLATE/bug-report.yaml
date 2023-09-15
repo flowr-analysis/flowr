@@ -51,4 +51,4 @@ body:
       label: Meta Information
       options:
         - label: The Issue is Urgent
-          required: true
+          required: false

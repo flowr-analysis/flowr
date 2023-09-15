@@ -10,7 +10,9 @@ name: "Release"
 jobs:
   release:
     runs-on: ubuntu-latest
-    if: startsWith(github.event.head_commit.message, '[release:')
+    if: startsWith(github.event.head_commit.message, '[release:minor]') |
+        startsWith(github.event.head_commit.message, '[release:major]') |
+        startsWith(github.event.head_commit.message, '[release:patch]')
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,6 +30,8 @@ jobs:
   deploy-docker:
     needs: [ release ]
     name: "Deploy Docker (only on main)"
-    if: startsWith(github.event.head_commit.message, '[release:')
+    if: startsWith(github.event.head_commit.message, '[release:minor]') |
+      startsWith(github.event.head_commit.message, '[release:major]') |
+      startsWith(github.event.head_commit.message, '[release:patch]')
     uses: Code-Inspect/flowr/.github/workflows/deploy-docker.yaml@main
     secrets: inherit

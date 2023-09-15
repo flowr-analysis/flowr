@@ -40,7 +40,7 @@ flowchart TD
    click norm href "https://github.com/Code-Inspect/flowr/tree/main/src/r-bridge/lang%3A4.x/ast/parser/xml" "Jump to the Implementation"
    click da href "https://github.com/Code-Inspect/flowr/tree/main/src/dataflow" "Jump to the Implementation"
    click slice href "https://github.com/Code-Inspect/flowr/tree/main/src/slicing" "Jump to the Implementation"
-   click rc href "https://github.com/Code-Inspect/flowr/blob/main/src/slicing/reconstruct.ts" "Jump to the Implementation"
+   click rc href "https://github.com/Code-Inspect/flowr/blob/main/src/reconstruct/reconstruct.ts" "Jump to the Implementation"
    click core href "https://github.com/Code-Inspect/flowr/blob/main/src/core" "Jump to the Implementation"
    click benchmark href "https://github.com/Code-Inspect/flowr/tree/main/src/benchmark" "Jump to the Implementation"
    click stat href "https://github.com/Code-Inspect/flowr/tree/main/src/statistics" "Jump to the Implementation"

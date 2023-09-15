@@ -1,7 +1,9 @@
 /**
- * Token types as they are produced by the R parser
+ * Token types as they are produced by the R parser.
+ * Not all of them are directly handled by the normalize step.
+ * Some of them are also listed as part of the {@link OperatorDatabase}.
  *
- * @see #RType
+ * @see RType
  */
 export const enum RawRType {
 	/** T1 */
@@ -141,9 +143,12 @@ export const enum RawRType {
 }
 
 /**
- * Types as we use them for our normalized AST
+ * Types as we use them for our normalized AST.
+ * See {@link RNode} for a union type of all normalized AST nodes in-use.
+ * For each enum member, the respective normalized AST node should be referenced
+ * in the corresponding comment.
  *
- * @see #RawRType
+ * @see RawRType
  */
 export const enum RType {
 	/** {@link RAccess} */
@@ -189,6 +194,10 @@ export const enum RType {
 	/** {@link RSymbol} */
 	Symbol = "RSymbol",
 	/* ------ special types ------ */
+	/** {@link RDelimiter}.
+	 * Is not part of the normalized AST but can be found in
+	 * {@link Source#additionalTokens}.
+	 */
 	Delimiter = "RDelimiter",
 }
 

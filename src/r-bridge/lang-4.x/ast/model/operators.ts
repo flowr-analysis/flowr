@@ -1,8 +1,16 @@
 import { MergeableRecord } from "../../../../util/objects"
 import { RawRType } from './type'
 
-export type StringUsedInRCode = string;
+/**
+ * Just a type-alias so that type declarations become more readable.
+ *
+ * @see OperatorDatabase
+ */
+type StringUsedInRCode = string;
 
+/**
+ * The arity of an operator.
+ */
 export const enum OperatorArity {
 	Unary = 1,
 	Binary = 2,

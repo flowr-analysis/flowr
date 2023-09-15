@@ -1,3 +1,9 @@
+/**
+ * This module has one goal (and is to be rewritten soon to achieve that goal,
+ * as the file itself is way too long). See {@link reconstructToCode}.
+ * @module
+ */
+
 import {
 	NormalizedAst,
 	NodeId,
@@ -326,7 +332,6 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 
 }
 
-
 function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: RFunctionCall<ParentInformation>): Code {
 	guard(args.length === 2, () => `infix special call must have exactly two arguments, got: ${args.length} (${JSON.stringify(args)})`)
 	guard(call.flavor === 'named', `infix special call must be named, got: ${call.flavor}`)
@@ -402,6 +407,9 @@ export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
 }
 
 
+/**
+ * The fold functions used to reconstruct the ast in {@link reconstructToCode}.
+ */
 // escalates with undefined if all are undefined
 const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, ReconstructionConfiguration, Code> = {
 	// we just pass down the state information so everyone has them
@@ -461,17 +469,30 @@ export interface ReconstructionResult {
 	autoSelected: number
 }
 
+function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSelected: number) {
+	if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
+		// remove outer block
+		return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), autoSelected }
+	} else {
+		return { code: prettyPrintCodeToString(result), autoSelected }
+	}
+}
+
 /**
  * Reconstructs parts of a normalized R ast into R code on an expression basis.
  *
- * @param ast          - The ast to be used as a basis for reconstruction
- * @param selection    - The selection of nodes to be reconstructed
+ * @param ast          - The {@link NormalizedAst|normalized ast} to be used as a basis for reconstruction
+ * @param selection    - The selection of nodes to be reconstructed (probably the {@link NodeId|NodeIds} identified by the slicer)
  * @param autoSelectIf - A predicate that can be used to force the reconstruction of a node (for example to reconstruct library call statements, see {@link autoSelectLibrary}, {@link doNotAutoSelect})
  *
- * @returns Number of times `autoSelectIf` triggered
+ * @returns The number of times `autoSelectIf` triggered, as well as the reconstructed code itself.
  */
 export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
-	reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
+	if(reconstructLogger.settings.minLevel >= LogLevel.Trace) {
+		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
+	}
+
+	// we use a wrapper to count the number of times the autoSelectIf predicate triggered
 	let autoSelected = 0
 	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
 		const result = autoSelectIf(node)
@@ -480,14 +501,13 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 		}
 		return result
 	}
+
+	// fold of the normalized ast
 	const result = foldAstStateful(ast.ast, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
+
 	if(reconstructLogger.settings.minLevel >= LogLevel.Trace) {
 		reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
 	}
-	if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
-		// remove outer block
-		return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), autoSelected }
-	} else {
-		return { code: prettyPrintCodeToString(result), autoSelected }
-	}
+
+	return removeOuterExpressionListIfApplicable(result, autoSelected)
 }

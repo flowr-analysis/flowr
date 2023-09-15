@@ -30,7 +30,8 @@ import { ParserData } from './data'
 import { DeepReadonly, DeepRequired } from 'ts-essentials'
 
 /** Denotes that if you return `undefined`, the parser will automatically take the original arguments (unchanged) */
-type AutoIfOmit<T> = T | undefined
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- makes writing hooks easier
+type AutoIfOmit<T> = T | undefined | void
 
 /**
  * Hooks for every action the parser does. They can process the object before and after the actual parsing.
@@ -259,8 +260,8 @@ export function executeHook<T, R>(hook: (data: ParserData, input: T) => AutoIfOm
 /**
  * @see executeHook
  */
-export function executeUnknownHook<T, R>(hook: (data: ParserData, input: T) => AutoIfOmit<R>, data: ParserData, input: T): AutoIfOmit<R> {
-  return hook(data, input)
+export function executeUnknownHook<T, R>(hook: (data: ParserData, input: T) => AutoIfOmit<R>, data: ParserData, input: T): Exclude<AutoIfOmit<R>, void> {
+  return hook(data, input) as Exclude<AutoIfOmit<R>, void>
 }
 /* eslint-enable */
 

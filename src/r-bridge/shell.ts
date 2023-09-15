@@ -272,8 +272,6 @@ export class RShell {
 
 		const successfulDone = new RegExp(`.*DONE *\\(${packageName}\\)`)
 
-		const suffix = getPlatform() === 'windows' ? `,type="win.binary"` : ''
-
 		await this.session.collectLinesUntil('both', {
 			predicate:       data => successfulDone.test(data),
 			includeInResult: false
@@ -282,7 +280,7 @@ export class RShell {
 			resetOnNewData: true
 		}, () => {
 			// the else branch is a cheesy way to work even if the package is already installed!
-			this.sendCommand(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/", quiet=FALSE, lib=temp${suffix})`)
+			this.sendCommand(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/", quiet=FALSE, lib=temp)`)
 		})
 		if(autoload) {
 			this.sendCommand(`library(${ts2r(packageName)}, lib.loc=${ts2r(tempdir)})`)

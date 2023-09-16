@@ -29,8 +29,3 @@ runs:
         update-rtools: true
         r-version: ${{ inputs.r-version  }}
 
-    - name: Dependencies for R
-      uses: r-lib/actions/setup-r-dependencies@v2
-      if: ${{ inputs.r-version != '' }}
-      with:
-        cache-version: 2

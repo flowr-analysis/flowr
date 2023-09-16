@@ -88,7 +88,7 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 	cwd:                process.cwd(),
 	env:                process.env,
 	eol:                EOL,
-	homeLibPath:        getPlatform() === 'windows' ? 'C:/R/library' : '~/.r-libs',
+	homeLibPath:        process.env.R_LIBS_USER ?? getPlatform() === 'windows' ? 'C:/R/library' : '~/.r-libs',
 	revive:             'never',
 	onRevive:           () => { /* do nothing */ }
 } as const
@@ -220,9 +220,9 @@ export class RShell {
 	}
 
 	public tryToInjectHomeLibPath(): void {
-		if(getPlatform() !== 'windows') {
-			this.injectLibPaths(this.options.homeLibPath)
-		}
+		// ensure the path exists first
+		this.sendCommand(`dir.create(path=${ts2r(this.options.homeLibPath)}, showWarnings = FALSE, recursive = TRUE)`)
+		this.injectLibPaths(this.options.homeLibPath)
 	}
 
 	/**
@@ -265,8 +265,6 @@ export class RShell {
 				packageExistedAlready: true
 			}
 		}
-
-		// this.sendCommand('pkgbuild::find_rtools()')
 
 		// obtain a temporary directory
 		this.sendCommand('temp <- tempdir()')

@@ -272,12 +272,12 @@ export class RShell {
 		}
 
 		// obtain a temporary directory
-		this.sendCommand('temp <- Sys.getenv("R_LIBS_USER")')
+		this.sendCommand('temp <- tempdir()')
 		const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${ts2r(this.options.eol)})`)
 
 		this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
 
-		const successfulDone = new RegExp(`.*DONE *\\(${packageName}\\)`)
+		const successfulDone = new RegExp(`.*DONE *\\(${packageName}\\)|`)
 
 		await this.session.collectLinesUntil('both', {
 			predicate:       data => successfulDone.test(data),
@@ -287,6 +287,8 @@ export class RShell {
 			resetOnNewData: true
 		}, () => {
 			this.sendCommand(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`)
+			// just to be sure:
+			this.sendCommand(`cat("DONE (${packageName}\\)${this.options.eol}")`)
 		})
 		if(autoload) {
 			this.sendCommand(`library(${ts2r(packageName)},lib.loc=${ts2r(tempdir)})`)

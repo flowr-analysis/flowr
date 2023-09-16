@@ -222,7 +222,7 @@ export class RShell {
 	public tryToInjectHomeLibPath(): void {
 		// ensure the path exists first
 		if(this.options.homeLibPath === undefined) {
-			log.debug(`ensuring home lib path exists`)
+			this.log.debug(`ensuring home lib path exists`)
 			this.sendCommand(`dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE)`)
 			this.sendCommand(`.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))`)
 		} else {

@@ -9,6 +9,7 @@ before(() => {
 			if(!process.argv.includes('--verbose')) {
 				logger.settings.minLevel = LogLevel.Error
 			} else {
+				logger.settings.minLevel = LogLevel.Trace
 				log.logToFile()
 			}
 		})

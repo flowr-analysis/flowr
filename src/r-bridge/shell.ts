@@ -87,7 +87,7 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
 	cwd:                process.cwd(),
 	env:                process.env,
-	eol:                EOL,
+	eol:                '\n',
 	homeLibPath:        undefined,
 	revive:             'never',
 	onRevive:           () => { /* do nothing */ }

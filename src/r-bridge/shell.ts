@@ -266,7 +266,7 @@ export class RShell {
 			}
 		}
 
-		this.sendCommand('pkgbuild::find_rtools()')
+		// this.sendCommand('pkgbuild::find_rtools()')
 
 		// obtain a temporary directory
 		this.sendCommand('temp <- tempdir()')

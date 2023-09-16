@@ -277,7 +277,7 @@ export class RShell {
 
 		this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
 
-		const successfulDone = new RegExp(`.*DONE *\\(${packageName}\\)|`)
+		const successfulDone = new RegExp(`.*DONE *\\(${packageName}\\)`)
 
 		await this.session.collectLinesUntil('both', {
 			predicate:       data => successfulDone.test(data),

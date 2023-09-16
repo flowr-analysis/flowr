@@ -69,8 +69,8 @@ export interface RShellSessionOptions extends MergeableRecord {
 	readonly revive:             'never' | 'on-error' | 'always'
 	/** Called when the R session is restarted, this makes only sense if `revive` is not set to `'never'` */
 	readonly onRevive:           (code: number, signal: string | null) => void
-	/** The path to the library directory */
-	readonly homeLibPath:        string
+	/** The path to the library directory, use undefined to let R figure that out for itself */
+	readonly homeLibPath:        string | undefined
 }
 
 /**
@@ -88,7 +88,7 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 	cwd:                process.cwd(),
 	env:                process.env,
 	eol:                EOL,
-	homeLibPath:        process.env.R_LIBS_USER ?? getPlatform() === 'windows' ? 'C:/R/library' : '~/.r-libs',
+	homeLibPath:        undefined,
 	revive:             'never',
 	onRevive:           () => { /* do nothing */ }
 } as const
@@ -221,9 +221,13 @@ export class RShell {
 
 	public tryToInjectHomeLibPath(): void {
 		// ensure the path exists first
-		log.debug(`ensuring home lib path exists`)
-		this.sendCommand(`dir.create(path=${ts2r(this.options.homeLibPath)},showWarnings=FALSE,recursive=TRUE)`)
-		this.injectLibPaths(this.options.homeLibPath)
+		if(this.options.homeLibPath === undefined) {
+			log.debug(`ensuring home lib path exists`)
+			this.sendCommand(`dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE)`)
+			this.sendCommand(`.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))`)
+		} else {
+			this.injectLibPaths(this.options.homeLibPath)
+		}
 	}
 
 	/**

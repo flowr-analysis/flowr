@@ -122,6 +122,6 @@ export async function getStoredTokenMap(shell: RShell): Promise<TokenMap> {
  */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise<number> {
 	const result = await shell.sendCommandWithOutput(`cat(nrow(getParseData(flowr_parsed)),${ts2r(shell.options.eol)})`)
-	guard(result.length === 1, 'expected exactly one line to obtain the number of R tokens')
+	guard(result.length === 1, () => `expected exactly one line to obtain the number of R tokens, but got: ${JSON.stringify(result)}`)
 	return Number(result[0])
 }

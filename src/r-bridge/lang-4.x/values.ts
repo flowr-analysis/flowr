@@ -14,7 +14,7 @@ export function ts2r<T>(value: T): string {
 	if(typeof value === 'undefined') {
 		return 'NA'
 	} else if(typeof value === 'string') {
-		return `"${value}"`
+		return JSON.stringify(value)
 	} else if(typeof value === 'number') {
 		return value.toString()
 	} else if(typeof value === 'boolean') {

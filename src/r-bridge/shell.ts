@@ -1,12 +1,12 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
 import { deepMergeObject, type MergeableRecord } from "../util/objects"
 import { type ILogObj, type Logger } from "tslog"
-import { EOL } from "os"
 import * as readline from "node:readline"
 import { ts2r } from './lang-4.x'
 import { log, LogLevel } from '../util/log'
 import { SemVer } from 'semver'
 import semver from 'semver/preload'
+import { getPlatform } from '../util/os'
 
 export type OutputStreamSelector = "stdout" | "stderr" | "both";
 
@@ -68,6 +68,8 @@ export interface RShellSessionOptions extends MergeableRecord {
 	readonly revive:             'never' | 'on-error' | 'always'
 	/** Called when the R session is restarted, this makes only sense if `revive` is not set to `'never'` */
 	readonly onRevive:           (code: number, signal: string | null) => void
+	/** The path to the library directory, use undefined to let R figure that out for itself */
+	readonly homeLibPath:        string | undefined
 }
 
 /**
@@ -80,11 +82,12 @@ export interface RShellOptions extends RShellSessionOptions {
 
 export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 	sessionName:        'default',
-	pathToRExecutable:  'R',
+	pathToRExecutable:  getPlatform() === 'windows' ? 'R.exe' : 'R',
 	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
 	cwd:                process.cwd(),
 	env:                process.env,
-	eol:                EOL,
+	eol:                '\n',
+	homeLibPath:        undefined,
 	revive:             'never',
 	onRevive:           () => { /* do nothing */ }
 } as const
@@ -213,7 +216,14 @@ export class RShell {
 	}
 
 	public tryToInjectHomeLibPath(): void {
-		this.injectLibPaths('~/.r-libs')
+		// ensure the path exists first
+		if(this.options.homeLibPath === undefined) {
+			this.log.debug(`ensuring home lib path exists`)
+			this.sendCommand(`dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE)`)
+			this.sendCommand(`.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))`)
+		} else {
+			this.injectLibPaths(this.options.homeLibPath)
+		}
 	}
 
 	/**
@@ -263,21 +273,15 @@ export class RShell {
 
 		this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
 
-		const successfulDone = new RegExp(`.*DONE *\\(${packageName}\\)`)
-
-		await this.session.collectLinesUntil('both', {
-			predicate:       data => successfulDone.test(data),
-			includeInResult: false
-		}, {
+		await this.sendCommandWithOutput(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`, {
 			ms:             750_000,
 			resetOnNewData: true
-		}, () => {
-			// the else branch is a cheesy way to work even if the package is already installed!
-			this.sendCommand(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/", quiet=FALSE, lib=temp)`)
 		})
+
 		if(autoload) {
-			this.sendCommand(`library(${ts2r(packageName)}, lib.loc=${ts2r(tempdir)})`)
+			this.sendCommand(`library(${ts2r(packageName)},lib.loc=${ts2r(tempdir)})`)
 		}
+
 		return {
 			packageName,
 			libraryLocation: tempdir,

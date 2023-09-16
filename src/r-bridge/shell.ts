@@ -277,19 +277,11 @@ export class RShell {
 
 		this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
 
-		const successfulDone = new RegExp(`.*DONE *\\(${packageName}\\)`)
-
-		await this.session.collectLinesUntil('both', {
-			predicate:       data => successfulDone.test(data),
-			includeInResult: false
-		}, {
+		await this.sendCommandWithOutput(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`, {
 			ms:             750_000,
 			resetOnNewData: true
-		}, () => {
-			this.sendCommand(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`)
-			// just to be sure:
-			this.sendCommand(`cat("DONE (${packageName})${this.options.eol}")`)
 		})
+
 		if(autoload) {
 			this.sendCommand(`library(${ts2r(packageName)},lib.loc=${ts2r(tempdir)})`)
 		}

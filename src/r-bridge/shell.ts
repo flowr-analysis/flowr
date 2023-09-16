@@ -221,7 +221,8 @@ export class RShell {
 
 	public tryToInjectHomeLibPath(): void {
 		// ensure the path exists first
-		this.sendCommand(`dir.create(path=${ts2r(this.options.homeLibPath)}, showWarnings = FALSE, recursive = TRUE)`)
+		log.debug(`ensuring home lib path exists`)
+		this.sendCommand(`dir.create(path=${ts2r(this.options.homeLibPath)},showWarnings=FALSE,recursive=TRUE)`)
 		this.injectLibPaths(this.options.homeLibPath)
 	}
 
@@ -267,7 +268,7 @@ export class RShell {
 		}
 
 		// obtain a temporary directory
-		this.sendCommand('temp <- tempdir()')
+		this.sendCommand('temp <- Sys.getenv("R_LIBS_USER")')
 		const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${ts2r(this.options.eol)})`)
 
 		this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
@@ -281,12 +282,12 @@ export class RShell {
 			ms:             750_000,
 			resetOnNewData: true
 		}, () => {
-			// the else branch is a cheesy way to work even if the package is already installed!
 			this.sendCommand(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`)
 		})
 		if(autoload) {
 			this.sendCommand(`library(${ts2r(packageName)},lib.loc=${ts2r(tempdir)})`)
 		}
+
 		return {
 			packageName,
 			libraryLocation: tempdir,

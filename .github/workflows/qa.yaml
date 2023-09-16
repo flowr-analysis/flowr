@@ -48,7 +48,7 @@ jobs:
     needs: [ debug ]
     name: "Test Suite (coverage)"
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@288-add-windows-os-to-the-automatic-testing-suite
     with:
       action: test-full -- --verbose
       image: windows-latest

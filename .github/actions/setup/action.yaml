@@ -28,26 +28,3 @@ runs:
       with:
         update-rtools: true
         r-version: ${{ inputs.r-version  }}
-
-    - name: Set site library path (from the rlib-action)
-      run: |
-        # Set site library path
-        cat("::group::Set site library path\n")
-        if (Sys.getenv("RENV_PROJECT") != "") {
-          message("renv project detected, no need to set R_LIBS_SITE")
-          cat(sprintf("R_LIB_FOR_PAK=%s\n", .libPaths()[1]), file = Sys.getenv("GITHUB_ENV"), append = TRUE)
-          q("no")
-        }
-        lib <- Sys.getenv("R_LIBS_SITE")
-        if (lib == "") {
-          lib <- file.path(dirname(.Library), "site-library")
-          cat(sprintf("R_LIBS_SITE=%s\n", lib), file = Sys.getenv("GITHUB_ENV"), append = TRUE)
-          cat(sprintf("R_LIB_FOR_PAK=%s\n", lib), file = Sys.getenv("GITHUB_ENV"), append = TRUE)
-          message("Setting R_LIBS_SITE to ", lib)
-        } else {
-          message("R_LIBS_SITE is already set to ", lib)
-          cat(sprintf("R_LIB_FOR_PAK=%s\n", strsplit(lib, .Platform$path.sep)[[1]][[1]]), file = Sys.getenv("GITHUB_ENV"), append = TRUE)
-        }
-        cat("::endgroup::\n")
-      shell: Rscript {0}
-

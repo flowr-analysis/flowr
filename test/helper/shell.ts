@@ -60,7 +60,7 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
  * @param fn       - function to use the shell
  * @param packages - packages to be ensured when the shell is created
  */
-export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xmlparsedata']): () => void {
+export function withShell(fn: (shell: RShell) => void, packages: string[] = ['pkgbuild', 'xmlparsedata']): () => void {
 	return function() {
 		const shell = new RShell()
 		// this way we probably do not have to reinstall even if we launch from WebStorm

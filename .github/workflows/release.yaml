@@ -6,11 +6,16 @@ name: "Release"
       - main
 
 jobs:
+  full-test:
+    name: "Run Full Test Suite (Release)"
+    if: startsWith(github.event.head_commit.message, '[release:minor]') ||
+      startsWith(github.event.head_commit.message, '[release:major]') ||
+      startsWith(github.event.head_commit.message, '[release:patch]')
+    uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
+
   release:
     runs-on: ubuntu-latest
-    if: startsWith(github.event.head_commit.message, '[release:minor]') ||
-        startsWith(github.event.head_commit.message, '[release:major]') ||
-        startsWith(github.event.head_commit.message, '[release:patch]')
+    needs: ['full-test']
     steps:
       - uses: actions/checkout@v4
         with:

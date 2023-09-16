@@ -73,6 +73,7 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['pk
 				}
 				await shell.ensurePackageInstalled(pkg, true)
 			}
+			shell.sendCommand('pkgbuild::find_rtools()')
 		})
 		fn(shell)
 		after(() => {

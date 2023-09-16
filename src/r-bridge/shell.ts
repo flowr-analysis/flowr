@@ -286,7 +286,7 @@ export class RShell {
 			ms:             750_000,
 			resetOnNewData: true
 		}, () => {
-			this.sendCommand(`install.packages(${ts2r(packageName)},repos=c("https://cloud.r-project.org/","https://cloud.r-project.org/"),quiet=FALSE,lib=temp)`)
+			this.sendCommand(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`)
 		})
 		if(autoload) {
 			this.sendCommand(`library(${ts2r(packageName)},lib.loc=${ts2r(tempdir)})`)

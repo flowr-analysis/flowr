@@ -51,7 +51,7 @@ jobs:
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
     with:
       timeout-minutes: 20
-      action: test-full -- --verbose
+      action: test-full
       image: windows-latest
       coverage: true
 

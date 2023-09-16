@@ -288,7 +288,7 @@ export class RShell {
 		}, () => {
 			this.sendCommand(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`)
 			// just to be sure:
-			this.sendCommand(`cat("DONE (${packageName}\\)${this.options.eol}")`)
+			this.sendCommand(`cat("DONE (${packageName})${this.options.eol}")`)
 		})
 		if(autoload) {
 			this.sendCommand(`library(${ts2r(packageName)},lib.loc=${ts2r(tempdir)})`)

@@ -191,7 +191,7 @@ export function assertDataflow(name: string, shell: RShell, input: string, expec
 			console.error('diff:\n', diff)
 			throw e
 		}
-	})
+	}).timeout('3min')
 }
 
 

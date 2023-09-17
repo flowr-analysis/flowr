@@ -13,8 +13,8 @@ jobs:
         r-version: [ '4.2.3', '4.0.0' ]
         os: [ ubuntu-latest ]
         include:
-        #   - os: macos-latest
-        #     r-version: '4.2.3'
+           - os: macos-latest
+             r-version: '4.2.3'
            - os: windows-latest
              r-version: '4.2.3'
     name: "Test Suite (full)"

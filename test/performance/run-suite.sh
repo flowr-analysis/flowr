@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 
-set -eu
-
 ### Gets a suite name benchmarks the complete suite using the `benchmark` script and summarizes the results.
+
+if [[ -z "$1" || -z "$2" ]]; then
+  printf "No suite name or output file given.\nUsage: %s <suite-name> <output-file> (<process-count>)\n" "$0"
+  exit 1
+fi
+
+set -eu
 
 SUITE_NAME="$1"
 OUT_BASE="$(pwd)/$2"
 OUTPUT_FILE="${OUT_BASE}.json"
 RAW_OUTPUT="${OUT_BASE}-raw.json"
-PARALLEL=1
-
-if [[ -z "${SUITE_NAME}" ||  -z "${OUTPUT_FILE}"  ]]; then
-  printf "No suite name or output file given.\nUsage: %s <suite-name> <output-file>\n" "$0"
-  exit 1
-fi
+# default to 1 parallel processes
+PARALLEL="${3-1}"
 
 SUITE="suite-${SUITE_NAME}"
 SETUP_SCRIPT="setup.sh"

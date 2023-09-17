@@ -10,11 +10,16 @@
 
 All of these benchmarks are meant to be executed on a linux machine, preferably the continuous integration environment. Hence, all scripts are written in bash and allowed to use tools to symlink etc.  
 
-Currently tests are not repeated.
+Currently, tests are not repeated.
+
+## How to Run?
+
+Simply start the [run-all-suites.sh](run-all-suites.sh) or the [run-suite.sh](run-suite.sh) script.
+
 
 ## Structure
 
-Every folder contains a suite that is used by the performance test (see the [performance-test.sh](performance-test.sh)).
+Every folder contains a suite that is used by the performance test (see the [run-suite.sh](run-suite.sh)).
 To avoid bloating this repository with a lot of otherwise unnecessary files, not all suites actually contain the files
 that are used for the benchmark (they download them on the first use). Additionally, this avoids licensing issues.
 

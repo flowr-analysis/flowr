@@ -16,7 +16,6 @@
     "lint": "eslint src/ test/",
     "doc": "typedoc",
     "test": "nyc --no-clean mocha --require ts-node/register --timeout 10000 \"test/**/*.spec.ts\"",
-    "test-perf": "ts-node test/performance/artificial.ts",
     "test-full": "npm run test -- --test-installation"
   },
   "keywords": [],

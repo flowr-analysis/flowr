@@ -45,3 +45,6 @@ CMD=(npm run summarizer -- --input "${RAW_OUTPUT}" --output "${OUTPUT_FILE}")
 echo -e "  * Running: \"${CMD[*]}\"...\033[33m"
 "${CMD[@]}"
 echo -e "\033[0m  * Done (written to ${OUTPUT_FILE})."
+
+# step out
+cd ..

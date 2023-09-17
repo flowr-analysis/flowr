@@ -57,7 +57,7 @@ function removeIfExists(summarizedRaw: string) {
 	}
 }
 
-const outputBase = options.output ?? options.input.replace(/\.json$/, '-summary')
+const outputBase = (options.output ?? options.input).replace(/\.json$/, '-summary')
 console.log(`Writing outputs to base ${outputBase}`)
 const summarizedRaw = `${outputBase}.json`
 

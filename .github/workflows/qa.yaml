@@ -53,6 +53,19 @@ jobs:
       action: test-full
       coverage: true
 
+
+  performance-test:
+    needs: [ test ]
+    name: "Run Full Test Suite (only on PR to main)"
+    # TODO: if everything works: && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+    if: ${{ always() && !failure() }}
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    with:
+      action: performance-test
+      coverage: false
+      timeout-minutes: 25
+
+
   full-test:
     needs: [ lint ]
     name: "Run Full Test Suite (only on PR to main)"

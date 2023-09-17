@@ -10,6 +10,8 @@
 
 All of these benchmarks are meant to be executed on a linux machine, preferably the continuous integration environment. Hence, all scripts are written in bash and allowed to use tools to symlink etc.  
 
+Currently tests are not repeated.
+
 ## Structure
 
 Every folder contains a suite that is used by the performance test (see the [performance-test.sh](performance-test.sh)).

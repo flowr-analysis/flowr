@@ -63,6 +63,7 @@ jobs:
     with:
       action: performance-test
       coverage: false
+      benchmark: true
       timeout-minutes: 25
 
 

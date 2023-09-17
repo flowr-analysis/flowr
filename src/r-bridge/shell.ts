@@ -420,6 +420,7 @@ class RShellSession {
 
 	public onExit(callback: (code: number, signal: string | null) => void): void {
 		this.bareSession.on('exit', callback)
+		this.bareSession.stdin.on('error', callback)
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any

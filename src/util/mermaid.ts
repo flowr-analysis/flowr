@@ -14,6 +14,8 @@ import {
 import { guard } from './assert'
 import { jsonReplacer } from './json'
 import { DataflowScopeName } from '../dataflow/environments'
+import { ControlflowInfo } from '../statistics/features/supported'
+import { ControlFlowInformation } from './cfg'
 
 
 interface MermaidGraph {
@@ -247,4 +249,31 @@ export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = ''): strin
  */
 export function normalizedAstToMermaidUrl(ast: RNodeWithParent, prefix = ''): string {
 	return mermaidCodeToUrl(normalizedAstToMermaid(ast, prefix))
+}
+
+
+
+export function cfgToMermaid(cfg: ControlFlowInformation, prefix = ''): string {
+	let output = prefix + 'flowchart TD\n'
+	// TODO: subgraphs for function definitions?
+	for(const [id, vertex] of cfg.graph.vertices()) {
+		const name = `"\`${vertex.name} (${id})\n${JSON.stringify(vertex.content).replaceAll('\"','\'')}\`"` // TODO: fix, it is horribe
+		output += `    n${id}[${name}]\n`
+/* 		for(const child of vertex.children) {
+			output += `    n${id} ---|"child"| n${child}\n`
+		} */
+	}
+	for(const [from, targets] of cfg.graph.edges()) {
+		for(const [to, edge] of targets) {
+			output += `    n${from} -->|"${edge.label}"| n${to}\n`
+		}
+	}
+	return output
+}
+
+/**
+ * Use mermaid to visualize the normalized AST.
+ */
+export function cfgToMermaidUrl(ast: ControlFlowInformation, prefix = ''): string {
+	return mermaidCodeToUrl(cfgToMermaid(ast, prefix))
 }

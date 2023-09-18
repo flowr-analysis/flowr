@@ -3,6 +3,7 @@
 <!-- TOC -->
 * [Performance Tests](#performance-tests)
   * [General Note](#general-note)
+  * [How to Run?](#how-to-run)
   * [Structure](#structure)
 <!-- TOC -->
 
@@ -14,7 +15,7 @@ Currently, tests are not repeated.
 
 ## How to Run?
 
-Simply start the [run-all-suites.sh](run-all-suites.sh) or the [run-suite.sh](run-suite.sh) script.
+Simply start the [run-all-suites.sh](run-all-suites.sh) or the [run-suite.sh](run-suite.sh) script. However, please keep in mind, that the benchmarks are intended to be run within the continuous integration environment (or retroactively to create more plots for each commit). 
 
 
 ## Structure

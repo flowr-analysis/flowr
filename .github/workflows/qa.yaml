@@ -119,13 +119,6 @@ jobs:
           benchmark-data-dir-path: wiki/stats/benchmark/${{ matrix.name }}
           auto-push: false
 
-      - name: "⬆️ Update previous benchmark data"
-        uses: actions/cache/save@v3.3.2
-        if: github.event_name != 'pull_request'
-        with:
-          path: ./cache
-          key: ${{ matrix.name }}-benchmark
-
       - name: "⬆️ Push benchmark results"
         if: github.event_name != 'pull_request'
         # we manipulate the name of the last commit message

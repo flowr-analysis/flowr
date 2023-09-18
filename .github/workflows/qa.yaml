@@ -62,7 +62,7 @@ jobs:
     needs: [ test ]
     name: "Run Performance Tests (only on main)"
     if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@161-setup-an-automatic-and-reproducible-performance-benchmark-with-the-ci
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
     with:
       action: performance-test
       coverage: false

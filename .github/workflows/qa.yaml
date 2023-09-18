@@ -106,7 +106,7 @@ jobs:
           summary-always: true
           comment-on-alert: true
           comment-always: true
-          skip-fetch-gh-pages: false
+          skip-fetch-gh-pages: true
           gh-pages-branch: 'demo' # todo: change
           benchmark-data-dir-path: wiki/stats/benchmark/${{ matrix.name }}/
           auto-push: false

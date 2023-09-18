@@ -165,6 +165,9 @@ function writeGraphOutput(ultimate: UltimateSlicerStats) {
 	const data: BenchmarkGraphEntry[] = []
 
 	for(const [point, measurement] of [...ultimate.commonMeasurements.entries(), ...ultimate.perSliceMeasurements.entries()]) {
+		if(point === 'close R session' || point === 'initialize R session' || point === 'inject home path' || point === 'ensure installation of xmlparsedata' || point === 'retrieve token map') {
+			continue
+		}
 		data.push({
 			name:  point[0].toUpperCase() + point.slice(1),
 			unit:  'ms',

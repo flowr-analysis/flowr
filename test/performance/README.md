@@ -29,3 +29,5 @@ Each suite has to contain the following files:
 - a `setup.sh` which should populate the new, ignored `files` folder that contains all input files for the performance benchmark.
 
   If your benchmark should use files contained within the same folder (as it is done by the [artificial suite](suite-artificial)), the `setup.sh` may simply link/copy the respective contents. 
+
+Furthermore, each suite must have its own upload action in the QA workflow!.

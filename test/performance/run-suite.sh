@@ -38,26 +38,14 @@ FILES_DIR="$(pwd)/files/"
 CMD=(npm run benchmark -- --parallel "${PARALLEL}" --output "${RAW_OUTPUT}" "${FILES_DIR}")
 
 echo -e "  * Running: \"${CMD[*]}\"...\033[33m"
-# "${CMD[@]}"
+"${CMD[@]}"
 echo -e "\033[0m  * Done (written to ${RAW_OUTPUT})."
 echo "  * Summarizing results to ${OUTPUT_FILE}${ULTIMATE_SUMMARY_SUFFIX}..."
 
-CMD=(npm run summarizer -- --input "${RAW_OUTPUT}" --output "${OUTPUT_FILE}")
+CMD=(npm run summarizer -- --input "${RAW_OUTPUT}" --output "${OUTPUT_FILE}" --graph)
 echo -e "  * Running: \"${CMD[*]}\"...\033[33m"
-# "${CMD[@]}"
+"${CMD[@]}"
 echo -e "\033[0m  * Done (written to ${OUTPUT_FILE}${ULTIMATE_SUMMARY_SUFFIX})."
-
-OUTPUT_GRAPH="$(dirname "${OUTPUT_FILE}")/graph/"
-
-echo "  * Produce main benchmark metrics to ${OUTPUT_GRAPH}..."
-
-mkdir -p "${OUTPUT_GRAPH}"
-
-# read json in '${OUTPUT_FILE}${ULTIMATE_SUMMARY_SUFFIX}' and extract the 'commonMeasurements' array
-readarray -t COMMON_MEASUREMENTS < <(jq -r '.commonMeasurements[]' "${OUTPUT_FILE}${ULTIMATE_SUMMARY_SUFFIX}")
-
-echo "${COMMON_MEASUREMENTS[*]}"
-
 
 # step out
 cd ..

@@ -61,8 +61,8 @@ jobs:
   performance-test:
     needs: [ test ]
     name: "Run Performance Tests (only on main)"
-    if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    if: ${{ always() && !failure() }}
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@161-setup-an-automatic-and-reproducible-performance-benchmark-with-the-ci
     with:
       action: performance-test
       coverage: false
@@ -121,7 +121,7 @@ jobs:
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
-          branch: main
+          branch: demo
           github_token: ${{ secrets.GITHUB_TOKEN }}
           force: true
 

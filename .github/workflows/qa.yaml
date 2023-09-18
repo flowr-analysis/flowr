@@ -102,7 +102,7 @@ jobs:
           path: ./cache
           key: ${{ matrix.name }}-benchmark
 
-      - name: "Merge Performance Results"
+      - name: "Merge and Produce Performance Results"
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: '"${{ matrix.name }}" Benchmark Suite'
@@ -114,16 +114,16 @@ jobs:
           summary-always: true
           comment-on-alert: true
           comment-always: true
-          skip-fetch-gh-pages: true
-          gh-pages-branch: 'main'
-          benchmark-data-dir-path: wiki/stats/benchmark/${{ matrix.name }}
+          skip-fetch-gh-pages: false
+          gh-pages-branch: 'demo' # todo: change
+          benchmark-data-dir-path: wiki/stats/benchmark/${{ matrix.name }}/
           auto-push: false
 
       - name: "⬆️ Push benchmark results"
         if: github.event_name != 'pull_request'
         # we manipulate the name of the last commit message
         run: |
-          git add "wiki/stats/benchmark/${{ matrix.name }}"
+          git add -f "wiki/stats/benchmark/${{ matrix.name }}/"
           git commit --amend -m "[skip ci] doc: new benchmark data for ${{ matrix.name }}"
 
       - name: Push changes

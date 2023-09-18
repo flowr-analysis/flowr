@@ -104,7 +104,7 @@ jobs:
         uses: actions/cache/save@v3.3.2
         with:
           path: ./cache
-          key: ${{ steps.restore-benchmark-cache.outputs.cache-primary-key }}
+          key: ${{ runner.os }}-benchmark
 
 
   full-test:

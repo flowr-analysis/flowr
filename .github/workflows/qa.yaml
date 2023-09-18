@@ -20,10 +20,6 @@ name: "QA"
         default: false
         type: boolean
 
-env:
-  # Add your benchmark suite names here
-  BENCHMARK_SUITES: '{"name":[ "artificial", "social-science" ]}'
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -69,7 +65,9 @@ jobs:
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@161-setup-an-automatic-and-reproducible-performance-benchmark-with-the-ci
     strategy:
       fail-fast: true
-      matrix: ${{ fromJson(env.BENCHMARK_SUITES) }}
+      matrix:
+        # currently we have a duplication, add your benchmark names here and in `performance-test-upload`
+        name: ['artificial', 'social-science']
     with:
       action: performance-test 1 "${{ matrix.name }}"
       coverage: false
@@ -82,7 +80,9 @@ jobs:
     needs: [ performance-test ]
     strategy:
       fail-fast: true
-      matrix: ${{ fromJson(env.BENCHMARK_SUITES) }}
+      matrix:
+        # currently we have a duplication, add your benchmark names here and in `performance-test`
+        name: ['artificial', 'social-science']
     steps:
       - name: "Checkout Repository"
         uses: actions/checkout@v4

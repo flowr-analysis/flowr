@@ -74,6 +74,12 @@ jobs:
     name: "Upload Performance Test Results"
     runs-on: ubuntu-latest
     needs: [ performance-test ]
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: 'artificial'
+            tool: 'customSmallerIsBetter'
     steps:
       - name: "⬇️ Get benchmark Artifacts"
         uses: actions/download-artifact@v3
@@ -86,26 +92,44 @@ jobs:
         uses: actions/cache@v3.3.2
         with:
           path: ./cache
-          key: ${{ runner.os }}-benchmark
+          key: ${{ matrix.name }}-benchmark
 
-      - name: "⬆️ Upload Performance Results"
+      - name: "Merge Performance Results"
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: 'Artificial Benchmark Suite'
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark/artificial/artificial-graph.json
-          external-data-json-path: ./cache/benchmark-data.json
+          name: '"${{ matrix.name }}" Benchmark Suite'
+          tool: '${{ matrix.tool }}'
+          output-file-path: benchmark/${{ matrix.name }}/${{ matrix.name }}-graph.json
+          external-data-json-path: ./cache/benchmark-${{ matrix.name }}-data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-alert: true
+          fail-on-alert: false
           summary-always: true
+          comment-on-alert: true
+          comment-always: true
           skip-fetch-gh-pages: true
+          gh-pages-branch: 'main'
+          benchmark-data-dir-path: wiki/stats/benchmark/${{ matrix.name }}
+          auto-push: false
 
       - name: "⬆️ Update previous benchmark data"
         uses: actions/cache/save@v3.3.2
+        if: github.event_name != 'pull_request'
         with:
           path: ./cache
-          key: ${{ runner.os }}-benchmark
+          key: ${{ matrix.name }}-benchmark
 
+      - name: "⬆️ Push benchmark results"
+        if: github.event_name != 'pull_request'
+        # we manipulate the name of the last commit message
+        run: |
+          git commit --amend -m "[skip ci] doc: new benchmark data"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          branch: demo # todo: change
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: true
 
   full-test:
     needs: [ lint ]

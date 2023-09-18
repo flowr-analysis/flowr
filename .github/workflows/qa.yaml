@@ -61,8 +61,7 @@ jobs:
   performance-test:
     needs: [ test ]
     name: "Run Performance Tests (only on main)"
-    # TODO: if everything works: && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
-    if: ${{ always() && !failure() }}
+    if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@161-setup-an-automatic-and-reproducible-performance-benchmark-with-the-ci
     with:
       action: performance-test
@@ -112,7 +111,7 @@ jobs:
           auto-push: false
 
       - name: "⬆️ Push benchmark results"
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' # just an extra guard
         # we manipulate the name of the last commit message
         run: |
           git add -f "wiki/stats/benchmark/${{ matrix.name }}/"
@@ -121,7 +120,7 @@ jobs:
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
-          branch: demo # todo: change
+          branch: main
           github_token: ${{ secrets.GITHUB_TOKEN }}
           force: true
 

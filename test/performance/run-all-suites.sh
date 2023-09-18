@@ -17,7 +17,8 @@ readarray -t SUITES < <(find . -maxdepth 1 -type d -name "${SUITE_PREFIX}*" | se
 echo "Found ${#SUITES[*]} suite(s)"
 
 for SUITE in "${SUITES[@]}"; do
-  CMD=(bash run-suite.sh "${SUITE}" "${OUTPUT_DIR}/${SUITE}" "${PARALLEL}")
+  mkdir -p "${OUTPUT_DIR}/${SUITE}"
+  CMD=(bash run-suite.sh "${SUITE}" "$(pwd)/${OUTPUT_DIR}/${SUITE}/${SUITE}" "${PARALLEL}")
   echo -e "Suite-Command: \"${CMD[*]}\"..."
   "${CMD[@]}"
 done

@@ -81,11 +81,19 @@ jobs:
           - name: 'artificial'
             tool: 'customSmallerIsBetter'
     steps:
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+
       - name: "⬇️ Get benchmark Artifacts"
         uses: actions/download-artifact@v3
         with:
           name: benchmark-results
           path: benchmark/
+
+      - name: Name and Email for Git (config)
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
 
       - name: "⬇️ Download previous benchmark data"
         id: restore-benchmark-cache

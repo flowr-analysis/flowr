@@ -77,8 +77,9 @@ jobs:
       fail-fast: true
       matrix:
         include:
+          # Add your benchmark suite names here
           - name: 'artificial'
-            tool: 'customSmallerIsBetter'
+          - name: 'social-science'
     steps:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
@@ -98,7 +99,7 @@ jobs:
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: '"${{ matrix.name }}" Benchmark Suite'
-          tool: '${{ matrix.tool }}'
+          tool: 'customSmallerIsBetter'
           output-file-path: benchmark/${{ matrix.name }}/${{ matrix.name }}-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false

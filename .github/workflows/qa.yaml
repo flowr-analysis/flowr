@@ -114,7 +114,7 @@ jobs:
     uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
 
   deploy-doc:
-    needs: [ test, full-test ]
+    needs: [ test, full-test, performance-test-upload ]
     name: "Deploy Documentation (only on main)"
     if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
     uses: Code-Inspect/flowr/.github/workflows/deploy-doc.yaml@main

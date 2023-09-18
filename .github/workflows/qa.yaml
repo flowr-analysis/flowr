@@ -95,20 +95,12 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-      - name: "⬇️ Download previous benchmark data"
-        id: restore-benchmark-cache
-        uses: actions/cache@v3.3.2
-        with:
-          path: ./cache
-          key: ${{ matrix.name }}-benchmark
-
       - name: "Merge and Produce Performance Results"
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: '"${{ matrix.name }}" Benchmark Suite'
           tool: '${{ matrix.tool }}'
           output-file-path: benchmark/${{ matrix.name }}/${{ matrix.name }}-graph.json
-          external-data-json-path: ./cache/benchmark-${{ matrix.name }}-data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
           summary-always: true

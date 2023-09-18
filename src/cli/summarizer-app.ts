@@ -12,7 +12,6 @@ import { SlicingCriteria } from '../slicing'
 import { escape } from '../statistics'
 import { jsonReplacer } from '../util/json'
 import { processCommandLineArgs } from './common'
-import path from 'path'
 import { MergeableRecord } from '../util/objects'
 
 export interface BenchmarkCliOptions {
@@ -71,10 +70,10 @@ async function processNestMeasurement(line: Buffer, counter: number, summarizedT
 	got = {
 		filename: got.filename,
 		stats:    {
-			input:                got.stats.input,
-			request:              got.stats.request,
-			dataflow:             got.stats.dataflow,
-			commonMeasurements:   new Map(
+			input:              got.stats.input,
+			request:            got.stats.request,
+			dataflow:           got.stats.dataflow,
+			commonMeasurements: new Map(
 				(got.stats.commonMeasurements as unknown as [CommonSlicerMeasurements, string][])
 					.map(([k, v]) => {
 						guard(v.endsWith('n'), 'Expected a bigint')
@@ -113,7 +112,7 @@ async function summarize() {
 
 	let line: false | Buffer
 
-	let counter = 0
+	const counter = 0
 	// eslint-disable-next-line no-cond-assign
 	while(line = reader.next()) {
 		await processNestMeasurement(line, counter, summarizedText)
@@ -126,10 +125,10 @@ function processNextSummary(line: Buffer, allSummarized: SummarizedSlicerStats[]
 	got = {
 		filename:  got.filename,
 		summarize: {
-			input:                got.summarize.input,
-			request:              got.summarize.request,
-			dataflow:             got.summarize.dataflow,
-			commonMeasurements:   new Map(
+			input:              got.summarize.input,
+			request:            got.summarize.request,
+			dataflow:           got.summarize.dataflow,
+			commonMeasurements: new Map(
 				(got.summarize.commonMeasurements as unknown as [CommonSlicerMeasurements, string][])
 					.map(([k, v]) => {
 						guard(v.endsWith('n'), 'Expected a bigint')
@@ -141,10 +140,10 @@ function processNextSummary(line: Buffer, allSummarized: SummarizedSlicerStats[]
 				sliceCriteriaSizes: got.summarize.perSliceMeasurements.sliceCriteriaSizes,
 				measurements:
 														new Map(got.summarize.perSliceMeasurements.measurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][]),
-				reduction:          got.summarize.perSliceMeasurements.reduction,
-				timesHitThreshold:  got.summarize.perSliceMeasurements.timesHitThreshold,
-				failedToRepParse:   got.summarize.perSliceMeasurements.failedToRepParse,
-				sliceSize:          got.summarize.perSliceMeasurements.sliceSize
+				reduction:         got.summarize.perSliceMeasurements.reduction,
+				timesHitThreshold: got.summarize.perSliceMeasurements.timesHitThreshold,
+				failedToRepParse:  got.summarize.perSliceMeasurements.failedToRepParse,
+				sliceSize:         got.summarize.perSliceMeasurements.sliceSize
 			}
 		}
 	}
@@ -165,7 +164,7 @@ function writeGraphOutput(ultimate: UltimateSlicerStats) {
 
 	const data: BenchmarkGraphEntry[] = []
 
-	for (const [point, measurement] of [...ultimate.commonMeasurements.entries(), ...ultimate.perSliceMeasurements.entries()]) {
+	for(const [point, measurement] of [...ultimate.commonMeasurements.entries(), ...ultimate.perSliceMeasurements.entries()]) {
 		data.push({
 			name:  point[0].toUpperCase() + point.slice(1),
 			unit:  'ms',

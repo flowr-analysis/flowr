@@ -123,7 +123,8 @@ jobs:
         if: github.event_name != 'pull_request'
         # we manipulate the name of the last commit message
         run: |
-          git commit --amend -m "[skip ci] doc: new benchmark data"
+          git add "wiki/stats/benchmark/${{ matrix.name }}"
+          git commit --amend -m "[skip ci] doc: new benchmark data for ${{ matrix.name }}"
 
       - name: Push changes
         uses: ad-m/github-push-action@master

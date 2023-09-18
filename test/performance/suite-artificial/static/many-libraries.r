@@ -9,4 +9,5 @@ library(h)
 library(i)
 library(j)
 library(k)
-print(3)
+x <- 2
+print(x)

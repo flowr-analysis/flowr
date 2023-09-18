@@ -20,6 +20,10 @@ name: "QA"
         default: false
         type: boolean
 
+env:
+  # Add your benchmark suite names here
+  BENCHMARK_SUITES: '{"name":[ "artificial", "social-science" ]}'
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -63,8 +67,11 @@ jobs:
     name: "Run Performance Tests (only on main)"
     if: ${{ always() && !failure() }}
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@161-setup-an-automatic-and-reproducible-performance-benchmark-with-the-ci
+    strategy:
+      fail-fast: true
+      matrix: ${{ fromJson(env.BENCHMARK_SUITES) }}
     with:
-      action: performance-test
+      action: performance-test 1 "${{ matrix.name }}"
       coverage: false
       benchmark: true
       timeout-minutes: 60
@@ -75,11 +82,7 @@ jobs:
     needs: [ performance-test ]
     strategy:
       fail-fast: true
-      matrix:
-        include:
-          # Add your benchmark suite names here
-          - name: 'artificial'
-          - name: 'social-science'
+      matrix: ${{ fromJson(env.BENCHMARK_SUITES) }}
     steps:
       - name: "Checkout Repository"
         uses: actions/checkout@v4

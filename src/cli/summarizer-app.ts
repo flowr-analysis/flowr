@@ -25,7 +25,7 @@ export interface BenchmarkCliOptions {
 
 interface BenchmarkData {
 	filename: string,
-	stats:    SlicerSUats
+	stats:    SlicerStats
 }
 
 const options = processCommandLineArgs<BenchmarkCliOptions>('summarizer', ['input'],{

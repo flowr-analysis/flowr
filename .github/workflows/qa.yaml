@@ -93,7 +93,7 @@ jobs:
         with:
           name: 'Artificial Benchmark Suite'
           tool: 'customSmallerIsBetter'
-          output-file-path: ./test/performance/results/artificial/artificial-graph.json
+          output-file-path: benchmark/artificial/artificial-graph.json
           external-data-json-path: ./cache/benchmark-data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: true

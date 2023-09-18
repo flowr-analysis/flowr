@@ -107,6 +107,7 @@ jobs:
           comment-on-alert: true
           comment-always: true
           skip-fetch-gh-pages: true
+          gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/${{ matrix.name }}/
           auto-push: false
 

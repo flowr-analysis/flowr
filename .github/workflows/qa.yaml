@@ -115,7 +115,7 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/artificial/
+          benchmark-data-dir-path: stats/benchmark/artificial/
           auto-push: false
 
       - name: "Merge and Produce Performance Results (social-science)"
@@ -131,20 +131,20 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/social-science/
+          benchmark-data-dir-path: stats/benchmark/social-science/
           auto-push: false
 
       - name: "⬆️ Push benchmark results"
         if: github.event_name != 'pull_request' # just an extra guard
         # we manipulate the name of the last commit message
         run: |
-          git add -f "wiki/stats/benchmark/"
+          git add -f "stats/benchmark/"
           git commit --amend -m "[skip ci] doc: new benchmark data"
 
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
-          branch: main
+          branch: gh-pages
           github_token: ${{ secrets.RELEASE_TOKEN }}
           force: true
 

@@ -95,8 +95,9 @@ jobs:
           name: benchmark-results
           path: benchmark/
 
-      - name: Name and Email for Git (config)
+      - name: Name and Email for Git (config) and update
         run: |
+          git pull
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 

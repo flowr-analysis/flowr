@@ -78,12 +78,6 @@ jobs:
     name: "Upload Performance Test Results"
     runs-on: ubuntu-latest
     needs: [ performance-test ]
-    strategy:
-      max-parallel: 1
-      fail-fast: true
-      matrix:
-        # currently we have a duplication, add your benchmark names here and in `performance-test`
-        name: ['artificial', 'social-science']
     steps:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
@@ -101,12 +95,13 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-      - name: "Merge and Produce Performance Results"
+      # currently we have a duplication, add your benchmark names here and in `performance-test`
+      - name: "Merge and Produce Performance Results (artificial)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: '"${{ matrix.name }}" Benchmark Suite'
+          name: '"artificial" Benchmark Suite'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark/${{ matrix.name }}/${{ matrix.name }}-graph.json
+          output-file-path: benchmark/artificial/artificial-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
           summary-always: true
@@ -114,15 +109,31 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/${{ matrix.name }}/
+          benchmark-data-dir-path: wiki/stats/benchmark/artificial/
+          auto-push: false
+
+      - name: "Merge and Produce Performance Results (social-science)"
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: '"social-science" Benchmark Suite'
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark/social-science/social-science-graph.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-alert: false
+          summary-always: true
+          comment-on-alert: true
+          comment-always: true
+          skip-fetch-gh-pages: true
+          gh-repository: ${{ github.repository }}
+          benchmark-data-dir-path: wiki/stats/benchmark/social-science/
           auto-push: false
 
       - name: "⬆️ Push benchmark results"
         if: github.event_name != 'pull_request' # just an extra guard
         # we manipulate the name of the last commit message
         run: |
-          git add -f "wiki/stats/benchmark/${{ matrix.name }}/"
-          git commit --amend -m "[skip ci] doc: new benchmark data for ${{ matrix.name }}"
+          git add -f "wiki/stats/benchmark/"
+          git commit --amend -m "[skip ci] doc: new benchmark data"
 
       - name: Push changes
         uses: ad-m/github-push-action@master

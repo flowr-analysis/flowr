@@ -86,6 +86,8 @@ jobs:
     steps:
       - name: "Checkout Repository"
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: "⬇️ Get benchmark Artifacts"
         uses: actions/download-artifact@v3
@@ -125,7 +127,7 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           branch: main
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.RELEASE_TOKEN }}
           force: true
 
   full-test:

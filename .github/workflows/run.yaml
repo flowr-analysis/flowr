@@ -33,10 +33,10 @@ name: "Run one of flowR's npm-actions with a specific version"
         default: false
         type: boolean
       benchmark:
-        description: "Whether to report and upload benchmark results at the end"
+        description: "Name to use to report and upload benchmark results at the end"
         required: false
-        default: false
-        type: boolean
+        default: ''
+        type: string
 
 
 jobs:
@@ -80,8 +80,8 @@ jobs:
           force: true
 
       - name: Upload Coverage Reports to Codecov
-        if: ${{ inputs.benchmark }}
+        if: ${{ inputs.benchmark != "" }}
         uses: actions/upload-artifact@v3.1.3
         with:
-            name: benchmark-results
+            name: benchmark-results-${{ inputs.benchmark }}
             path: test/performance/results/

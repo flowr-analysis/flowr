@@ -24,6 +24,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  deployments: write
+  contents:    write
+
 jobs:
   debug:
     name: "Debug"
@@ -53,6 +57,77 @@ jobs:
       action: test-full
       coverage: true
 
+
+  performance-test:
+    needs: [ test ]
+    name: "Run Performance Tests (only on main)"
+    if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    strategy:
+      fail-fast: true
+      matrix:
+        # currently we have a duplication, add your benchmark names here and in `performance-test-upload`
+        name: ['artificial', 'social-science']
+    with:
+      action: performance-test 1 "${{ matrix.name }}"
+      coverage: false
+      benchmark: true
+      timeout-minutes: 100
+
+  performance-test-upload:
+    name: "Upload Performance Test Results"
+    runs-on: ubuntu-latest
+    needs: [ performance-test ]
+    strategy:
+      fail-fast: true
+      matrix:
+        # currently we have a duplication, add your benchmark names here and in `performance-test`
+        name: ['artificial', 'social-science']
+    steps:
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+
+      - name: "⬇️ Get benchmark Artifacts"
+        uses: actions/download-artifact@v3
+        with:
+          name: benchmark-results
+          path: benchmark/
+
+      - name: Name and Email for Git (config)
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: "Merge and Produce Performance Results"
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: '"${{ matrix.name }}" Benchmark Suite'
+          tool: 'customSmallerIsBetter'
+          output-file-path: benchmark/${{ matrix.name }}/${{ matrix.name }}-graph.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-alert: false
+          summary-always: true
+          comment-on-alert: true
+          comment-always: true
+          skip-fetch-gh-pages: true
+          gh-repository: ${{ github.repository }}
+          benchmark-data-dir-path: wiki/stats/benchmark/${{ matrix.name }}/
+          auto-push: false
+
+      - name: "⬆️ Push benchmark results"
+        if: github.event_name != 'pull_request' # just an extra guard
+        # we manipulate the name of the last commit message
+        run: |
+          git add -f "wiki/stats/benchmark/${{ matrix.name }}/"
+          git commit --amend -m "[skip ci] doc: new benchmark data for ${{ matrix.name }}"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          branch: main
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: true
+
   full-test:
     needs: [ lint ]
     name: "Run Full Test Suite (only on PR to main)"
@@ -60,7 +135,7 @@ jobs:
     uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
 
   deploy-doc:
-    needs: [ test, full-test ]
+    needs: [ test, full-test, performance-test-upload ]
     name: "Deploy Documentation (only on main)"
     if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
     uses: Code-Inspect/flowr/.github/workflows/deploy-doc.yaml@main

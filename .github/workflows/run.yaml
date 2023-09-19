@@ -32,6 +32,12 @@ name: "Run one of flowR's npm-actions with a specific version"
         required: false
         default: false
         type: boolean
+      benchmark:
+        description: "Whether to report and upload benchmark results at the end"
+        required: false
+        default: false
+        type: boolean
+
 
 jobs:
   flowr-action:
@@ -72,3 +78,10 @@ jobs:
           branch: gh-pages
           github_token: ${{ secrets.GITHUB_TOKEN }}
           force: true
+
+      - name: Upload Coverage Reports to Codecov
+        if: ${{ inputs.benchmark }}
+        uses: actions/upload-artifact@v3.1.3
+        with:
+            name: benchmark-results
+            path: test/performance/results/

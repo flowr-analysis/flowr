@@ -76,6 +76,7 @@ export const statisticOptions: OptionDefinition[] = [
 export const summarizerOptions: OptionDefinition[] = [
 	{ name: 'verbose',       alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',          alias: 'h', type: Boolean, description: 'Print this usage guide' },
+	{ name: 'graph',         alias: 'g', type: Boolean, description: 'Produce data to be used for visualizing benchmarks over time' },
 	{ name: 'ultimate-only', alias: 'u', type: Boolean, description: 'Only perform the second summary-stage, with this, the input is used to find the summary-output.' },
 	{ name: 'input',         alias: 'i', type: String,  description: 'The {italic output.json} produced by the benchmark tool', defaultOption: true, multiple: false, typeLabel: '{underline file.json}' },
 	{ name: 'output',        alias: 'o', type: String,  description: `Basename of the summaries (defaults to {italic <input>-summary})`, typeLabel: '{underline file}' },

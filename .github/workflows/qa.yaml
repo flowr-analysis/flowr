@@ -71,7 +71,7 @@ jobs:
     with:
       action: performance-test 1 "${{ matrix.name }}"
       coverage: false
-      benchmark: true
+      benchmark: ${{ matrix.name }}
       timeout-minutes: 100
 
   performance-test-upload:
@@ -84,11 +84,17 @@ jobs:
         with:
           token: ${{ secrets.RELEASE_TOKEN }}
 
-      - name: "⬇️ Get benchmark Artifacts"
+      - name: "⬇️ Get benchmark Artifacts (artificial)"
         uses: actions/download-artifact@v3
         with:
-          name: benchmark-results
-          path: benchmark/
+          name: benchmark-results-artificial
+          path: benchmark-ai/
+
+      - name: "⬇️ Get benchmark Artifacts (social-science)"
+        uses: actions/download-artifact@v3
+        with:
+          name: benchmark-results-social-science
+          path: benchmark-ss/
 
       - name: Name and Email for Git (config) and update
         run: |
@@ -101,7 +107,7 @@ jobs:
         with:
           name: '"artificial" Benchmark Suite'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark/artificial/artificial-graph.json
+          output-file-path: benchmark-ai/artificial/artificial-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
           summary-always: true
@@ -117,7 +123,7 @@ jobs:
         with:
           name: '"social-science" Benchmark Suite'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark/social-science/social-science-graph.json
+          output-file-path: benchmark-ss/social-science/social-science-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
           summary-always: true

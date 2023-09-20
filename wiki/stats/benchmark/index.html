@@ -109,22 +109,21 @@
     <script id="main-script">
       'use strict';
       (function() {
-        // Colors from https://github.com/github/linguist/blob/master/lib/linguist/languages.yml
-        const toolColors = {
-          cargo: '#dea584',
-          go: '#00add8',
-          benchmarkjs: '#f1e05a',
-          benchmarkluau: '#000080',
-          pytest: '#3572a5',
-          googlecpp: '#f34b7d',
-          catch2: '#f34b7d',
-          julia: '#a270ba',
-          jmh: '#b07219',
-          benchmarkdotnet: '#178600',
-          customBiggerIsBetter: '#38ff38',
-          customSmallerIsBetter: '#ff3838',
-          _: '#333333'
-        };
+        const cycleColors = [
+          '#00add8',
+          '#38ff38',
+          '#a270ba',
+          '#dea584',
+          '#f1e05a',
+          '#000080',
+          '#3572a5',
+          '#f34b7d',
+          '#f34b7d',
+          '#b07219',
+          '#178600',
+          '#00add8',
+          '#333333'
+      ]
 
         function init() {
           function collectBenchesPerTestCase(entries) {
@@ -170,12 +169,12 @@
 
         function renderAllChars(dataSets) {
 
-          function renderGraph(parent, name, dataset) {
+          function renderGraph(parent, name, dataset, i) {
             const canvas = document.createElement('canvas');
             canvas.className = 'benchmark-chart';
             parent.appendChild(canvas);
 
-            const color = toolColors[dataset.length > 0 ? dataset[0].tool : '_'];
+            const color = cycleColors[i % cycleColors.length];
             const data = {
               labels: dataset.map(d => d.commit.id.slice(0, 7)),
               datasets: [
@@ -249,7 +248,7 @@
             });
           }
 
-          function renderBenchSet(name, benchSet, main) {
+          function renderBenchSet(name, benchSet, main, i) {
             const setElem = document.createElement('div');
             setElem.className = 'benchmark-set';
             main.appendChild(setElem);
@@ -264,13 +263,14 @@
             setElem.appendChild(graphsElem);
 
             for (const [benchName, benches] of benchSet.entries()) {
-              renderGraph(graphsElem, benchName, benches)
+              renderGraph(graphsElem, benchName, benches, i)
             }
           }
 
           const main = document.getElementById('main');
+          let i = 0
           for (const {name, dataSet} of dataSets) {
-            renderBenchSet(name, dataSet, main);
+            renderBenchSet(name, dataSet, main, i++);
           }
         }
 

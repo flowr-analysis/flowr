@@ -115,7 +115,7 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/artificial/
+          benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
 
       - name: "Merge and Produce Performance Results (social-science)"
@@ -131,7 +131,7 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/social-science/
+          benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
 
       - name: "⬆️ Push benchmark results"

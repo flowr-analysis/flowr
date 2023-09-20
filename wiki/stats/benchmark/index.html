@@ -176,7 +176,7 @@
 
             const color = cycleColors[i % cycleColors.length];
             const data = {
-              labels: dataset.map(d => d.commit.id.slice(0, 7)),
+              labels: dataset.map(d => `${d.commit.message.slice(0,12)} (${d.commit.id.slice(0, 7)})`),
               datasets: [
                 {
                   label: name,
@@ -262,7 +262,7 @@
             graphsElem.className = 'benchmark-graphs';
             setElem.appendChild(graphsElem);
 
-            for (const [benchName, benches] of benchSet.entries()) {
+            for (const [benchName, benches] of [...benchSet.entries()].sort()) {
               renderGraph(graphsElem, benchName, benches, i)
             }
           }

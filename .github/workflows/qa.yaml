@@ -60,7 +60,7 @@ jobs:
 
   performance-test:
     needs: [ test ]
-    name: "Run Performance Tests (only on main)"
+    name: "Run Performance Tests"
     if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
     strategy:
@@ -72,7 +72,7 @@ jobs:
       action: performance-test 1 "${{ matrix.name }}"
       coverage: false
       benchmark: ${{ matrix.name }}
-      timeout-minutes: 100
+      timeout-minutes: 400
 
   performance-test-upload:
     name: "Upload Performance Test Results"
@@ -115,7 +115,7 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/artificial/
+          benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
 
       - name: "Merge and Produce Performance Results (social-science)"
@@ -131,7 +131,7 @@ jobs:
           comment-always: true
           skip-fetch-gh-pages: true
           gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/social-science/
+          benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
 
       - name: "⬆️ Push benchmark results"
@@ -150,12 +150,12 @@ jobs:
 
   full-test:
     needs: [ lint ]
-    name: "Run Full Test Suite (only on PR to main)"
+    name: "Full Test Suite"
     if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')) }}
     uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
 
   deploy-doc:
     needs: [ test, full-test, performance-test-upload ]
-    name: "Deploy Documentation (only on main)"
+    name: "Deploy Doc. (only on main)"
     if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
     uses: Code-Inspect/flowr/.github/workflows/deploy-doc.yaml@main

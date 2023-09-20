@@ -164,17 +164,20 @@ function writeGraphOutput(ultimate: UltimateSlicerStats) {
 
 	const data: BenchmarkGraphEntry[] = []
 
-	for(const [point, measurement] of [...ultimate.commonMeasurements.entries(), ...ultimate.perSliceMeasurements.entries()]) {
-		if(point === 'close R session' || point === 'initialize R session' || point === 'inject home path' || point === 'ensure installation of xmlparsedata' || point === 'retrieve token map') {
-			continue
+	for(const { name, measurements} of [{ name: 'per-file', measurements: ultimate.commonMeasurements }, { name: 'per-slice', measurements: ultimate.perSliceMeasurements }]) {
+		for(const [point, measurement] of measurements) {
+			if(point === 'close R session' || point === 'initialize R session' || point === 'inject home path' || point === 'ensure installation of xmlparsedata' || point === 'retrieve token map') {
+				continue
+			}
+			const pointName = point === 'total'? `total ${name}` : point
+			data.push({
+				name:  pointName[0].toUpperCase() + pointName.slice(1),
+				unit:  'ms',
+				value: Number(measurement.mean / 1e6),
+				range: Number(measurement.std / 1e6),
+				extra: `median: ${(measurement.median / 1e6).toFixed(2)}ms`
+			})
 		}
-		data.push({
-			name:  point[0].toUpperCase() + point.slice(1),
-			unit:  'ms',
-			value: Number(measurement.mean / 1e6),
-			range: Number(measurement.std / 1e6),
-			extra: `median: ${(measurement.median / 1e6).toFixed(2)}ms`
-		})
 	}
 
 	// write the output file

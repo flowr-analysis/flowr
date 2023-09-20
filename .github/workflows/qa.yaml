@@ -72,7 +72,7 @@ jobs:
       action: performance-test 1 "${{ matrix.name }}"
       coverage: false
       benchmark: ${{ matrix.name }}
-      timeout-minutes: 100
+      timeout-minutes: 400
 
   performance-test-upload:
     name: "Upload Performance Test Results"

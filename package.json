@@ -16,7 +16,7 @@
     "lint": "eslint src/ test/",
     "doc": "typedoc",
     "test": "nyc --no-clean mocha --require ts-node/register --timeout 10000 \"test/**/*.spec.ts\"",
-    "performance-test": "cd test/performance/ && bash run-all-suites.sh; cd ../../",
+    "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2; cd ../../; }; func",
     "test-full": "npm run test -- --test-installation"
   },
   "keywords": [],

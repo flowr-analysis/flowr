@@ -126,9 +126,9 @@ jobs:
           output-file-path: benchmark-ss/social-science/social-science-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
-          summary-always: true
+          summary-always: false
           comment-on-alert: true
-          comment-always: false
+          comment-always: true
           skip-fetch-gh-pages: true
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/

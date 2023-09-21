@@ -167,6 +167,15 @@
           }));
         }
 
+				const releaseRegex = /.*Release v(\d+\.\d+\.\d+)/;
+				function getReleaseVersion(commit) {
+					const match = releaseRegex.exec(commit.message);
+          if (match) {
+            return match[1];
+          }
+          return commit.message.slice(0, 12);
+				}
+
         function renderAllChars(dataSets) {
 
           function renderGraph(parent, name, dataset, i) {
@@ -176,7 +185,8 @@
 
             const color = cycleColors[i % cycleColors.length];
             const data = {
-              labels: dataset.map(d => `${d.commit.message.slice(0,12)} (${d.commit.id.slice(0, 7)})`),
+							// [skip ci] Release v1.1.3
+              labels: dataset.map(d => `${getReleaseVersion(d.commit)} (${d.commit.id.slice(0, 7)})`),
               datasets: [
                 {
                   label: name,

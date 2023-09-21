@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1695255188695,
+  "lastUpdate": 1695275825507,
   "repoUrl": "https://github.com/Code-Inspect/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -169,6 +169,102 @@ window.BENCHMARK_DATA = {
             "unit": "ms",
             "range": 0.3802273110956727,
             "extra": "median: 0.55ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7329390759026896,
+            "unit": "#",
+            "extra": "std: 0.1494698363920617"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.720988345209971,
+            "unit": "#",
+            "extra": "std: 0.13987413604166843"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "89b3e36c8d362f4c841830bc78a39fe17b375027",
+          "message": "ci-fix: remove `comment-always` from the `github-action-benchmark` action as it seems to simply duplicate the commit",
+          "timestamp": "2023-09-21T07:25:25+02:00",
+          "tree_id": "6335e8da9c2187d2a440388c40a1b8b022d8a429",
+          "url": "https://github.com/Code-Inspect/flowr/commit/89b3e36c8d362f4c841830bc78a39fe17b375027"
+        },
+        "date": 1695275825503,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Total per-file",
+            "value": 7643.598797772727,
+            "unit": "ms",
+            "range": 4672.180717292113,
+            "extra": "median: 6283.39ms"
+          },
+          {
+            "name": "Retrieve AST from R code",
+            "value": 1950.7826282272727,
+            "unit": "ms",
+            "range": 181.21346309768163,
+            "extra": "median: 1894.59ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 123.43655113636365,
+            "unit": "ms",
+            "range": 208.31544897169914,
+            "extra": "median: 88.70ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 79.20538540909091,
+            "unit": "ms",
+            "range": 202.11401371887737,
+            "extra": "median: 20.75ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.2619200407518827,
+            "unit": "ms",
+            "range": 1.8408493295930126,
+            "extra": "median: 1.94ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 1.66149032726466,
+            "unit": "ms",
+            "range": 1.749796677838569,
+            "extra": "median: 1.30ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.5784065275371335,
+            "unit": "ms",
+            "range": 0.30873223169526165,
+            "extra": "median: 0.52ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

@@ -13,10 +13,19 @@ jobs:
       startsWith(github.event.head_commit.message, '[release:patch]')
     uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
 
+  performance-test:
+    name: "Performance Test"
+    # we do not run if the release workflow runs it with pushing
+    if: ${{ always() && !failure() }}
+    uses: Code-Inspect/flowr/.github/workflows/performance-test.yaml@341-benchmark-without-github-push-on-pr-push-on-release
+    with:
+      push: true
+    secrets: inherit
+
   release:
     name: "Release"
     runs-on: ubuntu-latest
-    needs: ['full-test']
+    needs: ['full-test', 'performance-test']
     steps:
       - uses: actions/checkout@v4
         with:

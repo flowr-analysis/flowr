@@ -61,7 +61,17 @@ jobs:
   performance-test:
     needs: [ test ]
     name: "Performance Test"
-    if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
+    # we do not run if the release workflow runs it with pushing
+    if: ${{ 
+              always() 
+          && !failure() 
+          && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+          && !(
+                startsWith(github.event.head_commit.message, '[release:minor]') ||
+                startsWith(github.event.head_commit.message, '[release:major]') ||
+                startsWith(github.event.head_commit.message, '[release:patch]')
+              )
+      }}
     uses: Code-Inspect/flowr/.github/workflows/performance-test.yaml@341-benchmark-without-github-push-on-pr-push-on-release
     with:
       push: false
@@ -70,7 +80,11 @@ jobs:
   full-test:
     needs: [ lint ]
     name: "Full Test Suite"
-    if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')) }}
+    if: ${{ 
+              always() 
+          && !failure() 
+          && (inputs.force-full || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')) 
+      }}
     uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
 
   deploy-doc:

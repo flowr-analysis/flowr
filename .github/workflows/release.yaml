@@ -17,7 +17,7 @@ jobs:
     name: "Performance Test"
     # we do not run if the release workflow runs it with pushing
     if: ${{ always() && !failure() }}
-    uses: Code-Inspect/flowr/.github/workflows/performance-test.yaml@341-benchmark-without-github-push-on-pr-push-on-release
+    uses: Code-Inspect/flowr/.github/workflows/performance-test.yaml@main
     with:
       push: true
     secrets: inherit

@@ -90,12 +90,6 @@ jobs:
           name: benchmark-results-artificial
           path: benchmark-ai/
 
-      - name: "⬇️ Get benchmark Artifacts (social-science)"
-        uses: actions/download-artifact@v3
-        with:
-          name: benchmark-results-social-science
-          path: benchmark-ss/
-
       - name: Name and Email for Git (config) and update
         run: |
           git config --local user.email "action@github.com"
@@ -110,13 +104,19 @@ jobs:
           output-file-path: benchmark-ai/artificial/artificial-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
-          summary-always: true
+          summary-always: false
           comment-on-alert: true
           comment-always: true
           skip-fetch-gh-pages: true
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
+
+      - name: "⬇️ Get benchmark Artifacts (social-science)"
+        uses: actions/download-artifact@v3
+        with:
+          name: benchmark-results-social-science
+          path: benchmark-ss/
 
       - name: "Merge and Produce Performance Results (social-science)"
         uses: benchmark-action/github-action-benchmark@v1
@@ -128,7 +128,7 @@ jobs:
           fail-on-alert: false
           summary-always: true
           comment-on-alert: true
-          comment-always: true
+          comment-always: false
           skip-fetch-gh-pages: true
           gh-repository: ${{ github.repository }}
           benchmark-data-dir-path: wiki/stats/benchmark/
@@ -138,7 +138,6 @@ jobs:
         if: github.event_name != 'pull_request' # just an extra guard
         # we manipulate the name of the last commit message
         run: |
-          git add -f "wiki/stats/benchmark/"
           git commit --amend -m "[skip ci] doc: new benchmark data"
 
       - name: Push changes

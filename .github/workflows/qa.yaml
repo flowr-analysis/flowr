@@ -96,6 +96,7 @@ jobs:
           git config --local user.name "GitHub Action"
 
       # currently we have a duplication, add your benchmark names here and in `performance-test`
+      # Furthermore, you have to update the reset command below
       - name: "Merge and Produce Performance Results (artificial)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
@@ -138,7 +139,9 @@ jobs:
         if: github.event_name != 'pull_request' # just an extra guard
         # we manipulate the name of the last commit message
         run: |
-          git commit --amend -m "[skip ci] doc: new benchmark data"
+          git reset --soft HEAD~2
+          git add -f wiki/stats/benchmark/
+          git commit -m "[skip ci] doc: new benchmark data"
 
       - name: Push changes
         uses: ad-m/github-push-action@master

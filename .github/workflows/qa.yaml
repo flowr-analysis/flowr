@@ -60,95 +60,13 @@ jobs:
 
   performance-test:
     needs: [ test ]
-    name: "Run Performance Tests"
+    name: "Performance Test"
     if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
-    strategy:
-      fail-fast: true
-      matrix:
-        # currently we have a duplication, add your benchmark names here and in `performance-test-upload`
-        name: ['artificial', 'social-science']
+    uses: Code-Inspect/flowr/.github/workflows/performance-test.yaml@341-benchmark-without-github-push-on-pr-push-on-release
     with:
-      action: performance-test -- 1 "${{ matrix.name }}"
-      coverage: false
-      benchmark: ${{ matrix.name }}
-      timeout-minutes: 400
-
-  performance-test-upload:
-    name: "Upload Performance Test Results"
-    runs-on: ubuntu-latest
-    needs: [ performance-test ]
-    steps:
-      - name: "Checkout Repository"
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.RELEASE_TOKEN }}
-
-      - name: "⬇️ Get benchmark Artifacts (artificial)"
-        uses: actions/download-artifact@v3
-        with:
-          name: benchmark-results-artificial
-          path: benchmark-ai/
-
-      - name: Name and Email for Git (config) and update
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-
-      # currently we have a duplication, add your benchmark names here and in `performance-test`
-      # Furthermore, you have to update the reset command below
-      - name: "Merge and Produce Performance Results (artificial)"
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: '"artificial" Benchmark Suite'
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ai/artificial/artificial-graph.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-alert: false
-          summary-always: false
-          comment-on-alert: true
-          comment-always: true
-          skip-fetch-gh-pages: true
-          gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/
-          auto-push: false
-
-      - name: "⬇️ Get benchmark Artifacts (social-science)"
-        uses: actions/download-artifact@v3
-        with:
-          name: benchmark-results-social-science
-          path: benchmark-ss/
-
-      - name: "Merge and Produce Performance Results (social-science)"
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: '"social-science" Benchmark Suite'
-          tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ss/social-science/social-science-graph.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-alert: false
-          summary-always: false
-          comment-on-alert: true
-          comment-always: true
-          skip-fetch-gh-pages: true
-          gh-repository: ${{ github.repository }}
-          benchmark-data-dir-path: wiki/stats/benchmark/
-          auto-push: false
-
-      - name: "⬆️ Push benchmark results"
-        if: github.event_name != 'pull_request' # just an extra guard
-        # we manipulate the name of the last commit message
-        run: |
-          git reset --soft HEAD~2
-          git add -f wiki/stats/benchmark/
-          git commit -m "[skip ci] doc: new benchmark data"
-
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          branch: main
-          github_token: ${{ secrets.RELEASE_TOKEN }}
-          force: true
+      event: '${{ github.event_name }}'
+      ref: '${{ github.ref }}'
+    secrets: inherit
 
   full-test:
     needs: [ lint ]
@@ -157,7 +75,7 @@ jobs:
     uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
 
   deploy-doc:
-    needs: [ test, full-test, performance-test-upload ]
+    needs: [ test, full-test, performance-test ]
     name: "Deploy Doc. (only on main)"
     if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
     uses: Code-Inspect/flowr/.github/workflows/deploy-doc.yaml@main

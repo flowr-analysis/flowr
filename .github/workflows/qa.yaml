@@ -64,8 +64,7 @@ jobs:
     if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
     uses: Code-Inspect/flowr/.github/workflows/performance-test.yaml@341-benchmark-without-github-push-on-pr-push-on-release
     with:
-      event: '${{ github.event_name }}'
-      ref: '${{ github.ref }}'
+      push: false
     secrets: inherit
 
   full-test:

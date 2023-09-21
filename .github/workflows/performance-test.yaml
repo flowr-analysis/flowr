@@ -3,19 +3,14 @@ name: "Run flowR's performance tests"
 'on':
   workflow_call:
     inputs:
-      event:
-        description: "The original github.event_name"
+      push:
+        description: "Should the resulting commits for the graphs be pushed?"
         required: true
-        type: string
-      ref:
-        description: "The original github.ref"
-        required: true
-        type: string
+        type: boolean
 
 jobs:
   performance-test:
     name: "Run Performance Tests"
-    if: ${{ always() && !failure() && (inputs.force-full || (inputs.event_name == 'push' && inputs.ref == 'refs/heads/main')) }}
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
     strategy:
       fail-fast: true
@@ -91,7 +86,7 @@ jobs:
 
       - name: "⬆️ Push benchmark results"
         # just an extra guard
-        if: inputs.event != 'pull_request'
+        if: ${{ inputs.push }}
         # we manipulate the name of the last commit message
         run: |
           git reset --soft HEAD~2

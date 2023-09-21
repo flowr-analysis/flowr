@@ -94,6 +94,7 @@ jobs:
           git commit -m "[skip ci] doc: new benchmark data"
 
       - name: Push changes
+        if: ${{ inputs.push }}
         uses: ad-m/github-push-action@master
         with:
           branch: main

@@ -53,6 +53,13 @@ jobs:
       - name: Install Node Dependencies
         run: npm ci
 
+      - name: Install Graphviz for Documentation
+        # we expect this to only work on Linux/Ubuntu
+        if: ${{ inputs.action == 'doc' }}
+        run: |
+            sudo apt-get update
+            sudo apt-get install graphviz
+
       - name: "Run the corresponding action '${{ inputs.action }}'"
         run:
           npm run ${{ inputs.action }}

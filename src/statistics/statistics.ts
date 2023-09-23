@@ -6,7 +6,7 @@ import {
 	RParseRequestFromText
 } from '../r-bridge'
 import { ALL_FEATURES, Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features'
-import { DOMParser } from 'xmldom'
+import { DOMParser } from '@xmldom/xmldom'
 import fs from 'fs'
 import { log } from '../util/log'
 

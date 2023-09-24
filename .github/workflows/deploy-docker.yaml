@@ -19,9 +19,11 @@ jobs:
           lfs: false
           submodules: false
 
+      - name: Do pull to ensure up-to-date
+        run: git pull
+
       - name: Build the image
-        run: |
-          docker build -t flowr -f scripts/Dockerfile .
+        run: docker build -t flowr -f scripts/Dockerfile .
 
       - name: Test that the image works
         timeout-minutes: 5

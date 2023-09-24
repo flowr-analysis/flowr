@@ -41,7 +41,7 @@ jobs:
             exit 1
           fi
 
-          npm run release -- $step --github.releaseName="Release v\${version} (\${title})"
+          npm run release -- $step --github.releaseName="Release v\${version} (${title})"
         env:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 

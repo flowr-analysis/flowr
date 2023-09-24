@@ -40,9 +40,11 @@ jobs:
           path: benchmark-ai/
 
       - name: Name and Email for Git (config) and update
+        # we pull just to be totally sure
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          git pull
 
       # currently we have a duplication, add your benchmark names here and in `performance-test`
       # Furthermore, you have to update the reset command below

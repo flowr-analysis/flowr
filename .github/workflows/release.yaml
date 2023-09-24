@@ -13,21 +13,10 @@ jobs:
       startsWith(github.event.head_commit.message, '[release:patch]')
     uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
 
-  performance-test:
-    name: "Performance Test"
-    # we do not run if the release workflow runs it with pushing
-    if: startsWith(github.event.head_commit.message, '[release:minor]') ||
-      startsWith(github.event.head_commit.message, '[release:major]') ||
-      startsWith(github.event.head_commit.message, '[release:patch]')
-    uses: Code-Inspect/flowr/.github/workflows/performance-test.yaml@main
-    with:
-      push: true
-    secrets: inherit
-
   release:
     name: "Release"
     runs-on: ubuntu-latest
-    needs: ['full-test', 'performance-test']
+    needs: ['full-test']
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,12 +41,24 @@ jobs:
             exit 1
           fi
 
-          npm run release -- $step --github.releaseName="Release v\${version} (${title})"
+          npm run release -- $step --github.releaseName="Release v\${version} (\${title})"
         env:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
+  performance-test:
+    name: "Performance Test"
+    needs: ['release']
+    # we do not run if the release workflow runs it with pushing
+    if: startsWith(github.event.head_commit.message, '[release:minor]') ||
+      startsWith(github.event.head_commit.message, '[release:major]') ||
+      startsWith(github.event.head_commit.message, '[release:patch]')
+    uses: Code-Inspect/flowr/.github/workflows/performance-test.yaml@main
+    with:
+      push: true
+    secrets: inherit
+
   deploy-docker:
-    needs: [ release ]
+    needs: ['performance-test']
     name: "Deploy Docker (only on main)"
     uses: Code-Inspect/flowr/.github/workflows/deploy-docker.yaml@main
     secrets: inherit

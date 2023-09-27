@@ -74,7 +74,12 @@ export function staticRequests(...requests: (RParseRequestFromText | RParseReque
 }
 
 /**
- * extract all statistic information from a set of requests using the presented R session
+ * Extract all wanted statistic information from a set of requests using the presented R session.
+ *
+ * @param shell     - The R session to use
+ * @param onRequest - A callback that is called at the beginning of each request, this may be used to debug the requests.
+ * @param features  - The features to extract, if `all` is passed, all available features are extracted.
+ * @param requests  - The requests to extract the features from. May generate them on demand (e.g., by traversing a folder).
  */
 export async function extractUsageStatistics<T extends RParseRequestFromText | RParseRequestFromFile>(
 	shell: RShell,
@@ -82,11 +87,7 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 	features: FeatureSelection,
 	requests: AsyncGenerator<T>
 ): Promise<{ features: FeatureStatistics, meta: MetaStatistics }> {
-	let result = {} as FeatureStatistics
-	for(const key of Object.keys(ALL_FEATURES)) {
-		result[key as FeatureKey] = ALL_FEATURES[key as FeatureKey].initialValue()
-	}
-
+	let result = initializeFeatureStatistics(features)
 	const meta = initialMetaStatistics()
 
 	let first = true
@@ -103,12 +104,21 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 			first = false
 		} catch(e) {
 			log.error('for request: ', request, e)
-			meta.skipped.push(request.content)
+			processMetaOnUnsuccessful(meta, request)
 		}
 		meta.processingTimeMs.push(performance.now() - start)
 	}
 	return { features: result, meta }
 }
 
+function initializeFeatureStatistics(features: FeatureSelection): FeatureStatistics {
+	let result = {} as FeatureStatistics
+	for (const key of Object.keys(features)) {
+		result[key as FeatureKey] = ALL_FEATURES[key as FeatureKey].initialValue()
+	}
+	return result
+}
 
-
+function processMetaOnUnsuccessful<T extends RParseRequestFromText | RParseRequestFromFile>(meta: MetaStatistics, request: T) {
+	meta.skipped.push(request.content)
+}

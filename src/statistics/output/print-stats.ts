@@ -1,6 +1,6 @@
 import { ALL_FEATURES, FeatureKey, FeatureStatistics } from '../features'
-import { MetaStatistics } from '../statistics'
 import { ColorEffect, Colors, formatter } from './ansi'
+import { MetaStatistics } from '../meta-statistics'
 
 interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}
 

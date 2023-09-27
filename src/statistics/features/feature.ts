@@ -1,3 +1,10 @@
+/**
+ * This module holds the definition of what a {@link Feature} that can be extracted from an R AST is.
+ *
+ * Furthermore, it contains the definition of all features that are known in {@link ALL_FEATURES}.
+ *
+ * @module
+ */
 import {
 	assignments,
 	comments,
@@ -47,6 +54,8 @@ export type FeatureProcessor<T extends FeatureInfo> = (existing: T, input: Featu
  * A feature is something to be retrieved by the statistics.
  *
  * @typeParam T - The type of what should be collected for the feature
+ *
+ * @see ALL_FEATURES
  */
 export interface Feature<T extends FeatureInfo> {
 	/** A descriptive, yet unique name of the feature */
@@ -59,7 +68,9 @@ export interface Feature<T extends FeatureInfo> {
 	initialValue():       T
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/**
+ * The source of truth for all features that are supported by the statistics.
+ */
 export const ALL_FEATURES = {
 	usedPackages:     usedPackages,
 	comments:         comments,

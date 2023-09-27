@@ -1,4 +1,4 @@
-import { Feature, FeatureInfo, Query } from '../feature'
+import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { append } from '../../output'
 
@@ -66,19 +66,19 @@ export const assignments: Feature<AssignmentInfo> = {
 	name:        'Assignments',
 	description: 'all ways to assign something in R',
 
-	process(existing: AssignmentInfo, input: Document, filepath: string | undefined): AssignmentInfo {
-		const assignmentOperators = defaultOperatorAssignmentQuery.select({ node: input })
-		const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input })
-		const directlyNestedOperators = directlyNestedOperatorAssignmentQuery.select({ node: input })
-		const specialAssignmentOps = bracketAssignQuery.select({ node: input }).map(enrichOpForBracketAssign)
+	process(existing: AssignmentInfo, input: FeatureProcessorInput): AssignmentInfo {
+		const assignmentOperators = defaultOperatorAssignmentQuery.select({ node: input.parsedRAst })
+		const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input.parsedRAst })
+		const directlyNestedOperators = directlyNestedOperatorAssignmentQuery.select({ node: input.parsedRAst })
+		const specialAssignmentOps = bracketAssignQuery.select({ node: input.parsedRAst }).map(enrichOpForBracketAssign)
 
 		existing.nestedOperatorAssignment += nestedOperators.length
 		existing.directlyNestedOperatorAssignment += directlyNestedOperators.length
 		existing.assignmentOperator += assignmentOperators.length
 		existing.specialAssignmentOps += specialAssignmentOps.length
 
-		append(this.name, 'assignmentOperator', assignmentOperators, filepath)
-		append(this.name, 'specialAssignmentOps', specialAssignmentOps, filepath)
+		append(this.name, 'assignmentOperator', assignmentOperators, input.filepath)
+		append(this.name, 'specialAssignmentOps', specialAssignmentOps, input.filepath)
 
 		return existing
 	},

@@ -1,4 +1,4 @@
-import { Feature, FeatureInfo, Query } from '../feature'
+import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { append } from '../../output'
@@ -103,27 +103,27 @@ export const usedPackages: Feature<UsedPackageInfo> = {
 	name:        'Used Packages',
 	description: 'All the packages used in the code',
 
-	process(existing: UsedPackageInfo, input: Document, filepath: string | undefined): UsedPackageInfo {
+	process(existing: UsedPackageInfo, input: FeatureProcessorInput): UsedPackageInfo {
 		// we will unify in the end, so we can count, group etc. but we do not re-count multiple packages in the same file
 		for(const q of queries) {
 			for(const fn of q.types) {
-				const nodes = q.query.select({ node: input, variables: { variable: fn } })
+				const nodes = q.query.select({ node: input.parsedRAst, variables: { variable: fn } })
 				existing[fn] += nodes.length
-				append(this.name, fn, nodes, filepath, true)
+				append(this.name, fn, nodes, input.filepath, true)
 			}
 		}
 
 		const nodesForVariableLoad = [
-			...packageLoadedWithVariableLoadRequire.select({ node: input }),
-			...packageLoadedWithVariableNamespaces.select({ node: input })
+			...packageLoadedWithVariableLoadRequire.select({ node: input.parsedRAst }),
+			...packageLoadedWithVariableNamespaces.select({ node: input.parsedRAst })
 		]
 		existing['<loadedByVariable>'] += nodesForVariableLoad.length
 		// should not be unique as variables may be repeated, and we have no idea
-		append(this.name, '<loadedByVariable>', nodesForVariableLoad, filepath)
+		append(this.name, '<loadedByVariable>', nodesForVariableLoad, input.filepath)
 
-		const withinApplyNodes = withinApply.select({ node: input })
+		const withinApplyNodes = withinApply.select({ node: input.parsedRAst })
 		existing.withinApply += withinApplyNodes.length
-		append(this.name, 'withinApply', withinApplyNodes, filepath)
+		append(this.name, 'withinApply', withinApplyNodes, input.filepath)
 
 		return existing
 	},

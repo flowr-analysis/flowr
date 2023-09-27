@@ -1,6 +1,6 @@
 import { SinglePackageInfo } from './used-packages'
 import { FunctionNameInfo } from './defined-functions'
-import { Feature, FeatureInfo, Query } from '../feature'
+import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { append, extractNodeContent } from '../../output'
 
@@ -114,11 +114,11 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
 	name:        'Used Functions',
 	description: 'All functions called, split into various sub-categories',
 
-	process(existing: FunctionUsageInfo, input: Document, filepath: string | undefined): FunctionUsageInfo {
-		const allFunctionCalls = functionCallQuery.select({ node: input })
+	process(existing: FunctionUsageInfo, input: FeatureProcessorInput): FunctionUsageInfo {
+		const allFunctionCalls = functionCallQuery.select({ node: input.parsedRAst })
 
 		existing.allFunctionCalls += allFunctionCalls.length
-		append(this.name, 'allFunctionCalls', allFunctionCalls, filepath)
+		append(this.name, 'allFunctionCalls', allFunctionCalls, input.filepath)
 
 		const names = allFunctionCalls.map(extractNodeContent)
 

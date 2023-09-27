@@ -11,6 +11,9 @@ import {
 } from './supported'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { MergeableRecord } from '../../util/objects'
+import { NormalizedAst } from '../../r-bridge'
+import { DataflowInformation } from '../../dataflow/internal/info'
+import { DeepReadonly } from 'ts-essentials'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
@@ -20,20 +23,40 @@ import { MergeableRecord } from '../../util/objects'
  */
 export type FeatureInfo = Record<string, number> & MergeableRecord
 
+
+/**
+ * The information and context that a {@link FeatureProcessor} may operate in.
+ */
+export interface FeatureProcessorInput extends MergeableRecord {
+	/** The XML Document representing the parsed (non-normalized) R AST */
+	readonly parsedRAst:     Document,
+	/** The R AST, after the normalization step */
+	readonly normalizedRAst: DeepReadonly<NormalizedAst>,
+	/** The dataflow information for the given input */
+	readonly dataflow:       DeepReadonly<DataflowInformation>,
+	/** The filepath that the document originated from (if present, may be undefined if the input was provided as text) */
+	readonly filepath:       string | undefined
+}
+
+/**
+ * A function that processes the analysis results of a document and returns the feature information.
+ */
+export type FeatureProcessor<T extends FeatureInfo> = (existing: T, input: FeatureProcessorInput) => T
+
 /**
  * A feature is something to be retrieved by the statistics.
  *
- * @typeParam T - the type of what should be collected for the feature
+ * @typeParam T - The type of what should be collected for the feature
  */
 export interface Feature<T extends FeatureInfo> {
-	/** a descriptive, yet unique name of the feature */
+	/** A descriptive, yet unique name of the feature */
 	readonly name:        string
-	/** a description of the feature */
+	/** A description of the feature */
 	readonly description: string
-	/** a function that retrieves the feature in the document appends it to the existing feature set (we could use a monoid :D), the filepath corresponds to the active file (if any) */
-	process:              (existing: T, input: Document, filepath: string | undefined) => T
-	/** values to start the existing track from  */
-	initialValue() : T
+	/** A function that retrieves the feature in the document appends it to the existing feature set (we could use a monoid :D), the filepath corresponds to the active file (if any) */
+	process:              FeatureProcessor<T>
+	/** Values to start the existing track from  */
+	initialValue():       T
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

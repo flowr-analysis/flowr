@@ -8,11 +8,11 @@ import { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge'
  */
 export interface MetaStatistics {
   /**
-   * the number of requests that were parsed successfully
+   * The number of requests that were parsed successfully
    */
   successfulParsed: number
   /**
-   * the processing time for each request
+   * The processing time for each request
    */
   processingTimeMs: number[]
   /**
@@ -20,7 +20,7 @@ export interface MetaStatistics {
    */
   failedRequests: (RParseRequestFromText | RParseRequestFromFile)[]
   /**
-   * number of lines with each individual line length consumed for each request
+   * Number of lines with each individual line length consumed for each request
    */
   lines: number[][]
 }

@@ -1,4 +1,4 @@
-import { Feature, FeatureInfo, Query } from '../feature'
+import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { append } from '../../output'
 
@@ -82,33 +82,33 @@ export const controlflow: Feature<ControlflowInfo> = {
 	name:        'Controlflow',
 	description: 'Deals with if-then-else and switch-case',
 
-	process(existing: ControlflowInfo, input: Document, filepath: string | undefined): ControlflowInfo {
+	process(existing: ControlflowInfo, input: FeatureProcessorInput): ControlflowInfo {
 
-		const ifThen = ifThenQuery.select({ node: input })
-		const ifThenElse = ifThenElseQuery.select({ node: input })
+		const ifThen = ifThenQuery.select({ node: input.parsedRAst })
+		const ifThenElse = ifThenElseQuery.select({ node: input.parsedRAst })
 
 		existing.ifThen += ifThen.length
 		existing.ifThenElse += ifThenElse.length
 
-		ifThen.forEach(ifThen => { collectForIfThenOptionalElse(existing, 'IfThen', ifThen, filepath) })
-		ifThenElse.forEach(ifThenElse => { collectForIfThenOptionalElse(existing, 'IfThenElse', ifThenElse, filepath) })
+		ifThen.forEach(ifThen => { collectForIfThenOptionalElse(existing, 'IfThen', ifThen, input.filepath) })
+		ifThenElse.forEach(ifThenElse => { collectForIfThenOptionalElse(existing, 'IfThenElse', ifThenElse, input.filepath) })
 
-		const switchCases = switchQuery.select({ node: input })
+		const switchCases = switchQuery.select({ node: input.parsedRAst })
 		existing.switchCase += switchCases.length
-		append(controlflow.name, 'switchCase', switchCases, filepath)
+		append(controlflow.name, 'switchCase', switchCases, input.filepath)
 
 
 		const constantSwitchCases = switchCases.flatMap(switchCase =>
 			constantCondition.select({ node: switchCase })
 		)
 		existing.constantSwitchCase += constantSwitchCases.length
-		append(controlflow.name, 'constantSwitchCase', constantSwitchCases, filepath)
+		append(controlflow.name, 'constantSwitchCase', constantSwitchCases, input.filepath)
 
 		const variableSwitchCases = switchCases.flatMap(switchCase =>
 			singleVariableCondition.select({ node: switchCase })
 		)
 		existing.singleVariableSwitchCase += variableSwitchCases.length
-		append(controlflow.name, 'variableSwitchCase', variableSwitchCases, filepath)
+		append(controlflow.name, 'variableSwitchCase', variableSwitchCases, input.filepath)
 
 		return existing
 	},

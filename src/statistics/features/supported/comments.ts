@@ -1,4 +1,4 @@
-import { Feature, FeatureInfo, Query } from '../feature'
+import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { guard, isNotNull, isNotUndefined } from '../../../util/assert'
 import { append } from '../../output'
@@ -114,8 +114,8 @@ export const comments: Feature<CommentInfo> = {
 	name:        'Comments',
 	description: 'All comments that appear within the document',
 
-	process(existing: CommentInfo, input: Document, filepath: string | undefined): CommentInfo {
-		const comments = commentQuery.select({ node: input }).map(node => node.textContent ?? '#')
+	process(existing: CommentInfo, input: FeatureProcessorInput): CommentInfo {
+		const comments = commentQuery.select({ node: input.parsedRAst }).map(node => node.textContent ?? '#')
 			.map(text => {
 				guard(text.startsWith('#'), `unexpected comment ${text}`)
 				return text.slice(1)
@@ -126,11 +126,11 @@ export const comments: Feature<CommentInfo> = {
 		const roxygenComments = comments.filter(text => text.startsWith("'"))
 		existing.roxygenComments += roxygenComments.length
 
-		processRoxygenImport(existing, roxygenComments, filepath)
-		processRoxygenImportFrom(existing, roxygenComments, filepath)
-		processRoxygenUseDynLib(existing, roxygenComments, filepath)
-		processRoxygenImportClassesFrom(existing, roxygenComments, filepath)
-		processRoxygenImportMethodsFrom(existing, roxygenComments, filepath)
+		processRoxygenImport(existing, roxygenComments, input.filepath)
+		processRoxygenImportFrom(existing, roxygenComments, input.filepath)
+		processRoxygenUseDynLib(existing, roxygenComments, input.filepath)
+		processRoxygenImportClassesFrom(existing, roxygenComments, input.filepath)
+		processRoxygenImportMethodsFrom(existing, roxygenComments, input.filepath)
 		processExports(existing, roxygenComments)
 
 		return existing

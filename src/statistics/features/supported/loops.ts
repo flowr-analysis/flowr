@@ -1,4 +1,4 @@
-import { Feature, FeatureInfo, Query } from '../feature'
+import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { append } from '../../output'
 
@@ -39,13 +39,13 @@ export const loops: Feature<LoopInfo> = {
 	name:        'Loops',
 	description: 'All looping structures in the document',
 
-	process(existing: LoopInfo, input: Document, filepath: string | undefined): LoopInfo {
-		const forLoops = forLoopQuery.select({ node: input })
-		const whileLoops = whileLoopQuery.select({ node: input })
-		const repeatLoops = repeatLoopQuery.select({ node: input })
-		const breakStatements = breakStatementQuery.select({ node: input })
-		const nextStatements = nextStatementQuery.select({ node: input })
-		const implicitLoops = implicitLoopQuery.select({ node: input })
+	process(existing: LoopInfo, input: FeatureProcessorInput): LoopInfo {
+		const forLoops = forLoopQuery.select({ node: input.parsedRAst })
+		const whileLoops = whileLoopQuery.select({ node: input.parsedRAst })
+		const repeatLoops = repeatLoopQuery.select({ node: input.parsedRAst })
+		const breakStatements = breakStatementQuery.select({ node: input.parsedRAst })
+		const nextStatements = nextStatementQuery.select({ node: input.parsedRAst })
+		const implicitLoops = implicitLoopQuery.select({ node: input.parsedRAst })
 
 		existing.forLoops += forLoops.length
 		existing.whileLoops += whileLoops.length
@@ -53,7 +53,7 @@ export const loops: Feature<LoopInfo> = {
 		existing.breakStatements += breakStatements.length
 		existing.nextStatements += nextStatements.length
 		existing.implicitLoops += implicitLoops.length
-		append(this.name, 'implicit-loops', implicitLoops, filepath)
+		append(this.name, 'implicit-loops', implicitLoops, input.filepath)
 		return existing
 	},
 

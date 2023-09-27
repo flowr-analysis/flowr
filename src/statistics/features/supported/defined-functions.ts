@@ -1,4 +1,4 @@
-import { Feature, FeatureInfo, Query } from '../feature'
+import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { append, extractNodeContent } from '../../output'
 
@@ -73,26 +73,26 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 	name:        'Defined Functions',
 	description: 'All functions defined within the document',
 
-	process(existing: FunctionDefinitionInfo, input: Document, filepath: string | undefined): FunctionDefinitionInfo {
-		const allFunctions = queryAnyFunctionDefinition.select({ node: input }).length
-		const allLambdas = queryAnyLambdaDefinition.select({ node: input })
+	process(existing: FunctionDefinitionInfo, input: FeatureProcessorInput): FunctionDefinitionInfo {
+		const allFunctions = queryAnyFunctionDefinition.select({ node: input.parsedRAst }).length
+		const allLambdas = queryAnyLambdaDefinition.select({ node: input.parsedRAst })
 
-		append(this.name, 'allLambdas', allLambdas, filepath)
+		append(this.name, 'allLambdas', allLambdas, input.filepath)
 
 		existing.total += allFunctions + allLambdas.length
 		existing.lambdasOnly += allLambdas.length
 
-		const usedArgumentNames = queryUsedArgumentNames.select({ node: input })
+		const usedArgumentNames = queryUsedArgumentNames.select({ node: input.parsedRAst })
 		existing.usedArgumentNames += usedArgumentNames.length
-		append(this.name, 'usedArgumentNames', usedArgumentNames, filepath)
+		append(this.name, 'usedArgumentNames', usedArgumentNames, input.filepath)
 
-		existing.functionsDirectlyCalled += defineFunctionsToBeCalled.select({ node: input }).length
-		existing.nestedFunctions += nestedFunctionsQuery.select({ node: input }).length
+		existing.functionsDirectlyCalled += defineFunctionsToBeCalled.select({ node: input.parsedRAst }).length
+		existing.nestedFunctions += nestedFunctionsQuery.select({ node: input.parsedRAst }).length
 
-		const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input })
+		const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input.parsedRAst })
 		const assignedNames = assignedFunctions.map(extractNodeContent)
 		existing.assignedFunctions += assignedFunctions.length
-		append(this.name, 'assignedFunctions', assignedNames, filepath)
+		append(this.name, 'assignedFunctions', assignedNames, input.filepath)
 
 		const recursiveFunctions = []
 		for(let i = 0; i < assignedFunctions.length; i++) {
@@ -102,7 +102,7 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 			}
 		}
 		existing.recursive += recursiveFunctions.length
-		append(this.name, 'recursiveFunctions', recursiveFunctions, filepath)
+		append(this.name, 'recursiveFunctions', recursiveFunctions, input.filepath)
 
 		return existing
 	},

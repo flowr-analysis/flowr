@@ -1,4 +1,4 @@
-import { Feature, FeatureInfo, Query } from '../feature'
+import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { append, extractNodeContent } from '../../output'
 
@@ -75,24 +75,24 @@ export const dataAccess: Feature<DataAccess> = {
 	name:        'Data Access',
 	description: 'Ways of accessing data structures in R',
 
-	process(existing: DataAccess, input: Document, filepath: string | undefined): DataAccess {
-		const singleBracketAccesses = singleBracketAccess.select({ node: input })
-		const doubleBracketAccesses = doubleBracketAccess.select({ node: input })
+	process(existing: DataAccess, input: FeatureProcessorInput): DataAccess {
+		const singleBracketAccesses = singleBracketAccess.select({ node: input.parsedRAst })
+		const doubleBracketAccesses = doubleBracketAccess.select({ node: input.parsedRAst })
 
-		processForBracketAccess(existing, singleBracketAccesses, 'singleBracket', filepath)
-		processForBracketAccess(existing, doubleBracketAccesses, 'doubleBracket', filepath)
+		processForBracketAccess(existing, singleBracketAccesses, 'singleBracket', input.filepath)
+		processForBracketAccess(existing, doubleBracketAccesses, 'doubleBracket', input.filepath)
 
-		const namedAccesses = namedAccess.select({ node: input })
-		append(dataAccess.name, 'byName', namedAccesses.map(n => n.parentNode ?? n), filepath)
+		const namedAccesses = namedAccess.select({ node: input.parsedRAst })
+		append(dataAccess.name, 'byName', namedAccesses.map(n => n.parentNode ?? n), input.filepath)
 		existing.byName += namedAccesses.length
 
-		const slottedAccesses = slottedAccess.select({ node: input })
-		append(dataAccess.name, 'bySlot', slottedAccesses.map(n => n.parentNode ?? n), filepath)
+		const slottedAccesses = slottedAccess.select({ node: input.parsedRAst })
+		append(dataAccess.name, 'bySlot', slottedAccesses.map(n => n.parentNode ?? n), input.filepath)
 		existing.bySlot += slottedAccesses.length
 
 
-		const chainedOrNestedAccesses = chainedOrNestedAccess.select({ node: input })
-		append(dataAccess.name, 'chainedOrNestedAccess', chainedOrNestedAccesses.map(n => n.parentNode ?? n), filepath)
+		const chainedOrNestedAccesses = chainedOrNestedAccess.select({ node: input.parsedRAst })
+		append(dataAccess.name, 'chainedOrNestedAccess', chainedOrNestedAccesses.map(n => n.parentNode ?? n), input.filepath)
 		existing.chainedOrNestedAccess += chainedOrNestedAccesses.length
 
 		return existing

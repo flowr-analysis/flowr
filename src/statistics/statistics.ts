@@ -33,7 +33,7 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 	features: FeatureSelection,
 	requests: AsyncGenerator<T>
 ): Promise<{ features: FeatureStatistics, meta: MetaStatistics }> {
-	let result = initializeFeatureStatistics(features)
+	let result = initializeFeatureStatistics()
 	const meta = initialMetaStatistics()
 
 	let first = true
@@ -57,9 +57,9 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 	return { features: result, meta }
 }
 
-function initializeFeatureStatistics(features: FeatureSelection): FeatureStatistics {
+function initializeFeatureStatistics(): FeatureStatistics {
 	let result = {} as FeatureStatistics
-	for (const key of Object.keys(features)) {
+	for (const key of Object.keys(ALL_FEATURES)) {
 		result[key as FeatureKey] = ALL_FEATURES[key as FeatureKey].initialValue()
 	}
 	return result

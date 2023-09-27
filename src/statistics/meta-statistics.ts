@@ -1,3 +1,5 @@
+import { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge'
+
 /**
  * Statistics on skipped files, the time required, and more.
  *
@@ -14,9 +16,9 @@ export interface MetaStatistics {
    */
   processingTimeMs: number[]
   /**
-   * skipped requests
+   * All failed requests (e.g., if they can not be converted to XML)
    */
-  skipped: string[]
+  failedRequests: (RParseRequestFromText | RParseRequestFromFile)[]
   /**
    * number of lines with each individual line length consumed for each request
    */
@@ -30,7 +32,7 @@ export function initialMetaStatistics(): MetaStatistics {
   return {
     successfulParsed: 0,
     processingTimeMs: [],
-    skipped:          [],
+    failedRequests:   [],
     lines:            []
   }
 }

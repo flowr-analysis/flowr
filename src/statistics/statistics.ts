@@ -66,7 +66,7 @@ function initializeFeatureStatistics(features: FeatureSelection): FeatureStatist
 }
 
 function processMetaOnUnsuccessful<T extends RParseRequestFromText | RParseRequestFromFile>(meta: MetaStatistics, request: T) {
-	meta.skipped.push(request.content)
+	meta.failedRequests.push(request)
 }
 
 function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequestFromFile>(meta: MetaStatistics, request: T) {

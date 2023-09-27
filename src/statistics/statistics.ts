@@ -1,6 +1,5 @@
 import {
 	getStoredTokenMap,
-	retrieveXmlFromRCode,
 	RParseRequest,
 	RParseRequestFromFile,
 	RParseRequestFromText,
@@ -68,8 +67,8 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 }
 
 function initializeFeatureStatistics(): FeatureStatistics {
-	let result = {} as FeatureStatistics
-	for (const key of allFeatureNames) {
+	const result = {} as FeatureStatistics
+	for(const key of allFeatureNames) {
 		result[key] = ALL_FEATURES[key].initialValue()
 	}
 	return result
@@ -93,15 +92,20 @@ const parser = new DOMParser()
 
 async function extractSingle(result: FeatureStatistics, shell: RShell, tokenMap: TokenMap, request: RParseRequest, features: 'all' | Set<FeatureKey>): Promise<FeatureStatistics> {
 	const slicerOutput = await new SteppingSlicer({
-			stepOfInterest: 'dataflow',
-			request, shell,
+		stepOfInterest: 'dataflow',
+		request, shell,
 		tokenMap
 	}).allRemainingSteps()
-		// await retrieveXmlFromRCode(from, shell)
+	// await retrieveXmlFromRCode(from, shell)
 	const doc = parser.parseFromString(slicerOutput.parse, 'text/xml')
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	for(const [key, feature] of Object.entries(ALL_FEATURES) as [FeatureKey, Feature<any>][]) {
+
+		if(features !== 'all' && !features.has(key)) {
+			continue
+		}
+
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		result[key] = feature.process(result[key], {
 			parsedRAst:     doc,

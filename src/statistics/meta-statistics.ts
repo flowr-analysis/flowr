@@ -7,32 +7,32 @@ import { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge'
  * @see initialMetaStatistics
  */
 export interface MetaStatistics {
-  /**
+	/**
    * The number of requests that were parsed successfully
    */
-  successfulParsed: number
-  /**
+	successfulParsed: number
+	/**
    * The processing time for each request
    */
-  processingTimeMs: number[]
-  /**
+	processingTimeMs: number[]
+	/**
    * All failed requests (e.g., if they can not be converted to XML)
    */
-  failedRequests: (RParseRequestFromText | RParseRequestFromFile)[]
-  /**
+	failedRequests:   (RParseRequestFromText | RParseRequestFromFile)[]
+	/**
    * Number of lines with each individual line length consumed for each request
    */
-  lines: number[][]
+	lines:            number[][]
 }
 
 /**
  * Returns an initial {@link MetaStatistics} object, using neutral defaults (like the empty list).
  */
 export function initialMetaStatistics(): MetaStatistics {
-  return {
-    successfulParsed: 0,
-    processingTimeMs: [],
-    failedRequests:   [],
-    lines:            []
-  }
+	return {
+		successfulParsed: 0,
+		processingTimeMs: [],
+		failedRequests:   [],
+		lines:            []
+	}
 }

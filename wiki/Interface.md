@@ -1,6 +1,6 @@
 ***This wiki page is currently under construction***
 
-Although far from being as detailed as the in-depth explanation of [*flowR*](https://github.com/Code-Inspect/flowr/wiki/Core), this wiki page is written for programmers (knowledgeable of TypeScript) and explains how to interface and use *flowR*.<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
+Although far from being as detailed as the in-depth explanation of [*flowR*](https://github.com/Code-Inspect/flowr/wiki/Core), this wiki page explains how to interface with *flowR* in more detail.<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
 
 <!-- TOC -->
 - [💬 Communicating With the Server](#-communicating-with-the-server)
@@ -16,6 +16,7 @@ Although far from being as detailed as the in-depth explanation of [*flowR*](htt
     - [Benchmark the Slicer With The `BenchmarkSlicer`](#benchmark-the-slicer-with-the-benchmarkslicer)
   - [Augmenting the Normalization](#augmenting-the-normalization)
   - [Generate Statistics with `extractUsageStatistics()`](#generate-statistics-with-extractusagestatistics)
+    - [Adding a New Feature to Extract](#adding-a-new-feature-to-extract)
 <!-- TOC -->
 
 ## 💬 Communicating With the Server
@@ -776,6 +777,20 @@ The `after` hook is called after the normalization has created the respective no
 ### Generate Statistics with `extractUsageStatistics()`
 
 **TODO: will probably change as part of the planned paper**
+
+#### Adding a New Feature to Extract
+
+In this example we construct a new feature to extract, with the name "`example`".
+Whenever this name appears, you may substitute this with whatever name fits your feature best.
+
+1. **Create a new file in `src/statistics/features/supported`**\
+
+2. **Create the core structure**\
+   Every new feature must be of the [`Feature<Info>`](https://github.com/Code-Inspect/flowr/tree/main/src/statistics/features/feature.ts) type, with `Info` referring to an interface of the data that is to be collected.
+3.
+4. **Add it to the feature-mapping**
+
+
 
 -----
 <a id="note1" href="#note1ref">&lt;1&gt;</a>: For more information, see the code documentation at: <https://code-inspect.github.io/flowr/doc/>.

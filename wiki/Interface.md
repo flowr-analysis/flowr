@@ -784,7 +784,7 @@ The `after` hook is called after the normalization has created the respective no
 #### Adding a New Feature to Extract
 
 In this example we construct a new feature to extract, with the name "*example*".
-Whenever this name appears, you may substitute this with whatever name fits your feature best.
+Whenever this name appears, you may substitute this with whatever name fits your feature best (as long as the name is unique).
 
 1. **Create a new file in `src/statistics/features/supported`**\
    Create the file `example.ts`, and add its export to the `index.ts` file in the same directory (if not done automatically).
@@ -824,6 +824,29 @@ Whenever this name appears, you may substitute this with whatever name fits your
 
 3. **Add it to the feature-mapping**\
    Now, in the `feature.ts` file in `src/statistics/features`, add your feature to the `ALL_FEATURES` object.
+
+
+Now, we want to extract something. For the *example* feature created in the previous steps, we choose to count the amount of `COMMENT` tokens.
+So we define a corresponding [XPath](https://developer.mozilla.org/en-US/docs/Web/XPath) query:
+
+```ts
+const commentQuery: Query = xpath.parse('//COMMENT')
+```
+
+Within our feature's `process` function, running the query is as simple as:
+
+```ts
+const comments = commentQuery.select({ node: input.parsedRAst })
+```
+
+Now we could do a lot of further processing, but for simplicity, we only record every comment found this way:
+
+```ts
+appendStatisticsFile(example.name, 'comments', comments, input.filepath)
+```
+
+We use `example.name` to avoid duplication with the name that we have assigned to the feature. It corresponds to the name of the folder in the statistics output.
+`'comments'` refers to a freely chosen (but unique) name, that will be used as the name for the output file within the folder. The `comments` variable holds the result of the query, which is an array of nodes. Finally, we pass the `filepath` of the file that was analyzed (if known), so that it can be added to the statistics file (as additional information).
 
 -----
 <a id="note1" href="#note1ref">&lt;1&gt;</a>: For more information, see the code documentation at: <https://code-inspect.github.io/flowr/doc/>.

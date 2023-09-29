@@ -795,16 +795,12 @@ Whenever this name appears, you may substitute this with whatever name fits your
    there are other ways to achieve the same goal):
 
    ```ts
-   export interface ExampleInfo extends FeatureInfo {
-     someCounter:           number
+   const initialExampleInfo = {
+       /* whatever start value is good for you */
+       someCounter: 0
    }
 
-   function initialExampleInfo(): ExampleInfo {
-     return {
-       /* whatever start value is good for you */
-       someCounter: 0,
-     }
-   }
+   export type ExampleInfo = Writable<typeof initialExampleInfo>
 
    export const example: Feature<ExampleInfo> = {
     name:        'Example Feature',
@@ -819,7 +815,7 @@ Whenever this name appears, you may substitute this with whatever name fits your
    }
    ```
 
-   The `ExampleInfo` interface holds the structure of the data that is to be counted. Due to the vast amount of data processed, information like the name and location of a function call is not stored here, but written to disk (see below).
+   The `initialExampleInfo` type holds the initial values for each counter that you want to maintain during the feature extraction (they will usually be initialized with 0). The resulting `ExampleInfo` type holds the structure of the data that is to be counted. Due to the vast amount of data processed, information like the name and location of a function call is not stored here, but instead written to disk (see below).
 
    Every new feature must be of the [`Feature<Info>`](https://github.com/Code-Inspect/flowr/tree/main/src/statistics/features/feature.ts) type, with `Info` referring to a `FeatureInfo` (like `ExampleInfo` in this example). Next to a `name` and a `description`, each Feature must provide:
 

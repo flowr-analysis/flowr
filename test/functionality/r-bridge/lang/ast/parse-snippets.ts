@@ -1,13 +1,13 @@
-import { exprList, numVal } from "../../../helper/ast-builder"
-import { assertAst, withShell } from "../../../helper/shell"
-import { rangeFrom } from "../../../../../src/util/range"
+import { exprList, numVal } from '../../../helper/ast-builder'
+import { assertAst, withShell } from '../../../helper/shell'
+import { rangeFrom } from '../../../../../src/util/range'
 import { RType } from '../../../../../src/r-bridge'
 import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/internal'
 
-describe("Parse larger snippets", withShell((shell) => {
-	describe("if-then, assignments, symbols, and comparisons", () => {
+describe('Parse larger snippets', withShell((shell) => {
+	describe('if-then, assignments, symbols, and comparisons', () => {
 		assertAst(
-			"max function",
+			'max function',
 			shell,
 			`
 a <- 3
@@ -23,22 +23,22 @@ max
 			exprList(
 				{
 					type:     RType.BinaryOp,
-					flavor:   "assignment",
-					lexeme:   "<-",
-					operator: "<-",
+					flavor:   'assignment',
+					lexeme:   '<-',
+					operator: '<-',
 					location: rangeFrom(2, 3, 2, 4),
 					info:     {},
 					lhs:      {
 						type:      RType.Symbol,
-						lexeme:    "a",
+						lexeme:    'a',
 						namespace: undefined,
-						content:   "a",
+						content:   'a',
 						location:  rangeFrom(2, 1, 2, 1),
 						info:      {}
 					},
 					rhs: {
 						type:     RType.Number,
-						lexeme:   "3",
+						lexeme:   '3',
 						content:  numVal(3),
 						location: rangeFrom(2, 6, 2, 6),
 						info:     {}
@@ -46,22 +46,22 @@ max
 				},
 				{
 					type:     RType.BinaryOp,
-					flavor:   "assignment",
-					lexeme:   "=",
-					operator: "=",
+					flavor:   'assignment',
+					lexeme:   '=',
+					operator: '=',
 					location: rangeFrom(3, 3, 3, 3),
 					info:     {},
 					lhs:      {
 						type:      RType.Symbol,
-						lexeme:    "b",
+						lexeme:    'b',
 						namespace: undefined,
-						content:   "b",
+						content:   'b',
 						location:  rangeFrom(3, 1, 3, 1),
 						info:      {}
 					},
 					rhs: {
 						type:     RType.Number,
-						lexeme:   "4",
+						lexeme:   '4',
 						content:  numVal(4),
 						location: rangeFrom(3, 5, 3, 5),
 						info:     {}
@@ -69,81 +69,81 @@ max
 				},
 				{
 					type:      RType.IfThenElse,
-					lexeme:    "if",
+					lexeme:    'if',
 					location:  rangeFrom(4, 1, 4, 2),
 					info:      {},
 					condition: {
 						type:     RType.BinaryOp,
-						flavor:   "comparison",
-						lexeme:   ">",
-						operator: ">",
+						flavor:   'comparison',
+						lexeme:   '>',
+						operator: '>',
 						location: rangeFrom(4, 7, 4, 7),
 						info:     {},
 						lhs:      {
 							type:      RType.Symbol,
-							lexeme:    "a",
+							lexeme:    'a',
 							namespace: undefined,
-							content:   "a",
+							content:   'a',
 							location:  rangeFrom(4, 5, 4, 5),
 							info:      {}
 						},
 						rhs: {
 							type:      RType.Symbol,
-							lexeme:    "b",
+							lexeme:    'b',
 							namespace: undefined,
-							content:   "b",
+							content:   'b',
 							location:  rangeFrom(4, 8, 4, 8),
 							info:      {}
 						},
 					},
 					then: {
 						type:     RType.ExpressionList,
-						lexeme:   "{\nmax <<- a\ni ->2\n}",
+						lexeme:   '{\nmax <<- a\ni ->2\n}',
 						location: rangeFrom(4, 11, 7, 1),
 						info:     {},
 						children: [
 							{
 								type:     RType.BinaryOp,
-								flavor:   "assignment",
-								lexeme:   "<<-",
-								operator: "<<-",
+								flavor:   'assignment',
+								lexeme:   '<<-',
+								operator: '<<-',
 								location: rangeFrom(5, 7, 5, 9),
 								info:     {},
 								lhs:      {
 									type:      RType.Symbol,
-									lexeme:    "max",
+									lexeme:    'max',
 									namespace: undefined,
-									content:   "max",
+									content:   'max',
 									location:  rangeFrom(5, 3, 5, 5),
 									info:      {}
 								},
 								rhs: {
 									type:      RType.Symbol,
-									lexeme:    "a",
+									lexeme:    'a',
 									namespace: undefined,
-									content:   "a",
+									content:   'a',
 									location:  rangeFrom(5, 11, 5, 11),
 									info:      {}
 								},
 							},
 							{
 								type:     RType.BinaryOp,
-								flavor:   "assignment",
-								lexeme:   "->",
-								operator: "->",
+								flavor:   'assignment',
+								lexeme:   '->',
+								operator: '->',
 								location: rangeFrom(6, 5, 6, 6),
 								info:     {},
 								lhs:      {
 									type:      RType.Symbol,
-									lexeme:    "i",
+									lexeme:    'i',
 									namespace: undefined,
-									content:   "i",
+									content:   'i',
 									location:  rangeFrom(6, 3, 6, 3),
 									info:      {}
 								},
 								rhs: {
 									type:     RType.Number,
-									lexeme:   "2",
+									lexeme:   '2',
 									content:  numVal(2),
 									location: rangeFrom(6, 7, 6, 7),
 									info:     {}
@@ -153,24 +153,24 @@ max
 					},
 					otherwise: ensureExpressionList({
 						type:     RType.BinaryOp,
-						flavor:   "assignment",
-						lexeme:   "->>",
-						operator: "->>",
+						flavor:   'assignment',
+						lexeme:   '->>',
+						operator: '->>',
 						location: rangeFrom(8, 5, 8, 7),
 						info:     {},
 						lhs:      {
 							type:      RType.Symbol,
-							lexeme:    "b",
+							lexeme:    'b',
 							namespace: undefined,
-							content:   "b",
+							content:   'b',
 							location:  rangeFrom(8, 3, 8, 3),
 							info:      {}
 						},
 						rhs: {
 							type:      RType.Symbol,
-							lexeme:    "max",
+							lexeme:    'max',
 							namespace: undefined,
-							content:   "max",
+							content:   'max',
 							location:  rangeFrom(8, 9, 8, 11),
 							info:      {}
 						},
@@ -178,8 +178,8 @@ max
 				},
 				{
 					type:      RType.Symbol,
-					lexeme:    "max",
-					content:   "max",
+					lexeme:    'max',
+					content:   'max',
 					namespace: undefined,
 					location:  rangeFrom(10, 1, 10, 3),
 					info:      {}

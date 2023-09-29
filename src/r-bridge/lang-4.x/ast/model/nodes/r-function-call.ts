@@ -1,6 +1,6 @@
 import { Base, Location, NoInfo, RNode } from '../model'
-import { RType } from "../type"
-import { RSymbol } from "./r-symbol"
+import { RType } from '../type'
+import { RSymbol } from './r-symbol'
 import { RArgument } from './r-argument'
 
 /**

@@ -16,11 +16,11 @@ const initialLoopInfo = {
 
 export type LoopInfo = Writable<typeof initialLoopInfo>
 
-const forLoopQuery: Query = xpath.parse(`//FOR`)
-const whileLoopQuery: Query = xpath.parse(`//WHILE`)
-const repeatLoopQuery: Query = xpath.parse(`//REPEAT`)
-const breakStatementQuery: Query = xpath.parse(`//BREAK`)
-const nextStatementQuery: Query = xpath.parse(`//NEXT`)
+const forLoopQuery: Query = xpath.parse('//FOR')
+const whileLoopQuery: Query = xpath.parse('//WHILE')
+const repeatLoopQuery: Query = xpath.parse('//REPEAT')
+const breakStatementQuery: Query = xpath.parse('//BREAK')
+const nextStatementQuery: Query = xpath.parse('//NEXT')
 const implicitLoopQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL[
      text() = 'apply' 
   or text() = 'lapply' 

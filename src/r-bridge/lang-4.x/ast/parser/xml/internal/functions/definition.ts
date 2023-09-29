@@ -25,7 +25,7 @@ export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName:
 		return executeUnknownHook(data.hooks.functions.onFunctionDefinition.unknown, data, mappedWithName)
 	}
 
-	parseLog.trace(`trying to parse function definition`)
+	parseLog.trace('trying to parse function definition')
 	mappedWithName = executeHook(data.hooks.functions.onFunctionDefinition.before, data, mappedWithName)
 
 	const { content, location } = retrieveMetaStructure(data.config, fnBase.content)

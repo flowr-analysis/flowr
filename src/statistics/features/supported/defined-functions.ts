@@ -24,8 +24,8 @@ export type FunctionDefinitionInfo = Writable<typeof initialFunctionDefinitionIn
 
 
 // note, that this can not work with assign, setGeneric and so on for now
-const queryAnyFunctionDefinition: Query = xpath.parse(`//FUNCTION`)
-const queryAnyLambdaDefinition: Query = xpath.parse(`//OP-LAMBDA`)
+const queryAnyFunctionDefinition: Query = xpath.parse('//FUNCTION')
+const queryAnyLambdaDefinition: Query = xpath.parse('//OP-LAMBDA')
 
 // we do not care on how these functions are defined
 const queryAssignedFunctionDefinitions: Query = xpath.parse(`

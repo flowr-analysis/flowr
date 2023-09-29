@@ -76,7 +76,7 @@ function processFeatureSubKey(featurePath: string, subKey: string, contextIdMap:
  * The names of these entries (like `->`) are returned, so they can be used to filter the following histograms.
  */
 export function printClusterReport(report: ClusterReport, limit = 1000): string[] {
-	console.log(`\n\n\n`)
+	console.log('\n\n\n')
 	console.log(report.filepath)
 
 	const shortStats = [...report.valueInfoMap.entries()].map(([name, values]) => {

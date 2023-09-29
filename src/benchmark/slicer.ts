@@ -33,7 +33,7 @@ import { log, LogLevel } from '../util/log'
 import { MergeableRecord } from '../util/objects'
 import { LAST_STEP, SteppingSlicer, STEPS, StepResult } from '../core'
 
-export const benchmarkLogger = log.getSubLogger({ name: "benchmark" })
+export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 
 /**
  * Returns the stats but also the result of all setup steps (parsing, normalization, and the dataflow analysis) during the slicing.

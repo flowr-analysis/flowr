@@ -36,7 +36,7 @@ async function writeQuadForSingleFile(request: RParseRequestFromFile, tokens: Re
 
 async function getQuads() {
 	const tokens = await getStoredTokenMap(shell)
-	const output = options.output ?? `out.quads`
+	const output = options.output ?? 'out.quads'
 	let skipped = 0
 	for await (const request of allRFilesFrom(options.input, options.limit)) {
 		try {

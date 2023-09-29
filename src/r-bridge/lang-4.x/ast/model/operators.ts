@@ -1,4 +1,4 @@
-import { MergeableRecord } from "../../../../util/objects"
+import { MergeableRecord } from '../../../../util/objects'
 import { RawRType } from './type'
 
 /**
@@ -17,14 +17,14 @@ export const enum OperatorArity {
 	Both = 3,
 }
 
-export type UnaryOperatorFlavor = "arithmetic" | "logical" | 'model formula';
+export type UnaryOperatorFlavor = 'arithmetic' | 'logical' | 'model formula';
 export type BinaryOperatorFlavor =
   | UnaryOperatorFlavor
-  | "comparison"
-  | "assignment";
-export type BinaryOperatorFlavorInAst = BinaryOperatorFlavor | "special";
-export type OperatorWrittenAs = "infix" | "prefix";
-export type OperatorUsedAs = "assignment" | "operation" | "access";
+  | 'comparison'
+  | 'assignment';
+export type BinaryOperatorFlavorInAst = BinaryOperatorFlavor | 'special';
+export type OperatorWrittenAs = 'infix' | 'prefix';
+export type OperatorUsedAs = 'assignment' | 'operation' | 'access';
 export type OperatorName = string;
 
 export interface OperatorInformationValue extends MergeableRecord {
@@ -90,26 +90,26 @@ function buildOperatorRAstCollection(operators: readonly string[]): Set<string> 
 
 export const ArithmeticOperators: readonly string[] = Object.keys(
 	OperatorDatabase
-).filter((op) => OperatorDatabase[op].flavor === "arithmetic")
+).filter((op) => OperatorDatabase[op].flavor === 'arithmetic')
 // '**' will be treated as '^'
 export const ArithmeticOperatorsRAst = buildOperatorRAstCollection(ArithmeticOperators)
 export const ComparisonOperators: readonly string[] = Object.keys(
 	OperatorDatabase
-).filter((op) => OperatorDatabase[op].flavor === "comparison")
+).filter((op) => OperatorDatabase[op].flavor === 'comparison')
 export const ComparisonOperatorsRAst = buildOperatorRAstCollection(ComparisonOperators)
 export const LogicalOperators: readonly string[] = Object.keys(
 	OperatorDatabase
-).filter((op) => OperatorDatabase[op].flavor === "logical")
+).filter((op) => OperatorDatabase[op].flavor === 'logical')
 export const LogicalOperatorsRAst = buildOperatorRAstCollection(LogicalOperators)
 
 export const ModelFormulaOperators: readonly string[] = Object.keys(
 	OperatorDatabase
-).filter((op) => OperatorDatabase[op].flavor === "model formula")
+).filter((op) => OperatorDatabase[op].flavor === 'model formula')
 export const ModelFormulaOperatorsRAst = buildOperatorRAstCollection(ModelFormulaOperators)
 
 export const Assignments: readonly string[] = Object.keys(
 	OperatorDatabase
-).filter((op) => OperatorDatabase[op].flavor === "assignment")
+).filter((op) => OperatorDatabase[op].flavor === 'assignment')
 export const AssignmentsRAst = buildOperatorRAstCollection(Assignments)
 
 export const Operators = [

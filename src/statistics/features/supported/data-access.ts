@@ -22,10 +22,10 @@ const initialDataAccessInfo = {
 export type DataAccess = Writable<typeof initialDataAccessInfo>
 
 
-const singleBracketAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-sibling::OP-LEFT-BRACKET][1]`)
-const doubleBracketAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-sibling::LBB][1]`)
-const namedAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-sibling::OP-DOLLAR][1]`)
-const slottedAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-sibling::OP-AT][1]`)
+const singleBracketAccess: Query = xpath.parse('//expr/SYMBOL/../../*[preceding-sibling::OP-LEFT-BRACKET][1]')
+const doubleBracketAccess: Query = xpath.parse('//expr/SYMBOL/../../*[preceding-sibling::LBB][1]')
+const namedAccess: Query = xpath.parse('//expr/SYMBOL/../../*[preceding-sibling::OP-DOLLAR][1]')
+const slottedAccess: Query = xpath.parse('//expr/SYMBOL/../../*[preceding-sibling::OP-AT][1]')
 const chainedOrNestedAccess: Query = xpath.parse(`
 //*[following-sibling::OP-LEFT-BRACKET or following-sibling::LBB or following-sibling::OP-DOLLAR or following-sibling::OP-AT]//
     *[self::OP-LEFT-BRACKET or self::LBB or self::OP-DOLLAR or self::OP-AT][1]
@@ -39,8 +39,8 @@ const constantAccess: Query = xpath.parse(`
   ./STR_CONST
   |
   ./SYMBOL[text() = 'T' or text() = 'F']`)
-const singleVariableAccess: Query = xpath.parse(`./SYMBOL[text() != 'T' and text() != 'F']`)
-const commaAccess: Query = xpath.parse(`../OP-COMMA`)
+const singleVariableAccess: Query = xpath.parse('./SYMBOL[text() != \'T\' and text() != \'F\']')
+const commaAccess: Query = xpath.parse('../OP-COMMA')
 
 function processForBracketAccess(existing: DataAccess, nodes: Node[], access: 'singleBracket' | 'doubleBracket', filepath: string | undefined) {
 // we use the parent node to get more information in the output if applicable

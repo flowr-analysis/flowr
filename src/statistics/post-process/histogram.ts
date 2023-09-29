@@ -73,7 +73,7 @@ export function histogramsFromClusters(report: ClusterReport, binSize: number, r
  */
 export function histogramFromNumbers(name: string, binSize: number, values: number[]): Histogram {
 	guard(binSize > 0, `binSize must be greater than 0, but was ${binSize}`)
-	guard(values.length > 0, `values must not be empty`)
+	guard(values.length > 0, 'values must not be empty')
 
 	const summarized = summarizeMeasurement(values)
 

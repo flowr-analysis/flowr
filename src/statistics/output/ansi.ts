@@ -87,7 +87,7 @@ export const ansiFormatter = {
 		}
 		const colorString = 'color' in options ? `${options.effect + options.color}` : ''
 		const weightString = 'style' in options ? `${options.style}` : ''
-		return `${escape}${colorString}${weightString !== "" ? ';' : ''}${weightString}${colorSuffix}`
+		return `${escape}${colorString}${weightString !== '' ? ';' : ''}${weightString}${colorSuffix}`
 	}
 }
 

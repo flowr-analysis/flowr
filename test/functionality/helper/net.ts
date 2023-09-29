@@ -51,9 +51,9 @@ export class FakeSocket implements Socket {
 		this.closeHandler?.()
 	}
 
-	public on(event: "close", listener: () => void): void
-	public on(event: "data", listener: (data: Buffer) => void): void
-	public on(event: "close" | "data", listener: (() => void) | ((data: Buffer) => void)): void {
+	public on(event: 'close', listener: () => void): void
+	public on(event: 'data', listener: (data: Buffer) => void): void
+	public on(event: 'close' | 'data', listener: (() => void) | ((data: Buffer) => void)): void {
 		if(event === 'close') {
 			this.closeHandler = listener as () => void
 		} else {

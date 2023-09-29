@@ -22,7 +22,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithFirstI
 		)
-		assertDataflow(`Calling function a`, shell, `i <- 4; a <- function(x) { x }\na(i)`,
+		assertDataflow('Calling function a', shell, 'i <- 4; a <- function(x) { x }\na(i)',
 			new DataflowGraph()
 				.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
 				.addVertex({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
@@ -68,7 +68,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithIA
 		)
-		assertDataflow(`Calling function a with an indirection`, shell, `i <- 4; a <- function(x) { x }\nb <- a\nb(i)`,
+		assertDataflow('Calling function a with an indirection', shell, 'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
 			new DataflowGraph()
 				.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
 				.addVertex({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
@@ -132,7 +132,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithFirstI
 		)
-		assertDataflow(`Calling with a constant function`, shell, `i <- 4
+		assertDataflow('Calling with a constant function', shell, `i <- 4
 a <- function(x) { x <- x; x <- 3; 1 }
 a(i)`, new DataflowGraph()
 			.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
@@ -227,11 +227,11 @@ a(i)`, new DataflowGraph()
 			.addEdge('9', '4', EdgeType.Returns, 'always')
 			.addEdge('8', '0', EdgeType.DefinesOnCall, 'always')
 
-		assertDataflow('Calling with constant argument using lambda', shell, `(\\(x) { x + 1 })(2)`,
+		assertDataflow('Calling with constant argument using lambda', shell, '(\\(x) { x + 1 })(2)',
 			outGraph,
 			{ minRVersion: MIN_VERSION_LAMBDA }
 		)
-		assertDataflow('Calling with constant argument', shell, `(function(x) { x + 1 })(2)`,
+		assertDataflow('Calling with constant argument', shell, '(function(x) { x + 1 })(2)',
 			outGraph
 		)
 
@@ -307,7 +307,7 @@ a()()`,
 	})
 
 	describe('Argument which is expression', () => {
-		assertDataflow(`Calling with 1 + x`, shell, `foo(1 + x)`,
+		assertDataflow('Calling with 1 + x', shell, 'foo(1 + x)',
 			new DataflowGraph()
 				.addVertex({ tag: 'function-call', id: '5', name: 'foo', environment: initializeCleanEnvironments(), args: [{ nodeId: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, used: 'always' }]})
 				.addVertex({ tag: 'use', id: '4', name: `${UnnamedArgumentPrefix}4`})
@@ -318,7 +318,7 @@ a()()`,
 	})
 
 	describe('Argument which is anonymous function call', () => {
-		assertDataflow(`Calling with a constant function`, shell, `f(function() { 3 })`,
+		assertDataflow('Calling with a constant function', shell, 'f(function() { 3 })',
 			new DataflowGraph()
 				.addVertex({ tag: 'function-call', id: '5', name: 'f', environment: initializeCleanEnvironments(), args: [{ nodeId: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, used: 'always' }]})
 				.addVertex({ tag: 'use', id: '4', name: `${UnnamedArgumentPrefix}4`})
@@ -344,7 +344,7 @@ a()()`,
 	})
 
 	describe('Multiple out refs in arguments', () => {
-		assertDataflow(`Calling 'seq'`, shell, `seq(1, length(pkgnames), by = stepsize)`,
+		assertDataflow('Calling \'seq\'', shell, 'seq(1, length(pkgnames), by = stepsize)',
 			new DataflowGraph()
 				.addVertex({
 					tag:         'function-call',
@@ -354,12 +354,12 @@ a()()`,
 					args:        [
 						{ nodeId: '2', name: `${UnnamedArgumentPrefix}2`, scope: LocalScope, used: 'always' },
 						{ nodeId: '7', name: `${UnnamedArgumentPrefix}7`, scope: LocalScope, used: 'always' },
-						['by', { nodeId: '10', name: `by`, scope: LocalScope, used: 'always' }],
+						['by', { nodeId: '10', name: 'by', scope: LocalScope, used: 'always' }],
 					]
 				})
 				.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2`})
 				.addVertex({ tag: 'use', id: '7', name: `${UnnamedArgumentPrefix}7`})
-				.addVertex({ tag: 'use', id: '10', name: `by`})
+				.addVertex({ tag: 'use', id: '10', name: 'by'})
 				.addEdge('11', '2', EdgeType.Argument, 'always')
 				.addEdge('11', '7', EdgeType.Argument, 'always')
 				.addEdge('11', '10', EdgeType.Argument, 'always')
@@ -396,7 +396,7 @@ a()()`,
 			defWithA
 		)
 
-		assertDataflow(`Late binding of y`, shell, `a <- function() { y }\ny <- 12\na()`,
+		assertDataflow('Late binding of y', shell, 'a <- function() { y }\ny <- 12\na()',
 			new DataflowGraph()
 				.addVertex({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
 				.addVertex({
@@ -452,7 +452,7 @@ a()()`,
 			LocalScope,
 			initializeCleanEnvironments()
 		)
-		assertDataflow(`Not giving first parameter`, shell, `a <- function(x=3,y) { y }
+		assertDataflow('Not giving first parameter', shell, `a <- function(x=3,y) { y }
 a(,3)`, new DataflowGraph()
 			.addVertex({
 				tag:         'function-call',
@@ -501,7 +501,7 @@ a(,3)`, new DataflowGraph()
 			LocalScope,
 			initializeCleanEnvironments()
 		)
-		assertDataflow(`Not giving first argument`, shell, `a(x=3, x)`, new DataflowGraph()
+		assertDataflow('Not giving first argument', shell, 'a(x=3, x)', new DataflowGraph()
 			.addVertex({
 				tag:  'function-call',
 				id:   '6',
@@ -527,7 +527,7 @@ a(,3)`, new DataflowGraph()
 		)
 	})
 	describe('Define in parameters', () => {
-		assertDataflow(`Support assignments in function calls`, shell, `foo(x <- 3); x`, new DataflowGraph()
+		assertDataflow('Support assignments in function calls', shell, 'foo(x <- 3); x', new DataflowGraph()
 			.addVertex({
 				tag:   'function-call',
 				id:    '5',

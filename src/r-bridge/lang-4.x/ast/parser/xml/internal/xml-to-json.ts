@@ -1,6 +1,6 @@
-import * as xml2js from "xml2js"
-import { XmlParserConfig } from "../config"
-import { XmlBasedJson } from "../input-format"
+import * as xml2js from 'xml2js'
+import { XmlParserConfig } from '../config'
+import { XmlBasedJson } from '../input-format'
 
 /**
  * Parse the xml presented by R into a json object that will be used for conversion

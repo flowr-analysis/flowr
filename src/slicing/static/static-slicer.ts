@@ -24,7 +24,7 @@ import { DefaultMap } from '../../util/defaultmap'
 import { LocalScope } from '../../dataflow/environments/scopes'
 import { convertAllSlicingCriteriaToIds, DecodedCriteria, SlicingCriteria } from '../criterion'
 
-export const slicerLogger = log.getSubLogger({ name: "slicer" })
+export const slicerLogger = log.getSubLogger({ name: 'slicer' })
 
 
 /**
@@ -124,7 +124,7 @@ class VisitingQueue {
  * The returned ids can be used to {@link reconstructToCode | reconstruct the slice to R code}.
  */
 export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
-	guard(criteria.length > 0, `must have at least one seed id to calculate slice`)
+	guard(criteria.length > 0, 'must have at least one seed id to calculate slice')
 	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, ast)
 	const idMap = ast.idMap
 	slicerLogger.trace(`calculating slice for ${decodedCriteria.length} seed ids: ${decodedCriteria.join(', ')}`)

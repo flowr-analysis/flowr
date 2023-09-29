@@ -1,7 +1,7 @@
-import { SourceRange } from "../../../../util/range"
-import { RType } from "./type"
-import { MergeableRecord } from "../../../../util/objects"
-import { RNa, RNull } from "../../values"
+import { SourceRange } from '../../../../util/range'
+import { RType } from './type'
+import { MergeableRecord } from '../../../../util/objects'
+import { RNa, RNull } from '../../values'
 import {
 	RExpressionList,
 	RNumber,

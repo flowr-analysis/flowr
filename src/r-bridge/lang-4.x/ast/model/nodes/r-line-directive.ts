@@ -1,5 +1,5 @@
-import { Leaf, Location, NoInfo } from "../model"
-import { RType } from "../type"
+import { Leaf, Location, NoInfo } from '../model'
+import { RType } from '../type'
 
 export interface RLineDirective<Info = NoInfo> extends Location, Leaf<Info> {
 	readonly type: RType.LineDirective;

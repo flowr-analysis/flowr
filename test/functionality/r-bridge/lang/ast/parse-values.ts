@@ -3,18 +3,18 @@ import {
 	RNumberPool,
 	RStringPool,
 	RSymbolPool,
-} from "../../../helper/provider"
-import { exprList } from "../../../helper/ast-builder"
-import { rangeFrom } from "../../../../../src/util/range"
+} from '../../../helper/provider'
+import { exprList } from '../../../helper/ast-builder'
+import { rangeFrom } from '../../../../../src/util/range'
 import { retrieveXmlFromRCode, RType } from '../../../../../src/r-bridge'
 import chai, { assert } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 chai.use(chaiAsPromised)
 
 
-describe("Constant Parsing",
+describe('Constant Parsing',
 	withShell(shell => {
-		describe("parse single", () => {
+		describe('parse single', () => {
 			it('parse illegal', () =>
 				assert.isRejected(retrieveXmlFromRCode({
 					request:                'text',
@@ -23,7 +23,7 @@ describe("Constant Parsing",
 				}, shell))
 			)
 
-			describe("numbers", () => {
+			describe('numbers', () => {
 				for(const number of RNumberPool) {
 					const range = rangeFrom(1, 1, 1, number.str.length)
 					assertAst(
@@ -40,7 +40,7 @@ describe("Constant Parsing",
 					)
 				}
 			})
-			describe("strings", () => {
+			describe('strings', () => {
 				for(const string of RStringPool) {
 					const range = rangeFrom(1, 1, 1, string.str.length)
 					assertAst(
@@ -57,7 +57,7 @@ describe("Constant Parsing",
 					)
 				}
 			})
-			describe("symbols", () => {
+			describe('symbols', () => {
 				for(const symbol of RSymbolPool) {
 					const range = rangeFrom(
 						1,
@@ -80,7 +80,7 @@ describe("Constant Parsing",
 					)
 				}
 			})
-			describe("boolean", () => {
+			describe('boolean', () => {
 				for(const [lexeme, content] of [['TRUE', true], ['FALSE', false], ['T', true], ['F', false]] as const) {
 					assertAst(
 						`${lexeme} as ${JSON.stringify(content)}`,
@@ -96,16 +96,16 @@ describe("Constant Parsing",
 					)
 				}
 			})
-			describe("comments", () => {
+			describe('comments', () => {
 				assertAst(
-					"simple line comment",
+					'simple line comment',
 					shell,
-					"# Hello World",
+					'# Hello World',
 					exprList({
 						type:     RType.Comment,
 						location: rangeFrom(1, 1, 1, 13),
-						lexeme:   "# Hello World",
-						content:  " Hello World",
+						lexeme:   '# Hello World',
+						content:  ' Hello World',
 						info:     {}
 					})
 				)

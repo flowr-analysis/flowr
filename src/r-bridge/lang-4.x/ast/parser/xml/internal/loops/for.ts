@@ -3,11 +3,11 @@ import {
 	NamedXmlBasedJson,
 	XmlBasedJson,
 	XmlParseError,
-} from "../../input-format"
+} from '../../input-format'
 import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../meta'
-import { parseLog } from "../../parser"
-import { guard } from "../../../../../../../util/assert"
-import { ParserData } from "../../data"
+import { parseLog } from '../../parser'
+import { guard } from '../../../../../../../util/assert'
+import { ParserData } from '../../data'
 import { tryNormalizeSymbol } from '../values'
 import { normalizeBasedOnType, tryNormalizeSingleNode } from '../structure'
 import { RType, RSymbol, RForLoop, RNode, RawRType } from '../../../../model'
@@ -21,7 +21,7 @@ export function tryNormalizeFor(
 ): RForLoop | undefined {
 	// funny, for does not use top-level parenthesis
 	if(forToken.name !== RawRType.For) {
-		parseLog.debug("encountered non-for token for supposed for-loop structure")
+		parseLog.debug('encountered non-for token for supposed for-loop structure')
 		return executeUnknownHook(data.hooks.loops.onForLoop.unknown, data, { forToken, condition: head, body })
 	} else if(head.name !== RawRType.ForCondition) {
 		throw new XmlParseError(`expected condition for for-loop but found ${JSON.stringify(head)}`)

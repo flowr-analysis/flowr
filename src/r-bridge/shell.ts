@@ -1,14 +1,14 @@
-import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
-import { deepMergeObject, type MergeableRecord } from "../util/objects"
-import { type ILogObj, type Logger } from "tslog"
-import * as readline from "node:readline"
+import { type ChildProcessWithoutNullStreams, spawn } from 'child_process'
+import { deepMergeObject, type MergeableRecord } from '../util/objects'
+import { type ILogObj, type Logger } from 'tslog'
+import * as readline from 'node:readline'
 import { ts2r } from './lang-4.x'
 import { log, LogLevel } from '../util/log'
 import { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 
-export type OutputStreamSelector = "stdout" | "stderr" | "both";
+export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
 export interface CollectorTimeout extends MergeableRecord {
 	/**
@@ -218,9 +218,9 @@ export class RShell {
 	public tryToInjectHomeLibPath(): void {
 		// ensure the path exists first
 		if(this.options.homeLibPath === undefined) {
-			this.log.debug(`ensuring home lib path exists`)
-			this.sendCommand(`dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE)`)
-			this.sendCommand(`.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))`)
+			this.log.debug('ensuring home lib path exists')
+			this.sendCommand('dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE)')
+			this.sendCommand('.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))')
 		} else {
 			this.injectLibPaths(this.options.homeLibPath)
 		}

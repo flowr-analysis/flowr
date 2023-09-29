@@ -1,25 +1,25 @@
 // noinspection SpellCheckingInspection
 
-import { ALPHABET, randomString } from "../../../src/util/random"
-import { assert } from "chai"
+import { ALPHABET, randomString } from '../../../src/util/random'
+import { assert } from 'chai'
 
-describe("Random", () => {
-	describe("randomString", () => {
-		it("with one source only", () => {
-			assert.equal(randomString(7, ["a"]), "aaaaaaa")
+describe('Random', () => {
+	describe('randomString', () => {
+		it('with one source only', () => {
+			assert.equal(randomString(7, ['a']), 'aaaaaaa')
 		})
-		it("correct length", () => {
+		it('correct length', () => {
 			for(let stringLength = 0; stringLength < 50; stringLength++) {
 				for(let repetition = 0; repetition < 20; repetition++) {
 					assert.equal(randomString(stringLength).length, stringLength)
 				}
 			}
 		})
-		it("only contain valid characters", () => {
+		it('only contain valid characters', () => {
 			for(const source of [
 				ALPHABET,
 				ALPHABET.slice(0, 26),
-				["1", "2", "3", "x"],
+				['1', '2', '3', 'x'],
 			]) {
 				for(let stringLength = 0; stringLength < 20; stringLength++) {
 					for(let repetition = 0; repetition < 5; repetition++) {
@@ -30,8 +30,8 @@ describe("Random", () => {
 				}
 			}
 		})
-		describe("guard against illegal arguments", () => {
-			it("negative", function() {
+		describe('guard against illegal arguments', () => {
+			it('negative', function() {
 				for(const length of [-Infinity, -42, -2, -1]) {
 					assert.throws(
 						() => randomString(length),
@@ -41,7 +41,7 @@ describe("Random", () => {
 					)
 				}
 			})
-			it("NaN and Infinity", function() {
+			it('NaN and Infinity', function() {
 				for(const length of [Infinity, NaN]) {
 					assert.throws(
 						() => randomString(length),
@@ -51,7 +51,7 @@ describe("Random", () => {
 					)
 				}
 			})
-			it("Floating Point", function() {
+			it('Floating Point', function() {
 				for(const length of [2.3, 42.42, Math.PI]) {
 					assert.throws(
 						() => randomString(length),
@@ -61,12 +61,12 @@ describe("Random", () => {
 					)
 				}
 			})
-			it("empty source", function() {
+			it('empty source', function() {
 				assert.throws(
 					() => randomString(42, []),
 					Error,
 					undefined,
-					"source must not be empty"
+					'source must not be empty'
 				)
 			})
 		})

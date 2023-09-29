@@ -1,4 +1,4 @@
-import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { RNumHexFloatRegex } from '../../../r-bridge'
 import { assertUnreachable } from '../../../util/assert'

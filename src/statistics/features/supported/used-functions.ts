@@ -1,6 +1,6 @@
 import { SinglePackageInfo } from './used-packages'
 import { FunctionNameInfo } from './defined-functions'
-import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { appendStatisticsFile, extractNodeContent } from '../../output'
 import { Writable } from 'ts-essentials'

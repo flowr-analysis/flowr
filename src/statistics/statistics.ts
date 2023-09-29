@@ -69,6 +69,7 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 function initializeFeatureStatistics(): FeatureStatistics {
 	const result = {} as FeatureStatistics
 	for(const key of allFeatureNames) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		result[key] = JSON.parse(JSON.stringify(ALL_FEATURES[key].initialValue))
 	}
 	return result

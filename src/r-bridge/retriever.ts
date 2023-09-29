@@ -5,7 +5,7 @@ import { DeepPartial, DeepReadonly } from 'ts-essentials'
 import { guard } from '../util/assert'
 
 export interface RParseRequestFromFile {
-	request: "file";
+	request: 'file';
 	/** The path to the file (absolute paths are probably best here */
 	content: string;
 }

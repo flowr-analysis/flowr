@@ -154,8 +154,8 @@ export class RShell {
 	/**
    * Send a command and collect the output
    *
-   * @param command     - the R command to execute (similar to {@link sendCommand})
-   * @param addonConfig - further configuration on how and what to collect: see {@link OutputCollectorConfiguration},
+   * @param command     - The R command to execute (similar to {@link sendCommand})
+   * @param addonConfig - Further configuration on how and what to collect: see {@link OutputCollectorConfiguration},
    *                      defaults are set in {@link DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION}
    */
 	public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {

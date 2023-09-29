@@ -17,9 +17,9 @@ describe("Constant Parsing",
 		describe("parse single", () => {
 			it('parse illegal', () =>
 				assert.isRejected(retrieveXmlFromRCode({
-					request:                 'text',
-					content:                 '{',
-					ensurePackageInstalled:  true
+					request:                'text',
+					content:                '{',
+					ensurePackageInstalled: true
 				}, shell))
 			)
 

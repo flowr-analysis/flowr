@@ -21,7 +21,7 @@ interface RParseRequestBase {
    * Ensure that all required packages are present and if not install them?
    * The only reason to set this to `false` is probably in a series of parse requests for the same session.
    */
-	ensurePackageInstalled:  boolean
+	ensurePackageInstalled: boolean
 }
 
 /**
@@ -38,9 +38,9 @@ export function requestFromInput(input: string): RParseRequestFromText & RParseR
 export function requestFromInput(input: `file://${string}` | string): RParseRequest {
 	const file = input.startsWith('file://')
 	return {
-		request:                 file ? 'file' : 'text',
-		content:                 file ? input.slice(7) : input,
-		ensurePackageInstalled:  false // should be called within describeSession for that!
+		request:                file ? 'file' : 'text',
+		content:                file ? input.slice(7) : input,
+		ensurePackageInstalled: false // should be called within describeSession for that!
 	}
 }
 

@@ -123,7 +123,7 @@ export class BenchmarkSlicer {
 			shell:   this.shell,
 			request: {
 				...request,
-				ensurePackageInstalled:  true
+				ensurePackageInstalled: true
 			},
 			stepOfInterest: LAST_STEP,
 			criterion:      [],

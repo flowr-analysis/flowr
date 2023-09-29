@@ -52,7 +52,7 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 		try {
 			result = await extractSingle(result, shell, tokenMap, {
 				...request,
-				ensurePackageInstalled:  first
+				ensurePackageInstalled: first
 			}, features)
 			processMetaOnSuccessful(meta, request)
 			first = false

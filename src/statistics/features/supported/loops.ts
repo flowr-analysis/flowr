@@ -1,16 +1,10 @@
-import { Feature, FeatureInfo, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append } from '../../output'
+import { appendStatisticsFile } from '../../output'
+import { Writable } from 'ts-essentials'
 
-export interface LoopInfo extends FeatureInfo {
-	forLoops:        number
-	whileLoops:      number
-	repeatLoops:     number
-	breakStatements: number
-	nextStatements:  number
-}
 
-const initialLoopInfo = (): LoopInfo => ({
+const initialLoopInfo = {
 	forLoops:        0,
 	whileLoops:      0,
 	repeatLoops:     0,
@@ -18,8 +12,9 @@ const initialLoopInfo = (): LoopInfo => ({
 	nextStatements:  0,
 	/** apply, tapply, lapply, ...*/
 	implicitLoops:   0
-})
+}
 
+export type LoopInfo = Writable<typeof initialLoopInfo>
 
 const forLoopQuery: Query = xpath.parse(`//FOR`)
 const whileLoopQuery: Query = xpath.parse(`//WHILE`)
@@ -39,13 +34,13 @@ export const loops: Feature<LoopInfo> = {
 	name:        'Loops',
 	description: 'All looping structures in the document',
 
-	process(existing: LoopInfo, input: Document, filepath: string | undefined): LoopInfo {
-		const forLoops = forLoopQuery.select({ node: input })
-		const whileLoops = whileLoopQuery.select({ node: input })
-		const repeatLoops = repeatLoopQuery.select({ node: input })
-		const breakStatements = breakStatementQuery.select({ node: input })
-		const nextStatements = nextStatementQuery.select({ node: input })
-		const implicitLoops = implicitLoopQuery.select({ node: input })
+	process(existing: LoopInfo, input: FeatureProcessorInput): LoopInfo {
+		const forLoops = forLoopQuery.select({ node: input.parsedRAst })
+		const whileLoops = whileLoopQuery.select({ node: input.parsedRAst })
+		const repeatLoops = repeatLoopQuery.select({ node: input.parsedRAst })
+		const breakStatements = breakStatementQuery.select({ node: input.parsedRAst })
+		const nextStatements = nextStatementQuery.select({ node: input.parsedRAst })
+		const implicitLoops = implicitLoopQuery.select({ node: input.parsedRAst })
 
 		existing.forLoops += forLoops.length
 		existing.whileLoops += whileLoops.length
@@ -53,7 +48,7 @@ export const loops: Feature<LoopInfo> = {
 		existing.breakStatements += breakStatements.length
 		existing.nextStatements += nextStatements.length
 		existing.implicitLoops += implicitLoops.length
-		append(this.name, 'implicit-loops', implicitLoops, filepath)
+		appendStatisticsFile(this.name, 'implicit-loops', implicitLoops, input.filepath)
 		return existing
 	},
 

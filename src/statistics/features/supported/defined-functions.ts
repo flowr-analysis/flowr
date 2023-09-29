@@ -1,33 +1,27 @@
-import { Feature, FeatureInfo, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append, extractNodeContent } from '../../output'
+import { appendStatisticsFile, extractNodeContent } from '../../output'
+import { Writable } from 'ts-essentials'
 
 export type FunctionNameInfo = string
 
-export interface FunctionDefinitionInfo extends FeatureInfo {
+const initialFunctionDefinitionInfo = {
 	/** all, anonymous, assigned, non-assigned, ... */
-	total:                   number
-	/** how many are really using OP-Lambda? */
-	lambdasOnly:             number
-	/** using `<<-`, `<-`, `=`, `->` `->>` */
-	assignedFunctions:       number
-	usedArgumentNames:       number
-	/** anonymous functions invoked directly */
-	functionsDirectlyCalled: number
-	nestedFunctions:         number
-	/** functions that in some easily detectable way call themselves */
-	recursive:               number
-}
-
-const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({
 	total:                   0,
+	/** how many are really using OP-Lambda? */
 	lambdasOnly:             0,
+	/** using `<<-`, `<-`, `=`, `->` `->>` */
 	assignedFunctions:       0,
 	usedArgumentNames:       0,
+	/** anonymous functions invoked directly */
 	functionsDirectlyCalled: 0,
 	nestedFunctions:         0,
+	/** functions that in some easily detectable way call themselves */
 	recursive:               0
-})
+}
+
+export type FunctionDefinitionInfo = Writable<typeof initialFunctionDefinitionInfo>
+
 
 // note, that this can not work with assign, setGeneric and so on for now
 const queryAnyFunctionDefinition: Query = xpath.parse(`//FUNCTION`)
@@ -73,26 +67,26 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 	name:        'Defined Functions',
 	description: 'All functions defined within the document',
 
-	process(existing: FunctionDefinitionInfo, input: Document, filepath: string | undefined): FunctionDefinitionInfo {
-		const allFunctions = queryAnyFunctionDefinition.select({ node: input }).length
-		const allLambdas = queryAnyLambdaDefinition.select({ node: input })
+	process(existing: FunctionDefinitionInfo, input: FeatureProcessorInput): FunctionDefinitionInfo {
+		const allFunctions = queryAnyFunctionDefinition.select({ node: input.parsedRAst }).length
+		const allLambdas = queryAnyLambdaDefinition.select({ node: input.parsedRAst })
 
-		append(this.name, 'allLambdas', allLambdas, filepath)
+		appendStatisticsFile(this.name, 'allLambdas', allLambdas, input.filepath)
 
 		existing.total += allFunctions + allLambdas.length
 		existing.lambdasOnly += allLambdas.length
 
-		const usedArgumentNames = queryUsedArgumentNames.select({ node: input })
+		const usedArgumentNames = queryUsedArgumentNames.select({ node: input.parsedRAst })
 		existing.usedArgumentNames += usedArgumentNames.length
-		append(this.name, 'usedArgumentNames', usedArgumentNames, filepath)
+		appendStatisticsFile(this.name, 'usedArgumentNames', usedArgumentNames, input.filepath)
 
-		existing.functionsDirectlyCalled += defineFunctionsToBeCalled.select({ node: input }).length
-		existing.nestedFunctions += nestedFunctionsQuery.select({ node: input }).length
+		existing.functionsDirectlyCalled += defineFunctionsToBeCalled.select({ node: input.parsedRAst }).length
+		existing.nestedFunctions += nestedFunctionsQuery.select({ node: input.parsedRAst }).length
 
-		const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input })
+		const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input.parsedRAst })
 		const assignedNames = assignedFunctions.map(extractNodeContent)
 		existing.assignedFunctions += assignedFunctions.length
-		append(this.name, 'assignedFunctions', assignedNames, filepath)
+		appendStatisticsFile(this.name, 'assignedFunctions', assignedNames, input.filepath)
 
 		const recursiveFunctions = []
 		for(let i = 0; i < assignedFunctions.length; i++) {
@@ -102,7 +96,7 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 			}
 		}
 		existing.recursive += recursiveFunctions.length
-		append(this.name, 'recursiveFunctions', recursiveFunctions, filepath)
+		appendStatisticsFile(this.name, 'recursiveFunctions', recursiveFunctions, input.filepath)
 
 		return existing
 	},

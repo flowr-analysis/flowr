@@ -1,6 +1,6 @@
 import { ALL_FEATURES, FeatureKey, FeatureStatistics } from '../features'
-import { MetaStatistics } from '../statistics'
 import { ColorEffect, Colors, formatter } from './ansi'
+import { MetaStatistics } from '../meta-statistics'
 
 interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}
 
@@ -42,7 +42,7 @@ export function printFeatureStatistics(statistics: {features: FeatureStatistics,
 	const lineLengths = minMaxAvgAndMedian(statistics.meta.lines.flat())
 	const processingTimesPerFile = minMaxAvgAndMedian(statistics.meta.processingTimeMs)
 
-	console.log(`processed ${statistics.meta.successfulParsed} files (skipped ${statistics.meta.skipped.length} due to errors):
+	console.log(`processed ${statistics.meta.successfulParsed} files (skipped ${statistics.meta.failedRequests.length} due to errors):
 \ttotal processing time: ${processingTimesPerFile.sum} ms
 \t\tprocessing time range: ${statsString(processingTimesPerFile, ` ms`)}
 \ttotal number of lines: ${lineLengths.sum}

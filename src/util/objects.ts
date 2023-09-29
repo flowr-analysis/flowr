@@ -33,7 +33,7 @@ export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable 
 		throw new Error('illegal types for deepMergeObject!')
 	}
 
-	const result = Object.assign({}, base) as MergeableRecord
+	const result: MergeableRecord = { ...base }
 
 	const baseIsArray = Array.isArray(base)
 	const addonIsArray = Array.isArray(addon)

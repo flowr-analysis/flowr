@@ -49,7 +49,7 @@ function processFeatureFolder(filepath: string, feature: FeatureKey): ClusterRep
 
 	const contextIdMap: ClusterContextIdMap = new DefaultMap<string | undefined, NodeId>(deterministicCountingIdGenerator())
 
-	const featureSubKeys = Object.keys(featureInfo.initialValue())
+	const featureSubKeys = Object.keys(featureInfo.initialValue)
 	const reports: ClusterReport[] = []
 	for(const subKey of featureSubKeys) {
 		const value = processFeatureSubKey(targetPath, subKey, contextIdMap)

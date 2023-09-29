@@ -1,50 +1,32 @@
 import { SinglePackageInfo } from './used-packages'
 import { FunctionNameInfo } from './defined-functions'
-import { Feature, FeatureInfo, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append, extractNodeContent } from '../../output'
+import { appendStatisticsFile, extractNodeContent } from '../../output'
+import { Writable } from 'ts-essentials'
 
 export interface UsedFunction {
 	package:  SinglePackageInfo,
 	function: FunctionNameInfo
 }
 
-
-export interface FunctionUsageInfo extends FeatureInfo {
-	allFunctionCalls:           number
-	/** abs, expm1, tanpi, ... */
-	mathFunctions:              number
-	/** nargs, missing, is.character, ... */
-	programmingFunctions:       number
-	/** browser, proc.time, gc.time, ... */
-	sessionManagementFunctions: number
-	/** `:`, `~`, `c`, `UseMethod`, `.C`, ... */
-	primitiveFunctions:         number
-	/** e.g. do not evaluate part of functions, `quote`, ... */
-	specialPrimitiveFunctions:  number
-	/** `.Primitive`, `.Internal`, `lazyLoadDBfetch`, ... */
-	internalFunctions:          number
-	/** `body`, `environment`, `formals` */
-	metaFunctions:              number
-	/** return */
-	returnFunction:             number
-	parsingFunctions:           number
-	editFunctions:              number
-	assignFunctions:            number
-	getFunctions:               number
-	helpFunctions:              number
-	optionFunctions:            number
-}
-
-const initialFunctionUsageInfo = (): FunctionUsageInfo => ({
+const initialFunctionUsageInfo = {
 	allFunctionCalls:           0,
+	/** abs, expm1, tanpi, ... */
 	mathFunctions:              0,
+	/** nargs, missing, is.character, ... */
 	programmingFunctions:       0,
+	/** browser, proc.time, gc.time, ... */
 	sessionManagementFunctions: 0,
+	/** `:`, `~`, `c`, `UseMethod`, `.C`, ... */
 	primitiveFunctions:         0,
+	/** e.g. do not evaluate part of functions, `quote`, ... */
 	specialPrimitiveFunctions:  0,
+	/** `.Primitive`, `.Internal`, `lazyLoadDBfetch`, ... */
 	internalFunctions:          0,
+	/** `body`, `environment`, `formals` */
 	metaFunctions:              0,
+	/** return */
 	returnFunction:             0,
 	parsingFunctions:           0,
 	editFunctions:              0,
@@ -52,7 +34,10 @@ const initialFunctionUsageInfo = (): FunctionUsageInfo => ({
 	getFunctions:               0,
 	helpFunctions:              0,
 	optionFunctions:            0
-})
+}
+
+export type FunctionUsageInfo = Writable<typeof initialFunctionUsageInfo>
+
 
 function from(...names: string[]): RegExp {
 	return new RegExp(names.join('|'))
@@ -114,11 +99,11 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
 	name:        'Used Functions',
 	description: 'All functions called, split into various sub-categories',
 
-	process(existing: FunctionUsageInfo, input: Document, filepath: string | undefined): FunctionUsageInfo {
-		const allFunctionCalls = functionCallQuery.select({ node: input })
+	process(existing: FunctionUsageInfo, input: FeatureProcessorInput): FunctionUsageInfo {
+		const allFunctionCalls = functionCallQuery.select({ node: input.parsedRAst })
 
 		existing.allFunctionCalls += allFunctionCalls.length
-		append(this.name, 'allFunctionCalls', allFunctionCalls, filepath)
+		appendStatisticsFile(this.name, 'allFunctionCalls', allFunctionCalls, input.filepath)
 
 		const names = allFunctionCalls.map(extractNodeContent)
 

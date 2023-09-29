@@ -50,7 +50,9 @@ represents the addition of a new feature and the fix of a corresponding test.
 To skip the `ci`, you can prefix the commit message with `[skip ci]`.
 
 
-## ToDo Comments
+## Coding Style and ToDo Comments
+
+All the basic style conventions are defined inside the `package.json` (with the help of the `eslint` package). Please make sure to adhere to them. 
 
 As indicated by [#238](https://github.com/Code-Inspect/flowr/issues/238) I decided to forbid `TODO`, `FIXME`, and `XXX` comments in code in favor of explicit *issues* directly on GitHub. Please do not try to get around that rule.
 

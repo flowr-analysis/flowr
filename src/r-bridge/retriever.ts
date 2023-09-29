@@ -19,7 +19,7 @@ export interface RParseRequestFromText {
 interface RParseRequestBase {
 	/**
    * Ensure that all required packages are present and if not install them?
-   * The only reason to set this to `false` is probably ina series of parse requests for the same session.
+   * The only reason to set this to `false` is probably in a series of parse requests for the same session.
    */
 	ensurePackageInstalled:  boolean
 }

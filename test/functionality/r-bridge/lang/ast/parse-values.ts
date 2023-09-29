@@ -19,7 +19,6 @@ describe("Constant Parsing",
 				assert.isRejected(retrieveXmlFromRCode({
 					request:                 'text',
 					content:                 '{',
-					attachSourceInformation: true,
 					ensurePackageInstalled:  true
 				}, shell))
 			)

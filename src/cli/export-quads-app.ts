@@ -27,7 +27,6 @@ shell.tryToInjectHomeLibPath()
 async function writeQuadForSingleFile(request: RParseRequestFromFile, tokens: Record<string, string>, output: string) {
 	const normalized = await retrieveNormalizedAstFromRCode({
 		...request,
-		attachSourceInformation: true,
 		ensurePackageInstalled:  true
 	}, tokens, shell)
 	const serialized = serialize2quads(normalized.ast, { context: request.content })

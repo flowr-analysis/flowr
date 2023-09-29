@@ -162,7 +162,7 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 			// there seem to be encoding issues, therefore, we dump to a temp file
 			fs.writeFileSync(tempfile.name, output)
 			const reParsed = await retrieveNormalizedAstFromRCode(
-				{ request: 'file', content: tempfile.name, attachSourceInformation: true, ensurePackageInstalled: first },
+				{ request: 'file', content: tempfile.name, ensurePackageInstalled: first },
 				tokenMap,
 				reParseShellSession
 			)

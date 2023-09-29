@@ -18,11 +18,6 @@ export interface RParseRequestFromText {
 
 interface RParseRequestBase {
 	/**
-   * Should lexeme information be retained in the AST?
-   * You most likely want `true` here.
-   */
-	attachSourceInformation: boolean
-	/**
    * Ensure that all required packages are present and if not install them?
    * The only reason to set this to `false` is probably ina series of parse requests for the same session.
    */
@@ -45,7 +40,6 @@ export function requestFromInput(input: `file://${string}` | string): RParseRequ
 	return {
 		request:                 file ? 'file' : 'text',
 		content:                 file ? input.slice(7) : input,
-		attachSourceInformation: true,
 		ensurePackageInstalled:  false // should be called within describeSession for that!
 	}
 }
@@ -68,8 +62,8 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
 
 	shell.sendCommands(`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
 		// now, try to retrieve the ast
-		`try(flowr_parsed <- parse(${request.request} = ${JSON.stringify(request.content)}, keep.source = ${ts2r(request.attachSourceInformation)}${suffix}), silent=FALSE)`,
-		`try(flowr_output <- xmlparsedata::xml_parse_data(flowr_parsed, includeText = ${ts2r(request.attachSourceInformation)}, pretty = FALSE), silent=FALSE)`
+		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
+		`try(flowr_output<-xmlparsedata::xml_parse_data(flowr_parsed,includeText=TRUE,pretty=FALSE),silent=FALSE)`
 	)
 	const xml = await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)
 	const output = xml.join(shell.options.eol)

@@ -100,7 +100,6 @@ export class FlowRServerConnection {
 			request:        {
 				request:                 message.content === undefined ? 'file' : 'text',
 				content:                 message.content ?? message.filepath as string,
-				attachSourceInformation: true,
 				ensurePackageInstalled:  false
 			},
 			criterion: [] // currently unknown

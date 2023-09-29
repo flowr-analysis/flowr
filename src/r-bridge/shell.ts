@@ -232,8 +232,8 @@ export class RShell {
 	public async isPackageInstalled(packageName: string): Promise<boolean> {
 		this.log.debug(`checking if package "${packageName}" is installed`)
 		const result = await this.sendCommandWithOutput(
-			`cat(paste0(is.element("${packageName}", installed.packages()[,1])),"${this.options.eol}")`)
-		return result.length === 1 && result[0] === ts2r(true)
+			`cat(system.file(package="${packageName}")!="","${this.options.eol}")`)
+		return result.length === 1 && result[0] === 'TRUE'
 	}
 
 	public async allInstalledPackages(): Promise<string[]> {

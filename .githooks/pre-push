@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -eu
+
 # run linter
 
 if ! [ -x "$(command -v npm)" ]; then
@@ -10,8 +12,8 @@ if ! [ -x "$(command -v npm)" ]; then
   nvm use --lts
 fi
 
-echo "Linting project"
-npm run lint && echo "Linting passed"
+echo "Linting project..."
+npm run lint
 
 
 command -v git-lfs >/dev/null 2>&1 || { echo >&2 "\nThis repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting '.git/hooks/pre-push'.\n"; exit 2; }

@@ -32,10 +32,10 @@ export function postProcessFolder(filepath: string, features: FeatureSelection):
 }
 
 /**
- * process a single feature folder like `Assignments/`
+ * Process a single feature folder like `Assignments/`
  *
- * @param filepath - same as the input to {@link postProcessFolder}
- * @param feature - the single feature to process
+ * @param filepath - Same as the input to {@link postProcessFolder}
+ * @param feature  - The (single) feature to process
  */
 function processFeatureFolder(filepath: string, feature: FeatureKey): ClusterReport[] {
 	const featureInfo = ALL_FEATURES[feature]

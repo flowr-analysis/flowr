@@ -57,7 +57,7 @@ describe('Controlflow', withShell(shell => {
 		},
 		{
 			name:     'remain constant with call',
-			code:     `if (!require("XX")) install.packages("XX")`,
+			code:     'if (!require("XX")) install.packages("XX")',
 			expected: {
 				ifThen: 1
 			}

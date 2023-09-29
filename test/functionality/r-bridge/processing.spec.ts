@@ -1,6 +1,6 @@
 import { assertDecoratedAst, retrieveNormalizedAst, withShell } from '../helper/shell'
-import { numVal } from "../helper/ast-builder"
-import { rangeFrom } from "../../../src/util/range"
+import { numVal } from '../helper/ast-builder'
+import { rangeFrom } from '../../../src/util/range'
 import {
 	RType,
 	decorateAst,
@@ -10,77 +10,77 @@ import {
 } from '../../../src/r-bridge'
 import { assert } from 'chai'
 
-describe("Assign unique Ids and Parents", withShell((shell) => {
-	describe("Testing deterministic counting Id assignment", () => {
+describe('Assign unique Ids and Parents', withShell((shell) => {
+	describe('Testing deterministic counting Id assignment', () => {
 		const assertDecorated = (name: string, input: string, expected: RNodeWithParent): void => {
 			assertDecoratedAst(name, shell, input, expected)
 		}
 		// decided to test with ast parsing, as we are dependent on these changes in reality
-		describe("Single nodes (leafs)", () => {
+		describe('Single nodes (leafs)', () => {
 			const exprList = (...children: RNodeWithParent[]): RNodeWithParent => ({
 				type:   RType.ExpressionList,
 				lexeme: undefined,
 				info:   {
 					parent: undefined,
-					id:     "1"
+					id:     '1'
 				},
 				children,
 			})
-			assertDecorated("String", '"hello"',
+			assertDecorated('String', '"hello"',
 				exprList({
 					type:     RType.String,
 					location: rangeFrom(1, 1, 1, 7),
 					lexeme:   '"hello"',
 					content:  {
-						str:    "hello",
+						str:    'hello',
 						quotes: '"',
 					},
 					info: {
-						parent: "1",
-						id:     "0"
+						parent: '1',
+						id:     '0'
 					},
 				})
 			)
-			assertDecorated("Number", "42",
+			assertDecorated('Number', '42',
 				exprList({
 					type:     RType.Number,
 					location: rangeFrom(1, 1, 1, 2),
-					lexeme:   "42",
+					lexeme:   '42',
 					content:  numVal(42),
 					info:     {
-						parent: "1",
-						id:     "0"
+						parent: '1',
+						id:     '0'
 					},
 				})
 			)
-			assertDecorated("Logical", "FALSE",
+			assertDecorated('Logical', 'FALSE',
 				exprList({
 					type:     RType.Logical,
 					location: rangeFrom(1, 1, 1, 5),
-					lexeme:   "FALSE",
+					lexeme:   'FALSE',
 					content:  false,
 					info:     {
-						parent: "1",
-						id:     "0"
+						parent: '1',
+						id:     '0'
 					},
 				})
 			)
-			assertDecorated("Symbol", "k",
+			assertDecorated('Symbol', 'k',
 				exprList({
 					type:      RType.Symbol,
 					location:  rangeFrom(1, 1, 1, 1),
 					namespace: undefined,
-					lexeme:    "k",
-					content:   "k",
+					lexeme:    'k',
+					content:   'k',
 					info:      {
-						parent: "1",
-						id:     "0"
+						parent: '1',
+						id:     '0'
 					},
 				})
 			)
 		})
 	})
-	describe("Collect all íds in ast", () => {
+	describe('Collect all íds in ast', () => {
 		function assertIds(name: string, input: string, expected: Set<NodeId>, stop?: (node: RNodeWithParent) => boolean) {
 			it(name, async() => {
 				const baseAst = await retrieveNormalizedAst(shell, input)

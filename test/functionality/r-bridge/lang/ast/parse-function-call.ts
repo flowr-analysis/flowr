@@ -1,26 +1,26 @@
-import { assertAst, withShell } from "../../../helper/shell"
-import { exprList, numVal } from "../../../helper/ast-builder"
-import { rangeFrom } from "../../../../../src/util/range"
+import { assertAst, withShell } from '../../../helper/shell'
+import { exprList, numVal } from '../../../helper/ast-builder'
+import { rangeFrom } from '../../../../../src/util/range'
 import { RType } from '../../../../../src/r-bridge'
 import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/internal'
 
-describe("Parse function calls", withShell((shell) => {
-	describe("functions without arguments", () => {
+describe('Parse function calls', withShell((shell) => {
+	describe('functions without arguments', () => {
 		assertAst(
-			"f()",
+			'f()',
 			shell,
-			"f()",
+			'f()',
 			exprList({
 				type:         RType.FunctionCall,
-				flavor:       "named",
+				flavor:       'named',
 				location:     rangeFrom(1, 1, 1, 1),
-				lexeme:       "f",
+				lexeme:       'f',
 				info:         {},
 				functionName: {
 					type:      RType.Symbol,
 					location:  rangeFrom(1, 1, 1, 1),
-					lexeme:    "f",
-					content:   "f",
+					lexeme:    'f',
+					content:   'f',
 					namespace: undefined,
 					info:      {},
 				},
@@ -28,22 +28,22 @@ describe("Parse function calls", withShell((shell) => {
 			})
 		)
 	})
-	describe("functions with arguments", () => {
+	describe('functions with arguments', () => {
 		assertAst(
-			"f(1, 2)",
+			'f(1, 2)',
 			shell,
-			"f(1, 2)",
+			'f(1, 2)',
 			exprList({
 				type:         RType.FunctionCall,
-				flavor:       "named",
+				flavor:       'named',
 				location:     rangeFrom(1, 1, 1, 1),
-				lexeme:       "f",
+				lexeme:       'f',
 				info:         {},
 				functionName: {
 					type:      RType.Symbol,
 					location:  rangeFrom(1, 1, 1, 1),
-					lexeme:    "f",
-					content:   "f",
+					lexeme:    'f',
+					content:   'f',
 					namespace: undefined,
 					info:      {}
 				},
@@ -53,11 +53,11 @@ describe("Parse function calls", withShell((shell) => {
 						location: rangeFrom(1, 3, 1, 3),
 						name:     undefined,
 						info:     {},
-						lexeme:   "1",
+						lexeme:   '1',
 						value:    {
 							type:     RType.Number,
 							location: rangeFrom(1, 3, 1, 3),
-							lexeme:   "1",
+							lexeme:   '1',
 							content:  numVal(1),
 							info:     {}
 						}
@@ -65,12 +65,12 @@ describe("Parse function calls", withShell((shell) => {
 						type:     RType.Argument,
 						location: rangeFrom(1, 6, 1, 6),
 						name:     undefined,
-						lexeme:   "2",
+						lexeme:   '2',
 						info:     {},
 						value:    {
 							type:     RType.Number,
 							location: rangeFrom(1, 6, 1, 6),
-							lexeme:   "2",
+							lexeme:   '2',
 							content:  numVal(2),
 							info:     {}
 						}
@@ -79,22 +79,22 @@ describe("Parse function calls", withShell((shell) => {
 			})
 		)
 	})
-	describe("functions with named arguments", () => {
+	describe('functions with named arguments', () => {
 		assertAst(
-			"f(1, x=2, 4, y=3)",
+			'f(1, x=2, 4, y=3)',
 			shell,
-			"f(1, x=2, 4, y=3)",
+			'f(1, x=2, 4, y=3)',
 			exprList({
 				type:         RType.FunctionCall,
-				flavor:       "named",
+				flavor:       'named',
 				location:     rangeFrom(1, 1, 1, 1),
-				lexeme:       "f",
+				lexeme:       'f',
 				info:         {},
 				functionName: {
 					type:      RType.Symbol,
 					location:  rangeFrom(1, 1, 1, 1),
-					lexeme:    "f",
-					content:   "f",
+					lexeme:    'f',
+					content:   'f',
 					namespace: undefined,
 					info:      {}
 				},
@@ -104,11 +104,11 @@ describe("Parse function calls", withShell((shell) => {
 						location: rangeFrom(1, 3, 1, 3),
 						name:     undefined,
 						info:     {},
-						lexeme:   "1",
+						lexeme:   '1',
 						value:    {
 							type:     RType.Number,
 							location: rangeFrom(1, 3, 1, 3),
-							lexeme:   "1",
+							lexeme:   '1',
 							content:  numVal(1),
 							info:     {}
 						}
@@ -118,17 +118,17 @@ describe("Parse function calls", withShell((shell) => {
 						name:     {
 							type:      RType.Symbol,
 							location:  rangeFrom(1, 6, 1, 6),
-							lexeme:    "x",
-							content:   "x",
+							lexeme:    'x',
+							content:   'x',
 							namespace: undefined,
 							info:      {}
 						},
-						lexeme: "x",
+						lexeme: 'x',
 						info:   {},
 						value:  {
 							type:     RType.Number,
 							location: rangeFrom(1, 8, 1, 8),
-							lexeme:   "2",
+							lexeme:   '2',
 							content:  numVal(2),
 							info:     {}
 						}
@@ -137,11 +137,11 @@ describe("Parse function calls", withShell((shell) => {
 						location: rangeFrom(1, 11, 1, 11),
 						name:     undefined,
 						info:     {},
-						lexeme:   "4",
+						lexeme:   '4',
 						value:    {
 							type:     RType.Number,
 							location: rangeFrom(1, 11, 1, 11),
-							lexeme:   "4",
+							lexeme:   '4',
 							content:  numVal(4),
 							info:     {}
 						}
@@ -151,17 +151,17 @@ describe("Parse function calls", withShell((shell) => {
 						name:     {
 							type:      RType.Symbol,
 							location:  rangeFrom(1, 14, 1, 14),
-							lexeme:    "y",
-							content:   "y",
+							lexeme:    'y',
+							content:   'y',
 							namespace: undefined,
 							info:      {}
 						},
-						lexeme: "y",
+						lexeme: 'y',
 						info:   {},
 						value:  {
 							type:     RType.Number,
 							location: rangeFrom(1, 16, 1, 16),
-							lexeme:   "3",
+							lexeme:   '3',
 							content:  numVal(3),
 							info:     {}
 						}
@@ -170,32 +170,32 @@ describe("Parse function calls", withShell((shell) => {
 			})
 		)
 	})
-	describe("directly called functions", () => {
+	describe('directly called functions', () => {
 		assertAst(
-			"Directly call with 2",
+			'Directly call with 2',
 			shell,
-			"(function(x) { x })(2)",
+			'(function(x) { x })(2)',
 			exprList({
 				type:           RType.FunctionCall,
-				flavor:         "unnamed",
+				flavor:         'unnamed',
 				location:       rangeFrom(1, 1, 1, 19),
-				lexeme:         "(function(x) { x })",
+				lexeme:         '(function(x) { x })',
 				info:           {},
 				calledFunction: {
 					type:       RType.FunctionDefinition,
 					location:   rangeFrom(1, 2, 1, 9),
-					lexeme:     "function",
+					lexeme:     'function',
 					parameters: [{
 						type:         RType.Parameter,
 						location:     rangeFrom(1, 11, 1, 11),
 						special:      false,
-						lexeme:       "x",
+						lexeme:       'x',
 						defaultValue: undefined,
 						name:         {
 							type:      RType.Symbol,
 							location:  rangeFrom(1, 11, 1, 11),
-							lexeme:    "x",
-							content:   "x",
+							lexeme:    'x',
+							content:   'x',
 							namespace: undefined,
 							info:      {}
 						},
@@ -204,8 +204,8 @@ describe("Parse function calls", withShell((shell) => {
 					body: ensureExpressionList({
 						type:      RType.Symbol,
 						location:  rangeFrom(1, 16, 1, 16),
-						lexeme:    "x",
-						content:   "x",
+						lexeme:    'x',
+						content:   'x',
 						namespace: undefined,
 						info:      {}
 					}),
@@ -217,11 +217,11 @@ describe("Parse function calls", withShell((shell) => {
 						location: rangeFrom(1, 21, 1, 21),
 						name:     undefined,
 						info:     {},
-						lexeme:   "2",
+						lexeme:   '2',
 						value:    {
 							type:     RType.Number,
 							location: rangeFrom(1, 21, 1, 21),
-							lexeme:   "2",
+							lexeme:   '2',
 							content:  numVal(2),
 							info:     {}
 						}
@@ -230,38 +230,38 @@ describe("Parse function calls", withShell((shell) => {
 			})
 		)
 		assertAst(
-			"Double call with only the second one being direct",
+			'Double call with only the second one being direct',
 			shell,
-			"a(1)(2)",
+			'a(1)(2)',
 			exprList({
 				type:           RType.FunctionCall,
-				flavor:         "unnamed",
+				flavor:         'unnamed',
 				location:       rangeFrom(1, 1, 1, 4),
-				lexeme:         "a(1)",
+				lexeme:         'a(1)',
 				info:           {},
 				calledFunction: {
 					type:         RType.FunctionCall,
-					flavor:       "named",
+					flavor:       'named',
 					functionName: {
 						type:      RType.Symbol,
 						location:  rangeFrom(1, 1, 1, 1),
-						lexeme:    "a",
-						content:   "a",
+						lexeme:    'a',
+						content:   'a',
 						namespace: undefined,
 						info:      {}
 					},
 					location:  rangeFrom(1, 1, 1, 1),
-					lexeme:    "a",
+					lexeme:    'a',
 					arguments: [{
 						type:     RType.Argument,
 						location: rangeFrom(1, 3, 1, 3),
-						lexeme:   "1",
+						lexeme:   '1',
 						name:     undefined,
 						info:     {},
 						value:    {
 							type:     RType.Number,
 							location: rangeFrom(1, 3, 1, 3),
-							lexeme:   "1",
+							lexeme:   '1',
 							content:  numVal(1),
 							info:     {}
 						}
@@ -274,11 +274,11 @@ describe("Parse function calls", withShell((shell) => {
 						location: rangeFrom(1, 6, 1, 6),
 						name:     undefined,
 						info:     {},
-						lexeme:   "2",
+						lexeme:   '2',
 						value:    {
 							type:     RType.Number,
 							location: rangeFrom(1, 6, 1, 6),
-							lexeme:   "2",
+							lexeme:   '2',
 							content:  numVal(2),
 							info:     {}
 						}
@@ -287,37 +287,37 @@ describe("Parse function calls", withShell((shell) => {
 			})
 		)
 	})
-	describe("functions with explicit namespacing", () => {
+	describe('functions with explicit namespacing', () => {
 		assertAst(
-			"x::f()",
+			'x::f()',
 			shell,
-			"x::f()",
+			'x::f()',
 			exprList({
 				type:         RType.FunctionCall,
-				flavor:       "named",
+				flavor:       'named',
 				location:     rangeFrom(1, 1, 1, 4),
-				lexeme:       "x::f",
+				lexeme:       'x::f',
 				info:         {},
 				functionName: {
 					type:      RType.Symbol,
 					location:  rangeFrom(1, 4, 1, 4),
-					lexeme:    "f",
-					content:   "f",
-					namespace: "x",
+					lexeme:    'f',
+					content:   'f',
+					namespace: 'x',
 					info:      {}
 				},
 				arguments: [],
 			})
 		)
 	})
-	describe("functions which are called as string", () => {
+	describe('functions which are called as string', () => {
 		assertAst(
 			"'f'()",
 			shell,
 			"'f'()",
 			exprList({
 				type:         RType.FunctionCall,
-				flavor:       "named",
+				flavor:       'named',
 				location:     rangeFrom(1, 1, 1, 3),
 				lexeme:       "'f'",
 				info:         {},
@@ -325,7 +325,7 @@ describe("Parse function calls", withShell((shell) => {
 					type:      RType.Symbol,
 					location:  rangeFrom(1, 1, 1, 3),
 					lexeme:    "'f'",
-					content:   "f",
+					content:   'f',
 					namespace: undefined,
 					info:      {}
 				},
@@ -333,27 +333,27 @@ describe("Parse function calls", withShell((shell) => {
 			})
 		)
 	})
-	describe("Reserved wrong functions", () => {
+	describe('Reserved wrong functions', () => {
 		assertAst(
-			"next()",
+			'next()',
 			shell,
-			"next()",
+			'next()',
 			exprList({
 				type:     RType.Next,
 				location: rangeFrom(1, 1, 1, 4),
-				lexeme:   "next",
+				lexeme:   'next',
 				info:     {}
 
 			})
 		)
 		assertAst(
-			"break()",
+			'break()',
 			shell,
-			"break()",
+			'break()',
 			exprList({
 				type:     RType.Break,
 				location: rangeFrom(1, 1, 1, 5),
-				lexeme:   "break",
+				lexeme:   'break',
 				info:     {}
 
 			})

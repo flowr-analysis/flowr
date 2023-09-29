@@ -93,7 +93,7 @@ function collectFunctionByPredicate(names: string[], info: FunctionUsageInfo, fi
 	// as they all are recorded as part of the allFunctionCalls, we do not need to append them separately
 }
 
-const functionCallQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL`)
+const functionCallQuery: Query = xpath.parse('//SYMBOL_FUNCTION_CALL')
 
 export const usedFunctions: Feature<FunctionUsageInfo> = {
 	name:        'Used Functions',

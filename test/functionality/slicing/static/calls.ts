@@ -14,12 +14,12 @@ a(i)`
 		assertSliced('Function call with constant function', shell, constFunction, ['3:1'], `i <- 4
 a <- function(x) { 1 }
 a(i)`)
-		assertSliced('Slice function definition', shell, constFunction, ['2@a'], `a <- function(x) { }`)
-		assertSliced('Slice within function', shell, constFunction, ['2:20'], `x <- 2`)
+		assertSliced('Slice function definition', shell, constFunction, ['2@a'], 'a <- function(x) { }')
+		assertSliced('Slice within function', shell, constFunction, ['2:20'], 'x <- 2')
 		assertSliced('Multiple unknown calls', shell, `
 foo(x, y)
 foo(x, 3)
-    `, ['3@foo'], `foo(x, 3)`)
+    `, ['3@foo'], 'foo(x, 3)')
 		assertSliced('Multiple unknown calls sharing known def', shell, `
 x. <- function (x) { x }
 foo(x, x.(y))
@@ -168,8 +168,8 @@ cat(x)`)
 i <- 4
 b <- function(f) { i <- 5; f() }
 b(a)`
-		assertSliced('Only i, not bound in context', shell, code, ['1@i'], `i`)
-		assertSliced('Slice of b is independent', shell, code, ['3@b'], `b <- function(f) { }`)
+		assertSliced('Only i, not bound in context', shell, code, ['1@i'], 'i')
+		assertSliced('Slice of b is independent', shell, code, ['3@b'], 'b <- function(f) { }')
 		assertSliced('Slice of b-call uses function', shell, code, ['4@b'], `a <- function() { i }
 b <- function(f) {
         i <- 5
@@ -205,7 +205,7 @@ cat(x)`)
 		assertSliced('Unimportant Side-Effect', shell, `f <- function() { y <<- 3 }
 f()
 cat(x)
-    `, ['3@x'], `cat(x)`)
+    `, ['3@x'], 'cat(x)')
 		assertSliced('Nested Side-Effect For Last', shell, `f <- function() {
   a <- function() { x }
   x <- 3
@@ -355,6 +355,6 @@ cat(4 %b% 5)
 cat(3 %a% 4)`)
 		assertSliced('Must link with backticks', shell, code, ['9:7'], `'%b%' <- function(x, y) { x * y }
 cat(4 %b% 5)`)
-		assertSliced('Must work with assigned custom pipes too', shell, `a <- b %>% c %>% d`, ['1@a'], `a <- b %>% c %>% d`)
+		assertSliced('Must work with assigned custom pipes too', shell, 'a <- b %>% c %>% d', ['1@a'], 'a <- b %>% c %>% d')
 	})
 }))

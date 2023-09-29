@@ -18,7 +18,7 @@ export function tryNormalizeIfThen(
 		 rightParen: NamedXmlBasedJson,
 		 then:       NamedXmlBasedJson
 	]): RIfThenElse | undefined {
-	parseLog.trace(`trying to parse if-then structure`)
+	parseLog.trace('trying to parse if-then structure')
 	if(tokens[0].name !== RawRType.If) {
 		parseLog.debug('encountered non-if token for supposed if-then structure')
 		return executeUnknownHook(data.hooks.control.onIfThen.unknown, data, tokens)

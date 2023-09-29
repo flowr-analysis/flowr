@@ -1,5 +1,5 @@
-import { Leaf, Location, Namespace, NoInfo } from "../model"
-import { RType } from "../type"
+import { Leaf, Location, Namespace, NoInfo } from '../model'
+import { RType } from '../type'
 import { RNa, RNull } from '../../../values'
 
 export function isSpecialSymbol(symbol: RSymbol): boolean {

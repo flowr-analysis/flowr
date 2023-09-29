@@ -8,7 +8,7 @@ import { NetServer, Server, Socket } from './net'
 import { FlowrLogger } from '../../../util/log'
 
 // we detach from the main logger so that it can have its own switch
-export const serverLog = new FlowrLogger({ name: "server" })
+export const serverLog = new FlowrLogger({ name: 'server' })
 
 /**
  * This class controls the TCP server, which can be started by calling {@link start}.

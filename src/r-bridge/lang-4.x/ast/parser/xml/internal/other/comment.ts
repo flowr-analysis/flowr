@@ -14,7 +14,7 @@ import { ParserData } from '../../data'
  * @param obj  - The json object to extract the meta-information from
  */
 export function normalizeComment(data: ParserData, obj: XmlBasedJson): RComment {
-	parseLog.debug(`[comment]`)
+	parseLog.debug('[comment]')
 	obj = executeHook(data.hooks.other.onComment.before, data, obj)
 
 	const { location, content } = retrieveMetaStructure(data.config, obj)

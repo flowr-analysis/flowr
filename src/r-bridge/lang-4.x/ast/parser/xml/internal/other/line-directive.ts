@@ -17,7 +17,7 @@ const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/
  * @param obj  - The json object to extract the meta-information from
  */
 export function normalizeLineDirective(data: ParserData, obj: XmlBasedJson): RLineDirective | RComment {
-	parseLog.debug(`[line-directive]`)
+	parseLog.debug('[line-directive]')
 	obj = executeHook(data.hooks.other.onLineDirective.before, data, obj)
 
 	const { location, content } = retrieveMetaStructure(data.config, obj)

@@ -1,4 +1,4 @@
-import { assert } from "chai"
+import { assert } from 'chai'
 import {
 	addRanges,
 	mergeRanges, rangeCompare,
@@ -6,12 +6,12 @@ import {
 	rangeStartsCompletelyBefore,
 	SourceRange
 } from '../../../src/util/range'
-import { allPermutations } from "../../../src/util/arrays"
+import { allPermutations } from '../../../src/util/arrays'
 import { formatRange } from '../../../src/dataflow'
 
-describe("Ranges", () => {
-	describe("rangeFrom", () => {
-		it("correct arguments", () => {
+describe('Ranges', () => {
+	describe('rangeFrom', () => {
+		it('correct arguments', () => {
 			const pool = [-1, 0, 1, 2, 99]
 			for(const startLine of pool) {
 				for(const startColumn of pool) {
@@ -23,7 +23,7 @@ describe("Ranges", () => {
 									start: { line: startLine, column: startColumn },
 									end:   { line: endLine, column: endColumn },
 								},
-								"with numbers"
+								'with numbers'
 							)
 							assert.deepStrictEqual(
 								rangeFrom(
@@ -36,7 +36,7 @@ describe("Ranges", () => {
 									start: { line: startLine, column: startColumn },
 									end:   { line: endLine, column: endColumn },
 								},
-								"with strings"
+								'with strings'
 							)
 						}
 					}
@@ -44,7 +44,7 @@ describe("Ranges", () => {
 			}
 		})
 	})
-	describe("rangeCompare", () => {
+	describe('rangeCompare', () => {
 		function assertCompare(name: string, left: SourceRange, right: SourceRange, expected: number) {
 			it(name, () => {
 				assert.strictEqual(
@@ -60,11 +60,11 @@ describe("Ranges", () => {
 			})
 		}
 
-		assertCompare("identical ranges", rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 1), 0)
-		assertCompare("smaller start line", rangeFrom(1, 1, 1, 1), rangeFrom(2, 1, 2, 1), -1)
-		assertCompare("smaller start character", rangeFrom(1, 1, 1, 1), rangeFrom(1, 2, 1, 2), -1)
+		assertCompare('identical ranges', rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 1), 0)
+		assertCompare('smaller start line', rangeFrom(1, 1, 1, 1), rangeFrom(2, 1, 2, 1), -1)
+		assertCompare('smaller start character', rangeFrom(1, 1, 1, 1), rangeFrom(1, 2, 1, 2), -1)
 	})
-	describe("rangesOverlap", () => {
+	describe('rangesOverlap', () => {
 		function assertOverlap(name: string, left: SourceRange, right: SourceRange, expected: boolean) {
 			it(name, () => {
 				assert.strictEqual(
@@ -79,12 +79,12 @@ describe("Ranges", () => {
 			})
 		}
 
-		assertOverlap("identical ranges", rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 1), true)
-		assertOverlap("overlapping end character", rangeFrom(1, 2, 1, 2), rangeFrom(1, 1, 1, 2), true)
-		assertOverlap("overlapping end line", rangeFrom(1, 1, 2, 1), rangeFrom(2, 1, 2, 2), true)
-		assertOverlap("not overlapping", rangeFrom(1, 1, 2, 1), rangeFrom(2, 2, 3, 1), false)
+		assertOverlap('identical ranges', rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 1), true)
+		assertOverlap('overlapping end character', rangeFrom(1, 2, 1, 2), rangeFrom(1, 1, 1, 2), true)
+		assertOverlap('overlapping end line', rangeFrom(1, 1, 2, 1), rangeFrom(2, 1, 2, 2), true)
+		assertOverlap('not overlapping', rangeFrom(1, 1, 2, 1), rangeFrom(2, 2, 3, 1), false)
 	})
-	describe("mergeRanges", () => {
+	describe('mergeRanges', () => {
 		function assertMerged(expected: SourceRange, ...a: SourceRange[]) {
 			assert.deepStrictEqual(
 				mergeRanges(...a),
@@ -101,15 +101,15 @@ describe("Ranges", () => {
 				assertMerged(expected, ...permutation)
 			}
 		}
-		it("throw on no range", () => {
-			assert.throws(() => mergeRanges(), Error, undefined, "no range to merge")
+		it('throw on no range', () => {
+			assert.throws(() => mergeRanges(), Error, undefined, 'no range to merge')
 		})
-		it("identical ranges", () => {
+		it('identical ranges', () => {
 			for(const range of [rangeFrom(1, 1, 1, 1), rangeFrom(1, 2, 3, 4)]) {
 				assertIndependentOfOrder(range, range, range)
 			}
 		})
-		it("overlapping ranges", () => {
+		it('overlapping ranges', () => {
 			assertIndependentOfOrder(
 				rangeFrom(1, 1, 1, 3),
 				rangeFrom(1, 1, 1, 2),
@@ -126,7 +126,7 @@ describe("Ranges", () => {
 				rangeFrom(1, 2, 2, 4)
 			)
 		})
-		it("non-overlapping ranges", () => {
+		it('non-overlapping ranges', () => {
 			assertIndependentOfOrder(
 				rangeFrom(1, 1, 1, 4),
 				rangeFrom(1, 1, 1, 2),
@@ -138,7 +138,7 @@ describe("Ranges", () => {
 				rangeFrom(4, 4, 4, 4)
 			)
 		})
-		it("more than two ranges", () => {
+		it('more than two ranges', () => {
 			assertIndependentOfOrder(
 				rangeFrom(1, 1, 3, 3),
 				rangeFrom(1, 1, 1, 1),
@@ -147,13 +147,13 @@ describe("Ranges", () => {
 			)
 		})
 	})
-	describe("rangeStartsCompletelyBefore", () => {
+	describe('rangeStartsCompletelyBefore', () => {
 		const assertStarts = (
 			a: SourceRange,
 			b: SourceRange,
 			yesNo: boolean
 		): void => {
-			it(`${formatRange(a)} ${yesNo ? "<" : "not <"} ${formatRange(b)}`, () => {
+			it(`${formatRange(a)} ${yesNo ? '<' : 'not <'} ${formatRange(b)}`, () => {
 				assert.strictEqual(
 					rangeStartsCompletelyBefore(a, b),
 					yesNo,
@@ -163,12 +163,12 @@ describe("Ranges", () => {
 				)
 			})
 		}
-		describe("identical ranges", () => {
+		describe('identical ranges', () => {
 			for(const sameRange of [rangeFrom(1, 1, 1, 1), rangeFrom(2, 1, 4, 7)]) {
 				assertStarts(sameRange, sameRange, false)
 			}
 		})
-		describe("smaller left", () => {
+		describe('smaller left', () => {
 			assertStarts(rangeFrom(1, 1, 1, 1), rangeFrom(2, 1, 2, 1), true)
 			assertStarts(rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 2), false)
 			assertStarts(rangeFrom(1, 1, 1, 1), rangeFrom(1, 2, 1, 1), true)
@@ -176,7 +176,7 @@ describe("Ranges", () => {
 			assertStarts(rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 2), false)
 			assertStarts(rangeFrom(1, 1, 2, 1), rangeFrom(4, 2, 9, 3), true)
 		})
-		describe("smaller right", () => {
+		describe('smaller right', () => {
 			assertStarts(rangeFrom(2, 1, 2, 1), rangeFrom(1, 1, 1, 1), false)
 			assertStarts(rangeFrom(1, 1, 1, 2), rangeFrom(1, 1, 1, 1), false)
 			assertStarts(rangeFrom(1, 2, 1, 1), rangeFrom(1, 1, 1, 1), false)
@@ -185,7 +185,7 @@ describe("Ranges", () => {
 			assertStarts(rangeFrom(4, 2, 9, 3), rangeFrom(1, 1, 2, 1), false)
 		})
 	})
-	describe("addRanges", () => {
+	describe('addRanges', () => {
 		const assertAdd = (
 			expected: SourceRange,
 			a: SourceRange,
@@ -206,7 +206,7 @@ describe("Ranges", () => {
 			assertAdd(expected, a, b)
 			assertAdd(expected, b, a)
 		}
-		it("with zero", () => {
+		it('with zero', () => {
 			assertIndependentOfOrder(
 				rangeFrom(1, 1, 1, 1),
 				rangeFrom(1, 1, 1, 1),
@@ -218,7 +218,7 @@ describe("Ranges", () => {
 				rangeFrom(0, 0, 0, 0)
 			)
 		})
-		it("with other numbers", () => {
+		it('with other numbers', () => {
 			assertIndependentOfOrder(
 				rangeFrom(2, 3, 4, 5),
 				rangeFrom(1, 1, 1, 1),

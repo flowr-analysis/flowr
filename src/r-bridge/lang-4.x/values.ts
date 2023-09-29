@@ -1,9 +1,9 @@
-import { parse } from "csv-parse/sync"
+import { parse } from 'csv-parse/sync'
 
 class ValueConversionError extends Error {
 	constructor(message: string) {
 		super(message)
-		this.name = "ValueConversionError"
+		this.name = 'ValueConversionError'
 	}
 }
 

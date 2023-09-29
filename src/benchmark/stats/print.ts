@@ -22,7 +22,7 @@ function divWithRest(dividend: bigint, divisor: bigint): [bigint, bigint] {
 
 function formatNanoseconds(nanoseconds: bigint | number): string {
 	if(nanoseconds < 0) {
-		return `??`
+		return '??'
 	}
 	const [seconds, rest] = divWithRest(typeof nanoseconds === 'number' ? BigInt(Math.round(nanoseconds)) : nanoseconds, BigInt(1e9))
 	const [milliseconds, remainingNanoseconds] = divWithRest(rest, BigInt(1e6))
@@ -43,7 +43,7 @@ function print<K>(measurements: Map<K, ElapsedTime>, key: K) {
 
 function formatSummarizedTimeMeasure(measure: SummarizedMeasurement | undefined) {
 	if(measure === undefined) {
-		return `??`
+		return '??'
 	}
 	return `${formatNanoseconds(measure.min)} - ${formatNanoseconds(measure.max)} (median: ${formatNanoseconds(measure.median)}, mean: ${formatNanoseconds(measure.mean)}, std: ${formatNanoseconds(measure.std)})`
 }
@@ -55,7 +55,7 @@ function roundTo(num: number, digits = 4): number {
 
 function asPercentage(num: number): string {
 	if(isNaN(num)) {
-		return `??%`
+		return '??%'
 	}
 	return pad(`${roundTo(num * 100, 3)}%`)
 }
@@ -66,7 +66,7 @@ function asFloat(num: number): string {
 
 function formatSummarizedMeasure(measure: SummarizedMeasurement | undefined, fmt: (num: number) => string = asFloat) {
 	if(measure === undefined) {
-		return `??`
+		return '??'
 	}
 	return `${fmt(measure.min)} - ${fmt(measure.max)} (median: ${fmt(measure.median)}, mean: ${fmt(measure.mean)}, std: ${fmt(measure.std)})`
 }

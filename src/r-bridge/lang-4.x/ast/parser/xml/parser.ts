@@ -1,8 +1,8 @@
-import { deepMergeObject } from "../../../../../util/objects"
-import { log } from "../../../../../util/log"
-import { DEFAULT_XML_PARSER_CONFIG, XmlParserConfig } from "./config"
+import { deepMergeObject } from '../../../../../util/objects'
+import { log } from '../../../../../util/log'
+import { DEFAULT_XML_PARSER_CONFIG, XmlParserConfig } from './config'
 import { xlm2jsonObject, parseRootObjToAst } from './internal'
-import { ParserData } from "./data"
+import { ParserData } from './data'
 import {
 	decorateAst,
 	NormalizedAst,
@@ -13,7 +13,7 @@ import {
 import { DEFAULT_PARSER_HOOKS, XmlParserHooks } from './hooks'
 import { DeepPartial } from 'ts-essentials'
 
-export const parseLog = log.getSubLogger({ name: "ast-parser" })
+export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
 /**
  * The main entry point to normalize the given R ast.

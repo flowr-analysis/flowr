@@ -1,54 +1,54 @@
 import { assertAst, withShell } from '../../../helper/shell'
-import { exprList, numVal } from "../../../helper/ast-builder"
-import { addRanges, rangeFrom } from "../../../../../src/util/range"
+import { exprList, numVal } from '../../../helper/ast-builder'
+import { addRanges, rangeFrom } from '../../../../../src/util/range'
 import { RType } from '../../../../../src/r-bridge'
 import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/internal'
 
 const IfThenSpacingVariants = [
 	{
-		str:          "if(TRUE)1",
+		str:          'if(TRUE)1',
 		locationTrue: rangeFrom(1, 4, 1, 7),
 		locationNum:  rangeFrom(1, 9, 1, 9),
 		num:          1,
 		end:          rangeFrom(1, 9, 1, 9),
 	},
 	{
-		str:          "if(TRUE) 1",
+		str:          'if(TRUE) 1',
 		locationTrue: rangeFrom(1, 4, 1, 7),
 		locationNum:  rangeFrom(1, 10, 1, 10),
 		num:          1,
 		end:          rangeFrom(1, 10, 1, 10),
 	},
 	{
-		str:          "if (TRUE) 1",
+		str:          'if (TRUE) 1',
 		locationTrue: rangeFrom(1, 5, 1, 8),
 		locationNum:  rangeFrom(1, 11, 1, 11),
 		num:          1,
 		end:          rangeFrom(1, 11, 1, 11),
 	},
 	{
-		str:          "if     (TRUE)  42",
+		str:          'if     (TRUE)  42',
 		locationTrue: rangeFrom(1, 9, 1, 12),
 		locationNum:  rangeFrom(1, 16, 1, 17),
 		num:          42,
 		end:          rangeFrom(1, 17, 1, 17),
 	},
 	{
-		str:          "if\n(TRUE)1",
+		str:          'if\n(TRUE)1',
 		locationTrue: rangeFrom(2, 2, 2, 5),
 		locationNum:  rangeFrom(2, 7, 2, 7),
 		num:          1,
 		end:          rangeFrom(2, 7, 2, 7),
 	},
 	{
-		str:          "if(TRUE)\n1",
+		str:          'if(TRUE)\n1',
 		locationTrue: rangeFrom(1, 4, 1, 7),
 		locationNum:  rangeFrom(2, 1, 2, 1),
 		num:          1,
 		end:          rangeFrom(2, 1, 2, 1),
 	},
 	{
-		str:          "if\n(\nTRUE\n)\n1",
+		str:          'if\n(\nTRUE\n)\n1',
 		locationTrue: rangeFrom(3, 1, 3, 4),
 		locationNum:  rangeFrom(5, 1, 5, 1),
 		num:          1,

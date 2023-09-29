@@ -1,8 +1,8 @@
-import { NamedXmlBasedJson, XmlParseError } from "../../input-format"
+import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
-import { parseLog } from "../../parser"
+import { parseLog } from '../../parser'
 import { tryNormalizeSingleNode } from '../structure'
-import { ParserData } from "../../data"
+import { ParserData } from '../../data'
 import { RType, RWhileLoop, RawRType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
@@ -16,7 +16,7 @@ export function tryNormalizeWhile(
 ): RWhileLoop | undefined {
 	if(whileToken.name !== RawRType.While) {
 		parseLog.debug(
-			"encountered non-while token for supposed while-loop structure"
+			'encountered non-while token for supposed while-loop structure'
 		)
 		return executeUnknownHook(data.hooks.loops.onWhileLoop.unknown, data, { whileToken, leftParen, condition, rightParen, body })
 	} else if(leftParen.name !== RawRType.ParenLeft) {
@@ -34,7 +34,7 @@ export function tryNormalizeWhile(
 	}
 
 	parseLog.debug(
-		`trying to parse while-loop`
+		'trying to parse while-loop'
 	)
 
 

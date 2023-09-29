@@ -158,7 +158,7 @@ cat("Product:", product, "\\n")`
 		)
 
 		assertSliced('Top by name', shell, code, ['2@sum'],
-			`sum <- 0`
+			'sum <- 0'
 		)
 
 	})

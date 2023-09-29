@@ -1,5 +1,5 @@
-import { Base, Location, NoInfo, RNode } from "../model"
-import { RType } from "../type"
+import { Base, Location, NoInfo, RNode } from '../model'
+import { RType } from '../type'
 import { RSymbol } from './r-symbol'
 
 /**

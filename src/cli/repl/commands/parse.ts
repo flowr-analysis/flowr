@@ -62,7 +62,7 @@ function initialIndentation(i: number, depth: number, deadDepths: Set<number>, n
 	}
 
 	if(nextDepth < depth) {
-		result += `╰ `
+		result += '╰ '
 	} else if(i > 0) {
 		// check if we are maybe the last one with this depth until someone with a lower depth comes around
 		const isLast = lastElementInNesting(i, list, depth)

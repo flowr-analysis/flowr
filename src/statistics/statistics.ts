@@ -69,7 +69,7 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 function initializeFeatureStatistics(): FeatureStatistics {
 	const result = {} as FeatureStatistics
 	for(const key of allFeatureNames) {
-		result[key] = ALL_FEATURES[key].initialValue()
+		result[key] = JSON.parse(JSON.stringify(ALL_FEATURES[key].initialValue))
 	}
 	return result
 }

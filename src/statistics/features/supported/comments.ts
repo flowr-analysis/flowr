@@ -1,24 +1,11 @@
-import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { guard, isNotNull, isNotUndefined } from '../../../util/assert'
 import { append } from '../../output'
+import { Writable } from 'ts-essentials'
 
-export interface CommentInfo extends FeatureInfo {
-	totalAmount:       number
-	roxygenComments:   number
-	import:            number
-	importFrom:        number
-	importMethodsFrom: number
-	importClassesFrom: number
-	export:            number
-	exportClass:       number
-	exportMethod:      number
-	exportS3Method:    number
-	exportPattern:     number
-	useDynLib:         number
-}
 
-const initialCommentInfo = (): CommentInfo => ({
+const initialCommentInfo = {
 	totalAmount:       0,
 	roxygenComments:   0,
 	import:            0,
@@ -31,7 +18,10 @@ const initialCommentInfo = (): CommentInfo => ({
 	exportMethod:      0,
 	exportS3Method:    0,
 	exportPattern:     0
-})
+}
+
+export type CommentInfo = Writable<typeof initialCommentInfo>
+
 
 const commentQuery: Query = xpath.parse('//COMMENT')
 

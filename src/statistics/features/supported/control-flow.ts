@@ -1,38 +1,28 @@
-import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { append } from '../../output'
+import { Writable } from 'ts-essentials'
 
-export interface ControlflowInfo extends FeatureInfo {
-	ifThen:                   number
-	ifThenElse:               number
-	/** can be nested with if-s or if-then-else's */
-	nestedIfThen:             number
-	nestedIfThenElse:         number
-	/** if(TRUE), ... */
-	constantIfThen:           number
-	constantIfThenElse:       number
-	/** if(x), ... */
-	singleVariableIfThen:     number
-	singleVariableIfThenElse: number
-	/** switch(...) */
-	switchCase:               number
-	singleVariableSwitchCase: number
-	constantSwitchCase:       number
-}
-
-const initialControlflowInfo = (): ControlflowInfo => ({
+const initialControlflowInfo = {
 	ifThen:                   0,
 	ifThenElse:               0,
+	/** can be nested with if-s or if-then-else's */
 	nestedIfThen:             0,
 	nestedIfThenElse:         0,
+	/** if(TRUE), ... */
 	constantIfThen:           0,
 	constantIfThenElse:       0,
+	/** if(x), ... */
 	singleVariableIfThen:     0,
 	singleVariableIfThenElse: 0,
+	/** switch(...) */
 	switchCase:               0,
 	singleVariableSwitchCase: 0,
 	constantSwitchCase:       0
-})
+}
+
+export type ControlflowInfo = Writable<typeof initialControlflowInfo>
+
 
 const ifThenQuery: Query = xpath.parse(`//IF[not(following-sibling::ELSE)]`)
 const ifThenElseQuery: Query = xpath.parse(`//IF[following-sibling::ELSE]`)
@@ -61,18 +51,18 @@ function collectForIfThenOptionalElse(existing: ControlflowInfo, name: 'IfThen' 
 
 	append(controlflow.name, name, conditions, filepath)
 
-	const constantKey = `constant${name}`
+	const constantKey = `constant${name}` as keyof ControlflowInfo
 	const constantConditions = conditions.flatMap(c => constantCondition.select({ node: c }))
 
 	existing[constantKey] += constantConditions.length
 	append(controlflow.name, constantKey, constantConditions, filepath)
 
-	const singleVariableKey = `singleVariable${name}`
+	const singleVariableKey = `singleVariable${name}` as keyof ControlflowInfo
 	const singleVariableConditions = conditions.flatMap(c => singleVariableCondition.select({ node: c }))
 	existing[singleVariableKey] += singleVariableConditions.length
 	append(controlflow.name, singleVariableKey, singleVariableConditions, filepath)
 
-	const nestedKey = `nested${name}`
+	const nestedKey = `nested${name}` as keyof ControlflowInfo
 	const nestedIfThen = nestedIfThenQuery.select({ node: ifThenOptionalElse })
 
 	existing[nestedKey] += nestedIfThen.length

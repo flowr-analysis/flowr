@@ -2,23 +2,11 @@ import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { append } from '../../output'
+import { Writable } from 'ts-essentials'
 
 export type SinglePackageInfo = string
 
-export interface UsedPackageInfo extends FeatureInfo {
-	library:              number
-	require:              number
-	loadNamespace:        number
-	requireNamespace:     number
-	attachNamespace:      number
-	withinApply:          number
-	'::':                 number
-	':::':                number
-	/** just contains all occurrences where it is impossible to statically determine which package is loaded */
-	'<loadedByVariable>': number
-}
-
-const initialUsedPackageInfos = (): UsedPackageInfo => ({
+const initialUsedPackageInfos = {
 	library:              0,
 	require:              0,
 	loadNamespace:        0,
@@ -27,9 +15,11 @@ const initialUsedPackageInfos = (): UsedPackageInfo => ({
 	withinApply:          0,
 	'::':                 0,
 	':::':                0,
+	/** just contains all occurrences where it is impossible to statically determine which package is loaded */
 	'<loadedByVariable>': 0
-})
+}
 
+export type UsedPackageInfo = Writable<typeof initialUsedPackageInfos>
 
 // based on the extraction routine of lintr search for function calls which are not character-loads (we can not trace those...)
 const withinApply: Query = xpath.parse(`

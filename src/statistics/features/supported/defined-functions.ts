@@ -1,33 +1,27 @@
-import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { append, extractNodeContent } from '../../output'
+import { Writable } from 'ts-essentials'
 
 export type FunctionNameInfo = string
 
-export interface FunctionDefinitionInfo extends FeatureInfo {
+const initialFunctionDefinitionInfo = {
 	/** all, anonymous, assigned, non-assigned, ... */
-	total:                   number
-	/** how many are really using OP-Lambda? */
-	lambdasOnly:             number
-	/** using `<<-`, `<-`, `=`, `->` `->>` */
-	assignedFunctions:       number
-	usedArgumentNames:       number
-	/** anonymous functions invoked directly */
-	functionsDirectlyCalled: number
-	nestedFunctions:         number
-	/** functions that in some easily detectable way call themselves */
-	recursive:               number
-}
-
-const initialFunctionDefinitionInfo = (): FunctionDefinitionInfo => ({
 	total:                   0,
+	/** how many are really using OP-Lambda? */
 	lambdasOnly:             0,
+	/** using `<<-`, `<-`, `=`, `->` `->>` */
 	assignedFunctions:       0,
 	usedArgumentNames:       0,
+	/** anonymous functions invoked directly */
 	functionsDirectlyCalled: 0,
 	nestedFunctions:         0,
+	/** functions that in some easily detectable way call themselves */
 	recursive:               0
-})
+}
+
+export type FunctionDefinitionInfo = Writable<typeof initialFunctionDefinitionInfo>
+
 
 // note, that this can not work with assign, setGeneric and so on for now
 const queryAnyFunctionDefinition: Query = xpath.parse(`//FUNCTION`)

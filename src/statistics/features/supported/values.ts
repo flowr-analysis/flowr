@@ -3,19 +3,9 @@ import * as xpath from 'xpath-ts2'
 import { RNumHexFloatRegex } from '../../../r-bridge'
 import { assertUnreachable } from '../../../util/assert'
 import { append } from '../../output'
+import { Writable } from 'ts-essentials'
 
-export interface ValueInfo extends FeatureInfo {
-	allNumerics:      number,
-	imaginaryNumbers: number,
-	integers:         number,
-	floatHex:         number,
-
-	logical:          number,
-	specialConstants: number,
-	strings:          number
-}
-
-const initialValueInfo = (): ValueInfo => ({
+const initialValueInfo = {
 	allNumerics:      0,
 	imaginaryNumbers: 0,
 	integers:         0,
@@ -24,7 +14,10 @@ const initialValueInfo = (): ValueInfo => ({
 	logical:          0,
 	specialConstants: 0,
 	strings:          0
-})
+}
+
+export type ValueInfo = Writable<typeof initialValueInfo>
+
 
 const numericConstantQuery: Query = xpath.parse(`//NUM_CONST`)
 const stringConstantQuery: Query = xpath.parse(`//STR_CONST`)

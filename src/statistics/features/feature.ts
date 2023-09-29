@@ -64,8 +64,8 @@ export interface Feature<T extends FeatureInfo> {
 	readonly description: string
 	/** A function that retrieves the feature in the document appends it to the existing feature set (we could use a monoid :D), the filepath corresponds to the active file (if any) */
 	process:              FeatureProcessor<T>
-	/** Values to start the existing track from  */
-	initialValue():       T
+	/** Values to start the existing track from */
+	initialValue:         T
 }
 
 /**

@@ -1,16 +1,10 @@
-import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { append } from '../../output'
+import { Writable } from 'ts-essentials'
 
-export interface LoopInfo extends FeatureInfo {
-	forLoops:        number
-	whileLoops:      number
-	repeatLoops:     number
-	breakStatements: number
-	nextStatements:  number
-}
 
-const initialLoopInfo = (): LoopInfo => ({
+const initialLoopInfo = {
 	forLoops:        0,
 	whileLoops:      0,
 	repeatLoops:     0,
@@ -18,8 +12,9 @@ const initialLoopInfo = (): LoopInfo => ({
 	nextStatements:  0,
 	/** apply, tapply, lapply, ...*/
 	implicitLoops:   0
-})
+}
 
+export type LoopInfo = Writable<typeof initialLoopInfo>
 
 const forLoopQuery: Query = xpath.parse(`//FOR`)
 const whileLoopQuery: Query = xpath.parse(`//WHILE`)

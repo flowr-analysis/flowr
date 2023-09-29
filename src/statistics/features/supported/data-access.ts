@@ -1,24 +1,9 @@
-import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { append, extractNodeContent } from '../../output'
+import { Writable } from 'ts-essentials'
 
-export interface DataAccess extends FeatureInfo {
-	singleBracket:               number
-	singleBracketEmpty:          number
-	singleBracketConstant:       number
-	singleBracketSingleVariable: number
-	singleBracketCommaAccess:    number
-	doubleBracket:               number
-	doubleBracketEmpty:          number
-	doubleBracketConstant:       number
-	doubleBracketSingleVariable: number
-	doubleBracketCommaAccess:    number
-	chainedOrNestedAccess:       number
-	byName:                      number
-	bySlot:                      number
-}
-
-const initialDataAccessInfo = (): DataAccess => ({
+const initialDataAccessInfo = {
 	singleBracket:               0,
 	singleBracketEmpty:          0,
 	singleBracketConstant:       0,
@@ -32,7 +17,10 @@ const initialDataAccessInfo = (): DataAccess => ({
 	chainedOrNestedAccess:       0,
 	byName:                      0,
 	bySlot:                      0
-})
+}
+
+export type DataAccess = Writable<typeof initialDataAccessInfo>
+
 
 const singleBracketAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-sibling::OP-LEFT-BRACKET][1]`)
 const doubleBracketAccess: Query = xpath.parse(`//expr/SYMBOL/../../*[preceding-sibling::LBB][1]`)

@@ -1,20 +1,18 @@
-import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { append } from '../../output'
+import { Writable } from 'ts-essentials'
 
-export interface AssignmentInfo extends FeatureInfo {
-	assignmentOperator:               number
-	nestedOperatorAssignment:         number
-	directlyNestedOperatorAssignment: number
-	specialAssignmentOps:             number
-}
 
-const initialAssignmentInfo = (): AssignmentInfo => ({
+const initialAssignmentInfo = {
 	assignmentOperator:               0,
 	specialAssignmentOps:             0,
 	nestedOperatorAssignment:         0,
 	directlyNestedOperatorAssignment: 0
-})
+}
+
+export type AssignmentInfo = Writable<typeof initialAssignmentInfo>
+
 
 const defaultOperatorAssignmentQuery: Query = xpath.parse(`//EQ_ASSIGN|//LEFT_ASSIGN|//RIGHT_ASSIGN`)
 // either <-/<<-/=, with a nested rhs, or ->/->> with a nested lhs

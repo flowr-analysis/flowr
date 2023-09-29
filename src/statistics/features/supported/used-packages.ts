@@ -1,7 +1,7 @@
 import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
-import { append } from '../../output'
+import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
 
 export type SinglePackageInfo = string
@@ -99,7 +99,7 @@ export const usedPackages: Feature<UsedPackageInfo> = {
 			for(const fn of q.types) {
 				const nodes = q.query.select({ node: input.parsedRAst, variables: { variable: fn } })
 				existing[fn] += nodes.length
-				append(this.name, fn, nodes, input.filepath, true)
+				appendStatisticsFile(this.name, fn, nodes, input.filepath, true)
 			}
 		}
 
@@ -109,11 +109,11 @@ export const usedPackages: Feature<UsedPackageInfo> = {
 		]
 		existing['<loadedByVariable>'] += nodesForVariableLoad.length
 		// should not be unique as variables may be repeated, and we have no idea
-		append(this.name, '<loadedByVariable>', nodesForVariableLoad, input.filepath)
+		appendStatisticsFile(this.name, '<loadedByVariable>', nodesForVariableLoad, input.filepath)
 
 		const withinApplyNodes = withinApply.select({ node: input.parsedRAst })
 		existing.withinApply += withinApplyNodes.length
-		append(this.name, 'withinApply', withinApplyNodes, input.filepath)
+		appendStatisticsFile(this.name, 'withinApply', withinApplyNodes, input.filepath)
 
 		return existing
 	},

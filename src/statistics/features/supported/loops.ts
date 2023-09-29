@@ -1,6 +1,6 @@
 import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append } from '../../output'
+import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
 
 
@@ -48,7 +48,7 @@ export const loops: Feature<LoopInfo> = {
 		existing.breakStatements += breakStatements.length
 		existing.nextStatements += nextStatements.length
 		existing.implicitLoops += implicitLoops.length
-		append(this.name, 'implicit-loops', implicitLoops, input.filepath)
+		appendStatisticsFile(this.name, 'implicit-loops', implicitLoops, input.filepath)
 		return existing
 	},
 

@@ -1,6 +1,6 @@
 import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append, extractNodeContent } from '../../output'
+import { appendStatisticsFile, extractNodeContent } from '../../output'
 import { Writable } from 'ts-essentials'
 
 export type FunctionNameInfo = string
@@ -71,14 +71,14 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 		const allFunctions = queryAnyFunctionDefinition.select({ node: input.parsedRAst }).length
 		const allLambdas = queryAnyLambdaDefinition.select({ node: input.parsedRAst })
 
-		append(this.name, 'allLambdas', allLambdas, input.filepath)
+		appendStatisticsFile(this.name, 'allLambdas', allLambdas, input.filepath)
 
 		existing.total += allFunctions + allLambdas.length
 		existing.lambdasOnly += allLambdas.length
 
 		const usedArgumentNames = queryUsedArgumentNames.select({ node: input.parsedRAst })
 		existing.usedArgumentNames += usedArgumentNames.length
-		append(this.name, 'usedArgumentNames', usedArgumentNames, input.filepath)
+		appendStatisticsFile(this.name, 'usedArgumentNames', usedArgumentNames, input.filepath)
 
 		existing.functionsDirectlyCalled += defineFunctionsToBeCalled.select({ node: input.parsedRAst }).length
 		existing.nestedFunctions += nestedFunctionsQuery.select({ node: input.parsedRAst }).length
@@ -86,7 +86,7 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 		const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input.parsedRAst })
 		const assignedNames = assignedFunctions.map(extractNodeContent)
 		existing.assignedFunctions += assignedFunctions.length
-		append(this.name, 'assignedFunctions', assignedNames, input.filepath)
+		appendStatisticsFile(this.name, 'assignedFunctions', assignedNames, input.filepath)
 
 		const recursiveFunctions = []
 		for(let i = 0; i < assignedFunctions.length; i++) {
@@ -96,7 +96,7 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 			}
 		}
 		existing.recursive += recursiveFunctions.length
-		append(this.name, 'recursiveFunctions', recursiveFunctions, input.filepath)
+		appendStatisticsFile(this.name, 'recursiveFunctions', recursiveFunctions, input.filepath)
 
 		return existing
 	},

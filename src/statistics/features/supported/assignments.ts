@@ -1,6 +1,6 @@
 import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append } from '../../output'
+import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
 
 
@@ -75,8 +75,8 @@ export const assignments: Feature<AssignmentInfo> = {
 		existing.assignmentOperator += assignmentOperators.length
 		existing.specialAssignmentOps += specialAssignmentOps.length
 
-		append(this.name, 'assignmentOperator', assignmentOperators, input.filepath)
-		append(this.name, 'specialAssignmentOps', specialAssignmentOps, input.filepath)
+		appendStatisticsFile(this.name, 'assignmentOperator', assignmentOperators, input.filepath)
+		appendStatisticsFile(this.name, 'specialAssignmentOps', specialAssignmentOps, input.filepath)
 
 		return existing
 	},

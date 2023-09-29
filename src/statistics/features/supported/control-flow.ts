@@ -1,6 +1,6 @@
 import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append } from '../../output'
+import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
 
 const initialControlflowInfo = {
@@ -49,18 +49,18 @@ function collectForIfThenOptionalElse(existing: ControlflowInfo, name: 'IfThen' 
 	// select when condition to check if constant, ...
 	const conditions = selectCondition.select({ node: ifThenOptionalElse })
 
-	append(controlflow.name, name, conditions, filepath)
+	appendStatisticsFile(controlflow.name, name, conditions, filepath)
 
 	const constantKey = `constant${name}` as keyof ControlflowInfo
 	const constantConditions = conditions.flatMap(c => constantCondition.select({ node: c }))
 
 	existing[constantKey] += constantConditions.length
-	append(controlflow.name, constantKey, constantConditions, filepath)
+	appendStatisticsFile(controlflow.name, constantKey, constantConditions, filepath)
 
 	const singleVariableKey = `singleVariable${name}` as keyof ControlflowInfo
 	const singleVariableConditions = conditions.flatMap(c => singleVariableCondition.select({ node: c }))
 	existing[singleVariableKey] += singleVariableConditions.length
-	append(controlflow.name, singleVariableKey, singleVariableConditions, filepath)
+	appendStatisticsFile(controlflow.name, singleVariableKey, singleVariableConditions, filepath)
 
 	const nestedKey = `nested${name}` as keyof ControlflowInfo
 	const nestedIfThen = nestedIfThenQuery.select({ node: ifThenOptionalElse })
@@ -85,20 +85,20 @@ export const controlflow: Feature<ControlflowInfo> = {
 
 		const switchCases = switchQuery.select({ node: input.parsedRAst })
 		existing.switchCase += switchCases.length
-		append(controlflow.name, 'switchCase', switchCases, input.filepath)
+		appendStatisticsFile(controlflow.name, 'switchCase', switchCases, input.filepath)
 
 
 		const constantSwitchCases = switchCases.flatMap(switchCase =>
 			constantCondition.select({ node: switchCase })
 		)
 		existing.constantSwitchCase += constantSwitchCases.length
-		append(controlflow.name, 'constantSwitchCase', constantSwitchCases, input.filepath)
+		appendStatisticsFile(controlflow.name, 'constantSwitchCase', constantSwitchCases, input.filepath)
 
 		const variableSwitchCases = switchCases.flatMap(switchCase =>
 			singleVariableCondition.select({ node: switchCase })
 		)
 		existing.singleVariableSwitchCase += variableSwitchCases.length
-		append(controlflow.name, 'variableSwitchCase', variableSwitchCases, input.filepath)
+		appendStatisticsFile(controlflow.name, 'variableSwitchCase', variableSwitchCases, input.filepath)
 
 		return existing
 	},

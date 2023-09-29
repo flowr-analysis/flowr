@@ -2,7 +2,7 @@ import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { RNumHexFloatRegex } from '../../../r-bridge'
 import { assertUnreachable } from '../../../util/assert'
-import { append } from '../../output'
+import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
 
 const initialValueInfo = {
@@ -74,10 +74,10 @@ export const values: Feature<ValueInfo> = {
 		existing.specialConstants += specialConstants.length
 		existing.logical += specialLogicalSymbols.length
 
-		append(this.name, 'numeric', numbers, input.filepath)
-		append(this.name, 'string', strings, input.filepath)
-		append(this.name, 'specialConstant', specialConstants, input.filepath)
-		append(this.name, 'logical', specialLogicalSymbols, input.filepath)
+		appendStatisticsFile(this.name, 'numeric', numbers, input.filepath)
+		appendStatisticsFile(this.name, 'string', strings, input.filepath)
+		appendStatisticsFile(this.name, 'specialConstant', specialConstants, input.filepath)
+		appendStatisticsFile(this.name, 'logical', specialLogicalSymbols, input.filepath)
 
 		return existing
 	},

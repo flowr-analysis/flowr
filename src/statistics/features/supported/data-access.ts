@@ -1,6 +1,6 @@
 import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append, extractNodeContent } from '../../output'
+import { appendStatisticsFile, extractNodeContent } from '../../output'
 import { Writable } from 'ts-essentials'
 
 const initialDataAccessInfo = {
@@ -44,7 +44,7 @@ const commaAccess: Query = xpath.parse(`../OP-COMMA`)
 
 function processForBracketAccess(existing: DataAccess, nodes: Node[], access: 'singleBracket' | 'doubleBracket', filepath: string | undefined) {
 // we use the parent node to get more information in the output if applicable
-	append(dataAccess.name, access, nodes.map(n => n.parentNode ?? n), filepath)
+	appendStatisticsFile(dataAccess.name, access, nodes.map(n => n.parentNode ?? n), filepath)
 
 	existing[access] += nodes.length
 	const constantAccesses = nodes.flatMap(n => constantAccess.select({ node: n }))
@@ -71,16 +71,16 @@ export const dataAccess: Feature<DataAccess> = {
 		processForBracketAccess(existing, doubleBracketAccesses, 'doubleBracket', input.filepath)
 
 		const namedAccesses = namedAccess.select({ node: input.parsedRAst })
-		append(dataAccess.name, 'byName', namedAccesses.map(n => n.parentNode ?? n), input.filepath)
+		appendStatisticsFile(dataAccess.name, 'byName', namedAccesses.map(n => n.parentNode ?? n), input.filepath)
 		existing.byName += namedAccesses.length
 
 		const slottedAccesses = slottedAccess.select({ node: input.parsedRAst })
-		append(dataAccess.name, 'bySlot', slottedAccesses.map(n => n.parentNode ?? n), input.filepath)
+		appendStatisticsFile(dataAccess.name, 'bySlot', slottedAccesses.map(n => n.parentNode ?? n), input.filepath)
 		existing.bySlot += slottedAccesses.length
 
 
 		const chainedOrNestedAccesses = chainedOrNestedAccess.select({ node: input.parsedRAst })
-		append(dataAccess.name, 'chainedOrNestedAccess', chainedOrNestedAccesses.map(n => n.parentNode ?? n), input.filepath)
+		appendStatisticsFile(dataAccess.name, 'chainedOrNestedAccess', chainedOrNestedAccesses.map(n => n.parentNode ?? n), input.filepath)
 		existing.chainedOrNestedAccess += chainedOrNestedAccesses.length
 
 		return existing

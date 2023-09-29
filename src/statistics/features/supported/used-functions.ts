@@ -2,7 +2,7 @@ import { SinglePackageInfo } from './used-packages'
 import { FunctionNameInfo } from './defined-functions'
 import { Feature, FeatureInfo, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append, extractNodeContent } from '../../output'
+import { appendStatisticsFile, extractNodeContent } from '../../output'
 import { Writable } from 'ts-essentials'
 
 export interface UsedFunction {
@@ -103,7 +103,7 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
 		const allFunctionCalls = functionCallQuery.select({ node: input.parsedRAst })
 
 		existing.allFunctionCalls += allFunctionCalls.length
-		append(this.name, 'allFunctionCalls', allFunctionCalls, input.filepath)
+		appendStatisticsFile(this.name, 'allFunctionCalls', allFunctionCalls, input.filepath)
 
 		const names = allFunctionCalls.map(extractNodeContent)
 

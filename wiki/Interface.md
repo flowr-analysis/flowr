@@ -15,7 +15,8 @@ Although far from being as detailed as the in-depth explanation of [*flowR*](htt
     - [Understanding the Steps](#understanding-the-steps)
     - [Benchmark the Slicer With The `BenchmarkSlicer`](#benchmark-the-slicer-with-the-benchmarkslicer)
   - [Augmenting the Normalization](#augmenting-the-normalization)
-  - [Generate Statistics with `extractUsageStatistics()`](#generate-statistics-with-extractusagestatistics)
+  - [Generate Statistics](#generate-statistics)
+    - [Extract Statistics with `extractUsageStatistics()`](#extract-statistics-with-extractusagestatistics)
     - [Adding a New Feature to Extract](#adding-a-new-feature-to-extract)
 <!-- TOC -->
 
@@ -774,23 +775,59 @@ await new SteppingSlicer({
 
 The `after` hook is called after the normalization has created the respective normalized string node, so we can be sure that the node was indeed a string! Besides incrementing the respective counter, we could return a value that the normalization should use instead (but we do not do that in this example). See the [documentation](https://code-inspect.github.io/flowr/doc/interfaces/src_r_bridge_lang_4_x_ast_parser_xml_hooks.XmlParserHooks.html) for more information.
 
-### Generate Statistics with `extractUsageStatistics()`
+### Generate Statistics
 
 **TODO: will probably change as part of the planned paper**
 
+#### Extract Statistics with `extractUsageStatistics()`
+
 #### Adding a New Feature to Extract
 
-In this example we construct a new feature to extract, with the name "`example`".
+In this example we construct a new feature to extract, with the name "*example*".
 Whenever this name appears, you may substitute this with whatever name fits your feature best.
 
 1. **Create a new file in `src/statistics/features/supported`**\
+   Create the file `example.ts`, and add its export to the `index.ts` file in the same directory (if not done automatically).
 
-2. **Create the core structure**\
-   Every new feature must be of the [`Feature<Info>`](https://github.com/Code-Inspect/flowr/tree/main/src/statistics/features/feature.ts) type, with `Info` referring to an interface of the data that is to be collected.
-3.
-4. **Add it to the feature-mapping**
+2. **Create the basic structure**\
+   To get a better feel of what a feature must have, let's look
+   at the basic structure (of course, due to TypeScript syntax,
+   there are other ways to achieve the same goal):
 
+   ```ts
+   export interface ExampleInfo extends FeatureInfo {
+     someCounter:           number
+   }
 
+   function initialExampleInfo(): ExampleInfo {
+     return {
+       /* whatever start value is good for you */
+       someCounter: 0,
+     }
+   }
+
+   export const example: Feature<ExampleInfo> = {
+    name:        'Example Feature',
+    description: 'A longer example description',
+
+    process(existing: ExampleInfo, input: FeatureProcessorInput): ExampleInfo {
+      /* perform analysis on the input */
+      return existing
+    },
+
+    initialValue: initialExampleInfo
+   }
+   ```
+
+   The `ExampleInfo` interface holds the structure of the data that is to be counted. Due to the vast amount of data processed, information like the name and location of a function call is not stored here, but written to disk (see below).
+
+   Every new feature must be of the [`Feature<Info>`](https://github.com/Code-Inspect/flowr/tree/main/src/statistics/features/feature.ts) type, with `Info` referring to a `FeatureInfo` (like `ExampleInfo` in this example). Next to a `name` and a `description`, each Feature must provide:
+
+   - a processor that extracts the information from the input, adding it to the existing information.
+   - a function returning the initial value of the information (in this case, `initialExampleInfo`).
+
+3. **Add it to the feature-mapping**\
+   Now, in the `feature.ts` file in `src/statistics/features`, add your feature to the `ALL_FEATURES` object.
 
 -----
 <a id="note1" href="#note1ref">&lt;1&gt;</a>: For more information, see the code documentation at: <https://code-inspect.github.io/flowr/doc/>.

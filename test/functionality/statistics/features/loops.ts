@@ -44,6 +44,20 @@ describe('Loops', withShell(shell => {
 			}
 		},
 		{
+			name: 'using implicit loops',
+			code: `
+			apply(x, 2, f)
+			lapply(x, f)
+			sapply(x, f)
+			vapply(x, f)
+			tapply(x, f)
+			mapply(x, f)
+			`,
+			expected: {
+				implicitLoops: 6
+			}
+		},
+		{
 			name: 'many nested loops',
 			code: `
 				while(TRUE) {

@@ -21,7 +21,7 @@ export type LoopInfo = Writable<typeof initialLoopInfo>
 
 const isImplicitLoop = /[lsvmt]?apply/
 
-function visitForLoops(info: LoopInfo, input: FeatureProcessorInput): void {
+function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 	// holds number of loops and their nesting depths
 	const loopStack: RNodeWithParent[] = []
 
@@ -64,7 +64,7 @@ export const loops: Feature<LoopInfo> = {
 	description: 'All looping structures in the document',
 
 	process(existing: LoopInfo, input: FeatureProcessorInput): LoopInfo {
-		visitForLoops(existing, input)
+		visitLoops(existing, input)
 		return existing
 	},
 

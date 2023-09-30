@@ -2,7 +2,7 @@ import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
-import { ParentInformation, RNodeWithParent, RType, StatefulFoldFunctions, visitAst } from '../../../r-bridge'
+import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
 
 
 const initialLoopInfo = {
@@ -13,6 +13,9 @@ const initialLoopInfo = {
 	nextStatements:  0,
 	/** apply, tapply, lapply, ...*/
 	implicitLoops:   0,
+	nestedLoops:     0,
+	// TODO: record them in a file for post-process
+	deepestNesting:  0
 }
 
 export type LoopInfo = Writable<typeof initialLoopInfo>
@@ -25,10 +28,6 @@ const implicitLoopQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL[
   or text() = 'mapply' 
   or text() = 'vapply'
 ]`)
-
-interface LoopCollectorInfo {
-	loopStack: RNodeWithParent[]
-}
 
 function visitForLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 	// holds number of loops and their nesting depths
@@ -51,11 +50,18 @@ function visitForLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 			} else {
 				return false
 			}
-			// TODO: nestings
-			// TODO: use a fold
+			if(loopStack.length > 0) {
+				info.nestedLoops++
+				info.deepestNesting = Math.max(info.deepestNesting, loopStack.length)
+			}
 
 			loopStack.push(node)
 			return false
+		}, node => {
+			// drop again :D
+			if(node.type === RType.ForLoop || node.type === RType.WhileLoop || node.type === RType.RepeatLoop) {
+				loopStack.pop()
+			}
 		}
 	)
 }

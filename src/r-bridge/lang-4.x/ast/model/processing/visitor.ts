@@ -1,4 +1,4 @@
-import { RNode } from '../model'
+import { NoInfo, RNode } from '../model'
 import { RType } from '../type'
 import { assertUnreachable } from '../../../../../util/assert'
 
@@ -122,7 +122,7 @@ function visitSingle<OtherInfo>(node: RNode<OtherInfo>, onVisit: OnVisit<OtherIn
  * @param onVisit        - A function that is called for each node encountered - can be used to stop visiting the subtree starting with this node (return `true` stop)
  * @param initialContext - The initial context to use for the root node (only necessary if the context is important for your function, and you know that what you pass is not the root-node)
  */
-export function visit<OtherInfo>(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined)[] | undefined, onVisit: OnVisit<OtherInfo>, initialContext: ParentContextInfo = { role: RoleInParent.Root, index: 0 }): void {
+export function visit<OtherInfo = NoInfo>(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined)[] | undefined, onVisit: OnVisit<OtherInfo>, initialContext: ParentContextInfo = { role: RoleInParent.Root, index: 0 }): void {
 	if(Array.isArray(nodes)) {
 		let index = initialContext.index - 1 /* initial increment */
 		for(const node of nodes) {

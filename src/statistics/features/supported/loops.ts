@@ -14,7 +14,6 @@ const initialLoopInfo = {
 	/** apply, tapply, lapply, ...*/
 	implicitLoops:   0,
 	nestedLoops:     0,
-	// TODO: record them in a file for post-process
 	deepestNesting:  0
 }
 
@@ -52,6 +51,7 @@ function visitForLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 			}
 			if(loopStack.length > 0) {
 				info.nestedLoops++
+				appendStatisticsFile(loops.name, 'nested-loop', [node.lexeme], input.filepath)
 				info.deepestNesting = Math.max(info.deepestNesting, loopStack.length)
 			}
 

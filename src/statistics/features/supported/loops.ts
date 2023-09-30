@@ -36,10 +36,10 @@ function visitForLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 		node => {
 		  if(node.type === RType.Next) {
 				info.nextStatements++
-				return false
+				return
 			} else if(node.type === RType.Break) {
 				info.breakStatements++
-				return false
+				return
 			} else if(node.type === RType.ForLoop) {
 				info.forLoops++
 			} else if(node.type === RType.WhileLoop) {
@@ -47,7 +47,7 @@ function visitForLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 			} else if(node.type === RType.RepeatLoop) {
 				info.repeatLoops++
 			} else {
-				return false
+				return
 			}
 			if(loopStack.length > 0) {
 				info.nestedLoops++
@@ -56,7 +56,6 @@ function visitForLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 			}
 
 			loopStack.push(node)
-			return false
 		}, node => {
 			// drop again :D
 			if(node.type === RType.ForLoop || node.type === RType.WhileLoop || node.type === RType.RepeatLoop) {

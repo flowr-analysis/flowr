@@ -20,7 +20,6 @@ import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { MergeableRecord } from '../../util/objects'
 import { NormalizedAst } from '../../r-bridge'
 import { DataflowInformation } from '../../dataflow/internal/info'
-import { DeepReadonly } from 'ts-essentials'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.

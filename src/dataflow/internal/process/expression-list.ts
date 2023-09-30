@@ -3,7 +3,7 @@
  * @module
  */
 import { DataflowInformation, initializeCleanInfo } from '../info'
-import { NodeId, ParentInformation, RExpressionList, RType, visit } from '../../../r-bridge'
+import { NodeId, ParentInformation, RExpressionList, RType, visitAst } from '../../../r-bridge'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import {
 	IdentifierReference, IEnvironment, makeAllMaybe,
@@ -128,7 +128,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		const processed = processDataflowFor(expression, data)
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
 		if(!foundNextOrBreak) {
-			visit(expression, n => {
+			visitAst(expression, n => {
 				if(n.type === RType.Next || n.type === RType.Break) {
 					foundNextOrBreak = true
 				}

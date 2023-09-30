@@ -2,7 +2,7 @@ import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
-import { RNodeWithParent, RType, visit } from '../../../r-bridge'
+import { ParentInformation, RNodeWithParent, RType, StatefulFoldFunctions, visitAst } from '../../../r-bridge'
 
 
 const initialLoopInfo = {
@@ -26,12 +26,15 @@ const implicitLoopQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL[
   or text() = 'vapply'
 ]`)
 
+interface LoopCollectorInfo {
+	loopStack: RNodeWithParent[]
+}
 
 function visitForLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 	// holds number of loops and their nesting depths
 	const loopStack: RNodeWithParent[] = []
 
-	visit(input.normalizedRAst.ast,
+	visitAst(input.normalizedRAst.ast,
 		node => {
 		  if(node.type === RType.Next) {
 				info.nextStatements++

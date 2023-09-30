@@ -1,4 +1,4 @@
-import { NodeId, NoInfo, RNodeWithParent, RoleInParent, visit } from '../r-bridge'
+import { NodeId, NoInfo, RNodeWithParent, RoleInParent, visitAst } from '../r-bridge'
 import { SourceRange } from './range'
 import {
 	BuiltIn,
@@ -230,7 +230,7 @@ export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDif
 
 export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = ''): string {
 	let output = prefix + 'flowchart TD\n'
-	visit(ast, (n, context) => {
+	visitAst(ast, (n, context) => {
 		const name = `${n.type} (${n.info.id})\\n${n.lexeme ?? ' '}`
 		output += `    n${n.info.id}(["${name}"])\n`
 		if(n.info.parent !== undefined) {

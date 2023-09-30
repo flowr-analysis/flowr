@@ -1,4 +1,4 @@
-import { NodeId, ParentInformation, visit } from './processing'
+import { NodeId, ParentInformation, visitAst } from './processing'
 import { RNode } from './model'
 
 /**
@@ -9,7 +9,7 @@ import { RNode } from './model'
  */
 export function collectAllIds<OtherInfo>(nodes: RNode<OtherInfo & ParentInformation> | (RNode<OtherInfo & ParentInformation> | null | undefined)[] | undefined, stop: (node: RNode<OtherInfo & ParentInformation>)  => boolean = () => false): Set<NodeId> {
 	const ids = new Set<NodeId>()
-	visit(nodes, (node) => {
+	visitAst(nodes, (node) => {
 		if(stop(node)) {
 			return true
 		}

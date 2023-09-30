@@ -16,7 +16,7 @@ import {
 	retrieveNormalizedAstFromRCode,
 	retrieveNumberOfRTokensOfLastParse,
 	RShell,
-	visit
+	visitAst
 } from '../../r-bridge'
 import { SlicingCriteria } from '../../slicing'
 import * as tmp from 'tmp'
@@ -168,7 +168,7 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 			)
 			first = false
 			let numberOfNormalizedTokens = 0
-			visit(reParsed.ast, _ => {
+			visitAst(reParsed.ast, _ => {
 				numberOfNormalizedTokens++
 				return false
 			})

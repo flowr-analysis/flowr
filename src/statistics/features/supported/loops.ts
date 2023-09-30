@@ -27,27 +27,21 @@ function visitForLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 
 	visitAst(input.normalizedRAst.ast,
 		node => {
-		  if(node.type === RType.Next) {
-				info.nextStatements++
-				return
-			} else if(node.type === RType.Break) {
-				info.breakStatements++
-				return
-			} else if(node.type === RType.FunctionCall) {
-				if(node.flavor === 'named' && isImplicitLoop.test(node.functionName.lexeme)) {
-					info.implicitLoops++
-					appendStatisticsFile(loops.name, 'implicit-loop', [node.functionName.lexeme], input.filepath)
-				}
-				return
-			} else if(node.type === RType.ForLoop) {
-				info.forLoops++
-			} else if(node.type === RType.WhileLoop) {
-				info.whileLoops++
-			} else if(node.type === RType.RepeatLoop) {
-				info.repeatLoops++
-			} else {
-				return
+			switch(node.type) {
+				case RType.Next:         info.nextStatements++; return
+				case RType.Break:        info.breakStatements++; return
+				case RType.FunctionCall:
+					if(node.flavor === 'named' && isImplicitLoop.test(node.functionName.lexeme)) {
+						info.implicitLoops++
+						appendStatisticsFile(loops.name, 'implicit-loop', [node.functionName.lexeme], input.filepath)
+					}
+					return
+				case RType.ForLoop:    info.forLoops++; break
+				case RType.WhileLoop:  info.whileLoops++; break
+				case RType.RepeatLoop: info.repeatLoops++; break
+				default: return
 			}
+
 			if(loopStack.length > 0) {
 				info.nestedExplicitLoops++
 				appendStatisticsFile(loops.name, 'nested-loop', [node.lexeme], input.filepath)

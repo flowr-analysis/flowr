@@ -43,7 +43,8 @@ export interface ParentContextInfo {
 }
 
 /** Return `true` to stop visiting from this node (i.e., do not continue to visit this node *and* the children) */
-export type OnEnter<OtherInfo> = (node: RNode<OtherInfo>, context: ParentContextInfo) => boolean
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
+export type OnEnter<OtherInfo> = (node: RNode<OtherInfo>, context: ParentContextInfo) => boolean | void
 /** Similar to {@link OnEnter} but called when leaving a node. Can't stop exploration as the subtree is already visited! */
 export type OnExit<OtherInfo> = (node: RNode<OtherInfo>, context: ParentContextInfo) => void
 

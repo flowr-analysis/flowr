@@ -38,9 +38,9 @@ describe('Loops', withShell(shell => {
 			name:     'simply nested while loops',
 			code:     'while(TRUE) { while(FALSE) { print(3) } }',
 			expected: {
-				whileLoops:     2,
-				nestedLoops:    1,
-				deepestNesting: 1
+				whileLoops:             2,
+				nestedExplicitLoops:    1,
+				deepestExplicitNesting: 1
 			}
 		},
 		{
@@ -58,11 +58,11 @@ describe('Loops', withShell(shell => {
 			  for(k in x:3) { repeat { } }
 			`,
 			expected: {
-				whileLoops:     4,
-				forLoops:       3,
-				repeatLoops:    3,
-				nestedLoops:    8,
-				deepestNesting: 3
+				whileLoops:             4,
+				forLoops:               3,
+				repeatLoops:            3,
+				nestedExplicitLoops:    8,
+				deepestExplicitNesting: 3
 			}
 		},
 	])

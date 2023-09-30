@@ -33,7 +33,38 @@ describe('Loops', withShell(shell => {
 				breakStatements: 2,
 				nextStatements:  2
 			}
-		}
+		},
+		{
+			name:     'simply nested while loops',
+			code:     'while(TRUE) { while(FALSE) { print(3) } }',
+			expected: {
+				whileLoops:     2,
+				nestedLoops:    1,
+				deepestNesting: 1
+			}
+		},
+		{
+			name: 'many nested loops',
+			code: `
+				while(TRUE) {
+					while(FALSE) {
+					  for(i in 1:10) {
+					    repeat { }
+					  }
+					}
+					for(j in 1:10) { while(x) { } }
+					repeat { while(FALSE) {} }
+			  }
+			  for(k in x:3) { repeat { } }
+			`,
+			expected: {
+				whileLoops:     4,
+				forLoops:       3,
+				repeatLoops:    3,
+				nestedLoops:    8,
+				deepestNesting: 3
+			}
+		},
 	])
 }))
 

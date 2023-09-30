@@ -2,6 +2,7 @@ import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
+import { RNodeWithParent, RType, visit } from '../../../r-bridge'
 
 
 const initialLoopInfo = {
@@ -11,16 +12,11 @@ const initialLoopInfo = {
 	breakStatements: 0,
 	nextStatements:  0,
 	/** apply, tapply, lapply, ...*/
-	implicitLoops:   0
+	implicitLoops:   0,
 }
 
 export type LoopInfo = Writable<typeof initialLoopInfo>
 
-const forLoopQuery: Query = xpath.parse('//FOR')
-const whileLoopQuery: Query = xpath.parse('//WHILE')
-const repeatLoopQuery: Query = xpath.parse('//REPEAT')
-const breakStatementQuery: Query = xpath.parse('//BREAK')
-const nextStatementQuery: Query = xpath.parse('//NEXT')
 const implicitLoopQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL[
      text() = 'apply' 
   or text() = 'lapply' 
@@ -30,24 +26,48 @@ const implicitLoopQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL[
   or text() = 'vapply'
 ]`)
 
+
+function visitForLoops(info: LoopInfo, input: FeatureProcessorInput): void {
+	// holds number of loops and their nesting depths
+	const loopStack: RNodeWithParent[] = []
+
+	visit(input.normalizedRAst.ast,
+		node => {
+		  if(node.type === RType.Next) {
+				info.nextStatements++
+				return false
+			} else if(node.type === RType.Break) {
+				info.breakStatements++
+				return false
+			} else if(node.type === RType.ForLoop) {
+				info.forLoops++
+			} else if(node.type === RType.WhileLoop) {
+				info.whileLoops++
+			} else if(node.type === RType.RepeatLoop) {
+				info.repeatLoops++
+			} else {
+				return false
+			}
+			// TODO: nestings
+			// TODO: use a fold
+
+			loopStack.push(node)
+			return false
+		}
+	)
+}
+
+
 export const loops: Feature<LoopInfo> = {
 	name:        'Loops',
 	description: 'All looping structures in the document',
 
 	process(existing: LoopInfo, input: FeatureProcessorInput): LoopInfo {
-		const forLoops = forLoopQuery.select({ node: input.parsedRAst })
-		const whileLoops = whileLoopQuery.select({ node: input.parsedRAst })
-		const repeatLoops = repeatLoopQuery.select({ node: input.parsedRAst })
-		const breakStatements = breakStatementQuery.select({ node: input.parsedRAst })
-		const nextStatements = nextStatementQuery.select({ node: input.parsedRAst })
 		const implicitLoops = implicitLoopQuery.select({ node: input.parsedRAst })
-
-		existing.forLoops += forLoops.length
-		existing.whileLoops += whileLoops.length
-		existing.repeatLoops += repeatLoops.length
-		existing.breakStatements += breakStatements.length
-		existing.nextStatements += nextStatements.length
 		existing.implicitLoops += implicitLoops.length
+
+		visitForLoops(existing, input)
+
 		appendStatisticsFile(this.name, 'implicit-loops', implicitLoops, input.filepath)
 		return existing
 	},

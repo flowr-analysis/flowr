@@ -38,9 +38,9 @@ export interface FeatureProcessorInput extends MergeableRecord {
 	/** The XML Document representing the parsed (non-normalized) R AST */
 	readonly parsedRAst:     Document,
 	/** The R AST, after the normalization step */
-	readonly normalizedRAst: DeepReadonly<NormalizedAst>,
+	readonly normalizedRAst: NormalizedAst,
 	/** The dataflow information for the given input */
-	readonly dataflow:       DeepReadonly<DataflowInformation>,
+	readonly dataflow:       DataflowInformation,
 	/** The filepath that the document originated from (if present, may be undefined if the input was provided as text) */
 	readonly filepath:       string | undefined
 }

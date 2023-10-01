@@ -54,7 +54,7 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 
 			// here we have to check after the addition as we can only check the parental context
 			if(acc) {
-				accessChain.push(node) // TODO check if nested in expression! -> keep role context or parent? like x[y[3] + 1]
+				accessChain.push(node)
 				info.chainedOrNestedAccess++
 				info.longestChain = Math.max(info.longestChain, accessChain.length)
 			} else if(idxAcc) {
@@ -65,7 +65,6 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 			}
 			parentRoleCache.set(node.info.id, { acc, idxAcc })
 
-			// TODO: chain and nest
 			const op = node.operator
 			switch(op) {
 				case '@': info.bySlot++;         return

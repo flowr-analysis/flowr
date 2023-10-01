@@ -10,7 +10,7 @@ import {
 	comments,
 	controlflow,
 	dataAccess,
-	definedFunctions,
+	definedFunctions, expressionList,
 	loops,
 	usedFunctions,
 	usedPackages,
@@ -79,7 +79,8 @@ export const ALL_FEATURES = {
 	assignments:      assignments,
 	loops:            loops,
 	controlflow:      controlflow,
-	dataAccess:       dataAccess
+	dataAccess:       dataAccess,
+	expressionList:   expressionList
 } as const
 
 export type FeatureKey = keyof typeof ALL_FEATURES

@@ -1,8 +1,8 @@
 import { Feature, FeatureProcessorInput } from '../feature'
 import { Writable } from 'ts-essentials'
-import { NodeId, RNodeWithParent, RType, visitAst } from '../../../r-bridge'
+import { NodeId, RNodeWithParent, RType, visitAst, RoleInParent, rolesOfParents } from '../../../r-bridge'
 import { assertUnreachable, guard } from '../../../util/assert'
-import { RoleInParent, rolesOfParents } from '../../../r-bridge/lang-4.x/ast/model/processing/role'
+import { appendStatisticsFile } from '../../output'
 
 const initialDataAccessInfo = {
 	singleBracket:               0,
@@ -52,6 +52,10 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 				}
 			}
 
+			if(accessNest.length === 0 && accessChain.length === 0) { // store topmost
+				appendStatisticsFile(dataAccess.name, 'data-access.txt', [node.lexeme], input.filepath)
+			}
+
 			// here we have to check after the addition as we can only check the parental context
 			if(acc) {
 				accessChain.push(node)
@@ -61,7 +65,6 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 				accessNest.push(node)
 				info.chainedOrNestedAccess++
 				info.deepestNesting = Math.max(info.deepestNesting, accessNest.length)
-
 			}
 			parentRoleCache.set(node.info.id, { acc, idxAcc })
 

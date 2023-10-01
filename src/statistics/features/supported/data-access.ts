@@ -40,7 +40,7 @@ const constantAccess: Query = xpath.parse(`
   |
   ./SYMBOL[text() = 'T' or text() = 'F']`)
 const singleVariableAccess: Query = xpath.parse('./SYMBOL[text() != \'T\' and text() != \'F\']')
-const commaAccess: Query = xpath.parse('../OP-COMMA')
+const commaAccess: Query = xpath.parse('../OP-COMMA[last()]')
 
 function processForBracketAccess(existing: DataAccess, nodes: Node[], access: 'singleBracket' | 'doubleBracket', filepath: string | undefined) {
 // we use the parent node to get more information in the output if applicable

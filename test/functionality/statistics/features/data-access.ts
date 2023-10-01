@@ -55,6 +55,18 @@ describe('Used Ways to Access Data', withShell(shell => {
 			}
 		},
 		{
+			name:     'comma access',
+			code:     'a[1,x,3]; b[[2,name=3]]',
+			expected: {
+				singleBracket:            1,
+				singleBracketCommaAccess: 1,
+				singleBracketConstant: 	  1, // contains a constant
+				doubleBracket:            1,
+				doubleBracketCommaAccess: 1,
+				doubleBracketConstant: 	  1,
+			}
+		},
+		{
 			name:     'Deeply nested mixed access',
 			code:     'a[[1]][2]$x[y]@z',
 			expected: {

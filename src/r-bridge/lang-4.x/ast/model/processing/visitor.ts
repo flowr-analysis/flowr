@@ -2,45 +2,6 @@ import { NoInfo, RNode } from '../model'
 import { RType } from '../type'
 import { assertUnreachable } from '../../../../../util/assert'
 
-/**
- * Available when {@link visitAst|visiting} all nodes of the AST.
- * Describes the role of the node in its parent. For example,
- * if we have `if(TRUE) { ... }`, the role of the `TRUE` node is `IfCondition`.
- */
-export const enum RoleInParent {
-	/** has no parent */
-	Root = 'root',
-	IfCondition = 'if-cond',
-	IfThen = 'if-then',
-	IfOtherwise = 'if-otherwise',
-	WhileCondition = 'while-cond',
-	WhileBody = 'while-body',
-	RepeatBody = 'repeat-body',
-	ForVariable = 'for-variable',
-	ForVector = 'for-vector',
-	ForBody = 'for-body',
-	FunctionCallName = 'call-name',
-	FunctionCallArgument = 'call-argument',
-	FunctionDefinitionBody = 'function-def-body',
-	FunctionDefinitionParameter = 'function-def-param',
-	ExpressionListChild = 'expr-list-child',
-	BinaryOperationLhs = 'binop-lhs',
-	BinaryOperationRhs = 'binop-rhs',
-	PipeLhs = 'pipe-lhs',
-	PipeRhs = 'pipe-rhs',
-	UnaryOperand = 'unary-operand',
-	ParameterName = 'param-name',
-	ParameterDefaultValue = 'param-value',
-	ArgumentName = 'arg-name',
-	ArgumentValue = 'arg-value',
-	Accessed = 'accessed',
-	IndexAccess = 'index-access'
-}
-
-export interface ParentContextInfo {
-	readonly role:  RoleInParent
-	readonly index: number
-}
 
 /** Return `true` to stop visiting from this node (i.e., do not continue to visit this node *and* the children) */
 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop

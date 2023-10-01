@@ -1,6 +1,6 @@
 import { Feature, FeatureProcessorInput } from '../feature'
 import { Writable } from 'ts-essentials'
-import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
+import { RNodeWithParent, RoleInParent, RType, visitAst } from '../../../r-bridge'
 import { assertUnreachable, guard } from '../../../util/assert'
 
 const initialDataAccessInfo = {
@@ -35,6 +35,22 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 			if(node.type !== RType.Access) {
 				return
 			}
+
+			if(ctx.role === RoleInParent.Accessed) {
+				accessChain.push(node)
+			} else if(ctx.role === RoleInParent.IndexAccess) {
+				accessNest.push(node) // TODO check if nested in expression! -> keep role context or parent? like x[y[3] + 1]
+			}
+
+			// here we have to check after the addition as we can only check the parental context
+			if(accessChain.length > 0) {
+				info.chainedOrNestedAccess++
+				info.longestChain = Math.max(info.longestChain, accessChain.length)
+			} else if(accessNest.length > 0) {
+				info.chainedOrNestedAccess++
+				info.deepestNesting = Math.max(info.deepestNesting, accessNest.length)
+			}
+
 			// TODO: chain and nest
 			const op = node.operator
 			switch(op) {
@@ -77,8 +93,13 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 
 		}, (node, ctx) => {
 			// drop again :D
-			if(node.type === RType.FunctionCall) {
-				accessNest.pop()
+			if(node.type === RType.Access) {
+				if(ctx.role === RoleInParent.Accessed) {
+					accessChain.pop()
+				} else if(ctx.role === RoleInParent.IndexAccess) {
+					accessNest.pop()
+				}
+
 			}
 		}
 	)

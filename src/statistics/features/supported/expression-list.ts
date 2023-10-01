@@ -2,7 +2,6 @@ import { Writable } from 'ts-essentials'
 import { Feature, FeatureProcessorInput } from '../feature'
 import { RType, visitAst } from '../../../r-bridge'
 
-// TODO: average etc measurements?
 const initialExpressionListInfo = {
 	allExpressionLists: 0,
 	deepestNesting:     0

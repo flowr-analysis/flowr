@@ -104,6 +104,17 @@ describe('Used Ways to Access Data', withShell(shell => {
 			}
 		},
 		{
+			name:     'nested in the argument and expressions',
+			code:     'a[[ if (x[ y[3] > 25 ]) 0 else 2 ]]',
+			expected: {
+				doubleBracket:         1,
+				singleBracket:         2,
+				singleBracketConstant: 1,
+				chainedOrNestedAccess: 2,
+				deepestNesting:        2
+			}
+		},
+		{
 			name:     'nested and chained',
 			code:     'a[[ x[ y[3]$b ] ]]$c$d$e',
 			expected: {

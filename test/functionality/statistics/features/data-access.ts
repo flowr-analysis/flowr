@@ -99,8 +99,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 				doubleBracket:         1,
 				singleBracket:         2,
 				singleBracketConstant: 1,
-				chainedOrNestedAccess: 3,
-				deepestNesting:        3
+				chainedOrNestedAccess: 2,
+				deepestNesting:        2
 			}
 		},
 		{
@@ -110,10 +110,10 @@ describe('Used Ways to Access Data', withShell(shell => {
 				doubleBracket:         1,
 				singleBracket:         2,
 				singleBracketConstant: 1,
-				chainedOrNestedAccess: 3,
-				deepestNesting:        3,
+				chainedOrNestedAccess: 6,
+				deepestNesting:        2,
 				longestChain:          4,
-				byName:                3
+				byName:                4
 			}
 		},
 		{

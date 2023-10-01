@@ -1,7 +1,8 @@
 import { Feature, FeatureProcessorInput } from '../feature'
 import { Writable } from 'ts-essentials'
-import { RNodeWithParent, RoleInParent, RType, visitAst } from '../../../r-bridge'
+import { NodeId, RNodeWithParent, RType, visitAst } from '../../../r-bridge'
 import { assertUnreachable, guard } from '../../../util/assert'
+import { RoleInParent, rolesOfParents } from '../../../r-bridge/lang-4.x/ast/model/processing/role'
 
 const initialDataAccessInfo = {
 	singleBracket:               0,
@@ -29,6 +30,7 @@ const constantSymbolContent = /(NULL|NA|T|F)/
 function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 	const accessNest: RNodeWithParent[] = []
 	const accessChain: RNodeWithParent[] = []
+	const parentRoleCache = new Map<NodeId, { acc: boolean, idxAcc: boolean }>()
 
 	visitAst(input.normalizedRAst.ast,
 		node => {
@@ -36,21 +38,32 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 				return
 			}
 
-			const ctx = node.info
-			console.log(ctx)
+			const roles = rolesOfParents(node, input.normalizedRAst.idMap)
 
-			if(ctx.role === RoleInParent.Accessed) {
-				accessChain.push(node)
-			} else if(ctx.role === RoleInParent.IndexAccess) {
-				accessNest.push(node) // TODO check if nested in expression! -> keep role context or parent? like x[y[3] + 1]
+			let acc = false
+			let idxAcc = false
+			for(const role of roles) {
+				if(role === RoleInParent.Accessed) {
+					acc = true
+					break // we only account for the first one
+				} else if(role === RoleInParent.IndexAccess) {
+					idxAcc = true
+					break
+				}
 			}
 
 			// here we have to check after the addition as we can only check the parental context
-			if(accessChain.length > 0 || accessNest.length > 0) {
+			if(acc) {
+				accessChain.push(node) // TODO check if nested in expression! -> keep role context or parent? like x[y[3] + 1]
 				info.chainedOrNestedAccess++
 				info.longestChain = Math.max(info.longestChain, accessChain.length)
+			} else if(idxAcc) {
+				accessNest.push(node)
+				info.chainedOrNestedAccess++
 				info.deepestNesting = Math.max(info.deepestNesting, accessNest.length)
+
 			}
+			parentRoleCache.set(node.info.id, { acc, idxAcc })
 
 			// TODO: chain and nest
 			const op = node.operator
@@ -93,10 +106,10 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 		}, node => {
 			// drop again :D
 			if(node.type === RType.Access) {
-				const ctx = node.info
-				if(ctx.role === RoleInParent.Accessed) {
+				const ctx = parentRoleCache.get(node.info.id)
+				if(ctx?.acc) {
 					accessChain.pop()
-				} else if(ctx.role === RoleInParent.IndexAccess) {
+				} else if(ctx?.idxAcc) {
 					accessNest.pop()
 				}
 

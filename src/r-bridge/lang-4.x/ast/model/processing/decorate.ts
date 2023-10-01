@@ -16,6 +16,7 @@ import { BiMap } from '../../../../../util/bimap'
 import { foldAst } from './fold'
 import { RArgument, RFunctionCall, RNamedFunctionCall, RParameter, RUnnamedFunctionCall } from '../nodes'
 import { MergeableRecord } from '../../../../../util/objects'
+import { RoleInParent } from './role'
 
 /** The type of the id assigned to each node. Branded to avoid problematic usages with other string types. */
 export type NodeId = string & { __brand?: 'node-id'};
@@ -60,44 +61,6 @@ export function nodeToLocationId<OtherInfo>(data: RNode<OtherInfo>): NodeId {
 export function deterministicLocationIdGenerator<OtherInfo>(start = 0): IdGenerator<OtherInfo> {
 	let id = start
 	return (data: RNode<OtherInfo>) => data.location !== undefined ? nodeToLocationId(data) : `${id++}`
-}
-
-
-/**
- * Describes the role of the node in its parent. For example,
- * if we have `if(TRUE) { ... }`, the role of the `TRUE` node is `IfCondition`.
- *
- * @see ParentContextInfo
- * @see ParentInformation
- */
-export const enum RoleInParent {
-	/** has no parent */
-	Root = 'root',
-	IfCondition = 'if-cond',
-	IfThen = 'if-then',
-	IfOtherwise = 'if-otherwise',
-	WhileCondition = 'while-cond',
-	WhileBody = 'while-body',
-	RepeatBody = 'repeat-body',
-	ForVariable = 'for-variable',
-	ForVector = 'for-vector',
-	ForBody = 'for-body',
-	FunctionCallName = 'call-name',
-	FunctionCallArgument = 'call-argument',
-	FunctionDefinitionBody = 'function-def-body',
-	FunctionDefinitionParameter = 'function-def-param',
-	ExpressionListChild = 'expr-list-child',
-	BinaryOperationLhs = 'binop-lhs',
-	BinaryOperationRhs = 'binop-rhs',
-	PipeLhs = 'pipe-lhs',
-	PipeRhs = 'pipe-rhs',
-	UnaryOperand = 'unary-operand',
-	ParameterName = 'param-name',
-	ParameterDefaultValue = 'param-value',
-	ArgumentName = 'arg-name',
-	ArgumentValue = 'arg-value',
-	Accessed = 'accessed',
-	IndexAccess = 'index-access'
 }
 
 export interface ParentContextInfo extends MergeableRecord {

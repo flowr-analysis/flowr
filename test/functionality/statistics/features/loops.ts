@@ -6,7 +6,7 @@ describe('Loops', withShell(shell => {
 	testForFeatureForInput(shell, 'loops', [
 		{
 			name:     'no control loops',
-			code:     'a <- 1',
+			code:     'a <- 1; 4 * x; foo(a) # while(FALSE) {} ',
 			expected: {}
 		},
 		{

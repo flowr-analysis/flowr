@@ -81,10 +81,9 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 	}
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function removeInformation<T extends Record<string, any>>(obj: T): T {
+function removeInformation<T extends Record<string, unknown>>(obj: T): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
-		if(key === 'fullRange' || key === 'additionalTokens' || key === 'fullLexeme' || key === 'id' || key === 'parent') {
+		if(key === 'fullRange' || key === 'additionalTokens' || key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role') {
 			return undefined
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return

@@ -28,51 +28,51 @@ class NodeVisitor<OtherInfo = NoInfo> {
 		const type = node.type
 		switch(type) {
 			case RType.FunctionCall:
-				this.visit(node.flavor === 'named' ? node.functionName : node.calledFunction)
+				this.visitSingle(node.flavor === 'named' ? node.functionName : node.calledFunction)
 				this.visit(node.arguments)
 				break
 			case RType.FunctionDefinition:
 				this.visit(node.parameters)
-				this.visit(node.body)
+				this.visitSingle(node.body)
 				break
 			case RType.ExpressionList:
 				this.visit(node.children)
 				break
 			case RType.ForLoop:
-				this.visit(node.variable)
-				this.visit(node.vector)
-				this.visit(node.body)
+				this.visitSingle(node.variable)
+				this.visitSingle(node.vector)
+				this.visitSingle(node.body)
 				break
 			case RType.WhileLoop:
-				this.visit(node.condition)
-				this.visit(node.body)
+				this.visitSingle(node.condition)
+				this.visitSingle(node.body)
 				break
 			case RType.RepeatLoop:
-				this.visit(node.body)
+				this.visitSingle(node.body)
 				break
 			case RType.IfThenElse:
-				this.visit(node.condition)
-				this.visit(node.then)
+				this.visitSingle(node.condition)
+				this.visitSingle(node.then)
 				this.visit(node.otherwise)
 				break
 			case RType.BinaryOp:
 			case RType.Pipe:
-				this.visit(node.lhs)
-				this.visit(node.rhs)
+				this.visitSingle(node.lhs)
+				this.visitSingle(node.rhs)
 				break
 			case RType.UnaryOp:
-				this.visit(node.operand)
+				this.visitSingle(node.operand)
 				break
 			case RType.Parameter:
-				this.visit(node.name)
+				this.visitSingle(node.name)
 				this.visit(node.defaultValue)
 				break
 			case RType.Argument:
 				this.visit(node.name)
-				this.visit(node.value)
+				this.visitSingle(node.value)
 				break
 			case RType.Access:
-				this.visit(node.accessed)
+				this.visitSingle(node.accessed)
 				if(node.operator === '[' || node.operator === '[[') {
 					this.visit(node.access)
 				}

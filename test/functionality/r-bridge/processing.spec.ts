@@ -6,7 +6,7 @@ import {
 	decorateAst,
 	RNodeWithParent,
 	collectAllIds,
-	NodeId
+	NodeId, RoleInParent
 } from '../../../src/r-bridge'
 import { assert } from 'chai'
 
@@ -22,7 +22,9 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 				lexeme: undefined,
 				info:   {
 					parent: undefined,
-					id:     '1'
+					id:     '1',
+					index:  0,
+					role:   RoleInParent.Root
 				},
 				children,
 			})
@@ -37,7 +39,9 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 					},
 					info: {
 						parent: '1',
-						id:     '0'
+						id:     '0',
+						role:   RoleInParent.ExpressionListChild,
+						index:  0,
 					},
 				})
 			)
@@ -49,7 +53,9 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 					content:  numVal(42),
 					info:     {
 						parent: '1',
-						id:     '0'
+						id:     '0',
+						role:   RoleInParent.ExpressionListChild,
+						index:  0
 					},
 				})
 			)
@@ -61,7 +67,9 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 					content:  false,
 					info:     {
 						parent: '1',
-						id:     '0'
+						id:     '0',
+						role:   RoleInParent.ExpressionListChild,
+						index:  0
 					},
 				})
 			)
@@ -74,7 +82,9 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 					content:   'k',
 					info:      {
 						parent: '1',
-						id:     '0'
+						id:     '0',
+						role:   RoleInParent.ExpressionListChild,
+						index:  0
 					},
 				})
 			)

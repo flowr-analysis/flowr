@@ -31,11 +31,12 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 	const accessChain: RNodeWithParent[] = []
 
 	visitAst(input.normalizedRAst.ast,
-		(node, ctx) => {
+		node => {
 			if(node.type !== RType.Access) {
 				return
 			}
 
+			const ctx = node.info
 			console.log(ctx)
 
 			if(ctx.role === RoleInParent.Accessed) {
@@ -93,9 +94,10 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 			}
 
 
-		}, (node, ctx) => {
+		}, node => {
 			// drop again :D
 			if(node.type === RType.Access) {
+				const ctx = node.info
 				if(ctx.role === RoleInParent.Accessed) {
 					accessChain.pop()
 				} else if(ctx.role === RoleInParent.IndexAccess) {

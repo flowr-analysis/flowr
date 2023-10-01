@@ -36,6 +36,8 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 				return
 			}
 
+			console.log(ctx)
+
 			if(ctx.role === RoleInParent.Accessed) {
 				accessChain.push(node)
 			} else if(ctx.role === RoleInParent.IndexAccess) {

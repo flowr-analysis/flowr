@@ -46,11 +46,9 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 			}
 
 			// here we have to check after the addition as we can only check the parental context
-			if(accessChain.length > 0) {
+			if(accessChain.length > 0 || accessNest.length > 0) {
 				info.chainedOrNestedAccess++
 				info.longestChain = Math.max(info.longestChain, accessChain.length)
-			} else if(accessNest.length > 0) {
-				info.chainedOrNestedAccess++
 				info.deepestNesting = Math.max(info.deepestNesting, accessNest.length)
 			}
 
@@ -92,8 +90,6 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 					info[`${prefix}BracketSingleVariable`]++
 				}
 			}
-
-
 		}, node => {
 			// drop again :D
 			if(node.type === RType.Access) {

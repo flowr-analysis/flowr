@@ -22,10 +22,10 @@ const initialDataAccessInfo = {
 export type DataAccess = Writable<typeof initialDataAccessInfo>
 
 
-const singleBracketAccess: Query = xpath.parse('//expr/SYMBOL/../../*[preceding-sibling::OP-LEFT-BRACKET][1]')
-const doubleBracketAccess: Query = xpath.parse('//expr/SYMBOL/../../*[preceding-sibling::LBB][1]')
-const namedAccess: Query = xpath.parse('//expr/SYMBOL/../../*[preceding-sibling::OP-DOLLAR][1]')
-const slottedAccess: Query = xpath.parse('//expr/SYMBOL/../../*[preceding-sibling::OP-AT][1]')
+const singleBracketAccess: Query = xpath.parse('//*[preceding-sibling::OP-LEFT-BRACKET][1]')
+const doubleBracketAccess: Query = xpath.parse('//*[preceding-sibling::LBB][1]')
+const namedAccess: Query = xpath.parse('//*[preceding-sibling::OP-DOLLAR][1]')
+const slottedAccess: Query = xpath.parse('//*[preceding-sibling::OP-AT][1]')
 const chainedOrNestedAccess: Query = xpath.parse(`
 //*[following-sibling::OP-LEFT-BRACKET or following-sibling::LBB or following-sibling::OP-DOLLAR or following-sibling::OP-AT]//
     *[self::OP-LEFT-BRACKET or self::LBB or self::OP-DOLLAR or self::OP-AT][1]

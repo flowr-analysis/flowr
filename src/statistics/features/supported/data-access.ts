@@ -1,7 +1,7 @@
-import { Feature, FeatureProcessorInput, Query } from '../feature'
-import * as xpath from 'xpath-ts2'
-import { appendStatisticsFile, extractNodeContent } from '../../output'
+import { Feature, FeatureProcessorInput } from '../feature'
 import { Writable } from 'ts-essentials'
+import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
+import { assertUnreachable, guard } from '../../../util/assert'
 
 const initialDataAccessInfo = {
 	singleBracket:               0,
@@ -15,74 +15,81 @@ const initialDataAccessInfo = {
 	doubleBracketSingleVariable: 0,
 	doubleBracketCommaAccess:    0,
 	chainedOrNestedAccess:       0,
+	longestChain:                0,
+	deepestNesting:              0,
+	namedArguments:              0,
 	byName:                      0,
 	bySlot:                      0
 }
 
-export type DataAccess = Writable<typeof initialDataAccessInfo>
+export type DataAccessInfo = Writable<typeof initialDataAccessInfo>
+
+const constantSymbolContent = /(NULL|NA|T|F)/
+
+function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
+	const accessNest: RNodeWithParent[] = []
+	const accessChain: RNodeWithParent[] = []
+
+	visitAst(input.normalizedRAst.ast,
+		(node, ctx) => {
+			if(node.type !== RType.Access) {
+				return
+			}
+			// TODO: chain and nest
+			const op = node.operator
+			switch(op) {
+				case '@': info.bySlot++;         return
+				case '$': info.byName++;         return
+				case '[': info.singleBracket++;  break
+				case '[[': info.doubleBracket++; break
+				default: assertUnreachable(op)
+			}
+
+			guard(Array.isArray(node.access), '[ and [[ must provide access as array')
+			const prefix = op === '[' ? 'single' : 'double'
+			if(node.access.length === 0) {
+				info[`${prefix}BracketEmpty`]++
+				return
+			} else if(node.access.length > 1) {
+				info[`${prefix}BracketCommaAccess`]++
+			}
+
+			for(const access of node.access) {
+				if(access === null) {
+					info[`${prefix}BracketEmpty`]++
+					continue
+				}
+				const argContent = access.value
+
+				if(access.name !== undefined) {
+					info.namedArguments++
+				}
+
+				if(argContent.type === RType.Number || argContent.type === RType.String ||
+					(argContent.type === RType.Symbol && constantSymbolContent.test(argContent.content))
+				) {
+					info[`${prefix}BracketConstant`]++
+				} else if(argContent.type === RType.Symbol) {
+					info[`${prefix}BracketSingleVariable`]++
+				}
+			}
 
 
-const singleBracketAccess: Query = xpath.parse('//*[preceding-sibling::OP-LEFT-BRACKET][1]')
-const doubleBracketAccess: Query = xpath.parse('//*[preceding-sibling::LBB][1]')
-const namedAccess: Query = xpath.parse('//*[preceding-sibling::OP-DOLLAR][1]')
-const slottedAccess: Query = xpath.parse('//*[preceding-sibling::OP-AT][1]')
-const chainedOrNestedAccess: Query = xpath.parse(`
-//*[following-sibling::OP-LEFT-BRACKET or following-sibling::LBB or following-sibling::OP-DOLLAR or following-sibling::OP-AT]//
-    *[self::OP-LEFT-BRACKET or self::LBB or self::OP-DOLLAR or self::OP-AT][1]
-`)
-
-const constantAccess: Query = xpath.parse(`
-  ./NUM_CONST
-  |
-  ./NULL_CONST
-  |
-  ./STR_CONST
-  |
-  ./SYMBOL[text() = 'T' or text() = 'F']`)
-const singleVariableAccess: Query = xpath.parse('./SYMBOL[text() != \'T\' and text() != \'F\']')
-const commaAccess: Query = xpath.parse('../OP-COMMA[last()]')
-
-function processForBracketAccess(existing: DataAccess, nodes: Node[], access: 'singleBracket' | 'doubleBracket', filepath: string | undefined) {
-// we use the parent node to get more information in the output if applicable
-	appendStatisticsFile(dataAccess.name, access, nodes.map(n => n.parentNode ?? n), filepath)
-
-	existing[access] += nodes.length
-	const constantAccesses = nodes.flatMap(n => constantAccess.select({ node: n }))
-	const singleVariableAccesses = nodes.flatMap(n => singleVariableAccess.select({ node: n }))
-
-	existing[`${access}Empty`] += nodes.map(extractNodeContent).filter(n => n === ']').length
-	existing[`${access}Constant`] += constantAccesses.length
-	existing[`${access}SingleVariable`] += singleVariableAccesses.length
-
-	const commaAccesses = nodes.flatMap(n => commaAccess.select({ node: n }))
-	existing[`${access}CommaAccess`] += commaAccesses.length
+		}, (node, ctx) => {
+			// drop again :D
+			if(node.type === RType.FunctionCall) {
+				accessNest.pop()
+			}
+		}
+	)
 }
 
-
-export const dataAccess: Feature<DataAccess> = {
+export const dataAccess: Feature<DataAccessInfo> = {
 	name:        'Data Access',
 	description: 'Ways of accessing data structures in R',
 
-	process(existing: DataAccess, input: FeatureProcessorInput): DataAccess {
-		const singleBracketAccesses = singleBracketAccess.select({ node: input.parsedRAst })
-		const doubleBracketAccesses = doubleBracketAccess.select({ node: input.parsedRAst })
-
-		processForBracketAccess(existing, singleBracketAccesses, 'singleBracket', input.filepath)
-		processForBracketAccess(existing, doubleBracketAccesses, 'doubleBracket', input.filepath)
-
-		const namedAccesses = namedAccess.select({ node: input.parsedRAst })
-		appendStatisticsFile(dataAccess.name, 'byName', namedAccesses.map(n => n.parentNode ?? n), input.filepath)
-		existing.byName += namedAccesses.length
-
-		const slottedAccesses = slottedAccess.select({ node: input.parsedRAst })
-		appendStatisticsFile(dataAccess.name, 'bySlot', slottedAccesses.map(n => n.parentNode ?? n), input.filepath)
-		existing.bySlot += slottedAccesses.length
-
-
-		const chainedOrNestedAccesses = chainedOrNestedAccess.select({ node: input.parsedRAst })
-		appendStatisticsFile(dataAccess.name, 'chainedOrNestedAccess', chainedOrNestedAccesses.map(n => n.parentNode ?? n), input.filepath)
-		existing.chainedOrNestedAccess += chainedOrNestedAccesses.length
-
+	process(existing: DataAccessInfo, input: FeatureProcessorInput): DataAccessInfo {
+		visitAccess(existing, input)
 		return existing
 	},
 	initialValue: initialDataAccessInfo

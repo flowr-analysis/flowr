@@ -28,6 +28,14 @@ describe('Used Ways to Access Data', withShell(shell => {
 			}
 		},
 		{
+			name:     'using an expression',
+			code:     'a[[x + y]]; a[x - 3]',
+			expected: {
+				doubleBracket: 1,
+				singleBracket: 1
+			}
+		},
+		{
 			name:     'using only a single variable',
 			code:     'a[x]; a[[x]]',
 			expected: {
@@ -51,23 +59,26 @@ describe('Used Ways to Access Data', withShell(shell => {
 			expected: {
 				doubleBracket:         2,
 				doubleBracketConstant: 2,
-				chainedOrNestedAccess: 1
+				chainedOrNestedAccess: 1,
+				longestChain:          1
 			}
 		},
 		{
 			name:     'comma access',
 			code:     'a[1,x,3]; b[[2,name=3]]',
 			expected: {
-				singleBracket:            1,
-				singleBracketCommaAccess: 1,
-				singleBracketConstant: 	  1, // contains a constant
-				doubleBracket:            1,
-				doubleBracketCommaAccess: 1,
-				doubleBracketConstant: 	  1,
+				singleBracket:               1,
+				singleBracketCommaAccess:    1,
+				singleBracketConstant: 	     2, // contains a constant
+				doubleBracket:               1,
+				doubleBracketCommaAccess:    1,
+				doubleBracketConstant: 	     2,
+				singleBracketSingleVariable: 1,
+				namedArguments:              1
 			}
 		},
 		{
-			name:     'Deeply nested mixed access',
+			name:     'deeply nested mixed access',
 			code:     'a[[1]][2]$x[y]@z',
 			expected: {
 				doubleBracket:               1,
@@ -77,7 +88,32 @@ describe('Used Ways to Access Data', withShell(shell => {
 				doubleBracketConstant:       1,
 				singleBracketConstant:       1,
 				singleBracketSingleVariable: 1,
-				chainedOrNestedAccess:       4
+				chainedOrNestedAccess:       4,
+				longestChain:                4
+			}
+		},
+		{
+			name:     'nested in the argument',
+			code:     'a[[ x[ y[3] ] ]]',
+			expected: {
+				doubleBracket:         1,
+				singleBracket:         2,
+				singleBracketConstant: 1,
+				chainedOrNestedAccess: 3,
+				deepestNesting:        3
+			}
+		},
+		{
+			name:     'nested and chained',
+			code:     'a[[ x[ y[3]$b ] ]]$c$d$e',
+			expected: {
+				doubleBracket:         1,
+				singleBracket:         2,
+				singleBracketConstant: 1,
+				chainedOrNestedAccess: 3,
+				deepestNesting:        3,
+				longestChain:          4,
+				byName:                3
 			}
 		},
 		{
@@ -86,7 +122,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 			expected: {
 				byName:                2,
 				bySlot:                2,
-				chainedOrNestedAccess: 2
+				chainedOrNestedAccess: 2,
+				longestChain:          1
 			}
 		}
 	])

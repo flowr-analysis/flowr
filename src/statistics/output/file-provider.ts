@@ -30,15 +30,17 @@ export class DummyAppendProvider implements StatisticAppendProvider {
 		}
 		if(this.map) {
 			const fnMap = this.map.get(name)
+			const contentArr = content.split('\n')
 			if(fnMap) {
 				const contentList = fnMap.get(fn)
 				if(contentList) {
-					contentList.push(content)
+					contentList.push(...contentArr)
 				} else {
-					fnMap.set(fn, [content])
+					// just in case the map already had some entries
+					fnMap.set(fn, contentArr)
 				}
 			} else {
-				this.map.set(name, new Map([[ fn, [content] ]]))
+				this.map.set(name, new Map([[ fn, contentArr ]]))
 			}
 		}
 	}

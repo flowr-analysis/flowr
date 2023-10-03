@@ -1,7 +1,6 @@
 import { withShell } from '../../helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
 
-// TODO: record start line as well with the file path
 describe('Used Ways to Access Data', withShell(shell => {
 	testForFeatureForInput(shell, 'dataAccess', [
 		{

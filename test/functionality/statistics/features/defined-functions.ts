@@ -63,7 +63,8 @@ describe('Used Function Definitions', withShell(shell => {
 			code:     'function(x) { function(y) { x + y } }',
 			expected: {
 				total:           2,
-				nestedFunctions: 1
+				nestedFunctions: 1,
+				deepestNesting:  1
 			},
 			written: [
 				['usedParameterNames', [{ value: 'x' }, { value: 'y' }]],
@@ -93,10 +94,53 @@ describe('Used Function Definitions', withShell(shell => {
 						nonWhitespaceCharacters: 16
 					}
 				})}]]
-				// multiple, explicit return points
+			]
+		},
+		{
+			name: 'the fibonacci function (named and recursive)',
+			code: `fib <- function(n) { 
+				if(n < 2) { 
+					return(n) 
+				} else { 
+					return(fib(n - 1) + fib(n - 2)) 
+				}
+			}`,
+			expected: {
+				total:             1,
+				recursive:         1,
+				assignedFunctions: 1
+			},
+			written: [
+				['usedParameterNames', [{ value: 'x' }, { value: 'y' }]],
+				['nested-definitions', [{ value: 'function(y) { x + y }' }]],
+				['all-definitions', [ { value: JSON.stringify({
+					location:           { line: 1, column: 1 },
+					callsites:          [],
+					numberOfParameters: 1,
+					returns:            [
+						{ explicit: false, location: { line: 1, column: 15 } }
+					],
+					length: {
+						lines:                   1,
+						characters:              37,
+						nonWhitespaceCharacters: 29
+					}
+				})}, { value: JSON.stringify({
+					location:           { line: 1, column: 15 },
+					callsites:          [],
+					numberOfParameters: 1,
+					returns:            [
+						{ explicit: false, location: { line: 1, column: 31 } }
+					],
+					length: {
+						lines:                   1,
+						characters:              21,
+						nonWhitespaceCharacters: 16
+					}
+				})}]]
 			]
 		}
-		// TODO: count recursive, nested, ...
+		// TODO: count recursive, ...
 	])
 }))
 

@@ -9,17 +9,16 @@ import { guard, isNotUndefined } from '../../../util/assert'
 
 const initialFunctionDefinitionInfo = {
 	/** all, anonymous, assigned, non-assigned, ... */
-	total:              0,
+	total:             0,
 	/** how many are really using OP-Lambda? */
-	lambdasOnly:        0,
+	lambdasOnly:       0,
 	/** using `<<-`, `<-`, `=`, `->` `->>` */
-	assignedFunctions:  0,
-	// TODO: assign etc. -> implement
-	usedParameterNames: 0,
-	nestedFunctions:    0,
+	// TODO: assign functions etc. -> implement
+	assignedFunctions: 0,
+	nestedFunctions:   0,
 	/** functions that in some easily detectable way call themselves */
-	recursive:          0,
-	deepestNesting:     0
+	recursive:         0,
+	deepestNesting:    0
 }
 
 export type FunctionDefinitionInfo = Writable<typeof initialFunctionDefinitionInfo>
@@ -78,6 +77,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 
 			if(definitionStack.length > 0) {
 				info.nestedFunctions++
+				info.deepestNesting = Math.max(info.deepestNesting, definitionStack.length)
 				appendStatisticsFile(definedFunctions.name, 'nested-definitions', [node.info.fullLexeme ?? node.lexeme], input.filepath)
 			}
 
@@ -92,6 +92,22 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 			}
 
 			definitionStack.push(node)
+
+			// we find definitions with silly defined-by edges
+			// TODO: invert, must be an incoming edge!
+			const edges = input.dataflow.graph.outgoingEdges(node.info.id)
+			if(edges !== undefined) {
+				for(const [targetId, edge] of edges) {
+					if(edge.types.has(EdgeType.DefinedBy)) {
+						const target = input.normalizedRAst.idMap.get(targetId)
+						guard(target !== undefined, 'Dataflow edge points to unknown node')
+						const name = target.info.fullLexeme ?? target.lexeme
+						info.assignedFunctions++
+						appendStatisticsFile(definedFunctions.name, 'assignedFunctions', [name ?? '<unknown>'], input.filepath)
+						break
+					}
+				}
+			}
 
 			/* TODO:
 			appendStatisticsFile(this.name, 'assignedFunctions', assignedNames, input.filepath)

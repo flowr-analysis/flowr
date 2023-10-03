@@ -33,7 +33,32 @@ describe('Used Function Definitions', withShell(shell => {
 				})}]]
 			]
 		},
-		// TODO: count lambda, recursive, nested, ...
+		{
+			name:     'the identity lambda function',
+			code:     '\\(x) x',
+			expected: {
+				total:       1,
+				lambdasOnly: 1
+			},
+			written: [
+				['usedParameterNames', [{ value: 'x' }]],
+				['allLambdas', [{ value: '\\(x) x' }]],
+				['all-definitions', [ { value: JSON.stringify({
+					location:           { line: 1, column: 1 },
+					callsites:          [],
+					numberOfParameters: 1,
+					returns:            [
+						{ explicit: false, location: { line: 1, column: 6 } }
+					],
+					length: {
+						lines:                   1,
+						characters:              6,
+						nonWhitespaceCharacters: 5
+					}
+				})}]]
+			]
+		}
+		// TODO: count recursive, nested, ...
 	])
 }))
 

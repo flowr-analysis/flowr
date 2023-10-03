@@ -10,7 +10,7 @@ describe('Expression List', withShell(shell => {
 			expected: {
 				allExpressionLists: 1
 			},
-			written: []
+			written: 'nothing'
 		},
 		{
 			name: 'a lot of nesting',
@@ -32,7 +32,7 @@ describe('Expression List', withShell(shell => {
 				allExpressionLists: 7,
 				deepestNesting:     3
 			},
-			written: []
+			written: 'nothing'
 		}
 	])
 }))

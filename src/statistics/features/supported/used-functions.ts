@@ -81,7 +81,9 @@ export interface FunctionCallInformation extends MergeableRecord {
 	/** the name of the called function, or undefined if this was an unnamed function call */
 	name:              string | undefined,
 	location:          SourcePosition
-	numberOfArguments: number
+	numberOfArguments: number,
+	/** whether this was called from a namespace, like `a::b()` */
+	namespace:         string | undefined
 }
 
 function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void {
@@ -103,10 +105,20 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 			if(node.flavor === 'unnamed') {
 				info.unnamedCalls++
 				appendStatisticsFile(usedFunctions.name, 'unnamed-calls', [node.lexeme], input.filepath)
-				allCalls.push({ name: node.calledFunction.lexeme ?? '<unknown>', named: false, location: node.location.start, numberOfArguments: node.arguments.length })
+				allCalls.push({
+					name:              undefined,
+					location:          node.location.start,
+					numberOfArguments: node.arguments.length,
+					namespace:         undefined
+				})
 			} else {
 				analyzeFunctionName(node.functionName.lexeme, info)
-				allCalls.push({ name: node.functionName.lexeme, named: true, location: node.location.start, numberOfArguments: node.arguments.length })
+				allCalls.push({
+					name:              node.functionName.lexeme,
+					location:          node.location.start,
+					numberOfArguments: node.arguments.length,
+					namespace:         node.functionName.namespace
+				})
 			}
 
 			calls.push(node)

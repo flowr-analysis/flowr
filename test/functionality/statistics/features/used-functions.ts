@@ -19,9 +19,43 @@ describe('Used Function Calls', withShell(shell => {
 			written: [
 				['all-calls', [{ value: JSON.stringify({
 					name:              'b',
-					named:             true,
 					location:          { line: 1, column: 1 },
-					numberOfArguments: 0
+					numberOfArguments: 0,
+					namespace:         undefined
+				}) }]],
+			]
+		},
+		{
+			name:     'one call with multiple arguments and namespace',
+			code:     'a::b(3, 4)',
+			expected: {
+				allFunctionCalls: 1
+			},
+			written: [
+				['all-calls', [{ value: JSON.stringify({
+					name:              'b',
+					location:          { line: 1, column: 1 },
+					numberOfArguments: 2,
+					namespace:         'a'
+				}) }]],
+			]
+		},
+		{
+			name:     'unnamed function call',
+			code:     '(function(x) { x })(3)',
+			expected: {
+				allFunctionCalls: 1,
+				unnamedCalls:     1
+			},
+			written: [
+				['unnamed-calls', [
+					{ value: '(function(x) { x })' }
+				]],
+				['all-calls', [{ value: JSON.stringify({
+					name:              undefined,
+					location:          { line: 1, column: 1 },
+					numberOfArguments: 1,
+					namespace:         undefined
 				}) }]],
 			]
 		},
@@ -35,9 +69,9 @@ describe('Used Function Calls', withShell(shell => {
 			written: [
 				['all-calls', [{ value: JSON.stringify({
 					name:              'sin',
-					named:             true,
 					location:          { line: 1, column: 1 },
-					numberOfArguments: 1
+					numberOfArguments: 1,
+					namespace:         undefined
 				}) }]],
 			]
 		},
@@ -65,52 +99,52 @@ describe('Used Function Calls', withShell(shell => {
 				['all-calls', [
 					{ value: JSON.stringify({
 						name:              'a',
-						named:             true,
 						location:          { line: 1, column: 1 },
-						numberOfArguments: 2
+						numberOfArguments: 2,
+						namespace:         undefined
 					}) },
 					{ value: JSON.stringify({
 						name:              'b',
-						named:             true,
 						location:          { line: 1, column: 3 },
-						numberOfArguments: 0
+						numberOfArguments: 0,
+						namespace:         undefined
 					}) },
 					{ value: JSON.stringify({
 						name:              'c',
-						named:             true,
 						location:          { line: 1, column: 8 },
-						numberOfArguments: 2
+						numberOfArguments: 2,
+						namespace:         undefined
 					}) },
 					{ value: JSON.stringify({
 						name:              'd',
-						named:             true,
 						location:          { line: 1, column: 13 },
-						numberOfArguments: 0
+						numberOfArguments: 0,
+						namespace:         undefined
 					}) },
 					{ value: JSON.stringify({
 						name:              'a',
-						named:             true,
 						// atm, links columns from the start of the input :C
 						location:          { line: 2, column: 36 },
-						numberOfArguments: 2
+						numberOfArguments: 2,
+						namespace:         undefined
 					}) },
 					{ value: JSON.stringify({
 						name:              'b',
-						named:             true,
 						location:          { line: 2, column: 38 },
-						numberOfArguments: 0
+						numberOfArguments: 0,
+						namespace:         undefined
 					}) },
 					{ value: JSON.stringify({
 						name:              'd',
-						named:             true,
 						location:          { line: 2, column: 43 },
-						numberOfArguments: 1
+						numberOfArguments: 1,
+						namespace:         undefined
 					}) },
 					{ value: JSON.stringify({
 						name:              'f',
-						named:             true,
 						location:          { line: 3, column: 41 },
-						numberOfArguments: 0
+						numberOfArguments: 0,
+						namespace:         undefined
 					}) }
 				]]]
 		}

@@ -72,7 +72,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 
 			const returnTypes = fnDefinition.exitPoints.map(ep => graph.get(ep, true)).filter(isNotUndefined)
 				.map(([vertex]) => ({
-					explicit: vertex.tag === 'exit-point',
+					explicit: vertex.tag === 'function-call' && vertex.name === 'return',
 					location: input.normalizedRAst.idMap.get(vertex.id)?.location?.start ?? { line: -1, column: -1 }
 				}))
 

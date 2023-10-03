@@ -57,6 +57,44 @@ describe('Used Function Definitions', withShell(shell => {
 					}
 				})}]]
 			]
+		},
+		{
+			name:     'nested function definition',
+			code:     'function(x) { function(y) { x + y } }',
+			expected: {
+				total:           2,
+				nestedFunctions: 1
+			},
+			written: [
+				['usedParameterNames', [{ value: 'x' }, { value: 'y' }]],
+				['nested-definitions', [{ value: 'function(y) { x + y }' }]],
+				['all-definitions', [ { value: JSON.stringify({
+					location:           { line: 1, column: 1 },
+					callsites:          [],
+					numberOfParameters: 1,
+					returns:            [
+						{ explicit: false, location: { line: 1, column: 15 } }
+					],
+					length: {
+						lines:                   1,
+						characters:              37,
+						nonWhitespaceCharacters: 29
+					}
+				})}, { value: JSON.stringify({
+					location:           { line: 1, column: 15 },
+					callsites:          [],
+					numberOfParameters: 1,
+					returns:            [
+						{ explicit: false, location: { line: 1, column: 31 } }
+					],
+					length: {
+						lines:                   1,
+						characters:              21,
+						nonWhitespaceCharacters: 16
+					}
+				})}]]
+				// multiple, explicit return points
+			]
 		}
 		// TODO: count recursive, nested, ...
 	])

@@ -1,77 +1,36 @@
-import { Feature, FeatureProcessorInput, Query } from '../feature'
-import * as xpath from 'xpath-ts2'
-import { appendStatisticsFile, extractNodeContent } from '../../output'
+import { Feature, FeatureProcessorInput } from '../feature'
+import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
 import { SourcePosition } from '../../../util/range'
 import { MergeableRecord } from '../../../util/objects'
 import { ParentInformation, RFunctionDefinition, RNodeWithParent, RType, visitAst } from '../../../r-bridge'
-import { usedFunctions } from './used-functions'
 import { EdgeType } from '../../../dataflow'
 import { guard, isNotUndefined } from '../../../util/assert'
 
 const initialFunctionDefinitionInfo = {
 	/** all, anonymous, assigned, non-assigned, ... */
-	total:             0,
+	total:              0,
 	/** how many are really using OP-Lambda? */
-	lambdasOnly:       0,
+	lambdasOnly:        0,
 	/** using `<<-`, `<-`, `=`, `->` `->>` */
-	assignedFunctions: 0,
-	usedArgumentNames: 0,
-	nestedFunctions:   0,
+	assignedFunctions:  0,
+	// TODO: assign etc. -> implement
+	usedParameterNames: 0,
+	nestedFunctions:    0,
 	/** functions that in some easily detectable way call themselves */
-	recursive:         0,
-	deepestNesting:    0
+	recursive:          0,
+	deepestNesting:     0
 }
 
 export type FunctionDefinitionInfo = Writable<typeof initialFunctionDefinitionInfo>
 
-
-// note, that this can not work with assign, setGeneric and so on for now
-const queryAnyFunctionDefinition: Query = xpath.parse('//FUNCTION')
-const queryAnyLambdaDefinition: Query = xpath.parse('//OP-LAMBDA')
-
-// we do not care on how these functions are defined
-const queryAssignedFunctionDefinitions: Query = xpath.parse(`
-  //LEFT_ASSIGN[following-sibling::expr/*[self::FUNCTION or self::OP-LAMBDA]]/preceding-sibling::expr[count(*)=1]/SYMBOL
-  |
-  //EQ_ASSIGN[following-sibling::expr/*[self::FUNCTION or self::OP-LAMBDA]]/preceding-sibling::expr[count(*)=1]/SYMBOL
-  |
-  //RIGHT_ASSIGN[preceding-sibling::expr/*[self::FUNCTION or self::OP-LAMBDA]]/following-sibling::expr[count(*)=1]/SYMBOL
-`)
-
-const queryUsedArgumentNames: Query = xpath.parse(`
-  //FUNCTION/../SYMBOL_FORMALS
-`)
-
-// this is probably not completely correct
-const defineFunctionsToBeCalled: Query = xpath.parse(`
-  //expr/expr/*[self::FUNCTION or self::OP-LAMBDA]/parent::expr[preceding-sibling::OP-LEFT-PAREN or preceding-sibling::OP-LEFT-BRACE]/parent::expr[following-sibling::OP-LEFT-PAREN]
-`)
-
-const nestedFunctionsQuery: Query = xpath.parse(`
-  //expr[preceding-sibling::FUNCTION or preceding-sibling::OP-LAMBDA]//*[self::FUNCTION or self::OP-LAMBDA]
-`)
-
-
-// expects to be invoked in the context of the parent function name
-const functionCallWithNameQuery: Query = xpath.parse(`
-  ../following-sibling::expr/*[last()]//SYMBOL_FUNCTION_CALL[text() = $name]
-  |
-  ../preceding-sibling::expr/*[last()]//SYMBOL_FUNCTION_CALL[text() = $name]
-`)
-function testRecursive(node: Node, name: string): boolean {
-	const result = functionCallWithNameQuery.select({ node, variables: { name } })
-	return result.length > 0
-
-}
-
-
 interface FunctionDefinitionInformation extends MergeableRecord {
-	location:  SourcePosition,
+	location:           SourcePosition,
 	/** locations of all direct call sites */
-	callsites: SourcePosition[],
+	callsites:          SourcePosition[],
+	numberOfParameters: number,
 	// for each return site, classifies if it is implicit or explicit (i.e., with return)
-	returns:   { explicit: boolean, location: SourcePosition }[],
+	returns:            { explicit: boolean, location: SourcePosition }[],
 	length:   {
 		lines:                   number,
 		characters:              number,
@@ -117,15 +76,49 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 					location: input.normalizedRAst.idMap.get(vertex.id)?.location?.start ?? { line: -1, column: -1 }
 				}))
 
+			if(definitionStack.length > 0) {
+				info.nestedFunctions++
+				appendStatisticsFile(definedFunctions.name, 'nested-definitions', [node.info.fullLexeme ?? node.lexeme], input.filepath)
+			}
+
+			// parameter names:
+			const parameterNames = node.parameters.map(p => p.info.fullLexeme ?? p.lexeme)
+			appendStatisticsFile(definedFunctions.name, 'usedParameterNames', parameterNames, input.filepath)
+
+			const isLambda = node.lexeme.startsWith('\\')
+			if(isLambda) {
+				info.lambdasOnly++
+				appendStatisticsFile(definedFunctions.name, 'allLambdas', [node.info.fullLexeme ?? node.lexeme], input.filepath)
+			}
+
 			definitionStack.push(node)
+
+			/* TODO:
+			appendStatisticsFile(this.name, 'assignedFunctions', assignedNames, input.filepath)
+
+		const recursiveFunctions = []
+		for(let i = 0; i < assignedFunctions.length; i++) {
+			const name = assignedNames[i]
+			if(testRecursive(assignedFunctions[i], name)) {
+				recursiveFunctions.push(name)
+			}
+		}
+		existing.recursive += recursiveFunctions.length
+		appendStatisticsFile(this.name, 'recursiveFunctions', recursiveFunctions, input.filepath)
+	 */
+
+			const lexeme = node.info.fullLexeme
+			const lexemeSplit= lexeme?.split('\n')
+
 			allDefinitions.push({
-				location:  node.location.start,
-				callsites: retrieveAllCallsites(input, node),
-				returns:   returnTypes,
-				length:    {
-					lines:                   node.location.end.line - node.location.start.line,
-					characters:              node.location.end.column - node.location.start.column,
-					nonWhitespaceCharacters: node.info.fullLexeme?.replaceAll(/\s/, '').length ?? 0
+				location:           node.location.start,
+				callsites:          retrieveAllCallsites(input, node),
+				numberOfParameters: node.parameters.length,
+				returns:            returnTypes,
+				length:             {
+					lines:                   lexemeSplit?.length ?? -1,
+					characters:              lexeme?.length ?? -1,
+					nonWhitespaceCharacters: lexeme?.replaceAll(/\s/g, '').length ?? 0
 				}
 			})
 		}, node => {
@@ -137,7 +130,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 	)
 
 	info.total += allDefinitions.length
-	appendStatisticsFile(usedFunctions.name, 'all-definitions', allDefinitions.map(s => JSON.stringify(s)), input.filepath)
+	appendStatisticsFile(definedFunctions.name, 'all-definitions', allDefinitions.map(s => JSON.stringify(s)), input.filepath)
 }
 
 
@@ -147,36 +140,7 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 	description: 'All functions defined within the document',
 
 	process(existing: FunctionDefinitionInfo, input: FeatureProcessorInput): FunctionDefinitionInfo {
-		const allFunctions = queryAnyFunctionDefinition.select({ node: input.parsedRAst }).length
-		const allLambdas = queryAnyLambdaDefinition.select({ node: input.parsedRAst })
-
-		appendStatisticsFile(this.name, 'allLambdas', allLambdas, input.filepath)
-
-		existing.total += allFunctions + allLambdas.length
-		existing.lambdasOnly += allLambdas.length
-
-		const usedArgumentNames = queryUsedArgumentNames.select({ node: input.parsedRAst })
-		existing.usedArgumentNames += usedArgumentNames.length
-		appendStatisticsFile(this.name, 'usedArgumentNames', usedArgumentNames, input.filepath)
-
-		existing.functionsDirectlyCalled += defineFunctionsToBeCalled.select({ node: input.parsedRAst }).length
-		existing.nestedFunctions += nestedFunctionsQuery.select({ node: input.parsedRAst }).length
-
-		const assignedFunctions = queryAssignedFunctionDefinitions.select({ node: input.parsedRAst })
-		const assignedNames = assignedFunctions.map(extractNodeContent)
-		existing.assignedFunctions += assignedFunctions.length
-		appendStatisticsFile(this.name, 'assignedFunctions', assignedNames, input.filepath)
-
-		const recursiveFunctions = []
-		for(let i = 0; i < assignedFunctions.length; i++) {
-			const name = assignedNames[i]
-			if(testRecursive(assignedFunctions[i], name)) {
-				recursiveFunctions.push(name)
-			}
-		}
-		existing.recursive += recursiveFunctions.length
-		appendStatisticsFile(this.name, 'recursiveFunctions', recursiveFunctions, input.filepath)
-
+		visitDefinitions(existing, input)
 		return existing
 	},
 	initialValue: initialFunctionDefinitionInfo

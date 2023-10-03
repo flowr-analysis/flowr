@@ -33,7 +33,7 @@ function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 				case RType.FunctionCall:
 					if(node.flavor === 'named' && isImplicitLoop.test(node.functionName.lexeme)) {
 						info.implicitLoops++
-						appendStatisticsFile(loops.name, 'implicit-loop', [node.functionName.lexeme], input.filepath)
+						appendStatisticsFile(loops.name, 'implicit-loop', [node.functionName.info.fullLexeme ?? node.functionName.lexeme], input.filepath)
 					}
 					return
 				case RType.ForLoop:    info.forLoops++; break
@@ -44,7 +44,7 @@ function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 
 			if(loopStack.length > 0) {
 				info.nestedExplicitLoops++
-				appendStatisticsFile(loops.name, 'nested-loop', [node.lexeme], input.filepath)
+				appendStatisticsFile(loops.name, 'nested-loop', [node.info.fullLexeme ?? node.lexeme], input.filepath)
 				info.deepestExplicitNesting = Math.max(info.deepestExplicitNesting, loopStack.length)
 			}
 

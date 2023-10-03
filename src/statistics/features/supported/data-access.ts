@@ -52,10 +52,6 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 				}
 			}
 
-			if(accessNest.length === 0 && accessChain.length === 0) { // store topmost
-				appendStatisticsFile(dataAccess.name, 'data-access.txt', [node.lexeme], input.filepath)
-			}
-
 			// here we have to check after the addition as we can only check the parental context
 			if(acc) {
 				accessChain.push(node)
@@ -67,6 +63,11 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 				info.deepestNesting = Math.max(info.deepestNesting, accessNest.length)
 			}
 			parentRoleCache.set(node.info.id, { acc, idxAcc })
+
+
+			if(accessNest.length === 0 && accessChain.length === 0) { // store topmost, after add as it must not be a child to do that
+				appendStatisticsFile(dataAccess.name, 'dataAccess', [node.info.fullLexeme ?? node.lexeme], input.filepath)
+			}
 
 			const op = node.operator
 			switch(op) {

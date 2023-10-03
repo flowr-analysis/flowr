@@ -1,4 +1,9 @@
-import { DummyAppendProvider, StatisticAppendProvider, StatisticFileProvider } from './file-provider'
+import {
+	DummyAppendMemoryMap,
+	DummyAppendProvider,
+	StatisticAppendProvider,
+	StatisticFileProvider
+} from './file-provider'
 
 
 /**
@@ -21,14 +26,24 @@ export function extractNodeContent(node: Node): string {
 
 
 /** by default, we do not write to anything */
-let fileProvider: StatisticAppendProvider = new DummyAppendProvider()
+let fileProvider: StatisticAppendProvider
+initDummyFileProvider()
 
 /**
  * Make the statistics write to a given output directory.
  */
-export function initFileProvider(outputDirectory: string) {
+export function initFileProvider(outputDirectory: string): void {
 	console.log(`Initializing file provider for output directory ${outputDirectory}`)
 	fileProvider = new StatisticFileProvider(outputDirectory)
+}
+
+/**
+ * Either ignore the statistics or write them to a given map (e.g., for testing).
+ *
+ * @param map - The map to write to, will not persist calls if no map is given
+ */
+export function initDummyFileProvider(map?: DummyAppendMemoryMap): void {
+	fileProvider = new DummyAppendProvider(map)
 }
 
 /**
@@ -49,7 +64,7 @@ export interface StatisticsOutputFormat {
  * @param context - The context of the information retrieval (e.g. the name of the file that contained the R source code)
  * @param unique  - Should duplicate entries be removed on addition
  */
-export function appendStatisticsFile<T>(name: string, fn: keyof T, nodes: string[] | Node[], context: string | undefined, unique = false ) {
+export function appendStatisticsFile<T>(name: string, fn: keyof T, nodes: string[] | Node[], context: string | undefined, unique = false) {
 	if(nodes.length === 0) {
 		return
 	}

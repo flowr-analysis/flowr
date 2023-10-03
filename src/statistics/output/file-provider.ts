@@ -1,18 +1,46 @@
 import path from 'path'
 import fs from 'fs'
 import { guard } from '../../util/assert'
-import { log } from '../../util/log'
+import { log, LogLevel } from '../../util/log'
 
 type FileDescriptor = number
-type AppendFnType = string | number | symbol
+export type AppendFnType = string | number | symbol
 
 export interface StatisticAppendProvider {
 	append(name: string, fn: AppendFnType, content: string): void
 }
 
+export type DummyAppendMemoryMap = Map<string,Map<AppendFnType, string[]>>
+
 export class DummyAppendProvider implements StatisticAppendProvider {
-	append(_name: string, _fn: AppendFnType, _content: string): void {
-		log.trace(`DummyAppendProvider: ${_name} ${String(_fn)} ${_content}`)
+	private readonly map: DummyAppendMemoryMap | undefined
+
+	/**
+	 * If you pass a map the dummy will log all append calls to the map, using the feature name and the appendage type as keys
+	 *
+	 * @param map - The map to log to
+	 */
+	constructor(map: DummyAppendMemoryMap | undefined = undefined) {
+		this.map = map
+	}
+
+	append(name: string, fn: AppendFnType, content: string): void {
+		if(log.settings.minLevel >= LogLevel.Trace) {
+			log.trace(`DummyAppendProvider: ${name} ${String(fn)} ${content}`)
+		}
+		if(this.map) {
+			const fnMap = this.map.get(name)
+			if(fnMap) {
+				const contentList = fnMap.get(fn)
+				if(contentList) {
+					contentList.push(content)
+				} else {
+					fnMap.set(fn, [content])
+				}
+			} else {
+				this.map.set(name, new Map([[ fn, [content] ]]))
+			}
+		}
 	}
 }
 

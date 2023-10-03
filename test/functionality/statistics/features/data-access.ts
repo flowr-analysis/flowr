@@ -7,7 +7,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 		{
 			name:     'no data access',
 			code:     'a <- 1; 4 * x; foo(a) # a[3]',
-			expected: {}
+			expected: {},
+			written:  []
 		},
 		{
 			name:     'single bracket access, including empty',
@@ -16,7 +17,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 				singleBracket:         2,
 				singleBracketConstant: 1,
 				singleBracketEmpty:    1
-			}
+			},
+			written: []
 		},
 		{
 			name:     'double bracket access, including empty',
@@ -25,7 +27,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 				doubleBracket:         2,
 				doubleBracketConstant: 1,
 				doubleBracketEmpty:    1
-			}
+			},
+			written: []
 		},
 		{
 			name:     'using an expression',
@@ -33,7 +36,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 			expected: {
 				doubleBracket: 1,
 				singleBracket: 1
-			}
+			},
+			written: []
 		},
 		{
 			name:     'using only a single variable',
@@ -43,7 +47,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 				singleBracket:               1,
 				doubleBracketSingleVariable: 1,
 				singleBracketSingleVariable: 1
-			}
+			},
+			written: []
 		},
 		{
 			name:     'named and slotted access',
@@ -51,7 +56,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 			expected: {
 				byName: 2,
 				bySlot: 2
-			}
+			},
+			written: []
 		},
 		{
 			name:     'nested double bracket access',
@@ -61,7 +67,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 				doubleBracketConstant: 2,
 				chainedOrNestedAccess: 1,
 				longestChain:          1
-			}
+			},
+			written: []
 		},
 		{
 			name:     'comma access',
@@ -75,7 +82,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 				doubleBracketConstant: 	     2,
 				singleBracketSingleVariable: 1,
 				namedArguments:              1
-			}
+			},
+			written: []
 		},
 		{
 			name:     'deeply nested mixed access',
@@ -90,7 +98,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 				singleBracketSingleVariable: 1,
 				chainedOrNestedAccess:       4,
 				longestChain:                4
-			}
+			},
+			written: []
 		},
 		{
 			name:     'nested in the argument',
@@ -101,7 +110,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 				singleBracketConstant: 1,
 				chainedOrNestedAccess: 2,
 				deepestNesting:        2
-			}
+			},
+			written: []
 		},
 		{
 			name:     'nested in the argument and expressions',
@@ -112,7 +122,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 				singleBracketConstant: 1,
 				chainedOrNestedAccess: 2,
 				deepestNesting:        2
-			}
+			},
+			written: []
 		},
 		{
 			name:     'nested and chained',
@@ -125,7 +136,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 				deepestNesting:        2,
 				longestChain:          4,
 				byName:                4
-			}
+			},
+			written: []
 		},
 		{
 			name:     'nested named and slotted access',
@@ -135,7 +147,8 @@ describe('Used Ways to Access Data', withShell(shell => {
 				bySlot:                2,
 				chainedOrNestedAccess: 2,
 				longestChain:          1
-			}
+			},
+			written: []
 		}
 	])
 }))

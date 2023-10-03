@@ -7,7 +7,8 @@ describe('Loops', withShell(shell => {
 		{
 			name:     'no control loops',
 			code:     'a <- 1; 4 * x; foo(a) # while(FALSE) {} ',
-			expected: {}
+			expected: {},
+			written:  []
 		},
 		{
 			name:     'one while loop, with a break',
@@ -15,7 +16,8 @@ describe('Loops', withShell(shell => {
 			expected: {
 				whileLoops:      1,
 				breakStatements: 1
-			}
+			},
+			written: []
 		},
 		{
 			name:     'one for loop, with a next',
@@ -23,7 +25,8 @@ describe('Loops', withShell(shell => {
 			expected: {
 				forLoops:       1,
 				nextStatements: 1
-			}
+			},
+			written: []
 		},
 		{
 			name:     'one repeat loop, with multiple breaks, and nexts',
@@ -32,7 +35,8 @@ describe('Loops', withShell(shell => {
 				repeatLoops:     1,
 				breakStatements: 2,
 				nextStatements:  2
-			}
+			},
+			written: []
 		},
 		{
 			name:     'simply nested while loops',
@@ -41,7 +45,8 @@ describe('Loops', withShell(shell => {
 				whileLoops:             2,
 				nestedExplicitLoops:    1,
 				deepestExplicitNesting: 1
-			}
+			},
+			written: []
 		},
 		{
 			name: 'using implicit loops',
@@ -55,7 +60,8 @@ describe('Loops', withShell(shell => {
 			`,
 			expected: {
 				implicitLoops: 6
-			}
+			},
+			written: []
 		},
 		{
 			name: 'many nested loops',
@@ -77,7 +83,8 @@ describe('Loops', withShell(shell => {
 				repeatLoops:            3,
 				nestedExplicitLoops:    8,
 				deepestExplicitNesting: 3
-			}
+			},
+			written: []
 		},
 	])
 }))

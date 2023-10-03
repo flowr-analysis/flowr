@@ -7,14 +7,16 @@ describe('Used Function Calls', withShell(shell => {
 		{
 			name:     'no calls',
 			code:     'a <- 1',
-			expected: {}
+			expected: {},
+			written:  []
 		},
 		{
 			name:     'one call',
 			code:     'b()',
 			expected: {
 				allFunctionCalls: 1
-			}
+			},
+			written: []
 		},
 		{
 			name:     'calling a math function',
@@ -22,7 +24,8 @@ describe('Used Function Calls', withShell(shell => {
 			expected: {
 				allFunctionCalls: 1,
 				mathFunctions: 	  1
-			}
+			},
+			written: []
 		},
 		{
 			name: 'nested function calls',
@@ -37,7 +40,8 @@ describe('Used Function Calls', withShell(shell => {
 				nestedFunctionCalls: 5,
 				deepestNesting:      2,
 				primitiveFunctions:  1 /* c is correctly classified ^^ */
-			}
+			},
+			written: []
 		}
 	])
 }))

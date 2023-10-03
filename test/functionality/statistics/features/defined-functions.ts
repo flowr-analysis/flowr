@@ -33,6 +33,7 @@ describe('Used Function Definitions', withShell(shell => {
 				})}]]
 			]
 		},
+		// TODO: count lambda, recursive, nested, ...
 	])
 }))
 

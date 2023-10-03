@@ -2,22 +2,25 @@ import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { appendStatisticsFile, extractNodeContent } from '../../output'
 import { Writable } from 'ts-essentials'
-
-export type FunctionNameInfo = string
+import { SourcePosition } from '../../../util/range'
+import { MergeableRecord } from '../../../util/objects'
+import { ParentInformation, RFunctionDefinition, RNodeWithParent, RType, visitAst } from '../../../r-bridge'
+import { usedFunctions } from './used-functions'
+import { EdgeType } from '../../../dataflow'
+import { guard, isNotUndefined } from '../../../util/assert'
 
 const initialFunctionDefinitionInfo = {
 	/** all, anonymous, assigned, non-assigned, ... */
-	total:                   0,
+	total:             0,
 	/** how many are really using OP-Lambda? */
-	lambdasOnly:             0,
+	lambdasOnly:       0,
 	/** using `<<-`, `<-`, `=`, `->` `->>` */
-	assignedFunctions:       0,
-	usedArgumentNames:       0,
-	/** anonymous functions invoked directly */
-	functionsDirectlyCalled: 0,
-	nestedFunctions:         0,
+	assignedFunctions: 0,
+	usedArgumentNames: 0,
+	nestedFunctions:   0,
 	/** functions that in some easily detectable way call themselves */
-	recursive:               0
+	recursive:         0,
+	deepestNesting:    0
 }
 
 export type FunctionDefinitionInfo = Writable<typeof initialFunctionDefinitionInfo>
@@ -61,6 +64,82 @@ function testRecursive(node: Node, name: string): boolean {
 	return result.length > 0
 
 }
+
+
+interface FunctionDefinitionInformation extends MergeableRecord {
+	location:  SourcePosition,
+	/** locations of all direct call sites */
+	callsites: SourcePosition[],
+	// for each return site, classifies if it is implicit or explicit (i.e., with return)
+	returns:   { explicit: boolean, location: SourcePosition }[],
+	length:   {
+		lines:                   number,
+		characters:              number,
+		nonWhitespaceCharacters: number
+	}
+}
+
+
+function retrieveAllCallsites(input: FeatureProcessorInput, node: RFunctionDefinition<ParentInformation>) {
+	const dfStart = input.dataflow.graph.outgoingEdges(node.info.id)
+	const callsites = []
+	for(const [target, edge] of dfStart ?? []) {
+		if(!edge.types.has(EdgeType.Calls)) {
+			continue
+		}
+		const loc = input.normalizedRAst.idMap.get(target)?.location?.start
+		if(loc) {
+			callsites.push(loc)
+		}
+	}
+	return callsites
+}
+
+function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorInput): void {
+	const definitionStack: RNodeWithParent[] = []
+	const allDefinitions: FunctionDefinitionInformation[] = []
+
+	visitAst(input.normalizedRAst.ast,
+		node => {
+			if(node.type !== RType.FunctionDefinition) {
+				return
+			}
+
+			const graph = input.dataflow.graph
+			const dfNode = graph.get(node.info.id, true)
+			guard(dfNode !== undefined, 'No dataflow node for a function definition')
+			const [fnDefinition] = dfNode
+			guard(fnDefinition.tag === 'function-definition', 'Dataflow node is not a function definition')
+
+			const returnTypes = fnDefinition.exitPoints.map(ep => graph.get(ep, true)).filter(isNotUndefined)
+				.map(([vertex]) => ({
+					explicit: vertex.tag === 'exit-point',
+					location: input.normalizedRAst.idMap.get(vertex.id)?.location?.start ?? { line: -1, column: -1 }
+				}))
+
+			definitionStack.push(node)
+			allDefinitions.push({
+				location:  node.location.start,
+				callsites: retrieveAllCallsites(input, node),
+				returns:   returnTypes,
+				length:    {
+					lines:                   node.location.end.line - node.location.start.line,
+					characters:              node.location.end.column - node.location.start.column,
+					nonWhitespaceCharacters: node.info.fullLexeme?.replaceAll(/\s/, '').length ?? 0
+				}
+			})
+		}, node => {
+			// drop again :D
+			if(node.type === RType.FunctionDefinition) {
+				definitionStack.pop()
+			}
+		}
+	)
+
+	info.total += allDefinitions.length
+	appendStatisticsFile(usedFunctions.name, 'all-definitions', allDefinitions.map(s => JSON.stringify(s)), input.filepath)
+}
+
 
 
 export const definedFunctions: Feature<FunctionDefinitionInfo> = {

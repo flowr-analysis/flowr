@@ -1,7 +1,7 @@
 import {
 	foldAst,
 	FoldFunctions,
-	NodeId, NormalizedAst, ParentInformation, RNodeWithParent, RRepeatLoop, RWhileLoop
+	NodeId, NormalizedAst, ParentInformation, RForLoop, RNodeWithParent, RRepeatLoop, RWhileLoop
 } from '../r-bridge'
 import { MergeableRecord } from './objects'
 
@@ -70,7 +70,9 @@ export interface ControlFlowInformation extends MergeableRecord {
 	returns:     NodeId[],
 	breaks:      NodeId[],
 	nexts:       NodeId[],
+	/** intended to construct a hammock graph, with 0 exit points representing a block that should not be part of the CFG (like a comment) */
 	entryPoints: NodeId[],
+	/** See {@link ControlFlowInformation#entryPoints|entryPoints} */
 	exitPoints:  NodeId[],
 	graph:       CFG
 }
@@ -100,7 +102,7 @@ const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
 		foldLineDirective: cfgIgnore
 	},
 	loop: {
-		foldFor:    cfgLeaf /* TODO */,
+		foldFor:    cfgFor,
 		foldRepeat: cfgRepeat,
 		foldWhile:  cfgWhile,
 		foldBreak:  cfgBreak,
@@ -238,6 +240,48 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFl
 	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [whileLoop.info.id + '-exit'], entryPoints: [whileLoop.info.id] }
 }
 
+function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInformation, vector: ControlFlowInformation, body: ControlFlowInformation): ControlFlowInformation {
+	const graph = variable.graph
+	graph.addNode({ id: forLoop.info.id, name: forLoop.type, content: getLexeme(forLoop) })
+	graph.addNode({ id: forLoop.info.id + '-exit', name: 'for-exit', content: undefined })
+
+	graph.merge(vector.graph)
+	graph.merge(body.graph)
+
+	for(const entry of vector.entryPoints) {
+		graph.addEdge(entry, forLoop.info.id, { label: 'FD' })
+	}
+
+	for(const exit of vector.exitPoints) {
+		for(const entry of variable.entryPoints) {
+			graph.addEdge(entry, exit, { label: 'FD' })
+		}
+	}
+
+	for(const exit of variable.exitPoints) {
+		for(const entry of body.entryPoints) {
+			graph.addEdge(entry, exit, { label: 'CD' })
+		}
+	}
+
+	for(const entryPoint of body.entryPoints) {
+		graph.addEdge(forLoop.info.id, entryPoint, { label: 'FD' })
+	}
+
+	for(const next of [...body.nexts, ...body.exitPoints]) {
+		graph.addEdge(forLoop.info.id, next, { label: 'FD' })
+	}
+
+	for(const breakPoint of body.breaks) {
+		graph.addEdge(forLoop.info.id + '-exit', breakPoint, { label: 'FD' })
+	}
+	// while can break on the condition as well
+	for(const exit of variable.exitPoints) {
+		graph.addEdge(forLoop.info.id + '-exit', exit, { label: 'CD' })
+	}
+
+	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [forLoop.info.id + '-exit'], entryPoints: [forLoop.info.id] }
+}
 
 
 function cfgExprList(_node: RNodeWithParent, expressions: ControlFlowInformation[]): ControlFlowInformation {

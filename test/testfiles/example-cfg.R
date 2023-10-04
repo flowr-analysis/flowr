@@ -28,3 +28,10 @@ while(sum > 0) {
 }
 
 print(sum)
+
+for(i in 1:10) {
+  print(i)
+  if(i == 5) {
+    next
+  }
+}

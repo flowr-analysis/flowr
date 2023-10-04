@@ -1,20 +1,18 @@
-import { Feature, FeatureInfo, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { append } from '../../output'
+import { appendStatisticsFile } from '../../output'
+import { Writable } from 'ts-essentials'
 
-export interface AssignmentInfo extends FeatureInfo {
-	assignmentOperator:               number
-	nestedOperatorAssignment:         number
-	directlyNestedOperatorAssignment: number
-	specialAssignmentOps:             number
-}
 
-const initialAssignmentInfo = (): AssignmentInfo => ({
+const initialAssignmentInfo = {
 	assignmentOperator:               0,
 	specialAssignmentOps:             0,
 	nestedOperatorAssignment:         0,
 	directlyNestedOperatorAssignment: 0
-})
+}
+
+export type AssignmentInfo = Writable<typeof initialAssignmentInfo>
+
 
 const defaultOperatorAssignmentQuery: Query = xpath.parse(`//EQ_ASSIGN|//LEFT_ASSIGN|//RIGHT_ASSIGN`)
 // either <-/<<-/=, with a nested rhs, or ->/->> with a nested lhs
@@ -66,19 +64,19 @@ export const assignments: Feature<AssignmentInfo> = {
 	name:        'Assignments',
 	description: 'all ways to assign something in R',
 
-	process(existing: AssignmentInfo, input: Document, filepath: string | undefined): AssignmentInfo {
-		const assignmentOperators = defaultOperatorAssignmentQuery.select({ node: input })
-		const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input })
-		const directlyNestedOperators = directlyNestedOperatorAssignmentQuery.select({ node: input })
-		const specialAssignmentOps = bracketAssignQuery.select({ node: input }).map(enrichOpForBracketAssign)
+	process(existing: AssignmentInfo, input: FeatureProcessorInput): AssignmentInfo {
+		const assignmentOperators = defaultOperatorAssignmentQuery.select({ node: input.parsedRAst })
+		const nestedOperators = nestedOperatorAssignmentQuery.select({ node: input.parsedRAst })
+		const directlyNestedOperators = directlyNestedOperatorAssignmentQuery.select({ node: input.parsedRAst })
+		const specialAssignmentOps = bracketAssignQuery.select({ node: input.parsedRAst }).map(enrichOpForBracketAssign)
 
 		existing.nestedOperatorAssignment += nestedOperators.length
 		existing.directlyNestedOperatorAssignment += directlyNestedOperators.length
 		existing.assignmentOperator += assignmentOperators.length
 		existing.specialAssignmentOps += specialAssignmentOps.length
 
-		append(this.name, 'assignmentOperator', assignmentOperators, filepath)
-		append(this.name, 'specialAssignmentOps', specialAssignmentOps, filepath)
+		appendStatisticsFile(this.name, 'assignmentOperator', assignmentOperators, input.filepath)
+		appendStatisticsFile(this.name, 'specialAssignmentOps', specialAssignmentOps, input.filepath)
 
 		return existing
 	},

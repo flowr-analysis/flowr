@@ -384,6 +384,7 @@ class RShellSession {
 		}).finally(() => {
 			this.removeListener(from, 'line', handler)
 			this.bareSession.removeListener('exit', error)
+			this.bareSession.stdin.removeListener('error', error)
 		})
 	}
 

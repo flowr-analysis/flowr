@@ -107,7 +107,7 @@ async function getStats() {
 		processedFeatures,
 		allRFilesFrom(options.input, options.limit)
 	)
-	console.warn(`skipped ${stats.meta.skipped.length} requests due to errors (run with logs to get more info)`)
+	console.warn(`skipped ${stats.meta.failedRequests.length} requests due to errors (run with logs to get more info)`)
 
 	printFeatureStatistics(stats, processedFeatures)
 	shell.close()

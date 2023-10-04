@@ -24,6 +24,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  deployments: write
+  contents:    write
+
 jobs:
   debug:
     name: "Debug"
@@ -53,14 +57,38 @@ jobs:
       action: test-full
       coverage: true
 
+
+  performance-test:
+    needs: [ test ]
+    name: "Performance Test"
+    # we do not run if the release workflow runs it with pushing
+    if: ${{
+              always()
+          && !failure()
+          && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+          && !(
+                startsWith(github.event.head_commit.message, '[release:minor]') ||
+                startsWith(github.event.head_commit.message, '[release:major]') ||
+                startsWith(github.event.head_commit.message, '[release:patch]')
+              )
+      }}
+    uses: Code-Inspect/flowr/.github/workflows/performance-test.yaml@main
+    with:
+      push: false
+    secrets: inherit
+
   full-test:
     needs: [ lint ]
-    name: "Run Full Test Suite (only on PR to main)"
-    if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')) }}
+    name: "Full Test Suite"
+    if: ${{
+              always()
+          && !failure()
+          && (inputs.force-full || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'))
+      }}
     uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
 
   deploy-doc:
-    needs: [ test, full-test ]
-    name: "Deploy Documentation (only on main)"
+    needs: [ test, full-test, performance-test ]
+    name: "Deploy Doc. (only on main)"
     if: ${{ always() && !failure() && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main')) }}
     uses: Code-Inspect/flowr/.github/workflows/deploy-doc.yaml@main

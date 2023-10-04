@@ -1,24 +1,12 @@
-import { Feature, FeatureInfo, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
-import { append } from '../../output'
+import { appendStatisticsFile } from '../../output'
+import { Writable } from 'ts-essentials'
 
 export type SinglePackageInfo = string
 
-export interface UsedPackageInfo extends FeatureInfo {
-	library:              number
-	require:              number
-	loadNamespace:        number
-	requireNamespace:     number
-	attachNamespace:      number
-	withinApply:          number
-	'::':                 number
-	':::':                number
-	/** just contains all occurrences where it is impossible to statically determine which package is loaded */
-	'<loadedByVariable>': number
-}
-
-const initialUsedPackageInfos = (): UsedPackageInfo => ({
+const initialUsedPackageInfos = {
 	library:              0,
 	require:              0,
 	loadNamespace:        0,
@@ -27,9 +15,11 @@ const initialUsedPackageInfos = (): UsedPackageInfo => ({
 	withinApply:          0,
 	'::':                 0,
 	':::':                0,
+	/** just contains all occurrences where it is impossible to statically determine which package is loaded */
 	'<loadedByVariable>': 0
-})
+}
 
+export type UsedPackageInfo = Writable<typeof initialUsedPackageInfos>
 
 // based on the extraction routine of lintr search for function calls which are not character-loads (we can not trace those...)
 const withinApply: Query = xpath.parse(`
@@ -103,27 +93,27 @@ export const usedPackages: Feature<UsedPackageInfo> = {
 	name:        'Used Packages',
 	description: 'All the packages used in the code',
 
-	process(existing: UsedPackageInfo, input: Document, filepath: string | undefined): UsedPackageInfo {
+	process(existing: UsedPackageInfo, input: FeatureProcessorInput): UsedPackageInfo {
 		// we will unify in the end, so we can count, group etc. but we do not re-count multiple packages in the same file
 		for(const q of queries) {
 			for(const fn of q.types) {
-				const nodes = q.query.select({ node: input, variables: { variable: fn } })
+				const nodes = q.query.select({ node: input.parsedRAst, variables: { variable: fn } })
 				existing[fn] += nodes.length
-				append(this.name, fn, nodes, filepath, true)
+				appendStatisticsFile(this.name, fn, nodes, input.filepath, true)
 			}
 		}
 
 		const nodesForVariableLoad = [
-			...packageLoadedWithVariableLoadRequire.select({ node: input }),
-			...packageLoadedWithVariableNamespaces.select({ node: input })
+			...packageLoadedWithVariableLoadRequire.select({ node: input.parsedRAst }),
+			...packageLoadedWithVariableNamespaces.select({ node: input.parsedRAst })
 		]
 		existing['<loadedByVariable>'] += nodesForVariableLoad.length
 		// should not be unique as variables may be repeated, and we have no idea
-		append(this.name, '<loadedByVariable>', nodesForVariableLoad, filepath)
+		appendStatisticsFile(this.name, '<loadedByVariable>', nodesForVariableLoad, input.filepath)
 
-		const withinApplyNodes = withinApply.select({ node: input })
+		const withinApplyNodes = withinApply.select({ node: input.parsedRAst })
 		existing.withinApply += withinApplyNodes.length
-		append(this.name, 'withinApply', withinApplyNodes, filepath)
+		appendStatisticsFile(this.name, 'withinApply', withinApplyNodes, input.filepath)
 
 		return existing
 	},

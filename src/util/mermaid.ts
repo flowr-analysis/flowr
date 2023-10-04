@@ -257,9 +257,9 @@ export function cfgToMermaid(cfg: ControlFlowInformation, prefix = ''): string {
 	let output = prefix + 'flowchart TD\n'
 	// TODO: subgraphs for function definitions?
 	for(const [id, vertex] of cfg.graph.vertices()) {
-		const name = `"\`${vertex.name} (${id})\n${JSON.stringify(vertex.content).replaceAll('\"','\'')}\`"` // TODO: fix, it is horribe
+		const name = `"\`${vertex.name} (${id})\n${JSON.stringify(vertex.content ?? '').replaceAll('\"','\'')}\`"` // TODO: fix, it is horribe
 		output += `    n${id}[${name}]\n`
-/* 		for(const child of vertex.children) {
+		/* 		for(const child of vertex.children) {
 			output += `    n${id} ---|"child"| n${child}\n`
 		} */
 	}

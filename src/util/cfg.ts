@@ -186,6 +186,24 @@ function cfgRepeat(repeat: RRepeatLoop<ParentInformation>, body: ControlFlowInfo
 	return { graph: graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [...body.breaks], entryPoints: [repeat.info.id] }
 }
 
+function cfgWhile(whileLoop: RRepeatLoop<ParentInformation>, condition: ControlFlowInformation, body: ControlFlowInformation): ControlFlowInformation {
+	const graph = body.graph
+	graph.addNode({ id: whileLoop.info.id, name: whileLoop.type, content: getLexeme(whileLoop), children: [] })
+
+	for(const entryPoint of body.graph.entryPoints) {
+		graph.addEdge(whileLoop.info.id, entryPoint, { label: 'FD' })
+	}
+
+	// TODO: include condition
+
+	for(const next of [...body.nexts, ...body.graph.exitPoints]) {
+		graph.addEdge(whileLoop.info.id, next, { label: 'FD' })
+	}
+
+	return { graph: graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [...body.breaks, whileLoop.info.id], entryPoints: [whileLoop.info.id] }
+}
+
+
 
 function cfgExprList(_node: RNodeWithParent, expressions: ControlFlowInformation[]) {
 	const result: ControlFlowInformation = { graph: new CFG(), breaks: [], nexts: [], returns: [], entryPoints: [], exitPoints: [] }

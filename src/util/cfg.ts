@@ -1,7 +1,7 @@
 import {
 	foldAst,
 	FoldFunctions,
-	NodeId, NormalizedAst, ParentInformation, RNodeWithParent, RRepeatLoop
+	NodeId, NormalizedAst, ParentInformation, RNodeWithParent, RRepeatLoop, RWhileLoop
 } from '../r-bridge'
 import { MergeableRecord } from './objects'
 
@@ -102,7 +102,7 @@ const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
 	loop: {
 		foldFor:    cfgLeaf /* TODO */,
 		foldRepeat: cfgRepeat,
-		foldWhile:  cfgLeaf /* TODO */,
+		foldWhile:  cfgWhile,
 		foldBreak:  cfgBreak,
 		foldNext:   cfgNext
 	},
@@ -122,7 +122,7 @@ export function extractCFG<Info=ParentInformation>(ast: NormalizedAst<Info>): Co
 
 
 function getLexeme(n: RNodeWithParent) {
-	return n.info.fullLexeme ?? n.lexeme ?? ''
+	return n.info.fullLexeme ?? n.lexeme ?? '<unknown>'
 }
 
 function cfgLeaf(leaf: RNodeWithParent): ControlFlowInformation {
@@ -165,6 +165,11 @@ function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformatio
 	for(const exit of [...then.exitPoints, ...otherwise?.exitPoints ?? []]) {
 		graph.addEdge(ifNode.info.id + '-exit', exit, { label: 'FD' })
 	}
+	if(!otherwise) {
+		for(const exitPoint of condition.exitPoints) {
+			graph.addEdge(ifNode.info.id + '-exit', exitPoint, { label: 'CD' })
+		}
+	}
 
 	return {
 		graph,
@@ -197,21 +202,40 @@ function cfgRepeat(repeat: RRepeatLoop<ParentInformation>, body: ControlFlowInfo
 	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [repeat.info.id + '-exit'], entryPoints: [repeat.info.id] }
 }
 
-function cfgWhile(whileLoop: RRepeatLoop<ParentInformation>, condition: ControlFlowInformation, body: ControlFlowInformation): ControlFlowInformation {
-	const graph = body.graph
+function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFlowInformation, body: ControlFlowInformation): ControlFlowInformation {
+	const graph = condition.graph
 	graph.addNode({ id: whileLoop.info.id, name: whileLoop.type, content: getLexeme(whileLoop) })
+	graph.addNode({ id: whileLoop.info.id + '-exit', name: 'while-exit', content: undefined })
+
+	graph.merge(body.graph)
+
+	for(const entry of condition.entryPoints) {
+		graph.addEdge(entry, whileLoop.info.id, { label: 'FD' })
+	}
+
+	for(const exit of condition.exitPoints) {
+		for(const entry of body.entryPoints) {
+			graph.addEdge(entry, exit, { label: 'CD' })
+		}
+	}
 
 	for(const entryPoint of body.entryPoints) {
 		graph.addEdge(whileLoop.info.id, entryPoint, { label: 'FD' })
 	}
 
-	// TODO: include condition
-
 	for(const next of [...body.nexts, ...body.exitPoints]) {
 		graph.addEdge(whileLoop.info.id, next, { label: 'FD' })
 	}
 
-	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [...body.breaks, whileLoop.info.id], entryPoints: [whileLoop.info.id] }
+	for(const breakPoint of body.breaks) {
+		graph.addEdge(whileLoop.info.id + '-exit', breakPoint, { label: 'FD' })
+	}
+	// while can break on the condition as well
+	for(const exit of condition.exitPoints) {
+		graph.addEdge(whileLoop.info.id + '-exit', exit, { label: 'CD' })
+	}
+
+	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [whileLoop.info.id + '-exit'], entryPoints: [whileLoop.info.id] }
 }
 
 
@@ -220,7 +244,6 @@ function cfgExprList(_node: RNodeWithParent, expressions: ControlFlowInformation
 	const result: ControlFlowInformation = { graph: new CFG(), breaks: [], nexts: [], returns: [], exitPoints: [], entryPoints: [] }
 	let first = true
 	for(const expression of expressions) {
-		// TODO: deal with loops?
 		if(first) {
 			result.entryPoints = expression.entryPoints
 			first = false

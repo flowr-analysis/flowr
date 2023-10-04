@@ -14,7 +14,6 @@ import {
 import { guard } from './assert'
 import { jsonReplacer } from './json'
 import { DataflowScopeName } from '../dataflow/environments'
-import { ControlflowInfo } from '../statistics/features/supported'
 import { ControlFlowInformation } from './cfg'
 
 

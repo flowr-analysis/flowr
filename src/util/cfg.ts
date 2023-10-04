@@ -1,7 +1,14 @@
 import {
 	foldAst,
 	FoldFunctions,
-	NodeId, NormalizedAst, ParentInformation, RForLoop, RFunctionDefinition, RNodeWithParent, RRepeatLoop, RWhileLoop
+	NodeId,
+	NormalizedAst,
+	ParentInformation,
+	RForLoop,
+	RFunctionDefinition,
+	RNodeWithParent,
+	RRepeatLoop,
+	RWhileLoop
 } from '../r-bridge'
 import { MergeableRecord } from './objects'
 
@@ -54,7 +61,7 @@ class CFG {
 		return this.edgeInformation
 	}
 
-	merge(other: CFG, forceNested = false): void {
+	merge(other: CFG, forceNested = false): this {
 		for(const [id, node] of other.vertexInformation) {
 			this.addNode(node, forceNested ? false : other.rootVertices.has(id))
 		}
@@ -63,6 +70,7 @@ class CFG {
 				this.addEdge(from, to, edge)
 			}
 		}
+		return this
 	}
 }
 
@@ -85,17 +93,17 @@ const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
 	foldSymbol:  cfgLeaf,
 	foldAccess:  cfgLeaf /* TODO */,
 	binaryOp:    {
-		foldLogicalOp:    cfgLeaf /* TODO */,
-		foldArithmeticOp: cfgLeaf /* TODO */,
-		foldComparisonOp: cfgLeaf /* TODO */,
-		foldAssignment:   cfgLeaf /* TODO */,
-		foldPipe:         cfgLeaf /* TODO */,
-		foldModelFormula: cfgLeaf /* TODO */
+		foldLogicalOp:    cfgBinaryOp,
+		foldArithmeticOp: cfgBinaryOp,
+		foldComparisonOp: cfgBinaryOp,
+		foldAssignment:   cfgBinaryOp,
+		foldPipe:         cfgBinaryOp,
+		foldModelFormula: cfgBinaryOp
 	},
 	unaryOp: {
-		foldArithmeticOp: cfgLeaf /* TODO */,
-		foldLogicalOp:    cfgLeaf /* TODO */,
-		foldModelFormula: cfgLeaf /* TODO */
+		foldArithmeticOp: cfgUnaryOp,
+		foldLogicalOp:    cfgUnaryOp,
+		foldModelFormula: cfgUnaryOp
 	},
 	other: {
 		foldComment:       cfgIgnore,
@@ -285,14 +293,18 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInfor
 
 function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, params: ControlFlowInformation[], body: ControlFlowInformation): ControlFlowInformation {
 	const graph = new CFG()
-	graph.addNode({ id: fn.info.id, name: fn.type, content: getLexeme(fn) })
+	const children: NodeId[] = [fn.info.id + '-params', fn.info.id + '-exit']
 	graph.addNode({ id: fn.info.id + '-params', name: 'function-parameters', content: undefined }, false)
 	graph.addNode({ id: fn.info.id + '-exit', name: 'function-exit', content: undefined }, false)
+	graph.addNode({ id: fn.info.id, name: fn.type, content: getLexeme(fn), children })
 
 	graph.merge(body.graph, true)
+	children.push(...body.graph.rootVertexIds())
+
 	// TODO: deal with their entry and exit points?
 	for(const param of params) {
 		graph.merge(param.graph, true)
+		children.push(...param.graph.rootVertexIds())
 		for(const entry of param.entryPoints) {
 			graph.addEdge(entry, fn.info.id, { label: 'FD' })
 		}
@@ -311,6 +323,34 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 
 	return { graph: graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [fn.info.id], entryPoints: [fn.info.id] }
 }
+
+function cfgBinaryOp(binOp: RNodeWithParent, lhs: ControlFlowInformation, rhs: ControlFlowInformation): ControlFlowInformation {
+	const graph = new CFG().merge(lhs.graph).merge(rhs.graph)
+	const result: ControlFlowInformation = { graph, breaks: [...lhs.breaks, ...rhs.breaks], nexts: [...lhs.nexts, ...rhs.nexts], returns: [...lhs.returns, ...rhs.returns], exitPoints: [binOp.info.id], entryPoints: [...rhs.entryPoints] }
+
+	graph.addNode({ id: binOp.info.id, name: binOp.type, content: getLexeme(binOp) })
+
+	for(const exitPoint of lhs.exitPoints) {
+		for(const entryPoint of rhs.entryPoints) {
+			result.graph.addEdge(entryPoint, exitPoint, { label: 'FD' })
+		}
+	}
+	for(const entryPoint of lhs.entryPoints) {
+		graph.addEdge(binOp.info.id, entryPoint, { label: 'FD' })
+	}
+
+	return result
+}
+
+function cfgUnaryOp(unary: RNodeWithParent, operand: ControlFlowInformation): ControlFlowInformation {
+	const graph = operand.graph
+	const result: ControlFlowInformation = { ...operand, graph, exitPoints: [unary.info.id] }
+
+	graph.addNode({ id: unary.info.id, name: unary.type, content: getLexeme(unary) })
+
+	return result
+}
+
 
 function cfgExprList(_node: RNodeWithParent, expressions: ControlFlowInformation[]): ControlFlowInformation {
 	const result: ControlFlowInformation = { graph: new CFG(), breaks: [], nexts: [], returns: [], exitPoints: [], entryPoints: [] }

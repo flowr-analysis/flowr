@@ -11,7 +11,7 @@ describe("Control Flow Graph", withShell(shell => {
 		const ast = await new SteppingSlicer({
 			stepOfInterest: 'normalize',
 			shell,
-			request:        requestFromInput('file://test/testfiles/example.R'),
+			request:        requestFromInput('file://test/testfiles/example-cfg.R'),
 			tokenMap:       await defaultTokenMap()
 		}).allRemainingSteps()
 

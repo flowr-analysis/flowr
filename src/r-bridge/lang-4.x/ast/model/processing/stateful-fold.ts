@@ -81,7 +81,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 	foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down ) => Up;
 	foldExprList:   (exprList: RExpressionList<Info>, expressions: Up[], down: Down) => Up;
 	functions: {
-		foldFunctionDefinition: (definition: RFunctionDefinition<Info>, args: Up[], body: Up, down: Down) => Up;
+		foldFunctionDefinition: (definition: RFunctionDefinition<Info>, params: Up[], body: Up, down: Down) => Up;
 		/** folds named and unnamed function calls */
 		foldFunctionCall:       (call: RFunctionCall<Info>, functionNameOrExpression: Up, args: (Up | undefined)[], down: Down) => Up;
 		/** The `name` is `undefined` if the argument is unnamed */

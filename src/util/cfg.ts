@@ -1,7 +1,7 @@
 import {
 	foldAst,
 	FoldFunctions,
-	NodeId, NormalizedAst, ParentInformation, RForLoop, RNodeWithParent, RRepeatLoop, RWhileLoop
+	NodeId, NormalizedAst, ParentInformation, RForLoop, RFunctionDefinition, RNodeWithParent, RRepeatLoop, RWhileLoop
 } from '../r-bridge'
 import { MergeableRecord } from './objects'
 
@@ -54,9 +54,9 @@ class CFG {
 		return this.edgeInformation
 	}
 
-	merge(other: CFG): void {
+	merge(other: CFG, forceNested = false): void {
 		for(const [id, node] of other.vertexInformation) {
-			this.addNode(node, other.rootVertices.has(id))
+			this.addNode(node, forceNested ? false : other.rootVertices.has(id))
 		}
 		for(const [from, edges] of other.edgeInformation) {
 			for(const [to, edge] of edges) {
@@ -111,10 +111,10 @@ const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
 	foldIfThenElse: cfgIfThenElse,
 	foldExprList:   cfgExprList,
 	functions:      {
-		foldFunctionDefinition: cfgLeaf /* TODO */,
-		foldFunctionCall:       cfgLeaf /* TODO; CFG: jump links for return */,
-		foldParameter:          cfgLeaf /* TODO */,
-		foldArgument:           cfgLeaf /* TODO */
+		foldFunctionDefinition: cfgFunctionDefinition,
+		foldFunctionCall:       cfgLeaf,
+		foldParameter:          cfgLeaf,
+		foldArgument:           cfgLeaf
 	}
 }
 
@@ -283,6 +283,34 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInfor
 	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [forLoop.info.id + '-exit'], entryPoints: [forLoop.info.id] }
 }
 
+function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, params: ControlFlowInformation[], body: ControlFlowInformation): ControlFlowInformation {
+	const graph = new CFG()
+	graph.addNode({ id: fn.info.id, name: fn.type, content: getLexeme(fn) })
+	graph.addNode({ id: fn.info.id + '-params', name: 'function-parameters', content: undefined }, false)
+	graph.addNode({ id: fn.info.id + '-exit', name: 'function-exit', content: undefined }, false)
+
+	graph.merge(body.graph, true)
+	// TODO: deal with their entry and exit points?
+	for(const param of params) {
+		graph.merge(param.graph, true)
+		for(const entry of param.entryPoints) {
+			graph.addEdge(entry, fn.info.id, { label: 'FD' })
+		}
+		for(const exit of param.exitPoints) {
+			graph.addEdge(fn.info.id + '-params', exit, { label: 'FD' })
+		}
+	}
+	for(const entry of body.entryPoints) {
+		graph.addEdge(entry, fn.info.id + '-params',  { label: 'FD' })
+	}
+
+	// breaks and nexts should be illegal but safe is safe i guess
+	for(const next of [...body.returns,...body.breaks,...body.nexts, ...body.exitPoints]) {
+		graph.addEdge(fn.info.id + '-exit', next, { label: 'FD' })
+	}
+
+	return { graph: graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [fn.info.id], entryPoints: [fn.info.id] }
+}
 
 function cfgExprList(_node: RNodeWithParent, expressions: ControlFlowInformation[]): ControlFlowInformation {
 	const result: ControlFlowInformation = { graph: new CFG(), breaks: [], nexts: [], returns: [], exitPoints: [], entryPoints: [] }

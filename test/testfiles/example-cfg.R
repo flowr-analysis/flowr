@@ -9,16 +9,18 @@ if(sum > 25) {
 
 print(sum)
 
-repeat {
-  sum <- sum + 1
-  if(sum > 25) {
-    next
-  }
-  print(sum)
-  if(sum == 0) {
-    break
-  }
-  print(3)
+xx <- function(sum) {
+    repeat {
+      sum <- sum + 1
+      if(sum > 25) {
+        next
+      }
+      print(sum)
+      if(sum == 0) {
+        break
+      }
+      print(3)
+    }
 }
 
 

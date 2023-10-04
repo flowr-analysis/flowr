@@ -23,9 +23,6 @@ class CFG {
 	private rootVertices:      Set<NodeId> = new Set<NodeId>()
 	private vertexInformation: Map<NodeId, CFGVertex> = new Map<NodeId, CFGVertex>()
 	private edgeInformation:   Map<NodeId, Map<NodeId, CFGEdge>> = new Map<NodeId, Map<NodeId, CFGEdge>>()
-	// modifiable for the ease of use atm
-	public exitPoints:         NodeId[] = []
-	public entryPoints:        NodeId[] = []
 
 	addNode(node: CFGVertex, rootVertex = true): void {
 		if(this.vertexInformation.has(node.id)) {
@@ -70,10 +67,12 @@ class CFG {
 }
 
 export interface ControlFlowInformation extends MergeableRecord {
-	returns: NodeId[],
-	breaks:  NodeId[],
-	nexts:   NodeId[]
-	graph:   CFG
+	returns:     NodeId[],
+	breaks:      NodeId[],
+	nexts:       NodeId[],
+	entryPoints: NodeId[],
+	exitPoints:  NodeId[],
+	graph:       CFG
 }
 
 
@@ -154,16 +153,16 @@ function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformatio
 		graph.merge(otherwise.graph)
 	}
 
-	for(const exitPoint of condition.graph.exitPoints) {
-		for(const entryPoint of [...then.graph.entryPoints, ...otherwise?.graph.entryPoints ?? []]) {
+	for(const exitPoint of condition.exitPoints) {
+		for(const entryPoint of [...then.entryPoints, ...otherwise?.entryPoints ?? []]) {
 			graph.addEdge(entryPoint, exitPoint, { label: 'CD' })
 		}
 	}
-	for(const entryPoint of condition.graph.entryPoints) {
+	for(const entryPoint of condition.entryPoints) {
 		graph.addEdge(entryPoint, ifNode.info.id, { label: 'FD' })
 	}
 
-	for(const exit of [...then.graph.exitPoints, ...otherwise?.graph.exitPoints ?? []]) {
+	for(const exit of [...then.exitPoints, ...otherwise?.exitPoints ?? []]) {
 		graph.addEdge(ifNode.info.id + '-exit', exit, { label: 'FD' })
 	}
 
@@ -182,12 +181,12 @@ function cfgRepeat(repeat: RRepeatLoop<ParentInformation>, body: ControlFlowInfo
 	graph.addNode({ id: repeat.info.id, name: repeat.type, content: getLexeme(repeat) })
 	graph.addNode({ id: repeat.info.id + '-exit', name: 'repeat-exit', content: undefined })
 
-	for(const entryPoint of body.graph.entryPoints) {
+	for(const entryPoint of body.entryPoints) {
 		graph.addEdge(repeat.info.id, entryPoint, { label: 'FD' })
 	}
 
 	// loops automatically
-	for(const next of [...body.nexts, ...body.graph.exitPoints]) {
+	for(const next of [...body.nexts, ...body.exitPoints]) {
 		graph.addEdge(repeat.info.id, next, { label: 'FD' })
 	}
 
@@ -202,13 +201,13 @@ function cfgWhile(whileLoop: RRepeatLoop<ParentInformation>, condition: ControlF
 	const graph = body.graph
 	graph.addNode({ id: whileLoop.info.id, name: whileLoop.type, content: getLexeme(whileLoop) })
 
-	for(const entryPoint of body.graph.entryPoints) {
+	for(const entryPoint of body.entryPoints) {
 		graph.addEdge(whileLoop.info.id, entryPoint, { label: 'FD' })
 	}
 
 	// TODO: include condition
 
-	for(const next of [...body.nexts, ...body.graph.exitPoints]) {
+	for(const next of [...body.nexts, ...body.exitPoints]) {
 		graph.addEdge(whileLoop.info.id, next, { label: 'FD' })
 	}
 
@@ -218,16 +217,16 @@ function cfgWhile(whileLoop: RRepeatLoop<ParentInformation>, condition: ControlF
 
 
 function cfgExprList(_node: RNodeWithParent, expressions: ControlFlowInformation[]): ControlFlowInformation {
-	const result: ControlFlowInformation = { graph: new CFG(), breaks: [], nexts: [], returns: [] }
+	const result: ControlFlowInformation = { graph: new CFG(), breaks: [], nexts: [], returns: [], exitPoints: [], entryPoints: [] }
 	let first = true
 	for(const expression of expressions) {
 		// TODO: deal with loops?
 		if(first) {
-			result.graph.entryPoints = expression.graph.entryPoints
+			result.entryPoints = expression.entryPoints
 			first = false
 		} else {
-			for(const previousExitPoint of result.graph.exitPoints) {
-				for(const entryPoint of expression.graph.entryPoints) {
+			for(const previousExitPoint of result.exitPoints) {
+				for(const entryPoint of expression.entryPoints) {
 					result.graph.addEdge(entryPoint, previousExitPoint, { label: 'FD' })
 				}
 			}
@@ -237,7 +236,7 @@ function cfgExprList(_node: RNodeWithParent, expressions: ControlFlowInformation
 		result.nexts.push(...expression.nexts)
 		result.returns.push(...expression.returns)
 		// TODO: no FD after break/next/return?
-		result.graph.exitPoints = expression.graph.exitPoints
+		result.exitPoints = expression.exitPoints
 	}
 	return result
 }

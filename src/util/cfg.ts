@@ -27,7 +27,7 @@ interface CfgFlowDependencyEdge extends MergeableRecord {
 }
 interface CfgControlDependencyEdge extends MergeableRecord {
 	label: 'CD'
-	// TODO: more for swiches etc.?
+	// TODO: more for switches etc.?
 	when:  typeof RTrue | typeof RFalse
 }
 

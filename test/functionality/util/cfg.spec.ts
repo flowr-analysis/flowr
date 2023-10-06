@@ -4,6 +4,7 @@ import { CFG, ControlFlowInformation, emptyControlFlowInformation, equalCfg, ext
 import { SteppingSlicer } from '../../../src/core'
 import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
 import { cfgToMermaidUrl } from '../../../src/util/mermaid'
+import { serialize2quads } from '../../../src/util/quads'
 
 describe("Control Flow Graph", withShell(shell => {
 	 function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
@@ -45,6 +46,17 @@ describe("Control Flow Graph", withShell(shell => {
 			.addEdge('1', '0', { label: 'CD', when: RTrue })
 			.addEdge('3-exit', '1', { label: 'FD' })
 			.addEdge('3-exit', '0', { label: 'CD', when: RFalse })
+	})
 
+	it('Example Quad Export', async() => {
+		const result = await new SteppingSlicer({
+			stepOfInterest: 'normalize',
+			shell,
+			request:        requestFromInput('file://test/testfiles/example.R'),
+			tokenMap:       await defaultTokenMap()
+		}).allRemainingSteps()
+		const cfg = extractCFG(result.normalize)
+
+		console.log(serialize2quads(cfg, { context: 'example.R' }))
 	})
 }))

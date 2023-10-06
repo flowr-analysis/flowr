@@ -3,9 +3,9 @@ import {
 	FoldFunctions,
 	NodeId,
 	NormalizedAst,
-	ParentInformation, RFalse,
+	ParentInformation, RAccess, RFalse,
 	RForLoop,
-	RFunctionDefinition,
+	RFunctionDefinition, RNode,
 	RNodeWithParent,
 	RRepeatLoop, RTrue,
 	RWhileLoop
@@ -27,6 +27,7 @@ interface CfgFlowDependencyEdge extends MergeableRecord {
 }
 interface CfgControlDependencyEdge extends MergeableRecord {
 	label: 'CD'
+	// TODO: more for swiches etc.?
 	when:  typeof RTrue | typeof RFalse
 }
 
@@ -110,7 +111,7 @@ const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
 	foldString:  cfgLeaf,
 	foldLogical: cfgLeaf,
 	foldSymbol:  cfgLeaf,
-	foldAccess:  cfgLeaf /* TODO */,
+	foldAccess:  cfgAccess,
 	binaryOp:    {
 		foldLogicalOp:    cfgBinaryOp,
 		foldArithmeticOp: cfgBinaryOp,
@@ -361,6 +362,37 @@ function cfgBinaryOp(binOp: RNodeWithParent, lhs: ControlFlowInformation, rhs: C
 		graph.addEdge(binOp.info.id, entryPoint, { label: 'FD' })
 	}
 
+	return result
+}
+
+function cfgAccess(access: RAccess<ParentInformation>, name: ControlFlowInformation, accessors: string | (ControlFlowInformation | null)[]): ControlFlowInformation {
+	const result = name
+	const graph = result.graph
+	graph.addVertex({ id: access.info.id, name: access.type, content: getLexeme(access) })
+	graph.addVertex({ id: access.info.id + '-exit', name: 'access-exit', content: undefined })
+	for(const entry of name.entryPoints) {
+		graph.addEdge(entry, access.info.id, { label: 'FD' })
+	}
+	for(const exit of name.exitPoints) {
+		graph.addEdge(access.info.id, exit, { label: 'FD' })
+	}
+	result.entryPoints = [access.info.id]
+	result.exitPoints = [access.info.id + '-exit']
+	if(typeof accessors === 'string') {
+		return result
+	}
+	for(const accessor of accessors) {
+		if(accessor === null) {
+			continue
+		}
+		graph.merge(accessor.graph)
+		for(const entry of accessor.entryPoints) {
+			graph.addEdge(entry, access.info.id, { label: 'FD' })
+		}
+		for(const exit of accessor.exitPoints) {
+			graph.addEdge(access.info.id + '-exit', exit, { label: 'FD' })
+		}
+	}
 	return result
 }
 

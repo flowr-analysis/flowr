@@ -268,7 +268,9 @@ export function cfgToMermaid(cfg: ControlFlowInformation, prefix = ''): string {
 	}
 	for(const [from, targets] of cfg.graph.edges()) {
 		for(const [to, edge] of targets) {
-			output += `    n${from} -->|"${edge.label}"| n${to}\n`
+			const edgeType = edge.label === 'CD' ? '-->' : '-.->'
+			const edgeSuffix = edge.label === 'CD' ? ` (${edge.when})` : ''
+			output += `    n${from} ${edgeType}|"${edge.label}${edgeSuffix}"| n${to}\n`
 		}
 	}
 	return output
@@ -277,6 +279,6 @@ export function cfgToMermaid(cfg: ControlFlowInformation, prefix = ''): string {
 /**
  * Use mermaid to visualize the normalized AST.
  */
-export function cfgToMermaidUrl(ast: ControlFlowInformation, prefix = ''): string {
-	return mermaidCodeToUrl(cfgToMermaid(ast, prefix))
+export function cfgToMermaidUrl(cfg: ControlFlowInformation, prefix = ''): string {
+	return mermaidCodeToUrl(cfgToMermaid(cfg, prefix))
 }

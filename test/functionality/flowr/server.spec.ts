@@ -12,7 +12,7 @@ import {
 	ExecuteIntermediateResponseMessage,
 	ExecuteRequestMessage
 } from '../../../src/cli/repl/server/messages/repl'
-import { equalCfg, extractCFG } from '../../../src/util/cfg'
+import { extractCFG } from '../../../src/util/cfg'
 
 describe('FlowR Server', withShell(shell => {
 	it('Correct Hello Message', withSocket(shell,async socket => {

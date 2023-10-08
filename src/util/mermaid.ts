@@ -255,17 +255,14 @@ export function normalizedAstToMermaidUrl(ast: RNodeWithParent, prefix = ''): st
 
 export function cfgToMermaid(cfg: ControlFlowInformation, prefix = ''): string {
 	let output = prefix + 'flowchart TD\n'
-	// TODO: subgraphs for function definitions?
+
 	for(const [id, vertex] of cfg.graph.vertices()) {
 		if(vertex.content) {
-			const name = `"\`${vertex.name} (${id})\n${JSON.stringify(vertex.content).replaceAll('"', '\'')}\`"` // TODO: fix, it is horribe
+			const name = `"\`${vertex.name} (${id})\n${JSON.stringify(vertex.content).replaceAll('"', '\'')}\`"`
 			output += `    n${id}[${name}]\n`
 		} else {
 			output += `    n${id}(( ))\n`
 		}
-		/* 		for(const child of vertex.children) {
-			output += `    n${id} ---|"child"| n${child}\n`
-		} */
 	}
 	for(const [from, targets] of cfg.graph.edges()) {
 		for(const [to, edge] of targets) {

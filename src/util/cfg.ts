@@ -28,7 +28,6 @@ interface CfgFlowDependencyEdge extends MergeableRecord {
 }
 interface CfgControlDependencyEdge extends MergeableRecord {
 	label: 'CD'
-	// TODO: more for switches etc.?
 	when:  typeof RTrue | typeof RFalse
 }
 
@@ -329,7 +328,6 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 	graph.merge(body.graph, true)
 	children.push(...body.graph.rootVertexIds())
 
-	// TODO: deal with their entry and exit points?
 	for(const param of params) {
 		graph.merge(param.graph, true)
 		children.push(...param.graph.rootVertexIds())
@@ -429,7 +427,6 @@ function cfgExprList(_node: RNodeWithParent, expressions: ControlFlowInformation
 		result.breaks.push(...expression.breaks)
 		result.nexts.push(...expression.nexts)
 		result.returns.push(...expression.returns)
-		// TODO: no FD after break/next/return?
 		result.exitPoints = expression.exitPoints
 	}
 	return result
@@ -447,7 +444,6 @@ function equalChildren(a: NodeId[] | undefined, b: NodeId[] | undefined): boolea
 	return true
 }
 
-// TODO: outsource this
 /**
  * Returns true if the given CFG equals the other CFG. False otherwise.
  */

@@ -33,8 +33,10 @@ export function ts2r<T>(value: T): string {
 	throw new ValueConversionError(`cannot convert value of type ${typeof value} to R code`)
 }
 
-const RTrue = 'TRUE'
-const RFalse = 'FALSE'
+/** The R literal for the logical true */
+export const RTrue = 'TRUE'
+/** The R literal for the logical false */
+export const RFalse = 'FALSE'
 
 export function isBoolean(value: string): boolean {
 	return value === RTrue || value === RFalse

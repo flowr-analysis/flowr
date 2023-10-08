@@ -28,7 +28,7 @@ export const dataflowCommand: ReplCommand = {
 
 export const dataflowStarCommand: ReplCommand = {
 	description:  'Return mermaid url that leads to mermaid live to render the dataflow graph of the given R code',
-	usageExample: ':dataflow',
+	usageExample: ':dataflow*',
 	aliases:      [ 'd*', 'df*' ],
 	script:       false,
 	fn:           async(output, shell, tokenMap, remainingLine) => {

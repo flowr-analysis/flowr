@@ -11,6 +11,7 @@ import {
 import { SteppingSlicer } from '../../../src/core'
 import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
 import { cfgToMermaidUrl } from '../../../src/util/mermaid'
+import { defaultQuadIdGenerator } from '../../../src/util/quads'
 
 describe('Control Flow Graph', withShell(shell => {
 	 function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
@@ -66,7 +67,7 @@ describe('Control Flow Graph', withShell(shell => {
 		}).allRemainingSteps()
 		const cfg = extractCFG(result.normalize)
 
-		const content = cfg2quads(cfg, { context, domain })
+		const content = cfg2quads(cfg, { context, domain, getId: defaultQuadIdGenerator() })
 
 		assert.strictEqual(content, `<${domain}${context}/0> <${domain}rootIds-0> "3" <${context}> .
 <${domain}${context}/0> <${domain}rootIds-1> "3-exit" <${context}> .

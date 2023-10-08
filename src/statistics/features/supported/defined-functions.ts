@@ -19,7 +19,6 @@ const initialFunctionDefinitionInfo = {
 	/** how many are really using OP-Lambda? */
 	lambdasOnly:       0,
 	/** using `<<-`, `<-`, `=`, `->` `->>` */
-	// TODO: assign functions etc. -> implement
 	assignedFunctions: 0,
 	nestedFunctions:   0,
 	/** functions that in some easily detectable way call themselves */

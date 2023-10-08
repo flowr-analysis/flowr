@@ -1,6 +1,7 @@
 import { IdMessageBase, MessageDefinition } from './messages'
 import { LAST_PER_FILE_STEP, StepResults } from '../../../../core'
 import Joi from 'joi'
+import { CFG, ControlFlowInformation } from '../../../../util/cfg'
 
 /**
  * Send by the client to request an analysis of a given file.
@@ -22,6 +23,10 @@ export interface FileAnalysisRequestMessage extends IdMessageBase {
 	content?:  string
 	/** The filepath on the local machine, accessible to flowR, or simply. Give either this or the `content` */
 	filepath?: string
+	/** Can be used to additionally extract the {@link ControlFlowInformation} of the file, which is not exposed (and not fully calculated) by default. */
+	cfg?:      boolean
+	/** Controls the serialization of the `results` (and the {@link CFG} if the corresponding flag is set). If missing, we assume _json_. */
+	format?:   'json'
 }
 
 
@@ -33,7 +38,9 @@ export const requestAnalysisMessage: MessageDefinition<FileAnalysisRequestMessag
 		filetoken: Joi.string().required(),
 		filename:  Joi.string().optional(),
 		content:   Joi.string().optional(),
-		filepath:  Joi.string().optional()
+		filepath:  Joi.string().optional(),
+		cfg:       Joi.boolean().optional(),
+		format:    Joi.string().valid('json').optional()
 	}).xor('content', 'filepath')
 }
 
@@ -44,7 +51,7 @@ export const requestAnalysisMessage: MessageDefinition<FileAnalysisRequestMessag
  * The `idMap` of the normalization step (see {@link NormalizedAst}) is not serialized as it would essentially
  * repeat the complete normalized AST.
  *
- * @note the serialization of maps and sets is controlled by the {@link jsonReplacer} as part of {@link sendMessage}.
+ * @note The serialization of maps and sets is controlled by the {@link jsonReplacer} as part of {@link sendMessage}.
  */
 export interface FileAnalysisResponseMessage extends IdMessageBase {
 	type:    'response-file-analysis',
@@ -52,5 +59,9 @@ export interface FileAnalysisResponseMessage extends IdMessageBase {
 	 * See the {@link SteppingSlicer} and {@link StepResults} for details on the results.
 	 */
 	results: StepResults<typeof LAST_PER_FILE_STEP>
+	/**
+	 * Only if the {@link FileAnalysisRequestMessage} contained a `cfg: true` this will contain the {@link ControlFlowInformation} of the file.
+	 */
+	cfg?:    ControlFlowInformation
 }
 

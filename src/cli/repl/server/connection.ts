@@ -1,5 +1,5 @@
 import { LAST_STEP, SteppingSlicer, STEPS_PER_SLICE } from '../../../core'
-import { RShell, TokenMap } from '../../../r-bridge'
+import { NormalizedAst, RShell, TokenMap } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
 import { FileAnalysisRequestMessage, requestAnalysisMessage } from './messages/analysis'
@@ -15,6 +15,7 @@ import {
 } from './messages/repl'
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
+import { ControlFlowInformation, extractCFG } from '../../../util/cfg'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -110,9 +111,14 @@ export class FlowRServerConnection {
 		})
 
 		void slicer.allRemainingSteps(false).then(results => {
+			let cfg : ControlFlowInformation | undefined = undefined
+			if(message.cfg) {
+				cfg = extractCFG(results.normalize as NormalizedAst)
+			}
 			sendMessage(this.socket, {
 				type:    'response-file-analysis',
 				id:      message.id,
+				cfg,
 				results: {
 					...results,
 					normalize: {

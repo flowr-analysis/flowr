@@ -12,9 +12,9 @@ import {
 } from '../r-bridge'
 import { MergeableRecord } from './objects'
 import { setEquals } from './set'
-import { graph2quads, QuadSerializationConfiguration, serialize2quads } from './quads'
+import { graph2quads, QuadSerializationConfiguration } from './quads'
 
-interface CfgVertex {
+export interface CfgVertex {
 	id:        NodeId
 	name:      string
 	/** the content may be undefined, if the node is an artificial exit point node that i use to mark the exit point of an if condition, a function, etc. */
@@ -34,6 +34,10 @@ interface CfgControlDependencyEdge extends MergeableRecord {
 
 export type CFGEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
 
+/**
+ * This class represents the control flow graph of an R program.
+ * The control flow may be hierarchical when confronted with function definitions (see {@link CfgVertex} and {@link CFG#rootVertexIds|rootVertexIds()}).
+ */
 export class CFG {
 	private rootVertices:      Set<NodeId> = new Set<NodeId>()
 	private vertexInformation: Map<NodeId, CfgVertex> = new Map<NodeId, CfgVertex>()
@@ -447,8 +451,11 @@ function equalChildren(a: NodeId[] | undefined, b: NodeId[] | undefined): boolea
 /**
  * Returns true if the given CFG equals the other CFG. False otherwise.
  */
-export function equalCfg(a: CFG, b: CFG): boolean {
-	if(!setEquals(a.rootVertexIds(), b.rootVertexIds())) {
+export function equalCfg(a: CFG | undefined, b: CFG | undefined): boolean {
+	if(!a || !b) {
+		return a === b
+	}
+	else if(!setEquals(a.rootVertexIds(), b.rootVertexIds())) {
 		return false
 	}
 

@@ -57,7 +57,6 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 	if(children.length === 1) {
 		result = children[0]
 	} else {
-		console.log('multiple children', children)
 		result = {
 			type:   RType.ExpressionList,
 			location,

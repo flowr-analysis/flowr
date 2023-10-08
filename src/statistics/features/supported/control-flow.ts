@@ -85,7 +85,7 @@ export const controlflow: Feature<ControlflowInfo> = {
 
 		const switchCases = switchQuery.select({ node: input.parsedRAst })
 		existing.switchCase += switchCases.length
-		appendStatisticsFile(controlflow.name, 'switchCase', switchCases, input.filepath)
+		appendStatisticsFile(controlflow.name, 'SwitchCase', switchCases, input.filepath)
 
 
 		const constantSwitchCases = switchCases.flatMap(switchCase =>
@@ -98,7 +98,7 @@ export const controlflow: Feature<ControlflowInfo> = {
 			singleVariableCondition.select({ node: switchCase })
 		)
 		existing.singleVariableSwitchCase += variableSwitchCases.length
-		appendStatisticsFile(controlflow.name, 'variableSwitchCase', variableSwitchCases, input.filepath)
+		appendStatisticsFile(controlflow.name, 'singleVariableSwitchCase', variableSwitchCases, input.filepath)
 
 		return existing
 	},

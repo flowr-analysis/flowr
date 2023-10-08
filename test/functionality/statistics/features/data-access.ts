@@ -1,13 +1,13 @@
 import { withShell } from '../../helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
 
-
 describe('Used Ways to Access Data', withShell(shell => {
 	testForFeatureForInput(shell, 'dataAccess', [
 		{
 			name:     'no data access',
 			code:     'a <- 1; 4 * x; foo(a) # a[3]',
-			expected: {}
+			expected: {},
+			written:  'nothing'
 		},
 		{
 			name:     'single bracket access, including empty',
@@ -16,7 +16,10 @@ describe('Used Ways to Access Data', withShell(shell => {
 				singleBracket:         2,
 				singleBracketConstant: 1,
 				singleBracketEmpty:    1
-			}
+			},
+			written: [
+				['dataAccess', [{ value: 'a[1]' }, { value: 'a[]' }]],
+			]
 		},
 		{
 			name:     'double bracket access, including empty',
@@ -25,7 +28,10 @@ describe('Used Ways to Access Data', withShell(shell => {
 				doubleBracket:         2,
 				doubleBracketConstant: 1,
 				doubleBracketEmpty:    1
-			}
+			},
+			written: [
+				['dataAccess', [{ value: 'a[[1]]' }, { value: 'a[[]]' }]],
+			]
 		},
 		{
 			name:     'using an expression',
@@ -33,7 +39,10 @@ describe('Used Ways to Access Data', withShell(shell => {
 			expected: {
 				doubleBracket: 1,
 				singleBracket: 1
-			}
+			},
+			written: [
+				['dataAccess', [{ value: 'a[[x + y]]' }, { value: 'a[x - 3]' }]],
+			]
 		},
 		{
 			name:     'using only a single variable',
@@ -43,7 +52,10 @@ describe('Used Ways to Access Data', withShell(shell => {
 				singleBracket:               1,
 				doubleBracketSingleVariable: 1,
 				singleBracketSingleVariable: 1
-			}
+			},
+			written: [
+				['dataAccess', [{ value: 'a[x]' }, { value: 'a[[x]]' }]],
+			]
 		},
 		{
 			name:     'named and slotted access',
@@ -51,7 +63,10 @@ describe('Used Ways to Access Data', withShell(shell => {
 			expected: {
 				byName: 2,
 				bySlot: 2
-			}
+			},
+			written: [
+				['dataAccess', [{ value: 'a$hello' }, { value: 'a$"world"' }, { value: 'a@hello' }, { value: 'a@"world"' }]],
+			]
 		},
 		{
 			name:     'nested double bracket access',
@@ -61,7 +76,10 @@ describe('Used Ways to Access Data', withShell(shell => {
 				doubleBracketConstant: 2,
 				chainedOrNestedAccess: 1,
 				longestChain:          1
-			}
+			},
+			written: [
+				['dataAccess', [{ value: 'a[[1]][[2]]' }]],
+			]
 		},
 		{
 			name:     'comma access',
@@ -75,7 +93,10 @@ describe('Used Ways to Access Data', withShell(shell => {
 				doubleBracketConstant: 	     2,
 				singleBracketSingleVariable: 1,
 				namedArguments:              1
-			}
+			},
+			written: [
+				['dataAccess', [{ value: 'a[1,x,3]' }, { value: 'b[[2,name=3]]' }]],
+			]
 		},
 		{
 			name:     'deeply nested mixed access',
@@ -90,7 +111,10 @@ describe('Used Ways to Access Data', withShell(shell => {
 				singleBracketSingleVariable: 1,
 				chainedOrNestedAccess:       4,
 				longestChain:                4
-			}
+			},
+			written: [
+				['dataAccess', [{ value: 'a[[1]][2]$x[y]@z' }]],
+			]
 		},
 		{
 			name:     'nested in the argument',
@@ -101,7 +125,10 @@ describe('Used Ways to Access Data', withShell(shell => {
 				singleBracketConstant: 1,
 				chainedOrNestedAccess: 2,
 				deepestNesting:        2
-			}
+			},
+			written: [
+				['dataAccess', [{ value: 'a[[ x[ y[3] ] ]]' }]],
+			]
 		},
 		{
 			name:     'nested in the argument and expressions',
@@ -112,7 +139,10 @@ describe('Used Ways to Access Data', withShell(shell => {
 				singleBracketConstant: 1,
 				chainedOrNestedAccess: 2,
 				deepestNesting:        2
-			}
+			},
+			written: [
+				['dataAccess', [{ value: 'a[[ if (x[ y[3] > 25 ]) 0 else 2 ]]' }]],
+			]
 		},
 		{
 			name:     'nested and chained',
@@ -125,7 +155,10 @@ describe('Used Ways to Access Data', withShell(shell => {
 				deepestNesting:        2,
 				longestChain:          4,
 				byName:                4
-			}
+			},
+			written: [
+				['dataAccess', [{ value: 'a[[ x[ y[3]$b ] ]]$c$d$e' }]],
+			]
 		},
 		{
 			name:     'nested named and slotted access',
@@ -135,7 +168,10 @@ describe('Used Ways to Access Data', withShell(shell => {
 				bySlot:                2,
 				chainedOrNestedAccess: 2,
 				longestChain:          1
-			}
+			},
+			written: [
+				['dataAccess', [{ value: 'a$hello$"world"' }, { value: 'a@hello@"world"' }]],
+			]
 		}
 	])
 }))

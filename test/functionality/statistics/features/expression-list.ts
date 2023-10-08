@@ -9,7 +9,8 @@ describe('Expression List', withShell(shell => {
 			code:     'a <- 1; 4 * x; foo(a) # while(FALSE) {} ',
 			expected: {
 				allExpressionLists: 1
-			}
+			},
+			written: 'nothing'
 		},
 		{
 			name: 'a lot of nesting',
@@ -30,7 +31,8 @@ describe('Expression List', withShell(shell => {
 			expected: {
 				allExpressionLists: 7,
 				deepestNesting:     3
-			}
+			},
+			written: 'nothing'
 		}
 	])
 }))

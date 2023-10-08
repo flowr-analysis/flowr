@@ -7,7 +7,8 @@ describe('Loops', withShell(shell => {
 		{
 			name:     'no control loops',
 			code:     'a <- 1; 4 * x; foo(a) # while(FALSE) {} ',
-			expected: {}
+			expected: {},
+			written:  'nothing'
 		},
 		{
 			name:     'one while loop, with a break',
@@ -15,7 +16,9 @@ describe('Loops', withShell(shell => {
 			expected: {
 				whileLoops:      1,
 				breakStatements: 1
-			}
+			},
+			// records only implicit and nested loops
+			written: 'nothing'
 		},
 		{
 			name:     'one for loop, with a next',
@@ -23,7 +26,8 @@ describe('Loops', withShell(shell => {
 			expected: {
 				forLoops:       1,
 				nextStatements: 1
-			}
+			},
+			written: 'nothing'
 		},
 		{
 			name:     'one repeat loop, with multiple breaks, and nexts',
@@ -32,7 +36,8 @@ describe('Loops', withShell(shell => {
 				repeatLoops:     1,
 				breakStatements: 2,
 				nextStatements:  2
-			}
+			},
+			written: 'nothing'
 		},
 		{
 			name:     'simply nested while loops',
@@ -41,7 +46,10 @@ describe('Loops', withShell(shell => {
 				whileLoops:             2,
 				nestedExplicitLoops:    1,
 				deepestExplicitNesting: 1
-			}
+			},
+			written: [
+				['nested-loop', [{ value: 'while(FALSE) { print(3) }' }]],
+			]
 		},
 		{
 			name: 'using implicit loops',
@@ -55,7 +63,10 @@ describe('Loops', withShell(shell => {
 			`,
 			expected: {
 				implicitLoops: 6
-			}
+			},
+			written: [
+				['implicit-loop', [{ value: 'apply(x, 2, f)' }, { value: 'lapply(x, f)' }, { value: 'sapply(x, f)' }, { value: 'vapply(x, f)' }, { value: 'tapply(x, f)' }, { value: 'mapply(x, f)' }]],
+			]
 		},
 		{
 			name: 'many nested loops',
@@ -77,7 +88,19 @@ describe('Loops', withShell(shell => {
 				repeatLoops:            3,
 				nestedExplicitLoops:    8,
 				deepestExplicitNesting: 3
-			}
+			},
+			written: [
+				['nested-loop', [
+					{ value: 'while(FALSE) {\nfor(i in 1:10) {\nrepeat { }\n}\n}' },
+					{ value: 'for(i in 1:10) {\nrepeat { }\n}' },
+					{ value: 'repeat { }' },
+					{ value: 'for(j in 1:10) { while(x) { } }' },
+					{ value: 'while(x) { }' },
+					{ value: 'repeat { while(FALSE) {} }'},
+					{ value: 'while(FALSE) {}' },
+					{ value: 'repeat { }' },
+				]]
+			]
 		},
 	])
 }))

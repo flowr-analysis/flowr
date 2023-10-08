@@ -2,6 +2,7 @@ import { Feature, FeatureProcessorInput } from '../feature'
 import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
 import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
+import { SourceRange } from '../../../util/range'
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls:           0,
@@ -77,7 +78,7 @@ function analyzeFunctionName(name: string, info: FunctionUsageInfo) {
 
 function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void {
 	const calls: RNodeWithParent[] = []
-	const allCalls: string[] = []
+	const allCalls: { name: string, named: boolean, location: SourceRange }[] = []
 
 	visitAst(input.normalizedRAst.ast,
 		node => {
@@ -94,10 +95,10 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 			if(node.flavor === 'unnamed') {
 				info.unnamedCalls++
 				appendStatisticsFile(usedFunctions.name, 'unnamed-calls', [node.lexeme], input.filepath)
-				allCalls.push(node.calledFunction.lexeme ?? '<unknown>')
+				allCalls.push({ name: node.calledFunction.lexeme ?? '<unknown>', named: false, location: node.location })
 			} else {
 				analyzeFunctionName(node.functionName.lexeme, info)
-				allCalls.push(node.functionName.lexeme)
+				allCalls.push({ name: node.functionName.lexeme, named: true, location: node.location })
 			}
 
 			calls.push(node)
@@ -110,7 +111,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 	)
 
 	info.allFunctionCalls += allCalls.length
-	appendStatisticsFile(usedFunctions.name, 'all-calls', allCalls, input.filepath)
+	appendStatisticsFile(usedFunctions.name, 'all-calls', allCalls.map(s => JSON.stringify(s)), input.filepath)
 }
 
 

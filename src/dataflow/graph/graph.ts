@@ -40,7 +40,8 @@ type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'used'>  | Identifi
  */
 export type OutgoingEdges = Map<NodeId, DataflowGraphEdge>
 /**
- *
+ * Similar to {@link OutgoingEdges}, but inverted regarding the edge direction.
+ * In other words, it maps the source to the edge information.
  */
 export type IngoingEdges = Map<NodeId, DataflowGraphEdge>
 

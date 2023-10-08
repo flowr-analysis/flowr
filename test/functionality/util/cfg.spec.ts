@@ -4,7 +4,7 @@ import { CFG, ControlFlowInformation, emptyControlFlowInformation, equalCfg, ext
 import { SteppingSlicer } from '../../../src/core'
 import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
 import { cfgToMermaidUrl } from '../../../src/util/mermaid'
-import { serialize2quads } from '../../../src/util/quads'
+import { graph2quads } from '../../../src/util/quads'
 
 describe('Control Flow Graph', withShell(shell => {
 	 function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
@@ -57,6 +57,30 @@ describe('Control Flow Graph', withShell(shell => {
 		}).allRemainingSteps()
 		const cfg = extractCFG(result.normalize)
 
-		console.log(serialize2quads(cfg, { context: 'example.R' }))
+		console.log(graph2quads({
+			rootIds:  [...cfg.graph.rootVertexIds()],
+		 vertices: [...cfg.graph.vertices().entries()]
+				.map(([id, v]) => ({
+					id,
+					name:     v.name,
+					content:  v.content,
+					children: v.children
+				})),
+			edges: [...cfg.graph.edges()].flatMap(([fromId, targets]) =>
+				[...targets].map(([toId, info]) => ({
+					from: fromId,
+					to:   toId,
+					type: info.label,
+					when: info.when
+				}))
+			),
+			entryPoints: cfg.entryPoints,
+			exitPoints:  cfg.exitPoints,
+			breaks:      cfg.breaks,
+			nexts:       cfg.nexts,
+			returns:     cfg.returns
+		},
+		{ context: 'test' }
+		))
 	})
 }))

@@ -16,6 +16,7 @@ import { guard } from './assert'
 import { DefaultMap } from './defaultmap'
 import literal = DataFactory.literal
 import { log } from './log'
+import { NodeId } from '../r-bridge'
 
 const domain = 'https://uni-ulm.de/r-ast/'
 
@@ -97,10 +98,12 @@ const writer = new Writer( { format: 'N-Quads' })
 /**
  * Serializes the given object or array to rdf quads.
  *
- * @param obj - the object to serialize (must be a Record and no array etc.)
- * @param config - further configuration options
+ * @param obj    - The object to serialize (must be a Record and no array etc.)
+ * @param config - Further configuration options
  *
  * @returns the serialized quads
+ *
+ * @see graph2quads
  */
 export function serialize2quads(obj: RecordForQuad, config: QuadSerializationConfiguration): string {
 	const useConfig = deepMergeObject(DefaultQuadSerializationConfiguration, config)
@@ -112,20 +115,50 @@ export function serialize2quads(obj: RecordForQuad, config: QuadSerializationCon
 	return writer.quadsToString(quads)
 }
 
+export type VertexInformationForQuad<AdditionalInformation extends MergeableRecord> = MergeableRecord & AdditionalInformation & {
+	id: NodeId
+}
+
+export type EdgeInformationForQuad<AdditionalInformation extends MergeableRecord> = MergeableRecord & AdditionalInformation & {
+	from: NodeId,
+	type: NodeId,
+	to:   NodeId
+}
+
+export interface GraphInformationForQuad<AdditionalVertexInformation extends MergeableRecord, AdditionalEdgeInformation extends MergeableRecord> extends MergeableRecord {
+	rootIds:     NodeId[],
+	vertices:    VertexInformationForQuad<AdditionalVertexInformation>[],
+	edges:       EdgeInformationForQuad<AdditionalEdgeInformation>[],
+	additional?: DataForQuad
+}
+
+/**
+ * Serializes the given directed graph to rdf quads.
+ * This is a mere (type-)convenience wrapper for {@link serialize2quads}.
+ *
+ * @see serialize2quads
+ */
+export function graph2quads<AdditionalVertexInformation extends MergeableRecord, AdditionalEdgeInformation extends MergeableRecord>(
+	graph: GraphInformationForQuad<AdditionalVertexInformation, AdditionalEdgeInformation>,
+	config: QuadSerializationConfiguration
+): string {
+	return serialize2quads(graph, config)
+}
+
 
 function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
 	for(const [index, element] of value.entries()) {
-		const context= retrieveContext(config.context, obj)
-		quads.push(quad(
-			namedNode(domain + config.getId(obj, context)),
-			namedNode(domain + key + '-' + String(index)),
-			namedNode(domain + config.getId(element, context)),
-			namedNode(context)
-		))
 		if(isObjectOrArray(element)) {
+			const context= retrieveContext(config.context, obj)
+			quads.push(quad(
+				namedNode(domain + config.getId(obj, context)),
+				namedNode(domain + key + '-' + String(index)),
+				namedNode(domain + config.getId(element, context)),
+				namedNode(context)
+			))
 			serializeObject(element as DataForQuad, quads, config)
 		} else {
-			processLiteralEntry(value, key, obj, quads, config)
+			processLiteralEntry(element, key + '-' + String(index), obj, quads, config)
 		}
 	}
 }

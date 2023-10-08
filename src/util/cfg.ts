@@ -12,6 +12,7 @@ import {
 } from '../r-bridge'
 import { MergeableRecord } from './objects'
 import { setEquals } from './set'
+import { graph2quads, QuadSerializationConfiguration, serialize2quads } from './quads'
 
 interface CfgVertex {
 	id:        NodeId
@@ -482,4 +483,37 @@ export function equalCfg(a: CFG, b: CFG): boolean {
 	}
 
 	return true
+}
+
+
+/**
+ * @see serialize2quads
+ * @see graph2quads
+ */
+export function cfg2quads(cfg: ControlFlowInformation, config: QuadSerializationConfiguration): string {
+	return graph2quads({
+		rootIds:  [...cfg.graph.rootVertexIds()],
+		vertices: [...cfg.graph.vertices().entries()]
+			.map(([id, v]) => ({
+				id,
+				name:     v.name,
+				content:  v.content,
+				children: v.children
+			})),
+		edges: [...cfg.graph.edges()].flatMap(([fromId, targets]) =>
+			[...targets].map(([toId, info]) => ({
+				from: fromId,
+				to:   toId,
+				type: info.label,
+				when: info.when
+			}))
+		),
+		entryPoints: cfg.entryPoints,
+		exitPoints:  cfg.exitPoints,
+		breaks:      cfg.breaks,
+		nexts:       cfg.nexts,
+		returns:     cfg.returns
+	},
+	config
+	)
 }

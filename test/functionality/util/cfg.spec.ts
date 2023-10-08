@@ -1,10 +1,16 @@
 import { assert } from 'chai'
 import { defaultTokenMap, withShell } from '../helper/shell'
-import { CFG, ControlFlowInformation, emptyControlFlowInformation, equalCfg, extractCFG } from '../../../src/util/cfg'
+import {
+	CFG,
+	cfg2quads,
+	ControlFlowInformation,
+	emptyControlFlowInformation,
+	equalCfg,
+	extractCFG
+} from '../../../src/util/cfg'
 import { SteppingSlicer } from '../../../src/core'
 import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
 import { cfgToMermaidUrl } from '../../../src/util/mermaid'
-import { graph2quads } from '../../../src/util/quads'
 
 describe('Control Flow Graph', withShell(shell => {
 	 function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
@@ -49,6 +55,9 @@ describe('Control Flow Graph', withShell(shell => {
 	})
 
 	it('Example Quad Export', async() => {
+		const domain = 'https://uni-ulm.de/r-ast/'
+		const context = 'test'
+
 		const result = await new SteppingSlicer({
 			stepOfInterest: 'normalize',
 			shell,
@@ -57,30 +66,47 @@ describe('Control Flow Graph', withShell(shell => {
 		}).allRemainingSteps()
 		const cfg = extractCFG(result.normalize)
 
-		console.log(graph2quads({
-			rootIds:  [...cfg.graph.rootVertexIds()],
-		 vertices: [...cfg.graph.vertices().entries()]
-				.map(([id, v]) => ({
-					id,
-					name:     v.name,
-					content:  v.content,
-					children: v.children
-				})),
-			edges: [...cfg.graph.edges()].flatMap(([fromId, targets]) =>
-				[...targets].map(([toId, info]) => ({
-					from: fromId,
-					to:   toId,
-					type: info.label,
-					when: info.when
-				}))
-			),
-			entryPoints: cfg.entryPoints,
-			exitPoints:  cfg.exitPoints,
-			breaks:      cfg.breaks,
-			nexts:       cfg.nexts,
-			returns:     cfg.returns
-		},
-		{ context: 'test' }
-		))
+		const content = cfg2quads(cfg, { context, domain })
+
+		assert.strictEqual(content, `<${domain}${context}/0> <${domain}rootIds-0> "3" <${context}> .
+<${domain}${context}/0> <${domain}rootIds-1> "3-exit" <${context}> .
+<${domain}${context}/0> <${domain}rootIds-2> "0" <${context}> .
+<${domain}${context}/0> <${domain}rootIds-3> "1" <${context}> .
+<${domain}${context}/0> <${domain}vertices-0> <${domain}${context}/1> <${context}> .
+<${domain}${context}/1> <${domain}id> "3" <${context}> .
+<${domain}${context}/1> <${domain}name> "RIfThenElse" <${context}> .
+<${domain}${context}/1> <${domain}content> "if(TRUE) 1" <${context}> .
+<${domain}${context}/0> <${domain}vertices-1> <${domain}${context}/2> <${context}> .
+<${domain}${context}/2> <${domain}id> "3-exit" <${context}> .
+<${domain}${context}/2> <${domain}name> "if-exit" <${context}> .
+<${domain}${context}/0> <${domain}vertices-2> <${domain}${context}/3> <${context}> .
+<${domain}${context}/3> <${domain}id> "0" <${context}> .
+<${domain}${context}/3> <${domain}name> "RLogical" <${context}> .
+<${domain}${context}/3> <${domain}content> "TRUE" <${context}> .
+<${domain}${context}/0> <${domain}vertices-3> <${domain}${context}/4> <${context}> .
+<${domain}${context}/4> <${domain}id> "1" <${context}> .
+<${domain}${context}/4> <${domain}name> "RNumber" <${context}> .
+<${domain}${context}/4> <${domain}content> "1" <${context}> .
+<${domain}${context}/0> <${domain}edges-0> <${domain}${context}/5> <${context}> .
+<${domain}${context}/5> <${domain}from> "1" <${context}> .
+<${domain}${context}/5> <${domain}to> "0" <${context}> .
+<${domain}${context}/5> <${domain}type> "CD" <${context}> .
+<${domain}${context}/5> <${domain}when> "TRUE" <${context}> .
+<${domain}${context}/0> <${domain}edges-1> <${domain}${context}/6> <${context}> .
+<${domain}${context}/6> <${domain}from> "0" <${context}> .
+<${domain}${context}/6> <${domain}to> "3" <${context}> .
+<${domain}${context}/6> <${domain}type> "FD" <${context}> .
+<${domain}${context}/0> <${domain}edges-2> <${domain}${context}/7> <${context}> .
+<${domain}${context}/7> <${domain}from> "3-exit" <${context}> .
+<${domain}${context}/7> <${domain}to> "1" <${context}> .
+<${domain}${context}/7> <${domain}type> "FD" <${context}> .
+<${domain}${context}/0> <${domain}edges-3> <${domain}${context}/8> <${context}> .
+<${domain}${context}/8> <${domain}from> "3-exit" <${context}> .
+<${domain}${context}/8> <${domain}to> "0" <${context}> .
+<${domain}${context}/8> <${domain}type> "CD" <${context}> .
+<${domain}${context}/8> <${domain}when> "FALSE" <${context}> .
+<${domain}${context}/0> <${domain}entryPoints-0> "3" <${context}> .
+<${domain}${context}/0> <${domain}exitPoints-0> "3-exit" <${context}> .
+`)
 	})
 }))

@@ -1,16 +1,16 @@
-import { assertAst, withShell } from "../../../helper/shell"
-import { exprList, numVal } from "../../../helper/ast-builder"
+import { assertAst, withShell } from '../../../helper/shell'
+import { exprList, numVal } from '../../../helper/ast-builder'
 import {
 	RArithmeticBinaryOpPool,
 	RLogicalBinaryOpPool,
 	RUnaryOpPool,
-} from "../../../helper/provider"
+} from '../../../helper/provider'
 import { type RShell, RType, ComparisonOperators } from '../../../../../src/r-bridge'
-import { rangeFrom } from "../../../../../src/util/range"
+import { rangeFrom } from '../../../../../src/util/range'
 
-describe("Parse simple operations",
+describe('Parse simple operations',
 	withShell((shell) => {
-		describe("unary operations", () => {
+		describe('unary operations', () => {
 			for(const opSuite of RUnaryOpPool) {
 				describe(`${opSuite.label} operations`, () => {
 					for(const op of opSuite.pool) {
@@ -30,7 +30,7 @@ describe("Parse simple operations",
 								operand:  {
 									type:     RType.Number,
 									location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
-									lexeme:   "42",
+									lexeme:   '42',
 									content:  numVal(42),
 									info:     {}
 								},
@@ -40,9 +40,9 @@ describe("Parse simple operations",
 				})
 			}
 		})
-		describe("? question", () => {
+		describe('? question', () => {
 			assertAst(
-				`? x`,
+				'? x',
 				shell,
 				'? x',
 				exprList({
@@ -66,9 +66,9 @@ describe("Parse simple operations",
 
 		describe('binary operations', () => {
 			for(const opSuite of [
-				{ label: "arithmetic", pool: RArithmeticBinaryOpPool },
+				{ label: 'arithmetic', pool: RArithmeticBinaryOpPool },
 				{
-					label: "logical",
+					label: 'logical',
 					pool:  RLogicalBinaryOpPool,
 				},
 			]) {
@@ -91,20 +91,20 @@ describe("Parse simple operations",
 								type:     RType.BinaryOp,
 								operator: op,
 								lexeme:   op,
-								flavor:   "comparison",
+								flavor:   'comparison',
 								location: rangeFrom(1, 3, 1, 3 + opOffset),
 								info:     {},
 								lhs:      {
 									type:     RType.Number,
 									location: rangeFrom(1, 1, 1, 1),
-									lexeme:   "1",
+									lexeme:   '1',
 									content:  numVal(1),
 									info:     {}
 								},
 								rhs: {
 									type:     RType.Number,
 									location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
-									lexeme:   "1",
+									lexeme:   '1',
 									content:  numVal(1),
 									info:     {}
 								},
@@ -127,8 +127,8 @@ describe("Parse simple operations",
 						children: [
 							{
 								type:     RType.Comment,
-								content:  " comment",
-								lexeme:   "# comment",
+								content:  ' comment',
+								lexeme:   '# comment',
 								location: rangeFrom(1, 5, 1, 13),
 								info:     {}
 							},
@@ -143,14 +143,14 @@ describe("Parse simple operations",
 									type:     RType.Number,
 									content:  numVal(1),
 									info:     {},
-									lexeme:   "1",
+									lexeme:   '1',
 									location: rangeFrom(1, 1, 1, 1)
 								},
 								rhs: {
 									type:     RType.Number,
 									content:  numVal(2),
 									info:     {},
-									lexeme:   "2",
+									lexeme:   '2',
 									location: rangeFrom(2, 1, 2, 1)
 								}
 							}
@@ -190,7 +190,7 @@ describe("Parse simple operations",
 										type:     RType.Number,
 										content:  numVal(1),
 										info:     {},
-										lexeme:   "1",
+										lexeme:   '1',
 										location: rangeFrom(1, 1, 1, 1)
 									}
 								}, {
@@ -203,7 +203,7 @@ describe("Parse simple operations",
 										type:     RType.Number,
 										content:  numVal(2),
 										info:     {},
-										lexeme:   "2",
+										lexeme:   '2',
 										location: rangeFrom(1, 8, 1, 8)
 									}
 								}

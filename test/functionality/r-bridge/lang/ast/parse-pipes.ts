@@ -1,14 +1,14 @@
-import { assertAst, withShell } from "../../../helper/shell"
+import { assertAst, withShell } from '../../../helper/shell'
 import { exprList } from '../../../helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
 import { RType } from '../../../../../src/r-bridge'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 
-describe("Parse Pipes", withShell(shell => {
+describe('Parse Pipes', withShell(shell => {
 	assertAst(
-		"x |> f()",
+		'x |> f()',
 		shell,
-		"x |> f()",
+		'x |> f()',
 		exprList({
 			type:     RType.Pipe,
 			location: rangeFrom(1, 3, 1, 4),
@@ -31,7 +31,7 @@ describe("Parse Pipes", withShell(shell => {
 			},
 			rhs: {
 				type:         RType.FunctionCall,
-				flavor:       "named",
+				flavor:       'named',
 				location:     rangeFrom(1, 6, 1, 6),
 				lexeme:       'f',
 				info:         {},
@@ -49,9 +49,9 @@ describe("Parse Pipes", withShell(shell => {
 		{ minRVersion: MIN_VERSION_PIPE }
 	)
 	assertAst(
-		"x |> f() |> g()",
+		'x |> f() |> g()',
 		shell,
-		"x |> f() |> g()",
+		'x |> f() |> g()',
 		exprList({
 			type:     RType.Pipe,
 			location: rangeFrom(1, 10, 1, 11),
@@ -85,7 +85,7 @@ describe("Parse Pipes", withShell(shell => {
 					},
 					rhs: {
 						type:         RType.FunctionCall,
-						flavor:       "named",
+						flavor:       'named',
 						location:     rangeFrom(1, 6, 1, 6),
 						lexeme:       'f',
 						arguments:    [],
@@ -103,7 +103,7 @@ describe("Parse Pipes", withShell(shell => {
 			},
 			rhs: {
 				type:         RType.FunctionCall,
-				flavor:       "named",
+				flavor:       'named',
 				location:     rangeFrom(1, 13, 1, 13),
 				lexeme:       'g',
 				arguments:    [],

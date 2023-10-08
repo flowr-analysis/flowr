@@ -71,10 +71,10 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 
 	const parsedAccess: (RNode | null)[] = splitAccessOnComma.map(x => {
 		if(x.length === 0) {
-			parseLog.trace(`record empty access`)
+			parseLog.trace('record empty access')
 			return null
 		}
-		parseLog.trace(`trying to parse access`)
+		parseLog.trace('trying to parse access')
 		const gotAccess = parseAccessArgument(operator, data, x)
 		guard(gotAccess !== undefined, () => `expected one access result in access as argument, yet received ${JSON.stringify(gotAccess)}`)
 		return gotAccess

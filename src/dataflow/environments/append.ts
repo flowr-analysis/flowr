@@ -46,7 +46,7 @@ export function appendEnvironments(base: REnvironmentInformation | undefined, ne
 	} else if(next === undefined) {
 		return base
 	}
-	guard(base.level === next.level, "environments must have the same level to be handled, it is up to the caller to ensure that")
+	guard(base.level === next.level, 'environments must have the same level to be handled, it is up to the caller to ensure that')
 
 	return {
 		current: appendIEnvironmentWith(base.current, next.current),

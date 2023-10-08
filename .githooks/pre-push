@@ -5,11 +5,8 @@ set -eu
 # run linter
 
 if ! [ -x "$(command -v npm)" ]; then
-  # first, try to setup with nvm
-  if ! [ -x "$(command -v nvm)" ]; then
-    echo 'Error: neither npm nor nvm found.' >&2
-  fi
-  nvm use --lts
+  echo 'Error: npm not found. Make it available to the host shell (e.g., with "nvm use --lts").'
+  exit 2
 fi
 
 echo "Linting project..."

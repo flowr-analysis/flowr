@@ -1,7 +1,7 @@
-import { getKeysGuarded, XmlBasedJson } from "../../input-format"
-import { assureTokenType } from "../meta"
-import { normalizeBasedOnType } from "./elements"
-import { ParserData } from "../../data"
+import { getKeysGuarded, XmlBasedJson } from '../../input-format'
+import { assureTokenType } from '../meta'
+import { normalizeBasedOnType } from './elements'
+import { ParserData } from '../../data'
 import { RType, RExpressionList, RawRType } from '../../../../model'
 
 export function parseRootObjToAst(

@@ -16,7 +16,7 @@ import { normalizeComment } from '../other'
  * @param obj  - The json object to extract the meta-information from
  */
 export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode {
-	parseLog.debug(`Parsing expr`)
+	parseLog.debug('Parsing expr')
 	obj = executeHook(data.hooks.expression.onExpression.before, data, obj)
 
 	const {
@@ -57,6 +57,7 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 	if(children.length === 1) {
 		result = children[0]
 	} else {
+		console.log('multiple children', children)
 		result = {
 			type:   RType.ExpressionList,
 			location,

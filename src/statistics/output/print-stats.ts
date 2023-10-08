@@ -44,10 +44,10 @@ export function printFeatureStatistics(statistics: {features: FeatureStatistics,
 
 	console.log(`processed ${statistics.meta.successfulParsed} files (skipped ${statistics.meta.failedRequests.length} due to errors):
 \ttotal processing time: ${processingTimesPerFile.sum} ms
-\t\tprocessing time range: ${statsString(processingTimesPerFile, ` ms`)}
+\t\tprocessing time range: ${statsString(processingTimesPerFile, ' ms')}
 \ttotal number of lines: ${lineLengths.sum}
 \t\tline range: ${statsString(linesPerFile)}
-\t\tline length range: ${statsString(lineLengths,` chars`)}
+\t\tline length range: ${statsString(lineLengths,' chars')}
   `)
 }
 

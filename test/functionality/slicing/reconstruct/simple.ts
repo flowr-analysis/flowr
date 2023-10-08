@@ -103,6 +103,6 @@ c <- 3
 })`)
 		assertReconstructed('Reconstruct access in pipe', shell, `
 ls <- x[[1]] %>% st_cast()
-class(ls)`, '2', `x[[1]]`)
+class(ls)`, '2', 'x[[1]]')
 	})
 }))

@@ -1,5 +1,6 @@
-import { Base, Location, NoInfo, RNode } from "../model"
-import { RType } from "../type"
+import { Base, Location, NoInfo, RNode } from '../model'
+import { RType } from '../type'
+import { RArgument } from './r-argument'
 
 /**
  * Represents an R Indexing operation with `$`, `@`, `[[`, or `[`.
@@ -20,7 +21,7 @@ export interface RNamedAccess<Info = NoInfo> extends RAccessBase<Info> {
 export interface RIndexAccess<Info = NoInfo> extends RAccessBase<Info> {
 	operator: '[' | '[[';
 	/** is null if the access is empty, e.g. `a[,3]` */
-	access:   (RNode<Info> | null)[]
+	access:   (RArgument<Info> | null)[]
 }
 
 export type RAccess<Info = NoInfo> = RNamedAccess<Info> | RIndexAccess<Info>

@@ -1,6 +1,6 @@
-import { guard } from "./assert"
+import { guard } from './assert'
 
-export const ALPHABET_LOWERCASE = [..."abcdefghijklmnopqrstuvwxyz"] as const
+export const ALPHABET_LOWERCASE = [...'abcdefghijklmnopqrstuvwxyz'] as const
 export const ALPHABET_UPPERCASE = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'] as const
 export const ALPHABET = [...ALPHABET_LOWERCASE, ...ALPHABET_UPPERCASE] as const
 

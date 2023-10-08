@@ -23,14 +23,14 @@ export function tryNormalizeIfThenElse(
 		 elseBlock:  NamedXmlBasedJson
 	]): RIfThenElse | undefined {
 	// we start by parsing a regular if-then structure
-	parseLog.trace(`trying to parse if-then-else structure`)
+	parseLog.trace('trying to parse if-then-else structure')
 	tokens = executeHook(data.hooks.control.onIfThenElse.before, data, tokens)
 
 	const parsedIfThen = tryNormalizeIfThen(data, [tokens[0], tokens[1], tokens[2], tokens[3], tokens[4]])
 	if(parsedIfThen === undefined) {
 		return executeUnknownHook(data.hooks.control.onIfThenElse.unknown, data, tokens)
 	}
-	parseLog.trace(`if-then part successful, now parsing else part`)
+	parseLog.trace('if-then part successful, now parsing else part')
 	guard(tokens[5].name === RawRType.Else, () => `expected else token for if-then-else but found ${JSON.stringify(tokens[5])}`)
 
 	const parsedElse = tryNormalizeSingleNode(data, tokens[6])

@@ -98,10 +98,9 @@ export class FlowRServerConnection {
 			tokenMap:       this.tokenMap,
 			// we have to make sure, that the content is not interpreted as a file path if it starts with 'file://' therefore, we do it manually
 			request:        {
-				request:                 message.content === undefined ? 'file' : 'text',
-				content:                 message.content ?? message.filepath as string,
-				attachSourceInformation: true,
-				ensurePackageInstalled:  false
+				request:                message.content === undefined ? 'file' : 'text',
+				content:                message.content ?? message.filepath as string,
+				ensurePackageInstalled: false
 			},
 			criterion: [] // currently unknown
 		})

@@ -1,54 +1,70 @@
-import { Feature, FeatureProcessorInput, Query } from '../feature'
-import * as xpath from 'xpath-ts2'
+import { Feature, FeatureProcessorInput } from '../feature'
 import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
+import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
 
 
 const initialLoopInfo = {
-	forLoops:        0,
-	whileLoops:      0,
-	repeatLoops:     0,
-	breakStatements: 0,
-	nextStatements:  0,
+	forLoops:               0,
+	whileLoops:             0,
+	repeatLoops:            0,
+	breakStatements:        0,
+	nextStatements:         0,
 	/** apply, tapply, lapply, ...*/
-	implicitLoops:   0
+	implicitLoops:          0,
+	nestedExplicitLoops:    0,
+	deepestExplicitNesting: 0
 }
 
 export type LoopInfo = Writable<typeof initialLoopInfo>
 
-const forLoopQuery: Query = xpath.parse(`//FOR`)
-const whileLoopQuery: Query = xpath.parse(`//WHILE`)
-const repeatLoopQuery: Query = xpath.parse(`//REPEAT`)
-const breakStatementQuery: Query = xpath.parse(`//BREAK`)
-const nextStatementQuery: Query = xpath.parse(`//NEXT`)
-const implicitLoopQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL[
-     text() = 'apply' 
-  or text() = 'lapply' 
-  or text() = 'sapply' 
-  or text() = 'tapply' 
-  or text() = 'mapply' 
-  or text() = 'vapply'
-]`)
+
+const isImplicitLoop = /[lsvmt]?apply/
+
+function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
+	// holds number of loops and their nesting depths
+	const loopStack: RNodeWithParent[] = []
+
+	visitAst(input.normalizedRAst.ast,
+		node => {
+			switch(node.type) {
+				case RType.Next:         info.nextStatements++; return
+				case RType.Break:        info.breakStatements++; return
+				case RType.FunctionCall:
+					if(node.flavor === 'named' && isImplicitLoop.test(node.functionName.lexeme)) {
+						info.implicitLoops++
+						appendStatisticsFile(loops.name, 'implicit-loop', [node.functionName.lexeme], input.filepath)
+					}
+					return
+				case RType.ForLoop:    info.forLoops++; break
+				case RType.WhileLoop:  info.whileLoops++; break
+				case RType.RepeatLoop: info.repeatLoops++; break
+				default: return
+			}
+
+			if(loopStack.length > 0) {
+				info.nestedExplicitLoops++
+				appendStatisticsFile(loops.name, 'nested-loop', [node.lexeme], input.filepath)
+				info.deepestExplicitNesting = Math.max(info.deepestExplicitNesting, loopStack.length)
+			}
+
+			loopStack.push(node)
+		}, node => {
+			// drop again :D
+			if(node.type === RType.ForLoop || node.type === RType.WhileLoop || node.type === RType.RepeatLoop) {
+				loopStack.pop()
+			}
+		}
+	)
+}
+
 
 export const loops: Feature<LoopInfo> = {
 	name:        'Loops',
 	description: 'All looping structures in the document',
 
 	process(existing: LoopInfo, input: FeatureProcessorInput): LoopInfo {
-		const forLoops = forLoopQuery.select({ node: input.parsedRAst })
-		const whileLoops = whileLoopQuery.select({ node: input.parsedRAst })
-		const repeatLoops = repeatLoopQuery.select({ node: input.parsedRAst })
-		const breakStatements = breakStatementQuery.select({ node: input.parsedRAst })
-		const nextStatements = nextStatementQuery.select({ node: input.parsedRAst })
-		const implicitLoops = implicitLoopQuery.select({ node: input.parsedRAst })
-
-		existing.forLoops += forLoops.length
-		existing.whileLoops += whileLoops.length
-		existing.repeatLoops += repeatLoops.length
-		existing.breakStatements += breakStatements.length
-		existing.nextStatements += nextStatements.length
-		existing.implicitLoops += implicitLoops.length
-		appendStatisticsFile(this.name, 'implicit-loops', implicitLoops, input.filepath)
+		visitLoops(existing, input)
 		return existing
 	},
 

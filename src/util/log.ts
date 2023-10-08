@@ -1,5 +1,5 @@
-import { type ILogObj, type ISettingsParam, Logger } from "tslog"
-import { createStream, type Options } from "rotating-file-stream"
+import { type ILogObj, type ISettingsParam, Logger } from 'tslog'
+import { createStream, type Options } from 'rotating-file-stream'
 
 export class FlowrLogger extends Logger<ILogObj> {
 	/** by keeping track of all children we can propagate updates of the settings (e.g., in tests) */
@@ -26,11 +26,11 @@ export class FlowrLogger extends Logger<ILogObj> {
    * make the logger log to a file as well
    */
 	public logToFile(
-		filename = "flowr.log",
+		filename = 'flowr.log',
 		options: Options = {
-			size:     "10M",
-			interval: "1d",
-			compress: "gzip",
+			size:     '10M',
+			interval: '1d',
+			compress: 'gzip',
 		}
 	): void {
 		const stream = createStream(filename, options)

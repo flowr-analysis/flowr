@@ -3,11 +3,11 @@ import { assert } from 'chai'
 import { requestFromInput } from '../../../../../src/r-bridge'
 import { SteppingSlicer } from '../../../../../src/core'
 
-describe("Check hooks are called appropriately", withShell(shell => {
+describe('Check hooks are called appropriately', withShell(shell => {
 	it('Call the number hook!', async() => {
 		let before = false
 		let after = false
-		await retrieveNormalizedAst(shell, "1", {
+		await retrieveNormalizedAst(shell, '1', {
 			values: {
 				onNumber: {
 					before: () => { before = true; return undefined },
@@ -18,7 +18,7 @@ describe("Check hooks are called appropriately", withShell(shell => {
 		assert.isTrue(before, 'The number before-hook was not called!')
 		assert.isTrue(after, 'The number after-hook was not called!')
 	})
-	it("Call the string hook!", async() => {
+	it('Call the string hook!', async() => {
 		const tokenMap = await defaultTokenMap()
 
 		let counter = 0

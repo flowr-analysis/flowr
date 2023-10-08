@@ -24,10 +24,10 @@ const initialControlflowInfo = {
 export type ControlflowInfo = Writable<typeof initialControlflowInfo>
 
 
-const ifThenQuery: Query = xpath.parse(`//IF[not(following-sibling::ELSE)]`)
-const ifThenElseQuery: Query = xpath.parse(`//IF[following-sibling::ELSE]`)
+const ifThenQuery: Query = xpath.parse('//IF[not(following-sibling::ELSE)]')
+const ifThenElseQuery: Query = xpath.parse('//IF[following-sibling::ELSE]')
 
-const selectCondition: Query = xpath.parse(`../expr[preceding-sibling::OP-LEFT-PAREN][1]`)
+const selectCondition: Query = xpath.parse('../expr[preceding-sibling::OP-LEFT-PAREN][1]')
 const constantCondition: Query = xpath.parse(`
   ./NUM_CONST
   |
@@ -36,12 +36,12 @@ const constantCondition: Query = xpath.parse(`
   ./STR_CONST
   |
   ./SYMBOL[text() = 'T' or text() = 'F']`)
-const singleVariableCondition: Query = xpath.parse(`./SYMBOL[text() != 'T' and text() != 'F']`)
+const singleVariableCondition: Query = xpath.parse('./SYMBOL[text() != \'T\' and text() != \'F\']')
 
-const nestedIfThenQuery: Query = xpath.parse(`..//expr/IF`)
+const nestedIfThenQuery: Query = xpath.parse('..//expr/IF')
 
 // directly returns the first argument of switch
-const switchQuery: Query = xpath.parse(`//SYMBOL_FUNCTION_CALL[text() = 'switch']/../../expr[preceding-sibling::OP-LEFT-PAREN][1]`)
+const switchQuery: Query = xpath.parse('//SYMBOL_FUNCTION_CALL[text() = \'switch\']/../../expr[preceding-sibling::OP-LEFT-PAREN][1]')
 
 
 

@@ -1,8 +1,8 @@
 import { splitAtEscapeSensitive } from '../../../src/util/args'
 import { assert } from 'chai'
 
-describe("Arguments", () => {
-	describe("splitArguments", () => {
+describe('Arguments', () => {
+	describe('splitArguments', () => {
 		const positive = (input: string, expected: string[], split = ' ') => {
 			it(`${JSON.stringify(input)}`, () => {
 				assert.deepEqual(splitAtEscapeSensitive(input, split), expected)

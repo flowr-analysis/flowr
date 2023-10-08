@@ -10,7 +10,7 @@ import {
 	comments,
 	controlflow,
 	dataAccess,
-	definedFunctions,
+	definedFunctions, expressionList,
 	loops,
 	usedFunctions,
 	usedPackages,
@@ -20,7 +20,6 @@ import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { MergeableRecord } from '../../util/objects'
 import { NormalizedAst } from '../../r-bridge'
 import { DataflowInformation } from '../../dataflow/internal/info'
-import { DeepReadonly } from 'ts-essentials'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
@@ -38,9 +37,9 @@ export interface FeatureProcessorInput extends MergeableRecord {
 	/** The XML Document representing the parsed (non-normalized) R AST */
 	readonly parsedRAst:     Document,
 	/** The R AST, after the normalization step */
-	readonly normalizedRAst: DeepReadonly<NormalizedAst>,
+	readonly normalizedRAst: NormalizedAst,
 	/** The dataflow information for the given input */
-	readonly dataflow:       DeepReadonly<DataflowInformation>,
+	readonly dataflow:       DataflowInformation,
 	/** The filepath that the document originated from (if present, may be undefined if the input was provided as text) */
 	readonly filepath:       string | undefined
 }
@@ -80,7 +79,8 @@ export const ALL_FEATURES = {
 	assignments:      assignments,
 	loops:            loops,
 	controlflow:      controlflow,
-	dataAccess:       dataAccess
+	dataAccess:       dataAccess,
+	expressionList:   expressionList
 } as const
 
 export type FeatureKey = keyof typeof ALL_FEATURES

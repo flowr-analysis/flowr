@@ -34,8 +34,8 @@ const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'cr
 
 async function getSlice() {
 	const slicer = new BenchmarkSlicer()
-	guard(options.input !== undefined, `input must be given`)
-	guard(options.criterion !== undefined, `a slicing criterion must be given`)
+	guard(options.input !== undefined, 'input must be given')
+	guard(options.criterion !== undefined, 'a slicing criterion must be given')
 
 	await slicer.init(options['input-is-text'] ? { request: 'text', content: options.input } : { request: 'file', content: options.input })
 

@@ -1,4 +1,4 @@
-import { DeepReadonly } from "ts-essentials"
+import { DeepReadonly } from 'ts-essentials'
 import { RNode } from '../model'
 import { foldAstStateful, StatefulFoldFunctions } from './stateful-fold'
 

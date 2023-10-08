@@ -27,8 +27,7 @@ shell.tryToInjectHomeLibPath()
 async function writeQuadForSingleFile(request: RParseRequestFromFile, tokens: Record<string, string>, output: string) {
 	const normalized = await retrieveNormalizedAstFromRCode({
 		...request,
-		attachSourceInformation: true,
-		ensurePackageInstalled:  true
+		ensurePackageInstalled: true
 	}, tokens, shell)
 	const serialized = serialize2quads(normalized.ast, { context: request.content })
 	log.info(`Appending quads to ${output}`)
@@ -37,7 +36,7 @@ async function writeQuadForSingleFile(request: RParseRequestFromFile, tokens: Re
 
 async function getQuads() {
 	const tokens = await getStoredTokenMap(shell)
-	const output = options.output ?? `out.quads`
+	const output = options.output ?? 'out.quads'
 	let skipped = 0
 	for await (const request of allRFilesFrom(options.input, options.limit)) {
 		try {

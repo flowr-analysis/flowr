@@ -15,7 +15,7 @@ import { deepMergeObject, isObjectOrArray, MergeableRecord } from './objects'
 import { guard } from './assert'
 import { DefaultMap } from './defaultmap'
 import literal = DataFactory.literal
-import { log } from "./log"
+import { log } from './log'
 
 const domain = 'https://uni-ulm.de/r-ast/'
 
@@ -84,7 +84,7 @@ export const DefaultQuadSerializationConfiguration: Required<QuadSerializationCo
 	ignore:  defaultQuadIgnoreIf(),
 	context: 'unknown-context',
 	getId:   defaultQuadIdGenerator(),
-	domain:  "https://uni-ulm.de/r-ast/"
+	domain:  'https://uni-ulm.de/r-ast/'
 }
 
 function retrieveContext(context: QuadContextRetriever, obj: DataForQuad): string {

@@ -28,7 +28,7 @@ describe('FlowR Server', withShell(shell => {
 				r:     knownVersion.r,
 				flowr: knownVersion.flowr
 			}
-		}, "Expected hello message to have the predefined format")
+		}, 'Expected hello message to have the predefined format')
 	}))
 
 	it('Process simple REPL Message', withSocket(shell, async socket => {
@@ -60,11 +60,11 @@ describe('FlowR Server', withShell(shell => {
 
 	it('Allow to analyze a simple expression', withSocket(shell, async socket => {
 		fakeSend<FileAnalysisRequestMessage>(socket, {
-			type:      "request-file-analysis",
-			id:        "42",
-			filetoken: "super-token",
-			filename:  "x",
-			content:   "1 + 1"
+			type:      'request-file-analysis',
+			id:        '42',
+			filetoken: 'super-token',
+			filename:  'x',
+			content:   '1 + 1'
 		})
 		await socket.waitForMessage('response-file-analysis')
 		const messages = socket.getMessages(['hello', 'response-file-analysis'])
@@ -84,9 +84,9 @@ describe('FlowR Server', withShell(shell => {
 		assert.strictEqual(response.id, '42', 'Expected the second message to have the same id as the request')
 		// this is hideous and only to unify the ids
 		assert.deepStrictEqual(JSON.stringify(response.results, jsonReplacer)
-			.replace(/\.GlobalEnv","id":"\d+"/, ".GlobalEnv\","),
+			.replace(/\.GlobalEnv","id":"\d+"/, '.GlobalEnv",'),
 		JSON.stringify(results, jsonReplacer)
-			.replace(/\.GlobalEnv","id":"\d+"/, ".GlobalEnv\","), 'Expected the second message to have the same results as the slicer')
+			.replace(/\.GlobalEnv","id":"\d+"/, '.GlobalEnv",'), 'Expected the second message to have the same results as the slicer')
 
 	}))
 }))

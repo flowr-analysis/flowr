@@ -1,4 +1,4 @@
-import { MergeableRecord } from "../../../../../util/objects"
+import { MergeableRecord } from '../../../../../util/objects'
 
 /**
  * Configures the settings for the xml parser (like what names should be used to represent the given objects,

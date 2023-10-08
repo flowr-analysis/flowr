@@ -1,11 +1,11 @@
-import { type RShell } from "./shell"
+import { type RShell } from './shell'
 import { parseCSV, ts2r, XmlParserHooks, normalize, NormalizedAst } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
 import { DeepPartial, DeepReadonly } from 'ts-essentials'
 import { guard } from '../util/assert'
 
 export interface RParseRequestFromFile {
-	request: "file";
+	request: 'file';
 	/** The path to the file (absolute paths are probably best here */
 	content: string;
 }
@@ -18,15 +18,10 @@ export interface RParseRequestFromText {
 
 interface RParseRequestBase {
 	/**
-   * Should lexeme information be retained in the AST?
-   * You most likely want `true` here.
-   */
-	attachSourceInformation: boolean
-	/**
    * Ensure that all required packages are present and if not install them?
-   * The only reason to set this to `false` is probably ina series of parse requests for the same session.
+   * The only reason to set this to `false` is probably in a series of parse requests for the same session.
    */
-	ensurePackageInstalled:  boolean
+	ensurePackageInstalled: boolean
 }
 
 /**
@@ -43,14 +38,13 @@ export function requestFromInput(input: string): RParseRequestFromText & RParseR
 export function requestFromInput(input: `file://${string}` | string): RParseRequest {
 	const file = input.startsWith('file://')
 	return {
-		request:                 file ? 'file' : 'text',
-		content:                 file ? input.slice(7) : input,
-		attachSourceInformation: true,
-		ensurePackageInstalled:  false // should be called within describeSession for that!
+		request:                file ? 'file' : 'text',
+		content:                file ? input.slice(7) : input,
+		ensurePackageInstalled: false // should be called within describeSession for that!
 	}
 }
 
-const ErrorMarker = "err"
+const ErrorMarker = 'err'
 
 /**
  * Provides the capability to parse R files/R code using the R parser.
@@ -68,8 +62,8 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
 
 	shell.sendCommands(`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
 		// now, try to retrieve the ast
-		`try(flowr_parsed <- parse(${request.request} = ${JSON.stringify(request.content)}, keep.source = ${ts2r(request.attachSourceInformation)}${suffix}), silent=FALSE)`,
-		`try(flowr_output <- xmlparsedata::xml_parse_data(flowr_parsed, includeText = ${ts2r(request.attachSourceInformation)}, pretty = FALSE), silent=FALSE)`
+		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
+		'try(flowr_output<-xmlparsedata::xml_parse_data(flowr_parsed,includeText=TRUE,pretty=FALSE),silent=FALSE)'
 	)
 	const xml = await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)
 	const output = xml.join(shell.options.eol)

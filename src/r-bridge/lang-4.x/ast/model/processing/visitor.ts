@@ -1,138 +1,120 @@
-import { RNode } from '../model'
+import { NoInfo, RNode } from '../model'
 import { RType } from '../type'
 import { assertUnreachable } from '../../../../../util/assert'
 
-export const enum RoleInParent {
-	/** has no parent */
-	Root = 'root',
-	IfCondition = 'if-cond',
-	IfThen = 'if-then',
-	IfOtherwise = 'if-otherwise',
-	WhileCondition = 'while-cond',
-	WhileBody = 'while-body',
-	RepeatBody = 'repeat-body',
-	ForVariable = 'for-variable',
-	ForVector = 'for-vector',
-	ForBody = 'for-body',
-	FunctionCallName = 'call-name',
-	FunctionCallArgument = 'call-argument',
-	FunctionDefinitionBody = 'function-def-body',
-	FunctionDefinitionParameter = 'function-def-param',
-	ExpressionListChild = 'expr-list-child',
-	BinaryOperationLhs = 'binop-lhs',
-	BinaryOperationRhs = 'binop-rhs',
-	PipeLhs = 'pipe-lhs',
-	PipeRhs = 'pipe-rhs',
-	UnaryOperand = 'unary-operand',
-	ParameterName = 'param-name',
-	ParameterDefaultValue = 'param-value',
-	ArgumentName = 'arg-name',
-	ArgumentValue = 'arg-value',
-	Accessed = 'accessed',
-	IndexAccess = 'index-access'
-}
-
-export interface ParentContextInfo {
-	readonly role:  RoleInParent
-	readonly index: number
-}
 
 /** Return `true` to stop visiting from this node (i.e., do not continue to visit this node *and* the children) */
-export type OnVisit<OtherInfo> = (node: RNode<OtherInfo>, context: ParentContextInfo) => boolean
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
+export type OnEnter<OtherInfo> = (node: RNode<OtherInfo>) => (boolean | void)
+/** Similar to {@link OnEnter} but called when leaving a node. Can't stop exploration as the subtree is already visited! */
+export type OnExit<OtherInfo> = (node: RNode<OtherInfo>) => void
 
-function visitSingle<OtherInfo>(node: RNode<OtherInfo>, onVisit: OnVisit<OtherInfo>, context: ParentContextInfo): void {
-	if(onVisit(node, context)) {
-		return
+// capsuled as a class to avoid passing onExit and onEnter on *each* visit call
+class NodeVisitor<OtherInfo = NoInfo> {
+	private readonly onEnter?: OnEnter<OtherInfo>
+	private readonly onExit?:  OnExit<OtherInfo>
+
+	constructor(onEnter?: OnEnter<OtherInfo>, onExit?: OnExit<OtherInfo>) {
+		this.onEnter = onEnter
+		this.onExit = onExit
 	}
 
-	const type = node.type
-	switch(type) {
-		case RType.FunctionCall:
-			visit(node.flavor === 'named' ? node.functionName : node.calledFunction, onVisit, { role: RoleInParent.FunctionCallName, index: 0 })
-			visit(node.arguments, onVisit, { role: RoleInParent.FunctionCallArgument, index: 1 })
-			break
-		case RType.FunctionDefinition:
-			visit(node.parameters, onVisit, { role: RoleInParent.FunctionDefinitionParameter, index: 0 })
-			visit(node.body, onVisit, { role: RoleInParent.FunctionDefinitionBody, index: node.parameters.length })
-			break
-		case RType.ExpressionList:
-			visit(node.children, onVisit, { role: RoleInParent.ExpressionListChild, index: 0 })
-			break
-		case RType.ForLoop:
-			visit(node.variable, onVisit, { role: RoleInParent.ForVariable, index: 0 })
-			visit(node.vector, onVisit, { role: RoleInParent.ForVector, index: 1 })
-			visit(node.body, onVisit, { role: RoleInParent.ForBody, index: 2 })
-			break
-		case RType.WhileLoop:
-			visit(node.condition, onVisit, { role: RoleInParent.WhileCondition, index: 0 })
-			visit(node.body, onVisit, { role: RoleInParent.WhileBody, index: 1 })
-			break
-		case RType.RepeatLoop:
-			visit(node.body, onVisit, { role: RoleInParent.RepeatBody, index: 0 })
-			break
-		case RType.IfThenElse:
-			visit(node.condition, onVisit, { role: RoleInParent.IfCondition, index: 0 })
-			visit(node.then, onVisit, { role: RoleInParent.IfThen, index: 1 })
-			visit(node.otherwise, onVisit, { role: RoleInParent.IfOtherwise, index: 2 })
-			break
-		case RType.Pipe:
-			visit(node.lhs, onVisit, { role: RoleInParent.PipeLhs, index: 0 })
-			visit(node.rhs, onVisit, { role: RoleInParent.PipeRhs, index: 1 })
-			break
-		case RType.BinaryOp:
-			visit(node.lhs, onVisit, { role: RoleInParent.BinaryOperationLhs, index: 0 })
-			visit(node.rhs, onVisit, { role: RoleInParent.BinaryOperationRhs, index: 1 })
-			break
-		case RType.UnaryOp:
-			visit(node.operand, onVisit, { role: RoleInParent.UnaryOperand, index: 0 })
-			break
-		case RType.Parameter:
-			visit(node.name, onVisit, { role: RoleInParent.ParameterName, index: 0 })
-			visit(node.defaultValue, onVisit, { role: RoleInParent.ParameterDefaultValue, index: 1 })
-			break
-		case RType.Argument:
-			visit(node.name, onVisit, { role: RoleInParent.ArgumentName, index: 0 })
-			visit(node.value, onVisit, { role: RoleInParent.ArgumentValue, index: 1 })
-			break
-		case RType.Access:
-			visit(node.accessed, onVisit, { role: RoleInParent.Accessed, index: 0 })
-			if(node.operator === '[' || node.operator === '[[') {
-				visit(node.access, onVisit, { role: RoleInParent.IndexAccess, index: 1 })
+	private visitSingle(node: RNode<OtherInfo>): void {
+		if(this.onEnter?.(node)) {
+			return
+		}
+
+		/* let the type system know, that the type does not change */
+		const type = node.type
+		switch(type) {
+			case RType.FunctionCall:
+				this.visitSingle(node.flavor === 'named' ? node.functionName : node.calledFunction)
+				this.visit(node.arguments)
+				break
+			case RType.FunctionDefinition:
+				this.visit(node.parameters)
+				this.visitSingle(node.body)
+				break
+			case RType.ExpressionList:
+				this.visit(node.children)
+				break
+			case RType.ForLoop:
+				this.visitSingle(node.variable)
+				this.visitSingle(node.vector)
+				this.visitSingle(node.body)
+				break
+			case RType.WhileLoop:
+				this.visitSingle(node.condition)
+				this.visitSingle(node.body)
+				break
+			case RType.RepeatLoop:
+				this.visitSingle(node.body)
+				break
+			case RType.IfThenElse:
+				this.visitSingle(node.condition)
+				this.visitSingle(node.then)
+				this.visit(node.otherwise)
+				break
+			case RType.BinaryOp:
+			case RType.Pipe:
+				this.visitSingle(node.lhs)
+				this.visitSingle(node.rhs)
+				break
+			case RType.UnaryOp:
+				this.visitSingle(node.operand)
+				break
+			case RType.Parameter:
+				this.visitSingle(node.name)
+				this.visit(node.defaultValue)
+				break
+			case RType.Argument:
+				this.visit(node.name)
+				this.visitSingle(node.value)
+				break
+			case RType.Access:
+				this.visitSingle(node.accessed)
+				if(node.operator === '[' || node.operator === '[[') {
+					this.visit(node.access)
+				}
+				break
+			case RType.Symbol:
+			case RType.Logical:
+			case RType.Number:
+			case RType.String:
+			case RType.Comment:
+			case RType.Break:
+			case RType.Next:
+			case RType.LineDirective:
+				// leafs
+				break
+			default:
+				assertUnreachable(type)
+		}
+
+		this.onExit?.(node)
+	}
+
+	visit(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined)[] | undefined | null): void {
+		if(Array.isArray(nodes)) {
+			for(const node of nodes) {
+				if(node) {
+					this.visitSingle(node)
+				}
 			}
-			break
-		case RType.Symbol:
-		case RType.Logical:
-		case RType.Number:
-		case RType.String:
-		case RType.Comment:
-		case RType.Break:
-		case RType.Next:
-		case RType.LineDirective:
-			// leafs
-			break
-		default:
-			assertUnreachable(type)
+		} else if(nodes) {
+			this.visitSingle(nodes)
+		}
 	}
+
 }
 
 /**
  * Collects all node ids within a tree given by a respective root node
  *
  * @param nodes          - The root id nodes to start collecting from
- * @param onVisit        - A function that is called for each node encountered - can be used to stop visiting the subtree starting with this node (return `true` stop)
- * @param initialContext - The initial context to use for the root node (only necessary if the context is important for your function, and you know that what you pass is not the root-node)
+ * @param onVisit        - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
+ * @param onExit         - Called after the subtree of a node has been visited, called for leafs too (even though their subtree is empty)
  */
-export function visit<OtherInfo>(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined)[] | undefined, onVisit: OnVisit<OtherInfo>, initialContext: ParentContextInfo = { role: RoleInParent.Root, index: 0 }): void {
-	if(Array.isArray(nodes)) {
-		let index = initialContext.index - 1 /* initial increment */
-		for(const node of nodes) {
-			index++
-			if(node === null || node === undefined) {
-				continue
-			}
-			visitSingle(node, onVisit, { ...initialContext, index })
-		}
-	} else if(nodes !== undefined) {
-		visitSingle(nodes, onVisit, initialContext)
-	}
+export function visitAst<OtherInfo = NoInfo>(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined)[] | undefined, onVisit?: OnEnter<OtherInfo>, onExit?: OnExit<OtherInfo>): void {
+	return new NodeVisitor(onVisit, onExit).visit(nodes)
 }

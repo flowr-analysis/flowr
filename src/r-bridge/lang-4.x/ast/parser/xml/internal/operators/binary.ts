@@ -33,17 +33,17 @@ export function tryNormalizeBinary(
 	parseLog.trace(`binary op for ${lhs.name} [${operator.name}] ${rhs.name}`)
 	let flavor: BinaryOperatorFlavor | 'special' | 'pipe'
 	if(RawRType.Special === operator.name) {
-		flavor = "special"
+		flavor = 'special'
 	} else if(ArithmeticOperatorsRAst.has(operator.name)) {
-		flavor = "arithmetic"
+		flavor = 'arithmetic'
 	} else if(ComparisonOperatorsRAst.has(operator.name)) {
-		flavor = "comparison"
+		flavor = 'comparison'
 	} else if(LogicalOperatorsRAst.has(operator.name)) {
-		flavor = "logical"
+		flavor = 'logical'
 	}  else if(ModelFormulaOperatorsRAst.has(operator.name)) {
-		flavor = "model formula"
+		flavor = 'model formula'
 	} else if(AssignmentsRAst.has(operator.name)) {
-		flavor = "assignment"
+		flavor = 'assignment'
 	} else if(operator.name === RawRType.Pipe) {
 		flavor = 'pipe'
 	} else {

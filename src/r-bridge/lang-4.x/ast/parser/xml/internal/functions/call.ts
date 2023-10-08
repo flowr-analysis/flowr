@@ -37,7 +37,7 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 	}
 
 	if(mappedWithName.length < 3 || mappedWithName[1].name !== RawRType.ParenLeft || mappedWithName[mappedWithName.length - 1].name !== RawRType.ParenRight) {
-		parseLog.trace(`expected function call to have parenthesis for a call, but was not`)
+		parseLog.trace('expected function call to have parenthesis for a call, but was not')
 		return undefined
 	}
 
@@ -73,7 +73,7 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 
 function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RArgument | undefined)[] {
 	const argContainer = mappedWithName.slice(1)
-	guard(argContainer.length > 1 && argContainer[0].name === RawRType.ParenLeft && argContainer[argContainer.length - 1].name === RawRType.ParenRight, `expected args in parenthesis`)
+	guard(argContainer.length > 1 && argContainer[0].name === RawRType.ParenLeft && argContainer[argContainer.length - 1].name === RawRType.ParenRight, 'expected args in parenthesis')
 	const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => x.name === RawRType.Comma)
 	return splitArgumentsOnComma.map(x => {
 		parseLog.trace('trying to parse argument')

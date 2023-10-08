@@ -39,7 +39,7 @@ function plain(text: string): PrettyPrintLine[] {
 }
 type Code = PrettyPrintLine[]
 
-export const reconstructLogger = log.getSubLogger({ name: "reconstruct" })
+export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
 
 
 const getLexeme = (n: RNodeWithParent) => n.info.fullLexeme ?? n.lexeme ?? ''
@@ -161,14 +161,14 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 		} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
 			// 'block'
 			return [
-				{ line: `repeat {`, indent: 0 },
+				{ line: 'repeat {', indent: 0 },
 				...body.slice(1, body.length - 1),
 				{ line: '}', indent: 0 }
 			]
 		} else {
 			// unknown
 			return [
-				{ line: `repeat`, indent: 0 },
+				{ line: 'repeat', indent: 0 },
 				...indentBy(body, 1)
 			]
 		}

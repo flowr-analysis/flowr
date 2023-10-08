@@ -7,139 +7,139 @@
  */
 export const enum RawRType {
 	/** T1 */
-	NullConst = "NULL_CONST",
+	NullConst = 'NULL_CONST',
 	/** T2 */
-	NumericConst = "NUM_CONST",
+	NumericConst = 'NUM_CONST',
 	/** T3 */
-	StringConst = "STR_CONST",
+	StringConst = 'STR_CONST',
 	/** T4 */
-	EqualAssign = "EQ_ASSIGN",
+	EqualAssign = 'EQ_ASSIGN',
 	/** T5 */
-	EqualFormals = "EQ_FORMALS",
+	EqualFormals = 'EQ_FORMALS',
 	/** T6 */
-	EqualSub = "EQ_SUB",
+	EqualSub = 'EQ_SUB',
 	/** T7 */
-	LeftAssign = "LEFT_ASSIGN",
+	LeftAssign = 'LEFT_ASSIGN',
 	/** T8 */
-	RightAssign = "RIGHT_ASSIGN",
+	RightAssign = 'RIGHT_ASSIGN',
 	/** T9 */
-	And = "AND",
+	And = 'AND',
 	/** T10 */
-	And2 = "AND2",
+	And2 = 'AND2',
 	/** T11 */
-	Eq = "EQ",
+	Eq = 'EQ',
 	/** T12 */
-	Ge = "GE",
+	Ge = 'GE',
 	/** T13 */
-	Gt = "GT",
+	Gt = 'GT',
 	/** T14 */
-	Le = "LE",
+	Le = 'LE',
 	/** T15 */
-	Lt = "LT",
+	Lt = 'LT',
 	/** T16 */
-	Ne = "NE",
+	Ne = 'NE',
 	/** T17 */
-	Or = "OR",
+	Or = 'OR',
 	/** T18 */
-	Or2 = "OR2",
+	Or2 = 'OR2',
 	/** T19 */
-	Pipe = "PIPE",
+	Pipe = 'PIPE',
 	/** T20 */
-	Pipebind = "PIPEBIND",
+	Pipebind = 'PIPEBIND',
 	/** T21 */
-	Special = "SPECIAL",
+	Special = 'SPECIAL',
 	/** T22 */
-	Plus = "+",
+	Plus = '+',
 	/** T23 */
-	Minus = "-",
+	Minus = '-',
 	/** T24 */
-	Times = "*",
+	Times = '*',
 	/** T25 */
-	Div = "/",
+	Div = '/',
 	/** T26 */
-	Colon = ":",
+	Colon = ':',
 	/** T27 */
-	Exclamation = "!",
+	Exclamation = '!',
 	/** T28 */
-	Exp = "^",
+	Exp = '^',
 	/** T29 */
-	Question = "?",
+	Question = '?',
 	/** T30 */
-	Tilde = "~",
+	Tilde = '~',
 	/** T31 */
-	Break = "BREAK",
+	Break = 'BREAK',
 	/** T32 */
-	Else = "ELSE",
+	Else = 'ELSE',
 	/** T33 */
-	For = "FOR",
+	For = 'FOR',
 	/** T34 */
-	ForCondition = "forcond",
+	ForCondition = 'forcond',
 	/** T35 */
-	If = "IF",
+	If = 'IF',
 	/** T36 */
-	ForIn = "IN",
+	ForIn = 'IN',
 	/** T37 */
-	Next = "NEXT",
+	Next = 'NEXT',
 	/** T38 */
-	Repeat = "REPEAT",
+	Repeat = 'REPEAT',
 	/** T39 */
-	While = "WHILE",
+	While = 'WHILE',
 	/** T40 */
-	Function = "FUNCTION",
+	Function = 'FUNCTION',
 	/** T41 */
-	Lambda = "\\\\",
+	Lambda = '\\\\',
 	/** T42 */
-	DoubleBracketLeft = "LBB",
+	DoubleBracketLeft = 'LBB',
 	/** T43 */
-	Slot = "SLOT",
+	Slot = 'SLOT',
 	/** T44 */
-	Dollar = "$",
+	Dollar = '$',
 	/** T45 */
-	At = "@",
+	At = '@',
 	/** T46 */
-	BracketLeft = "[",
+	BracketLeft = '[',
 	/** T47 */
-	BracketRight = "]",
+	BracketRight = ']',
 	/** T48 */
-	NsGet = "::",
+	NsGet = '::',
 	/** T49 */
-	NsGetInt = ":::",
+	NsGetInt = ':::',
 	/** T50 */
-	Symbol = "SYMBOL",
+	Symbol = 'SYMBOL',
 	/** T51 */
-	SymbolFunctionCall = "SYMBOL_FUNCTION_CALL",
+	SymbolFunctionCall = 'SYMBOL_FUNCTION_CALL',
 	/** T52 */
-	SymbolPackage = "SYMBOL_PACKAGE",
+	SymbolPackage = 'SYMBOL_PACKAGE',
 	/** T53 */
-	SymbolSub = "SYMBOL_SUB",
+	SymbolSub = 'SYMBOL_SUB',
 	/** T54 */
-	SymbolFormals = "SYMBOL_FORMALS",
+	SymbolFormals = 'SYMBOL_FORMALS',
 	/** T55 */
-	Comment = "COMMENT",
+	Comment = 'COMMENT',
 	/** T56 */
-	LineDirective = "LINE_DIRECTIVE",
+	LineDirective = 'LINE_DIRECTIVE',
 	/** T57 */
-	ParenLeft = "(",
+	ParenLeft = '(',
 	/** T58 */
-	ParenRight = ")",
+	ParenRight = ')',
 	/** T59 */
-	Comma = ",",
+	Comma = ',',
 	/** T60 */
-	Semicolon = ";",
+	Semicolon = ';',
 	/** T61 */
-	BraceLeft = "{",
+	BraceLeft = '{',
 	/** T62 */
-	BraceRight = "}",
+	BraceRight = '}',
 	/** T63 */
-	Expression = "expr",
+	Expression = 'expr',
 	/** T64
 	 *
 	 * https://github.com/REditorSupport/languageserver/issues/327
 	 * https://github.com/REditorSupport/languageserver/pull/328
 	 */
-	ExprOfAssignOrHelp = "expr_or_assign_or_help",
+	ExprOfAssignOrHelp = 'expr_or_assign_or_help',
 	/** T65 */
-	ExpressionList = "exprlist",
+	ExpressionList = 'exprlist',
 }
 
 /**
@@ -152,53 +152,53 @@ export const enum RawRType {
  */
 export const enum RType {
 	/** {@link RAccess} */
-	Access = "RAccess",
+	Access = 'RAccess',
 	/** {@link RArgument} */
-	Argument = "RArgument",
+	Argument = 'RArgument',
 	/** {@link RBinaryOp} */
-	BinaryOp = "RBinaryOp",
+	BinaryOp = 'RBinaryOp',
 	/** {@link RExpressionList} */
-	ExpressionList = "RExpressionList",
+	ExpressionList = 'RExpressionList',
 	/** {@link RForLoop} */
-	ForLoop = "RForLoop",
+	ForLoop = 'RForLoop',
 	/** {@link RFunctionCall} */
-	FunctionCall = "RFunctionCall",
+	FunctionCall = 'RFunctionCall',
 	/** {@link RFunctionDefinition} */
-	FunctionDefinition = "RFunctionDefinition",
+	FunctionDefinition = 'RFunctionDefinition',
 	/** {@link RIfThenElse} */
-	IfThenElse = "RIfThenElse",
+	IfThenElse = 'RIfThenElse',
 	/** {@link RParameter} */
-	Parameter = "RParameter",
+	Parameter = 'RParameter',
 	/** {@link RPipe} */
-	Pipe = "RPipe",
+	Pipe = 'RPipe',
 	/** {@link RRepeatLoop} */
-	RepeatLoop = "RRepeatLoop",
+	RepeatLoop = 'RRepeatLoop',
 	/** {@link RUnaryOp} */
-	UnaryOp = "RUnaryOp",
+	UnaryOp = 'RUnaryOp',
 	/** {@link RWhileLoop} */
-	WhileLoop = "RWhileLoop",
+	WhileLoop = 'RWhileLoop',
 	/** {@link RBreak} */
-	Break = "RBreak",
+	Break = 'RBreak',
 	/** {@link RComment} */
-	Comment = "RComment",
+	Comment = 'RComment',
 	/** {@link RLineDirective} */
-	LineDirective = "RLineDirective",
+	LineDirective = 'RLineDirective',
 	/** {@link RLogical} */
-	Logical = "RLogical",
+	Logical = 'RLogical',
 	/** {@link RNext} */
-	Next = "RNext",
+	Next = 'RNext',
 	/** {@link RNumber} */
-	Number = "RNumber",
+	Number = 'RNumber',
 	/** {@link RString} */
-	String = "RString",
+	String = 'RString',
 	/** {@link RSymbol} */
-	Symbol = "RSymbol",
+	Symbol = 'RSymbol',
 	/* ------ special types ------ */
 	/** {@link RDelimiter}.
 	 * Is not part of the normalized AST but can be found in
 	 * {@link Source#additionalTokens}.
 	 */
-	Delimiter = "RDelimiter",
+	Delimiter = 'RDelimiter',
 }
 
 /**

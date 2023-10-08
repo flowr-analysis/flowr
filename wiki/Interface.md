@@ -689,7 +689,7 @@ const tokenMap = await getStoredTokenMap(shell)
 const stepper = new SteppingSlicer({
   shell:     shell,
   tokenMap:  tokenMap,
-  request:   requestFromInput("x <- 1\nx + 1"),
+  request:   requestFromInput('x <- 1\nx + 1'),
   criterion: ['2@x'],
 })
 
@@ -733,7 +733,7 @@ Furthermore, it provides a simple way to slice a file for all possible slicing p
 ```typescript
 const slicer = new BenchmarkSlicer()
 
-await slicer.init({ request: 'text', content: "y <- 2 + x" })
+await slicer.init({ request: 'text', content: 'y <- 2 + x' })
 await slicer.sliceForAll(DefaultAllVariablesFilter)
 
 const result = slicer.finish()

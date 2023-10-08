@@ -19,7 +19,7 @@ import { startAndEndsWith } from '../../../../../../../util/strings'
  */
 export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
 	guard(objs.length > 0, 'to parse symbols we need at least one object to work on!')
-	parseLog.debug(`trying to parse symbol`)
+	parseLog.debug('trying to parse symbol')
 	objs = executeHook(data.hooks.values.onSymbol.before, data, objs)
 
 	let location, content, namespace

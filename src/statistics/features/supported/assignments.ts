@@ -14,7 +14,7 @@ const initialAssignmentInfo = {
 export type AssignmentInfo = Writable<typeof initialAssignmentInfo>
 
 
-const defaultOperatorAssignmentQuery: Query = xpath.parse(`//EQ_ASSIGN|//LEFT_ASSIGN|//RIGHT_ASSIGN`)
+const defaultOperatorAssignmentQuery: Query = xpath.parse('//EQ_ASSIGN|//LEFT_ASSIGN|//RIGHT_ASSIGN')
 // either <-/<<-/=, with a nested rhs, or ->/->> with a nested lhs
 const nestedOperatorAssignmentQuery: Query = xpath.parse(`//*[
   (self::LEFT_ASSIGN or self::EQ_ASSIGN) and following-sibling::expr//*[self::LEFT_ASSIGN or self::EQ_ASSIGN or self::RIGHT_ASSIGN]

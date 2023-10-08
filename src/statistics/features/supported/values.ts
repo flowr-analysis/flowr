@@ -19,10 +19,10 @@ const initialValueInfo = {
 export type ValueInfo = Writable<typeof initialValueInfo>
 
 
-const numericConstantQuery: Query = xpath.parse(`//NUM_CONST`)
-const stringConstantQuery: Query = xpath.parse(`//STR_CONST`)
-const specialConstantsQuery: Query = xpath.parse(`//NULL_CONST`)
-const shortLogicalSymbolQuery: Query = xpath.parse(`//SYMBOL[text() = 'T' or text() = 'F']`)
+const numericConstantQuery: Query = xpath.parse('//NUM_CONST')
+const stringConstantQuery: Query = xpath.parse('//STR_CONST')
+const specialConstantsQuery: Query = xpath.parse('//NULL_CONST')
+const shortLogicalSymbolQuery: Query = xpath.parse('//SYMBOL[text() = \'T\' or text() = \'F\']')
 
 
 function classifyNumericConstants(numeric: string, existing: ValueInfo): 'allNumerics' | 'logical' | 'special-constants' {

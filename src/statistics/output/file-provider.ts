@@ -29,7 +29,7 @@ export class StatisticFileProvider implements StatisticAppendProvider{
 	private readonly connections = new Map<string, FileDescriptor>()
 
 	constructor(statisticsDirectory: string | undefined)  {
-		guard(statisticsDirectory !== undefined, `Please supply an output directory!`)
+		guard(statisticsDirectory !== undefined, 'Please supply an output directory!')
 		this.statisticsDirectory = statisticsDirectory
 
 		// just to make sure, that they are closed

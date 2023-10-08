@@ -28,4 +28,6 @@ export function testForFeatureForInput<T extends FeatureKey>(shell: RShell, feat
 describe('Statistics', () => {
 	require('./features/controlflow.ts')
 	require('./features/used-functions.ts')
+	require('./features/loops.ts')
+	require('./features/data-access.ts')
 })

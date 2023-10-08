@@ -1,9 +1,9 @@
-import { NamedXmlBasedJson, XmlBasedJson } from "../../input-format"
-import { splitArrayOn } from "../../../../../../../util/arrays"
-import { parseLog } from "../../parser"
-import { getWithTokenType } from "../meta"
-import { ParserData } from "../../data"
-import { tryNormalizeSingleNode } from "./single-element"
+import { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
+import { splitArrayOn } from '../../../../../../../util/arrays'
+import { parseLog } from '../../parser'
+import { getWithTokenType } from '../meta'
+import { ParserData } from '../../data'
+import { tryNormalizeSingleNode } from './single-element'
 import { tryNormalizeSymbol } from '../values'
 import { tryNormalizeUnary, tryNormalizeBinary } from '../operators'
 import {
@@ -123,7 +123,7 @@ export function normalizeBasedOnType(
 	obj: XmlBasedJson[] | NamedXmlBasedJson[]
 ): RNode[] {
 	if(obj.length === 0) {
-		parseLog.warn("no children received, skipping")
+		parseLog.warn('no children received, skipping')
 		return []
 	}
 
@@ -138,7 +138,7 @@ export function normalizeBasedOnType(
 		)
 	}
 
-	log.trace(`[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(", ")}]`)
+	log.trace(`[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(', ')}]`)
 
 	const splitOnSemicolon = splitArrayOn(
 		mappedWithName,

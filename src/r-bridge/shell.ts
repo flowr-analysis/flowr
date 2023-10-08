@@ -1,14 +1,14 @@
-import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
-import { deepMergeObject, type MergeableRecord } from "../util/objects"
-import { type ILogObj, type Logger } from "tslog"
-import * as readline from "node:readline"
+import { type ChildProcessWithoutNullStreams, spawn } from 'child_process'
+import { deepMergeObject, type MergeableRecord } from '../util/objects'
+import { type ILogObj, type Logger } from 'tslog'
+import * as readline from 'node:readline'
 import { ts2r } from './lang-4.x'
 import { log, LogLevel } from '../util/log'
 import { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 
-export type OutputStreamSelector = "stdout" | "stderr" | "both";
+export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
 export interface CollectorTimeout extends MergeableRecord {
 	/**
@@ -154,8 +154,8 @@ export class RShell {
 	/**
    * Send a command and collect the output
    *
-   * @param command     - the R command to execute (similar to {@link sendCommand})
-   * @param addonConfig - further configuration on how and what to collect: see {@link OutputCollectorConfiguration},
+   * @param command     - The R command to execute (similar to {@link sendCommand})
+   * @param addonConfig - Further configuration on how and what to collect: see {@link OutputCollectorConfiguration},
    *                      defaults are set in {@link DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION}
    */
 	public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
@@ -218,9 +218,9 @@ export class RShell {
 	public tryToInjectHomeLibPath(): void {
 		// ensure the path exists first
 		if(this.options.homeLibPath === undefined) {
-			this.log.debug(`ensuring home lib path exists (automatic inject)`)
-			this.sendCommand(`if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }`)
-			this.sendCommand(`.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))`)
+			this.log.debug('ensuring home lib path exists (automatic inject)')
+			this.sendCommand('if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }')
+			this.sendCommand('.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))')
 		} else {
 			this.injectLibPaths(this.options.homeLibPath)
 		}
@@ -232,8 +232,8 @@ export class RShell {
 	public async isPackageInstalled(packageName: string): Promise<boolean> {
 		this.log.debug(`checking if package "${packageName}" is installed`)
 		const result = await this.sendCommandWithOutput(
-			`cat(paste0(is.element("${packageName}", installed.packages()[,1])),"${this.options.eol}")`)
-		return result.length === 1 && result[0] === ts2r(true)
+			`cat(system.file(package="${packageName}")!="","${this.options.eol}")`)
+		return result.length === 1 && result[0] === 'TRUE'
 	}
 
 	public async allInstalledPackages(): Promise<string[]> {

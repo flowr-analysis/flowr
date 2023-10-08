@@ -207,7 +207,7 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
 		}
 		const currentInfo = dataflowGraph.get(currentId, true)
 		if(currentInfo === undefined) {
-			slicerLogger.trace(`skipping unknown link`)
+			slicerLogger.trace('skipping unknown link')
 			continue
 		}
 		visited.add(currentId)

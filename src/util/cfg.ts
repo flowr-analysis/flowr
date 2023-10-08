@@ -5,7 +5,7 @@ import {
 	NormalizedAst,
 	ParentInformation, RAccess, RFalse,
 	RForLoop,
-	RFunctionDefinition, RNode,
+	RFunctionDefinition,
 	RNodeWithParent,
 	RRepeatLoop, RTrue,
 	RWhileLoop

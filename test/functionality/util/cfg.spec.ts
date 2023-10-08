@@ -6,7 +6,7 @@ import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
 import { cfgToMermaidUrl } from '../../../src/util/mermaid'
 import { serialize2quads } from '../../../src/util/quads'
 
-describe("Control Flow Graph", withShell(shell => {
+describe('Control Flow Graph', withShell(shell => {
 	 function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
 		 // shallow copy is important to avoid killing the CFG :c
 		const expected: ControlFlowInformation = {...emptyControlFlowInformation(), ...partialExpected}
@@ -20,12 +20,12 @@ describe("Control Flow Graph", withShell(shell => {
 			const cfg = extractCFG(result.normalize)
 
 			try {
-				assert.deepStrictEqual(cfg.entryPoints, expected.entryPoints, "entry points differ")
-				assert.deepStrictEqual(cfg.exitPoints, expected.exitPoints, "exit points differ")
-				assert.deepStrictEqual(cfg.breaks, expected.breaks, "breaks differ")
-				assert.deepStrictEqual(cfg.nexts, expected.nexts, "nexts differ")
-				assert.deepStrictEqual(cfg.returns, expected.returns, "returns differ")
-				assert.isTrue(equalCfg(cfg.graph, expected.graph), "graphs differ")
+				assert.deepStrictEqual(cfg.entryPoints, expected.entryPoints, 'entry points differ')
+				assert.deepStrictEqual(cfg.exitPoints, expected.exitPoints, 'exit points differ')
+				assert.deepStrictEqual(cfg.breaks, expected.breaks, 'breaks differ')
+				assert.deepStrictEqual(cfg.nexts, expected.nexts, 'nexts differ')
+				assert.deepStrictEqual(cfg.returns, expected.returns, 'returns differ')
+				assert.isTrue(equalCfg(cfg.graph, expected.graph), 'graphs differ')
 			} catch(e: unknown) {
 				console.error(`expected: ${cfgToMermaidUrl(expected)}`)
 				console.error(`actual: ${cfgToMermaidUrl(cfg)}`)
@@ -52,7 +52,7 @@ describe("Control Flow Graph", withShell(shell => {
 		const result = await new SteppingSlicer({
 			stepOfInterest: 'normalize',
 			shell,
-			request:        requestFromInput('file://test/testfiles/example.R'),
+			request:        requestFromInput('if(TRUE) 1'),
 			tokenMap:       await defaultTokenMap()
 		}).allRemainingSteps()
 		const cfg = extractCFG(result.normalize)

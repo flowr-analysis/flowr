@@ -105,7 +105,7 @@ const writer = new Writer( { format: 'N-Quads' })
 export function serialize2quads(obj: RecordForQuad, config: QuadSerializationConfiguration): string {
 	const useConfig = deepMergeObject(DefaultQuadSerializationConfiguration, config)
 	guard(isObjectOrArray(obj), 'cannot serialize non-object to rdf!')
-	guard(!Array.isArray(obj), 'cannot serialize arrays!')
+	guard(!Array.isArray(obj), 'cannot serialize arrays (must wrap in object)!')
 
 	const quads: Quad[] = []
 	serializeObject(obj, quads, useConfig)
@@ -163,7 +163,10 @@ function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quad
 	))
 }
 
-function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
+function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
+	if(config.ignore(key, value)) {
+		return
+	}
 	if(isObjectOrArray(value)) {
 		if(Array.isArray(value)) {
 			processArrayEntries(key, value, obj, quads, config)
@@ -176,10 +179,18 @@ function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads
 }
 
 function serializeObject(obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>): void {
-	for(const [key, value] of Object.entries(obj)) {
-		if(config.ignore(key, value)) {
-			continue
+	if(obj instanceof Map) {
+		for(const [key, value] of obj.entries()) {
+			processObjectEntry('key-' + String(key), value, obj, quads, config)
 		}
-		processObjectEntry(key, value, obj, quads, config)
+	} else if(obj instanceof Set) {
+		let i = 0
+		for(const value of obj.values()) {
+			processObjectEntry('idx-'+String(i++), value, obj, quads, config)
+		}
+	} else {
+		for(const [key, value] of Object.entries(obj)) {
+			processObjectEntry(key, value, obj, quads, config)
+		}
 	}
 }

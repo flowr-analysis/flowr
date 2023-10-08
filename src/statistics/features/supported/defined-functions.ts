@@ -4,7 +4,7 @@ import { Writable } from 'ts-essentials'
 import { SourcePosition } from '../../../util/range'
 import { MergeableRecord } from '../../../util/objects'
 import { ParentInformation, RFunctionDefinition, RNodeWithParent, RType, visitAst } from '../../../r-bridge'
-import { EdgeType } from '../../../dataflow'
+import { EdgeType, graphToMermaidUrl } from '../../../dataflow'
 import { guard, isNotUndefined } from '../../../util/assert'
 
 const initialFunctionDefinitionInfo = {
@@ -57,6 +57,8 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 	const definitionStack: RNodeWithParent[] = []
 	const allDefinitions: FunctionDefinitionInformation[] = []
 
+	console.log('visitDefinitions', graphToMermaidUrl(input.dataflow.graph, input.normalizedRAst.idMap))
+
 	visitAst(input.normalizedRAst.ast,
 		node => {
 			if(node.type !== RType.FunctionDefinition) {
@@ -94,8 +96,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 			definitionStack.push(node)
 
 			// we find definitions with silly defined-by edges
-			// TODO: invert, must be an incoming edge!
-			const edges = input.dataflow.graph.outgoingEdges(node.info.id)
+			const edges = input.dataflow.graph.ingoingEdges(node.info.id)
 			if(edges !== undefined) {
 				for(const [targetId, edge] of edges) {
 					if(edge.types.has(EdgeType.DefinedBy)) {
@@ -104,24 +105,14 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 						const name = target.info.fullLexeme ?? target.lexeme
 						info.assignedFunctions++
 						appendStatisticsFile(definedFunctions.name, 'assignedFunctions', [name ?? '<unknown>'], input.filepath)
-						break
+					}
+					if(edge.types.has(EdgeType.Calls)) {
+						const target = input.normalizedRAst.idMap.get(targetId)
+						guard(target !== undefined, 'Dataflow edge points to unknown node')
+						console.log('calls', target.info.fullLexeme ?? target.lexeme)
 					}
 				}
 			}
-
-			/* TODO:
-			appendStatisticsFile(this.name, 'assignedFunctions', assignedNames, input.filepath)
-
-		const recursiveFunctions = []
-		for(let i = 0; i < assignedFunctions.length; i++) {
-			const name = assignedNames[i]
-			if(testRecursive(assignedFunctions[i], name)) {
-				recursiveFunctions.push(name)
-			}
-		}
-		existing.recursive += recursiveFunctions.length
-		appendStatisticsFile(this.name, 'recursiveFunctions', recursiveFunctions, input.filepath)
-	 */
 
 			const lexeme = node.info.fullLexeme
 			const lexemeSplit= lexeme?.split('\n')

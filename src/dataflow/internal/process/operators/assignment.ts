@@ -1,8 +1,15 @@
-import { collectAllIds, NodeId, ParentInformation, RAssignmentOp, RNode, RType } from '../../../../r-bridge'
+import {
+	collectAllIds,
+	NodeId,
+	ParentInformation,
+	RAssignmentOp,
+	RNode,
+	RType
+} from '../../../../r-bridge'
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { EdgeType } from '../../../graph'
-import { guard } from '../../../../util/assert'
+import { DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo, EdgeType } from '../../../graph'
+import { guard, isNotUndefined } from '../../../../util/assert'
 import {
 	define,
 	IdentifierDefinition,
@@ -12,6 +19,7 @@ import {
 import { log } from '../../../../util/log'
 import { dataflowLogger } from '../../../index'
 import { GlobalScope, LocalScope } from '../../../environments/scopes'
+import { linkFunctionCalls } from '../../linker'
 
 export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)
@@ -22,22 +30,36 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 
 	// deal with special cases based on the source node and the determined read targets
 
-	const isFunctionSide = swap ? op.lhs : op.rhs
-	const isFunction = isFunctionSide.type === RType.FunctionDefinition
+	const target = swap ? op.lhs : op.rhs
+	const isFunction = target.type === RType.FunctionDefinition
 
 	for(const write of writeTargets) {
 		nextGraph.setDefinitionOfVertex(write)
 
 		if(isFunction) {
-			nextGraph.addEdge(write, isFunctionSide.info.id, EdgeType.DefinedBy, 'always', true)
+			nextGraph.addEdge(write, target.info.id, EdgeType.DefinedBy, 'always', true)
+			const callsInBodies: [NodeId, DataflowGraphVertexInfo][] = [...(swap ? lhs : rhs).graph.vertices(false)].filter(
+				([_, info]): boolean => info.tag === 'function-definition'
+			).flatMap(([_, info]) => [...(info as DataflowGraphVertexFunctionDefinition).subflow.graph])
+				.map(id => nextGraph.get(id, true)?.[0])
+				.filter(isNotUndefined)
+				.filter(info => info.tag === 'function-call')
+
+				.map(info => [info.id, info])
+
+			// link recursive definitions
+			linkFunctionCalls(nextGraph, data.completeAst.idMap, callsInBodies, nextGraph)
 		} else {
-			const impactReadTargets = determineImpactOfSource(swap ? op.lhs : op.rhs, readTargets)
+			const impactReadTargets = determineImpactOfSource(target, readTargets)
 
 			for(const read of impactReadTargets) {
 				nextGraph.addEdge(write, read, EdgeType.DefinedBy, undefined, true)
 			}
 		}
 	}
+
+
+
 	return {
 		unknownReferences: [],
 		in:                readTargets,
@@ -48,15 +70,19 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 	}
 }
 
-function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformation>,
-																																												lhs: DataflowInformation,
-																																												rhs: DataflowInformation) : {
-		source: DataflowInformation
-		target: DataflowInformation
-		global: boolean
-		/** true if `->` or `->>` */
-		swap:   boolean
-	} {
+interface SourceAndTarget {
+	source: DataflowInformation
+	target: DataflowInformation
+	global: boolean
+	/** true if `->` or `->>` */
+	swap:   boolean
+}
+
+function identifySourceAndTarget<OtherInfo>(
+	op: RNode<OtherInfo & ParentInformation>,
+	lhs: DataflowInformation,
+	rhs: DataflowInformation
+) : SourceAndTarget {
 	let source: DataflowInformation
 	let target: DataflowInformation
 	let global = false

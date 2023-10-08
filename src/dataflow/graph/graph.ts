@@ -39,6 +39,10 @@ type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'used'>  | Identifi
  * Maps the edges target to the edge information
  */
 export type OutgoingEdges = Map<NodeId, DataflowGraphEdge>
+/**
+ *
+ */
+export type IngoingEdges = Map<NodeId, DataflowGraphEdge>
 
 
 /**
@@ -78,6 +82,16 @@ export class DataflowGraph {
 
 	public outgoingEdges(id: NodeId): OutgoingEdges | undefined {
 		return this.edges.get(id)
+	}
+
+	public ingoingEdges(id: NodeId): IngoingEdges | undefined {
+		const edges = new Map<NodeId, DataflowGraphEdge>()
+		for(const [source, outgoing] of this.edges.entries()) {
+			if(outgoing.has(id)) {
+				edges.set(source, outgoing.get(id) as DataflowGraphEdge)
+			}
+		}
+		return edges
 	}
 
 

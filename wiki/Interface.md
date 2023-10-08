@@ -6,6 +6,7 @@ Although far from being as detailed as the in-depth explanation of [*flowR*](htt
 - [💬 Communicating With the Server](#-communicating-with-the-server)
   - [The Hello Message](#the-hello-message)
   - [The Analysis Request](#the-analysis-request)
+    - [Including the control flow graph](#including-the-control-flow-graph)
   - [The Slice Request](#the-slice-request)
   - [The REPL Request](#the-repl-request)
 - [💻 Using the REPL](#-using-the-repl)
@@ -48,7 +49,7 @@ After launching, for example with  `docker run -it --rm flowr --server`&nbsp;(�
 See the implementation of the [hello message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/hello.ts) for more information regarding the contents of the message.
 
 
-<details>
+<details open>
     <summary>Example Message</summary>
 
 *Note:* even though we pretty-print these messages, they are sent as a single line, ending with a newline.
@@ -66,9 +67,7 @@ See the implementation of the [hello message](https://github.com/Code-Inspect/fl
 
 </details>
 
-
-
-There are currently three messages that you can send after the hello message.
+There are currently a few messages that you can send after the hello message.
 If you want to *slice* a piece of R code you first have to send an analysis request, so that you can send one or multiple slice requests afterward.
 Requests for the repl are independent of that.
 
@@ -101,7 +100,7 @@ If you add the `id` field, the answer will use the same `id` so you can match re
 See the implementation of the [request-file-analysis message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/analysis.ts) for more information.
 
 
-<details>
+<details open>
     <summary>Example Request</summary>
 
 *Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
@@ -118,7 +117,7 @@ See the implementation of the [request-file-analysis message](https://github.com
 </details>
 
 <details>
-    <summary>Example Response (Warning: Long)</summary>
+    <summary>Example Response (Long)</summary>
 
 *Note:* even though we pretty-print these responses, they are sent as a single line, ending with a newline.
 
@@ -449,6 +448,173 @@ It contains a human-readable description *why* the analysis failed (see the [err
 
 </details>
 
+
+#### Including the control flow graph
+
+While _flowR_ does (for the time being) not use an explicit control flow graph, the respective structure can still be exposed using the server.
+For this, the analysis request may add `cfg: true` to its list of options.
+
+<details open>
+    <summary>Example Request</summary>
+
+*Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
+
+```json
+{
+  "type":      "request-file-analysis",
+  "id":        "1",
+  "filetoken": "x",
+  "content":   "x <- 1\nx + 1",
+  "cfg":       true
+}
+```
+
+</details>
+
+
+<details>
+    <summary>Example Response (Shortened)</summary>
+
+*Note:* even though we pretty-print these messages, they are sent as a single line, ending with a newline.
+
+The response is basically the same as the response sent without the `cfg` flag. The following only shows important additions. If you are interested in a visual representation of the control flow graph, see the [mermaid visualization](https://mermaid.live/edit#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgbjBbXCJgUlN5bWJvbCAoMClcbid4J2BcIl1cbiAgICBuMVtcImBSTnVtYmVyICgxKVxuJzEnYFwiXVxuICAgIG4yW1wiYFJCaW5hcnlPcCAoMilcbid4IDwtIDEnYFwiXVxuICAgIG4zW1wiYFJTeW1ib2wgKDMpXG4neCdgXCJdXG4gICAgbjRbXCJgUk51bWJlciAoNClcbicxJ2BcIl1cbiAgICBuNVtcImBSQmluYXJ5T3AgKDUpXG4neCArIDEnYFwiXVxuICAgIG4xIC0uLT58XCJGRFwifCBuMFxuICAgIG4wIC0uLT58XCJGRFwifCBuMlxuICAgIG41IC0uLT58XCJGRFwifCBuMVxuICAgIG40IC0uLT58XCJGRFwifCBuM1xuICAgIG4zIC0uLT58XCJGRFwifCBuNVxuIiwibWVybWFpZCI6e30sInVwZGF0ZUVkaXRvciI6ZmFsc2UsImF1dG9TeW5jIjp0cnVlLCJ1cGRhdGVEaWFncmFtIjpmYWxzZX0=) (although it is really simple).
+
+```json
+{
+   "type": "response-file-analysis",
+   "format": "json",
+   "id": "1",
+   "cfg": {
+      "graph": {
+         "rootVertices": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+         ],
+         "vertexInformation": [
+            [
+               "0",
+               {
+                  "id": "0",
+                  "name": "RSymbol",
+                  "content": "x"
+               }
+            ],
+            [
+               "1",
+               {
+                  "id": "1",
+                  "name": "RNumber",
+                  "content": "1"
+               }
+            ],
+            [
+               "2",
+               {
+                  "id": "2",
+                  "name": "RBinaryOp",
+                  "content": "x <- 1"
+               }
+            ],
+            [
+               "3",
+               {
+                  "id": "3",
+                  "name": "RSymbol",
+                  "content": "x"
+               }
+            ],
+            [
+               "4",
+               {
+                  "id": "4",
+                  "name": "RNumber",
+                  "content": "1"
+               }
+            ],
+            [
+               "5",
+               {
+                  "id": "5",
+                  "name": "RBinaryOp",
+                  "content": "x + 1"
+               }
+            ]
+         ],
+         "edgeInformation": [
+            [
+               "1",
+               [
+                  [
+                     "0",
+                     {
+                        "label": "FD"
+                     }
+                  ]
+               ]
+            ],
+            [
+               "2",
+               [
+                  [
+                     "0",
+                     {
+                        "label": "FD"
+                     }
+                  ]
+               ]
+            ],
+            [
+               "4",
+               [
+                  [
+                     "2",
+                     {
+                        "label": "FD"
+                     }
+                  ],
+                  [
+                     "3",
+                     {
+                        "label": "FD"
+                     }
+                  ]
+               ]
+            ],
+            [
+               "5",
+               [
+                  [
+                     "3",
+                     {
+                        "label": "FD"
+                     }
+                  ]
+               ]
+            ]
+         ]
+      },
+      "breaks": [],
+      "nexts": [],
+      "returns": [],
+      "exitPoints": [
+         "5"
+      ],
+      "entryPoints": [
+         "1"
+      ]
+   },
+   "results": {
+      // ..., same as before
+   }
+}
+```
+
+</details>
+
 ### The Slice Request
 
 
@@ -476,7 +642,7 @@ In order to slice, you have to send a file analysis request first. The `filetoke
 Besides that, you only need to add an array of slicing criteria, using one of the formats described on the [terminology wiki page](https://github.com/Code-Inspect/flowr/wiki/Terminology#slicing-criterion) (however, instead of using `;`, you can simply pass separate array elements).
 See the implementation of the [request-slice message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/slice.ts) for more information.
 
-<details>
+<details open>
     <summary>Example Request</summary>
 
 *Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.
@@ -585,7 +751,7 @@ You can detect the end of the execution by receiving the `end-repl-execution` me
 See the implementation of the [request-repl-execution message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/repl.ts) for more information.
 The semantics of the error message are similar to other messages.
 
-<details>
+<details open>
     <summary>Example Request</summary>
 
 *Note:* even though we pretty-print these requests, they have to be sent as a single line, which ends with a newline.

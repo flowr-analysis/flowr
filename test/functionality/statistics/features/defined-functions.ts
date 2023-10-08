@@ -111,36 +111,28 @@ describe('Used Function Definitions', withShell(shell => {
 				assignedFunctions: 1
 			},
 			written: [
-				['usedParameterNames', [{ value: 'x' }, { value: 'y' }]],
-				['nested-definitions', [{ value: 'function(y) { x + y }' }]],
+				['usedParameterNames', [{ value: 'n' }]],
+				['assignedFunctions', [{ value: 'fib' }]],
+				['recursive', [{ value: 'fib(n - 1)' }, { value: 'fib(n - 2)' }]],
 				['all-definitions', [ { value: JSON.stringify({
-					location:           { line: 1, column: 1 },
-					callsites:          [],
+					location:  { line: 1, column: 8 },
+					callsites: [
+						{ line: 5, column: 48 },
+						{ line: 5, column: 61 }
+					],
 					numberOfParameters: 1,
 					returns:            [
-						{ explicit: false, location: { line: 1, column: 15 } }
+						{ explicit: true, location: { line: 3, column: 41 } },
+						{ explicit: true, location: { line: 5, column: 41 } }
 					],
 					length: {
-						lines:                   1,
-						characters:              37,
-						nonWhitespaceCharacters: 29
+						lines:                   7,
+						characters:              80,
+						nonWhitespaceCharacters: 62
 					}
-				})}, { value: JSON.stringify({
-					location:           { line: 1, column: 15 },
-					callsites:          [],
-					numberOfParameters: 1,
-					returns:            [
-						{ explicit: false, location: { line: 1, column: 31 } }
-					],
-					length: {
-						lines:                   1,
-						characters:              21,
-						nonWhitespaceCharacters: 16
-					}
-				})}]]
+				})} ]]
 			]
 		}
-		// TODO: count recursive, ...
 	])
 }))
 

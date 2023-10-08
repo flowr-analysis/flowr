@@ -3,8 +3,14 @@ import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
 import { SourcePosition } from '../../../util/range'
 import { MergeableRecord } from '../../../util/objects'
-import { ParentInformation, RFunctionDefinition, RNodeWithParent, RType, visitAst } from '../../../r-bridge'
-import { EdgeType, graphToMermaidUrl } from '../../../dataflow'
+import {
+	ParentInformation,
+	RFunctionDefinition,
+	RNodeWithParent,
+	RType,
+	visitAst
+} from '../../../r-bridge'
+import { EdgeType } from '../../../dataflow'
 import { guard, isNotUndefined } from '../../../util/assert'
 
 const initialFunctionDefinitionInfo = {
@@ -38,7 +44,7 @@ interface FunctionDefinitionInformation extends MergeableRecord {
 }
 
 
-function retrieveAllCallsites(input: FeatureProcessorInput, node: RFunctionDefinition<ParentInformation>) {
+function retrieveAllCallsites(input: FeatureProcessorInput, node: RFunctionDefinition<ParentInformation>, recursiveCalls: RNodeWithParent[]) {
 	const dfStart = input.dataflow.graph.outgoingEdges(node.info.id)
 	const callsites = []
 	for(const [target, edge] of dfStart ?? []) {
@@ -50,14 +56,18 @@ function retrieveAllCallsites(input: FeatureProcessorInput, node: RFunctionDefin
 			callsites.push(loc)
 		}
 	}
+	for(const call of recursiveCalls) {
+		const loc = call.location
+		if(loc) {
+			callsites.push(loc.start)
+		}
+	}
 	return callsites
 }
 
 function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorInput): void {
 	const definitionStack: RNodeWithParent[] = []
 	const allDefinitions: FunctionDefinitionInformation[] = []
-
-	console.log('visitDefinitions', graphToMermaidUrl(input.dataflow.graph, input.normalizedRAst.idMap))
 
 	visitAst(input.normalizedRAst.ast,
 		node => {
@@ -96,6 +106,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 			definitionStack.push(node)
 
 			// we find definitions with silly defined-by edges
+			const assigned = new Set<string>()
 			const edges = input.dataflow.graph.ingoingEdges(node.info.id)
 			if(edges !== undefined) {
 				for(const [targetId, edge] of edges) {
@@ -103,23 +114,36 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 						const target = input.normalizedRAst.idMap.get(targetId)
 						guard(target !== undefined, 'Dataflow edge points to unknown node')
 						const name = target.info.fullLexeme ?? target.lexeme
+						if(name) {
+							assigned.add(name)
+						}
 						info.assignedFunctions++
 						appendStatisticsFile(definedFunctions.name, 'assignedFunctions', [name ?? '<unknown>'], input.filepath)
 					}
 					if(edge.types.has(EdgeType.Calls)) {
 						const target = input.normalizedRAst.idMap.get(targetId)
 						guard(target !== undefined, 'Dataflow edge points to unknown node')
-						console.log('calls', target.info.fullLexeme ?? target.lexeme)
 					}
 				}
 			}
+
+			// track all calls with the same name that do not already have a bound calls edge, superfluous if recursive tracking is explicit
+			const recursiveCalls: RNodeWithParent[] = []
+			visitAst(node.body, n => {
+				if(n.type === RType.FunctionCall && n.flavor === 'named' && assigned.has(n.functionName.lexeme)) {
+					recursiveCalls.push(n)
+				}
+			})
+			// one recursive definition, but we record all
+			info.recursive += recursiveCalls.length > 0 ? 1 : 0
+			appendStatisticsFile(definedFunctions.name, 'recursive', recursiveCalls.map(n => n.info.fullLexeme ?? n.lexeme ?? 'unknown'), input.filepath)
 
 			const lexeme = node.info.fullLexeme
 			const lexemeSplit= lexeme?.split('\n')
 
 			allDefinitions.push({
 				location:           node.location.start,
-				callsites:          retrieveAllCallsites(input, node),
+				callsites:          retrieveAllCallsites(input, node, recursiveCalls),
 				numberOfParameters: node.parameters.length,
 				returns:            returnTypes,
 				length:             {

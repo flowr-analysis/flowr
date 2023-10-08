@@ -354,7 +354,7 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 
 function cfgBinaryOp(binOp: RNodeWithParent, lhs: ControlFlowInformation, rhs: ControlFlowInformation): ControlFlowInformation {
 	const graph = new ControlFlowGraph().merge(lhs.graph).merge(rhs.graph)
-	const result: ControlFlowInformation = { graph, breaks: [...lhs.breaks, ...rhs.breaks], nexts: [...lhs.nexts, ...rhs.nexts], returns: [...lhs.returns, ...rhs.returns], exitPoints: [binOp.info.id], entryPoints: [...rhs.entryPoints] }
+	const result: ControlFlowInformation = { graph, breaks: [...lhs.breaks, ...rhs.breaks], nexts: [...lhs.nexts, ...rhs.nexts], returns: [...lhs.returns, ...rhs.returns], entryPoints: [binOp.info.id], exitPoints: [...rhs.entryPoints] }
 
 	graph.addVertex({ id: binOp.info.id, name: binOp.type, content: getLexeme(binOp) })
 
@@ -364,7 +364,7 @@ function cfgBinaryOp(binOp: RNodeWithParent, lhs: ControlFlowInformation, rhs: C
 		}
 	}
 	for(const entryPoint of lhs.entryPoints) {
-		graph.addEdge(binOp.info.id, entryPoint, { label: 'FD' })
+		graph.addEdge(entryPoint, binOp.info.id, { label: 'FD' })
 	}
 
 	return result

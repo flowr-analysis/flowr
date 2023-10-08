@@ -1,8 +1,18 @@
-import { LAST_STEP, SteppingSlicer, STEPS_PER_SLICE } from '../../../core'
-import { NormalizedAst, RShell, TokenMap } from '../../../r-bridge'
+import { LAST_STEP, SteppingSlicer, StepResults, STEPS_PER_SLICE } from '../../../core'
+import {
+	DEFAULT_XML_PARSER_CONFIG,
+	NormalizedAst,
+	RNodeWithParent,
+	RShell,
+	TokenMap,
+	XmlParserConfig
+} from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
-import { FileAnalysisRequestMessage, requestAnalysisMessage } from './messages/analysis'
+import {
+	FileAnalysisRequestMessage, FileAnalysisResponseMessageNQuads,
+	requestAnalysisMessage
+} from './messages/analysis'
 import { requestSliceMessage, SliceRequestMessage, SliceResponseMessage } from './messages/slice'
 import { FlowrErrorMessage } from './messages/error'
 import { Socket } from './net'
@@ -15,7 +25,12 @@ import {
 } from './messages/repl'
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
-import { ControlFlowInformation, extractCFG } from '../../../util/cfg'
+import { cfg2quads, ControlFlowInformation, extractCFG } from '../../../util/cfg'
+import { defaultQuadIdGenerator, QuadSerializationConfiguration, serialize2quads } from '../../../util/quads'
+import { xlm2jsonObject } from '../../../r-bridge/lang-4.x/ast/parser/xml/internal'
+import { deepMergeObject } from '../../../util/objects'
+import { df2quads } from '../../../dataflow/graph/quads'
+import { DataflowGraph } from '../../../dataflow'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -93,6 +108,51 @@ export class FlowRServerConnection {
 		if(this.fileMap.has(message.filetoken)) {
 			this.logger.warn(`File token ${message.filetoken} already exists. Overwriting.`)
 		}
+		const slicer = this.createSteppingSlicerForRequest(message)
+
+		void slicer.allRemainingSteps(false).then(async results => await this.sendFileAnalysisResponse(results, message))
+	}
+
+	private async sendFileAnalysisResponse(results: Partial<StepResults<typeof LAST_STEP>>, message: FileAnalysisRequestMessage): Promise<void> {
+		let cfg: ControlFlowInformation | undefined = undefined
+		if(message.cfg) {
+			cfg = extractCFG(results.normalize as NormalizedAst)
+		}
+
+		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() })
+		const parseConfig = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap: this.tokenMap })
+
+		if(message.format === 'n-quads') {
+			sendMessage<FileAnalysisResponseMessageNQuads>(this.socket, {
+				type:    'response-file-analysis',
+				format:  'n-quads',
+				id:      message.id,
+				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
+				// TODO: use printers
+				results: {
+					parse:     serialize2quads(await xlm2jsonObject(parseConfig, results.parse as string), config()),
+					normalize: serialize2quads(results.normalize?.ast as RNodeWithParent, config()),
+					dataflow:  df2quads(results.dataflow?.graph as DataflowGraph, config()),
+				}
+			})
+		} else {
+			sendMessage(this.socket, {
+				type:    'response-file-analysis',
+				format:  'json',
+				id:      message.id,
+				cfg,
+				results: {
+					...results,
+					normalize: {
+						...results.normalize,
+						idMap: undefined
+					}
+				}
+			})
+		}
+	}
+
+	private createSteppingSlicerForRequest(message: FileAnalysisRequestMessage) {
 		const slicer = new SteppingSlicer({
 			stepOfInterest: LAST_STEP,
 			shell:          this.shell,
@@ -109,25 +169,7 @@ export class FlowRServerConnection {
 			filename: message.filename,
 			slicer
 		})
-
-		void slicer.allRemainingSteps(false).then(results => {
-			let cfg : ControlFlowInformation | undefined = undefined
-			if(message.cfg) {
-				cfg = extractCFG(results.normalize as NormalizedAst)
-			}
-			sendMessage(this.socket, {
-				type:    'response-file-analysis',
-				id:      message.id,
-				cfg,
-				results: {
-					...results,
-					normalize: {
-						...results.normalize,
-						idMap: undefined
-					}
-				}
-			})
-		})
+		return slicer
 	}
 
 	private handleSliceRequest(base: SliceRequestMessage) {

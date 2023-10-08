@@ -132,6 +132,7 @@ The `results` field of the response effectively contains three keys of importanc
 ```json
 {
   "type": "response-file-analysis",
+  "format": "json",
   "id": "1",
   "results": {
     "parse": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?>\n<exprlist>\n<expr line1=\"1\" col1=\"1\" line2=\"1\" col2=\"6\" start=\"8\" end=\"13\">x &lt;- 1\n<expr line1=\"1\" col1=\"1\" line2=\"1\" col2=\"1\" start=\"8\" end=\"8\">x\n<SYMBOL line1=\"1\" col1=\"1\" line2=\"1\" col2=\"1\" start=\"8\" end=\"8\">x</SYMBOL>\n</expr>\n<LEFT_ASSIGN line1=\"1\" col1=\"3\" line2=\"1\" col2=\"4\" start=\"10\" end=\"11\">&lt;-</LEFT_ASSIGN>\n<expr line1=\"1\" col1=\"6\" line2=\"1\" col2=\"6\" start=\"13\" end=\"13\">1\n<NUM_CONST line1=\"1\" col1=\"6\" line2=\"1\" col2=\"6\" start=\"13\" end=\"13\">1</NUM_CONST>\n</expr>\n</expr>\n<expr line1=\"2\" col1=\"1\" line2=\"2\" col2=\"5\" start=\"15\" end=\"19\">x + 1\n<expr line1=\"2\" col1=\"1\" line2=\"2\" col2=\"1\" start=\"15\" end=\"15\">x\n<SYMBOL line1=\"2\" col1=\"1\" line2=\"2\" col2=\"1\" start=\"15\" end=\"15\">x</SYMBOL>\n</expr>\n<OP-PLUS line1=\"2\" col1=\"3\" line2=\"2\" col2=\"3\" start=\"17\" end=\"17\">+</OP-PLUS>\n<expr line1=\"2\" col1=\"5\" line2=\"2\" col2=\"5\" start=\"19\" end=\"19\">1\n<NUM_CONST line1=\"2\" col1=\"5\" line2=\"2\" col2=\"5\" start=\"19\" end=\"19\">1</NUM_CONST>\n</expr>\n</expr>\n</exprlist>\n",

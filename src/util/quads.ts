@@ -121,7 +121,7 @@ export type VertexInformationForQuad<AdditionalInformation extends MergeableReco
 
 export type EdgeInformationForQuad<AdditionalInformation extends MergeableRecord> = MergeableRecord & AdditionalInformation & {
 	from: NodeId,
-	type: NodeId,
+	type: NodeId | NodeId[],
 	to:   NodeId
 }
 

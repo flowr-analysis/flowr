@@ -3,7 +3,7 @@ import { fakeSend, withSocket } from '../helper/net'
 import { retrieveVersionInformation } from '../../../src/cli/repl/commands/version'
 import { FlowrHelloResponseMessage } from '../../../src/cli/repl/server/messages/hello'
 import { assert } from 'chai'
-import { FileAnalysisRequestMessage, FileAnalysisResponseMessage } from '../../../src/cli/repl/server/messages/analysis'
+import { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from '../../../src/cli/repl/server/messages/analysis'
 import { DecoratedAstMap, ParentInformation, requestFromInput } from '../../../src/r-bridge'
 import { LAST_PER_FILE_STEP, SteppingSlicer } from '../../../src/core'
 import { jsonReplacer } from '../../../src/util/json'
@@ -70,7 +70,7 @@ describe('FlowR Server', withShell(shell => {
 		await socket.waitForMessage('response-file-analysis')
 		const messages = socket.getMessages(['hello', 'response-file-analysis'])
 
-		const response = messages[1] as FileAnalysisResponseMessage
+		const response = messages[1] as FileAnalysisResponseMessageJson
 
 		// we are testing the server and not the slicer here!
 		const results = await new SteppingSlicer({
@@ -106,7 +106,7 @@ describe('FlowR Server', withShell(shell => {
 		await socket.waitForMessage('response-file-analysis')
 		const messages = socket.getMessages(['hello', 'response-file-analysis'])
 
-		const response = messages[1] as FileAnalysisResponseMessage
+		const response = messages[1] as FileAnalysisResponseMessageJson
 
 		const gotCfg = response.cfg
 		assert.isDefined(gotCfg, 'Expected the cfg to be defined as we requested it')

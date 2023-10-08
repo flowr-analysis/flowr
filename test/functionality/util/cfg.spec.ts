@@ -1,7 +1,7 @@
 import { assert } from 'chai'
 import { defaultTokenMap, withShell } from '../helper/shell'
 import {
-	CFG,
+	ControlFlowGraph,
 	cfg2quads,
 	ControlFlowInformation,
 	emptyControlFlowInformation,
@@ -44,7 +44,7 @@ describe('Control Flow Graph', withShell(shell => {
 	assertCfg('if(TRUE) 1', {
 	   entryPoints: [ '3' ],
 		 exitPoints:  [ '3-exit' ],
-		 graph:       new CFG()
+		 graph:       new ControlFlowGraph()
 			.addVertex({ id: '0', name: RType.Logical, content: 'TRUE' })
 			.addVertex({ id: '1', name: RType.Number, content: '1' })
 			.addVertex({ id: '3', name: RType.IfThenElse, content: 'if(TRUE) 1' })

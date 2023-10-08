@@ -1,7 +1,7 @@
 import { IdMessageBase, MessageDefinition } from './messages'
 import { LAST_PER_FILE_STEP, StepResults } from '../../../../core'
 import Joi from 'joi'
-import { CFG, ControlFlowInformation } from '../../../../util/cfg'
+import { ControlFlowGraph, ControlFlowInformation } from '../../../../util/cfg'
 
 /**
  * Send by the client to request an analysis of a given file.
@@ -25,7 +25,7 @@ export interface FileAnalysisRequestMessage extends IdMessageBase {
 	filepath?: string
 	/** Can be used to additionally extract the {@link ControlFlowInformation} of the file, which is not exposed (and not fully calculated) by default. */
 	cfg?:      boolean
-	/** Controls the serialization of the `results` (and the {@link CFG} if the corresponding flag is set). If missing, we assume _json_. */
+	/** Controls the serialization of the `results` (and the {@link ControlFlowGraph} if the corresponding flag is set). If missing, we assume _json_. */
 	format?:   'json' | 'n-quads'
 }
 

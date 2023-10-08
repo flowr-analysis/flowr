@@ -38,7 +38,7 @@ export type CFGEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
  * This class represents the control flow graph of an R program.
  * The control flow may be hierarchical when confronted with function definitions (see {@link CfgVertex} and {@link CFG#rootVertexIds|rootVertexIds()}).
  */
-export class CFG {
+export class ControlFlowGraph {
 	private rootVertices:      Set<NodeId> = new Set<NodeId>()
 	private vertexInformation: Map<NodeId, CfgVertex> = new Map<NodeId, CfgVertex>()
 	private edgeInformation:   Map<NodeId, Map<NodeId, CFGEdge>> = new Map<NodeId, Map<NodeId, CFGEdge>>()
@@ -75,7 +75,7 @@ export class CFG {
 		return this.edgeInformation
 	}
 
-	merge(other: CFG, forceNested = false): this {
+	merge(other: ControlFlowGraph, forceNested = false): this {
 		for(const [id, node] of other.vertexInformation) {
 			this.addVertex(node, forceNested ? false : other.rootVertices.has(id))
 		}
@@ -96,7 +96,7 @@ export interface ControlFlowInformation extends MergeableRecord {
 	entryPoints: NodeId[],
 	/** See {@link ControlFlowInformation#entryPoints|entryPoints} */
 	exitPoints:  NodeId[],
-	graph:       CFG
+	graph:       ControlFlowGraph
 }
 
 export function emptyControlFlowInformation(): ControlFlowInformation {
@@ -106,7 +106,7 @@ export function emptyControlFlowInformation(): ControlFlowInformation {
 		nexts:       [],
 		entryPoints: [],
 		exitPoints:  [],
-		graph:       new CFG()
+		graph:       new ControlFlowGraph()
 	}
 }
 
@@ -161,7 +161,7 @@ function getLexeme(n: RNodeWithParent) {
 }
 
 function cfgLeaf(leaf: RNodeWithParent): ControlFlowInformation {
-	const graph = new CFG()
+	const graph = new ControlFlowGraph()
 	graph.addVertex({ id: leaf.info.id, name: leaf.type, content: getLexeme(leaf) })
 	return { graph, breaks: [], nexts: [], returns: [], exitPoints: [leaf.info.id], entryPoints: [leaf.info.id] }
 }
@@ -175,11 +175,11 @@ function cfgNext(leaf: RNodeWithParent): ControlFlowInformation {
 }
 
 function cfgIgnore(_leaf: RNodeWithParent): ControlFlowInformation {
-	return { graph: new CFG(), breaks: [], nexts: [], returns: [], exitPoints: [], entryPoints: [] }
+	return { graph: new ControlFlowGraph(), breaks: [], nexts: [], returns: [], exitPoints: [], entryPoints: [] }
 }
 
 function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformation, then: ControlFlowInformation, otherwise: ControlFlowInformation | undefined): ControlFlowInformation {
-	const graph = new CFG()
+	const graph = new ControlFlowGraph()
 	graph.addVertex({ id: ifNode.info.id, name: ifNode.type, content: getLexeme(ifNode) })
 	graph.addVertex({ id: ifNode.info.id + '-exit', name: 'if-exit', content: undefined })
 	graph.merge(condition.graph)
@@ -320,7 +320,7 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInfor
 }
 
 function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, params: ControlFlowInformation[], body: ControlFlowInformation): ControlFlowInformation {
-	const graph = new CFG()
+	const graph = new ControlFlowGraph()
 	const children: NodeId[] = [fn.info.id + '-params', fn.info.id + '-exit']
 	graph.addVertex({ id: fn.info.id + '-params', name: 'function-parameters', content: undefined }, false)
 	graph.addVertex({ id: fn.info.id + '-exit', name: 'function-exit', content: undefined }, false)
@@ -353,7 +353,7 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 }
 
 function cfgBinaryOp(binOp: RNodeWithParent, lhs: ControlFlowInformation, rhs: ControlFlowInformation): ControlFlowInformation {
-	const graph = new CFG().merge(lhs.graph).merge(rhs.graph)
+	const graph = new ControlFlowGraph().merge(lhs.graph).merge(rhs.graph)
 	const result: ControlFlowInformation = { graph, breaks: [...lhs.breaks, ...rhs.breaks], nexts: [...lhs.nexts, ...rhs.nexts], returns: [...lhs.returns, ...rhs.returns], exitPoints: [binOp.info.id], entryPoints: [...rhs.entryPoints] }
 
 	graph.addVertex({ id: binOp.info.id, name: binOp.type, content: getLexeme(binOp) })
@@ -412,7 +412,7 @@ function cfgUnaryOp(unary: RNodeWithParent, operand: ControlFlowInformation): Co
 
 
 function cfgExprList(_node: RNodeWithParent, expressions: ControlFlowInformation[]): ControlFlowInformation {
-	const result: ControlFlowInformation = { graph: new CFG(), breaks: [], nexts: [], returns: [], exitPoints: [], entryPoints: [] }
+	const result: ControlFlowInformation = { graph: new ControlFlowGraph(), breaks: [], nexts: [], returns: [], exitPoints: [], entryPoints: [] }
 	let first = true
 	for(const expression of expressions) {
 		if(first) {
@@ -451,7 +451,7 @@ function equalChildren(a: NodeId[] | undefined, b: NodeId[] | undefined): boolea
 /**
  * Returns true if the given CFG equals the other CFG. False otherwise.
  */
-export function equalCfg(a: CFG | undefined, b: CFG | undefined): boolean {
+export function equalCfg(a: ControlFlowGraph | undefined, b: ControlFlowGraph | undefined): boolean {
 	if(!a || !b) {
 		return a === b
 	}

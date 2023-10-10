@@ -43,7 +43,7 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
 		// , ...value.out, ...(name?.out ?? [])
 		out:               [ { name: argumentName, scope: LocalScope, nodeId: argument.info.id, used: 'always'} ],
 		graph:             graph,
-		environments:      value?.environments ?? initializeCleanEnvironments(),
+		environments:      value?.environments ?? data.environments,
 		scope:             data.activeScope
 	}
 }

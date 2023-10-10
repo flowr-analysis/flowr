@@ -15,7 +15,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 
 	if(node.operator === '[' || node.operator === '[[') {
 		for(const access of node.access) {
-			if(access === null) {
+			if(access === null || access.value === undefined) {
 				continue
 			}
 			const processedAccess = processDataflowFor(access, data)

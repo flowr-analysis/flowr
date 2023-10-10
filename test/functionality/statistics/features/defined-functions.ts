@@ -35,8 +35,8 @@ describe('Used Function Definitions', withShell(shell => {
 			]
 		},
 		{
-			name:     'the identity lambda function',
-			code:     '\\(x) x',
+			name:         'the identity lambda function',
+			code:         '\\(x) x',
 			requirements: {
 				minRVersion: MIN_VERSION_LAMBDA
 			},

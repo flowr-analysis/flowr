@@ -27,16 +27,16 @@ async function expectFeature<T extends FeatureKey>(shell: RShell, feature: T, co
 }
 
 export interface StatisticsTest {
-	name:     string
-	code:     string
+	name:          string
+	code:          string
 	requirements?: Partial<TestConfiguration>
-	expected: Partial<FeatureValue<FeatureKey>>
+	expected:      Partial<FeatureValue<FeatureKey>>
 	/**
 	 * the expected output written to file, the feature is inferred from the feature given to {@link testForFeatureForInput},
 	 * set to 'nothing' if nothing should be recorded.
 	 * If, for the file contents you pass objects, `JSON.stringify` will be called automatically them.
 	 */
-	written:  [AppendFnType, (string | object)[]][] | 'nothing'
+	written:       [AppendFnType, (string | object)[]][] | 'nothing'
 }
 
 /**

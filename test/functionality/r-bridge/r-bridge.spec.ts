@@ -9,6 +9,7 @@ describe('R-Bridge', () => {
 
 	describe('Retrieve AST from R', () => {
 		require('./lang/ast/parse-values')
+		require('./lang/ast/parse-symbols')
 		require('./lang/ast/parse-operations')
 		require('./lang/ast/parse-assignments')
 		require('./lang/ast/parse-access')

@@ -212,6 +212,7 @@ export function isSymbol(type: string): boolean {
     type === RawRType.SymbolPackage ||
     type === RawRType.SymbolFunctionCall ||
     type === RawRType.NullConst ||
+		type === RawRType.StringConst ||
     type === RawRType.Slot
 	)
 }

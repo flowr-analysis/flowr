@@ -52,6 +52,7 @@ interface Source {
 	fullLexeme?:       string
 	/**
 	 * This may contain additional elements that were part of the original R code, but are not part of the normalized R-ast.
+	 * This allows inline-comments!
 	 */
 	additionalTokens?: OtherInfoNode[]
 }

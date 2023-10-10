@@ -227,6 +227,55 @@ describe('Parse simple constructs', withShell(shell => {
 				})
 			})
 			)
+			assertAst('for-loop with comment', shell, `for(#a
+				i#b
+				in#c
+				1:42#d
+			)
+			2`, exprList({
+				type:     RType.ForLoop,
+				location: rangeFrom(1, 1, 1, 3),
+				lexeme:   'for',
+				info:     {},
+				variable: {
+					type:      RType.Symbol,
+					location:  rangeFrom(2, 33, 2, 33),
+					namespace: undefined,
+					lexeme:    'i',
+					content:   'i',
+					info:      {}
+				},
+				vector: {
+					type:     RType.BinaryOp,
+					flavor:   'arithmetic',
+					operator: ':',
+					location: rangeFrom(4, 34, 4, 34),
+					lexeme:   ':',
+					info:     {},
+					lhs:      {
+						type:     RType.Number,
+						location: rangeFrom(4, 33, 4, 33),
+						lexeme:   '1',
+						content:  numVal(1),
+						info:     {}
+					},
+					rhs: {
+						type:     RType.Number,
+						location: rangeFrom(4, 35, 4, 36),
+						lexeme:   '42',
+						content:  numVal(42),
+						info:     {}
+					}
+				},
+				body: ensureExpressionList({
+					type:     RType.Number,
+					location: rangeFrom(6, 25, 6, 25),
+					lexeme:   '2',
+					content:  numVal(2),
+					info:     {}
+				})
+			})
+			)
 		})
 		describe('repeat', () => {
 			assertAst('Single instruction repeat', shell, 'repeat 2', exprList({

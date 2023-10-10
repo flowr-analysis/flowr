@@ -1,6 +1,6 @@
 import { Feature, FeatureProcessorInput } from '../feature'
 import { Writable } from 'ts-essentials'
-import { isSpecialSymbol, RType, visitAst } from '../../../r-bridge'
+import { isSpecialSymbol, NodeId, RType, visitAst } from '../../../r-bridge'
 import { appendStatisticsFile } from '../../output'
 import { EdgeType } from '../../../dataflow'
 
@@ -17,6 +17,9 @@ export type VariableInfo = Writable<typeof initialVariableInfo>
 
 
 function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void {
+
+	// same-def-def edges are bidirectional, we want to avoid counting them twice!
+	const redefinedBlocker = new Set<NodeId>()
 
 	visitAst(input.normalizedRAst.ast,
 		node => {
@@ -41,9 +44,10 @@ function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void 
 					location: node.location.start
 				})], input.filepath)
 				// check for redefinitions
-				const hasRedefinitions = [...edges.values()].some(edge => edge.types.has(EdgeType.SameDefDef))
+				const hasRedefinitions = [...edges.entries()].some(([target, edge]) => !redefinedBlocker.has(target) && edge.types.has(EdgeType.SameDefDef))
 				if(hasRedefinitions) {
 					info.numberOfRedefinitions++
+					redefinedBlocker.add(node.info.id)
 					appendStatisticsFile(variables.name, 'redefinedVariables', [JSON.stringify({
 						name:     lexeme,
 						location: node.location.start

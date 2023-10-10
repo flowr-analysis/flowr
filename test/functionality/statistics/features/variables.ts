@@ -33,6 +33,41 @@ describe('Variables', withShell(shell => {
 					location: { line: 1, column: 1 }
 				}) }]],
 			]
+		},
+		{
+			name:     'one variable use and re-definitions',
+			code:     'abc <- 3\nabc <- abc + 3\nabc <- x',
+			expected: {
+				numberOfDefinitions:   3,
+				numberOfRedefinitions: 2,
+				numberOfVariableUses:  2
+			},
+			written: [
+				['definedVariables', [{ value: JSON.stringify({
+					name:     'abc',
+					location: { line: 1, column: 1 }
+				}) }, { value: JSON.stringify({
+					name:     'abc',
+					location: { line: 2, column: 1 }
+				}) }, { value: JSON.stringify({
+					name:     'abc',
+					location: { line: 3, column: 1 }
+				}) }]],
+				['redefinedVariables', [{ value: JSON.stringify({
+					name:     'abc',
+					location: { line: 1, column: 1 }
+				})}, { value: JSON.stringify({
+					name:     'abc',
+					location: { line: 2, column: 1 }
+				})}]],
+				['usedVariables', [{ value: JSON.stringify({
+					name:     'abc',
+					location: { line: 2, column: 8 }
+				}) }, { value: JSON.stringify({
+					name:     'x',
+					location: { line: 3, column: 8 }
+				}) }]]
+			]
 		}
 	])
 }))

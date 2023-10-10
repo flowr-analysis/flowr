@@ -63,4 +63,5 @@ describe('Statistics', () => {
 	require('./features/loops.ts')
 	require('./features/data-access.ts')
 	require('./features/defined-functions.ts')
+	require('./features/variables.ts')
 })

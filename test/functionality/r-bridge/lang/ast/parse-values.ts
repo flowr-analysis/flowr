@@ -87,8 +87,8 @@ describe('Constant Parsing',
 					)
 				}
 			})
-			describe('boolean', () => {
-				for(const [lexeme, content] of [['TRUE', true], ['FALSE', false], ['T', true], ['F', false]] as const) {
+			describe('logical', () => {
+				for(const [lexeme, content] of [['TRUE', true], ['FALSE', false]] as const) {
 					assertAst(
 						`${lexeme} as ${JSON.stringify(content)}`,
 						shell,

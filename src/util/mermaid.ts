@@ -233,7 +233,7 @@ export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = ''): strin
 	let output = prefix + 'flowchart TD\n'
 	visitAst(ast, n => {
 		const name = `${n.type} (${n.info.id})\\n${n.lexeme ?? ' '}`
-		output += `    n${n.info.id}(["${name}"])\n`
+		output += `    n${n.info.id}(["${escapeMarkdown(name)}"])\n`
 		if(n.info.parent !== undefined) {
 			const context = n.info
 			const roleSuffix = context.role === RoleInParent.ExpressionListChild || context.role === RoleInParent.FunctionCallArgument || context.role === RoleInParent.FunctionDefinitionParameter ? `-${context.index}` : ''
@@ -258,7 +258,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, prefix = ''): string {
 
 	for(const [id, vertex] of cfg.graph.vertices()) {
 		if(vertex.content) {
-			const name = `"\`${vertex.name} (${id})\n${JSON.stringify(vertex.content).replaceAll('"', '\'')}\`"`
+			const name = `"\`${escapeMarkdown(vertex.name)} (${id})\n${escapeMarkdown(JSON.stringify(vertex.content))}\`"`
 			output += `    n${id}[${name}]\n`
 		} else {
 			output += `    n${id}(( ))\n`
@@ -268,7 +268,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, prefix = ''): string {
 		for(const [to, edge] of targets) {
 			const edgeType = edge.label === 'CD' ? '-->' : '-.->'
 			const edgeSuffix = edge.label === 'CD' ? ` (${edge.when})` : ''
-			output += `    n${from} ${edgeType}|"${edge.label}${edgeSuffix}"| n${to}\n`
+			output += `    n${from} ${edgeType}|"${escapeMarkdown(edge.label)}${edgeSuffix}"| n${to}\n`
 		}
 	}
 	return output

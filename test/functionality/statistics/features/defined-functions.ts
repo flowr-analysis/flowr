@@ -1,5 +1,6 @@
 import { withShell } from '../../helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
+import { MIN_VERSION_LAMBDA } from '../../../../src/r-bridge/lang-4.x/ast/model/versions'
 
 
 describe('Used Function Definitions', withShell(shell => {
@@ -36,6 +37,9 @@ describe('Used Function Definitions', withShell(shell => {
 		{
 			name:     'the identity lambda function',
 			code:     '\\(x) x',
+			requirements: {
+				minRVersion: MIN_VERSION_LAMBDA
+			},
 			expected: {
 				total:       1,
 				lambdasOnly: 1

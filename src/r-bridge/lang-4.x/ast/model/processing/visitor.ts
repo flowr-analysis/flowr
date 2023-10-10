@@ -112,9 +112,9 @@ class NodeVisitor<OtherInfo = NoInfo> {
  * Collects all node ids within a tree given by a respective root node
  *
  * @param nodes          - The root id nodes to start collecting from
- * @param onVisit        - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
+ * @param onEnter        - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
  * @param onExit         - Called after the subtree of a node has been visited, called for leafs too (even though their subtree is empty)
  */
-export function visitAst<OtherInfo = NoInfo>(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined)[] | undefined, onVisit?: OnEnter<OtherInfo>, onExit?: OnExit<OtherInfo>): void {
-	return new NodeVisitor(onVisit, onExit).visit(nodes)
+export function visitAst<OtherInfo = NoInfo>(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined)[] | undefined, onEnter?: OnEnter<OtherInfo>, onExit?: OnExit<OtherInfo>): void {
+	return new NodeVisitor(onEnter, onExit).visit(nodes)
 }

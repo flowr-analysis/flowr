@@ -14,6 +14,14 @@ chai.use(chaiAsPromised)
 
 describe('Constant Parsing',
 	withShell(shell => {
+		describe('parse empty', () => {
+			assertAst(
+				'nothing',
+				shell,
+				'',
+				exprList()
+			)
+		})
 		describe('parse single', () => {
 			it('parse illegal', () =>
 				assert.isRejected(retrieveXmlFromRCode({
@@ -22,7 +30,6 @@ describe('Constant Parsing',
 					ensurePackageInstalled: true
 				}, shell))
 			)
-
 			describe('numbers', () => {
 				for(const number of RNumberPool) {
 					const range = rangeFrom(1, 1, 1, number.str.length)

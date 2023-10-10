@@ -10,22 +10,13 @@
  */
 
 import { NoInfo, RNode } from '../model'
-import { assertUnreachable, guard } from '../../../../../util/assert'
+import { guard } from '../../../../../util/assert'
 import { SourceRange } from '../../../../../util/range'
 import { BiMap } from '../../../../../util/bimap'
 import { foldAst } from './fold'
-import {
-	RArgument,
-	RBinaryOp,
-	RFunctionCall,
-	RNamedFunctionCall,
-	RParameter, RPipe,
-	RUnaryOp,
-	RUnnamedFunctionCall
-} from '../nodes'
+import { RArgument, RFunctionCall, RNamedFunctionCall, RParameter, RUnnamedFunctionCall } from '../nodes'
 import { MergeableRecord } from '../../../../../util/objects'
 import { RoleInParent } from './role'
-import { RType } from '../type'
 
 /** The type of the id assigned to each node. Branded to avoid problematic usages with other string types. */
 export type NodeId = string & { __brand?: 'node-id'};
@@ -187,67 +178,29 @@ function createFoldForLeaf<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForBinaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RBinaryOp<OtherInfo> | RPipe<OtherInfo>, lhs: RNodeWithParent<OtherInfo>, rhs: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+	return (data: RNode<OtherInfo>, lhs: RNodeWithParent<OtherInfo>, rhs: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, lhs, rhs } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		const lhsInfo = lhs.info
+		lhsInfo.parent = id
+		lhsInfo.role = RoleInParent.BinaryOperationLhs
 		const rhsInfo = rhs.info
-		rhsInfo.parent = lhsInfo.parent= id
-		rhsInfo.index  = 1
-		if(data.type === RType.Pipe) {
-			lhsInfo.role = RoleInParent.PipeLhs
-			rhsInfo.role = RoleInParent.PipeRhs
-		} else {
-			switch(data.flavor) {
-				case 'arithmetic':
-					lhsInfo.role = RoleInParent.ArithmeticBinaryOperationLhs
-					rhsInfo.role = RoleInParent.ArithmeticBinaryOperationRhs
-					break
-				case 'logical':
-					lhsInfo.role = RoleInParent.LogicalBinaryOperationLhs
-					rhsInfo.role = RoleInParent.LogicalBinaryOperationRhs
-					break
-				case 'comparison':
-					lhsInfo.role = RoleInParent.ComparisonBinaryOperationLhs
-					rhsInfo.role = RoleInParent.ComparisonBinaryOperationRhs
-					break
-				case 'assignment':
-					lhsInfo.role = RoleInParent.AssignmentBinaryOperationLhs
-					rhsInfo.role = RoleInParent.AssignmentBinaryOperationRhs
-					break
-				case 'model formula':
-					lhsInfo.role = RoleInParent.ModelFormulaBinaryOperationLhs
-					rhsInfo.role = RoleInParent.ModelFormulaBinaryOperationRhs
-					break
-				default:
-					assertUnreachable(data.flavor)
-			}
-		}
+		rhsInfo.parent = id
+		rhsInfo.index = 1
+		rhsInfo.role = RoleInParent.BinaryOperationRhs
 		return decorated
 	}
 }
 
 function createFoldForUnaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RUnaryOp<OtherInfo>, operand: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+	return (data: RNode<OtherInfo>, operand: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, operand } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		const opInfo = operand.info
 		opInfo.parent = id
-		switch(data.flavor) {
-			case 'arithmetic':
-				opInfo.role = RoleInParent.ArithmeticUnaryOperand
-				break
-			case 'logical':
-				opInfo.role = RoleInParent.LogicalUnaryOperand
-				break
-			case 'model formula':
-				opInfo.role = RoleInParent.ModelFormulaUnaryOperand
-				break
-			default:
-				assertUnreachable(data.flavor)
-		}
+		opInfo.role = RoleInParent.UnaryOperand
 		return decorated
 	}
 }

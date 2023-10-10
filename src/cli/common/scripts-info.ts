@@ -9,7 +9,7 @@ import {
 	benchmarkHelperOptions,
 	benchmarkOptions,
 	exportQuadsOptions,
-	slicerOptions, statisticOptions,
+	slicerOptions, statisticHelperOptions, statisticOptions,
 	summarizerOptions
 } from './options'
 
@@ -85,6 +85,15 @@ const _scripts = {
 		options:      statisticOptions,
 		usageExample: 'stats -i example.R --output-dir "output-folder/"',
 		type:         'master script',
+	},
+	'stats-helper': {
+		toolName:      'stats-helper',
+		target:        'statistics-helper-app',
+		description:   'Generate usage Statistics for a single R script (parallel helper for stats)',
+		options:       statisticHelperOptions,
+		usageExample:  'stats-helper -i example.R --output-dir "output-folder/"',
+		type:          'helper script',
+		masterScripts: [ 'stats' ]
 	}
 }
 

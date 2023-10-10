@@ -27,7 +27,7 @@ export function extractNodeContent(node: Node): string {
 
 
 /** by default, we do not write to anything */
-let fileProvider: StatisticAppendProvider
+export let statisticsFileProvider: StatisticAppendProvider
 initDummyFileProvider()
 
 /**
@@ -35,7 +35,7 @@ initDummyFileProvider()
  */
 export function initFileProvider(outputDirectory: string): void {
 	log.debug(`Initializing file provider for output directory ${outputDirectory}`)
-	fileProvider = new StatisticFileProvider(outputDirectory)
+	statisticsFileProvider = new StatisticFileProvider(outputDirectory)
 }
 
 /**
@@ -44,7 +44,7 @@ export function initFileProvider(outputDirectory: string): void {
  * @param map - The map to write to, will not persist calls if no map is given
  */
 export function initDummyFileProvider(map?: DummyAppendMemoryMap): void {
-	fileProvider = new DummyAppendProvider(map)
+	statisticsFileProvider = new DummyAppendProvider(map)
 }
 
 /**
@@ -86,7 +86,7 @@ export function appendStatisticsFile<T>(name: string, fn: keyof T, nodes: string
 
 	contents = contents.map(c => JSON.stringify({ value: c, context } as StatisticsOutputFormat))
 
-	fileProvider.append(name, fn, contents.join('\n'))
+	statisticsFileProvider.append(name, fn, contents.join('\n'))
 }
 
 

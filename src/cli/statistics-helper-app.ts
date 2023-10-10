@@ -2,7 +2,7 @@ import { RShell } from '../r-bridge'
 import {
 	extractUsageStatistics,
 	setFormatter,
-	voidFormatter, staticRequests, FeatureKey, initFileProvider
+	voidFormatter, staticRequests, FeatureKey, initFileProvider, appendStatisticsFile, statisticsFileProvider
 } from '../statistics'
 import { log } from '../util/log'
 import { processCommandLineArgs } from './common'
@@ -42,15 +42,14 @@ shell.tryToInjectHomeLibPath()
 initFileProvider(options['output-dir'])
 
 async function getStatsForSingleFile() {
-	await extractUsageStatistics(shell,
+	const stats = await extractUsageStatistics(shell,
 		() => { /* do nothing */ },
 		processedFeatures,
 		staticRequests({ request: 'file', content: options.input })
 	)
 	// console.warn(`skipped ${stats.meta.failedRequests.length} requests due to errors (run with logs to get more info)`)
 
-	// TODO: write to file/log to sum first and then print on summarize
-	// printFeatureStatistics(stats, processedFeatures)
+	statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats))
 	shell.close()
 }
 

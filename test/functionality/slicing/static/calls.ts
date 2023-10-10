@@ -357,4 +357,23 @@ cat(3 %a% 4)`)
 cat(4 %b% 5)`)
 		assertSliced('Must work with assigned custom pipes too', shell, 'a <- b %>% c %>% d', ['1@a'], 'a <- b %>% c %>% d')
 	})
+	describe('Using own alias infix operators', () => {
+		const code = `
+"%a%" <- function(x, y) { x + y }
+"%a%" <- pkg::"%a%"
+cat(4 %a% 5)
+      `
+		assertSliced('Must link alias', shell, code, ['4:1'], `"%a%" <- pkg::"%a%"
+cat(4 %a% 5)`)
+	})
+	describe('Using own alias infix operators with namespace', () => {
+		const code = `
+pkg::"%a%" <- function(x, y) { x + y }
+"%a%" <- pkg::"%a%"
+cat(4 %a% 5)
+      `
+		assertSliced('Must link alias', shell, code, ['4:1'], `pkg::"%a%" <- function(x, y) { x + y }
+"%a%" <- pkg::"%a%"
+cat(4 %a% 5)`)
+	})
 }))

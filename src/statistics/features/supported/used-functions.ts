@@ -131,7 +131,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 	)
 
 	info.allFunctionCalls += allCalls.length
-	appendStatisticsFile(usedFunctions.name, 'all-calls', allCalls.map(s => JSON.stringify(s)), input.filepath)
+	appendStatisticsFile(usedFunctions.name, 'all-calls', allCalls, input.filepath)
 }
 
 

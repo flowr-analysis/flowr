@@ -160,7 +160,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 	)
 
 	info.total += allDefinitions.length
-	appendStatisticsFile(definedFunctions.name, 'all-definitions', allDefinitions.map(s => JSON.stringify(s)), input.filepath)
+	appendStatisticsFile(definedFunctions.name, 'all-definitions', allDefinitions, input.filepath)
 }
 
 

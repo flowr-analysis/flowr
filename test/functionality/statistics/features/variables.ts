@@ -16,10 +16,10 @@ describe('Variables', withShell(shell => {
 			expected: {
 				numberOfVariableUses: 1
 			},
-			written: [['usedVariables', [{ value: JSON.stringify({
+			written: [['usedVariables', [{ value: {
 				name:     'a',
 				location: { line: 1, column: 1 }
-			}) }]]]
+			}}]]]
 		},
 		{
 			name:     'one variable definition',
@@ -28,10 +28,10 @@ describe('Variables', withShell(shell => {
 				numberOfDefinitions: 1
 			},
 			written: [
-				['definedVariables', [{ value: JSON.stringify({
+				['definedVariables', [{ value: {
 					name:     'a',
 					location: { line: 1, column: 1 }
-				}) }]],
+				}}]],
 			]
 		},
 		{
@@ -43,30 +43,30 @@ describe('Variables', withShell(shell => {
 				numberOfVariableUses:  2
 			},
 			written: [
-				['definedVariables', [{ value: JSON.stringify({
+				['definedVariables', [{ value: {
 					name:     'abc',
 					location: { line: 1, column: 1 }
-				}) }, { value: JSON.stringify({
+				}}, { value: {
 					name:     'abc',
 					location: { line: 2, column: 1 }
-				}) }, { value: JSON.stringify({
+				}}, { value: {
 					name:     'abc',
 					location: { line: 3, column: 1 }
-				}) }]],
-				['redefinedVariables', [{ value: JSON.stringify({
+				}}]],
+				['redefinedVariables', [{ value: {
 					name:     'abc',
 					location: { line: 1, column: 1 }
-				})}, { value: JSON.stringify({
+				}}, { value: {
 					name:     'abc',
 					location: { line: 2, column: 1 }
-				})}]],
-				['usedVariables', [{ value: JSON.stringify({
+				}}]],
+				['usedVariables', [{ value: {
 					name:     'abc',
 					location: { line: 2, column: 8 }
-				}) }, { value: JSON.stringify({
+				}}, { value: {
 					name:     'x',
 					location: { line: 3, column: 8 }
-				}) }]]
+				}}]]
 			]
 		}
 	])

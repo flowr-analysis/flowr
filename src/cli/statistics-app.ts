@@ -1,4 +1,4 @@
-import { RParseRequestFromFile, RShell } from '../r-bridge'
+import { RParseRequestFromFile } from '../r-bridge'
 import {
 	postProcessFolder,
 	printClusterReport,
@@ -6,7 +6,8 @@ import {
 	histograms2table,
 	initFileProvider,
 	setFormatter,
-	voidFormatter, ContextsWithCount, allFeatureNames, FeatureKey
+	voidFormatter,
+	ContextsWithCount
 } from '../statistics'
 import { log } from '../util/log'
 import { guard } from '../util/assert'
@@ -14,6 +15,8 @@ import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 import { DefaultMap } from '../util/defaultmap'
 import { processCommandLineArgs } from './common'
 import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
+import { validateFeatures } from './common/features'
+import path from 'path'
 
 export interface StatsCliOptions {
 	verbose:        boolean
@@ -26,21 +29,6 @@ export interface StatsCliOptions {
 	'no-ansi':      boolean
 	parallel:       number
 	features:       string[]
-}
-
-export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])): Set<FeatureKey> {
-	for(const feature of features) {
-		if(feature === 'all') {
-			if(features.length > 1) {
-				console.error(`Feature "all" must be the only feature given, got ${features.join(', ')}`)
-				process.exit(1)
-			}
-		} else if(!allFeatureNames.has(feature as FeatureKey)) {
-			console.error(`Feature ${feature} is unknown, supported are ${[...allFeatureNames].join(', ')} or "all"`)
-			process.exit(1)
-		}
-	}
-	return features[0] === 'all' ? allFeatureNames : new Set(features as FeatureKey[])
 }
 
 
@@ -94,9 +82,6 @@ if(options['post-process']) {
 	process.exit(0)
 }
 
-const shell = new RShell()
-shell.tryToInjectHomeLibPath()
-
 initFileProvider(options['output-dir'])
 
 async function getStats() {
@@ -117,19 +102,17 @@ async function getStats() {
 	const limit = options.limit ?? files.length
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
-
+	const features = [...processedFeatures].flatMap(s => ['--features', s])
 	// TODO: pass other flags!
 	const pool = new LimitBenchmarkPool(
-		`${__dirname}/../cli/statistics-helper-app`,
-		files.map(f => [f.content, '--output', options['output-dir'], ...verboseAdd]),
+		`${__dirname}/statistics-helper-app`,
+		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], String(idx)), ...verboseAdd, ...features]),
 		limit,
 		options.parallel
 	)
 	await pool.run()
 	const stats = pool.getStats()
-	console.log(`Benchmarked ${stats.counter} files, skipped ${stats.skipped.length} files due to errors`)
-
-	shell.close()
+	console.log(`Processed ${stats.counter} files, skipped ${stats.skipped.length} files due to errors`)
 }
 
 void getStats()

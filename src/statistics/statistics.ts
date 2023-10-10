@@ -101,7 +101,6 @@ async function extractSingle(result: FeatureStatistics, shell: RShell, tokenMap:
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	for(const [key, feature] of Object.entries(ALL_FEATURES) as [FeatureKey, Feature<any>][]) {
-
 		if(features !== 'all' && !features.has(key)) {
 			continue
 		}

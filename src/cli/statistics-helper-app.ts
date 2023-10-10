@@ -1,14 +1,13 @@
 import { RShell } from '../r-bridge'
 import {
 	extractUsageStatistics,
-	printFeatureStatistics,
-	initFileProvider,
 	setFormatter,
-	voidFormatter, staticRequests
+	voidFormatter, staticRequests, FeatureKey, initFileProvider
 } from '../statistics'
 import { log } from '../util/log'
 import { processCommandLineArgs } from './common'
-import { validateFeatures } from './statistics-app'
+
+// apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 
 export interface StatsHelperCliOptions {
 	verbose:      boolean
@@ -34,25 +33,26 @@ if(options['no-ansi']) {
 }
 
 
-const processedFeatures = validateFeatures(options.features)
+// assume correct
+const processedFeatures = new Set<FeatureKey>(options.features as FeatureKey[])
 
 const shell = new RShell()
 shell.tryToInjectHomeLibPath()
 
 initFileProvider(options['output-dir'])
 
-async function getStats() {
-	let cur = 0
-	const stats = await extractUsageStatistics(shell,
-		file => console.log(`${new Date().toLocaleString()} processing ${++cur} ${file.content}`),
+async function getStatsForSingleFile() {
+	await extractUsageStatistics(shell,
+		() => { /* do nothing */ },
 		processedFeatures,
 		staticRequests({ request: 'file', content: options.input })
 	)
-	console.warn(`skipped ${stats.meta.failedRequests.length} requests due to errors (run with logs to get more info)`)
+	// console.warn(`skipped ${stats.meta.failedRequests.length} requests due to errors (run with logs to get more info)`)
 
-	printFeatureStatistics(stats, processedFeatures)
+	// TODO: write to file/log to sum first and then print on summarize
+	// printFeatureStatistics(stats, processedFeatures)
 	shell.close()
 }
 
-void getStats()
+void getStatsForSingleFile()
 

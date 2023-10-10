@@ -4,6 +4,7 @@ import {
 	StatisticAppendProvider,
 	StatisticFileProvider
 } from './file-provider'
+import { log } from '../../util/log'
 
 
 /**
@@ -33,7 +34,7 @@ initDummyFileProvider()
  * Make the statistics write to a given output directory.
  */
 export function initFileProvider(outputDirectory: string): void {
-	console.log(`Initializing file provider for output directory ${outputDirectory}`)
+	log.debug(`Initializing file provider for output directory ${outputDirectory}`)
 	fileProvider = new StatisticFileProvider(outputDirectory)
 }
 

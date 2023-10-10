@@ -5,7 +5,7 @@
  */
 import Joi from 'joi'
 import { FlowrHelloResponseMessage } from './hello'
-import { FileAnalysisRequestMessage, FileAnalysisResponseMessage } from './analysis'
+import { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from './analysis'
 import { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './repl'
 import { SliceRequestMessage, SliceResponseMessage } from './slice'
 import { FlowrErrorMessage } from './error'
@@ -44,7 +44,7 @@ export const baseMessage: MessageDefinition<IdMessageBase> = {
  * This is the main message type that should be used to represent a message in *flowR*
  */
 export type FlowrMessage = FlowrHelloResponseMessage
-| FileAnalysisRequestMessage | FileAnalysisResponseMessage
+| FileAnalysisRequestMessage | FileAnalysisResponseMessageJson
 | ExecuteRequestMessage | ExecuteIntermediateResponseMessage | ExecuteEndMessage
 | SliceRequestMessage | SliceResponseMessage
 | FlowrErrorMessage

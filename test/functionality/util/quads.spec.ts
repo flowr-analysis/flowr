@@ -1,6 +1,6 @@
 import { retrieveNormalizedAst, withShell } from '../helper/shell'
 import { decorateAst, RType } from '../../../src/r-bridge'
-import { serialize2quads } from '../../../src/util/quads'
+import { defaultQuadIdGenerator, serialize2quads } from '../../../src/util/quads'
 import { assert } from 'chai'
 
 describe('Quad Generation', withShell(shell => {
@@ -10,7 +10,7 @@ describe('Quad Generation', withShell(shell => {
 	const compareQuads = async(code: string, expected: string) => {
 		const ast = await retrieveNormalizedAst(shell, code)
 		const decorated = decorateAst(ast).ast
-		const serialized = serialize2quads(decorated, { context, domain })
+		const serialized = serialize2quads(decorated, { context, domain, getId: defaultQuadIdGenerator() })
 		assert.strictEqual(serialized.trim(), expected.trim())
 	}
 

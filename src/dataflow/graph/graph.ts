@@ -65,7 +65,7 @@ export class DataflowGraph {
 	/** All vertices in the complete graph (including those nested in function definition) */
 	private vertexInformation: DataflowGraphVertices = new Map<NodeId, DataflowGraphVertexInfo>()
 	/** All edges in the complete graph (including those nested in function definition) */
-	private edges:             Map<NodeId, OutgoingEdges> = new Map<NodeId, Map<NodeId, DataflowGraphEdge>>()
+	private edgeInformation:   Map<NodeId, OutgoingEdges> = new Map<NodeId, Map<NodeId, DataflowGraphEdge>>()
 
 	/**
 	 * Get the {@link DataflowGraphVertexInfo} attached to a node as well as all outgoing edges.
@@ -82,12 +82,12 @@ export class DataflowGraph {
 	}
 
 	public outgoingEdges(id: NodeId): OutgoingEdges | undefined {
-		return this.edges.get(id)
+		return this.edgeInformation.get(id)
 	}
 
 	public ingoingEdges(id: NodeId): IngoingEdges | undefined {
 		const edges = new Map<NodeId, DataflowGraphEdge>()
-		for(const [source, outgoing] of this.edges.entries()) {
+		for(const [source, outgoing] of this.edgeInformation.entries()) {
 			if(outgoing.has(id)) {
 				edges.set(source, outgoing.get(id) as DataflowGraphEdge)
 			}
@@ -207,12 +207,12 @@ export class DataflowGraph {
 		guard(attribute !== undefined, 'attribute must be set')
 		const edge: DataflowGraphEdge = { types: new Set([type]), attribute }
 
-		const existingFrom = this.edges.get(fromId)
+		const existingFrom = this.edgeInformation.get(fromId)
 		const edgeInFrom = existingFrom?.get(toId)
 
 		if(edgeInFrom === undefined) {
 			if(existingFrom === undefined) {
-				this.edges.set(fromId, new Map([[toId, edge]]))
+				this.edgeInformation.set(fromId, new Map([[toId, edge]]))
 			} else {
 				existingFrom.set(toId, edge)
 			}
@@ -221,9 +221,9 @@ export class DataflowGraph {
 			const bidirectional = type === 'same-read-read' || type === 'same-def-def' || type === 'relates'
 
 			if(bidirectional) {
-				const existingTo = this.edges.get(toId)
+				const existingTo = this.edgeInformation.get(toId)
 				if(existingTo === undefined) {
-					this.edges.set(toId, new Map([[fromId, edge]]))
+					this.edgeInformation.set(toId, new Map([[fromId, edge]]))
 				} else {
 					existingTo.set(fromId, edge)
 				}
@@ -231,9 +231,9 @@ export class DataflowGraph {
 				const otherEdge: DataflowGraphEdge = { ...edge,
 					types: new Set([EdgeType.DefinedByOnCall])
 				}
-				const existingTo = this.edges.get(toId)
+				const existingTo = this.edgeInformation.get(toId)
 				if(existingTo === undefined) {
-					this.edges.set(toId, new Map([[fromId, otherEdge]]))
+					this.edgeInformation.set(toId, new Map([[fromId, otherEdge]]))
 				} else {
 					existingTo.set(fromId, otherEdge)
 				}
@@ -282,11 +282,11 @@ export class DataflowGraph {
 	}
 
 	private mergeEdges(otherGraph: DataflowGraph) {
-		for(const [id, edges] of otherGraph.edges.entries()) {
+		for(const [id, edges] of otherGraph.edgeInformation.entries()) {
 			for(const [target, edge] of edges) {
-				const existing = this.edges.get(id)
+				const existing = this.edgeInformation.get(id)
 				if(existing === undefined) {
-					this.edges.set(id, new Map([[target, edge]]))
+					this.edgeInformation.set(id, new Map([[target, edge]]))
 				} else {
 					const get = existing.get(target)
 					if(get === undefined) {
@@ -312,13 +312,13 @@ export class DataflowGraph {
 			return false
 		}
 
-		if(this.edges.size !== other.edges.size) {
-			dataflowLogger.debug(`different numbers of vertices with edges: ${this.edges.size} vs ${other.edges.size}`)
+		if(this.edgeInformation.size !== other.edgeInformation.size) {
+			dataflowLogger.debug(`different numbers of vertices with edges: ${this.edgeInformation.size} vs ${other.edgeInformation.size}`)
 			return false
 		}
 
-		for(const [id, edge] of this.edges.entries()) {
-			if(!equalEdges(id, edge, other.edges.get(id))) {
+		for(const [id, edge] of this.edgeInformation.entries()) {
+			if(!equalEdges(id, edge, other.edgeInformation.get(id))) {
 				return false
 			}
 		}

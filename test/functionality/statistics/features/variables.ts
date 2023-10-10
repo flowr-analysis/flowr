@@ -14,25 +14,24 @@ describe('Variables', withShell(shell => {
 			name:     'one variable use',
 			code:     'a',
 			expected: {
-				allFunctionCalls: 1
+				numberOfVariableUses: 1
 			},
-			written: []
+			written: [['usedVariables', [{ value: JSON.stringify({
+				name:     'a',
+				location: { line: 1, column: 1 }
+			}) }]]]
 		},
 		{
 			name:     'one variable definition',
 			code:     'a <- 3',
 			expected: {
-				allFunctionCalls: 1
+				numberOfDefinitions: 1
 			},
 			written: [
-				['all-calls', [{
-					value: JSON.stringify({
-						name:              'b',
-						location:          { line: 1, column: 1 },
-						numberOfArguments: 2,
-						namespace:         'a'
-					})
-				}]],
+				['definedVariables', [{ value: JSON.stringify({
+					name:     'a',
+					location: { line: 1, column: 1 }
+				}) }]],
 			]
 		}
 	])

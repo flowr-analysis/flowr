@@ -1,16 +1,16 @@
 import { Feature, FeatureProcessorInput } from '../feature'
 import { Writable } from 'ts-essentials'
-import { isSpecialSymbol, RNodeWithParent, RoleInParent, RType, visitAst } from '../../../r-bridge'
-import { guard, isNotUndefined } from '../../../util/assert'
+import { isSpecialSymbol, RType, visitAst } from '../../../r-bridge'
 import { appendStatisticsFile } from '../../output'
 import { EdgeType } from '../../../dataflow'
-import { definedFunctions } from './defined-functions'
 
 
 const initialVariableInfo = {
 	numberOfVariableUses:  0,
 	numberOfDefinitions:   0,
-	numberOfRedefinitions: 0
+	numberOfRedefinitions: 0,
+	// we failed to get the type/role, should be 0 :D
+	unknownVariables:      0
 }
 
 export type VariableInfo = Writable<typeof initialVariableInfo>
@@ -24,16 +24,40 @@ function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void 
 				return
 			}
 
-			if(node.info.role === RoleInParent.AssignmentBinaryOperationLhs) {
+			// search for the node in the DF graph
+			const mayNode = input.dataflow.graph.get(node.info.id)
 
+			if(mayNode === undefined) {
+				info.unknownVariables++
+				return
 			}
 
-			info.numberOfVariableUses++
-
+			const [dfNode, edges] = mayNode
+			if(dfNode.tag === 'variable-definition') {
+				info.numberOfDefinitions++
+				const lexeme = node.info.fullLexeme ?? node.lexeme
+				appendStatisticsFile(variables.name, 'definedVariables', [JSON.stringify({
+					name:     lexeme,
+					location: node.location.start
+				})], input.filepath)
+				// check for redefinitions
+				const hasRedefinitions = [...edges.values()].some(edge => edge.types.has(EdgeType.SameDefDef))
+				if(hasRedefinitions) {
+					info.numberOfRedefinitions++
+					appendStatisticsFile(variables.name, 'redefinedVariables', [JSON.stringify({
+						name:     lexeme,
+						location: node.location.start
+					})], input.filepath)
+				}
+			} else if(dfNode.tag === 'use') {
+				info.numberOfVariableUses++
+				appendStatisticsFile(variables.name, 'usedVariables', [JSON.stringify({
+					name:     node.info.fullLexeme ?? node.lexeme,
+					location: node.location.start
+				})], input.filepath)
+			}
 		}
 	)
-
-	appendStatisticsFile(definedFunctions.name, 'all-definitions', allDefinitions.map(s => JSON.stringify(s)), input.filepath)
 }
 
 
@@ -42,7 +66,7 @@ export const variables: Feature<VariableInfo> = {
 	description: 'Variable Usage, Assignments, and Redefinitions',
 
 	process(existing: VariableInfo, input: FeatureProcessorInput): VariableInfo {
-
+		visitVariables(existing, input)
 		return existing
 	},
 

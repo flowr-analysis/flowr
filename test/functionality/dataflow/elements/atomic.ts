@@ -282,6 +282,30 @@ describe('Atomic dataflow information', withShell((shell) => {
 					.addEdge('1', '2', EdgeType.DefinedBy, 'always')
 					.addEdge('0', '2', EdgeType.DefinedBy, 'always')
 			)
+			assertDataflow('nested global assignments', shell,
+				'x <<- y <<- z',
+				new DataflowGraph()
+					.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: GlobalScope })
+					.addVertex({ tag: 'variable-definition', id: '1', name: 'y', scope: GlobalScope })
+					.addVertex({ tag: 'use', id: '2', name: 'z' })
+					.addEdge('0', '1', EdgeType.DefinedBy, 'always')
+					.addEdge('1', '2', EdgeType.DefinedBy, 'always')
+					.addEdge('0', '2', EdgeType.DefinedBy, 'always')
+			)
+			assertDataflow('nested global mixed with local assignments', shell,
+				'x <<- y <- y2 <<- z',
+				new DataflowGraph()
+					.addVertex({ tag: 'variable-definition', id: '0', name: 'x',  scope: GlobalScope })
+					.addVertex({ tag: 'variable-definition', id: '1', name: 'y',  scope: LocalScope })
+					.addVertex({ tag: 'variable-definition', id: '2', name: 'y2', scope: GlobalScope })
+					.addVertex({ tag: 'use', id: '3', name: 'z' })
+					.addEdge('0', '1', EdgeType.DefinedBy, 'always')
+					.addEdge('0', '2', EdgeType.DefinedBy, 'always')
+					.addEdge('0', '3', EdgeType.DefinedBy, 'always')
+					.addEdge('1', '2', EdgeType.DefinedBy, 'always')
+					.addEdge('1', '3', EdgeType.DefinedBy, 'always')
+					.addEdge('2', '3', EdgeType.DefinedBy, 'always')
+			)
 		})
 
 		describe('known impact assignments', () => {

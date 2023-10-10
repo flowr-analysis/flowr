@@ -1,23 +1,13 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { define, overwriteEnvironments, resolveByName } from '../../../environments'
-import { NodeId, ParentInformation, RFunctionCall, RType } from '../../../../r-bridge'
+import { ParentInformation, RFunctionCall, RType } from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
 import { DataflowGraph, dataflowLogger, EdgeType, FunctionArgument } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
 import { LocalScope } from '../../../environments/scopes'
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
-
-
-function getLastNodeInGraph(functionName: DataflowInformation) {
-	let functionNameId: NodeId | undefined
-	for(const [nodeId] of functionName.graph.vertices(false)) {
-		functionNameId = nodeId
-	}
-	return functionNameId
-}
-
 
 export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const named = functionCall.flavor === 'named'
@@ -92,12 +82,6 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 			)
 		}
 	}
-
-	// we update all the usage nodes within the dataflow graph of the function name to
-	// mark them as function calls, and append their argument linkages
-	const functionNameId = getLastNodeInGraph(functionName)
-
-	guard(functionNameId !== undefined, () => `Function call name id not found for ${JSON.stringify(functionCall)}`)
 
 	finalGraph.addVertex({
 		tag:         'function-call',

@@ -74,7 +74,7 @@ export class DataflowGraph {
 	 * @param includeDefinedFunctions - If true this will search function definitions as well and not just the toplevel
 	 * @returns the node info for the given id (if it exists)
 	 */
-	public get(id: NodeId, includeDefinedFunctions: boolean): [DataflowGraphVertexInfo, OutgoingEdges] | undefined {
+	public get(id: NodeId, includeDefinedFunctions = true): [DataflowGraphVertexInfo, OutgoingEdges] | undefined {
 		// if we do not want to include function definitions, only retrieve the value if the id is part of the root vertices
 		const vertex: DataflowGraphVertexInfo | undefined = includeDefinedFunctions || this.rootVertices.has(id) ? this.vertexInformation.get(id) : undefined
 

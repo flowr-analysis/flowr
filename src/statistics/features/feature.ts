@@ -20,6 +20,7 @@ import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { MergeableRecord } from '../../util/objects'
 import { NormalizedAst } from '../../r-bridge'
 import { DataflowInformation } from '../../dataflow/internal/info'
+import { variables } from './supported/variables'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
@@ -80,7 +81,8 @@ export const ALL_FEATURES = {
 	loops:            loops,
 	controlflow:      controlflow,
 	dataAccess:       dataAccess,
-	expressionList:   expressionList
+	expressionList:   expressionList,
+	variables:        variables
 } as const
 
 export type FeatureKey = keyof typeof ALL_FEATURES

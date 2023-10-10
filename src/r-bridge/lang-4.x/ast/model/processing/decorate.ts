@@ -14,9 +14,18 @@ import { guard } from '../../../../../util/assert'
 import { SourceRange } from '../../../../../util/range'
 import { BiMap } from '../../../../../util/bimap'
 import { foldAst } from './fold'
-import { RArgument, RFunctionCall, RNamedFunctionCall, RParameter, RUnnamedFunctionCall } from '../nodes'
+import {
+	RArgument,
+	RBinaryOp,
+	RFunctionCall,
+	RNamedFunctionCall,
+	RParameter,
+	RPipe,
+	RUnnamedFunctionCall
+} from '../nodes'
 import { MergeableRecord } from '../../../../../util/objects'
 import { RoleInParent } from './role'
+import { RType } from '../type'
 
 /** The type of the id assigned to each node. Branded to avoid problematic usages with other string types. */
 export type NodeId = string & { __brand?: 'node-id'};
@@ -178,17 +187,22 @@ function createFoldForLeaf<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForBinaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>, lhs: RNodeWithParent<OtherInfo>, rhs: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+	return (data: RBinaryOp<OtherInfo> | RPipe<OtherInfo>, lhs: RNodeWithParent<OtherInfo>, rhs: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, lhs, rhs } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		const lhsInfo = lhs.info
 		lhsInfo.parent = id
-		lhsInfo.role = RoleInParent.BinaryOperationLhs
 		const rhsInfo = rhs.info
 		rhsInfo.parent = id
 		rhsInfo.index = 1
-		rhsInfo.role = RoleInParent.BinaryOperationRhs
+		if(data.type === RType.Pipe) {
+			lhsInfo.role = RoleInParent.PipeLhs
+			rhsInfo.role = RoleInParent.PipeRhs
+		} else {
+			lhsInfo.role = RoleInParent.BinaryOperationLhs
+			rhsInfo.role = RoleInParent.BinaryOperationRhs
+		}
 		return decorated
 	}
 }

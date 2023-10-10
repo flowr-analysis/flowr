@@ -10,7 +10,6 @@ const initialValueInfo = {
 	imaginaryNumbers: 0,
 	integers:         0,
 	floatHex:         0,
-
 	logical:          0,
 	specialConstants: 0,
 	strings:          0

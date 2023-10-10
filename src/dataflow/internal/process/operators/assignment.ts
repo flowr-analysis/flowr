@@ -48,15 +48,19 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 	}
 }
 
-function identifySourceAndTarget<OtherInfo>(op: RNode<OtherInfo & ParentInformation>,
-																																												lhs: DataflowInformation,
-																																												rhs: DataflowInformation) : {
-		source: DataflowInformation
-		target: DataflowInformation
-		global: boolean
-		/** true if `->` or `->>` */
-		swap:   boolean
-	} {
+interface SourceAndTarget {
+	source: DataflowInformation
+	target: DataflowInformation
+	global: boolean
+	/** true if `->` or `->>` */
+	swap:   boolean
+}
+
+function identifySourceAndTarget<OtherInfo>(
+	op: RNode<OtherInfo & ParentInformation>,
+	lhs: DataflowInformation,
+	rhs: DataflowInformation
+) : SourceAndTarget {
 	let source: DataflowInformation
 	let target: DataflowInformation
 	let global = false

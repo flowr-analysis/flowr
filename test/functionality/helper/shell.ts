@@ -127,7 +127,7 @@ export const defaultTestConfiguration: TestConfiguration = {
 	needsNetworkConnection: false,
 }
 
-async function ensureConfig(shell: RShell, test: Mocha.Context, userConfig?: Partial<TestConfiguration>): Promise<void> {
+export async function ensureConfig(shell: RShell, test: Mocha.Context, userConfig?: Partial<TestConfiguration>): Promise<void> {
 	const config = deepMergeObject(defaultTestConfiguration, userConfig)
 	if(config.needsNetworkConnection) {
 		await testRequiresNetworkConnection(test)

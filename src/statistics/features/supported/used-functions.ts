@@ -2,7 +2,8 @@ import { Feature, FeatureProcessorInput } from '../feature'
 import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
 import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
-import { SourceRange } from '../../../util/range'
+import { SourcePosition } from '../../../util/range'
+import { MergeableRecord } from '../../../util/objects'
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls:           0,
@@ -76,9 +77,18 @@ function analyzeFunctionName(name: string, info: FunctionUsageInfo) {
 	collectFunctionByName(name, info, 'optionFunctions', optionFunctions)
 }
 
+export interface FunctionCallInformation extends MergeableRecord {
+	/** the name of the called function, or undefined if this was an unnamed function call */
+	name:              string | undefined,
+	location:          SourcePosition
+	numberOfArguments: number,
+	/** whether this was called from a namespace, like `a::b()` */
+	namespace:         string | undefined
+}
+
 function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void {
 	const calls: RNodeWithParent[] = []
-	const allCalls: { name: string, named: boolean, location: SourceRange }[] = []
+	const allCalls: FunctionCallInformation[] = []
 
 	visitAst(input.normalizedRAst.ast,
 		node => {
@@ -95,10 +105,20 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 			if(node.flavor === 'unnamed') {
 				info.unnamedCalls++
 				appendStatisticsFile(usedFunctions.name, 'unnamed-calls', [node.lexeme], input.filepath)
-				allCalls.push({ name: node.calledFunction.lexeme ?? '<unknown>', named: false, location: node.location })
+				allCalls.push({
+					name:              undefined,
+					location:          node.location.start,
+					numberOfArguments: node.arguments.length,
+					namespace:         undefined
+				})
 			} else {
 				analyzeFunctionName(node.functionName.lexeme, info)
-				allCalls.push({ name: node.functionName.lexeme, named: true, location: node.location })
+				allCalls.push({
+					name:              node.functionName.lexeme,
+					location:          node.location.start,
+					numberOfArguments: node.arguments.length,
+					namespace:         node.functionName.namespace
+				})
 			}
 
 			calls.push(node)

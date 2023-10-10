@@ -10,6 +10,7 @@ import { assert } from 'chai'
 import { RShell } from '../../../src/r-bridge'
 import { deepMergeObject } from '../../../src/util/objects'
 import { jsonReplacer } from '../../../src/util/json'
+import { ensureConfig, TestConfiguration } from '../helper/shell'
 
 async function requestFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string): Promise<FeatureValue<T>> {
 	const results = await extractUsageStatistics(shell, () => { /* do nothing */ }, new Set([feature]), staticRequests({ request: 'text', content: code }))
@@ -26,15 +27,16 @@ async function expectFeature<T extends FeatureKey>(shell: RShell, feature: T, co
 }
 
 export interface StatisticsTest {
-	name:     string
-	code:     string
-	expected: Partial<FeatureValue<FeatureKey>>
+	name:          string
+	code:          string
+	requirements?: Partial<TestConfiguration>
+	expected:      Partial<FeatureValue<FeatureKey>>
 	/**
 	 * the expected output written to file, the feature is inferred from the feature given to {@link testForFeatureForInput},
 	 * set to 'nothing' if nothing should be recorded.
 	 * If, for the file contents you pass objects, `JSON.stringify` will be called automatically them.
 	 */
-	written:  [AppendFnType, (string | object)[]][] | 'nothing'
+	written:       [AppendFnType, (string | object)[]][] | 'nothing'
 }
 
 /**
@@ -43,7 +45,8 @@ export interface StatisticsTest {
 export function testForFeatureForInput<T extends FeatureKey>(shell: RShell, feature: T, tests: StatisticsTest[]) {
 	const featureInfo = ALL_FEATURES[feature]
 	for(const test of tests) {
-		it(test.name, async() => {
+		it(test.name, async function(){
+			await ensureConfig(shell, this, test.requirements)
 			// create a new feature map to record to, this resets the state as well
 			const map: DummyAppendMemoryMap = new Map()
 			initDummyFileProvider(map)
@@ -59,4 +62,5 @@ describe('Statistics', () => {
 	require('./features/used-functions.ts')
 	require('./features/loops.ts')
 	require('./features/data-access.ts')
+	require('./features/defined-functions.ts')
 })

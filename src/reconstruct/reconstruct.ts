@@ -280,7 +280,7 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 		return plain(getLexeme(argument))
 	}
 
-	if(argument.name !== undefined) {
+	if(argument.name !== undefined && name !== undefined && name.length > 0) {
 		return plain(`${getLexeme(argument.name)}=${argument.value ? getLexeme(argument.value) : ''}`)
 	} else {
 		return value ?? []

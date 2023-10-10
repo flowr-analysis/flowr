@@ -10,7 +10,7 @@ cat(paste("Downloading", length(data), "packages to", to, "\n"))
 
 dir.create(to, recursive = TRUE, showWarnings = FALSE)
 
-download.packages(data, type = "source", destdir = to, method = "curl", dependencies = FALSE)
+download.packages(data, type = "source", destdir = to, method = "curl", dependencies = FALSE,repos=c("https://cran.r-project.org"))
 
 cat(paste("Downloaded", length(data), "packages to", to, "\nUnzipping...\n"))
 

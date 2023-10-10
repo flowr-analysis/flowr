@@ -103,7 +103,6 @@ async function getStats() {
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
 	const features = [...processedFeatures].flatMap(s => ['--features', s])
-	// TODO: pass other flags!
 	const pool = new LimitBenchmarkPool(
 		`${__dirname}/statistics-helper-app`,
 		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], String(idx)), ...verboseAdd, ...features]),

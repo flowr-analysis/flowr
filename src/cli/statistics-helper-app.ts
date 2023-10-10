@@ -2,7 +2,7 @@ import { RShell } from '../r-bridge'
 import {
 	extractUsageStatistics,
 	setFormatter,
-	voidFormatter, staticRequests, FeatureKey, initFileProvider, appendStatisticsFile, statisticsFileProvider
+	voidFormatter, staticRequests, FeatureKey, initFileProvider, statisticsFileProvider
 } from '../statistics'
 import { log } from '../util/log'
 import { processCommandLineArgs } from './common'
@@ -12,7 +12,6 @@ import { processCommandLineArgs } from './common'
 export interface StatsHelperCliOptions {
 	verbose:      boolean
 	help:         boolean
-	'hist-step':  number
 	input:        string
 	'output-dir': string
 	'no-ansi':    boolean

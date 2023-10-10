@@ -87,7 +87,7 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 	cwd:                process.cwd(),
 	env:                process.env,
 	eol:                '\n',
-	homeLibPath:        undefined,
+	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
 	revive:             'never',
 	onRevive:           () => { /* do nothing */ }
 } as const
@@ -218,8 +218,8 @@ export class RShell {
 	public tryToInjectHomeLibPath(): void {
 		// ensure the path exists first
 		if(this.options.homeLibPath === undefined) {
-			this.log.debug('ensuring home lib path exists')
-			this.sendCommand('dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE)')
+			this.log.debug('ensuring home lib path exists (automatic inject)')
+			this.sendCommand('if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }')
 			this.sendCommand('.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))')
 		} else {
 			this.injectLibPaths(this.options.homeLibPath)

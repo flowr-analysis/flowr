@@ -99,6 +99,8 @@ export class DataflowGraph {
 	/**
    * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
    * @returns the ids of all toplevel vertices in the graph together with their vertex information
+	 *
+	 * @see #edges
    */
 	public* vertices(includeDefinedFunctions: boolean): IterableIterator<[NodeId, DataflowGraphVertexInfo]> {
 		if(includeDefinedFunctions) {
@@ -108,6 +110,15 @@ export class DataflowGraph {
 				yield [id, this.vertexInformation.get(id) as DataflowGraphVertexInfo]
 			}
 		}
+	}
+
+	/**
+	 * @returns the ids of all edges in the graph together with their edge information
+	 *
+	 * @see #vertices
+	 */
+	public* edges(): IterableIterator<[NodeId, OutgoingEdges]> {
+		yield* this.edgeInformation.entries()
 	}
 
 	/**

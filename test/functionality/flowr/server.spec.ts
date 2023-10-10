@@ -3,7 +3,7 @@ import { fakeSend, withSocket } from '../helper/net'
 import { retrieveVersionInformation } from '../../../src/cli/repl/commands/version'
 import { FlowrHelloResponseMessage } from '../../../src/cli/repl/server/messages/hello'
 import { assert } from 'chai'
-import { FileAnalysisRequestMessage, FileAnalysisResponseMessage } from '../../../src/cli/repl/server/messages/analysis'
+import { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from '../../../src/cli/repl/server/messages/analysis'
 import { DecoratedAstMap, ParentInformation, requestFromInput } from '../../../src/r-bridge'
 import { LAST_PER_FILE_STEP, SteppingSlicer } from '../../../src/core'
 import { jsonReplacer } from '../../../src/util/json'
@@ -12,6 +12,7 @@ import {
 	ExecuteIntermediateResponseMessage,
 	ExecuteRequestMessage
 } from '../../../src/cli/repl/server/messages/repl'
+import { extractCFG } from '../../../src/util/cfg'
 
 describe('FlowR Server', withShell(shell => {
 	it('Correct Hello Message', withSocket(shell,async socket => {
@@ -69,7 +70,7 @@ describe('FlowR Server', withShell(shell => {
 		await socket.waitForMessage('response-file-analysis')
 		const messages = socket.getMessages(['hello', 'response-file-analysis'])
 
-		const response = messages[1] as FileAnalysisResponseMessage
+		const response = messages[1] as FileAnalysisResponseMessageJson
 
 		// we are testing the server and not the slicer here!
 		const results = await new SteppingSlicer({
@@ -81,6 +82,9 @@ describe('FlowR Server', withShell(shell => {
 		// hideous
 		results.normalize.idMap = undefined as unknown as DecoratedAstMap<ParentInformation>
 
+		// cfg should not be set as we did not request it
+		assert.isUndefined(response.cfg, 'Expected the cfg to be undefined as we did not request it')
+
 		assert.strictEqual(response.id, '42', 'Expected the second message to have the same id as the request')
 		// this is hideous and only to unify the ids
 		assert.deepStrictEqual(JSON.stringify(response.results, jsonReplacer)
@@ -88,5 +92,25 @@ describe('FlowR Server', withShell(shell => {
 		JSON.stringify(results, jsonReplacer)
 			.replace(/\.GlobalEnv","id":"\d+"/, '.GlobalEnv",'), 'Expected the second message to have the same results as the slicer')
 
+	}))
+
+	it('Analyze with the CFG', withSocket(shell, async socket => {
+		fakeSend<FileAnalysisRequestMessage>(socket, {
+			type:      'request-file-analysis',
+			id:        '42',
+			filetoken: 'super-token',
+			filename:  'x',
+			content:   'a;b',
+			cfg:       true
+		})
+		await socket.waitForMessage('response-file-analysis')
+		const messages = socket.getMessages(['hello', 'response-file-analysis'])
+
+		const response = messages[1] as FileAnalysisResponseMessageJson
+
+		const gotCfg = response.cfg
+		assert.isDefined(gotCfg, 'Expected the cfg to be defined as we requested it')
+		const expectedCfg = extractCFG(response.results.normalize)
+		assert.equal(JSON.stringify(gotCfg?.graph, jsonReplacer), JSON.stringify(expectedCfg.graph, jsonReplacer), 'Expected the cfg to be the same as the one extracted from the results')
 	}))
 }))

@@ -1,11 +1,9 @@
-import { RShell } from '../r-bridge'
+import { RParseRequestFromFile, RShell } from '../r-bridge'
 import {
-	extractUsageStatistics,
 	postProcessFolder,
 	printClusterReport,
 	histogramsFromClusters,
 	histograms2table,
-	printFeatureStatistics,
 	initFileProvider,
 	setFormatter,
 	voidFormatter, ContextsWithCount, allFeatureNames, FeatureKey
@@ -15,16 +13,18 @@ import { guard } from '../util/assert'
 import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 import { DefaultMap } from '../util/defaultmap'
 import { processCommandLineArgs } from './common'
+import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
 
 export interface StatsCliOptions {
 	verbose:        boolean
 	help:           boolean
 	'post-process': boolean
-	limit:          number
+	limit:          number | undefined
 	'hist-step':    number
 	input:          string[]
 	'output-dir':   string
 	'no-ansi':      boolean
+	parallel:       number
 	features:       string[]
 }
 
@@ -101,15 +101,34 @@ initFileProvider(options['output-dir'])
 
 async function getStats() {
 	console.log(`Processing features: ${JSON.stringify(processedFeatures)}`)
-	let cur = 0
-	const stats = await extractUsageStatistics(shell,
-		file => console.log(`${new Date().toLocaleString()} processing ${++cur} ${file.content}`),
-		processedFeatures,
-		allRFilesFrom(options.input, options.limit)
-	)
-	console.warn(`skipped ${stats.meta.failedRequests.length} requests due to errors (run with logs to get more info)`)
+	console.log(`Using ${options.parallel} parallel executors`)
 
-	printFeatureStatistics(stats, processedFeatures)
+	// we do not use the limit argument to be able to pick the limit randomly
+	const files: RParseRequestFromFile[] = []
+	for await (const file of allRFilesFrom(options.input)) {
+		files.push(file)
+	}
+
+	if(options.limit) {
+		log.info(`limiting to ${options.limit} files`)
+		// shuffle and limit
+		files.sort(() => Math.random() - 0.5)
+	}
+	const limit = options.limit ?? files.length
+
+	const verboseAdd = options.verbose ? ['--verbose'] : []
+
+	// TODO: pass other flags!
+	const pool = new LimitBenchmarkPool(
+		`${__dirname}/../cli/statistics-helper-app`,
+		files.map(f => [f.content, '--output', options['output-dir'], ...verboseAdd]),
+		limit,
+		options.parallel
+	)
+	await pool.run()
+	const stats = pool.getStats()
+	console.log(`Benchmarked ${stats.counter} files, skipped ${stats.skipped.length} files due to errors`)
+
 	shell.close()
 }
 

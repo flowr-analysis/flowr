@@ -42,7 +42,6 @@ shell.tryToInjectHomeLibPath()
 initFileProvider(options['output-dir'])
 
 async function getStats() {
-	console.log(`Processing features: ${JSON.stringify(processedFeatures)}`)
 	let cur = 0
 	const stats = await extractUsageStatistics(shell,
 		file => console.log(`${new Date().toLocaleString()} processing ${++cur} ${file.content}`),

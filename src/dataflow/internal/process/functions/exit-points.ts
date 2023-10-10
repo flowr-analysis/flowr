@@ -50,7 +50,7 @@ function visitExitPoints<OtherInfo>(node: RNode<OtherInfo & ParentInformation>):
 		case RType.Parameter:
 			return node.defaultValue ? knownIdsOfChildren(node.info.id, node.defaultValue) : { knownIds: [], potentialIds: [] }
 		case RType.Argument:
-			return knownIdsOfChildren(node.info.id, node.value)
+			return node.value ? knownIdsOfChildren(node.info.id, node.value) : { knownIds: [], potentialIds: [] }
 		case RType.Symbol:
 		case RType.Logical:
 		case RType.Number:

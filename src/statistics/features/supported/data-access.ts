@@ -10,17 +10,19 @@ const initialDataAccessInfo = {
 	singleBracketConstant:       0,
 	singleBracketSingleVariable: 0,
 	singleBracketCommaAccess:    0,
+	singleBracketEmptyArgument:  0,
 	doubleBracket:               0,
 	doubleBracketEmpty:          0,
 	doubleBracketConstant:       0,
 	doubleBracketSingleVariable: 0,
 	doubleBracketCommaAccess:    0,
+	doubleBracketEmptyArgument:  0,
 	chainedOrNestedAccess:       0,
 	longestChain:                0,
 	deepestNesting:              0,
 	namedArguments:              0,
 	byName:                      0,
-	bySlot:                      0
+	bySlot:                      0,
 }
 
 export type DataAccessInfo = Writable<typeof initialDataAccessInfo>
@@ -98,7 +100,9 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 					info.namedArguments++
 				}
 
-				if(argContent.type === RType.Number || argContent.type === RType.String ||
+				if(argContent === undefined) {
+					info[`${prefix}BracketEmptyArgument`]++
+				} else if(argContent.type === RType.Number || argContent.type === RType.String ||
 					(argContent.type === RType.Symbol && constantSymbolContent.test(argContent.content))
 				) {
 					info[`${prefix}BracketConstant`]++

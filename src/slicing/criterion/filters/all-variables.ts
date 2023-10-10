@@ -58,7 +58,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 				return [...a, ...args]
 			}
 		},
-		foldArgument:  (_: unknown, a: unknown, b: NodeId[]) => b,
+		foldArgument:  (_: unknown, a: unknown, b: NodeId[] | undefined) => b ?? [],
 		foldParameter: (_: unknown, a: unknown, b: NodeId[] | undefined) => b ?? []
 	}
 }

@@ -275,15 +275,15 @@ function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code,
 	return plain(getLexeme(node))
 }
 
-function reconstructArgument(argument: RArgument<ParentInformation>, name: Code | undefined, value: Code, configuration: ReconstructionConfiguration): Code {
+function reconstructArgument(argument: RArgument<ParentInformation>, name: Code | undefined, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, argument)) {
 		return plain(getLexeme(argument))
 	}
 
-	if(argument.name !== undefined && value.length > 0) {
-		return plain(`${getLexeme(argument.name)}=${getLexeme(argument.value)}`)
+	if(argument.name !== undefined) {
+		return plain(`${getLexeme(argument.name)}=${argument.value ? getLexeme(argument.value) : ''}`)
 	} else {
-		return value
+		return value ?? []
 	}
 }
 

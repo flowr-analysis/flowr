@@ -21,8 +21,8 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 	parseLog.debug('[argument]')
 	objs = executeHook(data.hooks.functions.onArgument.before, data, objs)
 
-	if(objs.length !== 1 && objs.length !== 3) {
-		log.warn(`Either [expr|value] or [SYMBOL_SUB, EQ_SUB, expr], but got: ${objs.map(o => o.name).join(', ')}`)
+	if(objs.length < 1 || objs.length > 3) {
+		log.warn(`Either [expr|value], [SYMBOL_SUB, EQ_SUB], or [SYMBOL_SUB, EQ_SUB, expr], but got: ${objs.map(o => o.name).join(', ')}`)
 		return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
 	}
 
@@ -30,7 +30,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 	const symbolOrExpr = objs[0]
 	const { location, content } = retrieveMetaStructure(data.config, symbolOrExpr.content)
 
-	let parsedValue: RNode | undefined
+	let parsedValue: RNode | undefined | null
 	let name: RSymbol | undefined
 	if(symbolOrExpr.name === RawRType.Expression) {
 		name = undefined
@@ -60,7 +60,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 		location,
 		lexeme: content,
 		name,
-		value:  parsedValue,
+		value:  parsedValue ?? undefined,
 		info:   {
 			fullRange:        location,
 			fullLexeme:       content,
@@ -71,8 +71,8 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 	return executeHook(data.hooks.functions.onArgument.after, data, result)
 }
 
-function parseWithValue(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
+function parseWithValue(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined | null{
 	guard(objs[1].name === RawRType.EqualSub, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`)
-	guard(objs[2].name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression but: ${JSON.stringify(objs)}`)
-	return tryNormalizeSingleNode(data, objs[2])
+	guard(objs.length === 2 || objs[2].name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression or undefined (for 'x=') but: ${JSON.stringify(objs)}`)
+	return objs[2] ? tryNormalizeSingleNode(data, objs[2]) : null
 }

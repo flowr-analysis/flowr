@@ -76,7 +76,7 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 		}
 		parseLog.trace('trying to parse access')
 		const gotAccess = parseAccessArgument(operator, data, x)
-		guard(gotAccess !== undefined, () => `expected one access result in access as argument, yet received ${JSON.stringify(gotAccess)}`)
+		guard(gotAccess !== undefined, () => `expected one access result in access as argument, yet received ${JSON.stringify(gotAccess)} for ${JSON.stringify([operator, x])}`)
 		return gotAccess
 	})
 

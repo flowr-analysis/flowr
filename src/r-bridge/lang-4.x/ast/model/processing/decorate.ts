@@ -394,7 +394,7 @@ function createFoldForFunctionParameter<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForFunctionArgument<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RArgument<OtherInfo>, name: RNodeWithParent<OtherInfo> | undefined, value: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
+	return (data: RArgument<OtherInfo>, name: RNodeWithParent<OtherInfo> | undefined, value: RNodeWithParent<OtherInfo> | undefined): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, name, value } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
@@ -405,10 +405,12 @@ function createFoldForFunctionArgument<OtherInfo>(info: FoldInfo<OtherInfo>) {
 			nameInfo.role = RoleInParent.ArgumentName
 			idx++ // adaptive, 0 for the value if there is no name!
 		}
-		const valueInfo = value.info
-		valueInfo.parent = id
-		valueInfo.index = idx
-		valueInfo.role = RoleInParent.ArgumentValue
+		if(value) {
+			const valueInfo = value.info
+			valueInfo.parent = id
+			valueInfo.index = idx
+			valueInfo.role = RoleInParent.ArgumentValue
+		}
 		return decorated
 	}
 }

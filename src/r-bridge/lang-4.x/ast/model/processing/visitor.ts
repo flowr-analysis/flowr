@@ -69,7 +69,7 @@ class NodeVisitor<OtherInfo = NoInfo> {
 				break
 			case RType.Argument:
 				this.visit(node.name)
-				this.visitSingle(node.value)
+				this.visit(node.value)
 				break
 			case RType.Access:
 				this.visitSingle(node.accessed)

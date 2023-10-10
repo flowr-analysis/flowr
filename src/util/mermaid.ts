@@ -98,7 +98,7 @@ function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
 }
 
 function escapeMarkdown(text: string): string {
-	return text.replace(/([+\-*])/g, '\\$1')
+	return text.replaceAll(/([+\-*])/g, '\\$1').replaceAll('"', '\'\'')
 }
 
 function encodeEdge(from: string, to: string, types: Set<EdgeType>, attribute: string): string {

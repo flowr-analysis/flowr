@@ -363,7 +363,7 @@ cat(4 %b% 5)`)
 "%a%" <- pkg::"%a%"
 cat(4 %a% 5)
       `
-		assertSliced('Must link alias', shell, code, ['4:1'], `"%a%" <- pkg::"%a%"
+		assertSliced('Must link alias but not namespace origin', shell, code, ['4:1'], `"%a%" <- pkg::"%a%"
 cat(4 %a% 5)`)
 	})
 	describe('Using own alias infix operators with namespace', () => {
@@ -372,7 +372,7 @@ pkg::"%a%" <- function(x, y) { x + y }
 "%a%" <- pkg::"%a%"
 cat(4 %a% 5)
       `
-		assertSliced('Must link alias', shell, code, ['4:1'], `pkg::"%a%" <- function(x, y) { x + y }
+		assertSliced('Must link alias with namespace', shell, code, ['4:1'], `pkg::"%a%" <- function(x, y) { x + y }
 "%a%" <- pkg::"%a%"
 cat(4 %a% 5)`)
 	})

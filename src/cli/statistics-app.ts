@@ -101,7 +101,7 @@ function getPrefixForFile(file: string) {
 
 function getSuffixForFile(base: string, file: string) {
 	const subpath = path.relative(base, file)
-	return '--' + subpath.replace(/\//g, '_')
+	return '--' + subpath.replace(/\//g, '／')
 }
 
 async function getStats() {

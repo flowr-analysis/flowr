@@ -1,5 +1,4 @@
 import { allFeatureNames, FeatureKey } from '../../statistics'
-import fs from 'fs'
 import path from 'path'
 
 export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])): Set<FeatureKey> {

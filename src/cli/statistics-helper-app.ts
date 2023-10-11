@@ -89,7 +89,7 @@ async function getStatsForSingleFile() {
 		statisticsFileProvider.append('output-json', 'dataflow',  await printStepResult('dataflow', output.dataflow, StepOutputFormat.Json))
 		statisticsFileProvider.append('output-json', 'cfg',       JSON.stringify(cfg, jsonReplacer))
 	} else {
-		log.error(`expected exactly one output, got: ${JSON.stringify([...stats.outputs.keys()], jsonReplacer, 2)}`)
+		log.error(`expected exactly one output vs. ${stats.outputs.size}, got: ${JSON.stringify([...stats.outputs.keys()], jsonReplacer, 2)}`)
 	}
 	statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta))
 	shell.close()

@@ -14,7 +14,7 @@ import { guard } from '../util/assert'
 import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 import { DefaultMap } from '../util/defaultmap'
 import { processCommandLineArgs } from './common'
-import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
+import { LimitedThreadPool } from '../benchmark/parallel-helper'
 import { retrieveArchiveName, validateFeatures } from './common/features'
 import path from 'path'
 import { jsonReplacer } from '../util/json'
@@ -125,7 +125,7 @@ async function getStats() {
 	const verboseAdd = options.verbose ? ['--verbose'] : []
 	const compress = options.compress ? ['--compress'] : []
 	const features = [...processedFeatures].flatMap(s => ['--features', s])
-	const pool = new LimitBenchmarkPool(
+	const pool = new LimitedThreadPool(
 		`${__dirname}/statistics-helper-app`,
 		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${String(idx)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`), ...verboseAdd, ...features, ...compress]),
 		limit,

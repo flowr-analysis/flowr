@@ -17,9 +17,10 @@ type WorkingQueue = Arguments[]
 export type RunPredicate = (args: Arguments) => boolean
 
 /**
- * This is not really generic but written especially for the benchmarking script
+ * This is not really generic but written especially for the benchmarking script.
+ * It offers a work stealing thread pool executor.
  */
-export class LimitBenchmarkPool {
+export class LimitedThreadPool {
 	private readonly workingQueue: WorkingQueue
 	private readonly limit:        number
 	private readonly parallel:     number

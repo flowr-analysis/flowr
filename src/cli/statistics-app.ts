@@ -85,10 +85,13 @@ if(options['post-process']) {
 
 initFileProvider(options['output-dir'])
 
+const testRegex = /test/i
+const exampleRegex = /example/i
+
 function getPrefixForFile(file: string) {
-	if(file.includes('test')) {
+	if(testRegex.test(file)) {
 		return 'test-'
-	}	else if(file.includes('example')) {
+	}	else if(exampleRegex.test(file)) {
 		return 'example-'
 	} else {
 		return ''

@@ -112,7 +112,7 @@ async function getStats() {
 	// we do not use the limit argument to be able to pick the limit randomly
 	const files: RParseRequestFromFile[] = []
 	let counter = 0
-	let presentSteps = 1000
+	let presentSteps = 5000
 	for await (const file of allRFilesFrom(options.input)) {
 		files.push(file)
 		if(++counter % presentSteps === 0) {

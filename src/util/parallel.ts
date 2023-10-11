@@ -1,19 +1,27 @@
 /**
- * Tasked with parallelize the benchmarking by calling the given script in an executor-pool style fashion
+ * Tasked with parallelize the benchmarking by calling the given script in an executor-pool style fashion.
+ * Now used to parallelize more in _flowR_.
  * @module parallel
  */
 import * as cp from 'child_process'
-import { log } from '../util/log'
-import { guard } from '../util/assert'
+import { log } from './log'
+import { guard } from './assert'
 
 type Arguments = string[]
 type WorkingQueue = Arguments[]
 
 
 /**
- * This is not really generic but written especially for the benchmarking script
+ * Given the arguments, this can decide if the job is still to be run or if it can be skipped!
+ * Return `true` if the job should be run, `false` if it should be skipped.
  */
-export class LimitBenchmarkPool {
+export type RunPredicate = (args: Readonly<Arguments>, counter: number) => boolean
+
+/**
+ * This is not really generic but written especially for the benchmarking script.
+ * It offers a work stealing thread pool executor.
+ */
+export class LimitedThreadPool {
 	private readonly workingQueue: WorkingQueue
 	private readonly limit:        number
 	private readonly parallel:     number
@@ -22,17 +30,19 @@ export class LimitBenchmarkPool {
 	private skipped:               Arguments[] = []
 	private currentlyRunning:      Arguments[] = []
 	private reportingInterval:     NodeJS.Timer | undefined = undefined
+	private readonly predicate:    RunPredicate
 
 	/**
    * Create a new parallel helper that runs the given `module` once for each list of {@link Arguments} in the `queue`.
    * The `limit` stops the execution if `<limit>` number of runs exited successfully.
    * The `parallel` parameter limits the number of parallel executions.
    */
-	constructor(module: string, queue: WorkingQueue, limit: number, parallel: number) {
+	constructor(module: string, queue: WorkingQueue, limit: number, parallel: number, predicate: RunPredicate = () => true) {
 		this.workingQueue = queue
 		this.limit = limit
 		this.module = module
 		this.parallel = parallel
+		this.predicate = predicate
 	}
 
 	public async run(): Promise<void> {
@@ -61,6 +71,12 @@ export class LimitBenchmarkPool {
 
 		const args = this.workingQueue.pop()
 		guard(args !== undefined, () => `arguments should not be undefined in ${JSON.stringify(this.workingQueue)}`)
+
+		if(!this.predicate(args, this.counter)) {
+			this.counter++
+			console.log(`[${this.counter}/${this.limit}] Skipping next as predicate does not hold [args: ${JSON.stringify(args)}]`)
+			return await this.runNext()
+		}
 
 		this.currentlyRunning.push(args)
 

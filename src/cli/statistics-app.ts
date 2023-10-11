@@ -14,23 +14,24 @@ import { guard } from '../util/assert'
 import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 import { DefaultMap } from '../util/defaultmap'
 import { processCommandLineArgs } from './common'
-import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
-import { validateFeatures } from './common/features'
+import { LimitedThreadPool } from '../util/parallel'
+import { retrieveArchiveName, validateFeatures } from './common/features'
 import path from 'path'
 import { jsonReplacer } from '../util/json'
+import fs from 'fs'
 
 export interface StatsCliOptions {
-	verbose:        boolean
-	help:           boolean
-	'post-process': boolean
-	limit:          number | undefined
-	compress:       boolean
-	'hist-step':    number
-	input:          string[]
-	'output-dir':   string
-	'no-ansi':      boolean
-	parallel:       number
-	features:       string[]
+	readonly verbose:        boolean
+	readonly help:           boolean
+	readonly 'post-process': boolean
+	readonly limit:          number | undefined
+	readonly compress:       boolean
+	readonly 'hist-step':    number
+	readonly input:          string[]
+	readonly 'output-dir':   string
+	readonly 'no-ansi':      boolean
+	readonly parallel:       number
+	readonly features:       string[]
 }
 
 
@@ -104,32 +105,56 @@ function getSuffixForFile(base: string, file: string) {
 	return '--' + subpath.replace(/\//g, '／')
 }
 
+async function collectFiles() {
+	const files: RParseRequestFromFile[] = []
+	let counter = 0
+	let presentSteps = 5000
+	for await (const file of allRFilesFrom(options.input)) {
+		files.push(file)
+		if(++counter % presentSteps === 0) {
+			console.log(`Collected ${counter} files`)
+			if(counter >= 10 * presentSteps) {
+				presentSteps *= 5
+			}
+		}
+	}
+	console.log(`Total: ${counter} files`)
+	return files
+}
+
 async function getStats() {
 	console.log(`Processing features: ${JSON.stringify(processedFeatures, jsonReplacer)}`)
 	console.log(`Using ${options.parallel} parallel executors`)
 
 	// we do not use the limit argument to be able to pick the limit randomly
-	const files: RParseRequestFromFile[] = []
-	for await (const file of allRFilesFrom(options.input)) {
-		files.push(file)
-	}
+	const files = await collectFiles()
 
 	if(options.limit) {
 		log.info(`limiting to ${options.limit} files`)
 		// shuffle and limit
 		files.sort(() => Math.random() - 0.5)
 	}
+	console.log('Prepare Pool...')
+
 	const limit = options.limit ?? files.length
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
 	const compress = options.compress ? ['--compress'] : []
 	const features = [...processedFeatures].flatMap(s => ['--features', s])
-	const pool = new LimitBenchmarkPool(
+	const pool = new LimitedThreadPool(
 		`${__dirname}/statistics-helper-app`,
-		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${String(idx)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`), ...verboseAdd, ...features, ...compress]),
+		files.map(f => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`), ...verboseAdd, ...features, ...compress]),
 		limit,
-		options.parallel
+		options.parallel,
+		args => {
+			if(options.compress) {
+				return !fs.existsSync(retrieveArchiveName(args[3]))
+			} else {
+				return true
+			}
+		}
 	)
+	console.log('Run Pool...')
 	await pool.run()
 	const stats = pool.getStats()
 	console.log(`Processed ${stats.counter} files, skipped ${stats.skipped.length} files due to errors`)

@@ -8,20 +8,23 @@ import { log } from '../util/log'
 import { processCommandLineArgs } from './common'
 import { jsonReplacer } from '../util/json'
 import { extractCFG } from '../util/cfg'
-import path from 'path'
 import { c } from 'tar'
 import fs from 'fs'
+import { guard } from '../util/assert'
+import { retrieveArchiveName } from './common/features'
+import { printStepResult } from '../core'
+import { StepOutputFormat } from '../core/print/print'
 
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 
 export interface StatsHelperCliOptions {
-	verbose:      boolean
-	help:         boolean
-	input:        string
-	compress:     boolean
-	'output-dir': string
-	'no-ansi':    boolean
-	features:     string[]
+	readonly verbose:      boolean
+	readonly help:         boolean
+	readonly input:        string
+	readonly compress:     boolean
+	readonly 'output-dir': string
+	readonly 'no-ansi':    boolean
+	readonly features:     string[]
 }
 
 const options = processCommandLineArgs<StatsHelperCliOptions>('stats-helper', [],{
@@ -37,6 +40,14 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter)
 }
 
+let target: string | undefined = undefined
+if(options.compress) {
+	target = retrieveArchiveName(options['output-dir'])
+	if(fs.existsSync(target)) {
+		console.log(`Target ${target} archive exists. Skipping completely.`)
+		process.exit(0)
+	}
+}
 
 // assume correct
 const processedFeatures = new Set<FeatureKey>(options.features as FeatureKey[])
@@ -73,18 +84,17 @@ async function getStatsForSingleFile() {
 	if(stats.outputs.size === 1) {
 		const [, output] = [...stats.outputs.entries()][0]
 		const cfg = extractCFG(output.normalize)
-		statisticsFileProvider.append('output-json', 'parse',     JSON.stringify(output.parse, jsonReplacer))
-		statisticsFileProvider.append('output-json', 'normalize', JSON.stringify(output.normalize, jsonReplacer))
-		statisticsFileProvider.append('output-json', 'dataflow',  JSON.stringify(output.dataflow, jsonReplacer))
+		statisticsFileProvider.append('output-json', 'parse',     await printStepResult('parse', output.parse, StepOutputFormat.Json))
+		statisticsFileProvider.append('output-json', 'normalize', await printStepResult('normalize', output.normalize, StepOutputFormat.Json))
+		statisticsFileProvider.append('output-json', 'dataflow',  await printStepResult('dataflow', output.dataflow, StepOutputFormat.Json))
 		statisticsFileProvider.append('output-json', 'cfg',       JSON.stringify(cfg, jsonReplacer))
 	} else {
-		log.error(`expected exactly one output, got: ${JSON.stringify(stats.outputs, jsonReplacer, 2)}`)
+		log.error(`expected exactly one output vs. ${stats.outputs.size}, got: ${JSON.stringify([...stats.outputs.keys()], jsonReplacer, 2)}`)
 	}
 	statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta))
 	shell.close()
 	if(options.compress) {
-		const basepath = path.normalize(options['output-dir'])
-		const target = `${basepath.endsWith(path.sep) ? basepath.substring(0, basepath.length - 1) : basepath}.tar.gz`
+		guard(target !== undefined, 'target must be defined given the compress option')
 		console.log(`Compressing ${options['output-dir']} to ${target}`)
 		compressFolder(options['output-dir'], target)
 	}

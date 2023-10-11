@@ -1,7 +1,7 @@
 import { log } from '../util/log'
 import { allRFilesFrom } from '../util/files'
 import { RParseRequestFromFile } from '../r-bridge'
-import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
+import { LimitedThreadPool } from '../util/parallel'
 import { guard } from '../util/assert'
 import fs from 'fs'
 import { processCommandLineArgs } from './common'
@@ -58,7 +58,7 @@ async function benchmark() {
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
 
-	const pool = new LimitBenchmarkPool(
+	const pool = new LimitedThreadPool(
 		`${__dirname}/benchmark-helper-app`,
 		files.map(f => [f.content, '--output', options.output, '--slice', options.slice, ...verboseAdd]),
 		limit,

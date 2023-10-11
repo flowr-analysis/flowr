@@ -18,12 +18,11 @@ export interface Table {
  * Based on {@link https://stackoverflow.com/a/45130990}
  */
 async function* getFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
-	const entries = await fsPromise.readdir(dir, { withFileTypes: true })
+	const entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: true })
+	const base = path.resolve(dir)
 	for(const subEntries of entries) {
-		const res = path.resolve(dir, subEntries.name)
-		if(subEntries.isDirectory()) {
-			yield* getFiles(res, suffix)
-		} else if(suffix.test(subEntries.name)) {
+		const res = path.join(base, subEntries.name)
+		if(!subEntries.isDirectory() && suffix.test(subEntries.name)) {
 			yield res
 		}
 	}
@@ -46,12 +45,12 @@ const rFileRegex = /\.[rR]$/
 export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile, number> {
 	let count = 0
 	if(fs.statSync(input).isFile()) {
-		if(!rFileRegex.test(input)) {
-			log.warn(`Input ${input} is not an R file`)
-			return 0
+		if(rFileRegex.test(input)) {
+			yield { request: 'file', content: input }
+			return 1
 		}
-		yield { request: 'file', content: input }
-		return 1
+		log.warn(`Input ${input} is not an R file`)
+		return 0
 	}
 
 	for await (const f of getFiles(input, rFileRegex)) {

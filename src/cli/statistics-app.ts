@@ -141,16 +141,12 @@ async function getStats() {
 		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${String(idx)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`), ...verboseAdd, ...features, ...compress]),
 		limit,
 		options.parallel,
-		(args, idx) => {
+		args => {
 			if(options.compress) {
-				// hardcoded path location :D
-				const p = args[3]
-				if(fs.existsSync(retrieveArchiveName(p))) {
-					console.log(`[${idx}] skipping ${p}, already present`)
-					return false
-				}
+				return !fs.existsSync(retrieveArchiveName(args[3]))
+			} else {
+				return true
 			}
-			return true
 		}
 	)
 	console.log('Run Pool...')

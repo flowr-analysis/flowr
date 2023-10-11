@@ -111,15 +111,22 @@ async function getStats() {
 
 	// we do not use the limit argument to be able to pick the limit randomly
 	const files: RParseRequestFromFile[] = []
+	let counter = 0
 	for await (const file of allRFilesFrom(options.input)) {
 		files.push(file)
+		if(counter++ % 1000 === 0) {
+			console.log(`Collected ${counter} files`)
+		}
 	}
+	console.log(`Total: ${counter} files`)
 
 	if(options.limit) {
 		log.info(`limiting to ${options.limit} files`)
 		// shuffle and limit
 		files.sort(() => Math.random() - 0.5)
 	}
+	console.log('Prepare Pool...')
+
 	const limit = options.limit ?? files.length
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
@@ -142,6 +149,7 @@ async function getStats() {
 			return true
 		}
 	)
+	console.log('Run Pool...')
 	await pool.run()
 	const stats = pool.getStats()
 	console.log(`Processed ${stats.counter} files, skipped ${stats.skipped.length} files due to errors`)

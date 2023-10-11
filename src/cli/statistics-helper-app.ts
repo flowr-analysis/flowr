@@ -11,6 +11,7 @@ import { extractCFG } from '../util/cfg'
 import path from 'path'
 import { c } from 'tar'
 import fs from 'fs'
+import { guard } from '../util/assert'
 
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 
@@ -63,6 +64,16 @@ function compressFolder(folder: string, target: string) {
 }
 
 async function getStatsForSingleFile() {
+	let target: string | undefined = undefined
+	if(options.compress) {
+		const basepath = path.normalize(options['output-dir'])
+		target = `${basepath.endsWith(path.sep) ? basepath.substring(0, basepath.length - 1) : basepath}.tar.gz`
+		const stats = fs.statSync(target)
+		if(stats.isFile() && stats.size > 0) {
+			console.log(`Target ${target} compression archive already exists and is not empty. Skipping completely in this run.`)
+		}
+	}
+
 	const stats = await extractUsageStatistics(shell,
 		() => { /* do nothing */ },
 		processedFeatures,
@@ -83,8 +94,7 @@ async function getStatsForSingleFile() {
 	statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta))
 	shell.close()
 	if(options.compress) {
-		const basepath = path.normalize(options['output-dir'])
-		const target = `${basepath.endsWith(path.sep) ? basepath.substring(0, basepath.length - 1) : basepath}.tar.gz`
+		guard(target !== undefined, 'target must be defined given the compress option')
 		console.log(`Compressing ${options['output-dir']} to ${target}`)
 		compressFolder(options['output-dir'], target)
 	}

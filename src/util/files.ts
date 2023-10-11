@@ -19,11 +19,9 @@ export interface Table {
  */
 async function* getFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
 	const entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: true })
-	const base = path.resolve(dir)
 	for(const subEntries of entries) {
-		const res = path.join(base, subEntries.name)
-		if(!subEntries.isDirectory() && suffix.test(subEntries.name)) {
-			yield res
+		if(subEntries.isFile() && suffix.test(subEntries.name)) {
+			yield path.resolve(dir, subEntries.name)
 		}
 	}
 }

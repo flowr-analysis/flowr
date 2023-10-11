@@ -115,7 +115,7 @@ async function getStats() {
 	let presentSteps = 1000
 	for await (const file of allRFilesFrom(options.input)) {
 		files.push(file)
-		if(counter++ % presentSteps === 0) {
+		if(++counter % presentSteps === 0) {
 			console.log(`Collected ${counter} files`)
 			if(counter > 10 * presentSteps) {
 				presentSteps *= 5

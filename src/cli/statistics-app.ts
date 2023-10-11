@@ -15,22 +15,23 @@ import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 import { DefaultMap } from '../util/defaultmap'
 import { processCommandLineArgs } from './common'
 import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
-import { validateFeatures } from './common/features'
+import { retrieveArchiveName, validateFeatures } from './common/features'
 import path from 'path'
 import { jsonReplacer } from '../util/json'
+import fs from 'fs'
 
 export interface StatsCliOptions {
-	verbose:        boolean
-	help:           boolean
-	'post-process': boolean
-	limit:          number | undefined
-	compress:       boolean
-	'hist-step':    number
-	input:          string[]
-	'output-dir':   string
-	'no-ansi':      boolean
-	parallel:       number
-	features:       string[]
+	readonly verbose:        boolean
+	readonly help:           boolean
+	readonly 'post-process': boolean
+	readonly limit:          number | undefined
+	readonly compress:       boolean
+	readonly 'hist-step':    number
+	readonly input:          string[]
+	readonly 'output-dir':   string
+	readonly 'no-ansi':      boolean
+	readonly parallel:       number
+	readonly features:       string[]
 }
 
 
@@ -109,9 +110,17 @@ async function getStats() {
 	console.log(`Using ${options.parallel} parallel executors`)
 
 	// we do not use the limit argument to be able to pick the limit randomly
-	const files: RParseRequestFromFile[] = []
+	const files: (RParseRequestFromFile & { path: string })[] = []
+	let idx = 0
 	for await (const file of allRFilesFrom(options.input)) {
-		files.push(file)
+		const p = path.join(options['output-dir'], `${getPrefixForFile(file.content)}${String(idx++)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', file.content)}`)
+		if(options.compress) {
+			if(fs.existsSync(retrieveArchiveName(p))) {
+				console.log(`skipping ${p}, already present`)
+				continue
+			}
+		}
+		files.push({ ...file, path: p})
 	}
 
 	if(options.limit) {
@@ -126,7 +135,7 @@ async function getStats() {
 	const features = [...processedFeatures].flatMap(s => ['--features', s])
 	const pool = new LimitBenchmarkPool(
 		`${__dirname}/statistics-helper-app`,
-		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${String(idx)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`), ...verboseAdd, ...features, ...compress]),
+		files.map(f => ['--input', f.content, '--output-dir', f.path, ...verboseAdd, ...features, ...compress]),
 		limit,
 		options.parallel
 	)

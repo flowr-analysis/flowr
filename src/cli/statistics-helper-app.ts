@@ -16,13 +16,13 @@ import { retrieveArchiveName } from './common/features'
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 
 export interface StatsHelperCliOptions {
-	verbose:      boolean
-	help:         boolean
-	input:        string
-	compress:     boolean
-	'output-dir': string
-	'no-ansi':    boolean
-	features:     string[]
+	readonly verbose:      boolean
+	readonly help:         boolean
+	readonly input:        string
+	readonly compress:     boolean
+	readonly 'output-dir': string
+	readonly 'no-ansi':    boolean
+	readonly features:     string[]
 }
 
 const options = processCommandLineArgs<StatsHelperCliOptions>('stats-helper', [],{

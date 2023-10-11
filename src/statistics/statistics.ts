@@ -11,7 +11,8 @@ import { DOMParser } from '@xmldom/xmldom'
 import fs from 'fs'
 import { log } from '../util/log'
 import { initialMetaStatistics, MetaStatistics } from './meta-statistics'
-import { SteppingSlicer } from '../core'
+import { LAST_PER_FILE_STEP, SteppingSlicer, StepResult, StepResults } from '../core'
+import { SliceResult } from '../slicing'
 
 /**
  * By default, {@link extractUsageStatistics} requires a generator, but sometimes you already know all the files
@@ -40,20 +41,23 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 	onRequest: (request: T) => void,
 	features: FeatureSelection,
 	requests: AsyncGenerator<T>
-): Promise<{ features: FeatureStatistics, meta: MetaStatistics }> {
+): Promise<{ features: FeatureStatistics, meta: MetaStatistics, outputs: Map<T, StepResults<'dataflow'>> }> {
 	let result = initializeFeatureStatistics()
 	const meta = initialMetaStatistics()
 	const tokenMap = await getStoredTokenMap(shell)
 
 	let first = true
+	const outputs = new Map<T, StepResults<'dataflow'>>()
 	for await (const request of requests) {
 		onRequest(request)
 		const start = performance.now()
 		try {
-			result = await extractSingle(result, shell, tokenMap, {
+			let output
+			({ stats: result, output } = await extractSingle(result, shell, tokenMap, {
 				...request,
 				ensurePackageInstalled: first
-			}, features)
+			}, features))
+			outputs.set(request, output)
 			processMetaOnSuccessful(meta, request)
 			first = false
 		} catch(e) {
@@ -62,7 +66,7 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 		}
 		meta.processingTimeMs.push(performance.now() - start)
 	}
-	return { features: result, meta }
+	return { features: result, meta, outputs }
 }
 
 function initializeFeatureStatistics(): FeatureStatistics {
@@ -90,7 +94,7 @@ function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequest
 
 const parser = new DOMParser()
 
-async function extractSingle(result: FeatureStatistics, shell: RShell, tokenMap: TokenMap, request: RParseRequest, features: 'all' | Set<FeatureKey>): Promise<FeatureStatistics> {
+async function extractSingle(result: FeatureStatistics, shell: RShell, tokenMap: TokenMap, request: RParseRequest, features: 'all' | Set<FeatureKey>): Promise<{ stats: FeatureStatistics, output: StepResults<'dataflow'>}> {
 	const slicerOutput = await new SteppingSlicer({
 		stepOfInterest: 'dataflow',
 		request, shell,
@@ -114,5 +118,5 @@ async function extractSingle(result: FeatureStatistics, shell: RShell, tokenMap:
 		})
 	}
 
-	return result
+	return { stats: result, output: slicerOutput }
 }

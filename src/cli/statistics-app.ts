@@ -17,6 +17,7 @@ import { processCommandLineArgs } from './common'
 import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
 import { validateFeatures } from './common/features'
 import path from 'path'
+import { jsonReplacer } from '../util/json'
 
 export interface StatsCliOptions {
 	verbose:        boolean
@@ -85,7 +86,7 @@ if(options['post-process']) {
 initFileProvider(options['output-dir'])
 
 async function getStats() {
-	console.log(`Processing features: ${JSON.stringify(processedFeatures)}`)
+	console.log(`Processing features: ${JSON.stringify(processedFeatures, jsonReplacer)}`)
 	console.log(`Using ${options.parallel} parallel executors`)
 
 	// we do not use the limit argument to be able to pick the limit randomly

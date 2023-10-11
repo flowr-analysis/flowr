@@ -6,7 +6,8 @@ import {
 } from '../statistics'
 import { log } from '../util/log'
 import { processCommandLineArgs } from './common'
-
+import { jsonReplacer } from '../util/json'
+import { extractCFG } from '../util/cfg'
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 
 export interface StatsHelperCliOptions {
@@ -48,7 +49,14 @@ async function getStatsForSingleFile() {
 	)
 	// console.warn(`skipped ${stats.meta.failedRequests.length} requests due to errors (run with logs to get more info)`)
 
-	statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats))
+	if(stats.outputs.size === 1) {
+		const [, output] = [...stats.outputs.entries()][0]
+		const cfg = extractCFG(output.normalize)
+		statisticsFileProvider.append('output-json', 'all', JSON.stringify({...output, cfg}, jsonReplacer))
+	} else {
+		log.error(`expected exactly one output, got: ${JSON.stringify(stats.outputs, jsonReplacer, 2)}`)
+	}
+	statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta))
 	shell.close()
 }
 

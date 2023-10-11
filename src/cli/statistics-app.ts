@@ -105,11 +105,7 @@ function getSuffixForFile(base: string, file: string) {
 	return '--' + subpath.replace(/\//g, '／')
 }
 
-async function getStats() {
-	console.log(`Processing features: ${JSON.stringify(processedFeatures, jsonReplacer)}`)
-	console.log(`Using ${options.parallel} parallel executors`)
-
-	// we do not use the limit argument to be able to pick the limit randomly
+async function collectFiles() {
 	const files: RParseRequestFromFile[] = []
 	let counter = 0
 	let presentSteps = 5000
@@ -123,6 +119,15 @@ async function getStats() {
 		}
 	}
 	console.log(`Total: ${counter} files`)
+	return files
+}
+
+async function getStats() {
+	console.log(`Processing features: ${JSON.stringify(processedFeatures, jsonReplacer)}`)
+	console.log(`Using ${options.parallel} parallel executors`)
+
+	// we do not use the limit argument to be able to pick the limit randomly
+	const files = await collectFiles()
 
 	if(options.limit) {
 		log.info(`limiting to ${options.limit} files`)

@@ -52,7 +52,10 @@ async function getStatsForSingleFile() {
 	if(stats.outputs.size === 1) {
 		const [, output] = [...stats.outputs.entries()][0]
 		const cfg = extractCFG(output.normalize)
-		statisticsFileProvider.append('output-json', 'all', JSON.stringify({...output, cfg}, jsonReplacer))
+		statisticsFileProvider.append('output-json', 'parse',     JSON.stringify(output.parse, jsonReplacer))
+		statisticsFileProvider.append('output-json', 'normalize', JSON.stringify(output.normalize, jsonReplacer))
+		statisticsFileProvider.append('output-json', 'dataflow',  JSON.stringify(output.dataflow, jsonReplacer))
+		statisticsFileProvider.append('output-json', 'cfg',       JSON.stringify(cfg, jsonReplacer))
 	} else {
 		log.error(`expected exactly one output, got: ${JSON.stringify(stats.outputs, jsonReplacer, 2)}`)
 	}

@@ -21,6 +21,9 @@ import {
 import { produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode, staticSlicing } from '../slicing'
 import { internalPrinter, IStepPrinter, StepOutputFormat } from './print/print'
+import { normalizedAstToJson } from './print/normalize-printer'
+import { guard } from '../util/assert'
+import { dataflowGraphToJson } from './print/dataflow-printer'
 
 /**
  * This represents close a function that we know completely nothing about.
@@ -55,7 +58,9 @@ export const STEPS_PER_FILE = {
 		processor:   retrieveXmlFromRCode,
 		required:    'once-per-file',
 		printer:     {
-			[StepOutputFormat.Internal]: internalPrinter
+			[StepOutputFormat.Internal]: internalPrinter,
+			// eslint-disable-next-line @typescript-eslint/require-await -- async printer wrapper, string is already json
+			[StepOutputFormat.Json]:     async text => text
 		}
 	} satisfies IStep<typeof retrieveXmlFromRCode>,
 	'normalize': {
@@ -63,7 +68,8 @@ export const STEPS_PER_FILE = {
 		processor:   normalize,
 		required:    'once-per-file',
 		printer:     {
-			[StepOutputFormat.Internal]: internalPrinter
+			[StepOutputFormat.Internal]: internalPrinter,
+			[StepOutputFormat.Json]:     normalizedAstToJson
 		}
 	} satisfies IStep<typeof normalize>,
 	'dataflow': {
@@ -71,7 +77,8 @@ export const STEPS_PER_FILE = {
 		processor:   produceDataFlowGraph,
 		required:    'once-per-file',
 		printer:     {
-			[StepOutputFormat.Internal]: internalPrinter
+			[StepOutputFormat.Internal]: internalPrinter,
+			[StepOutputFormat.Json]:     dataflowGraphToJson
 		}
 	} satisfies IStep<typeof produceDataFlowGraph>
 } as const
@@ -109,3 +116,14 @@ export function executeSingleSubStep<Name extends StepName, Processor extends St
 	return STEPS[subStep].processor(...input as unknown as never[]) as ReturnType<Processor>
 }
 
+export function printStepResult<
+	AdditionalInput extends unknown[],
+	Name extends StepName,
+	Processor extends StepProcessor<Name>,
+	Format extends Exclude<keyof(typeof STEPS)[Name]['printer'] & StepOutputFormat, StepOutputFormat.Internal>
+>(step: Name, data: Awaited<ReturnType<Processor>>, format: Format, ...additional: AdditionalInput): Promise<string> {
+	const base = STEPS[step].printer
+	const printer = base[format as keyof typeof base] as IStepPrinter<StepProcessor<Name>, Format, AdditionalInput> | undefined
+	guard(printer !== undefined, `printer for ${step} does not support ${String(format)}`)
+	return printer(data, ...additional) as Promise<string>
+}

@@ -12,6 +12,8 @@ import { c } from 'tar'
 import fs from 'fs'
 import { guard } from '../util/assert'
 import { retrieveArchiveName } from './common/features'
+import { printStepResult } from '../core'
+import { StepOutputFormat } from '../core/print/print'
 
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 
@@ -82,12 +84,12 @@ async function getStatsForSingleFile() {
 	if(stats.outputs.size === 1) {
 		const [, output] = [...stats.outputs.entries()][0]
 		const cfg = extractCFG(output.normalize)
-		statisticsFileProvider.append('output-json', 'parse',     JSON.stringify(output.parse, jsonReplacer))
-		statisticsFileProvider.append('output-json', 'normalize', JSON.stringify(output.normalize, jsonReplacer))
-		statisticsFileProvider.append('output-json', 'dataflow',  JSON.stringify(output.dataflow, jsonReplacer))
+		statisticsFileProvider.append('output-json', 'parse',     await printStepResult('parse', output.parse, StepOutputFormat.Json))
+		statisticsFileProvider.append('output-json', 'normalize', await printStepResult('normalize', output.normalize, StepOutputFormat.Json))
+		statisticsFileProvider.append('output-json', 'dataflow',  await printStepResult('dataflow', output.dataflow, StepOutputFormat.Json))
 		statisticsFileProvider.append('output-json', 'cfg',       JSON.stringify(cfg, jsonReplacer))
 	} else {
-		log.error(`expected exactly one output, got: ${JSON.stringify(stats.outputs, jsonReplacer, 2)}`)
+		log.error(`expected exactly one output, got: ${JSON.stringify([...stats.outputs.keys()], jsonReplacer, 2)}`)
 	}
 	statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta))
 	shell.close()

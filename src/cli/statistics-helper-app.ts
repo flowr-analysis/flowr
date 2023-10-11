@@ -38,6 +38,16 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter)
 }
 
+let target: string | undefined = undefined
+if(options.compress) {
+	const basepath = path.normalize(options['output-dir'])
+	target = `${basepath.endsWith(path.sep) ? basepath.substring(0, basepath.length - 1) : basepath}.tar.gz`
+	const stats = fs.statSync(target)
+	if(stats.isFile() && stats.size > 0) {
+		console.log(`Target ${target} compression archive already exists and is not empty. Skipping completely in this run.`)
+		process.exit(0)
+	}
+}
 
 // assume correct
 const processedFeatures = new Set<FeatureKey>(options.features as FeatureKey[])
@@ -64,16 +74,6 @@ function compressFolder(folder: string, target: string) {
 }
 
 async function getStatsForSingleFile() {
-	let target: string | undefined = undefined
-	if(options.compress) {
-		const basepath = path.normalize(options['output-dir'])
-		target = `${basepath.endsWith(path.sep) ? basepath.substring(0, basepath.length - 1) : basepath}.tar.gz`
-		const stats = fs.statSync(target)
-		if(stats.isFile() && stats.size > 0) {
-			console.log(`Target ${target} compression archive already exists and is not empty. Skipping completely in this run.`)
-		}
-	}
-
 	const stats = await extractUsageStatistics(shell,
 		() => { /* do nothing */ },
 		processedFeatures,

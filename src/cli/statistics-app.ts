@@ -143,7 +143,7 @@ async function getStats() {
 	const features = [...processedFeatures].flatMap(s => ['--features', s])
 	const pool = new LimitedThreadPool(
 		`${__dirname}/statistics-helper-app`,
-		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`), ...verboseAdd, ...features, ...compress]),
+		files.map(f => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`), ...verboseAdd, ...features, ...compress]),
 		limit,
 		options.parallel,
 		args => {

@@ -18,10 +18,13 @@ export interface Table {
  * Based on {@link https://stackoverflow.com/a/45130990}
  */
 async function* getFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
-	const entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: true })
+	const entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: false })
 	for(const subEntries of entries) {
-		if(subEntries.isFile() && suffix.test(subEntries.name)) {
-			yield path.resolve(dir, subEntries.name)
+		const res = path.resolve(dir, subEntries.name)
+		if(subEntries.isDirectory()) {
+			yield* getFiles(res, suffix)
+		} else if(suffix.test(subEntries.name)) {
+			yield res
 		}
 	}
 }

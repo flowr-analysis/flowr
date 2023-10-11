@@ -99,6 +99,11 @@ function getPrefixForFile(file: string) {
 	}
 }
 
+function getSuffixForFile(base: string, file: string) {
+	const subpath = path.relative(base, file)
+	return '--' + subpath.replace(/\//g, '_')
+}
+
 async function getStats() {
 	console.log(`Processing features: ${JSON.stringify(processedFeatures, jsonReplacer)}`)
 	console.log(`Using ${options.parallel} parallel executors`)
@@ -121,7 +126,7 @@ async function getStats() {
 	const features = [...processedFeatures].flatMap(s => ['--features', s])
 	const pool = new LimitBenchmarkPool(
 		`${__dirname}/statistics-helper-app`,
-		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${String(idx)}`), ...verboseAdd, ...features, ...compress]),
+		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${String(idx)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`), ...verboseAdd, ...features, ...compress]),
 		limit,
 		options.parallel
 	)

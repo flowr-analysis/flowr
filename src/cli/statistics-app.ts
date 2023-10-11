@@ -110,17 +110,9 @@ async function getStats() {
 	console.log(`Using ${options.parallel} parallel executors`)
 
 	// we do not use the limit argument to be able to pick the limit randomly
-	const files: (RParseRequestFromFile & { path: string })[] = []
-	let idx = 0
+	const files: RParseRequestFromFile[] = []
 	for await (const file of allRFilesFrom(options.input)) {
-		const p = path.join(options['output-dir'], `${getPrefixForFile(file.content)}${String(idx++)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', file.content)}`)
-		if(options.compress) {
-			if(fs.existsSync(retrieveArchiveName(p))) {
-				console.log(`skipping ${p}, already present`)
-				continue
-			}
-		}
-		files.push({ ...file, path: p})
+		files.push(file)
 	}
 
 	if(options.limit) {
@@ -135,9 +127,20 @@ async function getStats() {
 	const features = [...processedFeatures].flatMap(s => ['--features', s])
 	const pool = new LimitBenchmarkPool(
 		`${__dirname}/statistics-helper-app`,
-		files.map(f => ['--input', f.content, '--output-dir', f.path, ...verboseAdd, ...features, ...compress]),
+		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${String(idx)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`), ...verboseAdd, ...features, ...compress]),
 		limit,
-		options.parallel
+		options.parallel,
+		args => {
+			if(options.compress) {
+				// hardcoded path location :D
+				const p = args[3]
+				if(fs.existsSync(retrieveArchiveName(p))) {
+					console.log(`skipping ${p}, already present`)
+					return false
+				}
+			}
+			return true
+		}
 	)
 	await pool.run()
 	const stats = pool.getStats()

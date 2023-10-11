@@ -11,6 +11,12 @@ type WorkingQueue = Arguments[]
 
 
 /**
+ * Given the arguments, this can decide if the job is still to be run or if it can be skipped!
+ * Return `true` if the job should be run, `false` if it should be skipped.
+ */
+export type RunPredicate = (args: Arguments) => boolean
+
+/**
  * This is not really generic but written especially for the benchmarking script
  */
 export class LimitBenchmarkPool {
@@ -22,17 +28,19 @@ export class LimitBenchmarkPool {
 	private skipped:               Arguments[] = []
 	private currentlyRunning:      Arguments[] = []
 	private reportingInterval:     NodeJS.Timer | undefined = undefined
+	private readonly predicate:    RunPredicate
 
 	/**
    * Create a new parallel helper that runs the given `module` once for each list of {@link Arguments} in the `queue`.
    * The `limit` stops the execution if `<limit>` number of runs exited successfully.
    * The `parallel` parameter limits the number of parallel executions.
    */
-	constructor(module: string, queue: WorkingQueue, limit: number, parallel: number) {
+	constructor(module: string, queue: WorkingQueue, limit: number, parallel: number, predicate: RunPredicate = () => true) {
 		this.workingQueue = queue
 		this.limit = limit
 		this.module = module
 		this.parallel = parallel
+		this.predicate = predicate
 	}
 
 	public async run(): Promise<void> {
@@ -61,6 +69,10 @@ export class LimitBenchmarkPool {
 
 		const args = this.workingQueue.pop()
 		guard(args !== undefined, () => `arguments should not be undefined in ${JSON.stringify(this.workingQueue)}`)
+
+		if(!this.predicate(args)) {
+			return await new Promise<void>(resolve => resolve()).then(() => this.runNext())
+		}
 
 		this.currentlyRunning.push(args)
 

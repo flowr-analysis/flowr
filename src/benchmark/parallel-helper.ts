@@ -14,7 +14,7 @@ type WorkingQueue = Arguments[]
  * Given the arguments, this can decide if the job is still to be run or if it can be skipped!
  * Return `true` if the job should be run, `false` if it should be skipped.
  */
-export type RunPredicate = (args: Arguments) => boolean
+export type RunPredicate = (args: Readonly<Arguments>, counter: number) => boolean
 
 /**
  * This is not really generic but written especially for the benchmarking script.
@@ -71,7 +71,8 @@ export class LimitedThreadPool {
 		const args = this.workingQueue.pop()
 		guard(args !== undefined, () => `arguments should not be undefined in ${JSON.stringify(this.workingQueue)}`)
 
-		if(!this.predicate(args)) {
+		if(!this.predicate(args, this.counter)) {
+			this.counter++
 			return await new Promise<void>(resolve => resolve()).then(() => this.runNext())
 		}
 

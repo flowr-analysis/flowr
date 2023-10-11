@@ -85,6 +85,16 @@ if(options['post-process']) {
 
 initFileProvider(options['output-dir'])
 
+function getPrefixForFile(file: string) {
+	if(file.includes('test')) {
+		return 'test-'
+	}	else if(file.includes('example')) {
+		return 'example-'
+	} else {
+		return ''
+	}
+}
+
 async function getStats() {
 	console.log(`Processing features: ${JSON.stringify(processedFeatures, jsonReplacer)}`)
 	console.log(`Using ${options.parallel} parallel executors`)
@@ -106,7 +116,7 @@ async function getStats() {
 	const features = [...processedFeatures].flatMap(s => ['--features', s])
 	const pool = new LimitBenchmarkPool(
 		`${__dirname}/statistics-helper-app`,
-		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], String(idx)), ...verboseAdd, ...features]),
+		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${String(idx)}`), ...verboseAdd, ...features]),
 		limit,
 		options.parallel
 	)

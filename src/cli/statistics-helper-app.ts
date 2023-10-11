@@ -8,10 +8,10 @@ import { log } from '../util/log'
 import { processCommandLineArgs } from './common'
 import { jsonReplacer } from '../util/json'
 import { extractCFG } from '../util/cfg'
-import path from 'path'
 import { c } from 'tar'
 import fs from 'fs'
 import { guard } from '../util/assert'
+import { retrieveArchiveName } from './common/features'
 
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 
@@ -40,8 +40,7 @@ if(options['no-ansi']) {
 
 let target: string | undefined = undefined
 if(options.compress) {
-	const basepath = path.normalize(options['output-dir'])
-	target = `${basepath.endsWith(path.sep) ? basepath.substring(0, basepath.length - 1) : basepath}.tar.gz`
+	target = retrieveArchiveName(options['output-dir'])
 	if(fs.existsSync(target)) {
 		console.log(`Target ${target} archive exists. Skipping completely.`)
 		process.exit(0)

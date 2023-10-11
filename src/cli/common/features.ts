@@ -1,4 +1,6 @@
 import { allFeatureNames, FeatureKey } from '../../statistics'
+import fs from 'fs'
+import path from 'path'
 
 export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])): Set<FeatureKey> {
 	for(const feature of features) {
@@ -13,4 +15,9 @@ export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])):
 		}
 	}
 	return features[0] === 'all' ? allFeatureNames : new Set(features as FeatureKey[])
+}
+
+export function retrieveArchiveName(p: string): string {
+	const basepath = path.normalize(p)
+	return `${basepath.endsWith(path.sep) ? basepath.substring(0, basepath.length - 1) : basepath}.tar.gz`
 }

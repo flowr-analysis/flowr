@@ -1,10 +1,11 @@
 /**
- * Tasked with parallelize the benchmarking by calling the given script in an executor-pool style fashion
+ * Tasked with parallelize the benchmarking by calling the given script in an executor-pool style fashion.
+ * Now used to parallelize more in _flowR_.
  * @module parallel
  */
 import * as cp from 'child_process'
-import { log } from '../util/log'
-import { guard } from '../util/assert'
+import { log } from './log'
+import { guard } from './assert'
 
 type Arguments = string[]
 type WorkingQueue = Arguments[]

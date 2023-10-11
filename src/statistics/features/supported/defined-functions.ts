@@ -76,9 +76,12 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 
 			const graph = input.dataflow.graph
 			const dfNode = graph.get(node.info.id, true)
-			guard(dfNode !== undefined, 'No dataflow node for a function definition')
+			if(dfNode === undefined) {
+				appendStatisticsFile(definedFunctions.name, 'no-dataflow-node-found', [node], input.filepath)
+				return
+			}
 			const [fnDefinition] = dfNode
-			guard(fnDefinition.tag === 'function-definition', 'Dataflow node is not a function definition')
+			guard(fnDefinition.tag === 'function-definition', () => `Dataflow node is not a function definition (${JSON.stringify(fnDefinition)}))})`)
 
 			const returnTypes = fnDefinition.exitPoints.map(ep => graph.get(ep, true)).filter(isNotUndefined)
 				.map(([vertex]) => ({
@@ -160,7 +163,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 	)
 
 	info.total += allDefinitions.length
-	appendStatisticsFile(definedFunctions.name, 'all-definitions', allDefinitions.map(s => JSON.stringify(s)), input.filepath)
+	appendStatisticsFile(definedFunctions.name, 'all-definitions', allDefinitions, input.filepath)
 }
 
 

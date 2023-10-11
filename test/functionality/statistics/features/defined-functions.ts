@@ -19,7 +19,7 @@ describe('Used Function Definitions', withShell(shell => {
 			},
 			written: [
 				['usedParameterNames', [{ value: 'x' }]],
-				['all-definitions', [ { value: JSON.stringify({
+				['all-definitions', [ { value: {
 					location:           { line: 1, column: 1 },
 					callsites:          [],
 					numberOfParameters: 1,
@@ -31,7 +31,7 @@ describe('Used Function Definitions', withShell(shell => {
 						characters:              17,
 						nonWhitespaceCharacters: 14
 					}
-				})}]]
+				}}]]
 			]
 		},
 		{
@@ -47,7 +47,7 @@ describe('Used Function Definitions', withShell(shell => {
 			written: [
 				['usedParameterNames', [{ value: 'x' }]],
 				['allLambdas', [{ value: '\\(x) x' }]],
-				['all-definitions', [ { value: JSON.stringify({
+				['all-definitions', [ { value: {
 					location:           { line: 1, column: 1 },
 					callsites:          [],
 					numberOfParameters: 1,
@@ -59,7 +59,7 @@ describe('Used Function Definitions', withShell(shell => {
 						characters:              6,
 						nonWhitespaceCharacters: 5
 					}
-				})}]]
+				}}]]
 			]
 		},
 		{
@@ -73,7 +73,7 @@ describe('Used Function Definitions', withShell(shell => {
 			written: [
 				['usedParameterNames', [{ value: 'x' }, { value: 'y' }]],
 				['nested-definitions', [{ value: 'function(y) { x + y }' }]],
-				['all-definitions', [ { value: JSON.stringify({
+				['all-definitions', [ { value: {
 					location:           { line: 1, column: 1 },
 					callsites:          [],
 					numberOfParameters: 1,
@@ -85,7 +85,7 @@ describe('Used Function Definitions', withShell(shell => {
 						characters:              37,
 						nonWhitespaceCharacters: 29
 					}
-				})}, { value: JSON.stringify({
+				}}, { value: {
 					location:           { line: 1, column: 15 },
 					callsites:          [],
 					numberOfParameters: 1,
@@ -97,7 +97,7 @@ describe('Used Function Definitions', withShell(shell => {
 						characters:              21,
 						nonWhitespaceCharacters: 16
 					}
-				})}]]
+				}}]]
 			]
 		},
 		{
@@ -118,7 +118,7 @@ describe('Used Function Definitions', withShell(shell => {
 				['usedParameterNames', [{ value: 'n' }]],
 				['assignedFunctions', [{ value: 'fib' }]],
 				['recursive', [{ value: 'fib(n - 1)' }, { value: 'fib(n - 2)' }]],
-				['all-definitions', [ { value: JSON.stringify({
+				['all-definitions', [ { value: {
 					location:  { line: 1, column: 8 },
 					callsites: [
 						{ line: 5, column: 48 },
@@ -134,7 +134,7 @@ describe('Used Function Definitions', withShell(shell => {
 						characters:              80,
 						nonWhitespaceCharacters: 62
 					}
-				})} ]]
+				}}]]
 			]
 		}
 	])

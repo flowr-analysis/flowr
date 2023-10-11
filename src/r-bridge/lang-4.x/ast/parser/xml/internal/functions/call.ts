@@ -153,7 +153,7 @@ function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJs
 		functionName = tryNormalizeSymbol(data, symbolContent)
 	}
 	guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')
-	guard(functionName.type === RType.Symbol, `expected function name to be a symbol, yet received ${functionName.type}`)
+	guard((functionName as RNode).type === RType.Symbol, () => `expected function name to be a symbol, yet received ${JSON.stringify(functionName)}`)
 
 	const parsedArguments = parseArguments(mappedWithName, data)
 

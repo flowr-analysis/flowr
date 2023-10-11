@@ -217,7 +217,7 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
 		const returnEdges = outgoingEdges.filter(([_, e]) => e.types.has(EdgeType.Returns))
 		if(returnEdges.length > 0) {
 			// only traverse return edges and do not follow calls etc. as this indicates that we have a function call which returns a result, and not the function call itself
-			potential.push(...returnEdges.map(([target]) => target))
+			potential.push(...returnEdges.map(([target]) => target).filter(id => !visited.has(id)))
 			continue
 		}
 		const followEdges = outgoingEdges.filter(([_, e]) => e.types.has(EdgeType.Reads) || e.types.has(EdgeType.DefinedBy) || e.types.has(EdgeType.DefinedByOnCall) || e.types.has(EdgeType.Relates))

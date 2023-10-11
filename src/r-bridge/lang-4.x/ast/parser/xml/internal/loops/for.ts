@@ -9,9 +9,10 @@ import { parseLog } from '../../parser'
 import { guard } from '../../../../../../../util/assert'
 import { ParserData } from '../../data'
 import { tryNormalizeSymbol } from '../values'
-import { normalizeBasedOnType, tryNormalizeSingleNode } from '../structure'
-import { RType, RSymbol, RForLoop, RNode, RawRType } from '../../../../model'
+import { normalizeBasedOnType, splitComments, tryNormalizeSingleNode } from '../structure'
+import { RType, RSymbol, RForLoop, RNode, RawRType, RComment } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
+import { normalizeComment } from '../other'
 
 export function tryNormalizeFor(
 	data: ParserData,
@@ -35,7 +36,7 @@ export function tryNormalizeFor(
 
 	({ forToken, condition: head, body } = executeHook(data.hooks.loops.onForLoop.before, data, { forToken, condition: head, body }))
 
-	const { variable: parsedVariable, vector: parsedVector } =
+	const { variable: parsedVariable, vector: parsedVector, comments } =
     normalizeForHead(newParseData, head.content)
 	const parseBody = tryNormalizeSingleNode(newParseData, body)
 
@@ -66,28 +67,31 @@ export function tryNormalizeFor(
 		lexeme:   content,
 		info:     {
 			fullRange:        data.currentRange,
-			additionalTokens: [],
+			additionalTokens: comments,
 			fullLexeme:       data.currentLexeme,
 		},
-		location,
+		location
 	}
 	return executeHook(data.hooks.loops.onForLoop.after, data, result)
 }
 
-function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined } {
+function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined, comments: RComment[] } {
 	// must have a child which is `in`, a variable on the left, and a vector on the right
 	const children: NamedXmlBasedJson[] = getKeysGuarded<XmlBasedJson[]>(forCondition, data.config.childrenName).map(content => ({
 		name: getTokenType(data.config.tokenMap, content),
 		content
 	}))
-	const inPosition = children.findIndex(elem => elem.name === RawRType.ForIn)
-	guard(inPosition > 0 && inPosition < children.length - 1, () => `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`)
-	const variable = tryNormalizeSymbol(data, [children[inPosition - 1]])
+	const { comments, others } = splitComments(children)
+
+	const inPosition = others.findIndex(elem => elem.name === RawRType.ForIn)
+	guard(inPosition > 0 && inPosition < others.length - 1, () => `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`)
+	const variable = tryNormalizeSymbol(data, [others[inPosition - 1]])
 	guard(variable !== undefined, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
-	guard(variable.type === RType.Symbol, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
+	guard((variable as RNode).type === RType.Symbol, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
 
-	const vector = normalizeBasedOnType(data, [children[inPosition + 1]])
+	const vector = normalizeBasedOnType(data, [others[inPosition + 1]])
 	guard(vector.length === 1, () => `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`)
+	const parsedComments = comments.map(c => normalizeComment(data, c.content))
 
-	return { variable, vector: vector[0] }
+	return { variable, vector: vector[0], comments: parsedComments }
 }

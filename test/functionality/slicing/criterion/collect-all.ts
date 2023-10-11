@@ -44,7 +44,7 @@ if(TRUE) {
 }
 foo(5)`, [ '1@a' ], [ '2@b' ], [ '4@a' ], [ '5:5' ], [ '5:9' ], [ '7@foo' ], [ '8@x' ], [ '10:3' ], [ '10:12' ])
 		test(`x = NULL
-u <<- function(a = NULL, b = NA, c, d=7, e=x, f=T, g=FALSE, ...) {
+u <<- function(a = NULL, b = NA, c, d=7, e=x, f=TRUE, g=FALSE, ...) {
   g <- 12 * NaN - Inf
   h <- function(x) { x + 1 }
   return(h(a + b))

@@ -84,8 +84,8 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 		foldFunctionDefinition: (definition: RFunctionDefinition<Info>, params: Up[], body: Up, down: Down) => Up;
 		/** folds named and unnamed function calls */
 		foldFunctionCall:       (call: RFunctionCall<Info>, functionNameOrExpression: Up, args: (Up | undefined)[], down: Down) => Up;
-		/** The `name` is `undefined` if the argument is unnamed */
-		foldArgument:           (argument: RArgument<Info>, name: Up | undefined, value: Up, down: Down) => Up;
+		/** The `name` is `undefined` if the argument is unnamed, the value, if we have something like `x=,...` */
+		foldArgument:           (argument: RArgument<Info>, name: Up | undefined, value: Up | undefined, down: Down) => Up;
 		/** The `defaultValue` is `undefined` if the argument was not initialized with a default value */
 		foldParameter:          (parameter: RParameter<Info>, name: Up, defaultValue: Up | undefined, down: Down) => Up;
 	}
@@ -132,7 +132,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 		case RType.Parameter:
 			return folds.functions.foldParameter(ast, foldAstStateful(ast.name, down, folds), ast.defaultValue ? foldAstStateful(ast.defaultValue, down, folds) : undefined, down)
 		case RType.Argument:
-			return folds.functions.foldArgument(ast, ast.name ? foldAstStateful(ast.name, down, folds) : undefined, foldAstStateful(ast.value, down, folds), down)
+			return folds.functions.foldArgument(ast, ast.name ? foldAstStateful(ast.name, down, folds) : undefined, ast.value ? foldAstStateful(ast.value, down, folds) : undefined, down)
 		case RType.Next:
 			return folds.loop.foldNext(ast, down)
 		case RType.Break:

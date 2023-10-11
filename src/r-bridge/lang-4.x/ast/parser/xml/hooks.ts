@@ -70,9 +70,9 @@ export interface XmlParserHooks {
        * triggered if {@link tryNormalizeSymbol} could not determine the namespace and or symbol.
        * Can emit non-symbol values easily due to special symbols like `T`.
        */
-			unknown(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<RNode | undefined>
+			unknown(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<RSymbol | undefined>
 			before(data: ParserData, inputObjs: NamedXmlBasedJson[]): AutoIfOmit<NamedXmlBasedJson[]>
-			after(data: ParserData, result: RNode | undefined): AutoIfOmit<RNode | undefined>
+			after(data: ParserData, result: RSymbol | undefined): AutoIfOmit<RSymbol | undefined>
 		}
 	},
 	/** {@link tryNormalizeAccess} */

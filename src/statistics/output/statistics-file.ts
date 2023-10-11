@@ -4,6 +4,7 @@ import {
 	StatisticAppendProvider,
 	StatisticFileProvider
 } from './file-provider'
+import { log } from '../../util/log'
 
 
 /**
@@ -26,15 +27,15 @@ export function extractNodeContent(node: Node): string {
 
 
 /** by default, we do not write to anything */
-let fileProvider: StatisticAppendProvider
+export let statisticsFileProvider: StatisticAppendProvider
 initDummyFileProvider()
 
 /**
  * Make the statistics write to a given output directory.
  */
 export function initFileProvider(outputDirectory: string): void {
-	console.log(`Initializing file provider for output directory ${outputDirectory}`)
-	fileProvider = new StatisticFileProvider(outputDirectory)
+	log.debug(`Initializing file provider for output directory ${outputDirectory}`)
+	statisticsFileProvider = new StatisticFileProvider(outputDirectory)
 }
 
 /**
@@ -43,7 +44,7 @@ export function initFileProvider(outputDirectory: string): void {
  * @param map - The map to write to, will not persist calls if no map is given
  */
 export function initDummyFileProvider(map?: DummyAppendMemoryMap): void {
-	fileProvider = new DummyAppendProvider(map)
+	statisticsFileProvider = new DummyAppendProvider(map)
 }
 
 /**
@@ -64,21 +65,28 @@ export interface StatisticsOutputFormat {
  * @param context - The context of the information retrieval (e.g. the name of the file that contained the R source code)
  * @param unique  - Should duplicate entries be removed on addition
  */
-export function appendStatisticsFile<T>(name: string, fn: keyof T, nodes: string[] | Node[], context: string | undefined, unique = false) {
+export function appendStatisticsFile<T>(name: string, fn: keyof T, nodes: string[] | Node[] | object[], context: string | undefined, unique = false) {
 	if(nodes.length === 0) {
 		return
 	}
-	let contents = typeof nodes[0] === 'string' ?
-		nodes as string[]
-		: (nodes as Node[]).map(extractNodeContent)
+	let contents
+
+	if(typeof nodes[0] === 'string') {
+		contents = nodes
+	} else if('nodeType' in nodes[0]) {
+		contents = (nodes as Node[]).map(extractNodeContent)
+	} else {
+		contents = nodes
+	}
+
 
 	if(unique) {
-		contents = [...new Set(contents)]
+		contents = [...new Set<string | object | Node>(contents)]
 	}
 
 	contents = contents.map(c => JSON.stringify({ value: c, context } as StatisticsOutputFormat))
 
-	fileProvider.append(name, fn, contents.join('\n'))
+	statisticsFileProvider.append(name, fn, contents.join('\n'))
 }
 
 

@@ -1,46 +1,36 @@
-import { RShell } from '../r-bridge'
+import { RParseRequestFromFile } from '../r-bridge'
 import {
-	extractUsageStatistics,
 	postProcessFolder,
 	printClusterReport,
 	histogramsFromClusters,
 	histograms2table,
-	printFeatureStatistics,
 	initFileProvider,
 	setFormatter,
-	voidFormatter, ContextsWithCount, allFeatureNames, FeatureKey
+	voidFormatter,
+	ContextsWithCount
 } from '../statistics'
 import { log } from '../util/log'
 import { guard } from '../util/assert'
 import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 import { DefaultMap } from '../util/defaultmap'
 import { processCommandLineArgs } from './common'
+import { LimitBenchmarkPool } from '../benchmark/parallel-helper'
+import { validateFeatures } from './common/features'
+import path from 'path'
+import { jsonReplacer } from '../util/json'
 
 export interface StatsCliOptions {
 	verbose:        boolean
 	help:           boolean
 	'post-process': boolean
-	limit:          number
+	limit:          number | undefined
+	compress:       boolean
 	'hist-step':    number
 	input:          string[]
 	'output-dir':   string
 	'no-ansi':      boolean
+	parallel:       number
 	features:       string[]
-}
-
-export function validateFeatures(features: (string[] | ['all'] | FeatureKey[])): Set<FeatureKey> {
-	for(const feature of features) {
-		if(feature === 'all') {
-			if(features.length > 1) {
-				console.error(`Feature "all" must be the only feature given, got ${features.join(', ')}`)
-				process.exit(1)
-			}
-		} else if(!allFeatureNames.has(feature as FeatureKey)) {
-			console.error(`Feature ${feature} is unknown, supported are ${[...allFeatureNames].join(', ')} or "all"`)
-			process.exit(1)
-		}
-	}
-	return features[0] === 'all' ? allFeatureNames : new Set(features as FeatureKey[])
 }
 
 
@@ -94,23 +84,55 @@ if(options['post-process']) {
 	process.exit(0)
 }
 
-const shell = new RShell()
-shell.tryToInjectHomeLibPath()
-
 initFileProvider(options['output-dir'])
 
-async function getStats() {
-	console.log(`Processing features: ${JSON.stringify(processedFeatures)}`)
-	let cur = 0
-	const stats = await extractUsageStatistics(shell,
-		file => console.log(`${new Date().toLocaleString()} processing ${++cur} ${file.content}`),
-		processedFeatures,
-		allRFilesFrom(options.input, options.limit)
-	)
-	console.warn(`skipped ${stats.meta.failedRequests.length} requests due to errors (run with logs to get more info)`)
+const testRegex = /test/i
+const exampleRegex = /example/i
 
-	printFeatureStatistics(stats, processedFeatures)
-	shell.close()
+function getPrefixForFile(file: string) {
+	if(testRegex.test(file)) {
+		return 'test-'
+	}	else if(exampleRegex.test(file)) {
+		return 'example-'
+	} else {
+		return ''
+	}
+}
+
+function getSuffixForFile(base: string, file: string) {
+	const subpath = path.relative(base, file)
+	return '--' + subpath.replace(/\//g, '／')
+}
+
+async function getStats() {
+	console.log(`Processing features: ${JSON.stringify(processedFeatures, jsonReplacer)}`)
+	console.log(`Using ${options.parallel} parallel executors`)
+
+	// we do not use the limit argument to be able to pick the limit randomly
+	const files: RParseRequestFromFile[] = []
+	for await (const file of allRFilesFrom(options.input)) {
+		files.push(file)
+	}
+
+	if(options.limit) {
+		log.info(`limiting to ${options.limit} files`)
+		// shuffle and limit
+		files.sort(() => Math.random() - 0.5)
+	}
+	const limit = options.limit ?? files.length
+
+	const verboseAdd = options.verbose ? ['--verbose'] : []
+	const compress = options.compress ? ['--compress'] : []
+	const features = [...processedFeatures].flatMap(s => ['--features', s])
+	const pool = new LimitBenchmarkPool(
+		`${__dirname}/statistics-helper-app`,
+		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${String(idx)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`), ...verboseAdd, ...features, ...compress]),
+		limit,
+		options.parallel
+	)
+	await pool.run()
+	const stats = pool.getStats()
+	console.log(`Processed ${stats.counter} files, skipped ${stats.skipped.length} files due to errors`)
 }
 
 void getStats()

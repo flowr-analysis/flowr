@@ -32,7 +32,7 @@ The (sorted) results should be versioned and can be found in [scripts/top-r-down
 3. Make sure you have the latest version of the *flowr* package installed.
 
    ```shell
-   npm install
+   npm ci
    ```
 
 4. Now you can run the statistics program on the downloaded sources.

@@ -2,7 +2,6 @@ import { collectAllIds, NodeId, ParentInformation, RAssignmentOp, RNode, RType }
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { EdgeType } from '../../../graph'
-import { guard } from '../../../../util/assert'
 import {
 	define,
 	IdentifierDefinition,
@@ -17,7 +16,7 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 	dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)
 	const lhs = processDataflowFor(op.lhs, data)
 	const rhs = processDataflowFor(op.rhs, data)
-	const { readTargets, writeTargets, environments, swap } = processReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, data)
+	const { readTargets, newWriteNodes, writeTargets, environments, swap } = processReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, data)
 	const nextGraph = lhs.graph.mergeWith(rhs.graph)
 
 	// deal with special cases based on the source node and the determined read targets
@@ -25,7 +24,7 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 	const isFunctionSide = swap ? op.lhs : op.rhs
 	const isFunction = isFunctionSide.type === RType.FunctionDefinition
 
-	for(const write of writeTargets) {
+	for(const write of newWriteNodes) {
 		nextGraph.setDefinitionOfVertex(write)
 
 		if(isFunction) {
@@ -118,11 +117,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`)
 	}
 
-
-	const readFromSourceWritten: IdentifierReference[] = [...source.out].map(id => {
-		guard(id.scope === LocalScope, 'currently, nested write re-assignments are only supported for local')
-		return id
-	})
+	const readFromSourceWritten = source.out
 	let environments = overwriteEnvironments(source.environments, target.environments)
 
 	// install assigned variables in environment
@@ -131,9 +126,10 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
 	}
 
 	return {
-		readTargets:  [...source.unknownReferences, ...read, ...readFromSourceWritten],
-		writeTargets: [...writeNodes, ...target.out, ...readFromSourceWritten],
-		environments: environments,
+		readTargets:   [...source.unknownReferences, ...read, ...readFromSourceWritten],
+		writeTargets:  [...writeNodes, ...target.out, ...readFromSourceWritten],
+		environments:  environments,
+		newWriteNodes: writeNodes,
 		swap
 	}
 }
@@ -142,7 +138,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
  * Some R-constructs like loops are known to return values completely independent of their input (loops return an invisible `NULL`).
  * This returns only those of `readTargets` that actually impact the target.
  */
-function determineImpactOfSource<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, readTargets: IdentifierReference[]): IdentifierReference[] {
+function determineImpactOfSource<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, readTargets: IdentifierReference[]): Set<IdentifierReference> {
 	// collect all ids from the source but stop at Loops, function calls, definitions and everything which links its own return
 	// for loops this is necessary as they *always* return an invisible null, for function calls we do not know if they do
 	// yet, we need to keep the ids of these elements
@@ -159,8 +155,8 @@ function determineImpactOfSource<OtherInfo>(source: RNode<OtherInfo & ParentInfo
 		allIds.add(id)
 	}
 	if(allIds.size === 0) {
-		return []
+		return new Set()
 	} else {
-		return readTargets.filter(ref => allIds.has(ref.nodeId))
+		return new Set(readTargets.filter(ref => allIds.has(ref.nodeId)))
 	}
 }

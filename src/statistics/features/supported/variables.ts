@@ -39,26 +39,26 @@ function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void 
 			if(dfNode.tag === 'variable-definition') {
 				info.numberOfDefinitions++
 				const lexeme = node.info.fullLexeme ?? node.lexeme
-				appendStatisticsFile(variables.name, 'definedVariables', [JSON.stringify({
+				appendStatisticsFile(variables.name, 'definedVariables', [{
 					name:     lexeme,
 					location: node.location.start
-				})], input.filepath)
+				}], input.filepath)
 				// check for redefinitions
 				const hasRedefinitions = [...edges.entries()].some(([target, edge]) => !redefinedBlocker.has(target) && edge.types.has(EdgeType.SameDefDef))
 				if(hasRedefinitions) {
 					info.numberOfRedefinitions++
 					redefinedBlocker.add(node.info.id)
-					appendStatisticsFile(variables.name, 'redefinedVariables', [JSON.stringify({
+					appendStatisticsFile(variables.name, 'redefinedVariables', [{
 						name:     lexeme,
 						location: node.location.start
-					})], input.filepath)
+					}], input.filepath)
 				}
 			} else if(dfNode.tag === 'use') {
 				info.numberOfVariableUses++
-				appendStatisticsFile(variables.name, 'usedVariables', [JSON.stringify({
+				appendStatisticsFile(variables.name, 'usedVariables', [{
 					name:     node.info.fullLexeme ?? node.lexeme,
 					location: node.location.start
-				})], input.filepath)
+				}], input.filepath)
 			}
 		}
 	)

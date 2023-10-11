@@ -2,7 +2,7 @@ import { NamedXmlBasedJson } from '../../input-format'
 import { guard } from '../../../../../../../util/assert'
 import { retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
-import { isSymbol, RType, RSymbol, RLogical, RNode } from '../../../../model'
+import { isSymbol, RType, RSymbol } from '../../../../model'
 import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { startAndEndsWith } from '../../../../../../../util/strings'
@@ -17,7 +17,7 @@ import { startAndEndsWith } from '../../../../../../../util/strings'
  *
  * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  */
-export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined {
+export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RSymbol | undefined {
 	guard(objs.length > 0, 'to parse symbols we need at least one object to work on!')
 	parseLog.debug('trying to parse symbol')
 	objs = executeHook(data.hooks.values.onSymbol.before, data, objs)
@@ -38,33 +38,17 @@ export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]):
 		return executeUnknownHook(data.hooks.values.onSymbol.unknown, data, objs)
 	}
 
-	let result: RSymbol | RLogical
-
-	if(namespace === undefined && (content === 'T' || content === 'F')) {
-		result = {
-			type:    RType.Logical,
-			content: content === 'T',
-			location,
-			lexeme:  content,
-			info:    {
-				fullRange:        data.currentRange,
-				additionalTokens: [],
-				fullLexeme:       data.currentLexeme
-			}
-		}
-	} else {
-		result = {
-			type:    RType.Symbol,
-			namespace,
-			location,
-			// remove backticks from symbol
-			content: startAndEndsWith(content, '`') ? content.substring(1, content.length - 1) : content,
-			lexeme:  content,
-			info:    {
-				fullRange:        data.currentRange,
-				additionalTokens: [],
-				fullLexeme:       data.currentLexeme
-			}
+	const result: RSymbol = {
+		type:    RType.Symbol,
+		namespace,
+		location,
+		// remove backticks from symbol
+		content: startAndEndsWith(content, '`') ? content.substring(1, content.length - 1) : content,
+		lexeme:  content,
+		info:    {
+			fullRange:        data.currentRange,
+			additionalTokens: [],
+			fullLexeme:       data.currentLexeme
 		}
 	}
 

@@ -8,12 +8,17 @@ import { log } from '../util/log'
 import { processCommandLineArgs } from './common'
 import { jsonReplacer } from '../util/json'
 import { extractCFG } from '../util/cfg'
+import path from 'path'
+import { c } from 'tar'
+import fs from 'fs'
+
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 
 export interface StatsHelperCliOptions {
 	verbose:      boolean
 	help:         boolean
 	input:        string
+	compress:     boolean
 	'output-dir': string
 	'no-ansi':    boolean
 	features:     string[]
@@ -41,6 +46,22 @@ shell.tryToInjectHomeLibPath()
 
 initFileProvider(options['output-dir'])
 
+function compressFolder(folder: string, target: string) {
+	// use strip:2 when uncompressing
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
+	c({
+		gzip:          true,
+		file:          target,
+		portable:      true,
+		preservePaths: false,
+	}, [folder]).then(() => {
+		// now, remove the folder
+		fs.rmSync(folder, { recursive: true, force: true })
+	}, () => {
+		console.log(`failed to compress ${folder}`)
+	})
+}
+
 async function getStatsForSingleFile() {
 	const stats = await extractUsageStatistics(shell,
 		() => { /* do nothing */ },
@@ -61,6 +82,12 @@ async function getStatsForSingleFile() {
 	}
 	statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta))
 	shell.close()
+	if(options.compress) {
+		const basepath = path.normalize(options['output-dir'])
+		const target = `${basepath.endsWith(path.sep) ? basepath.substring(0, basepath.length - 1) : basepath}.tar.gz`
+		console.log(`Compressing ${options['output-dir']} to ${target}`)
+		compressFolder(options['output-dir'], target)
+	}
 }
 
 void getStatsForSingleFile()

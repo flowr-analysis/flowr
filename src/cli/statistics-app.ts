@@ -24,6 +24,7 @@ export interface StatsCliOptions {
 	help:           boolean
 	'post-process': boolean
 	limit:          number | undefined
+	compress:       boolean
 	'hist-step':    number
 	input:          string[]
 	'output-dir':   string
@@ -116,10 +117,11 @@ async function getStats() {
 	const limit = options.limit ?? files.length
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
+	const compress = options.compress ? ['--compress'] : []
 	const features = [...processedFeatures].flatMap(s => ['--features', s])
 	const pool = new LimitBenchmarkPool(
 		`${__dirname}/statistics-helper-app`,
-		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${String(idx)}`), ...verboseAdd, ...features]),
+		files.map((f, idx) => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${String(idx)}`), ...verboseAdd, ...features, ...compress]),
 		limit,
 		options.parallel
 	)

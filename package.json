@@ -341,6 +341,7 @@
     "typescript": "^5.1.6"
   },
   "dependencies": {
+    "@types/tar": "^6.1.6",
     "@xmldom/xmldom": "^0.8.10",
     "command-line-args": "^5.2.1",
     "command-line-usage": "^7.0.1",
@@ -351,6 +352,7 @@
     "object-hash": "^3.0.0",
     "rotating-file-stream": "^3.1.1",
     "semver": "^7.5.4",
+    "tar": "^6.2.0",
     "tmp": "^0.2.1",
     "tslog": "^4.9.2",
     "xml2js": "^0.6.2",

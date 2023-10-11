@@ -75,7 +75,7 @@ export class LimitedThreadPool {
 		if(!this.predicate(args, this.counter)) {
 			this.counter++
 			console.log(`[${this.counter}/${this.limit}] Skipping next as predicate does not hold [args: ${JSON.stringify(args)}]`)
-			return this.runNext()
+			return await this.runNext()
 		}
 
 		this.currentlyRunning.push(args)

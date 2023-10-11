@@ -11,8 +11,7 @@ import { DOMParser } from '@xmldom/xmldom'
 import fs from 'fs'
 import { log } from '../util/log'
 import { initialMetaStatistics, MetaStatistics } from './meta-statistics'
-import { LAST_PER_FILE_STEP, SteppingSlicer, StepResult, StepResults } from '../core'
-import { SliceResult } from '../slicing'
+import { SteppingSlicer,StepResults } from '../core'
 
 /**
  * By default, {@link extractUsageStatistics} requires a generator, but sometimes you already know all the files

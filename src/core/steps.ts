@@ -24,6 +24,7 @@ import { internalPrinter, IStepPrinter, StepOutputFormat } from './print/print'
 import { normalizedAstToJson } from './print/normalize-printer'
 import { guard } from '../util/assert'
 import { dataflowGraphToJson } from './print/dataflow-printer'
+import { runAbstractInterpretation } from '../abstract-interpretation/processor'
 
 /**
  * This represents close a function that we know completely nothing about.
@@ -80,7 +81,15 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.Internal]: internalPrinter,
 			[StepOutputFormat.Json]:     dataflowGraphToJson
 		}
-	} satisfies IStep<typeof produceDataFlowGraph>
+	} satisfies IStep<typeof produceDataFlowGraph>,
+	'ai': {
+		description: 'Run abstract interpretation',
+		processor:   runAbstractInterpretation,
+		required:    'once-per-file',
+		printer:     {
+			[StepOutputFormat.Internal]: internalPrinter
+		}
+	} satisfies IStep<typeof runAbstractInterpretation>
 } as const
 
 export const STEPS_PER_SLICE = {
@@ -103,7 +112,7 @@ export const STEPS_PER_SLICE = {
 } as const
 
 export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const
-export const LAST_PER_FILE_STEP = 'dataflow' as const
+export const LAST_PER_FILE_STEP = 'ai' as const
 export const LAST_STEP = 'reconstruct' as const
 
 export type StepName = keyof typeof STEPS

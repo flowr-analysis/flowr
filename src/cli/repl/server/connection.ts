@@ -132,6 +132,7 @@ export class FlowRServerConnection {
 					parse:     serialize2quads(await xlm2jsonObject(parseConfig, results.parse as string), config()),
 					normalize: serialize2quads(results.normalize?.ast as RNodeWithParent, config()),
 					dataflow:  df2quads(results.dataflow?.graph as DataflowGraph, config()),
+					ai:        ''
 				}
 			})
 		} else {

@@ -213,11 +213,15 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst)
 				break
 			case 3:
+				step = guardStep('ai')
+				result = executeSingleSubStep(step, this.results.ai as DataflowInformation)
+				break
+			case 4:
 				guard(this.criterion !== undefined, 'Cannot decode criteria without a criterion')
 				step = guardStep('slice')
 				result = executeSingleSubStep(step, (this.results.dataflow as DataflowInformation).graph, this.results.normalize as NormalizedAst, this.criterion)
 				break
-			case 4:
+			case 5:
 				step = guardStep('reconstruct')
 				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst<NoInfo>, (this.results.slice as SliceResult).result)
 				break

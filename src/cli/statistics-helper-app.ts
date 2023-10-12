@@ -58,13 +58,13 @@ shell.tryToInjectHomeLibPath()
 initFileProvider(options['output-dir'])
 
 async function compressFolder(folder: string, target: string): Promise<void> {
-	// use strip:2 when uncompressing
+	// use strip:n when uncompress
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
 	return c({
 		gzip:          true,
 		file:          target,
 		portable:      true,
-		preservePaths: false,
+		preservePaths: false
 	}, [folder]).then(() => {
 		// now, remove the folder
 		fs.rmSync(folder, { recursive: true, force: true })
@@ -89,16 +89,18 @@ async function getStatsForSingleFile() {
 		statisticsFileProvider.append('output-json', 'normalize', await printStepResult('normalize', output.normalize, StepOutputFormat.Json))
 		statisticsFileProvider.append('output-json', 'dataflow',  await printStepResult('dataflow', output.dataflow, StepOutputFormat.Json))
 		statisticsFileProvider.append('output-json', 'cfg',       JSON.stringify(cfg, jsonReplacer))
+
+		statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta))
+
+		if(options.compress) {
+			guard(target !== undefined, 'target must be defined given the compress option')
+			console.log(`Compressing ${options['output-dir']} to ${target}`)
+			await compressFolder(options['output-dir'], target)
+		}
 	} else {
 		log.error(`expected exactly one output vs. ${stats.outputs.size}, got: ${JSON.stringify([...stats.outputs.keys()], jsonReplacer, 2)}`)
 	}
-	statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta))
 	shell.close()
-	if(options.compress) {
-		guard(target !== undefined, 'target must be defined given the compress option')
-		console.log(`Compressing ${options['output-dir']} to ${target}`)
-		await compressFolder(options['output-dir'], target)
-	}
 }
 
 void getStatsForSingleFile()

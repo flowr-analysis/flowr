@@ -280,7 +280,7 @@ export class RShell {
 
 		// clean up tempdir
 		// we have to use what is stored in `tempdir` as the variable can be overriden in the meantime!
-		process.on('exit', () => {
+		this.session.onExit(() => {
 			this.sendCommand(`unlink(${ts2r(tempdir)},recursive=TRUE)`)
 		})
 

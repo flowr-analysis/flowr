@@ -28,7 +28,7 @@ let _tempfile: tmp.FileResult | undefined = undefined
 function tempfile() {
 	if(_tempfile === undefined) {
 		_tempfile = tmp.fileSync({ postfix: '.R', keep: false })
-		process.on('exit', () => _tempfile?.removeCallback)
+		process.on('beforeExit', () => _tempfile?.removeCallback())
 	}
 	return _tempfile
 }

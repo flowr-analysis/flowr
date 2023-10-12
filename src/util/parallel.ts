@@ -73,7 +73,6 @@ export class LimitedThreadPool {
 		guard(args !== undefined, () => `arguments should not be undefined in ${JSON.stringify(this.workingQueue)}`)
 
 		if(!this.predicate(args, this.counter)) {
-			this.counter++
 			console.log(`[${this.counter}/${this.limit}] Skipping next as predicate does not hold [args: ${JSON.stringify(args)}]`)
 			await new Promise<void>(resolve => setTimeout(() => void this.runNext().then(resolve), 5))
 			return

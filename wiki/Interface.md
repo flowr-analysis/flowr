@@ -8,6 +8,7 @@ Although far from being as detailed as the in-depth explanation of [*flowR*](htt
   - [The Analysis Request](#the-analysis-request)
     - [Including the Control Flow Graph](#including-the-control-flow-graph)
     - [Retrieve the Output as RDF N-Quads](#retrieve-the-output-as-rdf-n-quads)
+    - [Complete Example](#complete-example)
   - [The Slice Request](#the-slice-request)
   - [The REPL Request](#the-repl-request)
 - [💻 Using the REPL](#-using-the-repl)
@@ -661,6 +662,26 @@ Please note, that the base message format is still JSON. Only the individual res
 }
 ```
 </details>
+
+#### Complete Example
+
+Suppose, you want to launch the server using a docker container. Then, start the server by (forwarding the internal default port):
+
+```shell
+docker run -p1042:1042 -it --rm eagleoutice/flowr --server
+```
+
+Now, using a tool like [netcat](https://linux.die.net/man/1/nc) to connect:
+
+```shell
+nc 127.0.0.1 1042
+```
+
+Within the started session, type the following message and press enter to see the response:
+
+```json
+{"type": "request-file-analysis","id":"0","filetoken":"x","content":"x <- 1\nx + 1"}
+```
 
 ### The Slice Request
 

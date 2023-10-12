@@ -278,6 +278,9 @@ export class RShell {
 			resetOnNewData: true
 		})
 
+		// clean up tempdir
+		this.sendCommand('unlink(temp,recursive=TRUE)')
+
 		if(autoload) {
 			this.sendCommand(`library(${ts2r(packageName)},lib.loc=${ts2r(tempdir)})`)
 		}

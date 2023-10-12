@@ -24,7 +24,8 @@ import fs from 'fs'
 import { isNotUndefined } from '../../util/assert'
 import { log } from '../../util/log'
 
-const tempfile = tmp.fileSync({ postfix: '.R' })
+const tempfile = tmp.fileSync({ postfix: '.R', keep: false })
+process.on('exit', () => tempfile.removeCallback)
 
 export interface SummarizedMeasurement {
 	min:    number

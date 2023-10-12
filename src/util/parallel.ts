@@ -59,17 +59,23 @@ export class LimitedThreadPool {
 			return
 		}
 
-
 		const args = this.workingQueue.pop()
 		guard(args !== undefined, () => `arguments should not be undefined in ${JSON.stringify(this.workingQueue)}`)
 
 		this.currentlyRunning.add(args)
 
-		console.log(`[${this.counter}/${this.limit}] Running next, currently running: ${this.currentlyRunning.size}, queue: ${this.workingQueue.length} [args: ${JSON.stringify(args)}]`)
+		console.log(`[${this.counter}/${this.limit}] Running next, currently running: ${this.currentlyRunning.size}, queue: ${this.workingQueue.length} [args: ${args.join(' ')}]`)
 
 		const child = cp.fork(this.module, args)
+		child.on('exit', this.onChildExit(args))
 
-		child.on('exit', (code, signal) => {
+		// schedule re-schedule
+		await new Promise<void>(resolve => child.on('exit', resolve)).then(() => this.runNext())
+	}
+
+
+	private onChildExit(args: string[]) {
+		return (code: number, signal: unknown) => {
 			if(code === 0) {
 				this.counter++
 			} else {
@@ -77,11 +83,6 @@ export class LimitedThreadPool {
 				this.skipped.push(args)
 			}
 			this.currentlyRunning.delete(args)
-		})
-
-		// schedule re-schedule
-		await new Promise<void>(resolve => child.on('exit', resolve)).then(() => this.runNext())
+		}
 	}
-
-
 }

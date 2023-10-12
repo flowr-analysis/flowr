@@ -133,6 +133,7 @@ async function getStats() {
 	const args = await collectFileArguments(verboseAdd, compress, features)
 
 	if(options.limit) {
+		console.log('Shuffle...')
 		log.info(`limiting to ${options.limit} files`)
 		// shuffle and limit
 		args.sort(() => Math.random() - 0.5)

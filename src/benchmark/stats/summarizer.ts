@@ -24,8 +24,14 @@ import fs from 'fs'
 import { isNotUndefined } from '../../util/assert'
 import { log } from '../../util/log'
 
-const tempfile = tmp.fileSync({ postfix: '.R', keep: false })
-process.on('exit', () => tempfile.removeCallback)
+let _tempfile: tmp.FileResult | undefined = undefined
+function tempfile() {
+	if(_tempfile === undefined) {
+		_tempfile = tmp.fileSync({ postfix: '.R', keep: false })
+		process.on('exit', () => _tempfile?.removeCallback)
+	}
+	return _tempfile
+}
 
 export interface SummarizedMeasurement {
 	min:    number
@@ -161,9 +167,9 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 		// reparse the output to get the number of tokens
 		try {
 			// there seem to be encoding issues, therefore, we dump to a temp file
-			fs.writeFileSync(tempfile.name, output)
+			fs.writeFileSync(tempfile().name, output)
 			const reParsed = await retrieveNormalizedAstFromRCode(
-				{ request: 'file', content: tempfile.name, ensurePackageInstalled: first },
+				{ request: 'file', content: tempfile().name, ensurePackageInstalled: first },
 				tokenMap,
 				reParseShellSession
 			)

@@ -279,10 +279,13 @@ export class RShell {
 		})
 
 		// clean up tempdir
-		this.sendCommand('unlink(temp,recursive=TRUE)')
+		// we have to use what is stored in `tempdir` as the variable can be overriden in the meantime!
+		process.on('exit', () => {
+			this.sendCommand(`unlink(${ts2r(tempdir)},recursive=TRUE)`)
+		})
 
 		if(autoload) {
-			this.sendCommand(`library(${ts2r(packageName)},lib.loc=${ts2r(tempdir)})`)
+			this.sendCommand(`library(${ts2r(packageName)},lib.loc=temp)`)
 		}
 
 		return {

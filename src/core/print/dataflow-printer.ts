@@ -1,6 +1,15 @@
 import { jsonReplacer } from '../../util/json'
 import { DataflowInformation } from '../../dataflow/internal/info'
 
+
+function mayObjectJson(d: unknown): string {
+	if(typeof d === 'object') {
+		return objectJson(d as object)
+	} else {
+		return JSON.stringify(d, jsonReplacer)
+	}
+}
+
 // TODO: make this better
 function objectJson(df: object): string {
 	const elems: [string, string][] = []
@@ -12,11 +21,11 @@ function objectJson(df: object): string {
 				continue
 			case 'object':
 				if(Array.isArray(value)) {
-					elems.push([key, `[${value.map(x => JSON.stringify(x, jsonReplacer)).join(',')}]`])
+					elems.push([key, `[${value.map(x => mayObjectJson(x)).join(',')}]`])
 				} else if(value instanceof Set) {
-					elems.push([key, `[${[...value].map(x => JSON.stringify(x, jsonReplacer)).join(',')}]`])
+					elems.push([key, `[${[...value].map(x => mayObjectJson(x)).join(',')}]`])
 				} else if(value instanceof Map) {
-					elems.push([key, `[${[...value].map(([k, v]) => `[${JSON.stringify(k, jsonReplacer)},${JSON.stringify(v, jsonReplacer)}]`).join(',')}]`])
+					elems.push([key, `[${[...value].map(([k, v]) => `[${mayObjectJson(k)},${mayObjectJson(v)}]`).join(',')}]`])
 				} else {
 					elems.push([key, objectJson(value as object)])
 				}

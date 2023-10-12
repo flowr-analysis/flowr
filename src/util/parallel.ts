@@ -7,7 +7,7 @@ import * as cp from 'child_process'
 import { log } from './log'
 import { guard } from './assert'
 
-type Arguments = string[]
+export type Arguments = string[]
 type WorkingQueue = Arguments[]
 
 /**

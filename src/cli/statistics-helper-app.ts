@@ -57,10 +57,10 @@ shell.tryToInjectHomeLibPath()
 
 initFileProvider(options['output-dir'])
 
-function compressFolder(folder: string, target: string) {
+async function compressFolder(folder: string, target: string): Promise<void> {
 	// use strip:2 when uncompressing
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-	c({
+	return c({
 		gzip:          true,
 		file:          target,
 		portable:      true,
@@ -97,7 +97,7 @@ async function getStatsForSingleFile() {
 	if(options.compress) {
 		guard(target !== undefined, 'target must be defined given the compress option')
 		console.log(`Compressing ${options['output-dir']} to ${target}`)
-		compressFolder(options['output-dir'], target)
+		await compressFolder(options['output-dir'], target)
 	}
 }
 

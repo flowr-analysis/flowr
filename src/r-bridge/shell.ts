@@ -7,7 +7,6 @@ import { log, LogLevel } from '../util/log'
 import { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
-import path from 'path'
 import fs from 'fs'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
@@ -292,7 +291,7 @@ export class RShell {
 		}
 	}
 
-	// TODO: document
+	// TODO: document, TODO: auto, TODO: safeguard others
 	public async obtainTmpDir() {
 		this.sendCommand('temp <- tempdir()')
 		const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${ts2r(this.options.eol)})`)

@@ -7,6 +7,8 @@ import { log, LogLevel } from '../util/log'
 import { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
+import path from 'path'
+import fs from 'fs'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -117,9 +119,6 @@ export class RShell {
 	}
 
 	private revive() {
-		// try to obtain the temp directory once as it should be the same for all calls in this shell/session
-		void this.obtainTmpDir()
-
 		if(this.options.revive === 'never') {
 			return
 		}
@@ -293,7 +292,8 @@ export class RShell {
 		}
 	}
 
-	private async obtainTmpDir() {
+	// TODO: document
+	public async obtainTmpDir() {
 		this.sendCommand('temp <- tempdir()')
 		const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${ts2r(this.options.eol)})`)
 		this.tempDirs.add(tempdir)
@@ -409,7 +409,10 @@ class RShellSession {
    */
 	end(filesToUnlink?: string[]): boolean {
 		if(filesToUnlink !== undefined) {
-			this.writeLine(`unlink(c(${filesToUnlink.map(ts2r).join(',')}), recursive=TRUE)`)
+			log.info(`unlinking ${filesToUnlink.length} files (${JSON.stringify(filesToUnlink)})`)
+			for(const f of filesToUnlink) {
+				fs.rmSync(f, { recursive: true, force: true })
+			}
 		}
 
 		const killResult = this.bareSession.kill()

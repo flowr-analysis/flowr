@@ -74,6 +74,7 @@ function compressFolder(folder: string, target: string) {
 }
 
 async function getStatsForSingleFile() {
+	await shell.obtainTmpDir()
 	const stats = await extractUsageStatistics(shell,
 		() => { /* do nothing */ },
 		processedFeatures,

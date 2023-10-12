@@ -90,7 +90,7 @@ async function getStatsForSingleFile() {
 		statisticsFileProvider.append('output-json', 'dataflow',  await printStepResult('dataflow', output.dataflow, StepOutputFormat.Json))
 		statisticsFileProvider.append('output-json', 'cfg',       JSON.stringify(cfg, jsonReplacer))
 
-		statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta))
+		statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta, jsonReplacer))
 
 		if(options.compress) {
 			guard(target !== undefined, 'target must be defined given the compress option')

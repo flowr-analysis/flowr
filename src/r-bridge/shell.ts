@@ -105,6 +105,8 @@ export class RShell {
 	private session:         RShellSession
 	private readonly log:    Logger<ILogObj>
 	private version:         SemVer | null = null
+	// should never be more than one, but let's be sure
+	private tempDirs         = new Set<string>()
 
 	public constructor(options?: Partial<RShellOptions>) {
 		this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
@@ -115,6 +117,9 @@ export class RShell {
 	}
 
 	private revive() {
+		// try to obtain the temp directory once as it should be the same for all calls in this shell/session
+		void this.obtainTmpDir()
+
 		if(this.options.revive === 'never') {
 			return
 		}
@@ -268,20 +273,13 @@ export class RShell {
 		}
 
 		// obtain a temporary directory
-		this.sendCommand('temp <- tempdir()')
-		const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${ts2r(this.options.eol)})`)
+		const tempdir = await this.obtainTmpDir()
 
 		this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
 
 		await this.sendCommandWithOutput(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`, {
 			ms:             750_000,
 			resetOnNewData: true
-		})
-
-		// clean up tempdir
-		// we have to use what is stored in `tempdir` as the variable can be overriden in the meantime!
-		this.session.onExit(() => {
-			this.sendCommand(`unlink(${ts2r(tempdir)},recursive=TRUE)`)
 		})
 
 		if(autoload) {
@@ -295,13 +293,20 @@ export class RShell {
 		}
 	}
 
+	private async obtainTmpDir() {
+		this.sendCommand('temp <- tempdir()')
+		const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${ts2r(this.options.eol)})`)
+		this.tempDirs.add(tempdir)
+		return tempdir
+	}
+
 	/**
    * Close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
    *
    * @returns true if the operation succeeds, false otherwise
    */
 	public close(): boolean {
-		return this.session.end()
+		return this.session.end([...this.tempDirs])
 	}
 
 	private _sendCommand(command: string): void {
@@ -397,10 +402,16 @@ class RShellSession {
 	/**
    * close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
    *
+	 * @param filesToUnlink - If set, these files will be unlinked before closing the session (e.g., to clean up tempfiles)
+	 *
    * @returns true if the kill succeeds, false otherwise
    * @see RShell#close
    */
-	end(): boolean {
+	end(filesToUnlink?: string[]): boolean {
+		if(filesToUnlink !== undefined) {
+			this.writeLine(`unlink(c(${filesToUnlink.map(ts2r).join(',')}), recursive=TRUE)`)
+		}
+
 		const killResult = this.bareSession.kill()
 		if(this.collectionTimeout !== undefined) {
 			clearTimeout(this.collectionTimeout)

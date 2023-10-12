@@ -58,10 +58,10 @@ shell.tryToInjectHomeLibPath()
 
 initFileProvider(options['output-dir'])
 
-async function compressFolder(folder: string, target: string): Promise<void> {
+function compressFolder(folder: string, target: string) {
 	// use strip:n when uncompress
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-	return c({
+	c({
 		gzip:          true,
 		file:          target,
 		portable:      true,
@@ -75,7 +75,6 @@ async function compressFolder(folder: string, target: string): Promise<void> {
 }
 
 async function getStatsForSingleFile() {
-	console.log(`[${date2string(new Date())}] Processing ${options.input}`)
 	await shell.obtainTmpDir()
 	const stats = await extractUsageStatistics(shell,
 		() => { /* do nothing */ },
@@ -97,7 +96,7 @@ async function getStatsForSingleFile() {
 		if(options.compress) {
 			guard(target !== undefined, 'target must be defined given the compress option')
 			console.log(`[${date2string(new Date())}] Compressing ${options['output-dir']} to ${target}`)
-			await compressFolder(options['output-dir'], target)
+			compressFolder(options['output-dir'], target)
 		}
 	} else {
 		log.error(`expected exactly one output vs. ${stats.outputs.size}, got: ${JSON.stringify([...stats.outputs.keys()], jsonReplacer, 2)}`)

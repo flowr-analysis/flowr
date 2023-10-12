@@ -21,7 +21,7 @@ export class LimitedThreadPool {
 	private readonly module:       string
 	private counter = 0
 	private skipped:               Arguments[] = []
-	private currentlyRunning:      Arguments[] = []
+	private currentlyRunning = new Set<Arguments>()
 	private reportingInterval:     NodeJS.Timer | undefined = undefined
 
 	/**
@@ -42,7 +42,7 @@ export class LimitedThreadPool {
 		}, 20000)
 		const promises: Promise<void>[] = []
 		// initial run, runNext will schedule itself recursively we use the limit too if there are more cores than limit :D
-		while(this.currentlyRunning.length < Math.min(this.parallel, this.limit) && this.workingQueue.length > 0) {
+		while(this.currentlyRunning.size < Math.min(this.parallel, this.limit) && this.workingQueue.length > 0) {
 			promises.push(this.runNext())
 		}
 		await Promise.all(promises)
@@ -54,8 +54,8 @@ export class LimitedThreadPool {
 	}
 
 	private async runNext(): Promise<void> {
-		if(this.counter + this.currentlyRunning.length >= this.limit || this.workingQueue.length <= 0) {
-			console.log(`Skip running next as counter: ${this.counter} and currently running: ${this.currentlyRunning.length} beat ${this.limit} or ${this.workingQueue.length}`)
+		if(this.counter + this.currentlyRunning.size >= this.limit || this.workingQueue.length <= 0) {
+			console.log(`Skip running next as counter: ${this.counter} and currently running: ${this.currentlyRunning.size} beat ${this.limit} or ${this.workingQueue.length}`)
 			return
 		}
 
@@ -63,9 +63,9 @@ export class LimitedThreadPool {
 		const args = this.workingQueue.pop()
 		guard(args !== undefined, () => `arguments should not be undefined in ${JSON.stringify(this.workingQueue)}`)
 
-		this.currentlyRunning.push(args)
+		this.currentlyRunning.add(args)
 
-		console.log(`[${this.counter}/${this.limit}] Running next, currently running: ${this.currentlyRunning.length}, queue: ${this.workingQueue.length} [args: ${JSON.stringify(args)}]`)
+		console.log(`[${this.counter}/${this.limit}] Running next, currently running: ${this.currentlyRunning.size}, queue: ${this.workingQueue.length} [args: ${JSON.stringify(args)}]`)
 
 		const child = cp.fork(this.module, args)
 
@@ -76,7 +76,7 @@ export class LimitedThreadPool {
 				log.error(`Benchmark for ${JSON.stringify(args)} exited with code ${JSON.stringify(code)} (signal: ${JSON.stringify(signal)})`)
 				this.skipped.push(args)
 			}
-			this.currentlyRunning.splice(this.currentlyRunning.findIndex(a => a === args), 1)
+			this.currentlyRunning.delete(args)
 		})
 
 		// schedule re-schedule

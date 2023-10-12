@@ -45,7 +45,7 @@ let target: string | undefined = undefined
 if(options.compress) {
 	target = retrieveArchiveName(options['output-dir'])
 	if(fs.existsSync(target)) {
-		console.log(`Target ${target} archive exists. Skipping completely.`)
+		console.log(`Archive ${target} exists. Skip.`)
 		process.exit(0)
 	}
 }

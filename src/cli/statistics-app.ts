@@ -15,10 +15,9 @@ import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 import { DefaultMap } from '../util/defaultmap'
 import { processCommandLineArgs } from './common'
 import { LimitedThreadPool } from '../util/parallel'
-import { retrieveArchiveName, validateFeatures } from './common/features'
+import { validateFeatures } from './common/features'
 import path from 'path'
 import { jsonReplacer } from '../util/json'
-import fs from 'fs'
 
 export interface StatsCliOptions {
 	readonly verbose:        boolean
@@ -145,14 +144,7 @@ async function getStats() {
 		`${__dirname}/statistics-helper-app`,
 		files.map(f => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`), ...verboseAdd, ...features, ...compress]),
 		limit,
-		options.parallel,
-		args => {
-			if(options.compress) {
-				return !fs.existsSync(retrieveArchiveName(args[3]))
-			} else {
-				return true
-			}
-		}
+		options.parallel
 	)
 	console.log('Run Pool...')
 	await pool.run()

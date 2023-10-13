@@ -10,7 +10,6 @@ function mayObjectJson(d: unknown): string {
 	}
 }
 
-// TODO: make this better
 function objectJson(df: object): string {
 	const elems: [string, string][] = []
 

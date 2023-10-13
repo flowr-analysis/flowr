@@ -15,7 +15,6 @@ import { retrieveArchiveName } from './common/features'
 import { printStepResult } from '../core'
 import { StepOutputFormat } from '../core/print/print'
 import { date2string } from '../util/time'
-import { setTimeout } from 'node:timers/promises'
 
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 
@@ -101,6 +100,7 @@ async function getStatsForSingleFile() {
 		console.log(`[${date2string(new Date())}] Compressing ${options['output-dir']} to ${target}`)
 		compressFolder(options['output-dir'], target)
 	}
+
 	shell.close()
 }
 

@@ -21,17 +21,16 @@ export function deepMergeObject<T extends Mergeable>(base: T, addon?: DeepPartia
 export function deepMergeObject(base: Mergeable, addon: Mergeable): Mergeable
 export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined
 export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable | undefined {
-	assertSameType(base, addon)
-	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-	if(base === undefined || base === null) {
+	if(!base) {
 		return addon
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-	} else if(addon === undefined || addon === null) {
+	} else if(!addon) {
 		return base
-	} else if(!isObjectOrArray(base) || !isObjectOrArray(addon)) {
+	} else if(typeof base !== 'object' || typeof addon !== 'object') {
 		// this case should be guarded by type guards, but in case we do not know
 		throw new Error('illegal types for deepMergeObject!')
 	}
+
+	assertSameType(base, addon)
 
 	const result: MergeableRecord = { ...base }
 
@@ -50,18 +49,18 @@ export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable 
 }
 
 function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord, result: MergeableRecord): void {
-	Object.keys(addon).forEach(key => {
-		if(isObjectOrArray(addon[key])) {
-			if(!(key in base)) {
-				Object.assign(result, { [key]: addon[key] })
-			} else {
+	for(const key of Object.keys(addon)) {
+		if(typeof addon[key] === 'object') {
+			if(key in base) {
 				result[key] = deepMergeObject(base[key] as Mergeable, addon[key] as Mergeable)
+			} else {
+				result[key] = addon[key]
 			}
 		} else {
 			assertSameType(result[key], addon[key])
-			Object.assign(result, { [key]: addon[key] })
+			result[key] = addon[key]
 		}
-	})
+	}
 }
 
 function assertSameType(base: unknown, addon: unknown): void {

@@ -214,7 +214,7 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 				break
 			case 3:
 				step = guardStep('ai')
-				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst, this.results.dataflow as DataflowInformation)
+				result = executeSingleSubStep(step, this.results.dataflow as DataflowInformation)
 				break
 			case 4:
 				guard(this.criterion !== undefined, 'Cannot decode criteria without a criterion')

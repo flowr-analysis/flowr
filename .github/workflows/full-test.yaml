@@ -5,6 +5,13 @@ name: "Full Test"
   workflow_call:
 
 jobs:
+  lint:
+    name: "Linting (Full)"
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    with:
+      r-version: ''
+      action: lint-local
+
   test-full:
     strategy:
       fail-fast: false

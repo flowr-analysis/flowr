@@ -22,7 +22,7 @@ export function extractNodeContent(node: Node): string {
 		}
 	}
 
-	return result?.trim()?.replace('\n', '\\n') ?? '<unknown>'
+	return result?.trim()?.replaceAll('\n', '\\n') ?? '<unknown>'
 }
 
 

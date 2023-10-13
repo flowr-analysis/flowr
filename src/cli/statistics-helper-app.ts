@@ -14,6 +14,7 @@ import { guard } from '../util/assert'
 import { retrieveArchiveName } from './common/features'
 import { printStepResult } from '../core'
 import { StepOutputFormat } from '../core/print/print'
+import { date2string } from '../util/time'
 
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 
@@ -44,7 +45,7 @@ let target: string | undefined = undefined
 if(options.compress) {
 	target = retrieveArchiveName(options['output-dir'])
 	if(fs.existsSync(target)) {
-		console.log(`Target ${target} archive exists. Skipping completely.`)
+		console.log(`Archive ${target} exists. Skip.`)
 		process.exit(0)
 	}
 }
@@ -58,13 +59,13 @@ shell.tryToInjectHomeLibPath()
 initFileProvider(options['output-dir'])
 
 function compressFolder(folder: string, target: string) {
-	// use strip:2 when uncompressing
+	// use strip:n when uncompress
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
 	c({
 		gzip:          true,
 		file:          target,
 		portable:      true,
-		preservePaths: false,
+		preservePaths: false
 	}, [folder]).then(() => {
 		// now, remove the folder
 		fs.rmSync(folder, { recursive: true, force: true })
@@ -74,6 +75,7 @@ function compressFolder(folder: string, target: string) {
 }
 
 async function getStatsForSingleFile() {
+	await shell.obtainTmpDir()
 	const stats = await extractUsageStatistics(shell,
 		() => { /* do nothing */ },
 		processedFeatures,
@@ -88,16 +90,18 @@ async function getStatsForSingleFile() {
 		statisticsFileProvider.append('output-json', 'normalize', await printStepResult('normalize', output.normalize, StepOutputFormat.Json))
 		statisticsFileProvider.append('output-json', 'dataflow',  await printStepResult('dataflow', output.dataflow, StepOutputFormat.Json))
 		statisticsFileProvider.append('output-json', 'cfg',       JSON.stringify(cfg, jsonReplacer))
+
+		statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta, jsonReplacer))
+
+		if(options.compress) {
+			guard(target !== undefined, 'target must be defined given the compress option')
+			console.log(`[${date2string(new Date())}] Compressing ${options['output-dir']} to ${target}`)
+			compressFolder(options['output-dir'], target)
+		}
 	} else {
 		log.error(`expected exactly one output vs. ${stats.outputs.size}, got: ${JSON.stringify([...stats.outputs.keys()], jsonReplacer, 2)}`)
 	}
-	statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta))
 	shell.close()
-	if(options.compress) {
-		guard(target !== undefined, 'target must be defined given the compress option')
-		console.log(`Compressing ${options['output-dir']} to ${target}`)
-		compressFolder(options['output-dir'], target)
-	}
 }
 
 void getStatsForSingleFile()

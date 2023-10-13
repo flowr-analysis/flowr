@@ -15,7 +15,7 @@ async function controlflow(shell: RShell, tokenMap: TokenMap, remainingLine: str
 }
 
 export const controlflowCommand: ReplCommand = {
-	description:  'Return mermaid code that renders the control-flow graph of the given R code',
+	description:  'Get mermaid code for the control-flow graph of R code, start with \'file://\' to indicate a file.',
 	usageExample: ':controlflow',
 	aliases:      [ 'cfg' ],
 	script:       false,
@@ -28,7 +28,7 @@ export const controlflowCommand: ReplCommand = {
 }
 
 export const controlflowStarCommand: ReplCommand = {
-	description:  'Return mermaid url that leads to mermaid live to render the control-flow graph of the given R code',
+	description:  'Get a mermaid url of the control-flow graph of R code, start with \'file://\' to indicate a file.',
 	usageExample: ':controlflow',
 	aliases:      [ 'cfg*' ],
 	script:       false,

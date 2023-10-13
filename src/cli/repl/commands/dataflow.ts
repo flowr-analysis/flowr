@@ -15,7 +15,7 @@ async function dataflow(shell: RShell, tokenMap: TokenMap, remainingLine: string
 }
 
 export const dataflowCommand: ReplCommand = {
-	description:  'Return mermaid code that renders the dataflow graph of the given R code',
+	description:  'Get mermaid code for the dataflow graph of R code, start with \'file://\' to indicate a file.',
 	usageExample: ':dataflow',
 	aliases:      [ 'd', 'df' ],
 	script:       false,
@@ -27,7 +27,7 @@ export const dataflowCommand: ReplCommand = {
 }
 
 export const dataflowStarCommand: ReplCommand = {
-	description:  'Return mermaid url that leads to mermaid live to render the dataflow graph of the given R code',
+	description:  'Get a mermaid url of the dataflow graph of R code, start with \'file://\' to indicate a file.',
 	usageExample: ':dataflow*',
 	aliases:      [ 'd*', 'df*' ],
 	script:       false,

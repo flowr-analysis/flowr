@@ -6,6 +6,7 @@
 import * as cp from 'child_process'
 import { log } from './log'
 import { guard } from './assert'
+import { jsonReplacer } from './json'
 
 export type Arguments = string[]
 type WorkingQueue = Arguments[]
@@ -38,7 +39,7 @@ export class LimitedThreadPool {
 
 	public async run(): Promise<void> {
 		this.reportingInterval = setInterval(() => {
-			console.log(`Waiting for: ${JSON.stringify(this.currentlyRunning)}`)
+			console.log(`Waiting for: ${JSON.stringify(this.currentlyRunning, jsonReplacer)}`)
 		}, 20000)
 		const promises: Promise<void>[] = []
 		// initial run, runNext will schedule itself recursively we use the limit too if there are more cores than limit :D

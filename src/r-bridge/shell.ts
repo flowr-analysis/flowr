@@ -94,7 +94,7 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 } as const
 
 /**
- * RShell represents an interactive session with the R interpreter.
+ * The `RShell` represents an interactive session with the R interpreter.
  * You can configure it by {@link RShellOptions}.
  *
  * At the moment we are using a live R session (and not networking etc.) to communicate with R easily,
@@ -105,7 +105,7 @@ export class RShell {
 	public readonly options: Readonly<RShellOptions>
 	private session:         RShellSession
 	private readonly log:    Logger<ILogObj>
-	private version:         SemVer | null = null
+	private versionCache:    SemVer | null = null
 	// should never be more than one, but let's be sure
 	private tempDirs         = new Set<string>()
 
@@ -144,14 +144,14 @@ export class RShell {
 	}
 
 	public async usedRVersion(): Promise<SemVer | null> {
-		if(this.version !== null) {
-			return this.version
+		if(this.versionCache !== null) {
+			return this.versionCache
 		}
 		// retrieve raw version:
 		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
 		this.log.trace(`raw version: ${JSON.stringify(result)}`)
-		this.version = semver.coerce(result[0])
-		return result.length === 1 ? this.version : null
+		this.versionCache = semver.coerce(result[0])
+		return result.length === 1 ? this.versionCache : null
 	}
 
 	/**

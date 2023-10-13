@@ -14,9 +14,10 @@ import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 import { DefaultMap } from '../util/defaultmap'
 import { processCommandLineArgs } from './common'
 import { Arguments, LimitedThreadPool } from '../util/parallel'
-import { validateFeatures } from './common/features'
+import { retrieveArchiveName, validateFeatures } from './common/features'
 import path from 'path'
 import { jsonReplacer } from '../util/json'
+import fs from 'fs'
 
 export interface StatsCliOptions {
 	readonly verbose:        boolean
@@ -107,8 +108,18 @@ async function collectFileArguments(verboseAdd: string[], compress: string[], fe
 	const files: Arguments[] = []
 	let counter = 0
 	let presentSteps = 5000
+	let skipped = 0
 	for await (const f of allRFilesFrom(options.input)) {
-		files.push(['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`), ...verboseAdd, ...features, ...compress])
+		const outputDir = path.join(options['output-dir'], `${getPrefixForFile(f.content)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`)
+		if(options.compress) {
+			const target = retrieveArchiveName(options['output-dir'])
+			if(fs.existsSync(target)) {
+				console.log(`Archive ${target} exists. Skip.`)
+				skipped++
+				continue
+			}
+		}
+		files.push(['--input', f.content, '--output-dir', outputDir, ...verboseAdd, ...features, ...compress])
 		if(++counter % presentSteps === 0) {
 			console.log(`Collected ${counter} files`)
 			if(counter >= 10 * presentSteps) {
@@ -116,7 +127,7 @@ async function collectFileArguments(verboseAdd: string[], compress: string[], fe
 			}
 		}
 	}
-	console.log(`Total: ${counter} files`)
+	console.log(`Total: ${counter} files (${skipped} skipped with archive existing)`)
 	return files
 }
 

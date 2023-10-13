@@ -15,6 +15,7 @@ import { retrieveArchiveName } from './common/features'
 import { printStepResult } from '../core'
 import { StepOutputFormat } from '../core/print/print'
 import { date2string } from '../util/time'
+import { setTimeout } from 'node:timers/promises'
 
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 
@@ -100,6 +101,7 @@ async function getStatsForSingleFile() {
 		}
 	} else {
 		log.error(`expected exactly one output vs. ${stats.outputs.size}, got: ${JSON.stringify([...stats.outputs.keys()], jsonReplacer, 2)}`)
+		await setTimeout(500)
 	}
 	shell.close()
 }

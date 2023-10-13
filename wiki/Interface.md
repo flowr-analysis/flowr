@@ -12,6 +12,8 @@ Although far from being as detailed as the in-depth explanation of [*flowR*](htt
   - [The Slice Request](#the-slice-request)
   - [The REPL Request](#the-repl-request)
 - [💻 Using the REPL](#-using-the-repl)
+  - [Example: Retrieving the Dataflow Graph](#example-retrieving-the-dataflow-graph)
+  - [Interfacing With the File System](#interfacing-with-the-file-system)
 - [⚒️ Writing Code](#️-writing-code)
   - [Interfacing With R by Using The `RShell`](#interfacing-with-r-by-using-the-rshell)
   - [Slicing With The `SteppingSlicer`](#slicing-with-the-steppingslicer)
@@ -863,13 +865,15 @@ The `stream` field (either `stdout` or `stderr`) informs you of the output's ori
 
 ## 💻 Using the REPL
 
-Although primarily meant for users, there is nothing forbidding to simply calling *flowR* as a subprocess to use standard-in, -output, and -error for communication (although you can access the REPL using the server as well, with the [REPL Request](#the-repl-request) message).
+Although primarily meant for users to explore, there is nothing which forbids to simply calling *flowR* as a subprocess to use standard-in, -output, and -error for communication (although you can access the REPL using the server as well, with the [REPL Request](#the-repl-request) message).
 
 The read-eval-print loop&nbsp;(REPL) works relatively simple.
 You can submit an expression (using enter),
 which is interpreted as an R&nbsp;expression by default but interpreted as a *command* if it starts with a colon (`:`).
 The best command to get started with the REPL is `:help`.
 Besides, you can leave the REPL either with the command `:quit` or by pressing <kbd>CTRL</kbd>+<kbd>C</kbd> twice.
+
+### Example: Retrieving the Dataflow Graph
 
 To retrieve an URL to the [mermaid](https://mermaid.js.org/) diagram of the dataflow of a given expression, use `:dataflow*`:
 
@@ -891,6 +895,15 @@ flowchart LR
 ```
 
 The graph returned for you may differ, depending on the evolution of *flowR*.
+
+### Interfacing With the File System
+
+Many commands that allow for an R-expression (like `:dataflow*`) allow for a file as well, if the argument starts with `file://`. If you are located in the root directory of the *flowR* repository, the following should give you the parsed AST of the example file:
+
+```shell
+R> :parse file://test/testfiles/example.R
+```
+
 
 ## ⚒️ Writing Code
 

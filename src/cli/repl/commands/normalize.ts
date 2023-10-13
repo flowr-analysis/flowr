@@ -12,7 +12,7 @@ async function normalize(shell: RShell, tokenMap: TokenMap, remainingLine: strin
 }
 
 export const normalizeCommand: ReplCommand = {
-	description:  'Return mermaid code that renders the normalized AST of the given R code',
+	description:  'Get mermaid code for the normalized AST of R code, start with \'file://\' to indicate a file.',
 	usageExample: ':normalize',
 	aliases:      [ 'n' ],
 	script:       false,
@@ -24,7 +24,7 @@ export const normalizeCommand: ReplCommand = {
 }
 
 export const normalizeStarCommand: ReplCommand = {
-	description:  'Return mermaid url that leads to mermaid live to render the normalized AST of the given R code',
+	description:  'Get a mermaid url of the normalized AST of R code, start with \'file://\' to indicate a file.',
 	usageExample: ':normalize',
 	aliases:      [ 'n*' ],
 	script:       false,

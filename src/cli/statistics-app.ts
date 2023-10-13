@@ -112,7 +112,7 @@ async function collectFileArguments(verboseAdd: string[], compress: string[], fe
 	for await (const f of allRFilesFrom(options.input)) {
 		const outputDir = path.join(options['output-dir'], `${getPrefixForFile(f.content)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`)
 		if(options.compress) {
-			const target = retrieveArchiveName(options['output-dir'])
+			const target = retrieveArchiveName(outputDir)
 			if(fs.existsSync(target)) {
 				console.log(`Archive ${target} exists. Skip.`)
 				skipped++

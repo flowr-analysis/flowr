@@ -865,7 +865,7 @@ The `stream` field (either `stdout` or `stderr`) informs you of the output's ori
 
 ## 💻 Using the REPL
 
-Although primarily meant for users to explore, there is nothing which forbids to simply calling *flowR* as a subprocess to use standard-in, -output, and -error for communication (although you can access the REPL using the server as well, with the [REPL Request](#the-repl-request) message).
+Although primarily meant for users to explore, there is nothing which forbids simply calling *flowR* as a subprocess to use standard-in, -output, and -error for communication (although you can access the REPL using the server as well, with the [REPL Request](#the-repl-request) message).
 
 The read-eval-print loop&nbsp;(REPL) works relatively simple.
 You can submit an expression (using enter),

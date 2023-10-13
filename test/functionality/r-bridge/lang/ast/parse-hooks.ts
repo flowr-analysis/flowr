@@ -1,4 +1,4 @@
-import { defaultTokenMap, retrieveNormalizedAst, withShell } from '../../../helper/shell'
+import { retrieveNormalizedAst, withShell } from '../../../helper/shell'
 import { assert } from 'chai'
 import { requestFromInput } from '../../../../../src/r-bridge'
 import { SteppingSlicer } from '../../../../../src/core'
@@ -19,13 +19,11 @@ describe('Check hooks are called appropriately', withShell(shell => {
 		assert.isTrue(after, 'The number after-hook was not called!')
 	})
 	it('Call the string hook!', async() => {
-		const tokenMap = await defaultTokenMap()
-
 		let counter = 0
 
 		await new SteppingSlicer({
 			stepOfInterest: 'normalize',
-			shell, tokenMap,
+			shell,
 			request:        requestFromInput('x <- "foo"'),
 			hooks:          {
 				values: {

@@ -1,15 +1,15 @@
 import { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../core'
-import { requestFromInput, RShell, TokenMap } from '../../../r-bridge'
+import { requestFromInput, RShell } from '../../../r-bridge'
 import {
 	graphToMermaid,
 	graphToMermaidUrl
 } from '../../../util/mermaid'
 
-async function dataflow(shell: RShell, tokenMap: TokenMap, remainingLine: string) {
+async function dataflow(shell: RShell, remainingLine: string) {
 	return await new SteppingSlicer({
 		stepOfInterest: 'dataflow',
-		shell, tokenMap,
+		shell,
 		request:        requestFromInput(remainingLine.trim())
 	}).allRemainingSteps()
 }
@@ -19,8 +19,8 @@ export const dataflowCommand: ReplCommand = {
 	usageExample: ':dataflow',
 	aliases:      [ 'd', 'df' ],
 	script:       false,
-	fn:           async(output, shell, tokenMap, remainingLine) => {
-		const result = await dataflow(shell, tokenMap, remainingLine)
+	fn:           async(output, shell, remainingLine) => {
+		const result = await dataflow(shell, remainingLine)
 
 		output.stdout(graphToMermaid(result.dataflow.graph, result.normalize.idMap, undefined, undefined, false))
 	}
@@ -31,8 +31,8 @@ export const dataflowStarCommand: ReplCommand = {
 	usageExample: ':dataflow*',
 	aliases:      [ 'd*', 'df*' ],
 	script:       false,
-	fn:           async(output, shell, tokenMap, remainingLine) => {
-		const result = await dataflow(shell, tokenMap, remainingLine)
+	fn:           async(output, shell, remainingLine) => {
+		const result = await dataflow(shell, remainingLine)
 
 		output.stdout(graphToMermaidUrl(result.dataflow.graph, result.normalize.idMap, false))
 	}

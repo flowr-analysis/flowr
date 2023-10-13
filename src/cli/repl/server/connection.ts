@@ -4,7 +4,6 @@ import {
 	NormalizedAst,
 	RNodeWithParent,
 	RShell,
-	TokenMap,
 	XmlParserConfig
 } from '../../../r-bridge'
 import { sendMessage } from './send'
@@ -37,11 +36,10 @@ import { DataflowGraph } from '../../../dataflow'
  * There is no need to construct this class manually, {@link FlowRServer} will do it for you.
  */
 export class FlowRServerConnection {
-	private readonly socket:   Socket
-	private readonly shell:    RShell
-	private readonly tokenMap: TokenMap
-	private readonly name:     string
-	private readonly logger:   Logger<ILogObj>
+	private readonly socket: Socket
+	private readonly shell:  RShell
+	private readonly name:   string
+	private readonly logger: Logger<ILogObj>
 
 	// maps token to information
 	private readonly fileMap = new Map<string, {
@@ -50,9 +48,8 @@ export class FlowRServerConnection {
 	}>()
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
-	constructor(socket: Socket, name: string, shell: RShell, tokenMap: TokenMap) {
+	constructor(socket: Socket, name: string, shell: RShell) {
 		this.socket = socket
-		this.tokenMap = tokenMap
 		this.shell = shell
 		this.name = name
 		this.logger = serverLog.getSubLogger({ name })
@@ -120,7 +117,7 @@ export class FlowRServerConnection {
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() })
-		const parseConfig = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap: this.tokenMap })
+		const parseConfig = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap: await this.shell.tokenMap() })
 
 		if(message.format === 'n-quads') {
 			sendMessage<FileAnalysisResponseMessageNQuads>(this.socket, {
@@ -155,7 +152,6 @@ export class FlowRServerConnection {
 		const slicer = new SteppingSlicer({
 			stepOfInterest: LAST_STEP,
 			shell:          this.shell,
-			tokenMap:       this.tokenMap,
 			// we have to make sure, that the content is not interpreted as a file path if it starts with 'file://' therefore, we do it manually
 			request:        {
 				request:                message.content === undefined ? 'file' : 'text',
@@ -226,7 +222,7 @@ export class FlowRServerConnection {
 			formatter: request.ansi ? ansiFormatter : voidFormatter,
 			stdout:    msg => out('stdout', msg),
 			stderr:    msg => out('stderr', msg)
-		}, request.expression, this.shell, this.tokenMap).then(() => {
+		}, request.expression, this.shell).then(() => {
 			sendMessage<ExecuteEndMessage>(this.socket, {
 				type: 'end-repl-execution',
 				id:   request.id

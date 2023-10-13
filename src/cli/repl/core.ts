@@ -3,7 +3,7 @@
  *
  * @module
  */
-import { getStoredTokenMap, RShell, TokenMap } from '../../r-bridge'
+import { RShell } from '../../r-bridge'
 import readline from 'readline/promises'
 import { bold } from '../../statistics'
 import { prompt } from './prompt'
@@ -30,12 +30,12 @@ export const DEFAULT_REPL_READLINE_CONFIGURATION: ReadLineOptions = {
 	completer:               replCompleter
 }
 
-async function replProcessStatement(output: ReplOutput, statement: string, shell: RShell, tokenMap: TokenMap) {
+async function replProcessStatement(output: ReplOutput, statement: string, shell: RShell) {
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase()
 		const processor = getCommand(command)
 		if(processor) {
-			await processor.fn(output, shell, tokenMap, statement.slice(command.length + 2).trim())
+			await processor.fn(output, shell, statement.slice(command.length + 2).trim())
 		} else {
 			console.log(`the command '${command}' is unknown, try ${bold(':help')} for more information`)
 		}
@@ -50,14 +50,13 @@ async function replProcessStatement(output: ReplOutput, statement: string, shell
  * @param output   - Defines two methods that every function in the repl uses to output its data.
  * @param expr     - The expression to process.
  * @param shell    - The {@link RShell} to use (see {@link repl}).
- * @param tokenMap - The {@link TokenMap} of the given shell.
  */
-export async function replProcessAnswer(output: ReplOutput, expr: string, shell: RShell, tokenMap: TokenMap): Promise<void> {
+export async function replProcessAnswer(output: ReplOutput, expr: string, shell: RShell): Promise<void> {
 
 	const statements = splitAtEscapeSensitive(expr, ';')
 
 	for(const statement of statements) {
-		await replProcessStatement(output, statement, shell, tokenMap)
+		await replProcessStatement(output, statement, shell)
 	}
 }
 
@@ -69,7 +68,6 @@ export async function replProcessAnswer(output: ReplOutput, expr: string, shell:
  * - Starting with anything else, indicating default R code to be directly executed. If you kill the underlying shell, that is on you! </li>
  *
  * @param shell     - The shell to use, if you do not pass one it will automatically create a new one with the `revive` option set to 'always'
- * @param tokenMap  - The pre-retrieved token map, if you pass none, it will be retrieved automatically (using the default {@link getStoredTokenMap}).
  * @param rl        - A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
  *                    If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
  *                    For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}.
@@ -78,15 +76,13 @@ export async function replProcessAnswer(output: ReplOutput, expr: string, shell:
  * For the execution, this function makes use of {@link replProcessAnswer}
  *
  */
-export async function repl(shell = new RShell({ revive: 'always' }), tokenMap?: TokenMap, rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION), output = standardReplOutput) {
-
-	tokenMap ??= await getStoredTokenMap(shell)
+export async function repl(shell = new RShell({ revive: 'always' }), rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION), output = standardReplOutput) {
 
 	// the incredible repl :D, we kill it with ':quit'
 	// eslint-disable-next-line no-constant-condition,@typescript-eslint/no-unnecessary-condition
 	while(true) {
 		const answer: string = await rl.question(prompt())
 
-		await replProcessAnswer(output, answer, shell, tokenMap)
+		await replProcessAnswer(output, answer, shell)
 	}
 }

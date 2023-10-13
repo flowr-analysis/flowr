@@ -2,12 +2,14 @@ import { type ChildProcessWithoutNullStreams, spawn } from 'child_process'
 import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, type Logger } from 'tslog'
 import * as readline from 'node:readline'
-import { ts2r } from './lang-4.x'
+import { parseCSV, ts2r } from './lang-4.x'
 import { log, LogLevel } from '../util/log'
 import { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 import fs from 'fs'
+import { removeTokenMapQuotationMarks, TokenMap } from './retriever'
+import { DeepWritable } from 'ts-essentials'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -94,7 +96,7 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 } as const
 
 /**
- * RShell represents an interactive session with the R interpreter.
+ * The `RShell` represents an interactive session with the R interpreter.
  * You can configure it by {@link RShellOptions}.
  *
  * At the moment we are using a live R session (and not networking etc.) to communicate with R easily,
@@ -105,7 +107,8 @@ export class RShell {
 	public readonly options: Readonly<RShellOptions>
 	private session:         RShellSession
 	private readonly log:    Logger<ILogObj>
-	private version:         SemVer | null = null
+	private versionCache:    SemVer | null = null
+	private tokenMapCache:   TokenMap | null = null
 	// should never be more than one, but let's be sure
 	private tempDirs         = new Set<string>()
 
@@ -144,14 +147,46 @@ export class RShell {
 	}
 
 	public async usedRVersion(): Promise<SemVer | null> {
-		if(this.version !== null) {
-			return this.version
+		if(this.versionCache !== null) {
+			return this.versionCache
 		}
 		// retrieve raw version:
 		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
 		this.log.trace(`raw version: ${JSON.stringify(result)}`)
-		this.version = semver.coerce(result[0])
-		return result.length === 1 ? this.version : null
+		this.versionCache = semver.coerce(result[0])
+		return result.length === 1 ? this.versionCache : null
+	}
+
+
+	/**
+	 * Retrieve the token map of the xmlparsedata package.
+	 *
+	 * @note For multiple calls, this makes use of caching
+	 */
+	async tokenMap(): Promise<TokenMap> {
+		if(this.tokenMapCache === null) {
+			this.tokenMapCache = await this.retrieveTokenMap()
+		}
+		return this.tokenMapCache
+	}
+
+	private async retrieveTokenMap(): Promise<TokenMap> {
+		await this.ensurePackageInstalled('xmlparsedata', true /* use some kind of environment in the future */)
+		// we invert the token map to get a mapping back from the replacement
+		const parsed = parseCSV(await this.sendCommandWithOutput(
+			'write.table(xmlparsedata::xml_parse_token_map,sep=",",col.names=FALSE)'
+		))
+
+		if(parsed.some(s => s.length !== 2)) {
+			throw new Error(`Expected two columns in token map, but got ${JSON.stringify(parsed)}`)
+		}
+
+		// we swap key and value to get the other direction, furthermore we remove quotes from keys if they are quoted
+		const cache: DeepWritable<TokenMap> = {}
+		for(const [key, value] of parsed) {
+			cache[value] = removeTokenMapQuotationMarks(key)
+		}
+		return cache
 	}
 
 	/**

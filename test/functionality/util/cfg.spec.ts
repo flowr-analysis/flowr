@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import { defaultTokenMap, withShell } from '../helper/shell'
+import { withShell } from '../helper/shell'
 import {
 	ControlFlowGraph,
 	cfg2quads,
@@ -21,8 +21,7 @@ describe('Control Flow Graph', withShell(shell => {
 			const result = await new SteppingSlicer({
 				stepOfInterest: 'normalize',
 				shell,
-				request:        requestFromInput(code),
-				tokenMap:       await defaultTokenMap()
+				request:        requestFromInput(code)
 			}).allRemainingSteps()
 			const cfg = extractCFG(result.normalize)
 
@@ -62,8 +61,7 @@ describe('Control Flow Graph', withShell(shell => {
 		const result = await new SteppingSlicer({
 			stepOfInterest: 'normalize',
 			shell,
-			request:        requestFromInput('if(TRUE) 1'),
-			tokenMap:       await defaultTokenMap()
+			request:        requestFromInput('if(TRUE) 1')
 		}).allRemainingSteps()
 		const cfg = extractCFG(result.normalize)
 

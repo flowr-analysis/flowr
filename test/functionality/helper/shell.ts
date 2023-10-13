@@ -4,14 +4,13 @@ import { DeepPartial } from 'ts-essentials'
 import {
 	DecoratedAstMap,
 	deterministicCountingIdGenerator,
-	getStoredTokenMap,
 	IdGenerator,
 	NodeId,
 	NoInfo, requestFromInput,
 	RExpressionList,
 	RNode,
 	RNodeWithParent,
-	RShell, TokenMap,
+	RShell,
 	XmlParserHooks
 } from '../../../src/r-bridge'
 import { assert } from 'chai'
@@ -20,27 +19,6 @@ import { SlicingCriteria } from '../../../src/slicing'
 import { testRequiresRVersion } from './version'
 import { deepMergeObject, MergeableRecord } from '../../../src/util/objects'
 import { executeSingleSubStep, LAST_STEP, SteppingSlicer } from '../../../src/core'
-
-let _defaultTokenMap: TokenMap | undefined
-
-/**
- * Essentially provides the token map as a singleton.
- * We want the token map only once (to speed up tests)!
- */
-export async function defaultTokenMap(): Promise<TokenMap> {
-	if(_defaultTokenMap === undefined) {
-		const shell = new RShell()
-		try {
-			shell.tryToInjectHomeLibPath()
-			await shell.ensurePackageInstalled('xmlparsedata')
-			_defaultTokenMap = await getStoredTokenMap(shell)
-		} finally {
-			shell.close()
-		}
-	}
-	return _defaultTokenMap
-}
-
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -111,7 +89,6 @@ export const retrieveNormalizedAst = async(shell: RShell, input: `file://${strin
 		stepOfInterest: 'normalize',
 		shell,
 		request,
-		tokenMap:       await defaultTokenMap(),
 		hooks
 	}).allRemainingSteps()).normalize.ast
 }
@@ -155,7 +132,6 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 			stepOfInterest: 'normalize',
 			getId:          deterministicCountingIdGenerator(startIndexForDeterministicIds),
 			shell,
-			tokenMap:       await defaultTokenMap(),
 			request:        requestFromInput(input),
 		}).allRemainingSteps()
 
@@ -173,7 +149,6 @@ export function assertDataflow(name: string, shell: RShell, input: string, expec
 			stepOfInterest: 'dataflow',
 			request:        requestFromInput(input),
 			shell,
-			tokenMap:       await defaultTokenMap(),
 			getId:          deterministicCountingIdGenerator(startIndexForDeterministicIds),
 		}).allRemainingSteps()
 
@@ -211,8 +186,7 @@ export function assertReconstructed(name: string, shell: RShell, input: string, 
 			stepOfInterest: 'normalize',
 			getId:          getId,
 			request:        requestFromInput(input),
-			shell,
-			tokenMap:       await defaultTokenMap(),
+			shell
 		}).allRemainingSteps()
 		const reconstructed = executeSingleSubStep('reconstruct', result.normalize,  new Set(selectedIds))
 		assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, result.normalize.idMap)})`)
@@ -227,7 +201,6 @@ export function assertSliced(name: string, shell: RShell, input: string, criteri
 			getId,
 			request:        requestFromInput(input),
 			shell,
-			tokenMap:       await defaultTokenMap(),
 			criterion:      criteria,
 		}).allRemainingSteps()
 

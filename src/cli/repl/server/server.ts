@@ -1,4 +1,4 @@
-import { RShell, TokenMap } from '../../../r-bridge'
+import { RShell } from '../../../r-bridge'
 import { retrieveVersionInformation, VersionInformation } from '../commands/version'
 import { FlowRServerConnection } from './connection'
 import { getUnnamedSocketName, sendMessage } from './send'
@@ -18,18 +18,16 @@ export const serverLog = new FlowrLogger({ name: 'server' })
 export class FlowRServer {
 	private readonly server:    Server
 	private readonly shell:     RShell
-	private readonly tokenMap:  TokenMap
 	private versionInformation: VersionInformation | undefined
 
 	/** maps names to the respective connection */
 	private connections = new Map<string, FlowRServerConnection>()
 	private nameCounter = 0
 
-	constructor(shell: RShell, tokenMap: TokenMap, server: Server = new NetServer()) {
+	constructor(shell: RShell, server: Server = new NetServer()) {
 		this.server = server
 		this.server.onConnect(c => this.onConnect(c))
 		this.shell = shell
-		this.tokenMap = tokenMap
 	}
 
 	public async start(port: number) {
@@ -46,7 +44,7 @@ export class FlowRServer {
 		const name = `client-${this.nameCounter++}`
 		serverLog.info(`Client connected: ${getUnnamedSocketName(c)} as "${name}"`)
 
-		this.connections.set(name, new FlowRServerConnection(c, name, this.shell, this.tokenMap))
+		this.connections.set(name, new FlowRServerConnection(c, name, this.shell))
 		helloClient(c, name, this.versionInformation)
 		c.on('close', () => {
 			this.connections.delete(name)

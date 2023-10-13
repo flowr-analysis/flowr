@@ -12,7 +12,6 @@ import {
 } from './stats'
 import { DefaultMap } from '../../util/defaultmap'
 import {
-	getStoredTokenMap,
 	retrieveNormalizedAstFromRCode,
 	retrieveNumberOfRTokensOfLastParse,
 	RShell,
@@ -132,7 +131,6 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 	const sizeOfSliceCriteria: number[] = []
 	const reParseShellSession = new RShell()
 	reParseShellSession.tryToInjectHomeLibPath()
-	const tokenMap = await getStoredTokenMap(reParseShellSession)
 
 	const reductions: Reduction<number | undefined>[] = []
 
@@ -170,7 +168,6 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 			fs.writeFileSync(tempfile().name, output)
 			const reParsed = await retrieveNormalizedAstFromRCode(
 				{ request: 'file', content: tempfile().name, ensurePackageInstalled: first },
-				tokenMap,
 				reParseShellSession
 			)
 			first = false

@@ -1,4 +1,5 @@
 import { MergeableRecord } from '../../../../../util/objects'
+import { TokenMap } from '../../../../retriever'
 
 /**
  * Configures the settings for the xml parser (like what names should be used to represent the given objects,
@@ -14,7 +15,7 @@ export interface XmlParserConfig extends MergeableRecord {
 	/** the children are referenced by the given name */
 	childrenName:  string
 	/** Mapping from xml tag name to the real operation of the node */
-	tokenMap:      Record<string, string>
+	tokenMap:      TokenMap
 }
 
 /**

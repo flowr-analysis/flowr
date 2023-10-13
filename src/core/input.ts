@@ -1,5 +1,5 @@
 import { MergeableRecord } from '../util/objects'
-import { IdGenerator, NoInfo, RParseRequest, RShell, TokenMap, XmlParserHooks } from '../r-bridge'
+import { IdGenerator, NoInfo, RParseRequest, RShell, XmlParserHooks } from '../r-bridge'
 import { DeepPartial } from 'ts-essentials'
 import { AutoSelectPredicate, SlicingCriteria } from '../slicing'
 import { STEPS_PER_SLICE, StepName, STEPS_PER_FILE } from './steps'
@@ -19,8 +19,6 @@ interface BaseSteppingSlicerInput<InterestedIn extends StepName | undefined> ext
 	shell:           RShell
 	/** The request which essentially indicates the input to extract the AST from */
 	request:         RParseRequest
-	/** This token map is only necessary if you need to normalize the parsed R AST as we have to deal with automatic token replacements */
-	tokenMap?:       TokenMap
 	/** These hooks only make sense if you at least want to normalize the parsed R AST. They can augment the normalization process */
 	hooks?:          DeepPartial<XmlParserHooks>
 	/** This id generator is only necessary if you want to retrieve a dataflow from the parsed R AST, it determines the id generator to use and by default uses the {@link deterministicCountingIdGenerator}*/
@@ -33,12 +31,10 @@ interface BaseSteppingSlicerInput<InterestedIn extends StepName | undefined> ext
 
 interface NormalizeSteppingSlicerInput<InterestedIn extends 'dataflow' | 'normalize'> extends BaseSteppingSlicerInput<InterestedIn> {
 	stepOfInterest: InterestedIn
-	tokenMap:       TokenMap
 }
 
 interface SliceSteppingSlicerInput<InterestedIn extends 'reconstruct' | 'slice' | undefined> extends BaseSteppingSlicerInput<InterestedIn> {
 	stepOfInterest?: InterestedIn
-	tokenMap:        TokenMap
 	criterion:       SlicingCriteria
 }
 

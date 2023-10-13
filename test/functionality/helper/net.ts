@@ -3,7 +3,6 @@ import * as Buffer from 'buffer'
 import { IdMessageBase } from '../../../src/cli/repl'
 import { RShell } from '../../../src/r-bridge'
 import { FlowRServer } from '../../../src/cli/repl/server/server'
-import { defaultTokenMap } from './shell'
 import { jsonReplacer } from '../../../src/util/json'
 import { guard } from '../../../src/util/assert'
 
@@ -106,7 +105,7 @@ export class FakeSocket implements Socket {
 export function withSocket(shell: RShell, fn: (socket: FakeSocket, server: FakeServer) => Promise<void>): () => Promise<void>  {
 	return async function() {
 		const net = new FakeServer()
-		const server = new FlowRServer(shell, await defaultTokenMap(), net)
+		const server = new FlowRServer(shell, net)
 		await server.start(42)
 		const socket = new FakeSocket()
 		net.connectClient(socket)

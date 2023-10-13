@@ -1,4 +1,4 @@
-import { defaultTokenMap, withShell } from '../helper/shell'
+import { withShell } from '../helper/shell'
 import { fakeSend, withSocket } from '../helper/net'
 import { retrieveVersionInformation } from '../../../src/cli/repl/commands/version'
 import { FlowrHelloResponseMessage } from '../../../src/cli/repl/server/messages/hello'
@@ -76,7 +76,6 @@ describe('FlowR Server', withShell(shell => {
 		const results = await new SteppingSlicer({
 			stepOfInterest: LAST_PER_FILE_STEP,
 			shell,
-			tokenMap:       await defaultTokenMap(),
 			request:        requestFromInput('1 + 1'),
 		}).allRemainingSteps()
 		// hideous

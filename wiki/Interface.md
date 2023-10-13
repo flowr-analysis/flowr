@@ -932,21 +932,16 @@ The main class that represents *flowR*'s slicing is the [`SteppingSlicer`](https
 
 ```typescript
 const shell = new RShell()
-const tokenMap = await getStoredTokenMap(shell)
 
 const stepper = new SteppingSlicer({
   shell:     shell,
-  tokenMap:  tokenMap,
   request:   requestFromInput('x <- 1\nx + 1'),
-  criterion: ['2@x'],
+  criterion: ['2@x']
 })
 
 const slice = await stepper.allRemainingSteps()
 // console.log(slice.reconstruct.code)
 ```
-
-> 💡 Information\
-> Please note, that we plan to [integrate the token map into the shell](https://github.com/Code-Inspect/flowr/issues/287).
 
 After that, you can request more slices with the help of `SteppingSlicer::updateCriterion`:
 
@@ -1002,12 +997,11 @@ These hooks allow the modification of the inputs and outputs of the normalizatio
 
 ```ts
 const shell = new RShell()
-const tokenMap = await getStoredTokenMap(shell)
 
 let counter = 0
 
 await new SteppingSlicer({
-  stepOfInterest: 'normalize', shell, tokenMap,
+  stepOfInterest: 'normalize', shell,
   request: requestFromInput('x <- "foo"'),
   hooks: {
     values: {

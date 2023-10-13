@@ -45,3 +45,5 @@ function objectJson(df: object): string {
 export async function dataflowGraphToJson(df: DataflowInformation): Promise<string> {
 	return objectJson(df)
 }
+
+// TODO error

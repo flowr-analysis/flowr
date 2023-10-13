@@ -93,15 +93,13 @@ async function getStatsForSingleFile() {
 		statisticsFileProvider.append('output-json', 'cfg',       JSON.stringify(cfg, jsonReplacer))
 
 		statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta, jsonReplacer))
-
-		if(options.compress) {
-			guard(target !== undefined, 'target must be defined given the compress option')
-			console.log(`[${date2string(new Date())}] Compressing ${options['output-dir']} to ${target}`)
-			compressFolder(options['output-dir'], target)
-		}
 	} else {
 		log.error(`expected exactly one output vs. ${stats.outputs.size}, got: ${JSON.stringify([...stats.outputs.keys()], jsonReplacer, 2)}`)
-		await setTimeout(500)
+	}
+	if(options.compress) {
+		guard(target !== undefined, 'target must be defined given the compress option')
+		console.log(`[${date2string(new Date())}] Compressing ${options['output-dir']} to ${target}`)
+		compressFolder(options['output-dir'], target)
 	}
 	shell.close()
 }

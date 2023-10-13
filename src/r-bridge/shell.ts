@@ -291,8 +291,11 @@ export class RShell {
 		}
 	}
 
-	// TODO: document, TODO: auto, TODO: safeguard others
-	public async obtainTmpDir() {
+	/**
+	 * Obtain the temporary directory used by R.
+	 * Additionally, this marks the directory for removal when the shell exits.
+	 */
+	public async obtainTmpDir(): Promise<string> {
 		this.sendCommand('temp <- tempdir()')
 		const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${ts2r(this.options.eol)})`)
 		this.tempDirs.add(tempdir)

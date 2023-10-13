@@ -14,7 +14,7 @@
     "summarizer": "ts-node src/cli/summarizer-app.ts",
     "export-quads": "ts-node src/cli/export-quads-app.ts",
     "build": "tsc --project .",
-    "lint-local": "npm run lint -- --rule 'no-warning-comments: off'",
+    "lint-local": "npm run lint -- --rule \"no-warning-comments: off\"",
     "lint": "eslint src/ test/",
     "doc": "typedoc",
     "test": "nyc --no-clean mocha --require ts-node/register --timeout 60000 \"test/**/*.spec.ts\"",

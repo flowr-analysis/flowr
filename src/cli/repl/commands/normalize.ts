@@ -1,12 +1,12 @@
 import { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../core'
-import { requestFromInput, RShell, TokenMap } from '../../../r-bridge'
+import { requestFromInput, RShell } from '../../../r-bridge'
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util/mermaid'
 
-async function normalize(shell: RShell, tokenMap: TokenMap, remainingLine: string) {
+async function normalize(shell: RShell, remainingLine: string) {
 	return await new SteppingSlicer({
 		stepOfInterest: 'normalize',
-		shell, tokenMap,
+		shell,
 		request:        requestFromInput(remainingLine.trim())
 	}).allRemainingSteps()
 }
@@ -16,8 +16,8 @@ export const normalizeCommand: ReplCommand = {
 	usageExample: ':normalize',
 	aliases:      [ 'n' ],
 	script:       false,
-	fn:           async(output, shell, tokenMap, remainingLine) => {
-		const result = await normalize(shell, tokenMap, remainingLine)
+	fn:           async(output, shell, remainingLine) => {
+		const result = await normalize(shell, remainingLine)
 
 		output.stdout(normalizedAstToMermaid(result.normalize.ast))
 	}
@@ -28,8 +28,8 @@ export const normalizeStarCommand: ReplCommand = {
 	usageExample: ':normalize',
 	aliases:      [ 'n*' ],
 	script:       false,
-	fn:           async(output, shell, tokenMap, remainingLine) => {
-		const result = await normalize(shell, tokenMap, remainingLine)
+	fn:           async(output, shell, remainingLine) => {
+		const result = await normalize(shell, remainingLine)
 
 		output.stdout(normalizedAstToMermaidUrl(result.normalize.ast))
 	}

@@ -1,4 +1,3 @@
-import { RParseRequestFromFile } from '../r-bridge'
 import {
 	postProcessFolder,
 	printClusterReport,
@@ -14,7 +13,7 @@ import { guard } from '../util/assert'
 import { allRFilesFrom, writeTableAsCsv } from '../util/files'
 import { DefaultMap } from '../util/defaultmap'
 import { processCommandLineArgs } from './common'
-import { LimitedThreadPool } from '../util/parallel'
+import { Arguments, LimitedThreadPool } from '../util/parallel'
 import { retrieveArchiveName, validateFeatures } from './common/features'
 import path from 'path'
 import { jsonReplacer } from '../util/json'
@@ -87,8 +86,8 @@ if(options['post-process']) {
 
 initFileProvider(options['output-dir'])
 
-const testRegex = /test/i
-const exampleRegex = /example/i
+const testRegex = /[^/]*\/test/i
+const exampleRegex = /[^/]*\/example/i
 
 function getPrefixForFile(file: string) {
 	if(testRegex.test(file)) {
@@ -105,12 +104,22 @@ function getSuffixForFile(base: string, file: string) {
 	return '--' + subpath.replace(/\//g, '／')
 }
 
-async function collectFiles() {
-	const files: RParseRequestFromFile[] = []
+async function collectFileArguments(verboseAdd: string[], compress: string[], features: string[]) {
+	const files: Arguments[] = []
 	let counter = 0
 	let presentSteps = 5000
-	for await (const file of allRFilesFrom(options.input)) {
-		files.push(file)
+	let skipped = 0
+	for await (const f of allRFilesFrom(options.input)) {
+		const outputDir = path.join(options['output-dir'], `${getPrefixForFile(f.content)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`)
+		if(options.compress) {
+			const target = retrieveArchiveName(outputDir)
+			if(fs.existsSync(target)) {
+				console.log(`Archive ${target} exists. Skip.`)
+				skipped++
+				continue
+			}
+		}
+		files.push(['--input', f.content, '--output-dir', outputDir, ...verboseAdd, ...features, ...compress])
 		if(++counter % presentSteps === 0) {
 			console.log(`Collected ${counter} files`)
 			if(counter >= 10 * presentSteps) {
@@ -118,7 +127,7 @@ async function collectFiles() {
 			}
 		}
 	}
-	console.log(`Total: ${counter} files`)
+	console.log(`Total: ${counter} files (${skipped} skipped with archive existing)`)
 	return files
 }
 
@@ -126,33 +135,29 @@ async function getStats() {
 	console.log(`Processing features: ${JSON.stringify(processedFeatures, jsonReplacer)}`)
 	console.log(`Using ${options.parallel} parallel executors`)
 
-	// we do not use the limit argument to be able to pick the limit randomly
-	const files = await collectFiles()
-
-	if(options.limit) {
-		log.info(`limiting to ${options.limit} files`)
-		// shuffle and limit
-		files.sort(() => Math.random() - 0.5)
-	}
-	console.log('Prepare Pool...')
-
-	const limit = options.limit ?? files.length
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
 	const compress = options.compress ? ['--compress'] : []
 	const features = [...processedFeatures].flatMap(s => ['--features', s])
+
+	// we do not use the limit argument to be able to pick the limit randomly
+	const args = await collectFileArguments(verboseAdd, compress, features)
+
+	if(options.limit) {
+		console.log('Shuffle...')
+		log.info(`limiting to ${options.limit} files`)
+		// shuffle and limit
+		args.sort(() => Math.random() - 0.5)
+	}
+	console.log('Prepare Pool...')
+
+	const limit = options.limit ?? args.length
+
 	const pool = new LimitedThreadPool(
 		`${__dirname}/statistics-helper-app`,
-		files.map(f => ['--input', f.content, '--output-dir', path.join(options['output-dir'], `${getPrefixForFile(f.content)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`), ...verboseAdd, ...features, ...compress]),
+		args,
 		limit,
-		options.parallel,
-		args => {
-			if(options.compress) {
-				return !fs.existsSync(retrieveArchiveName(args[3]))
-			} else {
-				return true
-			}
-		}
+		options.parallel
 	)
 	console.log('Run Pool...')
 	await pool.run()

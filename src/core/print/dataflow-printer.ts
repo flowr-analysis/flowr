@@ -6,3 +6,5 @@ import { DataflowInformation } from '../../dataflow/internal/info'
 export async function dataflowGraphToJson(ast: DataflowInformation): Promise<string> {
 	return JSON.stringify(ast, jsonReplacer)
 }
+
+// TODO error

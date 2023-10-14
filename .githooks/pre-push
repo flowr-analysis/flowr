@@ -9,12 +9,22 @@ fi
 
 
 reset() {
-  echo "Restoring working tree"
-  git stash pop
+  echo "Cleaning up and return control"
+  rm -r "$flowrtmpdir"
+  cd "$curdir"
 }
 
 if [ -n "$(git status --porcelain)" ]; then
-  echo "Working tree is not clean, temporary reset"
+  echo "Working tree is not clean, so we reset in temporary folder"
+  # backwards compatible platform independence
+  flowrtmpdir=$(mktemp -d 2>/dev/null || mktemp -d -t 'flowrtmpdir')
+  echo "Using temporary folder $flowrtmpdir"
+
+  curdir=$(pwd)
+
+  cp -r . "$flowrtmpdir"
+  cd "$flowrtmpdir"
+
   git stash save --keep-index --include-untracked
   trap reset EXIT
 fi
@@ -22,5 +32,11 @@ fi
 echo "Linting project (local mode)..."
 npm run lint-local
 
-command -v git-lfs >/dev/null 2>&1 || { echo >&2 "\nThis repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting '.git/hooks/pre-push'.\n"; exit 2; }
-git lfs pre-push "$@"
+lfspre() {
+  command -v git-lfs >/dev/null 2>&1 || { echo >&2 "\nThis repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting '.git/hooks/pre-push'.\n"; exit 2; }
+  git lfs pre-push "$@"
+}
+
+# we register it as a trap after lint so that it 1) triggers only if lint-local succeeded
+# but 2) only triggers *after* the directory recovery completed
+trap lfspre EXIT

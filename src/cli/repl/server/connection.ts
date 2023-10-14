@@ -30,6 +30,7 @@ import { xlm2jsonObject } from '../../../r-bridge/lang-4.x/ast/parser/xml/intern
 import { deepMergeObject } from '../../../util/objects'
 import { df2quads } from '../../../dataflow/graph/quads'
 import { DataflowGraph } from '../../../dataflow'
+import { LogLevel } from '../../../util/log'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -64,7 +65,9 @@ export class FlowRServerConnection {
 			return
 		}
 		message = this.currentMessageBuffer + message
-		this.logger.debug(`[${this.name}] Received message: ${message}`)
+		if(this.logger.settings.minLevel >= LogLevel.Debug) {
+			this.logger.debug(`[${this.name}] Received message: ${message}`)
+		}
 
 		this.currentMessageBuffer = ''
 		const request = validateBaseMessageFormat(message)
@@ -100,9 +103,9 @@ export class FlowRServerConnection {
 			return
 		}
 		const message = requestResult.message
-		this.logger.info(`[${this.name}] Received file analysis request for ${message.filename ?? 'unknown file'} (token: ${message.filetoken})`)
+		this.logger.info(`[${this.name}] Received file analysis request for ${message.filename ?? 'unknown file'}${message.filetoken ? ' with token: ' + message.filetoken : ''}`)
 
-		if(this.fileMap.has(message.filetoken)) {
+		if(message.filetoken && this.fileMap.has(message.filetoken)) {
 			this.logger.warn(`File token ${message.filetoken} already exists. Overwriting.`)
 		}
 		const slicer = this.createSteppingSlicerForRequest(message)
@@ -160,10 +163,13 @@ export class FlowRServerConnection {
 			},
 			criterion: [] // currently unknown
 		})
-		this.fileMap.set(message.filetoken, {
-			filename: message.filename,
-			slicer
-		})
+		if(message.filetoken) {
+			this.logger.info(`Storing file token ${message.filetoken}`)
+			this.fileMap.set(message.filetoken, {
+				filename: message.filename,
+				slicer
+			})
+		}
 		return slicer
 	}
 

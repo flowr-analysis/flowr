@@ -98,7 +98,11 @@ sequenceDiagram
 </details>
 
 The request allows the server to analyze a file and prepare it for slicing.
-The message must contain a `filetoken`, which is used to identify the file in later slice requests.
+The message can contain a `filetoken`, which is used to identify the file in later slice requests (if you do not add one, the request will not be stored and therefore be unavailable for slicing).
+
+> 💡 Information\
+> If you want to send and process a lot of analysis requests, but do not want to slice them, please do not pass the `filetoken` field. This will save the server a lot of memory allocation.
+
 Furthermore, it must contain either a `content` field to directly pass the file's content or a `filepath` field which contains the path to the file (which must be accessible for the server to be useful).
 If you add the `id` field, the answer will use the same `id` so you can match requests and the corresponding answers.
 See the implementation of the [request-file-analysis message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/analysis.ts) for more information.
@@ -687,7 +691,6 @@ Within the started session, type the following message and press enter to see th
 
 ### The Slice Request
 
-
 <details open>
 <summary>Sequence Diagram</summary>
 
@@ -916,7 +919,6 @@ For now there are no alternatives (although we plan on providing more flexible d
 
 > 💡 Information\
 > Each `RShell` controls a new instance of the R&nbsp;interpreter, make sure to call `RShell::close()` when you are done.
-
 
 You can start a new "session" simply by constructing a new object with `new RShell()`.
 However, there are several options which may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system). See the [documentation](https://code-inspect.github.io/flowr/doc/classes/src_r_bridge_shell.RShell.html) for more information.

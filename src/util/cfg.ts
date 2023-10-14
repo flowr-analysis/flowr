@@ -294,10 +294,6 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInfor
 		}
 	}
 
-	for(const entryPoint of body.entryPoints) {
-		graph.addEdge(forLoop.info.id, entryPoint, { label: 'FD' })
-	}
-
 	for(const next of [...body.nexts, ...body.exitPoints]) {
 		graph.addEdge(forLoop.info.id, next, { label: 'FD' })
 	}

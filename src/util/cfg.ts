@@ -570,7 +570,7 @@ export function equalCfg(a: ControlFlowGraph | undefined, b: ControlFlowGraph | 
 	for(const [from, aTo] of aEdges) {
 		const bTo = bEdges.get(from)
 		if(bTo === undefined || aTo.size !== bTo.size) {
-			log.debug(`edge count for ${from} differs ${aTo.size} vs. ${bTo?.size}.`)
+			log.debug(`edge count for ${from} differs ${aTo.size} vs. ${bTo?.size ?? '?'}.`)
 			return false
 		}
 		for(const [to, aEdge] of aTo) {

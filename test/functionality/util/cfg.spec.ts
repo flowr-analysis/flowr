@@ -67,6 +67,49 @@ describe('Control Flow Graph', withShell(shell => {
 			.addEdge('2-exit', '1', { label: 'FD' })
 	})
 
+	assertCfg('f(2 + 3, x=3)', {
+		entryPoints: [ '8' ],
+		exitPoints:  [ '8-exit' ],
+		graph:       new ControlFlowGraph()
+			.addVertex({ id: '0', name: RType.Symbol })
+			.addVertex({ id: '8', name: RType.FunctionCall })
+			.addVertex({ id: '8-name', name: 'call-name' })
+			.addVertex({ id: '8-exit', name: 'call-exit' })
+
+			.addVertex({ id: '4', name: RType.Argument })
+			.addVertex({ id: '4-before-value', name: 'before-value' })
+			.addVertex({ id: '1', name: RType.Number })
+			.addVertex({ id: '2', name: RType.Number })
+			.addVertex({ id: '3', name: RType.BinaryOp })
+			.addVertex({ id: '3-exit', name: 'binOp-exit' })
+			.addVertex({ id: '4-exit', name: 'exit' })
+
+			.addVertex({ id: '7', name: RType.Argument })
+			.addVertex({ id: '5', name: RType.Symbol })
+			.addVertex({ id: '7-before-value', name: 'before-value' })
+			.addVertex({ id: '6', name: RType.Number })
+			.addVertex({ id: '7-exit', name: 'exit' })
+
+
+
+			.addEdge('0', '8', { label: 'FD' })
+			.addEdge('8-name', '0', { label: 'FD' })
+			.addEdge('4', '8-name', { label: 'FD' })
+			.addEdge('4-before-value', '4', { label: 'FD' })
+			.addEdge('3', '4-before-value', { label: 'FD' })
+			.addEdge('1', '3', { label: 'FD' })
+			.addEdge('2', '1', { label: 'FD' })
+			.addEdge('3-exit', '2', { label: 'FD' })
+			.addEdge('4-exit', '3-exit', { label: 'FD' })
+
+			.addEdge('7', '4-exit', { label: 'FD' })
+			.addEdge('5', '7', { label: 'FD' })
+			.addEdge('7-before-value', '5', { label: 'FD' })
+			.addEdge('6', '7-before-value', { label: 'FD' })
+			.addEdge('7-exit', '6', { label: 'FD' })
+			.addEdge('8-exit', '7-exit', { label: 'FD' })
+	})
+
 	it('Example Quad Export', async() => {
 		const domain = 'https://uni-ulm.de/r-ast/'
 		const context = 'test'

@@ -11,13 +11,15 @@ RUN npm install
 RUN npm run build
 
 
-FROM node:20.5-alpine3.17 AS flowR
+FROM node:20.8-alpine3.17 AS flowR
 
 LABEL author="Florian Sihler" git="https://github.com/Code-Inspect/flowr"
 
 WORKDIR /app
 
 RUN apk add --no-cache R
+# install the xmlparsedata package because we need it
+RUN Rscript -e "install.packages('xmlparsedata', repos='http://cran.us.r-project.org')"
 
 # we keep the package.json for module resolution
 COPY ../package.json LICENSE /app/

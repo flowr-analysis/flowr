@@ -1,5 +1,5 @@
-import { NodeId, NoInfo, NormalizedAst, RNodeWithParent, RoleInParent, visitAst } from '../r-bridge'
-import { SourceRange } from './range'
+import { NodeId, NoInfo } from '../../r-bridge'
+import { SourceRange } from '../range'
 import {
 	BuiltIn,
 	DataflowFunctionFlowInformation,
@@ -10,11 +10,11 @@ import {
 	DataflowMap,
 	FunctionArgument,
 	IdentifierReference
-} from '../dataflow'
-import { guard } from './assert'
-import { jsonReplacer } from './json'
-import { DataflowScopeName } from '../dataflow/environments'
-import { ControlFlowInformation } from './cfg'
+} from '../../dataflow'
+import { guard } from '../assert'
+import { jsonReplacer } from '../json'
+import { DataflowScopeName } from '../../dataflow/environments'
+import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
 
 
 interface MermaidGraph {
@@ -96,11 +96,6 @@ function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
 	}
 	return result.length === 0 ? '' : `\n    (${result.join(', ')})`
 }
-
-function escapeMarkdown(text: string): string {
-	return text.replaceAll(/([+\-*])/g, '\\$1').replaceAll('"', '\'\'')
-}
-
 function encodeEdge(from: string, to: string, types: Set<EdgeType>, attribute: string): string {
 	// sort from and to for same edges and relates be order independent
 	if(types.has(EdgeType.SameReadRead) || types.has(EdgeType.SameDefDef) || types.has(EdgeType.Relates)) {
@@ -184,22 +179,6 @@ export function graphToMermaid(graph: DataflowGraph, dataflowIdMap: DataflowMap<
 }
 
 /**
- * Converts mermaid code (potentially produced by {@link graphToMermaid}) to an url that presents the graph in the mermaid editor.
- *
- * @param code - code to convert
- */
-export function mermaidCodeToUrl(code: string): string {
-	const obj = {
-		code,
-		mermaid:       {},
-		updateEditor:  false,
-		autoSync:      true,
-		updateDiagram: false
-	}
-	return `https://mermaid.live/edit#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}`
-}
-
-/**
  * Converts a dataflow graph to a mermaid url that visualizes the graph.
  *
  * @param graph         - The graph to convert
@@ -227,62 +206,4 @@ export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGr
 
 export function diffGraphsToMermaidUrl(left: LabeledDiffGraph, right: LabeledDiffGraph, dataflowIdMap: DataflowMap<NoInfo> | undefined, prefix: string): string {
 	return mermaidCodeToUrl(diffGraphsToMermaid(left, right, dataflowIdMap, prefix))
-}
-
-export function normalizedAstToMermaid(ast: RNodeWithParent, prefix = ''): string {
-	let output = prefix + 'flowchart TD\n'
-	visitAst(ast, n => {
-		const name = `${n.type} (${n.info.id})\\n${n.lexeme ?? ' '}`
-		output += `    n${n.info.id}(["${escapeMarkdown(name)}"])\n`
-		if(n.info.parent !== undefined) {
-			const context = n.info
-			const roleSuffix = context.role === RoleInParent.ExpressionListChild || context.role === RoleInParent.FunctionCallArgument || context.role === RoleInParent.FunctionDefinitionParameter ? `-${context.index}` : ''
-			output += `    n${n.info.parent} -->|"${context.role}${roleSuffix}"| n${n.info.id}\n`
-		}
-		return false
-	})
-	return output
-}
-
-/**
- * Use mermaid to visualize the normalized AST.
- */
-export function normalizedAstToMermaidUrl(ast: RNodeWithParent, prefix = ''): string {
-	return mermaidCodeToUrl(normalizedAstToMermaid(ast, prefix))
-}
-
-function getLexeme(n?: RNodeWithParent) {
-	return n ? n.info.fullLexeme ?? n.lexeme ?? '<unknown>' : ''
-}
-
-
-
-export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = ''): string {
-	let output = prefix + 'flowchart TD\n'
-
-	for(const [id, vertex] of cfg.graph.vertices()) {
-		const normalizedVertex = normalizedAst.idMap.get(id)
-		const content = getLexeme(normalizedVertex)
-		if(content.length > 0) {
-			const name = `"\`${escapeMarkdown(vertex.name)} (${id})\n${escapeMarkdown(JSON.stringify(content))}\`"`
-			output += `    n${id}[${name}]\n`
-		} else {
-			output += `    n${id}(( ))\n`
-		}
-	}
-	for(const [from, targets] of cfg.graph.edges()) {
-		for(const [to, edge] of targets) {
-			const edgeType = edge.label === 'CD' ? '-->' : '-.->'
-			const edgeSuffix = edge.label === 'CD' ? ` (${edge.when})` : ''
-			output += `    n${from} ${edgeType}|"${escapeMarkdown(edge.label)}${edgeSuffix}"| n${to}\n`
-		}
-	}
-	return output
-}
-
-/**
- * Use mermaid to visualize the normalized AST.
- */
-export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = ''): string {
-	return mermaidCodeToUrl(cfgToMermaid(cfg, normalizedAst, prefix))
 }

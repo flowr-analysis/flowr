@@ -1,10 +1,8 @@
 import { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../core'
 import { requestFromInput, RShell } from '../../../r-bridge'
-import {
-	cfgToMermaid, cfgToMermaidUrl
-} from '../../../util/mermaid'
 import { extractCFG } from '../../../util/cfg'
+import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid'
 
 async function controlflow(shell: RShell, remainingLine: string) {
 	return await new SteppingSlicer({

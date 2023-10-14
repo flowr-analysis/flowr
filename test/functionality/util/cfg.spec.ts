@@ -10,8 +10,8 @@ import {
 } from '../../../src/util/cfg'
 import { SteppingSlicer } from '../../../src/core'
 import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
-import { cfgToMermaidUrl } from '../../../src/util/mermaid'
 import { defaultQuadIdGenerator } from '../../../src/util/quads'
+import { cfgToMermaidUrl } from '../../../src/util/mermaid'
 
 describe('Control Flow Graph', withShell(shell => {
 	 function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {

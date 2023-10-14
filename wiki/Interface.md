@@ -99,6 +99,10 @@ sequenceDiagram
 
 The request allows the server to analyze a file and prepare it for slicing.
 The message can contain a `filetoken`, which is used to identify the file in later slice requests (if you do not add one, the request will not be stored and therefore be unavailable for slicing).
+
+> 💡 Information\
+> If you want to send and process a lot of analysis requests, but do not want to slice them, please do not pass the `filetoken` field. This will save the server a lot of memory allocation.
+
 Furthermore, it must contain either a `content` field to directly pass the file's content or a `filepath` field which contains the path to the file (which must be accessible for the server to be useful).
 If you add the `id` field, the answer will use the same `id` so you can match requests and the corresponding answers.
 See the implementation of the [request-file-analysis message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/analysis.ts) for more information.

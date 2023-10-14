@@ -347,9 +347,10 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 
 function cfgBinaryOp(binOp: RNodeWithParent, lhs: ControlFlowInformation, rhs: ControlFlowInformation): ControlFlowInformation {
 	const graph = new ControlFlowGraph().merge(lhs.graph).merge(rhs.graph)
-	const result: ControlFlowInformation = { graph, breaks: [...lhs.breaks, ...rhs.breaks], nexts: [...lhs.nexts, ...rhs.nexts], returns: [...lhs.returns, ...rhs.returns], entryPoints: [binOp.info.id], exitPoints: [...rhs.entryPoints] }
+	const result: ControlFlowInformation = { graph, breaks: [...lhs.breaks, ...rhs.breaks], nexts: [...lhs.nexts, ...rhs.nexts], returns: [...lhs.returns, ...rhs.returns], entryPoints: [binOp.info.id], exitPoints: [binOp.info.id + '-exit'] }
 
 	graph.addVertex({ id: binOp.info.id, name: binOp.type })
+	graph.addVertex({ id: binOp.info.id + '-exit', name: 'binOp-exit' })
 
 	for(const exitPoint of lhs.exitPoints) {
 		for(const entryPoint of rhs.entryPoints) {
@@ -358,6 +359,9 @@ function cfgBinaryOp(binOp: RNodeWithParent, lhs: ControlFlowInformation, rhs: C
 	}
 	for(const entryPoint of lhs.entryPoints) {
 		graph.addEdge(entryPoint, binOp.info.id, { label: 'FD' })
+	}
+	for(const exitPoint of rhs.exitPoints) {
+		graph.addEdge(binOp.info.id + '-exit', exitPoint, { label: 'FD' })
 	}
 
 	return result

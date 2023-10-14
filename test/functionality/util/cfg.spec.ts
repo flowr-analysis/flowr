@@ -54,6 +54,20 @@ describe('Control Flow Graph', withShell(shell => {
 			.addEdge('3-exit', '0', { label: 'CD', when: RFalse })
 	})
 
+	assertCfg('2 + 3', {
+		entryPoints: [ '3' ],
+		exitPoints:  [ '3-exit' ],
+		graph:       new ControlFlowGraph()
+			.addVertex({ id: '0', name: RType.Logical })
+			.addVertex({ id: '1', name: RType.Number })
+			.addVertex({ id: '3', name: RType.IfThenElse })
+			.addVertex({ id: '3-exit', name: 'if-exit' })
+			.addEdge('0', '3', { label: 'FD' })
+			.addEdge('1', '0', { label: 'CD', when: RTrue })
+			.addEdge('3-exit', '1', { label: 'FD' })
+			.addEdge('3-exit', '0', { label: 'CD', when: RFalse })
+	})
+
 	it('Example Quad Export', async() => {
 		const domain = 'https://uni-ulm.de/r-ast/'
 		const context = 'test'

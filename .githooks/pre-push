@@ -7,6 +7,7 @@ if ! [ -x "$(command -v npm)" ]; then
   exit 2
 fi
 
+
 reset() {
   echo "Cleaning up and return control"
   rm -r "$flowrtmpdir"
@@ -27,11 +28,12 @@ if [ -n "$(git status --porcelain)" ]; then
   echo "Cloning copy..." # cloning obeys gitignore
   git clone . "$flowrtmpdir"
   echo "Keep installed packages..."
-  cp -r node_modules "$flowrtmpdir/node_modules"
+  cp -r node_modules/ "$flowrtmpdir/node_modules"
   cd "$flowrtmpdir"
 
   git reset --hard
   trap reset EXIT
+  echo "Setup completed."
 fi
 
 echo "Linting project (local mode)..."

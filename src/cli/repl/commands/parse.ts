@@ -120,7 +120,7 @@ function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig,
 
 
 export const parseCommand: ReplCommand = {
-	description:  'Prints ASCII Art of the parsed, unmodified AST, start with \'file://\' to indicate a file.',
+	description:  'Prints ASCII Art of the parsed, unmodified AST, start with \'file://\' to indicate a file',
 	usageExample: ':parse',
 	aliases:      [ 'p' ],
 	script:       false,

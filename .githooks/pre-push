@@ -7,13 +7,11 @@ if ! [ -x "$(command -v npm)" ]; then
   exit 2
 fi
 
-
 reset() {
   echo "Cleaning up and return control"
   rm -r "$flowrtmpdir"
   cd "$curdir"
 }
-
 
 unclean=false
 if [ -n "$(git status --porcelain)" ]; then

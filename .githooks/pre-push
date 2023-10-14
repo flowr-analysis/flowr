@@ -25,8 +25,10 @@ if [ -n "$(git status --porcelain)" ]; then
 
   curdir=$(pwd)
 
-  echo "Create copy..."
-  cp -r . "$flowrtmpdir"
+  echo "Cloning copy..." # cloning obeys gitignore
+  git clone . "$flowrtmpdir"
+  echo "Keep installed packages..."
+  cp -r node_modules "$flowrtmpdir/node_modules"
   cd "$flowrtmpdir"
 
   git stash save --keep-index --include-untracked

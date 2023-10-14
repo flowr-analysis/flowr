@@ -25,7 +25,8 @@ if [ -n "$(git status --porcelain)" ]; then
 
   curdir=$(pwd)
 
-  cp -r . "$flowrtmpdir"
+  echo "copy..."
+  cp -r src/ test/ package.json node_modules/ "$flowrtmpdir"
   cd "$flowrtmpdir"
 
   git stash save --keep-index --include-untracked
@@ -37,6 +38,7 @@ npm run lint-local
 
 
 args="$*"
+echo "$args"
 lfspre() {
   if $unclean; then
     reset

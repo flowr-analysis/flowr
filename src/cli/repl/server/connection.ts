@@ -30,6 +30,7 @@ import { xlm2jsonObject } from '../../../r-bridge/lang-4.x/ast/parser/xml/intern
 import { deepMergeObject } from '../../../util/objects'
 import { df2quads } from '../../../dataflow/graph/quads'
 import { DataflowGraph } from '../../../dataflow'
+import { LogLevel } from '../../../util/log'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -64,7 +65,9 @@ export class FlowRServerConnection {
 			return
 		}
 		message = this.currentMessageBuffer + message
-		this.logger.debug(`[${this.name}] Received message: ${message}`)
+		if(this.logger.settings.minLevel >= LogLevel.Debug) {
+			this.logger.debug(`[${this.name}] Received message: ${message}`)
+		}
 
 		this.currentMessageBuffer = ''
 		const request = validateBaseMessageFormat(message)

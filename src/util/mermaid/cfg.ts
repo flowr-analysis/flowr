@@ -27,6 +27,13 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 			output += `    n${from} ${edgeType}|"${escapeMarkdown(edge.label)}${edgeSuffix}"| n${to}\n`
 		}
 	}
+
+	for(const entryPoint of cfg.entryPoints) {
+		output += `    style n${entryPoint} stroke:cyan,stroke-width:6.5px;`
+	}
+	for(const exitPoint of cfg.exitPoints) {
+		output += `    style n${exitPoint} stroke:green,stroke-width:6.5px;`
+	}
 	return output
 }
 

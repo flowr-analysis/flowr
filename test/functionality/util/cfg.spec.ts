@@ -90,8 +90,6 @@ describe('Control Flow Graph', withShell(shell => {
 			.addVertex({ id: '6', name: RType.Number })
 			.addVertex({ id: '7-exit', name: 'exit' })
 
-
-
 			.addEdge('0', '8', { label: 'FD' })
 			.addEdge('8-name', '0', { label: 'FD' })
 			.addEdge('4', '8-name', { label: 'FD' })

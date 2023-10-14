@@ -14,6 +14,7 @@ reset() {
   cd "$curdir"
 }
 
+
 unclean=false
 if [ -n "$(git status --porcelain)" ]; then
   # if we directly assign the test set -eu will not approve
@@ -31,7 +32,7 @@ if [ -n "$(git status --porcelain)" ]; then
   cp -r node_modules "$flowrtmpdir/node_modules"
   cd "$flowrtmpdir"
 
-  git stash save --keep-index --include-untracked
+  git reset --hard
   trap reset EXIT
 fi
 

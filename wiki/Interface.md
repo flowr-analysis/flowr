@@ -687,7 +687,6 @@ Within the started session, type the following message and press enter to see th
 
 ### The Slice Request
 
-
 <details open>
 <summary>Sequence Diagram</summary>
 
@@ -916,7 +915,6 @@ For now there are no alternatives (although we plan on providing more flexible d
 
 > 💡 Information\
 > Each `RShell` controls a new instance of the R&nbsp;interpreter, make sure to call `RShell::close()` when you are done.
-
 
 You can start a new "session" simply by constructing a new object with `new RShell()`.
 However, there are several options which may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system). See the [documentation](https://code-inspect.github.io/flowr/doc/classes/src_r_bridge_shell.RShell.html) for more information.

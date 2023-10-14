@@ -81,7 +81,6 @@ jobs:
           # make the branch an orphan
           git checkout --orphan gh-pages-orphan-tmp
           git commit -m "Current documentation stage"
-          git rebase --onto gh-pages-orphan-tmp gh-pages
 
       - name: Push New Documentation
         if: ${{ inputs.action == 'doc' }}

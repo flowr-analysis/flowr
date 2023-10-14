@@ -21,7 +21,7 @@ RUN apk add --no-cache R
 
 # we keep the package.json for module resolution
 COPY ../package.json LICENSE /app/
-RUN npm install --only=production
+RUN npm install --omit=dev
 
 COPY --from=builder /app/dist/src /app/dist
 RUN rm -rf /app/dist/tsconfig.tsbuildinfo

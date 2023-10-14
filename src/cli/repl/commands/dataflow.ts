@@ -4,7 +4,7 @@ import { requestFromInput, RShell } from '../../../r-bridge'
 import {
 	graphToMermaid,
 	graphToMermaidUrl
-} from '../../../util/mermaid'
+} from '../../../util/mermaid/dfg'
 
 async function dataflow(shell: RShell, remainingLine: string) {
 	return await new SteppingSlicer({
@@ -15,7 +15,7 @@ async function dataflow(shell: RShell, remainingLine: string) {
 }
 
 export const dataflowCommand: ReplCommand = {
-	description:  'Get mermaid code for the dataflow graph of R code, start with \'file://\' to indicate a file.',
+	description:  'Get mermaid code for the dataflow graph of R code, start with \'file://\' to indicate a file',
 	usageExample: ':dataflow',
 	aliases:      [ 'd', 'df' ],
 	script:       false,
@@ -27,7 +27,7 @@ export const dataflowCommand: ReplCommand = {
 }
 
 export const dataflowStarCommand: ReplCommand = {
-	description:  'Get a mermaid url of the dataflow graph of R code, start with \'file://\' to indicate a file.',
+	description:  'Get a mermaid url of the dataflow graph of R code, start with \'file://\' to indicate a file',
 	usageExample: ':dataflow*',
 	aliases:      [ 'd*', 'df*' ],
 	script:       false,

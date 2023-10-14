@@ -8,25 +8,27 @@ import { ControlFlowInformation } from '../../../../util/cfg'
  * Answered by either an {@link FlowrErrorMessage} or a {@link FileAnalysisResponseMessageJson}.
  */
 export interface FileAnalysisRequestMessage extends IdMessageBase {
-	type:      'request-file-analysis',
+	type:       'request-file-analysis',
 	/**
 	 * This is a unique token that you assign to subsequently slice the respective files.
 	 * If you pass the same token multiple times, previous results will be overwritten.
+	 *
+	 * If you do not pass a file token, the server will _not_ store the results!
 	 */
-	filetoken: string,
+	filetoken?: string,
 	/**
 	 * A human-readable file name. If you present a `filepath` or read from a file this should be straightforward.
 	 * However, the name is only for debugging and bears no semantic meaning.
 	 */
-	filename?: string,
+	filename?:  string,
 	/** The contents of the file, or an R expression itself (like `1 + 1`), give either this or the `filepath`. */
-	content?:  string
+	content?:   string
 	/** The filepath on the local machine, accessible to flowR, or simply. Give either this or the `content` */
-	filepath?: string
+	filepath?:  string
 	/** Can be used to additionally extract the {@link ControlFlowInformation} of the file, which is not exposed (and not fully calculated) by default. */
-	cfg?:      boolean
+	cfg?:       boolean
 	/** Controls the serialization of the `results` (and the {@link ControlFlowGraph} if the corresponding flag is set). If missing, we assume _json_. */
-	format?:   'json' | 'n-quads'
+	format?:    'json' | 'n-quads'
 }
 
 
@@ -35,7 +37,7 @@ export const requestAnalysisMessage: MessageDefinition<FileAnalysisRequestMessag
 	schema: Joi.object({
 		type:      Joi.string().valid('request-file-analysis').required(),
 		id:        Joi.string().optional(),
-		filetoken: Joi.string().required(),
+		filetoken: Joi.string().optional(),
 		filename:  Joi.string().optional(),
 		content:   Joi.string().optional(),
 		filepath:  Joi.string().optional(),

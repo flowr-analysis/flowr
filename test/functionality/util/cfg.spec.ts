@@ -55,17 +55,16 @@ describe('Control Flow Graph', withShell(shell => {
 	})
 
 	assertCfg('2 + 3', {
-		entryPoints: [ '3' ],
-		exitPoints:  [ '3-exit' ],
+		entryPoints: [ '2' ],
+		exitPoints:  [ '2-exit' ],
 		graph:       new ControlFlowGraph()
-			.addVertex({ id: '0', name: RType.Logical })
+			.addVertex({ id: '0', name: RType.Number })
 			.addVertex({ id: '1', name: RType.Number })
-			.addVertex({ id: '3', name: RType.IfThenElse })
-			.addVertex({ id: '3-exit', name: 'if-exit' })
-			.addEdge('0', '3', { label: 'FD' })
-			.addEdge('1', '0', { label: 'CD', when: RTrue })
-			.addEdge('3-exit', '1', { label: 'FD' })
-			.addEdge('3-exit', '0', { label: 'CD', when: RFalse })
+			.addVertex({ id: '2', name: RType.BinaryOp })
+			.addVertex({ id: '2-exit', name: 'binOp-exit' })
+			.addEdge('0', '2', { label: 'FD' })
+			.addEdge('1', '0', { label: 'FD' })
+			.addEdge('2-exit', '1', { label: 'FD' })
 	})
 
 	it('Example Quad Export', async() => {

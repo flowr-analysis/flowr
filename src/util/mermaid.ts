@@ -1,4 +1,4 @@
-import { NodeId, NoInfo, RNodeWithParent, RoleInParent, visitAst } from '../r-bridge'
+import { NodeId, NoInfo, NormalizedAst, RNodeWithParent, RoleInParent, visitAst } from '../r-bridge'
 import { SourceRange } from './range'
 import {
 	BuiltIn,
@@ -251,14 +251,20 @@ export function normalizedAstToMermaidUrl(ast: RNodeWithParent, prefix = ''): st
 	return mermaidCodeToUrl(normalizedAstToMermaid(ast, prefix))
 }
 
+function getLexeme(n?: RNodeWithParent) {
+	return n ? n.info.fullLexeme ?? n.lexeme ?? '<unknown>' : ''
+}
 
 
-export function cfgToMermaid(cfg: ControlFlowInformation, prefix = ''): string {
+
+export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = ''): string {
 	let output = prefix + 'flowchart TD\n'
 
 	for(const [id, vertex] of cfg.graph.vertices()) {
-		if(vertex.content) {
-			const name = `"\`${escapeMarkdown(vertex.name)} (${id})\n${escapeMarkdown(JSON.stringify(vertex.content))}\`"`
+		const normalizedVertex = normalizedAst.idMap.get(id)
+		const content = getLexeme(normalizedVertex)
+		if(content.length > 0) {
+			const name = `"\`${escapeMarkdown(vertex.name)} (${id})\n${escapeMarkdown(JSON.stringify(content))}\`"`
 			output += `    n${id}[${name}]\n`
 		} else {
 			output += `    n${id}(( ))\n`
@@ -277,6 +283,6 @@ export function cfgToMermaid(cfg: ControlFlowInformation, prefix = ''): string {
 /**
  * Use mermaid to visualize the normalized AST.
  */
-export function cfgToMermaidUrl(cfg: ControlFlowInformation, prefix = ''): string {
-	return mermaidCodeToUrl(cfgToMermaid(cfg, prefix))
+export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, prefix = ''): string {
+	return mermaidCodeToUrl(cfgToMermaid(cfg, normalizedAst, prefix))
 }

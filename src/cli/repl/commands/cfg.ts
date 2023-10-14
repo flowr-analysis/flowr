@@ -23,7 +23,7 @@ export const controlflowCommand: ReplCommand = {
 		const result = await controlflow(shell, remainingLine)
 
 		const cfg = extractCFG(result.normalize)
-		output.stdout(cfgToMermaid(cfg))
+		output.stdout(cfgToMermaid(cfg, result.normalize))
 	}
 }
 
@@ -36,6 +36,6 @@ export const controlflowStarCommand: ReplCommand = {
 		const result = await controlflow(shell, remainingLine)
 
 		const cfg = extractCFG(result.normalize)
-		output.stdout(cfgToMermaidUrl(cfg))
+		output.stdout(cfgToMermaidUrl(cfg, result.normalize))
 	}
 }

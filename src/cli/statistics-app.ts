@@ -1,17 +1,10 @@
 import {
-	postProcessFolder,
-	printClusterReport,
-	histogramsFromClusters,
-	histograms2table,
 	initFileProvider,
 	setFormatter,
-	voidFormatter,
-	ContextsWithCount
+	voidFormatter
 } from '../statistics'
 import { log } from '../util/log'
-import { guard } from '../util/assert'
-import { allRFilesFrom, writeTableAsCsv } from '../util/files'
-import { DefaultMap } from '../util/defaultmap'
+import { allRFilesFrom } from '../util/files'
 import { processCommandLineArgs } from './common'
 import { Arguments, LimitedThreadPool } from '../util/parallel'
 import { retrieveArchiveName, validateFeatures } from './common/features'
@@ -20,17 +13,15 @@ import { jsonReplacer } from '../util/json'
 import fs from 'fs'
 
 export interface StatsCliOptions {
-	readonly verbose:        boolean
-	readonly help:           boolean
-	readonly 'post-process': boolean
-	readonly limit:          number | undefined
-	readonly compress:       boolean
-	readonly 'hist-step':    number
-	readonly input:          string[]
-	readonly 'output-dir':   string
-	readonly 'no-ansi':      boolean
-	readonly parallel:       number
-	readonly features:       string[]
+	readonly verbose:      boolean
+	readonly help:         boolean
+	readonly limit:        number | undefined
+	readonly compress:     boolean
+	readonly input:        string[]
+	readonly 'output-dir': string
+	readonly 'no-ansi':    boolean
+	readonly parallel:     number
+	readonly features:     string[]
 }
 
 
@@ -56,33 +47,6 @@ if(options['no-ansi']) {
 
 
 const processedFeatures = validateFeatures(options.features)
-
-if(options['post-process']) {
-	console.log('-----post processing')
-	guard(options.input.length === 1, 'post processing only works with a single input file')
-	const reports = postProcessFolder(options.input[0], processedFeatures)
-	console.log(`found ${reports.length} reports`)
-	for(const report of reports) {
-		const topNames = new Set(printClusterReport(report, 50))
-
-		report.valueInfoMap = new DefaultMap<string, ContextsWithCount>(
-			() => new DefaultMap(() => 0),
-			new Map([...report.valueInfoMap.entries()].filter(([name]) => topNames.has(name)))
-		)
-
-		const receivedHistograms = histogramsFromClusters(report, options['hist-step'], true)
-
-		for(const hist of receivedHistograms) {
-			console.log(`${hist.name}: --- min: ${hist.min}, max: ${hist.max}, mean: ${hist.mean}, median: ${hist.median}, std: ${hist.std}`)
-		}
-
-		const outputPath = `${report.filepath}-${options['hist-step']}.dat`
-		console.log(`writing histogram data to ${outputPath}`)
-		writeTableAsCsv(histograms2table(receivedHistograms, true), outputPath)
-		/* writeFileBasedCountToFile(fileBasedCount(report), outputPath) */
-	}
-	process.exit(0)
-}
 
 initFileProvider(options['output-dir'])
 

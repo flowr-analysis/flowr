@@ -9,19 +9,19 @@ import {
 	SlicerStats,
 	SlicerStatsDataflow,
 	SlicerStatsInput
-} from './stats'
-import { DefaultMap } from '../../util/defaultmap'
+} from '../../../benchmark/stats/stats'
+import { DefaultMap } from '../../defaultmap'
 import {
 	retrieveNormalizedAstFromRCode,
 	retrieveNumberOfRTokensOfLastParse,
 	RShell,
 	visitAst
-} from '../../r-bridge'
-import { SlicingCriteria } from '../../slicing'
+} from '../../../r-bridge'
+import { SlicingCriteria } from '../../../slicing'
 import * as tmp from 'tmp'
 import fs from 'fs'
-import { isNotUndefined } from '../../util/assert'
-import { log } from '../../util/log'
+import { isNotUndefined } from '../../assert'
+import { log } from '../../log'
 
 let _tempfile: tmp.FileResult | undefined = undefined
 function tempfile() {

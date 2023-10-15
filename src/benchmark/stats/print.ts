@@ -8,7 +8,7 @@ import {
 	SummarizedMeasurement,
 	SummarizedPerSliceStats,
 	SummarizedSlicerStats, UltimateSlicerStats
-} from './summarizer'
+} from '../../util/summarizer/benchmark/summarizer'
 
 const padSize = 15
 

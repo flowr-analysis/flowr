@@ -1,3 +1,3 @@
 export * from './print'
 export * from './stats'
-export * from './summarizer'
+export * from '../../util/summarizer/benchmark/summarizer'

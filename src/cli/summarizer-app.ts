@@ -1,3 +1,11 @@
+/**
+ * The summarizer intends to post-process and summarize the results of
+ * * the benchmark tool, and
+ * * the statistics extraction.
+ *
+ * @module
+ */
+
 import { guard } from '../util/assert'
 import LineByLine from 'n-readlines'
 import {
@@ -14,11 +22,12 @@ import { jsonReplacer } from '../util/json'
 import { processCommandLineArgs } from './common'
 import { MergeableRecord } from '../util/objects'
 
-export interface BenchmarkCliOptions {
+export interface SummarizerCliOptions {
 	verbose:         boolean
 	help:            boolean
 	'ultimate-only': boolean
 	input:           string
+	type:            string
 	output?:         string
 	graph?:          boolean
 }
@@ -28,13 +37,15 @@ interface BenchmarkData {
 	stats:    SlicerStats
 }
 
-const options = processCommandLineArgs<BenchmarkCliOptions>('summarizer', ['input'],{
+const options = processCommandLineArgs<SummarizerCliOptions>('summarizer', ['input'],{
 	subtitle: 'Summarize and explain the results of the benchmark tool. Summarizes in two stages: first per-request, and then overall',
 	examples: [
 		'{italic benchmark.json}',
 		'{bold --help}'
 	]
 })
+
+
 
 function mapPerSliceStats(k: SlicingCriteria, v: PerSliceStats): [SlicingCriteria, PerSliceStats] {
 	return [k, {

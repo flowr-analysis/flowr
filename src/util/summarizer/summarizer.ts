@@ -1,5 +1,4 @@
 import { MergeableRecord } from '../objects'
-import fs from 'fs'
 
 /**
  * Represents what structure the input data has
@@ -10,37 +9,29 @@ export const enum DataInputType {
 	SummarizerCompressed
 }
 
+export interface CommonSummarizerConfiguration extends MergeableRecord{
+	logger: (message: string) => void
+}
 
-export interface FileRetriever {
+export abstract class Summarizer<Output, Configuration extends CommonSummarizerConfiguration> {
+	protected readonly config: Configuration
+	protected readonly log:    CommonSummarizerConfiguration['logger']
+
+	protected constructor(config: Configuration) {
+		this.config = config
+		this.log = this.config.logger
+	}
+
+
 	/**
-   * Returns the content of the given file, may automatically deal with uncompressing the respective file.
-   *
-   * @param path - The path to retrieve the file from.
-   */
-	from(path: string): Promise<string>
-}
+	 * First phase of the summary, can be used to extract all data of interest from the individual
+	 * benchmark or statistic results. This can write temporary files based on the configuration.
+	 */
+	public abstract preparationPhase(): Promise<void>
 
-export abstract class FileProvider {
-	protected readonly retriever: FileRetriever
-	constructor(retriever: FileRetriever) {
-		this.retriever = retriever
-	}
-
-	protected abstract getFilePaths(): AsyncGenerator<fs.PathLike>
-
-	public async *getFiles(): AsyncGenerator<string> {
-		for await (const path of this.getFilePaths()) {
-			yield await this.retriever.from(path.toString())
-		}
-	}
-}
-
-export abstract class Summarizer<Output extends MergeableRecord> {
-	protected readonly files: FileProvider
-
-	constructor(files: FileProvider) {
-		this.files = files
-	}
-
-	public abstract summarize(): Promise<Output>
+	/**
+	 * Second phase of the summary, can be used to combine the data from the first phase
+	 * and produce some kind of "ultimate results".
+	 */
+	public abstract summarizePhase(): Promise<Output>
 }

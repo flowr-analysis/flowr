@@ -5,6 +5,7 @@ import {
 	SlicerStatsDataflow,
 	SlicerStatsInput
 } from '../../../benchmark'
+import { MergeableRecord } from '../../objects'
 
 
 export interface SummarizedMeasurement {

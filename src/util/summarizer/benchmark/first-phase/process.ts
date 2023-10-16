@@ -1,40 +1,39 @@
-/**
- * This module is tasked with processing the results of the benchmarking (see {@link SlicerStats}).
- * @module
- */
+import * as tmp from 'tmp'
+import { Reduction, SliceSizeCollection, SummarizedMeasurement, SummarizedSlicerStats } from '../data'
+import { guard, isNotUndefined } from '../../../assert'
 import {
 	CommonSlicerMeasurements,
 	PerSliceMeasurements,
 	PerSliceStats,
 	SlicerStats,
 	SlicerStatsDataflow,
-	SlicerStatsInput
-} from '../../../benchmark'
-import { DefaultMap } from '../../defaultmap'
-import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse, RShell, visitAst } from '../../../r-bridge'
-import { SlicingCriteria } from '../../../slicing'
-import * as tmp from 'tmp'
+	SlicerStatsInput, stats2string
+} from '../../../../benchmark'
+import { log } from '../../../log'
+import { SlicingCriteria } from '../../../../slicing'
+import { DefaultMap } from '../../../defaultmap'
+import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse, RShell, visitAst } from '../../../../r-bridge'
+import { withoutWhitespace } from '../../../strings'
 import fs from 'fs'
-import { isNotUndefined } from '../../assert'
-import { log } from '../../log'
-import {
-	Reduction,
-	SliceSizeCollection,
-	SummarizedMeasurement,
-	SummarizedSlicerStats,
-	UltimateSlicerStats
-} from './data'
+import { escape } from '../../../../statistics'
+import { jsonReplacer } from '../../../json'
+import LineByLine from 'n-readlines'
 
-let _tempfile: tmp.FileResult | undefined = undefined
-function tempfile() {
-	if(_tempfile === undefined) {
-		_tempfile = tmp.fileSync({ postfix: '.R', keep: false })
-		process.on('beforeExit', () => _tempfile?.removeCallback())
+
+const tempfile = (() => {
+	let _tempfile: tmp.FileResult | undefined = undefined
+
+	return () => {
+		if(_tempfile === undefined) {
+			_tempfile = tmp.fileSync({ postfix: '.R', keep: false })
+			process.on('beforeExit', () => _tempfile?.removeCallback())
+		}
+		return _tempfile
 	}
-	return _tempfile
-}
+})()
 
-function safeDivPercentage(a: number, b: number): number | undefined{
+
+function safeDivPercentage(a: number, b: number): number | undefined {
 	if(isNaN(a) || isNaN(b)) {
 		return undefined
 	} else if(b === 0) {
@@ -64,16 +63,12 @@ function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerSta
 	}
 }
 
-export function withoutWhitespace(output: string): string {
-	return output.replace(/\s/g,'')
-}
-
-
 /**
  * Summarizes the given stats by calculating the min, max, median, mean, and the standard deviation for each measurement.
  * @see Slicer
  */
-export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria: SlicingCriteria, stats: PerSliceStats) => void = () => { /* do nothing */ }): Promise<Readonly<SummarizedSlicerStats>> {
+export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria: SlicingCriteria, stats: PerSliceStats) => void = () => { /* do nothing */
+}): Promise<Readonly<SummarizedSlicerStats>> {
 	const perSliceStats = stats.perSliceMeasurements
 
 	const collect = new DefaultMap<PerSliceMeasurements, number[]>(() => [])
@@ -209,64 +204,3 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 	return { min, max, median, mean, std }
 }
 
-
-export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
-	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => [])
-	const perSliceMeasurements = new DefaultMap<PerSliceMeasurements, SummarizedMeasurement[]>(() => [])
-	const reductions: Reduction<SummarizedMeasurement>[] = []
-	const inputs: SlicerStatsInput[] = []
-	const dataflows: SlicerStatsDataflow[] = []
-	let failedToRepParse = 0
-	let timesHitThreshold = 0
-	let totalSlices = 0
-
-	for(const stat of stats) {
-		for(const [k, v] of stat.commonMeasurements) {
-			commonMeasurements.get(k).push(Number(v))
-		}
-		for(const [k, v] of stat.perSliceMeasurements.measurements) {
-			perSliceMeasurements.get(k).push(v)
-		}
-		reductions.push(stat.perSliceMeasurements.reduction)
-		inputs.push(stat.input)
-		dataflows.push(stat.dataflow)
-		failedToRepParse += stat.perSliceMeasurements.failedToRepParse
-		totalSlices += stat.perSliceMeasurements.numberOfSlices
-		timesHitThreshold += stat.perSliceMeasurements.timesHitThreshold
-	}
-
-	return {
-		totalRequests:      stats.length,
-		totalSlices:        totalSlices,
-		commonMeasurements: new Map(
-			[...commonMeasurements.entries()].map(([k, v]) => [k, summarizeMeasurement(v)])
-		),
-		perSliceMeasurements: new Map(
-			[...perSliceMeasurements.entries()].map(([k, v]) => [k, summarizeSummarizedMeasurement(v)])
-		),
-		failedToRepParse,
-		timesHitThreshold,
-		reduction: {
-			numberOfDataflowNodes:           summarizeSummarizedMeasurement(reductions.map(r => r.numberOfDataflowNodes)),
-			numberOfLines:                   summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLines)),
-			numberOfCharacters:              summarizeSummarizedMeasurement(reductions.map(r => r.numberOfCharacters)),
-			numberOfNonWhitespaceCharacters: summarizeSummarizedMeasurement(reductions.map(r => r.numberOfNonWhitespaceCharacters)),
-			numberOfLinesNoAutoSelection:    summarizeSummarizedMeasurement(reductions.map(r => r.numberOfLinesNoAutoSelection)),
-			numberOfNormalizedTokens:        summarizeSummarizedMeasurement(reductions.map(r => r.numberOfNormalizedTokens)),
-			numberOfRTokens:                 summarizeSummarizedMeasurement(reductions.map(r => r.numberOfRTokens)),
-		},
-		input: {
-			numberOfLines:                   summarizeMeasurement(inputs.map(i => i.numberOfLines)),
-			numberOfCharacters:              summarizeMeasurement(inputs.map(i => i.numberOfCharacters)),
-			numberOfNonWhitespaceCharacters: summarizeMeasurement(inputs.map(i => i.numberOfNonWhitespaceCharacters)),
-			numberOfRTokens:                 summarizeMeasurement(inputs.map(i => i.numberOfRTokens)),
-			numberOfNormalizedTokens:        summarizeMeasurement(inputs.map(i => i.numberOfNormalizedTokens))
-		},
-		dataflow: {
-			numberOfNodes:               summarizeMeasurement(dataflows.map(d => d.numberOfNodes)),
-			numberOfFunctionDefinitions: summarizeMeasurement(dataflows.map(d => d.numberOfFunctionDefinitions)),
-			numberOfCalls:               summarizeMeasurement(dataflows.map(d => d.numberOfCalls)),
-			numberOfEdges:               summarizeMeasurement(dataflows.map(d => d.numberOfEdges))
-		}
-	}
-}

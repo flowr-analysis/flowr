@@ -5,9 +5,7 @@
 import { guard } from '../../util/assert'
 import { ElapsedTime, PerSliceMeasurements } from './stats'
 import {
-	SummarizedMeasurement
-} from '../../util/summarizer/benchmark/benchmark-summarizer'
-import {
+	SummarizedMeasurement,
 	SummarizedPerSliceStats,
 	SummarizedSlicerStats,
 	UltimateSlicerStats

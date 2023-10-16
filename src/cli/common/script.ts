@@ -60,7 +60,9 @@ export function processCommandLineArgs<T extends CommonOptions>(script: keyof ty
 
 	log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.Trace : LogLevel.Error)
 
-	log.info(`running with (debugging) options, ${JSON.stringify(options)}`)
+	if(options.verbose) {
+		log.info(`running with (debugging) options, ${JSON.stringify(options)}`)
+	}
 	return options
 }
 

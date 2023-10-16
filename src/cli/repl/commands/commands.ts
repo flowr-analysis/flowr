@@ -74,7 +74,7 @@ for(const [script, { target, description, type}] of Object.entries(scripts)) {
 			aliases:      [],
 			script:       true,
 			usageExample: `:${script} --help`,
-			fn:           async(output, _s, _t, remainingLine) => {
+			fn:           async(output, _s, remainingLine) => {
 				await waitOnScript(
 					`${__dirname}/../../${target}`,
 					splitAtEscapeSensitive(remainingLine),

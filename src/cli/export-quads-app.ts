@@ -1,4 +1,4 @@
-import { getStoredTokenMap, retrieveNormalizedAstFromRCode, RParseRequestFromFile, RShell } from '../r-bridge'
+import { retrieveNormalizedAstFromRCode, RParseRequestFromFile, RShell } from '../r-bridge'
 import { log } from '../util/log'
 import { serialize2quads } from '../util/quads'
 import fs from 'fs'
@@ -24,23 +24,22 @@ const options = processCommandLineArgs<QuadsCliOptions>('export-quads', [],{
 const shell = new RShell()
 shell.tryToInjectHomeLibPath()
 
-async function writeQuadForSingleFile(request: RParseRequestFromFile, tokens: Record<string, string>, output: string) {
+async function writeQuadForSingleFile(request: RParseRequestFromFile, output: string) {
 	const normalized = await retrieveNormalizedAstFromRCode({
 		...request,
 		ensurePackageInstalled: true
-	}, tokens, shell)
+	}, shell)
 	const serialized = serialize2quads(normalized.ast, { context: request.content })
 	log.info(`Appending quads to ${output}`)
 	fs.appendFileSync(output, serialized)
 }
 
 async function getQuads() {
-	const tokens = await getStoredTokenMap(shell)
 	const output = options.output ?? 'out.quads'
 	let skipped = 0
 	for await (const request of allRFilesFrom(options.input, options.limit)) {
 		try {
-			await writeQuadForSingleFile(request, tokens, output)
+			await writeQuadForSingleFile(request, output)
 		} catch(e: unknown) {
 			log.error(`[Skipped] Error while processing ${request.content}: ${(e as Error).message} (${(e as Error).stack ?? ''})`)
 			skipped++

@@ -78,6 +78,9 @@ jobs:
           git add -f "doc/"
           if [ -d "wiki/stats/" ]; then git add -f "wiki/stats/"; fi
           git commit -m "Update documentation"
+          # make the branch an orphan
+          git checkout --orphan gh-pages-orphan-tmp
+          git commit -m "Current documentation stage"
 
       - name: Push New Documentation
         if: ${{ inputs.action == 'doc' }}

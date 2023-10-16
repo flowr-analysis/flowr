@@ -120,18 +120,18 @@ function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig,
 
 
 export const parseCommand: ReplCommand = {
-	description:  'Prints ASCII Art of the parsed, unmodified AST. Start with \'file://\' to indicate a file path',
+	description:  'Prints ASCII Art of the parsed, unmodified AST, start with \'file://\' to indicate a file',
 	usageExample: ':parse',
 	aliases:      [ 'p' ],
 	script:       false,
-	fn:           async(output, shell, tokenMap, remainingLine) => {
+	fn:           async(output, shell, remainingLine) => {
 		const result = await new SteppingSlicer({
 			stepOfInterest: 'parse',
-			shell, tokenMap,
+			shell,
 			request:        requestFromInput(remainingLine.trim())
 		}).allRemainingSteps()
 
-		const config = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap })
+		const config = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap: await shell.tokenMap() })
 		const object = await xlm2jsonObject(config, result.parse)
 
 		output.stdout(depthListToTextTree(toDepthMap(object, config), config, output.formatter))

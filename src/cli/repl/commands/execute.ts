@@ -21,7 +21,7 @@ export const executeCommand: ReplCommand = {
 	usageExample: ':execute',
 	aliases:      [ 'e', 'r' ],
 	script:       false,
-	fn:           async(output, shell, _tokenMap, remainingLine) => {
+	fn:           async(output, shell, remainingLine) => {
 		await executeRShellCommand(output, shell, remainingLine)
 	}
 }

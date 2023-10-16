@@ -12,7 +12,6 @@ import {
 } from './stats'
 import { DefaultMap } from '../../util/defaultmap'
 import {
-	getStoredTokenMap,
 	retrieveNormalizedAstFromRCode,
 	retrieveNumberOfRTokensOfLastParse,
 	RShell,
@@ -24,7 +23,14 @@ import fs from 'fs'
 import { isNotUndefined } from '../../util/assert'
 import { log } from '../../util/log'
 
-const tempfile = tmp.fileSync({ postfix: '.R' })
+let _tempfile: tmp.FileResult | undefined = undefined
+function tempfile() {
+	if(_tempfile === undefined) {
+		_tempfile = tmp.fileSync({ postfix: '.R', keep: false })
+		process.on('beforeExit', () => _tempfile?.removeCallback())
+	}
+	return _tempfile
+}
 
 export interface SummarizedMeasurement {
 	min:    number
@@ -125,7 +131,6 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 	const sizeOfSliceCriteria: number[] = []
 	const reParseShellSession = new RShell()
 	reParseShellSession.tryToInjectHomeLibPath()
-	const tokenMap = await getStoredTokenMap(reParseShellSession)
 
 	const reductions: Reduction<number | undefined>[] = []
 
@@ -160,10 +165,9 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 		// reparse the output to get the number of tokens
 		try {
 			// there seem to be encoding issues, therefore, we dump to a temp file
-			fs.writeFileSync(tempfile.name, output)
+			fs.writeFileSync(tempfile().name, output)
 			const reParsed = await retrieveNormalizedAstFromRCode(
-				{ request: 'file', content: tempfile.name, ensurePackageInstalled: first },
-				tokenMap,
+				{ request: 'file', content: tempfile().name, ensurePackageInstalled: first },
 				reParseShellSession
 			)
 			first = false

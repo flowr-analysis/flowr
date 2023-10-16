@@ -12,6 +12,7 @@ import {
 } from '../../model'
 import { DEFAULT_PARSER_HOOKS, XmlParserHooks } from './hooks'
 import { DeepPartial } from 'ts-essentials'
+import { TokenMap } from '../../../../retriever'
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
@@ -26,7 +27,7 @@ export const parseLog = log.getSubLogger({ name: 'ast-parser' })
  *
  * @returns The normalized and decorated AST (i.e., as a doubly linked tree)
  */
-export async function normalize(xmlString: string, tokenMap: XmlParserConfig['tokenMap'], hooks?: DeepPartial<XmlParserHooks>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Promise<NormalizedAst> {
+export async function normalize(xmlString: string, tokenMap: TokenMap, hooks?: DeepPartial<XmlParserHooks>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Promise<NormalizedAst> {
 	const config = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap })
 	const hooksWithDefaults = deepMergeObject(DEFAULT_PARSER_HOOKS, hooks) as XmlParserHooks
 

@@ -3,7 +3,6 @@ import {
 	NoInfo,
 	RParseRequest,
 	RShell,
-	TokenMap,
 	XmlParserHooks
 } from '../r-bridge'
 import {
@@ -85,7 +84,6 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 	public static readonly maximumNumberOfStepsPerSlice = SteppingSlicer.maximumNumberOfStepsPerFile + Object.keys(STEPS_PER_SLICE).length
 
 	private readonly shell:          RShell
-	private readonly tokenMap?:      TokenMap
 	private readonly stepOfInterest: InterestedIn
 	private readonly request:        RParseRequest
 	private readonly hooks?:         DeepPartial<XmlParserHooks>
@@ -104,7 +102,6 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 	 */
 	constructor(input: SteppingSlicerInput<InterestedIn>) {
 		this.shell = input.shell
-		this.tokenMap = input.tokenMap
 		this.request = input.request
 		this.hooks = input.hooks
 		this.getId = input.getId
@@ -205,8 +202,7 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 				break
 			case 1:
 				step = guardStep('normalize')
-				guard(this.tokenMap !== undefined, 'Cannot normalize ast without a token map')
-				result = await executeSingleSubStep(step, this.results.parse as string, this.tokenMap, this.hooks, this.getId)
+				result = await executeSingleSubStep(step, this.results.parse as string, await this.shell.tokenMap(), this.hooks, this.getId)
 				break
 			case 2:
 				step = guardStep('dataflow')

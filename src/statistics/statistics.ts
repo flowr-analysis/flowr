@@ -1,10 +1,8 @@
 import {
-	getStoredTokenMap,
 	RParseRequest,
 	RParseRequestFromFile,
 	RParseRequestFromText,
-	RShell,
-	TokenMap
+	RShell
 } from '../r-bridge'
 import { ALL_FEATURES, allFeatureNames, Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features'
 import { DOMParser } from '@xmldom/xmldom'
@@ -43,7 +41,6 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 ): Promise<{ features: FeatureStatistics, meta: MetaStatistics, outputs: Map<T, StepResults<'dataflow'>> }> {
 	let result = initializeFeatureStatistics()
 	const meta = initialMetaStatistics()
-	const tokenMap = await getStoredTokenMap(shell)
 
 	let first = true
 	const outputs = new Map<T, StepResults<'dataflow'>>()
@@ -52,7 +49,7 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 		const start = performance.now()
 		try {
 			let output
-			({ stats: result, output } = await extractSingle(result, shell, tokenMap, {
+			({ stats: result, output } = await extractSingle(result, shell, {
 				...request,
 				ensurePackageInstalled: first
 			}, features))
@@ -93,11 +90,10 @@ function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequest
 
 const parser = new DOMParser()
 
-async function extractSingle(result: FeatureStatistics, shell: RShell, tokenMap: TokenMap, request: RParseRequest, features: 'all' | Set<FeatureKey>): Promise<{ stats: FeatureStatistics, output: StepResults<'dataflow'>}> {
+async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>): Promise<{ stats: FeatureStatistics, output: StepResults<'dataflow'>}> {
 	const slicerOutput = await new SteppingSlicer({
 		stepOfInterest: 'dataflow',
-		request, shell,
-		tokenMap
+		request, shell
 	}).allRemainingSteps()
 	// await retrieveXmlFromRCode(from, shell)
 	const doc = parser.parseFromString(slicerOutput.parse, 'text/xml')

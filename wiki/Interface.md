@@ -8,9 +8,12 @@ Although far from being as detailed as the in-depth explanation of [*flowR*](htt
   - [The Analysis Request](#the-analysis-request)
     - [Including the Control Flow Graph](#including-the-control-flow-graph)
     - [Retrieve the Output as RDF N-Quads](#retrieve-the-output-as-rdf-n-quads)
+    - [Complete Example](#complete-example)
   - [The Slice Request](#the-slice-request)
   - [The REPL Request](#the-repl-request)
 - [💻 Using the REPL](#-using-the-repl)
+  - [Example: Retrieving the Dataflow Graph](#example-retrieving-the-dataflow-graph)
+  - [Interfacing With the File System](#interfacing-with-the-file-system)
 - [⚒️ Writing Code](#️-writing-code)
   - [Interfacing With R by Using The `RShell`](#interfacing-with-r-by-using-the-rshell)
   - [Slicing With The `SteppingSlicer`](#slicing-with-the-steppingslicer)
@@ -95,7 +98,11 @@ sequenceDiagram
 </details>
 
 The request allows the server to analyze a file and prepare it for slicing.
-The message must contain a `filetoken`, which is used to identify the file in later slice requests.
+The message can contain a `filetoken`, which is used to identify the file in later slice requests (if you do not add one, the request will not be stored and therefore be unavailable for slicing).
+
+> 💡 Information\
+> If you want to send and process a lot of analysis requests, but do not want to slice them, please do not pass the `filetoken` field. This will save the server a lot of memory allocation.
+
 Furthermore, it must contain either a `content` field to directly pass the file's content or a `filepath` field which contains the path to the file (which must be accessible for the server to be useful).
 If you add the `id` field, the answer will use the same `id` so you can match requests and the corresponding answers.
 See the implementation of the [request-file-analysis message](https://github.com/Code-Inspect/flowr/tree/main/src/cli/repl/server/messages/analysis.ts) for more information.
@@ -662,8 +669,27 @@ Please note, that the base message format is still JSON. Only the individual res
 ```
 </details>
 
-### The Slice Request
+#### Complete Example
 
+Suppose, you want to launch the server using a docker container. Then, start the server by (forwarding the internal default port):
+
+```shell
+docker run -p1042:1042 -it --rm eagleoutice/flowr --server
+```
+
+Now, using a tool like [netcat](https://linux.die.net/man/1/nc) to connect:
+
+```shell
+nc 127.0.0.1 1042
+```
+
+Within the started session, type the following message and press enter to see the response:
+
+```json
+{"type": "request-file-analysis","id":"0","filetoken":"x","content":"x <- 1\nx + 1"}
+```
+
+### The Slice Request
 
 <details open>
 <summary>Sequence Diagram</summary>
@@ -842,13 +868,15 @@ The `stream` field (either `stdout` or `stderr`) informs you of the output's ori
 
 ## 💻 Using the REPL
 
-Although primarily meant for users, there is nothing forbidding to simply calling *flowR* as a subprocess to use standard-in, -output, and -error for communication (although you can access the REPL using the server as well, with the [REPL Request](#the-repl-request) message).
+Although primarily meant for users to explore, there is nothing which forbids simply calling *flowR* as a subprocess to use standard-in, -output, and -error for communication (although you can access the REPL using the server as well, with the [REPL Request](#the-repl-request) message).
 
 The read-eval-print loop&nbsp;(REPL) works relatively simple.
 You can submit an expression (using enter),
 which is interpreted as an R&nbsp;expression by default but interpreted as a *command* if it starts with a colon (`:`).
 The best command to get started with the REPL is `:help`.
 Besides, you can leave the REPL either with the command `:quit` or by pressing <kbd>CTRL</kbd>+<kbd>C</kbd> twice.
+
+### Example: Retrieving the Dataflow Graph
 
 To retrieve an URL to the [mermaid](https://mermaid.js.org/) diagram of the dataflow of a given expression, use `:dataflow*`:
 
@@ -871,6 +899,15 @@ flowchart LR
 
 The graph returned for you may differ, depending on the evolution of *flowR*.
 
+### Interfacing With the File System
+
+Many commands that allow for an R-expression (like `:dataflow*`) allow for a file as well, if the argument starts with `file://`. If you are located in the root directory of the *flowR* repository, the following should give you the parsed AST of the example file:
+
+```shell
+R> :parse file://test/testfiles/example.R
+```
+
+
 ## ⚒️ Writing Code
 
 *flowR* can be used as module and offers several main classes and interfaces that are interesting for extension (see the [core](https://github.com/Code-Inspect/flowr/wiki/Core) wiki page for more information).
@@ -882,7 +919,6 @@ For now there are no alternatives (although we plan on providing more flexible d
 
 > 💡 Information\
 > Each `RShell` controls a new instance of the R&nbsp;interpreter, make sure to call `RShell::close()` when you are done.
-
 
 You can start a new "session" simply by constructing a new object with `new RShell()`.
 However, there are several options which may be of interest (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system). See the [documentation](https://code-inspect.github.io/flowr/doc/classes/src_r_bridge_shell.RShell.html) for more information.
@@ -898,21 +934,16 @@ The main class that represents *flowR*'s slicing is the [`SteppingSlicer`](https
 
 ```typescript
 const shell = new RShell()
-const tokenMap = await getStoredTokenMap(shell)
 
 const stepper = new SteppingSlicer({
   shell:     shell,
-  tokenMap:  tokenMap,
   request:   requestFromInput('x <- 1\nx + 1'),
-  criterion: ['2@x'],
+  criterion: ['2@x']
 })
 
 const slice = await stepper.allRemainingSteps()
 // console.log(slice.reconstruct.code)
 ```
-
-> 💡 Information\
-> Please note, that we plan to [integrate the token map into the shell](https://github.com/Code-Inspect/flowr/issues/287).
 
 After that, you can request more slices with the help of `SteppingSlicer::updateCriterion`:
 
@@ -968,12 +999,11 @@ These hooks allow the modification of the inputs and outputs of the normalizatio
 
 ```ts
 const shell = new RShell()
-const tokenMap = await getStoredTokenMap(shell)
 
 let counter = 0
 
 await new SteppingSlicer({
-  stepOfInterest: 'normalize', shell, tokenMap,
+  stepOfInterest: 'normalize', shell,
   request: requestFromInput('x <- "foo"'),
   hooks: {
     values: {

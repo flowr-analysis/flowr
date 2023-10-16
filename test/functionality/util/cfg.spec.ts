@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import { defaultTokenMap, withShell } from '../helper/shell'
+import { withShell } from '../helper/shell'
 import {
 	ControlFlowGraph,
 	cfg2quads,
@@ -10,8 +10,8 @@ import {
 } from '../../../src/util/cfg'
 import { SteppingSlicer } from '../../../src/core'
 import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
-import { cfgToMermaidUrl } from '../../../src/util/mermaid'
 import { defaultQuadIdGenerator } from '../../../src/util/quads'
+import { cfgToMermaidUrl } from '../../../src/util/mermaid'
 
 describe('Control Flow Graph', withShell(shell => {
 	 function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
@@ -21,8 +21,7 @@ describe('Control Flow Graph', withShell(shell => {
 			const result = await new SteppingSlicer({
 				stepOfInterest: 'normalize',
 				shell,
-				request:        requestFromInput(code),
-				tokenMap:       await defaultTokenMap()
+				request:        requestFromInput(code)
 			}).allRemainingSteps()
 			const cfg = extractCFG(result.normalize)
 
@@ -34,8 +33,8 @@ describe('Control Flow Graph', withShell(shell => {
 				assert.deepStrictEqual(cfg.returns, expected.returns, 'returns differ')
 				assert.isTrue(equalCfg(cfg.graph, expected.graph), 'graphs differ')
 			} catch(e: unknown) {
-				console.error(`expected: ${cfgToMermaidUrl(expected)}`)
-				console.error(`actual: ${cfgToMermaidUrl(cfg)}`)
+				console.error(`expected: ${cfgToMermaidUrl(expected, result.normalize)}`)
+				console.error(`actual: ${cfgToMermaidUrl(cfg, result.normalize)}`)
 				throw e
 			}
 		}).timeout('3min')
@@ -45,14 +44,68 @@ describe('Control Flow Graph', withShell(shell => {
 	   entryPoints: [ '3' ],
 		 exitPoints:  [ '3-exit' ],
 		 graph:       new ControlFlowGraph()
-			.addVertex({ id: '0', name: RType.Logical, content: 'TRUE' })
-			.addVertex({ id: '1', name: RType.Number, content: '1' })
-			.addVertex({ id: '3', name: RType.IfThenElse, content: 'if(TRUE) 1' })
-			.addVertex({ id: '3-exit', name: 'if-exit', content: undefined })
+			.addVertex({ id: '0', name: RType.Logical })
+			.addVertex({ id: '1', name: RType.Number })
+			.addVertex({ id: '3', name: RType.IfThenElse })
+			.addVertex({ id: '3-exit', name: 'if-exit' })
 			.addEdge('0', '3', { label: 'FD' })
 			.addEdge('1', '0', { label: 'CD', when: RTrue })
 			.addEdge('3-exit', '1', { label: 'FD' })
 			.addEdge('3-exit', '0', { label: 'CD', when: RFalse })
+	})
+
+	assertCfg('2 + 3', {
+		entryPoints: [ '2' ],
+		exitPoints:  [ '2-exit' ],
+		graph:       new ControlFlowGraph()
+			.addVertex({ id: '0', name: RType.Number })
+			.addVertex({ id: '1', name: RType.Number })
+			.addVertex({ id: '2', name: RType.BinaryOp })
+			.addVertex({ id: '2-exit', name: 'binOp-exit' })
+			.addEdge('0', '2', { label: 'FD' })
+			.addEdge('1', '0', { label: 'FD' })
+			.addEdge('2-exit', '1', { label: 'FD' })
+	})
+
+	assertCfg('f(2 + 3, x=3)', {
+		entryPoints: [ '8' ],
+		exitPoints:  [ '8-exit' ],
+		graph:       new ControlFlowGraph()
+			.addVertex({ id: '0', name: RType.Symbol })
+			.addVertex({ id: '8', name: RType.FunctionCall })
+			.addVertex({ id: '8-name', name: 'call-name' })
+			.addVertex({ id: '8-exit', name: 'call-exit' })
+
+			.addVertex({ id: '4', name: RType.Argument })
+			.addVertex({ id: '4-before-value', name: 'before-value' })
+			.addVertex({ id: '1', name: RType.Number })
+			.addVertex({ id: '2', name: RType.Number })
+			.addVertex({ id: '3', name: RType.BinaryOp })
+			.addVertex({ id: '3-exit', name: 'binOp-exit' })
+			.addVertex({ id: '4-exit', name: 'exit' })
+
+			.addVertex({ id: '7', name: RType.Argument })
+			.addVertex({ id: '5', name: RType.Symbol })
+			.addVertex({ id: '7-before-value', name: 'before-value' })
+			.addVertex({ id: '6', name: RType.Number })
+			.addVertex({ id: '7-exit', name: 'exit' })
+
+			.addEdge('0', '8', { label: 'FD' })
+			.addEdge('8-name', '0', { label: 'FD' })
+			.addEdge('4', '8-name', { label: 'FD' })
+			.addEdge('4-before-value', '4', { label: 'FD' })
+			.addEdge('3', '4-before-value', { label: 'FD' })
+			.addEdge('1', '3', { label: 'FD' })
+			.addEdge('2', '1', { label: 'FD' })
+			.addEdge('3-exit', '2', { label: 'FD' })
+			.addEdge('4-exit', '3-exit', { label: 'FD' })
+
+			.addEdge('7', '4-exit', { label: 'FD' })
+			.addEdge('5', '7', { label: 'FD' })
+			.addEdge('7-before-value', '5', { label: 'FD' })
+			.addEdge('6', '7-before-value', { label: 'FD' })
+			.addEdge('7-exit', '6', { label: 'FD' })
+			.addEdge('8-exit', '7-exit', { label: 'FD' })
 	})
 
 	it('Example Quad Export', async() => {
@@ -62,8 +115,7 @@ describe('Control Flow Graph', withShell(shell => {
 		const result = await new SteppingSlicer({
 			stepOfInterest: 'normalize',
 			shell,
-			request:        requestFromInput('if(TRUE) 1'),
-			tokenMap:       await defaultTokenMap()
+			request:        requestFromInput('if(TRUE) 1')
 		}).allRemainingSteps()
 		const cfg = extractCFG(result.normalize)
 
@@ -76,18 +128,15 @@ describe('Control Flow Graph', withShell(shell => {
 <${domain}${context}/0> <${domain}vertices-0> <${domain}${context}/1> <${context}> .
 <${domain}${context}/1> <${domain}id> "3" <${context}> .
 <${domain}${context}/1> <${domain}name> "RIfThenElse" <${context}> .
-<${domain}${context}/1> <${domain}content> "if(TRUE) 1" <${context}> .
 <${domain}${context}/0> <${domain}vertices-1> <${domain}${context}/2> <${context}> .
 <${domain}${context}/2> <${domain}id> "3-exit" <${context}> .
 <${domain}${context}/2> <${domain}name> "if-exit" <${context}> .
 <${domain}${context}/0> <${domain}vertices-2> <${domain}${context}/3> <${context}> .
 <${domain}${context}/3> <${domain}id> "0" <${context}> .
 <${domain}${context}/3> <${domain}name> "RLogical" <${context}> .
-<${domain}${context}/3> <${domain}content> "TRUE" <${context}> .
 <${domain}${context}/0> <${domain}vertices-3> <${domain}${context}/4> <${context}> .
 <${domain}${context}/4> <${domain}id> "1" <${context}> .
 <${domain}${context}/4> <${domain}name> "RNumber" <${context}> .
-<${domain}${context}/4> <${domain}content> "1" <${context}> .
 <${domain}${context}/0> <${domain}edges-0> <${domain}${context}/5> <${context}> .
 <${domain}${context}/5> <${domain}from> "1" <${context}> .
 <${domain}${context}/5> <${domain}to> "0" <${context}> .

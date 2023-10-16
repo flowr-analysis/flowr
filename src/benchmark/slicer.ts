@@ -6,7 +6,6 @@
 import {
 	collectAllIds,
 	NormalizedAst,
-	getStoredTokenMap,
 	retrieveNumberOfRTokensOfLastParse,
 	RParseRequestFromFile, RParseRequestFromText,
 	RShell, TokenMap
@@ -117,7 +116,8 @@ export class BenchmarkSlicer {
 
 		this.tokenMap = await this.commonMeasurements.measureAsync(
 			'retrieve token map',
-			() => getStoredTokenMap(this.shell)
+			// with this being the first time, there is no preexisting caching!
+			() => this.shell.tokenMap()
 		)
 
 		this.stepper = new SteppingSlicer({

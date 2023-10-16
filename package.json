@@ -1,6 +1,6 @@
 {
   "name": "flowr",
-  "version": "1.1.6",
+  "version": "1.2.0",
   "description": "Program Slicer and Analyzer for R Programs",
   "main": "dist/cli/slicer-app.js",
   "scripts": {
@@ -14,6 +14,7 @@
     "summarizer": "ts-node src/cli/summarizer-app.ts",
     "export-quads": "ts-node src/cli/export-quads-app.ts",
     "build": "tsc --project .",
+    "lint-local": "npm run lint -- --rule \"no-warning-comments: off\"",
     "lint": "eslint src/ test/",
     "doc": "typedoc",
     "test": "nyc --no-clean mocha --require ts-node/register --timeout 60000 \"test/**/*.spec.ts\"",

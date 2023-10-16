@@ -5,7 +5,7 @@
  * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
  */
 import { log, LogLevel } from './util/log'
-import { getStoredTokenMap, RShell } from './r-bridge'
+import { RShell } from './r-bridge'
 import commandLineUsage, { OptionDefinition } from 'command-line-usage'
 import commandLineArgs from 'command-line-args'
 import { guard } from './util/assert'
@@ -125,19 +125,17 @@ async function mainRepl() {
 	process.on('SIGINT', end)
 	process.on('SIGTERM', end)
 
-	const tokenMap = await getStoredTokenMap(shell)
-
 	if(options.execute) {
-		await replProcessAnswer(standardReplOutput, options.execute, shell, tokenMap)
+		await replProcessAnswer(standardReplOutput, options.execute, shell)
 	} else {
-		await repl(shell, tokenMap)
+		await repl(shell)
 	}
 	process.exit(0)
 }
 
 async function mainServer() {
 	const shell = retrieveShell()
-	const tokenMap = await getStoredTokenMap(shell)
+
 	const end = () => {
 		if(options.execute === undefined) {
 			console.log(`\n${italic('Exiting...')}`)
@@ -149,7 +147,7 @@ async function mainServer() {
 	// hook some handlers
 	process.on('SIGINT', end)
 	process.on('SIGTERM', end)
-	await new FlowRServer(shell, tokenMap).start(options.port)
+	await new FlowRServer(shell).start(options.port)
 }
 
 if(options.server) {

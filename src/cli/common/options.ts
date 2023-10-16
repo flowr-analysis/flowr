@@ -59,7 +59,6 @@ export const slicerOptions: OptionDefinition[] = [
 	{ name: 'api',                      type: Boolean, description: 'Instead of human-readable output, dump a lot of json with the results of all intermediate steps.' },
 ]
 
-
 const featureNameList = [...allFeatureNames].map(s => `"${s}"`).join(', ')
 export const statisticOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
@@ -82,7 +81,6 @@ export const statisticHelperOptions: OptionDefinition[] = [
 	{ name: 'features',                 type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: '{underline names}' },
 ]
 
-
 export const summarizerOptions: OptionDefinition[] = [
 	{ name: 'verbose',       alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',          alias: 'h', type: Boolean, description: 'Print this usage guide' },
@@ -92,4 +90,3 @@ export const summarizerOptions: OptionDefinition[] = [
 	{ name: 'input',         alias: 'i', type: String,  description: 'The {italic output.json} produced by the benchmark tool', defaultOption: true, multiple: false, typeLabel: '{underline file.json}' },
 	{ name: 'output',        alias: 'o', type: String,  description: 'Basename of the summaries (defaults to {italic <input>-summary})', typeLabel: '{underline file}' },
 ]
-

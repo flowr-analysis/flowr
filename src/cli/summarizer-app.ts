@@ -9,6 +9,8 @@
 import { processCommandLineArgs } from './common'
 import { BenchmarkSummarizer } from '../util/summarizer/benchmark/summarizer'
 import { StatisticsSummarizer } from '../util/summarizer/statistiscs/summarizer'
+import { detectSummarizationType } from '../util/summarizer/auto-detect'
+import { SummarizerType } from '../util/summarizer/summarizer'
 
 export interface SummarizerCliOptions {
 	verbose:         boolean
@@ -54,12 +56,13 @@ function getStatisticsSummarizer() {
 
 
 function retrieveSummarizer(): StatisticsSummarizer | BenchmarkSummarizer {
-	if(options.type === 'benchmark') {
+	const type = options.type === 'auto' ? detectSummarizationType(options.input) : options.type
+	if(type === SummarizerType.Benchmark) {
 		return getBenchmarkSummarizer()
-	} else if(options.type === 'statistics') {
+	} else if(type === SummarizerType.Statistics) {
 		return getStatisticsSummarizer()
 	} else {
-		console.error('Unknown type', options.type, 'either give "benchmark" or "statistics"')
+		console.error('Unknown type', type, 'either give "benchmark" or "statistics"')
 		process.exit(1)
 	}
 }

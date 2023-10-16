@@ -1,5 +1,10 @@
 import { MergeableRecord } from '../objects'
 
+export const enum SummarizerType {
+	Benchmark	 = 'benchmark',
+	Statistics	 = 'statistics',
+}
+
 
 export interface CommonSummarizerConfiguration extends MergeableRecord{
 	logger: (message: string) => void

@@ -21,6 +21,7 @@ import { MergeableRecord } from '../../util/objects'
 import { NormalizedAst } from '../../r-bridge'
 import { DataflowInformation } from '../../dataflow/internal/info'
 import { variables } from './supported/variables'
+import { StatisticsOutputFormat } from '../output'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
@@ -57,13 +58,19 @@ export type FeatureProcessor<T extends FeatureInfo> = (existing: T, input: Featu
  *
  * @see ALL_FEATURES
  */
-export interface Feature<T extends FeatureInfo> {
+export interface Feature<T extends FeatureInfo, Output = unknown> {
 	/** A descriptive, yet unique name of the feature */
 	readonly name:        string
 	/** A description of the feature */
 	readonly description: string
 	/** A function that retrieves the feature in the document appends it to the existing feature set (we could use a monoid :D), the filepath corresponds to the active file (if any) */
 	process:              FeatureProcessor<T>
+	/**
+	 * If present, this feature allows to post-process the results of the feature extraction (for the summarizer).
+	 * This retrieves a map of all files recorded for the given features and their JSON content.
+	 * The keys of the resulting map can be completely independent.
+	 */
+	postProcess?:         (files: Map<string, StatisticsOutputFormat[]>) => Map<string, Output>
 	/** Values to start the existing track from */
 	initialValue:         T
 }

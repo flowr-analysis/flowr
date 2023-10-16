@@ -11,7 +11,7 @@ import { BenchmarkSummarizer } from '../util/summarizer/benchmark/summarizer'
 import { detectSummarizationType } from '../util/summarizer/auto-detect'
 import { StatisticsSummarizer } from '../util/summarizer/statistics/summarizer'
 import { SummarizerType } from '../util/summarizer/summarizer'
-import { ALL_FEATURES, allFeatureNames } from '../statistics'
+import { allFeatureNames } from '../statistics'
 
 export interface SummarizerCliOptions {
 	verbose:         boolean
@@ -31,7 +31,7 @@ const options = processCommandLineArgs<SummarizerCliOptions>('summarizer', ['inp
 	]
 })
 
-const outputBase = (options.output ?? options.input).replace(/\.json$/, '-summary')
+const outputBase = (options.output ?? options.input).replace(/\.json$|\/$/, '-summary')
 console.log(`Writing outputs to base ${outputBase}`)
 
 function getBenchmarkSummarizer() {
@@ -47,11 +47,12 @@ function getBenchmarkSummarizer() {
 
 function getStatisticsSummarizer() {
 	return new StatisticsSummarizer({
-		inputPath:     options.input,
-		outputPath:    `${outputBase}.json`,
+		inputPath:              options.input,
+		outputPath:             `${outputBase}.json`,
+		intermediateOutputPath: `${outputBase}-intermediate/`,
 		// TODO: allow to configure
-		featuresToUse: allFeatureNames,
-		logger:        console.log
+		featuresToUse:          allFeatureNames,
+		logger:                 console.log
 	})
 }
 

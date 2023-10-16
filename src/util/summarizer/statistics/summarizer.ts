@@ -6,22 +6,27 @@ import { longestCommonPrefix } from '../../strings'
 import fs from 'fs'
 import { guard } from '../../assert'
 import path from 'path'
-import { FeatureSelection, postProcessFeatureFolder } from '../../../statistics'
+import { FeatureSelection } from '../../../statistics'
+import { migrateFiles } from './first-phase/process'
 
 // TODO: histograms
 export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**
 	 * The input path to read all zips from
 	 */
-	inputPath:     string
+	inputPath:              string
 	/**
 	 * Features to extract the summaries for
 	 */
-	featuresToUse: FeatureSelection
+	featuresToUse:          FeatureSelection
+	/**
+	 * Path for the intermediate results of the preparation phase
+	 */
+	intermediateOutputPath: string
 	/**
 	 * Path for the final results of the summarization phase
 	 */
-	outputPath:    string
+	outputPath:             string
 }
 
 export const statisticsFileNameRegex = /.*--.*\.tar\.gz$/
@@ -59,24 +64,43 @@ async function extractArchive(f: string): Promise<string | undefined> {
 	return path.join(os.tmpdir(), parts[parts.length - 2])
 }
 
+// TODO: extract and collect all meta stats
+
 export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummarizerConfiguration> {
 	public constructor(config: StatisticsSummarizerConfiguration) {
 		super(config)
 	}
 
+	private removeIfExists(path?: string) {
+		if(path && fs.existsSync(path)) {
+			this.log(`Removing existing ${path}`)
+			fs.rmSync(path, { recursive: true, force: true })
+		}
+	}
+
+	/**
+	 * The preparation phase essentially merges all files into one by just attaching lines together!
+	 */
 	public async preparationPhase(): Promise<void> {
+		this.removeIfExists(this.config.intermediateOutputPath)
+		fs.mkdirSync(this.config.intermediateOutputPath, { recursive: true })
+
 		let count = 0
 		for await (const f of getAllFiles(this.config.inputPath, /\.tar.gz$/)) {
-			this.log(`[${count++}] processing file ${f}`)
-			const target = await extractArchive(f)
+			this.log(`[${count++}] processing file ${f} (to ${this.config.intermediateOutputPath})`)
+			let target: string | undefined = undefined
+			try {
+				target = await extractArchive(f)
+			} catch(e) {
+				this.log(`    Failed to extract ${f}, skipping...`)
+				continue
+			}
 			guard(target !== undefined && fs.existsSync(target), () => `expected to extract "${f}" to "${target ?? '?'}"`)
 
-			const reports = postProcessFeatureFolder(target, this.config.featuresToUse)
-			console.log(reports.length, reports)
+			migrateFiles(target, this.config.intermediateOutputPath)
 
 			this.log('    Done! (Cleanup...)')
-			// TODO: fs.rmSync(target, { recursive: true, force: true })
-			break // TODO: remove safeguard
+			fs.rmSync(target, { recursive: true, force: true })
 		}
 		this.log(`Found ${count} files to summarize`)
 		return Promise.resolve()
@@ -84,6 +108,9 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 
 	// eslint-disable-next-line @typescript-eslint/require-await -- just to obey the structure
 	public async summarizePhase(): Promise<unknown> {
+		// TODO: use post-processor
+
 		return Promise.resolve(undefined)
 	}
 }
+

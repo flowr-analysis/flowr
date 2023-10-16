@@ -64,7 +64,6 @@ function processFeatureSubKey(featurePath: string, subKey: string, contextIdMap:
 	const targetPath = path.join(featurePath, `${subKey}${defaultStatisticsFileSuffix}`)
 
 	if(!fs.existsSync(targetPath)) {
-		console.log(`Folder for ${subKey} does not exist at ${targetPath} skipping post processing of this key`)
 		log.warn(`Folder for ${subKey} does not exist at ${targetPath} skipping post processing of this key`)
 		return undefined
 	}

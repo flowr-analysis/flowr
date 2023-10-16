@@ -11,7 +11,7 @@ export async function detectSummarizationType(inputPath: string): Promise<Summar
 	}
 	// current heuristic: search for a tar.gz with two minus signs :D
 	const dir = await fs.promises.opendir(inputPath)
-	const thresholdInit = 30
+	const thresholdInit = 60
 	let threshold = thresholdInit
 	for await (const dirent of dir) {
 		if(statisticsRegex.test(dirent.name)) {

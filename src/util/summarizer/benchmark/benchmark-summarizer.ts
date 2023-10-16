@@ -9,19 +9,21 @@ import {
 	SlicerStats,
 	SlicerStatsDataflow,
 	SlicerStatsInput
-} from '../../../benchmark/stats/stats'
+} from '../../../benchmark'
 import { DefaultMap } from '../../defaultmap'
-import {
-	retrieveNormalizedAstFromRCode,
-	retrieveNumberOfRTokensOfLastParse,
-	RShell,
-	visitAst
-} from '../../../r-bridge'
+import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse, RShell, visitAst } from '../../../r-bridge'
 import { SlicingCriteria } from '../../../slicing'
 import * as tmp from 'tmp'
 import fs from 'fs'
 import { isNotUndefined } from '../../assert'
 import { log } from '../../log'
+import {
+	Reduction,
+	SliceSizeCollection,
+	SummarizedMeasurement,
+	SummarizedSlicerStats,
+	UltimateSlicerStats
+} from './data'
 
 let _tempfile: tmp.FileResult | undefined = undefined
 function tempfile() {
@@ -30,59 +32,6 @@ function tempfile() {
 		process.on('beforeExit', () => _tempfile?.removeCallback())
 	}
 	return _tempfile
-}
-
-export interface SummarizedMeasurement {
-	min:    number
-	max:    number
-	median: number
-	/** average */
-	mean:   number
-	/** standard deviation */
-	std:    number
-}
-
-interface SliceSizeCollection {
-	lines:                   number[]
-	characters:              number[]
-	nonWhitespaceCharacters: number[]
-	/** like library statements during reconstruction */
-	autoSelected:            number[]
-	dataflowNodes:           number[]
-	tokens:                  number[]
-	normalizedTokens:        number[]
-}
-
-/**
- * @see SlicerStats
- * @see summarizeSlicerStats
- */
-export type SummarizedSlicerStats = {
-	perSliceMeasurements: SummarizedPerSliceStats
-} & Omit<SlicerStats, 'perSliceMeasurements'>
-
-export interface Reduction<T = number> {
-	numberOfLines:                   T
-	numberOfLinesNoAutoSelection:    T
-	numberOfCharacters:              T
-	numberOfNonWhitespaceCharacters: T
-	numberOfRTokens:                 T
-	numberOfNormalizedTokens:        T
-	numberOfDataflowNodes:           T
-}
-
-export interface SummarizedPerSliceStats {
-	/** number of total slicing calls */
-	numberOfSlices:     number
-	/** statistics on the used slicing criteria (number of ids within criteria etc.) */
-	sliceCriteriaSizes: SummarizedMeasurement
-	measurements:       Map<PerSliceMeasurements, SummarizedMeasurement>
-	reduction:          Reduction<SummarizedMeasurement>
-	failedToRepParse:   number
-	timesHitThreshold:  number
-	sliceSize:          {
-		[K in keyof SliceSizeCollection]: SummarizedMeasurement
-	}
 }
 
 function safeDivPercentage(a: number, b: number): number | undefined{
@@ -260,20 +209,6 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 	return { min, max, median, mean, std }
 }
 
-
-export interface UltimateSlicerStats {
-	totalRequests:        number
-	totalSlices:          number
-	commonMeasurements:   Map<CommonSlicerMeasurements, SummarizedMeasurement>
-	perSliceMeasurements: Map<PerSliceMeasurements, SummarizedMeasurement>
-	/** sum */
-	failedToRepParse:     number
-	/** sum */
-	timesHitThreshold:    number
-	reduction:            Reduction<SummarizedMeasurement>
-	input:                SlicerStatsInput<SummarizedMeasurement>
-	dataflow:             SlicerStatsDataflow<SummarizedMeasurement>
-}
 
 export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): UltimateSlicerStats {
 	const commonMeasurements = new DefaultMap<CommonSlicerMeasurements, number[]>(() => [])

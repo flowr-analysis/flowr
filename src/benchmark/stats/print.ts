@@ -5,10 +5,13 @@
 import { guard } from '../../util/assert'
 import { ElapsedTime, PerSliceMeasurements } from './stats'
 import {
-	SummarizedMeasurement,
+	SummarizedMeasurement
+} from '../../util/summarizer/benchmark/benchmark-summarizer'
+import {
 	SummarizedPerSliceStats,
-	SummarizedSlicerStats, UltimateSlicerStats
-} from '../../util/summarizer/benchmark/summarizer'
+	SummarizedSlicerStats,
+	UltimateSlicerStats
+} from '../../util/summarizer/benchmark/data'
 
 const padSize = 15
 

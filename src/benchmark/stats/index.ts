@@ -1,3 +1,7 @@
 export * from './print'
 export * from './stats'
-export * from '../../util/summarizer/benchmark/summarizer'
+export * from '../../util/summarizer/benchmark/benchmark-summarizer'
+export { UltimateSlicerStats } from '../../util/summarizer/benchmark/data'
+export { SummarizedPerSliceStats } from '../../util/summarizer/benchmark/data'
+export { Reduction } from '../../util/summarizer/benchmark/data'
+export { SummarizedSlicerStats } from '../../util/summarizer/benchmark/data'

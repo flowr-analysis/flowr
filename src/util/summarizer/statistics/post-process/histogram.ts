@@ -1,10 +1,10 @@
 import { ClusterReport } from './clusterer'
-import { DefaultMap } from '../../util/defaultmap'
-import { guard, isNotUndefined } from '../../util/assert'
-import { Table } from '../../util/files'
-import { BiMap } from '../../util/bimap'
+import { DefaultMap } from '../../../defaultmap'
+import { guard, isNotUndefined } from '../../../assert'
+import { Table } from '../../../files'
+import { BiMap } from '../../../bimap'
 import fs from 'fs'
-import { summarizeMeasurement } from '../../benchmark'
+import { summarizeMeasurement } from '../../../../benchmark'
 
 /**
  * A conventional histogram (e.g., created by {@link histogramFromNumbers}).

@@ -8,7 +8,7 @@ import { log } from '../util/log'
 import { processCommandLineArgs } from './common'
 import { jsonReplacer } from '../util/json'
 import { extractCFG } from '../util/cfg'
-import { c } from 'tar'
+import { create } from 'tar'
 import fs from 'fs'
 import { guard } from '../util/assert'
 import { retrieveArchiveName } from './common/features'
@@ -59,9 +59,8 @@ shell.tryToInjectHomeLibPath()
 initFileProvider(options['output-dir'])
 
 function compressFolder(folder: string, target: string) {
-	// use strip:n when uncompress
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
-	c({
+	create({
 		gzip:          true,
 		file:          target,
 		portable:      true,

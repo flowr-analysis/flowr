@@ -1,21 +1,21 @@
-import { ALL_FEATURES, FeatureKey, FeatureSelection } from '../features'
+import { ALL_FEATURES, FeatureKey, FeatureSelection } from '../../../../statistics/features'
 import path from 'path'
-import { log } from '../../util/log'
+import { log } from '../../../log'
 import fs from 'fs'
 import { ClusterContextIdMap, ClusterReport, clusterStatisticsOutput } from './clusterer'
-import { ColorEffect, Colors, defaultStatisticsFileSuffix, FontStyles, formatter } from '../output'
-import { deterministicCountingIdGenerator, NodeId } from '../../r-bridge'
-import { DefaultMap } from '../../util/defaultmap'
+import { ColorEffect, Colors, defaultStatisticsFileSuffix, FontStyles, formatter } from '../../../../statistics/output'
+import { deterministicCountingIdGenerator, NodeId } from '../../../../r-bridge'
+import { DefaultMap } from '../../../defaultmap'
 
 /**
  * Post process the collections in a given folder, reducing them in a memory preserving way.
  *
- * @param filepath - path to the root file of the data collection like `statistics-out/top-2023-01-01-00-00-00/`
- * @param features - collection of features to post process, expects corresponding folders to exist
+ * @param filepath - Path to the root file of the data collection like `statistics-out/top-2023-01-01-00-00-00/`
+ * @param features - Collection of features to post process, expects corresponding folders to exist
  *
  * @returns non-aggregated reports for each sub-key of each feature
  */
-export function postProcessFolder(filepath: string, features: FeatureSelection): ClusterReport[] {
+export function postProcessFeatureFolder(filepath: string, features: FeatureSelection): ClusterReport[] {
 	if(!fs.existsSync(filepath)) {
 		log.warn(`Folder for ${filepath} does not exist, skipping post processing`)
 		return []
@@ -34,7 +34,7 @@ export function postProcessFolder(filepath: string, features: FeatureSelection):
 /**
  * Process a single feature folder like `Assignments/`
  *
- * @param filepath - Same as the input to {@link postProcessFolder}
+ * @param filepath - Same as the input to {@link postProcessFeatureFolder}
  * @param feature  - The (single) feature to process
  */
 function processFeatureFolder(filepath: string, feature: FeatureKey): ClusterReport[] {
@@ -64,6 +64,7 @@ function processFeatureSubKey(featurePath: string, subKey: string, contextIdMap:
 	const targetPath = path.join(featurePath, `${subKey}${defaultStatisticsFileSuffix}`)
 
 	if(!fs.existsSync(targetPath)) {
+		console.log(`Folder for ${subKey} does not exist at ${targetPath} skipping post processing of this key`)
 		log.warn(`Folder for ${subKey} does not exist at ${targetPath} skipping post processing of this key`)
 		return undefined
 	}

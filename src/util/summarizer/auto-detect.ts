@@ -1,8 +1,7 @@
 import { SummarizerType } from './summarizer'
 import fs from 'fs'
 import { log } from '../log'
-
-const statisticsRegex = /.*--.*\.tar\.gz$/
+import { statisticsFileNameRegex } from './statistics/summarizer'
 
 export async function detectSummarizationType(inputPath: string): Promise<SummarizerType> {
 	if(fs.statSync(inputPath).isFile()) {
@@ -14,13 +13,13 @@ export async function detectSummarizationType(inputPath: string): Promise<Summar
 	const thresholdInit = 60
 	let threshold = thresholdInit
 	for await (const dirent of dir) {
-		if(statisticsRegex.test(dirent.name)) {
-			log.info(`Detected statistics summarization by file ${dirent.name} matching ${statisticsRegex.source}`)
+		if(statisticsFileNameRegex.test(dirent.name)) {
+			log.info(`Detected statistics summarization by file ${dirent.name} matching ${statisticsFileNameRegex.source}`)
 			return SummarizerType.Statistics
 		} else if(threshold-- < 0){
 			break
 		}
 	}
-	log.info(`Detected benchmark summarization with no file (first ${thresholdInit}) matching ${statisticsRegex.source}`)
+	log.info(`Detected benchmark summarization with no file (first ${thresholdInit}) matching ${statisticsFileNameRegex.source}`)
 	return SummarizerType.Benchmark
 }

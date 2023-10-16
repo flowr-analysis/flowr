@@ -11,6 +11,7 @@ import { BenchmarkSummarizer } from '../util/summarizer/benchmark/summarizer'
 import { detectSummarizationType } from '../util/summarizer/auto-detect'
 import { StatisticsSummarizer } from '../util/summarizer/statistics/summarizer'
 import { SummarizerType } from '../util/summarizer/summarizer'
+import { ALL_FEATURES, allFeatureNames } from '../statistics'
 
 export interface SummarizerCliOptions {
 	verbose:         boolean
@@ -49,7 +50,7 @@ function getStatisticsSummarizer() {
 		inputPath:     options.input,
 		outputPath:    `${outputBase}.json`,
 		// TODO: allow to configure
-		featuresToUse: new Set(['all']),
+		featuresToUse: allFeatureNames,
 		logger:        console.log
 	})
 }

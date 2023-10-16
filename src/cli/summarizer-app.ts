@@ -8,8 +8,8 @@
 
 import { processCommandLineArgs } from './common'
 import { BenchmarkSummarizer } from '../util/summarizer/benchmark/summarizer'
-import { StatisticsSummarizer } from '../util/summarizer/statistiscs/summarizer'
 import { detectSummarizationType } from '../util/summarizer/auto-detect'
+import { StatisticsSummarizer } from '../util/summarizer/statistics/summarizer'
 import { SummarizerType } from '../util/summarizer/summarizer'
 
 export interface SummarizerCliOptions {

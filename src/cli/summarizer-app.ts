@@ -58,8 +58,10 @@ function getStatisticsSummarizer() {
 async function retrieveSummarizer(): Promise<StatisticsSummarizer | BenchmarkSummarizer> {
 	const type = options.type === 'auto' ? await detectSummarizationType(options.input) : options.type
 	if(type === SummarizerType.Benchmark) {
+		console.log('Summarizing benchmark')
 		return getBenchmarkSummarizer()
 	} else if(type === SummarizerType.Statistics) {
+		console.log('Summarizing statistics')
 		return getStatisticsSummarizer()
 	} else {
 		console.error('Unknown type', type, 'either give "benchmark" or "statistics"')
@@ -70,6 +72,7 @@ async function retrieveSummarizer(): Promise<StatisticsSummarizer | BenchmarkSum
 async function run() {
 	const summarizer = await retrieveSummarizer()
 
+	// TODO: filter statistics for prefix!
 	if(!options['ultimate-only']) {
 		await summarizer.preparationPhase()
 	}

@@ -1,5 +1,5 @@
 import { SummarizerType } from './summarizer'
-import fs, { promises as fsPromise } from 'fs'
+import fs from 'fs'
 import { log } from '../log'
 
 const statisticsRegex = /.*--.*\.tar\.gz$/
@@ -10,13 +10,17 @@ export async function detectSummarizationType(inputPath: string): Promise<Summar
 		return SummarizerType.Benchmark
 	}
 	// current heuristic: search for a tar.gz with two minus signs :D
-	const dirs = await fsPromise.readdir(inputPath, { withFileTypes: false, recursive: true })
-	const got = dirs.some(d => statisticsRegex.test(d))
-	if(got) {
-		log.info(`Detected statistics summarization by file matching ${statisticsRegex.source}`)
-		return SummarizerType.Statistics
-	} else {
-		log.info(`Detected benchmark summarization with no file matching ${statisticsRegex.source}`)
-		return SummarizerType.Benchmark
+	const dir = await fs.promises.opendir(inputPath)
+	const thresholdInit = 30
+	let threshold = thresholdInit
+	for await (const dirent of dir) {
+		if(statisticsRegex.test(dirent.name)) {
+			log.info(`Detected statistics summarization by file ${dirent.name} matching ${statisticsRegex.source}`)
+			return SummarizerType.Statistics
+		} else if(threshold-- < 0){
+			break
+		}
 	}
+	log.info(`Detected benchmark summarization with no file (first ${thresholdInit}) matching ${statisticsRegex.source}`)
+	return SummarizerType.Benchmark
 }

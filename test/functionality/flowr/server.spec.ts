@@ -85,12 +85,13 @@ describe('FlowR Server', withShell(shell => {
 		assert.isUndefined(response.cfg, 'Expected the cfg to be undefined as we did not request it')
 
 		assert.strictEqual(response.id, '42', 'Expected the second message to have the same id as the request')
-		// this is hideous and only to unify the ids
-		assert.deepStrictEqual(JSON.stringify(response.results, jsonReplacer)
-			.replace(/\.GlobalEnv","id":"\d+"/, '.GlobalEnv",'),
-		JSON.stringify(results, jsonReplacer)
-			.replace(/\.GlobalEnv","id":"\d+"/, '.GlobalEnv",'), 'Expected the second message to have the same results as the slicer')
 
+		// this is hideous and only to unify the ids
+		const expected = JSON.stringify(results, jsonReplacer)
+			.replace(/"\.GlobalEnv","id":"\d+"/g, '')
+		const got = JSON.stringify(response.results, jsonReplacer)
+			.replace(/"\.GlobalEnv","id":"\d+"/g, '')
+		assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer')
 	}))
 
 	it('Analyze with the CFG', withSocket(shell, async socket => {

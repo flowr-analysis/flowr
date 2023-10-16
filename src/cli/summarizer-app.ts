@@ -55,8 +55,8 @@ function getStatisticsSummarizer() {
 }
 
 
-function retrieveSummarizer(): StatisticsSummarizer | BenchmarkSummarizer {
-	const type = options.type === 'auto' ? detectSummarizationType(options.input) : options.type
+async function retrieveSummarizer(): Promise<StatisticsSummarizer | BenchmarkSummarizer> {
+	const type = options.type === 'auto' ? await detectSummarizationType(options.input) : options.type
 	if(type === SummarizerType.Benchmark) {
 		return getBenchmarkSummarizer()
 	} else if(type === SummarizerType.Statistics) {
@@ -68,7 +68,7 @@ function retrieveSummarizer(): StatisticsSummarizer | BenchmarkSummarizer {
 }
 
 async function run() {
-	const summarizer = retrieveSummarizer()
+	const summarizer = await retrieveSummarizer()
 
 	if(!options['ultimate-only']) {
 		await summarizer.preparationPhase()

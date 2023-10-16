@@ -1,23 +1,20 @@
 import { CommonSummarizerConfiguration, Summarizer } from '../summarizer'
+import { getAllFiles } from '../../files'
 
 // TODO: histograms
 export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**
-	 * The input path to read from
+	 * The input path to read all zips from
 	 */
-	inputPath:              string
+	inputPath:     string
 	/**
-	 * Path for the intermediate results of the preparation phase
+	 * Features to extract the summaries for
 	 */
-	intermediateOutputPath: string
-	/**
-	 * Path for the final results of the summarization phase
-	 */
-	outputLogPath?:         string
+	featuresToUse: Set<string>
 	/**
 	 * Path for the final results of the summarization phase
 	 */
-	outputPath:             string
+	outputPath:    string
 }
 
 export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummarizerConfiguration> {
@@ -25,7 +22,10 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 		super(config)
 	}
 
-	public preparationPhase(): Promise<void> {
+	public async preparationPhase(): Promise<void> {
+		for await (const f of getAllFiles(this.config.inputPath, /\.tar.gz$/)) {
+			console.log(f)
+		}
 		return Promise.resolve()
 	}
 

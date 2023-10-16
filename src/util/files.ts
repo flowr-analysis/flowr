@@ -17,12 +17,12 @@ export interface Table {
  * @param suffix - Suffix of the files to be retrieved
  * Based on {@link https://stackoverflow.com/a/45130990}
  */
-async function* getFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
+export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
 	const entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: false })
 	for(const subEntries of entries) {
 		const res = path.resolve(dir, subEntries.name)
 		if(subEntries.isDirectory()) {
-			yield* getFiles(res, suffix)
+			yield* getAllFiles(res, suffix)
 		} else if(suffix.test(subEntries.name)) {
 			yield res
 		}
@@ -41,7 +41,7 @@ const rFileRegex = /\.[rR]$/
  * @returns Number of files processed (normally &le; `limit`, is &ge; `limit` if limit was reached).
  *          Will be `1`, if `input` is an R file (and `0` if it isn't).
  *
- * @see getFiles
+ * @see getAllFiles
  */
 export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile, number> {
 	let count = 0
@@ -54,7 +54,7 @@ export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE
 		return 0
 	}
 
-	for await (const f of getFiles(input, rFileRegex)) {
+	for await (const f of getAllFiles(input, rFileRegex)) {
 		if(++count > limit) {
 			return count
 		}

@@ -8,6 +8,7 @@
 
 import { processCommandLineArgs } from './common'
 import { BenchmarkSummarizer } from '../util/summarizer/benchmark/summarizer'
+import { StatisticsSummarizer } from '../util/summarizer/statistiscs/summarizer'
 
 export interface SummarizerCliOptions {
 	verbose:         boolean
@@ -30,8 +31,8 @@ const options = processCommandLineArgs<SummarizerCliOptions>('summarizer', ['inp
 const outputBase = (options.output ?? options.input).replace(/\.json$/, '-summary')
 console.log(`Writing outputs to base ${outputBase}`)
 
-async function run() {
-	const summarizer = new BenchmarkSummarizer({
+function getBenchmarkSummarizer() {
+	return new BenchmarkSummarizer({
 		graph:                  options.graph ? `${outputBase}-graph.json` : undefined,
 		inputPath:              options.input,
 		intermediateOutputPath: `${outputBase}.json`,
@@ -39,6 +40,32 @@ async function run() {
 		outputLogPath:          `${outputBase}.log`,
 		logger:                 console.log
 	})
+}
+
+function getStatisticsSummarizer() {
+	return new StatisticsSummarizer({
+		inputPath:     options.input,
+		outputPath:    `${outputBase}.json`,
+		// TODO: allow to configure
+		featuresToUse: new Set(['all']),
+		logger:        console.log
+	})
+}
+
+
+function retrieveSummarizer(): StatisticsSummarizer | BenchmarkSummarizer {
+	if(options.type === 'benchmark') {
+		return getBenchmarkSummarizer()
+	} else if(options.type === 'statistics') {
+		return getStatisticsSummarizer()
+	} else {
+		console.error('Unknown type', options.type, 'either give "benchmark" or "statistics"')
+		process.exit(1)
+	}
+}
+
+async function run() {
+	const summarizer = retrieveSummarizer()
 
 	if(!options['ultimate-only']) {
 		await summarizer.preparationPhase()
@@ -46,6 +73,8 @@ async function run() {
 
 	await summarizer.summarizePhase()
 }
+
+
 
 void run()
 

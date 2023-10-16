@@ -17,6 +17,7 @@ interface BenchmarkData {
 }
 
 
+// TODO: use summarizer for loggign everywhere
 export async function processNestMeasurement(line: Buffer, counter: number, summarizedText: string, outputPath: string) {
 	let got = JSON.parse(line.toString()) as BenchmarkData
 	console.log(`[${++counter}] Summarize for ${got.filename}`)

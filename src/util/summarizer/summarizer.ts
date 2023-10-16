@@ -1,13 +1,5 @@
 import { MergeableRecord } from '../objects'
 
-/**
- * Represents what structure the input data has
- */
-export const enum DataInputType {
-	Benchmark,
-	Summarizer,
-	SummarizerCompressed
-}
 
 export interface CommonSummarizerConfiguration extends MergeableRecord{
 	logger: (message: string) => void

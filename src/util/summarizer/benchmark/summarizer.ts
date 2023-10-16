@@ -72,7 +72,7 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		}
 		// summarizedRaw
 		const ultimate = summarizeAllSummarizedStats(allSummarized)
-		console.log(`Writing ultimate summary to ${this.config.outputPath}`)
+		this.log(`Writing ultimate summary to ${this.config.outputPath}`)
 		fs.writeFileSync(this.config.outputPath, JSON.stringify(ultimate, jsonReplacer))
 		console.log(ultimateStats2String(ultimate))
 

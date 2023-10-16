@@ -16,14 +16,12 @@ export interface StatsCliOptions {
 	readonly verbose:      boolean
 	readonly help:         boolean
 	readonly limit:        number | undefined
-	readonly compress:     boolean
 	readonly input:        string[]
 	readonly 'output-dir': string
 	readonly 'no-ansi':    boolean
 	readonly parallel:     number
 	readonly features:     string[]
 }
-
 
 const options = processCommandLineArgs<StatsCliOptions>('stats', [],{
 	subtitle: 'Given input files or folders, this will collect usage statistics for the given features and write them to a file',
@@ -75,13 +73,11 @@ async function collectFileArguments(verboseAdd: string[], compress: string[], fe
 	let skipped = 0
 	for await (const f of allRFilesFrom(options.input)) {
 		const outputDir = path.join(options['output-dir'], `${getPrefixForFile(f.content)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`)
-		if(options.compress) {
-			const target = retrieveArchiveName(outputDir)
-			if(fs.existsSync(target)) {
-				console.log(`Archive ${target} exists. Skip.`)
-				skipped++
-				continue
-			}
+		const target = retrieveArchiveName(outputDir)
+		if(fs.existsSync(target)) {
+			console.log(`Archive ${target} exists. Skip.`)
+			skipped++
+			continue
 		}
 		files.push(['--input', f.content, '--output-dir', outputDir, ...verboseAdd, ...features, ...compress])
 		if(++counter % presentSteps === 0) {
@@ -101,7 +97,7 @@ async function getStats() {
 
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
-	const compress = options.compress ? ['--compress'] : []
+	const compress = ['--compress']
 	const features = [...processedFeatures].flatMap(s => ['--features', s])
 
 	// we do not use the limit argument to be able to pick the limit randomly

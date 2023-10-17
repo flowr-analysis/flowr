@@ -2,7 +2,6 @@ import { Feature, FeatureProcessorInput } from '../feature'
 import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
 import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
-import { SourcePosition } from '../../../util/range'
 import { MergeableRecord } from '../../../util/objects'
 
 const initialFunctionUsageInfo = {
@@ -15,14 +14,14 @@ const initialFunctionUsageInfo = {
 
 export type FunctionUsageInfo = Writable<typeof initialFunctionUsageInfo>
 
-export interface FunctionCallInformation extends MergeableRecord {
+export type FunctionCallInformation = [
 	/** the name of the called function, or undefined if this was an unnamed function call */
 	name:              string | undefined,
-	location:          SourcePosition
+	location:          [line: number, character: number],
 	numberOfArguments: number,
 	/** whether this was called from a namespace, like `a::b()` */
 	namespace:         string | undefined
-}
+]
 
 function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void {
 	const calls: RNodeWithParent[] = []
@@ -43,19 +42,19 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 			if(node.flavor === 'unnamed') {
 				info.unnamedCalls++
 				appendStatisticsFile(usedFunctions.name, 'unnamed-calls', [node.lexeme], input.filepath)
-				allCalls.push({
-					name:              undefined,
-					location:          node.location.start,
-					numberOfArguments: node.arguments.length,
-					namespace:         undefined
-				})
+				allCalls.push([
+					undefined,
+					[node.location.start.line, node.location.start.column],
+					node.arguments.length,
+					''
+				])
 			} else {
-				allCalls.push({
-					name:              node.functionName.lexeme,
-					location:          node.location.start,
-					numberOfArguments: node.arguments.length,
-					namespace:         node.functionName.namespace
-				})
+				allCalls.push([
+					node.functionName.lexeme,
+					[node.location.start.line, node.location.start.column],
+					node.arguments.length,
+					node.functionName.namespace ?? ''
+				])
 			}
 
 			calls.push(node)

@@ -81,7 +81,7 @@ async function getStatsForSingleFile() {
 		() => { /* do nothing */ },
 		processedFeatures,
 		staticRequests({ request: 'file', content: options.input }),
-
+		options['root-dir']
 	)
 	// console.warn(`skipped ${stats.meta.failedRequests.length} requests due to errors (run with logs to get more info)`)
 

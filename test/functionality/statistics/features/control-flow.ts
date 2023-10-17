@@ -20,6 +20,12 @@ describe('Controlflow', withShell(shell => {
 					logical: {
 						[RTrue]: 1n
 					}
+				},
+				thenBody: {
+					total:     1n,
+					singleVar: {
+						x: 1n
+					}
 				}
 			},
 			written: 'nothing'
@@ -32,6 +38,18 @@ describe('Controlflow', withShell(shell => {
 					total:   1n,
 					logical: {
 						[RFalse]: 1n,
+					}
+				},
+				thenBody: {
+					total:     1n,
+					singleVar: {
+						x: 1n
+					}
+				},
+				elseBody: {
+					total:     1n,
+					singleVar: {
+						y: 1n
 					}
 				}
 			},
@@ -46,6 +64,12 @@ describe('Controlflow', withShell(shell => {
 					singleVar: {
 						c: 1n
 					}
+				},
+				thenBody: {
+					total:     1n,
+					singleVar: {
+						x: 1n
+					}
 				}
 			},
 			written: 'nothing'
@@ -58,6 +82,18 @@ describe('Controlflow', withShell(shell => {
 					total: 		  1n,
 					singleVar: {
 						c: 1n
+					}
+				},
+				thenBody: {
+					total:     1n,
+					singleVar: {
+						x: 1n
+					}
+				},
+				elseBody: {
+					total:     1n,
+					singleVar: {
+						y: 1n
 					}
 				}
 			},
@@ -72,6 +108,12 @@ describe('Controlflow', withShell(shell => {
 					binOp: {
 						'==': 1n
 					}
+				},
+				thenBody: {
+					total:     1n,
+					singleVar: {
+						x: 1n
+					}
 				}
 			},
 			written: 'nothing'
@@ -85,6 +127,18 @@ describe('Controlflow', withShell(shell => {
 					binOp: {
 						'==': 1n
 					}
+				},
+				thenBody: {
+					total:     1n,
+					singleVar: {
+						x: 1n
+					}
+				},
+				elseBody: {
+					total:     1n,
+					singleVar: {
+						y: 1n
+					}
 				}
 			},
 			written: 'nothing'
@@ -97,6 +151,12 @@ describe('Controlflow', withShell(shell => {
 					total:   1n,
 					unaryOp: {
 						'!': 1n
+					}
+				},
+				thenBody: {
+					total: 1n,
+					call:  {
+						'install.packages': 1n
 					}
 				}
 			},

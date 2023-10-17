@@ -55,6 +55,7 @@ export class FlowRServerConnection {
 		this.name = name
 		this.logger = serverLog.getSubLogger({ name })
 		this.socket.on('data', data => this.handleData(String(data)))
+		this.socket.on('error', e => this.logger.error(`[${this.name}] Error while handling connection: ${String(e)}`))
 	}
 
 	private currentMessageBuffer = ''

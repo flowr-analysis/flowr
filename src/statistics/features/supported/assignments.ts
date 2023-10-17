@@ -75,6 +75,7 @@ export const assignments: Feature<AssignmentInfo> = {
 		existing.assignmentOperator += assignmentOperators.length
 		existing.specialAssignmentOps += specialAssignmentOps.length
 
+		// TODO: classify type with visitor!
 		appendStatisticsFile(this.name, 'assignmentOperator', assignmentOperators, input.filepath)
 		appendStatisticsFile(this.name, 'specialAssignmentOps', specialAssignmentOps, input.filepath)
 

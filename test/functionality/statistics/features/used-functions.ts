@@ -1,5 +1,6 @@
 import { withShell } from '../../helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
+import { emptyCommonSyntaxTypeCounts } from '../../../../src/statistics/features/common-syntax-probability'
 
 
 describe('Used Function Calls', withShell(shell => {
@@ -14,7 +15,10 @@ describe('Used Function Calls', withShell(shell => {
 			name:     'one call',
 			code:     'b()',
 			expected: {
-				allFunctionCalls: 1
+				allFunctionCalls: 1,
+				args:             {
+					0: 1n
+				}
 			},
 			written: [
 				['all-calls', [[[
@@ -30,7 +34,22 @@ describe('Used Function Calls', withShell(shell => {
 			name:     'one call with multiple arguments and namespace',
 			code:     'a::b(3, 4)',
 			expected: {
-				allFunctionCalls: 1
+				allFunctionCalls: 1,
+				args:             {
+					1: {
+						total:  1n,
+						number: {
+							'3': 1n
+						}
+					},
+					2: {
+						...emptyCommonSyntaxTypeCounts(),
+						total:  1n,
+						number: {
+							'4': 1n
+						}
+					}
+				}
 			},
 			written: [
 				['all-calls', [[[
@@ -47,7 +66,15 @@ describe('Used Function Calls', withShell(shell => {
 			code:     '(function(x) { x })(3)',
 			expected: {
 				allFunctionCalls: 1,
-				unnamedCalls:     1
+				unnamedCalls:     1,
+				args:             {
+					1: {
+						total:  1n,
+						number: {
+							'3': 1n
+						}
+					}
+				}
 			},
 			written: [
 				['unnamed-calls', [
@@ -67,6 +94,14 @@ describe('Used Function Calls', withShell(shell => {
 			code:     'sin(3)',
 			expected: {
 				allFunctionCalls: 1,
+				args:             {
+					1: {
+						total:  1n,
+						number: {
+							'3': 1n
+						}
+					}
+				}
 			},
 			written: [
 				['all-calls', [[[
@@ -88,7 +123,30 @@ describe('Used Function Calls', withShell(shell => {
 			expected: {
 				allFunctionCalls:    8,
 				nestedFunctionCalls: 5,
-				deepestNesting:      2
+				deepestNesting:      2,
+				args:                {
+					0: 4n,
+					1: {
+						total:  4n,
+						number: {
+							'3': 1n
+						},
+						singleVar: {
+							'e': 1n
+						},
+						call: {
+							'b': 2n
+						}
+					},
+					2: {
+						...emptyCommonSyntaxTypeCounts(),
+						total: 3n,
+						call:  {
+							'c': 1n,
+							'd': 2n
+						}
+					}
+				}
 			},
 			written: [
 				['nested-calls', [

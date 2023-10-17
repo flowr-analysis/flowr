@@ -6,6 +6,10 @@ import { RFalse, RNodeWithParent, RTrue, RType } from '../../r-bridge'
 export interface CommonSyntaxTypeCounts {
 	// just a helper to collect all as well (could be derived from sum)
 	total:       bigint,
+	// counts whenever you pass more than one node that is not sensible for any other category
+	multiple:    bigint,
+	// similar to multiple, but only counts empty (bodies etc.)
+	empty:       bigint,
 	// does include t and f, as well as NULL etc. (any special symbol)
 	singleVar:   Record<string, bigint>
 	number:      Record<number, bigint>
@@ -26,6 +30,8 @@ export interface CommonSyntaxTypeCounts {
 export function emptyCommonSyntaxTypeCounts(): CommonSyntaxTypeCounts {
 	return {
 		total:       0n,
+		multiple:    0n,
+		empty:       0n,
 		singleVar:   {},
 		number:      {},
 		integer:     {},
@@ -48,8 +54,17 @@ function incrementEntry<T extends string | number | symbol>(map: Record<T, bigin
 /**
  * Updates the given counts based on the type of the given node.
  */
-export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, node: RNodeWithParent): CommonSyntaxTypeCounts {
+export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ...nodes: RNodeWithParent[]): CommonSyntaxTypeCounts {
 	current.total++
+	if(nodes.length === 0) {
+		current.empty++
+		return current
+	} else if(nodes.length > 1) {
+		current.multiple++
+		return current
+	}
+
+	const node = nodes[0]
 
 	switch(node.type) {
 		case RType.String:

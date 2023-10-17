@@ -1,11 +1,13 @@
 import { Feature, FeatureProcessorInput } from '../feature'
 import { Writable } from 'ts-essentials'
 import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../common-syntax-probability'
-import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
+import { ParentInformation, RExpressionList, RNodeWithParent, RType, visitAst } from '../../../r-bridge'
 
 const initialControlflowInfo = {
 	ifThen:           emptyCommonSyntaxTypeCounts(),
+	thenBody:         emptyCommonSyntaxTypeCounts(),
 	ifThenElse:       emptyCommonSyntaxTypeCounts(),
+	elseBody:         emptyCommonSyntaxTypeCounts(),
 	/** can be nested with if-s or if-then-else's */
 	nestedIfThen:     0,
 	nestedIfThenElse: 0,
@@ -42,8 +44,10 @@ function visitIfThenElse(info: ControlflowInfo, input: FeatureProcessorInput): v
 				info.deepestNesting = Math.max(info.deepestNesting, ifThenElseStack.length)
 			}
 
+			info.thenBody = updateCommonSyntaxTypeCounts(info.thenBody, ...node.then.children)
 			if(ifThenElse) {
 				info.ifThenElse = updateCommonSyntaxTypeCounts(info.ifThenElse, node.condition)
+				info.elseBody = updateCommonSyntaxTypeCounts(info.elseBody, ...(node.otherwise as RExpressionList<ParentInformation>).children)
 			} else {
 				info.ifThen = updateCommonSyntaxTypeCounts(info.ifThen, node.condition)
 			}

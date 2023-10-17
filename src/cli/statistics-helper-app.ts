@@ -23,6 +23,7 @@ export interface StatsHelperCliOptions {
 	readonly help:         boolean
 	readonly input:        string
 	readonly compress:     boolean
+	readonly 'dump-json':  boolean
 	readonly 'output-dir': string
 	readonly 'no-ansi':    boolean
 	readonly features:     string[]
@@ -83,12 +84,14 @@ async function getStatsForSingleFile() {
 	// console.warn(`skipped ${stats.meta.failedRequests.length} requests due to errors (run with logs to get more info)`)
 
 	if(stats.outputs.size === 1) {
-		const [, output] = [...stats.outputs.entries()][0]
-		const cfg = extractCFG(output.normalize)
-		statisticsFileProvider.append('output-json', 'parse',     await printStepResult('parse', output.parse, StepOutputFormat.Json))
-		statisticsFileProvider.append('output-json', 'normalize', await printStepResult('normalize', output.normalize, StepOutputFormat.Json))
-		statisticsFileProvider.append('output-json', 'dataflow',  await printStepResult('dataflow', output.dataflow, StepOutputFormat.Json))
-		statisticsFileProvider.append('output-json', 'cfg',       JSON.stringify(cfg, jsonReplacer))
+		if(options['dump-json']) {
+			const [, output] = [...stats.outputs.entries()][0]
+			const cfg = extractCFG(output.normalize)
+			statisticsFileProvider.append('output-json', 'parse', await printStepResult('parse', output.parse, StepOutputFormat.Json))
+			statisticsFileProvider.append('output-json', 'normalize', await printStepResult('normalize', output.normalize, StepOutputFormat.Json))
+			statisticsFileProvider.append('output-json', 'dataflow', await printStepResult('dataflow', output.dataflow, StepOutputFormat.Json))
+			statisticsFileProvider.append('output-json', 'cfg', JSON.stringify(cfg, jsonReplacer))
+		}
 
 		statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta, jsonReplacer))
 	} else {

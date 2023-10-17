@@ -1,7 +1,6 @@
 import { ALL_FEATURES, FeatureKey, FeatureStatistics } from '../features'
 import { ColorEffect, Colors, formatter } from './ansi'
 import { MetaStatistics } from '../meta-statistics'
-import { CommonSyntaxTypeCounts } from '../features/common-syntax-probability'
 import { jsonReplacer } from '../../util/json'
 
 interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}

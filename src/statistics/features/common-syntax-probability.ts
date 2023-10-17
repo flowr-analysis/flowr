@@ -25,16 +25,13 @@ export interface CommonSyntaxTypeCounts {
 
 export function emptyCommonSyntaxTypeCounts(): CommonSyntaxTypeCounts {
 	return {
-		total:     0n,
-		singleVar: {},
-		number:    {},
-		integer:   {},
-		complex:   {},
-		string:    {},
-		logical:   {
-			[RTrue]:  0n,
-			[RFalse]: 0n
-		},
+		total:       0n,
+		singleVar:   {},
+		number:      {},
+		integer:     {},
+		complex:     {},
+		string:      {},
+		logical:     {} as Record<typeof RTrue | typeof RFalse, bigint>,
 		call:        {},
 		unnamedCall: 0n,
 		binOp:       {},

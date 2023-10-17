@@ -111,6 +111,15 @@ export class FlowRServerConnection {
 		const slicer = this.createSteppingSlicerForRequest(message)
 
 		void slicer.allRemainingSteps(false).then(async results => await this.sendFileAnalysisResponse(results, message))
+			.catch(e => {
+				this.logger.error(`[${this.name}] Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`)
+				sendMessage<FlowrErrorMessage>(this.socket, {
+					id:     message.id,
+					type:   'error',
+					fatal:  false,
+					reason: `Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`
+				})
+			})
 	}
 
 	private async sendFileAnalysisResponse(results: Partial<StepResults<typeof LAST_STEP>>, message: FileAnalysisRequestMessage): Promise<void> {
@@ -200,6 +209,14 @@ export class FlowRServerConnection {
 				type:    'response-slice',
 				id:      request.id,
 				results: Object.fromEntries(Object.entries(results).filter(([k,]) => Object.hasOwn(STEPS_PER_SLICE, k))) as SliceResponseMessage['results']
+			})
+		}).catch(e => {
+			this.logger.error(`[${this.name}] Error while analyzing file for token ${request.filetoken}: ${String(e)}`)
+			sendMessage<FlowrErrorMessage>(this.socket, {
+				id:     request.id,
+				type:   'error',
+				fatal:  false,
+				reason: `Error while analyzing file for token ${request.filetoken}: ${String(e)}`
 			})
 		})
 	}

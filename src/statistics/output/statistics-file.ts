@@ -84,7 +84,7 @@ export function appendStatisticsFile<T>(name: string, fn: keyof T, nodes: string
 		values = [...new Set<string | object | Node>(values)]
 	}
 
-	values = values.map(value => JSON.stringify([value, context] as StatisticsOutputFormat))
+	values = values.map(value => JSON.stringify(context === undefined ? [value] : [value, context] as StatisticsOutputFormat))
 
 	statisticsFileProvider.append(name, fn, values.join('\n'))
 }

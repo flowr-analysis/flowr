@@ -18,8 +18,8 @@ describe('Controlflow', withShell(shell => {
 				constantIfThen: 1
 			},
 			written: [
-				['IfThen', [{ value: 'TRUE' }]],
-				['constantIfThen', [{ value: 'TRUE' }]]
+				['IfThen', [['TRUE']]],
+				['constantIfThen', [['TRUE']]]
 			]
 		},
 		{
@@ -30,8 +30,8 @@ describe('Controlflow', withShell(shell => {
 				constantIfThenElse: 1
 			},
 			written: [
-				['IfThenElse', [{ value: 'FALSE' }]],
-				['constantIfThenElse', [{ value: 'FALSE' }]]
+				['IfThenElse', [['FALSE']]],
+				['constantIfThenElse', [['FALSE']]]
 			]
 		},
 		{
@@ -42,8 +42,8 @@ describe('Controlflow', withShell(shell => {
 				singleVariableIfThen: 1
 			},
 			written: [
-				['IfThen', [{ value: 'c' }]],
-				['singleVariableIfThen', [{ value: 'c' }]]
+				['IfThen', [['c']]],
+				['singleVariableIfThen', [['c']]]
 			]
 		},
 		{
@@ -54,8 +54,8 @@ describe('Controlflow', withShell(shell => {
 				singleVariableIfThenElse: 1
 			},
 			written: [
-				['IfThenElse', [{ value: 'c' }]],
-				['singleVariableIfThenElse', [{ value: 'c' }]]
+				['IfThenElse', [['c']]],
+				['singleVariableIfThenElse', [['c']]]
 			]
 		},
 		{
@@ -65,7 +65,7 @@ describe('Controlflow', withShell(shell => {
 				ifThen: 1
 			},
 			written: [
-				['IfThen', [{ value: 'c == 1' }]]
+				['IfThen', [['c == 1']]]
 			]
 		},
 		{
@@ -75,7 +75,7 @@ describe('Controlflow', withShell(shell => {
 				ifThenElse: 1
 			},
 			written: [
-				['IfThenElse', [{ value: 'c == "alpha"' }]]
+				['IfThenElse', [['c == "alpha"']]]
 			]
 		},
 		{
@@ -85,7 +85,7 @@ describe('Controlflow', withShell(shell => {
 				ifThen: 1
 			},
 			written: [
-				['IfThen', [{ value: '!require("XX")' }]]
+				['IfThen', [['!require("XX")']]]
 			]
 		},
 		{
@@ -96,8 +96,8 @@ describe('Controlflow', withShell(shell => {
 				constantSwitchCase: 1
 			},
 			written: [
-				['SwitchCase', [{ value: '1' }]],
-				['constantSwitchCase', [{ value: '1' }]]
+				['SwitchCase', [['1']]],
+				['constantSwitchCase', [['1']]]
 			]
 		},
 		{
@@ -108,8 +108,8 @@ describe('Controlflow', withShell(shell => {
 				singleVariableSwitchCase: 1
 			},
 			written: [
-				['SwitchCase', [{ value: 'x' }]],
-				['singleVariableSwitchCase', [{ value: 'x' }]]
+				['SwitchCase', [['x']]],
+				['singleVariableSwitchCase', [['x']]]
 			]
 		}
 	])

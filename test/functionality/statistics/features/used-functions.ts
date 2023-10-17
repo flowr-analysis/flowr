@@ -17,12 +17,13 @@ describe('Used Function Calls', withShell(shell => {
 				allFunctionCalls: 1
 			},
 			written: [
-				['all-calls', [{ value: {
-					name:              'b',
-					location:          { line: 1, column: 1 },
-					numberOfArguments: 0,
-					namespace:         undefined
-				}}]],
+				['all-calls', [[[
+					'b',
+					[1, 1],
+					0,
+					'',
+					0
+				]]]],
 			]
 		},
 		{
@@ -32,12 +33,13 @@ describe('Used Function Calls', withShell(shell => {
 				allFunctionCalls: 1
 			},
 			written: [
-				['all-calls', [{ value: {
-					name:              'b',
-					location:          { line: 1, column: 1 },
-					numberOfArguments: 2,
-					namespace:         'a'
-				}}]],
+				['all-calls', [[[
+					'b',
+					[1,1],
+					2,
+					'a',
+					0
+				]]]],
 			]
 		},
 		{
@@ -49,14 +51,15 @@ describe('Used Function Calls', withShell(shell => {
 			},
 			written: [
 				['unnamed-calls', [
-					{ value: '(function(x) { x })' }
+					['(function(x) { x })']
 				]],
-				['all-calls', [{ value: {
-					name:              undefined,
-					location:          { line: 1, column: 1 },
-					numberOfArguments: 1,
-					namespace:         undefined
-				}}]],
+				['all-calls', [[[
+					undefined,
+					[1,1],
+					1,
+					'',
+					1
+				]]]],
 			]
 		},
 		{
@@ -64,15 +67,15 @@ describe('Used Function Calls', withShell(shell => {
 			code:     'sin(3)',
 			expected: {
 				allFunctionCalls: 1,
-				mathFunctions: 	  1
 			},
 			written: [
-				['all-calls', [{ value: {
-					name:              'sin',
-					location:          { line: 1, column: 1 },
-					numberOfArguments: 1,
-					namespace:         undefined
-				}}]],
+				['all-calls', [[[
+					'sin',
+					[1,1],
+					1,
+					'',
+					0
+				]]]],
 			]
 		},
 		{
@@ -85,67 +88,73 @@ describe('Used Function Calls', withShell(shell => {
 			expected: {
 				allFunctionCalls:    8,
 				nestedFunctionCalls: 5,
-				deepestNesting:      2,
-				primitiveFunctions:  1 /* c is correctly classified ^^ */
+				deepestNesting:      2
 			},
 			written: [
 				['nested-calls', [
-					{ value: 'b' },
-					{ value: 'c' },
-					{ value: 'd' },
-					{ value: 'b' },
-					{ value: 'd' }
+					['b'],
+					['c'],
+					['d'],
+					['b'],
+					['d']
 				]],
 				['all-calls', [
-					{ value: {
-						name:              'a',
-						location:          { line: 1, column: 1 },
-						numberOfArguments: 2,
-						namespace:         undefined
-					}},
-					{ value: {
-						name:              'b',
-						location:          { line: 1, column: 3 },
-						numberOfArguments: 0,
-						namespace:         undefined
-					}},
-					{ value: {
-						name:              'c',
-						location:          { line: 1, column: 8 },
-						numberOfArguments: 2,
-						namespace:         undefined
-					}},
-					{ value: {
-						name:              'd',
-						location:          { line: 1, column: 13 },
-						numberOfArguments: 0,
-						namespace:         undefined
-					}},
-					{ value: {
-						name:              'a',
-						// atm, links columns from the start of the input :C
-						location:          { line: 2, column: 36 },
-						numberOfArguments: 2,
-						namespace:         undefined
-					}},
-					{ value: {
-						name:              'b',
-						location:          { line: 2, column: 38 },
-						numberOfArguments: 0,
-						namespace:         undefined
-					}},
-					{ value: {
-						name:              'd',
-						location:          { line: 2, column: 43 },
-						numberOfArguments: 1,
-						namespace:         undefined
-					}},
-					{ value: {
-						name:              'f',
-						location:          { line: 3, column: 41 },
-						numberOfArguments: 0,
-						namespace:         undefined
-					}}
+					[[
+						'a',
+						[1, 1],
+						2,
+						'',
+						0
+					]],
+					[[
+						'b',
+						[1,3],
+						0,
+						'',
+						0
+					]],
+					[[
+						'c',
+						[1,8],
+						2,
+						'',
+						0
+					]],
+					[[
+						'd',
+						[1,13],
+						0,
+						'',
+						0
+					]],
+					[[
+						'a',
+						[2, 36],
+						2,
+						'',
+						0
+					]],
+					[[
+						'b',
+						[2,38],
+						0,
+						'',
+						0
+					]],
+					[[
+						'd',
+						[2,43],
+						1,
+						'',
+						0
+					]],
+					[[
+						'f',
+						[3,41],
+						0,
+						'',
+						0
+					]]
 				]]]
 		}
 	])

@@ -49,16 +49,16 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
 }
 
 function specialReturnFunction(info: DataflowGraphVertexFunctionCall, graph: DataflowGraph, id: NodeId) {
-	guard(info.args.length <= 1, () => `expected up to one argument for return, but got ${info.args.length}`)
+	if(info.args.length > 1) {
+		dataflowLogger.error(`expected up to one argument for return, but got ${info.args.length}`)
+	}
 	for(const arg of info.args) {
 		if(Array.isArray(arg)) {
 			if(arg[1] !== '<value>') {
 				graph.addEdge(id, arg[1], EdgeType.Returns, 'always')
 			}
-		} else {
-			if(arg !== '<value>') {
-				graph.addEdge(id, arg, EdgeType.Returns, 'always')
-			}
+		} else if(arg !== '<value>') {
+			graph.addEdge(id, arg, EdgeType.Returns, 'always')
 		}
 	}
 }

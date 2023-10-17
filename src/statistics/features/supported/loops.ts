@@ -51,6 +51,7 @@ function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 					updateCommonSyntaxTypeCounts(info.whileBody, ...node.body.children)
 					break
 				case RType.RepeatLoop:
+					info.repeatLoops++
 					updateCommonSyntaxTypeCounts(info.repeatBody, ...node.body.children)
 					break
 				default: return

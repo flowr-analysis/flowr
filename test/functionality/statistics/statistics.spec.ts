@@ -65,4 +65,5 @@ describe('Statistics', () => {
 	require('./features/data-access.ts')
 	require('./features/defined-functions.ts')
 	require('./features/variables.ts')
+	require('./features/assignments.ts')
 })

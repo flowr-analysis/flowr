@@ -43,6 +43,7 @@ function visitIfThenElse(info: ControlflowInfo, input: FeatureProcessorInput): v
 				}
 				info.deepestNesting = Math.max(info.deepestNesting, ifThenElseStack.length)
 			}
+			ifThenElseStack.push(node)
 
 			info.thenBody = updateCommonSyntaxTypeCounts(info.thenBody, ...node.then.children)
 			if(ifThenElse) {
@@ -51,7 +52,6 @@ function visitIfThenElse(info: ControlflowInfo, input: FeatureProcessorInput): v
 			} else {
 				info.ifThen = updateCommonSyntaxTypeCounts(info.ifThen, node.condition)
 			}
-
 		}, node => {
 			// drop again :D
 			if(node.type === RType.IfThenElse) {

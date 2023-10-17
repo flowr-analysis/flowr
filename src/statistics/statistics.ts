@@ -59,6 +59,7 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 			}, features, suffix))
 			outputs.set(request, output)
 			processMetaOnSuccessful(meta, request)
+			meta.numberOfNormalizedNodes.push(output.normalize.idMap.size)
 			first = false
 		} catch(e) {
 			log.error('for request: ', request, e)

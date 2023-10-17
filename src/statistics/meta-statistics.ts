@@ -10,19 +10,23 @@ export interface MetaStatistics {
 	/**
    * The number of requests that were parsed successfully
    */
-	successfulParsed: number
+	successfulParsed:        number
 	/**
    * The processing time for each request
    */
-	processingTimeMs: number[]
+	processingTimeMs:        number[]
 	/**
    * All failed requests (e.g., if they can not be converted to XML)
    */
-	failedRequests:   (RParseRequestFromText | RParseRequestFromFile)[]
+	failedRequests:          (RParseRequestFromText | RParseRequestFromFile)[]
 	/**
    * Number of lines with each individual line length consumed for each request
    */
-	lines:            number[][]
+	lines:                   number[][]
+	/**
+	 * The number of nodes in the normalized AST
+	 */
+	numberOfNormalizedNodes: number[]
 }
 
 /**
@@ -30,9 +34,10 @@ export interface MetaStatistics {
  */
 export function initialMetaStatistics(): MetaStatistics {
 	return {
-		successfulParsed: 0,
-		processingTimeMs: [],
-		failedRequests:   [],
-		lines:            []
+		successfulParsed:        0,
+		numberOfNormalizedNodes: [],
+		processingTimeMs:        [],
+		failedRequests:          [],
+		lines:                   []
 	}
 }

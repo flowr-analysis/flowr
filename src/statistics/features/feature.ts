@@ -21,7 +21,6 @@ import { MergeableRecord } from '../../util/objects'
 import { NormalizedAst } from '../../r-bridge'
 import { DataflowInformation } from '../../dataflow/internal/info'
 import { variables } from './supported/variables'
-import { CommonSyntaxTypeCounts } from './common-syntax-probability'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.

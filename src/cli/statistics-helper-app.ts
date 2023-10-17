@@ -25,6 +25,7 @@ export interface StatsHelperCliOptions {
 	readonly compress:     boolean
 	readonly 'dump-json':  boolean
 	readonly 'output-dir': string
+	readonly 'root-dir':   string
 	readonly 'no-ansi':    boolean
 	readonly features:     string[]
 }
@@ -79,7 +80,8 @@ async function getStatsForSingleFile() {
 	const stats = await extractUsageStatistics(shell,
 		() => { /* do nothing */ },
 		processedFeatures,
-		staticRequests({ request: 'file', content: options.input })
+		staticRequests({ request: 'file', content: options.input }),
+
 	)
 	// console.warn(`skipped ${stats.meta.failedRequests.length} requests due to errors (run with logs to get more info)`)
 

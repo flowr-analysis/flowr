@@ -77,6 +77,7 @@ export const statisticHelperOptions: OptionDefinition[] = [
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass single file as src to read from', multiple: false, defaultOption: true, typeLabel: '{underline file}' },
 	{ name: 'output-dir',   alias: 'o', type: String,  description: 'Folder to write the output to', typeLabel: '{underline folder}' },
+	{ name: 'root-dir',                 type: String,  description: 'Root dir for the statistics files', defaultValue: ''},
 	{ name: 'dump-json',                type: Boolean, description: 'Write JSON output during the extraction', typeLabel: '{underline folder}' },
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.'},
 	{ name: 'features',                 type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: '{underline names}' },

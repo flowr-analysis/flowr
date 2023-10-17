@@ -80,7 +80,7 @@ async function collectFileArguments(verboseAdd: string[], dumpJson: string[], fe
 			skipped++
 			continue
 		}
-		files.push(['--input', f.content, '--output-dir', outputDir,'--compress', ...verboseAdd, ...features, ...dumpJson])
+		files.push(['--input', f.content, '--output-dir', outputDir,'--compress', '--root-dir', options.input.length === 1 ? options.input[0] : '""', ...verboseAdd, ...features, ...dumpJson])
 		if(++counter % presentSteps === 0) {
 			console.log(`Collected ${counter} files`)
 			if(counter >= 10 * presentSteps) {

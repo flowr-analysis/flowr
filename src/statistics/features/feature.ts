@@ -42,7 +42,7 @@ export interface FeatureProcessorInput extends MergeableRecord {
 	readonly normalizedRAst: NormalizedAst,
 	/** The dataflow information for the given input */
 	readonly dataflow:       DataflowInformation,
-	/** The filepath that the document originated from (if present, may be undefined if the input was provided as text) */
+	/** The filepath that the document originated from (if present, may be undefined if the input was provided as text). This can be relative to the common root directory of requests. */
 	readonly filepath:       string | undefined
 }
 

@@ -51,11 +51,12 @@ export class FakeSocket implements Socket {
 	}
 
 	public on(event: 'close', listener: () => void): void
+	public on(event: 'error', listener: (e: unknown) => void): void
 	public on(event: 'data', listener: (data: Buffer) => void): void
-	public on(event: 'close' | 'data', listener: (() => void) | ((data: Buffer) => void)): void {
+	public on(event: 'close' | 'data' | 'error', listener: (() => void) | ((data: Buffer) => void) | ((e: unknown) => void)): void {
 		if(event === 'close') {
 			this.closeHandler = listener as () => void
-		} else {
+		} else if(event === 'data') {
 			this.dataHandler = listener as (data: Buffer) => void
 		}
 	}

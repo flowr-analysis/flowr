@@ -9,6 +9,8 @@ Although far from being as detailed as the in-depth explanation of [*flowR*](htt
     - [Including the Control Flow Graph](#including-the-control-flow-graph)
     - [Retrieve the Output as RDF N-Quads](#retrieve-the-output-as-rdf-n-quads)
     - [Complete Example](#complete-example)
+      - [Using Netcat](#using-netcat)
+      - [Using Python](#using-python)
   - [The Slice Request](#the-slice-request)
   - [The REPL Request](#the-repl-request)
 - [💻 Using the REPL](#-using-the-repl)
@@ -677,6 +679,8 @@ Suppose, you want to launch the server using a docker container. Then, start the
 docker run -p1042:1042 -it --rm eagleoutice/flowr --server
 ```
 
+##### Using Netcat
+
 Now, using a tool like [netcat](https://linux.die.net/man/1/nc) to connect:
 
 ```shell
@@ -688,6 +692,28 @@ Within the started session, type the following message and press enter to see th
 ```json
 {"type": "request-file-analysis","id":"0","filetoken":"x","content":"x <- 1\nx + 1"}
 ```
+
+
+##### Using Python
+
+In python, a similar process would look like this.
+
+<details>
+<summary>Simple Example</summary>
+
+```python
+import socket
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.connect(('127.0.0.1', 1042))
+    print(s.recv(4096))  # for the hello message
+
+    s.send(b'{"type": "request-file-analysis","id":"0","filetoken":"x","content":"x <- 1\\nx + 1"}\n')
+
+    print(s.recv(65536))  # for the response (please use a more sophisticated mechanism)
+```
+
+</details>
 
 ### The Slice Request
 

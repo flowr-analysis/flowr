@@ -29,7 +29,7 @@ import { CommonSyntaxTypeCounts } from './common-syntax-probability'
  * <p>
  * Since we are writing to files {@link process}, we only count feature occurrences (some feature/parts are not written to file)
  */
-export type FeatureInfo = Record<string, number | CommonSyntaxTypeCounts> & MergeableRecord
+export type FeatureInfo = Record<string, unknown> & MergeableRecord
 
 
 /**

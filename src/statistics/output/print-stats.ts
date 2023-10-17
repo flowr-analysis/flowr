@@ -2,6 +2,7 @@ import { ALL_FEATURES, FeatureKey, FeatureStatistics } from '../features'
 import { ColorEffect, Colors, formatter } from './ansi'
 import { MetaStatistics } from '../meta-statistics'
 import { CommonSyntaxTypeCounts } from '../features/common-syntax-probability'
+import { jsonReplacer } from '../../util/json'
 
 interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}
 
@@ -54,7 +55,7 @@ export function printFeatureStatistics(statistics: {features: FeatureStatistics,
 
 const pad = 3
 
-export function printFeatureStatisticsEntry(info: Record<string, string | number | CommonSyntaxTypeCounts>): void {
+export function printFeatureStatisticsEntry(info: Record<string, unknown>): void {
 	let longestKey = 0
 	let longestValue = 0
 	const out = new Map<string, string>()
@@ -62,7 +63,7 @@ export function printFeatureStatisticsEntry(info: Record<string, string | number
 		if(key.length > longestKey) {
 			longestKey = key.length
 		}
-		const valueString = value.toLocaleString()
+		const valueString = JSON.stringify(value, jsonReplacer)
 		out.set(key, valueString)
 		if(valueString.length > longestValue) {
 			longestValue = valueString.length

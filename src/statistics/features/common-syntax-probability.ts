@@ -5,44 +5,50 @@ import { RFalse, RNodeWithParent, RTrue, RType } from '../../r-bridge'
 
 export interface CommonSyntaxTypeCounts {
 	// just a helper to collect all as well (could be derived from sum)
-	total:       bigint,
+	total:        bigint,
 	// counts whenever you pass more than one node that is not sensible for any other category
-	multiple:    bigint,
+	multiple:     bigint,
 	// similar to multiple, but only counts empty (bodies etc.)
-	empty:       bigint,
+	empty:        bigint,
+	// in case of a = x etc.
+	withArgument: bigint,
+	// arguments used without value
+	noValue:      bigint,
 	// does include t and f, as well as NULL etc. (any special symbol)
-	singleVar:   Record<string, bigint>
-	number:      Record<number, bigint>
+	singleVar:    Record<string, bigint>
+	number:       Record<number, bigint>
 	// only explicit integers
-	integer:     Record<number, bigint>
-	complex:     Record<number, bigint>
-	string:      Record<string, bigint>
-	logical:     Record<typeof RTrue | typeof RFalse, bigint>,
-	call:        Record<string, bigint>,
-	unnamedCall: bigint,
+	integer:      Record<number, bigint>
+	complex:      Record<number, bigint>
+	string:       Record<string, bigint>
+	logical:      Record<typeof RTrue | typeof RFalse, bigint>,
+	call:         Record<string, bigint>,
+	unnamedCall:  bigint,
 	// binop includes all assignments!
-	binOp:       Record<string, bigint>,
-	unaryOp:     Record<string, bigint>,
+	binOp:        Record<string, bigint>,
+	unaryOp:      Record<string, bigint>,
 	// unknown content, records lexeme (can include break etc. for bodies)
-	other:       Record<string, bigint>
+	other:        Record<string, bigint>
 }
 
 export function emptyCommonSyntaxTypeCounts(): CommonSyntaxTypeCounts {
 	return {
-		total:       0n,
-		multiple:    0n,
-		empty:       0n,
-		singleVar:   {},
-		number:      {},
-		integer:     {},
-		complex:     {},
-		string:      {},
-		logical:     {} as Record<typeof RTrue | typeof RFalse, bigint>,
-		call:        {},
-		unnamedCall: 0n,
-		binOp:       {},
-		unaryOp:     {},
-		other:       {}
+		total:        0n,
+		multiple:     0n,
+		empty:        0n,
+		withArgument: 0n,
+		noValue:      0n,
+		singleVar:    {},
+		number:       {},
+		integer:      {},
+		complex:      {},
+		string:       {},
+		logical:      {} as Record<typeof RTrue | typeof RFalse, bigint>,
+		call:         {},
+		unnamedCall:  0n,
+		binOp:        {},
+		unaryOp:      {},
+		other:        {}
 	}
 }
 
@@ -64,8 +70,18 @@ export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ..
 		return current
 	}
 
-	const node = nodes[0]
-
+	let node = nodes[0]
+	if(node.type === RType.Argument) {
+		if(node.name !== undefined) {
+			current.withArgument++
+		}
+		if(node.value !== undefined) {
+			node = node.value
+		} else {
+			current.noValue++
+			return current
+		}
+	}
 	switch(node.type) {
 		case RType.String:
 			incrementEntry(current.string, node.content.str)

@@ -44,9 +44,9 @@ export function clusterStatisticsOutput(filepath: string, contextIdMap: ClusterC
 	// eslint-disable-next-line no-cond-assign
 	while(line = lineReader.next()) {
 		const json = JSON.parse(line.toString()) as StatisticsOutputFormat
-		const contextId = contextIdMap.get(json.context)
+		const contextId = contextIdMap.get(json[1])
 
-		const value = valueInfoMap.get(json.value)
+		const value = valueInfoMap.get(json[0])
 		// step the counter accordingly
 		value.set(contextId, value.get(contextId) + 1)
 	}

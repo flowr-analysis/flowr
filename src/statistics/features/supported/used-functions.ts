@@ -3,6 +3,7 @@ import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
 import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
 import { MergeableRecord } from '../../../util/objects'
+import { EdgeType } from '../../../dataflow'
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls:    0,
@@ -16,11 +17,12 @@ export type FunctionUsageInfo = Writable<typeof initialFunctionUsageInfo>
 
 export type FunctionCallInformation = [
 	/** the name of the called function, or undefined if this was an unnamed function call */
-	name:              string | undefined,
-	location:          [line: number, character: number],
-	numberOfArguments: number,
+	name:                  string | undefined,
+	location:              [line: number, character: number],
+	numberOfArguments:     number,
 	/** whether this was called from a namespace, like `a::b()` */
-	namespace:         string | undefined
+	namespace:             string | undefined,
+	knownDefinitionInFile: 0 | 1
 ]
 
 function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void {
@@ -39,6 +41,12 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 				info.deepestNesting = Math.max(info.deepestNesting, calls.length)
 			}
 
+			const dataflowNode = input.dataflow.graph.get(node.info.id)
+			let hasCallsEdge = false
+			if(dataflowNode) {
+				hasCallsEdge = [...dataflowNode[1].values()].some(e => e.types.has(EdgeType.Calls))
+			}
+
 			if(node.flavor === 'unnamed') {
 				info.unnamedCalls++
 				appendStatisticsFile(usedFunctions.name, 'unnamed-calls', [node.lexeme], input.filepath)
@@ -46,14 +54,16 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 					undefined,
 					[node.location.start.line, node.location.start.column],
 					node.arguments.length,
-					''
+					'',
+					hasCallsEdge ? 1 : 0
 				])
 			} else {
 				allCalls.push([
 					node.functionName.lexeme,
 					[node.location.start.line, node.location.start.column],
 					node.arguments.length,
-					node.functionName.namespace ?? ''
+					node.functionName.namespace ?? '',
+					hasCallsEdge ? 1 : 0
 				])
 			}
 

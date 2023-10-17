@@ -8,6 +8,7 @@ import { guard } from '../../assert'
 import path from 'path'
 import { FeatureSelection } from '../../../statistics'
 import { migrateFiles } from './first-phase/process'
+import { date2string } from '../../time'
 
 // TODO: histograms
 export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfiguration {
@@ -87,7 +88,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 
 		let count = 0
 		for await (const f of getAllFiles(this.config.inputPath, /\.tar.gz$/)) {
-			this.log(`[${count++}] processing file ${f} (to ${this.config.intermediateOutputPath})`)
+			this.log(`[${count++}, ${date2string()}] processing file ${f} (to ${this.config.intermediateOutputPath})`)
 			let target: string | undefined = undefined
 			try {
 				target = await extractArchive(f)
@@ -97,6 +98,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 			}
 			guard(target !== undefined && fs.existsSync(target), () => `expected to extract "${f}" to "${target ?? '?'}"`)
 
+			this.log('    Migrating files...')
 			migrateFiles(target, this.config.intermediateOutputPath)
 
 			this.log('    Done! (Cleanup...)')

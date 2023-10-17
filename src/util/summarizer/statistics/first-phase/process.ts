@@ -20,9 +20,8 @@ export function migrateFiles(sourceFolder: string, targetFolder: string) {
 			migrateFiles(source, target)
 		} else if(fs.existsSync(source)) {
 			// TODO: is there a faster way ?
-			const content = String(fs.readFileSync(source))
 			// TODO: should have compacted paths...
-			fs.appendFileSync(target, content)
+			fs.appendFileSync(target, fs.readFileSync(source))
 		} else {
 			fs.copyFileSync(source, target)
 		}

@@ -4,9 +4,19 @@ import { Writable } from 'ts-essentials'
 import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
 import { MergeableRecord } from '../../../util/objects'
 import { EdgeType } from '../../../dataflow'
+import {
+	CommonSyntaxTypeCounts,
+	emptyCommonSyntaxTypeCounts,
+	updateCommonSyntaxTypeCounts
+} from '../common-syntax-probability'
 
 const initialFunctionUsageInfo = {
-	allFunctionCalls:    0,
+	allFunctionCalls: 0,
+	args:             {
+		// only if called without arguments
+		0: 0n,
+		1: emptyCommonSyntaxTypeCounts()
+	} as Record<number, bigint | CommonSyntaxTypeCounts>,
 	/** `a(b(), c(3, d()))` has 3 (`b`, `c`, `d`) */
 	nestedFunctionCalls: 0,
 	deepestNesting:      0,
@@ -14,6 +24,24 @@ const initialFunctionUsageInfo = {
 }
 
 export type FunctionUsageInfo = Writable<typeof initialFunctionUsageInfo>
+
+function classifyArguments(args: (RNodeWithParent | undefined)[], existing: Record<number, bigint | CommonSyntaxTypeCounts>) {
+	if(args.length === 0) {
+		(existing[0] as unknown as number)++
+		return
+	}
+
+	let i = 1
+	for(const arg of args) {
+		if(arg === undefined) {
+			(existing[0] as unknown as number)++
+			continue
+		}
+
+		existing[i] = updateCommonSyntaxTypeCounts((existing[i] as CommonSyntaxTypeCounts | undefined) ?? emptyCommonSyntaxTypeCounts(), arg)
+		i++
+	}
+}
 
 export type FunctionCallInformation = [
 	/** the name of the called function, or undefined if this was an unnamed function call */
@@ -66,6 +94,8 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 					hasCallsEdge ? 1 : 0
 				])
 			}
+
+			classifyArguments(node.arguments, info.args)
 
 			calls.push(node)
 		}, node => {

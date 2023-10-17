@@ -7,7 +7,7 @@ import fs from 'fs'
 import { guard } from '../../assert'
 import path from 'path'
 import { FeatureSelection } from '../../../statistics'
-import { migrateFiles } from './first-phase/process'
+import { postProcessFeatureFolder } from './first-phase/process'
 import { date2string } from '../../time'
 
 // TODO: histograms
@@ -99,10 +99,14 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 			guard(target !== undefined && fs.existsSync(target), () => `expected to extract "${f}" to "${target ?? '?'}"`)
 
 			this.log('    Migrating files...')
-			migrateFiles(target, this.config.intermediateOutputPath)
+			// migrateFiles(target, this.config.intermediateOutputPath)
+			postProcessFeatureFolder(this.log, target, this.config.featuresToUse, this.config.intermediateOutputPath)
 
 			this.log('    Done! (Cleanup...)')
 			fs.rmSync(target, { recursive: true, force: true })
+			if(count > 25) {
+				break
+			}
 		}
 		this.log(`Found ${count} files to summarize`)
 		return Promise.resolve()

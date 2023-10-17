@@ -67,10 +67,9 @@ export interface Feature<T extends FeatureInfo, Output = unknown> {
 	process:              FeatureProcessor<T>
 	/**
 	 * If present, this feature allows to post-process the results of the feature extraction (for the summarizer).
-	 * This retrieves a map of all files recorded for the given features and their JSON content.
-	 * The keys of the resulting map can be completely independent.
+	 * This retrieves the root path to the given directory, and the already existing output (undefined if there is none).
 	 */
-	postProcess?:         (files: Map<string, StatisticsOutputFormat[]>) => Map<string, Output>
+	postProcess?:         (featureRoot: string, existing: Output | undefined) => Output
 	/** Values to start the existing track from */
 	initialValue:         T
 }

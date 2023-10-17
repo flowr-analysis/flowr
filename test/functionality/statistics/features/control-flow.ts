@@ -1,5 +1,6 @@
 import { withShell } from '../../helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
+import { RFalse, RTrue } from '../../../../src/r-bridge'
 
 
 describe('Controlflow', withShell(shell => {
@@ -14,103 +15,118 @@ describe('Controlflow', withShell(shell => {
 			name:     'if-then with constant condition',
 			code:     'if(TRUE) { x }',
 			expected: {
-				ifThen:         1,
-				constantIfThen: 1
+				ifThen: {
+					total:   1n,
+					logical: {
+						[RTrue]: 1n
+					}
+				}
 			},
-			written: [
-				['IfThen', [['TRUE']]],
-				['constantIfThen', [['TRUE']]]
-			]
+			written: 'nothing'
 		},
 		{
 			name:     'if-then-else with constant condition',
 			code:     'if(FALSE) { x } else { y }',
 			expected: {
-				ifThenElse:         1,
-				constantIfThenElse: 1
+				ifThenElse: {
+					total:   1n,
+					logical: {
+						[RFalse]: 1n,
+					}
+				}
 			},
-			written: [
-				['IfThenElse', [['FALSE']]],
-				['constantIfThenElse', [['FALSE']]]
-			]
+			written: 'nothing'
 		},
 		{
 			name:     'if-then with single variable',
 			code:     'if(c) { x }',
 			expected: {
-				ifThen:               1,
-				singleVariableIfThen: 1
+				ifThen: {
+					total: 		  1n,
+					singleVar: {
+						c: 1n
+					}
+				}
 			},
-			written: [
-				['IfThen', [['c']]],
-				['singleVariableIfThen', [['c']]]
-			]
+			written: 'nothing'
 		},
 		{
 			name:     'if-then-else with single variable',
 			code:     'if(c) { x } else { y }',
 			expected: {
-				ifThenElse:               1,
-				singleVariableIfThenElse: 1
+				ifThenElse: {
+					total: 		  1n,
+					singleVar: {
+						c: 1n
+					}
+				}
 			},
-			written: [
-				['IfThenElse', [['c']]],
-				['singleVariableIfThenElse', [['c']]]
-			]
+			written: 'nothing'
 		},
 		{
 			name:     'if-then with simple condition',
 			code:     'if(c == 1) { x }',
 			expected: {
-				ifThen: 1
+				ifThen: {
+					total: 1n,
+					binOp: {
+						'==': 1n
+					}
+				}
 			},
-			written: [
-				['IfThen', [['c == 1']]]
-			]
+			written: 'nothing'
 		},
 		{
 			name:     'if-then-else with simple condition',
 			code:     'if(c == "alpha") { x } else { y }',
 			expected: {
-				ifThenElse: 1
+				ifThenElse: {
+					total: 1n,
+					binOp: {
+						'==': 1n
+					}
+				}
 			},
-			written: [
-				['IfThenElse', [['c == "alpha"']]]
-			]
+			written: 'nothing'
 		},
 		{
 			name:     'remain constant with call',
 			code:     'if (!require("XX")) install.packages("XX")',
 			expected: {
-				ifThen: 1
+				ifThen: {
+					total:   1n,
+					unaryOp: {
+						'!': 1n
+					}
+				}
 			},
-			written: [
-				['IfThen', [['!require("XX")']]]
-			]
+			written: 'nothing'
 		},
 		{
 			name:     'switch with constant condition',
 			code:     'switch(1, x)',
 			expected: {
-				switchCase:         1,
-				constantSwitchCase: 1
+				switchCase: {
+					total:  1n,
+					number: {
+						1: 1n
+					}
+				}
 			},
-			written: [
-				['SwitchCase', [['1']]],
-				['constantSwitchCase', [['1']]]
-			]
+			written: 'nothing'
 		},
 		{
 			name:     'switch with single variable condition',
 			code:     'switch(x, y, z)',
 			expected: {
-				switchCase:               1,
-				singleVariableSwitchCase: 1
+				switchCase: {
+					total:     1n,
+					singleVar: {
+						x: 1n
+					}
+				}
 			},
-			written: [
-				['SwitchCase', [['x']]],
-				['singleVariableSwitchCase', [['x']]]
-			]
+			written: 'nothing'
 		}
 	])
 }))

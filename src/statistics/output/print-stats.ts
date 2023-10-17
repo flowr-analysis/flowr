@@ -1,6 +1,7 @@
 import { ALL_FEATURES, FeatureKey, FeatureStatistics } from '../features'
 import { ColorEffect, Colors, formatter } from './ansi'
 import { MetaStatistics } from '../meta-statistics'
+import { CommonSyntaxTypeCounts } from '../features/common-syntax-probability'
 
 interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}
 
@@ -53,7 +54,7 @@ export function printFeatureStatistics(statistics: {features: FeatureStatistics,
 
 const pad = 3
 
-export function printFeatureStatisticsEntry(info: Record<string, string | number>): void {
+export function printFeatureStatisticsEntry(info: Record<string, string | number | CommonSyntaxTypeCounts>): void {
 	let longestKey = 0
 	let longestValue = 0
 	const out = new Map<string, string>()

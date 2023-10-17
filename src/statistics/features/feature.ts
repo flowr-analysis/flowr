@@ -21,7 +21,7 @@ import { MergeableRecord } from '../../util/objects'
 import { NormalizedAst } from '../../r-bridge'
 import { DataflowInformation } from '../../dataflow/internal/info'
 import { variables } from './supported/variables'
-import { StatisticsOutputFormat } from '../output'
+import { CommonSyntaxTypeCounts } from './common-syntax-probability'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
@@ -29,7 +29,7 @@ import { StatisticsOutputFormat } from '../output'
  * <p>
  * Since we are writing to files {@link process}, we only count feature occurrences (some feature/parts are not written to file)
  */
-export type FeatureInfo = Record<string, number> & MergeableRecord
+export type FeatureInfo = Record<string, number | CommonSyntaxTypeCounts> & MergeableRecord
 
 
 /**

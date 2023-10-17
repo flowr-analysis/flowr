@@ -10,6 +10,7 @@ import fs from 'fs'
 import { log } from '../util/log'
 import { initialMetaStatistics, MetaStatistics } from './meta-statistics'
 import { SteppingSlicer,StepResults } from '../core'
+import { jsonReplacer, jsonRetriever } from '../util/json'
 
 /**
  * By default, {@link extractUsageStatistics} requires a generator, but sometimes you already know all the files
@@ -72,7 +73,7 @@ function initializeFeatureStatistics(): FeatureStatistics {
 	const result = {} as FeatureStatistics
 	for(const key of allFeatureNames) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		result[key] = JSON.parse(JSON.stringify(ALL_FEATURES[key].initialValue))
+		result[key] = JSON.parse(JSON.stringify(ALL_FEATURES[key].initialValue, jsonReplacer), jsonRetriever)
 	}
 	return result
 }

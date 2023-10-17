@@ -4,31 +4,56 @@
 import { RFalse, RNodeWithParent, RTrue, RType } from '../../r-bridge'
 
 export interface CommonSyntaxTypeCounts {
+	// just a helper to collect all as well (could be derived from sum)
+	total:       bigint,
 	// does include t and f, as well as NULL etc. (any special symbol)
-	singleVar:   Map<string, bigint>
-	number:      Map<number, bigint>
+	singleVar:   Record<string, bigint>
+	number:      Record<number, bigint>
 	// only explicit integers
-	integer:     Map<number, bigint>
-	complex:     Map<number, bigint>
-	string:      Map<string, bigint>
-	logical:     Map<typeof RTrue | typeof RFalse, bigint>,
-	call:        Map<string, bigint>,
+	integer:     Record<number, bigint>
+	complex:     Record<number, bigint>
+	string:      Record<string, bigint>
+	logical:     Record<typeof RTrue | typeof RFalse, bigint>,
+	call:        Record<string, bigint>,
 	unnamedCall: bigint,
 	// binop includes all assignments!
-	binOp:       Map<string, bigint>,
-	unaryOp:     Map<string, bigint>,
+	binOp:       Record<string, bigint>,
+	unaryOp:     Record<string, bigint>,
 	// unknown content, records lexeme (can include break etc. for bodies)
-	other:       Map<string, bigint>
+	other:       Record<string, bigint>
 }
 
-function incrementEntry<T>(map: Map<T, bigint>, key: T): void {
-	map.set(key, (map.get(key) ?? 0n) + 1n)
+export function emptyCommonSyntaxTypeCounts(): CommonSyntaxTypeCounts {
+	return {
+		total:     0n,
+		singleVar: {},
+		number:    {},
+		integer:   {},
+		complex:   {},
+		string:    {},
+		logical:   {
+			[RTrue]:  0n,
+			[RFalse]: 0n
+		},
+		call:        {},
+		unnamedCall: 0n,
+		binOp:       {},
+		unaryOp:     {},
+		other:       {}
+	}
+}
+
+
+function incrementEntry<T extends string | number | symbol>(map: Record<T, bigint>, key: T): void {
+	map[key] = ((map[key] as bigint | undefined) ?? 0n) + 1n
 }
 
 /**
  * Updates the given counts based on the type of the given node.
  */
 export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, node: RNodeWithParent): CommonSyntaxTypeCounts {
+	current.total++
+
 	switch(node.type) {
 		case RType.String:
 			incrementEntry(current.string, node.content.str)
@@ -62,8 +87,12 @@ export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, no
 			incrementEntry(current.unaryOp, node.operator)
 			break
 		default:
-			incrementEntry(current.other, node.fullLexeme ?? node.lexeme)
+			// for space reasons we do not record the full lexeme!
+			if(node.lexeme) {
+				incrementEntry(current.other, node.lexeme)
+			}
 			break
 	}
+
 	return current
 }

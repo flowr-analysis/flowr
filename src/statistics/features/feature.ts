@@ -68,8 +68,10 @@ export interface Feature<T extends FeatureInfo, Output = unknown> {
 	/**
 	 * If present, this feature allows to post-process the results of the feature extraction (for the summarizer).
 	 * This retrieves the root path to the given directory, and the already existing output (undefined if there is none).
+	 * <p>
+	 * The extraction can use the intermediate output path to write files to, and should return the final output.
 	 */
-	postProcess?:         (featureRoot: string, existing: Output | undefined) => Output
+	postProcess?:         (featureRoot: string, existing: Output | undefined, intermediateOutputPath: string) => Output
 	/** Values to start the existing track from */
 	initialValue:         T
 }

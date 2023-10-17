@@ -6,9 +6,9 @@ import { CommonSummarizerConfiguration } from '../../summarizer'
 /**
  * Post process the collections in a given folder, reducing them in a memory preserving way.
  *
- * @param logger   - The logger to use for outputs
- * @param filepath - Path to the root file of the data collection (contains all of zhe archives)
- * @param features - Collection of features to post process, expects corresponding folders to exist
+ * @param logger                 - The logger to use for outputs
+ * @param filepath               - Path to the root file of the data collection (contains all of zhe archives)
+ * @param features               - Collection of features to post process, expects corresponding folders to exist
  * @param intermediateOutputPath - Path to the intermediate output
  *
  * @returns non-aggregated reports for each sub-key of each feature
@@ -25,7 +25,6 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 		const featureInfo = ALL_FEATURES[feature]
 		const targetPath = path.join(filepath, featureInfo.name)
 
-		// TODO: allow for output during post-processing
 		if(!featureInfo.postProcess) {
 			logger(`    Skipping post processing of ${feature} as no post processing behavior is defined`)
 			continue
@@ -35,7 +34,7 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 			continue
 		}
 
-		featureOutputMap.set(feature, featureInfo.postProcess(targetPath, featureOutputMap.get(feature)))
+		featureOutputMap.set(feature, featureInfo.postProcess(targetPath, featureOutputMap.get(feature), intermediateOutputPath))
 	}
 	return featureOutputMap
 }

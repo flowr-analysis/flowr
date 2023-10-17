@@ -42,9 +42,9 @@ function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 				default: return
 			}
 
+			appendStatisticsFile(loops.name, 'all-loops', [node.info.fullLexeme ?? node.lexeme], input.filepath)
 			if(loopStack.length > 0) {
 				info.nestedExplicitLoops++
-				appendStatisticsFile(loops.name, 'nested-loop', [node.info.fullLexeme ?? node.lexeme], input.filepath)
 				info.deepestExplicitNesting = Math.max(info.deepestExplicitNesting, loopStack.length)
 			}
 

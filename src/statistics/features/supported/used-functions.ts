@@ -135,7 +135,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 }
 
 
-export const usedFunctions: Feature<FunctionUsageInfo> = {
+export const usedFunctions: Feature<FunctionUsageInfo, UsedFunctionPostProcessing> = {
 	name:        'Used Functions',
 	description: 'All functions called, split into various sub-categories',
 
@@ -144,5 +144,29 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
 		return existing
 	},
 
-	initialValue: initialFunctionUsageInfo
+	initialValue: initialFunctionUsageInfo,
+	postProcess:  postProcess
+}
+
+
+// eslint-disable-next-line no-warning-comments
+// TODO: split in test, main&example and scripts
+interface UsedFunctionPostProcessing extends MergeableRecord {
+	// maps fn-name (including namespace) to number of arguments and their location (the number of elements in the array give the number of total call)
+	// we use arrays to reduce the memory!
+	// unnamed calls are all grouped into an empty name
+	functionCallsPerFile:  Map<string, [arguments: number, location: [line: number, character: number]][]>
+	deepestNestingPerFile: number[]
+	nestingPerFile:        number[]
+}
+
+function postProcess(featureRoot: string, existing: UsedFunctionPostProcessing | undefined, intermediateOutputPath: string): UsedFunctionPostProcessing {
+	existing ??= {
+		functionCallsPerFile:  new Map(),
+		deepestNestingPerFile: [],
+		nestingPerFile:        []
+	}
+
+
+	return existing
 }

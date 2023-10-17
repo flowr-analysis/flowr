@@ -34,7 +34,8 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 			continue
 		}
 
-		featureOutputMap.set(feature, featureInfo.postProcess(targetPath, featureOutputMap.get(feature), intermediateOutputPath))
+		// TODO:
+		// featureOutputMap.set(feature, featureInfo.postProcess(targetPath, featureOutputMap.get(feature), intermediateOutputPath))
 	}
 	return featureOutputMap
 }

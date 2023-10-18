@@ -2,7 +2,6 @@ import { jsonReplacer } from '../../util/json'
 import { DataflowInformation } from '../../dataflow/internal/info'
 import { QuadSerializationConfiguration } from '../../util/quads'
 import { df2quads } from '../../dataflow/graph/quads'
-import { DataflowGraph } from '../../dataflow'
 
 
 function mayObjectJson(d: unknown): string {

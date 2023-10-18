@@ -16,7 +16,7 @@
 import { MergeableRecord } from '../util/objects'
 import {
 	normalize,
-	retrieveXmlFromRCode, XmlParserConfig
+	retrieveXmlFromRCode
 } from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode, staticSlicing } from '../slicing'
@@ -25,7 +25,6 @@ import { normalizedAstToJson, normalizedAstToQuads } from './print/normalize-pri
 import { guard } from '../util/assert'
 import { dataflowGraphToJson, dataflowGraphToQuads } from './print/dataflow-printer'
 import { parseToQuads } from './print/parse-printer'
-import { QuadSerializationConfiguration } from '../util/quads'
 
 /**
  * This represents close a function that we know completely nothing about.

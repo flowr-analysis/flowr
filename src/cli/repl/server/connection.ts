@@ -1,5 +1,5 @@
 import { LAST_STEP, printStepResult, SteppingSlicer, StepResults, STEPS_PER_SLICE } from '../../../core'
-import { DEFAULT_XML_PARSER_CONFIG, NormalizedAst, RNodeWithParent, RShell, XmlParserConfig } from '../../../r-bridge'
+import { DEFAULT_XML_PARSER_CONFIG, NormalizedAst, RShell, XmlParserConfig } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
 import {
@@ -21,10 +21,8 @@ import {
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
 import { cfg2quads, ControlFlowInformation, extractCFG } from '../../../util/cfg'
-import { defaultQuadIdGenerator, QuadSerializationConfiguration, serialize2quads } from '../../../util/quads'
+import { defaultQuadIdGenerator, QuadSerializationConfiguration } from '../../../util/quads'
 import { deepMergeObject } from '../../../util/objects'
-import { df2quads } from '../../../dataflow/graph/quads'
-import { DataflowGraph } from '../../../dataflow'
 import { LogLevel } from '../../../util/log'
 import { StepOutputFormat } from '../../../core/print/print'
 import { DataflowInformation } from '../../../dataflow/internal/info'

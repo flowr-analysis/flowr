@@ -23,7 +23,7 @@ import { reconstructToCode, staticSlicing } from '../slicing'
 import { internalPrinter, IStepPrinter, StepOutputFormat } from './print/print'
 import { normalizedAstToJson, normalizedAstToQuads } from './print/normalize-printer'
 import { guard } from '../util/assert'
-import { dataflowGraphToJson } from './print/dataflow-printer'
+import { dataflowGraphToJson, dataflowGraphToQuads } from './print/dataflow-printer'
 import { parseToQuads } from './print/parse-printer'
 import { QuadSerializationConfiguration } from '../util/quads'
 
@@ -87,7 +87,8 @@ export const STEPS_PER_FILE = {
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter,
-			[StepOutputFormat.Json]:     dataflowGraphToJson
+			[StepOutputFormat.Json]:     dataflowGraphToJson,
+			[StepOutputFormat.RdfQuads]: dataflowGraphToQuads
 		}
 	} satisfies IStep<typeof produceDataFlowGraph>
 } as const

@@ -82,7 +82,7 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.Internal]: internalPrinter,
 			[StepOutputFormat.Json]:     normalizedAstToJson
 		}
-	} satisfies IStep<typeof normalize>,
+	} satisfies IStep<typeof normalize, { [StepOutputFormat.Json]: [] }>,
 	'dataflow': {
 		description: 'Construct the dataflow graph',
 		processor:   produceDataFlowGraph,
@@ -91,7 +91,7 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.Internal]: internalPrinter,
 			[StepOutputFormat.Json]:     dataflowGraphToJson
 		}
-	} satisfies IStep<typeof produceDataFlowGraph>
+	} satisfies IStep<typeof produceDataFlowGraph, { [StepOutputFormat.Json]: [] }>
 } as const
 
 export const STEPS_PER_SLICE = {
@@ -102,7 +102,7 @@ export const STEPS_PER_SLICE = {
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter
 		}
-	} satisfies IStep<typeof staticSlicing>,
+	} satisfies IStep<typeof staticSlicing, { [StepOutputFormat.Json]: [] }>,
 	'reconstruct': {
 		description: 'Reconstruct R code from the static slice',
 		processor:   reconstructToCode,
@@ -110,7 +110,7 @@ export const STEPS_PER_SLICE = {
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter
 		}
-	} satisfies IStep<typeof reconstructToCode>
+	} satisfies IStep<typeof reconstructToCode, { [StepOutputFormat.Json]: [] }>
 } as const
 
 export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const
@@ -127,11 +127,18 @@ export function executeSingleSubStep<Name extends StepName, Processor extends St
 	return STEPS[subStep].processor(...input as unknown as never[]) as ReturnType<Processor>
 }
 
+type Tail<T extends unknown[]> = T extends [infer _, ...infer Rest] ? Rest : never;
+
+/**
+ * For a `step` of the given name, which returned the given `data`. Convert that data into the given `format`.
+ * Depending on your step and the format this may require `additional` inputs.
+ */
 export function printStepResult<
-	AdditionalInput extends unknown[],
 	Name extends StepName,
 	Processor extends StepProcessor<Name>,
-	Format extends Exclude<keyof(typeof STEPS)[Name]['printer'] & StepOutputFormat, StepOutputFormat.Internal>
+	Format extends Exclude<keyof(typeof STEPS)[Name]['printer'], StepOutputFormat.Internal> & number,
+	Printer extends (typeof STEPS)[Name]['printer'][Format],
+	AdditionalInput extends Tail<Parameters<Printer>>,
 >(step: Name, data: Awaited<ReturnType<Processor>>, format: Format, ...additional: AdditionalInput): Promise<string> {
 	const base = STEPS[step].printer
 	const printer = base[format as keyof typeof base] as IStepPrinter<StepProcessor<Name>, Format, AdditionalInput> | undefined

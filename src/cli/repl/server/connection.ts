@@ -135,7 +135,7 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult('parse', results.parse as string,  StepOutputFormat.RdfQuads, parseConfig, config()),
+					parse:     await printStepResult('parse', results.parse as string,  StepOutputFormat.RdfQuads, config(), parseConfig),
 					normalize: serialize2quads(results.normalize?.ast as RNodeWithParent, config()),
 					dataflow:  df2quads(results.dataflow?.graph as DataflowGraph, config()),
 				}

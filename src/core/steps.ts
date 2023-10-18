@@ -21,7 +21,7 @@ import {
 import { produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode, staticSlicing } from '../slicing'
 import { internalPrinter, IStepPrinter, StepOutputFormat } from './print/print'
-import { normalizedAstToJson } from './print/normalize-printer'
+import { normalizedAstToJson, normalizedAstToQuads } from './print/normalize-printer'
 import { guard } from '../util/assert'
 import { dataflowGraphToJson } from './print/dataflow-printer'
 import { parseToQuads } from './print/parse-printer'
@@ -77,7 +77,8 @@ export const STEPS_PER_FILE = {
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter,
-			[StepOutputFormat.Json]:     normalizedAstToJson
+			[StepOutputFormat.Json]:     normalizedAstToJson,
+			[StepOutputFormat.RdfQuads]: normalizedAstToQuads
 		}
 	} satisfies IStep<typeof normalize>,
 	'dataflow': {

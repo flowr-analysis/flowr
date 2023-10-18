@@ -43,9 +43,6 @@ export type StepRequired = 'once-per-file' | 'once-per-slice'
  */
 export interface IStep<
 	Fn extends StepFunction,
-	PrinterArguments extends {
-		[K in StepOutputFormat]?: unknown[]
-	}
 > extends MergeableRecord {
 	/** Human-readable description of this step */
 	description: string
@@ -54,7 +51,7 @@ export interface IStep<
 	/* does this step has to be repeated for each new slice or can it be performed only once in the initialization */
 	required:    StepRequired
 	printer: {
-		[K in StepOutputFormat]?: PrinterArguments[K] extends undefined ? never : IStepPrinter<Fn, K, Exclude<PrinterArguments[K], undefined>>
+		[K in StepOutputFormat]?: IStepPrinter<Fn, K, never[]>
 	} & {
 		// we always want to have the internal printer
 		[StepOutputFormat.Internal]: IStepPrinter<Fn, StepOutputFormat.Internal, []>
@@ -73,7 +70,7 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.Json]:     async text => text,
 			[StepOutputFormat.RdfQuads]: parseToQuads
 		}
-	} satisfies IStep<typeof retrieveXmlFromRCode, { [StepOutputFormat.Json]: [], [StepOutputFormat.RdfQuads]: [QuadSerializationConfiguration,XmlParserConfig] }>,
+	} satisfies IStep<typeof retrieveXmlFromRCode>,
 	'normalize': {
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
 		processor:   normalize,
@@ -82,7 +79,7 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.Internal]: internalPrinter,
 			[StepOutputFormat.Json]:     normalizedAstToJson
 		}
-	} satisfies IStep<typeof normalize, { [StepOutputFormat.Json]: [] }>,
+	} satisfies IStep<typeof normalize>,
 	'dataflow': {
 		description: 'Construct the dataflow graph',
 		processor:   produceDataFlowGraph,
@@ -91,7 +88,7 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.Internal]: internalPrinter,
 			[StepOutputFormat.Json]:     dataflowGraphToJson
 		}
-	} satisfies IStep<typeof produceDataFlowGraph, { [StepOutputFormat.Json]: [] }>
+	} satisfies IStep<typeof produceDataFlowGraph>
 } as const
 
 export const STEPS_PER_SLICE = {
@@ -102,7 +99,7 @@ export const STEPS_PER_SLICE = {
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter
 		}
-	} satisfies IStep<typeof staticSlicing, { [StepOutputFormat.Json]: [] }>,
+	} satisfies IStep<typeof staticSlicing>,
 	'reconstruct': {
 		description: 'Reconstruct R code from the static slice',
 		processor:   reconstructToCode,
@@ -110,7 +107,7 @@ export const STEPS_PER_SLICE = {
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter
 		}
-	} satisfies IStep<typeof reconstructToCode, { [StepOutputFormat.Json]: [] }>
+	} satisfies IStep<typeof reconstructToCode>
 } as const
 
 export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const

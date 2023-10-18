@@ -16,7 +16,7 @@
 import { MergeableRecord } from '../util/objects'
 import {
 	normalize,
-	retrieveXmlFromRCode
+	retrieveXmlFromRCode, XmlParserConfig
 } from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode, staticSlicing } from '../slicing'
@@ -24,6 +24,8 @@ import { internalPrinter, IStepPrinter, StepOutputFormat } from './print/print'
 import { normalizedAstToJson } from './print/normalize-printer'
 import { guard } from '../util/assert'
 import { dataflowGraphToJson } from './print/dataflow-printer'
+import { parseToQuads } from './print/parse-printer'
+import { QuadSerializationConfiguration } from '../util/quads'
 
 /**
  * This represents close a function that we know completely nothing about.
@@ -39,7 +41,12 @@ export type StepRequired = 'once-per-file' | 'once-per-slice'
 /**
  * Defines what is to be known of a single step in the slicing process.
  */
-export interface IStep<Fn extends StepFunction> extends MergeableRecord {
+export interface IStep<
+	Fn extends StepFunction,
+	PrinterArguments extends {
+		[K in StepOutputFormat]?: unknown[]
+	}
+> extends MergeableRecord {
 	/** Human-readable description of this step */
 	description: string
 	/** The main processor that essentially performs the logic of this step */
@@ -47,7 +54,10 @@ export interface IStep<Fn extends StepFunction> extends MergeableRecord {
 	/* does this step has to be repeated for each new slice or can it be performed only once in the initialization */
 	required:    StepRequired
 	printer: {
-		[K in StepOutputFormat]?: IStepPrinter<Fn, K, unknown[]>
+		[K in StepOutputFormat]?: PrinterArguments[K] extends undefined ? never : IStepPrinter<Fn, K, Exclude<PrinterArguments[K], undefined>>
+	} & {
+		// we always want to have the internal printer
+		[StepOutputFormat.Internal]: IStepPrinter<Fn, StepOutputFormat.Internal, []>
 	}
 }
 
@@ -60,9 +70,10 @@ export const STEPS_PER_FILE = {
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter,
 			// eslint-disable-next-line @typescript-eslint/require-await -- async printer wrapper, string is already json
-			[StepOutputFormat.Json]:     async text => text
+			[StepOutputFormat.Json]:     async text => text,
+			[StepOutputFormat.RdfQuads]: parseToQuads
 		}
-	} satisfies IStep<typeof retrieveXmlFromRCode>,
+	} satisfies IStep<typeof retrieveXmlFromRCode, { [StepOutputFormat.Json]: [], [StepOutputFormat.RdfQuads]: [QuadSerializationConfiguration,XmlParserConfig] }>,
 	'normalize': {
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
 		processor:   normalize,

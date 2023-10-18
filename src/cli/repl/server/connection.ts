@@ -1,15 +1,10 @@
-import { LAST_STEP, SteppingSlicer, StepResults, STEPS_PER_SLICE } from '../../../core'
-import {
-	DEFAULT_XML_PARSER_CONFIG,
-	NormalizedAst,
-	RNodeWithParent,
-	RShell,
-	XmlParserConfig
-} from '../../../r-bridge'
+import { LAST_STEP, printStepResult, SteppingSlicer, StepResults, STEPS_PER_SLICE } from '../../../core'
+import { DEFAULT_XML_PARSER_CONFIG, NormalizedAst, RNodeWithParent, RShell, XmlParserConfig } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
 import {
-	FileAnalysisRequestMessage, FileAnalysisResponseMessageNQuads,
+	FileAnalysisRequestMessage,
+	FileAnalysisResponseMessageNQuads,
 	requestAnalysisMessage
 } from './messages/analysis'
 import { requestSliceMessage, SliceRequestMessage, SliceResponseMessage } from './messages/slice'
@@ -20,17 +15,18 @@ import { ILogObj, Logger } from 'tslog'
 import {
 	ExecuteEndMessage,
 	ExecuteIntermediateResponseMessage,
-	ExecuteRequestMessage, requestExecuteReplExpressionMessage
+	ExecuteRequestMessage,
+	requestExecuteReplExpressionMessage
 } from './messages/repl'
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
 import { cfg2quads, ControlFlowInformation, extractCFG } from '../../../util/cfg'
 import { defaultQuadIdGenerator, QuadSerializationConfiguration, serialize2quads } from '../../../util/quads'
-import { xlm2jsonObject } from '../../../r-bridge/lang-4.x/ast/parser/xml/internal'
 import { deepMergeObject } from '../../../util/objects'
 import { df2quads } from '../../../dataflow/graph/quads'
 import { DataflowGraph } from '../../../dataflow'
 import { LogLevel } from '../../../util/log'
+import { StepOutputFormat } from '../../../core/print/print'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -139,7 +135,7 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     serialize2quads(await xlm2jsonObject(parseConfig, results.parse as string), config()),
+					parse:     await printStepResult('parse', results.parse as string,  StepOutputFormat.RdfQuads, parseConfig, config()),
 					normalize: serialize2quads(results.normalize?.ast as RNodeWithParent, config()),
 					dataflow:  df2quads(results.dataflow?.graph as DataflowGraph, config()),
 				}

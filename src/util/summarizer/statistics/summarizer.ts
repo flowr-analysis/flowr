@@ -62,11 +62,16 @@ function identifyCommonPrefix(files: Map<string,string>): string {
 async function extractArchive(f: string): Promise<Map<string,string>> {
 	const files = await retrieveAllFilesInArchive(f)
 	const commonRoot  = identifyCommonPrefix(files)
+	// post process until we find the '<filename>.(r|R)' suffix. otherwise, if there are no features and only the meta folder, the meta folder will be removed, resulting in a write
+	// to the toplevel!
+	const fname = path.basename(f).replace(/\.tar\.gz$/, '')
+	const commonPart = commonRoot.substring(0, commonRoot.indexOf(fname))
+
 
 	// transform all map keys by removing the common root
 	const transformed = new Map<string, string>()
 	for(const [key, value] of files.entries()) {
-		transformed.set(key.replace(commonRoot, ''), value)
+		transformed.set(key.replace(commonPart, ''), value)
 	}
 	return transformed
 }

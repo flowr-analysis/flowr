@@ -28,7 +28,12 @@ export const enum StepOutputFormat {
 	 * This is an extension of the {@link Mermaid} format. Instead of returning
 	 * the mermaid code, it will return an url to mermaid live.
 	 */
-	MermaidUrl
+	MermaidUrl,
+	/**
+	 * Produce n-quads as the output.
+	 * See {@link serialize2quads}
+	 */
+	RdfQuads
 }
 
 /**

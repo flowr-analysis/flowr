@@ -62,10 +62,15 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
 }
 
 export interface RShellSessionOptions extends MergeableRecord {
+	/** The path to the R executable, can be only the executable if it is to be found on the PATH. */
 	readonly pathToRExecutable:  string
+	/** Command line options to use when starting the R session. */
 	readonly commandLineOptions: readonly string[]
+	/** The current working directory of the R session. */
 	readonly cwd:                string
+	/** The character to use to mark the end of a line. Is probably always `\n` (even on windows). */
 	readonly eol:                string
+	/** The environment variables available in the R session. */
 	readonly env:                NodeJS.ProcessEnv
 	/** If set, the R session will be restarted if it exits due to an error */
 	readonly revive:             'never' | 'on-error' | 'always'

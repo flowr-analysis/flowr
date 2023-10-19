@@ -2,6 +2,7 @@
  * Defines the type of syntax constructs that we track (e.g., true, false, 0, 1, T, F, conditions...)
  */
 import { RFalse, RNodeWithParent, RTrue, RType } from '../../r-bridge'
+import { SummarizedMeasurement } from '../../util/summarizer/benchmark/data'
 
 export interface CommonSyntaxTypeCounts {
 	// just a helper to collect all as well (could be derived from sum)
@@ -30,6 +31,11 @@ export interface CommonSyntaxTypeCounts {
 	// unknown content, records lexeme (can include break etc. for bodies)
 	other:        Record<string, bigint>
 }
+
+export type SummarizedCommonSyntaxTypeCounts = {
+	[K in keyof CommonSyntaxTypeCounts]: CommonSyntaxTypeCounts[K] extends Record<infer K, bigint> ? Record<K, SummarizedMeasurement> : SummarizedMeasurement
+}
+
 
 export function emptyCommonSyntaxTypeCounts(): CommonSyntaxTypeCounts {
 	return {

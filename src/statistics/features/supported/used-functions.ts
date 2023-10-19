@@ -6,7 +6,7 @@ import { MergeableRecord } from '../../../util/objects'
 import { EdgeType } from '../../../dataflow'
 import {
 	CommonSyntaxTypeCounts,
-	emptyCommonSyntaxTypeCounts,
+	emptyCommonSyntaxTypeCounts, SummarizedCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts
 } from '../common-syntax-probability'
 import { SummarizedMeasurement } from '../../../util/summarizer/benchmark/data'
@@ -136,11 +136,16 @@ interface UsedFunctionPostProcessing extends MergeableRecord {
 	deepestNestingPerFile: number[]
 	nestingPerFile:        number[]
 	meta: {
-		averageCall: number
-		emptyArgs:   SummarizedMeasurement
+		averageCall:    SummarizedMeasurement
+		emptyArgs:      SummarizedMeasurement
+		nestedCalls:    SummarizedMeasurement
+		deepestNesting: SummarizedMeasurement
+		unnamedCalls:   SummarizedMeasurement
 		// the first entry is for 1 argument, the second for the two arguments (the second,....)
 		// TODO: summarized version with SummarizedMeasurement
-		args:	       CommonSyntaxTypeCounts[]
+		args:	          SummarizedCommonSyntaxTypeCounts[]
+		names:          Map<string, SummarizedMeasurement>
+		// TODO: evaluate location of functions
 	}
 }
 
@@ -152,9 +157,13 @@ function postProcess(featureRoot: string, meta: string, outputPath: string): Use
 		nestingPerFile:        [],
 		// TODO:
 		meta:                  {
-			averageCall: 0,
-			emptyArgs:   { mean: 0, median: 0, min: 0, max: 0, std: 0, total: 0 },
-			args:        []
+			averageCall:    { mean: 0, median: 0, min: 0, max: 0, std: 0, total: 0 },
+			nestedCalls:    { mean: 0, median: 0, min: 0, max: 0, std: 0, total: 0 },
+			deepestNesting: { mean: 0, median: 0, min: 0, max: 0, std: 0, total: 0 },
+			emptyArgs:      { mean: 0, median: 0, min: 0, max: 0, std: 0, total: 0 },
+			unnamedCalls:   { mean: 0, median: 0, min: 0, max: 0, std: 0, total: 0 },
+			args:           [],
+			names:          new Map()
 		}
 	}
 }

@@ -121,10 +121,6 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 			// postProcessFeatureFolder(this.log, target, this.config.featuresToUse, this.config.intermediateOutputPath)
 
 			this.log('    Done! (Cleanup...)')
-			// fs.rm(target, { recursive: true, force: true }, () => { /* just do nothing */ })
-			if(count > 25) {
-				break
-			}
 		}
 		migrator.finish()
 		this.log(`Found ${count} files to summarize`)

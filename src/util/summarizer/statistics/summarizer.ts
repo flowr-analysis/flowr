@@ -67,9 +67,10 @@ async function extractArchive(f: string): Promise<string | undefined> {
 }
 
 
-const filePrefixRegex = /^(.+)--/
+const filePrefixRegex = /^([^-]+)--/
 /** if it starts with example-, this will return `'example'`, etc. if it starts with '--' this will return `undefined` */
 function identifyExtractionType(path: string): string | undefined  {
+	console.log(path)
 	const match = filePrefixRegex.exec(path)
 	if(match === null) {
 		return undefined
@@ -111,15 +112,12 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 			guard(target !== undefined && fs.existsSync(target), () => `expected to extract "${f}" to "${target ?? '?'}"`)
 
 			this.log('    Migrating files...')
-			const folder = identifyExtractionType(target)
-			migrateFiles(target, folder ? path.join(this.config.intermediateOutputPath, folder) : this.config.intermediateOutputPath)
+			const folder = identifyExtractionType(path.basename(target))
+			migrateFiles(target, path.join(this.config.intermediateOutputPath, folder ?? 'default'))
 			// postProcessFeatureFolder(this.log, target, this.config.featuresToUse, this.config.intermediateOutputPath)
 
 			this.log('    Done! (Cleanup...)')
 			fs.rmSync(target, { recursive: true, force: true })
-			if(count > 25) {
-				break
-			}
 		}
 		this.log(`Found ${count} files to summarize`)
 		return Promise.resolve()

@@ -65,7 +65,7 @@ async function extractArchive(f: string): Promise<Map<string,string>> {
 	// post process until we find the '<filename>.(r|R)' suffix. otherwise, if there are no features and only the meta folder, the meta folder will be removed, resulting in a write
 	// to the toplevel!
 	const fname = path.basename(f).replace(/\.tar\.gz$/, '')
-	const commonPart = commonRoot.substring(0, commonRoot.indexOf(fname))
+	const commonPart = commonRoot.substring(0, commonRoot.indexOf(fname) + fname.length)
 
 
 	// transform all map keys by removing the common root

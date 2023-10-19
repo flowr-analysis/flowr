@@ -115,7 +115,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 			let target: Map<string,string>
 			try {
 				target = await extractArchive(f)
-				this.log('    Extracted!')
+				this.log('    Collected!')
 			} catch(e) {
 				this.log(`    Failed to extract ${f}, skipping...`)
 				continue

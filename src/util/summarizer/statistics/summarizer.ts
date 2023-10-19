@@ -8,7 +8,7 @@ import { guard } from '../../assert'
 import path from 'path'
 import { FeatureSelection } from '../../../statistics'
 import { date2string } from '../../time'
-import { migrateFiles } from './first-phase/process'
+import { makeFileMigrator, migrateFiles } from './first-phase/process'
 
 // TODO: histograms
 export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfiguration {
@@ -98,6 +98,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 		fs.mkdirSync(this.config.intermediateOutputPath, { recursive: true })
 
 		let count = 0
+		const migrator = makeFileMigrator()
 		for await (const f of getAllFiles(this.config.inputPath, /\.tar.gz$/)) {
 			this.log(`[${count++}, ${date2string()}] processing file ${f} (to ${this.config.intermediateOutputPath})`)
 			let target: string | undefined = undefined
@@ -111,7 +112,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 
 			this.log('    Migrating files...')
 			const folder = identifyExtractionType(path.basename(target))
-			migrateFiles(target, path.join(this.config.intermediateOutputPath, folder ?? 'default'))
+			migrator(target, path.join(this.config.intermediateOutputPath, folder ?? 'default'))
 			// postProcessFeatureFolder(this.log, target, this.config.featuresToUse, this.config.intermediateOutputPath)
 
 			this.log('    Done! (Cleanup...)')

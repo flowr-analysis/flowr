@@ -187,10 +187,11 @@ export function summarizeMeasurement(data: number[]): SummarizedMeasurement {
 	const min = sorted[0]
 	const max = sorted[sorted.length - 1]
 	const median = sorted[Math.floor(sorted.length / 2)]
-	const mean = sorted.reduce((a, b) => a + b, 0) / sorted.length
+	const total = sorted.reduce((a, b) => a + b, 0)
+	const mean = total / sorted.length
 	// sqrt(sum(x-mean)^2 / n)
 	const std = Math.sqrt(sorted.map(x => (x - mean) ** 2).reduce((a, b) => a + b, 0) / sorted.length)
-	return { min, max, median, mean, std }
+	return { min, max, median, mean, std, total }
 }
 
 export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): SummarizedMeasurement {
@@ -201,6 +202,7 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 	const mean = data.map(d => d.mean).filter(isNotUndefined).reduce((a, b) => a + b, 0) / data.length
 	// Method 1 of https://www.statology.org/averaging-standard-deviations/
 	const std = Math.sqrt(data.map(d => d.std ** 2).filter(isNotUndefined).reduce((a, b) => a + b, 0) / data.length)
-	return { min, max, median, mean, std }
+	const total = data.map(d => d.total).filter(isNotUndefined).reduce((a, b) => a + b, 0)
+	return { min, max, median, mean, std, total }
 }
 

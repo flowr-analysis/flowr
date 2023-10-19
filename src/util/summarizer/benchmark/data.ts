@@ -7,10 +7,11 @@ import {
 } from '../../../benchmark'
 
 
-export interface SummarizedMeasurement {
-	min:    number
-	max:    number
-	median: number
+export interface SummarizedMeasurement<T = number> {
+	min:    T
+	max:    T
+	median: T
+	total:  T
 	/** average */
 	mean:   number
 	/** standard deviation */

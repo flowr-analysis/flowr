@@ -9,6 +9,7 @@ import {
 	emptyCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts
 } from '../common-syntax-probability'
+import { SummarizedMeasurement } from '../../../util/summarizer/benchmark/data'
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -134,15 +135,26 @@ interface UsedFunctionPostProcessing extends MergeableRecord {
 	functionCallsPerFile:  Map<string, [arguments: number, location: [line: number, character: number]][]>
 	deepestNestingPerFile: number[]
 	nestingPerFile:        number[]
-	meta: 								         string
+	meta: {
+		averageCall: number
+		emptyArgs:   SummarizedMeasurement
+		// the first entry is for 1 argument, the second for the two arguments (the second,....)
+		// TODO: summarized version with SummarizedMeasurement
+		args:	       CommonSyntaxTypeCounts[]
+	}
 }
 
 function postProcess(featureRoot: string, meta: string, outputPath: string): UsedFunctionPostProcessing {
+	console.log('Post-processing used functions')
 	return {
 		functionCallsPerFile:  new Map(),
 		deepestNestingPerFile: [],
 		nestingPerFile:        [],
 		// TODO:
-		meta:                  meta
+		meta:                  {
+			averageCall: 0,
+			emptyArgs:   { mean: 0, median: 0, min: 0, max: 0, std: 0, total: 0 },
+			args:        []
+		}
 	}
 }

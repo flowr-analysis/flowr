@@ -25,7 +25,7 @@ export class FileMigrator {
 				this.writeHandles.set(target, targetStream)
 			}
 			return new Promise((resolve, reject) => {
-				(targetStream as fs.WriteStream).write(content + '\n', 'utf-8', err => {
+				(targetStream as fs.WriteStream).write(content, 'utf-8', err => {
 					if(err) {
 						reject(err)
 					} else {

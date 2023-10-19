@@ -66,11 +66,16 @@ export interface Feature<T extends FeatureInfo, Output = unknown> {
 	process:              FeatureProcessor<T>
 	/**
 	 * If present, this feature allows to post-process the results of the feature extraction (for the summarizer).
-	 * This retrieves the root path to the given directory, and the already existing output (undefined if there is none).
 	 * <p>
-	 * The extraction can use the intermediate output path to write files to, and should return the final output.
+	 * The extraction can use the output path to write files to, and should return the final output.
+	 *
+	 * @param featureRoot - The root path to the feature directory which should contain all the files the feature can write to (already merged for every file processed)
+	 * @param metaPath    - The path that the meta information resides in, when reading, you have to search within the `name` key of each entry.
+	 * @param outputPath  - The path to write the output to (besides what is collected in the output and meta information)
+	 *
+	 * @returns The final output of the feature, as well as the compacted meta information (currently, in whatever format fits best for you)
 	 */
-	postProcess?:         (featureRoot: string, existing: Output | undefined, intermediateOutputPath: string) => Output
+	postProcess?:         (featureRoot: string, metaPath: string, outputPath: string) => Output & { meta: unknown }
 	/** Values to start the existing track from */
 	initialValue:         T
 }

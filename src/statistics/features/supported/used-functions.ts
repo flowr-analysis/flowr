@@ -134,15 +134,15 @@ interface UsedFunctionPostProcessing extends MergeableRecord {
 	functionCallsPerFile:  Map<string, [arguments: number, location: [line: number, character: number]][]>
 	deepestNestingPerFile: number[]
 	nestingPerFile:        number[]
+	meta: 								         string
 }
 
-function postProcess(featureRoot: string, existing: UsedFunctionPostProcessing | undefined, _intermediateOutputPath: string): UsedFunctionPostProcessing {
-	existing ??= {
+function postProcess(featureRoot: string, meta: string, outputPath: string): UsedFunctionPostProcessing {
+	return {
 		functionCallsPerFile:  new Map(),
 		deepestNestingPerFile: [],
-		nestingPerFile:        []
+		nestingPerFile:        [],
+		// TODO:
+		meta:                  meta
 	}
-
-
-	return existing
 }

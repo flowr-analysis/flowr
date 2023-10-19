@@ -7,6 +7,7 @@ import path from 'path'
 import { FeatureSelection } from '../../../statistics'
 import { date2string } from '../../time'
 import { FileMigrator } from './first-phase/process'
+import { postProcessFeatureFolder } from './second-phase/process'
 
 // TODO: histograms
 export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfiguration {
@@ -87,7 +88,6 @@ function identifyExtractionType(path: string): string | undefined  {
 	return match[1]
 }
 
-// TODO: extract and collect all meta stats
 
 export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummarizerConfiguration> {
 	public constructor(config: StatisticsSummarizerConfiguration) {
@@ -134,8 +134,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 
 	// eslint-disable-next-line @typescript-eslint/require-await -- just to obey the structure
 	public async summarizePhase(): Promise<unknown> {
-		// TODO: use post-processor
-
+		postProcessFeatureFolder(this.log, this.config.intermediateOutputPath, this.config.featuresToUse, this.config.outputPath)
 		return Promise.resolve(undefined)
 	}
 }

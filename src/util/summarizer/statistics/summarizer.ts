@@ -7,7 +7,6 @@ import fs from 'fs'
 import { guard } from '../../assert'
 import path from 'path'
 import { FeatureSelection } from '../../../statistics'
-import { postProcessFeatureFolder } from './second-phase/process'
 import { date2string } from '../../time'
 import { migrateFiles } from './first-phase/process'
 
@@ -70,7 +69,6 @@ async function extractArchive(f: string): Promise<string | undefined> {
 const filePrefixRegex = /^([^-]+)--/
 /** if it starts with example-, this will return `'example'`, etc. if it starts with '--' this will return `undefined` */
 function identifyExtractionType(path: string): string | undefined  {
-	console.log(path)
 	const match = filePrefixRegex.exec(path)
 	if(match === null) {
 		return undefined

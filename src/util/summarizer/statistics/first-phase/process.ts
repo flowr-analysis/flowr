@@ -1,42 +1,31 @@
-import fs from 'fs'
-import path from 'path'
-import { ALL_FEATURES, FeatureKey, FeatureSelection } from '../../../../statistics'
-import { CommonSummarizerConfiguration } from '../../summarizer'
+import fs from 'node:fs'
+import path from 'node:path'
 
-/**
- * Post process the collections in a given folder, reducing them in a memory preserving way.
- *
- * @param logger                 - The logger to use for outputs
- * @param filepath               - Path to the root file of the data collection (contains all of zhe archives)
- * @param features               - Collection of features to post process, expects corresponding folders to exist
- * @param intermediateOutputPath - Path to the intermediate output
- *
- * @returns non-aggregated reports for each sub-key of each feature
- */
-export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['logger'], filepath: string, features: FeatureSelection, intermediateOutputPath: string): Map<FeatureKey, unknown> {
-	const featureOutputMap = new Map<FeatureKey, unknown>()
-
-	if(!fs.existsSync(filepath)) {
-		logger(`    Folder for ${filepath} does not exist, skipping post processing`)
-		return featureOutputMap
+// TODO: migrate and append based on prefix (test-- etc.)
+export function migrateFiles(sourceFolder: string, targetFolder: string) {
+	if(!fs.existsSync(targetFolder)) {
+		fs.mkdirSync(targetFolder, { recursive: true })
 	}
 
-	for(const feature of features) {
-		const featureInfo = ALL_FEATURES[feature]
-		const targetPath = path.join(filepath, featureInfo.name)
+	const files = fs.readdirSync(sourceFolder, { recursive: true })
 
-		if(!featureInfo.postProcess) {
-			logger(`    Skipping post processing of ${feature} as no post processing behavior is defined`)
+	for(const f of files) {
+		const source = path.join(sourceFolder, String(f))
+		// TODO: better skips
+		if(source.includes('output-json')) {
 			continue
 		}
-		else if(!fs.existsSync(targetPath)) {
-			logger(`    Folder for ${feature} does not exist at ${targetPath} skipping post processing of this feature`)
-			continue
-		}
+		const target = path.join(targetFolder, String(f))
 
-		// TODO:
-		// featureOutputMap.set(feature, featureInfo.postProcess(targetPath, featureOutputMap.get(feature), intermediateOutputPath))
+		if(fs.statSync(source).isDirectory()) {
+			migrateFiles(source, target)
+		} else if(fs.existsSync(source)) {
+			// TODO: is there a faster way ?
+			const content = String(fs.readFileSync(source))
+			// TODO: should have compacted paths...
+			fs.appendFileSync(target, content)
+		} else {
+			fs.copyFileSync(source, target)
+		}
 	}
-	return featureOutputMap
 }
-

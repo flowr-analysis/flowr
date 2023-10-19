@@ -7,8 +7,9 @@ import fs from 'fs'
 import { guard } from '../../assert'
 import path from 'path'
 import { FeatureSelection } from '../../../statistics'
-import { postProcessFeatureFolder } from './first-phase/process'
+import { postProcessFeatureFolder } from './second-phase/process'
 import { date2string } from '../../time'
+import { migrateFiles } from './first-phase/process'
 
 // TODO: histograms
 export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfiguration {
@@ -65,6 +66,17 @@ async function extractArchive(f: string): Promise<string | undefined> {
 	return path.join(os.tmpdir(), parts[parts.length - 2])
 }
 
+
+const filePrefixRegex = /^(.+)--/
+/** if it starts with example-, this will return `'example'`, etc. if it starts with '--' this will return `undefined` */
+function identifyExtractionType(path: string): string | undefined  {
+	const match = filePrefixRegex.exec(path)
+	if(match === null) {
+		return undefined
+	}
+	return match[1]
+}
+
 // TODO: extract and collect all meta stats
 
 export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummarizerConfiguration> {
@@ -99,8 +111,9 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 			guard(target !== undefined && fs.existsSync(target), () => `expected to extract "${f}" to "${target ?? '?'}"`)
 
 			this.log('    Migrating files...')
-			// migrateFiles(target, this.config.intermediateOutputPath)
-			postProcessFeatureFolder(this.log, target, this.config.featuresToUse, this.config.intermediateOutputPath)
+			const folder = identifyExtractionType(target)
+			migrateFiles(target, folder ? path.join(this.config.intermediateOutputPath, folder) : this.config.intermediateOutputPath)
+			// postProcessFeatureFolder(this.log, target, this.config.featuresToUse, this.config.intermediateOutputPath)
 
 			this.log('    Done! (Cleanup...)')
 			fs.rmSync(target, { recursive: true, force: true })

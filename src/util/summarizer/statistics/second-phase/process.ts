@@ -2,6 +2,8 @@ import fs from 'fs'
 import path from 'path'
 import { ALL_FEATURES, FeatureKey, FeatureSelection } from '../../../../statistics'
 import { CommonSummarizerConfiguration } from '../../summarizer'
+import LineByLine from 'n-readlines'
+import { processNestMeasurement } from '../../benchmark/first-phase/input'
 
 /**
  * Post process the collections in a given folder, reducing them in a memory preserving way.
@@ -40,3 +42,16 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 	return featureOutputMap
 }
 
+function collectFeatureInfos(inputFilePath: string): void {
+	// read line by line from the file, for each entry, collect the main feature infos, for maps etc., join the entries
+	const reader = new LineByLine(inputFilePath)
+
+
+	let line: false | Buffer
+
+	let counter = 0
+	// eslint-disable-next-line no-cond-assign
+	while(line = reader.next()) {
+		console.log(counter++, line.toString())
+	}
+}

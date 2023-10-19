@@ -47,10 +47,10 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 
 		let line: false | Buffer
 
-		const counter = 0
+		let counter = 0
 		// eslint-disable-next-line no-cond-assign
 		while(line = reader.next()) {
-			await processNestMeasurement(line, counter, `${this.config.intermediateOutputPath}.log`, this.config.intermediateOutputPath)
+			await processNestMeasurement(line, counter++, `${this.config.intermediateOutputPath}.log`, this.config.intermediateOutputPath)
 		}
 		this.log('Done summarizing')
 	}

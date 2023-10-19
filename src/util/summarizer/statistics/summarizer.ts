@@ -123,7 +123,6 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 			this.log('    Migrating files...')
 			const folder = identifyExtractionType(path.basename(f))
 			await migrator.migrate(target, path.join(this.config.intermediateOutputPath, folder ?? 'default'))
-			// postProcessFeatureFolder(this.log, target, this.config.featuresToUse, this.config.intermediateOutputPath)
 
 			this.log('    Done! (Cleanup...)')
 		}
@@ -134,7 +133,15 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 
 	// eslint-disable-next-line @typescript-eslint/require-await -- just to obey the structure
 	public async summarizePhase(): Promise<unknown> {
-		postProcessFeatureFolder(this.log, this.config.intermediateOutputPath, this.config.featuresToUse, this.config.outputPath)
+		// detect all subfolders in the current folder (default, test...) for each: concat.
+		this.removeIfExists(this.config.outputPath)
+		const folders = fs.readdirSync(this.config.intermediateOutputPath)
+		for(const folder of folders) {
+			const output = path.join(this.config.outputPath, folder)
+			const input = path.join(this.config.intermediateOutputPath, folder)
+			this.log(`Summarizing for ${output}`)
+			postProcessFeatureFolder(this.log, input, this.config.featuresToUse, output)
+		}
 		return Promise.resolve(undefined)
 	}
 }

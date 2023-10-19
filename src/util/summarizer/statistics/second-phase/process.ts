@@ -28,7 +28,6 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 		const outputPath = path.join(targetPath, featureInfo.name)
 
 		if(!featureInfo.postProcess) {
-			logger(`    Skipping post processing of ${feature} as no post processing behavior is defined`)
 			continue
 		}
 		else if(!fs.existsSync(targetPath)) {

@@ -104,6 +104,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 			let target: string | undefined = undefined
 			try {
 				target = await extractArchive(f)
+				this.log('    Extracted!')
 			} catch(e) {
 				this.log(`    Failed to extract ${f}, skipping...`)
 				continue

@@ -6,34 +6,30 @@ export class FileMigrator {
 	private readonly writeHandles = new Map<string, fs.WriteStream>()
 	private finished = false
 
-	public async migrate(sourceFolder: string, targetFolder: string): Promise<void> {
+	public async migrate(sourceFolderContent: Map<string,string>, targetFolder: string): Promise<void> {
 		guard(!this.finished, () => 'migrator is already marked as finished!')
 		if(!fs.existsSync(targetFolder)) {
 			fs.mkdirSync(targetFolder, { recursive: true })
 		}
 
-		const files = fs.readdirSync(sourceFolder, { recursive: true })
-		await Promise.all<Promise<void>[]>(files.map(f => {
-			const source = path.join(sourceFolder, String(f))
-			const target = path.join(targetFolder, String(f))
+		await Promise.all<Promise<void>[]>([...sourceFolderContent.entries()].map(([filepath, content]) => {
+			const target = path.join(targetFolder, filepath)
 
-			// TODO: parallelize append and copy with an async and await all?
-			if(fs.statSync(source).isDirectory()) {
-				return this.migrate(source, target)
-			} else {
-				// TODO: is there a faster way ?
-				let targetStream = this.writeHandles.get(target)
-				if(targetStream === undefined) {
-					targetStream = fs.createWriteStream(target, { flags: 'a' })
-					this.writeHandles.set(target, targetStream)
-				}
-				return new Promise((resolve, reject) => {
-					const read = fs.createReadStream(source)
-					read.on('close', resolve)
-					read.on('error', reject)
-					read.pipe(targetStream as fs.WriteStream, { end: false })
-				})
+			// TODO: is there a faster way ?
+			let targetStream = this.writeHandles.get(target)
+			if(targetStream === undefined) {
+				targetStream = fs.createWriteStream(target, { flags: 'a' })
+				this.writeHandles.set(target, targetStream)
 			}
+			return new Promise((resolve, reject) => {
+				(targetStream as fs.WriteStream).write(content + '\n', 'utf-8', err => {
+					if(err) {
+						reject(err)
+					} else {
+						resolve()
+					}
+				})
+			})
 		}))
 	}
 

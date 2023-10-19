@@ -1,10 +1,8 @@
 import { CommonSummarizerConfiguration, Summarizer } from '../summarizer'
 import { getAllFiles } from '../../files'
-import { extract, list } from 'tar'
-import os from 'os'
+import { list } from 'tar'
 import { longestCommonPrefix } from '../../strings'
 import fs from 'fs'
-import { guard } from '../../assert'
 import path from 'path'
 import { FeatureSelection } from '../../../statistics'
 import { date2string } from '../../time'
@@ -32,37 +30,45 @@ export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfi
 
 export const statisticsFileNameRegex = /.*--.*\.tar\.gz$/
 
-function retrieveAllFilenamesInArchive(f: string) {
-	const filenames: string[] = []
+/**
+ * The returned map contains the full path as key, mapping it to the complete contents.
+ */
+async function retrieveAllFilesInArchive(f: string): Promise<Map<string, string>> {
+	const filenames = new Map<string, string>()
+	const promises: Promise<void>[] = []
 	list({
 		file:    f,
-		onentry: entry => filenames.push(entry.path),
-		sync:    true
+		onentry: entry => {
+			if(entry.type === 'File') {
+				promises.push(
+					entry.concat().then(content =>{
+						filenames.set(entry.path, content.toString())
+					})
+				)
+			}
+		},
+		sync: true
 	})
+	await Promise.all(promises)
 	return filenames
 }
 
-function identifyStripNumber(paths: string[]): { strip: number, commonRoot: string } {
-	const longestPrefix = longestCommonPrefix(paths)
-	// we need to subtract one for account for trailing/unfinished '/' (there will be no leading '/')
-	// furthermore, we need to subtract one because we want to keep the lowest common folder!
-	// yes, this can be done much better :c
-	return { strip: longestPrefix.split('/').length - 2, commonRoot: longestPrefix  }
+function identifyCommonPrefix(files: Map<string,string>): string {
+	return longestCommonPrefix([...files.keys()])
 }
 
 
 /** returns the target path */
-async function extractArchive(f: string): Promise<string | undefined> {
-	const filenames = retrieveAllFilenamesInArchive(f)
-	const { strip, commonRoot }  = identifyStripNumber(filenames)
-	await extract({
-		file: f,
-		strip,
-		cwd:  os.tmpdir()
-	})
-	const parts = commonRoot.split('/')
-	// we need to get the second to last because of a trailing slash, this should be done better
-	return path.join(os.tmpdir(), parts[parts.length - 2])
+async function extractArchive(f: string): Promise<Map<string,string>> {
+	const files = await retrieveAllFilesInArchive(f)
+	const commonRoot  = identifyCommonPrefix(files)
+
+	// transform all map keys by removing the common root
+	const transformed = new Map<string, string>()
+	for(const [key, value] of files.entries()) {
+		transformed.set(key.replace(commonRoot, ''), value)
+	}
+	return transformed
 }
 
 
@@ -101,7 +107,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 		const migrator = new FileMigrator()
 		for await (const f of getAllFiles(this.config.inputPath, /\.tar.gz$/)) {
 			this.log(`[${count++}, ${date2string()}] processing file ${f} (to ${this.config.intermediateOutputPath})`)
-			let target: string | undefined = undefined
+			let target: Map<string,string>
 			try {
 				target = await extractArchive(f)
 				this.log('    Extracted!')
@@ -109,15 +115,16 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 				this.log(`    Failed to extract ${f}, skipping...`)
 				continue
 			}
-			guard(target !== undefined && fs.existsSync(target), () => `expected to extract "${f}" to "${target ?? '?'}"`)
-
 			this.log('    Migrating files...')
-			const folder = identifyExtractionType(path.basename(target))
+			const folder = identifyExtractionType(path.basename(f))
 			await migrator.migrate(target, path.join(this.config.intermediateOutputPath, folder ?? 'default'))
 			// postProcessFeatureFolder(this.log, target, this.config.featuresToUse, this.config.intermediateOutputPath)
 
 			this.log('    Done! (Cleanup...)')
-			fs.rm(target, { recursive: true, force: true }, () => { /* just do nothing */ })
+			// fs.rm(target, { recursive: true, force: true }, () => { /* just do nothing */ })
+			if(count > 25) {
+				break
+			}
 		}
 		migrator.finish()
 		this.log(`Found ${count} files to summarize`)

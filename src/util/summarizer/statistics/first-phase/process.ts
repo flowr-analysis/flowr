@@ -20,22 +20,18 @@ export class FileMigrator {
 			// TODO: parallelize append and copy with an async and await all?
 			if(fs.statSync(source).isDirectory()) {
 				return this.migrate(source, target)
-			} else if(fs.existsSync(target)) {
+			} else {
 				// TODO: is there a faster way ?
-				const targetStream = this.writeHandles.get(target)
-				guard(targetStream !== undefined, () => `expected to have a write handle for ${target}`)
+				let targetStream = this.writeHandles.get(target)
+				if(targetStream === undefined) {
+					targetStream = fs.createWriteStream(target, { flags: 'a' })
+					this.writeHandles.set(target, targetStream)
+				}
 				return new Promise((resolve, reject) => {
 					const read = fs.createReadStream(source)
 					read.on('close', resolve)
 					read.on('error', reject)
-					read.pipe(targetStream, { end: false })
-				})
-			} else {
-				return new Promise(resolve => {
-					fs.copyFile(source, target, () => {
-						this.writeHandles.set(target, fs.createWriteStream(target, { flags: 'a' }))
-						resolve()
-					})
+					read.pipe(targetStream as fs.WriteStream, { end: false })
 				})
 			}
 		}))

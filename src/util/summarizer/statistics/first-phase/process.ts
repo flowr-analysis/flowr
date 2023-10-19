@@ -18,6 +18,9 @@ export class FileMigrator {
 			// TODO: is there a faster way ?
 			let targetStream = this.writeHandles.get(target)
 			if(targetStream === undefined) {
+				if(!fs.existsSync(path.dirname(target))) {
+					fs.mkdirSync(path.dirname(target), { recursive: true })
+				}
 				targetStream = fs.createWriteStream(target, { flags: 'a' })
 				this.writeHandles.set(target, targetStream)
 			}

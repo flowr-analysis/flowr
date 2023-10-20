@@ -14,7 +14,6 @@ import { readLineByLineSync } from '../../../util/files'
 import path from 'path'
 import { date2string } from '../../../util/time'
 import { summarizeMeasurement } from '../../../util/summarizer/benchmark/first-phase/process'
-import { sum } from '../../../util/arrays'
 import fs from 'node:fs'
 import { jsonReplacer } from '../../../util/json'
 
@@ -151,7 +150,6 @@ interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends 
 		unnamedCalls:   Measurement
 		// the first entry is for 1 argument, the second for the two arguments (the second,....)
 		args:	          CommonSyntaxTypeCounts<Measurement>[]
-		// TODO: evaluate location of functions
 	}
 }
 
@@ -225,7 +223,6 @@ function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWit
 	// each number[][] contains a 'number[]' per file
 	const data: UsedFunctionPostProcessing<number[][]> = {
 		functionCallsPerFile: new Map(),
-		// TODO:
 		meta:                 {
 			averageCall:    [],
 			nestedCalls:    [],

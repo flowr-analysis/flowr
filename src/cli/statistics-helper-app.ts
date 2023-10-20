@@ -95,7 +95,7 @@ async function getStatsForSingleFile() {
 			statisticsFileProvider.append('output-json', 'cfg', JSON.stringify(cfg, jsonReplacer))
 		}
 
-		statisticsFileProvider.append('meta', 'stats', JSON.stringify(stats.meta, jsonReplacer))
+		statisticsFileProvider.append('meta', 'stats', JSON.stringify({...stats.meta, file: options.input }, jsonReplacer))
 		statisticsFileProvider.append('meta', 'features', JSON.stringify(stats.features, jsonReplacer))
 	} else {
 		log.error(`expected exactly one output vs. ${stats.outputs.size}, got: ${JSON.stringify([...stats.outputs.keys()], jsonReplacer, 2)}`)

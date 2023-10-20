@@ -29,8 +29,8 @@ export class FileMigrator {
 				// before we write said content we have to group {value: string, context: string} by context (while we can safely assume that there is only one context per file,
 				// i want to be sure
 				const grouped = groupByContext(content)
-				const group = grouped === undefined ? content : grouped.map(s => JSON.stringify(s)).join('\n') + '\n';
-				(targetStream as fs.WriteStream).write(group, 'utf-8', err => {
+				const data = grouped === undefined ? content : grouped.map(s => JSON.stringify(s)).join('\n') + '\n';
+				(targetStream as fs.WriteStream).write(data, 'utf-8', err => {
 					if(err) {
 						reject(err)
 					} else {

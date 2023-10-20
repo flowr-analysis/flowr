@@ -189,9 +189,7 @@ function postProcess(featureRoot: string, meta: string, outputPath: string): Use
 	}
 
 	// TODO: summarize :D
-	return {
-		functionCallsPerFile: new Map(),
-	}
+	return null as unknown as UsedFunctionPostProcessing
 }
 
 function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumber: number, line: StatisticsOutputFormat<FunctionCallInformation[]>): void {

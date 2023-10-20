@@ -95,8 +95,10 @@ export function writeTableAsCsv(table: Table, file: string, sep = ',', newline =
 /**
  * Reads a file line by line and calls the given function for each line.
  * The `lineNumber` starts at `0`.
+ *
+ * See {@link readLineByLineSync} for a synchronous version.
  */
-export async function readLineByLine(filePath: string, onLine: (line: Buffer, lineNumber: number) => Promise<void> | void): Promise<void> {
+export async function readLineByLine(filePath: string, onLine: (line: Buffer, lineNumber: number) => Promise<void>): Promise<void> {
 	const reader = new LineByLine(filePath)
 
 	let line: false | Buffer
@@ -107,3 +109,22 @@ export async function readLineByLine(filePath: string, onLine: (line: Buffer, li
 		await onLine(line, counter++)
 	}
 }
+
+/**
+ * Reads a file line by line and calls the given function for each line.
+ * The `lineNumber` starts at `0`.
+ *
+ * See {@link readLineByLine} for an asynchronous version.
+ */
+export function readLineByLineSync(filePath: string, onLine: (line: Buffer, lineNumber: number) => void): void {
+	const reader = new LineByLine(filePath)
+
+	let line: false | Buffer
+
+	let counter = 0
+	// eslint-disable-next-line no-cond-assign
+	while(line = reader.next()) {
+		onLine(line, counter++)
+	}
+}
+

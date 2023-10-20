@@ -1,17 +1,18 @@
 import { Feature, FeatureProcessorInput } from '../feature'
-import { appendStatisticsFile } from '../../output'
+import { appendStatisticsFile, StatisticsOutputFormat } from '../../output'
 import { Writable } from 'ts-essentials'
 import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
 import { MergeableRecord } from '../../../util/objects'
 import { EdgeType } from '../../../dataflow'
 import {
 	CommonSyntaxTypeCounts,
-	emptyCommonSyntaxTypeCounts, SummarizedCommonSyntaxTypeCounts,
+	emptyCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts
 } from '../common-syntax-probability'
 import { SummarizedMeasurement } from '../../../util/summarizer/benchmark/data'
-import LineByLine from 'n-readlines'
-import { processNestMeasurement } from '../../../util/summarizer/benchmark/first-phase/input'
+import { readLineByLineSync } from '../../../util/files'
+import path from 'path'
+import { jsonReplacer } from '../../../util/json'
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -25,6 +26,8 @@ const initialFunctionUsageInfo = {
 	deepestNesting:      0,
 	unnamedCalls:        0
 }
+
+const AllCallsFileBase = 'all-calls'
 
 export type FunctionUsageInfo = Writable<typeof initialFunctionUsageInfo>
 
@@ -110,9 +113,8 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 	)
 
 	info.allFunctionCalls += allCalls.length
-	appendStatisticsFile(usedFunctions.name, 'all-calls', allCalls, input.filepath)
+	appendStatisticsFile(usedFunctions.name, AllCallsFileBase, allCalls, input.filepath)
 }
-
 
 export const usedFunctions: Feature<FunctionUsageInfo, UsedFunctionPostProcessing> = {
 	name:        'Used Functions',
@@ -128,58 +130,96 @@ export const usedFunctions: Feature<FunctionUsageInfo, UsedFunctionPostProcessin
 }
 
 
-// eslint-disable-next-line no-warning-comments
-// TODO: split in test, main&example and scripts
-interface UsedFunctionPostProcessing extends MergeableRecord {
-	// maps fn-name (including namespace) to number of arguments and their location (the number of elements in the array give the number of total call)
-	// we use arrays to reduce the memory!
-	// unnamed calls are all grouped into an empty name
-	functionCallsPerFile:  Map<string, [arguments: number, location: [line: number, character: number]][]>
-	deepestNestingPerFile: number[]
-	nestingPerFile:        number[]
+type FunctionCallSummaryInformation<Measurement> = [total: Measurement, arguments: Measurement, location: [line: Measurement, character: Measurement]]
+// during the collection phase this should be a map using an array to collect
+interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
+	/**
+	 * maps fn-name (including namespace) to number of arguments and their location (the number of elements in the array give the number of total call)
+	 * we use tuples to reduce the memory!
+	 * A function that is defined within the file is _always_ decorated with the filename (as second array element)!
+	 */
+	functionCallsPerFile: Map<string|undefined, FunctionCallSummaryInformation<Measurement>>
+	nestings:             Measurement
+	deepestNesting:       Measurement
 	meta: {
-		averageCall:    SummarizedMeasurement
-		emptyArgs:      SummarizedMeasurement
-		nestedCalls:    SummarizedMeasurement
-		deepestNesting: SummarizedMeasurement
-		unnamedCalls:   SummarizedMeasurement
+		averageCall:    Measurement
+		emptyArgs:      Measurement
+		nestedCalls:    Measurement
+		deepestNesting: Measurement
+		unnamedCalls:   Measurement
 		// the first entry is for 1 argument, the second for the two arguments (the second,....)
-		// TODO: summarized version with SummarizedMeasurement
-		args:	          SummarizedCommonSyntaxTypeCounts[]
-		names:          Map<string, SummarizedMeasurement>
+		args:	          CommonSyntaxTypeCounts<Measurement>[]
 		// TODO: evaluate location of functions
 	}
 }
 
 function postProcess(featureRoot: string, meta: string, outputPath: string): UsedFunctionPostProcessing {
-	// we collect only `all-calls`
-
-	console.log('Post-processing used functions')
-	return {
-		functionCallsPerFile:  new Map(),
-		deepestNestingPerFile: [],
-		nestingPerFile:        [],
+	// we have to additionally collect the numbers _by_file_, hence we map file name to whatever is plausible
+	// in order to only store the
+	const data: UsedFunctionPostProcessing<Map<string|undefined, number[]>> = {
+		functionCallsPerFile: new Map(),
+		nestings:             new Map(),
+		deepestNesting:       new Map(),
 		// TODO:
-		meta:                  {
-			averageCall:    { mean: 0, median: 0, min: 0, max: 0, std: 0, total: 0 },
-			nestedCalls:    { mean: 0, median: 0, min: 0, max: 0, std: 0, total: 0 },
-			deepestNesting: { mean: 0, median: 0, min: 0, max: 0, std: 0, total: 0 },
-			emptyArgs:      { mean: 0, median: 0, min: 0, max: 0, std: 0, total: 0 },
-			unnamedCalls:   { mean: 0, median: 0, min: 0, max: 0, std: 0, total: 0 },
-			args:           [],
-			names:          new Map()
+		meta:                 {
+			averageCall:    new Map(),
+			nestedCalls:    new Map(),
+			deepestNesting: new Map(),
+			emptyArgs:      new Map(),
+			unnamedCalls:   new Map(),
+			args:           []
 		}
 	}
+
+	// we collect only `all-calls`
+	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line) => processNextLine(data, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation>))
+
+	// TODO: deal with nestings, deepestNEsting and meta
+	console.log(data.functionCallsPerFile.get('dplyr::filter'))
+
+	// TODO: summarize :D
+	return null as unknown as UsedFunctionPostProcessing
 }
 
-function collectAllCalls(inputPath: string): void {
-	const reader = new LineByLine(inputPath)
+function processNextLine(data: UsedFunctionPostProcessing<Map<string|undefined, number[]>>, line: StatisticsOutputFormat<FunctionCallInformation>): void {
+	const [[name, loc, args, ns, known], context] = line
 
-	let line: false | Buffer
+	const fullname = ns && ns !== '' ? `${ns}::${name ?? ''}` : name
+	const key = (fullname ?? '') + (known === 1 ? '-' + (context ?? '') : '')
 
-	const counter = 0
-	// eslint-disable-next-line no-cond-assign
-	while(line = reader.next()) {
-
+	let get = data.functionCallsPerFile.get(key)
+	if(!get) {
+		get = [new Map(), new Map(), [new Map(), new Map()]]
+		// an amazing empty structure :D
+		data.functionCallsPerFile.set(key, get)
 	}
+
+	pushToSummary(get, 'total', context, 1)
+	pushToSummary(get, 'args', context, args)
+	pushToSummary(get, 'line', context, loc[0])
+	pushToSummary(get, 'char', context, loc[1])
+}
+
+function pushToSummary(info: FunctionCallSummaryInformation<Map<string|undefined, number[]>>, type: 'total' | 'args' | 'line' | 'char', context: string | undefined, value: number) {
+	let map: Map<string|undefined, number[]>
+	switch(type) {
+		case 'total':
+			map = info[0]
+			break
+		case 'args':
+			map = info[1]
+			break
+		case 'line':
+			map = info[2][0]
+			break
+		case 'char':
+			map = info[2][1]
+			break
+	}
+	let get = map.get(context)
+	if(!get) {
+		get = []
+		map.set(context, get)
+	}
+	get.push(value)
 }

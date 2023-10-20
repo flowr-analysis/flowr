@@ -50,9 +50,9 @@ export function initDummyFileProvider(map?: DummyAppendMemoryMap): void {
 /**
  * Format used to dump each entry of a feature during collection.
  */
-export type StatisticsOutputFormat = [
+export type StatisticsOutputFormat<T=string> = [
 		/** the collected value (like the assignment operator lexeme, ...) */
-		value:   string,
+		value:   T,
 		/** the context of the information retrieval (e.g. the name of the file that contained the R source code) */
 		context: string | undefined
 ]

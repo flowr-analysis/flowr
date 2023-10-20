@@ -10,7 +10,7 @@ import { jsonReplacer } from '../../json'
 import { ultimateStats2String } from '../../../benchmark'
 import { processNextSummary, summarizeAllSummarizedStats } from './second-phase/process'
 import { writeGraphOutput } from './second-phase/graph'
-import { readLineByLine } from '../../files'
+import { readLineByLine, readLineByLineSync } from '../../files'
 
 export interface BenchmarkSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**
@@ -56,7 +56,7 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		this.removeIfExists(this.config.outputPath)
 
 		const allSummarized: SummarizedSlicerStats[] = []
-		await readLineByLine(this.config.intermediateOutputPath, line => processNextSummary(line, allSummarized))
+		readLineByLineSync(this.config.intermediateOutputPath, line => processNextSummary(line, allSummarized))
 
 		// summarizedRaw
 		const ultimate = summarizeAllSummarizedStats(allSummarized)

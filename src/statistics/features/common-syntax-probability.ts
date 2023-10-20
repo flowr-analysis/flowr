@@ -4,38 +4,33 @@
 import { RFalse, RNodeWithParent, RTrue, RType } from '../../r-bridge'
 import { SummarizedMeasurement } from '../../util/summarizer/benchmark/data'
 
-export interface CommonSyntaxTypeCounts {
+export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	// just a helper to collect all as well (could be derived from sum)
-	total:        bigint,
+	total:        Measurement,
 	// counts whenever you pass more than one node that is not sensible for any other category
-	multiple:     bigint,
+	multiple:     Measurement,
 	// similar to multiple, but only counts empty (bodies etc.)
-	empty:        bigint,
+	empty:        Measurement,
 	// in case of a = x etc.
-	withArgument: bigint,
+	withArgument: Measurement,
 	// arguments used without value
-	noValue:      bigint,
+	noValue:      Measurement,
 	// does include t and f, as well as NULL etc. (any special symbol)
-	singleVar:    Record<string, bigint>
-	number:       Record<number, bigint>
+	singleVar:    Record<string, Measurement>
+	number:       Record<number, Measurement>
 	// only explicit integers
-	integer:      Record<number, bigint>
-	complex:      Record<number, bigint>
-	string:       Record<string, bigint>
-	logical:      Record<typeof RTrue | typeof RFalse, bigint>,
-	call:         Record<string, bigint>,
-	unnamedCall:  bigint,
+	integer:      Record<number, Measurement>
+	complex:      Record<number, Measurement>
+	string:       Record<string, Measurement>
+	logical:      Record<typeof RTrue | typeof RFalse, Measurement>,
+	call:         Record<string, Measurement>,
+	unnamedCall:  Measurement,
 	// binop includes all assignments!
-	binOp:        Record<string, bigint>,
-	unaryOp:      Record<string, bigint>,
+	binOp:        Record<string, Measurement>,
+	unaryOp:      Record<string, Measurement>,
 	// unknown content, records lexeme (can include break etc. for bodies)
-	other:        Record<string, bigint>
+	other:        Record<string, Measurement>
 }
-
-export type SummarizedCommonSyntaxTypeCounts = {
-	[K in keyof CommonSyntaxTypeCounts]: CommonSyntaxTypeCounts[K] extends Record<infer K, bigint> ? Record<K, SummarizedMeasurement> : SummarizedMeasurement
-}
-
 
 export function emptyCommonSyntaxTypeCounts(): CommonSyntaxTypeCounts {
 	return {

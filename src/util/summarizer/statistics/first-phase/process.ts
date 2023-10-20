@@ -7,7 +7,7 @@ export class FileMigrator {
 	private readonly writeHandles = new Map<string, fs.WriteStream>()
 	private finished = false
 
-	public migrate(sourceFolderContent: Map<string,string>, targetFolder: string): void {
+	public migrate(sourceFolderContent: Map<string,string>, targetFolder: string, originalFile: string | undefined): void {
 		guard(!this.finished, () => 'migrator is already marked as finished!')
 		if(!fs.existsSync(targetFolder)) {
 			fs.mkdirSync(targetFolder, { recursive: true })
@@ -28,7 +28,10 @@ export class FileMigrator {
 			// before we write said content we have to group {value: string, context: string} by context (while we can safely assume that there is only one context per file,
 			// i want to be sure
 			const grouped = groupByContext(content)
-			const data = grouped === undefined ? content : grouped.map(s => JSON.stringify(s)).join('\n') + '\n'
+			let data = grouped === undefined ? content : grouped.map(s => JSON.stringify(s)).join('\n') + '\n'
+			if(filepath.includes('meta.txt')) {
+				data = `{"file": "${originalFile ?? ''}", "content": ${data}}\n`
+			}
 			targetStream.write(data, 'utf-8')
 		}
 	}

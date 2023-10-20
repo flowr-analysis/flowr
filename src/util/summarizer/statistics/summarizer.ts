@@ -78,14 +78,16 @@ async function extractArchive(f: string): Promise<Map<string,string>> {
 }
 
 
-const filePrefixRegex = /^([^-]+)--/
+const filePrefixRegex = /^([^-]*)---?(.+)\.tar.gz/
 /** if it starts with example-, this will return `'example'`, etc. if it starts with '--' this will return `undefined` */
-function identifyExtractionType(path: string): string | undefined  {
+function identifyExtractionType(path: string): { folder: string, originalFile: string } | undefined  {
 	const match = filePrefixRegex.exec(path)
 	if(match === null) {
 		return undefined
 	}
-	return match[1]
+	// recover
+	const originalFile = match[2].replace(/／/g, '/')
+	return { folder: match[1] === '' ? 'default' : '', originalFile }
 }
 
 
@@ -121,8 +123,8 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 				continue
 			}
 			this.log('    Migrating files...')
-			const folder = identifyExtractionType(path.basename(f))
-			migrator.migrate(target, path.join(this.config.intermediateOutputPath, folder ?? 'default'))
+			const extracted = identifyExtractionType(path.basename(f))
+			migrator.migrate(target, path.join(this.config.intermediateOutputPath, extracted?.folder ?? 'default'), extracted?.originalFile)
 
 			this.log('    Done! (Cleanup...)')
 		}

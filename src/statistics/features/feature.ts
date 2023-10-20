@@ -58,7 +58,7 @@ export type FeatureProcessor<T extends FeatureInfo> = (existing: T, input: Featu
  *
  * @see ALL_FEATURES
  */
-export interface Feature<T extends FeatureInfo, Output = unknown> {
+export interface Feature<T extends FeatureInfo> {
 	/** A descriptive, yet unique name of the feature */
 	readonly name:        string
 	/** A description of the feature */
@@ -73,10 +73,8 @@ export interface Feature<T extends FeatureInfo, Output = unknown> {
 	 * @param featureRoot - The root path to the feature directory which should contain all the files the feature can write to (already merged for every file processed)
 	 * @param info        - The feature statistic maps each file name/context encountered to the feature information as well as the meta statistics for the file
 	 * @param outputPath  - The path to write the output to (besides what is collected in the output and meta information)
-	 *
-	 * @returns The final output of the feature, as well as the compacted meta information (currently, in whatever format fits best for you)
 	 */
-	postProcess?:         (featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string) => Output & { meta: unknown }
+	postProcess?:         (featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string) => void
 	/** Values to start the existing track from */
 	initialValue:         T
 }

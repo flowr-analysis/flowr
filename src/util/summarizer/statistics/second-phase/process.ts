@@ -2,7 +2,6 @@ import fs from 'fs'
 import path from 'path'
 import {
 	ALL_FEATURES,
-	FeatureKey,
 	FeatureSelection,
 	FeatureStatistics, FeatureStatisticsWithMeta,
 	MetaStatistics
@@ -11,7 +10,6 @@ import { CommonSummarizerConfiguration } from '../../summarizer'
 import { readLineByLineSync } from '../../../files'
 import { guard } from '../../../assert'
 import { date2string } from '../../../time'
-import { jsonReplacer } from '../../../json'
 
 /**
  * Post process the collections in a given folder, retrieving the final summaries.
@@ -35,7 +33,7 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 	for(const featureName of featureNames) {
 		const featureInfo = ALL_FEATURES[featureName]
 		const targetPath = path.join(filepath, featureInfo.name)
-		const targetFeature = path.join(targetPath, featureInfo.name)
+		const targetFeature = path.join(outputPath, featureInfo.name)
 
 		if(!featureInfo.postProcess) {
 			logger(`    Skipping post processing of ${featureName} as no post processing behavior is defined`)
@@ -46,11 +44,7 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 			continue
 		}
 
-		const result = JSON.stringify(featureInfo.postProcess(targetPath, metaFeatureInformation, targetFeature), jsonReplacer)
-
-		const featureOutput = path.join(outputPath, featureInfo.name)
-		logger(`    Writing post processed ${featureName} to ${featureOutput}`)
-		fs.writeFileSync(featureOutput, result)
+		featureInfo.postProcess(targetPath, metaFeatureInformation, targetFeature)
 	}
 }
 

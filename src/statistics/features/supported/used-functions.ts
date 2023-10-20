@@ -15,6 +15,8 @@ import path from 'path'
 import { date2string } from '../../../util/time'
 import { summarizeMeasurement } from '../../../util/summarizer/benchmark/first-phase/process'
 import { sum } from '../../../util/arrays'
+import fs from 'node:fs'
+import { jsonReplacer } from '../../../util/json'
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -118,7 +120,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 	appendStatisticsFile(usedFunctions.name, AllCallsFileBase, allCalls, input.filepath)
 }
 
-export const usedFunctions: Feature<FunctionUsageInfo, UsedFunctionPostProcessing> = {
+export const usedFunctions: Feature<FunctionUsageInfo> = {
 	name:        'Used Functions',
 	description: 'All functions called, split into various sub-categories',
 
@@ -215,7 +217,11 @@ function summarizeCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[][]>)
 	}
 }
 
-function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string): UsedFunctionPostProcessing {
+function summarizedMeasurement2Csv(a: SummarizedMeasurement): string {
+	return `${a.min},${a.max},${a.median},${a.mean},${a.std},${a.total}`
+}
+
+function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string): void {
 	// each number[][] contains a 'number[]' per file
 	const data: UsedFunctionPostProcessing<number[][]> = {
 		functionCallsPerFile: new Map(),
@@ -248,18 +254,33 @@ function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWit
 	}
 
 	const summarizedFunctionCalls = new Map<string|undefined, FunctionCallSummaryInformation<SummarizedMeasurement>>()
+
+	if(!fs.existsSync(outputPath)) {
+		fs.mkdirSync(outputPath, { recursive: true })
+	}
+	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'function-calls.csv'))
+
+	const suffixes = ['min', 'max', 'median', 'mean', 'std', 'total']
+	const prefixes = ['total', 'args', 'line-frac']
+	const others = prefixes.flatMap(p => suffixes.map(s => `${p}-${s}`)).join(',')
+	fnOutStream.write(`function,${others}\n`)
 	for(const [key, [total, args, lineFrac]] of data.functionCallsPerFile.entries()) {
+		const totalSum = summarizeMeasurement(total.flat(), info.size)
+		const argsSum = summarizeMeasurement(args.flat(), info.size)
+		const lineFracSum = summarizeMeasurement(lineFrac.flat(), info.size)
+		// we write in csv style :), we escape the key in case it contains commas (with filenames)etc.
+		fnOutStream.write(`${JSON.stringify(key ?? 'unknown')},${summarizedMeasurement2Csv(totalSum)},${summarizedMeasurement2Csv(argsSum)},${summarizedMeasurement2Csv(lineFracSum)}\n`)
+
 		summarizedFunctionCalls.set(key, [
 			summarizeMeasurement(total.flat(), info.size),
 			summarizeMeasurement(args.flat(), info.size),
 			summarizeMeasurement(lineFrac.flat(), info.size)
 		])
 	}
+	fnOutStream.close()
 
-
-	return {
-		functionCallsPerFile: summarizedFunctionCalls,
-		meta:                 {
+	const summarizedEntries = {
+		meta: {
 			averageCall:    summarizeMeasurement(data.meta.averageCall.flat(), info.size),
 			nestedCalls:    summarizeMeasurement(data.meta.nestedCalls.flat(), info.size),
 			deepestNesting: summarizeMeasurement(data.meta.deepestNesting.flat(), info.size),
@@ -268,6 +289,7 @@ function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWit
 			args:           data.meta.args.map(summarizeCommonSyntaxTypeCounter)
 		}
 	}
+	fs.writeFileSync(path.join(outputPath, 'function-calls.json'), JSON.stringify(summarizedEntries, jsonReplacer))
 }
 
 function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<FunctionCallInformation[]>): void {

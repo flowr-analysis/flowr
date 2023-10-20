@@ -11,6 +11,7 @@ export interface SummarizedMeasurement<T = number> {
 	min:    T
 	max:    T
 	median: T
+	/** total may be useless for some measurements, especially if they are weighted before (it is just the sum...)*/
 	total:  T
 	/** average */
 	mean:   number

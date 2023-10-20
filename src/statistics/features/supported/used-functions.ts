@@ -182,13 +182,13 @@ function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWit
 	const summarizedFunctionCalls = new Map()
 	for(const [key, [total, args, lineFrac]] of data.functionCallsPerFile.entries()) {
 		summarizedFunctionCalls.set(key, {
-			total:    summarizeMeasurement(total.map(m => sum(m), info.size)),
+			total:    summarizeMeasurement(total.map(m => sum(m)), info.size),
 			args:     summarizeMeasurement(args.flat(), info.size),
 			location: summarizeMeasurement(lineFrac.flat(), info.size)
 		})
 	}
 
-	console.log(summarizedFunctionCalls.get('print'))
+	console.log(summarizedFunctionCalls.get('library'))
 
 	// TODO: summarize :D
 	return null as unknown as UsedFunctionPostProcessing
@@ -206,7 +206,7 @@ function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumbe
 		const fullname = ns && ns !== '' ? `${ns}::${name ?? ''}` : name
 		const key = (fullname ?? '') + (known === 1 ? '-' + (context ?? '') : '')
 
-		const stats = info.get(context ?? '')?.stats.lines.length
+		const stats = info.get(context ?? '')?.stats.lines[0].length
 
 		let get = groupedByFunctionName.get(key)
 		if(!get) {
@@ -216,7 +216,8 @@ function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumbe
 		get[0].push(1)
 		get[1].push(args)
 		if(loc && stats) {
-			get[2].push(loc[0] / stats)
+			// we reduce by 1 to get flat 0% if it is the first line
+			get[2].push(stats === 1 ? 1 : (loc[0]-1) / (stats-1))
 		}
 	}
 

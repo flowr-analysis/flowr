@@ -2,6 +2,7 @@ import fs, { promises as fsPromise } from 'fs'
 import { RParseRequestFromFile } from '../r-bridge'
 import path from 'path'
 import { log } from './log'
+import LineByLine from 'n-readlines'
 
 /**
  * Represents a table, identified by a header and a list of rows.
@@ -89,4 +90,20 @@ export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGen
 export function writeTableAsCsv(table: Table, file: string, sep = ',', newline = '\n') {
 	const csv = [table.header.join(sep), ...table.rows.map(row => row.join(sep))].join(newline)
 	fs.writeFileSync(file, csv)
+}
+
+/**
+ * Reads a file line by line and calls the given function for each line.
+ * The `lineNumber` starts at `0`.
+ */
+export async function readLineByLine(filePath: string, onLine: (line: Buffer, lineNumber: number) => Promise<void> | void): Promise<void> {
+	const reader = new LineByLine(filePath)
+
+	let line: false | Buffer
+
+	let counter = 0
+	// eslint-disable-next-line no-cond-assign
+	while(line = reader.next()) {
+		await onLine(line, counter++)
+	}
 }

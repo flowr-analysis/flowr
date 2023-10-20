@@ -10,6 +10,8 @@ import {
 	updateCommonSyntaxTypeCounts
 } from '../common-syntax-probability'
 import { SummarizedMeasurement } from '../../../util/summarizer/benchmark/data'
+import LineByLine from 'n-readlines'
+import { processNestMeasurement } from '../../../util/summarizer/benchmark/first-phase/input'
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -150,6 +152,8 @@ interface UsedFunctionPostProcessing extends MergeableRecord {
 }
 
 function postProcess(featureRoot: string, meta: string, outputPath: string): UsedFunctionPostProcessing {
+	// we collect only `all-calls`
+
 	console.log('Post-processing used functions')
 	return {
 		functionCallsPerFile:  new Map(),
@@ -165,5 +169,17 @@ function postProcess(featureRoot: string, meta: string, outputPath: string): Use
 			args:           [],
 			names:          new Map()
 		}
+	}
+}
+
+function collectAllCalls(inputPath: string): void {
+	const reader = new LineByLine(inputPath)
+
+	let line: false | Buffer
+
+	const counter = 0
+	// eslint-disable-next-line no-cond-assign
+	while(line = reader.next()) {
+
 	}
 }

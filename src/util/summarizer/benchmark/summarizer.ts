@@ -4,13 +4,13 @@
  */
 import { CommonSummarizerConfiguration, Summarizer } from '../summarizer'
 import { SummarizedSlicerStats, UltimateSlicerStats } from './data'
-import LineByLine from 'n-readlines'
 import fs from 'fs'
 import { processNestMeasurement } from './first-phase/input'
 import { jsonReplacer } from '../../json'
 import { ultimateStats2String } from '../../../benchmark'
 import { processNextSummary, summarizeAllSummarizedStats } from './second-phase/process'
 import { writeGraphOutput } from './second-phase/graph'
+import { readLineByLine } from '../../files'
 
 export interface BenchmarkSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**
@@ -41,17 +41,11 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 	}
 
 	public async preparationPhase(): Promise<void> {
-		const reader = new LineByLine(this.config.inputPath)
 		this.removeIfExists(this.config.intermediateOutputPath)
 		this.removeIfExists(this.config.outputLogPath)
 
-		let line: false | Buffer
+		await readLineByLine(this.config.inputPath, (line, lineNumber) => processNestMeasurement(line, lineNumber, `${this.config.intermediateOutputPath}.log`, this.config.intermediateOutputPath))
 
-		let counter = 0
-		// eslint-disable-next-line no-cond-assign
-		while(line = reader.next()) {
-			await processNestMeasurement(line, counter++, `${this.config.intermediateOutputPath}.log`, this.config.intermediateOutputPath)
-		}
 		this.log('Done summarizing')
 	}
 
@@ -59,17 +53,11 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 	public async summarizePhase(): Promise<UltimateSlicerStats> {
 		this.log(`Summarizing all summaries from ${this.config.inputPath}...`)
 
-		const reader = new LineByLine(this.config.intermediateOutputPath)
 		this.removeIfExists(this.config.outputPath)
 
-		let line: false | Buffer
-
-
 		const allSummarized: SummarizedSlicerStats[] = []
-		// eslint-disable-next-line no-cond-assign
-		while(line = reader.next()) {
-			processNextSummary(line, allSummarized)
-		}
+		await readLineByLine(this.config.intermediateOutputPath, line => processNextSummary(line, allSummarized))
+
 		// summarizedRaw
 		const ultimate = summarizeAllSummarizedStats(allSummarized)
 		this.log(`Writing ultimate summary to ${this.config.outputPath}`)

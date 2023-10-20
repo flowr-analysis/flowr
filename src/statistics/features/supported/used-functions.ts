@@ -1,90 +1,63 @@
 import { Feature, FeatureProcessorInput } from '../feature'
-import { appendStatisticsFile } from '../../output'
+import { appendStatisticsFile, StatisticsOutputFormat } from '../../output'
 import { Writable } from 'ts-essentials'
 import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
-import { SourcePosition } from '../../../util/range'
 import { MergeableRecord } from '../../../util/objects'
+import { EdgeType } from '../../../dataflow'
+import {
+	CommonSyntaxTypeCounts,
+	emptyCommonSyntaxTypeCounts,
+	updateCommonSyntaxTypeCounts
+} from '../common-syntax-probability'
+import { SummarizedMeasurement } from '../../../util/summarizer/benchmark/data'
+import { readLineByLineSync } from '../../../util/files'
+import path from 'path'
+import { date2string } from '../../../util/time'
 
 const initialFunctionUsageInfo = {
-	allFunctionCalls:           0,
-	/** abs, expm1, tanpi, ... */
-	mathFunctions:              0,
-	/** nargs, missing, is.character, ... */
-	programmingFunctions:       0,
-	/** browser, proc.time, gc.time, ... */
-	sessionManagementFunctions: 0,
-	/** `:`, `~`, `c`, `UseMethod`, `.C`, ... */
-	primitiveFunctions:         0,
-	/** e.g. do not evaluate part of functions, `quote`, ... */
-	specialPrimitiveFunctions:  0,
-	/** `body`, `environment`, `formals` */
-	metaFunctions:              0,
-	/** return */
-	returnFunction:             0,
-	parsingFunctions:           0,
-	editFunctions:              0,
-	assignFunctions:            0,
-	getFunctions:               0,
-	helpFunctions:              0,
-	optionFunctions:            0,
+	allFunctionCalls: 0,
+	args:             {
+		// only if called without arguments
+		0: 0n,
+		1: emptyCommonSyntaxTypeCounts()
+	} as Record<number, bigint | CommonSyntaxTypeCounts>,
 	/** `a(b(), c(3, d()))` has 3 (`b`, `c`, `d`) */
-	nestedFunctionCalls:        0,
-	deepestNesting:             0,
-	unnamedCalls:               0
+	nestedFunctionCalls: 0,
+	deepestNesting:      0,
+	unnamedCalls:        0
 }
+
+const AllCallsFileBase = 'all-calls'
 
 export type FunctionUsageInfo = Writable<typeof initialFunctionUsageInfo>
 
+function classifyArguments(args: (RNodeWithParent | undefined)[], existing: Record<number, bigint | CommonSyntaxTypeCounts>) {
+	if(args.length === 0) {
+		(existing[0] as unknown as number)++
+		return
+	}
 
-function from(...names: string[]): RegExp {
-	return new RegExp(names.join('|'))
-}
+	let i = 1
+	for(const arg of args) {
+		if(arg === undefined) {
+			(existing[0] as unknown as number)++
+			continue
+		}
 
-/* from R internals */
-const mathFunctions = from('abs', 'sign', 'sqrt', 'floor', 'ceiling', 'exp', 'expm1', 'log2', 'log10', 'log1p', 'cos', 'sin', 'tan', 'acos', 'asin', 'atan', 'cosh', 'sinh', 'tanh', 'acosh', 'asinh', 'atanh', 'cospi', 'sinpi', 'tanpi', 'gamma', 'lgamma', 'digamma', 'trigamma', 'cumsum', 'cumprod', 'cummax', 'cummin', 'Im', 'Re', 'Arg', 'Conj', 'Mod')
-const programmingFunctions = from('nargs', 'missing', 'on.exit', 'interactive', 'as.call', 'as.character', 'as.complex', 'as.double', 'as.environment', 'as.integer', 'as.logical', 'as.raw', 'is.array', 'is.atomic', 'is.call', 'is.character', 'is.complex', 'is.double', 'is.environment', 'is.expression', 'is.finite', 'is.function', 'is.infinite', 'is.integer', 'is.language', 'is.list', 'is.logical', 'is.matrix', 'is.na', 'is.name', 'is.nan', 'is.null', 'is.numeric', 'is.object', 'is.pairlist', 'is.raw', 'is.real', 'is.recursive', 'is.single', 'is.symbol', 'baseenv', 'emptyenv', 'globalenv', 'pos.to.env', 'unclass', 'invisible', 'seq_along', 'seq_len')
-const sessionManagementFunctions = from('browser', 'proc.time', 'gc.time', 'tracemem', 'retracemem', 'untracemem')
-const primitiveFunctions = from(':', '~', 'c', 'list', 'call', 'switch', 'expression', 'substitute', 'UseMethod', 'standardGeneric', '.C', '.Fortran', '.Call', '.External', 'round', 'signif', 'rep', 'seq.int', '.Primitive', '.Internal', '.Call.graphics', '.External.graphics', '.subset', '.subset2', '.primTrace', '.primUntrace', 'lazyLoadDBfetch')
-const specialPrimitiveFunctions = from('quote', 'substitute', 'missing', 'on.exit', 'call', 'expression', '.Internal')
-const metaFunctions = from('body', 'environment', 'formals')
-const returnFunction = /return/
-const parsingFunctions = from('parse', 'deparse', 'substitute', 'quote', 'bquote', 'call', 'eval', 'evalq', 'eval.parent')
-const editFunctions = from('edit', 'vi', 'emacs', 'pico', 'xemacs', 'xedit', 'fix', 'fixInNamespace')
-const assignFunctions = from('assign',  'assignInNamespace', 'assignInMyNamespace')
-const getFunctions = from('get', 'exists', 'getFromNamespace')
-const helpFunctions = from('help', 'help.search', 'prompt')
-const optionFunctions = from('options', 'getOption', '.Option')
-
-function collectFunctionByName(name: string, info: FunctionUsageInfo, field: keyof FunctionUsageInfo, regex: RegExp): void {
-	if(regex.test(name)) {
-		info[field]++
+		existing[i] = updateCommonSyntaxTypeCounts((existing[i] as CommonSyntaxTypeCounts | undefined) ?? emptyCommonSyntaxTypeCounts(), arg)
+		i++
 	}
 }
 
-function analyzeFunctionName(name: string, info: FunctionUsageInfo) {
-	collectFunctionByName(name, info, 'mathFunctions', mathFunctions)
-	collectFunctionByName(name, info, 'programmingFunctions', programmingFunctions)
-	collectFunctionByName(name, info, 'sessionManagementFunctions', sessionManagementFunctions)
-	collectFunctionByName(name, info, 'primitiveFunctions', primitiveFunctions)
-	collectFunctionByName(name, info, 'specialPrimitiveFunctions', specialPrimitiveFunctions)
-	collectFunctionByName(name, info, 'metaFunctions', metaFunctions)
-	collectFunctionByName(name, info, 'returnFunction', returnFunction)
-	collectFunctionByName(name, info, 'parsingFunctions', parsingFunctions)
-	collectFunctionByName(name, info, 'editFunctions', editFunctions)
-	collectFunctionByName(name, info, 'assignFunctions', assignFunctions)
-	collectFunctionByName(name, info, 'getFunctions', getFunctions)
-	collectFunctionByName(name, info, 'helpFunctions', helpFunctions)
-	collectFunctionByName(name, info, 'optionFunctions', optionFunctions)
-}
-
-export interface FunctionCallInformation extends MergeableRecord {
+export type FunctionCallInformation = [
 	/** the name of the called function, or undefined if this was an unnamed function call */
-	name:              string | undefined,
-	location:          SourcePosition
-	numberOfArguments: number,
+	name:                  string | undefined,
+	location:              [line: number, character: number] | undefined,
+	numberOfArguments:     number,
 	/** whether this was called from a namespace, like `a::b()` */
-	namespace:         string | undefined
-}
+	namespace:             string | undefined,
+	knownDefinitionInFile: 0 | 1
+]
 
 function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void {
 	const calls: RNodeWithParent[] = []
@@ -102,24 +75,33 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 				info.deepestNesting = Math.max(info.deepestNesting, calls.length)
 			}
 
+			const dataflowNode = input.dataflow.graph.get(node.info.id)
+			let hasCallsEdge = false
+			if(dataflowNode) {
+				hasCallsEdge = [...dataflowNode[1].values()].some(e => e.types.has(EdgeType.Calls))
+			}
+
 			if(node.flavor === 'unnamed') {
 				info.unnamedCalls++
 				appendStatisticsFile(usedFunctions.name, 'unnamed-calls', [node.lexeme], input.filepath)
-				allCalls.push({
-					name:              undefined,
-					location:          node.location.start,
-					numberOfArguments: node.arguments.length,
-					namespace:         undefined
-				})
+				allCalls.push([
+					undefined,
+					[node.location.start.line, node.location.start.column],
+					node.arguments.length,
+					'',
+					hasCallsEdge ? 1 : 0
+				])
 			} else {
-				analyzeFunctionName(node.functionName.lexeme, info)
-				allCalls.push({
-					name:              node.functionName.lexeme,
-					location:          node.location.start,
-					numberOfArguments: node.arguments.length,
-					namespace:         node.functionName.namespace
-				})
+				allCalls.push([
+					node.functionName.lexeme,
+					[node.location.start.line, node.location.start.column],
+					node.arguments.length,
+					node.functionName.namespace ?? '',
+					hasCallsEdge ? 1 : 0
+				])
 			}
+
+			classifyArguments(node.arguments, info.args)
 
 			calls.push(node)
 		}, node => {
@@ -131,11 +113,10 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 	)
 
 	info.allFunctionCalls += allCalls.length
-	appendStatisticsFile(usedFunctions.name, 'all-calls', allCalls, input.filepath)
+	appendStatisticsFile(usedFunctions.name, AllCallsFileBase, allCalls, input.filepath)
 }
 
-
-export const usedFunctions: Feature<FunctionUsageInfo> = {
+export const usedFunctions: Feature<FunctionUsageInfo, UsedFunctionPostProcessing> = {
 	name:        'Used Functions',
 	description: 'All functions called, split into various sub-categories',
 
@@ -144,5 +125,97 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
 		return existing
 	},
 
-	initialValue: initialFunctionUsageInfo
+	initialValue: initialFunctionUsageInfo,
+	postProcess:  postProcess
+}
+
+
+type FunctionCallSummaryInformation<Measurement> = [total: Measurement, arguments: Measurement, location: [line: Measurement, character: Measurement]]
+// during the collection phase this should be a map using an array to collect
+interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
+	/**
+	 * maps fn-name (including namespace) to number of arguments and their location (the number of elements in the array give the number of total call)
+	 * we use tuples to reduce the memory!
+	 * A function that is defined within the file is _always_ decorated with the filename (as second array element)!
+	 */
+	functionCallsPerFile: Map<string|undefined, FunctionCallSummaryInformation<Measurement>>
+	nestings:             Measurement
+	deepestNesting:       Measurement
+	meta: {
+		averageCall:    Measurement
+		emptyArgs:      Measurement
+		nestedCalls:    Measurement
+		deepestNesting: Measurement
+		unnamedCalls:   Measurement
+		// the first entry is for 1 argument, the second for the two arguments (the second,....)
+		args:	          CommonSyntaxTypeCounts<Measurement>[]
+		// TODO: evaluate location of functions
+	}
+}
+
+function postProcess(featureRoot: string, meta: string, outputPath: string): UsedFunctionPostProcessing {
+	// each number[][] contains a 'number[]' per file
+	const data: UsedFunctionPostProcessing<number[][]> = {
+		functionCallsPerFile: new Map(),
+		nestings:             [],
+		deepestNesting:       [],
+		// TODO:
+		meta:                 {
+			averageCall:    [],
+			nestedCalls:    [],
+			deepestNesting: [],
+			emptyArgs:      [],
+			unnamedCalls:   [],
+			args:           []
+		}
+	}
+
+	// we collect only `all-calls`
+	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(data, lineNumber, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>))
+
+	// TODO: deal with nestings, deepestNEsting and meta
+	console.log(data.functionCallsPerFile.get('print'))
+
+	// TODO: summarize :D
+	return null as unknown as UsedFunctionPostProcessing
+}
+
+function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumber: number, line: StatisticsOutputFormat<FunctionCallInformation[]>): void {
+	if(lineNumber % 2_500 === 0) {
+		console.log(`[${date2string(new Date())}] Processed ${lineNumber} lines`)
+	}
+	const [hits, context] = line
+
+	// group hits by fullname
+	const groupedByFunctionName = new Map<string, FunctionCallSummaryInformation<number[]>>()
+	for(const [name, loc, args, ns, known] of hits) {
+		const fullname = ns && ns !== '' ? `${ns}::${name ?? ''}` : name
+		const key = (fullname ?? '') + (known === 1 ? '-' + (context ?? '') : '')
+
+		let get = groupedByFunctionName.get(key)
+		if(!get) {
+			get = [[], [], [[],[]]]
+			groupedByFunctionName.set(key, get)
+		}
+		get[0].push(1)
+		get[1].push(args)
+		if(loc) {
+			get[2][0].push(loc[0])
+			get[2][1].push(loc[1])
+		}
+	}
+
+	for(const [key, info] of groupedByFunctionName.entries()) {
+		let get = data.functionCallsPerFile.get(key)
+		if(!get) {
+			get = [[], [], [[], []]]
+			// an amazing empty structure :D
+			data.functionCallsPerFile.set(key, get)
+		}
+		// for total, we only need the number of elements as it will always be one :D
+		get[0].push([info[0].length])
+		get[1].push(info[1])
+		get[2][0].push(info[2][0])
+		get[2][1].push(info[2][1])
+	}
 }

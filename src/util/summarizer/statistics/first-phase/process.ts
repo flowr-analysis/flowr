@@ -1,30 +1,72 @@
-import fs from 'fs'
-import path from 'path'
+import fs from 'node:fs'
+import path from 'node:path'
+import { guard } from '../../../assert'
+import { StatisticsOutputFormat } from '../../../../statistics'
 
-export function migrateFiles(sourceFolder: string, targetFolder: string) {
-	if(!fs.existsSync(targetFolder)) {
-		fs.mkdirSync(targetFolder, { recursive: true })
-	}
+export class FileMigrator {
+	private readonly writeHandles = new Map<string, fs.WriteStream>()
+	private finished = false
 
-	const files = fs.readdirSync(sourceFolder, { recursive: true })
-
-	for(const f of files) {
-		const source = path.join(sourceFolder, String(f))
-		// TODO: better skips
-		if(source.includes('output-json')) {
-			continue
+	public async migrate(sourceFolderContent: Map<string,string>, targetFolder: string): Promise<void> {
+		guard(!this.finished, () => 'migrator is already marked as finished!')
+		if(!fs.existsSync(targetFolder)) {
+			fs.mkdirSync(targetFolder, { recursive: true })
 		}
-		const target = path.join(targetFolder, String(f))
 
-		if(fs.statSync(source).isDirectory()) {
-			migrateFiles(source, target)
-		} else if(fs.existsSync(source)) {
+		await Promise.all<Promise<void>[]>([...sourceFolderContent.entries()].map(([filepath, content]) => {
+			const target = path.join(targetFolder, filepath)
+
 			// TODO: is there a faster way ?
-			const content = String(fs.readFileSync(source))
-			// TODO: should have compacted paths...
-			fs.appendFileSync(target, content)
+			let targetStream = this.writeHandles.get(target)
+			if(targetStream === undefined) {
+				if(!fs.existsSync(path.dirname(target))) {
+					fs.mkdirSync(path.dirname(target), { recursive: true })
+				}
+				targetStream = fs.createWriteStream(target, { flags: 'a' })
+				this.writeHandles.set(target, targetStream)
+			}
+			return new Promise((resolve, reject) => {
+				// before we write said content we have to group {value: string, context: string} by context (while we can safely assume that there is only one context per file,
+				// i want to be sure
+				const grouped = groupByContext(content)
+				const group = grouped === undefined ? content : grouped.map(s => JSON.stringify(s)).join('\n') + '\n';
+				(targetStream as fs.WriteStream).write(group, 'utf-8', err => {
+					if(err) {
+						reject(err)
+					} else {
+						resolve()
+					}
+				})
+			})
+		}))
+	}
+
+	public finish() {
+		for(const handle of this.writeHandles.values()) {
+			handle.close()
+		}
+		this.finished = true
+	}
+}
+
+function groupByContext(input: string | undefined): StatisticsOutputFormat<never[]>[] | undefined {
+	if(input === undefined) {
+		return []
+	}
+	const parsed = input.split('\n').filter(s => s && s !== '').map(s => JSON.parse(s) as StatisticsOutputFormat<never>)
+	const grouped = new Map<string|undefined, never[]>()
+	for(const content of parsed) {
+		if(!Array.isArray(content)) {
+			// in this case it is a meta file or other which does not have to be grouped
+			return undefined
+		}
+		const [value, context] = content
+		const get = grouped.get(context)
+		if(get === undefined) {
+			grouped.set(context, [value])
 		} else {
-			fs.copyFileSync(source, target)
+			get.push(value)
 		}
 	}
+	return [...grouped.entries()].map(([context, values]) => [values, context])
 }

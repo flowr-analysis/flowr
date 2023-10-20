@@ -3,31 +3,50 @@ import { Writable } from 'ts-essentials'
 import { NodeId, RNodeWithParent, RType, visitAst, RoleInParent, rolesOfParents } from '../../../r-bridge'
 import { assertUnreachable, guard } from '../../../util/assert'
 import { appendStatisticsFile } from '../../output'
+import {
+	CommonSyntaxTypeCounts,
+	emptyCommonSyntaxTypeCounts,
+	updateCommonSyntaxTypeCounts
+} from '../common-syntax-probability'
 
 const initialDataAccessInfo = {
-	singleBracket:               0,
-	singleBracketEmpty:          0,
-	singleBracketConstant:       0,
-	singleBracketSingleVariable: 0,
-	singleBracketCommaAccess:    0,
-	singleBracketEmptyArgument:  0,
-	doubleBracket:               0,
-	doubleBracketEmpty:          0,
-	doubleBracketConstant:       0,
-	doubleBracketSingleVariable: 0,
-	doubleBracketCommaAccess:    0,
-	doubleBracketEmptyArgument:  0,
-	chainedOrNestedAccess:       0,
-	longestChain:                0,
-	deepestNesting:              0,
-	namedArguments:              0,
-	byName:                      0,
-	bySlot:                      0,
+	// for the nth argument, how many of them are constant etc.
+	singleBracket: {
+		// only counts if empty
+		0: 0n,
+		1: emptyCommonSyntaxTypeCounts()
+	} as Record<number, bigint | CommonSyntaxTypeCounts>,
+	doubleBracket: {
+		// similar to single bracket
+		0: 0n,
+		1: emptyCommonSyntaxTypeCounts()
+	} as Record<number, bigint | CommonSyntaxTypeCounts>,
+	chainedOrNestedAccess: 0,
+	longestChain:          0,
+	deepestNesting:        0,
+	byName:                0,
+	bySlot:                0,
 }
 
 export type DataAccessInfo = Writable<typeof initialDataAccessInfo>
 
-const constantSymbolContent = /(NULL|NA|T|F)/
+function classifyArguments(args: (RNodeWithParent | null)[], existing: Record<number, bigint | CommonSyntaxTypeCounts>) {
+	if(args.length === 0) {
+		(existing[0] as unknown as number)++
+		return
+	}
+
+	let i = 1
+	for(const arg of args) {
+		if(arg === null) {
+			(existing[0] as unknown as number)++
+			continue
+		}
+
+		existing[i] = updateCommonSyntaxTypeCounts((existing[i] as CommonSyntaxTypeCounts | undefined) ?? emptyCommonSyntaxTypeCounts(), arg)
+		i++
+	}
+}
 
 function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 	const accessNest: RNodeWithParent[] = []
@@ -75,41 +94,12 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 			switch(op) {
 				case '@': info.bySlot++;         return
 				case '$': info.byName++;         return
-				case '[': info.singleBracket++;  break
-				case '[[': info.doubleBracket++; break
+				case '[':  classifyArguments(node.access, info.singleBracket); break
+				case '[[': classifyArguments(node.access, info.doubleBracket); break
 				default: assertUnreachable(op)
 			}
 
 			guard(Array.isArray(node.access), '[ and [[ must provide access as array')
-			const prefix = op === '[' ? 'single' : 'double'
-			if(node.access.length === 0) {
-				info[`${prefix}BracketEmpty`]++
-				return
-			} else if(node.access.length > 1) {
-				info[`${prefix}BracketCommaAccess`]++
-			}
-
-			for(const access of node.access) {
-				if(access === null) {
-					info[`${prefix}BracketEmpty`]++
-					continue
-				}
-				const argContent = access.value
-
-				if(access.name !== undefined) {
-					info.namedArguments++
-				}
-
-				if(argContent === undefined) {
-					info[`${prefix}BracketEmptyArgument`]++
-				} else if(argContent.type === RType.Number || argContent.type === RType.String ||
-					(argContent.type === RType.Symbol && constantSymbolContent.test(argContent.content))
-				) {
-					info[`${prefix}BracketConstant`]++
-				} else if(argContent.type === RType.Symbol) {
-					info[`${prefix}BracketSingleVariable`]++
-				}
-			}
 		}, node => {
 			// drop again :D
 			if(node.type === RType.Access) {

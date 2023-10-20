@@ -1,105 +1,73 @@
-import { Feature, FeatureProcessorInput, Query } from '../feature'
-import * as xpath from 'xpath-ts2'
-import { appendStatisticsFile } from '../../output'
+import { Feature, FeatureProcessorInput } from '../feature'
 import { Writable } from 'ts-essentials'
+import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../common-syntax-probability'
+import { ParentInformation, RExpressionList, RNodeWithParent, RType, visitAst } from '../../../r-bridge'
 
 const initialControlflowInfo = {
-	ifThen:                   0,
-	ifThenElse:               0,
+	ifThen:           emptyCommonSyntaxTypeCounts(),
+	thenBody:         emptyCommonSyntaxTypeCounts(),
+	ifThenElse:       emptyCommonSyntaxTypeCounts(),
+	elseBody:         emptyCommonSyntaxTypeCounts(),
 	/** can be nested with if-s or if-then-else's */
-	nestedIfThen:             0,
-	nestedIfThenElse:         0,
-	/** if(TRUE), ... */
-	constantIfThen:           0,
-	constantIfThenElse:       0,
-	/** if(x), ... */
-	singleVariableIfThen:     0,
-	singleVariableIfThenElse: 0,
+	nestedIfThen:     0,
+	nestedIfThenElse: 0,
+	deepestNesting:   0,
 	/** switch(...) */
-	switchCase:               0,
-	singleVariableSwitchCase: 0,
-	constantSwitchCase:       0
+	switchCase:       emptyCommonSyntaxTypeCounts()
 }
 
 export type ControlflowInfo = Writable<typeof initialControlflowInfo>
 
+// TODO: record numbers of nodes in normalized ast and unnormalized, just so we can say mining Xillions of ast nodes
+function visitIfThenElse(info: ControlflowInfo, input: FeatureProcessorInput): void {
+	const ifThenElseStack: RNodeWithParent[] = []
 
-const ifThenQuery: Query = xpath.parse('//IF[not(following-sibling::ELSE)]')
-const ifThenElseQuery: Query = xpath.parse('//IF[following-sibling::ELSE]')
+	visitAst(input.normalizedRAst.ast,
+		node => {
+			if(node.type !== RType.IfThenElse) {
+				if(node.type === RType.FunctionCall && node.flavor === 'named' && node.functionName.content === 'switch') {
+					const initialArg = node.arguments[0]
+					if(initialArg) {
+						info.switchCase = updateCommonSyntaxTypeCounts(info.switchCase, initialArg)
+					}
+				}
+				return
+			}
+			const ifThenElse = node.otherwise !== undefined
 
-const selectCondition: Query = xpath.parse('../expr[preceding-sibling::OP-LEFT-PAREN][1]')
-const constantCondition: Query = xpath.parse(`
-  ./NUM_CONST
-  |
-  ./NULL_CONST
-  |
-  ./STR_CONST
-  |
-  ./SYMBOL[text() = 'T' or text() = 'F']`)
-const singleVariableCondition: Query = xpath.parse('./SYMBOL[text() != \'T\' and text() != \'F\']')
+			if(ifThenElseStack.length > 0) {
+				if(ifThenElse) {
+					info.nestedIfThenElse++
+				} else {
+					info.nestedIfThen++
+				}
+				info.deepestNesting = Math.max(info.deepestNesting, ifThenElseStack.length)
+			}
+			ifThenElseStack.push(node)
 
-const nestedIfThenQuery: Query = xpath.parse('..//expr/IF')
-
-// directly returns the first argument of switch
-const switchQuery: Query = xpath.parse('//SYMBOL_FUNCTION_CALL[text() = \'switch\']/../../expr[preceding-sibling::OP-LEFT-PAREN][1]')
-
-
-
-function collectForIfThenOptionalElse(existing: ControlflowInfo, name: 'IfThen' | 'IfThenElse',  ifThenOptionalElse: Node, filepath: string | undefined) {
-	// select when condition to check if constant, ...
-	const conditions = selectCondition.select({ node: ifThenOptionalElse })
-
-	appendStatisticsFile(controlflow.name, name, conditions, filepath)
-
-	const constantKey = `constant${name}` as keyof ControlflowInfo
-	const constantConditions = conditions.flatMap(c => constantCondition.select({ node: c }))
-
-	existing[constantKey] += constantConditions.length
-	appendStatisticsFile(controlflow.name, constantKey, constantConditions, filepath)
-
-	const singleVariableKey = `singleVariable${name}` as keyof ControlflowInfo
-	const singleVariableConditions = conditions.flatMap(c => singleVariableCondition.select({ node: c }))
-	existing[singleVariableKey] += singleVariableConditions.length
-	appendStatisticsFile(controlflow.name, singleVariableKey, singleVariableConditions, filepath)
-
-	const nestedKey = `nested${name}` as keyof ControlflowInfo
-	const nestedIfThen = nestedIfThenQuery.select({ node: ifThenOptionalElse })
-
-	existing[nestedKey] += nestedIfThen.length
+			info.thenBody = updateCommonSyntaxTypeCounts(info.thenBody, ...node.then.children)
+			if(ifThenElse) {
+				info.ifThenElse = updateCommonSyntaxTypeCounts(info.ifThenElse, node.condition)
+				info.elseBody = updateCommonSyntaxTypeCounts(info.elseBody, ...(node.otherwise as RExpressionList<ParentInformation>).children)
+			} else {
+				info.ifThen = updateCommonSyntaxTypeCounts(info.ifThen, node.condition)
+			}
+		}, node => {
+			// drop again :D
+			if(node.type === RType.IfThenElse) {
+				ifThenElseStack.pop()
+			}
+		}
+	)
 }
+
 
 export const controlflow: Feature<ControlflowInfo> = {
 	name:        'Controlflow',
 	description: 'Deals with if-then-else and switch-case',
 
 	process(existing: ControlflowInfo, input: FeatureProcessorInput): ControlflowInfo {
-
-		const ifThen = ifThenQuery.select({ node: input.parsedRAst })
-		const ifThenElse = ifThenElseQuery.select({ node: input.parsedRAst })
-
-		existing.ifThen += ifThen.length
-		existing.ifThenElse += ifThenElse.length
-
-		ifThen.forEach(ifThen => { collectForIfThenOptionalElse(existing, 'IfThen', ifThen, input.filepath) })
-		ifThenElse.forEach(ifThenElse => { collectForIfThenOptionalElse(existing, 'IfThenElse', ifThenElse, input.filepath) })
-
-		const switchCases = switchQuery.select({ node: input.parsedRAst })
-		existing.switchCase += switchCases.length
-		appendStatisticsFile(controlflow.name, 'SwitchCase', switchCases, input.filepath)
-
-
-		const constantSwitchCases = switchCases.flatMap(switchCase =>
-			constantCondition.select({ node: switchCase })
-		)
-		existing.constantSwitchCase += constantSwitchCases.length
-		appendStatisticsFile(controlflow.name, 'constantSwitchCase', constantSwitchCases, input.filepath)
-
-		const variableSwitchCases = switchCases.flatMap(switchCase =>
-			singleVariableCondition.select({ node: switchCase })
-		)
-		existing.singleVariableSwitchCase += variableSwitchCases.length
-		appendStatisticsFile(controlflow.name, 'singleVariableSwitchCase', variableSwitchCases, input.filepath)
-
+		visitIfThenElse(existing, input)
 		return existing
 	},
 	initialValue: initialControlflowInfo

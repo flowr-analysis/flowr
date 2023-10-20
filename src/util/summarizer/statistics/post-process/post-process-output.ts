@@ -1,9 +1,9 @@
-import { ALL_FEATURES, FeatureKey, FeatureSelection } from '../../../../statistics/features'
+import { ALL_FEATURES, FeatureKey, FeatureSelection } from '../../../../statistics'
 import path from 'path'
 import { log } from '../../../log'
 import fs from 'fs'
 import { ClusterContextIdMap, ClusterReport, clusterStatisticsOutput } from './clusterer'
-import { ColorEffect, Colors, defaultStatisticsFileSuffix, FontStyles, formatter } from '../../../../statistics/output'
+import { ColorEffect, Colors, defaultStatisticsFileSuffix, FontStyles, formatter } from '../../../../statistics'
 import { deterministicCountingIdGenerator, NodeId } from '../../../../r-bridge'
 import { DefaultMap } from '../../../defaultmap'
 

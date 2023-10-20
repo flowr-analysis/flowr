@@ -21,7 +21,6 @@ import { MergeableRecord } from '../../util/objects'
 import { NormalizedAst } from '../../r-bridge'
 import { DataflowInformation } from '../../dataflow/internal/info'
 import { variables } from './supported/variables'
-import { StatisticsOutputFormat } from '../output'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
@@ -29,7 +28,7 @@ import { StatisticsOutputFormat } from '../output'
  * <p>
  * Since we are writing to files {@link process}, we only count feature occurrences (some feature/parts are not written to file)
  */
-export type FeatureInfo = Record<string, number> & MergeableRecord
+export type FeatureInfo = Record<string, unknown> & MergeableRecord
 
 
 /**
@@ -42,7 +41,7 @@ export interface FeatureProcessorInput extends MergeableRecord {
 	readonly normalizedRAst: NormalizedAst,
 	/** The dataflow information for the given input */
 	readonly dataflow:       DataflowInformation,
-	/** The filepath that the document originated from (if present, may be undefined if the input was provided as text) */
+	/** The filepath that the document originated from (if present, may be undefined if the input was provided as text). This can be relative to the common root directory of requests. */
 	readonly filepath:       string | undefined
 }
 
@@ -67,10 +66,16 @@ export interface Feature<T extends FeatureInfo, Output = unknown> {
 	process:              FeatureProcessor<T>
 	/**
 	 * If present, this feature allows to post-process the results of the feature extraction (for the summarizer).
-	 * This retrieves a map of all files recorded for the given features and their JSON content.
-	 * The keys of the resulting map can be completely independent.
+	 * <p>
+	 * The extraction can use the output path to write files to, and should return the final output.
+	 *
+	 * @param featureRoot - The root path to the feature directory which should contain all the files the feature can write to (already merged for every file processed)
+	 * @param metaPath    - The path that the meta information resides in, when reading, you have to search within the `name` key of each entry.
+	 * @param outputPath  - The path to write the output to (besides what is collected in the output and meta information)
+	 *
+	 * @returns The final output of the feature, as well as the compacted meta information (currently, in whatever format fits best for you)
 	 */
-	postProcess?:         (files: Map<string, StatisticsOutputFormat[]>) => Map<string, Output>
+	postProcess?:         (featureRoot: string, metaPath: string, outputPath: string) => Output & { meta: unknown }
 	/** Values to start the existing track from */
 	initialValue:         T
 }

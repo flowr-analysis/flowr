@@ -1,6 +1,6 @@
 import { Feature, FeatureProcessorInput, Query } from '../feature'
 import * as xpath from 'xpath-ts2'
-import { RNumHexFloatRegex } from '../../../r-bridge'
+import { RFalse, RNa, RNull, RNumHexFloatRegex, RTrue } from '../../../r-bridge'
 import { assertUnreachable } from '../../../util/assert'
 import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
@@ -25,10 +25,10 @@ const shortLogicalSymbolQuery: Query = xpath.parse('//SYMBOL[text() = \'T\' or t
 
 
 function classifyNumericConstants(numeric: string, existing: ValueInfo): 'allNumerics' | 'logical' | 'special-constants' {
-	if(numeric === 'TRUE' || numeric === 'FALSE') {
+	if(numeric === RTrue || numeric === RFalse) {
 		return 'logical'
 	}
-	if(numeric === 'NA' || numeric === 'NaN' || numeric === 'NULL' || numeric === 'Inf' || numeric === '-Inf') {
+	if(numeric === RNa || numeric === 'NaN' || numeric === RNull || numeric === 'Inf' || numeric === '-Inf') {
 		return 'special-constants'
 	}
 

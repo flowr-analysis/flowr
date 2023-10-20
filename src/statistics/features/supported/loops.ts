@@ -2,12 +2,17 @@ import { Feature, FeatureProcessorInput } from '../feature'
 import { appendStatisticsFile } from '../../output'
 import { Writable } from 'ts-essentials'
 import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
+import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../common-syntax-probability'
 
 
 const initialLoopInfo = {
-	forLoops:               0,
-	whileLoops:             0,
-	repeatLoops:            0,
+	forLoops:               emptyCommonSyntaxTypeCounts(),
+	forLoopVar:             emptyCommonSyntaxTypeCounts(),
+	forBody:                emptyCommonSyntaxTypeCounts(),
+	whileLoops:             emptyCommonSyntaxTypeCounts(),
+	whileBody:              emptyCommonSyntaxTypeCounts(),
+	repeatLoops:            0n,
+	repeatBody:             emptyCommonSyntaxTypeCounts(),
 	breakStatements:        0,
 	nextStatements:         0,
 	/** apply, tapply, lapply, ...*/
@@ -36,15 +41,25 @@ function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 						appendStatisticsFile(loops.name, 'implicit-loop', [node.functionName.info.fullLexeme ?? node.functionName.lexeme], input.filepath)
 					}
 					return
-				case RType.ForLoop:    info.forLoops++; break
-				case RType.WhileLoop:  info.whileLoops++; break
-				case RType.RepeatLoop: info.repeatLoops++; break
+				case RType.ForLoop:
+					updateCommonSyntaxTypeCounts(info.forLoops,   node.vector)
+					updateCommonSyntaxTypeCounts(info.forLoopVar, node.variable)
+					updateCommonSyntaxTypeCounts(info.forBody, ...node.body.children)
+					break
+				case RType.WhileLoop:
+					updateCommonSyntaxTypeCounts(info.whileLoops, node.condition)
+					updateCommonSyntaxTypeCounts(info.whileBody, ...node.body.children)
+					break
+				case RType.RepeatLoop:
+					info.repeatLoops++
+					updateCommonSyntaxTypeCounts(info.repeatBody, ...node.body.children)
+					break
 				default: return
 			}
 
+			appendStatisticsFile(loops.name, 'all-loops', [node.info.fullLexeme ?? node.lexeme], input.filepath)
 			if(loopStack.length > 0) {
 				info.nestedExplicitLoops++
-				appendStatisticsFile(loops.name, 'nested-loop', [node.info.fullLexeme ?? node.lexeme], input.filepath)
 				info.deepestExplicitNesting = Math.max(info.deepestExplicitNesting, loopStack.length)
 			}
 

@@ -17,6 +17,7 @@ export interface StatsCliOptions {
 	readonly help:         boolean
 	readonly limit:        number | undefined
 	readonly input:        string[]
+	readonly 'dump-json':  boolean
 	readonly 'output-dir': string
 	readonly 'no-ansi':    boolean
 	readonly parallel:     number
@@ -66,7 +67,7 @@ function getSuffixForFile(base: string, file: string) {
 	return '--' + subpath.replace(/\//g, '／')
 }
 
-async function collectFileArguments(verboseAdd: string[], compress: string[], features: string[]) {
+async function collectFileArguments(verboseAdd: string[], dumpJson: string[], features: string[]) {
 	const files: Arguments[] = []
 	let counter = 0
 	let presentSteps = 5000
@@ -79,7 +80,7 @@ async function collectFileArguments(verboseAdd: string[], compress: string[], fe
 			skipped++
 			continue
 		}
-		files.push(['--input', f.content, '--output-dir', outputDir, ...verboseAdd, ...features, ...compress])
+		files.push(['--input', f.content, '--output-dir', outputDir,'--compress', '--root-dir', options.input.length === 1 ? options.input[0] : '""', ...verboseAdd, ...features, ...dumpJson])
 		if(++counter % presentSteps === 0) {
 			console.log(`Collected ${counter} files`)
 			if(counter >= 10 * presentSteps) {
@@ -97,11 +98,11 @@ async function getStats() {
 
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
-	const compress = ['--compress']
 	const features = [...processedFeatures].flatMap(s => ['--features', s])
+	const dumpJson = options['dump-json'] ? ['--dump-json'] : []
 
 	// we do not use the limit argument to be able to pick the limit randomly
-	const args = await collectFileArguments(verboseAdd, compress, features)
+	const args = await collectFileArguments(verboseAdd, dumpJson, features)
 
 	if(options.limit) {
 		console.log('Shuffle...')

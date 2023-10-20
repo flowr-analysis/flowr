@@ -124,7 +124,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 			}
 			this.log('    Migrating files...')
 			const extracted = identifyExtractionType(path.basename(f))
-			migrator.migrate(target, path.join(this.config.intermediateOutputPath, extracted?.folder ?? 'default'), extracted?.originalFile)
+			await migrator.migrate(target, path.join(this.config.intermediateOutputPath, extracted?.folder ?? 'default'), extracted?.originalFile)
 
 			this.log('    Done! (Cleanup...)')
 		}

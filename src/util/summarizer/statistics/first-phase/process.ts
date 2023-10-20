@@ -7,12 +7,13 @@ export class FileMigrator {
 	private readonly writeHandles = new Map<string, fs.WriteStream>()
 	private finished = false
 
-	public migrate(sourceFolderContent: Map<string,string>, targetFolder: string, originalFile: string | undefined): void {
+	public async migrate(sourceFolderContent: Map<string,string>, targetFolder: string, originalFile: string | undefined): Promise<void> {
 		guard(!this.finished, () => 'migrator is already marked as finished!')
 		if(!fs.existsSync(targetFolder)) {
 			fs.mkdirSync(targetFolder, { recursive: true })
 		}
 
+		const promises: Promise<void>[] = []
 		for(const [filepath, content] of sourceFolderContent.entries()) {
 			const target = path.join(targetFolder, filepath)
 
@@ -32,8 +33,15 @@ export class FileMigrator {
 			if(filepath.endsWith('meta.txt')) {
 				data = `{"file":"${originalFile ?? ''}","content":${data.trimEnd()}}\n`
 			}
-			targetStream.write(data, 'utf-8')
+			promises.push(new Promise((resolve, reject) => (targetStream as fs.WriteStream).write(data, 'utf-8', err => {
+				if(err) {
+					reject(err)
+				} else {
+					resolve()
+				}
+			})))
 		}
+		await Promise.all(promises)
 	}
 
 	public finish() {

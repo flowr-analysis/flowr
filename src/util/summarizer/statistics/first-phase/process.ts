@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { guard } from '../../../assert'
+import { StatisticsOutputFormat } from '../../../../statistics'
 
 export class FileMigrator {
 	private readonly writeHandles = new Map<string, fs.WriteStream>()
@@ -25,7 +26,10 @@ export class FileMigrator {
 				this.writeHandles.set(target, targetStream)
 			}
 			return new Promise((resolve, reject) => {
-				(targetStream as fs.WriteStream).write(content, 'utf-8', err => {
+				// before we write said content we have to group {value: string, context: string} by context (while we can safely assume that there is only one context per file,
+				// i want to be sure
+				const group = groupByContext(content).map(s => JSON.stringify(s)).join('\n');
+				(targetStream as fs.WriteStream).write(group, 'utf-8', err => {
 					if(err) {
 						reject(err)
 					} else {
@@ -44,3 +48,16 @@ export class FileMigrator {
 	}
 }
 
+function groupByContext(input: string): StatisticsOutputFormat<never[]>[] {
+	const parsed = input.split('\n').map(s => JSON.parse(s) as StatisticsOutputFormat<never>)
+	const grouped = new Map<string|undefined, never[]>()
+	for(const [value, context] of parsed) {
+		const get = grouped.get(context)
+		if(get === undefined) {
+			grouped.set(context, [value])
+		} else {
+			get.push(value)
+		}
+	}
+	return [...grouped.entries()].map(([context, values]) => [values, context])
+}

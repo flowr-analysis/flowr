@@ -25,6 +25,7 @@ export interface Server {
 export interface Socket {
 	remoteAddress?: string
 	remotePort?:    number
+	on(event: 'error', listener: (e: unknown) => void): void
 	on(event: 'close', listener: () => void): void
 	on(event: 'data', listener: (data: Buffer) => void): void
 	write(data: string): void

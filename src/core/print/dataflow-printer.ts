@@ -1,5 +1,7 @@
 import { jsonReplacer } from '../../util/json'
 import { DataflowInformation } from '../../dataflow/internal/info'
+import { QuadSerializationConfiguration } from '../../util/quads'
+import { df2quads } from '../../dataflow/graph/quads'
 
 
 function mayObjectJson(d: unknown): string {
@@ -44,4 +46,10 @@ function objectJson(df: object): string {
 // eslint-disable-next-line @typescript-eslint/require-await
 export async function dataflowGraphToJson(df: DataflowInformation): Promise<string> {
 	return objectJson(df)
+}
+
+
+// eslint-disable-next-line @typescript-eslint/require-await
+export async function dataflowGraphToQuads(df: DataflowInformation, config: QuadSerializationConfiguration): Promise<string> {
+	return df2quads(df.graph, config)
 }

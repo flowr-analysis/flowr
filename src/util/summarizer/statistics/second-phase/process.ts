@@ -2,14 +2,13 @@ import fs from 'fs'
 import path from 'path'
 import {
 	ALL_FEATURES,
-	FeatureInfo,
 	FeatureKey,
 	FeatureSelection,
 	FeatureStatistics, FeatureStatisticsWithMeta,
 	MetaStatistics
 } from '../../../../statistics'
 import { CommonSummarizerConfiguration } from '../../summarizer'
-import { readLineByLine, readLineByLineSync } from '../../../files'
+import { readLineByLineSync } from '../../../files'
 import { guard } from '../../../assert'
 
 /**
@@ -62,7 +61,7 @@ function extractMetaInformationFrom(logger: CommonSummarizerConfiguration['logge
 		if(lineNumber % 2_500 === 0) {
 			logger(`    ${lineNumber} lines processed`)
 		}
-		const meta = JSON.parse(String(line)) as { file: string, content: FeatureStatistics }
+		const meta = JSON.parse(line.toString()) as { file: string, content: FeatureStatistics }
 		storage.set(meta.file, meta.content as FeatureStatisticsWithMeta)
 	})
 	logger('    Collect meta statistics')
@@ -73,7 +72,7 @@ function extractMetaInformationFrom(logger: CommonSummarizerConfiguration['logge
 		if(lineNumber % 2_500 === 0) {
 			logger(`    ${lineNumber} lines processed`)
 		}
-		const meta = JSON.parse(String(line)) as { file: string, content: MetaStatistics }
+		const meta = JSON.parse(line.toString()) as { file: string, content: MetaStatistics }
 		const existing = storage.get(meta.file)
 		guard(existing !== undefined, () => `Expected to find meta information for ${meta.file} in ${metaFeaturesPath}`)
 		existing.stats = meta.content

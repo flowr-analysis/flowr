@@ -156,7 +156,6 @@ interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends 
 }
 
 function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string): UsedFunctionPostProcessing {
-	console.log(info)
 	// each number[][] contains a 'number[]' per file
 	const data: UsedFunctionPostProcessing<number[][]> = {
 		functionCallsPerFile: new Map(),

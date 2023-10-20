@@ -29,7 +29,7 @@ export class FileMigrator {
 			// before we write said content we have to group {value: string, context: string} by context (while we can safely assume that there is only one context per file,
 			// i want to be sure
 			let data: string
-			if(filepath.endsWith('meta.txt')) {
+			if(filepath.endsWith('meta/stats.txt')) {
 				data = `{"file":"${originalFile ?? ''}","content":${content.trimEnd()}}\n`
 			} else {
 				const grouped = groupByContext(content)

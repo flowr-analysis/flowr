@@ -97,7 +97,7 @@ async function mainRepl() {
 		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.Bold })}'`)
 		target = `cli/${target}`
 		log.debug(`Script maps to "${target}"`)
-		await waitOnScript(`${__dirname}/${target}`, process.argv.slice(3))
+		await waitOnScript(`${__dirname}/${target}`, process.argv.slice(3), undefined, true)
 		process.exit(0)
 	}
 

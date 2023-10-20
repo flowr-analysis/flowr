@@ -48,10 +48,18 @@ export class FileMigrator {
 	}
 }
 
-function groupByContext(input: string): StatisticsOutputFormat<never[]>[] {
-	const parsed = input.split('\n').map(s => JSON.parse(s) as StatisticsOutputFormat<never>)
+function groupByContext(input: string | undefined): StatisticsOutputFormat<never[]>[] {
+	if(input === undefined) {
+		return []
+	}
+	const parsed = input.split('\n').filter(s => s && s !== '').map(s => JSON.parse(s) as StatisticsOutputFormat<never>)
 	const grouped = new Map<string|undefined, never[]>()
-	for(const [value, context] of parsed) {
+	for(const content of parsed) {
+		if(!Array.isArray(content)) {
+			// in this case it is a meta file or other which does not have to be grouped
+			return parsed
+		}
+		const [value, context] = content
 		const get = grouped.get(context)
 		if(get === undefined) {
 			grouped.set(context, [value])

@@ -7,13 +7,13 @@ export class FileMigrator {
 	private readonly writeHandles = new Map<string, fs.WriteStream>()
 	private finished = false
 
-	public async migrate(sourceFolderContent: Map<string,string>, targetFolder: string): Promise<void> {
+	public migrate(sourceFolderContent: Map<string,string>, targetFolder: string): void {
 		guard(!this.finished, () => 'migrator is already marked as finished!')
 		if(!fs.existsSync(targetFolder)) {
 			fs.mkdirSync(targetFolder, { recursive: true })
 		}
 
-		await Promise.all<Promise<void>[]>([...sourceFolderContent.entries()].map(([filepath, content]) => {
+		for(const [filepath, content] of sourceFolderContent.entries()) {
 			const target = path.join(targetFolder, filepath)
 
 			// TODO: is there a faster way ?
@@ -25,20 +25,12 @@ export class FileMigrator {
 				targetStream = fs.createWriteStream(target, { flags: 'a' })
 				this.writeHandles.set(target, targetStream)
 			}
-			return new Promise((resolve, reject) => {
-				// before we write said content we have to group {value: string, context: string} by context (while we can safely assume that there is only one context per file,
-				// i want to be sure
-				const grouped = groupByContext(content)
-				const data = grouped === undefined ? content : grouped.map(s => JSON.stringify(s)).join('\n') + '\n';
-				(targetStream as fs.WriteStream).write(data, 'utf-8', err => {
-					if(err) {
-						reject(err)
-					} else {
-						resolve()
-					}
-				})
-			})
-		}))
+			// before we write said content we have to group {value: string, context: string} by context (while we can safely assume that there is only one context per file,
+			// i want to be sure
+			const grouped = groupByContext(content)
+			const data = grouped === undefined ? content : grouped.map(s => JSON.stringify(s)).join('\n') + '\n'
+			targetStream.write(data, 'utf-8')
+		}
 	}
 
 	public finish() {

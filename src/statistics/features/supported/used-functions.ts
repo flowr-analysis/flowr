@@ -13,6 +13,7 @@ import { SummarizedMeasurement } from '../../../util/summarizer/benchmark/data'
 import { readLineByLineSync } from '../../../util/files'
 import path from 'path'
 import { jsonReplacer } from '../../../util/json'
+import { date2string } from '../../../util/time'
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -172,7 +173,7 @@ function postProcess(featureRoot: string, meta: string, outputPath: string): Use
 	}
 
 	// we collect only `all-calls`
-	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line) => processNextLine(data, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation>))
+	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(data, lineNumber, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation>))
 
 	// TODO: deal with nestings, deepestNEsting and meta
 	console.log(data.functionCallsPerFile.get('dplyr::filter'))
@@ -181,7 +182,10 @@ function postProcess(featureRoot: string, meta: string, outputPath: string): Use
 	return null as unknown as UsedFunctionPostProcessing
 }
 
-function processNextLine(data: UsedFunctionPostProcessing<Map<string|undefined, number[]>>, line: StatisticsOutputFormat<FunctionCallInformation>): void {
+function processNextLine(data: UsedFunctionPostProcessing<Map<string|undefined, number[]>>, lineNumber: number, line: StatisticsOutputFormat<FunctionCallInformation>): void {
+	if(lineNumber % 500_000 === 0) {
+		console.log(`[${date2string(new Date())}] Processed ${lineNumber} lines`)
+	}
 	const [[name, loc, args, ns, known], context] = line
 
 	const fullname = ns && ns !== '' ? `${ns}::${name ?? ''}` : name

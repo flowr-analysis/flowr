@@ -262,7 +262,7 @@ function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWit
 	for(const [key, [uniqueFiles, total, args, lineFrac]] of data.functionCallsPerFile.entries()) {
 		const totalSum = summarizeMeasurement(total.flat(), info.size)
 		const argsSum = summarizeMeasurement(args.flat(), info.size)
-		const lineFracSum = summarizeMeasurement(lineFrac.flat(), info.size)
+		const lineFracSum = summarizeMeasurement(lineFrac.flat())
 		// we write in csv style :), we escape the key in case it contains commas (with filenames)etc.
 		fnOutStream.write(`${JSON.stringify(key ?? 'unknown')},${uniqueFiles.size},${summarizedMeasurement2Csv(totalSum)},${summarizedMeasurement2Csv(argsSum)},${summarizedMeasurement2Csv(lineFracSum)}\n`)
 	}
@@ -283,7 +283,7 @@ function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWit
 
 function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<FunctionCallInformation[]>): void {
 	if(lineNumber % 2_500 === 0) {
-		console.log(`    [${date2string(new Date())}] Processed ${lineNumber} lines`)
+		console.log(`    [${date2string(new Date())}] Used functions processed ${lineNumber} lines`)
 	}
 	const [hits, context] = line
 
@@ -305,7 +305,8 @@ function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumbe
 		get[2].push(args)
 		if(loc && stats) {
 			// we reduce by 1 to get flat 0% if it is the first line
-			get[3].push(stats === 1 ? 1 : (loc[0]-1) / (stats-1))
+			const calc = stats === 1 ? 1 : (loc[0]-1) / (stats-1)
+			get[3].push(calc)
 		}
 	}
 

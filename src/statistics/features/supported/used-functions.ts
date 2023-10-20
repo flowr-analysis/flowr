@@ -156,6 +156,7 @@ interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends 
 }
 
 function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string): UsedFunctionPostProcessing {
+	console.log(info)
 	// each number[][] contains a 'number[]' per file
 	const data: UsedFunctionPostProcessing<number[][]> = {
 		functionCallsPerFile: new Map(),
@@ -176,7 +177,7 @@ function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWit
 	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(data, lineNumber, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>))
 
 	// TODO: deal with nestings, deepestNEsting and meta
-	console.log(data.functionCallsPerFile.get('print'))
+	// console.log(data.functionCallsPerFile.get('print'))
 
 	const summarizedFunctionCalls = new Map()
 	for(const [key, [total, args, [line,col]]] of data.functionCallsPerFile.entries()) {

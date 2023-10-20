@@ -30,7 +30,7 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 		return featureOutputMap
 	}
 
-	const metaFeatureInformation = extractMetaInformationFrom(path.join(filepath, 'meta', 'features.txt'), path.join(filepath, 'meta', 'stats.txt'))
+	const metaFeatureInformation = extractMetaInformationFrom(logger, path.join(filepath, 'meta', 'features.txt'), path.join(filepath, 'meta', 'stats.txt'))
 
 	for(const feature of features) {
 		const featureInfo = ALL_FEATURES[feature]
@@ -52,23 +52,32 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 }
 
 
-function extractMetaInformationFrom(metaFeaturesPath: string, metaStatsPath: string): Map<string, FeatureStatisticsWithMeta> {
+function extractMetaInformationFrom(logger: CommonSummarizerConfiguration['logger'], metaFeaturesPath: string, metaStatsPath: string): Map<string, FeatureStatisticsWithMeta> {
 	const storage = new Map<string, FeatureStatisticsWithMeta>()
-	readLineByLineSync(metaFeaturesPath, line => {
+	logger('    Collect feature statistics')
+	readLineByLineSync(metaFeaturesPath, (line, lineNumber) => {
 		if(line.length === 0) {
 			return
+		}
+		if(lineNumber % 2_500 === 0) {
+			logger(`    ${lineNumber} lines processed`)
 		}
 		const meta = JSON.parse(String(line)) as { file: string, content: FeatureStatistics }
 		storage.set(meta.file, meta.content as FeatureStatisticsWithMeta)
 	})
-	readLineByLineSync(metaStatsPath, line => {
+	logger('    Collect meta statistics')
+	readLineByLineSync(metaStatsPath, (line, lineNumber) => {
 		if(line.length === 0) {
 			return
+		}
+		if(lineNumber % 2_500 === 0) {
+			logger(`    ${lineNumber} lines processed`)
 		}
 		const meta = JSON.parse(String(line)) as { file: string, content: MetaStatistics }
 		const existing = storage.get(meta.file)
 		guard(existing !== undefined, () => `Expected to find meta information for ${meta.file} in ${metaFeaturesPath}`)
 		existing.stats = meta.content
 	})
+	logger('    Done collecting meta information')
 	return storage
 }

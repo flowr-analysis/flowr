@@ -17,6 +17,7 @@ export interface SummarizerCliOptions {
 	verbose:         boolean
 	help:            boolean
 	'ultimate-only': boolean
+	categorize:      boolean
 	input:           string
 	type:            string
 	output?:         string
@@ -76,7 +77,7 @@ async function run() {
 
 	// TODO: filter statistics for prefix!
 	if(!options['ultimate-only']) {
-		await summarizer.preparationPhase()
+		await summarizer.preparationPhase(options.categorize)
 	}
 
 	await summarizer.summarizePhase()

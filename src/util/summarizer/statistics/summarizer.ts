@@ -106,7 +106,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 	/**
 	 * The preparation phase essentially merges all files into one by just attaching lines together!
 	 */
-	public async preparationPhase(): Promise<void> {
+	public async preparationPhase(useTypeClassification: boolean): Promise<void> {
 		this.removeIfExists(this.config.intermediateOutputPath)
 		fs.mkdirSync(this.config.intermediateOutputPath, { recursive: true })
 
@@ -124,7 +124,10 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 			}
 			this.log('    Migrating files...')
 			const extracted = identifyExtractionType(path.basename(f))
-			await migrator.migrate(target, path.join(this.config.intermediateOutputPath, extracted?.folder ?? 'default'), extracted?.originalFile)
+			await migrator.migrate(target,
+				path.join(this.config.intermediateOutputPath, useTypeClassification ? extracted?.folder ?? 'default' : 'uncategorized'),
+				extracted?.originalFile
+			)
 
 			this.log('    Done! (Cleanup...)')
 		}

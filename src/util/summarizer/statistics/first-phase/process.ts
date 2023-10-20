@@ -3,6 +3,8 @@ import path from 'node:path'
 import { guard } from '../../../assert'
 import { StatisticsOutputFormat } from '../../../../statistics'
 
+const metaFilesRegex = /.*\/meta\/(stats|features)\.txt$/
+
 export class FileMigrator {
 	private readonly writeHandles = new Map<string, fs.WriteStream>()
 	private finished = false
@@ -29,7 +31,7 @@ export class FileMigrator {
 			// before we write said content we have to group {value: string, context: string} by context (while we can safely assume that there is only one context per file,
 			// i want to be sure
 			let data: string
-			if(filepath.endsWith('meta/stats.txt')) {
+			if(metaFilesRegex.test(filepath)) {
 				data = `{"file":"${originalFile ?? ''}","content":${content.trimEnd()}}\n`
 			} else {
 				const grouped = groupByContext(content)

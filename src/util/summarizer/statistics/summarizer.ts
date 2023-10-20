@@ -87,7 +87,7 @@ function identifyExtractionType(path: string): { folder: string, originalFile: s
 	}
 	// recover
 	const originalFile = match[2].replace(/／/g, '/')
-	return { folder: match[1] === '' ? 'default' : '', originalFile }
+	return { folder: match[1] === '' ? 'default' : match[1], originalFile }
 }
 
 

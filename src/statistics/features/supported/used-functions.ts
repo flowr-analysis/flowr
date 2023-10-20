@@ -134,7 +134,7 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
 }
 
 
-type FunctionCallSummaryInformation<Measurement> = [total: Measurement, arguments: Measurement, linePercentageInFile: Measurement]
+type FunctionCallSummaryInformation<Measurement, Uniques=number> = [numOfUniqueFiles: Uniques, total: Measurement, arguments: Measurement, linePercentageInFile: Measurement]
 // during the collection phase this should be a map using an array to collect
 interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
 	/**
@@ -142,7 +142,7 @@ interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends 
 	 * we use tuples to reduce the memory!
 	 * A function that is defined within the file is _always_ decorated with the filename (as second array element)!
 	 */
-	functionCallsPerFile: Map<string|undefined, FunctionCallSummaryInformation<Measurement>>
+	functionCallsPerFile: Map<string|undefined, FunctionCallSummaryInformation<Measurement, Set<string>>>
 	meta: {
 		averageCall:    Measurement
 		emptyArgs:      Measurement
@@ -253,8 +253,6 @@ function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWit
 		}
 	}
 
-	const summarizedFunctionCalls = new Map<string|undefined, FunctionCallSummaryInformation<SummarizedMeasurement>>()
-
 	if(!fs.existsSync(outputPath)) {
 		fs.mkdirSync(outputPath, { recursive: true })
 	}
@@ -263,19 +261,13 @@ function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWit
 	const suffixes = ['min', 'max', 'median', 'mean', 'std', 'total']
 	const prefixes = ['total', 'args', 'line-frac']
 	const others = prefixes.flatMap(p => suffixes.map(s => `${p}-${s}`)).join(',')
-	fnOutStream.write(`function,${others}\n`)
-	for(const [key, [total, args, lineFrac]] of data.functionCallsPerFile.entries()) {
+	fnOutStream.write(`function,unique-files,${others}\n`)
+	for(const [key, [uniqueFiles, total, args, lineFrac]] of data.functionCallsPerFile.entries()) {
 		const totalSum = summarizeMeasurement(total.flat(), info.size)
 		const argsSum = summarizeMeasurement(args.flat(), info.size)
 		const lineFracSum = summarizeMeasurement(lineFrac.flat(), info.size)
 		// we write in csv style :), we escape the key in case it contains commas (with filenames)etc.
-		fnOutStream.write(`${JSON.stringify(key ?? 'unknown')},${summarizedMeasurement2Csv(totalSum)},${summarizedMeasurement2Csv(argsSum)},${summarizedMeasurement2Csv(lineFracSum)}\n`)
-
-		summarizedFunctionCalls.set(key, [
-			summarizeMeasurement(total.flat(), info.size),
-			summarizeMeasurement(args.flat(), info.size),
-			summarizeMeasurement(lineFrac.flat(), info.size)
-		])
+		fnOutStream.write(`${JSON.stringify(key ?? 'unknown')},${uniqueFiles.size},${summarizedMeasurement2Csv(totalSum)},${summarizedMeasurement2Csv(argsSum)},${summarizedMeasurement2Csv(lineFracSum)}\n`)
 	}
 	fnOutStream.close()
 
@@ -299,7 +291,7 @@ function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumbe
 	const [hits, context] = line
 
 	// group hits by fullname
-	const groupedByFunctionName = new Map<string, FunctionCallSummaryInformation<number[]>>()
+	const groupedByFunctionName = new Map<string, FunctionCallSummaryInformation<number[], Set<string>>>()
 	for(const [name, loc, args, ns, known] of hits) {
 		const fullname = ns && ns !== '' ? `${ns}::${name ?? ''}` : name
 		const key = (fullname ?? '') + (known === 1 ? '-' + (context ?? '') : '')
@@ -308,27 +300,31 @@ function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumbe
 
 		let get = groupedByFunctionName.get(key)
 		if(!get) {
-			get = [[], [], []]
+			get = [new Set(), [], [], []]
 			groupedByFunctionName.set(key, get)
 		}
-		get[0].push(1)
-		get[1].push(args)
+		get[0].add(context ?? '')
+		get[1].push(1)
+		get[2].push(args)
 		if(loc && stats) {
 			// we reduce by 1 to get flat 0% if it is the first line
-			get[2].push(stats === 1 ? 1 : (loc[0]-1) / (stats-1))
+			get[3].push(stats === 1 ? 1 : (loc[0]-1) / (stats-1))
 		}
 	}
 
 	for(const [key, info] of groupedByFunctionName.entries()) {
 		let get = data.functionCallsPerFile.get(key)
 		if(!get) {
-			get = [[], [], []]
+			get = [new Set(), [], [], []]
 			// an amazing empty structure :D
 			data.functionCallsPerFile.set(key, get)
 		}
 		// for total, we only need the number of elements as it will always be one :D
-		get[0].push([info[0].length])
-		get[1].push(info[1])
+		for(const context of info[0]) {
+			get[0].add(context)
+		}
+		get[1].push([info[1].length])
 		get[2].push(info[2])
+		get[3].push(info[3])
 	}
 }

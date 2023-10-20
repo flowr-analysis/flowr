@@ -29,8 +29,8 @@ export class FileMigrator {
 			// i want to be sure
 			const grouped = groupByContext(content)
 			let data = grouped === undefined ? content : grouped.map(s => JSON.stringify(s)).join('\n') + '\n'
-			if(filepath.includes('meta.txt')) {
-				data = `{"file": "${originalFile ?? ''}", "content": ${data}}\n`
+			if(filepath.endsWith('meta.txt')) {
+				data = `{"file":"${originalFile ?? ''}","content":${data.trimEnd()}}\n`
 			}
 			targetStream.write(data, 'utf-8')
 		}

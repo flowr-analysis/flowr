@@ -1,13 +1,12 @@
 import * as tmp from 'tmp'
 import { Reduction, SliceSizeCollection, SummarizedMeasurement, SummarizedSlicerStats } from '../data'
-import { guard, isNotUndefined } from '../../../assert'
+import { isNotUndefined } from '../../../assert'
 import {
-	CommonSlicerMeasurements,
 	PerSliceMeasurements,
 	PerSliceStats,
 	SlicerStats,
 	SlicerStatsDataflow,
-	SlicerStatsInput, stats2string
+	SlicerStatsInput
 } from '../../../../benchmark'
 import { log } from '../../../log'
 import { SlicingCriteria } from '../../../../slicing'
@@ -15,10 +14,6 @@ import { DefaultMap } from '../../../defaultmap'
 import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse, RShell, visitAst } from '../../../../r-bridge'
 import { withoutWhitespace } from '../../../strings'
 import fs from 'fs'
-import { escape } from '../../../../statistics'
-import { jsonReplacer } from '../../../json'
-import LineByLine from 'n-readlines'
-
 
 const tempfile = (() => {
 	let _tempfile: tmp.FileResult | undefined = undefined

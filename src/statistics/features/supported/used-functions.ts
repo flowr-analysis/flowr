@@ -13,6 +13,8 @@ import { SummarizedMeasurement } from '../../../util/summarizer/benchmark/data'
 import { readLineByLineSync } from '../../../util/files'
 import path from 'path'
 import { date2string } from '../../../util/time'
+import { summarizeMeasurement } from '../../../util/summarizer/benchmark/first-phase/process'
+import { sum } from '../../../util/arrays'
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -176,8 +178,20 @@ function postProcess(featureRoot: string, meta: string, outputPath: string): Use
 	// TODO: deal with nestings, deepestNEsting and meta
 	console.log(data.functionCallsPerFile.get('print'))
 
+	const summarizedFunctionCalls = new Map()
+	for(const [key, [total, args, [line,col]]] of data.functionCallsPerFile.entries()) {
+		summarizedFunctionCalls.set(key, {
+			total:    summarizeMeasurement(total.map(m => sum(m))),
+			args:     summarizeMeasurement(args.flat()),
+			// TODO: relative to document size?
+			location: [summarizeMeasurement([-1]), summarizeMeasurement([-1])]
+		})
+	}
+
 	// TODO: summarize :D
-	return null as unknown as UsedFunctionPostProcessing
+	return {
+		functionCallsPerFile: new Map(),
+	}
 }
 
 function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumber: number, line: StatisticsOutputFormat<FunctionCallInformation[]>): void {

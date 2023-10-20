@@ -104,3 +104,14 @@ export function *getUniqueCombinationsOfSize<T>(array: T[], minSize: number, max
 	yield* p([], 0, true)
 }
 
+/**
+ * Returns the sum of all elements in the given array
+ */
+export function sum(arr: number[]): number {
+	let sum = 0
+	for(const elem of arr) {
+		sum += elem
+	}
+	return sum
+}
+

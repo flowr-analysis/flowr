@@ -28,10 +28,12 @@ export class FileMigrator {
 			}
 			// before we write said content we have to group {value: string, context: string} by context (while we can safely assume that there is only one context per file,
 			// i want to be sure
-			const grouped = groupByContext(content)
-			let data = grouped === undefined ? content : grouped.map(s => JSON.stringify(s)).join('\n') + '\n'
+			let data: string
 			if(filepath.endsWith('meta.txt')) {
-				data = `{"file":"${originalFile ?? ''}","content":${data.trimEnd()}}\n`
+				data = `{"file":"${originalFile ?? ''}","content":${content.trimEnd()}}\n`
+			} else {
+				const grouped = groupByContext(content)
+				data = grouped === undefined ? content : grouped.map(s => JSON.stringify(s)).join('\n') + '\n'
 			}
 			promises.push(new Promise((resolve, reject) => (targetStream as fs.WriteStream).write(data, 'utf-8', err => {
 				if(err) {

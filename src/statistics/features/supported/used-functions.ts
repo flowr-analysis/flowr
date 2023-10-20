@@ -141,8 +141,6 @@ interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends 
 	 * A function that is defined within the file is _always_ decorated with the filename (as second array element)!
 	 */
 	functionCallsPerFile: Map<string|undefined, FunctionCallSummaryInformation<Measurement>>
-	nestings:             Measurement
-	deepestNesting:       Measurement
 	meta: {
 		averageCall:    Measurement
 		emptyArgs:      Measurement
@@ -155,12 +153,72 @@ interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends 
 	}
 }
 
+function bigint2number(a: bigint): number {
+	// we have to remove the trailing `n`
+	return Number(String(a).slice(0, -1))
+}
+
+function appendRecord(a: Record<string, number[][] | undefined>, b: Record<string, bigint>): void {
+	for(const [key, val] of Object.entries(b)) {
+		const get = a[key]
+		// we guard with array to guard against methods like `toString` which are given in js
+		if(!get || !Array.isArray(get)) {
+			a[key] = [[bigint2number(val)]]
+			continue
+		}
+		get.push([bigint2number(val)])
+	}
+}
+
+function appendCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[][]>, b: CommonSyntaxTypeCounts) {
+	a.total.push([bigint2number(b.total)])
+	a.empty.push([bigint2number(b.empty)])
+	a.multiple.push([bigint2number(b.multiple)])
+	a.withArgument.push([bigint2number(b.withArgument)])
+	a.noValue.push([bigint2number(b.noValue)])
+	a.unnamedCall.push([bigint2number(b.unnamedCall)])
+	appendRecord(a.singleVar, b.singleVar)
+	appendRecord(a.number, b.number)
+	appendRecord(a.integer, b.integer)
+	appendRecord(a.complex, b.complex)
+	appendRecord(a.string, b.string)
+	appendRecord(a.logical, b.logical)
+	appendRecord(a.call, b.call)
+	appendRecord(a.binOp, b.binOp)
+	appendRecord(a.unaryOp, b.unaryOp)
+	appendRecord(a.other, b.other)
+}
+
+
+function summarizeRecord(a: Record<string, number[][]>): Record<string, SummarizedMeasurement> {
+	return Object.fromEntries(Object.entries(a).map(([key, val]) => [key, summarizeMeasurement(val.flat(), val.length)]))
+}
+
+function summarizeCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[][]>): CommonSyntaxTypeCounts<SummarizedMeasurement> {
+	return {
+		total:        summarizeMeasurement(a.total.flat(), a.total.length),
+		empty:        summarizeMeasurement(a.empty.flat(), a.empty.length),
+		multiple:     summarizeMeasurement(a.multiple.flat(), a.multiple.length),
+		withArgument: summarizeMeasurement(a.withArgument.flat(), a.withArgument.length),
+		noValue:      summarizeMeasurement(a.noValue.flat(), a.noValue.length),
+		unnamedCall:  summarizeMeasurement(a.unnamedCall.flat(), a.unnamedCall.length),
+		singleVar:    summarizeRecord(a.singleVar),
+		number:       summarizeRecord(a.number),
+		integer:      summarizeRecord(a.integer),
+		complex:      summarizeRecord(a.complex),
+		string:       summarizeRecord(a.string),
+		logical:      summarizeRecord(a.logical),
+		call:         summarizeRecord(a.call),
+		binOp:        summarizeRecord(a.binOp),
+		unaryOp:      summarizeRecord(a.unaryOp),
+		other:        summarizeRecord(a.other)
+	}
+}
+
 function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string): UsedFunctionPostProcessing {
 	// each number[][] contains a 'number[]' per file
 	const data: UsedFunctionPostProcessing<number[][]> = {
 		functionCallsPerFile: new Map(),
-		nestings:             [],
-		deepestNesting:       [],
 		// TODO:
 		meta:                 {
 			averageCall:    [],
@@ -173,25 +231,43 @@ function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWit
 	}
 
 	// we collect only `all-calls`
-	console.log(path.join(featureRoot, `${AllCallsFileBase}.txt`))
 	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(data, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>))
 
-	// TODO: deal with nestings, deepestNEsting and meta
-	// console.log(data.functionCallsPerFile.get('print'))
-
-	const summarizedFunctionCalls = new Map()
-	for(const [key, [total, args, lineFrac]] of data.functionCallsPerFile.entries()) {
-		summarizedFunctionCalls.set(key, {
-			total:    summarizeMeasurement(total.map(m => sum(m)), info.size),
-			args:     summarizeMeasurement(args.flat(), info.size),
-			location: summarizeMeasurement(lineFrac.flat(), info.size)
-		})
+	for(const meta of info.values()) {
+		const us = meta.usedFunctions as FunctionUsageInfo
+		data.meta.averageCall.push([us.allFunctionCalls])
+		data.meta.nestedCalls.push([us.nestedFunctionCalls])
+		data.meta.deepestNesting.push([us.deepestNesting])
+		data.meta.emptyArgs.push([bigint2number(us.args[0] as bigint)])
+		data.meta.unnamedCalls.push([us.unnamedCalls])
+		for(const [i, val] of Object.entries(us.args)) {
+			if(Number(i) !== 0) {
+				appendCommonSyntaxTypeCounter(data.meta.args[Number(i)] ?? emptyCommonSyntaxTypeCounts([]), val as CommonSyntaxTypeCounts)
+			}
+		}
 	}
 
-	console.log(summarizedFunctionCalls.get('library'))
+	const summarizedFunctionCalls = new Map<string|undefined, FunctionCallSummaryInformation<SummarizedMeasurement>>()
+	for(const [key, [total, args, lineFrac]] of data.functionCallsPerFile.entries()) {
+		summarizedFunctionCalls.set(key, [
+			summarizeMeasurement(total.flat(), info.size),
+			summarizeMeasurement(args.flat(), info.size),
+			summarizeMeasurement(lineFrac.flat(), info.size)
+		])
+	}
 
-	// TODO: summarize :D
-	return null as unknown as UsedFunctionPostProcessing
+
+	return {
+		functionCallsPerFile: summarizedFunctionCalls,
+		meta:                 {
+			averageCall:    summarizeMeasurement(data.meta.averageCall.flat(), info.size),
+			nestedCalls:    summarizeMeasurement(data.meta.nestedCalls.flat(), info.size),
+			deepestNesting: summarizeMeasurement(data.meta.deepestNesting.flat(), info.size),
+			emptyArgs:      summarizeMeasurement(data.meta.emptyArgs.flat(), info.size),
+			unnamedCalls:   summarizeMeasurement(data.meta.unnamedCalls.flat(), info.size),
+			args:           data.meta.args.map(summarizeCommonSyntaxTypeCounter)
+		}
+	}
 }
 
 function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<FunctionCallInformation[]>): void {

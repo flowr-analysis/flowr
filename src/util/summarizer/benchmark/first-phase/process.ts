@@ -14,6 +14,7 @@ import { DefaultMap } from '../../../defaultmap'
 import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse, RShell, visitAst } from '../../../../r-bridge'
 import { withoutWhitespace } from '../../../strings'
 import fs from 'fs'
+import { sum } from '../../../arrays'
 
 const tempfile = (() => {
 	let _tempfile: tmp.FileResult | undefined = undefined
@@ -182,7 +183,7 @@ export function summarizeMeasurement(data: number[], totalNumberOfDataPoints?: n
 	const min = sorted[0]
 	const max = sorted[sorted.length - 1]
 	const median = sorted[Math.floor(sorted.length / 2)]
-	const total = sorted.reduce((a, b) => a + b, 0)
+	const total = sum(sorted)
 	const length = totalNumberOfDataPoints ?? sorted.length
 	const mean = total / length
 	// sqrt(sum(x-mean)^2 / n)

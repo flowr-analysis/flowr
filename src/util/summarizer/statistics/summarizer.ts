@@ -137,12 +137,13 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 	public async summarizePhase(): Promise<unknown> {
 		// detect all subfolders in the current folder (default, test...) for each: concat.
 		this.removeIfExists(this.config.outputPath)
+		fs.mkdirSync(this.config.outputPath, { recursive: true })
 		const folders = fs.readdirSync(this.config.intermediateOutputPath, { recursive: false })
 		for(const folder of folders) {
 			const folderStr = String(folder)
 			const output = path.join(this.config.outputPath, folderStr)
 			const input = path.join(this.config.intermediateOutputPath, folderStr)
-			this.log(`Summarizing for ${output}`)
+			this.log(`Summarizing for ${input} (target: ${output})`)
 			postProcessFeatureFolder(this.log, input, this.config.featuresToUse, output)
 		}
 		return Promise.resolve(undefined)

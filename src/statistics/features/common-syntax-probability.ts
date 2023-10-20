@@ -2,7 +2,6 @@
  * Defines the type of syntax constructs that we track (e.g., true, false, 0, 1, T, F, conditions...)
  */
 import { RFalse, RNodeWithParent, RTrue, RType } from '../../r-bridge'
-import { SummarizedMeasurement } from '../../util/summarizer/benchmark/data'
 
 export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	// just a helper to collect all as well (could be derived from sum)
@@ -28,25 +27,25 @@ export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	// binop includes all assignments!
 	binOp:        Record<string, Measurement>,
 	unaryOp:      Record<string, Measurement>,
-	// unknown content, records lexeme (can include break etc. for bodies)
+	// unknown content, records lexeme (can include break etc. for bodies), due to my oversight, this includes function definitions
 	other:        Record<string, Measurement>
 }
 
-export function emptyCommonSyntaxTypeCounts(): CommonSyntaxTypeCounts {
+export function emptyCommonSyntaxTypeCounts<T=bigint>(init: T = 0n as T): CommonSyntaxTypeCounts<T> {
 	return {
-		total:        0n,
-		multiple:     0n,
-		empty:        0n,
-		withArgument: 0n,
-		noValue:      0n,
+		total:        init,
+		multiple:     init,
+		empty:        init,
+		withArgument: init,
+		noValue:      init,
 		singleVar:    {},
 		number:       {},
 		integer:      {},
 		complex:      {},
 		string:       {},
-		logical:      {} as Record<typeof RTrue | typeof RFalse, bigint>,
+		logical:      {} as Record<typeof RTrue | typeof RFalse, T>,
 		call:         {},
-		unnamedCall:  0n,
+		unnamedCall:  init,
 		binOp:        {},
 		unaryOp:      {},
 		other:        {}

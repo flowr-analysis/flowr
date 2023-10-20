@@ -11,44 +11,47 @@ import { CommonSummarizerConfiguration } from '../../summarizer'
 import { readLineByLineSync } from '../../../files'
 import { guard } from '../../../assert'
 import { date2string } from '../../../time'
+import { jsonReplacer } from '../../../json'
 
 /**
- * Post process the collections in a given folder, reducing them in a memory preserving way.
+ * Post process the collections in a given folder, retrieving the final summaries.
  *
- * @param logger                 - The logger to use for outputs
- * @param filepath               - Path to the root file of the data collection (contains all of the archives)
- * @param features               - Collection of features to post process, expects corresponding folders to exist
- * @param outputPath             - The final outputPath
- *
- * @returns non-aggregated reports for each sub-key of each feature
+ * @param logger       - The logger to use for outputs
+ * @param filepath     - Path to the root file of the data collection (contains all the archives)
+ * @param featureNames - Collection of features to post process, expects corresponding folders to exist
+ * @param outputPath   - The final outputPath to write the result to
  */
-export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['logger'], filepath: string, features: FeatureSelection, outputPath: string): Map<FeatureKey, unknown> {
-	const featureOutputMap = new Map<FeatureKey, unknown>()
-
+export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['logger'], filepath: string, featureNames: FeatureSelection, outputPath: string): void {
 	if(!fs.existsSync(filepath)) {
 		logger(`    Folder for ${filepath} does not exist, skipping post processing`)
-		return featureOutputMap
+		return
+	}
+	if(!fs.existsSync(outputPath)) {
+		fs.mkdirSync(outputPath, { recursive: true })
 	}
 
 	const metaFeatureInformation = extractMetaInformationFrom(logger, path.join(filepath, 'meta', 'features.txt'), path.join(filepath, 'meta', 'stats.txt'))
 
-	for(const feature of features) {
-		const featureInfo = ALL_FEATURES[feature]
+	for(const featureName of featureNames) {
+		const featureInfo = ALL_FEATURES[featureName]
 		const targetPath = path.join(filepath, featureInfo.name)
-		const outputPath = path.join(targetPath, featureInfo.name)
+		const targetFeature = path.join(targetPath, featureInfo.name)
 
 		if(!featureInfo.postProcess) {
-			logger(`    Skipping post processing of ${feature} as no post processing behavior is defined`)
+			logger(`    Skipping post processing of ${featureName} as no post processing behavior is defined`)
 			continue
 		}
 		else if(!fs.existsSync(targetPath)) {
-			logger(`    Folder for ${feature} does not exist at ${targetPath} skipping post processing of this feature`)
+			logger(`    Folder for ${featureName} does not exist at ${targetPath} skipping post processing of this feature`)
 			continue
 		}
 
-		featureOutputMap.set(feature, featureInfo.postProcess(targetPath, metaFeatureInformation, outputPath))
+		const result = JSON.stringify(featureInfo.postProcess(targetPath, metaFeatureInformation, targetFeature), jsonReplacer)
+
+		const featureOutput = path.join(outputPath, featureInfo.name)
+		logger(`    Writing post processed ${featureName} to ${featureOutput}`)
+		fs.writeFileSync(featureOutput, result)
 	}
-	return featureOutputMap
 }
 
 

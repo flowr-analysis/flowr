@@ -76,7 +76,7 @@ if(options['no-ansi']) {
 }
 
 
-function retrieveShell(): RShell {
+async function retrieveShell(): Promise<RShell> {
 	// we keep an active shell session to allow other parse investigations :)
 	const shell = new RShell({
 		revive:   'always',
@@ -87,6 +87,7 @@ function retrieveShell(): RShell {
 		},
 	})
 	shell.tryToInjectHomeLibPath()
+	await shell.ensurePackageInstalled('xmlparsedata', true)
 	return shell
 }
 
@@ -111,7 +112,7 @@ async function mainRepl() {
 		process.exit(0)
 	}
 
-	const shell = retrieveShell()
+	const shell = await retrieveShell()
 
 	const end = () => {
 		if(options.execute === undefined) {
@@ -134,7 +135,7 @@ async function mainRepl() {
 }
 
 async function mainServer() {
-	const shell = retrieveShell()
+	const shell = await retrieveShell()
 
 	const end = () => {
 		if(options.execute === undefined) {

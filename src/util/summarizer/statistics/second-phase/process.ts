@@ -1,13 +1,22 @@
 import fs from 'fs'
 import path from 'path'
-import { ALL_FEATURES, FeatureKey, FeatureSelection } from '../../../../statistics'
+import {
+	ALL_FEATURES,
+	FeatureInfo,
+	FeatureKey,
+	FeatureSelection,
+	FeatureStatistics, FeatureStatisticsWithMeta,
+	MetaStatistics
+} from '../../../../statistics'
 import { CommonSummarizerConfiguration } from '../../summarizer'
+import { readLineByLine, readLineByLineSync } from '../../../files'
+import { guard } from '../../../assert'
 
 /**
  * Post process the collections in a given folder, reducing them in a memory preserving way.
  *
  * @param logger                 - The logger to use for outputs
- * @param filepath               - Path to the root file of the data collection (contains all of zhe archives)
+ * @param filepath               - Path to the root file of the data collection (contains all of the archives)
  * @param features               - Collection of features to post process, expects corresponding folders to exist
  * @param outputPath             - The final outputPath
  *
@@ -21,10 +30,11 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 		return featureOutputMap
 	}
 
+	const metaFeatureInformation = extractMetaInformationFrom(path.join(filepath, 'meta', 'features.txt'), path.join(filepath, 'meta', 'stats.txt'))
+
 	for(const feature of features) {
 		const featureInfo = ALL_FEATURES[feature]
 		const targetPath = path.join(filepath, featureInfo.name)
-		const metaPath = path.join(targetPath, 'meta', 'features.txt')
 		const outputPath = path.join(targetPath, featureInfo.name)
 
 		if(!featureInfo.postProcess) {
@@ -36,10 +46,29 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 			continue
 		}
 
-		featureOutputMap.set(feature, featureInfo.postProcess(targetPath, metaPath, outputPath))
+		featureOutputMap.set(feature, featureInfo.postProcess(targetPath, metaFeatureInformation, outputPath))
 	}
 	return featureOutputMap
 }
 
 
-
+function extractMetaInformationFrom(metaFeaturesPath: string, metaStatsPath: string): Map<string, FeatureStatisticsWithMeta> {
+	const storage = new Map<string, FeatureStatisticsWithMeta>()
+	readLineByLineSync(metaFeaturesPath, line => {
+		if(line.length === 0) {
+			return
+		}
+		const meta = JSON.parse(String(line)) as { file: string, content: FeatureStatistics }
+		storage.set(meta.file, meta.content as FeatureStatisticsWithMeta)
+	})
+	readLineByLineSync(metaStatsPath, line => {
+		if(line.length === 0) {
+			return
+		}
+		const meta = JSON.parse(String(line)) as { file: string, content: MetaStatistics }
+		const existing = storage.get(meta.file)
+		guard(existing !== undefined, () => `Expected to find meta information for ${meta.file} in ${metaFeaturesPath}`)
+		existing.stats = meta.content
+	})
+	return storage
+}

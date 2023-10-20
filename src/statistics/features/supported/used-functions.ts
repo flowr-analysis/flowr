@@ -1,4 +1,4 @@
-import { Feature, FeatureProcessorInput } from '../feature'
+import { Feature, FeatureProcessorInput, FeatureStatisticsWithMeta } from '../feature'
 import { appendStatisticsFile, StatisticsOutputFormat } from '../../output'
 import { Writable } from 'ts-essentials'
 import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
@@ -155,7 +155,7 @@ interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends 
 	}
 }
 
-function postProcess(featureRoot: string, meta: string, outputPath: string): UsedFunctionPostProcessing {
+function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string): UsedFunctionPostProcessing {
 	// each number[][] contains a 'number[]' per file
 	const data: UsedFunctionPostProcessing<number[][]> = {
 		functionCallsPerFile: new Map(),

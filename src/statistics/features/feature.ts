@@ -21,6 +21,7 @@ import { MergeableRecord } from '../../util/objects'
 import { NormalizedAst } from '../../r-bridge'
 import { DataflowInformation } from '../../dataflow/internal/info'
 import { variables } from './supported/variables'
+import { MetaStatistics } from '../meta-statistics'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
@@ -70,12 +71,12 @@ export interface Feature<T extends FeatureInfo, Output = unknown> {
 	 * The extraction can use the output path to write files to, and should return the final output.
 	 *
 	 * @param featureRoot - The root path to the feature directory which should contain all the files the feature can write to (already merged for every file processed)
-	 * @param metaPath    - The path that the meta information resides in, when reading, you have to search within the `name` key of each entry.
+	 * @param info        - The feature statistic maps each file name/context encountered to the feature information as well as the meta statistics for the file
 	 * @param outputPath  - The path to write the output to (besides what is collected in the output and meta information)
 	 *
 	 * @returns The final output of the feature, as well as the compacted meta information (currently, in whatever format fits best for you)
 	 */
-	postProcess?:         (featureRoot: string, metaPath: string, outputPath: string) => Output & { meta: unknown }
+	postProcess?:         (featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string) => Output & { meta: unknown }
 	/** Values to start the existing track from */
 	initialValue:         T
 }
@@ -108,5 +109,7 @@ export const allFeatureNames: Set<FeatureKey> = new Set<FeatureKey>(Object.keys(
 export type FeatureStatistics = {
 	[K in FeatureKey]: FeatureInfo
 }
+
+export type FeatureStatisticsWithMeta = FeatureStatistics & { stats: MetaStatistics }
 
 export interface Query { select(options?: EvalOptions): Node[] }

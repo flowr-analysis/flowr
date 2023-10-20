@@ -28,7 +28,8 @@ export class FileMigrator {
 			return new Promise((resolve, reject) => {
 				// before we write said content we have to group {value: string, context: string} by context (while we can safely assume that there is only one context per file,
 				// i want to be sure
-				const group = groupByContext(content).map(s => JSON.stringify(s)).join('\n');
+				const grouped = groupByContext(content)
+				const group = grouped === undefined ? content : grouped.map(s => JSON.stringify(s)).join('\n') + '\n';
 				(targetStream as fs.WriteStream).write(group, 'utf-8', err => {
 					if(err) {
 						reject(err)
@@ -48,7 +49,7 @@ export class FileMigrator {
 	}
 }
 
-function groupByContext(input: string | undefined): StatisticsOutputFormat<never[]>[] {
+function groupByContext(input: string | undefined): StatisticsOutputFormat<never[]>[] | undefined {
 	if(input === undefined) {
 		return []
 	}
@@ -57,7 +58,7 @@ function groupByContext(input: string | undefined): StatisticsOutputFormat<never
 	for(const content of parsed) {
 		if(!Array.isArray(content)) {
 			// in this case it is a meta file or other which does not have to be grouped
-			return parsed
+			return undefined
 		}
 		const [value, context] = content
 		const get = grouped.get(context)

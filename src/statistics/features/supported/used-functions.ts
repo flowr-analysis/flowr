@@ -176,7 +176,7 @@ function postProcess(featureRoot: string, meta: string, outputPath: string): Use
 	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(data, lineNumber, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation>))
 
 	// TODO: deal with nestings, deepestNEsting and meta
-	console.log(data.functionCallsPerFile.get('dplyr::filter'))
+	// console.log(data.functionCallsPerFile.get('dplyr::filter'))
 
 	// TODO: summarize :D
 	return null as unknown as UsedFunctionPostProcessing

@@ -12,7 +12,6 @@ import {
 import { SummarizedMeasurement } from '../../../util/summarizer/benchmark/data'
 import { readLineByLineSync } from '../../../util/files'
 import path from 'path'
-import { jsonReplacer } from '../../../util/json'
 import { date2string } from '../../../util/time'
 
 const initialFunctionUsageInfo = {
@@ -53,7 +52,7 @@ function classifyArguments(args: (RNodeWithParent | undefined)[], existing: Reco
 export type FunctionCallInformation = [
 	/** the name of the called function, or undefined if this was an unnamed function call */
 	name:                  string | undefined,
-	location:              [line: number, character: number],
+	location:              [line: number, character: number] | undefined,
 	numberOfArguments:     number,
 	/** whether this was called from a namespace, like `a::b()` */
 	namespace:             string | undefined,
@@ -155,75 +154,68 @@ interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends 
 }
 
 function postProcess(featureRoot: string, meta: string, outputPath: string): UsedFunctionPostProcessing {
-	// we have to additionally collect the numbers _by_file_, hence we map file name to whatever is plausible
-	// in order to only store the
-	const data: UsedFunctionPostProcessing<Map<string|undefined, number[]>> = {
+	// each number[][] contains a 'number[]' per file
+	const data: UsedFunctionPostProcessing<number[][]> = {
 		functionCallsPerFile: new Map(),
-		nestings:             new Map(),
-		deepestNesting:       new Map(),
+		nestings:             [],
+		deepestNesting:       [],
 		// TODO:
 		meta:                 {
-			averageCall:    new Map(),
-			nestedCalls:    new Map(),
-			deepestNesting: new Map(),
-			emptyArgs:      new Map(),
-			unnamedCalls:   new Map(),
+			averageCall:    [],
+			nestedCalls:    [],
+			deepestNesting: [],
+			emptyArgs:      [],
+			unnamedCalls:   [],
 			args:           []
 		}
 	}
 
 	// we collect only `all-calls`
-	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(data, lineNumber, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation>))
+	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(data, lineNumber, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>))
 
 	// TODO: deal with nestings, deepestNEsting and meta
-	// console.log(data.functionCallsPerFile.get('dplyr::filter'))
+	console.log(data.functionCallsPerFile.get('print'))
 
 	// TODO: summarize :D
 	return null as unknown as UsedFunctionPostProcessing
 }
 
-function processNextLine(data: UsedFunctionPostProcessing<Map<string|undefined, number[]>>, lineNumber: number, line: StatisticsOutputFormat<FunctionCallInformation>): void {
-	if(lineNumber % 500_000 === 0) {
+function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumber: number, line: StatisticsOutputFormat<FunctionCallInformation[]>): void {
+	if(lineNumber % 2_500 === 0) {
 		console.log(`[${date2string(new Date())}] Processed ${lineNumber} lines`)
 	}
-	const [[name, loc, args, ns, known], context] = line
+	const [hits, context] = line
 
-	const fullname = ns && ns !== '' ? `${ns}::${name ?? ''}` : name
-	const key = (fullname ?? '') + (known === 1 ? '-' + (context ?? '') : '')
+	// group hits by fullname
+	const groupedByFunctionName = new Map<string, FunctionCallSummaryInformation<number[]>>()
+	for(const [name, loc, args, ns, known] of hits) {
+		const fullname = ns && ns !== '' ? `${ns}::${name ?? ''}` : name
+		const key = (fullname ?? '') + (known === 1 ? '-' + (context ?? '') : '')
 
-	let get = data.functionCallsPerFile.get(key)
-	if(!get) {
-		get = [new Map(), new Map(), [new Map(), new Map()]]
-		// an amazing empty structure :D
-		data.functionCallsPerFile.set(key, get)
+		let get = groupedByFunctionName.get(key)
+		if(!get) {
+			get = [[], [], [[],[]]]
+			groupedByFunctionName.set(key, get)
+		}
+		get[0].push(1)
+		get[1].push(args)
+		if(loc) {
+			get[2][0].push(loc[0])
+			get[2][1].push(loc[1])
+		}
 	}
 
-	pushToSummary(get, 'total', context, 1)
-	pushToSummary(get, 'args', context, args)
-	pushToSummary(get, 'line', context, loc[0])
-	pushToSummary(get, 'char', context, loc[1])
-}
-
-function pushToSummary(info: FunctionCallSummaryInformation<Map<string|undefined, number[]>>, type: 'total' | 'args' | 'line' | 'char', context: string | undefined, value: number) {
-	let map: Map<string|undefined, number[]>
-	switch(type) {
-		case 'total':
-			map = info[0]
-			break
-		case 'args':
-			map = info[1]
-			break
-		case 'line':
-			map = info[2][0]
-			break
-		case 'char':
-			map = info[2][1]
-			break
+	for(const [key, info] of groupedByFunctionName.entries()) {
+		let get = data.functionCallsPerFile.get(key)
+		if(!get) {
+			get = [[], [], [[], []]]
+			// an amazing empty structure :D
+			data.functionCallsPerFile.set(key, get)
+		}
+		// for total, we only need the number of elements as it will always be one :D
+		get[0].push([info[0].length])
+		get[1].push(info[1])
+		get[2][0].push(info[2][0])
+		get[2][1].push(info[2][1])
 	}
-	let get = map.get(context)
-	if(!get) {
-		get = []
-		map.set(context, get)
-	}
-	get.push(value)
 }

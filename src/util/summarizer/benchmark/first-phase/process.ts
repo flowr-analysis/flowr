@@ -176,16 +176,17 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 	}
 }
 
-export function summarizeMeasurement(data: number[]): SummarizedMeasurement {
+export function summarizeMeasurement(data: number[], totalNumberOfDataPoints?: number): SummarizedMeasurement {
 	// just to avoid in-place modification
 	const sorted = [...data].sort((a, b) => a - b)
 	const min = sorted[0]
 	const max = sorted[sorted.length - 1]
 	const median = sorted[Math.floor(sorted.length / 2)]
 	const total = sorted.reduce((a, b) => a + b, 0)
-	const mean = total / sorted.length
+	const length = totalNumberOfDataPoints ?? sorted.length
+	const mean = total / length
 	// sqrt(sum(x-mean)^2 / n)
-	const std = Math.sqrt(sorted.map(x => (x - mean) ** 2).reduce((a, b) => a + b, 0) / sorted.length)
+	const std = Math.sqrt(sorted.map(x => (x - mean) ** 2).reduce((a, b) => a + b, 0) / length)
 	return { min, max, median, mean, std, total }
 }
 

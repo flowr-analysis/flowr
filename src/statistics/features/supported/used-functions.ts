@@ -132,7 +132,7 @@ export const usedFunctions: Feature<FunctionUsageInfo, UsedFunctionPostProcessin
 }
 
 
-type FunctionCallSummaryInformation<Measurement> = [total: Measurement, arguments: Measurement, location: [line: Measurement, character: Measurement]]
+type FunctionCallSummaryInformation<Measurement> = [total: Measurement, arguments: Measurement, linePercentageInFile: Measurement]
 // during the collection phase this should be a map using an array to collect
 interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
 	/**
@@ -173,28 +173,30 @@ function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWit
 	}
 
 	// we collect only `all-calls`
-	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(data, lineNumber, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>))
+	console.log(path.join(featureRoot, `${AllCallsFileBase}.txt`))
+	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(data, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>))
 
 	// TODO: deal with nestings, deepestNEsting and meta
 	// console.log(data.functionCallsPerFile.get('print'))
 
 	const summarizedFunctionCalls = new Map()
-	for(const [key, [total, args, [line,col]]] of data.functionCallsPerFile.entries()) {
+	for(const [key, [total, args, lineFrac]] of data.functionCallsPerFile.entries()) {
 		summarizedFunctionCalls.set(key, {
-			total:    summarizeMeasurement(total.map(m => sum(m))),
-			args:     summarizeMeasurement(args.flat()),
-			// TODO: relative to document size?
-			location: [summarizeMeasurement([-1]), summarizeMeasurement([-1])]
+			total:    summarizeMeasurement(total.map(m => sum(m), info.size)),
+			args:     summarizeMeasurement(args.flat(), info.size),
+			location: summarizeMeasurement(lineFrac.flat(), info.size)
 		})
 	}
+
+	console.log(summarizedFunctionCalls.get('print'))
 
 	// TODO: summarize :D
 	return null as unknown as UsedFunctionPostProcessing
 }
 
-function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumber: number, line: StatisticsOutputFormat<FunctionCallInformation[]>): void {
+function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<FunctionCallInformation[]>): void {
 	if(lineNumber % 2_500 === 0) {
-		console.log(`[${date2string(new Date())}] Processed ${lineNumber} lines`)
+		console.log(`    [${date2string(new Date())}] Processed ${lineNumber} lines`)
 	}
 	const [hits, context] = line
 
@@ -204,30 +206,30 @@ function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumbe
 		const fullname = ns && ns !== '' ? `${ns}::${name ?? ''}` : name
 		const key = (fullname ?? '') + (known === 1 ? '-' + (context ?? '') : '')
 
+		const stats = info.get(context ?? '')?.stats.lines.length
+
 		let get = groupedByFunctionName.get(key)
 		if(!get) {
-			get = [[], [], [[],[]]]
+			get = [[], [], []]
 			groupedByFunctionName.set(key, get)
 		}
 		get[0].push(1)
 		get[1].push(args)
-		if(loc) {
-			get[2][0].push(loc[0])
-			get[2][1].push(loc[1])
+		if(loc && stats) {
+			get[2].push(loc[0] / stats)
 		}
 	}
 
 	for(const [key, info] of groupedByFunctionName.entries()) {
 		let get = data.functionCallsPerFile.get(key)
 		if(!get) {
-			get = [[], [], [[], []]]
+			get = [[], [], []]
 			// an amazing empty structure :D
 			data.functionCallsPerFile.set(key, get)
 		}
 		// for total, we only need the number of elements as it will always be one :D
 		get[0].push([info[0].length])
 		get[1].push(info[1])
-		get[2][0].push(info[2][0])
-		get[2][1].push(info[2][1])
+		get[2].push(info[2])
 	}
 }

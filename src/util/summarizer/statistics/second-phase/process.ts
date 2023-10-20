@@ -10,6 +10,7 @@ import {
 import { CommonSummarizerConfiguration } from '../../summarizer'
 import { readLineByLineSync } from '../../../files'
 import { guard } from '../../../assert'
+import { date2string } from '../../../time'
 
 /**
  * Post process the collections in a given folder, reducing them in a memory preserving way.
@@ -53,30 +54,30 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 
 function extractMetaInformationFrom(logger: CommonSummarizerConfiguration['logger'], metaFeaturesPath: string, metaStatsPath: string): Map<string, FeatureStatisticsWithMeta> {
 	const storage = new Map<string, FeatureStatisticsWithMeta>()
-	logger('    Collect feature statistics')
+	logger(`    [${date2string(new Date())}] Collect feature statistics`)
 	readLineByLineSync(metaFeaturesPath, (line, lineNumber) => {
 		if(line.length === 0) {
 			return
 		}
 		if(lineNumber % 2_500 === 0) {
-			logger(`    ${lineNumber} lines processed`)
+			logger(`    [${date2string(new Date())}] ${lineNumber} meta feature lines processed`)
 		}
 		const meta = JSON.parse(line.toString()) as { file: string, content: FeatureStatistics }
 		storage.set(meta.file, meta.content as FeatureStatisticsWithMeta)
 	})
-	logger('    Collect meta statistics')
+	logger(`    [${date2string(new Date())}] Collect meta statistics`)
 	readLineByLineSync(metaStatsPath, (line, lineNumber) => {
 		if(line.length === 0) {
 			return
 		}
 		if(lineNumber % 2_500 === 0) {
-			logger(`    ${lineNumber} lines processed`)
+			logger(`    [${date2string(new Date())}] ${lineNumber} meta statistics lines processed`)
 		}
 		const meta = JSON.parse(line.toString()) as { file: string, content: MetaStatistics }
 		const existing = storage.get(meta.file)
 		guard(existing !== undefined, () => `Expected to find meta information for ${meta.file} in ${metaFeaturesPath}`)
 		existing.stats = meta.content
 	})
-	logger('    Done collecting meta information')
+	logger(`    [${date2string(new Date())}] Done collecting meta information`)
 	return storage
 }

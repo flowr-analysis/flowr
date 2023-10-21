@@ -44,6 +44,10 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 			continue
 		}
 
+		if(!fs.existsSync(targetFeature)) {
+			fs.mkdirSync(targetFeature, { recursive: true })
+		}
+
 		featureInfo.postProcess(targetPath, metaFeatureInformation, targetFeature)
 	}
 }

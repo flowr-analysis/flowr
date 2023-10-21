@@ -14,6 +14,7 @@ import fs from 'node:fs'
 import { jsonReplacer } from '../../../../util/json'
 import { date2string } from '../../../../util/time'
 import { AllCallsFileBase, FunctionCallInformation, FunctionUsageInfo } from './used-functions'
+import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
 
 type FunctionCallSummaryInformation<Measurement, Uniques=number> = [numOfUniqueProjects: Uniques, numOfUniqueFiles: Uniques, total: Measurement, arguments: Measurement, linePercentageInFile: Measurement]
 // during the collection phase this should be a map using an array to collect
@@ -100,7 +101,7 @@ function summarizeCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[][]>)
 /**
  * Note: the summary does not contain a 0 for each function that is _not_ called by a file. Hence, the minimum can not be 0 (division for mean etc. will still be performed on total file count)
  */
-export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string): void {
+export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	// each number[][] contains a 'number[]' per file
 	const data: UsedFunctionPostProcessing<number[][]> = {
 		functionCallsPerFile: new Map(),
@@ -115,7 +116,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	}
 
 	// we collect only `all-calls`
-	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(data, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>))
+	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(data, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>, config))
 
 	for(const meta of info.values()) {
 		const us = meta.usedFunctions as FunctionUsageInfo
@@ -163,7 +164,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	fs.writeFileSync(path.join(outputPath, 'function-calls.json'), JSON.stringify(summarizedEntries, jsonReplacer))
 }
 
-function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<FunctionCallInformation[]>): void {
+function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<FunctionCallInformation[]>, config: StatisticsSummarizerConfiguration): void {
 	if(lineNumber % 2_500 === 0) {
 		console.log(`    [${date2string(new Date())}] Used functions processed ${lineNumber} lines`)
 	}
@@ -183,7 +184,7 @@ function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumbe
 			groupedByFunctionName.set(key, get)
 		}
 		// we retrieve the first component fo the path
-		const projectName = context?.split(path.sep)[0]
+		const projectName = context?.split(path.sep)[config.projectSkip]
 		get[0].add(projectName ?? '')
 		get[1].add(context ?? '')
 		get[2].push(1)

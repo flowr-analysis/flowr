@@ -26,7 +26,6 @@ function appendCommentsPostProcessing(a: CommentsPostProcessing<CommentsMeta>, b
 		get.fracOfLines.push(val as number / numberOfLines)
 		if(val as number > 0) {
 			get.uniqueFiles.add(filepath)
-			console.log('x', filepath.split(path.sep)[skipForProjects] ?? '')
 			get.uniqueProjects.add(filepath.split(path.sep)[skipForProjects] ?? '')
 		}
 	}

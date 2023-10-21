@@ -6,7 +6,7 @@ import { Writable } from 'ts-essentials'
 import { postProcess } from './post-process'
 
 
-const initialCommentInfo = {
+export const initialCommentInfo = {
 	totalAmount:       0,
 	roxygenComments:   0,
 	import:            0,

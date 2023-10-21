@@ -1,4 +1,8 @@
-import { SummarizedMeasurement } from '../../../../util/summarizer/benchmark/data'
+import {
+	SummarizedMeasurement,
+	summarizedMeasurement2Csv,
+	summarizedMeasurement2CsvHeader
+} from '../../../../util/summarizer/benchmark/data'
 import { MergeableRecord } from '../../../../util/objects'
 import { CommonSyntaxTypeCounts, emptyCommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
@@ -93,10 +97,9 @@ function summarizeCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[][]>)
 	}
 }
 
-function summarizedMeasurement2Csv(a: SummarizedMeasurement): string {
-	return `${a.min},${a.max},${a.median},${a.mean},${a.std},${a.total}`
-}
-
+/**
+ * Note: the summary does not contain a 0 for each function that is _not_ called by a file. Hence, the minimum can not be 0 (division for mean etc. will still be performed on total file count)
+ */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string): void {
 	// each number[][] contains a 'number[]' per file
 	const data: UsedFunctionPostProcessing<number[][]> = {
@@ -123,7 +126,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		data.meta.unnamedCalls.push([us.unnamedCalls])
 		for(const [i, val] of Object.entries(us.args)) {
 			if(Number(i) !== 0) {
-				let get = data.meta.args[Number(i)]
+				let get = data.meta.args[Number(i)] as CommonSyntaxTypeCounts<number[][]> | undefined
 				if(!get) {
 					get = emptyCommonSyntaxTypeCounts([])
 					data.meta.args[Number(i)] = get
@@ -135,9 +138,8 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 
 	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'function-calls.csv'))
 
-	const suffixes = ['min', 'max', 'median', 'mean', 'std', 'total']
 	const prefixes = ['total', 'args', 'line-frac']
-	const others = prefixes.flatMap(p => suffixes.map(s => `${p}-${s}`)).join(',')
+	const others = prefixes.flatMap(summarizedMeasurement2CsvHeader).join(',')
 	fnOutStream.write(`function,unique-files,${others}\n`)
 	for(const [key, [uniqueFiles, total, args, lineFrac]] of data.functionCallsPerFile.entries()) {
 		const totalSum = summarizeMeasurement(total.flat(), info.size)

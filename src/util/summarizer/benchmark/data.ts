@@ -19,6 +19,15 @@ export interface SummarizedMeasurement<T = number> {
 	std:    number
 }
 
+export function summarizedMeasurement2Csv(a: SummarizedMeasurement): string {
+	return `${a.min},${a.max},${a.median},${a.mean},${a.std},${a.total}`
+}
+
+const summarizedKeys = ['min', 'max', 'median', 'mean', 'std', 'total']
+export function summarizedMeasurement2CsvHeader(prefix?: string): string {
+	return summarizedKeys.map(k => prefix ? `${prefix}-${k}` : k).join(',')
+}
+
 export interface SliceSizeCollection {
 	lines:                   number[]
 	characters:              number[]

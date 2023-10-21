@@ -51,7 +51,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	const collected = mapComments(initialCommentInfo, initialCommentsMeta)
 
 	for(const [filepath,feature] of info.entries()) {
-		appendCommentsPostProcessing(collected, feature.comments as CommentsPostProcessing<number>, feature.stats.lines.length,filepath)
+		appendCommentsPostProcessing(collected, feature.comments as CommentsPostProcessing<number>, feature.stats.lines[0].length,filepath)
 	}
 
 	// create summarized measurements TODO: (we should have abstracted that away...)

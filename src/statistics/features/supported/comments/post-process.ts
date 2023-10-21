@@ -17,11 +17,12 @@ type CommentsPostProcessing<Measurement=SummarizedMeasurement> = MergeableRecord
 }
 
 // monoids would be helpful :c
-function appendCommentsPostProcessing(a: CommentsPostProcessing<CommentsMeta>, b: CommentsPostProcessing<number>, filepath: string) {
+function appendCommentsPostProcessing(a: CommentsPostProcessing<CommentsMeta>, b: CommentsPostProcessing<number>, numberOfLines: number, filepath: string) {
 	for(const [key, val] of Object.entries(b)) {
 		const get = a[key] as CommentsMeta | undefined
 		guard(get !== undefined, `key ${key} is not present in the comments post processing`)
 		get.count.push(val as number)
+		get.fracOfLines.push(val as number / numberOfLines)
 		if(val as number > 0) {
 			get.uniqueFiles.add(filepath)
 		}
@@ -30,9 +31,11 @@ function appendCommentsPostProcessing(a: CommentsPostProcessing<CommentsMeta>, b
 
 interface CommentsMeta {
 	count:       number[]
+	// how many lines are comments?
+	fracOfLines: number[]
 	uniqueFiles: Set<string>
 }
-const initialCommentsMeta: () => CommentsMeta = () => ({ count: [], uniqueFiles: new Set() })
+const initialCommentsMeta: () => CommentsMeta = () => ({ count: [], uniqueFiles: new Set(), fracOfLines: [] })
 
 function mapComments<In,Out>(data: CommentsPostProcessing<In>, fn: (input: In) => Out): CommentsPostProcessing<Out> {
 	const collected = {} as unknown as CommentsPostProcessing<Out>
@@ -48,16 +51,17 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	const collected = mapComments(initialCommentInfo, initialCommentsMeta)
 
 	for(const [filepath,feature] of info.entries()) {
-		appendCommentsPostProcessing(collected, feature.comments as CommentsPostProcessing<number>, filepath)
+		appendCommentsPostProcessing(collected, feature.comments as CommentsPostProcessing<number>, feature.stats.lines.length,filepath)
 	}
 
 	// create summarized measurements TODO: (we should have abstracted that away...)
 	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'comments.csv'))
-	fnOutStream.write(`kind,${summarizedMeasurement2CsvHeader()},uniqueFiles
+	fnOutStream.write(`kind,${summarizedMeasurement2CsvHeader('count')},${summarizedMeasurement2CsvHeader('frac-of-lines')},uniqueFiles
 `)
 	for(const [key, val] of Object.entries(collected)) {
-		const { count, uniqueFiles } = val as CommentsMeta
-		const measurement = summarizeMeasurement(count)
-		fnOutStream.write(`${JSON.stringify(key)},${summarizedMeasurement2Csv(measurement)},${uniqueFiles.size}\n`)
+		const { count, uniqueFiles, fracOfLines } = val as CommentsMeta
+		const counts = summarizeMeasurement(count)
+		const lineFrac = summarizeMeasurement(fracOfLines)
+		fnOutStream.write(`${JSON.stringify(key)},${summarizedMeasurement2Csv(counts)},${summarizedMeasurement2Csv(lineFrac)}${uniqueFiles.size}\n`)
 	}
 }

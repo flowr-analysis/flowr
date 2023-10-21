@@ -26,7 +26,11 @@ export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfi
 	/**
 	 * Path for the final results of the summarization phase
 	 */
-	outputPath:             string
+	outputPath:             string,
+	/**
+	 * How many folders to skip to find the project root
+	 */
+	projectSkip:            number
 }
 
 export const statisticsFileNameRegex = /.*--.*\.tar\.gz$/
@@ -147,7 +151,7 @@ export class StatisticsSummarizer extends Summarizer<unknown, StatisticsSummariz
 			const output = path.join(this.config.outputPath, folderStr)
 			const input = path.join(this.config.intermediateOutputPath, folderStr)
 			this.log(`Summarizing for ${input} (target: ${output})`)
-			postProcessFeatureFolder(this.log, input, this.config.featuresToUse, output)
+			postProcessFeatureFolder(this.log, input, this.config, output)
 		}
 		return Promise.resolve(undefined)
 	}

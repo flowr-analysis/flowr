@@ -22,6 +22,7 @@ export interface SummarizerCliOptions {
 	type:            string
 	output?:         string
 	graph?:          boolean
+	'project-skip':  number
 }
 
 const options = processCommandLineArgs<SummarizerCliOptions>('summarizer', ['input'],{
@@ -51,6 +52,7 @@ function getStatisticsSummarizer() {
 		inputPath:              options.input,
 		outputPath:             `${outputBase}-final`,
 		intermediateOutputPath: `${outputBase}-intermediate/`,
+		projectSkip: 					      options['project-skip'],
 		// TODO: allow to configure
 		featuresToUse:          allFeatureNames,
 		logger:                 console.log

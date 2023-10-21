@@ -10,16 +10,17 @@ import { CommonSummarizerConfiguration } from '../../summarizer'
 import { readLineByLineSync } from '../../../files'
 import { guard } from '../../../assert'
 import { date2string } from '../../../time'
+import { StatisticsSummarizerConfiguration } from '../summarizer'
 
 /**
  * Post process the collections in a given folder, retrieving the final summaries.
  *
  * @param logger       - The logger to use for outputs
  * @param filepath     - Path to the root file of the data collection (contains all the archives)
- * @param featureNames - Collection of features to post process, expects corresponding folders to exist
- * @param outputPath   - The final outputPath to write the result to
+ * @param config       - Configuration of the summarizer
+ * @param outputPath   - The final outputPath to write the result to (may differ from the configured root folder)
  */
-export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['logger'], filepath: string, featureNames: FeatureSelection, outputPath: string): void {
+export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['logger'], filepath: string, config: StatisticsSummarizerConfiguration, outputPath: string): void {
 	if(!fs.existsSync(filepath)) {
 		logger(`    Folder for ${filepath} does not exist, skipping post processing`)
 		return
@@ -30,7 +31,7 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 
 	const metaFeatureInformation = extractMetaInformationFrom(logger, path.join(filepath, 'meta', 'features.txt'), path.join(filepath, 'meta', 'stats.txt'))
 
-	for(const featureName of featureNames) {
+	for(const featureName of config.featuresToUse) {
 		const featureInfo = ALL_FEATURES[featureName]
 		const targetPath = path.join(filepath, featureInfo.name)
 		const targetFeature = path.join(outputPath, featureInfo.name)
@@ -48,7 +49,7 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 			fs.mkdirSync(targetFeature, { recursive: true })
 		}
 
-		featureInfo.postProcess(targetPath, metaFeatureInformation, targetFeature)
+		featureInfo.postProcess(targetPath, metaFeatureInformation, targetFeature, config)
 	}
 }
 

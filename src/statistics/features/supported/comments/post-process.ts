@@ -10,6 +10,7 @@ import { guard } from '../../../../util/assert'
 import fs from 'node:fs'
 import path from 'path'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
+import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
 
 
 type CommentsPostProcessing<Measurement=SummarizedMeasurement> = MergeableRecord & {
@@ -17,7 +18,7 @@ type CommentsPostProcessing<Measurement=SummarizedMeasurement> = MergeableRecord
 }
 
 // monoids would be helpful :c
-function appendCommentsPostProcessing(a: CommentsPostProcessing<CommentsMeta>, b: CommentsPostProcessing<number>, numberOfLines: number, filepath: string) {
+function appendCommentsPostProcessing(a: CommentsPostProcessing<CommentsMeta>, b: CommentsPostProcessing<number>, numberOfLines: number, filepath: string, skipForProjects: number) {
 	for(const [key, val] of Object.entries(b)) {
 		const get = a[key] as CommentsMeta | undefined
 		guard(get !== undefined, `key ${key} is not present in the comments post processing`)
@@ -25,7 +26,8 @@ function appendCommentsPostProcessing(a: CommentsPostProcessing<CommentsMeta>, b
 		get.fracOfLines.push(val as number / numberOfLines)
 		if(val as number > 0) {
 			get.uniqueFiles.add(filepath)
-			get.uniqueProjects.add(filepath.split(path.sep)[0] ?? '')
+			console.log('x', filepath.split(path.sep)[skipForProjects] ?? '')
+			get.uniqueProjects.add(filepath.split(path.sep)[skipForProjects] ?? '')
 		}
 	}
 }
@@ -48,12 +50,12 @@ function mapComments<In,Out>(data: CommentsPostProcessing<In>, fn: (input: In) =
 }
 
 // TODO: collect dyn libs written?
-export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string): void {
+export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	// for each we collect the count and the number of files that contain them
 	const collected = mapComments(initialCommentInfo, initialCommentsMeta)
 
 	for(const [filepath,feature] of info.entries()) {
-		appendCommentsPostProcessing(collected, feature.comments as CommentsPostProcessing<number>, feature.stats.lines[0].length,filepath)
+		appendCommentsPostProcessing(collected, feature.comments as CommentsPostProcessing<number>, feature.stats.lines[0].length,filepath,config.projectSkip)
 	}
 
 	// create summarized measurements TODO: (we should have abstracted that away...)

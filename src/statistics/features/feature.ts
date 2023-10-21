@@ -22,6 +22,7 @@ import { NormalizedAst } from '../../r-bridge'
 import { DataflowInformation } from '../../dataflow/internal/info'
 import { variables } from './supported/variables'
 import { MetaStatistics } from '../meta-statistics'
+import { StatisticsSummarizerConfiguration } from '../../util/summarizer/statistics/summarizer'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
@@ -73,8 +74,9 @@ export interface Feature<T extends FeatureInfo> {
 	 * @param featureRoot - The root path to the feature directory which should contain all the files the feature can write to (already merged for every file processed)
 	 * @param info        - The feature statistic maps each file name/context encountered to the feature information as well as the meta statistics for the file
 	 * @param outputPath  - The path to write the output to (besides what is collected in the output and meta information)
+	 * @param config      - The configuration for the summarizer (e.g., to obtain the number of folders to skip for the feature root)
 	 */
-	postProcess?:         (featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string) => void
+	postProcess?:         (featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration) => void
 	/** Values to start the existing track from */
 	initialValue:         T
 }

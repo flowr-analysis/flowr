@@ -1,6 +1,6 @@
 export * from './loops'
 export * from './values'
-export * from './comments'
+export * from './comments/comments'
 export * from './data-access'
 export * from './assignments'
 export * from './control-flow'

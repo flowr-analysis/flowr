@@ -1,8 +1,9 @@
-import { Feature, FeatureProcessorInput, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../../feature'
 import * as xpath from 'xpath-ts2'
-import { guard, isNotNull, isNotUndefined } from '../../../util/assert'
-import { appendStatisticsFile } from '../../output'
+import { guard, isNotNull, isNotUndefined } from '../../../../util/assert'
+import { appendStatisticsFile } from '../../../output'
 import { Writable } from 'ts-essentials'
+import { postProcess } from './post-process'
 
 
 const initialCommentInfo = {
@@ -126,5 +127,6 @@ export const comments: Feature<CommentInfo> = {
 		return existing
 	},
 
-	initialValue: initialCommentInfo
+	initialValue: initialCommentInfo,
+	postProcess:  postProcess
 }

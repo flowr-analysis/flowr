@@ -133,9 +133,6 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		}
 	}
 
-	if(!fs.existsSync(outputPath)) {
-		fs.mkdirSync(outputPath, { recursive: true })
-	}
 	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'function-calls.csv'))
 
 	const suffixes = ['min', 'max', 'median', 'mean', 'std', 'total']

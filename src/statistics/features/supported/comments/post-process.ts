@@ -25,17 +25,19 @@ function appendCommentsPostProcessing(a: CommentsPostProcessing<CommentsMeta>, b
 		get.fracOfLines.push(val as number / numberOfLines)
 		if(val as number > 0) {
 			get.uniqueFiles.add(filepath)
+			get.uniqueProjects.add(filepath.split(path.sep)[0] ?? '')
 		}
 	}
 }
 
 interface CommentsMeta {
-	count:       number[]
+	count:          number[]
 	// how many lines are comments?
-	fracOfLines: number[]
-	uniqueFiles: Set<string>
+	fracOfLines:    number[]
+	uniqueProjects: Set<string>
+	uniqueFiles:    Set<string>
 }
-const initialCommentsMeta: () => CommentsMeta = () => ({ count: [], uniqueFiles: new Set(), fracOfLines: [] })
+const initialCommentsMeta: () => CommentsMeta = () => ({ count: [], uniqueProjects: new Set(), uniqueFiles: new Set(), fracOfLines: [] })
 
 function mapComments<In,Out>(data: CommentsPostProcessing<In>, fn: (input: In) => Out): CommentsPostProcessing<Out> {
 	const collected = {} as unknown as CommentsPostProcessing<Out>
@@ -56,12 +58,11 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 
 	// create summarized measurements TODO: (we should have abstracted that away...)
 	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'comments.csv'))
-	fnOutStream.write(`kind,${summarizedMeasurement2CsvHeader('count')},${summarizedMeasurement2CsvHeader('frac-of-lines')},uniqueFiles
-`)
+	fnOutStream.write(`kind,uniqueProjects,uniqueFiles,${summarizedMeasurement2CsvHeader('count')},${summarizedMeasurement2CsvHeader('frac-of-lines')}\n`)
 	for(const [key, val] of Object.entries(collected)) {
-		const { count, uniqueFiles, fracOfLines } = val as CommentsMeta
+		const { count, uniqueProjects, uniqueFiles, fracOfLines } = val as CommentsMeta
 		const counts = summarizeMeasurement(count)
 		const lineFrac = summarizeMeasurement(fracOfLines)
-		fnOutStream.write(`${JSON.stringify(key)},${summarizedMeasurement2Csv(counts)},${summarizedMeasurement2Csv(lineFrac)},${uniqueFiles.size}\n`)
+		fnOutStream.write(`${JSON.stringify(key)},${uniqueProjects.size},${uniqueFiles.size},${summarizedMeasurement2Csv(counts)},${summarizedMeasurement2Csv(lineFrac)}\n`)
 	}
 }

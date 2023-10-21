@@ -15,7 +15,7 @@ import { jsonReplacer } from '../../../../util/json'
 import { date2string } from '../../../../util/time'
 import { AllCallsFileBase, FunctionCallInformation, FunctionUsageInfo } from './used-functions'
 
-type FunctionCallSummaryInformation<Measurement, Uniques=number> = [numOfUniqueFiles: Uniques, total: Measurement, arguments: Measurement, linePercentageInFile: Measurement]
+type FunctionCallSummaryInformation<Measurement, Uniques=number> = [numOfUniqueProjects: Uniques, numOfUniqueFiles: Uniques, total: Measurement, arguments: Measurement, linePercentageInFile: Measurement]
 // during the collection phase this should be a map using an array to collect
 interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
 	/**
@@ -140,13 +140,13 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 
 	const prefixes = ['total', 'args', 'line-frac']
 	const others = prefixes.flatMap(summarizedMeasurement2CsvHeader).join(',')
-	fnOutStream.write(`function,unique-files,${others}\n`)
-	for(const [key, [uniqueFiles, total, args, lineFrac]] of data.functionCallsPerFile.entries()) {
+	fnOutStream.write(`function,unique-projects,unique-files,${others}\n`)
+	for(const [key, [uniqueProjects, uniqueFiles, total, args, lineFrac]] of data.functionCallsPerFile.entries()) {
 		const totalSum = summarizeMeasurement(total.flat(), info.size)
 		const argsSum = summarizeMeasurement(args.flat(), info.size)
 		const lineFracSum = summarizeMeasurement(lineFrac.flat())
 		// we write in csv style :), we escape the key in case it contains commas (with filenames)etc.
-		fnOutStream.write(`${JSON.stringify(key ?? 'unknown')},${uniqueFiles.size},${summarizedMeasurement2Csv(totalSum)},${summarizedMeasurement2Csv(argsSum)},${summarizedMeasurement2Csv(lineFracSum)}\n`)
+		fnOutStream.write(`${JSON.stringify(key ?? 'unknown')},${uniqueProjects.size},${uniqueFiles.size},${summarizedMeasurement2Csv(totalSum)},${summarizedMeasurement2Csv(argsSum)},${summarizedMeasurement2Csv(lineFracSum)}\n`)
 	}
 	fnOutStream.close()
 
@@ -179,23 +179,25 @@ function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumbe
 
 		let get = groupedByFunctionName.get(key)
 		if(!get) {
-			get = [new Set(), [], [], []]
+			get = [new Set(), new Set(), [], [], []]
 			groupedByFunctionName.set(key, get)
 		}
-		get[0].add(context ?? '')
-		get[1].push(1)
-		get[2].push(args)
+		// we retrieve the first component fo the path
+		const projectName = context?.split(path.sep)[0]
+		get[0].add(projectName ?? '')
+		get[1].add(context ?? '')
+		get[2].push(1)
+		get[3].push(args)
 		if(loc && stats) {
 			// we reduce by 1 to get flat 0% if it is the first line
-			const calc = stats === 1 ? 1 : (loc[0]-1) / (stats-1)
-			get[3].push(calc)
+			get[4].push(stats === 1 ? 1 : (loc[0]-1) / (stats-1))
 		}
 	}
 
 	for(const [key, info] of groupedByFunctionName.entries()) {
 		let get = data.functionCallsPerFile.get(key)
 		if(!get) {
-			get = [new Set(), [], [], []]
+			get = [new Set(), new Set(), [], [], []]
 			// an amazing empty structure :D
 			data.functionCallsPerFile.set(key, get)
 		}
@@ -203,8 +205,11 @@ function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumbe
 		for(const context of info[0]) {
 			get[0].add(context)
 		}
-		get[1].push([info[1].length])
-		get[2].push(info[2])
+		for(const context of info[1]) {
+			get[1].add(context)
+		}
+		get[2].push([info[2].length])
 		get[3].push(info[3])
+		get[4].push(info[4])
 	}
 }

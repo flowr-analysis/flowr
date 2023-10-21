@@ -245,7 +245,12 @@ function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWit
 		data.meta.unnamedCalls.push([us.unnamedCalls])
 		for(const [i, val] of Object.entries(us.args)) {
 			if(Number(i) !== 0) {
-				appendCommonSyntaxTypeCounter(data.meta.args[Number(i)] ?? emptyCommonSyntaxTypeCounts([]), val as CommonSyntaxTypeCounts)
+				let get = data.meta.args[Number(i)]
+				if(!get) {
+					get = emptyCommonSyntaxTypeCounts([])
+					data.meta.args[Number(i)] = get
+				}
+				appendCommonSyntaxTypeCounter(get, val as CommonSyntaxTypeCounts)
 			}
 		}
 	}

@@ -62,6 +62,6 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		const { count, uniqueFiles, fracOfLines } = val as CommentsMeta
 		const counts = summarizeMeasurement(count)
 		const lineFrac = summarizeMeasurement(fracOfLines)
-		fnOutStream.write(`${JSON.stringify(key)},${summarizedMeasurement2Csv(counts)},${summarizedMeasurement2Csv(lineFrac)}${uniqueFiles.size}\n`)
+		fnOutStream.write(`${JSON.stringify(key)},${summarizedMeasurement2Csv(counts)},${summarizedMeasurement2Csv(lineFrac)},${uniqueFiles.size}\n`)
 	}
 }

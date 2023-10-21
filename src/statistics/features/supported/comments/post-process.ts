@@ -22,7 +22,9 @@ function appendCommentsPostProcessing(a: CommentsPostProcessing<CommentsMeta>, b
 		const get = a[key] as CommentsMeta | undefined
 		guard(get !== undefined, `key ${key} is not present in the comments post processing`)
 		get.count.push(val as number)
-		get.uniqueFiles.add(filepath)
+		if(val as number > 0) {
+			get.uniqueFiles.add(filepath)
+		}
 	}
 }
 
@@ -40,6 +42,7 @@ function mapComments<In,Out>(data: CommentsPostProcessing<In>, fn: (input: In) =
 	return collected
 }
 
+// TODO: collect dyn libs written?
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string): void {
 	// for each we collect the count and the number of files that contain them
 	const collected = mapComments(initialCommentInfo, initialCommentsMeta)

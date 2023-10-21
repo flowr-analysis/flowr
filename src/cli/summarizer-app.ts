@@ -49,7 +49,7 @@ function getBenchmarkSummarizer() {
 function getStatisticsSummarizer() {
 	return new StatisticsSummarizer({
 		inputPath:              options.input,
-		outputPath:             `${outputBase}.json`,
+		outputPath:             `${outputBase}-final`,
 		intermediateOutputPath: `${outputBase}-intermediate/`,
 		// TODO: allow to configure
 		featuresToUse:          allFeatureNames,

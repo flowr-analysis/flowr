@@ -14,6 +14,7 @@ import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../.
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
 import { getUniqueCombinationsOfSize } from '../../../../util/arrays'
 import { guard } from '../../../../util/assert'
+import { jsonReplacer } from '../../../../util/json'
 
 interface OperatorInformation<Measurement, Uniques> {
 	uniqueProjects: Uniques
@@ -111,5 +112,5 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		deepestNesting:           summarizeMeasurement(collected.deepestNesting.flat()),
 		nestedOperatorAssignment: summarizeMeasurement(collected.nestedOperatorAssignment.flat()),
 		operators
-	}))
+	}, jsonReplacer))
 }

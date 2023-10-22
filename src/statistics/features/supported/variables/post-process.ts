@@ -17,7 +17,7 @@ type VariablesPostProcessing = ReplaceKeysForSummary<VariableInfo, SummarizedWit
 
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	const collected = {} as unknown as VariablesPostProcessing
-	// TODO: outsource this
+	// TODO: outsource this and abstract for all features using it
 	for(const [filepath, data] of info.entries()) {
 		const value = data.variables as VariableInfo
 		for(const [key, val] of Object.entries(value)) {

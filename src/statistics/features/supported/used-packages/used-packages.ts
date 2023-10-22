@@ -1,12 +1,11 @@
 import { Feature, FeatureProcessorInput, Query } from '../../feature'
 import * as xpath from 'xpath-ts2'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
-import { appendStatisticsFile, StatisticsOutputFormat } from '../../../output'
+import { appendStatisticsFile } from '../../../output'
 import { Writable } from 'ts-essentials'
-import { DefaultMap } from '../../../../util/defaultmap'
 import { postProcess } from './post-process'
 
-const initialUsedPackageInfos = {
+export const initialUsedPackageInfos = {
 	library:              0,
 	require:              0,
 	loadNamespace:        0,

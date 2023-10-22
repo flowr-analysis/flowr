@@ -117,3 +117,13 @@ export function sum(arr: number[]): number {
 	return sum
 }
 
+/**
+ * Converts an array into a bag data-structure (in the form of a map mapping the entries/keys to their counts)
+ */
+export function array2bag<T>(arr: T[]): Map<T, number> {
+	const result = new Map<T, number>()
+	for(const elem of arr) {
+		result.set(elem, (result.get(elem) ?? 0) + 1)
+	}
+	return result
+}

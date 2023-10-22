@@ -41,7 +41,6 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 			continue
 		}
 
-		// TODO: why one unpacked output in the intermediate output folder? WHAT WENT WRONG :D
 		if(!fs.existsSync(targetFeature)) {
 			fs.mkdirSync(targetFeature, { recursive: true })
 		}

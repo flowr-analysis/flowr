@@ -73,7 +73,7 @@ function extractMetaInformationFrom(logger: CommonSummarizerConfiguration['logge
 		}
 		const meta = JSON.parse(line.toString()) as { file: string, content: MetaStatistics }
 		const existing = storage.get(meta.file)
-		guard(existing !== undefined, () => `Expected to find meta information for ${meta.file} in ${metaFeaturesPath}`)
+		guard(existing !== undefined, () => `Expected to find meta information for ${meta.file} in line ${lineNumber+1} of ${metaFeaturesPath}`)
 		existing.stats = meta.content
 	})
 	logger(`    [${date2string(new Date())}] Done collecting meta information`)

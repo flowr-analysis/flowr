@@ -4,7 +4,12 @@ import {
 	summarizedMeasurement2CsvHeader
 } from '../../../../util/summarizer/benchmark/data'
 import { MergeableRecord } from '../../../../util/objects'
-import { CommonSyntaxTypeCounts, emptyCommonSyntaxTypeCounts } from '../../common-syntax-probability'
+import {
+	appendCommonSyntaxTypeCounter,
+	CommonSyntaxTypeCounts,
+	emptyCommonSyntaxTypeCounts,
+	summarizeCommonSyntaxTypeCounter
+} from '../../common-syntax-probability'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
 import { FeatureStatisticsWithMeta } from '../../feature'
 import { readLineByLineSync } from '../../../../util/files'
@@ -15,6 +20,7 @@ import { jsonReplacer } from '../../../../util/json'
 import { date2string } from '../../../../util/time'
 import { AllCallsFileBase, FunctionCallInformation, FunctionUsageInfo } from './used-functions'
 import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
+import { bigint2number } from '../../../../util/numbers'
 
 type FunctionCallSummaryInformation<Measurement, Uniques=number> = [numOfUniqueProjects: Uniques, numOfUniqueFiles: Uniques, total: Measurement, arguments: Measurement, linePercentageInFile: Measurement]
 // during the collection phase this should be a map using an array to collect
@@ -33,68 +39,6 @@ interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends 
 		unnamedCalls:   Measurement
 		// the first entry is for 1 argument, the second for the two arguments (the second,....)
 		args:	          CommonSyntaxTypeCounts<Measurement>[]
-	}
-}
-
-function bigint2number(a: bigint): number {
-	// we have to remove the trailing `n`
-	return Number(String(a).slice(0, -1))
-}
-
-function appendRecord(a: Record<string, number[][] | undefined>, b: Record<string, bigint>): void {
-	for(const [key, val] of Object.entries(b)) {
-		const get = a[key]
-		// we guard with array to guard against methods like `toString` which are given in js
-		if(!get || !Array.isArray(get)) {
-			a[key] = [[bigint2number(val)]]
-			continue
-		}
-		get.push([bigint2number(val)])
-	}
-}
-
-function appendCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[][]>, b: CommonSyntaxTypeCounts) {
-	a.total.push([bigint2number(b.total)])
-	a.empty.push([bigint2number(b.empty)])
-	a.multiple.push([bigint2number(b.multiple)])
-	a.withArgument.push([bigint2number(b.withArgument)])
-	a.noValue.push([bigint2number(b.noValue)])
-	a.unnamedCall.push([bigint2number(b.unnamedCall)])
-	appendRecord(a.singleVar, b.singleVar)
-	appendRecord(a.number, b.number)
-	appendRecord(a.integer, b.integer)
-	appendRecord(a.complex, b.complex)
-	appendRecord(a.string, b.string)
-	appendRecord(a.logical, b.logical)
-	appendRecord(a.call, b.call)
-	appendRecord(a.binOp, b.binOp)
-	appendRecord(a.unaryOp, b.unaryOp)
-	appendRecord(a.other, b.other)
-}
-
-
-function summarizeRecord(a: Record<string, number[][]>): Record<string, SummarizedMeasurement> {
-	return Object.fromEntries(Object.entries(a).map(([key, val]) => [key, summarizeMeasurement(val.flat(), val.length)]))
-}
-
-function summarizeCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[][]>): CommonSyntaxTypeCounts<SummarizedMeasurement> {
-	return {
-		total:        summarizeMeasurement(a.total.flat(), a.total.length),
-		empty:        summarizeMeasurement(a.empty.flat(), a.empty.length),
-		multiple:     summarizeMeasurement(a.multiple.flat(), a.multiple.length),
-		withArgument: summarizeMeasurement(a.withArgument.flat(), a.withArgument.length),
-		noValue:      summarizeMeasurement(a.noValue.flat(), a.noValue.length),
-		unnamedCall:  summarizeMeasurement(a.unnamedCall.flat(), a.unnamedCall.length),
-		singleVar:    summarizeRecord(a.singleVar),
-		number:       summarizeRecord(a.number),
-		integer:      summarizeRecord(a.integer),
-		complex:      summarizeRecord(a.complex),
-		string:       summarizeRecord(a.string),
-		logical:      summarizeRecord(a.logical),
-		call:         summarizeRecord(a.call),
-		binOp:        summarizeRecord(a.binOp),
-		unaryOp:      summarizeRecord(a.unaryOp),
-		other:        summarizeRecord(a.other)
 	}
 }
 

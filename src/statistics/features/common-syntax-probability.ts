@@ -2,6 +2,9 @@
  * Defines the type of syntax constructs that we track (e.g., true, false, 0, 1, T, F, conditions...)
  */
 import { RFalse, RNodeWithParent, RTrue, RType } from '../../r-bridge'
+import { SummarizedMeasurement } from '../../util/summarizer/benchmark/data'
+import { summarizeMeasurement } from '../../util/summarizer/benchmark/first-phase/process'
+import { bigint2number } from '../../util/numbers'
 
 export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	// just a helper to collect all as well (could be derived from sum)
@@ -123,4 +126,63 @@ export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ..
 	}
 
 	return current
+}
+
+
+
+function appendRecord(a: Record<string, number[][] | undefined>, b: Record<string, bigint>): void {
+	for(const [key, val] of Object.entries(b)) {
+		const get = a[key]
+		// we guard with array to guard against methods like `toString` which are given in js
+		if(!get || !Array.isArray(get)) {
+			a[key] = [[bigint2number(val)]]
+			continue
+		}
+		get.push([bigint2number(val)])
+	}
+}
+
+export function appendCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[][]>, b: CommonSyntaxTypeCounts) {
+	a.total.push([bigint2number(b.total)])
+	a.empty.push([bigint2number(b.empty)])
+	a.multiple.push([bigint2number(b.multiple)])
+	a.withArgument.push([bigint2number(b.withArgument)])
+	a.noValue.push([bigint2number(b.noValue)])
+	a.unnamedCall.push([bigint2number(b.unnamedCall)])
+	appendRecord(a.singleVar, b.singleVar)
+	appendRecord(a.number, b.number)
+	appendRecord(a.integer, b.integer)
+	appendRecord(a.complex, b.complex)
+	appendRecord(a.string, b.string)
+	appendRecord(a.logical, b.logical)
+	appendRecord(a.call, b.call)
+	appendRecord(a.binOp, b.binOp)
+	appendRecord(a.unaryOp, b.unaryOp)
+	appendRecord(a.other, b.other)
+}
+
+
+function summarizeRecord(a: Record<string, number[][]>): Record<string, SummarizedMeasurement> {
+	return Object.fromEntries(Object.entries(a).map(([key, val]) => [key, summarizeMeasurement(val.flat(), val.length)]))
+}
+
+export function summarizeCommonSyntaxTypeCounter(a: CommonSyntaxTypeCounts<number[][]>): CommonSyntaxTypeCounts<SummarizedMeasurement> {
+	return {
+		total:        summarizeMeasurement(a.total.flat(), a.total.length),
+		empty:        summarizeMeasurement(a.empty.flat(), a.empty.length),
+		multiple:     summarizeMeasurement(a.multiple.flat(), a.multiple.length),
+		withArgument: summarizeMeasurement(a.withArgument.flat(), a.withArgument.length),
+		noValue:      summarizeMeasurement(a.noValue.flat(), a.noValue.length),
+		unnamedCall:  summarizeMeasurement(a.unnamedCall.flat(), a.unnamedCall.length),
+		singleVar:    summarizeRecord(a.singleVar),
+		number:       summarizeRecord(a.number),
+		integer:      summarizeRecord(a.integer),
+		complex:      summarizeRecord(a.complex),
+		string:       summarizeRecord(a.string),
+		logical:      summarizeRecord(a.logical),
+		call:         summarizeRecord(a.call),
+		binOp:        summarizeRecord(a.binOp),
+		unaryOp:      summarizeRecord(a.unaryOp),
+		other:        summarizeRecord(a.other)
+	}
 }

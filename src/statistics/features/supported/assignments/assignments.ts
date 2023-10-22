@@ -1,17 +1,19 @@
-import { Feature, FeatureProcessorInput } from '../feature'
+import { Feature, FeatureProcessorInput } from '../../feature'
 import { Writable } from 'ts-essentials'
-import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../common-syntax-probability'
+import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
 	RNodeWithParent,
 	RType,
 	visitAst
-} from '../../../r-bridge'
+} from '../../../../r-bridge'
 
 
 const initialAssignmentInfo = {
 	// operator to occurrence count
 	assignmentOperator:       {} as Record<string, bigint>,
 	assigned:                 emptyCommonSyntaxTypeCounts(),
+	// TODO: maybe add common syntax type counts for the other side and
+	// find combinations like `` is most often used for functions?
 	deepestNesting:           0,
 	nestedOperatorAssignment: 0
 }

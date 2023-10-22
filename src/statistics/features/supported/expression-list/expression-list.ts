@@ -1,6 +1,7 @@
 import { Writable } from 'ts-essentials'
-import { Feature, FeatureProcessorInput } from '../feature'
-import { RType, visitAst } from '../../../r-bridge'
+import { Feature, FeatureProcessorInput } from '../../feature'
+import { RType, visitAst } from '../../../../r-bridge'
+import { postProcess } from './post-process'
 
 const initialExpressionListInfo = {
 	allExpressionLists: 0,
@@ -38,5 +39,6 @@ export const expressionList: Feature<ExpressionList> = {
 		return existing
 	},
 
-	initialValue: initialExpressionListInfo
+	initialValue: initialExpressionListInfo,
+	postProcess:  postProcess
 }

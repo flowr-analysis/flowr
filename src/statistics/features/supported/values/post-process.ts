@@ -1,11 +1,9 @@
 import { FeatureStatisticsWithMeta } from '../../feature'
 import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
 import {
-	SummarizedMeasurement,
 	summarizedMeasurement2Csv,
 	summarizedMeasurement2CsvHeader
 } from '../../../../util/summarizer/benchmark/data'
-import { MergeableRecord } from '../../../../util/objects'
 import { ValueInfo } from './values'
 import fs from 'node:fs'
 import path from 'path'
@@ -14,19 +12,16 @@ import { readLineByLineSync } from '../../../../util/files'
 import { date2string } from '../../../../util/time'
 import { StatisticsOutputFormat } from '../../../output'
 import { array2bag } from '../../../../util/arrays'
+import {
+	emptySummarizedWithProject,
+	recordFilePath,
+	ReplaceKeysForSummary,
+	SummarizedWithProject
+} from '../../post-processing'
 
 // values contains - and + values
 
-// TODO: group this together
-interface SummarizedWithProject {
-	uniqueProjects: Set<string>
-	uniqueFiles:    Set<string>
-	count:          number[]
-}
-
-type ValuesPostProcessing = MergeableRecord & {
-	[K in keyof ValueInfo]: SummarizedWithProject
-}
+type ValuesPostProcessing = ReplaceKeysForSummary<ValueInfo, SummarizedWithProject>
 
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	const collected = {} as unknown as ValuesPostProcessing
@@ -35,14 +30,12 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		for(const [key, val] of Object.entries(value)) {
 			let get = collected[key] as SummarizedWithProject | undefined
 			if(!get) {
-				get = { count: [], uniqueFiles: new Set(), uniqueProjects: new Set() }
+				get = emptySummarizedWithProject()
 				collected[key] = get
 			}
 			get.count.push(val)
 			if(val > 0) {
-				// TODO: can we get magic numbers from files?
-				get.uniqueFiles.add(filepath)
-				get.uniqueProjects.add(filepath.split(path.sep)[config.projectSkip] ?? '')
+				recordFilePath(get, filepath, config)
 			}
 		}
 	}

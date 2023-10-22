@@ -3,6 +3,7 @@ import { Writable } from 'ts-essentials'
 import { isSpecialSymbol, NodeId, RType, visitAst } from '../../../../r-bridge'
 import { appendStatisticsFile } from '../../../output'
 import { EdgeType } from '../../../../dataflow'
+import { postProcess } from './post-process'
 
 
 const initialVariableInfo = {
@@ -79,5 +80,6 @@ export const variables: Feature<VariableInfo> = {
 		return existing
 	},
 
-	initialValue: initialVariableInfo
+	initialValue: initialVariableInfo,
+	postProcess:  postProcess
 }

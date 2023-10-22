@@ -6,6 +6,7 @@ import {
 	RType,
 	visitAst
 } from '../../../../r-bridge'
+import { postProcess } from './post-process'
 
 
 const initialAssignmentInfo = {
@@ -67,5 +68,6 @@ export const assignments: Feature<AssignmentInfo> = {
 		return existing
 	},
 
-	initialValue: initialAssignmentInfo
+	initialValue: initialAssignmentInfo,
+	postProcess:  postProcess
 }

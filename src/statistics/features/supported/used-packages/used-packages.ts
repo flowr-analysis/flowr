@@ -1,9 +1,10 @@
-import { Feature, FeatureProcessorInput, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../../feature'
 import * as xpath from 'xpath-ts2'
 import { EvalOptions } from 'xpath-ts2/src/parse-api'
-import { appendStatisticsFile, StatisticsOutputFormat } from '../../output'
+import { appendStatisticsFile, StatisticsOutputFormat } from '../../../output'
 import { Writable } from 'ts-essentials'
-import { DefaultMap } from '../../../util/defaultmap'
+import { DefaultMap } from '../../../../util/defaultmap'
+import { postProcess } from './post-process'
 
 const initialUsedPackageInfos = {
 	library:              0,
@@ -117,39 +118,7 @@ export const usedPackages: Feature<UsedPackageInfo> = {
 		return existing
 	},
 
-	initialValue: initialUsedPackageInfos
-}
-
-
-function postProcess(files: Map<string, StatisticsOutputFormat[]>): Map<string, unknown> {
-	const result = new Map<string, unknown>()
-	// get top loaded packages by load type
-	for(const q of queries) {
-		for(const fn of q.types) {
-			const loadedPackages = files.get(fn)
-			if(loadedPackages === undefined) {
-				result.set(fn, {})
-				continue
-			}
-			const collector = new Map<string, number>
-			for(const data of loadedPackages) {
-				collector.set(data[0], (collector.get(data[0]) ?? 0) + 1)
-			}
-			result.set(fn, collector)
-		}
-	}
-
-
-	// TODO --- rest // TODO: iterate line by line over files as they may be huge
-	if(files.has('<loadedByVariable>')) {
-		const loadedByVariable = files.get('<loadedByVariable>')!
-		const collector = new DefaultMap<string, number>(() => 0)
-		for(const data of loadedByVariable) {
-			collector.set(data[0], (collector.get(data[0]) ?? 0) + 1)
-		}
-		result.set('<loadedByVariable>', collector)
-	}
-
-	return result
+	initialValue: initialUsedPackageInfos,
+	postProcess:  postProcess
 }
 

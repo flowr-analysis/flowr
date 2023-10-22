@@ -6,6 +6,7 @@ import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../..
 import { postProcess } from './post-process'
 
 
+// TODO: nesting of loops? like for nested in while loop?
 const initialLoopInfo = {
 	forLoops:               emptyCommonSyntaxTypeCounts(),
 	forLoopVar:             emptyCommonSyntaxTypeCounts(),

@@ -38,6 +38,10 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	variablesOutStream.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
 
 	for(const [key, val] of Object.entries(collected)) {
+		if(key === 'unknownVariables') {
+			// they are for function calls etc and in hindsight not a good idea
+			continue
+		}
 		const data = val as SummarizedWithProject
 		const sum = summarizeMeasurement(data.count)
 		variablesOutStream.write(`${JSON.stringify(key)},${data.uniqueProjects.size},${data.uniqueFiles.size},${summarizedMeasurement2Csv(sum)}\n`)
@@ -75,7 +79,7 @@ function collectVariableInfoFor(filepath: string, info: Map<string, FeatureStati
 			return
 		}
 		if(lineNumber % 2_500 === 0) {
-			console.log(`Processed ${lineNumber} lines of ${filepath}`)
+			console.log(`    Processed ${lineNumber} lines of ${filepath}`)
 		}
 		const [vars, context] = JSON.parse(line.toString()) as [DefinedVariableInformation[], string]
 		const numberOfLines = info.get(context as string | undefined ?? '')?.stats.lines[0].length

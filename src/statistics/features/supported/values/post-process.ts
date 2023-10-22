@@ -15,6 +15,8 @@ import { date2string } from '../../../../util/time'
 import { StatisticsOutputFormat } from '../../../output'
 import { array2bag } from '../../../../util/arrays'
 
+// values contains - and + values
+
 // TODO: group this together
 interface SummarizedWithProject {
 	uniqueProjects: Set<string>
@@ -90,3 +92,5 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	}
 	magicNumbersOutStream.close()
 }
+
+// TODO: meta summary for file lengths etc.

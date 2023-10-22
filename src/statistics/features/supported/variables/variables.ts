@@ -17,7 +17,7 @@ const initialVariableInfo = {
 export type VariableInfo = Writable<typeof initialVariableInfo>
 
 
-type DefinedVariableInformation = [
+export type DefinedVariableInformation = [
 	name: string,
 	location: [line: number, character: number]
 ]

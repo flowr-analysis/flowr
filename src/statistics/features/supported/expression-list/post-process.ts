@@ -28,6 +28,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 				get = emptySummarizedWithProject()
 				collected[key] = get
 			}
+			// TODO: are they correct?
 			if(key === 'deepestNesting') {
 				deepestNestingOut.write(`${JSON.stringify(filepath)},${val}\n`)
 			}

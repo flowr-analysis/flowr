@@ -1,8 +1,9 @@
-import { Feature, FeatureProcessorInput } from '../feature'
-import { appendStatisticsFile } from '../../output'
+import { Feature, FeatureProcessorInput } from '../../feature'
+import { appendStatisticsFile } from '../../../output'
 import { Writable } from 'ts-essentials'
-import { RNodeWithParent, RType, visitAst } from '../../../r-bridge'
-import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../common-syntax-probability'
+import { RNodeWithParent, RType, visitAst } from '../../../../r-bridge'
+import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../../common-syntax-probability'
+import { postProcess } from './post-process'
 
 
 const initialLoopInfo = {
@@ -83,5 +84,6 @@ export const loops: Feature<LoopInfo> = {
 		return existing
 	},
 
-	initialValue: initialLoopInfo
+	initialValue: initialLoopInfo,
+	postProcess:  postProcess
 }

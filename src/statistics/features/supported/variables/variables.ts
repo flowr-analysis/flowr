@@ -1,8 +1,8 @@
-import { Feature, FeatureProcessorInput } from '../feature'
+import { Feature, FeatureProcessorInput } from '../../feature'
 import { Writable } from 'ts-essentials'
-import { isSpecialSymbol, NodeId, RType, visitAst } from '../../../r-bridge'
-import { appendStatisticsFile } from '../../output'
-import { EdgeType } from '../../../dataflow'
+import { isSpecialSymbol, NodeId, RType, visitAst } from '../../../../r-bridge'
+import { appendStatisticsFile } from '../../../output'
+import { EdgeType } from '../../../../dataflow'
 
 
 const initialVariableInfo = {

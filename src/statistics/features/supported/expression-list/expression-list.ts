@@ -7,9 +7,9 @@ const initialExpressionListInfo = {
 	allExpressionLists: 0,
 	deepestNesting:     0
 }
-export type ExpressionList = Writable<typeof initialExpressionListInfo>
+export type ExpressionListInfo = Writable<typeof initialExpressionListInfo>
 
-function visitLists(info: ExpressionList, input: FeatureProcessorInput): void {
+function visitLists(info: ExpressionListInfo, input: FeatureProcessorInput): void {
 	let nest = -1 // we start with nesting 0
 	let total = 0
 
@@ -30,11 +30,11 @@ function visitLists(info: ExpressionList, input: FeatureProcessorInput): void {
 	info.allExpressionLists += total
 }
 
-export const expressionList: Feature<ExpressionList> = {
+export const expressionList: Feature<ExpressionListInfo> = {
 	name:        'Expression Lists',
 	description: 'Counts expression list nestings',
 
-	process(existing: ExpressionList, input: FeatureProcessorInput): ExpressionList {
+	process(existing: ExpressionListInfo, input: FeatureProcessorInput): ExpressionListInfo {
 		visitLists(existing, input)
 		return existing
 	},

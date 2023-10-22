@@ -66,6 +66,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		const summarized = summarizedMeasurement2Csv(summarizeMeasurement(counts.flat()))
 		fnOutStream.write(`${JSON.stringify(key)},${uniqueProjects.size},${uniqueFiles.size},${summarized}\n`)
 	}
+	// TODO: find projects that mix stuff? so additionally count what combinations and what are singled out for projects in json
 	fnOutStream.close()
 
 	fs.writeFileSync(path.join(outputPath, 'assignments.json'), JSON.stringify({

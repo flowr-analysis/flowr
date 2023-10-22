@@ -1,9 +1,10 @@
-import { Feature, FeatureProcessorInput, Query } from '../feature'
+import { Feature, FeatureProcessorInput, Query } from '../../feature'
 import * as xpath from 'xpath-ts2'
-import { RFalse, RNa, RNull, RNumHexFloatRegex, RTrue } from '../../../r-bridge'
-import { assertUnreachable } from '../../../util/assert'
-import { appendStatisticsFile } from '../../output'
+import { RFalse, RNa, RNull, RNumHexFloatRegex, RTrue } from '../../../../r-bridge'
+import { assertUnreachable } from '../../../../util/assert'
+import { appendStatisticsFile } from '../../../output'
 import { Writable } from 'ts-essentials'
+import { postProcess } from './post-process'
 
 const initialValueInfo = {
 	allNumerics:      0,
@@ -80,5 +81,6 @@ export const values: Feature<ValueInfo> = {
 
 		return existing
 	},
-	initialValue: initialValueInfo
+	initialValue: initialValueInfo,
+	postProcess:  postProcess
 }

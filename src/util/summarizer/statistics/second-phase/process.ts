@@ -40,10 +40,6 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 			logger(`    Skipping post processing of ${featureName} as no post processing behavior is defined`)
 			continue
 		}
-		else if(!fs.existsSync(targetPath)) {
-			logger(`    Folder for ${featureName} does not exist at ${targetPath} skipping post processing of this feature`)
-			continue
-		}
 
 		if(!fs.existsSync(targetFeature)) {
 			fs.mkdirSync(targetFeature, { recursive: true })

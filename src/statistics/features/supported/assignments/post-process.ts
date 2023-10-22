@@ -97,7 +97,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	}
 
 	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'assignments-assigned.csv'))
-	fnOutStream.write(`assignment,uniqueProjects,uniqueFiles,${summarizedMeasurement2CsvHeader()}\n`)
+	fnOutStream.write(`assignment,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
 	for(const [key, val] of Object.entries(collected.assignmentOperator)) {
 		const { uniqueProjects, uniqueFiles, counts } = val
 		const summarized = summarizedMeasurement2Csv(summarizeMeasurement(counts.flat()))

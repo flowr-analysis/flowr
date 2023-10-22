@@ -59,7 +59,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 
 	// create summarized measurements TODO: (we should have abstracted that away...)
 	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'comments.csv'))
-	fnOutStream.write(`kind,uniqueProjects,uniqueFiles,${summarizedMeasurement2CsvHeader('count')},${summarizedMeasurement2CsvHeader('frac-of-lines')}\n`)
+	fnOutStream.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader('count')},${summarizedMeasurement2CsvHeader('frac-of-lines')}\n`)
 	for(const [key, val] of Object.entries(collected)) {
 		const { count, uniqueProjects, uniqueFiles, fracOfLines } = val as CommentsMeta
 		const counts = summarizeMeasurement(count)

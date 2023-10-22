@@ -68,11 +68,13 @@ export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
  * In other words, given `[a,b,c]`, as well as `minSize=2` and `maxSize=2`, this will generate `[a,b]`, `[a,c]` and `[b,c]`,
  * but not, e.g., `[a,a]` or `[b,a]`.
  *
+ * If `minSize!=maxSize`, the result is guaranteed to be sorted by size.
+ *
  * @param array   - The array to generate combinations from
  * @param minSize - The inclusive minimum size of the combinations, must be at least `0` and at most `maxSize`
  * @param maxSize - The inclusive maximum size of the combinations, must be at least `minSize` and at most `array.length`
  */
-export function *getUniqueCombinationsOfSize<T>(array: T[], minSize: number, maxSize: number): Generator<T[], void, void> {
+export function *getUniqueCombinationsOfSize<T>(array: T[], minSize = 0, maxSize = array.length): Generator<T[], void, void> {
 	guard(minSize >= 0 && minSize <= maxSize, 'minSize must be at least 0 and at most maxSize')
 	guard(maxSize >= minSize && maxSize <= array.length, 'maxSize must be at least minSize and at most the length of the array')
 	if(minSize === maxSize && minSize === 1) {

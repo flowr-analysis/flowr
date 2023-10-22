@@ -1,6 +1,6 @@
 import { Feature, FeatureProcessorInput } from '../../feature'
 import { Writable } from 'ts-essentials'
-import { isSpecialSymbol, NodeId, RType, visitAst } from '../../../../r-bridge'
+import { isSpecialSymbol, NodeId, RoleInParent, RType, visitAst } from '../../../../r-bridge'
 import { appendStatisticsFile } from '../../../output'
 import { EdgeType } from '../../../../dataflow'
 import { postProcess } from './post-process'
@@ -10,7 +10,7 @@ const initialVariableInfo = {
 	numberOfVariableUses:  0,
 	numberOfDefinitions:   0,
 	numberOfRedefinitions: 0,
-	// we failed to get the type/role, should be 0 :D
+	// we failed to get the type/role, maybe for function call names etc.
 	unknownVariables:      0
 }
 
@@ -38,6 +38,10 @@ function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void 
 
 			if(mayNode === undefined) {
 				info.unknownVariables++
+				appendStatisticsFile(variables.name, 'unknown', [[
+					node.info.fullLexeme ?? node.lexeme,
+					[node.location.start.line, node.location.start.column]
+				] satisfies DefinedVariableInformation ], input.filepath)
 				return
 			}
 

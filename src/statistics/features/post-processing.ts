@@ -8,14 +8,11 @@ export interface SummarizedWithProject<Uniques=Set<string>, Count=number[]> {
 	count:          Count
 }
 
-export function emptySummarizedWithProject<Uniques=Set<string>, Count=number[]>(
-	uniques = new Set(),
-	count = []
-): SummarizedWithProject<Uniques, Count> {
+export function emptySummarizedWithProject(): SummarizedWithProject {
 	return {
-		uniqueProjects: uniques as unknown as Uniques,
-		uniqueFiles:    uniques as unknown as Uniques,
-		count:          count as unknown as Count
+		uniqueProjects: new Set(),
+		uniqueFiles:    new Set(),
+		count:          []
 	}
 }
 

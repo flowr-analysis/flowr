@@ -2,7 +2,6 @@ import fs from 'fs'
 import path from 'path'
 import {
 	ALL_FEATURES,
-	FeatureSelection,
 	FeatureStatistics, FeatureStatisticsWithMeta,
 	MetaStatistics
 } from '../../../../statistics'
@@ -40,6 +39,7 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 			logger(`    Skipping post processing of ${featureName} as no post processing behavior is defined`)
 			continue
 		}
+		logger(`    Post processing of ${featureName}...`)
 
 		if(!fs.existsSync(targetFeature)) {
 			fs.mkdirSync(targetFeature, { recursive: true })

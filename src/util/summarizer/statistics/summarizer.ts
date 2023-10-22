@@ -82,16 +82,27 @@ async function extractArchive(f: string): Promise<Map<string,string>> {
 }
 
 
-const filePrefixRegex = /^([^-]*)---?(.+)\.tar.gz/
+// TODO: standardize
+// due to a redefinition after the initial statistic extraction, we extract the type from the remaining path :D
+// original: /^([^-]*)---?(.+)\.tar.gz/
+const filePrefixRegex = /^[^-]*---?(?<fullname>([^/]+)\/(?<pathtest>.+))\.tar\.gz$/
 /** if it starts with example-, this will return `'example'`, etc. if it starts with '--' this will return `undefined` */
 function identifyExtractionType(path: string): { folder: string, originalFile: string } | undefined  {
-	const match = filePrefixRegex.exec(path)
-	if(match === null) {
+	const match = filePrefixRegex.exec(path.replace(/／/g, '/'))
+	if(match === null || match.groups === undefined) {
 		return undefined
 	}
 	// recover
-	const originalFile = match[2].replace(/／/g, '/')
-	return { folder: match[1] === '' ? 'default' : match[1], originalFile }
+	const originalFile = match.groups.fullname
+	let folder
+	if(match.groups.pathtest.includes('test')) {
+		folder = 'test'
+	} else if(match.groups.pathtest.includes('example')) {
+		folder = 'example'
+	} else {
+		folder = 'default'
+	}
+	return { folder, originalFile }
 }
 
 

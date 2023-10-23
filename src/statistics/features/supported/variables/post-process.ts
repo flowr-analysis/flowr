@@ -12,10 +12,51 @@ import path from 'path'
 import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
 import { readLineByLineSync } from '../../../../util/files'
+import { MergeableRecord } from '../../../../util/objects'
 
 type VariablesPostProcessing = ReplaceKeysForSummary<VariableInfo, SummarizedWithProject>
 
-export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
+function collectUsedVariables(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, config: StatisticsSummarizerConfiguration, outputPath: string) {
+	const used = collectVariableInfoFor(path.join(featureRoot, 'usedVariables.txt'), info, config)
+	writeVariableInfoToCsv(outputPath, 'used-variables.csv', used)
+	// we manually clear these maps to save memory
+	used.clear()
+}
+
+function collectDefinedVariables(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, config: StatisticsSummarizerConfiguration, outputPath: string) {
+	const defined = collectVariableInfoFor(path.join(featureRoot, 'definedVariables.txt'), info, config)
+	writeVariableInfoToCsv(outputPath, 'defined-variables.csv', defined)
+	defined.clear()
+}
+
+function collectRedefinedVariables(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, config: StatisticsSummarizerConfiguration, outputPath: string) {
+	const redefined = collectVariableInfoFor(path.join(featureRoot, 'redefinedVariables.txt'), info, config)
+	writeVariableInfoToCsv(outputPath, 'redefined-variables.csv', redefined)
+	redefined.clear()
+}
+
+function writeVariableCountsToCsv(outputPath: string, collected: MergeableRecord & {
+	numberOfRedefinitions: SummarizedWithProject;
+	unknownVariables:      SummarizedWithProject;
+	numberOfVariableUses:  SummarizedWithProject;
+	numberOfDefinitions:   SummarizedWithProject
+}) {
+	const variablesOutStream = fs.createWriteStream(path.join(outputPath, 'variable-counts.csv'))
+	variablesOutStream.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
+
+	for(const [key, val] of Object.entries(collected)) {
+		if(key === 'unknownVariables') {
+			// they are for function calls etc and in hindsight not a good idea
+			continue
+		}
+		const data = val as SummarizedWithProject
+		const sum = summarizeMeasurement(data.count)
+		variablesOutStream.write(`${JSON.stringify(key)},${data.uniqueProjects.size},${data.uniqueFiles.size},${summarizedMeasurement2Csv(sum)}\n`)
+	}
+	variablesOutStream.close()
+}
+
+function collectInformation(info: Map<string, FeatureStatisticsWithMeta>, config: StatisticsSummarizerConfiguration) {
 	const collected = {} as unknown as VariablesPostProcessing
 	// TODO: outsource this and abstract for all features using it
 	for(const [filepath, data] of info.entries()) {
@@ -32,32 +73,17 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 			}
 		}
 	}
+	return collected
+}
+
+export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
+	const collected = collectInformation(info, config)
 
 	// TODO: abstract away these duplicates?
-	const variablesOutStream = fs.createWriteStream(path.join(outputPath, 'variable-counts.csv'))
-	variablesOutStream.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
-
-	for(const [key, val] of Object.entries(collected)) {
-		if(key === 'unknownVariables') {
-			// they are for function calls etc and in hindsight not a good idea
-			continue
-		}
-		const data = val as SummarizedWithProject
-		const sum = summarizeMeasurement(data.count)
-		variablesOutStream.write(`${JSON.stringify(key)},${data.uniqueProjects.size},${data.uniqueFiles.size},${summarizedMeasurement2Csv(sum)}\n`)
-	}
-	variablesOutStream.close()
-
-	const used = collectVariableInfoFor(path.join(featureRoot, 'usedVariables.txt'), info, config)
-	writeVariableInfoToCsv(outputPath, 'used-variables.csv', used)
-	// we manually clear these maps to save memory
-	used.clear()
-	const defined = collectVariableInfoFor(path.join(featureRoot, 'definedVariables.txt'), info, config)
-	writeVariableInfoToCsv(outputPath, 'defined-variables.csv', defined)
-	defined.clear()
-	const redefined = collectVariableInfoFor(path.join(featureRoot, 'redefinedVariables.txt'), info, config)
-	writeVariableInfoToCsv(outputPath, 'redefined-variables.csv', redefined)
-	redefined.clear()
+	writeVariableCountsToCsv(outputPath, collected)
+	collectUsedVariables(featureRoot, info, config, outputPath)
+	collectDefinedVariables(featureRoot, info, config, outputPath)
+	collectRedefinedVariables(featureRoot, info, config, outputPath)
 }
 
 type VariableInfoMap = Map<string, SummarizedWithProject & { linePercentageInFile: number[][] }>

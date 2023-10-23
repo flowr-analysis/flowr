@@ -81,6 +81,54 @@ function retrieveUsageCombinationCounts(collected: SummarizedAssignmentInfo<numb
 	return result
 }
 
+function writeOperatorCombinationsUsageToCsv(collected: SummarizedAssignmentInfo<number[][], Set<string>>, outputPath: string) {
+	// now to get all projects exhausted with _only_ a given subset (e.g., all projects only using '=')
+	const operators = retrieveUsageCombinationCounts(collected)
+	const out = fs.createWriteStream(path.join(outputPath, 'assignments-assigned-combinations.csv'))
+	out.write('assignment,unique-projects,unique-files\n')
+	for(const [key, val] of operators.entries()) {
+		out.write(`${key},${val.uniqueProjects},${val.uniqueFiles}\n`)
+	}
+	out.close()
+}
+
+function writeAssignmentMetadataToCsv(outputPath: string, collected: SummarizedAssignmentInfo<number[][], Set<string>>) {
+	const out = fs.createWriteStream(path.join(outputPath, 'assignments-meta.csv'))
+	out.write(`kind,${summarizedMeasurement2CsvHeader()}\n`)
+	const summarizedDeepestNesting = summarizeMeasurement(collected.deepestNesting.flat())
+	out.write(`deepest-nesting,${summarizedMeasurement2Csv(summarizedDeepestNesting)}\n`)
+	const summarizedNestedOperatorAssignment = summarizeMeasurement(collected.nestedOperatorAssignment.flat())
+	out.write(`nested-operator-assignment,${summarizedMeasurement2Csv(summarizedNestedOperatorAssignment)}\n`)
+	out.close()
+}
+
+function writeAssignedTypesToCsv(outputPath: string, collected: SummarizedAssignmentInfo<number[][], Set<string>>) {
+	const out = fs.createWriteStream(path.join(outputPath, 'assignments-assigned.csv'))
+	out.write(`kind,name,${summarizedMeasurement2CsvHeader()}\n`)
+	const vals = summarizeCommonSyntaxTypeCounter(collected.assigned)
+	for(const [entryName, values] of Object.entries(vals) as [string, number[][] | Record<string, number[][]>][]) {
+		if(Array.isArray(values)) {
+			out.write(`${JSON.stringify(entryName)},"",${summarizedMeasurement2Csv(summarizeMeasurement(values.flat()))}\n`)
+		} else {
+			for(const [keyName, keyValue] of Object.entries(values)) {
+				out.write(`${JSON.stringify(entryName)},${JSON.stringify(keyName)},${summarizedMeasurement2Csv(summarizeMeasurement(keyValue.flat()))}\n`)
+			}
+		}
+	}
+	out.close()
+}
+
+function writeAssignmentOperatorsToCsv(outputPath: string, collected: SummarizedAssignmentInfo<number[][], Set<string>>) {
+	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'assignments-assignment-operators.csv'))
+	fnOutStream.write(`assignment,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
+	for(const [key, val] of Object.entries(collected.assignmentOperator)) {
+		const { uniqueProjects, uniqueFiles, counts } = val
+		const summarized = summarizedMeasurement2Csv(summarizeMeasurement(counts.flat()))
+		fnOutStream.write(`${JSON.stringify(key)},${uniqueProjects.size},${uniqueFiles.size},${summarized}\n`)
+	}
+	fnOutStream.close()
+}
+
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	const collected: SummarizedAssignmentInfo<number[][], Set<string>> = {
 		assignmentOperator:       {} as Record<string, OperatorInformation<number[][], Set<string>>>,
@@ -96,21 +144,8 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		appendOperators(collected, assignmentInfo.assignmentOperator, filepath, config)
 	}
 
-	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'assignments-assigned.csv'))
-	fnOutStream.write(`assignment,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
-	for(const [key, val] of Object.entries(collected.assignmentOperator)) {
-		const { uniqueProjects, uniqueFiles, counts } = val
-		const summarized = summarizedMeasurement2Csv(summarizeMeasurement(counts.flat()))
-		fnOutStream.write(`${JSON.stringify(key)},${uniqueProjects.size},${uniqueFiles.size},${summarized}\n`)
-	}
-	fnOutStream.close()
-
-	// now to get all projects exhausted with _only_ a given subset (e.g., all projects only using '=')
-	const operators = retrieveUsageCombinationCounts(collected)
-	fs.writeFileSync(path.join(outputPath, 'assignments.json'), JSON.stringify({
-		assigned:                 summarizeCommonSyntaxTypeCounter(collected.assigned),
-		deepestNesting:           summarizeMeasurement(collected.deepestNesting.flat()),
-		nestedOperatorAssignment: summarizeMeasurement(collected.nestedOperatorAssignment.flat()),
-		operators
-	}, jsonReplacer))
+	writeAssignmentOperatorsToCsv(outputPath, collected)
+	writeOperatorCombinationsUsageToCsv(collected, outputPath)
+	writeAssignmentMetadataToCsv(outputPath, collected)
+	writeAssignedTypesToCsv(outputPath, collected)
 }

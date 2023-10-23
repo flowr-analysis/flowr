@@ -60,7 +60,6 @@ function writeSingleOrDoubleEmpty(outputPath: string, key: string, name: string,
 	// name is for fields like number etc. to allow to group multiple entries
 	out.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
 	// TODO: use unique projects and unique files for all in all post processors?
-	console.log(vals)
 	out.write(`"0",${vals.uniqueProjects.size},${vals.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(vals.count))}\n`)
 	out.close()
 }
@@ -75,11 +74,11 @@ function writeSingleOrDoubleBrackets(data: Map<string, SummarizedWithProject | C
 			const out = fs.createWriteStream(path.join(outputPath, `data-access-type-${key}-${name}.csv`))
 			// name is for fields like number etc. to allow to group multiple entries
 			out.write(`kind,name,${summarizedMeasurement2CsvHeader()}\n`)
-			for(const [entryName, vals] of Object.entries(data) as [string, number[][] | Record<string, number[][]>][]) {
-				if(Array.isArray(vals)) {
-					out.write(`${JSON.stringify(entryName)},"",${summarizedMeasurement2Csv(summarizeMeasurement(vals.flat()))}\n`)
+			for(const [entryName, values] of Object.entries(vals) as [string, number[][] | Record<string, number[][]>][]) {
+				if(Array.isArray(values)) {
+					out.write(`${JSON.stringify(entryName)},"",${summarizedMeasurement2Csv(summarizeMeasurement(values.flat()))}\n`)
 				} else {
-					for(const [keyName, keyValue] of Object.entries(vals)) {
+					for(const [keyName, keyValue] of Object.entries(values)) {
 						out.write(`${JSON.stringify(entryName)},${JSON.stringify(keyName)},${summarizedMeasurement2Csv(summarizeMeasurement(keyValue.flat()))}\n`)
 					}
 				}

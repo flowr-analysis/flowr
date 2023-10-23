@@ -45,6 +45,10 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 			fs.mkdirSync(targetFeature, { recursive: true })
 		}
 
+		if(global.gc) {
+			logger(`    [${date2string(new Date())}] Running garbage collection (--expose-gc)`)
+			global.gc()
+		}
 		featureInfo.postProcess(targetPath, metaFeatureInformation, targetFeature, config)
 	}
 }

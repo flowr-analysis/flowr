@@ -87,7 +87,7 @@ function writeOperatorCombinationsUsageToCsv(collected: SummarizedAssignmentInfo
 	const out = fs.createWriteStream(path.join(outputPath, 'assignments-assigned-combinations.csv'))
 	out.write('assignment,unique-projects,unique-files\n')
 	for(const [key, val] of operators.entries()) {
-		out.write(`${key},${val.uniqueProjects},${val.uniqueFiles}\n`)
+		out.write(`${JSON.stringify(key)},${val.uniqueProjects},${val.uniqueFiles}\n`)
 	}
 	out.close()
 }
@@ -105,8 +105,7 @@ function writeAssignmentMetadataToCsv(outputPath: string, collected: SummarizedA
 function writeAssignedTypesToCsv(outputPath: string, collected: SummarizedAssignmentInfo<number[][], Set<string>>) {
 	const out = fs.createWriteStream(path.join(outputPath, 'assignments-assigned.csv'))
 	out.write(`kind,name,${summarizedMeasurement2CsvHeader()}\n`)
-	const vals = summarizeCommonSyntaxTypeCounter(collected.assigned)
-	for(const [entryName, values] of Object.entries(vals) as [string, number[][] | Record<string, number[][]>][]) {
+	for(const [entryName, values] of Object.entries(collected.assigned) as [string, number[][] | Record<string, number[][]>][]) {
 		if(Array.isArray(values)) {
 			out.write(`${JSON.stringify(entryName)},"",${summarizedMeasurement2Csv(summarizeMeasurement(values.flat()))}\n`)
 		} else {

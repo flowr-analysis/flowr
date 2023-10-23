@@ -18,6 +18,7 @@ import {
 	SingleFunctionDefinitionInformation
 } from './defined-functions'
 import { emptySummarizedWithProject, recordFilePath, SummarizedWithProject } from '../../post-processing'
+import { array2bag } from '../../../../util/arrays'
 
 // TODO: summarize all
 interface FunctionDefinitionSummaryInformation<Measurement> {
@@ -148,6 +149,26 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 
 	// TODO: now read from the assigned functions to get the names, finally
 	// TODO: replace other jsons by csv as well
+	const varNames = new Map<string, SummarizedWithProject>()
+	readLineByLineSync(path.join(featureRoot, 'assignedFunctions.txt'), line => {
+		const parsed = JSON.parse(String(line)) as StatisticsOutputFormat<string[]>
+		const [hits, context] = parsed
+		const countsForFile = array2bag(hits)
+		for(const [name, count] of countsForFile.entries()) {
+			let get = varNames.get(name)
+			if(!get) {
+				get = emptySummarizedWithProject()
+				varNames.set(name, get)
+			}
+			addToList(get, count, context ?? '', config)
+		}
+	})
+	const varNamesOut = fs.createWriteStream(path.join(outputPath, 'function-definitions-var-names.csv'))
+	varNamesOut.write(`name,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
+	for(const [key, val] of varNames.entries()) {
+		varNamesOut.write(`${JSON.stringify(key)},${val.uniqueProjects.size},${val.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(val.count))}\n`)
+	}
+	varNamesOut.close()
 }
 
 function emptyFunctionDefinitionSummary() {

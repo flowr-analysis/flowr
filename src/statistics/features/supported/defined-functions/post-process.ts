@@ -4,27 +4,20 @@ import {
 	summarizedMeasurement2CsvHeader
 } from '../../../../util/summarizer/benchmark/data'
 import { MergeableRecord } from '../../../../util/objects'
-import {
-	appendCommonSyntaxTypeCounter,
-	CommonSyntaxTypeCounts,
-	emptyCommonSyntaxTypeCounts,
-	summarizeCommonSyntaxTypeCounter
-} from '../../common-syntax-probability'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
 import { FeatureStatisticsWithMeta } from '../../feature'
 import { readLineByLineSync } from '../../../../util/files'
 import path from 'path'
 import { StatisticsOutputFormat } from '../../../output'
 import fs from 'node:fs'
-import { jsonReplacer } from '../../../../util/json'
 import { date2string } from '../../../../util/time'
 import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
-import { bigint2number } from '../../../../util/numbers'
 import {
 	AllDefinitionsFileBase,
 	FunctionDefinitionInfo,
 	SingleFunctionDefinitionInformation
 } from './defined-functions'
+import { emptySummarizedWithProject, recordFilePath, SummarizedWithProject } from '../../post-processing'
 
 // TODO: summarize all
 interface FunctionDefinitionSummaryInformation<Measurement> {
@@ -69,6 +62,13 @@ function getFnDefCsv(idx: number | string, info: FunctionDefinitionSummaryInform
 		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.linePercentageInFile.flat()))}\n`
 }
 
+function addToList(data: SummarizedWithProject, count: number, filepath: string, config: StatisticsSummarizerConfiguration) {
+	data.count.push(count)
+	if(count > 0) {
+		recordFilePath(data, filepath, config)
+	}
+}
+
 /**
  * Note: the summary does not contain a 0 for each function that is _not_ called by a file. Hence, the minimum can not be 0 (division for mean etc. will still be performed on total file count)
  */
@@ -82,7 +82,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	const mergedSuperDefinitions: FunctionDefinitionSummaryInformation<number[][]> = emptyFunctionDefinitionSummary()
 
 	// we collect only `all-calls`
-	readLineByLineSync(path.join(featureRoot, `${AllDefinitionsFileBase}.txt`), (line, lineNumber) => processNextLine(definitionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionDefinitionInfo[]>, config))
+	readLineByLineSync(path.join(featureRoot, `${AllDefinitionsFileBase}.txt`), (line, lineNumber) => processNextLine(definitionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>, config))
 
 	console.log(`    [${date2string(new Date())}] Defined functions process completed, start to write out function info`)
 
@@ -115,45 +115,32 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 
 	console.log(`    [${date2string(new Date())}] Defined functions reading completed, summarizing info...`)
 
-	const data: DefinedFunctionMetaPostProcessing<number[][]> = {
-		averageCall:    [],
-		nestedCalls:    [],
-		deepestNesting: [],
-		emptyArgs:      [],
-		unnamedCalls:   [],
-		args:           []
+	const data: DefinedFunctionMetaPostProcessing<SummarizedWithProject> = {
+		total:             emptySummarizedWithProject(),
+		lambdasOnly:       emptySummarizedWithProject(),
+		assignedFunctions: emptySummarizedWithProject(),
+		nestedFunctions:   emptySummarizedWithProject(),
+		recursive:         emptySummarizedWithProject(),
+		deepestNesting:    emptySummarizedWithProject()
 	}
-	for(const meta of info.values()) {
+	for(const [filepath, meta] of info.entries()) {
 		const us = meta.definedFunctions as FunctionDefinitionInfo
-		data.averageCall.push([us.allFunctionCalls])
-		data.nestedCalls.push([us.nestedFunctionCalls])
-		data.deepestNesting.push([us.deepestNesting])
-		data.emptyArgs.push([bigint2number(us.args[0] as bigint)])
-		data.unnamedCalls.push([us.unnamedCalls])
-		for(const [i, val] of Object.entries(us.args)) {
-			if(Number(i) !== 0) {
-				let get = data.args[Number(i)] as CommonSyntaxTypeCounts<number[][]> | undefined
-				if(!get) {
-					get = emptyCommonSyntaxTypeCounts(() => [])
-					data.args[Number(i)] = get
-				}
-				appendCommonSyntaxTypeCounter(get, val as CommonSyntaxTypeCounts)
-			}
-		}
+		addToList(data.total, us.total, filepath, config)
+		addToList(data.lambdasOnly, us.lambdasOnly, filepath, config)
+		addToList(data.assignedFunctions, us.assignedFunctions, filepath, config)
+		addToList(data.nestedFunctions, us.nestedFunctions, filepath, config)
+		addToList(data.recursive, us.recursive, filepath, config)
+		addToList(data.deepestNesting, us.deepestNesting, filepath, config)
 	}
 	console.log(`    [${date2string(new Date())}] Defined functions metadata reading completed, summarizing and writing to file`)
 
-	const summarizedEntries = {
-		meta: {
-			averageCall:    summarizeMeasurement(data.averageCall.flat(), info.size),
-			nestedCalls:    summarizeMeasurement(data.nestedCalls.flat(), info.size),
-			deepestNesting: summarizeMeasurement(data.deepestNesting.flat(), info.size),
-			emptyArgs:      summarizeMeasurement(data.emptyArgs.flat(), info.size),
-			unnamedCalls:   summarizeMeasurement(data.unnamedCalls.flat(), info.size),
-			args:           data.args.map(summarizeCommonSyntaxTypeCounter)
-		}
+	const out = fs.createWriteStream(path.join(outputPath, 'function-definitions-meta.csv'))
+	out.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
+	for(const [key, val] of Object.entries(data)) {
+		const data = val as SummarizedWithProject
+		out.write(`${JSON.stringify(key)},${data.uniqueProjects.size},${data.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(data.count))}\n`)
 	}
-	fs.writeFileSync(path.join(outputPath, 'function-calls.json'), JSON.stringify(summarizedEntries, jsonReplacer))
+	out.close()
 }
 
 function emptyFunctionDefinitionSummary() {

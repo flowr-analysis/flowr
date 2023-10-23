@@ -100,14 +100,12 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	console.log(`    [${date2string(new Date())}] Used functions metadata reading completed, summarizing and writing to file`)
 
 	const summarizedEntries = {
-		meta: {
-			averageCall:    summarizeMeasurement(data.averageCall.flat(), info.size),
-			nestedCalls:    summarizeMeasurement(data.nestedCalls.flat(), info.size),
-			deepestNesting: summarizeMeasurement(data.deepestNesting.flat(), info.size),
-			emptyArgs:      summarizeMeasurement(data.emptyArgs.flat(), info.size),
-			unnamedCalls:   summarizeMeasurement(data.unnamedCalls.flat(), info.size),
-			args:           data.args.map(summarizeCommonSyntaxTypeCounter)
-		}
+		averageCall:    summarizeMeasurement(data.averageCall.flat(), info.size),
+		nestedCalls:    summarizeMeasurement(data.nestedCalls.flat(), info.size),
+		deepestNesting: summarizeMeasurement(data.deepestNesting.flat(), info.size),
+		emptyArgs:      summarizeMeasurement(data.emptyArgs.flat(), info.size),
+		unnamedCalls:   summarizeMeasurement(data.unnamedCalls.flat(), info.size),
+		args:           data.args.map(summarizeCommonSyntaxTypeCounter)
 	}
 	fs.writeFileSync(path.join(outputPath, 'function-calls.json'), JSON.stringify(summarizedEntries, jsonReplacer))
 }

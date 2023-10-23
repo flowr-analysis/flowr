@@ -4,7 +4,7 @@ import { MergeableRecord } from '../../../../util/objects'
 import {
 	appendCommonSyntaxTypeCounter,
 	CommonSyntaxTypeCounts,
-	emptyCommonSyntaxTypeCounts, summarizeCommonSyntaxTypeCounter
+	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
 import { AssignmentInfo } from './assignments'
 import { bigint2number } from '../../../../util/numbers'
@@ -14,7 +14,6 @@ import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../.
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
 import { getUniqueCombinationsOfSize } from '../../../../util/arrays'
 import { guard } from '../../../../util/assert'
-import { jsonReplacer } from '../../../../util/json'
 
 interface OperatorInformation<Measurement, Uniques> {
 	uniqueProjects: Uniques

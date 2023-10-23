@@ -8,7 +8,6 @@ import {
 	appendCommonSyntaxTypeCounter,
 	CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts,
-	summarizeCommonSyntaxTypeCounter
 } from '../../common-syntax-probability'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
 import { FeatureStatisticsWithMeta } from '../../feature'
@@ -16,7 +15,6 @@ import { readLineByLineSync } from '../../../../util/files'
 import path from 'path'
 import { StatisticsOutputFormat } from '../../../output'
 import fs from 'node:fs'
-import { jsonReplacer } from '../../../../util/json'
 import { date2string } from '../../../../util/time'
 import { AllCallsFileBase, FunctionCallInformation, FunctionUsageInfo } from './used-functions'
 import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'

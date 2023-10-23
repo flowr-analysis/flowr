@@ -1,6 +1,10 @@
 import { FeatureStatisticsWithMeta } from '../../feature'
 import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
-import { SummarizedMeasurement } from '../../../../util/summarizer/benchmark/data'
+import {
+	SummarizedMeasurement,
+	summarizedMeasurement2Csv,
+	summarizedMeasurement2CsvHeader
+} from '../../../../util/summarizer/benchmark/data'
 import { MergeableRecord } from '../../../../util/objects'
 import {
 	appendCommonSyntaxTypeCounter,
@@ -10,6 +14,9 @@ import {
 import { emptySummarizedWithProject, recordFilePath, SummarizedWithProject } from '../../post-processing'
 import { DataAccessInfo } from './data-access'
 import { bigint2number } from '../../../../util/numbers'
+import fs from 'node:fs'
+import path from 'path'
+import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
 
 interface DataAccessMetaPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
 	singleBracket:         Map<number, Measurement | CommonSyntaxTypeCounts<Measurement>>,
@@ -49,7 +56,7 @@ function summarizeForBracket(dataAccess: Record<number, bigint | CommonSyntaxTyp
 }
 
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
-	const data: DataAccessMetaPostProcessing<SummarizedWithProject> = {
+	const summarize: DataAccessMetaPostProcessing<SummarizedWithProject> = {
 		singleBracket:         new Map(),
 		doubleBracket:         new Map(),
 		chainedOrNestedAccess: emptySummarizedWithProject(),
@@ -59,18 +66,44 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		bySlot:                emptySummarizedWithProject()
 	}
 	// initialize the special 0
-	data.singleBracket.set(0, emptySummarizedWithProject())
-	data.doubleBracket.set(0, emptySummarizedWithProject())
+	summarize.singleBracket.set(0, emptySummarizedWithProject())
+	summarize.doubleBracket.set(0, emptySummarizedWithProject())
 
 	for(const [filepath, value] of info.entries()) {
 		const dataAccess = value.dataAccess as DataAccessInfo
-		addToList(data.chainedOrNestedAccess, dataAccess.chainedOrNestedAccess, filepath, config)
-		addToList(data.longestChain, dataAccess.longestChain, filepath, config)
-		addToList(data.deepestNesting, dataAccess.deepestNesting, filepath, config)
-		addToList(data.byName, dataAccess.byName, filepath, config)
+		addToList(summarize.chainedOrNestedAccess, dataAccess.chainedOrNestedAccess, filepath, config)
+		addToList(summarize.longestChain, dataAccess.longestChain, filepath, config)
+		addToList(summarize.deepestNesting, dataAccess.deepestNesting, filepath, config)
+		addToList(summarize.byName, dataAccess.byName, filepath, config)
 		// TODO: can we get used names etc?
-		addToList(data.bySlot, dataAccess.bySlot, filepath, config)
-		summarizeForBracket(dataAccess.singleBracket, data.singleBracket, filepath, config)
-		summarizeForBracket(dataAccess.doubleBracket, data.doubleBracket, filepath, config)
+		addToList(summarize.bySlot, dataAccess.bySlot, filepath, config)
+		summarizeForBracket(dataAccess.singleBracket, summarize.singleBracket, filepath, config)
+		summarizeForBracket(dataAccess.doubleBracket, summarize.doubleBracket, filepath, config)
 	}
+
+	const metaOut = fs.createWriteStream(path.join(outputPath, 'data-access-meta.csv'))
+	metaOut.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
+
+	for(const [key, value] of Object.entries(summarize)) {
+		const data = value as SummarizedWithProject | CommonSyntaxTypeCounts<number[][]>
+		if('uniqueProjects' in data) {
+			metaOut.write(`${JSON.stringify(key)},${data.uniqueProjects.size},${data.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(data.count))}\n`)
+			continue
+		}
+		// new file for each :D -- TODO: unify again!
+		const out = fs.createWriteStream(path.join(outputPath, `data-access-type-${key}.csv`))
+		// name is for fields like number etc. to allow to group multiple entries
+		out.write(`kind,name,${summarizedMeasurement2CsvHeader()}\n`)
+		for(const [name, vals] of Object.entries(data) as [string, number[][] | Record<string, number[][]>][]) {
+			if(Array.isArray(vals)) {
+				out.write(`${JSON.stringify(name)},"",${summarizedMeasurement2Csv(summarizeMeasurement(vals.flat()))}\n`)
+			} else {
+				for(const [keyName, keyValue] of Object.entries(vals)) {
+					out.write(`${JSON.stringify(name)},${JSON.stringify(keyName)},${summarizedMeasurement2Csv(summarizeMeasurement(keyValue.flat()))}\n`)
+				}
+			}
+		}
+		out.close()
+	}
+	metaOut.close()
 }

@@ -137,18 +137,7 @@ function retrieveMetaInformation(info: Map<string, FeatureStatisticsWithMeta>, c
 	out.close()
 }
 
-/**
- * Note: the summary does not contain a 0 for each function that is _not_ called by a file. Hence, the minimum can not be 0 (division for mean etc. will still be performed on total file count)
- */
-export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
-	// each number[][] contains a 'number[]' per file
-	retrievePerFileDefinitionInformation(featureRoot, info, config, outputPath)
-
-	console.log(`    [${date2string(new Date())}] Defined functions reading completed, summarizing info...`)
-	retrieveMetaInformation(info, config, outputPath)
-
-	// TODO: now read from the assigned functions to get the names, finally
-	// TODO: replace other jsons by csv as well
+function retrieveAssignedFunctionNames(featureRoot: string, config: StatisticsSummarizerConfiguration, outputPath: string) {
 	const varNames = new Map<string, SummarizedWithProject>()
 	readLineByLineSync(path.join(featureRoot, 'assignedFunctions.txt'), line => {
 		const parsed = JSON.parse(String(line)) as StatisticsOutputFormat<string[]>
@@ -169,6 +158,18 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		varNamesOut.write(`${JSON.stringify(key)},${val.uniqueProjects.size},${val.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(val.count))}\n`)
 	}
 	varNamesOut.close()
+}
+
+/**
+ * Note: the summary does not contain a 0 for each function that is _not_ called by a file. Hence, the minimum can not be 0 (division for mean etc. will still be performed on total file count)
+ */
+export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
+	// each number[][] contains a 'number[]' per file
+	retrievePerFileDefinitionInformation(featureRoot, info, config, outputPath)
+
+	console.log(`    [${date2string(new Date())}] Defined functions reading completed, summarizing info...`)
+	retrieveMetaInformation(info, config, outputPath)
+	retrieveAssignedFunctionNames(featureRoot, config, outputPath)
 }
 
 function emptyFunctionDefinitionSummary() {

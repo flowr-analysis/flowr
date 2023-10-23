@@ -63,7 +63,7 @@ function visitIfThenElse(info: ControlflowInfo, input: FeatureProcessorInput): v
 }
 
 
-export const controlFlow: Feature<ControlflowInfo> = {
+export const controlflow: Feature<ControlflowInfo> = {
 	name:        'Controlflow',
 	description: 'Deals with if-then-else and switch-case',
 

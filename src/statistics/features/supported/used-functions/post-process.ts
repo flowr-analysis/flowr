@@ -64,6 +64,18 @@ function retrieveFunctionCallInformation(featureRoot: string, info: Map<string, 
 	fnOutStream.close()
 }
 
+function writeFunctionCallsMetaInformationToCsv(outputPath: string, data: UsedFunctionMetaPostProcessing<number[][]>) {
+	const out = fs.createWriteStream(path.join(outputPath, 'function-calls-meta.csv'))
+	// TODO: make this generic
+	out.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
+	out.write(`average-call,${summarizedMeasurement2Csv(summarizeMeasurement(data.averageCall.flat()))}\n`)
+	out.write(`nested-calls,${summarizedMeasurement2Csv(summarizeMeasurement(data.nestedCalls.flat()))}\n`)
+	out.write(`deepest-nesting,${summarizedMeasurement2Csv(summarizeMeasurement(data.deepestNesting.flat()))}\n`)
+	out.write(`empty-args,${summarizedMeasurement2Csv(summarizeMeasurement(data.emptyArgs.flat()))}\n`)
+	out.write(`unnamed-calls,${summarizedMeasurement2Csv(summarizeMeasurement(data.unnamedCalls.flat()))}\n`)
+	out.close()
+}
+
 function retrieveFunctionCallMetaInformation(info: Map<string, FeatureStatisticsWithMeta>, outputPath: string) {
 	const data: UsedFunctionMetaPostProcessing<number[][]> = {
 		averageCall:    [],
@@ -92,16 +104,27 @@ function retrieveFunctionCallMetaInformation(info: Map<string, FeatureStatistics
 		}
 	}
 	console.log(`    [${date2string(new Date())}] Used functions metadata reading completed, summarizing and writing to file`)
+	writeFunctionCallsMetaInformationToCsv(outputPath, data)
 
-	const summarizedEntries = {
-		averageCall:    summarizeMeasurement(data.averageCall.flat(), info.size),
-		nestedCalls:    summarizeMeasurement(data.nestedCalls.flat(), info.size),
-		deepestNesting: summarizeMeasurement(data.deepestNesting.flat(), info.size),
-		emptyArgs:      summarizeMeasurement(data.emptyArgs.flat(), info.size),
-		unnamedCalls:   summarizeMeasurement(data.unnamedCalls.flat(), info.size),
-		args:           data.args.map(summarizeCommonSyntaxTypeCounter)
+	for(const [index, arg] of data.args.entries()) {
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+		if(!arg) {
+			// we treat the first/0-argument entry separate for legacy reasons
+			continue
+		}
+		const out = fs.createWriteStream(path.join(outputPath, `function-calls-arg-${index}.csv`))
+		out.write(`kind,name,${summarizedMeasurement2CsvHeader()}\n`)
+		for(const [name, vals] of Object.entries(arg) as [string, number[][] | Record<string, number[][]>][]) {
+			if(Array.isArray(vals)) {
+				out.write(`${JSON.stringify(name)},"",${summarizedMeasurement2Csv(summarizeMeasurement(vals.flat()))}\n`)
+			} else {
+				for(const [keyName, keyValue] of Object.entries(vals)) {
+					out.write(`${JSON.stringify(name)},${JSON.stringify(keyName)},${summarizedMeasurement2Csv(summarizeMeasurement(keyValue.flat()))}\n`)
+				}
+			}
+		}
+		out.close()
 	}
-	fs.writeFileSync(path.join(outputPath, 'function-calls.json'), JSON.stringify(summarizedEntries, jsonReplacer))
 }
 
 /**
@@ -109,8 +132,6 @@ function retrieveFunctionCallMetaInformation(info: Map<string, FeatureStatistics
  */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	retrieveFunctionCallInformation(featureRoot, info, config, outputPath)
-
-
 	console.log(`    [${date2string(new Date())}] Used functions reading completed, summarizing info...`)
 	retrieveFunctionCallMetaInformation(info, outputPath)
 }

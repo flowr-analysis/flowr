@@ -1,13 +1,14 @@
-import { Feature, FeatureProcessorInput } from '../feature'
+import { Feature, FeatureProcessorInput } from '../../feature'
 import { Writable } from 'ts-essentials'
-import { NodeId, RNodeWithParent, RType, visitAst, RoleInParent, rolesOfParents } from '../../../r-bridge'
-import { assertUnreachable, guard } from '../../../util/assert'
-import { appendStatisticsFile } from '../../output'
+import { NodeId, RNodeWithParent, RType, visitAst, RoleInParent, rolesOfParents } from '../../../../r-bridge'
+import { assertUnreachable, guard } from '../../../../util/assert'
+import { appendStatisticsFile } from '../../../output'
 import {
 	CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts
-} from '../common-syntax-probability'
+} from '../../common-syntax-probability'
+import { postProcess } from './post-process'
 
 const initialDataAccessInfo = {
 	// for the nth argument, how many of them are constant etc.
@@ -123,5 +124,6 @@ export const dataAccess: Feature<DataAccessInfo> = {
 		visitAccess(existing, input)
 		return existing
 	},
-	initialValue: initialDataAccessInfo
+	initialValue: initialDataAccessInfo,
+	postProcess:  postProcess
 }

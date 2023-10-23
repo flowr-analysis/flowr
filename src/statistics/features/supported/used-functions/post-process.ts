@@ -24,22 +24,14 @@ import { bigint2number } from '../../../../util/numbers'
 
 type FunctionCallSummaryInformation<Measurement, Uniques=number> = [numOfUniqueProjects: Uniques, numOfUniqueFiles: Uniques, total: Measurement, arguments: Measurement, linePercentageInFile: Measurement]
 // during the collection phase this should be a map using an array to collect
-interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
-	/**
-	 * maps fn-name (including namespace) to number of arguments and their location (the number of elements in the array give the number of total call)
-	 * we use tuples to reduce the memory!
-	 * A function that is defined within the file is _always_ decorated with the filename (as second array element)!
-	 */
-	functionCallsPerFile: Map<string|undefined, FunctionCallSummaryInformation<Measurement, Set<string>>>
-	meta: {
-		averageCall:    Measurement
-		emptyArgs:      Measurement
-		nestedCalls:    Measurement
-		deepestNesting: Measurement
-		unnamedCalls:   Measurement
-		// the first entry is for 1 argument, the second for the two arguments (the second,....)
-		args:	          CommonSyntaxTypeCounts<Measurement>[]
-	}
+interface UsedFunctionMetaPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
+	averageCall:    Measurement
+	emptyArgs:      Measurement
+	nestedCalls:    Measurement
+	deepestNesting: Measurement
+	unnamedCalls:   Measurement
+	// the first entry is for 1 argument, the second for the two arguments (the second,....)
+	args:	          CommonSyntaxTypeCounts<Measurement>[]
 }
 
 /**
@@ -47,6 +39,11 @@ interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends 
  */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	// each number[][] contains a 'number[]' per file
+	/**
+	 * maps fn-name (including namespace) to number of arguments and their location (the number of elements in the array give the number of total call)
+	 * we use tuples to reduce the memory!
+	 * A function that is defined within the file is _always_ decorated with the filename (as second array element)!
+	 */
 	const functionsPerFile = new Map<string | undefined, FunctionCallSummaryInformation<number[][], Set<string>>>()
 
 
@@ -74,30 +71,27 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 
 	console.log(`    [${date2string(new Date())}] Used functions reading completed, summarizing info...`)
 
-	const data: UsedFunctionPostProcessing<number[][]> = {
-		functionCallsPerFile: new Map(),
-		meta:                 {
-			averageCall:    [],
-			nestedCalls:    [],
-			deepestNesting: [],
-			emptyArgs:      [],
-			unnamedCalls:   [],
-			args:           []
-		}
+	const data: UsedFunctionMetaPostProcessing<number[][]> = {
+		averageCall:    [],
+		nestedCalls:    [],
+		deepestNesting: [],
+		emptyArgs:      [],
+		unnamedCalls:   [],
+		args:           []
 	}
 	for(const meta of info.values()) {
 		const us = meta.usedFunctions as FunctionUsageInfo
-		data.meta.averageCall.push([us.allFunctionCalls])
-		data.meta.nestedCalls.push([us.nestedFunctionCalls])
-		data.meta.deepestNesting.push([us.deepestNesting])
-		data.meta.emptyArgs.push([bigint2number(us.args[0] as bigint)])
-		data.meta.unnamedCalls.push([us.unnamedCalls])
+		data.averageCall.push([us.allFunctionCalls])
+		data.nestedCalls.push([us.nestedFunctionCalls])
+		data.deepestNesting.push([us.deepestNesting])
+		data.emptyArgs.push([bigint2number(us.args[0] as bigint)])
+		data.unnamedCalls.push([us.unnamedCalls])
 		for(const [i, val] of Object.entries(us.args)) {
 			if(Number(i) !== 0) {
-				let get = data.meta.args[Number(i)] as CommonSyntaxTypeCounts<number[][]> | undefined
+				let get = data.args[Number(i)] as CommonSyntaxTypeCounts<number[][]> | undefined
 				if(!get) {
 					get = emptyCommonSyntaxTypeCounts(() => [])
-					data.meta.args[Number(i)] = get
+					data.args[Number(i)] = get
 				}
 				appendCommonSyntaxTypeCounter(get, val as CommonSyntaxTypeCounts)
 			}
@@ -107,12 +101,12 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 
 	const summarizedEntries = {
 		meta: {
-			averageCall:    summarizeMeasurement(data.meta.averageCall.flat(), info.size),
-			nestedCalls:    summarizeMeasurement(data.meta.nestedCalls.flat(), info.size),
-			deepestNesting: summarizeMeasurement(data.meta.deepestNesting.flat(), info.size),
-			emptyArgs:      summarizeMeasurement(data.meta.emptyArgs.flat(), info.size),
-			unnamedCalls:   summarizeMeasurement(data.meta.unnamedCalls.flat(), info.size),
-			args:           data.meta.args.map(summarizeCommonSyntaxTypeCounter)
+			averageCall:    summarizeMeasurement(data.averageCall.flat(), info.size),
+			nestedCalls:    summarizeMeasurement(data.nestedCalls.flat(), info.size),
+			deepestNesting: summarizeMeasurement(data.deepestNesting.flat(), info.size),
+			emptyArgs:      summarizeMeasurement(data.emptyArgs.flat(), info.size),
+			unnamedCalls:   summarizeMeasurement(data.unnamedCalls.flat(), info.size),
+			args:           data.args.map(summarizeCommonSyntaxTypeCounter)
 		}
 	}
 	fs.writeFileSync(path.join(outputPath, 'function-calls.json'), JSON.stringify(summarizedEntries, jsonReplacer))

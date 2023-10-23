@@ -34,19 +34,13 @@ export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	other:        Record<string, Measurement>
 }
 
-export function emptyCommonSyntaxTypeCounts<T=bigint>(init: T = 0n as T): CommonSyntaxTypeCounts<T> {
-	let get
-	if(typeof init === 'object') {
-		get = () => JSON.parse(JSON.stringify(init)) as T
-	} else {
-		get = () => init
-	}
+export function emptyCommonSyntaxTypeCounts<T=bigint>(init: () => T = () => 0n as T): CommonSyntaxTypeCounts<T> {
 	return {
-		total:        get(),
-		multiple:     get(),
-		empty:        get(),
-		withArgument: get(),
-		noValue:      get(),
+		total:        init(),
+		multiple:     init(),
+		empty:        init(),
+		withArgument: init(),
+		noValue:      init(),
 		singleVar:    {},
 		number:       {},
 		integer:      {},
@@ -54,7 +48,7 @@ export function emptyCommonSyntaxTypeCounts<T=bigint>(init: T = 0n as T): Common
 		string:       {},
 		logical:      {} as Record<typeof RTrue | typeof RFalse, T>,
 		call:         {},
-		unnamedCall:  get(),
+		unnamedCall:  init(),
 		binOp:        {},
 		unaryOp:      {},
 		other:        {}

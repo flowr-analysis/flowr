@@ -84,7 +84,7 @@ function retrieveUsageCombinationCounts(collected: SummarizedAssignmentInfo<numb
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	const collected: SummarizedAssignmentInfo<number[][], Set<string>> = {
 		assignmentOperator:       {} as Record<string, OperatorInformation<number[][], Set<string>>>,
-		assigned:                 emptyCommonSyntaxTypeCounts([]),
+		assigned:                 emptyCommonSyntaxTypeCounts(() => []),
 		deepestNesting:           [],
 		nestedOperatorAssignment: []
 	}

@@ -73,7 +73,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 			if(Number(i) !== 0) {
 				let get = data.meta.args[Number(i)] as CommonSyntaxTypeCounts<number[][]> | undefined
 				if(!get) {
-					get = emptyCommonSyntaxTypeCounts([])
+					get = emptyCommonSyntaxTypeCounts(() => [])
 					data.meta.args[Number(i)] = get
 				}
 				appendCommonSyntaxTypeCounter(get, val as CommonSyntaxTypeCounts)

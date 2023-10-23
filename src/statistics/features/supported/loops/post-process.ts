@@ -20,13 +20,13 @@ type LoopInfoPostProcess = MergeableRecord & {
 
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	const collected: LoopInfoPostProcess = {
-		forLoops:               emptyCommonSyntaxTypeCounts([]),
-		forLoopVar:             emptyCommonSyntaxTypeCounts([]),
-		forBody:                emptyCommonSyntaxTypeCounts([]),
-		whileLoops:             emptyCommonSyntaxTypeCounts([]),
-		whileBody:              emptyCommonSyntaxTypeCounts([]),
+		forLoops:               emptyCommonSyntaxTypeCounts(() => []),
+		forLoopVar:             emptyCommonSyntaxTypeCounts(() => []),
+		forBody:                emptyCommonSyntaxTypeCounts(() => []),
+		whileLoops:             emptyCommonSyntaxTypeCounts(() => []),
+		whileBody:              emptyCommonSyntaxTypeCounts(() => []),
 		repeatLoops:            emptySummarizedWithProject(),
-		repeatBody:             emptyCommonSyntaxTypeCounts([]),
+		repeatBody:             emptyCommonSyntaxTypeCounts(() => []),
 		breakStatements:        emptySummarizedWithProject(),
 		nextStatements:         emptySummarizedWithProject(),
 		implicitLoops:          emptySummarizedWithProject(),

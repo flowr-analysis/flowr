@@ -6,12 +6,11 @@ import { MergeableRecord } from '../../../../util/objects'
 import {
 	appendCommonSyntaxTypeCounter,
 	CommonSyntaxTypeCounts,
-	emptyCommonSyntaxTypeCounts, summarizeCommonSyntaxTypeCounter
+	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
 import { bigint2number } from '../../../../util/numbers'
 import path from 'path'
 import fs from 'node:fs'
-import { jsonReplacer } from '../../../../util/json'
 import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
 
@@ -49,6 +48,9 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 			}
 		}
 	}
+
+	console.log(collected.forLoops.total)
+	console.log(collected.forLoops.multiple)
 
 	const metaOut = fs.createWriteStream(path.join(outputPath, 'loops-meta.csv'))
 	metaOut.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)

@@ -132,14 +132,10 @@ export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ..
 
 function appendRecord(a: Record<string, number[][] | undefined>, b: Record<string, bigint>): void {
 	for(const [key, val] of Object.entries(b)) {
-		let effectiveKey = key
-		if(effectiveKey.length > 20) {
-			effectiveKey = effectiveKey.slice(0, 20) + '...'
-		}
-		const get = a[effectiveKey]
+		const get = a[key]
 		// we guard with array to guard against methods like `toString` which are given in js
 		if(!get || !Array.isArray(get)) {
-			a[effectiveKey] = [[bigint2number(val)]]
+			a[key] = [[bigint2number(val)]]
 			continue
 		}
 		get.push([bigint2number(val)])

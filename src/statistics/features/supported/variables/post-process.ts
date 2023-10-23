@@ -50,10 +50,14 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 
 	const used = collectVariableInfoFor(path.join(featureRoot, 'usedVariables.txt'), info, config)
 	writeVariableInfoToCsv(outputPath, 'used-variables.csv', used)
+	// we manually clear these maps to save memory
+	used.clear()
 	const defined = collectVariableInfoFor(path.join(featureRoot, 'definedVariables.txt'), info, config)
 	writeVariableInfoToCsv(outputPath, 'defined-variables.csv', defined)
+	defined.clear()
 	const redefined = collectVariableInfoFor(path.join(featureRoot, 'redefinedVariables.txt'), info, config)
 	writeVariableInfoToCsv(outputPath, 'redefined-variables.csv', redefined)
+	redefined.clear()
 }
 
 type VariableInfoMap = Map<string, SummarizedWithProject & { linePercentageInFile: number[][] }>

@@ -34,10 +34,7 @@ interface UsedFunctionMetaPostProcessing<Measurement=SummarizedMeasurement> exte
 	args:	          CommonSyntaxTypeCounts<Measurement>[]
 }
 
-/**
- * Note: the summary does not contain a 0 for each function that is _not_ called by a file. Hence, the minimum can not be 0 (division for mean etc. will still be performed on total file count)
- */
-export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
+function retrieveFunctionCallInformation(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, config: StatisticsSummarizerConfiguration, outputPath: string) {
 	// each number[][] contains a 'number[]' per file
 	/**
 	 * maps fn-name (including namespace) to number of arguments and their location (the number of elements in the array give the number of total call)
@@ -65,12 +62,9 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		fnOutStream.write(`${JSON.stringify(key ?? 'unknown')},${uniqueProjects.size},${uniqueFiles.size},${summarizedMeasurement2Csv(totalSum)},${summarizedMeasurement2Csv(argsSum)},${summarizedMeasurement2Csv(lineFracSum)}\n`)
 	}
 	fnOutStream.close()
-	// we do no longer need the given information!
-	functionsPerFile.clear()
+}
 
-
-	console.log(`    [${date2string(new Date())}] Used functions reading completed, summarizing info...`)
-
+function retrieveFunctionCallMetaInformation(info: Map<string, FeatureStatisticsWithMeta>, outputPath: string) {
 	const data: UsedFunctionMetaPostProcessing<number[][]> = {
 		averageCall:    [],
 		nestedCalls:    [],
@@ -108,6 +102,17 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		args:           data.args.map(summarizeCommonSyntaxTypeCounter)
 	}
 	fs.writeFileSync(path.join(outputPath, 'function-calls.json'), JSON.stringify(summarizedEntries, jsonReplacer))
+}
+
+/**
+ * Note: the summary does not contain a 0 for each function that is _not_ called by a file. Hence, the minimum can not be 0 (division for mean etc. will still be performed on total file count)
+ */
+export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
+	retrieveFunctionCallInformation(featureRoot, info, config, outputPath)
+
+
+	console.log(`    [${date2string(new Date())}] Used functions reading completed, summarizing info...`)
+	retrieveFunctionCallMetaInformation(info, outputPath)
 }
 
 function processNextLine(data: Map<string | undefined, FunctionCallSummaryInformation<number[][], Set<string>>>, lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<FunctionCallInformation[]>, config: StatisticsSummarizerConfiguration): void {

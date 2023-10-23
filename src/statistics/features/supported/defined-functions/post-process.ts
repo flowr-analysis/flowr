@@ -20,7 +20,6 @@ import {
 import { emptySummarizedWithProject, recordFilePath, SummarizedWithProject } from '../../post-processing'
 import { array2bag } from '../../../../util/arrays'
 
-// TODO: summarize all
 interface FunctionDefinitionSummaryInformation<Measurement> {
 	total:      Measurement,
 	parameters: Measurement,
@@ -79,7 +78,7 @@ function retrievePerFileDefinitionInformation(featureRoot: string, info: Map<str
 	const mergedSuperDefinitions: FunctionDefinitionSummaryInformation<number[]> = emptyFunctionDefinitionSummary()
 
 	// we collect only `all-calls`
-	readLineByLineSync(path.join(featureRoot, `${AllDefinitionsFileBase}.txt`), (line, lineNumber) => processNextLine(definitionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>, config))
+	readLineByLineSync(path.join(featureRoot, `${AllDefinitionsFileBase}.txt`), (line, lineNumber) => processNextLine(definitionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>))
 
 	console.log(`    [${date2string(new Date())}] Defined functions process completed, start to write out function info`)
 
@@ -193,7 +192,7 @@ function emptyFunctionDefinitionSummary() {
 	}
 }
 
-function processNextLine(data: FunctionDefinitionSummaryInformation<number[]>[], lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>, config: StatisticsSummarizerConfiguration): void {
+function processNextLine(data: FunctionDefinitionSummaryInformation<number[]>[], lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>): void {
 	if(lineNumber % 2_500 === 0) {
 		console.log(`    [${date2string(new Date())}] Defined functions processed ${lineNumber} lines`)
 	}

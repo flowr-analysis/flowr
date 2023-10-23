@@ -49,9 +49,6 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		}
 	}
 
-	console.log(collected.forLoops.total)
-	console.log(collected.forLoops.multiple)
-
 	const metaOut = fs.createWriteStream(path.join(outputPath, 'loops-meta.csv'))
 	metaOut.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
 	for(const [key, val] of Object.entries(collected)) {

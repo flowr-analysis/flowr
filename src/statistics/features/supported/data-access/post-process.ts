@@ -85,25 +85,37 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	metaOut.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
 
 	for(const [key, value] of Object.entries(summarize)) {
-		const data = value as SummarizedWithProject | CommonSyntaxTypeCounts<number[][]>
+		const data = value as SummarizedWithProject | Map<string, SummarizedWithProject | CommonSyntaxTypeCounts<SummarizedWithProject>>
 		if('uniqueProjects' in data) {
 			metaOut.write(`${JSON.stringify(key)},${data.uniqueProjects.size},${data.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(data.count))}\n`)
 			continue
 		}
-		// new file for each :D -- TODO: unify again!
-		const out = fs.createWriteStream(path.join(outputPath, `data-access-type-${key}.csv`))
-		// name is for fields like number etc. to allow to group multiple entries
-		out.write(`kind,name,${summarizedMeasurement2CsvHeader()}\n`)
-		for(const [name, vals] of Object.entries(data) as [string, number[][] | Record<string, number[][]>][]) {
-			if(Array.isArray(vals)) {
-				out.write(`${JSON.stringify(name)},"",${summarizedMeasurement2Csv(summarizeMeasurement(vals.flat()))}\n`)
+		for(const [name, vals] of data.entries()) {
+			// the 0 column
+			if('uniqueProjects' in vals) {
+				const out = fs.createWriteStream(path.join(outputPath, `data-access-type-${key}-${name}.csv`))
+				// name is for fields like number etc. to allow to group multiple entries
+				out.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
+				// TODO: use unique projects and unique files for all in all post processors?
+				out.write(`"0",${vals.uniqueProjects.size},${vals.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(vals.count))}\n`)
+				out.close()
 			} else {
-				for(const [keyName, keyValue] of Object.entries(vals)) {
-					out.write(`${JSON.stringify(name)},${JSON.stringify(keyName)},${summarizedMeasurement2Csv(summarizeMeasurement(keyValue.flat()))}\n`)
+				// non-0-column
+				const out = fs.createWriteStream(path.join(outputPath, `data-access-type-${key}-${name}.csv`))
+				// name is for fields like number etc. to allow to group multiple entries
+				out.write(`kind,name,${summarizedMeasurement2CsvHeader()}\n`)
+				for(const [entryName, vals] of Object.entries(data) as [string, number[][] | Record<string, number[][]>][]) {
+					if(Array.isArray(vals)) {
+						out.write(`${JSON.stringify(entryName)},"",${summarizedMeasurement2Csv(summarizeMeasurement(vals.flat()))}\n`)
+					} else {
+						for(const [keyName, keyValue] of Object.entries(vals)) {
+							out.write(`${JSON.stringify(entryName)},${JSON.stringify(keyName)},${summarizedMeasurement2Csv(summarizeMeasurement(keyValue.flat()))}\n`)
+						}
+					}
 				}
+				out.close()
 			}
 		}
-		out.close()
 	}
 	metaOut.close()
 }

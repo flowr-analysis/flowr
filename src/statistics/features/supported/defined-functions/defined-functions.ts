@@ -1,17 +1,18 @@
-import { Feature, FeatureProcessorInput } from '../feature'
-import { appendStatisticsFile } from '../../output'
+import { Feature, FeatureProcessorInput } from '../../feature'
+import { appendStatisticsFile } from '../../../output'
 import { Writable } from 'ts-essentials'
-import { SourcePosition } from '../../../util/range'
-import { MergeableRecord } from '../../../util/objects'
+import { SourcePosition } from '../../../../util/range'
+import { MergeableRecord } from '../../../../util/objects'
 import {
 	ParentInformation,
 	RFunctionDefinition,
 	RNodeWithParent,
 	RType,
 	visitAst
-} from '../../../r-bridge'
-import { EdgeType } from '../../../dataflow'
-import { guard, isNotUndefined } from '../../../util/assert'
+} from '../../../../r-bridge'
+import { EdgeType } from '../../../../dataflow'
+import { guard, isNotUndefined } from '../../../../util/assert'
+import { postProcess } from './post-process'
 
 const initialFunctionDefinitionInfo = {
 	/** all, anonymous, assigned, non-assigned, ... */
@@ -176,5 +177,6 @@ export const definedFunctions: Feature<FunctionDefinitionInfo> = {
 		visitDefinitions(existing, input)
 		return existing
 	},
-	initialValue: initialFunctionDefinitionInfo
+	initialValue: initialFunctionDefinitionInfo,
+	postProcess:  postProcess
 }

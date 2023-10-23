@@ -43,7 +43,7 @@ function summarizeForBracket(dataAccess: Record<number, bigint | CommonSyntaxTyp
 			// it is for argument 0
 			const sumGet = get as SummarizedWithProject
 			const numericVal = bigint2number(val)
-			sumGet.count.push()
+			sumGet.count.push(numericVal)
 			if(numericVal > 0) {
 				recordFilePath(sumGet, filepath, config)
 			}
@@ -52,6 +52,40 @@ function summarizeForBracket(dataAccess: Record<number, bigint | CommonSyntaxTyp
 		}
 		// TODO: update similar to other sets?
 		data.set(numericKey, get as SummarizedWithProject)
+	}
+}
+
+function writeSingleOrDoubleEmpty(outputPath: string, key: string, name: string, vals: SummarizedWithProject) {
+	const out = fs.createWriteStream(path.join(outputPath, `data-access-type-${key}-${name}.csv`))
+	// name is for fields like number etc. to allow to group multiple entries
+	out.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
+	// TODO: use unique projects and unique files for all in all post processors?
+	console.log(vals)
+	out.write(`"0",${vals.uniqueProjects.size},${vals.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(vals.count))}\n`)
+	out.close()
+}
+
+function writeSingleOrDoubleBrackets(data: Map<string, SummarizedWithProject | CommonSyntaxTypeCounts<SummarizedWithProject>>, outputPath: string, key: string) {
+	for(const [name, vals] of data.entries()) {
+		// the 0 column
+		if('uniqueProjects' in vals) {
+			writeSingleOrDoubleEmpty(outputPath, key, name, vals)
+		} else {
+			// non-0-column
+			const out = fs.createWriteStream(path.join(outputPath, `data-access-type-${key}-${name}.csv`))
+			// name is for fields like number etc. to allow to group multiple entries
+			out.write(`kind,name,${summarizedMeasurement2CsvHeader()}\n`)
+			for(const [entryName, vals] of Object.entries(data) as [string, number[][] | Record<string, number[][]>][]) {
+				if(Array.isArray(vals)) {
+					out.write(`${JSON.stringify(entryName)},"",${summarizedMeasurement2Csv(summarizeMeasurement(vals.flat()))}\n`)
+				} else {
+					for(const [keyName, keyValue] of Object.entries(vals)) {
+						out.write(`${JSON.stringify(entryName)},${JSON.stringify(keyName)},${summarizedMeasurement2Csv(summarizeMeasurement(keyValue.flat()))}\n`)
+					}
+				}
+			}
+			out.close()
+		}
 	}
 }
 
@@ -90,32 +124,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 			metaOut.write(`${JSON.stringify(key)},${data.uniqueProjects.size},${data.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(data.count))}\n`)
 			continue
 		}
-		for(const [name, vals] of data.entries()) {
-			// the 0 column
-			if('uniqueProjects' in vals) {
-				const out = fs.createWriteStream(path.join(outputPath, `data-access-type-${key}-${name}.csv`))
-				// name is for fields like number etc. to allow to group multiple entries
-				out.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
-				// TODO: use unique projects and unique files for all in all post processors?
-				out.write(`"0",${vals.uniqueProjects.size},${vals.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(vals.count))}\n`)
-				out.close()
-			} else {
-				// non-0-column
-				const out = fs.createWriteStream(path.join(outputPath, `data-access-type-${key}-${name}.csv`))
-				// name is for fields like number etc. to allow to group multiple entries
-				out.write(`kind,name,${summarizedMeasurement2CsvHeader()}\n`)
-				for(const [entryName, vals] of Object.entries(data) as [string, number[][] | Record<string, number[][]>][]) {
-					if(Array.isArray(vals)) {
-						out.write(`${JSON.stringify(entryName)},"",${summarizedMeasurement2Csv(summarizeMeasurement(vals.flat()))}\n`)
-					} else {
-						for(const [keyName, keyValue] of Object.entries(vals)) {
-							out.write(`${JSON.stringify(entryName)},${JSON.stringify(keyName)},${summarizedMeasurement2Csv(summarizeMeasurement(keyValue.flat()))}\n`)
-						}
-					}
-				}
-				out.close()
-			}
-		}
+		writeSingleOrDoubleBrackets(data, outputPath, key)
 	}
 	metaOut.close()
 }

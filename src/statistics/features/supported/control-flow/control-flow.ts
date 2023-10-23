@@ -1,7 +1,8 @@
-import { Feature, FeatureProcessorInput } from '../feature'
+import { Feature, FeatureProcessorInput } from '../../feature'
 import { Writable } from 'ts-essentials'
-import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../common-syntax-probability'
-import { ParentInformation, RExpressionList, RNodeWithParent, RType, visitAst } from '../../../r-bridge'
+import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../../common-syntax-probability'
+import { ParentInformation, RExpressionList, RNodeWithParent, RType, visitAst } from '../../../../r-bridge'
+import { postProcess } from './post-process'
 
 const initialControlflowInfo = {
 	ifThen:           emptyCommonSyntaxTypeCounts(),
@@ -62,7 +63,7 @@ function visitIfThenElse(info: ControlflowInfo, input: FeatureProcessorInput): v
 }
 
 
-export const controlflow: Feature<ControlflowInfo> = {
+export const controlFlow: Feature<ControlflowInfo> = {
 	name:        'Controlflow',
 	description: 'Deals with if-then-else and switch-case',
 
@@ -70,5 +71,6 @@ export const controlflow: Feature<ControlflowInfo> = {
 		visitIfThenElse(existing, input)
 		return existing
 	},
-	initialValue: initialControlflowInfo
+	initialValue: initialControlflowInfo,
+	postProcess:  postProcess
 }

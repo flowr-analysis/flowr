@@ -8,7 +8,7 @@
 import {
 	assignments,
 	comments,
-	controlflow,
+	controlFlow,
 	dataAccess,
 	definedFunctions, expressionList,
 	loops,
@@ -92,7 +92,7 @@ export const ALL_FEATURES = {
 	values:           values,
 	assignments:      assignments,
 	loops:            loops,
-	controlflow:      controlflow,
+	controlflow:      controlFlow,
 	dataAccess:       dataAccess,
 	expressionList:   expressionList,
 	variables:        variables

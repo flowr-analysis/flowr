@@ -47,6 +47,33 @@ interface UsedFunctionPostProcessing<Measurement=SummarizedMeasurement> extends 
  */
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	// each number[][] contains a 'number[]' per file
+	const functionsPerFile = new Map<string | undefined, FunctionCallSummaryInformation<number[][], Set<string>>>()
+
+
+	// we collect only `all-calls`
+	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(functionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>, config))
+
+	console.log(`    [${date2string(new Date())}] Used functions process completed, start to write out function info`)
+
+	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'function-calls.csv'))
+
+	const prefixes = ['total', 'args', 'line-frac']
+	const others = prefixes.flatMap(summarizedMeasurement2CsvHeader).join(',')
+	fnOutStream.write(`function,unique-projects,unique-files,${others}\n`)
+	for(const [key, [uniqueProjects, uniqueFiles, total, args, lineFrac]] of functionsPerFile.entries()) {
+		const totalSum = summarizeMeasurement(total.flat(), info.size)
+		const argsSum = summarizeMeasurement(args.flat(), info.size)
+		const lineFracSum = summarizeMeasurement(lineFrac.flat())
+		// we write in csv style :), we escape the key in case it contains commas (with filenames)etc.
+		fnOutStream.write(`${JSON.stringify(key ?? 'unknown')},${uniqueProjects.size},${uniqueFiles.size},${summarizedMeasurement2Csv(totalSum)},${summarizedMeasurement2Csv(argsSum)},${summarizedMeasurement2Csv(lineFracSum)}\n`)
+	}
+	fnOutStream.close()
+	// we do no longer need the given information!
+	functionsPerFile.clear()
+
+
+	console.log(`    [${date2string(new Date())}] Used functions reading completed, summarizing info...`)
+
 	const data: UsedFunctionPostProcessing<number[][]> = {
 		functionCallsPerFile: new Map(),
 		meta:                 {
@@ -58,10 +85,6 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 			args:           []
 		}
 	}
-
-	// we collect only `all-calls`
-	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(data, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>, config))
-
 	for(const meta of info.values()) {
 		const us = meta.usedFunctions as FunctionUsageInfo
 		data.meta.averageCall.push([us.allFunctionCalls])
@@ -80,20 +103,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 			}
 		}
 	}
-
-	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'function-calls.csv'))
-
-	const prefixes = ['total', 'args', 'line-frac']
-	const others = prefixes.flatMap(summarizedMeasurement2CsvHeader).join(',')
-	fnOutStream.write(`function,unique-projects,unique-files,${others}\n`)
-	for(const [key, [uniqueProjects, uniqueFiles, total, args, lineFrac]] of data.functionCallsPerFile.entries()) {
-		const totalSum = summarizeMeasurement(total.flat(), info.size)
-		const argsSum = summarizeMeasurement(args.flat(), info.size)
-		const lineFracSum = summarizeMeasurement(lineFrac.flat())
-		// we write in csv style :), we escape the key in case it contains commas (with filenames)etc.
-		fnOutStream.write(`${JSON.stringify(key ?? 'unknown')},${uniqueProjects.size},${uniqueFiles.size},${summarizedMeasurement2Csv(totalSum)},${summarizedMeasurement2Csv(argsSum)},${summarizedMeasurement2Csv(lineFracSum)}\n`)
-	}
-	fnOutStream.close()
+	console.log(`    [${date2string(new Date())}] Used functions metadata reading completed, summarizing and writing to file`)
 
 	const summarizedEntries = {
 		meta: {
@@ -108,7 +118,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	fs.writeFileSync(path.join(outputPath, 'function-calls.json'), JSON.stringify(summarizedEntries, jsonReplacer))
 }
 
-function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<FunctionCallInformation[]>, config: StatisticsSummarizerConfiguration): void {
+function processNextLine(data: Map<string | undefined, FunctionCallSummaryInformation<number[][], Set<string>>>, lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<FunctionCallInformation[]>, config: StatisticsSummarizerConfiguration): void {
 	if(lineNumber % 2_500 === 0) {
 		console.log(`    [${date2string(new Date())}] Used functions processed ${lineNumber} lines`)
 	}
@@ -140,11 +150,11 @@ function processNextLine(data: UsedFunctionPostProcessing<number[][]>, lineNumbe
 	}
 
 	for(const [key, info] of groupedByFunctionName.entries()) {
-		let get = data.functionCallsPerFile.get(key)
+		let get = data.get(key)
 		if(!get) {
 			get = [new Set(), new Set(), [], [], []]
 			// an amazing empty structure :D
-			data.functionCallsPerFile.set(key, get)
+			data.set(key, get)
 		}
 		// for total, we only need the number of elements as it will always be one :D
 		for(const context of info[0]) {

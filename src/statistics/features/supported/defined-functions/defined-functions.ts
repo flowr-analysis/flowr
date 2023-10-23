@@ -29,7 +29,9 @@ const initialFunctionDefinitionInfo = {
 
 export type FunctionDefinitionInfo = Writable<typeof initialFunctionDefinitionInfo>
 
-interface FunctionDefinitionInformation extends MergeableRecord {
+export const AllDefinitionsFileBase = 'all-definitions'
+
+export interface SingleFunctionDefinitionInformation extends MergeableRecord {
 	location:           SourcePosition,
 	/** locations of all direct call sites */
 	callsites:          SourcePosition[],
@@ -67,7 +69,7 @@ function retrieveAllCallsites(input: FeatureProcessorInput, node: RFunctionDefin
 
 function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorInput): void {
 	const definitionStack: RNodeWithParent[] = []
-	const allDefinitions: FunctionDefinitionInformation[] = []
+	const allDefinitions: SingleFunctionDefinitionInformation[] = []
 
 	visitAst(input.normalizedRAst.ast,
 		node => {
@@ -164,7 +166,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 	)
 
 	info.total += allDefinitions.length
-	appendStatisticsFile(definedFunctions.name, 'all-definitions', allDefinitions, input.filepath)
+	appendStatisticsFile(definedFunctions.name, AllDefinitionsFileBase, allDefinitions, input.filepath)
 }
 
 

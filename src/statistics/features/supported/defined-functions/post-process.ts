@@ -18,20 +18,55 @@ import { StatisticsOutputFormat } from '../../../output'
 import fs from 'node:fs'
 import { jsonReplacer } from '../../../../util/json'
 import { date2string } from '../../../../util/time'
-import { AllCallsFileBase, FunctionCallInformation, FunctionUsageInfo } from './used-functions'
 import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
 import { bigint2number } from '../../../../util/numbers'
+import {
+	AllDefinitionsFileBase,
+	FunctionDefinitionInfo,
+	SingleFunctionDefinitionInformation
+} from './defined-functions'
 
-type FunctionCallSummaryInformation<Measurement, Uniques=number> = [numOfUniqueProjects: Uniques, numOfUniqueFiles: Uniques, total: Measurement, arguments: Measurement, linePercentageInFile: Measurement]
+// TODO: summarize all
+interface FunctionDefinitionSummaryInformation<Measurement> {
+	total:      Measurement,
+	parameters: Measurement,
+	length: {
+		lines:              Measurement,
+		chars:              Measurement,
+		nonWhitespaceChars: Measurement
+	},
+	returns: {
+		explicit:     Measurement
+		implicit:     Measurement,
+		onlyExplicit: Measurement,
+		onlyImplicit: Measurement
+	},
+	exitPointsLinePercentageInDef: Measurement,
+	linePercentageInFile:          Measurement,
+	callsites:                     Measurement
+}
 // during the collection phase this should be a map using an array to collect
-interface UsedFunctionMetaPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
-	averageCall:    Measurement
-	emptyArgs:      Measurement
-	nestedCalls:    Measurement
-	deepestNesting: Measurement
-	unnamedCalls:   Measurement
-	// the first entry is for 1 argument, the second for the two arguments (the second,....)
-	args:	          CommonSyntaxTypeCounts<Measurement>[]
+interface DefinedFunctionMetaPostProcessing<Measurement=SummarizedMeasurement> extends MergeableRecord {
+	total:             Measurement
+	lambdasOnly:       Measurement
+	assignedFunctions: Measurement
+	nestedFunctions:   Measurement
+	recursive:         Measurement
+	deepestNesting:    Measurement
+}
+
+function getFnDefCsv(idx: number | string, info: FunctionDefinitionSummaryInformation<number[][]>) {
+	return `${JSON.stringify(idx)},${summarizedMeasurement2Csv(summarizeMeasurement(info.total.flat()))}`
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.parameters.flat()))}`
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.length.lines.flat()))}`
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.length.chars.flat()))}`
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.length.nonWhitespaceChars.flat()))}`
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.explicit.flat()))}`
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.implicit.flat()))}`
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.onlyExplicit.flat()))}`
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.returns.onlyImplicit.flat()))}`
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.exitPointsLinePercentageInDef.flat()))}`
+		+ `,${summarizedMeasurement2Csv(summarizeMeasurement(info.linePercentageInFile.flat()))}\n`
 }
 
 /**
@@ -40,38 +75,47 @@ interface UsedFunctionMetaPostProcessing<Measurement=SummarizedMeasurement> exte
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	// each number[][] contains a 'number[]' per file
 	/**
-	 * maps fn-name (including namespace) to number of arguments and their location (the number of elements in the array give the number of total call)
+	 * maps fn-name (including namespace) to several definition information
 	 * we use tuples to reduce the memory!
-	 * A function that is defined within the file is _always_ decorated with the filename (as second array element)!
 	 */
-	const functionsPerFile = new Map<string | undefined, FunctionCallSummaryInformation<number[][], Set<string>>>()
-
+	const definitionsPerFile: FunctionDefinitionSummaryInformation<number[][]>[] = []
+	const mergedSuperDefinitions: FunctionDefinitionSummaryInformation<number[][]> = emptyFunctionDefinitionSummary()
 
 	// we collect only `all-calls`
-	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(functionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>, config))
+	readLineByLineSync(path.join(featureRoot, `${AllDefinitionsFileBase}.txt`), (line, lineNumber) => processNextLine(definitionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionDefinitionInfo[]>, config))
 
-	console.log(`    [${date2string(new Date())}] Used functions process completed, start to write out function info`)
+	console.log(`    [${date2string(new Date())}] Defined functions process completed, start to write out function info`)
 
-	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'function-calls.csv'))
+	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'function-definitions.csv'))
 
-	const prefixes = ['total', 'args', 'line-frac']
+	const prefixes = ['total', 'params','length-lines','length-chars','length-non-ws-chars', 'return-explicit', 'return-implicit', 'return-only-explicit', 'return-only-implicit', 'exit-points-line-crac', 'def-line-frac']
 	const others = prefixes.flatMap(summarizedMeasurement2CsvHeader).join(',')
-	fnOutStream.write(`function,unique-projects,unique-files,${others}\n`)
-	for(const [key, [uniqueProjects, uniqueFiles, total, args, lineFrac]] of functionsPerFile.entries()) {
-		const totalSum = summarizeMeasurement(total.flat(), info.size)
-		const argsSum = summarizeMeasurement(args.flat(), info.size)
-		const lineFracSum = summarizeMeasurement(lineFrac.flat())
-		// we write in csv style :), we escape the key in case it contains commas (with filenames)etc.
-		fnOutStream.write(`${JSON.stringify(key ?? 'unknown')},${uniqueProjects.size},${uniqueFiles.size},${summarizedMeasurement2Csv(totalSum)},${summarizedMeasurement2Csv(argsSum)},${summarizedMeasurement2Csv(lineFracSum)}\n`)
+	fnOutStream.write(`counter,${others}\n`)
+	for(const [idx, info] of definitionsPerFile.entries()) {
+		fnOutStream.write(getFnDefCsv(idx, info))
+		mergedSuperDefinitions.total.push(info.total.flat())
+		mergedSuperDefinitions.parameters.push(info.parameters.flat())
+		mergedSuperDefinitions.length.lines.push(info.length.lines.flat())
+		mergedSuperDefinitions.length.chars.push(info.length.chars.flat())
+		mergedSuperDefinitions.length.nonWhitespaceChars.push(info.length.nonWhitespaceChars.flat())
+		mergedSuperDefinitions.returns.explicit.push(info.returns.explicit.flat())
+		mergedSuperDefinitions.returns.implicit.push(info.returns.implicit.flat())
+		mergedSuperDefinitions.returns.onlyExplicit.push(info.returns.onlyExplicit.flat())
+		mergedSuperDefinitions.returns.onlyImplicit.push(info.returns.onlyImplicit.flat())
+		mergedSuperDefinitions.exitPointsLinePercentageInDef.push(info.exitPointsLinePercentageInDef.flat())
+		mergedSuperDefinitions.linePercentageInFile.push(info.linePercentageInFile.flat())
+		mergedSuperDefinitions.callsites.push(info.callsites.flat())
 	}
+	// now, write the ultimate summary at the end of the file
+	fnOutStream.write(getFnDefCsv('all', mergedSuperDefinitions))
 	fnOutStream.close()
 	// we do no longer need the given information!
-	functionsPerFile.clear()
+	definitionsPerFile.length = 0
 
 
-	console.log(`    [${date2string(new Date())}] Used functions reading completed, summarizing info...`)
+	console.log(`    [${date2string(new Date())}] Defined functions reading completed, summarizing info...`)
 
-	const data: UsedFunctionMetaPostProcessing<number[][]> = {
+	const data: DefinedFunctionMetaPostProcessing<number[][]> = {
 		averageCall:    [],
 		nestedCalls:    [],
 		deepestNesting: [],
@@ -80,7 +124,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		args:           []
 	}
 	for(const meta of info.values()) {
-		const us = meta.usedFunctions as FunctionUsageInfo
+		const us = meta.definedFunctions as FunctionDefinitionInfo
 		data.averageCall.push([us.allFunctionCalls])
 		data.nestedCalls.push([us.nestedFunctionCalls])
 		data.deepestNesting.push([us.deepestNesting])
@@ -97,7 +141,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 			}
 		}
 	}
-	console.log(`    [${date2string(new Date())}] Used functions metadata reading completed, summarizing and writing to file`)
+	console.log(`    [${date2string(new Date())}] Defined functions metadata reading completed, summarizing and writing to file`)
 
 	const summarizedEntries = {
 		meta: {
@@ -112,53 +156,58 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	fs.writeFileSync(path.join(outputPath, 'function-calls.json'), JSON.stringify(summarizedEntries, jsonReplacer))
 }
 
-function processNextLine(data: Map<string | undefined, FunctionCallSummaryInformation<number[][], Set<string>>>, lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<FunctionCallInformation[]>, config: StatisticsSummarizerConfiguration): void {
+function emptyFunctionDefinitionSummary() {
+	return {
+		total:      [],
+		parameters: [],
+		length:     {
+			lines:              [],
+			chars:              [],
+			nonWhitespaceChars: []
+		},
+		returns: {
+			explicit:     [],
+			implicit:     [],
+			onlyExplicit: [],
+			onlyImplicit: []
+		},
+		exitPointsLinePercentageInDef: [],
+		linePercentageInFile:          [],
+		callsites:                     []
+	}
+}
+
+function processNextLine(data: FunctionDefinitionSummaryInformation<number[][]>[], lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>, config: StatisticsSummarizerConfiguration): void {
 	if(lineNumber % 2_500 === 0) {
-		console.log(`    [${date2string(new Date())}] Used functions processed ${lineNumber} lines`)
+		console.log(`    [${date2string(new Date())}] Defined functions processed ${lineNumber} lines`)
 	}
 	const [hits, context] = line
 
-	// group hits by fullname
-	const groupedByFunctionName = new Map<string, FunctionCallSummaryInformation<number[], Set<string>>>()
-	for(const [name, loc, args, ns, known] of hits) {
-		const fullname = ns && ns !== '' ? `${ns}::${name ?? ''}` : name
-		const key = (fullname ?? '') + (known === 1 ? '-' + (context ?? '') : '')
+	const forFile: FunctionDefinitionSummaryInformation<number[][]> = emptyFunctionDefinitionSummary()
 
+	for(const { location, length, returns, numberOfParameters, callsites} of hits) {
 		const stats = info.get(context ?? '')?.stats.lines[0].length
 
-		let get = groupedByFunctionName.get(key)
-		if(!get) {
-			get = [new Set(), new Set(), [], [], []]
-			groupedByFunctionName.set(key, get)
-		}
 		// we retrieve the first component fo the path
-		const projectName = context?.split(path.sep)[config.projectSkip]
-		get[0].add(projectName ?? '')
-		get[1].add(context ?? '')
-		get[2].push(1)
-		get[3].push(args)
-		if(loc && stats) {
-			// we reduce by 1 to get flat 0% if it is the first line
-			get[4].push(stats === 1 ? 1 : (loc[0]-1) / (stats-1))
+		forFile.total.push([1])
+		forFile.parameters.push([numberOfParameters])
+		forFile.length.lines.push([length.lines])
+		forFile.length.chars.push([length.characters])
+		forFile.length.nonWhitespaceChars.push([length.nonWhitespaceCharacters])
+		const explicits = returns.filter(r => r.explicit)
+		forFile.returns.explicit.push([explicits.length])
+		forFile.returns.implicit.push([returns.length - explicits.length])
+		forFile.returns.onlyExplicit.push([explicits.length === returns.length ? 1 : 0])
+		forFile.returns.onlyImplicit.push([explicits.length === 0 ? 1 : 0])
+		forFile.exitPointsLinePercentageInDef.push(returns.map(r => r.location.line).map(l => l/length.lines))
+
+		forFile.callsites.push([callsites.length])
+
+		if(stats) {
+			forFile.linePercentageInFile.push([location.line / stats])
 		}
 	}
 
-	for(const [key, info] of groupedByFunctionName.entries()) {
-		let get = data.get(key)
-		if(!get) {
-			get = [new Set(), new Set(), [], [], []]
-			// an amazing empty structure :D
-			data.set(key, get)
-		}
-		// for total, we only need the number of elements as it will always be one :D
-		for(const context of info[0]) {
-			get[0].add(context)
-		}
-		for(const context of info[1]) {
-			get[1].add(context)
-		}
-		get[2].push([info[2].length])
-		get[3].push(info[3])
-		get[4].push(info[4])
-	}
+	// push all of that to main :D
+	data.push(forFile)
 }

@@ -12,6 +12,7 @@ import { detectSummarizationType } from '../util/summarizer/auto-detect'
 import { StatisticsSummarizer } from '../util/summarizer/statistics/summarizer'
 import { SummarizerType } from '../util/summarizer/summarizer'
 import { allFeatureNames } from '../statistics'
+import { RShell } from '../r-bridge'
 
 export interface SummarizerCliOptions {
 	verbose:         boolean
@@ -19,6 +20,7 @@ export interface SummarizerCliOptions {
 	'ultimate-only': boolean
 	categorize:      boolean
 	input:           string
+	'source-files':  string
 	type:            string
 	output?:         string
 	graph?:          boolean
@@ -47,15 +49,22 @@ function getBenchmarkSummarizer() {
 	})
 }
 
-function getStatisticsSummarizer() {
+async function getStatisticsSummarizer() {
+	const shell = new RShell({
+		revive: 'on-error'
+	})
+	shell.tryToInjectHomeLibPath()
+	await shell.obtainTmpDir()
 	return new StatisticsSummarizer({
 		inputPath:              options.input,
 		outputPath:             `${outputBase}-final`,
 		intermediateOutputPath: `${outputBase}-intermediate/`,
-		projectSkip: 					      options['project-skip'],
+		projectSkip:            options['project-skip'],
+		sourceBasePath:         options['source-files'],
 		// TODO: allow to configure
 		featuresToUse:          allFeatureNames,
-		logger:                 console.log
+		logger:                 console.log,
+		shell
 	})
 }
 

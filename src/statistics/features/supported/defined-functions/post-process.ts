@@ -19,6 +19,9 @@ import {
 } from './defined-functions'
 import { emptySummarizedWithProject, recordFilePath, SummarizedWithProject } from '../../post-processing'
 import { array2bag } from '../../../../util/arrays'
+import { SourcePosition } from '../../../../util/range'
+import { SteppingSlicer } from '../../../../core'
+import { requestFromInput } from '../../../../r-bridge'
 
 interface FunctionDefinitionSummaryInformation<Measurement> {
 	total:      Measurement,
@@ -26,7 +29,9 @@ interface FunctionDefinitionSummaryInformation<Measurement> {
 	length: {
 		lines:              Measurement,
 		chars:              Measurement,
-		nonWhitespaceChars: Measurement
+		nonWhitespaceChars: Measurement,
+		tokens:             Measurement,
+		normalizedTokens:   Measurement
 	},
 	returns: {
 		explicit:     Measurement
@@ -78,7 +83,7 @@ function retrievePerFileDefinitionInformation(featureRoot: string, info: Map<str
 	const mergedSuperDefinitions: FunctionDefinitionSummaryInformation<number[]> = emptyFunctionDefinitionSummary()
 
 	// we collect only `all-calls`
-	readLineByLineSync(path.join(featureRoot, `${AllDefinitionsFileBase}.txt`), (line, lineNumber) => processNextLine(definitionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>))
+	readLineByLineSync(path.join(featureRoot, `${AllDefinitionsFileBase}.txt`), (line, lineNumber) => processNextLine(definitionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>, config))
 
 	console.log(`    [${date2string(new Date())}] Defined functions process completed, start to write out function info`)
 
@@ -171,14 +176,16 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	retrieveAssignedFunctionNames(featureRoot, config, outputPath)
 }
 
-function emptyFunctionDefinitionSummary() {
+function emptyFunctionDefinitionSummary(): FunctionDefinitionSummaryInformation<number[]> {
 	return {
 		total:      [],
 		parameters: [],
 		length:     {
 			lines:              [],
 			chars:              [],
-			nonWhitespaceChars: []
+			nonWhitespaceChars: [],
+			tokens:             [],
+			normalizedTokens:   []
 		},
 		returns: {
 			explicit:     [],
@@ -192,11 +199,33 @@ function emptyFunctionDefinitionSummary() {
 	}
 }
 
-function processNextLine(data: FunctionDefinitionSummaryInformation<number[]>[], lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>): void {
+const functionPrefix = /^f?unction/
+
+function retrieveOriginalFunctionCode(content: string[], location: SourcePosition, length: {
+	lines:                   number;
+	characters:              number;
+	nonWhitespaceCharacters: number
+}) {
+	// retrieve the function definition to parse
+	const fnLines = content.slice(location.line - 1, location.line + length.lines - 1)
+	if(fnLines.length !== 0) {
+		// trim the first and the last line, we automatically crop of the function kw
+		fnLines[0] = fnLines[0].slice(location.column).replace(functionPrefix, '')
+		// TODO: find correct suffix fnLines[fnLines.length - 1] = fnLines[fnLines.length - 1].slice(0, location.column-1)
+	}
+	// function is as well as lambda a single token
+	return ('function' + fnLines.join('\n')).substring(0, length.characters)
+}
+
+async function processNextLine(data: FunctionDefinitionSummaryInformation<number[]>[], lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>, config: StatisticsSummarizerConfiguration): Promise<void> {
 	if(lineNumber % 2_500 === 0) {
 		console.log(`    [${date2string(new Date())}] Defined functions processed ${lineNumber} lines`)
 	}
 	const [hits, context] = line
+
+	const fullPath = context ? path.join(config.sourceBasePath, context) : undefined
+	const content = fullPath && fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf-8').split('\n') : undefined
+	console.log(context,fullPath,content)
 
 	const forFile: FunctionDefinitionSummaryInformation<number[]> = emptyFunctionDefinitionSummary()
 
@@ -215,6 +244,16 @@ function processNextLine(data: FunctionDefinitionSummaryInformation<number[]>[],
 		forFile.returns.onlyExplicit.push(explicits.length === returns.length ? 1 : 0)
 		forFile.returns.onlyImplicit.push(explicits.length === 0 ? 1 : 0)
 		forFile.exitPointsLinePercentageInDef.push(returns.map(r => r.location.line).map(l => l/length.lines))
+
+		if(content) {
+			const functionCode = retrieveOriginalFunctionCode(content, location, length)
+			const result = await new SteppingSlicer({
+				stepOfInterest: 'normalize',
+				request:        requestFromInput(functionCode),
+				shell:          config.shell,
+			}).allRemainingSteps()
+			console.log(result.parse.length)
+		}
 
 		forFile.callsites.push(callsites.length)
 

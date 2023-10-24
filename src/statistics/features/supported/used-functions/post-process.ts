@@ -160,7 +160,7 @@ function processNextLine(data: Map<string | undefined, FunctionCallSummaryInform
 	for(const [name, loc, args, ns, known] of hits) {
 		const importantWrite = name && importants.get(name)
 		if(importantWrite) {
-			importantWrite.write(`${JSON.stringify(context)},${loc?.[0]??'?'}:${loc?.[0]??'?'},${ns??'""'},,,\n`)
+			importantWrite.write(`${JSON.stringify(context)},${loc?.[0]??'?'}:${loc?.[1]??'?'},${ns??'""'},,,\n`)
 		}
 		const fullname = ns && ns !== '' ? `${ns}::${name ?? ''}` : name
 		const key = (fullname ?? '') + (known === 1 ? '-' + (context ?? '') : '')

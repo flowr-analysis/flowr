@@ -46,7 +46,14 @@ function retrieveFunctionCallInformation(featureRoot: string, info: Map<string, 
 		['eval',    fs.createWriteStream(path.join(outputPath, 'manual-investigate-eval.csv'))],
 		['deparse', fs.createWriteStream(path.join(outputPath, 'manual-investigate-deparse.csv'))],
 		['quote',   fs.createWriteStream(path.join(outputPath, 'manual-investigate-quote.csv'))],
-		['body',    fs.createWriteStream(path.join(outputPath, 'manual-investigate-body.csv'))]
+		['body',    fs.createWriteStream(path.join(outputPath, 'manual-investigate-body.csv'))],
+		['formals',    fs.createWriteStream(path.join(outputPath, 'manual-investigate-formals.csv'))],
+		['body',    fs.createWriteStream(path.join(outputPath, 'manual-investigate-body.csv'))],
+		['environment',    fs.createWriteStream(path.join(outputPath, 'manual-investigate-environment.csv'))],
+		['new.env',    fs.createWriteStream(path.join(outputPath, 'manual-investigate-new.env.csv'))],
+		['assign',    fs.createWriteStream(path.join(outputPath, 'manual-investigate-assign.csv'))],
+		['setGeneric',    fs.createWriteStream(path.join(outputPath, 'manual-investigate-setGeneric.csv'))],
+		['R6Class',    fs.createWriteStream(path.join(outputPath, 'manual-investigate-R6Class.csv'))]
 	])
 	for(const [, value] of importantFunctions) {
 		value.write('filepath,location,namespace,inspected by,classification,notes\n')

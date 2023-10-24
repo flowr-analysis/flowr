@@ -76,7 +76,6 @@ async function retrieveSummarizer(): Promise<StatisticsSummarizer | BenchmarkSum
 async function run() {
 	const summarizer = await retrieveSummarizer()
 
-	// TODO: filter statistics for prefix!
 	if(!options['ultimate-only']) {
 		await summarizer.preparationPhase(options.categorize)
 	}

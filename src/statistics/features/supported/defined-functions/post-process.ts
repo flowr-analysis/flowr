@@ -20,8 +20,8 @@ import {
 import { emptySummarizedWithProject, recordFilePath, SummarizedWithProject } from '../../post-processing'
 import { array2bag } from '../../../../util/arrays'
 import { SourcePosition } from '../../../../util/range'
-import { SteppingSlicer, StepResult, StepResults } from '../../../../core'
-import { collectAllIds, countChildren, requestFromInput, retrieveXmlFromRCode, RType } from '../../../../r-bridge'
+import { SteppingSlicer, StepResults } from '../../../../core'
+import { countChildren, requestFromInput, retrieveXmlFromRCode, RType } from '../../../../r-bridge'
 import { locationToId } from '../../../../slicing'
 
 interface FunctionDefinitionSummaryInformation<Measurement> {
@@ -231,7 +231,7 @@ async function processNextLine(data: FunctionDefinitionSummaryInformation<number
 	}
 	const [hits, context] = line
 
-	const fullPath = context ? path.join(config.sourceBasePath, context) : undefined
+	const fullPath = context && config.sourceBasePath ? path.join(config.sourceBasePath, context) : undefined
 	let result: StepResults<'normalize'> | undefined = undefined
 
 	if(fullPath) {

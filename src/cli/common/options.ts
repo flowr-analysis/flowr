@@ -92,7 +92,6 @@ export const summarizerOptions: OptionDefinition[] = [
 	{ name: 'categorize',                type: Boolean, description: 'Categorize the results (e.g., "test", "example", ...)', defaultValue: false },
 	// TODO: integrate a better config for the summarizer which incorporates things like this
 	{ name: 'project-skip',              type: Number,  description: 'Skip the first n folders to find the location of projects', defaultValue: 0 },
-	{ name: 'source-files',              type: String,  description: 'If given, the summarizer may use the given path as a base to find and re-read source files' },
 	{ name: 'ultimate-only', alias: 'u', type: Boolean, description: 'Only perform the second summary-stage, with this, the input is used to find the summary-output.' },
 	{ name: 'input',         alias: 'i', type: String,  description: 'The {italic output} produced by the benchmark, the statistics, ...', defaultOption: true, multiple: false, typeLabel: '{underline file.json/output}' },
 	{ name: 'output',        alias: 'o', type: String,  description: 'Basename of the summaries (defaults to {italic <input>-summary})', typeLabel: '{underline file}' },

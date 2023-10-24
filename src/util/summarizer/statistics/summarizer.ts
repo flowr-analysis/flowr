@@ -8,8 +8,8 @@ import { FeatureSelection } from '../../../statistics'
 import { date2string } from '../../time'
 import { FileMigrator } from './first-phase/process'
 import { postProcessFeatureFolder } from './second-phase/process'
-import { RShell } from '../../../r-bridge'
 
+// TODO: histograms
 export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**
 	 * The input path to read all zips from
@@ -30,15 +30,7 @@ export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfi
 	/**
 	 * How many folders to skip to find the project root
 	 */
-	projectSkip:            number,
-	/**
-	 * If given, the summarizer may use the given path as a base to find and re-read source files (for token lengths :c)
-	 */
-	sourceBasePath:         string
-	/**
-	 * The r-shell to use for (re-) queries
-	 */
-	shell:                  RShell
+	projectSkip:            number
 }
 
 export const statisticsFileNameRegex = /.*--.*\.tar\.gz$/

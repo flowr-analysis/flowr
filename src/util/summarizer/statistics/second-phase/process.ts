@@ -11,25 +11,7 @@ import { guard } from '../../../assert'
 import { date2string } from '../../../time'
 import { StatisticsSummarizerConfiguration } from '../summarizer'
 
-/**
- * Post process the collections in a given folder, retrieving the final summaries.
- *
- * @param logger       - The logger to use for outputs
- * @param filepath     - Path to the root file of the data collection (contains all the archives)
- * @param config       - Configuration of the summarizer
- * @param outputPath   - The final outputPath to write the result to (may differ from the configured root folder)
- */
-export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['logger'], filepath: string, config: StatisticsSummarizerConfiguration, outputPath: string): void {
-	if(!fs.existsSync(filepath)) {
-		logger(`    Folder for ${filepath} does not exist, skipping post processing`)
-		return
-	}
-	if(!fs.existsSync(outputPath)) {
-		fs.mkdirSync(outputPath, { recursive: true })
-	}
-
-	const metaFeatureInformation = extractMetaInformationFrom(logger, path.join(filepath, 'meta', 'features.txt'), path.join(filepath, 'meta', 'stats.txt'))
-
+function postProcessFeatures(config: StatisticsSummarizerConfiguration, filepath: string, outputPath: string, logger: (message: string) => void, metaFeatureInformation: Map<string, FeatureStatisticsWithMeta>) {
 	for(const featureName of config.featuresToUse) {
 		const featureInfo = ALL_FEATURES[featureName]
 		const targetPath = path.join(filepath, featureInfo.name)
@@ -51,6 +33,27 @@ export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['
 		}
 		featureInfo.postProcess(targetPath, metaFeatureInformation, targetFeature, config)
 	}
+}
+
+/**
+ * Post process the collections in a given folder, retrieving the final summaries.
+ *
+ * @param logger       - The logger to use for outputs
+ * @param filepath     - Path to the root file of the data collection (contains all the archives)
+ * @param config       - Configuration of the summarizer
+ * @param outputPath   - The final outputPath to write the result to (may differ from the configured root folder)
+ */
+export function postProcessFeatureFolder(logger: CommonSummarizerConfiguration['logger'], filepath: string, config: StatisticsSummarizerConfiguration, outputPath: string): void {
+	if(!fs.existsSync(filepath)) {
+		logger(`    Folder for ${filepath} does not exist, skipping post processing`)
+		return
+	}
+	if(!fs.existsSync(outputPath)) {
+		fs.mkdirSync(outputPath, { recursive: true })
+	}
+
+	const metaFeatureInformation = extractMetaInformationFrom(logger, path.join(filepath, 'meta', 'features.txt'), path.join(filepath, 'meta', 'stats.txt'))
+	postProcessFeatures(config, filepath, outputPath, logger, metaFeatureInformation)
 }
 
 

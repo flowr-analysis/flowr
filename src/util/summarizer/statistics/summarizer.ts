@@ -34,7 +34,7 @@ export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfi
 	/**
 	 * If given, the summarizer may use the given path as a base to find and re-read source files (for token lengths :c)
 	 */
-	sourceBasePath:         string | undefined
+	sourceBasePath:         string
 	/**
 	 * The r-shell to use for (re-) queries
 	 */

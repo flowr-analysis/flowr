@@ -225,6 +225,7 @@ async function processNextLine(data: FunctionDefinitionSummaryInformation<number
 
 	const fullPath = context ? path.join(config.sourceBasePath, context) : undefined
 	const content = fullPath && fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf-8').split('\n') : undefined
+	console.log(context,fullPath,content)
 
 	const forFile: FunctionDefinitionSummaryInformation<number[]> = emptyFunctionDefinitionSummary()
 
@@ -246,7 +247,6 @@ async function processNextLine(data: FunctionDefinitionSummaryInformation<number
 
 		if(content) {
 			const functionCode = retrieveOriginalFunctionCode(content, location, length)
-			console.log(functionCode)
 			const result = await new SteppingSlicer({
 				stepOfInterest: 'normalize',
 				request:        requestFromInput(functionCode),

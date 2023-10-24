@@ -43,6 +43,7 @@ function postProcessMeta(config: StatisticsSummarizerConfiguration, filepath: st
 		successfulParsed:        [] as number[],
 		processingTimeMs:        [] as number[],
 		failedRequests:          [] as number[],
+		// min lengths of 1 etc. could come from different line endings
 		lines:                   [] as number[][],
 		numberOfNormalizedNodes: [] as number[]
 	}

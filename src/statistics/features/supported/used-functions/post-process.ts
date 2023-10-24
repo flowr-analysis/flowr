@@ -49,7 +49,7 @@ function retrieveFunctionCallInformation(featureRoot: string, info: Map<string, 
 		['body',    fs.createWriteStream(path.join(outputPath, 'manual-investigate-body.csv'))]
 	])
 	for(const [, value] of importantFunctions) {
-		value.write('context,filepath,location,namespace,inspected by,classification,notes\n\n')
+		value.write('context,filepath,location,namespace,inspected by,classification,notes\n')
 	}
 
 	// we collect only `all-calls`

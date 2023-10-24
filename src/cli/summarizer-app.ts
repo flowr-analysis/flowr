@@ -52,8 +52,7 @@ function getStatisticsSummarizer() {
 		inputPath:              options.input,
 		outputPath:             `${outputBase}-final`,
 		intermediateOutputPath: `${outputBase}-intermediate/`,
-		projectSkip: 					      options['project-skip'],
-		// TODO: allow to configure
+		projectSkip:            options['project-skip'],
 		featuresToUse:          allFeatureNames,
 		logger:                 console.log
 	})

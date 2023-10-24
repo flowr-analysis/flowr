@@ -18,12 +18,3 @@ export function collectAllIds<OtherInfo>(nodes: RNode<OtherInfo & ParentInformat
 	})
 	return ids
 }
-
-export function countChildren(node: RNode): number {
-	let count = 0
-	visitAst(node, () => {
-		count++
-		return false
-	})
-	return count
-}

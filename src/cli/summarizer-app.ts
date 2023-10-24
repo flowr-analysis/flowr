@@ -56,7 +56,6 @@ async function getStatisticsSummarizer() {
 	shell.tryToInjectHomeLibPath()
 	await shell.obtainTmpDir()
 	await shell.tokenMap()
-	process.on('beforeExit', () => shell.close())
 	return new StatisticsSummarizer({
 		inputPath:              options.input,
 		outputPath:             `${outputBase}-final`,

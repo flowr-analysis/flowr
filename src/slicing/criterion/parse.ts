@@ -39,7 +39,7 @@ export function slicingCriterionToId<OtherInfo = NoInfo>(criterion: SingleSlicin
 
 
 
-export function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: DecoratedAstMap<OtherInfo>): NodeId | undefined {
+function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: DecoratedAstMap<OtherInfo>): NodeId | undefined {
 	let candidate: RNodeWithParent<OtherInfo> | undefined
 	for(const [id, nodeInfo] of dataflowIdMap.entries()) {
 		if(nodeInfo.location === undefined || nodeInfo.location.start.line !== location.line || nodeInfo.location.start.column !== location.column) {

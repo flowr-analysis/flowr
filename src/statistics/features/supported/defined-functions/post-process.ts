@@ -6,7 +6,7 @@ import {
 import { MergeableRecord } from '../../../../util/objects'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
 import { FeatureStatisticsWithMeta } from '../../feature'
-import { readLineByLine, readLineByLineSync } from '../../../../util/files'
+import { readLineByLineSync } from '../../../../util/files'
 import path from 'path'
 import { StatisticsOutputFormat } from '../../../output'
 import fs from 'node:fs'
@@ -20,9 +20,8 @@ import {
 import { emptySummarizedWithProject, recordFilePath, SummarizedWithProject } from '../../post-processing'
 import { array2bag } from '../../../../util/arrays'
 import { SourcePosition } from '../../../../util/range'
-import { SteppingSlicer, StepResult, StepResults } from '../../../../core'
-import { collectAllIds, countChildren, requestFromInput, retrieveXmlFromRCode, RType } from '../../../../r-bridge'
-import { locationToId } from '../../../../slicing'
+import { SteppingSlicer } from '../../../../core'
+import { requestFromInput } from '../../../../r-bridge'
 
 interface FunctionDefinitionSummaryInformation<Measurement> {
 	total:      Measurement,
@@ -75,7 +74,7 @@ function addToList(data: SummarizedWithProject, count: number, filepath: string,
 	}
 }
 
-async function retrievePerFileDefinitionInformation(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, config: StatisticsSummarizerConfiguration, outputPath: string) {
+function retrievePerFileDefinitionInformation(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, config: StatisticsSummarizerConfiguration, outputPath: string) {
 	/**
 	 * maps fn-name (including namespace) to several definition information
 	 * we use tuples to reduce the memory!
@@ -84,7 +83,7 @@ async function retrievePerFileDefinitionInformation(featureRoot: string, info: M
 	const mergedSuperDefinitions: FunctionDefinitionSummaryInformation<number[]> = emptyFunctionDefinitionSummary()
 
 	// we collect only `all-calls`
-	await readLineByLine(path.join(featureRoot, `${AllDefinitionsFileBase}.txt`), async(line, lineNumber) => await processNextLine(definitionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>, config))
+	readLineByLineSync(path.join(featureRoot, `${AllDefinitionsFileBase}.txt`), (line, lineNumber) => processNextLine(definitionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>, config))
 
 	console.log(`    [${date2string(new Date())}] Defined functions process completed, start to write out function info`)
 
@@ -168,9 +167,9 @@ function retrieveAssignedFunctionNames(featureRoot: string, config: StatisticsSu
 /**
  * Note: the summary does not contain a 0 for each function that is _not_ called by a file. Hence, the minimum can not be 0 (division for mean etc. will still be performed on total file count)
  */
-export async function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): Promise<void> {
+export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	// each number[][] contains a 'number[]' per file
-	await retrievePerFileDefinitionInformation(featureRoot, info, config, outputPath)
+	retrievePerFileDefinitionInformation(featureRoot, info, config, outputPath)
 
 	console.log(`    [${date2string(new Date())}] Defined functions reading completed, summarizing info...`)
 	retrieveMetaInformation(info, config, outputPath)
@@ -200,29 +199,22 @@ function emptyFunctionDefinitionSummary(): FunctionDefinitionSummaryInformation<
 	}
 }
 
-async function retrieveFunctionInformation(location: SourcePosition, result: StepResults<'normalize'>, forFile: FunctionDefinitionSummaryInformation<number[]>, config: StatisticsSummarizerConfiguration) {
-	const id = locationToId(location, result.normalize.idMap)
-	let retrieve = id ? result.normalize.idMap.get(id) : undefined
-	if(retrieve) {
-		if(retrieve.type === RType.Argument) {
-			retrieve = retrieve.value
-		}
-		if(retrieve && retrieve.type === RType.FunctionDefinition) {
-			const tokens = countChildren(retrieve)
-			forFile.length.tokens.push(tokens)
-			// it sooo horrible, because how to get only the function otherwise :c
-			const code = retrieve.info.fullLexeme
-			if(code) {
-				try {
-					const parse = await retrieveXmlFromRCode(requestFromInput(code), config.shell)
-					// console.log(parse)
-				} catch(e) {
-					console.log(code)
-					process.exit(1)
-				}
-			}
-		}
+const functionPrefix = /^f?unction/
+
+function retrieveOriginalFunctionCode(content: string[], location: SourcePosition, length: {
+	lines:                   number;
+	characters:              number;
+	nonWhitespaceCharacters: number
+}) {
+	// retrieve the function definition to parse
+	const fnLines = content.slice(location.line - 1, location.line + length.lines - 1)
+	if(fnLines.length !== 0) {
+		// trim the first and the last line, we automatically crop of the function kw
+		fnLines[0] = fnLines[0].slice(location.column).replace(functionPrefix, '')
+		// TODO: find correct suffix fnLines[fnLines.length - 1] = fnLines[fnLines.length - 1].slice(0, location.column-1)
 	}
+	// function is as well as lambda a single token
+	return ('function' + fnLines.join('\n')).substring(0, length.characters)
 }
 
 async function processNextLine(data: FunctionDefinitionSummaryInformation<number[]>[], lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<SingleFunctionDefinitionInformation[]>, config: StatisticsSummarizerConfiguration): Promise<void> {
@@ -232,15 +224,7 @@ async function processNextLine(data: FunctionDefinitionSummaryInformation<number
 	const [hits, context] = line
 
 	const fullPath = context ? path.join(config.sourceBasePath, context) : undefined
-	let result: StepResults<'normalize'> | undefined = undefined
-
-	if(fullPath) {
-		result = await new SteppingSlicer({
-			stepOfInterest: 'normalize',
-			request:        requestFromInput(`file://${fullPath}`),
-			shell:          config.shell,
-		}).allRemainingSteps()
-	}
+	const content = fullPath && fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf-8').split('\n') : undefined
 
 	const forFile: FunctionDefinitionSummaryInformation<number[]> = emptyFunctionDefinitionSummary()
 
@@ -260,8 +244,15 @@ async function processNextLine(data: FunctionDefinitionSummaryInformation<number
 		forFile.returns.onlyImplicit.push(explicits.length === 0 ? 1 : 0)
 		forFile.exitPointsLinePercentageInDef.push(returns.map(r => r.location.line).map(l => l/length.lines))
 
-		if(result) {
-			await retrieveFunctionInformation(location, result, forFile, config)
+		if(content) {
+			const functionCode = retrieveOriginalFunctionCode(content, location, length)
+			console.log(functionCode)
+			const result = await new SteppingSlicer({
+				stepOfInterest: 'normalize',
+				request:        requestFromInput(functionCode),
+				shell:          config.shell,
+			}).allRemainingSteps()
+			console.log(result.parse.length)
 		}
 
 		forFile.callsites.push(callsites.length)

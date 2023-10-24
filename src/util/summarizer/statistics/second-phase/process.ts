@@ -10,8 +10,6 @@ import { readLineByLineSync } from '../../../files'
 import { guard } from '../../../assert'
 import { date2string } from '../../../time'
 import { StatisticsSummarizerConfiguration } from '../summarizer'
-import { RParseRequestFromFile, RParseRequestFromText } from '../../../../r-bridge'
-import { emptySummarizedWithProject } from '../../../../statistics/features/post-processing'
 import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../benchmark/data'
 import { summarizeMeasurement } from '../../benchmark/first-phase/process'
 import { sum } from '../../../arrays'
@@ -45,25 +43,28 @@ function postProcessMeta(config: StatisticsSummarizerConfiguration, filepath: st
 		successfulParsed:        [] as number[],
 		processingTimeMs:        [] as number[],
 		failedRequests:          [] as number[],
-		lines:                   [] as number[],
+		lines:                   [] as number[][],
 		numberOfNormalizedNodes: [] as number[]
 	}
 
 
+	if(!fs.existsSync(path.join(outputPath, 'meta'))) {
+		fs.mkdirSync(path.join(outputPath, 'meta'), { recursive: true })
+	}
 	const out = fs.createWriteStream(path.join(outputPath, 'meta', 'stats.csv'))
-	out.write(`file,successfulParsed,${summarizedMeasurement2CsvHeader('processing')},failedRequests,${summarizedMeasurement2CsvHeader('lines')},numberOfNormalizedNodes\n`)
+	out.write(`file,successfulParsed,${summarizedMeasurement2CsvHeader('processing')},failedRequests,${summarizedMeasurement2CsvHeader('line-length')},${summarizedMeasurement2CsvHeader('lines')},numberOfNormalizedNodes\n`)
 	for(const [file, info] of metaFeatureInformation) {
 		out.write(`${JSON.stringify(file)},${info.stats.successfulParsed},${summarizedMeasurement2Csv(summarizeMeasurement(info.stats.processingTimeMs))},`
-				+ `${info.stats.failedRequests.length},${summarizedMeasurement2Csv(summarizeMeasurement(info.stats.lines[0]))},${info.stats.numberOfNormalizedNodes[0]}\n`
+				+ `${info.stats.failedRequests.length},${summarizedMeasurement2Csv(summarizeMeasurement(info.stats.lines[0]))},${summarizedMeasurement2Csv(summarizeMeasurement([info.stats.lines[0].length]))},${info.stats.numberOfNormalizedNodes[0]}\n`
 		)
 		fileStatisticsSummary.successfulParsed.push(info.stats.successfulParsed)
 		fileStatisticsSummary.processingTimeMs.push(...info.stats.processingTimeMs)
 		fileStatisticsSummary.failedRequests.push(info.stats.failedRequests.length)
-		fileStatisticsSummary.lines.push(...info.stats.lines[0])
+		fileStatisticsSummary.lines.push(info.stats.lines[0])
 		fileStatisticsSummary.numberOfNormalizedNodes.push(info.stats.numberOfNormalizedNodes[0])
 	}
 	out.write(`all,${sum(fileStatisticsSummary.successfulParsed)},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.processingTimeMs))},`
-		+ `${sum(fileStatisticsSummary.failedRequests)},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.lines))},${sum(fileStatisticsSummary.numberOfNormalizedNodes)}\n`
+		+ `${sum(fileStatisticsSummary.failedRequests)},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.lines.flat()))},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.lines.map(l => l.length)))},${sum(fileStatisticsSummary.numberOfNormalizedNodes)}\n`
 	)
 	out.close()
 }

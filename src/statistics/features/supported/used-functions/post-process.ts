@@ -41,9 +41,24 @@ function retrieveFunctionCallInformation(featureRoot: string, info: Map<string, 
 	 */
 	const functionsPerFile = new Map<string | undefined, FunctionCallSummaryInformation<number[][], Set<string>>>()
 
+	const importantFunctions = new Map<string, fs.WriteStream>([
+		['parse',   fs.createWriteStream(path.join(outputPath, 'manual-investigate-parse.csv'))],
+		['eval',    fs.createWriteStream(path.join(outputPath, 'manual-investigate-eval.csv'))],
+		['deparse', fs.createWriteStream(path.join(outputPath, 'manual-investigate-deparse.csv'))],
+		['quote',   fs.createWriteStream(path.join(outputPath, 'manual-investigate-quote.csv'))],
+		['body',    fs.createWriteStream(path.join(outputPath, 'manual-investigate-body.csv'))]
+	])
+	for(const [, value] of importantFunctions) {
+		value.write('context,filepath,location,namespace,inspected by,classification,notes\n\n')
+	}
 
 	// we collect only `all-calls`
-	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(functionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>, config))
+	readLineByLineSync(path.join(featureRoot, `${AllCallsFileBase}.txt`), (line, lineNumber) => processNextLine(functionsPerFile, lineNumber, info, JSON.parse(String(line)) as StatisticsOutputFormat<FunctionCallInformation[]>, config, importantFunctions))
+
+	for(const [, value] of importantFunctions) {
+		value.close()
+	}
+	importantFunctions.clear()
 
 	console.log(`    [${date2string(new Date())}] Used functions process completed, start to write out function info`)
 
@@ -134,7 +149,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	retrieveFunctionCallMetaInformation(info, outputPath)
 }
 
-function processNextLine(data: Map<string | undefined, FunctionCallSummaryInformation<number[][], Set<string>>>, lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<FunctionCallInformation[]>, config: StatisticsSummarizerConfiguration): void {
+function processNextLine(data: Map<string | undefined, FunctionCallSummaryInformation<number[][], Set<string>>>, lineNumber: number, info: Map<string, FeatureStatisticsWithMeta>, line: StatisticsOutputFormat<FunctionCallInformation[]>, config: StatisticsSummarizerConfiguration, importants: Map<string, fs.WriteStream>): void {
 	if(lineNumber % 2_500 === 0) {
 		console.log(`    [${date2string(new Date())}] Used functions processed ${lineNumber} lines`)
 	}
@@ -143,6 +158,10 @@ function processNextLine(data: Map<string | undefined, FunctionCallSummaryInform
 	// group hits by fullname
 	const groupedByFunctionName = new Map<string, FunctionCallSummaryInformation<number[], Set<string>>>()
 	for(const [name, loc, args, ns, known] of hits) {
+		const importantWrite = name && importants.get(name)
+		if(importantWrite) {
+			importantWrite.write(`${JSON.stringify(context)},${loc?.[0]??'?'}:${loc?.[0]??'?'},${ns??'""'},,,\n`)
+		}
 		const fullname = ns && ns !== '' ? `${ns}::${name ?? ''}` : name
 		const key = (fullname ?? '') + (known === 1 ? '-' + (context ?? '') : '')
 

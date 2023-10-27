@@ -329,6 +329,7 @@
     "eslint-plugin-n": "^15.7.0",
     "eslint-plugin-promise": "^6.1.1",
     "eslint-plugin-tsdoc": "^0.2.17",
+    "license-checker": "^25.0.1",
     "mocha": "^10.2.0",
     "mocha-multi-reporters": "^1.5.1",
     "nyc": "^15.1.0",

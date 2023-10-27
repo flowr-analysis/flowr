@@ -15,7 +15,7 @@
     "export-quads": "ts-node src/cli/export-quads-app.ts",
     "build": "tsc --project .",
     "lint-local": "npm run lint -- --rule \"no-warning-comments: off\"",
-    "lint": "npm run license-compat && eslint src/ test/",
+    "lint": "npm run license-compat -- --summary && eslint src/ test/",
     "license-compat": "license-checker --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
     "doc": "typedoc",
     "test": "nyc --no-clean mocha --require ts-node/register --timeout 60000 \"test/**/*.spec.ts\"",

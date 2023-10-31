@@ -1,4 +1,5 @@
 import { DeepPartial, DeepRequired } from 'ts-essentials'
+import { jsonReplacer } from './json'
 
 /**
  * checks if `item` is an object (it may be an array, ...)
@@ -65,6 +66,6 @@ function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord
 
 function assertSameType(base: unknown, addon: unknown): void {
 	if(base !== undefined && addon !== undefined && typeof base !== typeof addon) {
-		throw new Error(`cannot merge different types! ${typeof base} (${JSON.stringify(base)}) !== ${typeof addon} (${JSON.stringify(addon)})`)
+		throw new Error(`cannot merge different types! ${typeof base} (${JSON.stringify(base, jsonReplacer)}) !== ${typeof addon} (${JSON.stringify(addon, jsonReplacer)})`)
 	}
 }

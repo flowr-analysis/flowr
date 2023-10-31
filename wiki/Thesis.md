@@ -9,6 +9,10 @@ The submission state is still available with [v1.0.0](https://github.com/Code-In
 ## How to Reproduce the Statistics From the Master’s Thesis
 
 Each step assumes, that you start in the root directory of this repository. You need a working installation of *R* and *npm*.
+
+> 💡 Information\
+> Since [v1.0.0](https://github.com/Code-Inspect/flowr/releases/tag/v1.0.0) we heavily extended on the statistics recorded and changed the way that *flowR* should be used. Hence, to reproduce the results, please make sure to work on [v1.0.0](https://github.com/Code-Inspect/flowr/releases/tag/v1.0.0).
+
 This mainly describes how to extract the statistics from the CRAN package sources, however, starting from step&nbsp;3,
 the steps are basically the same and only differ in the paths that have to be supplied (the social science sources are attached alongside the [master's thesis release](https://github.com/Code-Inspect/flowr/releases/tag/v1.0.0)).
 
@@ -19,7 +23,7 @@ The (sorted) results should be versioned and can be found in [scripts/top-r-down
     cd scripts/ && Rscript top-downloads.R
     ```
 
-2. If you haven't done so already, or updated the package list in the previous step, **download** the package sources.
+1. If you haven't done so already, or updated the package list in the previous step, **download** the package sources.
    For this, you can use the [scripts/download-top-pkg-sources.R](../scripts/download-top-pkg-sources.R) script.
    But **make sure**, that you set the `to` variable to the output path you want.
 
@@ -29,13 +33,13 @@ The (sorted) results should be versioned and can be found in [scripts/top-r-down
 
    Downloading and extracting the sources can take a while.
 
-3. Make sure you have the latest version of the *flowr* package installed.
+2. Make sure you have the latest version of the *flowr* package installed.
 
    ```shell
    npm ci
    ```
 
-4. Now you can run the statistics program on the downloaded sources.
+3. Now you can run the statistics program on the downloaded sources.
    You can do this in two ways (check `npm run stats -- --help` for more information).
    In any case, the extraction may take a long time, so be prepared for that!
    Furthermore, you may want to store the output of the tool as it provides additional information.
@@ -59,7 +63,7 @@ The (sorted) results should be versioned and can be found in [scripts/top-r-down
    Theoretically, you should be able to stop the extraction at any time and still get usable information with the next step,
    of course limited to only those files that have been processed so far.
 
-5. Afterward, your output folder should contain several folders with the recorded stats of all extracted features.
+4. Afterward, your output folder should contain several folders with the recorded stats of all extracted features.
    To make sense of them, you need to use the post-processor, which prints the summarized information to the command-line:
 
    ```shell

@@ -20,7 +20,9 @@ import { EvalOptions } from 'xpath-ts2/src/parse-api'
 import { MergeableRecord } from '../../util/objects'
 import { NormalizedAst } from '../../r-bridge'
 import { DataflowInformation } from '../../dataflow/internal/info'
-import { variables } from './supported/variables'
+import { variables } from './supported/variables/variables'
+import { MetaStatistics } from '../meta-statistics'
+import { StatisticsSummarizerConfiguration } from '../../util/summarizer/statistics/summarizer'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.
@@ -28,7 +30,7 @@ import { variables } from './supported/variables'
  * <p>
  * Since we are writing to files {@link process}, we only count feature occurrences (some feature/parts are not written to file)
  */
-export type FeatureInfo = Record<string, number> & MergeableRecord
+export type FeatureInfo = Record<string, unknown> & MergeableRecord
 
 
 /**
@@ -41,7 +43,7 @@ export interface FeatureProcessorInput extends MergeableRecord {
 	readonly normalizedRAst: NormalizedAst,
 	/** The dataflow information for the given input */
 	readonly dataflow:       DataflowInformation,
-	/** The filepath that the document originated from (if present, may be undefined if the input was provided as text) */
+	/** The filepath that the document originated from (if present, may be undefined if the input was provided as text). This can be relative to the common root directory of requests. */
 	readonly filepath:       string | undefined
 }
 
@@ -64,6 +66,17 @@ export interface Feature<T extends FeatureInfo> {
 	readonly description: string
 	/** A function that retrieves the feature in the document appends it to the existing feature set (we could use a monoid :D), the filepath corresponds to the active file (if any) */
 	process:              FeatureProcessor<T>
+	/**
+	 * If present, this feature allows to post-process the results of the feature extraction (for the summarizer).
+	 * <p>
+	 * The extraction can use the output path to write files to, and should return the final output.
+	 *
+	 * @param featureRoot - The root path to the feature directory which should contain all the files the feature can write to (already merged for every file processed)
+	 * @param info        - The feature statistic maps each file name/context encountered to the feature information as well as the meta statistics for the file
+	 * @param outputPath  - The path to write the output to (besides what is collected in the output and meta information)
+	 * @param config      - The configuration for the summarizer (e.g., to obtain the number of folders to skip for the feature root)
+	 */
+	postProcess?:         (featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration) => void
 	/** Values to start the existing track from */
 	initialValue:         T
 }
@@ -96,5 +109,7 @@ export const allFeatureNames: Set<FeatureKey> = new Set<FeatureKey>(Object.keys(
 export type FeatureStatistics = {
 	[K in FeatureKey]: FeatureInfo
 }
+
+export type FeatureStatisticsWithMeta = FeatureStatistics & { stats: MetaStatistics }
 
 export interface Query { select(options?: EvalOptions): Node[] }

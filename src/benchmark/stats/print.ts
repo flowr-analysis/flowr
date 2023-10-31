@@ -7,8 +7,9 @@ import { ElapsedTime, PerSliceMeasurements } from './stats'
 import {
 	SummarizedMeasurement,
 	SummarizedPerSliceStats,
-	SummarizedSlicerStats, UltimateSlicerStats
-} from './summarizer'
+	SummarizedSlicerStats,
+	UltimateSlicerStats
+} from '../../util/summarizer/benchmark/data'
 
 const padSize = 15
 

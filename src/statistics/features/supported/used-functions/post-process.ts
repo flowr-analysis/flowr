@@ -87,7 +87,6 @@ function retrieveFunctionCallInformation(featureRoot: string, info: Map<string, 
 
 function writeFunctionCallsMetaInformationToCsv(outputPath: string, data: UsedFunctionMetaPostProcessing<number[][]>) {
 	const out = fs.createWriteStream(path.join(outputPath, 'function-calls-meta.csv'))
-	// TODO: make this generic
 	out.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
 	out.write(`average-call,${summarizedMeasurement2Csv(summarizeMeasurement(data.averageCall.flat()))}\n`)
 	out.write(`nested-calls,${summarizedMeasurement2Csv(summarizeMeasurement(data.nestedCalls.flat()))}\n`)

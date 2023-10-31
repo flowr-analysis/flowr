@@ -58,7 +58,6 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		if('uniqueProjects' in data) {
 			metaOut.write(`${JSON.stringify(key)},${data.uniqueProjects.size},${data.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(data.count))}\n`)
 		} else {
-			// new file for each :D // TODO: group that!
 			const out = fs.createWriteStream(path.join(outputPath, `control-flow-type-${key}.csv`))
 			// name is for fields like number etc. to allow to group multiple entries
 			out.write(`kind,name,${summarizedMeasurement2CsvHeader()}\n`)

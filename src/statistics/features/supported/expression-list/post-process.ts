@@ -28,7 +28,6 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 				get = emptySummarizedWithProject()
 				collected[key] = get
 			}
-			// TODO: are they correct?
 			if(key === 'deepestNesting') {
 				deepestNestingOut.write(`${JSON.stringify(filepath)},${val}\n`)
 			}
@@ -40,7 +39,6 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	}
 	deepestNestingOut.close()
 
-	// TODO: abstract away these duplicates?
 	const variablesOutStream = fs.createWriteStream(path.join(outputPath, 'used-expression-lists.csv'))
 	variablesOutStream.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
 

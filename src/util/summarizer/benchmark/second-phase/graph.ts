@@ -11,7 +11,6 @@ interface BenchmarkGraphEntry extends MergeableRecord {
 	extra?: string
 }
 
-// TODO: allow to test and therefore allow writer intemdiate layer? or just return?
 export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath: string) {
 	console.log(`Producing benchmark graph data (${outputGraphPath})...`)
 

@@ -19,7 +19,6 @@ const initialControlflowInfo = {
 
 export type ControlflowInfo = Writable<typeof initialControlflowInfo>
 
-// TODO: record numbers of nodes in normalized ast and unnormalized, just so we can say mining Xillions of ast nodes
 function visitIfThenElse(info: ControlflowInfo, input: FeatureProcessorInput): void {
 	const ifThenElseStack: RNodeWithParent[] = []
 

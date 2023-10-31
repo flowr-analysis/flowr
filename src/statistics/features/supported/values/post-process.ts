@@ -85,5 +85,3 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	}
 	magicNumbersOutStream.close()
 }
-
-// TODO: meta summary for file lengths etc.

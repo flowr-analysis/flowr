@@ -27,7 +27,6 @@ interface SummarizedAssignmentInfo<Measurement, Uniques> extends MergeableRecord
 	nestedOperatorAssignment: Measurement
 }
 
-// TODO: unify that with other code segments
 function appendOperators(base: SummarizedAssignmentInfo<number[][], Set<string>>, b: Record<string, bigint>, filepath: string, config: StatisticsSummarizerConfiguration): void {
 	for(const [key, val] of Object.entries(b)) {
 		let get = base.assignmentOperator[key] as OperatorInformation<number[][], Set<string>> | undefined
@@ -35,7 +34,6 @@ function appendOperators(base: SummarizedAssignmentInfo<number[][], Set<string>>
 			get = { uniqueFiles: new Set(), uniqueProjects: new Set(), counts: [] }
 			base.assignmentOperator[key] = get
 		}
-		// TODO: remove redundant array :D
 		const num = bigint2number(val)
 		get.counts.push([num])
 		if(num > 0) {

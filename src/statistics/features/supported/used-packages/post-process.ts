@@ -36,7 +36,6 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		}
 	}
 
-	// TODO: abstract away these duplicates?
 	const variablesOutStream = fs.createWriteStream(path.join(outputPath, 'loading-functions.csv'))
 	variablesOutStream.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
 

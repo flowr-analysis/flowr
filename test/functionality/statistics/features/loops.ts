@@ -39,7 +39,6 @@ describe('Loops', withShell(shell => {
 				forLoops: {
 					total: 1n,
 					binOp: {
-						// TODO: detect constant calls?
 						':': 1n
 					}
 				},

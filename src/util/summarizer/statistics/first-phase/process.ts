@@ -17,7 +17,6 @@ export class FileMigrator {
 		for(const [filepath, content] of sourceFolderContent.entries()) {
 			const target = path.join(targetFolder, filepath)
 
-			// TODO: is there a faster way ?
 			let targetStream = this.writeHandles.get(target)
 			if(targetStream === undefined) {
 				if(!fs.existsSync(path.dirname(target))) {

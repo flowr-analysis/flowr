@@ -48,7 +48,6 @@ function mapComments<In,Out>(data: CommentsPostProcessing<In>, fn: (input: In) =
 	return collected
 }
 
-// TODO: collect dyn libs written?
 export function postProcess(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, outputPath: string, config: StatisticsSummarizerConfiguration): void {
 	// for each we collect the count and the number of files that contain them
 	const collected = mapComments(initialCommentInfo, initialCommentsMeta)
@@ -57,7 +56,6 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		appendCommentsPostProcessing(collected, feature.comments as CommentsPostProcessing<number>, feature.stats.lines[0].length,filepath,config.projectSkip)
 	}
 
-	// create summarized measurements TODO: (we should have abstracted that away...)
 	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'comments.csv'))
 	fnOutStream.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader('count')},${summarizedMeasurement2CsvHeader('frac-of-lines')}\n`)
 	for(const [key, val] of Object.entries(collected)) {

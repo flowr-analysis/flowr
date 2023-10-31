@@ -9,7 +9,6 @@ import { date2string } from '../../time'
 import { FileMigrator } from './first-phase/process'
 import { postProcessFeatureFolder } from './second-phase/process'
 
-// TODO: histograms
 export interface StatisticsSummarizerConfiguration extends CommonSummarizerConfiguration {
 	/**
 	 * The input path to read all zips from
@@ -82,7 +81,6 @@ async function extractArchive(f: string): Promise<Map<string,string>> {
 }
 
 
-// TODO: standardize
 // due to a redefinition after the initial statistic extraction, we extract the type from the remaining path :D
 // original: /^([^-]*)---?(.+)\.tar.gz/
 const filePrefixRegex = /^[^-]*---?(?<fullname>([^/]+)\/(?<pathtest>.+))\.tar\.gz$/

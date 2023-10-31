@@ -50,7 +50,6 @@ function summarizeForBracket(dataAccess: Record<number, bigint | CommonSyntaxTyp
 		} else {
 			appendCommonSyntaxTypeCounter(get as CommonSyntaxTypeCounts<number[][]>, val)
 		}
-		// TODO: update similar to other sets?
 		data.set(numericKey, get as SummarizedWithProject)
 	}
 }
@@ -59,7 +58,6 @@ function writeSingleOrDoubleEmpty(outputPath: string, key: string, name: string,
 	const out = fs.createWriteStream(path.join(outputPath, `data-access-type-${key}-${name}.csv`))
 	// name is for fields like number etc. to allow to group multiple entries
 	out.write(`kind,unique-projects,unique-files,${summarizedMeasurement2CsvHeader()}\n`)
-	// TODO: use unique projects and unique files for all in all post processors?
 	out.write(`"0",${vals.uniqueProjects.size},${vals.uniqueFiles.size},${summarizedMeasurement2Csv(summarizeMeasurement(vals.count))}\n`)
 	out.close()
 }
@@ -108,7 +106,6 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 		addToList(summarize.longestChain, dataAccess.longestChain, filepath, config)
 		addToList(summarize.deepestNesting, dataAccess.deepestNesting, filepath, config)
 		addToList(summarize.byName, dataAccess.byName, filepath, config)
-		// TODO: can we get used names etc?
 		addToList(summarize.bySlot, dataAccess.bySlot, filepath, config)
 		summarizeForBracket(dataAccess.singleBracket, summarize.singleBracket, filepath, config)
 		summarizeForBracket(dataAccess.doubleBracket, summarize.doubleBracket, filepath, config)

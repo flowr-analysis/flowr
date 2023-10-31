@@ -13,7 +13,6 @@ const initialAssignmentInfo = {
 	// operator to occurrence count
 	assignmentOperator:       {} as Record<string, bigint>,
 	assigned:                 emptyCommonSyntaxTypeCounts(),
-	// TODO: maybe add common syntax type counts for the other side and
 	// find combinations like `` is most often used for functions?
 	deepestNesting:           0,
 	nestedOperatorAssignment: 0

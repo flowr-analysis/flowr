@@ -45,6 +45,7 @@ function postProcessMeta(config: StatisticsSummarizerConfiguration, filepath: st
 		failedRequests:          [] as number[],
 		// min lengths of 1 etc. could come from different line endings
 		lines:                   [] as number[][],
+		characters:              [] as number[],
 		numberOfNormalizedNodes: [] as number[]
 	}
 
@@ -53,19 +54,22 @@ function postProcessMeta(config: StatisticsSummarizerConfiguration, filepath: st
 		fs.mkdirSync(path.join(outputPath, 'meta'), { recursive: true })
 	}
 	const out = fs.createWriteStream(path.join(outputPath, 'meta', 'stats.csv'))
-	out.write(`file,successfulParsed,${summarizedMeasurement2CsvHeader('processing')},failedRequests,${summarizedMeasurement2CsvHeader('line-length')},${summarizedMeasurement2CsvHeader('lines')},numberOfNormalizedNodes\n`)
+	out.write(`file,successfulParsed,${summarizedMeasurement2CsvHeader('processing')},failedRequests,${summarizedMeasurement2CsvHeader('line-length')},${summarizedMeasurement2CsvHeader('lines')},${summarizedMeasurement2CsvHeader('characters')},numberOfNormalizedNodes\n`)
 	for(const [file, info] of metaFeatureInformation) {
+		// we could retrieve these by summing later as well :thinking: however, this makes it more explicit
+		const characters = sum(info.stats.lines[0])
 		out.write(`${JSON.stringify(file)},${info.stats.successfulParsed},${summarizedMeasurement2Csv(summarizeMeasurement(info.stats.processingTimeMs))},`
-				+ `${info.stats.failedRequests.length},${summarizedMeasurement2Csv(summarizeMeasurement(info.stats.lines[0]))},${summarizedMeasurement2Csv(summarizeMeasurement([info.stats.lines[0].length]))},${info.stats.numberOfNormalizedNodes[0]}\n`
+				+ `${info.stats.failedRequests.length},${summarizedMeasurement2Csv(summarizeMeasurement(info.stats.lines[0]))},${summarizedMeasurement2Csv(summarizeMeasurement([info.stats.lines[0].length]))},${summarizedMeasurement2Csv(summarizeMeasurement([characters]))},${info.stats.numberOfNormalizedNodes[0]}\n`
 		)
 		fileStatisticsSummary.successfulParsed.push(info.stats.successfulParsed)
 		fileStatisticsSummary.processingTimeMs.push(...info.stats.processingTimeMs)
 		fileStatisticsSummary.failedRequests.push(info.stats.failedRequests.length)
 		fileStatisticsSummary.lines.push(info.stats.lines[0])
+		fileStatisticsSummary.characters.push(characters)
 		fileStatisticsSummary.numberOfNormalizedNodes.push(info.stats.numberOfNormalizedNodes[0])
 	}
 	out.write(`all,${sum(fileStatisticsSummary.successfulParsed)},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.processingTimeMs))},`
-		+ `${sum(fileStatisticsSummary.failedRequests)},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.lines.flat()))},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.lines.map(l => l.length)))},${sum(fileStatisticsSummary.numberOfNormalizedNodes)}\n`
+		+ `${sum(fileStatisticsSummary.failedRequests)},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.lines.flat()))},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.lines.map(l => l.length)))},${summarizedMeasurement2Csv(summarizeMeasurement(fileStatisticsSummary.characters))},${sum(fileStatisticsSummary.numberOfNormalizedNodes)}\n`
 	)
 	out.close()
 }

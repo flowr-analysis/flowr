@@ -38,7 +38,7 @@ console.log(`Writing outputs to base ${outputBase}`)
 
 function getBenchmarkSummarizer() {
 	return new BenchmarkSummarizer({
-		graph:                  options.graph ? `${outputBase}-graph.json` : undefined,
+		graphOutputPath:        options.graph ? `${outputBase}-graph.json` : undefined,
 		inputPath:              options.input,
 		intermediateOutputPath: `${outputBase}.json`,
 		outputPath:             `${outputBase}-ultimate.json`,

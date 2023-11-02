@@ -66,7 +66,7 @@ export const RStringPool: { val: RStringValue, str: string }[] = [
 	// embedded comments block
 	{ str: '"a#b"', val: { str: 'a#b', quotes: '"' } },
 	{ str: '"a # comment"', val: { str: 'a # comment', quotes: '"' } },
-	// raw strings,
+	// raw strings
 	{ str: 'r"()"', val: { str: '()', quotes: '"', flag: 'raw' } },
 	{ str: 'R"()"', val: { str: '()', quotes: '"', flag: 'raw' } },
 	{ str: 'r\'()\'', val: { str: '()', quotes: '\'', flag: 'raw' } },

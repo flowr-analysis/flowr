@@ -49,8 +49,8 @@ export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson
 } {
 	const unwrappedObj = objectWithArrUnwrap(obj)
 	const attributes = obj[config.attributeName] as XmlBasedJson | undefined
-	const content = obj[config.contentName] as string | undefined
-	guard(attributes !== undefined && content !== undefined, () => `expected attributes and content to be defined for ${JSON.stringify(obj)}`)
+	const content = obj[config.contentName] as string | undefined ?? ''
+	guard(attributes !== undefined, () => `expected attributes to be defined for ${JSON.stringify(obj)}`)
 	const location = extractLocation(attributes)
 	return {
 		unwrappedObj,

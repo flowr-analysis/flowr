@@ -2,6 +2,7 @@ import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '
 import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from '../../../../../../util/range'
 import { XmlParserConfig } from '../config'
 import { RawRType, RExpressionList, RNode, RType } from '../../../model'
+import { guard } from '../../../../../../util/assert'
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper
@@ -47,13 +48,14 @@ export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson
 	content:      string
 } {
 	const unwrappedObj = objectWithArrUnwrap(obj)
-	const core = getKeysGuarded(unwrappedObj, config.contentName, config.attributeName)
-	const location = extractLocation(core[config.attributeName] as XmlBasedJson)
-	const content = core[config.contentName]
+	const attributes = obj[config.attributeName] as XmlBasedJson | undefined
+	const content = obj[config.contentName] as string | undefined
+	guard(attributes !== undefined && content !== undefined, () => `expected attributes and content to be defined for ${JSON.stringify(obj)}`)
+	const location = extractLocation(attributes)
 	return {
 		unwrappedObj,
 		location,
-		content: content as string
+		content
 	}
 }
 

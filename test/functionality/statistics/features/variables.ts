@@ -16,10 +16,10 @@ describe('Variables', withShell(shell => {
 			expected: {
 				numberOfVariableUses: 1
 			},
-			written: [['usedVariables', [{ value: {
-				name:     'a',
-				location: { line: 1, column: 1 }
-			}}]]]
+			written: [['usedVariables', [[[
+				'a',
+				[1,1]
+			]]]]]
 		},
 		{
 			name:     'one variable definition',
@@ -28,10 +28,10 @@ describe('Variables', withShell(shell => {
 				numberOfDefinitions: 1
 			},
 			written: [
-				['definedVariables', [{ value: {
-					name:     'a',
-					location: { line: 1, column: 1 }
-				}}]],
+				['definedVariables', [[[
+					'a',
+					[1,1]
+				]]]],
 			]
 		},
 		{
@@ -43,30 +43,30 @@ describe('Variables', withShell(shell => {
 				numberOfVariableUses:  2
 			},
 			written: [
-				['definedVariables', [{ value: {
-					name:     'abc',
-					location: { line: 1, column: 1 }
-				}}, { value: {
-					name:     'abc',
-					location: { line: 2, column: 1 }
-				}}, { value: {
-					name:     'abc',
-					location: { line: 3, column: 1 }
-				}}]],
-				['redefinedVariables', [{ value: {
-					name:     'abc',
-					location: { line: 1, column: 1 }
-				}}, { value: {
-					name:     'abc',
-					location: { line: 2, column: 1 }
-				}}]],
-				['usedVariables', [{ value: {
-					name:     'abc',
-					location: { line: 2, column: 8 }
-				}}, { value: {
-					name:     'x',
-					location: { line: 3, column: 8 }
-				}}]]
+				['definedVariables', [[[
+					'abc',
+					[1,1]
+				]], [[
+					'abc',
+					[2,1]
+				]], [[
+					'abc',
+					[3,1]
+				]]]],
+				['redefinedVariables', [[[
+					'abc',
+					[1,1]
+				]], [[
+					'abc',
+					[2,1]
+				]]]],
+				['usedVariables', [[[
+					'abc',
+					[2,8]
+				]], [[
+					'x',
+					[3,8]
+				]]]]
 			]
 		}
 	])

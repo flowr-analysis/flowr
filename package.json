@@ -1,8 +1,8 @@
 {
   "name": "flowr",
-  "version": "1.2.1",
+  "version": "1.3.1",
   "description": "Program Slicer and Analyzer for R Programs",
-  "main": "dist/cli/slicer-app.js",
+  "main": "dist/src/flowr.js",
   "scripts": {
     "main": "ts-node src/flowr.ts",
     "stats": "ts-node src/cli/statistics-app.ts",

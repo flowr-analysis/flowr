@@ -50,12 +50,12 @@ export function initDummyFileProvider(map?: DummyAppendMemoryMap): void {
 /**
  * Format used to dump each entry of a feature during collection.
  */
-export interface StatisticsOutputFormat {
-	/** the collected value (like the assignment operator lexeme, ...) */
-	value:   string
-	/** the context of the information retrieval (e.g. the name of the file that contained the R source code) */
-	context: string | undefined
-}
+export type StatisticsOutputFormat<T=string> = [
+		/** the collected value (like the assignment operator lexeme, ...) */
+		value:   T,
+		/** the context of the information retrieval (e.g. the name of the file that contained the R source code) */
+		context: string | undefined
+]
 
 /**
  * Append the content of all nodes to the storage file for the given feature
@@ -69,24 +69,24 @@ export function appendStatisticsFile<T>(name: string, fn: keyof T, nodes: string
 	if(nodes.length === 0) {
 		return
 	}
-	let contents
+	let values
 
 	if(typeof nodes[0] === 'string') {
-		contents = nodes
+		values = nodes
 	} else if('nodeType' in nodes[0]) {
-		contents = (nodes as Node[]).map(extractNodeContent)
+		values = (nodes as Node[]).map(extractNodeContent)
 	} else {
-		contents = nodes
+		values = nodes
 	}
 
 
 	if(unique) {
-		contents = [...new Set<string | object | Node>(contents)]
+		values = [...new Set<string | object | Node>(values)]
 	}
 
-	contents = contents.map(c => JSON.stringify({ value: c, context } as StatisticsOutputFormat))
+	values = values.map(value => JSON.stringify(context === undefined ? [value] : [value, context] as StatisticsOutputFormat))
 
-	statisticsFileProvider.append(name, fn, contents.join('\n'))
+	statisticsFileProvider.append(name, fn, values.join('\n'))
 }
 
 

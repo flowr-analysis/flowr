@@ -1,5 +1,6 @@
 import { withShell } from '../../helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
+import { emptyCommonSyntaxTypeCounts } from '../../../../src/statistics/features/common-syntax-probability'
 
 describe('Used Ways to Access Data', withShell(shell => {
 	testForFeatureForInput(shell, 'dataAccess', [
@@ -13,48 +14,86 @@ describe('Used Ways to Access Data', withShell(shell => {
 			name:     'single bracket access, including empty',
 			code:     'a[1]; a[]',
 			expected: {
-				singleBracket:         2,
-				singleBracketConstant: 1,
-				singleBracketEmpty:    1
+				singleBracket: {
+					0: 1n,
+					1: {
+						total:  1n,
+						number: {
+							1: 1n,
+						}
+					}
+				}
 			},
 			written: [
-				['dataAccess', [{ value: 'a[1]' }, { value: 'a[]' }]],
+				['dataAccess', [['a[1]'], ['a[]']]],
 			]
 		},
 		{
 			name:     'double bracket access, including empty',
 			code:     'a[[1]]; a[[]]',
 			expected: {
-				doubleBracket:         2,
-				doubleBracketConstant: 1,
-				doubleBracketEmpty:    1
+				doubleBracket: {
+					0: 1n,
+					1: {
+						total:  1n,
+						number: {
+							1: 1n,
+						}
+					}
+				}
 			},
 			written: [
-				['dataAccess', [{ value: 'a[[1]]' }, { value: 'a[[]]' }]],
+				['dataAccess', [['a[[1]]'], ['a[[]]']]],
 			]
 		},
 		{
 			name:     'using an expression',
 			code:     'a[[x + y]]; a[x - 3]',
 			expected: {
-				doubleBracket: 1,
-				singleBracket: 1
+				doubleBracket: {
+					1: {
+						total: 1n,
+						binOp: {
+							'+': 1n
+						}
+					}
+				},
+				singleBracket: {
+					1: {
+						total: 1n,
+						binOp: {
+							'-': 1n
+						}
+					}
+				}
 			},
 			written: [
-				['dataAccess', [{ value: 'a[[x + y]]' }, { value: 'a[x - 3]' }]],
+				['dataAccess', [['a[[x + y]]'], ['a[x - 3]']]],
 			]
 		},
 		{
 			name:     'using only a single variable',
 			code:     'a[x]; a[[x]]',
 			expected: {
-				doubleBracket:               1,
-				singleBracket:               1,
-				doubleBracketSingleVariable: 1,
-				singleBracketSingleVariable: 1
+				doubleBracket: {
+					1: {
+						total:     1n,
+						singleVar: {
+							x: 1n
+						}
+					}
+				},
+				singleBracket: {
+					1: {
+						total:     1n,
+						singleVar: {
+							x: 1n
+						}
+					}
+				}
 			},
 			written: [
-				['dataAccess', [{ value: 'a[x]' }, { value: 'a[[x]]' }]],
+				['dataAccess', [['a[x]'], ['a[[x]]']]],
 			]
 		},
 		{
@@ -65,99 +104,198 @@ describe('Used Ways to Access Data', withShell(shell => {
 				bySlot: 2
 			},
 			written: [
-				['dataAccess', [{ value: 'a$hello' }, { value: 'a$"world"' }, { value: 'a@hello' }, { value: 'a@"world"' }]],
+				['dataAccess', [['a$hello'], ['a$"world"'], ['a@hello'], ['a@"world"']]],
 			]
 		},
 		{
 			name:     'nested double bracket access',
 			code:     'a[[1]][[2]]',
 			expected: {
-				doubleBracket:         2,
-				doubleBracketConstant: 2,
+				doubleBracket: {
+					1: {
+						total:  2n,
+						number: {
+							1: 1n,
+							2: 1n
+						}
+					}
+				},
 				chainedOrNestedAccess: 1,
 				longestChain:          1
 			},
 			written: [
-				['dataAccess', [{ value: 'a[[1]][[2]]' }]],
+				['dataAccess', [['a[[1]][[2]]']]],
 			]
 		},
 		{
 			name:     'comma access',
 			code:     'a[1,x,3]; b[[2,name=3]]',
 			expected: {
-				singleBracket:               1,
-				singleBracketCommaAccess:    1,
-				singleBracketConstant: 	     2, // contains a constant
-				doubleBracket:               1,
-				doubleBracketCommaAccess:    1,
-				doubleBracketConstant: 	     2,
-				singleBracketSingleVariable: 1,
-				namedArguments:              1
+				singleBracket: {
+					1: {
+						total:  1n,
+						number: {
+							1: 1n
+						}
+					},
+					2: {
+						...emptyCommonSyntaxTypeCounts(),
+						total:     1n,
+						singleVar: {
+							x: 1n
+						}
+					},
+					3: {
+						...emptyCommonSyntaxTypeCounts(),
+						total:  1n,
+						number: {
+							3: 1n
+						}
+					}
+				},
+				doubleBracket: {
+					1: {
+						total:  1n,
+						number: {
+							2: 1n
+						}
+					},
+					2: {
+						...emptyCommonSyntaxTypeCounts(),
+						total:        1n,
+						withArgument: 1n,
+						number:       {
+							3: 1n
+						}
+					}
+				}
 			},
 			written: [
-				['dataAccess', [{ value: 'a[1,x,3]' }, { value: 'b[[2,name=3]]' }]],
+				['dataAccess', [['a[1,x,3]'], ['b[[2,name=3]]']]],
 			]
 		},
 		{
 			name:     'deeply nested mixed access',
 			code:     'a[[1]][2]$x[y]@z',
 			expected: {
-				doubleBracket:               1,
-				singleBracket:               2,
-				byName:                      1,
-				bySlot:                      1,
-				doubleBracketConstant:       1,
-				singleBracketConstant:       1,
-				singleBracketSingleVariable: 1,
-				chainedOrNestedAccess:       4,
-				longestChain:                4
+				doubleBracket: {
+					1: {
+						total:  1n,
+						number: {
+							1: 1n
+						}
+					}
+				},
+				singleBracket: {
+					1: {
+						total:  2n,
+						number: {
+							2: 1n
+						},
+						singleVar: {
+							y: 1n
+						}
+					}
+				},
+				byName:                1,
+				bySlot:                1,
+				chainedOrNestedAccess: 4,
+				longestChain:          4
 			},
 			written: [
-				['dataAccess', [{ value: 'a[[1]][2]$x[y]@z' }]],
+				['dataAccess', [['a[[1]][2]$x[y]@z']]],
 			]
 		},
 		{
 			name:     'nested in the argument',
 			code:     'a[[ x[ y[3] ] ]]',
 			expected: {
-				doubleBracket:         1,
-				singleBracket:         2,
-				singleBracketConstant: 1,
+				doubleBracket: {
+					1: {
+						total: 1n,
+						other: {
+							'[': 1n
+						}
+					}
+				},
+				singleBracket: {
+					1: {
+						total: 2n,
+						other: {
+							'[': 1n,
+						},
+						number: {
+							3: 1n
+						}
+					}
+				},
 				chainedOrNestedAccess: 2,
 				deepestNesting:        2
 			},
 			written: [
-				['dataAccess', [{ value: 'a[[ x[ y[3] ] ]]' }]],
+				['dataAccess', [['a[[ x[ y[3] ] ]]']]],
 			]
 		},
 		{
 			name:     'nested in the argument and expressions',
 			code:     'a[[ if (x[ y[3] > 25 ]) 0 else 2 ]]',
 			expected: {
-				doubleBracket:         1,
-				singleBracket:         2,
-				singleBracketConstant: 1,
+				doubleBracket: {
+					1: {
+						total: 1n,
+						other: {
+							'if': 1n
+						}
+					}
+				},
+				singleBracket: {
+					1: {
+						total: 2n,
+						binOp: {
+							'>': 1n,
+						},
+						number: {
+							3: 1n
+						}
+					}
+				},
 				chainedOrNestedAccess: 2,
 				deepestNesting:        2
 			},
 			written: [
-				['dataAccess', [{ value: 'a[[ if (x[ y[3] > 25 ]) 0 else 2 ]]' }]],
+				['dataAccess', [['a[[ if (x[ y[3] > 25 ]) 0 else 2 ]]']]],
 			]
 		},
 		{
 			name:     'nested and chained',
 			code:     'a[[ x[ y[3]$b ] ]]$c$d$e',
 			expected: {
-				doubleBracket:         1,
-				singleBracket:         2,
-				singleBracketConstant: 1,
+				doubleBracket: {
+					1: {
+						total: 1n,
+						other: {
+							'[': 1n
+						}
+					}
+				},
+				singleBracket: {
+					1: {
+						total: 2n,
+						other: {
+							'$': 1n,
+						},
+						number: {
+							3: 1n
+						}
+					}
+				},
 				chainedOrNestedAccess: 6,
 				deepestNesting:        2,
 				longestChain:          4,
 				byName:                4
 			},
 			written: [
-				['dataAccess', [{ value: 'a[[ x[ y[3]$b ] ]]$c$d$e' }]],
+				['dataAccess', [['a[[ x[ y[3]$b ] ]]$c$d$e']]],
 			]
 		},
 		{
@@ -170,7 +308,7 @@ describe('Used Ways to Access Data', withShell(shell => {
 				longestChain:          1
 			},
 			written: [
-				['dataAccess', [{ value: 'a$hello$"world"' }, { value: 'a@hello@"world"' }]],
+				['dataAccess', [['a$hello$"world"'], ['a@hello@"world"']]],
 			]
 		}
 	])

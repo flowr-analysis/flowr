@@ -1,4 +1,4 @@
-import { startAndEndsWith } from '../../../src/util/strings'
+import { longestCommonPrefix, startAndEndsWith, withoutWhitespace } from '../../../src/util/strings'
 import { assert } from 'chai'
 
 describe('Strings', () => {
@@ -24,5 +24,26 @@ describe('Strings', () => {
 			negative('Walter', 'W')
 			negative('Timo', 'o')
 		})
+	})
+	describe('withoutWhitespace', () => {
+		it('should remove all whitespace', () => {
+			assert.equal(withoutWhitespace('a b c'), 'abc')
+			assert.equal(withoutWhitespace('abc'), 'abc')
+			assert.equal(withoutWhitespace('a\nb\tc'), 'abc')
+			assert.equal(withoutWhitespace('a\nb\tc '), 'abc')
+		})
+	})
+	describe('longestCommonPrefix', () => {
+		const positive = (strings: string[], expected: string): void => {
+			it(`should be ${expected} for ${JSON.stringify(strings)}`, () => {
+				assert.equal(longestCommonPrefix(strings), expected)
+			})
+		}
+		positive([], '')
+		positive(['abc'], 'abc')
+		positive(['abc', 'abc'], 'abc')
+		positive(['abc', 'abcde'], 'abc')
+		positive(['abc', 'abcde', 'abcd'], 'abc')
+		positive(['abc', 'abcde', 'x', 'abcde'], '')
 	})
 })

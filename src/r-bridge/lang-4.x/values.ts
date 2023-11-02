@@ -115,8 +115,10 @@ export function number2ts(value: string): RNumberValue {
 
 export interface RStringValue {
 	str:    string
-	// from the R-language definition a string is either delimited by a pair of single or double quotes
+	/** from the R-language definition a string is either delimited by a pair of single or double quotes */
 	quotes: '"' | '\''
+	/** a string is raw if prefixed with r */
+	flag?:  'raw'
 }
 
 /**
@@ -128,13 +130,25 @@ export function string2ts(value: string): RStringValue {
 	if(value.length < 2) {
 		throw new ValueConversionError(`cannot parse string '${value}' as it is too short`)
 	}
-	const quotes = value[0]
-	if(quotes !== '"' && quotes !== '\'') {
-		throw new ValueConversionError(`expected string to start with a known quote (' or "), yet received ${value}`)
-	}
-	return {
-		str: value.slice(1, -1),
-		quotes
+	const init = value[0]
+	if(init === '"' || init === '\'') {
+		return {
+			str:    value.slice(1, -1),
+			quotes: init
+		}
+	} else if(init === 'r' || init === 'R' && value.length >= 3) {
+		const flags = value[1]
+		if(flags === '"' || flags === '\'') {
+			return {
+				str:    value.slice(2, -1),
+				quotes: flags,
+				flag:   'raw'
+			}
+		} else {
+			throw new ValueConversionError(`expected string to start with a known quote (' or "), or raw, yet received ${value}`)
+		}
+	} else {
+		throw new ValueConversionError(`expected string to start with a known quote (' or "), or raw, yet received ${value}`)
 	}
 }
 

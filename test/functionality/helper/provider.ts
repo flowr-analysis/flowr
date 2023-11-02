@@ -66,6 +66,14 @@ export const RStringPool: { val: RStringValue, str: string }[] = [
 	// embedded comments block
 	{ str: '"a#b"', val: { str: 'a#b', quotes: '"' } },
 	{ str: '"a # comment"', val: { str: 'a # comment', quotes: '"' } },
+	// raw strings
+	{ str: 'r"()"', val: { str: '()', quotes: '"', flag: 'raw' } },
+	{ str: 'R"()"', val: { str: '()', quotes: '"', flag: 'raw' } },
+	{ str: 'r\'()\'', val: { str: '()', quotes: '\'', flag: 'raw' } },
+	{ str: 'r"(xx)"', val: { str: '(xx)', quotes: '"', flag: 'raw' } },
+	{ str: 'r"[xx]"', val: { str: '[xx]', quotes: '"', flag: 'raw' } },
+	{ str: 'r"{xx}"', val: { str: '{xx}', quotes: '"', flag: 'raw' } },
+	{ str: 'r"--(xx)--"', val: { str: '--(xx)--', quotes: '"', flag: 'raw' } },
 	// the advanced escape blocks
 	{ str: '"\\n"', val: { str: '\\n', quotes: '"' } }, // newline
 	{ str: '"\\r"', val: { str: '\\r', quotes: '"' } }, // carriage return

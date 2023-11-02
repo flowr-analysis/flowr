@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1697634674501,
+  "lastUpdate": 1698930900381,
   "repoUrl": "https://github.com/Code-Inspect/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -841,6 +841,102 @@ window.BENCHMARK_DATA = {
             "unit": "ms",
             "range": 0.4789098297658495,
             "extra": "median: 0.74ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7329390759026896,
+            "unit": "#",
+            "extra": "std: 0.1494698363920617"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.720988345209971,
+            "unit": "#",
+            "extra": "std: 0.13987413604166843"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "ef6b5bc18f7145ba61f75b43ed973d5f961ce670",
+          "message": "[release:patch] Include character counts in meta statistics",
+          "timestamp": "2023-11-02T13:39:16+01:00",
+          "tree_id": "48744a8fc8d41b2b0740b8b7b4ccf7b4ca9c388c",
+          "url": "https://github.com/Code-Inspect/flowr/commit/ef6b5bc18f7145ba61f75b43ed973d5f961ce670"
+        },
+        "date": 1698930897537,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Total per-file",
+            "value": 3238.0027303636366,
+            "unit": "ms",
+            "range": 3851.6861391590023,
+            "extra": "median: 2102.96ms"
+          },
+          {
+            "name": "Retrieve AST from R code",
+            "value": 67.72076345454545,
+            "unit": "ms",
+            "range": 135.07026993115434,
+            "extra": "median: 33.10ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 99.12328140909091,
+            "unit": "ms",
+            "range": 157.33731741020588,
+            "extra": "median: 67.98ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 65.55846731818183,
+            "unit": "ms",
+            "range": 169.27520217727005,
+            "extra": "median: 17.37ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 1.8734386729647032,
+            "unit": "ms",
+            "range": 1.3424235755626424,
+            "extra": "median: 1.64ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 1.3930558979239522,
+            "unit": "ms",
+            "range": 1.2493040262670454,
+            "extra": "median: 1.13ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.46342775577268414,
+            "unit": "ms",
+            "range": 0.23858650666759953,
+            "extra": "median: 0.42ms"
           },
           {
             "name": "failed to reconstruct/re-parse",
@@ -1803,6 +1899,102 @@ window.BENCHMARK_DATA = {
             "unit": "ms",
             "range": 0.5882086964170495,
             "extra": "median: 0.89ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 9,
+            "unit": "#",
+            "extra": "out of 11316 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 967,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8987761232201357,
+            "unit": "#",
+            "extra": "std: 0.08614052435714427"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8582032343145828,
+            "unit": "#",
+            "extra": "std: 0.11575735009565753"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "ef6b5bc18f7145ba61f75b43ed973d5f961ce670",
+          "message": "[release:patch] Include character counts in meta statistics",
+          "timestamp": "2023-11-02T13:39:16+01:00",
+          "tree_id": "48744a8fc8d41b2b0740b8b7b4ccf7b4ca9c388c",
+          "url": "https://github.com/Code-Inspect/flowr/commit/ef6b5bc18f7145ba61f75b43ed973d5f961ce670"
+        },
+        "date": 1698930900376,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Total per-file",
+            "value": 8783.45502014,
+            "unit": "ms",
+            "range": 10738.891531340689,
+            "extra": "median: 4452.32ms"
+          },
+          {
+            "name": "Retrieve AST from R code",
+            "value": 136.40897754,
+            "unit": "ms",
+            "range": 126.93000424816188,
+            "extra": "median: 66.48ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 186.37888664,
+            "unit": "ms",
+            "range": 124.71433128113007,
+            "extra": "median: 137.21ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 289.51431136,
+            "unit": "ms",
+            "range": 482.3141635134121,
+            "extra": "median: 86.46ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 15.525487126197506,
+            "unit": "ms",
+            "range": 25.375808817534253,
+            "extra": "median: 11.48ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 14.648966841272854,
+            "unit": "ms",
+            "range": 25.183235462545703,
+            "extra": "median: 10.65ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.8578698127083991,
+            "unit": "ms",
+            "range": 0.6532316473694225,
+            "extra": "median: 0.74ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

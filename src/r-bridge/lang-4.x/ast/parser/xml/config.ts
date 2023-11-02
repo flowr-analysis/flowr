@@ -25,8 +25,8 @@ export interface XmlParserConfig extends MergeableRecord {
  * shell environment.
  */
 export const DEFAULT_XML_PARSER_CONFIG: XmlParserConfig = {
-	attributeName: '@attributes',
-	contentName:   '@content',
-	childrenName:  '@children',
+	attributeName: '@a',
+	contentName:   '@v',
+	childrenName:  '@c',
 	tokenMap:      { /* this should not be used, but just so that we can omit null-checks */ }
 }

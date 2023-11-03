@@ -9,12 +9,12 @@ import {
 	RNodeWithParent,
 	RRepeatLoop, RTrue,
 	RWhileLoop
-} from '../r-bridge'
-import { MergeableRecord } from './objects'
-import { setEquals } from './set'
-import { graph2quads, QuadSerializationConfiguration } from './quads'
-import { log } from './log'
-import { jsonReplacer } from './json'
+} from '../../r-bridge'
+import { MergeableRecord } from '../objects'
+import { setEquals } from '../set'
+import { graph2quads, QuadSerializationConfiguration } from '../quads'
+import { log } from '../log'
+import { jsonReplacer } from '../json'
 
 export interface CfgVertex {
 	id:        NodeId
@@ -31,7 +31,7 @@ interface CfgControlDependencyEdge extends MergeableRecord {
 	when:  typeof RTrue | typeof RFalse
 }
 
-export type CFGEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
+export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
 
 /**
  * This class represents the control flow graph of an R program.
@@ -40,7 +40,7 @@ export type CFGEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
 export class ControlFlowGraph {
 	private rootVertices:      Set<NodeId> = new Set<NodeId>()
 	private vertexInformation: Map<NodeId, CfgVertex> = new Map<NodeId, CfgVertex>()
-	private edgeInformation:   Map<NodeId, Map<NodeId, CFGEdge>> = new Map<NodeId, Map<NodeId, CFGEdge>>()
+	private edgeInformation:   Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>()
 
 	addVertex(vertex: CfgVertex, rootVertex = true): this {
 		if(this.vertexInformation.has(vertex.id)) {
@@ -53,9 +53,9 @@ export class ControlFlowGraph {
 		return this
 	}
 
-	addEdge(from: NodeId, to: NodeId, edge: CFGEdge): this {
+	addEdge(from: NodeId, to: NodeId, edge: CfgEdge): this {
 		if(!this.edgeInformation.has(from)) {
-			this.edgeInformation.set(from, new Map<NodeId, CFGEdge>())
+			this.edgeInformation.set(from, new Map<NodeId, CfgEdge>())
 		}
 		this.edgeInformation.get(from)?.set(to, edge)
 		return this
@@ -70,7 +70,7 @@ export class ControlFlowGraph {
 		return this.vertexInformation
 	}
 
-	edges(): ReadonlyMap<NodeId, ReadonlyMap<NodeId, CFGEdge>> {
+	edges(): ReadonlyMap<NodeId, ReadonlyMap<NodeId, CfgEdge>> {
 		return this.edgeInformation
 	}
 

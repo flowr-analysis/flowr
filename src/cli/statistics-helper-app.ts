@@ -7,7 +7,7 @@ import {
 import { log } from '../util/log'
 import { processCommandLineArgs } from './common'
 import { jsonReplacer } from '../util/json'
-import { extractCFG } from '../util/cfg'
+import { extractCFG } from '../util/cfg/cfg'
 import { c } from 'tar'
 import fs from 'fs'
 import { guard } from '../util/assert'

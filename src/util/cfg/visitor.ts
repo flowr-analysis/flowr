@@ -1,0 +1,81 @@
+import { NodeId } from '../../r-bridge'
+import { guard } from '../assert'
+import { CfgEdge, CfgVertex, ControlFlowGraph, ControlFlowInformation } from './cfg'
+
+export interface NodeVisitingContext {
+	parent:   {
+		vertex: NodeId,
+		edge:   CfgEdge
+	} | 'root',
+	cfg:      ControlFlowInformation,
+	/** contains the current vertex as well */
+	siblings: NodeId[]
+}
+
+interface PredecessorInformation {
+	source: NodeId,
+	edge:   CfgEdge
+}
+
+// TODO: enter expression/statement and exit
+export type OnEnterVisitNode = (node: CfgVertex, context: NodeVisitingContext) => void
+
+class ControlFlowGraphExecutionTraceVisitor {
+	private readonly onEnter: OnEnterVisitNode
+
+	constructor(onEnter: OnEnterVisitNode) {
+		this.onEnter = onEnter
+	}
+
+	private visitSingle(node: CfgVertex, context: NodeVisitingContext): void {
+		this.onEnter(node, context)
+
+		// TODO: deal with function definitions!
+		// find all ingoing edges
+		const predecessors = this.retrieveAllPredecessors(context, node)
+		const siblings = predecessors.map(p => p.source)
+		for(const predecessor of predecessors) {
+			const { source, edge } = predecessor
+			const sourceVertex = context.cfg.graph.vertices().get(source)
+			guard(sourceVertex !== undefined, () => `Source vertex with id ${source} not found`)
+			this.visitSingle(sourceVertex, {
+				parent: { vertex: node.id, edge },
+				cfg:    context.cfg,
+				siblings
+			})
+		}
+	}
+
+	private retrieveAllPredecessors(context: NodeVisitingContext, node: CfgVertex) {
+		const predecessors: PredecessorInformation[] = []
+		for(const entry of context.cfg.graph.edges().entries()) {
+			const [source, targets] = entry
+			const target = targets.get(node.id)
+			if(target) {
+				predecessors.push({ source, edge: target })
+			}
+		}
+		return predecessors
+	}
+
+	// TODO: refactor join with single
+	private visitNodeArray(ids: NodeId[], cfg: ControlFlowInformation) {
+		for(const id of ids) {
+			const node = cfg.graph.vertices().get(id)
+			guard(node !== undefined, () => `Node with id ${id} not found`)
+			this.visitSingle(node, { parent: 'root', cfg, siblings: [...ids] })
+		}
+	}
+
+	visit(cfg: ControlFlowInformation): void {
+		this.visitNodeArray(cfg.entryPoints, cfg)
+	}
+
+}
+
+/**
+ * TODO
+ */
+export function visitCfg(cfg: ControlFlowInformation, onVisit: OnEnterVisitNode): void {
+	return new ControlFlowGraphExecutionTraceVisitor(onVisit).visit(cfg)
+}

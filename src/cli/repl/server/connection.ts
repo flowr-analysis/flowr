@@ -24,7 +24,7 @@ import {
 } from './messages/repl'
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
-import { cfg2quads, ControlFlowInformation, extractCFG } from '../../../util/cfg'
+import { cfg2quads, ControlFlowInformation, extractCFG } from '../../../util/cfg/cfg'
 import { defaultQuadIdGenerator, QuadSerializationConfiguration, serialize2quads } from '../../../util/quads'
 import { xlm2jsonObject } from '../../../r-bridge/lang-4.x/ast/parser/xml/internal'
 import { deepMergeObject } from '../../../util/objects'

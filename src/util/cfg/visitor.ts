@@ -8,6 +8,7 @@ export interface NodeVisitingContext {
 		edge:   CfgEdge
 	} | 'root',
 	cfg:      ControlFlowInformation,
+	visited:  Set<NodeId>,
 	/** contains the current vertex as well */
 	siblings: NodeId[]
 }
@@ -28,6 +29,20 @@ class ControlFlowGraphExecutionTraceVisitor {
 	}
 
 	private visitSingle(node: CfgVertex, context: NodeVisitingContext): void {
+		if(context.visited.has(node.id)) {
+			return
+		}
+		// only visit a node if we have visited all of its successors
+		const successorEdges = context.cfg.graph.edges().get(node.id)
+		if(successorEdges) {
+			for(const [target,] of successorEdges) {
+				if(!context.visited.has(target)) {
+					return
+				}
+			}
+		}
+		context.visited.add(node.id)
+
 		this.onEnter(node, context)
 
 		// TODO: deal with function definitions!
@@ -39,8 +54,9 @@ class ControlFlowGraphExecutionTraceVisitor {
 			const sourceVertex = context.cfg.graph.vertices().get(source)
 			guard(sourceVertex !== undefined, () => `Source vertex with id ${source} not found`)
 			this.visitSingle(sourceVertex, {
-				parent: { vertex: node.id, edge },
-				cfg:    context.cfg,
+				parent:  { vertex: node.id, edge },
+				cfg:     context.cfg,
+				visited: context.visited,
 				siblings
 			})
 		}
@@ -60,10 +76,11 @@ class ControlFlowGraphExecutionTraceVisitor {
 
 	// TODO: refactor join with single
 	private visitNodeArray(ids: NodeId[], cfg: ControlFlowInformation) {
+		const visited = new Set<NodeId>()
 		for(const id of ids) {
 			const node = cfg.graph.vertices().get(id)
 			guard(node !== undefined, () => `Node with id ${id} not found`)
-			this.visitSingle(node, { parent: 'root', cfg, siblings: [...ids] })
+			this.visitSingle(node, { parent: 'root', cfg, siblings: [...ids], visited })
 		}
 	}
 

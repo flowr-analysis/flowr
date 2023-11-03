@@ -166,7 +166,7 @@ describe('Control Flow Graph', withShell(shell => {
 			const result = await new SteppingSlicer({
 				stepOfInterest: 'normalize',
 				shell,
-				request:        requestFromInput('if(TRUE) 1')
+				request:        requestFromInput('if(TRUE) 1; print(a=3)')
 			}).allRemainingSteps()
 			const cfg = extractCFG(result.normalize)
 			visitCfg(cfg, (node, context) => {

@@ -211,7 +211,10 @@ function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads
 	}
 }
 
-function serializeObject(obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>): void {
+function serializeObject(obj: DataForQuad | undefined | null, quads: Quad[], config: Required<QuadSerializationConfiguration>): void {
+	if(obj === undefined || obj === null) {
+		return
+	}
 	if(obj instanceof Map) {
 		for(const [key, value] of obj.entries()) {
 			processObjectEntry('key-' + String(key), value, obj, quads, config)

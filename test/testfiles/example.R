@@ -3,10 +3,14 @@ product <- 1
 w <- 7
 N <- 10
 
-for (i in 1:(N-1)) {
-  sum <- sum + i + w
-  product <- product * i
-}
+print(N, w)
 
-cat("Sum:", sum, "\n")
-cat("Product:", product, "\n")
+f <- function(w) {
+    return (w + sum)
+}
+print(f(product))
+
+sum <- 6
+
+print(f(product))
+

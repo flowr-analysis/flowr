@@ -10,3 +10,11 @@ export function jsonReplacer(key: any, value: any): any {
 		return value
 	}
 }
+
+export function jsonRetriever(key: string, value: unknown): unknown {
+	if(typeof value === 'string' && value.endsWith('n')) {
+		return BigInt(value.slice(0, -1))
+	} else {
+		return value
+	}
+}

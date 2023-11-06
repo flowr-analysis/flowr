@@ -2,6 +2,7 @@ import fs, { promises as fsPromise } from 'fs'
 import { RParseRequestFromFile } from '../r-bridge'
 import path from 'path'
 import { log } from './log'
+import LineByLine from 'n-readlines'
 
 /**
  * Represents a table, identified by a header and a list of rows.
@@ -17,12 +18,12 @@ export interface Table {
  * @param suffix - Suffix of the files to be retrieved
  * Based on {@link https://stackoverflow.com/a/45130990}
  */
-async function* getFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
+export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
 	const entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: false })
 	for(const subEntries of entries) {
 		const res = path.resolve(dir, subEntries.name)
 		if(subEntries.isDirectory()) {
-			yield* getFiles(res, suffix)
+			yield* getAllFiles(res, suffix)
 		} else if(suffix.test(subEntries.name)) {
 			yield res
 		}
@@ -41,7 +42,7 @@ const rFileRegex = /\.[rR]$/
  * @returns Number of files processed (normally &le; `limit`, is &ge; `limit` if limit was reached).
  *          Will be `1`, if `input` is an R file (and `0` if it isn't).
  *
- * @see getFiles
+ * @see getAllFiles
  */
 export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile, number> {
 	let count = 0
@@ -54,7 +55,7 @@ export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE
 		return 0
 	}
 
-	for await (const f of getFiles(input, rFileRegex)) {
+	for await (const f of getAllFiles(input, rFileRegex)) {
 		if(++count > limit) {
 			return count
 		}
@@ -90,3 +91,40 @@ export function writeTableAsCsv(table: Table, file: string, sep = ',', newline =
 	const csv = [table.header.join(sep), ...table.rows.map(row => row.join(sep))].join(newline)
 	fs.writeFileSync(file, csv)
 }
+
+/**
+ * Reads a file line by line and calls the given function for each line.
+ * The `lineNumber` starts at `0`.
+ *
+ * See {@link readLineByLineSync} for a synchronous version.
+ */
+export async function readLineByLine(filePath: string, onLine: (line: Buffer, lineNumber: number) => Promise<void>): Promise<void> {
+	const reader = new LineByLine(filePath)
+
+	let line: false | Buffer
+
+	let counter = 0
+	// eslint-disable-next-line no-cond-assign
+	while(line = reader.next()) {
+		await onLine(line, counter++)
+	}
+}
+
+/**
+ * Reads a file line by line and calls the given function for each line.
+ * The `lineNumber` starts at `0`.
+ *
+ * See {@link readLineByLine} for an asynchronous version.
+ */
+export function readLineByLineSync(filePath: string, onLine: (line: Buffer, lineNumber: number) => void): void {
+	const reader = new LineByLine(filePath)
+
+	let line: false | Buffer
+
+	let counter = 0
+	// eslint-disable-next-line no-cond-assign
+	while(line = reader.next()) {
+		onLine(line, counter++)
+	}
+}
+

@@ -59,17 +59,14 @@ export const slicerOptions: OptionDefinition[] = [
 	{ name: 'api',                      type: Boolean, description: 'Instead of human-readable output, dump a lot of json with the results of all intermediate steps.' },
 ]
 
-
 const featureNameList = [...allFeatureNames].map(s => `"${s}"`).join(', ')
 export const statisticOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'post-process',             type: Boolean, description: 'If set, will enable post-processing of the given input (clustering, ...). Pass the output-dir of the processing as input.' },
 	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process'},
-	{ name: 'compress',                 type: Boolean, description: 'Compress each output in parallel running' },
-	{ name: 'hist-step',                type: Number,  description: 'When post-processing, the step size for the histogram', defaultValue: 0.01, typeLabel: '{underline number}' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
 	{ name: 'output-dir',   alias: 'o', type: String,  description: 'Folder to write the output to', defaultValue: `${process.cwd()}/statistics-out/${date2string(new Date())}`, typeLabel: '{underline folder}' },
+	{ name: 'dump-json',                type: Boolean, description: 'Write JSON output during the extraction', typeLabel: '{underline folder}' },
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.'},
 	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
 	{ name: 'features',                 type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: '{underline names}' },
@@ -79,19 +76,22 @@ export const statisticHelperOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass single file as src to read from', multiple: false, defaultOption: true, typeLabel: '{underline file}' },
-	{ name: 'compress',                 type: Boolean, description: 'Compress the output' },
 	{ name: 'output-dir',   alias: 'o', type: String,  description: 'Folder to write the output to', typeLabel: '{underline folder}' },
+	{ name: 'root-dir',                 type: String,  description: 'Root dir for the statistics files', defaultValue: ''},
+	{ name: 'compress',                 type: Boolean, description: 'Compress the output folder to a single file', defaultValue: false},
+	{ name: 'dump-json',                type: Boolean, description: 'Write JSON output during the extraction', typeLabel: '{underline folder}' },
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.'},
 	{ name: 'features',                 type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: '{underline names}' },
 ]
 
-
 export const summarizerOptions: OptionDefinition[] = [
 	{ name: 'verbose',       alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',          alias: 'h', type: Boolean, description: 'Print this usage guide' },
+	{ name: 'type',          alias: 't', type: String,  description: 'Manually specify if you want to post-process benchmark results, statistics, or compressed statistics (defaults to auto).', defaultValue: 'auto' },
 	{ name: 'graph',         alias: 'g', type: Boolean, description: 'Produce data to be used for visualizing benchmarks over time' },
+	{ name: 'categorize',                type: Boolean, description: 'Categorize the results (e.g., "test", "example", ...)', defaultValue: false },
+	{ name: 'project-skip',              type: Number,  description: 'Skip the first n folders to find the location of projects', defaultValue: 0 },
 	{ name: 'ultimate-only', alias: 'u', type: Boolean, description: 'Only perform the second summary-stage, with this, the input is used to find the summary-output.' },
-	{ name: 'input',         alias: 'i', type: String,  description: 'The {italic output.json} produced by the benchmark tool', defaultOption: true, multiple: false, typeLabel: '{underline file.json}' },
+	{ name: 'input',         alias: 'i', type: String,  description: 'The {italic output} produced by the benchmark, the statistics, ...', defaultOption: true, multiple: false, typeLabel: '{underline file.json/output}' },
 	{ name: 'output',        alias: 'o', type: String,  description: 'Basename of the summaries (defaults to {italic <input>-summary})', typeLabel: '{underline file}' },
 ]
-

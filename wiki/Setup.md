@@ -30,6 +30,7 @@ Please remember, that you have to link external directories to make them availab
 
 To use *flowR*, you need [*R*](https://www.r-project.org/) installed and on your path.
 Although there are several ways to do so, there is nothing wrong with installing&nbsp;R with the help of your favorite package manager or directly from the [website](https://cloud.r-project.org/).<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
+For 🪟&nbsp;Windows, see [here](https://www.hanss.info/sebastian/post/rtools-path/) for an explanation on how to add [*R*](https://www.r-project.org/) to your path variable.
 
 Furthermore, you need the [node package manager](https://www.npmjs.com/) (for Linux, we recommend using [nvm](https://github.com/nvm-sh/nvm)).
 

@@ -4,6 +4,7 @@
  * @module
  */
 
+//imports {note: as of current, do not change}
 import {
 	NormalizedAst,
 	NodeId,
@@ -29,16 +30,23 @@ import {
 import { log, LogLevel } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
+
+//question: of interface or why no linebreaks?
 type Selection = Set<NodeId>
+
 interface PrettyPrintLine {
 	line:   string
 	indent: number
 }
+
 function plain(text: string): PrettyPrintLine[] {
 	return [{ line: text, indent: 0 }]
 }
-type Code = PrettyPrintLine[]
 
+type Code = PrettyPrintLine[]
+/*end question*/
+
+//export? just logger?
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
 
 
@@ -57,6 +65,7 @@ const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionC
 
 const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n))
 
+//look up exact function
 function indentBy(lines: Code, indent: number): Code {
 	return lines.map(({ line, indent: i }) => ({ line, indent: i + indent }))
 }
@@ -259,6 +268,7 @@ function reconstructParameters(parameters: RParameter<ParentInformation>[]): str
 }
 
 
+//foldAccess?? Arrayzugriffe
 function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: string | (Code | null)[], configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, node)) {
 		return plain(getLexeme(node))

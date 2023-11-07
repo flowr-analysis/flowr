@@ -31,27 +31,33 @@ import { log, LogLevel } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
 
-//question: of interface or why no linebreaks?
+/*
+--helper function--
+*/
 type Selection = Set<NodeId>
-
 interface PrettyPrintLine {
 	line:   string
 	indent: number
 }
-
 function plain(text: string): PrettyPrintLine[] {
 	return [{ line: text, indent: 0 }]
 }
-
 type Code = PrettyPrintLine[]
-/*end question*/
 
-//export? just logger?
+
+/*
+--logger--
+*/
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
 
-
+/*
+--helper function--
+*/
 const getLexeme = (n: RNodeWithParent) => n.info.fullLexeme ?? n.lexeme ?? ''
 
+/*
+--reconstruct--
+*/
 const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code => {
 	const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf)
 	if(selectionHasLeaf) {
@@ -66,10 +72,16 @@ const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionC
 const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n))
 
 //look up exact function
+/*
+--helper function--
+*/
 function indentBy(lines: Code, indent: number): Code {
 	return lines.map(({ line, indent: i }) => ({ line, indent: i + indent }))
 }
 
+/*
+--recunstruct--
+*/
 function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, expressions: Code[], configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, exprList)) {
 		return plain(getLexeme(exprList))
@@ -89,10 +101,16 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 	}
 }
 
+/*
+--helper function--
+*/
 function isSelected(configuration: ReconstructionConfiguration, n: RNode<ParentInformation>) {
 	return configuration.selection.has(n.info.id) || configuration.autoSelectIf(n)
 }
 
+/*
+--recunstruct--
+*/
 function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: PrettyPrintLine[]) {
 	return [  // inline pretty print
 		...lhs.slice(0, lhs.length - 1),
@@ -101,7 +119,9 @@ function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: Pr
 	]
 }
 
-
+/*
+--recunstruct--
+*/
 function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration: ReconstructionConfiguration) {
 	if(configuration.selection.has(leaf.info.id)) {
 		return foldToConst(leaf)
@@ -113,6 +133,9 @@ function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration:
 	}
 }
 
+/*
+--recunstruct--
+*/
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, n)) {
 		return plain(getLexeme(n))
@@ -131,6 +154,9 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)
 }
 
+/*
+--recunstruct--
+*/
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, loop)) {
 		return plain(getLexeme(loop))
@@ -158,6 +184,9 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	}
 }
 
+/*
+--recunstruct--
+*/
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, loop)) {
 		return plain(getLexeme(loop))
@@ -184,6 +213,9 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 	}
 }
 
+/*
+--helper function--
+*/
 function removeExpressionListWrap(code: Code) {
 	if(code.length > 0 && code[0].line === '{' && code[code.length - 1].line === '}') {
 		return indentBy(code.slice(1, code.length - 1), -1)
@@ -192,7 +224,9 @@ function removeExpressionListWrap(code: Code) {
 	}
 }
 
-
+/*
+--recunstruct--
+*/
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, ifThenElse)) {
 		return plain(getLexeme(ifThenElse))
@@ -228,7 +262,9 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	}
 }
 
-
+/*
+--recunstruct--
+*/
 function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, loop)) {
 		return plain(getLexeme(loop))
@@ -256,6 +292,9 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 	}
 }
 
+/*
+--recunstruct--
+*/
 function reconstructParameters(parameters: RParameter<ParentInformation>[]): string[] {
 	// const baseParameters = parameters.flatMap(p => plain(getLexeme(p)))
 	return parameters.map(p => {
@@ -269,6 +308,9 @@ function reconstructParameters(parameters: RParameter<ParentInformation>[]): str
 
 
 //foldAccess?? Arrayzugriffe
+/*
+--recunstruct--
+*/
 function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: string | (Code | null)[], configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, node)) {
 		return plain(getLexeme(node))
@@ -285,6 +327,9 @@ function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code,
 	return plain(getLexeme(node))
 }
 
+/*
+--recunstruct--
+*/
 function reconstructArgument(argument: RArgument<ParentInformation>, name: Code | undefined, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, argument)) {
 		return plain(getLexeme(argument))
@@ -297,7 +342,9 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 	}
 }
 
-
+/*
+--recunstruct--
+*/
 function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, parameter)) {
 		return plain(getLexeme(parameter))
@@ -312,7 +359,9 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 	}
 }
 
-
+/*
+--recunstruct--
+*/
 function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: Code[], body: Code, configuration: ReconstructionConfiguration): Code {
 	// if a definition is not selected, we only use the body - slicing will always select the definition
 	if(!isSelected(configuration, definition) && functionParameters.every(p => p.length === 0)) {
@@ -342,6 +391,9 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 
 }
 
+/*
+--recunstruct--
+*/
 function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: RFunctionCall<ParentInformation>): Code {
 	guard(args.length === 2, () => `infix special call must have exactly two arguments, got: ${args.length} (${JSON.stringify(args)})`)
 	guard(call.flavor === 'named', `infix special call must be named, got: ${call.flavor}`)
@@ -365,6 +417,9 @@ function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: R
 	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`)
 }
 
+/*
+--recunstruct--
+*/
 function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: (Code | undefined)[], configuration: ReconstructionConfiguration): Code {
 	if(call.infixSpecial === true) {
 		return reconstructSpecialInfixFunctionCall(args, call)
@@ -393,22 +448,36 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 	}
 }
 
+/*
+--helper function--
+*/
 /** The structure of the predicate that should be used to determine if a given normalized node should be included in the reconstructed code independent of if it is selected by the slice or not */
 export type AutoSelectPredicate = (node: RNode<ParentInformation>) => boolean
 
-
+/*
+--interface--
+*/
 interface ReconstructionConfiguration extends MergeableRecord {
 	selection:    Selection
 	/** if true, this will force the ast part to be reconstructed, this can be used, for example, to force include `library` statements */
 	autoSelectIf: AutoSelectPredicate
 }
 
+/*
+--helper function--
+*/
 export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
 	return false
 }
 
+/*
+--helper function--
+*/
 const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
 
+/*
+--helper function--
+*/
 export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
 	if(node.type !== RType.FunctionCall || node.flavor !== 'named') {
 		return false
@@ -417,6 +486,9 @@ export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
 }
 
 
+/*
+--reconstruct--
+*/
 /**
  * The fold functions used to reconstruct the ast in {@link reconstructToCode}.
  */
@@ -464,21 +536,32 @@ const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Reconstructi
 }
 
 
-
+/*
+--helper function--
+*/
 function getIndentString(indent: number): string {
 	return ' '.repeat(indent * 4)
 }
 
+/*
+--helper function--
+*/
 function prettyPrintCodeToString(code: Code, lf ='\n'): string {
 	return code.map(({ line, indent }) => `${getIndentString(indent)}${line}`).join(lf)
 }
 
+/*
+--interface--
+*/
 export interface ReconstructionResult {
 	code:         string
 	/** number of nodes that triggered the `autoSelectIf` predicate {@link reconstructToCode} */
 	autoSelected: number
 }
 
+/*
+--helper function--
+*/
 function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSelected: number) {
 	if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
 		// remove outer block
@@ -488,6 +571,9 @@ function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSe
 	}
 }
 
+/*
+--main function--
+*/
 /**
  * Reconstructs parts of a normalized R ast into R code on an expression basis.
  *

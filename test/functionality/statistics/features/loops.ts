@@ -1,5 +1,6 @@
 import { withShell } from '../../helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
+import { RFalse, RTrue } from '../../../../src/r-bridge'
 
 
 describe('Loops', withShell(shell => {
@@ -14,41 +15,93 @@ describe('Loops', withShell(shell => {
 			name:     'one while loop, with a break',
 			code:     'while(TRUE) { print(3); break }',
 			expected: {
-				whileLoops:      1,
+				whileLoops: {
+					total:   1n,
+					logical: {
+						[RTrue]: 1n
+					}
+				},
+				whileBody: {
+					total:    1n,
+					multiple: 1n
+				},
 				breakStatements: 1
 			},
 			// records only implicit and nested loops
-			written: 'nothing'
+			written: [
+				['all-loops', [['while(TRUE) { print(3); break }']]],
+			]
 		},
 		{
 			name:     'one for loop, with a next',
 			code:     'for(i in 1:10) { print(9); next }',
 			expected: {
-				forLoops:       1,
+				forLoops: {
+					total: 1n,
+					binOp: {
+						':': 1n
+					}
+				},
+				forBody: {
+					total:    1n,
+					multiple: 1n
+				},
+				forLoopVar: {
+					total:     1n,
+					singleVar: {
+						'i': 1n
+					}
+				},
 				nextStatements: 1
 			},
-			written: 'nothing'
+			written: [
+				['all-loops', [['for(i in 1:10) { print(9); next }']]],
+			]
 		},
 		{
 			name:     'one repeat loop, with multiple breaks, and nexts',
 			code:     'repeat { print(9); if(runif(3) > 0.5) { break } else { if(runif(3) > 0.5) next else break }; next }',
 			expected: {
-				repeatLoops:     1,
+				repeatLoops: 1n,
+				repeatBody:  {
+					total:    1n,
+					multiple: 1n
+				},
 				breakStatements: 2,
 				nextStatements:  2
 			},
-			written: 'nothing'
+			written: [
+				['all-loops', [['repeat { print(9); if(runif(3) > 0.5) { break } else { if(runif(3) > 0.5) next else break }; next }']]],
+			]
 		},
 		{
 			name:     'simply nested while loops',
 			code:     'while(TRUE) { while(FALSE) { print(3) } }',
 			expected: {
-				whileLoops:             2,
+				whileLoops: {
+					total:   2n,
+					logical: {
+						[RTrue]:  1n,
+						[RFalse]: 1n
+					}
+				},
+				whileBody: {
+					total: 2n,
+					other: {
+						'while': 1n
+					},
+					call: {
+						print: 1n
+					}
+				},
 				nestedExplicitLoops:    1,
 				deepestExplicitNesting: 1
 			},
 			written: [
-				['nested-loop', [{ value: 'while(FALSE) { print(3) }' }]],
+				['all-loops', [
+					['while(TRUE) { while(FALSE) { print(3) } }'],
+					['while(FALSE) { print(3) }']
+				]],
 			]
 		},
 		{
@@ -65,7 +118,7 @@ describe('Loops', withShell(shell => {
 				implicitLoops: 6
 			},
 			written: [
-				['implicit-loop', [{ value: 'apply(x, 2, f)' }, { value: 'lapply(x, f)' }, { value: 'sapply(x, f)' }, { value: 'vapply(x, f)' }, { value: 'tapply(x, f)' }, { value: 'mapply(x, f)' }]],
+				['implicit-loop', [['apply(x, 2, f)'], ['lapply(x, f)'], ['sapply(x, f)'], ['vapply(x, f)'], ['tapply(x, f)'], ['mapply(x, f)']]],
 			]
 		},
 		{
@@ -83,25 +136,71 @@ describe('Loops', withShell(shell => {
 			  for(k in x:3) { repeat { } }
 			`,
 			expected: {
-				whileLoops:             4,
-				forLoops:               3,
-				repeatLoops:            3,
+				whileLoops: {
+					total:   4n,
+					logical: {
+						[RTrue]:  1n,
+						[RFalse]: 2n
+					},
+					singleVar: {
+						'x': 1n
+					}
+				},
+				whileBody: {
+					total:    4n,
+					multiple: 1n,
+					empty:    2n,
+					other:    {
+						'for': 1n
+					},
+				},
+				forLoops: {
+					total: 3n,
+					binOp: {
+						':': 3n
+					}
+				},
+				forBody: {
+					total: 3n,
+					other: {
+						'repeat': 2n,
+						'while':  1n
+					}
+				},
+				forLoopVar: {
+					total:     3n,
+					singleVar: {
+						'i': 1n,
+						'j': 1n,
+						'k': 1n
+					}
+				},
+				repeatLoops: 3n,
+				repeatBody:  {
+					total: 3n,
+					empty: 2n,
+					other: {
+						'while': 1n
+					}
+				},
 				nestedExplicitLoops:    8,
 				deepestExplicitNesting: 3
 			},
 			written: [
-				['nested-loop', [
-					{ value: 'while(FALSE) {\nfor(i in 1:10) {\nrepeat { }\n}\n}' },
-					{ value: 'for(i in 1:10) {\nrepeat { }\n}' },
-					{ value: 'repeat { }' },
-					{ value: 'for(j in 1:10) { while(x) { } }' },
-					{ value: 'while(x) { }' },
-					{ value: 'repeat { while(FALSE) {} }'},
-					{ value: 'while(FALSE) {}' },
-					{ value: 'repeat { }' },
+				['all-loops', [
+					['while(TRUE) {\nwhile(FALSE) {\nfor(i in 1:10) {\nrepeat { }\n}\n}\nfor(j in 1:10) { while(x) { } }\nrepeat { while(FALSE) {} }\n}' ],
+					['while(FALSE) {\nfor(i in 1:10) {\nrepeat { }\n}\n}' ],
+					['for(i in 1:10) {\nrepeat { }\n}' ],
+					['repeat { }' ],
+					['for(j in 1:10) { while(x) { } }' ],
+					['while(x) { }' ],
+					['repeat { while(FALSE) {} }'],
+					['while(FALSE) {}' ],
+					['for(k in x:3) { repeat { } }' ],
+					['repeat { }' ]
 				]]
 			]
-		},
+		}
 	])
 }))
 

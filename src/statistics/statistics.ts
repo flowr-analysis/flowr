@@ -10,6 +10,7 @@ import fs from 'fs'
 import { log } from '../util/log'
 import { initialMetaStatistics, MetaStatistics } from './meta-statistics'
 import { SteppingSlicer,StepResults } from '../core'
+import { jsonReplacer, jsonRetriever } from '../util/json'
 
 /**
  * By default, {@link extractUsageStatistics} requires a generator, but sometimes you already know all the files
@@ -32,12 +33,14 @@ export function staticRequests(...requests: (RParseRequestFromText | RParseReque
  * @param features  - The features to extract (see {@link allFeatureNames}).
  * @param requests  - The requests to extract the features from. May generate them on demand (e.g., by traversing a folder).
  * 										If your request is statically known, you can use {@link staticRequests} to create this generator.
+ * @param rootPath  - The root path to the project, this is used to relativize the file paths in the statistics.
  */
 export async function extractUsageStatistics<T extends RParseRequestFromText | RParseRequestFromFile>(
 	shell: RShell,
 	onRequest: (request: T) => void,
 	features: FeatureSelection,
-	requests: AsyncGenerator<T>
+	requests: AsyncGenerator<T>,
+	rootPath?: string
 ): Promise<{ features: FeatureStatistics, meta: MetaStatistics, outputs: Map<T, StepResults<'dataflow'>> }> {
 	let result = initializeFeatureStatistics()
 	const meta = initialMetaStatistics()
@@ -47,14 +50,16 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 	for await (const request of requests) {
 		onRequest(request)
 		const start = performance.now()
+		const suffix = request.request === 'file' ? request.content.replace(new RegExp('^' + (rootPath ?? '')), '') : undefined
 		try {
 			let output
 			({ stats: result, output } = await extractSingle(result, shell, {
 				...request,
 				ensurePackageInstalled: first
-			}, features))
+			}, features, suffix))
 			outputs.set(request, output)
 			processMetaOnSuccessful(meta, request)
+			meta.numberOfNormalizedNodes.push(output.normalize.idMap.size)
 			first = false
 		} catch(e) {
 			log.error('for request: ', request, e)
@@ -69,7 +74,7 @@ function initializeFeatureStatistics(): FeatureStatistics {
 	const result = {} as FeatureStatistics
 	for(const key of allFeatureNames) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		result[key] = JSON.parse(JSON.stringify(ALL_FEATURES[key].initialValue))
+		result[key] = JSON.parse(JSON.stringify(ALL_FEATURES[key].initialValue, jsonReplacer), jsonRetriever)
 	}
 	return result
 }
@@ -90,7 +95,7 @@ function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequest
 
 const parser = new DOMParser()
 
-async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>): Promise<{ stats: FeatureStatistics, output: StepResults<'dataflow'>}> {
+async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>, suffixFilePath: string | undefined): Promise<{ stats: FeatureStatistics, output: StepResults<'dataflow'>}> {
 	const slicerOutput = await new SteppingSlicer({
 		stepOfInterest: 'dataflow',
 		request, shell
@@ -109,7 +114,7 @@ async function extractSingle(result: FeatureStatistics, shell: RShell, request: 
 			parsedRAst:     doc,
 			dataflow:       slicerOutput.dataflow,
 			normalizedRAst: slicerOutput.normalize,
-			filepath:       request.request === 'file' ? request.content : undefined
+			filepath:       suffixFilePath
 		})
 	}
 

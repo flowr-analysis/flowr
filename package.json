@@ -1,8 +1,8 @@
 {
   "name": "flowr",
-  "version": "1.2.1",
+  "version": "1.3.2",
   "description": "Program Slicer and Analyzer for R Programs",
-  "main": "dist/cli/slicer-app.js",
+  "main": "dist/src/flowr.js",
   "scripts": {
     "main": "ts-node src/flowr.ts",
     "stats": "ts-node src/cli/statistics-app.ts",
@@ -15,7 +15,8 @@
     "export-quads": "ts-node src/cli/export-quads-app.ts",
     "build": "tsc --project .",
     "lint-local": "npm run lint -- --rule \"no-warning-comments: off\"",
-    "lint": "eslint src/ test/",
+    "lint": "npm run license-compat -- --summary && eslint src/ test/",
+    "license-compat": "license-checker --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
     "doc": "typedoc",
     "test": "nyc --no-clean mocha --require ts-node/register --timeout 60000 \"test/**/*.spec.ts\"",
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2; cd ../../; }; func",
@@ -329,6 +330,7 @@
     "eslint-plugin-n": "^15.7.0",
     "eslint-plugin-promise": "^6.1.1",
     "eslint-plugin-tsdoc": "^0.2.17",
+    "license-checker": "^25.0.1",
     "mocha": "^10.2.0",
     "mocha-multi-reporters": "^1.5.1",
     "nyc": "^15.1.0",

@@ -18,8 +18,8 @@ describe('Used Function Definitions', withShell(shell => {
 				total: 1
 			},
 			written: [
-				['usedParameterNames', [{ value: 'x' }]],
-				['all-definitions', [ { value: {
+				['usedParameterNames', [['x']]],
+				['all-definitions', [ [{
 					location:           { line: 1, column: 1 },
 					callsites:          [],
 					numberOfParameters: 1,
@@ -31,7 +31,7 @@ describe('Used Function Definitions', withShell(shell => {
 						characters:              17,
 						nonWhitespaceCharacters: 14
 					}
-				}}]]
+				}]]]
 			]
 		},
 		{
@@ -45,9 +45,9 @@ describe('Used Function Definitions', withShell(shell => {
 				lambdasOnly: 1
 			},
 			written: [
-				['usedParameterNames', [{ value: 'x' }]],
-				['allLambdas', [{ value: '\\(x) x' }]],
-				['all-definitions', [ { value: {
+				['usedParameterNames', [['x']]],
+				['allLambdas', [['\\(x) x']]],
+				['all-definitions', [ [{
 					location:           { line: 1, column: 1 },
 					callsites:          [],
 					numberOfParameters: 1,
@@ -59,7 +59,7 @@ describe('Used Function Definitions', withShell(shell => {
 						characters:              6,
 						nonWhitespaceCharacters: 5
 					}
-				}}]]
+				}]]]
 			]
 		},
 		{
@@ -71,9 +71,9 @@ describe('Used Function Definitions', withShell(shell => {
 				deepestNesting:  1
 			},
 			written: [
-				['usedParameterNames', [{ value: 'x' }, { value: 'y' }]],
-				['nested-definitions', [{ value: 'function(y) { x + y }' }]],
-				['all-definitions', [ { value: {
+				['usedParameterNames', [['x'], ['y']]],
+				['nested-definitions', [['function(y) { x + y }']]],
+				['all-definitions', [ [{
 					location:           { line: 1, column: 1 },
 					callsites:          [],
 					numberOfParameters: 1,
@@ -85,7 +85,7 @@ describe('Used Function Definitions', withShell(shell => {
 						characters:              37,
 						nonWhitespaceCharacters: 29
 					}
-				}}, { value: {
+				}], [{
 					location:           { line: 1, column: 15 },
 					callsites:          [],
 					numberOfParameters: 1,
@@ -97,7 +97,7 @@ describe('Used Function Definitions', withShell(shell => {
 						characters:              21,
 						nonWhitespaceCharacters: 16
 					}
-				}}]]
+				}]]]
 			]
 		},
 		{
@@ -115,10 +115,10 @@ describe('Used Function Definitions', withShell(shell => {
 				assignedFunctions: 1
 			},
 			written: [
-				['usedParameterNames', [{ value: 'n' }]],
-				['assignedFunctions', [{ value: 'fib' }]],
-				['recursive', [{ value: 'fib(n - 1)' }, { value: 'fib(n - 2)' }]],
-				['all-definitions', [ { value: {
+				['usedParameterNames', [['n']]],
+				['assignedFunctions', [['fib']]],
+				['recursive', [['fib(n - 1)'], ['fib(n - 2)']]],
+				['all-definitions', [ [{
 					location:  { line: 1, column: 8 },
 					callsites: [
 						{ line: 5, column: 48 },
@@ -134,7 +134,7 @@ describe('Used Function Definitions', withShell(shell => {
 						characters:              80,
 						nonWhitespaceCharacters: 62
 					}
-				}}]]
+				}]]]
 			]
 		}
 	])

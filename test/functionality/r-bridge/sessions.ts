@@ -55,6 +55,7 @@ describe('RShell sessions', function() {
 	})
 	testWithShell('clear environment should remove variable information', async shell => {
 		shell.continueOnError() // we will produce an error!
+		shell.sendCommand('Sys.setenv(LANG="en")')
 		shell.sendCommand('a <- 1 + 1')
 		shell.clearEnvironment()
 		await shell.sendCommandWithOutput('a', { from: 'stderr' }).then(lines => {

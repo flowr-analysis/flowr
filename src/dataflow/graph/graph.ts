@@ -10,7 +10,7 @@ import { BiMap } from '../../util/bimap'
 import { log } from '../../util/log'
 import { DataflowGraphEdge, DataflowGraphEdgeAttribute, EdgeType } from './edge'
 import { DataflowInformation } from '../internal/info'
-import { equalEdges, equalExitPoints, equalFunctionArguments, equalVertices } from './equal'
+import { equalEdges, equalExitPoints, equalFunctionArguments, equalVertices } from './diff'
 import {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,

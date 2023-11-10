@@ -110,6 +110,7 @@ export function serialize2quads(obj: RecordForQuad, config: QuadSerializationCon
 	guard(isObjectOrArray(obj), 'cannot serialize non-object to rdf!')
 	guard(!Array.isArray(obj), 'cannot serialize arrays (must wrap in object)!')
 
+	store = new Set()
 	const quads: Quad[] = []
 	serializeObject(obj, quads, useConfig)
 	return writer.quadsToString(quads)
@@ -147,7 +148,13 @@ export function graph2quads<AdditionalVertexInformation extends MergeableRecord,
 
 
 function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
+	if(guardCycle(obj)) {
+		return
+	}
 	for(const [index, element] of value.entries()) {
+		if(guardCycle(element)) {
+			continue
+		}
 		if(isObjectOrArray(element)) {
 			const context= retrieveContext(config.context, obj)
 			quads.push(quad(
@@ -200,6 +207,9 @@ function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads
 	if(config.ignore(key, value)) {
 		return
 	}
+	if(guardCycle(value)) {
+		return
+	}
 	if(isObjectOrArray(value)) {
 		if(Array.isArray(value)) {
 			processArrayEntries(key, value, obj, quads, config)
@@ -211,8 +221,27 @@ function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads
 	}
 }
 
+let store = new Set()
+
+function guardCycle(obj: unknown) {
+	if(obj === null) {
+		return true
+	}
+	// @ts-expect-error we do not care about the type here
+	if(isObjectOrArray(obj) && 'id' in obj) {
+		if(store.has(obj.id)) {
+			return true
+		}
+		store.add(obj.id)
+	}
+	return false
+}
+
 function serializeObject(obj: DataForQuad | undefined | null, quads: Quad[], config: Required<QuadSerializationConfiguration>): void {
 	if(obj === undefined || obj === null) {
+		return
+	}
+	if(guardCycle(obj)) {
 		return
 	}
 	if(obj instanceof Map) {

@@ -9,6 +9,7 @@ import { DataflowGraph, DataflowGraphEdgeAttribute } from '../graph'
 import { resolveByName } from './resolve-by-name'
 import { DataflowScopeName, GlobalScope, LocalScope } from './scopes'
 import { GenericDifferenceInformation, setDifference } from '../../util/diff'
+import { jsonReplacer } from '../../util/json'
 
 /** identifiers are branded to avoid confusion with other string-like types */
 export type Identifier = string & { __brand?: 'identifier' }
@@ -161,21 +162,21 @@ export function initializeCleanEnvironments(): REnvironmentInformation {
 export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | undefined, info: GenericDifferenceInformation): void {
 	if(a === undefined || b === undefined) {
 		if(a !== b) {
-			info.report.addComment(`${info.position}Different environments. ${info.leftname}: ${JSON.stringify(a)} vs. ${info.rightname}: ${JSON.stringify(b)}`)
+			info.report.addComment(`${info.position}Different environments. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
 		}
 		return
 	}
 	if(a.name !== b.name) {
-		info.report.addComment(`${info.position}Different environment names. ${info.leftname}: ${JSON.stringify(a)} vs. ${info.rightname}: ${JSON.stringify(b)}`)
+		info.report.addComment(`${info.position}Different environment names. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
 	}
 	if(a.memory.size !== b.memory.size) {
-		info.report.addComment(`${info.position}Different environment sizes. ${info.leftname}: ${JSON.stringify(a)} vs. ${info.rightname}: ${JSON.stringify(b)}`)
-		setDifference(new Set([...a.memory.keys()]), new Set([...b.memory.keys()]), {...info, position: `${info.position}Memory key comparison. `})
+		info.report.addComment(`${info.position}Different environment sizes. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
+		setDifference(new Set([...a.memory.keys()]), new Set([...b.memory.keys()]), {...info, position: `${info.position}Key comparison. `})
 	}
 	for(const [key, value] of a.memory) {
 		const value2 = b.memory.get(key)
 		if(value2 === undefined || value.length !== value2.length) {
-			info.report.addComment(`${info.position}Different definitions for ${key}. ${info.leftname}: ${JSON.stringify(value)} vs. ${info.rightname}: ${JSON.stringify(value2)}`)
+			info.report.addComment(`${info.position}Different definitions for ${key}. ${info.leftname}: ${JSON.stringify(value, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(value2, jsonReplacer)}`)
 			continue
 		}
 
@@ -183,22 +184,22 @@ export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | u
 			const aVal = value[i]
 			const bVal = value2[i]
 			if(aVal.name !== bVal.name) {
-				info.report.addComment(`${info.position}Different names for ${key}. ${info.leftname}: ${JSON.stringify(aVal)} vs. ${info.rightname}: ${JSON.stringify(bVal)}`)
+				info.report.addComment(`${info.position}Different names for ${key}. ${info.leftname}: ${aVal.name} vs. ${info.rightname}: ${bVal.name}`)
 			}
 			if(aVal.nodeId !== bVal.nodeId) {
-				info.report.addComment(`${info.position}Different nodeIds for ${key}. ${info.leftname}: ${JSON.stringify(aVal)} vs. ${info.rightname}: ${JSON.stringify(bVal)}`)
+				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`)
 			}
 			if(aVal.scope !== bVal.scope) {
-				info.report.addComment(`${info.position}Different scopes for ${key}. ${info.leftname}: ${JSON.stringify(aVal)} vs. ${info.rightname}: ${JSON.stringify(bVal)}`)
+				info.report.addComment(`${info.position}Different scopes for ${key}. ${info.leftname}: ${aVal.scope} vs. ${info.rightname}: ${bVal.scope}`)
 			}
 			if(aVal.used !== bVal.used) {
-				info.report.addComment(`${info.position}Different used for ${key}. ${info.leftname}: ${JSON.stringify(aVal)} vs. ${info.rightname}: ${JSON.stringify(bVal)}`)
+				info.report.addComment(`${info.position}Different used for ${key}. ${info.leftname}: ${aVal.used} vs. ${info.rightname}: ${bVal.used}`)
 			}
 			if(aVal.definedAt !== bVal.definedAt) {
-				info.report.addComment(`${info.position}Different definedAt for ${key}. ${info.leftname}: ${JSON.stringify(aVal)} vs. ${info.rightname}: ${JSON.stringify(bVal)}`)
+				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key}. ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)
 			}
 			if(aVal.kind !== bVal.kind) {
-				info.report.addComment(`${info.position}Different kind for ${key}. ${info.leftname}: ${JSON.stringify(aVal)} vs. ${info.rightname}: ${JSON.stringify(bVal)}`)
+				info.report.addComment(`${info.position}Different kinds for ${key}. ${info.leftname}: ${aVal.kind} vs. ${info.rightname}: ${bVal.kind}`)
 			}
 		}
 	}
@@ -207,7 +208,7 @@ export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | u
 
 export function diffEnvironments(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined, info: GenericDifferenceInformation): void {
 	if(a === undefined || b === undefined) {
-		info.report.addComment(`${info.position}Different environments: ${JSON.stringify(a)} vs. ${JSON.stringify(b)}`)
+		info.report.addComment(`${info.position}Different environments: ${JSON.stringify(a, jsonReplacer)} vs. ${JSON.stringify(b, jsonReplacer)}`)
 		return
 	}
 	diffEnvironment(a.current, b.current, info)

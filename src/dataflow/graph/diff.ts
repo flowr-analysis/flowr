@@ -7,6 +7,7 @@ import {
 	GenericDifferenceInformation,
 	WriteableDifferenceReport, DifferenceReport
 } from '../../util/diff'
+import { jsonReplacer } from '../../util/json'
 
 class DataflowDifferenceReport implements WriteableDifferenceReport {
 	_comments: string[] | undefined      = undefined
@@ -87,7 +88,7 @@ export function diffOfDataflowGraphs(left: NamedGraph, right: NamedGraph): Diffe
 function diffFunctionArgumentsReferences(a: IdentifierReference | '<value>', b: IdentifierReference | '<value>', ctx: GenericDifferenceInformation): void {
 	if(a === '<value>' || b === '<value>') {
 		if(a !== b) {
-			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a)} vs ${ctx.rightname}: ${JSON.stringify(b)}`)
+			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
 		}
 		return
 	}
@@ -123,12 +124,12 @@ export function equalFunctionArguments(a: false | FunctionArgument[], b: false |
 export function diffFunctionArguments(a: false | FunctionArgument[], b: false | FunctionArgument[], ctx: GenericDifferenceInformation): void {
 	if(a === false || b === false) {
 		if(a !== b) {
-			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a)} vs ${ctx.rightname}: ${JSON.stringify(b)}`)
+			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
 		}
 		return
 	}
 	else if(a.length !== b.length) {
-		ctx.report.addComment(`${ctx.position}Differs in number of arguments. ${ctx.leftname}: ${JSON.stringify(a)} vs ${ctx.rightname}: ${JSON.stringify(b)}`)
+		ctx.report.addComment(`${ctx.position}Differs in number of arguments. ${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
 		return
 	}
 	for(let i = 0; i < a.length; ++i) {
@@ -194,11 +195,11 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 			guard(rInfo.tag === 'function-definition', 'otherInfo must be a function definition as well')
 
 			if(!equalExitPoints(lInfo.exitPoints, rInfo.exitPoints)) {
-				ctx.report.addComment(`Vertex ${id} has different exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints)}`)
+				ctx.report.addComment(`Vertex ${id} has different exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints, jsonReplacer)}`)
 			}
 
 			if(lInfo.subflow.scope !== rInfo.subflow.scope) {
-				ctx.report.addComment(`Vertex ${id} has different subflow scope. ${ctx.leftname}: ${JSON.stringify(lInfo.subflow)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.subflow)}`)
+				ctx.report.addComment(`Vertex ${id} has different subflow scope. ${ctx.leftname}: ${JSON.stringify(lInfo.subflow, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.subflow, jsonReplacer)}`)
 			}
 			diffEnvironments(lInfo.subflow.environments, rInfo.subflow.environments, {...ctx, position: `${ctx.position}Vertex ${id} (function definition) differs in subflow environments. ` })
 			setDifference(lInfo.subflow.graph, rInfo.subflow.graph, {...ctx, position: `${ctx.position}Vertex ${id} differs in subflow graph. ` })
@@ -209,13 +210,13 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: OutgoingEdges | undefined, rEdges: OutgoingEdges | undefined): void {
 	if(lEdges === undefined || rEdges === undefined) {
 		if(lEdges !== rEdges) {
-			ctx.report.addComment(`Vertex ${id} has undefined outgoing edges. ${ctx.leftname}: ${JSON.stringify(lEdges)} vs ${ctx.rightname}: ${JSON.stringify(rEdges)}`)
+			ctx.report.addComment(`Vertex ${id} has undefined outgoing edges. ${ctx.leftname}: ${JSON.stringify(lEdges, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rEdges, jsonReplacer)}`)
 		}
 		return
 	}
 
 	if(lEdges.size !== rEdges.size) {
-		ctx.report.addComment(`Vertex ${id} has different number of outgoing edges. ${ctx.leftname}: ${JSON.stringify(lEdges)} vs ${ctx.rightname}: ${JSON.stringify(rEdges)}`)
+		ctx.report.addComment(`Vertex ${id} has different number of outgoing edges. ${ctx.leftname}: ${JSON.stringify(lEdges, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rEdges, jsonReplacer)}`)
 	}
 	// order independent compare
 	for(const [target, edge] of lEdges) {

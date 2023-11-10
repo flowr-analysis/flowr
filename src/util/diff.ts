@@ -55,13 +55,11 @@ export function setDifference<T>(left: ReadonlySet<T>, right: ReadonlySet<T>, in
 	}
 	let message: string = info.position
 	if(lWithoutR.size > 0) {
-		message += ` in ${info.leftname}: ${JSON.stringify([...lWithoutR])}`
+		message += ` More elements in ${info.leftname}: ${JSON.stringify([...lWithoutR])}`
 	}
 	if(rWithoutL.size > 0) {
-		if(lWithoutR.size > 0) {
-			message += ' and'
-		}
-		message += ` in ${info.rightname}: ${JSON.stringify([...rWithoutL])}`
+		message += lWithoutR.size > 0 ? ' and m' : 'M'
+		message += `ore in ${info.rightname}: ${JSON.stringify([...rWithoutL])}`
 	}
 	info.report.addComment(message)
 }

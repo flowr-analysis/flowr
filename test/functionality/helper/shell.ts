@@ -157,7 +157,7 @@ export function assertDataflow(name: string, shell: RShell, input: string, expec
 		const report: DifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got'})
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
-			guard(report.isEqual(), () => `report:\n${report.comments()?.join('\n * ') ?? ''}`)
+			guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`)
 		} catch(e) {
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected },

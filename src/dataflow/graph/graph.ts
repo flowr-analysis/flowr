@@ -11,7 +11,6 @@ import { log } from '../../util/log'
 import { DataflowGraphEdge, DataflowGraphEdgeAttribute, EdgeType } from './edge'
 import { DataflowInformation } from '../internal/info'
 import {
-	DifferenceReport,
 	diffOfDataflowGraphs,
 	equalExitPoints,
 	equalFunctionArguments
@@ -23,6 +22,7 @@ import {
 	DataflowGraphVertexInfo,
 	DataflowGraphVertices
 } from './vertex'
+import { DifferenceReport } from '../../util/diff'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>

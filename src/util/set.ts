@@ -14,9 +14,9 @@ export function setEquals<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): boolean {
 }
 
 /**
- * Returns A \\ B
+ * Returns `A – B`
  */
-export function setDifference<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): Set<T> {
+export function setMinus<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): Set<T> {
 	const result = new Set<T>()
 	for(const item of a) {
 		if(!b.has(item)) {

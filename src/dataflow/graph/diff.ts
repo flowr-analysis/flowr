@@ -2,28 +2,30 @@ import { environmentsEqual, equalIdentifierReferences, IdentifierReference } fro
 import { NodeId } from '../../r-bridge'
 import { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
 import { guard } from '../../util/assert'
-import { setDifference, setEquals } from '../../util/set'
+import {
+	setDifference,
+	GenericDifferenceInformation,
+	WriteableDifferenceReport, DifferenceReport
+} from '../../util/diff'
 
-class DataflowDifferenceReport implements DifferenceReport {
-	comments: string[] | undefined      = undefined
+class DataflowDifferenceReport implements WriteableDifferenceReport {
+	_comments: string[] | undefined      = undefined
 
 	addComment(comment: string): void {
-		if(this.comments === undefined) {
-			this.comments = [comment]
+		if(this._comments === undefined) {
+			this._comments = [comment]
 		} else {
-			this.comments.push(comment)
+			this._comments.push(comment)
 		}
 	}
 
-	isEqual(): boolean {
-		return this.comments === undefined
+	comments(): readonly string[] | undefined {
+		return this._comments
 	}
-}
 
-export interface DifferenceReport {
-	/** A human-readable description of differences during the comparison */
-	comments: string[] | undefined
-	isEqual(): boolean
+	isEqual(): boolean {
+		return this._comments === undefined
+	}
 }
 
 interface DataflowPosition {
@@ -37,14 +39,11 @@ export interface NamedGraph {
 	graph: DataflowGraph
 }
 
-interface DataflowDiffContext {
-	left:      DataflowGraph
-	leftname:  string
-	right:     DataflowGraph
-	rightname: string
-	report:    DataflowDifferenceReport
-	/** the current position when diffing in the graph (allows sub-vertex comparison to provide more useful information) */
-	position:  DataflowPosition | undefined
+interface DataflowDiffContext extends GenericDifferenceInformation {
+	left:  DataflowGraph
+	right: DataflowGraph
+	/** TODO: the current position when diffing in the graph (allows sub-vertex comparison to provide more useful information) */
+	// position: DataflowPosition | undefined
 }
 
 function initDiffContext(left: NamedGraph, right: NamedGraph): DataflowDiffContext {
@@ -55,7 +54,7 @@ function initDiffContext(left: NamedGraph, right: NamedGraph): DataflowDiffConte
 		rightname: right.name,
 		report:    new DataflowDifferenceReport(),
 		// TODO: handle the current position as well
-		position:  undefined
+		position:  ''
 	}
 }
 
@@ -81,26 +80,11 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 }
 
 function diffRootVertices(ctx: DataflowDiffContext): void {
-	const lWithoutR = setDifference(ctx.left.rootIds(), ctx.right.rootIds())
-	const rWithoutL = setDifference(ctx.right.rootIds(), ctx.left.rootIds())
-	if(lWithoutR.size === 0 && rWithoutL.size === 0) {
-		return
-	}
-	let message = 'Root vertices do not match'
-	if(lWithoutR.size > 0) {
-		message += ` in ${ctx.leftname}: ${JSON.stringify([...lWithoutR])}`
-	}
-	if(rWithoutL.size > 0) {
-		if(lWithoutR.size > 0) {
-			message += ' and'
-		}
-		message += ` in ${ctx.rightname}: ${JSON.stringify([...rWithoutL])}`
-	}
-	ctx.report.addComment(message)
+	setDifference(ctx.left.rootIds(), ctx.right.rootIds(), ctx)
 }
 
 
-export function diffOfDataflowGraphs(left: NamedGraph, right: NamedGraph): DataflowDifferenceReport {
+export function diffOfDataflowGraphs(left: NamedGraph, right: NamedGraph): DifferenceReport {
 	if(left.graph === right.graph) {
 		return new DataflowDifferenceReport()
 	}
@@ -213,10 +197,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 			if(lInfo.subflow.scope !== rInfo.subflow.scope || !environmentsEqual(lInfo.subflow.environments, rInfo.subflow.environments)) {
 				ctx.report.addComment(`Vertex ${id} has different subflow. ${ctx.leftname}: ${JSON.stringify(lInfo.subflow)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.subflow)}`)
 			}
-			if(!setEquals(lInfo.subflow.graph, rInfo.subflow.graph)) {
-				// TODO: set diff
-				ctx.report.addComment(`Vertex ${id} has different subflow graph. ${ctx.leftname}: ${JSON.stringify(lInfo.subflow.graph)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.subflow.graph)}`)
-			}
+			setDifference(lInfo.subflow.graph, rInfo.subflow.graph, {...ctx, position: `Vertex ${id} differs in subflow graph.` })
 		}
 	}
 }

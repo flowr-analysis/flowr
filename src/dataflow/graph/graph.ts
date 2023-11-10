@@ -10,7 +10,12 @@ import { BiMap } from '../../util/bimap'
 import { log } from '../../util/log'
 import { DataflowGraphEdge, DataflowGraphEdgeAttribute, EdgeType } from './edge'
 import { DataflowInformation } from '../internal/info'
-import { equalEdges, equalExitPoints, equalFunctionArguments, equalVertices } from './diff'
+import {
+	DifferenceReport,
+	diffOfDataflowGraphs,
+	equalExitPoints,
+	equalFunctionArguments
+} from './diff'
 import {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,
@@ -18,8 +23,6 @@ import {
 	DataflowGraphVertexInfo,
 	DataflowGraphVertices
 } from './vertex'
-import { setEquals } from '../../util/set'
-import { dataflowLogger } from '../index'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
@@ -313,28 +316,16 @@ export class DataflowGraph {
 		}
 	}
 
-	public equals(other: DataflowGraph): boolean {
-		if(!setEquals(this.rootVertices, other.rootVertices)) {
-			dataflowLogger.debug(`root vertices do not match: ${JSON.stringify([...this.rootVertices])} vs. other: ${JSON.stringify([...other.rootVertices])}`)
-			return false
+	// TODO: map diff to fail early
+	public equals(other: DataflowGraph, diff: true, names?: { left: string, right: string }): DifferenceReport
+	public equals(other: DataflowGraph, diff?: false, names?: { left: string, right: string }): boolean
+	public equals(other: DataflowGraph, diff = false, names = { left: 'left', right: 'right' }): boolean | DifferenceReport {
+		const report = diffOfDataflowGraphs({ name: names.left, graph: this}, { name: names.right, graph: other })
+		if(diff) {
+			return report
+		} else {
+			return report.isEqual()
 		}
-
-		if(!equalVertices(this.vertexInformation, other.vertexInformation)) {
-			return false
-		}
-
-		if(this.edgeInformation.size !== other.edgeInformation.size) {
-			dataflowLogger.debug(`different numbers of vertices with edges: ${this.edgeInformation.size} vs ${other.edgeInformation.size}`)
-			return false
-		}
-
-		for(const [id, edge] of this.edgeInformation.entries()) {
-			if(!equalEdges(id, edge, other.edgeInformation.get(id))) {
-				return false
-			}
-		}
-
-		return true
 	}
 
 	/**

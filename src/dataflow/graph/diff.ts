@@ -1,4 +1,4 @@
-import { environmentsEqual, equalIdentifierReferences, IdentifierReference } from '../environments'
+import { environmentsEqual, diffIdentifierReferences, IdentifierReference } from '../environments'
 import { NodeId } from '../../r-bridge'
 import { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
 import { guard } from '../../util/assert'
@@ -80,7 +80,7 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 }
 
 function diffRootVertices(ctx: DataflowDiffContext): void {
-	setDifference(ctx.left.rootIds(), ctx.right.rootIds(), ctx)
+	setDifference(ctx.left.rootIds(), ctx.right.rootIds(), {...ctx, position: `${ctx.position}Root vertices differ in graphs. ` })
 }
 
 
@@ -94,11 +94,14 @@ export function diffOfDataflowGraphs(left: NamedGraph, right: NamedGraph): Diffe
 }
 
 
-function equalFunctionArgumentsReferences(a: IdentifierReference | '<value>', b: IdentifierReference | '<value>'): boolean {
+function diffFunctionArgumentsReferences(a: IdentifierReference | '<value>', b: IdentifierReference | '<value>', ctx: GenericDifferenceInformation): void {
 	if(a === '<value>' || b === '<value>') {
-		return a === b
+		if(a !== b) {
+			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a)} vs ${ctx.rightname}: ${JSON.stringify(b)}`)
+		}
+		return
 	}
-	return equalIdentifierReferences(a, b)
+	diffIdentifierReferences(a, b, ctx)
 }
 
 export function equalExitPoints(a: NodeId[] | undefined, b: NodeId[] | undefined): boolean {
@@ -117,11 +120,26 @@ export function equalExitPoints(a: NodeId[] | undefined, b: NodeId[] | undefined
 }
 
 export function equalFunctionArguments(a: false | FunctionArgument[], b: false | FunctionArgument[]): boolean {
+	const ctx: GenericDifferenceInformation = {
+		report:    new DataflowDifferenceReport(),
+		leftname:  'left',
+		rightname: 'right',
+		position:  ''
+	}
+	diffFunctionArguments(a, b, ctx)
+	return ctx.report.isEqual()
+}
+
+export function diffFunctionArguments(a: false | FunctionArgument[], b: false | FunctionArgument[], ctx: GenericDifferenceInformation): void {
 	if(a === false || b === false) {
-		return a === b
+		if(a !== b) {
+			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a)} vs ${ctx.rightname}: ${JSON.stringify(b)}`)
+		}
+		return
 	}
 	else if(a.length !== b.length) {
-		return false
+		ctx.report.addComment(`${ctx.position}Differs in number of arguments. ${ctx.leftname}: ${JSON.stringify(a)} vs ${ctx.rightname}: ${JSON.stringify(b)}`)
+		return
 	}
 	for(let i = 0; i < a.length; ++i) {
 		const aArg = a[i]
@@ -129,16 +147,17 @@ export function equalFunctionArguments(a: false | FunctionArgument[], b: false |
 		if(Array.isArray(aArg) && Array.isArray(bArg)) {
 			// must have same name
 			if(aArg[0] !== bArg[0]) {
-				return false
+				ctx.report.addComment(`${ctx.position}In the ${i}th argument (of ${ctx.leftname}, named) the name differs: ${aArg[0]} vs ${bArg[0]}.`)
+				continue
 			}
-			if(!equalFunctionArgumentsReferences(aArg[1], bArg[1])) {
-				return false
-			}
-		} else if(!equalFunctionArgumentsReferences(aArg as PositionalFunctionArgument, bArg as PositionalFunctionArgument)) {
-			return false
+			diffFunctionArgumentsReferences(aArg[1], bArg[1], {
+				...ctx,
+				position: `${ctx.position} In the ${i}th argument (of ${ctx.leftname}, named). `
+			})
+		} else {
+			diffFunctionArgumentsReferences(aArg as PositionalFunctionArgument, bArg as PositionalFunctionArgument, { ...ctx, position: `${ctx.position} In the ${i}th argument (of ${ctx.leftname}, unnamed).` })
 		}
 	}
-	return true
 }
 
 
@@ -181,10 +200,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 
 		if(lInfo.tag === 'function-call') {
 			guard(rInfo.tag === 'function-call', 'otherInfo must be a function call as well')
-			// TODO diff:
-			if(!equalFunctionArguments(lInfo.args, rInfo.args)) {
-				ctx.report.addComment(`Vertex ${id} has different arguments. ${ctx.leftname}: ${JSON.stringify(lInfo.args)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.args)}`)
-			}
+			diffFunctionArguments(lInfo.args, rInfo.args, ctx)
 		}
 
 		if(lInfo.tag === 'function-definition') {
@@ -197,7 +213,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 			if(lInfo.subflow.scope !== rInfo.subflow.scope || !environmentsEqual(lInfo.subflow.environments, rInfo.subflow.environments)) {
 				ctx.report.addComment(`Vertex ${id} has different subflow. ${ctx.leftname}: ${JSON.stringify(lInfo.subflow)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.subflow)}`)
 			}
-			setDifference(lInfo.subflow.graph, rInfo.subflow.graph, {...ctx, position: `Vertex ${id} differs in subflow graph.` })
+			setDifference(lInfo.subflow.graph, rInfo.subflow.graph, {...ctx, position: `${ctx.position}Vertex ${id} differs in subflow graph. ` })
 		}
 	}
 }

@@ -8,6 +8,7 @@ import { DataflowGraph, DataflowGraphEdgeAttribute } from '../graph'
 import { dataflowLogger } from '../index'
 import { resolveByName } from './resolve-by-name'
 import { DataflowScopeName, GlobalScope, LocalScope } from './scopes'
+import { DifferenceReport, GenericDifferenceInformation } from '../../util/diff'
 
 /** identifiers are branded to avoid confusion with other string-like types */
 export type Identifier = string & { __brand?: 'identifier' }
@@ -43,8 +44,19 @@ export interface IdentifierReference {
 	used:   DataflowGraphEdgeAttribute
 }
 
-export function equalIdentifierReferences(a: IdentifierReference, b: IdentifierReference): boolean {
-	return a.name === b.name && a.scope === b.scope && a.nodeId === b.nodeId && a.used === b.used
+export function diffIdentifierReferences(a: IdentifierReference, b: IdentifierReference, info: GenericDifferenceInformation): void {
+	if(a.name !== b.name) {
+		info.report.addComment(`${info.position}Different identifier names: ${a.name} vs. ${b.name}`)
+	}
+	if(a.scope !== b.scope) {
+		info.report.addComment(`${info.position}Different scopes: ${a.scope} vs. ${b.scope}`)
+	}
+	if(a.nodeId !== b.nodeId) {
+		info.report.addComment(`${info.position}Different nodeIds: ${a.nodeId} vs. ${b.nodeId}`)
+	}
+	if(a.used !== b.used) {
+		info.report.addComment(`${info.position}Different used: ${a.used} vs. ${b.used}`)
+	}
 }
 
 export function makeAllMaybe(references: IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference[] {

@@ -12,8 +12,7 @@ import { DataflowGraphEdge, DataflowGraphEdgeAttribute, EdgeType } from './edge'
 import { DataflowInformation } from '../internal/info'
 import {
 	diffOfDataflowGraphs,
-	equalExitPoints,
-	equalFunctionArguments
+	equalExitPoints, equalFunctionArguments
 } from './diff'
 import {
 	DataflowGraphVertexArgument,

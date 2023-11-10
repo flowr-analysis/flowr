@@ -1,4 +1,4 @@
-import { environmentsEqual, diffIdentifierReferences, IdentifierReference } from '../environments'
+import { diffIdentifierReferences, IdentifierReference, diffEnvironments } from '../environments'
 import { NodeId } from '../../r-bridge'
 import { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
 import { guard } from '../../util/assert'
@@ -28,12 +28,6 @@ class DataflowDifferenceReport implements WriteableDifferenceReport {
 	}
 }
 
-interface DataflowPosition {
-	currentVertex: NodeId,
-	graphSide:     'left' | 'right',
-	atEdge:        boolean
-}
-
 export interface NamedGraph {
 	name:  string,
 	graph: DataflowGraph
@@ -42,8 +36,6 @@ export interface NamedGraph {
 interface DataflowDiffContext extends GenericDifferenceInformation {
 	left:  DataflowGraph
 	right: DataflowGraph
-	/** TODO: the current position when diffing in the graph (allows sub-vertex comparison to provide more useful information) */
-	// position: DataflowPosition | undefined
 }
 
 function initDiffContext(left: NamedGraph, right: NamedGraph): DataflowDiffContext {
@@ -53,7 +45,6 @@ function initDiffContext(left: NamedGraph, right: NamedGraph): DataflowDiffConte
 		right:     right.graph,
 		rightname: right.name,
 		report:    new DataflowDifferenceReport(),
-		// TODO: handle the current position as well
 		position:  ''
 	}
 }
@@ -76,7 +67,7 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 	for(const [id, edge] of lEdges) {
 		diffEdges(ctx, id, edge, rEdges.get(id))
 	}
-	// TODO: check rEdges as well!
+	// TODO: check rEdges as well to get better differences
 }
 
 function diffRootVertices(ctx: DataflowDiffContext): void {
@@ -193,14 +184,11 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 			ctx.report.addComment(`Vertex ${id} has different when. ${ctx.leftname}: ${lInfo.when} vs ${ctx.rightname}: ${rInfo.when}`)
 		}
 
-		// TODO: diff environments
-		if(!environmentsEqual(lInfo.environment, rInfo.environment)) {
-			ctx.report.addComment(`Vertex ${id} has different environments. ${ctx.leftname}: ${JSON.stringify(lInfo.environment)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.environment)}`)
-		}
+		diffEnvironments(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environments. ` })
 
 		if(lInfo.tag === 'function-call') {
 			guard(rInfo.tag === 'function-call', 'otherInfo must be a function call as well')
-			diffFunctionArguments(lInfo.args, rInfo.args, ctx)
+			diffFunctionArguments(lInfo.args, rInfo.args, {...ctx, position: `${ctx.position}Vertex ${id} (function call) differs in arguments. ` })
 		}
 
 		if(lInfo.tag === 'function-definition') {
@@ -210,9 +198,10 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 				ctx.report.addComment(`Vertex ${id} has different exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints)}`)
 			}
 
-			if(lInfo.subflow.scope !== rInfo.subflow.scope || !environmentsEqual(lInfo.subflow.environments, rInfo.subflow.environments)) {
-				ctx.report.addComment(`Vertex ${id} has different subflow. ${ctx.leftname}: ${JSON.stringify(lInfo.subflow)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.subflow)}`)
+			if(lInfo.subflow.scope !== rInfo.subflow.scope) {
+				ctx.report.addComment(`Vertex ${id} has different subflow scope. ${ctx.leftname}: ${JSON.stringify(lInfo.subflow)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.subflow)}`)
 			}
+			diffEnvironments(lInfo.subflow.environments, rInfo.subflow.environments, {...ctx, position: `${ctx.position}Vertex ${id} (function definition) differs in subflow environments. ` })
 			setDifference(lInfo.subflow.graph, rInfo.subflow.graph, {...ctx, position: `${ctx.position}Vertex ${id} differs in subflow graph. ` })
 		}
 	}

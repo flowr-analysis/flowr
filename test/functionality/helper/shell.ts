@@ -19,6 +19,7 @@ import { SlicingCriteria } from '../../../src/slicing'
 import { testRequiresRVersion } from './version'
 import { deepMergeObject, MergeableRecord } from '../../../src/util/objects'
 import { executeSingleSubStep, LAST_STEP, SteppingSlicer } from '../../../src/core'
+import { guard } from '../../../src/util/assert'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -155,7 +156,7 @@ export function assertDataflow(name: string, shell: RShell, input: string, expec
 		const report = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got'})
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
-			assert.isTrue(report.isEqual(), `report:\n${report.comments?.join('\n * ') ?? ''}`)
+			guard(report.isEqual(), () => `report:\n${report.comments?.join('\n * ') ?? ''}`)
 		} catch(e) {
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected },

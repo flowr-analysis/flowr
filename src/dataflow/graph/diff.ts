@@ -176,30 +176,30 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 			ctx.report.addComment(`Vertex ${id} has different tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`)
 		}
 		if(lInfo.name !== rInfo.name) {
-			ctx.report.addComment(`Vertex ${id} has different names: ${ctx.leftname}: ${lInfo.name} vs ${ctx.rightname}: ${rInfo.name}`)
+			ctx.report.addComment(`Vertex ${id} has different names. ${ctx.leftname}: ${lInfo.name} vs ${ctx.rightname}: ${rInfo.name}`)
 		}
 
 		if(lInfo.tag === 'variable-definition' || lInfo.tag === 'function-definition') {
 			guard(lInfo.tag === rInfo.tag, () => `node ${id} does not match on tag (${lInfo.tag} vs ${rInfo.tag})`)
 			if(lInfo.scope !== rInfo.scope) {
-				ctx.report.addComment(`Vertex ${id} has different scopes: ${ctx.leftname}: ${lInfo.scope} vs ${ctx.rightname}: ${rInfo.scope}`)
+				ctx.report.addComment(`Vertex ${id} has different scopes. ${ctx.leftname}: ${lInfo.scope} vs ${ctx.rightname}: ${rInfo.scope}`)
 			}
 		}
 
 		if(lInfo.when !== rInfo.when) {
-			ctx.report.addComment(`Vertex ${id} has different when: ${ctx.leftname}: ${lInfo.when} vs ${ctx.rightname}: ${rInfo.when}`)
+			ctx.report.addComment(`Vertex ${id} has different when. ${ctx.leftname}: ${lInfo.when} vs ${ctx.rightname}: ${rInfo.when}`)
 		}
 
 		// TODO: diff environments
 		if(!environmentsEqual(lInfo.environment, rInfo.environment)) {
-			ctx.report.addComment(`Vertex ${id} has different environments: ${ctx.leftname}: ${JSON.stringify(lInfo.environment)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.environment)}`)
+			ctx.report.addComment(`Vertex ${id} has different environments. ${ctx.leftname}: ${JSON.stringify(lInfo.environment)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.environment)}`)
 		}
 
 		if(lInfo.tag === 'function-call') {
 			guard(rInfo.tag === 'function-call', 'otherInfo must be a function call as well')
 			// TODO diff:
 			if(!equalFunctionArguments(lInfo.args, rInfo.args)) {
-				ctx.report.addComment(`Vertex ${id} has different arguments: ${ctx.leftname}: ${JSON.stringify(lInfo.args)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.args)}`)
+				ctx.report.addComment(`Vertex ${id} has different arguments. ${ctx.leftname}: ${JSON.stringify(lInfo.args)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.args)}`)
 			}
 		}
 
@@ -207,15 +207,15 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 			guard(rInfo.tag === 'function-definition', 'otherInfo must be a function definition as well')
 
 			if(!equalExitPoints(lInfo.exitPoints, rInfo.exitPoints)) {
-				ctx.report.addComment(`Vertex ${id} has different exit points: ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints)}`)
+				ctx.report.addComment(`Vertex ${id} has different exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints)}`)
 			}
 
 			if(lInfo.subflow.scope !== rInfo.subflow.scope || !environmentsEqual(lInfo.subflow.environments, rInfo.subflow.environments)) {
-				ctx.report.addComment(`Vertex ${id} has different subflow: ${ctx.leftname}: ${JSON.stringify(lInfo.subflow)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.subflow)}`)
+				ctx.report.addComment(`Vertex ${id} has different subflow. ${ctx.leftname}: ${JSON.stringify(lInfo.subflow)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.subflow)}`)
 			}
 			if(!setEquals(lInfo.subflow.graph, rInfo.subflow.graph)) {
 				// TODO: set diff
-				ctx.report.addComment(`Vertex ${id} has different subflow graph: ${ctx.leftname}: ${JSON.stringify(lInfo.subflow.graph)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.subflow.graph)}`)
+				ctx.report.addComment(`Vertex ${id} has different subflow graph. ${ctx.leftname}: ${JSON.stringify(lInfo.subflow.graph)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.subflow.graph)}`)
 			}
 		}
 	}
@@ -224,13 +224,13 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: OutgoingEdges | undefined, rEdges: OutgoingEdges | undefined): void {
 	if(lEdges === undefined || rEdges === undefined) {
 		if(lEdges !== rEdges) {
-			ctx.report.addComment(`Vertex ${id} has undefined outgoing edges: ${ctx.leftname}: ${JSON.stringify(lEdges)} vs ${ctx.rightname}: ${JSON.stringify(rEdges)}`)
+			ctx.report.addComment(`Vertex ${id} has undefined outgoing edges. ${ctx.leftname}: ${JSON.stringify(lEdges)} vs ${ctx.rightname}: ${JSON.stringify(rEdges)}`)
 		}
 		return
 	}
 
 	if(lEdges.size !== rEdges.size) {
-		ctx.report.addComment(`Vertex ${id} has different number of outgoing edges: ${ctx.leftname}: ${JSON.stringify(lEdges)} vs ${ctx.rightname}: ${JSON.stringify(rEdges)}`)
+		ctx.report.addComment(`Vertex ${id} has different number of outgoing edges. ${ctx.leftname}: ${JSON.stringify(lEdges)} vs ${ctx.rightname}: ${JSON.stringify(rEdges)}`)
 	}
 	// order independent compare
 	for(const [target, edge] of lEdges) {
@@ -250,4 +250,3 @@ export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: Outgoing
 		}
 	}
 }
-

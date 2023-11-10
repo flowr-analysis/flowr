@@ -1,6 +1,6 @@
 {
   "name": "flowr",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Program Slicer and Analyzer for R Programs",
   "main": "dist/src/flowr.js",
   "scripts": {

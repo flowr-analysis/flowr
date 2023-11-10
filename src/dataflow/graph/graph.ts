@@ -315,7 +315,6 @@ export class DataflowGraph {
 		}
 	}
 
-	// TODO: map diff to fail early
 	public equals(other: DataflowGraph, diff: true, names?: { left: string, right: string }): DifferenceReport
 	public equals(other: DataflowGraph, diff?: false, names?: { left: string, right: string }): boolean
 	public equals(other: DataflowGraph, diff = false, names = { left: 'left', right: 'right' }): boolean | DifferenceReport {

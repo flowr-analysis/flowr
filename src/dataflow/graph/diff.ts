@@ -67,7 +67,6 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 	for(const [id, edge] of lEdges) {
 		diffEdges(ctx, id, edge, rEdges.get(id))
 	}
-	// TODO: check rEdges as well to get better differences
 }
 
 function diffRootVertices(ctx: DataflowDiffContext): void {

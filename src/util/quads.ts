@@ -148,14 +148,8 @@ export function graph2quads<AdditionalVertexInformation extends MergeableRecord,
 
 
 function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
-	if(guardCycle(obj)) {
-		return
-	}
 	for(const [index, element] of value.entries()) {
-		if(guardCycle(element)) {
-			continue
-		}
-		if(isObjectOrArray(element)) {
+		if(element !== null && element !== undefined && isObjectOrArray(element)) {
 			const context= retrieveContext(config.context, obj)
 			quads.push(quad(
 				namedNode(domain + config.getId(obj, context)),
@@ -224,9 +218,6 @@ function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads
 let store = new Set()
 
 function guardCycle(obj: unknown) {
-	if(obj === null) {
-		return true
-	}
 	// @ts-expect-error we do not care about the type here
 	if(isObjectOrArray(obj) && 'id' in obj) {
 		if(store.has(obj.id)) {
@@ -238,7 +229,7 @@ function guardCycle(obj: unknown) {
 }
 
 function serializeObject(obj: DataForQuad | undefined | null, quads: Quad[], config: Required<QuadSerializationConfiguration>): void {
-	if(obj === undefined || obj === null) {
+	if(obj === null || obj === undefined) {
 		return
 	}
 	if(guardCycle(obj)) {

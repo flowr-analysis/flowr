@@ -6,7 +6,6 @@
 
 //imports {note: as of current, do not change}
 import {
-	NormalizedAst,
 	NodeId,
 	ParentInformation,
 	RAccess,
@@ -24,17 +23,16 @@ import {
 	RWhileLoop,
 	RType,
 	RPipe,
-	foldAstStateful,
 	StatefulFoldFunctions
 } from '../r-bridge'
-import { log, LogLevel } from '../util/log'
+import { log } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
 
 /*
 --helper function--
 */
-type Selection = Set<NodeId>
+export type Selection = Set<NodeId>
 interface PrettyPrintLine {
 	line:   string
 	indent: number
@@ -493,7 +491,7 @@ export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
  * The fold functions used to reconstruct the ast in {@link reconstructToCode}.
  */
 // escalates with undefined if all are undefined
-const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, ReconstructionConfiguration, Code> = {
+export const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, ReconstructionConfiguration, Code> = {
 	// we just pass down the state information so everyone has them
 	down:        (_n, c) => c,
 	foldNumber:  reconstructAsLeaf,
@@ -562,7 +560,7 @@ export interface ReconstructionResult {
 /*
 --helper function--
 */
-function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSelected: number) {
+export function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSelected: number) {
 	if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
 		// remove outer block
 		return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), autoSelected }
@@ -571,39 +569,4 @@ function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSe
 	}
 }
 
-/*
---main function--
-*/
-/**
- * Reconstructs parts of a normalized R ast into R code on an expression basis.
- *
- * @param ast          - The {@link NormalizedAst|normalized ast} to be used as a basis for reconstruction
- * @param selection    - The selection of nodes to be reconstructed (probably the {@link NodeId|NodeIds} identified by the slicer)
- * @param autoSelectIf - A predicate that can be used to force the reconstruction of a node (for example to reconstruct library call statements, see {@link autoSelectLibrary}, {@link doNotAutoSelect})
- *
- * @returns The number of times `autoSelectIf` triggered, as well as the reconstructed code itself.
- */
-export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
-	if(reconstructLogger.settings.minLevel >= LogLevel.Trace) {
-		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
-	}
 
-	// we use a wrapper to count the number of times the autoSelectIf predicate triggered
-	let autoSelected = 0
-	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
-		const result = autoSelectIf(node)
-		if(result) {
-			autoSelected++
-		}
-		return result
-	}
-
-	// fold of the normalized ast
-	const result = foldAstStateful(ast.ast, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
-
-	if(reconstructLogger.settings.minLevel >= LogLevel.Trace) {
-		reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
-	}
-
-	return removeOuterExpressionListIfApplicable(result, autoSelected)
-}

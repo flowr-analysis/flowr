@@ -19,7 +19,8 @@ import {
 	retrieveXmlFromRCode
 } from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
-import { reconstructToCode, staticSlicing } from '../slicing'
+import { staticSlicing } from '../slicing'
+import { reconstructToCode } from '../reconstruct/main'
 import { internalPrinter, IStepPrinter, StepOutputFormat } from './print/print'
 import { normalizedAstToJson, normalizedAstToQuads } from './print/normalize-printer'
 import { guard } from '../util/assert'

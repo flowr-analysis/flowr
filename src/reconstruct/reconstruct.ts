@@ -6,7 +6,6 @@
 
 //imports {note: as of current, do not change}
 import {
-	NodeId,
 	ParentInformation,
 	RAccess,
 	RArgument,
@@ -16,7 +15,6 @@ import {
 	RFunctionCall,
 	RFunctionDefinition,
 	RIfThenElse,
-	RNode,
 	RNodeWithParent,
 	RParameter,
 	RRepeatLoop,
@@ -28,20 +26,15 @@ import {
 import { log } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
-
-/*
---helper function--
-*/
-export type Selection = Set<NodeId>
-interface PrettyPrintLine {
-	line:   string
-	indent: number
-}
-function plain(text: string): PrettyPrintLine[] {
-	return [{ line: text, indent: 0 }]
-}
-type Code = PrettyPrintLine[]
-
+import { Selection } from './helper'
+import { PrettyPrintLine } from './helper'
+import { plain } from './helper'
+import { Code } from './helper'
+import { indentBy } from './helper'
+import { isSelected } from './helper'
+import { removeExpressionListWrap } from './helper'
+import { AutoSelectPredicate } from './helper'
+import { getIndentString } from './helper'
 
 /*
 --logger--
@@ -69,14 +62,6 @@ const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionC
 
 const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n))
 
-//look up exact function
-/*
---helper function--
-*/
-function indentBy(lines: Code, indent: number): Code {
-	return lines.map(({ line, indent: i }) => ({ line, indent: i + indent }))
-}
-
 /*
 --reconstruct--
 */
@@ -97,13 +82,6 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 			{ line: '}', indent: 0 }
 		]
 	}
-}
-
-/*
---helper function--
-*/
-function isSelected(configuration: ReconstructionConfiguration, n: RNode<ParentInformation>) {
-	return configuration.selection.has(n.info.id) || configuration.autoSelectIf(n)
 }
 
 /*
@@ -208,17 +186,6 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 				...indentBy(body, 1)
 			]
 		}
-	}
-}
-
-/*
---helper function--
-*/
-function removeExpressionListWrap(code: Code) {
-	if(code.length > 0 && code[0].line === '{' && code[code.length - 1].line === '}') {
-		return indentBy(code.slice(1, code.length - 1), -1)
-	} else {
-		return code
 	}
 }
 
@@ -447,42 +414,13 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 }
 
 /*
---helper function--
-*/
-/** The structure of the predicate that should be used to determine if a given normalized node should be included in the reconstructed code independent of if it is selected by the slice or not */
-export type AutoSelectPredicate = (node: RNode<ParentInformation>) => boolean
-
-/*
 --interface--
 */
-interface ReconstructionConfiguration extends MergeableRecord {
+export interface ReconstructionConfiguration extends MergeableRecord {
 	selection:    Selection
 	/** if true, this will force the ast part to be reconstructed, this can be used, for example, to force include `library` statements */
 	autoSelectIf: AutoSelectPredicate
 }
-
-/*
---helper function--
-*/
-export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
-	return false
-}
-
-/*
---helper function--
-*/
-const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
-
-/*
---helper function--
-*/
-export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
-	if(node.type !== RType.FunctionCall || node.flavor !== 'named') {
-		return false
-	}
-	return libraryFunctionCall.test(node.functionName.content)
-}
-
 
 /*
 --reconstruct--
@@ -535,38 +473,12 @@ export const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Recon
 
 
 /*
---helper function--
-*/
-function getIndentString(indent: number): string {
-	return ' '.repeat(indent * 4)
-}
-
-/*
---helper function--
-*/
-function prettyPrintCodeToString(code: Code, lf ='\n'): string {
-	return code.map(({ line, indent }) => `${getIndentString(indent)}${line}`).join(lf)
-}
-
-/*
 --interface--
 */
 export interface ReconstructionResult {
 	code:         string
 	/** number of nodes that triggered the `autoSelectIf` predicate {@link reconstructToCode} */
 	autoSelected: number
-}
-
-/*
---helper function--
-*/
-export function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSelected: number) {
-	if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
-		// remove outer block
-		return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), autoSelected }
-	} else {
-		return { code: prettyPrintCodeToString(result), autoSelected }
-	}
 }
 
 

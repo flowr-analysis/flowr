@@ -1,4 +1,8 @@
-import { Selection, AutoSelectPredicate, autoSelectLibrary, ReconstructionResult, reconstructLogger, reconstructAstFolds, removeOuterExpressionListIfApplicable } from './reconstruct';
+import { ReconstructionResult, reconstructLogger, reconstructAstFolds } from './reconstruct';
+import { removeOuterExpressionListIfApplicable } from './helper';
+import { autoSelectLibrary } from './helper';
+import { AutoSelectPredicate } from './helper';
+import { Selection } from './helper';
 
 import { NormalizedAst, RNode, ParentInformation, foldAstStateful } from '../r-bridge';
 import { LogLevel } from '../util/log';

@@ -44,12 +44,11 @@ function objectJson(df: object): string {
 
 /** Should work with larger things as well */
 // eslint-disable-next-line @typescript-eslint/require-await
-export async function dataflowGraphToJson(df: DataflowInformation): Promise<string> {
+export function dataflowGraphToJson(df: DataflowInformation): string {
 	return objectJson(df)
 }
 
 
-// eslint-disable-next-line @typescript-eslint/require-await
-export async function dataflowGraphToQuads(df: DataflowInformation, config: QuadSerializationConfiguration): Promise<string> {
+export function dataflowGraphToQuads(df: DataflowInformation, config: QuadSerializationConfiguration): string {
 	return df2quads(df.graph, config)
 }

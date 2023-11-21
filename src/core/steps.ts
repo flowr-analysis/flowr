@@ -65,8 +65,7 @@ export const STEPS_PER_FILE = {
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter,
-			// eslint-disable-next-line @typescript-eslint/require-await -- async printer wrapper, string is already json
-			[StepOutputFormat.Json]:     async text => text,
+			[StepOutputFormat.Json]:     text => text,
 			[StepOutputFormat.RdfQuads]: parseToQuads
 		}
 	} satisfies IStep<typeof retrieveXmlFromRCode>,

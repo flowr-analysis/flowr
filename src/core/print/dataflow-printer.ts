@@ -4,7 +4,6 @@ import { QuadSerializationConfiguration } from '../../util/quads'
 import { df2quads } from '../../dataflow/graph/quads'
 import { graphToMermaid, graphToMermaidUrl } from '../../util/mermaid'
 import { DataflowMap } from '../../dataflow'
-import { NoInfo } from '../../r-bridge'
 
 
 function mayObjectJson(d: unknown): string {

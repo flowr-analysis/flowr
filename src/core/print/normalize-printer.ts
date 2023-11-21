@@ -1,8 +1,6 @@
 import { NormalizedAst } from '../../r-bridge'
 import { jsonReplacer } from '../../util/json'
 import { QuadSerializationConfiguration, serialize2quads } from '../../util/quads'
-import { DataflowInformation } from '../../dataflow/internal/info'
-import { DataflowMap, graphToMermaid, graphToMermaidUrl } from '../../dataflow'
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../util/mermaid'
 
 /** Should work with larger things as well */

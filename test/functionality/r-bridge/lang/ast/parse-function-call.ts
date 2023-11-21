@@ -169,6 +169,71 @@ describe('Parse function calls', withShell((shell) => {
 				],
 			})
 		)
+		const code = 'f("a"=3,\'x\'=2)'
+		assertAst(
+			`string arguments - ${code}`,
+			shell,
+			code,
+			exprList({
+				type:         RType.FunctionCall,
+				flavor:       'named',
+				location:     rangeFrom(1, 1, 1, 1),
+				lexeme:       'f',
+				info:         {},
+				functionName: {
+					type:      RType.Symbol,
+					location:  rangeFrom(1, 1, 1, 1),
+					lexeme:    'f',
+					content:   'f',
+					namespace: undefined,
+					info:      {}
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: rangeFrom(1, 3, 1, 5),
+						name:     {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 3, 1, 5),
+							lexeme:    '"a"',
+							content:   'a',
+							namespace: undefined,
+							info:      {}
+						},
+						lexeme: '"a"',
+						info:   {},
+						value:  {
+							type:     RType.Number,
+							location: rangeFrom(1, 7, 1, 7),
+							lexeme:   '3',
+							content:  numVal(3),
+							info:     {}
+						}
+					},
+					{
+						type:     RType.Argument,
+						location: rangeFrom(1, 9, 1, 11),
+						name:     {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 9, 1, 11),
+							lexeme:    '\'x\'',
+							content:   'x',
+							namespace: undefined,
+							info:      {}
+						},
+						lexeme: '\'x\'',
+						info:   {},
+						value:  {
+							type:     RType.Number,
+							location: rangeFrom(1, 13, 1, 13),
+							lexeme:   '2',
+							content:  numVal(2),
+							info:     {}
+						}
+					}
+				],
+			})
+		)
 	})
 	describe('directly called functions', () => {
 		assertAst(

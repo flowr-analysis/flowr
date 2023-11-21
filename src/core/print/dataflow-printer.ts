@@ -2,6 +2,9 @@ import { jsonReplacer } from '../../util/json'
 import { DataflowInformation } from '../../dataflow/internal/info'
 import { QuadSerializationConfiguration } from '../../util/quads'
 import { df2quads } from '../../dataflow/graph/quads'
+import { graphToMermaid, graphToMermaidUrl } from '../../util/mermaid'
+import { DataflowMap } from '../../dataflow'
+import { NoInfo } from '../../r-bridge'
 
 
 function mayObjectJson(d: unknown): string {
@@ -43,11 +46,17 @@ function objectJson(df: object): string {
 }
 
 /** Should work with larger things as well */
-// eslint-disable-next-line @typescript-eslint/require-await
 export function dataflowGraphToJson(df: DataflowInformation): string {
 	return objectJson(df)
 }
 
+export function dataflowGraphToMermaid(df: DataflowInformation, idMap: DataflowMap): string {
+	return graphToMermaid(df.graph, idMap)
+}
+
+export function dataflowGraphToMermaidUrl(df: DataflowInformation, idMap: DataflowMap): string {
+	return graphToMermaidUrl(df.graph, idMap)
+}
 
 export function dataflowGraphToQuads(df: DataflowInformation, config: QuadSerializationConfiguration): string {
 	return df2quads(df.graph, config)

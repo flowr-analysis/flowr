@@ -1,6 +1,9 @@
 import { NormalizedAst } from '../../r-bridge'
 import { jsonReplacer } from '../../util/json'
 import { QuadSerializationConfiguration, serialize2quads } from '../../util/quads'
+import { DataflowInformation } from '../../dataflow/internal/info'
+import { DataflowMap, graphToMermaid, graphToMermaidUrl } from '../../dataflow'
+import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../util/mermaid'
 
 /** Should work with larger things as well */
 export function normalizedAstToJson(ast: NormalizedAst): string {
@@ -16,4 +19,12 @@ export function normalizedAstToJson(ast: NormalizedAst): string {
 
 export function normalizedAstToQuads(ast: NormalizedAst, config: QuadSerializationConfiguration): string {
 	return serialize2quads(ast.ast, config)
+}
+
+export function printNormalizedAstToMermaid(ast: NormalizedAst): string {
+	return normalizedAstToMermaid(ast.ast)
+}
+
+export function printNormalizedAstToMermaidUrl(ast: NormalizedAst): string {
+	return normalizedAstToMermaidUrl(ast.ast)
 }

@@ -1,22 +1,16 @@
-// we use this file to configure the logging used when running tests
+/**
+ * We use this file to configure the logging used when running tests
+ *
+ * @module
+ */
 
-import { log, LogLevel } from '../../src/util/log'
-import { serverLog } from '../../src/cli/repl/server/server'
+import { LogLevel, setMinLevelOfAllLogs } from '../../src/util/log'
 
-before(() => {
-	for(const logger of [log, serverLog]) {
-		logger.updateSettings(logger => {
-			if(!process.argv.includes('--verbose')) {
-				logger.settings.minLevel = LogLevel.Error
-			} else {
-				logger.settings.minLevel = LogLevel.Trace
-				log.logToFile()
-			}
-		})
-	}
-})
 
-/** controlled with `--test-installation` */
+export const VERBOSE_TESTS = process.argv.includes('--verbose')
+before(() => setMinLevelOfAllLogs(VERBOSE_TESTS ? LogLevel.Trace : LogLevel.Error, VERBOSE_TESTS))
+
+/** controlled with the `--test-installation` parameter */
 export const RUN_INSTALLATION_TESTS = process.argv.includes('--test-installation')
 
 export function isInstallTest(test: Mocha.Context): void {

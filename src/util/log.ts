@@ -1,5 +1,6 @@
 import { type ILogObj, type ISettingsParam, Logger } from 'tslog'
 import { createStream, type Options } from 'rotating-file-stream'
+import { serverLog } from '../cli/repl/server/server'
 
 export class FlowrLogger extends Logger<ILogObj> {
 	/** by keeping track of all children we can propagate updates of the settings (e.g., in tests) */
@@ -67,3 +68,19 @@ function getActiveLog(): FlowrLogger {
 }
 
 export const log: FlowrLogger = getActiveLog()
+
+/**
+ * Update the minimum level of all flowr loggers (including the detacthed {@link serverLog}).
+ * @param minLevel - The new minimum level to show messages from (inclusive)
+ * @param log2File - Whether to log to a file as well
+ */
+export function setMinLevelOfAllLogs(minLevel: LogLevel, log2File = false) {
+	for(const logger of [log, serverLog]) {
+		if(log2File) {
+			logger.logToFile()
+		}
+		logger.updateSettings(logger => {
+			logger.settings.minLevel = minLevel
+		})
+	}
+}

@@ -1,7 +1,9 @@
-***This wiki page is currently under construction***
+For the latest code-coverage information, see [codecov.io](https://codecov.io/gh/Code-Inspect/flowr), for the latest benchmark results, see the [benchmark results](https://code-inspect.github.io/flowr/wiki/stats/benchmark) wiki page.
 
 - [Testing Suites](#testing-suites)
   - [Functionality Tests](#functionality-tests)
+    - [Test Structure](#test-structure)
+    - [Writing a Test](#writing-a-test)
   - [Performance Tests](#performance-tests)
 - [CI Pipeline](#ci-pipeline)
 - [Linting](#linting)
@@ -10,15 +12,56 @@
 
 ## Testing Suites
 
+Currently, flowR contains two testing suites: one for [functionality](#functionality-tests) and one for [performance](#performance-tests). We explain each of them in the following.
+
 ### Functionality Tests
 
-How to test *flowR*
+The functionality tests represent conventional unit (and depending on your terminology component/api) tests.
+We use [mocha](https://mochajs.org/) as our testing framework and [chai](https://www.chaijs.com/) as our assertion library.
+To run these tests, simply issue:
+
+```shell
+npm run test
+```
+
+What may be counter-intuitive is that this does not run *all* tests by default but only those that do not try R's package installation (as this can require more time). To run all tests, installation tests included, use:
+
+```shell
+npm run test-full
+```
+
+However, depending on your local R version, your network connection and potentially other factors, some tests may be skipped automatically as they do not apply to your current system setup (or can't be tested with the current prerequisites). Each test can speciy such requirements as part of the `TestConfiguration`, which is then enforced by the [`ensureConfig`](https://github.com/Code-Inspect/flowr/blob/main/test/functionality/_helper/shell.ts) function.
+It is up to the [ci](#ci-pipeline) to run the tests on different systems to ensure that those tests are ensured to run.
+
+#### Test Structure
+
+All functionality tests are to be located under [test/functionality](https://github.com/Code-Inspect/flowr/tree/main/test/functionality).
+
+This folder contains two special elements:
+
+- `main.spec.ts` which is the entry point if *all* tests are run. It should automatically disable logging statements and configure global variables (e.g., if installation tests should run).
+- `_helper` which contains helper functions to be used by other tests.
+
+Besides folders can (theoretically) arbitrarily structure their tests. We use the following convention:
+
+- `*.spec.ts` denotes a test file which is to be collected when all tests are run, it may require other files to avoid big testing files and improve structure, but those should never end in `*.spec.ts`.
+. `-tests.ts` denotes test files which are required by `*.spec.ts` files. To require them, there is also the helper function `requireAllTestsInFolder` which performs sanity checks to avoid forgotten tests.
+
+
+#### Writing a Test
+
+Currently this is heavily dependend on what you want to test (normalization, dataflow, quad-export, ...) and it is probably best to have a look at existing tests in that area to get an idea of what comfort functionality is available.
 
 ### Performance Tests
 
 The performance test suite of *flowR* uses several suites to check for variations in the required times for certain steps.
 Although we measure wall time in the CI (which is subject to rather large variations), it should give a rough idea of the performance of *flowR*.
 Furthermore, the respective scripts can be used locally as well.
+To run them, issue:
+
+```shell
+npm run performance-test
+```
 
 See [test/performance](https://github.com/Code-Inspect/flowr/tree/main/test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](https://code-inspect.github.io/flowr/wiki/stats/benchmark).
 

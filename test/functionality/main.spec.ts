@@ -1,22 +1,33 @@
-// we use this file to configure the logging used when running tests
+/**
+ * We use this file to configure the logging used when running tests
+ *
+ * @module
+ */
 
 import { log, LogLevel } from '../../src/util/log'
 import { serverLog } from '../../src/cli/repl/server/server'
 
-before(() => {
+
+/**
+ * Update the minimum level of all flowr loggers (including the detacthed {@link serverLog}).
+ * @param minLevel - The new minimum level to show messages from (inclusive)
+ * @param log2File - Whether to log to a file as well
+ */
+function setMinLevelOfAllLogs(minLevel: LogLevel, log2File = false) {
 	for(const logger of [log, serverLog]) {
+		if(log2File) {
+			logger.logToFile()
+		}
 		logger.updateSettings(logger => {
-			if(!process.argv.includes('--verbose')) {
-				logger.settings.minLevel = LogLevel.Error
-			} else {
-				logger.settings.minLevel = LogLevel.Trace
-				log.logToFile()
-			}
+			logger.settings.minLevel = minLevel
 		})
 	}
-})
+}
 
-/** controlled with `--test-installation` */
+export const VERBOSE_TESTS = process.argv.includes('--verbose')
+before(() => setMinLevelOfAllLogs(VERBOSE_TESTS ? LogLevel.Trace : LogLevel.Error, VERBOSE_TESTS))
+
+/** controlled with the `--test-installation` parameter */
 export const RUN_INSTALLATION_TESTS = process.argv.includes('--test-installation')
 
 export function isInstallTest(test: Mocha.Context): void {

@@ -3,6 +3,10 @@ import { IStep, NameOfStep } from '../../../../src/core/steps'
 import { expect } from 'chai'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../../src/core/steps/all/00-parse'
 import { allPermutations } from '../../../../src/util/arrays'
+import { NORMALIZE } from '../../../../src/core/steps/all/10-normalize'
+import { LEGACY_STATIC_DATAFLOW } from '../../../../src/core/steps/all/20-dataflow'
+import { STATIC_SLICE } from '../../../../src/core/steps/all/30-slice'
+import { NAIVE_RECONSTRUCT } from '../../../../src/core/steps/all/40-reconstruct'
 
 describe('dependency check', () => {
 	describe('error-cases', () => {
@@ -39,5 +43,13 @@ describe('dependency check', () => {
 			PARSE_WITH_R_SHELL_STEP,
 			{ ...PARSE_WITH_R_SHELL_STEP, name: 'parse-v2', dependencies: ['parse'] }
 		], ['parse', 'parse-v2'])
+		// they will be shuffled in all permutations
+		positive('default pipeline', [
+			PARSE_WITH_R_SHELL_STEP,
+			NORMALIZE,
+			LEGACY_STATIC_DATAFLOW,
+			STATIC_SLICE,
+			NAIVE_RECONSTRUCT
+		], ['parse', 'normalize', 'dataflow', 'slice', 'reconstruct'])
 	})
 })

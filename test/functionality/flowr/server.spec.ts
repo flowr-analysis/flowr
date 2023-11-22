@@ -1,5 +1,5 @@
-import { withShell } from '../helper/shell'
-import { fakeSend, withSocket } from '../helper/net'
+import { withShell } from '../_helper/shell'
+import { fakeSend, withSocket } from '../_helper/net'
 import { retrieveVersionInformation } from '../../../src/cli/repl/commands/version'
 import { FlowrHelloResponseMessage } from '../../../src/cli/repl/server/messages/hello'
 import { assert } from 'chai'

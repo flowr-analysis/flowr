@@ -9,7 +9,7 @@ import {
 import { allPermutations } from '../../../src/util/arrays'
 import { formatRange } from '../../../src/dataflow'
 
-describe('Ranges', () => {
+describe('Range', () => {
 	describe('rangeFrom', () => {
 		it('correct arguments', () => {
 			const pool = [-1, 0, 1, 2, 99]

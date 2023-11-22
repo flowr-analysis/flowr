@@ -1,4 +1,4 @@
-import { assertReconstructed, withShell } from '../../helper/shell'
+import { assertReconstructed, withShell } from '../../_helper/shell'
 
 describe('Simple', withShell(shell => {
 	describe('Constant assignments', () => {

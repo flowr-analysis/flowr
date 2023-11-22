@@ -1,9 +1,9 @@
-import { retrieveNormalizedAst, withShell } from '../helper/shell'
+import { retrieveNormalizedAst, withShell } from '../_helper/shell'
 import { decorateAst, RType } from '../../../src/r-bridge'
 import { defaultQuadIdGenerator, serialize2quads } from '../../../src/util/quads'
 import { assert } from 'chai'
 
-describe('Quad Generation', withShell(shell => {
+describe('Quads', withShell(shell => {
 	const context = 'test'
 	const domain = 'https://uni-ulm.de/r-ast/'
 

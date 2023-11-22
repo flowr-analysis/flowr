@@ -10,7 +10,7 @@ import { assert } from 'chai'
 import { RShell } from '../../../src/r-bridge'
 import { deepMergeObject } from '../../../src/util/objects'
 import { jsonReplacer, jsonRetriever } from '../../../src/util/json'
-import { ensureConfig, TestConfiguration } from '../helper/shell'
+import { ensureConfig, TestConfiguration } from '../_helper/shell'
 import { DeepPartial } from 'ts-essentials'
 
 async function requestFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string): Promise<FeatureValue<T>> {

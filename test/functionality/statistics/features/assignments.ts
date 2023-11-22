@@ -1,4 +1,4 @@
-import { withShell } from '../../helper/shell'
+import { withShell } from '../../_helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
 
 describe('Used Ways to Assign', withShell(shell => {

@@ -1,4 +1,4 @@
-import { assertDataflow, withShell } from '../../../helper/shell'
+import { assertDataflow, withShell } from '../../../_helper/shell'
 import { BuiltIn, DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
 import {
 	define,

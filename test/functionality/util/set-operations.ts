@@ -3,7 +3,7 @@ import { setEquals } from '../../../src/util/set'
 import { jsonReplacer } from '../../../src/util/json'
 import { Test } from 'mocha'
 
-describe('Set operations', () => {
+describe('Set (operations)', () => {
 	 describe('setEquals', () => {
 		function test<T>(name: string, should: boolean, a: Set<T>, b: Set<T>): Test {
 			return it(name, () =>

@@ -3,9 +3,9 @@
  * Yet, some constructs (like for-loops) require the combination of statements, they are included as well.
  * This will not include functions!
  */
-import { assertDataflow, withShell } from '../../helper/shell'
+import { assertDataflow, withShell } from '../../_helper/shell'
 import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../src/dataflow'
-import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../helper/provider'
+import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../_helper/provider'
 import { appendEnvironments, define } from '../../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../../src/dataflow/environments/scopes'

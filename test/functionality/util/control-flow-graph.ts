@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import { withShell } from '../helper/shell'
+import { withShell } from '../_helper/shell'
 import {
 	ControlFlowGraph,
 	cfg2quads,

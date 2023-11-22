@@ -1,4 +1,4 @@
-import { assertDataflow, withShell } from '../../../helper/shell'
+import { assertDataflow, withShell } from '../../../_helper/shell'
 import { DataflowGraph } from '../../../../../src/dataflow'
 
 describe('Lists without variable references ', withShell(shell => {

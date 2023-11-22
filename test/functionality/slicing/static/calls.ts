@@ -1,4 +1,4 @@
-import { assertSliced, withShell } from '../../helper/shell'
+import { assertSliced, withShell } from '../../_helper/shell'
 
 describe('With Call', withShell(shell => {
 	describe('Simple', () => {

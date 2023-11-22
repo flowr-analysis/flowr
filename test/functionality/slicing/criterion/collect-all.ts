@@ -6,7 +6,7 @@ import {
 	SlicingCriteria
 } from '../../../../src/slicing'
 import { decorateAst, RShell } from '../../../../src/r-bridge'
-import { retrieveNormalizedAst, withShell } from '../../helper/shell'
+import { retrieveNormalizedAst, withShell } from '../../_helper/shell'
 import { assert } from 'chai'
 
 function assertRetrievedIdsWith(shell: RShell, name: string, input: string, filter: SlicingCriteriaFilter, ...expected: SlicingCriteria[]) {

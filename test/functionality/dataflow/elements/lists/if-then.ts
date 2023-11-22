@@ -2,7 +2,7 @@ import {
 	DataflowGraph, EdgeType,
 	initializeCleanEnvironments
 } from '../../../../../src/dataflow'
-import { assertDataflow, withShell } from '../../../helper/shell'
+import { assertDataflow, withShell } from '../../../_helper/shell'
 import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 

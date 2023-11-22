@@ -1,5 +1,5 @@
-import { assertAst, withShell } from '../../../helper/shell'
-import { exprList } from '../../../helper/ast-builder'
+import { assertAst, withShell } from '../../../_helper/shell'
+import { exprList } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
 import { RType } from '../../../../../src/r-bridge'
 

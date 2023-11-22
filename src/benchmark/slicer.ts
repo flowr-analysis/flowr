@@ -22,7 +22,6 @@ import {
 import {
 	CommonSlicerMeasurements,
 	ElapsedTime,
-	withoutWhitespace,
 	PerSliceMeasurements,
 	PerSliceStats,
 	SlicerStats
@@ -31,6 +30,7 @@ import fs from 'fs'
 import { log, LogLevel } from '../util/log'
 import { MergeableRecord } from '../util/objects'
 import { LAST_STEP, SteppingSlicer, STEPS, StepResult } from '../core'
+import { withoutWhitespace } from '../util/strings'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 

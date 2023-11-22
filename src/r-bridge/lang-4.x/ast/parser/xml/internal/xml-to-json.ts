@@ -15,6 +15,7 @@ export function xlm2jsonObject(config: XmlParserConfig, xmlString: string): Prom
 		childkey:              config.childrenName,
 		charsAsChildren:       false,
 		explicitChildren:      true,
+		mergeAttrs:            false,
 		// we need this for semicolons etc., while we keep the old broken components we ignore them completely
 		preserveChildrenOrder: true,
 		trim:                  true,

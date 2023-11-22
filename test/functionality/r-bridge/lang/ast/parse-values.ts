@@ -1,14 +1,15 @@
-import { assertAst, withShell } from '../../../helper/shell'
+import { assertAst, withShell } from '../../../_helper/shell'
 import {
 	RNumberPool,
 	RStringPool,
 	RSymbolPool,
-} from '../../../helper/provider'
-import { exprList } from '../../../helper/ast-builder'
+} from '../../../_helper/provider'
+import { exprList } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
 import { retrieveXmlFromRCode, RType } from '../../../../../src/r-bridge'
 import chai, { assert } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
+import { MIN_VERSION_RAW_STABLE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 chai.use(chaiAsPromised)
 
 
@@ -60,7 +61,11 @@ describe('Constant Parsing',
 							lexeme:   string.str,
 							content:  string.val,
 							info:     {}
-						})
+						}),
+						{
+							// just a hackey way to not outright flag all
+							minRVersion: string.str.startsWith('r') || string.str.startsWith('R') ? MIN_VERSION_RAW_STABLE : undefined
+						}
 					)
 				}
 			})

@@ -1,17 +1,10 @@
 import {
-	postProcessFolder,
-	printClusterReport,
-	histogramsFromClusters,
-	histograms2table,
 	initFileProvider,
 	setFormatter,
-	voidFormatter,
-	ContextsWithCount
+	voidFormatter
 } from '../statistics'
 import { log } from '../util/log'
-import { guard } from '../util/assert'
-import { allRFilesFrom, writeTableAsCsv } from '../util/files'
-import { DefaultMap } from '../util/defaultmap'
+import { allRFilesFrom } from '../util/files'
 import { processCommandLineArgs } from './common'
 import { Arguments, LimitedThreadPool } from '../util/parallel'
 import { retrieveArchiveName, validateFeatures } from './common/features'
@@ -20,19 +13,16 @@ import { jsonReplacer } from '../util/json'
 import fs from 'fs'
 
 export interface StatsCliOptions {
-	readonly verbose:        boolean
-	readonly help:           boolean
-	readonly 'post-process': boolean
-	readonly limit:          number | undefined
-	readonly compress:       boolean
-	readonly 'hist-step':    number
-	readonly input:          string[]
-	readonly 'output-dir':   string
-	readonly 'no-ansi':      boolean
-	readonly parallel:       number
-	readonly features:       string[]
+	readonly verbose:      boolean
+	readonly help:         boolean
+	readonly limit:        number | undefined
+	readonly input:        string[]
+	readonly 'dump-json':  boolean
+	readonly 'output-dir': string
+	readonly 'no-ansi':    boolean
+	readonly parallel:     number
+	readonly features:     string[]
 }
-
 
 const options = processCommandLineArgs<StatsCliOptions>('stats', [],{
 	subtitle: 'Given input files or folders, this will collect usage statistics for the given features and write them to a file',
@@ -57,33 +47,6 @@ if(options['no-ansi']) {
 
 const processedFeatures = validateFeatures(options.features)
 
-if(options['post-process']) {
-	console.log('-----post processing')
-	guard(options.input.length === 1, 'post processing only works with a single input file')
-	const reports = postProcessFolder(options.input[0], processedFeatures)
-	console.log(`found ${reports.length} reports`)
-	for(const report of reports) {
-		const topNames = new Set(printClusterReport(report, 50))
-
-		report.valueInfoMap = new DefaultMap<string, ContextsWithCount>(
-			() => new DefaultMap(() => 0),
-			new Map([...report.valueInfoMap.entries()].filter(([name]) => topNames.has(name)))
-		)
-
-		const receivedHistograms = histogramsFromClusters(report, options['hist-step'], true)
-
-		for(const hist of receivedHistograms) {
-			console.log(`${hist.name}: --- min: ${hist.min}, max: ${hist.max}, mean: ${hist.mean}, median: ${hist.median}, std: ${hist.std}`)
-		}
-
-		const outputPath = `${report.filepath}-${options['hist-step']}.dat`
-		console.log(`writing histogram data to ${outputPath}`)
-		writeTableAsCsv(histograms2table(receivedHistograms, true), outputPath)
-		/* writeFileBasedCountToFile(fileBasedCount(report), outputPath) */
-	}
-	process.exit(0)
-}
-
 initFileProvider(options['output-dir'])
 
 const testRegex = /[^/]*\/test/i
@@ -104,22 +67,20 @@ function getSuffixForFile(base: string, file: string) {
 	return '--' + subpath.replace(/\//g, '／')
 }
 
-async function collectFileArguments(verboseAdd: string[], compress: string[], features: string[]) {
+async function collectFileArguments(verboseAdd: string[], dumpJson: string[], features: string[]) {
 	const files: Arguments[] = []
 	let counter = 0
 	let presentSteps = 5000
 	let skipped = 0
 	for await (const f of allRFilesFrom(options.input)) {
 		const outputDir = path.join(options['output-dir'], `${getPrefixForFile(f.content)}${getSuffixForFile(options.input.length === 1 ? options.input[0] : '', f.content)}`)
-		if(options.compress) {
-			const target = retrieveArchiveName(outputDir)
-			if(fs.existsSync(target)) {
-				console.log(`Archive ${target} exists. Skip.`)
-				skipped++
-				continue
-			}
+		const target = retrieveArchiveName(outputDir)
+		if(fs.existsSync(target)) {
+			console.log(`Archive ${target} exists. Skip.`)
+			skipped++
+			continue
 		}
-		files.push(['--input', f.content, '--output-dir', outputDir, ...verboseAdd, ...features, ...compress])
+		files.push(['--input', f.content, '--output-dir', outputDir,'--compress', '--root-dir', options.input.length === 1 ? options.input[0] : '""', ...verboseAdd, ...features, ...dumpJson])
 		if(++counter % presentSteps === 0) {
 			console.log(`Collected ${counter} files`)
 			if(counter >= 10 * presentSteps) {
@@ -137,11 +98,11 @@ async function getStats() {
 
 
 	const verboseAdd = options.verbose ? ['--verbose'] : []
-	const compress = options.compress ? ['--compress'] : []
 	const features = [...processedFeatures].flatMap(s => ['--features', s])
+	const dumpJson = options['dump-json'] ? ['--dump-json'] : []
 
 	// we do not use the limit argument to be able to pick the limit randomly
-	const args = await collectFileArguments(verboseAdd, compress, features)
+	const args = await collectFileArguments(verboseAdd, dumpJson, features)
 
 	if(options.limit) {
 		console.log('Shuffle...')

@@ -1,4 +1,4 @@
-import { retrieveNormalizedAst, withShell } from '../../../helper/shell'
+import { retrieveNormalizedAst, withShell } from '../../../_helper/shell'
 import { assert } from 'chai'
 import { requestFromInput } from '../../../../../src/r-bridge'
 import { SteppingSlicer } from '../../../../../src/core'

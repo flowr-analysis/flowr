@@ -9,8 +9,11 @@ import {
 import { assert } from 'chai'
 import { RShell } from '../../../src/r-bridge'
 import { deepMergeObject } from '../../../src/util/objects'
-import { jsonReplacer } from '../../../src/util/json'
-import { ensureConfig, TestConfiguration } from '../helper/shell'
+import { jsonReplacer, jsonRetriever } from '../../../src/util/json'
+import { ensureConfig, TestConfiguration } from '../_helper/shell'
+import { DeepPartial } from 'ts-essentials'
+import { requireAllTestsInFolder } from '../_helper/collect-tests'
+import path from 'path'
 
 async function requestFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string): Promise<FeatureValue<T>> {
 	const results = await extractUsageStatistics(shell, () => { /* do nothing */ }, new Set([feature]), staticRequests({ request: 'text', content: code }))
@@ -19,7 +22,7 @@ async function requestFeature<T extends FeatureKey>(shell: RShell, feature: T, c
 
 async function expectFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string, expected: FeatureValue<T>, map: DummyAppendMemoryMap, expectedMap: Map<AppendFnType, string[]> | undefined): Promise<void> {
 	const result = await requestFeature(shell, feature, code)
-	assert.deepStrictEqual(result, expected, `counts, for feature ${feature} in ${code}`)
+	assert.deepStrictEqual(result, JSON.parse(JSON.stringify(expected, jsonReplacer), jsonRetriever), `counts, for feature ${feature} in ${code}`)
 	const keys = [...map.keys()]
 	assert.strictEqual(keys.length, expectedMap === undefined ? 0 : 1, 'written should contain only the given key')
 	const out = map.get(keys[0])
@@ -30,7 +33,7 @@ export interface StatisticsTest {
 	name:          string
 	code:          string
 	requirements?: Partial<TestConfiguration>
-	expected:      Partial<FeatureValue<FeatureKey>>
+	expected:      DeepPartial<FeatureValue<FeatureKey>>
 	/**
 	 * the expected output written to file, the feature is inferred from the feature given to {@link testForFeatureForInput},
 	 * set to 'nothing' if nothing should be recorded.
@@ -58,10 +61,5 @@ export function testForFeatureForInput<T extends FeatureKey>(shell: RShell, feat
 }
 
 describe('Statistics', () => {
-	require('./features/control-flow.ts')
-	require('./features/used-functions.ts')
-	require('./features/loops.ts')
-	require('./features/data-access.ts')
-	require('./features/defined-functions.ts')
-	require('./features/variables.ts')
+	requireAllTestsInFolder(path.join(__dirname, 'features'))
 })

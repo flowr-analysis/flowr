@@ -68,11 +68,13 @@ export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
  * In other words, given `[a,b,c]`, as well as `minSize=2` and `maxSize=2`, this will generate `[a,b]`, `[a,c]` and `[b,c]`,
  * but not, e.g., `[a,a]` or `[b,a]`.
  *
+ * If `minSize!=maxSize`, the result is guaranteed to be sorted by size.
+ *
  * @param array   - The array to generate combinations from
  * @param minSize - The inclusive minimum size of the combinations, must be at least `0` and at most `maxSize`
  * @param maxSize - The inclusive maximum size of the combinations, must be at least `minSize` and at most `array.length`
  */
-export function *getUniqueCombinationsOfSize<T>(array: T[], minSize: number, maxSize: number): Generator<T[], void, void> {
+export function *getUniqueCombinationsOfSize<T>(array: T[], minSize = 0, maxSize = array.length): Generator<T[], void, void> {
 	guard(minSize >= 0 && minSize <= maxSize, 'minSize must be at least 0 and at most maxSize')
 	guard(maxSize >= minSize && maxSize <= array.length, 'maxSize must be at least minSize and at most the length of the array')
 	if(minSize === maxSize && minSize === 1) {
@@ -104,3 +106,24 @@ export function *getUniqueCombinationsOfSize<T>(array: T[], minSize: number, max
 	yield* p([], 0, true)
 }
 
+/**
+ * Returns the sum of all elements in the given array
+ */
+export function sum(arr: number[]): number {
+	let sum = 0
+	for(const elem of arr) {
+		sum += elem
+	}
+	return sum
+}
+
+/**
+ * Converts an array into a bag data-structure (in the form of a map mapping the entries/keys to their counts)
+ */
+export function array2bag<T>(arr: T[]): Map<T, number> {
+	const result = new Map<T, number>()
+	for(const elem of arr) {
+		result.set(elem, (result.get(elem) ?? 0) + 1)
+	}
+	return result
+}

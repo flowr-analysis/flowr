@@ -28,7 +28,12 @@ export const enum StepOutputFormat {
 	 * This is an extension of the {@link Mermaid} format. Instead of returning
 	 * the mermaid code, it will return an url to mermaid live.
 	 */
-	MermaidUrl
+	MermaidUrl,
+	/**
+	 * Produce n-quads as the output.
+	 * See {@link serialize2quads}
+	 */
+	RdfQuads
 }
 
 /**
@@ -46,4 +51,4 @@ export function internalPrinter<Input>(input: Input): Input {
  */
 export type IStepPrinter<StepInput extends StepFunction, Format extends StepOutputFormat, AdditionalInput extends unknown[]> =
 	Format extends StepOutputFormat.Internal ? (input: Awaited<ReturnType<StepInput>>) => Awaited<ReturnType<StepInput>> :
-		(input: Awaited<ReturnType<StepInput>>, ...additional: AdditionalInput) => Promise<string>
+		(input: Awaited<ReturnType<StepInput>>, ...additional: AdditionalInput) => Promise<string> | string

@@ -21,9 +21,20 @@ import {
 import { produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode, staticSlicing } from '../slicing'
 import { internalPrinter, IStepPrinter, StepOutputFormat } from './print/print'
-import { normalizedAstToJson } from './print/normalize-printer'
+import {
+	normalizedAstToJson,
+	normalizedAstToQuads,
+	printNormalizedAstToMermaid,
+	printNormalizedAstToMermaidUrl
+} from './print/normalize-printer'
 import { guard } from '../util/assert'
-import { dataflowGraphToJson } from './print/dataflow-printer'
+import { parseToQuads } from './print/parse-printer'
+import {
+	dataflowGraphToJson,
+	dataflowGraphToMermaid,
+	dataflowGraphToMermaidUrl,
+	dataflowGraphToQuads
+} from './print/dataflow-printer'
 import { runAbstractInterpretation } from '../abstract-interpretation/processor'
 
 /**
@@ -40,7 +51,9 @@ export type StepRequired = 'once-per-file' | 'once-per-slice'
 /**
  * Defines what is to be known of a single step in the slicing process.
  */
-export interface IStep<Fn extends StepFunction> extends MergeableRecord {
+export interface IStep<
+	Fn extends StepFunction,
+> extends MergeableRecord {
 	/** Human-readable description of this step */
 	description: string
 	/** The main processor that essentially performs the logic of this step */
@@ -48,7 +61,10 @@ export interface IStep<Fn extends StepFunction> extends MergeableRecord {
 	/* does this step has to be repeated for each new slice or can it be performed only once in the initialization */
 	required:    StepRequired
 	printer: {
-		[K in StepOutputFormat]?: IStepPrinter<Fn, K, unknown[]>
+		[K in StepOutputFormat]?: IStepPrinter<Fn, K, never[]>
+	} & {
+		// we always want to have the internal printer
+		[StepOutputFormat.Internal]: IStepPrinter<Fn, StepOutputFormat.Internal, []>
 	}
 }
 
@@ -60,8 +76,8 @@ export const STEPS_PER_FILE = {
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter,
-			// eslint-disable-next-line @typescript-eslint/require-await -- async printer wrapper, string is already json
-			[StepOutputFormat.Json]:     async text => text
+			[StepOutputFormat.Json]:     text => text,
+			[StepOutputFormat.RdfQuads]: parseToQuads
 		}
 	} satisfies IStep<typeof retrieveXmlFromRCode>,
 	'normalize': {
@@ -69,8 +85,11 @@ export const STEPS_PER_FILE = {
 		processor:   normalize,
 		required:    'once-per-file',
 		printer:     {
-			[StepOutputFormat.Internal]: internalPrinter,
-			[StepOutputFormat.Json]:     normalizedAstToJson
+			[StepOutputFormat.Internal]:   internalPrinter,
+			[StepOutputFormat.Json]:       normalizedAstToJson,
+			[StepOutputFormat.RdfQuads]:   normalizedAstToQuads,
+			[StepOutputFormat.Mermaid]:    printNormalizedAstToMermaid,
+			[StepOutputFormat.MermaidUrl]: printNormalizedAstToMermaidUrl
 		}
 	} satisfies IStep<typeof normalize>,
 	'dataflow': {
@@ -78,8 +97,11 @@ export const STEPS_PER_FILE = {
 		processor:   produceDataFlowGraph,
 		required:    'once-per-file',
 		printer:     {
-			[StepOutputFormat.Internal]: internalPrinter,
-			[StepOutputFormat.Json]:     dataflowGraphToJson
+			[StepOutputFormat.Internal]:   internalPrinter,
+			[StepOutputFormat.Json]:       dataflowGraphToJson,
+			[StepOutputFormat.RdfQuads]:   dataflowGraphToQuads,
+			[StepOutputFormat.Mermaid]:    dataflowGraphToMermaid,
+			[StepOutputFormat.MermaidUrl]: dataflowGraphToMermaidUrl
 		}
 	} satisfies IStep<typeof produceDataFlowGraph>,
 	'ai': {
@@ -125,11 +147,18 @@ export function executeSingleSubStep<Name extends StepName, Processor extends St
 	return STEPS[subStep].processor(...input as unknown as never[]) as ReturnType<Processor>
 }
 
+type Tail<T extends unknown[]> = T extends [infer _, ...infer Rest] ? Rest : never;
+
+/**
+ * For a `step` of the given name, which returned the given `data`. Convert that data into the given `format`.
+ * Depending on your step and the format this may require `additional` inputs.
+ */
 export function printStepResult<
-	AdditionalInput extends unknown[],
 	Name extends StepName,
 	Processor extends StepProcessor<Name>,
-	Format extends Exclude<keyof(typeof STEPS)[Name]['printer'] & StepOutputFormat, StepOutputFormat.Internal>
+	Format extends Exclude<keyof(typeof STEPS)[Name]['printer'], StepOutputFormat.Internal> & number,
+	Printer extends (typeof STEPS)[Name]['printer'][Format],
+	AdditionalInput extends Tail<Parameters<Printer>>,
 >(step: Name, data: Awaited<ReturnType<Processor>>, format: Format, ...additional: AdditionalInput): Promise<string> {
 	const base = STEPS[step].printer
 	const printer = base[format as keyof typeof base] as IStepPrinter<StepProcessor<Name>, Format, AdditionalInput> | undefined

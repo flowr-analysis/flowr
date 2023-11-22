@@ -1,8 +1,8 @@
 import chai, { assert } from 'chai'
 import fs from 'fs'
 import { randomString } from '../../../src/util/random'
-import { testRequiresNetworkConnection } from '../helper/network'
-import { testWithShell, withShell } from '../helper/shell'
+import { testRequiresNetworkConnection } from '../_helper/network'
+import { testWithShell, withShell } from '../_helper/shell'
 import { isInstallTest } from '../main.spec'
 import { parseCSV } from '../../../src/r-bridge'
 import { log, LogLevel } from '../../../src/util/log'
@@ -55,6 +55,7 @@ describe('RShell sessions', function() {
 	})
 	testWithShell('clear environment should remove variable information', async shell => {
 		shell.continueOnError() // we will produce an error!
+		shell.sendCommand('Sys.setenv(LANG="en")')
 		shell.sendCommand('a <- 1 + 1')
 		shell.clearEnvironment()
 		await shell.sendCommandWithOutput('a', { from: 'stderr' }).then(lines => {

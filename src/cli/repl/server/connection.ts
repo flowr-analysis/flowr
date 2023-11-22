@@ -1,15 +1,10 @@
-import { LAST_STEP, SteppingSlicer, StepResults, STEPS_PER_SLICE } from '../../../core'
-import {
-	DEFAULT_XML_PARSER_CONFIG,
-	NormalizedAst,
-	RNodeWithParent,
-	RShell,
-	XmlParserConfig
-} from '../../../r-bridge'
+import { LAST_STEP, printStepResult, SteppingSlicer, StepResults, STEPS_PER_SLICE } from '../../../core'
+import { DEFAULT_XML_PARSER_CONFIG, NormalizedAst, RShell, XmlParserConfig } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
 import {
-	FileAnalysisRequestMessage, FileAnalysisResponseMessageNQuads,
+	FileAnalysisRequestMessage,
+	FileAnalysisResponseMessageNQuads,
 	requestAnalysisMessage
 } from './messages/analysis'
 import { requestSliceMessage, SliceRequestMessage, SliceResponseMessage } from './messages/slice'
@@ -20,17 +15,17 @@ import { ILogObj, Logger } from 'tslog'
 import {
 	ExecuteEndMessage,
 	ExecuteIntermediateResponseMessage,
-	ExecuteRequestMessage, requestExecuteReplExpressionMessage
+	ExecuteRequestMessage,
+	requestExecuteReplExpressionMessage
 } from './messages/repl'
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
-import { cfg2quads, ControlFlowInformation, extractCFG } from '../../../util/cfg/cfg'
-import { defaultQuadIdGenerator, QuadSerializationConfiguration, serialize2quads } from '../../../util/quads'
-import { xlm2jsonObject } from '../../../r-bridge/lang-4.x/ast/parser/xml/internal'
 import { deepMergeObject } from '../../../util/objects'
-import { df2quads } from '../../../dataflow/graph/quads'
-import { DataflowGraph } from '../../../dataflow'
 import { LogLevel } from '../../../util/log'
+import { cfg2quads, ControlFlowInformation, extractCFG } from '../../../util/cfg/cfg'
+import { StepOutputFormat } from '../../../core/print/print'
+import { DataflowInformation } from '../../../dataflow/internal/info'
+import { defaultQuadIdGenerator, QuadSerializationConfiguration } from '../../../util/quads'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -55,6 +50,7 @@ export class FlowRServerConnection {
 		this.name = name
 		this.logger = serverLog.getSubLogger({ name })
 		this.socket.on('data', data => this.handleData(String(data)))
+		this.socket.on('error', e => this.logger.error(`[${this.name}] Error while handling connection: ${String(e)}`))
 	}
 
 	private currentMessageBuffer = ''
@@ -111,6 +107,15 @@ export class FlowRServerConnection {
 		const slicer = this.createSteppingSlicerForRequest(message)
 
 		void slicer.allRemainingSteps(false).then(async results => await this.sendFileAnalysisResponse(results, message))
+			.catch(e => {
+				this.logger.error(`[${this.name}] Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`)
+				sendMessage<FlowrErrorMessage>(this.socket, {
+					id:     message.id,
+					type:   'error',
+					fatal:  false,
+					reason: `Error while analyzing file ${message.filename ?? 'unknown file'}: ${String(e)}`
+				})
+			})
 	}
 
 	private async sendFileAnalysisResponse(results: Partial<StepResults<typeof LAST_STEP>>, message: FileAnalysisRequestMessage): Promise<void> {
@@ -129,9 +134,9 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     serialize2quads(await xlm2jsonObject(parseConfig, results.parse as string), config()),
-					normalize: serialize2quads(results.normalize?.ast as RNodeWithParent, config()),
-					dataflow:  df2quads(results.dataflow?.graph as DataflowGraph, config()),
+					parse:     await printStepResult('parse', results.parse as string, StepOutputFormat.RdfQuads, config(), parseConfig),
+					normalize: await printStepResult('normalize', results.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
+					dataflow:  await printStepResult('dataflow', results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config()),
 					ai:        ''
 				}
 			})
@@ -201,6 +206,14 @@ export class FlowRServerConnection {
 				type:    'response-slice',
 				id:      request.id,
 				results: Object.fromEntries(Object.entries(results).filter(([k,]) => Object.hasOwn(STEPS_PER_SLICE, k))) as SliceResponseMessage['results']
+			})
+		}).catch(e => {
+			this.logger.error(`[${this.name}] Error while analyzing file for token ${request.filetoken}: ${String(e)}`)
+			sendMessage<FlowrErrorMessage>(this.socket, {
+				id:     request.id,
+				type:   'error',
+				fatal:  false,
+				reason: `Error while analyzing file for token ${request.filetoken}: ${String(e)}`
 			})
 		})
 	}

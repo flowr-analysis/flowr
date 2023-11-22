@@ -1,7 +1,7 @@
 import { withShell } from '../../_helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
 
-describe('Used Ways to Assign', withShell(shell => {
+describe('Assignments', withShell(shell => {
 	testForFeatureForInput(shell, 'assignments', [
 		{
 			name:     'no assignment',

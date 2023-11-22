@@ -2,7 +2,7 @@ import { withShell } from '../../_helper/shell'
 import { testForFeatureForInput } from '../statistics.spec'
 import { emptyCommonSyntaxTypeCounts } from '../../../../src/statistics/features/common-syntax-probability'
 
-describe('Used Ways to Access Data', withShell(shell => {
+describe('Data Access', withShell(shell => {
 	testForFeatureForInput(shell, 'dataAccess', [
 		{
 			name:     'no data access',

@@ -3,7 +3,7 @@ import { testForFeatureForInput } from '../statistics.spec'
 import { MIN_VERSION_LAMBDA } from '../../../../src/r-bridge/lang-4.x/ast/model/versions'
 
 
-describe('Used Function Definitions', withShell(shell => {
+describe('Defined Functions', withShell(shell => {
 	testForFeatureForInput(shell, 'definedFunctions', [
 		{
 			name:     'no definitions',

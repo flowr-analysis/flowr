@@ -11,6 +11,10 @@ import { Pipeline } from './pipeline'
  * If successful, it returns the topologically sorted list of steps in order of desired execution.
  */
 export function verifyPipeline(steps: IStep[]): Pipeline {
+	if(steps.length === 0) {
+		throw new InvalidPipelineError('Pipeline is empty')
+	}
+
 	// we construct a map linking each name to its respective step
 	const stepMap = new Map<NameOfStep, IStep>()
 	// we track all elements without dependencies, i.e. those that start the pipeline

@@ -68,19 +68,3 @@ function getActiveLog(): FlowrLogger {
 }
 
 export const log: FlowrLogger = getActiveLog()
-
-/**
- * Update the minimum level of all flowr loggers (including the detacthed {@link serverLog}).
- * @param minLevel - The new minimum level to show messages from (inclusive)
- * @param log2File - Whether to log to a file as well
- */
-export function setMinLevelOfAllLogs(minLevel: LogLevel, log2File = false) {
-	for(const logger of [log, serverLog]) {
-		if(log2File) {
-			logger.logToFile()
-		}
-		logger.updateSettings(logger => {
-			logger.settings.minLevel = minLevel
-		})
-	}
-}

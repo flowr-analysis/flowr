@@ -1,16 +1,13 @@
+import { requireAllTestsInFolder } from '../_helper/collect-tests'
+import path from 'path'
+
 describe('Dataflow', () => {
 	require('./environments/environments')
 
 	describe('Graph', () => {
-		require('./graph/equal')
+		requireAllTestsInFolder(path.join(__dirname, 'graph'))
 	})
 
-	describe('Extraction', () => {
-		require('./elements/atomic')
-		require('./elements/expression-lists')
-		describe('Functions', () => {
-			require('./elements/functions/function-definition')
-			require('./elements/functions/function-call')
-		})
-	})
+
+	require('./processing-of-elements/processing-of-elements')
 })

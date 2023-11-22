@@ -17,7 +17,7 @@ function existsDefinedAt(name: string, definedAt: NodeId[], result: IEnvironment
 	expect(got.map(d => d.definedAt), `${name} should be defined at ${JSON.stringify(definedAt)}. ${message ?? ''}`).to.deep.equal(definedAt)
 }
 
-describe('Overwrite', () => {
+describe('Modification', () => {
 	describe('Global', () => {
 		it('Different variables', () => {
 			let clean = initializeCleanEnvironments()

@@ -12,7 +12,7 @@ function test(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, tex
 	}
 }
 
-describe('Graph Equality', () => {
+describe('Equal', () => {
 	const raw = (name: string, a: DataflowGraph, b: DataflowGraph, text: string, cmp: (x: boolean) => void) => {
 		return it(name, () => {
 			// as the comparison is relatively quick, we allow explicit checks for commutativity

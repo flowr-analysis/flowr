@@ -3,15 +3,15 @@
  * Yet, some constructs (like for-loops) require the combination of statements, they are included as well.
  * This will not include functions!
  */
-import { assertDataflow, withShell } from '../../_helper/shell'
-import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../src/dataflow'
-import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../_helper/provider'
-import { appendEnvironments, define } from '../../../../src/dataflow/environments'
-import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/argument'
-import { GlobalScope, LocalScope } from '../../../../src/dataflow/environments/scopes'
-import { MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions'
+import { assertDataflow, withShell } from '../../../_helper/shell'
+import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../../_helper/provider'
+import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
+import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/internal/process/functions/argument'
+import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
+import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 
-describe('Atomic dataflow information', withShell((shell) => {
+describe('Atomic (dataflow information)', withShell((shell) => {
 	describe('uninteresting leafs', () => {
 		for(const input of ['42', '"test"', 'TRUE', 'NA', 'NULL']) {
 			assertDataflow(input, shell, input, new DataflowGraph())

@@ -10,13 +10,13 @@ import {
 	StepRequired, STEPS,
 	STEPS_PER_FILE,
 	STEPS_PER_SLICE,
+	SteppingSlicerInput,
+	StepResults,
 	StepName, StepResult
 } from './steps'
 import { guard } from '../util/assert'
 import { SliceResult, SlicingCriteria } from '../slicing'
 import { DeepPartial } from 'ts-essentials'
-import { SteppingSlicerInput } from './input'
-import { StepResults } from './output'
 import { DataflowInformation } from '../dataflow/internal/info'
 
 /**

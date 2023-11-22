@@ -48,7 +48,11 @@ export function internalPrinter<Input>(input: Input): Input {
 /**
  * A mapping function that maps the result of a step (i.e., the dataflow graph)
  * to another representation (linked by {@link StepOutputFormat} in an {@link IStep}).
+ *
+ * For the internal format, refer to {@link InternalStepPrinter} as a shorthand.
  */
 export type IStepPrinter<StepInput extends StepFunction, Format extends StepOutputFormat, AdditionalInput extends unknown[]> =
 	Format extends StepOutputFormat.Internal ? (input: Awaited<ReturnType<StepInput>>) => Awaited<ReturnType<StepInput>> :
 		(input: Awaited<ReturnType<StepInput>>, ...additional: AdditionalInput) => Promise<string> | string
+
+export type InternalStepPrinter<StepInput extends StepFunction> = IStepPrinter<StepInput, StepOutputFormat.Internal, []>

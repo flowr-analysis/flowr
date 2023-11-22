@@ -1,7 +1,7 @@
-import { MergeableRecord } from '../util/objects'
-import { IdGenerator, NoInfo, RParseRequest, RShell, XmlParserHooks } from '../r-bridge'
+import { MergeableRecord } from '../../util/objects'
+import { IdGenerator, NoInfo, RParseRequest, RShell, XmlParserHooks } from '../../r-bridge'
 import { DeepPartial } from 'ts-essentials'
-import { AutoSelectPredicate, SlicingCriteria } from '../slicing'
+import { AutoSelectPredicate, SlicingCriteria } from '../../slicing'
 import { STEPS_PER_SLICE, StepName, STEPS_PER_FILE } from './steps'
 
 /**

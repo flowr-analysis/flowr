@@ -13,59 +13,28 @@
  * @module
  */
 
-import { MergeableRecord } from '../util/objects'
 import {
 	normalize,
 	retrieveXmlFromRCode
-} from '../r-bridge'
-import { produceDataFlowGraph } from '../dataflow'
-import { reconstructToCode, staticSlicing } from '../slicing'
-import { internalPrinter, IStepPrinter, StepOutputFormat } from './print/print'
+} from '../../r-bridge'
+import { produceDataFlowGraph } from '../../dataflow'
+import { reconstructToCode, staticSlicing } from '../../slicing'
+import { internalPrinter, IStepPrinter, StepOutputFormat } from '../print/print'
 import {
 	normalizedAstToJson,
 	normalizedAstToQuads,
 	printNormalizedAstToMermaid,
 	printNormalizedAstToMermaidUrl
-} from './print/normalize-printer'
-import { guard } from '../util/assert'
+} from '../print/normalize-printer'
+import { guard } from '../../util/assert'
 import {
 	dataflowGraphToJson,
 	dataflowGraphToMermaid,
 	dataflowGraphToMermaidUrl,
 	dataflowGraphToQuads
-} from './print/dataflow-printer'
-import { parseToQuads } from './print/parse-printer'
-
-/**
- * This represents close a function that we know completely nothing about.
- * Nevertheless, this is the basis of what a step processor should look like.
- */
-export type StepFunction = (...args: never[]) => unknown
-/**
- * This represents the required execution frequency of a step.
- */
-export type StepRequired = 'once-per-file' | 'once-per-slice'
-
-
-/**
- * Defines what is to be known of a single step in the slicing process.
- */
-export interface IStep<
-	Fn extends StepFunction,
-> extends MergeableRecord {
-	/** Human-readable description of this step */
-	description: string
-	/** The main processor that essentially performs the logic of this step */
-	processor:   (...input: Parameters<Fn>) => ReturnType<Fn>
-	/* does this step has to be repeated for each new slice or can it be performed only once in the initialization */
-	required:    StepRequired
-	printer: {
-		[K in StepOutputFormat]?: IStepPrinter<Fn, K, never[]>
-	} & {
-		// we always want to have the internal printer
-		[StepOutputFormat.Internal]: IStepPrinter<Fn, StepOutputFormat.Internal, []>
-	}
-}
+} from '../print/dataflow-printer'
+import { parseToQuads } from '../print/parse-printer'
+import { IStep } from './step'
 
 
 export const STEPS_PER_FILE = {

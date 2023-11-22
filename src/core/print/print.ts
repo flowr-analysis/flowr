@@ -51,4 +51,4 @@ export function internalPrinter<Input>(input: Input): Input {
  */
 export type IStepPrinter<StepInput extends StepFunction, Format extends StepOutputFormat, AdditionalInput extends unknown[]> =
 	Format extends StepOutputFormat.Internal ? (input: Awaited<ReturnType<StepInput>>) => Awaited<ReturnType<StepInput>> :
-		(input: Awaited<ReturnType<StepInput>>, ...additional: AdditionalInput) => Promise<string>
+		(input: Awaited<ReturnType<StepInput>>, ...additional: AdditionalInput) => Promise<string> | string

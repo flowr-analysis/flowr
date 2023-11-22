@@ -22,9 +22,19 @@ import { produceDataFlowGraph } from '../dataflow'
 import { staticSlicing } from '../slicing'
 import { reconstructToCode } from '../reconstruct/main'
 import { internalPrinter, IStepPrinter, StepOutputFormat } from './print/print'
-import { normalizedAstToJson, normalizedAstToQuads } from './print/normalize-printer'
+import {
+	normalizedAstToJson,
+	normalizedAstToQuads,
+	printNormalizedAstToMermaid,
+	printNormalizedAstToMermaidUrl
+} from './print/normalize-printer'
 import { guard } from '../util/assert'
-import { dataflowGraphToJson, dataflowGraphToQuads } from './print/dataflow-printer'
+import {
+	dataflowGraphToJson,
+	dataflowGraphToMermaid,
+	dataflowGraphToMermaidUrl,
+	dataflowGraphToQuads
+} from './print/dataflow-printer'
 import { parseToQuads } from './print/parse-printer'
 
 /**
@@ -66,8 +76,7 @@ export const STEPS_PER_FILE = {
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter,
-			// eslint-disable-next-line @typescript-eslint/require-await -- async printer wrapper, string is already json
-			[StepOutputFormat.Json]:     async text => text,
+			[StepOutputFormat.Json]:     text => text,
 			[StepOutputFormat.RdfQuads]: parseToQuads
 		}
 	} satisfies IStep<typeof retrieveXmlFromRCode>,
@@ -76,9 +85,11 @@ export const STEPS_PER_FILE = {
 		processor:   normalize,
 		required:    'once-per-file',
 		printer:     {
-			[StepOutputFormat.Internal]: internalPrinter,
-			[StepOutputFormat.Json]:     normalizedAstToJson,
-			[StepOutputFormat.RdfQuads]: normalizedAstToQuads
+			[StepOutputFormat.Internal]:   internalPrinter,
+			[StepOutputFormat.Json]:       normalizedAstToJson,
+			[StepOutputFormat.RdfQuads]:   normalizedAstToQuads,
+			[StepOutputFormat.Mermaid]:    printNormalizedAstToMermaid,
+			[StepOutputFormat.MermaidUrl]: printNormalizedAstToMermaidUrl
 		}
 	} satisfies IStep<typeof normalize>,
 	'dataflow': {
@@ -86,9 +97,11 @@ export const STEPS_PER_FILE = {
 		processor:   produceDataFlowGraph,
 		required:    'once-per-file',
 		printer:     {
-			[StepOutputFormat.Internal]: internalPrinter,
-			[StepOutputFormat.Json]:     dataflowGraphToJson,
-			[StepOutputFormat.RdfQuads]: dataflowGraphToQuads
+			[StepOutputFormat.Internal]:   internalPrinter,
+			[StepOutputFormat.Json]:       dataflowGraphToJson,
+			[StepOutputFormat.RdfQuads]:   dataflowGraphToQuads,
+			[StepOutputFormat.Mermaid]:    dataflowGraphToMermaid,
+			[StepOutputFormat.MermaidUrl]: dataflowGraphToMermaidUrl
 		}
 	} satisfies IStep<typeof produceDataFlowGraph>
 } as const

@@ -1,10 +1,10 @@
-import { assertAst, withShell } from '../../../helper/shell'
+import { assertAst, withShell } from '../../../_helper/shell'
 import {
 	RNumberPool,
 	RStringPool,
 	RSymbolPool,
-} from '../../../helper/provider'
-import { exprList } from '../../../helper/ast-builder'
+} from '../../../_helper/provider'
+import { exprList } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
 import { retrieveXmlFromRCode, RType } from '../../../../../src/r-bridge'
 import chai, { assert } from 'chai'

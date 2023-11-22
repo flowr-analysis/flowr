@@ -1,7 +1,7 @@
 import { assertSliced, withShell } from '../../_helper/shell'
 
-describe('With Call', withShell(shell => {
-	describe('Simple', () => {
+describe('Calls', withShell(shell => {
+	describe('Simple Calls', () => {
 		const code = `i <- 4
 a <- function(x) { x }
 a(i)`

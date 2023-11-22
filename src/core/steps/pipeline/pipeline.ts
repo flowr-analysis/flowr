@@ -1,6 +1,6 @@
-import { IStep, StepName } from '../step'
+import { IStep, NameOfStep } from '../step'
 
 export interface Pipeline {
-	readonly steps: ReadonlyMap<StepName, IStep>
-	readonly order: StepName[]
+	readonly steps: ReadonlyMap<NameOfStep, IStep>
+	readonly order: NameOfStep[]
 }

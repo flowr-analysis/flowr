@@ -19,7 +19,7 @@ export type StepFunction = (...args: never[]) => unknown
 export type StepRequired = 'once-per-file' | 'once-per-slice'
 
 
-export type StepName = string & { __brand?: 'StepName' }
+export type NameOfStep = string & { __brand?: 'StepName' }
 
 /**
  * Defines what is to be known of a single step in the slicing process.
@@ -34,7 +34,7 @@ export interface IStep<
 	 * In other words, you can have multiple steps with a name like `parse` as long as you use only one of them in a given pipeline.
 	 * This is, because these names are required in the {@link IStep#dependencies} field to refer to other steps this one relies on.
 	 */
-	name:        StepName
+	name:        NameOfStep
 	/** Human-readable description of this step */
 	description: string
 	/** The main processor that essentially performs the logic of this step */
@@ -54,7 +54,7 @@ export interface IStep<
 	 * Give the names of other steps this one requires to be completed as a prerequisite (e.g., to gain access to their input).
 	 * Does not have to be transitive, this will be checked by the scheduler of the pipeline.
 	 */
-	dependencies: StepName[]
+	dependencies: NameOfStep[]
 }
 
 

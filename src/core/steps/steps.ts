@@ -39,6 +39,7 @@ import { IStep } from './step'
 
 export const STEPS_PER_FILE = {
 	'parse': {
+		name:        'parse',
 		description: 'Parse the given R code into an AST',
 		processor:   retrieveXmlFromRCode,
 		required:    'once-per-file',
@@ -46,9 +47,11 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.Internal]: internalPrinter,
 			[StepOutputFormat.Json]:     text => text,
 			[StepOutputFormat.RdfQuads]: parseToQuads
-		}
+		},
+		dependencies: []
 	} satisfies IStep<typeof retrieveXmlFromRCode>,
 	'normalize': {
+		name:        'normalize',
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
 		processor:   normalize,
 		required:    'once-per-file',
@@ -58,9 +61,11 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.RdfQuads]:   normalizedAstToQuads,
 			[StepOutputFormat.Mermaid]:    printNormalizedAstToMermaid,
 			[StepOutputFormat.MermaidUrl]: printNormalizedAstToMermaidUrl
-		}
+		},
+		dependencies: []
 	} satisfies IStep<typeof normalize>,
 	'dataflow': {
+		name:        'dataflow',
 		description: 'Construct the dataflow graph',
 		processor:   produceDataFlowGraph,
 		required:    'once-per-file',
@@ -70,26 +75,31 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.RdfQuads]:   dataflowGraphToQuads,
 			[StepOutputFormat.Mermaid]:    dataflowGraphToMermaid,
 			[StepOutputFormat.MermaidUrl]: dataflowGraphToMermaidUrl
-		}
+		},
+		dependencies: []
 	} satisfies IStep<typeof produceDataFlowGraph>
 } as const
 
 export const STEPS_PER_SLICE = {
 	'slice': {
+		name:        'slice',
 		description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
 		processor:   staticSlicing,
 		required:    'once-per-slice',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter
-		}
+		},
+		dependencies: [ ]
 	} satisfies IStep<typeof staticSlicing>,
 	'reconstruct': {
+		name:        'reconstruct',
 		description: 'Reconstruct R code from the static slice',
 		processor:   reconstructToCode,
 		required:    'once-per-slice',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter
-		}
+		},
+		dependencies: [ ]
 	} satisfies IStep<typeof reconstructToCode>
 } as const
 

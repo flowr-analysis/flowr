@@ -12,7 +12,7 @@ import {
 	STEPS_PER_SLICE,
 	SteppingSlicerInput,
 	StepResults,
-	StepName, StepResult
+	StepResult, StepName
 } from './steps'
 import { guard } from '../util/assert'
 import { SliceResult, SlicingCriteria } from '../slicing'

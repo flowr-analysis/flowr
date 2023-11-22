@@ -1,4 +1,4 @@
-import { IStep, StepName } from '../step'
+import { IStep, NameOfStep } from '../step'
 import { InvalidPipelineError } from './invalid-pipeline-error'
 import { Pipeline } from './pipeline'
 
@@ -12,9 +12,9 @@ import { Pipeline } from './pipeline'
  */
 export function verifyPipeline(steps: IStep[]): Pipeline {
 	// we construct a map linking each name to its respective step
-	const stepMap = new Map<StepName, IStep>()
+	const stepMap = new Map<NameOfStep, IStep>()
 	// we track all elements without dependencies, i.e. those that start the pipeline
-	const inits: StepName[] = []
+	const inits: NameOfStep[] = []
 	initializeSteps(steps, stepMap, inits)
 
 	if(inits.length === 0) {
@@ -35,12 +35,12 @@ export function verifyPipeline(steps: IStep[]): Pipeline {
 	}
 }
 
-function topoSort(inits: StepName[], stepMap: Map<StepName, IStep>) {
+function topoSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>) {
 	// now, we topo-sort the steps
-	const sorted: StepName[] = []
-	const visited = new Set<StepName>()
+	const sorted: NameOfStep[] = []
+	const visited = new Set<NameOfStep>()
 	while(inits.length > 0) {
-		const init = inits.pop() as StepName
+		const init = inits.pop() as NameOfStep
 		sorted.push(init)
 		visited.add(init)
 		// TODO: improve this check, maybe really remove?
@@ -53,7 +53,7 @@ function topoSort(inits: StepName[], stepMap: Map<StepName, IStep>) {
 	return sorted
 }
 
-function checkForInvalidDependency(steps: IStep[], stepMap: Map<StepName, IStep>) {
+function checkForInvalidDependency(steps: IStep[], stepMap: Map<NameOfStep, IStep>) {
 	for(const step of steps) {
 		for(const dep of step.dependencies) {
 			if(!stepMap.has(dep)) {
@@ -63,7 +63,7 @@ function checkForInvalidDependency(steps: IStep[], stepMap: Map<StepName, IStep>
 	}
 }
 
-function initializeSteps(steps: IStep[], stepMap: Map<StepName, IStep>, inits: StepName[]) {
+function initializeSteps(steps: IStep[], stepMap: Map<NameOfStep, IStep>, inits: NameOfStep[]) {
 	for(const step of steps) {
 		const name = step.name
 		// if the name is already in the map we have a duplicate

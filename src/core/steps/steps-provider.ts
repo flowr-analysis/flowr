@@ -5,7 +5,6 @@
  * @module
  */
 import { MergeableRecord } from '../../util/objects'
-import { IStep } from './step'
 
 
 export interface StepsConfiguration extends MergeableRecord {

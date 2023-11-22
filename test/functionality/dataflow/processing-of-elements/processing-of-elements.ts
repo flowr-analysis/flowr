@@ -1,9 +1,6 @@
 import { requireAllTestsInFolder } from '../../_helper/collect-tests'
 import path from 'path'
 
-require('./elements/atomic')
-require('./elements/expression-lists')
-
 describe('Processing of Elements', () => {
 	describe('atomic', () =>
 		requireAllTestsInFolder(path.join(__dirname, 'atomic'))

@@ -1,8 +1,8 @@
 import { define, initializeCleanEnvironments, resolveByName } from '../../../../src/dataflow/environments'
-import { variable } from './environments'
 import { expect } from 'chai'
 import { guard } from '../../../../src/util/assert'
 import { GlobalScope, LocalScope } from '../../../../src/dataflow/environments/scopes'
+import { variable } from '../../_helper/environment-builder'
 
 describe('Resolve', () => {
 	describe('ByName', () => {

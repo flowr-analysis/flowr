@@ -3,8 +3,8 @@ import { DefaultEnvironmentMemory, IEnvironment, initializeCleanEnvironments } f
 import { guard } from '../../../../src/util/assert'
 import { expect } from 'chai'
 import { appendEnvironments, define, overwriteEnvironments } from '../../../../src/dataflow/environments'
-import { variable } from './environments'
 import { GlobalScope, LocalScope } from '../../../../src/dataflow/environments/scopes'
+import { variable } from '../../_helper/environment-builder'
 
 /** if you pass multiple `definedAt`, this will expect the node to have multiple definitions */
 function existsDefinedAt(name: string, definedAt: NodeId[], result: IEnvironment | undefined, message?: string) {

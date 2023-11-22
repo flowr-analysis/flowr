@@ -2,6 +2,7 @@ import { createPipeline } from '../../../../src/core/steps/pipeline'
 import { IStep, NameOfStep } from '../../../../src/core/steps'
 import { expect } from 'chai'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../../src/core/steps/all/00-parse'
+import { allPermutations } from '../../../../src/util/arrays'
 
 describe('dependency check', () => {
 	describe('error-cases', () => {
@@ -22,11 +23,14 @@ describe('dependency check', () => {
 			], /cycle/)
 	})
 	describe('default behavior', () => {
-		function positive(name: string, steps: IStep[], expected: NameOfStep[]) {
+		function positive(name: string, rawSteps: IStep[], expected: NameOfStep[]) {
 			it(name, () => {
-				const pipeline = createPipeline(steps)
-				expect([...pipeline.steps.keys()]).to.have.members(expected)
-				expect(pipeline.order).to.have.ordered.members(expected)
+				// try all permutations
+				for(const steps of allPermutations(rawSteps)) {
+					const pipeline = createPipeline(steps)
+					expect([...pipeline.steps.keys()]).to.have.members(expected, `should have the correct keys for ${JSON.stringify(steps)}`)
+					expect(pipeline.order).to.have.ordered.members(expected, `should have the correct keys for ${JSON.stringify(steps)}`)
+				}
 			})
 		}
 

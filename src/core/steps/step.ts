@@ -27,7 +27,7 @@ export type StepName = string & { __brand?: 'StepName' }
  * Steps will be executed synchronously, in-sequence, based on their {@link IStep#dependencies|dependencies}.
  */
 export interface IStep<
-	Fn extends StepFunction,
+	Fn extends StepFunction = StepFunction,
 > extends MergeableRecord {
 	/**
 	 * Name of the respective step, it does not have to be unique in general but only unique per-pipeline.

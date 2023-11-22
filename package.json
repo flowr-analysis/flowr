@@ -173,7 +173,7 @@
       "check-file/filename-naming-convention": [
         "error",
         {
-          "**/*.ts": "([0-9]+-)?([A-Z])+([a-z])*((-|.)?([A-Z])+([a-z]))"
+          "**/*.ts": "?([0-9]+-)?([A-Z])+([a-z])*((-|.)?([A-Z])+([a-z]))"
         }
       ],
       "check-file/folder-match-with-fex": [

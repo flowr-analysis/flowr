@@ -60,14 +60,14 @@ const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionC
 	// return selectionHasLeaf ? wouldBe : []
 }
 
-const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n))
+const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n), n.location? n.location.start.column : 0)
 
 /*
 --reconstruct--
 */
 function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, expressions: Code[], configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, exprList)) {
-		return plain(getLexeme(exprList))
+		return plain(getLexeme(exprList), exprList.location? exprList.location.start.column : 0)
 	}
 
 	const subExpressions = expressions.filter(e => e.length > 0)
@@ -114,7 +114,7 @@ function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration:
 */
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, n)) {
-		return plain(getLexeme(n))
+		return plain(getLexeme(n),n.location? n.location.start.column : 0)
 	}
 
 	if(lhs.length === 0 && rhs.length === 0) {
@@ -124,7 +124,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 		return rhs
 	}
 	if(rhs.length === 0) { // if we have no rhs we have to keep everything to get the rhs
-		return plain(getLexeme(n))
+		return plain(getLexeme(n), n.location? n.location.start.column : 0)
 	}
 
 	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)
@@ -135,7 +135,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 */
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop))
+		return plain(getLexeme(loop), loop.location? loop.location.start.column : 0)
 	}
 	if(body.length === 0 && variable.length === 0 && vector.length === 0) {
 		return []
@@ -165,7 +165,7 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 */
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop))
+		return plain(getLexeme(loop), loop.location? loop.location.start.column : 0)
 	} else if(body.length === 0) {
 		return []
 	} else {
@@ -194,7 +194,7 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 */
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, ifThenElse)) {
-		return plain(getLexeme(ifThenElse))
+		return plain(getLexeme(ifThenElse), ifThenElse.location? ifThenElse.location.start.column : 0)
 	}
 	otherwise ??= []
 	if(condition.length === 0 && when.length === 0 && otherwise.length === 0) {
@@ -232,7 +232,7 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 */
 function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop))
+		return plain(getLexeme(loop), loop.location? loop.location.start.column : 0)
 	}
 	if(body.length === 0 && condition.length === 0) {
 		return []
@@ -278,7 +278,7 @@ function reconstructParameters(parameters: RParameter<ParentInformation>[]): str
 */
 function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: string | (Code | null)[], configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, node)) {
-		return plain(getLexeme(node))
+		return plain(getLexeme(node), node.location? node.location.start.column : 0)
 	}
 
 	if(accessed.length === 0) {
@@ -289,7 +289,7 @@ function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code,
 		}
 	}
 
-	return plain(getLexeme(node))
+	return plain(getLexeme(node), node.location? node.location.start.column : 0)
 }
 
 /*
@@ -297,11 +297,11 @@ function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code,
 */
 function reconstructArgument(argument: RArgument<ParentInformation>, name: Code | undefined, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, argument)) {
-		return plain(getLexeme(argument))
+		return plain(getLexeme(argument), argument.location? argument.location.start.column : 0)
 	}
 
 	if(argument.name !== undefined && name !== undefined && name.length > 0) {
-		return plain(`${getLexeme(argument.name)}=${argument.value ? getLexeme(argument.value) : ''}`)
+		return plain(`${getLexeme(argument.name)}=${argument.value ? getLexeme(argument.value) : ''}`, argument.location? argument.location.start.column : 0)
 	} else {
 		return value ?? []
 	}
@@ -312,13 +312,13 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 */
 function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, parameter)) {
-		return plain(getLexeme(parameter))
+		return plain(getLexeme(parameter), parameter.location? parameter.location.start.column : 0)
 	}
 
 	if(parameter.defaultValue !== undefined && name.length > 0) {
-		return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`)
+		return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`, parameter.location? parameter.location.start.column : 0)
 	} else if(parameter.defaultValue !== undefined && name.length === 0) {
-		return plain(getLexeme(parameter.defaultValue))
+		return plain(getLexeme(parameter.defaultValue), parameter.location? parameter.location.start.column : 0)
 	} else {
 		return name
 	}
@@ -374,12 +374,12 @@ function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: R
 		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n')
 		if(rhs !== undefined && rhs.length > 0) {
 			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n')
-			return plain(`${lhsText} ${call.functionName.content} ${rhsText}`)
+			return plain(`${lhsText} ${call.functionName.content} ${rhsText}`, call.location? call.location.start.column : 0)
 		} else {
-			return plain(lhsText)
+			return plain(lhsText, call.location? call.location.start.column : 0)
 		}
 	}
-	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`)
+	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`, call.location? call.location.start.column : 0)
 }
 
 /*
@@ -390,7 +390,7 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 		return reconstructSpecialInfixFunctionCall(args, call)
 	}
 	if(call.flavor === 'named' && isSelected(configuration, call)) {
-		return plain(getLexeme(call))
+		return plain(getLexeme(call), call.location? call.location.start.column : 0)
 	}
 	const filteredArgs = args.filter(a => a !== undefined && a.length > 0)
 	if(functionName.length === 0 && filteredArgs.length === 0) {
@@ -409,7 +409,7 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 		}
 		return [{ line: functionName[0].line, indent: functionName[0].indent }]
 	} else {
-		return plain(getLexeme(call))
+		return plain(getLexeme(call), call.location? call.location.start.column : 0)
 	}
 }
 

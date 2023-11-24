@@ -1,11 +1,11 @@
-import { ReconstructionResult, reconstructLogger, reconstructAstFolds } from './reconstruct';
-import { removeOuterExpressionListIfApplicable } from './helper';
-import { autoSelectLibrary } from './helper';
-import { AutoSelectPredicate } from './helper';
-import { Selection } from './helper';
+import { ReconstructionResult, reconstructLogger, reconstructAstFolds } from './reconstruct'
+import { removeOuterExpressionListIfApplicable } from './helper'
+import { autoSelectLibrary } from './helper'
+import { AutoSelectPredicate } from './helper'
+import { Selection } from './helper'
 
-import { NormalizedAst, RNode, ParentInformation, foldAstStateful } from '../r-bridge';
-import { LogLevel } from '../util/log';
+import { NormalizedAst, RNode, ParentInformation, foldAstStateful } from '../r-bridge'
+import { LogLevel } from '../util/log'
 
 
 /*
@@ -22,7 +22,7 @@ import { LogLevel } from '../util/log';
  */
 
 export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
-	if (reconstructLogger.settings.minLevel >= LogLevel.Trace) {
+	if(reconstructLogger.settings.minLevel >= LogLevel.Trace) {
 		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
 	}
 
@@ -30,7 +30,7 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 	let autoSelected = 0
 	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
 		const result = autoSelectIf(node)
-		if (result) {
+		if(result) {
 			autoSelected++
 		}
 		return result
@@ -39,7 +39,7 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 	// fold of the normalized ast
 	const result = foldAstStateful(ast.ast, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
 
-	if (reconstructLogger.settings.minLevel >= LogLevel.Trace) {
+	if(reconstructLogger.settings.minLevel >= LogLevel.Trace) {
 		reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
 	}
 

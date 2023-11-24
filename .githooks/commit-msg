@@ -16,7 +16,7 @@ regex="$regex)"                                                                 
 regex="$regex|\[release:(patch|minor|major)\] .+)"                                              # alternatively, allow release commits (only to be done on main)
 
 if ! echo "$message" | grep -qE "$regex"; then
-  echo   "[POLICY] Your message is not formatted correctly. Respect the regex: '$regex'!"
+  echo   "[POLICY] Your message is not formatted correctly. Respect the style defined in '.github/CONTRIBUTING.md'"
   printf "[POLICY] Your message was (ignoring git comments):\n%s\n" "$(echo "$message" | grep -vE "^#")"
   exit 1
 fi

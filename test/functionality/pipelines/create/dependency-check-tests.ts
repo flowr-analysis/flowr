@@ -10,9 +10,11 @@ import { NAIVE_RECONSTRUCT } from '../../../../src/core/steps/all/40-reconstruct
 
 describe('dependency check', () => {
 	describe('error-cases', () => {
-		function negative(name: string, steps: IStep[], message: string | RegExp) {
-			it(name, () => {
-				expect(() => createPipeline(steps)).to.throw(message)
+		function negative(name: string, rawSteps: IStep[], message: string | RegExp) {
+			it(`${name} (all permutations)`, () => {
+				for(const steps of allPermutations(rawSteps)) {
+					expect(() => createPipeline(steps)).to.throw(message)
+				}
 			})
 		}
 		negative('should throw on empty input', [], /empty/)
@@ -28,8 +30,7 @@ describe('dependency check', () => {
 	})
 	describe('default behavior', () => {
 		function positive(name: string, rawSteps: IStep[], expected: NameOfStep[]) {
-			it(name, () => {
-				// try all permutations
+			it(`${name} (all permutations)`, () => {
 				for(const steps of allPermutations(rawSteps)) {
 					const pipeline = createPipeline(steps)
 					expect([...pipeline.steps.keys()]).to.have.members(expected, `should have the correct keys for ${JSON.stringify(steps)}`)
@@ -109,6 +110,18 @@ describe('dependency check', () => {
 					decorates: 'parse-v6',
 				}
 			], ['parse', 'parse-v2', 'parse-v3', 'parse-v4', 'parse-v6', 'parse-v5'])
+			positive('default pipeline with dataflow decoration', [
+				PARSE_WITH_R_SHELL_STEP,
+				NORMALIZE,
+				LEGACY_STATIC_DATAFLOW,
+				{
+					...LEGACY_STATIC_DATAFLOW,
+					name:      'dataflow-decorator',
+					decorates: 'dataflow'
+				},
+				STATIC_SLICE,
+				NAIVE_RECONSTRUCT
+			], ['parse', 'normalize', 'dataflow', 'dataflow-decorator',  'slice', 'reconstruct'])
 		})
 	})
 })

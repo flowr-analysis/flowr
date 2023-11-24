@@ -22,6 +22,11 @@ describe('dependency check', () => {
 			[PARSE_WITH_R_SHELL_STEP, PARSE_WITH_R_SHELL_STEP], /duplicate|not unique/)
 		negative('should throw on invalid dependencies',
 			[PARSE_WITH_R_SHELL_STEP, { ...PARSE_WITH_R_SHELL_STEP, name: 'parse-v2', dependencies: ['foo'] }], /invalid dependency|not exist/)
+		negative('no initial steps',
+			[
+				{ ...PARSE_WITH_R_SHELL_STEP, name: 'parse-v1', dependencies: ['parse-v2'] },
+				{ ...PARSE_WITH_R_SHELL_STEP, name: 'parse-v2', dependencies: ['parse-v1'] }
+			], /no initial/)
 		negative('should throw on cycles',
 			[PARSE_WITH_R_SHELL_STEP,
 				{ ...PARSE_WITH_R_SHELL_STEP, name: 'parse-v1', dependencies: ['parse-v2'] },

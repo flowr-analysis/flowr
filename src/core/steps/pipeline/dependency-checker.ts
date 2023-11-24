@@ -1,6 +1,7 @@
 import { IStep, NameOfStep } from '../step'
 import { InvalidPipelineError } from './invalid-pipeline-error'
 import { Pipeline } from './pipeline'
+import { jsonReplacer } from '../../../util/json'
 
 
 /**
@@ -101,7 +102,7 @@ function topologicallyInsertDecoratorElements(decoratorsOfLastOthers: Set<NameOf
 		}
 	}
 	if(decoratorsOfLastOthers.size > 0) {
-		throw new InvalidPipelineError(`5) Pipeline contains at least one decoration cycle: ${JSON.stringify(decoratorsOfLastOthers)}`)
+		throw new InvalidPipelineError(`5) Pipeline contains at least one decoration cycle: ${JSON.stringify(decoratorsOfLastOthers, jsonReplacer)}`)
 	}
 }
 
@@ -126,7 +127,8 @@ function initializeSteps(steps: IStep[], stepMap: Map<NameOfStep, IStep>, inits:
 			throw new InvalidPipelineError(`1) Step name "${name}" is not unique in the pipeline`)
 		}
 		stepMap.set(name, step)
-		if(step.dependencies.length === 0) {
+		// only steps that have no dependencies and do not decorate others can be initial steps
+		if(step.dependencies.length === 0 && step.decorates === undefined) {
 			inits.push(name)
 		}
 	}

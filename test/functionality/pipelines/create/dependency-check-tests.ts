@@ -38,18 +38,49 @@ describe('dependency check', () => {
 			})
 		}
 
-		positive('should work on a single step', [PARSE_WITH_R_SHELL_STEP], ['parse'])
-		positive('should work on a single step with dependencies', [
-			PARSE_WITH_R_SHELL_STEP,
-			{ ...PARSE_WITH_R_SHELL_STEP, name: 'parse-v2', dependencies: ['parse'] }
-		], ['parse', 'parse-v2'])
-		// they will be shuffled in all permutations
-		positive('default pipeline', [
-			PARSE_WITH_R_SHELL_STEP,
-			NORMALIZE,
-			LEGACY_STATIC_DATAFLOW,
-			STATIC_SLICE,
-			NAIVE_RECONSTRUCT
-		], ['parse', 'normalize', 'dataflow', 'slice', 'reconstruct'])
+		describe('without decorators', () => {
+			positive('should work on a single step', [PARSE_WITH_R_SHELL_STEP], ['parse'])
+			positive('should work on a single step with dependencies', [
+				PARSE_WITH_R_SHELL_STEP,
+				{
+					...PARSE_WITH_R_SHELL_STEP,
+					name:         'parse-v2',
+					dependencies: ['parse']
+				}
+			], ['parse', 'parse-v2'])
+			// they will be shuffled in all permutations
+			positive('default pipeline', [
+				PARSE_WITH_R_SHELL_STEP,
+				NORMALIZE,
+				LEGACY_STATIC_DATAFLOW,
+				STATIC_SLICE,
+				NAIVE_RECONSTRUCT
+			], ['parse', 'normalize', 'dataflow', 'slice', 'reconstruct'])
+		})
+		describe('with decorators', () => {
+			positive('simple decorator on first step', [
+				PARSE_WITH_R_SHELL_STEP,
+				{
+					...PARSE_WITH_R_SHELL_STEP,
+					name:         'parse-v2',
+					dependencies: [],
+					decorates:    'parse',
+				}
+			], ['parse', 'parse-v2'])
+			positive('decorators can depend on each other', [
+				PARSE_WITH_R_SHELL_STEP,
+				{
+					...PARSE_WITH_R_SHELL_STEP,
+					name:      'parse-v2',
+					decorates: 'parse',
+				},
+				{
+					...PARSE_WITH_R_SHELL_STEP,
+					name:         'parse-v3',
+					dependencies: ['parse-v2'],
+					decorates:    'parse',
+				}
+			], ['parse', 'parse-v2', 'parse-v3'])
+		})
 	})
 })

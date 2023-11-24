@@ -1,4 +1,4 @@
-import { createPipeline, Pipeline } from '../../../../src/core/steps/pipeline'
+import { createPipeline, Pipeline, PipelineStepTypes } from '../../../../src/core/steps/pipeline'
 import { IStep, NameOfStep } from '../../../../src/core/steps'
 import { expect } from 'chai'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../../src/core/steps/all/00-parse'

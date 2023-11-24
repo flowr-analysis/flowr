@@ -9,8 +9,9 @@ import { Pipeline } from './pipeline'
  * 2) all dependencies of steps are valid (i.e., refer to existing steps)
  * 3) there are no cycles in the dependency graph
  * If successful, it returns the topologically sorted list of steps in order of desired execution.
+ * @throws InvalidPipelineError if any of the above conditions are not met
  */
-export function verifyPipeline(steps: IStep[]): Pipeline {
+export function verifyAndBuildPipeline(steps: IStep[]): Pipeline {
 	if(steps.length === 0) {
 		throw new InvalidPipelineError('Pipeline is empty')
 	}
@@ -24,7 +25,7 @@ export function verifyPipeline(steps: IStep[]): Pipeline {
 	if(inits.length === 0) {
 		throw new InvalidPipelineError('Pipeline has no initial steps (i.e., it contains no step without dependencies)')
 	}
-	const sorted = topoSort(inits, stepMap)
+	const sorted = topologicalSort(inits, stepMap)
 
 	if(sorted.length !== stepMap.size) {
 		// check if any of the dependencies in the map are invalid
@@ -39,7 +40,7 @@ export function verifyPipeline(steps: IStep[]): Pipeline {
 	}
 }
 
-function topoSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>) {
+function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>) {
 	// now, we topo-sort the steps
 	const sorted: NameOfStep[] = []
 	const visited = new Set<NameOfStep>()

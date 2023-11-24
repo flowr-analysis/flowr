@@ -1,5 +1,5 @@
 import { IStep, NameOfStep } from '../step'
-import { verifyPipeline } from './dependency-checker'
+import { verifyAndBuildPipeline } from './dependency-checker'
 
 export interface Pipeline {
 	readonly steps: ReadonlyMap<NameOfStep, IStep>
@@ -7,5 +7,5 @@ export interface Pipeline {
 }
 
 export function createPipeline(steps: IStep[]): Pipeline {
-	return verifyPipeline(steps)
+	return verifyAndBuildPipeline(steps)
 }

@@ -6,12 +6,16 @@ import { verifyAndBuildPipeline } from './create'
  * It is to be created {@link createPipeline}.
  *
  * If you want to get the type of all steps in the pipeline (given they are created canonically using const step names), refer to {@link PipelineStepNames}.
- *
- * TODO: group this for per-file and per-request steps/stages in general with arbitrary names?
  */
 export interface Pipeline<T extends IStep = IStep> {
-	readonly steps: ReadonlyMap<NameOfStep, IStep>
-	readonly order: T['name'][]
+	readonly steps:               ReadonlyMap<NameOfStep, IStep>
+	readonly order:               T['name'][]
+	/**
+	 * In the order, this is the index of the first step that
+	 * is executed {@link StepHasToBeExecuted#OncePerRequest|once per request}.
+	 * If undefined, all steps are executed {@link StepHasToBeExecuted#OncePerFile|once per file}.
+	 */
+	readonly firstStepPerRequest: number | undefined
 }
 
 /**

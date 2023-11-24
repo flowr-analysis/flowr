@@ -65,12 +65,13 @@ describe('Create Pipeline (includes dependency checks)', () => {
 		})
 	})
 	describe('default behavior', () => {
-		function positive(name: string, rawSteps: IStep[], expected: NameOfStep[]) {
+		function positive(name: string, rawSteps: IStep[], expected: NameOfStep[], indexOfFirstPerFile: number | undefined = undefined) {
 			it(`${name} (all permutations)`, () => {
 				for(const steps of allPermutations(rawSteps)) {
 					const pipeline = createPipeline(...steps)
 					expect([...pipeline.steps.keys()]).to.have.members(expected, `should have the correct keys for ${JSON.stringify(steps)}`)
 					expect(pipeline.order).to.have.ordered.members(expected, `should have the correct keys for ${JSON.stringify(steps)}`)
+					expect(pipeline.firstStepPerRequest).to.equal(indexOfFirstPerFile, `should have the correct firstStepPerRequest for ${JSON.stringify(steps)}`)
 				}
 			})
 		}

@@ -1,17 +1,17 @@
-import { IStep, NameOfStep } from '../step'
+import { IStep, NameOfStep, StepHasToBeExecuted } from '../step'
 import { InvalidPipelineError } from './invalid-pipeline-error'
 import { Pipeline } from './pipeline'
 import { jsonReplacer } from '../../../util/json'
-
 
 /**
  * Given a set of {@link IStep|steps} with their dependencies, this function verifies that
  * 0) the pipeline is not empty
  * 1) all names of steps are unique for the given pipeline
- * 2) all {@link IStepOrder#dependencies|dependencies} of steps are valid (i.e., refer to existing steps)
+ * 2) all {@link IStepOrder#dependencies|dependencies} of all steps are exist
  * 3) there are no cycles in the dependency graph
  * 4) the target of a {@link IStepOrder#decorates|decoration} exists
  * 5) if a decoration applies, all of its dependencies are already in the pipeline
+ * 6) in the resulting pipeline, there is a strict cut between steps that are executed once per file and once per request
  * If successful, it returns the topologically sorted list of steps in order of desired execution.
  * @throws InvalidPipelineError if any of the above conditions are not met
  */
@@ -21,22 +21,36 @@ export function verifyAndBuildPipeline(steps: readonly IStep[]): Pipeline {
 	}
 
 	// we construct a map linking each name to its respective step
-	const stepMap = new Map<NameOfStep, IStep>()
+	const perFileStepMap = new Map<NameOfStep, IStep>()
+	const perRequestStepMap = new Map<NameOfStep, IStep>()
 	// we track all elements without dependencies, i.e., those that start the pipeline
-	const inits: NameOfStep[] = []
-	initializeSteps(steps, stepMap, inits)
+	const initsPerFile: NameOfStep[] = []
+	const initsPerRequest: NameOfStep[] = []
+	initializeSteps(steps, perFileStepMap, perRequestStepMap, initsPerFile, initsPerRequest)
 
-	const sorted = topologicalSort(inits, stepMap)
+	// first, we sort the per-file steps
+	const visited = new Set<NameOfStep>()
+	const sortedPerFile = topologicalSort(initsPerFile, perFileStepMap, visited)
+	validateMaps(sortedPerFile, perFileStepMap, steps)
+
+	const allStepsMap = new Map([...perFileStepMap, ...perRequestStepMap])
+	const sortedPerRequest = topologicalSort(initsPerRequest, allStepsMap, visited)
+	console.log(initsPerRequest, 'sortedPerRequest', sortedPerRequest)
+	validateMaps(sortedPerRequest, perRequestStepMap, steps)
+
+	return {
+		steps:               allStepsMap,
+		order:               [...sortedPerFile, ...sortedPerRequest],
+		firstStepPerRequest: sortedPerRequest.length === 0 ? undefined : sortedPerFile.length
+	}
+}
+
+function validateMaps(sorted: NameOfStep[], stepMap: Map<NameOfStep, IStep>, steps: readonly IStep[]) {
 	if(sorted.length !== stepMap.size) {
 		// check if any of the dependencies in the map are invalid
 		checkForInvalidDependency(steps, stepMap)
 		// otherwise, we assume a cycle
 		throw new InvalidPipelineError(`3) Pipeline contains at least one cycle; sorted: ${JSON.stringify(sorted)}, steps: ${JSON.stringify([...stepMap.keys()])}`)
-	}
-
-	return {
-		steps: stepMap,
-		order: sorted
 	}
 }
 
@@ -57,9 +71,8 @@ function handleStep(step: IStep, init: NameOfStep, visited: Set<NameOfStep>, sor
 	}
 }
 
-function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>) {
+function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>, visited: Set<NameOfStep>) {
 	const sorted: NameOfStep[] = []
-	const visited = new Set<NameOfStep>()
 
 	while(inits.length > 0) {
 		const init = inits.pop() as NameOfStep
@@ -117,17 +130,25 @@ function checkForInvalidDependency(steps: readonly IStep[], stepMap: Map<NameOfS
 	}
 }
 
-function initializeSteps(steps: readonly IStep[], stepMap: Map<NameOfStep, IStep>, inits: NameOfStep[]) {
+function initializeSteps(steps: readonly IStep[], stepMap: Map<NameOfStep, IStep>, perRequest: Map<NameOfStep, IStep>, initsPerFile: NameOfStep[], initsPerRequest: NameOfStep[]) {
 	for(const step of steps) {
 		const name = step.name
 		// if the name is already in the map we have a duplicate
-		if(stepMap.has(name)) {
+		if(perFile.has(name) || perRequest.has(name)) {
 			throw new InvalidPipelineError(`1) Step name "${name}" is not unique in the pipeline`)
 		}
-		stepMap.set(name, step)
+		if(step.executed === StepHasToBeExecuted.OncePerFile) {
+			perFile.set(name, step)
+		} else {
+			perRequest.set(name, step)
+		}
 		// only steps that have no dependencies and do not decorate others can be initial steps
 		if(step.dependencies.length === 0 && step.decorates === undefined) {
-			inits.push(name)
+			if(step.executed === StepHasToBeExecuted.OncePerFile) {
+				initsPerFile.push(name)
+			} else {
+				initsPerRequest.push(name)
+			}
 		}
 	}
 }

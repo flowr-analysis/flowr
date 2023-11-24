@@ -42,6 +42,8 @@ export interface IStepOrder<Name extends NameOfStep = NameOfStep> {
 	 * Does not have to be transitive, this will be checked by the scheduler of the pipeline.
 	 */
 	readonly dependencies: readonly NameOfStep[]
+	/* does this step has to be repeated for each new request or can it be performed only once in the initialization */
+	readonly executed:     StepHasToBeExecuted
 	/**
 	 * This is similar to {@link dependencies}, but is used to say that a given step _decorates_ another one.
 	 * This imbues two requirements:
@@ -66,8 +68,6 @@ export interface IStep<
 	readonly description: string
 	/** The main processor that essentially performs the logic of this step */
 	readonly processor:   (...input: Parameters<Fn>) => ReturnType<Fn>
-	/* does this step has to be repeated for each new request or can it be performed only once in the initialization */
-	readonly executed:    StepHasToBeExecuted
 	/**
 	 * How to visualize the results of the respective step to the user?
 	 */

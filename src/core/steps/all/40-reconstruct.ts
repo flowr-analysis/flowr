@@ -1,6 +1,6 @@
 import { internalPrinter, StepOutputFormat } from '../../print/print'
 import { IStep, StepHasToBeExecuted } from '../step'
-import { AutoSelectPredicate, reconstructToCode, SliceResult } from '../../../slicing'
+import { autoSelectLibrary, AutoSelectPredicate, reconstructToCode, SliceResult } from '../../../slicing'
 import { DeepReadonly } from 'ts-essentials'
 import { NormalizedAst } from '../../../r-bridge'
 import { SliceRequiredInput } from './30-slice'
@@ -9,7 +9,7 @@ import { guard } from '../../../util/assert'
 export const ReconstructRequiredInput = {
 	...SliceRequiredInput,
 	/** If you want to auto-select something in the reconstruction add it here, otherwise, it will use the default defined alongside {@link reconstructToCode}*/
-	autoSelectIf: undefined as unknown as AutoSelectPredicate
+	autoSelectIf: autoSelectLibrary as AutoSelectPredicate
 } as const
 
 export const NAIVE_RECONSTRUCT = {

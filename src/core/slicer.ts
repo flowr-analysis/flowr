@@ -198,24 +198,38 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 		switch(this.stepCounter) {
 			case 0:
 				step = guardStep('parse')
-				result = await executeSingleSubStep(step, this.request, this.shell)
+				result = await executeSingleSubStep(step, {}, { request: this.request, shell: this.shell })
 				break
 			case 1:
 				step = guardStep('normalize')
-				result = await executeSingleSubStep(step, this.results.parse as string, await this.shell.tokenMap(), this.hooks, this.getId)
+				result = await executeSingleSubStep(step, {
+					parse: this.results.parse as string
+				}, {
+					shell: this.shell,
+					hooks: this.hooks,
+					getId: this.getId
+				})
 				break
 			case 2:
 				step = guardStep('dataflow')
-				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst)
+				result = executeSingleSubStep(step, { normalize: this.results.normalize as NormalizedAst })
 				break
 			case 3:
 				guard(this.criterion !== undefined, 'Cannot decode criteria without a criterion')
 				step = guardStep('slice')
-				result = executeSingleSubStep(step, (this.results.dataflow as DataflowInformation).graph, this.results.normalize as NormalizedAst, this.criterion)
+				result = executeSingleSubStep(step, {
+					dataflow:  this.results.dataflow as DataflowInformation,
+					normalize: this.results.normalize as NormalizedAst
+				}, {
+					criterion: this.criterion
+				})
 				break
 			case 4:
 				step = guardStep('reconstruct')
-				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst<NoInfo>, (this.results.slice as SliceResult).result)
+				result = executeSingleSubStep(step, {
+					normalize: this.results.normalize as NormalizedAst,
+					slice: 	   this.results.slice as SliceResult
+				}, {})
 				break
 			default:
 				throw new Error(`Unknown step ${this.stepCounter}, reaching this should not happen!`)

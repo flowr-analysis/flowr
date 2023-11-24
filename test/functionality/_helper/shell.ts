@@ -18,7 +18,8 @@ import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../
 import { SlicingCriteria } from '../../../src/slicing'
 import { testRequiresRVersion } from './version'
 import { deepMergeObject, MergeableRecord } from '../../../src/util/objects'
-import { executeSingleSubStep, LAST_STEP, SteppingSlicer } from '../../../src/core'
+import { LAST_STEP, SteppingSlicer } from '../../../src/core'
+import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/40-reconstruct'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -188,7 +189,14 @@ export function assertReconstructed(name: string, shell: RShell, input: string, 
 			request:        requestFromInput(input),
 			shell
 		}).allRemainingSteps()
-		const reconstructed = executeSingleSubStep('reconstruct', result.normalize,  new Set(selectedIds))
+		const reconstructed = NAIVE_RECONSTRUCT.processor({
+			normalize: result.normalize,
+			slice:     {
+				decodedCriteria:   [],
+				timesHitThreshold: 0,
+				result:            new Set(selectedIds)
+			}
+		}, {})
 		assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, result.normalize.idMap)})`)
 	})
 }

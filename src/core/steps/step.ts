@@ -7,12 +7,21 @@
 import { MergeableRecord } from '../../util/objects'
 import { InternalStepPrinter, IStepPrinter, StepOutputFormat } from '../print/print'
 
-
 /**
- * This represents close a function that we know completely nothing about.
- * Nevertheless, this is the basis of what a step processor should look like.
+ * This represents the format of a step processor which retrieves two things:
+ *
+ * 1) the input configuration as passed to the {@link PipelineExecutor}.
+ * 2) the output produced by the previous steps.
+ *
+ * Please be aware, that if the respective information is available is not ensured by the type system but rather
+ * ensured at runtime by your dependencies. If you want to make sure, that the information is present,
+ * list all steps that you require as your {@link IStepOrder#dependencies|dependencies}, even if they would be
+ * already covered transitively.
+ *
+ * TODO: we could use prototypic cores for each step name
  */
-export type StepFunction = (...args: never[]) => unknown
+export type StepProcessingFunction =
+	(results: Record<string, unknown>, input: Record<string, unknown>) => unknown
 /**
  * This represents the required execution frequency of a step.
  */
@@ -30,7 +39,10 @@ export type NameOfStep = string & { __brand?: 'StepName' }
 /**
  * Contains the data to specify the order of {@link IStep|steps} in a pipeline.
  */
-export interface IStepOrder<Name extends NameOfStep = NameOfStep> {
+export interface IStepOrder<
+	Name extends NameOfStep = NameOfStep,
+	Dependencies extends readonly NameOfStep[] = readonly NameOfStep[]
+> {
 	/**
 	 * Name of the respective step, it does not have to be unique in general but only unique per-pipeline.
 	 * In other words, you can have multiple steps with a name like `parse` as long as you use only one of them in a given pipeline.
@@ -41,7 +53,7 @@ export interface IStepOrder<Name extends NameOfStep = NameOfStep> {
 	 * Give the names of other steps this one requires to be completed as a prerequisite (e.g., to gain access to their input).
 	 * Does not have to be transitive, this will be checked by the scheduler of the pipeline.
 	 */
-	readonly dependencies: readonly NameOfStep[]
+	readonly dependencies: Dependencies
 	/* does this step has to be repeated for each new request or can it be performed only once in the initialization */
 	readonly executed:     StepHasToBeExecuted
 	/**
@@ -55,15 +67,16 @@ export interface IStepOrder<Name extends NameOfStep = NameOfStep> {
 }
 
 /**
- * Defines what is to be known of a single step in the slicing process.
+ * Defines what is to be known of a single step in a pipeline.
  * It wraps around a single {@link IStep#processor|processor} function, providing additional information.
  * Steps will be executed synchronously, in-sequence, based on their {@link IStep#dependencies|dependencies}.
  */
 export interface IStep<
 	Name extends NameOfStep = NameOfStep,
+	Dependencies extends readonly NameOfStep[] = readonly NameOfStep[],
 	// eslint-disable-next-line -- by default, we assume nothing about the function shape
-	Fn extends StepFunction = (...args: any[]) => any,
-> extends MergeableRecord, IStepOrder<Name> {
+	Fn extends StepProcessingFunction = (...args: any[]) => any,
+> extends MergeableRecord, IStepOrder<Name, Dependencies> {
 	/** Human-readable description of this step */
 	readonly description: string
 	/** The main processor that essentially performs the logic of this step */

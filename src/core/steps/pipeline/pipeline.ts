@@ -1,5 +1,6 @@
-import { IStep, NameOfStep } from '../step'
+import { IStep, NameOfStep, StepHasToBeExecuted } from '../step'
 import { verifyAndBuildPipeline } from './create'
+import { satisfies } from 'semver'
 
 /**
  * A pipeline is a collection of {@link Pipeline#steps|steps} that are executed in a certain {@link Pipeline#order|order}.
@@ -13,9 +14,9 @@ export interface Pipeline<T extends IStep = IStep> {
 	/**
 	 * In the order, this is the index of the first step that
 	 * is executed {@link StepHasToBeExecuted#OncePerRequest|once per request}.
-	 * If undefined, all steps are executed {@link StepHasToBeExecuted#OncePerFile|once per file}.
+	 * If it is "out of bounds" (i.e., the number of steps), all steps are executed {@link StepHasToBeExecuted#OncePerFile|once per file}.
 	 */
-	readonly firstStepPerRequest: number | undefined
+	readonly firstStepPerRequest: number
 }
 
 /**
@@ -32,6 +33,15 @@ export type PipelineStepPrintersWithName<P extends Pipeline, Name extends NameOf
 export type PipelineStepOutputWithName<P extends Pipeline, Name extends NameOfStep> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>>
 
 export type PipelineInput<P extends Pipeline> = PipelineStep<P>['requiredInput']
+
+/**
+ * Only gets the union of 'requiredInput' of those PipelineSteps which have a 'execute' field of type 'OncePerRequest'.
+ * In other words, information that you may want to change for another request (e.g., another slice) with the same file.
+ */
+export type PipelinePerRequestInput<P extends Pipeline> = {
+	[K in PipelineStepNames<P>]: PipelineStep<P>['executed'] extends StepHasToBeExecuted.OncePerRequest ? PipelineStepWithName<P, K>['requiredInput'] : never
+}[PipelineStepNames<P>]
+
 export type PipelineOutput<P extends Pipeline> = {
 	[K in PipelineStepNames<P>]: PipelineStepOutputWithName<P, K>
 }

@@ -48,7 +48,7 @@ export function verifyAndBuildPipeline(steps: readonly IStep[]): Pipeline {
 	return {
 		steps:               perRequestStepMap,
 		order:               sorted,
-		firstStepPerRequest: sortedPerRequest.length === 0 ? undefined : sortedPerFile.length
+		firstStepPerRequest: sortedPerFile.length
 	}
 }
 

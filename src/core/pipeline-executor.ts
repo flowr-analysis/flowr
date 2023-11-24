@@ -1,18 +1,10 @@
-import {
-	executeSingleSubStep,
-	NameOfStep,
-	StepHasToBeExecuted,
-	StepName,
-	StepResults,
-	STEPS_PER_SLICE
-} from './steps'
+import { NameOfStep, StepHasToBeExecuted } from './steps'
 import { guard } from '../util/assert'
-import { SliceResult, SlicingCriteria } from '../slicing'
-import { DataflowInformation } from '../dataflow/internal/info'
 import {
 	Pipeline,
 	PipelineInput,
 	PipelineOutput,
+	PipelinePerRequestInput,
 	PipelineStepNames,
 	PipelineStepOutputWithName
 } from './steps/pipeline'
@@ -79,7 +71,7 @@ import {
  */
 export class PipelineExecutor<P extends Pipeline> {
 	private readonly pipeline: P
-	private readonly input:    PipelineInput<P>
+	private input:             PipelineInput<P>
 	private output:            PipelineOutput<P> = {} as PipelineOutput<P>
 
 	private currentExecutionStage = StepHasToBeExecuted.OncePerFile
@@ -108,7 +100,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * @see getCurrentStage
 	 */
 	public switchToRequestStage(): void {
-		guard(this.pipeline.firstStepPerRequest === undefined || this.stepCounter === this.pipeline.firstStepPerRequest, 'First need to complete all steps before switching')
+		guard(this.stepCounter === this.pipeline.firstStepPerRequest, 'First need to complete all steps before switching')
 		guard(this.currentExecutionStage === StepHasToBeExecuted.OncePerFile, 'Cannot switch to next stage, already in per-request stage.')
 		this.currentExecutionStage = StepHasToBeExecuted.OncePerRequest
 	}
@@ -134,7 +126,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	public hasNextStep(): boolean {
 		return this.stepCounter < this.pipeline.order.length && (
 			this.currentExecutionStage !== StepHasToBeExecuted.OncePerFile ||
-				this.stepCounter < (this.pipeline.firstStepPerRequest ?? this.pipeline.order.length)
+				this.stepCounter < this.pipeline.firstStepPerRequest
 		)
 	}
 
@@ -188,46 +180,48 @@ export class PipelineExecutor<P extends Pipeline> {
 	}
 
 	/**
-	 * This only makes sense if you have already sliced a file (e.g., by running up to the `slice` step) and want to do so again while caching the results.
-	 * Or if for whatever reason you did not pass a criterion with the constructor.
+	 * This only makes sense if you have already run a request and want to re-use the per-file results for a new one.
+	 * (or if for whatever reason you did not pass information for the pipeline with the constructor).
 	 *
-	 * @param newCriterion - the new slicing criterion to use for the next slice
+	 * @param newRequestData - data for the new request
 	 */
-	public updateCriterion(newCriterion: SlicingCriteria): void {
-		guard(this.stepCounter >= PipelineExecutor.maximumNumberOfStepsPerFile , 'Cannot reset slice prior to once-per-slice stage')
-		this.criterion = newCriterion
-		this.stepCounter = PipelineExecutor.maximumNumberOfStepsPerFile
-		this.results.slice = undefined
-		this.results.reconstruct = undefined
-		if(this.stepOfInterest === 'slice' || this.stepOfInterest === 'reconstruct') {
-			this.reachedWanted = false
+	public updateCriterion(newRequestData: PipelinePerRequestInput<P>): void {
+		guard(this.stepCounter >= this.pipeline.firstStepPerRequest, 'Cannot reset slice prior to once-per-slice stage')
+		this.input = {
+			...this.input,
+			...newRequestData
+		}
+		this.stepCounter = this.pipeline.firstStepPerRequest
+		// clear the results for all steps with an index >= firstStepPerRequest, this is more of a sanity check
+		for(let i = this.pipeline.firstStepPerRequest; i < this.pipeline.order.length; i++) {
+			this.output[this.pipeline.order[i] as PipelineStepNames<P>] = undefined as unknown as PipelineStepOutputWithName<P, NameOfStep>
 		}
 	}
 
-	public async allRemainingSteps(canSwitchStage: false): Promise<Partial<StepResults<InterestedIn extends keyof typeof STEPS_PER_SLICE | undefined ? typeof LAST_PER_FILE_STEP : InterestedIn>>>
-	public async allRemainingSteps(canSwitchStage?: true): Promise<StepResults<InterestedIn>>
+	public async allRemainingSteps(canSwitchStage: false): Promise<Partial<PipelineOutput<P>>>
+	public async allRemainingSteps(canSwitchStage?: true): Promise<PipelineOutput<P>>
 	/**
 	 * Execute all remaining steps and automatically call {@link switchToSliceStage} if necessary.
-	 * @param canSwitchStage - if true, automatically switch to the slice stage if necessary
+	 * @param canSwitchStage - if true, automatically switch to the request stage if necessary
 	 *       (i.e., this is what you want if you have never executed {@link nextStep} and you want to execute *all* steps).
 	 *       However, passing false allows you to only execute the steps of the 'once-per-file' stage (i.e., the steps that can be cached).
 	 *
-	 * @note There is a small type difference if you pass 'false' and already have manually switched to the 'once-per-slice' stage.
+	 * @note There is a small type difference if you pass 'false' and already have manually switched to the 'once-per-request' stage.
 	 *       Because now, the results of these steps are no longer part of the result type (although they are still included).
 	 *       In such a case, you may be better off with simply passing 'true' as the function will detect that the stage is already switched.
-	 *       We could solve this type problem by separating the SteppingSlicer class into two for each stage, but this would break the improved readability and unified handling
-	 *       of the slicer that I wanted to achieve with this class.
+	 *       We could solve this type problem by separating the PipelineExecutor class into two for each stage, but this would break the improved readability and unified handling
+	 *       of the executor that I wanted to achieve with this class.
 	 */
-	public async allRemainingSteps(canSwitchStage = true): Promise<StepResults<InterestedIn | typeof LAST_PER_FILE_STEP> | Partial<StepResults<InterestedIn | typeof LAST_PER_FILE_STEP>>> {
+	public async allRemainingSteps(canSwitchStage = true): Promise<PipelineOutput<P> | Partial<PipelineOutput<P>>> {
 		while(this.hasNextStep()) {
 			await this.nextStep()
 		}
-		if(canSwitchStage && !this.reachedWanted && this.stage === 'once-per-file') {
-			this.switchToSliceStage()
+		if(canSwitchStage && this.hasNextStep() && this.currentExecutionStage === StepHasToBeExecuted.OncePerFile) {
+			this.switchToRequestStage()
 			while(this.hasNextStep()) {
 				await this.nextStep()
 			}
 		}
-		return this.reachedWanted ? this.getResults() : this.getResults(true)
+		return this.hasNextStep() ? this.getResults(true) : this.getResults()
 	}
 }

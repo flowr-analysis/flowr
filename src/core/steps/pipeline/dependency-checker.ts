@@ -51,12 +51,13 @@ function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>) {
 		const init = inits.pop() as NameOfStep
 		sorted.push(init)
 		unvisited.delete(init)
+		const last = sorted[sorted.length - 1]
+
 		for(const elem of unvisited) {
 			const step = stepMap.get(elem) as IStep
 			// we should do that better, for now we do not assume that many dependencies
 			const hasUnsatisfiedDependencies = step.dependencies.some(dep => unvisited.has(dep))
 
-			const last = sorted[sorted.length - 1]
 			// if the step decorates the last step in the sorted list, we can add it to the list, but only if all its dependencies are already in the list
 			if(step.decorates === last) {
 				// if dependencies are still missing, we cannot add it to the list and fail TODO: if not all of its dependencies which remain decorate the last step

@@ -1,5 +1,5 @@
 import { IStep, NameOfStep } from '../step'
-import { verifyAndBuildPipeline } from './dependency-checker'
+import { verifyAndBuildPipeline } from './create'
 
 /**
  * A pipeline is a collection of {@link Pipeline#steps|steps} that are executed in a certain {@link Pipeline#order|order}.

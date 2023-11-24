@@ -1,4 +1,4 @@
-import { createPipeline, Pipeline, PipelineInput, PipelineStepNames } from '../../../../src/core/steps/pipeline'
+import { createPipeline } from '../../../../src/core/steps/pipeline'
 import { IStep, NameOfStep } from '../../../../src/core/steps'
 import { expect } from 'chai'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../../src/core/steps/all/00-parse'
@@ -8,7 +8,7 @@ import { LEGACY_STATIC_DATAFLOW } from '../../../../src/core/steps/all/20-datafl
 import { STATIC_SLICE } from '../../../../src/core/steps/all/30-slice'
 import { NAIVE_RECONSTRUCT } from '../../../../src/core/steps/all/40-reconstruct'
 
-describe('dependency check', () => {
+describe('Create Pipeline (includes dependency checks)', () => {
 	describe('error-cases', () => {
 		function negative(name: string, rawSteps: IStep[], message: string | RegExp) {
 			it(`${name} (all permutations)`, () => {

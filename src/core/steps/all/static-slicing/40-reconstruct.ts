@@ -1,8 +1,8 @@
-import { internalPrinter, StepOutputFormat } from '../../print/print'
-import { IStep, StepHasToBeExecuted } from '../step'
-import { autoSelectLibrary, AutoSelectPredicate, reconstructToCode, SliceResult } from '../../../slicing'
+import { internalPrinter, StepOutputFormat } from '../../../print/print'
+import { IStep, StepHasToBeExecuted } from '../../step'
+import { autoSelectLibrary, AutoSelectPredicate, reconstructToCode, SliceResult } from '../../../../slicing'
 import { DeepReadonly } from 'ts-essentials'
-import { NormalizedAst } from '../../../r-bridge'
+import { NormalizedAst } from '../../../../r-bridge'
 import { SliceRequiredInput } from './30-slice'
 
 export const ReconstructRequiredInput = {

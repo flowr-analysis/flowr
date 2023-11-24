@@ -1,10 +1,10 @@
-import { internalPrinter, StepOutputFormat } from '../../print/print'
-import { IStep, StepHasToBeExecuted } from '../step'
-import { SlicingCriteria, staticSlicing } from '../../../slicing'
+import { internalPrinter, StepOutputFormat } from '../../../print/print'
+import { IStep, StepHasToBeExecuted } from '../../step'
+import { SlicingCriteria, staticSlicing } from '../../../../slicing'
 import { DeepReadonly } from 'ts-essentials'
-import { NormalizeRequiredInput } from './10-normalize'
-import { DataflowInformation } from '../../../dataflow/internal/info'
-import { NormalizedAst } from '../../../r-bridge'
+import { NormalizeRequiredInput } from '../10-normalize'
+import { DataflowInformation } from '../../../../dataflow/internal/info'
+import { NormalizedAst } from '../../../../r-bridge'
 
 export const SliceRequiredInput = {
 	...NormalizeRequiredInput,

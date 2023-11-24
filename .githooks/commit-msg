@@ -17,5 +17,8 @@ regex="$regex|\[release:(patch|minor|major)\] .+)"                              
 
 if ! echo "$message" | grep -qE "$regex"; then
   echo "[POLICY] Your message is not formatted correctly. Respect the regex: '$regex'!"
+  echo "Message: '$message'"
+  # recover the message
+  echo "$message" > "$message_file"
   exit 1
 fi

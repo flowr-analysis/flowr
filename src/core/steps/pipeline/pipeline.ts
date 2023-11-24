@@ -28,6 +28,9 @@ export type PipelineStepPrintersWithName<P extends Pipeline, Name extends NameOf
 export type PipelineStepResultWithName<P extends Pipeline, Name extends NameOfStep> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>>
 
 export type PipelineInput<P extends Pipeline> = PipelineStep<P>['requiredInput']
+export type PipelineOutput<P extends Pipeline> = {
+	[K in PipelineStepNames<P>]: PipelineStepResultWithName<P, K>
+}
 
 /**
  * Creates a pipeline from the given steps.

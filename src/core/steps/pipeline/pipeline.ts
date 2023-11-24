@@ -23,9 +23,10 @@ export interface Pipeline<T extends IStep = IStep> {
 export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name']
 export type PipelineStep<P extends Pipeline> = P extends Pipeline<infer U> ? U : never
 
-export type PipelineStepWithName<P extends Pipeline, Name extends StepName> = P extends Pipeline<infer U> ? U extends IStep<Name> ? U : never : never
-export type PipelineStepProcessorWithName<P extends Pipeline, Name extends StepName> = PipelineStepWithName<P, Name>['processor']
-export type PipelineStepResultWithName<P extends Pipeline, Name extends StepName> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>>
+export type PipelineStepWithName<P extends Pipeline, Name extends NameOfStep> = P extends Pipeline<infer U> ? U extends IStep<Name> ? U : never : never
+export type PipelineStepProcessorWithName<P extends Pipeline, Name extends NameOfStep> = PipelineStepWithName<P, Name>['processor']
+export type PipelineStepPrintersWithName<P extends Pipeline, Name extends NameOfStep> = PipelineStepWithName<P, Name>['printer']
+export type PipelineStepResultWithName<P extends Pipeline, Name extends NameOfStep> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>>
 
 /**
  * Creates a pipeline from the given steps.

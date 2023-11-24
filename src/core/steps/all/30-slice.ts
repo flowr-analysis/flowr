@@ -12,4 +12,4 @@ export const STATIC_SLICE = {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
 	dependencies: [ 'dataflow' ]
-} as const satisfies DeepReadonly<IStep<typeof staticSlicing>>
+} as const satisfies DeepReadonly<IStep<'slice', typeof staticSlicing>>

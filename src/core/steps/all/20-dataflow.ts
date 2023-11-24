@@ -23,4 +23,4 @@ export const LEGACY_STATIC_DATAFLOW = {
 		[StepOutputFormat.MermaidUrl]: dataflowGraphToMermaidUrl
 	},
 	dependencies: [ 'normalize' ]
-} as const satisfies DeepReadonly<IStep<typeof produceDataFlowGraph>>
+} as const satisfies DeepReadonly<IStep<'dataflow', typeof produceDataFlowGraph>>

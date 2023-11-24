@@ -1,4 +1,4 @@
-import { LAST_STEP, printStepResult, SteppingSlicer, StepResults, STEPS_PER_SLICE } from '../../../core'
+import { LAST_STEP, SteppingSlicer, StepResults, STEPS_PER_SLICE } from '../../../core'
 import { DEFAULT_XML_PARSER_CONFIG, NormalizedAst, RShell, XmlParserConfig } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
@@ -26,6 +26,10 @@ import { deepMergeObject } from '../../../util/objects'
 import { LogLevel } from '../../../util/log'
 import { StepOutputFormat } from '../../../core/print/print'
 import { DataflowInformation } from '../../../dataflow/internal/info'
+import { printStepResult } from '../../../core/steps/print'
+import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/00-parse'
+import { NORMALIZE } from '../../../core/steps/all/10-normalize'
+import { LEGACY_STATIC_DATAFLOW } from '../../../core/steps/all/20-dataflow'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -134,9 +138,10 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult('parse', results.parse as string, StepOutputFormat.RdfQuads, config(), parseConfig),
-					normalize: await printStepResult('normalize', results.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
-					dataflow:  await printStepResult('dataflow', results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config()),
+					// TODO: migrate to steps used in pipeline
+					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, results.parse as string, StepOutputFormat.RdfQuads, config(), parseConfig),
+					normalize: await printStepResult(NORMALIZE, results.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
+					dataflow:  await printStepResult(LEGACY_STATIC_DATAFLOW, results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config()),
 				}
 			})
 		} else {

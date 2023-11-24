@@ -12,4 +12,4 @@ export const NAIVE_RECONSTRUCT = {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
 	dependencies: [ 'slice' ]
-} as const satisfies DeepReadonly<IStep<typeof reconstructToCode>>
+} as const satisfies DeepReadonly<IStep<'reconstruct', typeof reconstructToCode>>

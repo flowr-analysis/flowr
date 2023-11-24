@@ -16,4 +16,4 @@ export const PARSE_WITH_R_SHELL_STEP = {
 		[StepOutputFormat.RdfQuads]: parseToQuads
 	},
 	dependencies: []
-} as const satisfies DeepReadonly<IStep<typeof retrieveXmlFromRCode>>
+} as const satisfies DeepReadonly<IStep<'parse', typeof retrieveXmlFromRCode>>

@@ -22,4 +22,4 @@ export const NORMALIZE = {
 		[StepOutputFormat.MermaidUrl]: printNormalizedAstToMermaidUrl
 	},
 	dependencies: [ 'parse' ]
-} as const satisfies DeepReadonly<IStep<typeof normalize>>
+} as const satisfies DeepReadonly<IStep<'normalize', typeof normalize>>

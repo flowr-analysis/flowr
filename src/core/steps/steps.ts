@@ -48,7 +48,7 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.RdfQuads]: parseToQuads
 		},
 		dependencies: []
-	} satisfies IStep<typeof retrieveXmlFromRCode>,
+	} satisfies IStep<'parse', typeof retrieveXmlFromRCode>,
 	'normalize': {
 		name:        'normalize',
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
@@ -62,7 +62,7 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.MermaidUrl]: printNormalizedAstToMermaidUrl
 		},
 		dependencies: []
-	} satisfies IStep<typeof normalize>,
+	} satisfies IStep<'normalize', typeof normalize>,
 	'dataflow': {
 		name:        'dataflow',
 		description: 'Construct the dataflow graph',
@@ -76,7 +76,7 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.MermaidUrl]: dataflowGraphToMermaidUrl
 		},
 		dependencies: []
-	} satisfies IStep<typeof produceDataFlowGraph>
+	} satisfies IStep<'dataflow', typeof produceDataFlowGraph>
 } as const
 
 export const STEPS_PER_SLICE = {
@@ -89,7 +89,7 @@ export const STEPS_PER_SLICE = {
 			[StepOutputFormat.Internal]: internalPrinter
 		},
 		dependencies: [ ]
-	} satisfies IStep<typeof staticSlicing>,
+	} satisfies IStep<'slice', typeof staticSlicing>,
 	'reconstruct': {
 		name:        'reconstruct',
 		description: 'Reconstruct R code from the static slice',
@@ -99,7 +99,7 @@ export const STEPS_PER_SLICE = {
 			[StepOutputFormat.Internal]: internalPrinter
 		},
 		dependencies: [ ]
-	} satisfies IStep<typeof reconstructToCode>
+	} satisfies IStep<'reconstruct', typeof reconstructToCode>
 } as const
 
 export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const

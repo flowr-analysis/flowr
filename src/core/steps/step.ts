@@ -66,10 +66,10 @@ export interface IStep<
 	 * How to visualize the results of the respective step to the user?
 	 */
 	readonly printer: {
-		[K in StepOutputFormat]?: Readonly<IStepPrinter<Fn, K, never[]>>
+		[K in StepOutputFormat]?: IStepPrinter<Fn, K, never[]>
 	} & {
 		// we always want to have the internal printer
-		[StepOutputFormat.Internal]: Readonly<InternalStepPrinter<Fn>>
+		[StepOutputFormat.Internal]: InternalStepPrinter<Fn>
 	}
 }
 

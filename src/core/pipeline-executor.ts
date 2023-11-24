@@ -179,34 +179,14 @@ export class PipelineExecutor<P extends Pipeline> {
 		step:   NameOfStep,
 		result: PipelineStepOutputWithName<P, NameOfStep>
 	}> {
-		let step: NameOfStep
+		guard(this.stepCounter >= 0 && this.stepCounter < this.pipeline.order.length, `Cannot execute next step, already reached end of pipeline or unexpected index (${this.stepCounter}).`)
+		const step = this.pipeline.steps.get(this.pipeline.order[this.stepCounter])
+		guard(step !== undefined, `Cannot execute next step, step ${this.pipeline.order[this.stepCounter]} does not exist.`)
 		let result: unknown
 
-		switch(this.stepCounter) {
-			case 0:
-				step = guardStep('parse')
-				result = await executeSingleSubStep(step, this.request, this.shell)
-				break
-			case 1:
-				step = guardStep('normalize')
-				result = await executeSingleSubStep(step, this.results.parse as string, await this.shell.tokenMap(), this.hooks, this.getId)
-				break
-			case 2:
-				step = guardStep('dataflow')
-				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst)
-				break
-			case 3:
-				guard(this.criterion !== undefined, 'Cannot decode criteria without a criterion')
-				step = guardStep('slice')
-				result = executeSingleSubStep(step, (this.results.dataflow as DataflowInformation).graph, this.results.normalize as NormalizedAst, this.criterion)
-				break
-			case 4:
-				step = guardStep('reconstruct')
-				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst<NoInfo>, (this.results.slice as SliceResult).result)
-				break
-			default:
-				throw new Error(`Unknown step ${this.stepCounter}, reaching this should not happen!`)
-		}
+		guardStep(step.name)
+		result = await executeSingleSubStep(step, this.request, this.shell)
+
 		return { step, result }
 	}
 

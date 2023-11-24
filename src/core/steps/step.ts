@@ -18,7 +18,7 @@ export type StepFunction = (...args: never[]) => unknown
  */
 export type StepRequired = 'once-per-file' | 'once-per-slice'
 
-
+// TODO: rename to StepName
 export type NameOfStep = string & { __brand?: 'StepName' }
 
 /**

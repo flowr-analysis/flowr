@@ -49,7 +49,6 @@ Currently, the following `<type(s)>` are at your disposal (more may have been or
 | `lint`                                          | Adapted or updated linter-issues.                                                                  |
 | `doc`                                           | Updated the documentation of *flowR*.                                                              |
 | `typo`                                          | Dealt with a small typo/a grammatical mistake.                                                     |
-| `log`                                           | Improved or updated the logging of *flowR*.                                                        |
 | `ts`                                            | Performed something typescript-specific (e.g., reconfigured the `tsconfig.json`).                  |
 | `wip`                                           | *Use this only in combination with another type*. It marks the commit to be unfinished.            |
 | `special`                                       | *Use this only if none of the other categories apply*. Explain the details in your commit message. |

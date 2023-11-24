@@ -28,11 +28,11 @@ export function verifyAndBuildPipeline(steps: IStep[]): Pipeline {
 	if(inits.length === 0) {
 		throw new InvalidPipelineError('3) Pipeline has no initial steps (i.e., it contains no step without dependencies)')
 	}
-	const sorted = topologicalSort(inits, stepMap)
+	// check if any of the dependencies in the map are invalid
+	checkForInvalidDependency(steps, stepMap)
 
+	const sorted = topologicalSort(inits, stepMap)
 	if(sorted.length !== stepMap.size) {
-		// check if any of the dependencies in the map are invalid
-		checkForInvalidDependency(steps, stepMap)
 		// otherwise, we assume a cycle
 		throw new InvalidPipelineError('3) Pipeline contains at least one cycle')
 	}
@@ -67,7 +67,7 @@ function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>) {
 
 		// these decorators still have dependencies open; we have to check if they can be satisfied by the other steps to add
 		const decoratorsOfLastOthers = new Set<NameOfStep>()
-		// conventional topo-sort elements that now no longer have unsatisfied dependencies
+		// conventional topological-sort elements that now no longer have unsatisfied dependencies
 		const otherInits = []
 
 		for(const elem of unvisited) {

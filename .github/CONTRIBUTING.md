@@ -33,8 +33,8 @@ If you have any questions, refer to the [wiki](https://github.com/Code-Inspect/f
 
 ## Commit Messages
 
-We structure our commit messages (enforced by our git-hooks) using the format `<type(s)>: <description>`.
-Currently, the following types are at your disposal (more may have been or are still available, but please restrict yourself to the following):
+We structure our commit messages (enforced by our git-hooks) using the format `<type(s)>(<scope>): <description>` (with `(<scope>)` being optional).
+Currently, the following `<type(s)>` are at your disposal (more may have been or are still available, but please restrict yourself to the following):
 
 
 | name                                            | description                                                                                        |
@@ -49,7 +49,6 @@ Currently, the following types are at your disposal (more may have been or are s
 | `lint`                                          | Adapted or updated linter-issues.                                                                  |
 | `doc`                                           | Updated the documentation of *flowR*.                                                              |
 | `typo`                                          | Dealt with a small typo/a grammatical mistake.                                                     |
-| `log`                                           | Improved or updated the logging of *flowR*.                                                        |
 | `ts`                                            | Performed something typescript-specific (e.g., reconfigured the `tsconfig.json`).                  |
 | `wip`                                           | *Use this only in combination with another type*. It marks the commit to be unfinished.            |
 | `special`                                       | *Use this only if none of the other categories apply*. Explain the details in your commit message. |
@@ -65,9 +64,12 @@ Although you can give the same type repeatedly - if you think you should, please
 
 With this, the artificial message
 
-> `feat, test-fix: Support for branching in dataflow, fixed branching-test`
+> `feat, test-fix: Support for branching in dataflow, fixed branching test`
 
 represents the addition of a new feature and the fix of a corresponding test.
+With scopes, it could look like this:
+
+> `feat, test-fix(dataflow): Support branching & fixed branching test`
 
 To skip the `ci`, you can prefix the commit message with `[skip ci]`.
 

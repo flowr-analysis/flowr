@@ -1,4 +1,4 @@
-import { normalize } from '../../../r-bridge'
+import { normalize, retrieveXmlFromRCode } from '../../../r-bridge'
 import { internalPrinter, StepOutputFormat } from '../../print/print'
 import {
 	normalizedAstToJson,
@@ -7,6 +7,7 @@ import {
 	printNormalizedAstToMermaidUrl
 } from '../../print/normalize-printer'
 import { IStep } from '../step'
+import { DeepReadonly } from 'ts-essentials'
 
 export const NORMALIZE = {
 	name:        'normalize',
@@ -21,4 +22,4 @@ export const NORMALIZE = {
 		[StepOutputFormat.MermaidUrl]: printNormalizedAstToMermaidUrl
 	},
 	dependencies: [ 'parse' ]
-} satisfies IStep<typeof normalize>
+} as const satisfies DeepReadonly<IStep<typeof normalize>>

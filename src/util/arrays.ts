@@ -1,6 +1,11 @@
 import { guard } from './assert'
 
 /**
+ * Returns the tail of an array (all elements except the first one).
+ */
+export type TailOfArray<T extends unknown[]> = T extends [infer _, ...infer Rest] ? Rest : never;
+
+/**
  * Splits the array every time the given predicate fires.
  * The element the split appears on will not be included!
  *

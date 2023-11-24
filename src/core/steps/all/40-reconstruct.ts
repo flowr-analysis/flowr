@@ -1,6 +1,7 @@
 import { internalPrinter, StepOutputFormat } from '../../print/print'
 import { IStep } from '../step'
 import { reconstructToCode } from '../../../slicing'
+import { DeepReadonly } from 'ts-essentials'
 
 export const NAIVE_RECONSTRUCT = {
 	name:        'reconstruct',
@@ -11,4 +12,4 @@ export const NAIVE_RECONSTRUCT = {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
 	dependencies: [ 'slice' ]
-} satisfies IStep<typeof reconstructToCode>
+} as const satisfies DeepReadonly<IStep<typeof reconstructToCode>>

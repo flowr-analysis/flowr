@@ -7,6 +7,8 @@ import {
 	dataflowGraphToMermaidUrl,
 	dataflowGraphToQuads
 } from '../../print/dataflow-printer'
+import { DeepReadonly } from 'ts-essentials'
+import { normalize } from '../../../r-bridge'
 
 export const LEGACY_STATIC_DATAFLOW = {
 	name:        'dataflow',
@@ -21,4 +23,4 @@ export const LEGACY_STATIC_DATAFLOW = {
 		[StepOutputFormat.MermaidUrl]: dataflowGraphToMermaidUrl
 	},
 	dependencies: [ 'normalize' ]
-} satisfies IStep<typeof produceDataFlowGraph>
+} as const satisfies DeepReadonly<IStep<typeof produceDataFlowGraph>>

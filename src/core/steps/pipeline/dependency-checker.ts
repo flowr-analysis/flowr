@@ -15,7 +15,7 @@ import { jsonReplacer } from '../../../util/json'
  * If successful, it returns the topologically sorted list of steps in order of desired execution.
  * @throws InvalidPipelineError if any of the above conditions are not met
  */
-export function verifyAndBuildPipeline(steps: IStep[]): Pipeline {
+export function verifyAndBuildPipeline(steps: readonly IStep[]): Pipeline {
 	if(steps.length === 0) {
 		throw new InvalidPipelineError('0) Pipeline is empty')
 	}
@@ -104,7 +104,7 @@ function topologicallyInsertDecoratorElements(decoratorsOfLastOthers: Set<NameOf
 	}
 }
 
-function checkForInvalidDependency(steps: IStep[], stepMap: Map<NameOfStep, IStep>) {
+function checkForInvalidDependency(steps: readonly IStep[], stepMap: Map<NameOfStep, IStep>) {
 	for(const step of steps) {
 		for(const dep of step.dependencies) {
 			if(!stepMap.has(dep)) {
@@ -117,7 +117,7 @@ function checkForInvalidDependency(steps: IStep[], stepMap: Map<NameOfStep, ISte
 	}
 }
 
-function initializeSteps(steps: IStep[], stepMap: Map<NameOfStep, IStep>, inits: NameOfStep[]) {
+function initializeSteps(steps: readonly IStep[], stepMap: Map<NameOfStep, IStep>, inits: NameOfStep[]) {
 	for(const step of steps) {
 		const name = step.name
 		// if the name is already in the map we have a duplicate

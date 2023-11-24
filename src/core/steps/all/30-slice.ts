@@ -1,6 +1,7 @@
 import { internalPrinter, StepOutputFormat } from '../../print/print'
 import { IStep } from '../step'
 import { staticSlicing } from '../../../slicing'
+import { DeepReadonly } from 'ts-essentials'
 
 export const STATIC_SLICE = {
 	name:        'slice',
@@ -11,4 +12,4 @@ export const STATIC_SLICE = {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
 	dependencies: [ 'dataflow' ]
-} satisfies IStep<typeof staticSlicing>
+} as const satisfies DeepReadonly<IStep<typeof staticSlicing>>

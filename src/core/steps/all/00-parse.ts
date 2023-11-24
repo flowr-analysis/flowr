@@ -2,6 +2,7 @@ import { internalPrinter, StepOutputFormat } from '../../print/print'
 import { parseToQuads } from '../../print/parse-printer'
 import { IStep } from '../step'
 import { retrieveXmlFromRCode } from '../../../r-bridge'
+import { DeepReadonly } from 'ts-essentials'
 
 
 export const PARSE_WITH_R_SHELL_STEP = {
@@ -15,4 +16,4 @@ export const PARSE_WITH_R_SHELL_STEP = {
 		[StepOutputFormat.RdfQuads]: parseToQuads
 	},
 	dependencies: []
-} satisfies IStep<typeof retrieveXmlFromRCode>
+} as const satisfies DeepReadonly<IStep<typeof retrieveXmlFromRCode>>

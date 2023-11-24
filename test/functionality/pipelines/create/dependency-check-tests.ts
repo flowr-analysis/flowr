@@ -1,4 +1,4 @@
-import { createPipeline } from '../../../../src/core/steps/pipeline'
+import { createPipeline, Pipeline } from '../../../../src/core/steps/pipeline'
 import { IStep, NameOfStep } from '../../../../src/core/steps'
 import { expect } from 'chai'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../../src/core/steps/all/00-parse'
@@ -13,7 +13,7 @@ describe('dependency check', () => {
 		function negative(name: string, rawSteps: IStep[], message: string | RegExp) {
 			it(`${name} (all permutations)`, () => {
 				for(const steps of allPermutations(rawSteps)) {
-					expect(() => createPipeline(steps)).to.throw(message)
+					expect(() => createPipeline(...steps)).to.throw(message)
 				}
 			})
 		}
@@ -68,7 +68,7 @@ describe('dependency check', () => {
 		function positive(name: string, rawSteps: IStep[], expected: NameOfStep[]) {
 			it(`${name} (all permutations)`, () => {
 				for(const steps of allPermutations(rawSteps)) {
-					const pipeline = createPipeline(steps)
+					const pipeline = createPipeline(...steps)
 					expect([...pipeline.steps.keys()]).to.have.members(expected, `should have the correct keys for ${JSON.stringify(steps)}`)
 					expect(pipeline.order).to.have.ordered.members(expected, `should have the correct keys for ${JSON.stringify(steps)}`)
 				}

@@ -1,4 +1,6 @@
-import { StepFunction } from '../steps'
+import { IStep, StepFunction } from '../steps'
+import { TailOfArray } from '../../util/arrays'
+import { guard } from '../../util/assert'
 
 /**
  * Defines the output format of a step that you are interested in.
@@ -56,3 +58,19 @@ export type IStepPrinter<StepInput extends StepFunction, Format extends StepOutp
 		(input: Awaited<ReturnType<StepInput>>, ...additional: AdditionalInput) => Promise<string> | string
 
 export type InternalStepPrinter<StepInput extends StepFunction> = IStepPrinter<StepInput, StepOutputFormat.Internal, []>
+
+/**
+ * For a `step` of the given name, which returned the given `data`. Convert that data into the given `format`.
+ * Depending on your step and the format this may require `additional` inputs.
+ */
+export function printStepResult<
+	Step extends IStep,
+	Processor extends Step['processor'],
+	Format extends Exclude<keyof Step['printer'], StepOutputFormat.Internal> & number,
+	Printer extends Step['printer'][Format],
+	AdditionalInput extends TailOfArray<Parameters<Printer>>,
+>(step: Step, data: Awaited<ReturnType<Processor>>, format: Format, ...additional: AdditionalInput): Promise<string> {
+	const printer = step.printer[format] as IStepPrinter<Processor, Format, AdditionalInput> | undefined
+	guard(printer !== undefined, `printer for ${step.name} does not support ${String(format)}`)
+	return printer(data, ...additional) as Promise<string>
+}

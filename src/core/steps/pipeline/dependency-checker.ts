@@ -26,10 +26,6 @@ export function verifyAndBuildPipeline(steps: IStep[]): Pipeline {
 	const inits: NameOfStep[] = []
 	initializeSteps(steps, stepMap, inits)
 
-	if(inits.length === 0) {
-		throw new InvalidPipelineError('3) Pipeline has no initial steps (i.e., it contains no step without dependencies)')
-	}
-
 	const sorted = topologicalSort(inits, stepMap)
 	if(sorted.length !== stepMap.size) {
 		// check if any of the dependencies in the map are invalid

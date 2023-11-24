@@ -5,7 +5,7 @@ import { retrieveXmlFromRCode, RParseRequest, RShell } from '../../../r-bridge'
 import { DeepReadonly } from 'ts-essentials'
 import { guard } from '../../../util/assert'
 
-const ParseRequiredInput = {
+export const ParseRequiredInput = {
 	/** This is the {@link RShell} connection to be used to obtain the original parses AST of the R code */
 	shell:   undefined as unknown as RShell,
 	/** The request which essentially indicates the input to extract the AST from */
@@ -15,7 +15,7 @@ const ParseRequiredInput = {
 export const PARSE_WITH_R_SHELL_STEP = {
 	name:        'parse',
 	description: 'Parse the given R code into an AST',
-	processor:   (results: object, input: Partial<typeof ParseRequiredInput>) => {
+	processor:   (_results: object, input: Partial<typeof ParseRequiredInput>) => {
 		guard(input.request !== undefined && input.shell !== undefined, 'Required input not provided')
 		return retrieveXmlFromRCode(input.request, input.shell)
 	},
@@ -27,4 +27,4 @@ export const PARSE_WITH_R_SHELL_STEP = {
 	},
 	dependencies:  [],
 	requiredInput: ParseRequiredInput
-} as const satisfies DeepReadonly<IStep<'parse', [], (results: object, input: Partial<typeof ParseRequiredInput>) => ReturnType<typeof retrieveXmlFromRCode>>>
+} as const satisfies DeepReadonly<IStep<'parse', (results: object, input: Partial<typeof ParseRequiredInput>) => ReturnType<typeof retrieveXmlFromRCode>>>

@@ -41,7 +41,6 @@ export type NameOfStep = string & { __brand?: 'StepName' }
  */
 export interface IStepOrder<
 	Name extends NameOfStep = NameOfStep,
-	Dependencies extends readonly NameOfStep[] = readonly NameOfStep[]
 > {
 	/**
 	 * Name of the respective step, it does not have to be unique in general but only unique per-pipeline.
@@ -53,7 +52,7 @@ export interface IStepOrder<
 	 * Give the names of other steps this one requires to be completed as a prerequisite (e.g., to gain access to their input).
 	 * Does not have to be transitive, this will be checked by the scheduler of the pipeline.
 	 */
-	readonly dependencies: Dependencies
+	readonly dependencies: NameOfStep[]
 	/* does this step has to be repeated for each new request or can it be performed only once in the initialization */
 	readonly executed:     StepHasToBeExecuted
 	/**
@@ -73,10 +72,9 @@ export interface IStepOrder<
  */
 export interface IStep<
 	Name extends NameOfStep = NameOfStep,
-	Dependencies extends readonly NameOfStep[] = readonly NameOfStep[],
 	// eslint-disable-next-line -- by default, we assume nothing about the function shape
 	Fn extends StepProcessingFunction = (...args: any[]) => any,
-> extends MergeableRecord, IStepOrder<Name, Dependencies> {
+> extends MergeableRecord, IStepOrder<Name> {
 	/** Human-readable description of this step */
 	readonly description: string
 	/** The main processor that essentially performs the logic of this step */
@@ -92,7 +90,7 @@ export interface IStep<
 	}
 	/**
 	 * Input configuration required to perform the respective steps.
-	 * Required inputs of dependencies do not have to be repeated.
+	 * Required inputs of dependencies do not have to, but can be repeated.
 	 * <p>
 	 * Use the pattern `undefined as unknown as T` to indicate that the value is required but not provided.
 	 */

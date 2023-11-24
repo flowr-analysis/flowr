@@ -41,6 +41,23 @@ export function splitArrayOn<T>(arr: T[], predicate: (elem: T) => boolean): T[][
 }
 
 /**
+ * Returns a tuple of two arrays, where the first one contains all elements for which the predicate returned true,
+ * and the second one contains all elements for which the predicate returned false.
+ */
+export function partitionArray<T>(arr: readonly T[], predicate: (elem: T) => boolean): [T[], T[]] {
+	const left: T[] = []
+	const right: T[] = []
+	for(const elem of arr) {
+		if(predicate(elem)) {
+			left.push(elem)
+		} else {
+			right.push(elem)
+		}
+	}
+	return [left, right]
+}
+
+/**
  * Generate all permutations of the given array using Heap's algorithm (with its non-recursive variant).
  *
  * @param arr - The array to permute

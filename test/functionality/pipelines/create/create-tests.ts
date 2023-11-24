@@ -93,7 +93,7 @@ describe('Create Pipeline (includes dependency checks)', () => {
 				LEGACY_STATIC_DATAFLOW,
 				STATIC_SLICE,
 				NAIVE_RECONSTRUCT
-			], ['parse', 'normalize', 'dataflow', 'slice', 'reconstruct'])
+			], ['parse', 'normalize', 'dataflow', 'slice', 'reconstruct'], 3)
 		})
 		describe('with decorators', () => {
 			positive('simple decorator on first step', [
@@ -158,7 +158,7 @@ describe('Create Pipeline (includes dependency checks)', () => {
 				},
 				STATIC_SLICE,
 				NAIVE_RECONSTRUCT
-			], ['parse', 'normalize', 'dataflow', 'dataflow-decorator',  'slice', 'reconstruct'])
+			], ['parse', 'normalize', 'dataflow', 'dataflow-decorator',  'slice', 'reconstruct'], 4)
 		})
 	})
 })

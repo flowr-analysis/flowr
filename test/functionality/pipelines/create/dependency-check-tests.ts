@@ -74,7 +74,6 @@ describe('dependency check', () => {
 				}
 			})
 		}
-		const pipeline = createPipeline(PARSE_WITH_R_SHELL_STEP, STATIC_SLICE)
 
 		describe('without decorators', () => {
 			positive('should work on a single step', [PARSE_WITH_R_SHELL_STEP], ['parse'])

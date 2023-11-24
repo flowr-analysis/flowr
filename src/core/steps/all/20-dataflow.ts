@@ -8,7 +8,6 @@ import {
 	dataflowGraphToQuads
 } from '../../print/dataflow-printer'
 import { DeepReadonly } from 'ts-essentials'
-import { normalize } from '../../../r-bridge'
 
 export const LEGACY_STATIC_DATAFLOW = {
 	name:        'dataflow',

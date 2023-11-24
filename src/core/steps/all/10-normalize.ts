@@ -1,4 +1,4 @@
-import { normalize, retrieveXmlFromRCode } from '../../../r-bridge'
+import { IdGenerator, NoInfo, normalize, XmlParserHooks } from '../../../r-bridge'
 import { internalPrinter, StepOutputFormat } from '../../print/print'
 import {
 	normalizedAstToJson,
@@ -7,7 +7,7 @@ import {
 	printNormalizedAstToMermaidUrl
 } from '../../print/normalize-printer'
 import { IStep } from '../step'
-import { DeepReadonly } from 'ts-essentials'
+import { DeepPartial, DeepReadonly } from 'ts-essentials'
 
 export const NORMALIZE = {
 	name:        'normalize',
@@ -21,5 +21,11 @@ export const NORMALIZE = {
 		[StepOutputFormat.Mermaid]:    printNormalizedAstToMermaid,
 		[StepOutputFormat.MermaidUrl]: printNormalizedAstToMermaidUrl
 	},
-	dependencies: [ 'parse' ]
+	dependencies:  [ 'parse' ],
+	requiredInput: {
+		/** These hooks only make sense if you at least want to normalize the parsed R AST. They can augment the normalization process */
+		hooks: undefined as unknown as DeepPartial<XmlParserHooks>,
+		/** This id generator is only necessary if you want to retrieve a dataflow from the parsed R AST, it determines the id generator to use and by default uses the {@link deterministicCountingIdGenerator}*/
+		getId: undefined as unknown as IdGenerator<NoInfo>
+	}
 } as const satisfies DeepReadonly<IStep<'normalize', typeof normalize>>

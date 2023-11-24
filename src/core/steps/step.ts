@@ -71,6 +71,13 @@ export interface IStep<
 		// we always want to have the internal printer
 		[StepOutputFormat.Internal]: InternalStepPrinter<Fn>
 	}
+	/**
+	 * Input configuration required to perform the respective steps.
+	 * Required inputs of dependencies do not have to be repeated.
+	 * <p>
+	 * Use the pattern `undefined as unknown as T` to indicate that the value is required but not provided.
+	 */
+	readonly requiredInput?: Record<string, unknown>
 }
 
 

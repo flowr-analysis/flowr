@@ -1,14 +1,14 @@
-import { internalPrinter, StepOutputFormat } from '../../print/print'
-import { IStep, StepHasToBeExecuted } from '../step'
-import { produceDataFlowGraph } from '../../../dataflow'
+import { internalPrinter, StepOutputFormat } from '../../../print/print'
+import { IStep, StepHasToBeExecuted } from '../../step'
+import { produceDataFlowGraph } from '../../../../dataflow'
 import {
 	dataflowGraphToJson,
 	dataflowGraphToMermaid,
 	dataflowGraphToMermaidUrl,
 	dataflowGraphToQuads
-} from '../../print/dataflow-printer'
+} from '../../../print/dataflow-printer'
 import { DeepReadonly } from 'ts-essentials'
-import { NormalizedAst } from '../../../r-bridge'
+import { NormalizedAst } from '../../../../r-bridge'
 
 export const LEGACY_STATIC_DATAFLOW = {
 	name:        'dataflow',

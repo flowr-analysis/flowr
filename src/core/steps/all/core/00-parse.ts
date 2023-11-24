@@ -1,7 +1,7 @@
-import { internalPrinter, StepOutputFormat } from '../../print/print'
-import { parseToQuads } from '../../print/parse-printer'
-import { IStep, StepHasToBeExecuted } from '../step'
-import { retrieveXmlFromRCode, RParseRequest, RShell } from '../../../r-bridge'
+import { internalPrinter, StepOutputFormat } from '../../../print/print'
+import { parseToQuads } from '../../../print/parse-printer'
+import { IStep, StepHasToBeExecuted } from '../../step'
+import { retrieveXmlFromRCode, RParseRequest, RShell } from '../../../../r-bridge'
 import { DeepReadonly } from 'ts-essentials'
 
 export const ParseRequiredInput = {

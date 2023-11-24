@@ -3,18 +3,18 @@ import {
 	NoInfo,
 	normalize, RParseRequest, RShell,
 	XmlParserHooks
-} from '../../../r-bridge'
-import { internalPrinter, StepOutputFormat } from '../../print/print'
+} from '../../../../r-bridge'
+import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import {
 	normalizedAstToJson,
 	normalizedAstToQuads,
 	printNormalizedAstToMermaid,
 	printNormalizedAstToMermaidUrl
-} from '../../print/normalize-printer'
-import { IStep, StepHasToBeExecuted } from '../step'
+} from '../../../print/normalize-printer'
+import { IStep, StepHasToBeExecuted } from '../../step'
 import { DeepPartial, DeepReadonly } from 'ts-essentials'
 import { ParseRequiredInput } from './00-parse'
-import { guard } from '../../../util/assert'
+import { guard } from '../../../../util/assert'
 
 export const NormalizeRequiredInput = {
 	...ParseRequiredInput,

@@ -34,9 +34,9 @@ import {
 } from '../print/dataflow-printer'
 import { parseToQuads } from '../print/parse-printer'
 import { IStep, StepHasToBeExecuted } from './step'
-import { PARSE_WITH_R_SHELL_STEP } from './all/00-parse'
-import { NORMALIZE } from './all/10-normalize'
-import { LEGACY_STATIC_DATAFLOW } from './all/20-dataflow'
+import { PARSE_WITH_R_SHELL_STEP } from './all/core/00-parse'
+import { NORMALIZE } from './all/core/10-normalize'
+import { LEGACY_STATIC_DATAFLOW } from './all/core/20-dataflow'
 import { STATIC_SLICE } from './all/static-slicing/30-slice'
 import { NAIVE_RECONSTRUCT } from './all/static-slicing/40-reconstruct'
 

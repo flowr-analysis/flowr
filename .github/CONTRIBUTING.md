@@ -64,9 +64,12 @@ Although you can give the same type repeatedly - if you think you should, please
 
 With this, the artificial message
 
-> `feat, test-fix: Support for branching in dataflow, fixed branching-test`
+> `feat, test-fix: Support for branching in dataflow, fixed branching test`
 
 represents the addition of a new feature and the fix of a corresponding test.
+With scopes, it could look like this:
+
+> `feat, test-fix(dataflow): Support branching & fixed branching test`
 
 To skip the `ci`, you can prefix the commit message with `[skip ci]`.
 

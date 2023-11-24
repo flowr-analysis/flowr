@@ -19,14 +19,13 @@ import {
 } from '../../r-bridge'
 import { produceDataFlowGraph } from '../../dataflow'
 import { reconstructToCode, staticSlicing } from '../../slicing'
-import { internalPrinter, IStepPrinter, StepOutputFormat } from '../print/print'
+import { internalPrinter, StepOutputFormat } from '../print/print'
 import {
 	normalizedAstToJson,
 	normalizedAstToQuads,
 	printNormalizedAstToMermaid,
 	printNormalizedAstToMermaidUrl
 } from '../print/normalize-printer'
-import { guard } from '../../util/assert'
 import {
 	dataflowGraphToJson,
 	dataflowGraphToMermaid,

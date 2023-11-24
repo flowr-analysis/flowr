@@ -22,6 +22,25 @@ export type StepRequired = 'once-per-file' | 'once-per-slice'
 export type NameOfStep = string & { __brand?: 'StepName' }
 
 /**
+ * Contains the data to specify the order of {@link IStep|steps} in a pipeline.
+ */
+export interface IStepOrder {
+	/**
+	 * Give the names of other steps this one requires to be completed as a prerequisite (e.g., to gain access to their input).
+	 * Does not have to be transitive, this will be checked by the scheduler of the pipeline.
+	 */
+	dependencies: NameOfStep[]
+	/**
+	 * This is similar to {@link dependencies}, but is used to say that a given step _decorates_ another one.
+	 * This imbues two requirements:
+	 * The step must take the output of the decorated step as input, and produce the same output as the decorated step.
+	 *
+	 * If so, it is ensured that _this_ step is executed _after_ the step it decorates, but before any step that depends on it.
+	 */
+	decorates:    NameOfStep
+}
+
+/**
  * Defines what is to be known of a single step in the slicing process.
  * It wraps around a single {@link IStep#processor|processor} function, providing additional information.
  * Steps will be executed synchronously, in-sequence, based on their {@link IStep#dependencies|dependencies}.
@@ -29,7 +48,7 @@ export type NameOfStep = string & { __brand?: 'StepName' }
 export interface IStep<
 	// eslint-disable-next-line -- by default, we assume nothing about the function shape
 	Fn extends StepFunction = (...args: any[]) => any,
-> extends MergeableRecord {
+> extends MergeableRecord, IStepOrder {
 	/**
 	 * Name of the respective step, it does not have to be unique in general but only unique per-pipeline.
 	 * In other words, you can have multiple steps with a name like `parse` as long as you use only one of them in a given pipeline.
@@ -51,11 +70,6 @@ export interface IStep<
 		// we always want to have the internal printer
 		[StepOutputFormat.Internal]: InternalStepPrinter<Fn>
 	}
-	/**
-	 * Give the names of other steps this one requires to be completed as a prerequisite (e.g., to gain access to their input).
-	 * Does not have to be transitive, this will be checked by the scheduler of the pipeline.
-	 */
-	dependencies: NameOfStep[]
 }
 
 

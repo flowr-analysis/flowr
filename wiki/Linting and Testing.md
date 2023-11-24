@@ -95,7 +95,7 @@ And a weaker version of the first (allowing for *todo* comments) which is run au
 npm run lint-local
 ```
 
-Besides checking coding style (as defined in the [package.json](../package.json)), the _full_ linter runs the [license checker](#license-checker).
+Besides checking coding style (as defined in the [package.json](../package.json)), the *full* linter runs the [license checker](#license-checker).
 
 If you are unaware, several linting problems can be automatically fixed by [eslint](https://eslint.org/docs/latest/use/command-line-interface#fix-problems). So you may be fine by just running:
 

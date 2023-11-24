@@ -10,7 +10,7 @@ import { Pipeline } from './pipeline'
  * 2) all {@link IStepOrder#dependencies|dependencies} of steps are valid (i.e., refer to existing steps)
  * 3) there are no cycles in the dependency graph
  * 4) the target of a {@link IStepOrder#decorates|decoration} exists
- * 5) the target of a {@link IStepOrder#decorates|decoration} is not part of the {@link IStepOrder#dependencies|dependencies}
+ * 5) if a decoration applies, all of its dependencies are already in the pipeline
  * If successful, it returns the topologically sorted list of steps in order of desired execution.
  * @throws InvalidPipelineError if any of the above conditions are not met
  */
@@ -46,15 +46,28 @@ export function verifyAndBuildPipeline(steps: IStep[]): Pipeline {
 function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>) {
 	// now, we topo-sort the steps
 	const sorted: NameOfStep[] = []
-	const visited = new Set<NameOfStep>()
+	const unvisited = new Set(stepMap.keys())
 	while(inits.length > 0) {
 		const init = inits.pop() as NameOfStep
 		sorted.push(init)
-		visited.add(init)
-		// TODO: improve this check, maybe really remove?
-		for(const [key, step] of stepMap.entries()) {
-			if(!visited.has(key) && step.dependencies.filter(dep => !visited.has(dep)).length === 0) {
-				inits.push(key)
+		unvisited.delete(init)
+		for(const elem of unvisited) {
+			const step = stepMap.get(elem) as IStep
+			// we should do that better, for now we do not assume that many dependencies
+			const hasUnsatisfiedDependencies = step.dependencies.some(dep => unvisited.has(dep))
+
+			const last = sorted[sorted.length - 1]
+			// if the step decorates the last step in the sorted list, we can add it to the list, but only if all its dependencies are already in the list
+			if(step.decorates === last) {
+				// if dependencies are still missing, we cannot add it to the list and fail TODO: if not all of its dependencies which remain decorate the last step
+				// TODO: we currently do not allow decorations to be dependent on each other for the same step
+				if(hasUnsatisfiedDependencies) {
+					throw new InvalidPipelineError(`5) Step "${step.name}" decorates step "${step.decorates}" but not all of its dependencies are satisfied`)
+				}
+				sorted.push(elem)
+				unvisited.delete(elem)
+			} else if(hasUnsatisfiedDependencies) {
+				inits.push(elem)
 			}
 		}
 	}

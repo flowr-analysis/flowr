@@ -4,7 +4,16 @@ message_file="$1"
 message=$(cat "$message_file")
 
 # Define the regular expression pattern
-regex="^((\[(no|skip) ci\] )?(((feat|tests?|lint|refactor|ci|git|special|doc|typo|log|ts|fix|wip|docker|dep)(-fix|-fail)?(, ?)?)+: |Merge (remote-tracking )?branch|Auto-merging).+|\[release:(patch|minor|major)\] .+)"
+regex="^((\[(no|skip) ci\] )?"                                                                  # allow to skip ci steps if required
+regex="$regex(Merge (remote-tracking )?branch|Auto-merging|"                                    # allow merge commit messages
+  regex="$regex("                                                                               # allow multiple types
+    regex="$regex(feat|tests?|lint|refactor|ci|git|special|doc|typo|log|ts|fix|wip|docker|dep)" # all valid types
+    regex="$regex(-fix|-fail)?"                                                                 # optional fail suffix
+    regex="$regex(\([^)]+\))?"                                                                  # optional scope
+    regex="$regex(, ?)?"                                                                        # optional comma between types
+  regex="$regex)+: "                                                                            # at least one type is required
+regex="$regex)"                                                                                 # allow arbitrary message (no end marker)
+regex="$regex|\[release:(patch|minor|major)\] .+)"                                              # alternatively, allow release commits (only to be done on main)
 
 if ! echo "$message" | grep -qE "$regex"; then
   echo "[POLICY] Your message is not formatted correctly. Respect the regex: '$regex'!"

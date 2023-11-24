@@ -33,8 +33,8 @@ If you have any questions, refer to the [wiki](https://github.com/Code-Inspect/f
 
 ## Commit Messages
 
-We structure our commit messages (enforced by our git-hooks) using the format `<type(s)>: <description>`.
-Currently, the following types are at your disposal (more may have been or are still available, but please restrict yourself to the following):
+We structure our commit messages (enforced by our git-hooks) using the format `<type(s)>(<scope>): <description>` (with `(<scope>)` being optional).
+Currently, the following `<type(s)>` are at your disposal (more may have been or are still available, but please restrict yourself to the following):
 
 
 | name                                            | description                                                                                        |

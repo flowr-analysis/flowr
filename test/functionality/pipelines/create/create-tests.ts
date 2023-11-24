@@ -65,7 +65,7 @@ describe('Create Pipeline (includes dependency checks)', () => {
 		})
 	})
 	describe('default behavior', () => {
-		function positive(name: string, rawSteps: IStep[], expected: NameOfStep[], indexOfFirstPerFile: number | undefined = undefined) {
+		function positive(name: string, rawSteps: IStep[], expected: NameOfStep[], indexOfFirstPerFile: number = expected.length) {
 			it(`${name} (all permutations)`, () => {
 				for(const steps of allPermutations(rawSteps)) {
 					const pipeline = createPipeline(...steps)
@@ -104,7 +104,7 @@ describe('Create Pipeline (includes dependency checks)', () => {
 					dependencies: [],
 					decorates:    'parse',
 				}
-			], ['parse', 'parse-v2'])
+			], ['parse', 'parse-v2'], 2)
 			positive('decorators can depend on each other', [
 				PARSE_WITH_R_SHELL_STEP,
 				{

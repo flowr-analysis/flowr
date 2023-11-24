@@ -31,7 +31,6 @@ export const enum StepHasToBeExecuted {
 	/** This step has to be executed once per request (e.g., slice for a given variable) */
 	OncePerRequest
 }
-export type StepRequired = 'once-per-file' | 'once-per-slice'
 
 // TODO: rename to StepName
 export type NameOfStep = string & { __brand?: 'StepName' }

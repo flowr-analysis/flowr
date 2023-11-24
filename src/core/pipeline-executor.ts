@@ -66,7 +66,7 @@ import {
  * for, for example, the dataflow analysis.
  *
  * @see retrieveResultOfStep
- * @see PipelineExecutor#doNextStep
+ * @see PipelineExecutor#_doNextStep
  * @see StepName
  */
 export class PipelineExecutor<P extends Pipeline> {
@@ -108,6 +108,7 @@ export class PipelineExecutor<P extends Pipeline> {
 
 	public getResults(intermediate?:false): PipelineOutput<P>
 	public getResults(intermediate: true): Partial<PipelineOutput<P>>
+	public getResults(intermediate: boolean): PipelineOutput<P> | Partial<PipelineOutput<P>>
 	/**
 	 * Returns the results of the pipeline.
 	 *
@@ -147,7 +148,7 @@ export class PipelineExecutor<P extends Pipeline> {
 
 		const guardStep = this.getGuardStep(expectedStepName)
 
-		const { step, result } = await this.doNextStep(guardStep)
+		const { step, result } = await this._doNextStep(guardStep)
 
 		this.output[step as PipelineStepNames<P>] = result
 		this.stepCounter += 1
@@ -165,7 +166,8 @@ export class PipelineExecutor<P extends Pipeline> {
 			}
 	}
 
-	private async doNextStep(guardStep: <K extends NameOfStep>(name: K) => K): Promise<{
+	// TODO: make it private after the stepping slicer is removed
+	public async _doNextStep(guardStep: <K extends NameOfStep>(name: K) => K): Promise<{
 		step:   NameOfStep,
 		result: PipelineStepOutputWithName<P, NameOfStep>
 	}> {
@@ -185,7 +187,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 *
 	 * @param newRequestData - data for the new request
 	 */
-	public updateCriterion(newRequestData: PipelinePerRequestInput<P>): void {
+	public updateRequest(newRequestData: PipelinePerRequestInput<P>): void {
 		guard(this.stepCounter >= this.pipeline.firstStepPerRequest, 'Cannot reset slice prior to once-per-slice stage')
 		this.input = {
 			...this.input,
@@ -200,6 +202,7 @@ export class PipelineExecutor<P extends Pipeline> {
 
 	public async allRemainingSteps(canSwitchStage: false): Promise<Partial<PipelineOutput<P>>>
 	public async allRemainingSteps(canSwitchStage?: true): Promise<PipelineOutput<P>>
+	public async allRemainingSteps(canSwitchStage: boolean): Promise<PipelineOutput<P> | Partial<PipelineOutput<P>>>
 	/**
 	 * Execute all remaining steps and automatically call {@link switchToSliceStage} if necessary.
 	 * @param canSwitchStage - if true, automatically switch to the request stage if necessary

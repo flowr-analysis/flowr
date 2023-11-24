@@ -8,8 +8,10 @@
     "moduleResolution": "node",
     "skipLibCheck": true,
     "sourceMap": true,
+    "inlineSourceMap": true,
     "outDir": "./dist/",
-    "strict": true
+    "strict": true,
+    "alwaysStrict": true
   },
   "lib": [ "esnext", "dom" ],
   "exclude": [

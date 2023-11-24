@@ -44,6 +44,19 @@ function allDependenciesAreVisited(step: IStep, visited: Set<NameOfStep>) {
 	return step.dependencies.every(d => visited.has(d))
 }
 
+function handleStep(step: IStep, init: NameOfStep, visited: Set<NameOfStep>, sorted: NameOfStep[], elem: NameOfStep, decoratorsOfLastOthers: Set<NameOfStep>, inits: NameOfStep[]) {
+	if(step.decorates === init) {
+		if(allDependenciesAreVisited(step, visited)) {
+			sorted.push(elem)
+			visited.add(elem)
+		} else {
+			decoratorsOfLastOthers.add(elem)
+		}
+	} else if(step.decorates === undefined && allDependenciesAreVisited(step, visited)) {
+		inits.push(elem)
+	}
+}
+
 function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>) {
 	const sorted: NameOfStep[] = []
 	const visited = new Set<NameOfStep>()
@@ -59,16 +72,7 @@ function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>) {
 			if(visited.has(elem)) {
 				continue
 			}
-			if(step.decorates === init) {
-				if(allDependenciesAreVisited(step, visited)) {
-					sorted.push(elem)
-					visited.add(elem)
-				} else {
-					decoratorsOfLastOthers.add(elem)
-				}
-			} else if(step.decorates === undefined && allDependenciesAreVisited(step, visited)) {
-				inits.push(elem)
-			}
+			handleStep(step, init, visited, sorted, elem, decoratorsOfLastOthers, inits)
 		}
 
 		// for the other decorators we have to cycle until we find a solution, or know, that no solution exists

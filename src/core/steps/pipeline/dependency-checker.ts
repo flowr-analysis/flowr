@@ -43,6 +43,9 @@ export function verifyAndBuildPipeline(steps: IStep[]): Pipeline {
 	}
 }
 
+/**
+ * Keep track of all steps that are not already part of the `inits` list.
+ */
 function initializeUnvisited(stepMap: Map<NameOfStep, IStep>, inits: NameOfStep[]) {
 	const unvisited = new Set(stepMap.keys())
 	for(const init of inits) {
@@ -53,18 +56,15 @@ function initializeUnvisited(stepMap: Map<NameOfStep, IStep>, inits: NameOfStep[
 
 
 function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>) {
-	// now, we topo-sort the steps
 	const sorted: NameOfStep[] = []
+
 	// we subsequently remove every step that we visit to improve the iteration over all remaining elements to test
 	const unvisited = initializeUnvisited(stepMap, inits)
 
 	while(inits.length > 0) {
 		const init = inits.pop() as NameOfStep
 		sorted.push(init)
-		const last = sorted[sorted.length - 1]
 
-		// we need to sort decorators as well, but only if they have unsatisfied dependencies that are decorating the same step
-		const decoratorsOfLastInits = []
 		// these decorators still have dependencies open; we have to check if they can be satisfied by the other steps to add
 		const decoratorsOfLastOthers = new Set<NameOfStep>()
 		// conventional topo-sort elements that now no longer have unsatisfied dependencies
@@ -73,20 +73,18 @@ function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>) {
 		for(const elem of unvisited) {
 			const step = stepMap.get(elem) as IStep
 			const hasUnvisitedDeps = step.dependencies.some(d => unvisited.has(d))
-			if(step.decorates === last) {
+			if(step.decorates === init) {
 				unvisited.delete(elem)
 				if(hasUnvisitedDeps) {
 					decoratorsOfLastOthers.add(elem)
 				} else {
 					unvisited.delete(elem)
-					decoratorsOfLastInits.push(elem)
+					inits.push(elem)
 				}
-			} else if(hasUnvisitedDeps) {
+			} else if(!hasUnvisitedDeps) {
 				otherInits.push(elem)
 			}
 		}
-		// we can add all decorators with satisfied dependencies
-		inits.push(...decoratorsOfLastInits)
 
 		// for the other decorators we have to cycle until we find a solution, or know, that no solution exists
 		topologicallyInsertDecoratorElements(decoratorsOfLastOthers, stepMap, unvisited, inits)

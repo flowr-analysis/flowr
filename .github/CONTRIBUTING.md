@@ -80,6 +80,9 @@ All the basic style conventions are defined inside the `package.json` (with the 
 
 As indicated by [#238](https://github.com/Code-Inspect/flowr/issues/238) I decided to forbid `TODO`, `FIXME`, and `XXX` comments in code in favor of explicit *issues* directly on GitHub. Please do not try to get around that rule.
 
+For more information on the linter, how to call it (and automatically deal with some of the issues raised), 
+please refer to the [Test](https://github.com/Code-Inspect/flowr/wiki/Test) wiki page.
+
 ## Releases
 
 Releases are to be scheduled by the administrators of the repository. Please do not try to create a release yourself.

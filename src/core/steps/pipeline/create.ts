@@ -32,28 +32,27 @@ export function verifyAndBuildPipeline(steps: readonly IStep[]): Pipeline {
 	initializeSteps(perFileSteps, perFileStepMap, initsPerFile, visited)
 	// first, we sort the per-file steps
 	const sortedPerFile = topologicalSort(initsPerFile, perFileStepMap, visited)
-	validateMaps(sortedPerFile, perFileStepMap, steps)
+	validateStepOutput(sortedPerFile, perFileStepMap, steps)
 
-	const perRequestStepMap = new Map<NameOfStep, IStep>()
+	const perRequestStepMap = new Map<NameOfStep, IStep>(perFileStepMap)
 	// we track all elements without dependencies, i.e., those that start the pipeline
 	const initsPerRequest: NameOfStep[] = []
 
 	// now, we do the same for the per-request steps, keeping the per-file steps known
 	initializeSteps(perRequestSteps, perRequestStepMap, initsPerRequest, visited)
 
-	const allStepsMap = new Map([...perFileStepMap, ...perRequestStepMap])
-	const sortedPerRequest = topologicalSort(initsPerRequest, allStepsMap, visited)
-
-	validateMaps(sortedPerRequest, perRequestStepMap, steps)
+	const sortedPerRequest = topologicalSort(initsPerRequest, perRequestStepMap, visited)
+	const sorted = [...sortedPerFile, ...sortedPerRequest]
+	validateStepOutput(sorted, perRequestStepMap, steps)
 
 	return {
-		steps:               allStepsMap,
-		order:               [...sortedPerFile, ...sortedPerRequest],
+		steps:               perRequestStepMap,
+		order:               sorted,
 		firstStepPerRequest: sortedPerRequest.length === 0 ? undefined : sortedPerFile.length
 	}
 }
 
-function validateMaps(sorted: NameOfStep[], stepMap: Map<NameOfStep, IStep>, steps: readonly IStep[]) {
+function validateStepOutput(sorted: NameOfStep[], stepMap: Map<NameOfStep, IStep>, steps: readonly IStep[]) {
 	if(sorted.length !== stepMap.size) {
 		// check if any of the dependencies in the map are invalid
 		checkForInvalidDependency(steps, stepMap)
@@ -62,7 +61,7 @@ function validateMaps(sorted: NameOfStep[], stepMap: Map<NameOfStep, IStep>, ste
 	}
 }
 
-function allDependenciesAreVisited(step: IStep, visited: Set<NameOfStep>) {
+function allDependenciesAreVisited(step: IStep, visited: ReadonlySet<NameOfStep>) {
 	return step.dependencies.every(d => visited.has(d))
 }
 
@@ -138,7 +137,7 @@ function checkForInvalidDependency(steps: readonly IStep[], stepMap: Map<NameOfS
 	}
 }
 
-function initializeSteps(steps: readonly IStep[], stepMap: Map<NameOfStep, IStep>, inits: NameOfStep[], visited: Set<NameOfStep>) {
+function initializeSteps(steps: readonly IStep[], stepMap: Map<NameOfStep, IStep>, inits: NameOfStep[], visited: ReadonlySet<NameOfStep>) {
 	for(const step of steps) {
 		const name = step.name
 		// if the name is already in the map we have a duplicate

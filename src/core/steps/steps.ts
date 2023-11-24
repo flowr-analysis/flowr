@@ -34,72 +34,22 @@ import {
 } from '../print/dataflow-printer'
 import { parseToQuads } from '../print/parse-printer'
 import { IStep, StepHasToBeExecuted } from './step'
+import { PARSE_WITH_R_SHELL_STEP } from './all/00-parse'
+import { NORMALIZE } from './all/10-normalize'
+import { LEGACY_STATIC_DATAFLOW } from './all/20-dataflow'
+import { STATIC_SLICE } from './all/30-slice'
+import { NAIVE_RECONSTRUCT } from './all/40-reconstruct'
 
 
 export const STEPS_PER_FILE = {
-	'parse': {
-		name:        'parse',
-		description: 'Parse the given R code into an AST',
-		processor:   retrieveXmlFromRCode,
-		executed:    StepHasToBeExecuted.OncePerFile,
-		printer:     {
-			[StepOutputFormat.Internal]: internalPrinter,
-			[StepOutputFormat.Json]:     text => text,
-			[StepOutputFormat.RdfQuads]: parseToQuads
-		},
-		dependencies: []
-	} satisfies IStep<'parse', typeof retrieveXmlFromRCode>,
-	'normalize': {
-		name:        'normalize',
-		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
-		processor:   normalize,
-		executed:    StepHasToBeExecuted.OncePerFile,
-		printer:     {
-			[StepOutputFormat.Internal]:   internalPrinter,
-			[StepOutputFormat.Json]:       normalizedAstToJson,
-			[StepOutputFormat.RdfQuads]:   normalizedAstToQuads,
-			[StepOutputFormat.Mermaid]:    printNormalizedAstToMermaid,
-			[StepOutputFormat.MermaidUrl]: printNormalizedAstToMermaidUrl
-		},
-		dependencies: []
-	} satisfies IStep<'normalize', typeof normalize>,
-	'dataflow': {
-		name:        'dataflow',
-		description: 'Construct the dataflow graph',
-		processor:   produceDataFlowGraph,
-		executed:    StepHasToBeExecuted.OncePerFile,
-		printer:     {
-			[StepOutputFormat.Internal]:   internalPrinter,
-			[StepOutputFormat.Json]:       dataflowGraphToJson,
-			[StepOutputFormat.RdfQuads]:   dataflowGraphToQuads,
-			[StepOutputFormat.Mermaid]:    dataflowGraphToMermaid,
-			[StepOutputFormat.MermaidUrl]: dataflowGraphToMermaidUrl
-		},
-		dependencies: []
-	} satisfies IStep<'dataflow', typeof produceDataFlowGraph>
+	'parse':     PARSE_WITH_R_SHELL_STEP,
+	'normalize': NORMALIZE,
+	'dataflow':  LEGACY_STATIC_DATAFLOW
 } as const
 
 export const STEPS_PER_SLICE = {
-	'slice': {
-		name:        'slice',
-		description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
-		processor:   staticSlicing,
-		executed:    StepHasToBeExecuted.OncePerRequest,
-		printer:     {
-			[StepOutputFormat.Internal]: internalPrinter
-		},
-		dependencies: [ ]
-	} satisfies IStep<'slice', typeof staticSlicing>,
-	'reconstruct': {
-		name:        'reconstruct',
-		description: 'Reconstruct R code from the static slice',
-		processor:   reconstructToCode,
-		executed:    StepHasToBeExecuted.OncePerRequest,
-		printer:     {
-			[StepOutputFormat.Internal]: internalPrinter
-		},
-		dependencies: [ ]
-	} satisfies IStep<'reconstruct', typeof reconstructToCode>
+	'slice':       STATIC_SLICE,
+	'reconstruct': NAIVE_RECONSTRUCT
 } as const
 
 export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const

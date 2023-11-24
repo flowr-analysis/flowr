@@ -52,7 +52,7 @@ export interface IStepOrder<
 	 * Give the names of other steps this one requires to be completed as a prerequisite (e.g., to gain access to their input).
 	 * Does not have to be transitive, this will be checked by the scheduler of the pipeline.
 	 */
-	readonly dependencies: NameOfStep[]
+	readonly dependencies: readonly NameOfStep[]
 	/* does this step has to be repeated for each new request or can it be performed only once in the initialization */
 	readonly executed:     StepHasToBeExecuted
 	/**

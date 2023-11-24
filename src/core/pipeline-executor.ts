@@ -1,9 +1,23 @@
 import { NoInfo, NormalizedAst } from '../r-bridge'
-import { executeSingleSubStep, StepHasToBeExecuted, StepName, StepResult, StepResults, STEPS_PER_SLICE } from './steps'
+import {
+	executeSingleSubStep,
+	NameOfStep,
+	StepHasToBeExecuted,
+	StepName,
+	StepResult,
+	StepResults,
+	STEPS_PER_SLICE
+} from './steps'
 import { guard } from '../util/assert'
 import { SliceResult, SlicingCriteria } from '../slicing'
 import { DataflowInformation } from '../dataflow/internal/info'
-import { Pipeline, PipelineInput, PipelineOutput } from './steps/pipeline'
+import {
+	Pipeline,
+	PipelineInput,
+	PipelineOutput,
+	PipelineStepNames,
+	PipelineStepOutputWithName
+} from './steps/pipeline'
 
 /**
  * TODO: This is ultimately the root of flowR's static slicing procedure.
@@ -130,41 +144,42 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * Execute the next step (guarded with {@link hasNextStep}) and return the name of the step that was executed, so you can guard if the step differs from what you are interested in.
 	 * Furthermore, it returns the step's result.
 	 *
-	 * The `step` parameter is a safeguard if you want to retrieve the result.
-	 * If given, it causes the execution to fail if the next step is not the one you expect.
-	 * *Without step, please refrain from accessing the result.*
+	 * @param expectedStepName - A safeguard if you want to retrieve the result.
+	 * 												   If given, it causes the execution to fail if the next step is not the one you expect.
+	 *
+	 * *Without `expectedStepName`, please refrain from accessing the result, as you have no safeguards if the pipeline changes.*
 	 */
-	public async nextStep<PassedName extends StepName>(expectedStepName?: PassedName): Promise<{
-		name:   typeof expectedStepName extends undefined ? StepName : PassedName
-		result: typeof expectedStepName extends undefined ? unknown : StepResult<Exclude<PassedName, undefined>>
+	public async nextStep<PassedName extends NameOfStep>(expectedStepName?: PassedName): Promise<{
+		name:   typeof expectedStepName extends undefined ? NameOfStep : PassedName
+		result: typeof expectedStepName extends undefined ? unknown : PipelineStepOutputWithName<P, PassedName>
 	}> {
-		guard(this.hasNextStep(), 'No more steps to do')
+		guard(this.hasNextStep(), 'No more steps to do in the pipeline.')
 
 		const guardStep = this.getGuardStep(expectedStepName)
 
 		const { step, result } = await this.doNextStep(guardStep)
 
-		this.results[step] = result
+		this.output[step as PipelineStepNames<P>] = result
 		this.stepCounter += 1
-		if(this.stepOfInterest === step) {
-			this.reachedWanted = true
-		}
 
-		return { name: step as PassedName, result: result as StepResult<PassedName> }
+		return { name: step as PassedName, result }
 	}
 
-	private getGuardStep(expectedStepName: StepName | undefined) {
+	private getGuardStep(expectedStepName: NameOfStep | undefined) {
 		return expectedStepName === undefined ?
-			<K extends StepName>(name: K): K => name
+			<K extends NameOfStep>(name: K): K => name
 			:
-			<K extends StepName>(name: K): K => {
-				guard(expectedStepName === name, `Expected step ${expectedStepName} but got ${name}`)
+			<K extends NameOfStep>(name: K): K => {
+				guard(expectedStepName === name, `Expected step ${expectedStepName} but got ${String(name)}`)
 				return name
 			}
 	}
 
-	private async doNextStep(guardStep: <K extends StepName>(name: K) => K) {
-		let step: StepName
+	private async doNextStep(guardStep: <K extends NameOfStep>(name: K) => K): Promise<{
+		step:   NameOfStep,
+		result: PipelineStepOutputWithName<P, NameOfStep>
+	}> {
+		let step: NameOfStep
 		let result: unknown
 
 		switch(this.stepCounter) {

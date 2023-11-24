@@ -29,11 +29,11 @@ export type PipelineStep<P extends Pipeline> = P extends Pipeline<infer U> ? U :
 export type PipelineStepWithName<P extends Pipeline, Name extends NameOfStep> = P extends Pipeline<infer U> ? U extends IStep<Name> ? U : never : never
 export type PipelineStepProcessorWithName<P extends Pipeline, Name extends NameOfStep> = PipelineStepWithName<P, Name>['processor']
 export type PipelineStepPrintersWithName<P extends Pipeline, Name extends NameOfStep> = PipelineStepWithName<P, Name>['printer']
-export type PipelineStepResultWithName<P extends Pipeline, Name extends NameOfStep> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>>
+export type PipelineStepOutputWithName<P extends Pipeline, Name extends NameOfStep> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>>
 
 export type PipelineInput<P extends Pipeline> = PipelineStep<P>['requiredInput']
 export type PipelineOutput<P extends Pipeline> = {
-	[K in PipelineStepNames<P>]: PipelineStepResultWithName<P, K>
+	[K in PipelineStepNames<P>]: PipelineStepOutputWithName<P, K>
 }
 
 /**

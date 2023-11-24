@@ -11,7 +11,7 @@ export const SliceRequiredInput = {
 	...NormalizeRequiredInput,
 	/** The slicing criterion is only of interest if you actually want to slice the R code */
 	criterion: undefined as unknown as SlicingCriteria,
-	/** How many re-visits of the same node are ok? */
+	/** How many re-visits of the same node are ok? TODO: use default? */
 	threshold: 75
 } as const
 
@@ -20,7 +20,7 @@ export const STATIC_SLICE = {
 	name:        'slice',
 	description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
 	processor:   (results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<typeof SliceRequiredInput>) => {
-		guard(results.dataflow !== undefined && results.normalize !== undefined && input.criterion !== undefined && input.threshold !== undefined, 'Required input not provided')
+		guard(results.dataflow !== undefined && results.normalize !== undefined && input.criterion !== undefined, 'Required input not provided')
 		return staticSlicing(results.dataflow.graph, results.normalize, input.criterion, input.threshold)
 	},
 	executed: StepHasToBeExecuted.OncePerRequest,

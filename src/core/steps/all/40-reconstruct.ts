@@ -16,7 +16,7 @@ export const NAIVE_RECONSTRUCT = {
 	name:        'reconstruct',
 	description: 'Reconstruct R code from the static slice',
 	processor:   (results: { normalize?: NormalizedAst, slice?: SliceResult }, input: Partial<typeof ReconstructRequiredInput>) => {
-		guard(results.normalize !== undefined && results.slice !== undefined && input.autoSelectIf !== undefined, 'Required input not provided')
+		guard(results.normalize !== undefined && results.slice !== undefined, 'Required input not provided')
 		return reconstructToCode(results.normalize, results.slice.result, input.autoSelectIf)
 	},
 	executed: StepHasToBeExecuted.OncePerRequest,

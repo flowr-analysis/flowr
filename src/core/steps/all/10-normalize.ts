@@ -28,7 +28,7 @@ export const NORMALIZE = {
 	name:        'normalize',
 	description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
 	processor:   async(results: { parse?: string }, input: Partial<typeof NormalizeRequiredInput>) => {
-		guard(results.parse !== undefined && input.request !== undefined && input.shell !== undefined, 'Required input not provided')
+		guard(results.parse !== undefined && input.shell !== undefined, 'Required input not provided')
 		return normalize(results.parse, await input.shell.tokenMap(), input.hooks, input.getId)
 	},
 	executed: StepHasToBeExecuted.OncePerFile,

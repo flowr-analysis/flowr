@@ -81,6 +81,34 @@ describe('dependency check', () => {
 					decorates:    'parse',
 				}
 			], ['parse', 'parse-v2', 'parse-v3'])
+			positive('not the first, and multiple decorators', [
+				PARSE_WITH_R_SHELL_STEP,
+				{
+					...PARSE_WITH_R_SHELL_STEP,
+					name:         'parse-v2',
+					dependencies: ['parse'],
+				},
+				{
+					...PARSE_WITH_R_SHELL_STEP,
+					name:      'parse-v3',
+					decorates: 'parse-v2',
+				},
+				{
+					...PARSE_WITH_R_SHELL_STEP,
+					name:         'parse-v4',
+					dependencies: ['parse-v2']
+				},
+				{
+					...PARSE_WITH_R_SHELL_STEP,
+					name:         'parse-v6',
+					dependencies: ['parse-v4']
+				},
+				{
+					...PARSE_WITH_R_SHELL_STEP,
+					name:      'parse-v5',
+					decorates: 'parse-v6',
+				}
+			], ['parse', 'parse-v2', 'parse-v3', 'parse-v4', 'parse-v6', 'parse-v5'])
 		})
 	})
 })

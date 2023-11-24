@@ -9,7 +9,7 @@ import { verifyAndBuildPipeline } from './create'
  */
 export interface Pipeline<T extends IStep = IStep> {
 	readonly steps:               ReadonlyMap<NameOfStep, IStep>
-	readonly order:               T['name'][]
+	readonly order:               readonly T['name'][]
 	/**
 	 * In the order, this is the index of the first step that
 	 * is executed {@link StepHasToBeExecuted#OncePerRequest|once per request}.

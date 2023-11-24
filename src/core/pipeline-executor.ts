@@ -1,10 +1,9 @@
-/*
 import {
 	executeSingleSubStep,
 	NameOfStep,
 	StepHasToBeExecuted,
 	StepName,
-		StepResults,
+	StepResults,
 	STEPS_PER_SLICE
 } from './steps'
 import { guard } from '../util/assert'
@@ -18,7 +17,7 @@ import {
 	PipelineStepOutputWithName
 } from './steps/pipeline'
 
-/!**
+/**
  * TODO: This is ultimately the root of flowR's static slicing procedure.
  * It clearly defines the steps that are to be executed and splits them into two stages.
  * - `once-per-file`: for steps that are executed once per file. These can be performed *without* the knowledge of a slicing criteria,
@@ -77,7 +76,7 @@ import {
  * @see retrieveResultOfStep
  * @see PipelineExecutor#doNextStep
  * @see StepName
- *!/
+ */
 export class PipelineExecutor<P extends Pipeline> {
 	private readonly pipeline: P
 	private readonly input:    PipelineInput<P>
@@ -86,28 +85,28 @@ export class PipelineExecutor<P extends Pipeline> {
 	private currentExecutionStage = StepHasToBeExecuted.OncePerFile
 	private stepCounter = 0
 
-	/!**
+	/**
 	 * Create a new stepping slicer. For more details on the arguments please see {@link SteppingSlicerInput}.
-	 *!/
+	 */
 	constructor(pipeline: P, input: PipelineInput<P>) {
 		this.pipeline = pipeline
 		this.input = input
 	}
 
-	/!**
+	/**
 	 * Retrieve the current stage the pipeline executor is in.
 	 * @see currentExecutionStage
 	 * @see switchToRequestStage
-	 *!/
+	 */
 	public getCurrentStage(): StepHasToBeExecuted {
 		return this.currentExecutionStage
 	}
 
-	/!**
+	/**
 	 * Switch to the next stage of the stepping slicer.
 	 * @see PipelineExecutor
 	 * @see getCurrentStage
-	 *!/
+	 */
 	public switchToRequestStage(): void {
 		guard(this.pipeline.firstStepPerRequest === undefined || this.stepCounter === this.pipeline.firstStepPerRequest, 'First need to complete all steps before switching')
 		guard(this.currentExecutionStage === StepHasToBeExecuted.OncePerFile, 'Cannot switch to next stage, already in per-request stage.')
@@ -117,21 +116,21 @@ export class PipelineExecutor<P extends Pipeline> {
 
 	public getResults(intermediate?:false): PipelineOutput<P>
 	public getResults(intermediate: true): Partial<PipelineOutput<P>>
-	/!**
+	/**
 	 * Returns the results of the pipeline.
 	 *
 	 * @param intermediate - normally you can only receive the results *after* the stepper completed the step of interested.
 	 * 		 However, if you pass `true` to this parameter, you can also receive the results *before* the pipeline completed,
 	 * 		 although the typing system then can not guarantee which of the steps have already happened.
-	 *!/
+	 */
 	public getResults(intermediate = false): PipelineOutput<P> | Partial<PipelineOutput<P>> {
 		guard(intermediate || this.stepCounter >= this.pipeline.order.length, 'Without the intermediate flag, the pipeline must be completed before providing access to the results.')
 		return this.output
 	}
 
-	/!**
+	/**
 	 * Returns true only if 1) there are more steps to-do for the current stage and 2) we have not yet reached the end of the pipeline.
-	 *!/
+	 */
 	public hasNextStep(): boolean {
 		return this.stepCounter < this.pipeline.order.length && (
 			this.currentExecutionStage !== StepHasToBeExecuted.OncePerFile ||
@@ -139,7 +138,7 @@ export class PipelineExecutor<P extends Pipeline> {
 		)
 	}
 
-	/!**
+	/**
 	 * Execute the next step (guarded with {@link hasNextStep}) and return the name of the step that was executed, so you can guard if the step differs from what you are interested in.
 	 * Furthermore, it returns the step's result.
 	 *
@@ -147,7 +146,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * 												   If given, it causes the execution to fail if the next step is not the one you expect.
 	 *
 	 * *Without `expectedStepName`, please refrain from accessing the result, as you have no safeguards if the pipeline changes.*
-	 *!/
+	 */
 	public async nextStep<PassedName extends NameOfStep>(expectedStepName?: PassedName): Promise<{
 		name:   typeof expectedStepName extends undefined ? NameOfStep : PassedName
 		result: typeof expectedStepName extends undefined ? unknown : PipelineStepOutputWithName<P, PassedName>
@@ -181,20 +180,19 @@ export class PipelineExecutor<P extends Pipeline> {
 		guard(this.stepCounter >= 0 && this.stepCounter < this.pipeline.order.length, `Cannot execute next step, already reached end of pipeline or unexpected index (${this.stepCounter}).`)
 		const step = this.pipeline.steps.get(this.pipeline.order[this.stepCounter])
 		guard(step !== undefined, `Cannot execute next step, step ${this.pipeline.order[this.stepCounter]} does not exist.`)
-		let result: unknown
 
 		guardStep(step.name)
-		result = await executeSingleSubStep(step, this.request, this.shell)
+		const result = await step.processor(this.output, this.input) as unknown
 
-		return { step, result }
+		return { step: step.name, result: result as PipelineStepOutputWithName<P, NameOfStep> }
 	}
 
-	/!**
+	/**
 	 * This only makes sense if you have already sliced a file (e.g., by running up to the `slice` step) and want to do so again while caching the results.
 	 * Or if for whatever reason you did not pass a criterion with the constructor.
 	 *
 	 * @param newCriterion - the new slicing criterion to use for the next slice
-	 *!/
+	 */
 	public updateCriterion(newCriterion: SlicingCriteria): void {
 		guard(this.stepCounter >= PipelineExecutor.maximumNumberOfStepsPerFile , 'Cannot reset slice prior to once-per-slice stage')
 		this.criterion = newCriterion
@@ -208,7 +206,7 @@ export class PipelineExecutor<P extends Pipeline> {
 
 	public async allRemainingSteps(canSwitchStage: false): Promise<Partial<StepResults<InterestedIn extends keyof typeof STEPS_PER_SLICE | undefined ? typeof LAST_PER_FILE_STEP : InterestedIn>>>
 	public async allRemainingSteps(canSwitchStage?: true): Promise<StepResults<InterestedIn>>
-	/!**
+	/**
 	 * Execute all remaining steps and automatically call {@link switchToSliceStage} if necessary.
 	 * @param canSwitchStage - if true, automatically switch to the slice stage if necessary
 	 *       (i.e., this is what you want if you have never executed {@link nextStep} and you want to execute *all* steps).
@@ -219,7 +217,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 *       In such a case, you may be better off with simply passing 'true' as the function will detect that the stage is already switched.
 	 *       We could solve this type problem by separating the SteppingSlicer class into two for each stage, but this would break the improved readability and unified handling
 	 *       of the slicer that I wanted to achieve with this class.
-	 *!/
+	 */
 	public async allRemainingSteps(canSwitchStage = true): Promise<StepResults<InterestedIn | typeof LAST_PER_FILE_STEP> | Partial<StepResults<InterestedIn | typeof LAST_PER_FILE_STEP>>> {
 		while(this.hasNextStep()) {
 			await this.nextStep()
@@ -233,4 +231,3 @@ export class PipelineExecutor<P extends Pipeline> {
 		return this.reachedWanted ? this.getResults() : this.getResults(true)
 	}
 }
-*/

@@ -1,7 +1,7 @@
 import {
 	IdGenerator,
 	NoInfo,
-	normalize,
+	normalize, RParseRequest, RShell,
 	XmlParserHooks
 } from '../../../r-bridge'
 import { internalPrinter, StepOutputFormat } from '../../print/print'
@@ -27,12 +27,9 @@ export const NormalizeRequiredInput = {
 export const NORMALIZE = {
 	name:        'normalize',
 	description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
-	processor:   async(results: { parse?: string }, input: Partial<typeof NormalizeRequiredInput>) => {
-		guard(results.parse !== undefined && input.shell !== undefined, 'Required input not provided')
-		return normalize(results.parse, await input.shell.tokenMap(), input.hooks, input.getId)
-	},
-	executed: StepHasToBeExecuted.OncePerFile,
-	printer:  {
+	processor:   async(results: { parse?: string }, input: Partial<typeof NormalizeRequiredInput>) => normalize(results.parse as string, await (input.shell as RShell).tokenMap(), input.hooks, input.getId),
+	executed:    StepHasToBeExecuted.OncePerFile,
+	printer:     {
 		[StepOutputFormat.Internal]:   internalPrinter,
 		[StepOutputFormat.Json]:       normalizedAstToJson,
 		[StepOutputFormat.RdfQuads]:   normalizedAstToQuads,

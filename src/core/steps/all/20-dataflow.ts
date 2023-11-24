@@ -9,17 +9,13 @@ import {
 } from '../../print/dataflow-printer'
 import { DeepReadonly } from 'ts-essentials'
 import { NormalizedAst } from '../../../r-bridge'
-import { guard } from '../../../util/assert'
 
 export const LEGACY_STATIC_DATAFLOW = {
 	name:        'dataflow',
 	description: 'Construct the dataflow graph',
-	processor:   (results: { normalize?: NormalizedAst }) => {
-		guard(results.normalize !== undefined, 'Required input not provided')
-		return produceDataFlowGraph(results.normalize)
-	},
-	executed: StepHasToBeExecuted.OncePerFile,
-	printer:  {
+	processor:   (results: { normalize?: NormalizedAst }) => produceDataFlowGraph(results.normalize as NormalizedAst),
+	executed:    StepHasToBeExecuted.OncePerFile,
+	printer:     {
 		[StepOutputFormat.Internal]:   internalPrinter,
 		[StepOutputFormat.Json]:       dataflowGraphToJson,
 		[StepOutputFormat.RdfQuads]:   dataflowGraphToQuads,

@@ -4,7 +4,6 @@ import { autoSelectLibrary, AutoSelectPredicate, reconstructToCode, SliceResult 
 import { DeepReadonly } from 'ts-essentials'
 import { NormalizedAst } from '../../../r-bridge'
 import { SliceRequiredInput } from './30-slice'
-import { guard } from '../../../util/assert'
 
 export const ReconstructRequiredInput = {
 	...SliceRequiredInput,
@@ -15,12 +14,9 @@ export const ReconstructRequiredInput = {
 export const NAIVE_RECONSTRUCT = {
 	name:        'reconstruct',
 	description: 'Reconstruct R code from the static slice',
-	processor:   (results: { normalize?: NormalizedAst, slice?: SliceResult }, input: Partial<typeof ReconstructRequiredInput>) => {
-		guard(results.normalize !== undefined && results.slice !== undefined, 'Required input not provided')
-		return reconstructToCode(results.normalize, results.slice.result, input.autoSelectIf)
-	},
-	executed: StepHasToBeExecuted.OncePerRequest,
-	printer:  {
+	processor:   (results: { normalize?: NormalizedAst, slice?: SliceResult }, input: Partial<typeof ReconstructRequiredInput>) => reconstructToCode(results.normalize as NormalizedAst, (results.slice as SliceResult).result, input.autoSelectIf),
+	executed:    StepHasToBeExecuted.OncePerRequest,
+	printer:     {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
 	dependencies:  [ 'slice' ],

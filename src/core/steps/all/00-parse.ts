@@ -3,7 +3,6 @@ import { parseToQuads } from '../../print/parse-printer'
 import { IStep, StepHasToBeExecuted } from '../step'
 import { retrieveXmlFromRCode, RParseRequest, RShell } from '../../../r-bridge'
 import { DeepReadonly } from 'ts-essentials'
-import { guard } from '../../../util/assert'
 
 export const ParseRequiredInput = {
 	/** This is the {@link RShell} connection to be used to obtain the original parses AST of the R code */
@@ -15,12 +14,9 @@ export const ParseRequiredInput = {
 export const PARSE_WITH_R_SHELL_STEP = {
 	name:        'parse',
 	description: 'Parse the given R code into an AST',
-	processor:   (_results: object, input: Partial<typeof ParseRequiredInput>) => {
-		guard(input.request !== undefined && input.shell !== undefined, 'Required input not provided')
-		return retrieveXmlFromRCode(input.request, input.shell)
-	},
-	executed: StepHasToBeExecuted.OncePerFile,
-	printer:  {
+	processor:   (_results: object, input: Partial<typeof ParseRequiredInput>) => retrieveXmlFromRCode(input.request as RParseRequest, input.shell as RShell),
+	executed:    StepHasToBeExecuted.OncePerFile,
+	printer:     {
 		[StepOutputFormat.Internal]: internalPrinter,
 		[StepOutputFormat.Json]:     text => text,
 		[StepOutputFormat.RdfQuads]: parseToQuads

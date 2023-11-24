@@ -5,7 +5,6 @@ import { DeepReadonly } from 'ts-essentials'
 import { NormalizeRequiredInput } from './10-normalize'
 import { DataflowInformation } from '../../../dataflow/internal/info'
 import { NormalizedAst } from '../../../r-bridge'
-import { guard } from '../../../util/assert'
 
 export const SliceRequiredInput = {
 	...NormalizeRequiredInput,
@@ -19,12 +18,9 @@ export const SliceRequiredInput = {
 export const STATIC_SLICE = {
 	name:        'slice',
 	description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
-	processor:   (results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<typeof SliceRequiredInput>) => {
-		guard(results.dataflow !== undefined && results.normalize !== undefined && input.criterion !== undefined, 'Required input not provided')
-		return staticSlicing(results.dataflow.graph, results.normalize, input.criterion, input.threshold)
-	},
-	executed: StepHasToBeExecuted.OncePerRequest,
-	printer:  {
+	processor:   (results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<typeof SliceRequiredInput>) => staticSlicing((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold),
+	executed:    StepHasToBeExecuted.OncePerRequest,
+	printer:     {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
 	dependencies:  [ 'dataflow' ],

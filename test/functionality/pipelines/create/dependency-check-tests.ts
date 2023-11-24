@@ -57,6 +57,11 @@ describe('dependency check', () => {
 						dependencies: ['parse-v1']
 					}
 				], /decoration cycle/)
+			negative('decorate non-existing step',
+				[{
+					...PARSE_WITH_R_SHELL_STEP,
+					decorates: 'foo'
+				}], /decorates.+not exist/)
 		})
 	})
 	describe('default behavior', () => {

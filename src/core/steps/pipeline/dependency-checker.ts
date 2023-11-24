@@ -40,7 +40,7 @@ export function verifyAndBuildPipeline(steps: IStep[]): Pipeline {
 	}
 }
 
-function allDependenciesAreVisited(step: IStep<(...args: any[]) => any>, visited: Set<NameOfStep>) {
+function allDependenciesAreVisited(step: IStep, visited: Set<NameOfStep>) {
 	return step.dependencies.every(d => visited.has(d))
 }
 

@@ -26,6 +26,12 @@ export type NameOfStep = string & { __brand?: 'StepName' }
  */
 export interface IStepOrder {
 	/**
+	 * Name of the respective step, it does not have to be unique in general but only unique per-pipeline.
+	 * In other words, you can have multiple steps with a name like `parse` as long as you use only one of them in a given pipeline.
+	 * This is, because these names are required in the {@link IStep#dependencies} field to refer to other steps this one relies on.
+	 */
+	name:         NameOfStep
+	/**
 	 * Give the names of other steps this one requires to be completed as a prerequisite (e.g., to gain access to their input).
 	 * Does not have to be transitive, this will be checked by the scheduler of the pipeline.
 	 */
@@ -37,7 +43,7 @@ export interface IStepOrder {
 	 *
 	 * If so, it is ensured that _this_ step is executed _after_ the step it decorates, but before any step that depends on it.
 	 */
-	decorates:    NameOfStep
+	decorates?:   NameOfStep
 }
 
 /**
@@ -49,12 +55,6 @@ export interface IStep<
 	// eslint-disable-next-line -- by default, we assume nothing about the function shape
 	Fn extends StepFunction = (...args: any[]) => any,
 > extends MergeableRecord, IStepOrder {
-	/**
-	 * Name of the respective step, it does not have to be unique in general but only unique per-pipeline.
-	 * In other words, you can have multiple steps with a name like `parse` as long as you use only one of them in a given pipeline.
-	 * This is, because these names are required in the {@link IStep#dependencies} field to refer to other steps this one relies on.
-	 */
-	name:        NameOfStep
 	/** Human-readable description of this step */
 	description: string
 	/** The main processor that essentially performs the logic of this step */

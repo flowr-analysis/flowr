@@ -1,5 +1,5 @@
 import { internalPrinter, StepOutputFormat } from '../../print/print'
-import { IStep } from '../step'
+import { IStep, StepHasToBeExecuted } from '../step'
 import { AutoSelectPredicate, reconstructToCode } from '../../../slicing'
 import { DeepReadonly } from 'ts-essentials'
 
@@ -7,7 +7,7 @@ export const NAIVE_RECONSTRUCT = {
 	name:        'reconstruct',
 	description: 'Reconstruct R code from the static slice',
 	processor:   reconstructToCode,
-	required:    'once-per-slice',
+	executed:    StepHasToBeExecuted.OncePerRequest,
 	printer:     {
 		[StepOutputFormat.Internal]: internalPrinter
 	},

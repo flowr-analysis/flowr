@@ -33,7 +33,7 @@ import {
 	dataflowGraphToQuads
 } from '../print/dataflow-printer'
 import { parseToQuads } from '../print/parse-printer'
-import { IStep } from './step'
+import { IStep, StepHasToBeExecuted } from './step'
 
 
 export const STEPS_PER_FILE = {
@@ -41,7 +41,7 @@ export const STEPS_PER_FILE = {
 		name:        'parse',
 		description: 'Parse the given R code into an AST',
 		processor:   retrieveXmlFromRCode,
-		required:    'once-per-file',
+		executed:    StepHasToBeExecuted.OncePerFile,
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter,
 			[StepOutputFormat.Json]:     text => text,
@@ -53,7 +53,7 @@ export const STEPS_PER_FILE = {
 		name:        'normalize',
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
 		processor:   normalize,
-		required:    'once-per-file',
+		executed:    StepHasToBeExecuted.OncePerFile,
 		printer:     {
 			[StepOutputFormat.Internal]:   internalPrinter,
 			[StepOutputFormat.Json]:       normalizedAstToJson,
@@ -67,7 +67,7 @@ export const STEPS_PER_FILE = {
 		name:        'dataflow',
 		description: 'Construct the dataflow graph',
 		processor:   produceDataFlowGraph,
-		required:    'once-per-file',
+		executed:    StepHasToBeExecuted.OncePerFile,
 		printer:     {
 			[StepOutputFormat.Internal]:   internalPrinter,
 			[StepOutputFormat.Json]:       dataflowGraphToJson,
@@ -84,7 +84,7 @@ export const STEPS_PER_SLICE = {
 		name:        'slice',
 		description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
 		processor:   staticSlicing,
-		required:    'once-per-slice',
+		executed:    StepHasToBeExecuted.OncePerRequest,
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter
 		},
@@ -94,7 +94,7 @@ export const STEPS_PER_SLICE = {
 		name:        'reconstruct',
 		description: 'Reconstruct R code from the static slice',
 		processor:   reconstructToCode,
-		required:    'once-per-slice',
+		executed:    StepHasToBeExecuted.OncePerRequest,
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter
 		},

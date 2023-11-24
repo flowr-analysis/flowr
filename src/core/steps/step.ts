@@ -16,6 +16,12 @@ export type StepFunction = (...args: never[]) => unknown
 /**
  * This represents the required execution frequency of a step.
  */
+export const enum StepHasToBeExecuted {
+	/** This step has to be executed once per file */
+	OncePerFile,
+	/** This step has to be executed once per request (e.g., slice for a given variable) */
+	OncePerRequest
+}
 export type StepRequired = 'once-per-file' | 'once-per-slice'
 
 // TODO: rename to StepName
@@ -60,8 +66,8 @@ export interface IStep<
 	readonly description: string
 	/** The main processor that essentially performs the logic of this step */
 	readonly processor:   (...input: Parameters<Fn>) => ReturnType<Fn>
-	/* does this step has to be repeated for each new slice or can it be performed only once in the initialization */
-	readonly required:    StepRequired
+	/* does this step has to be repeated for each new request or can it be performed only once in the initialization */
+	readonly executed:    StepHasToBeExecuted
 	/**
 	 * How to visualize the results of the respective step to the user?
 	 */

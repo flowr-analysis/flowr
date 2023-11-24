@@ -6,14 +6,14 @@ import {
 	printNormalizedAstToMermaid,
 	printNormalizedAstToMermaidUrl
 } from '../../print/normalize-printer'
-import { IStep } from '../step'
+import { IStep, StepHasToBeExecuted } from '../step'
 import { DeepPartial, DeepReadonly } from 'ts-essentials'
 
 export const NORMALIZE = {
 	name:        'normalize',
 	description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
 	processor:   normalize,
-	required:    'once-per-file',
+	executed:    StepHasToBeExecuted.OncePerFile,
 	printer:     {
 		[StepOutputFormat.Internal]:   internalPrinter,
 		[StepOutputFormat.Json]:       normalizedAstToJson,

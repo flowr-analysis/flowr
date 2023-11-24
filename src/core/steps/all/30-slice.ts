@@ -1,5 +1,5 @@
 import { internalPrinter, StepOutputFormat } from '../../print/print'
-import { IStep } from '../step'
+import { IStep, StepHasToBeExecuted } from '../step'
 import { SlicingCriteria, staticSlicing } from '../../../slicing'
 import { DeepReadonly } from 'ts-essentials'
 
@@ -7,7 +7,7 @@ export const STATIC_SLICE = {
 	name:        'slice',
 	description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
 	processor:   staticSlicing,
-	required:    'once-per-slice',
+	executed:    StepHasToBeExecuted.OncePerRequest,
 	printer:     {
 		[StepOutputFormat.Internal]: internalPrinter
 	},

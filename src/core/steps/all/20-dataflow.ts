@@ -1,5 +1,5 @@
 import { internalPrinter, StepOutputFormat } from '../../print/print'
-import { IStep } from '../step'
+import { IStep, StepHasToBeExecuted } from '../step'
 import { produceDataFlowGraph } from '../../../dataflow'
 import {
 	dataflowGraphToJson,
@@ -13,7 +13,7 @@ export const LEGACY_STATIC_DATAFLOW = {
 	name:        'dataflow',
 	description: 'Construct the dataflow graph',
 	processor:   produceDataFlowGraph,
-	required:    'once-per-file',
+	executed:    StepHasToBeExecuted.OncePerFile,
 	printer:     {
 		[StepOutputFormat.Internal]:   internalPrinter,
 		[StepOutputFormat.Json]:       dataflowGraphToJson,

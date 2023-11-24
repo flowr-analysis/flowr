@@ -43,36 +43,80 @@ export function verifyAndBuildPipeline(steps: IStep[]): Pipeline {
 	}
 }
 
+function initializeUnvisited(stepMap: Map<NameOfStep, IStep>, inits: NameOfStep[]) {
+	const unvisited = new Set(stepMap.keys())
+	for(const init of inits) {
+		unvisited.delete(init)
+	}
+	return unvisited
+}
+
+
 function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>) {
 	// now, we topo-sort the steps
 	const sorted: NameOfStep[] = []
-	const unvisited = new Set(stepMap.keys())
+	// we subsequently remove every step that we visit to improve the iteration over all remaining elements to test
+	const unvisited = initializeUnvisited(stepMap, inits)
+
 	while(inits.length > 0) {
 		const init = inits.pop() as NameOfStep
 		sorted.push(init)
-		unvisited.delete(init)
 		const last = sorted[sorted.length - 1]
+
+		// we need to sort decorators as well, but only if they have unsatisfied dependencies that are decorating the same step
+		const decoratorsOfLastInits = []
+		// these decorators still have dependencies open; we have to check if they can be satisfied by the other steps to add
+		const decoratorsOfLastOthers = new Set<NameOfStep>()
+		// conventional topo-sort elements that now no longer have unsatisfied dependencies
+		const otherInits = []
 
 		for(const elem of unvisited) {
 			const step = stepMap.get(elem) as IStep
-			// we should do that better, for now we do not assume that many dependencies
-			const hasUnsatisfiedDependencies = step.dependencies.some(dep => unvisited.has(dep))
-
-			// if the step decorates the last step in the sorted list, we can add it to the list, but only if all its dependencies are already in the list
+			const hasUnvisitedDeps = step.dependencies.some(d => unvisited.has(d))
 			if(step.decorates === last) {
-				// if dependencies are still missing, we cannot add it to the list and fail TODO: if not all of its dependencies which remain decorate the last step
-				// TODO: we currently do not allow decorations to be dependent on each other for the same step
-				if(hasUnsatisfiedDependencies) {
-					throw new InvalidPipelineError(`5) Step "${step.name}" decorates step "${step.decorates}" but not all of its dependencies are satisfied`)
-				}
-				sorted.push(elem)
 				unvisited.delete(elem)
-			} else if(hasUnsatisfiedDependencies) {
-				inits.push(elem)
+				if(hasUnvisitedDeps) {
+					decoratorsOfLastOthers.add(elem)
+				} else {
+					unvisited.delete(elem)
+					decoratorsOfLastInits.push(elem)
+				}
+			} else if(hasUnvisitedDeps) {
+				otherInits.push(elem)
 			}
+		}
+		// we can add all decorators with satisfied dependencies
+		inits.push(...decoratorsOfLastInits)
+
+		// for the other decorators we have to cycle until we find a solution, or know, that no solution exists
+		topologicallyInsertDecoratorElements(decoratorsOfLastOthers, stepMap, unvisited, inits)
+
+		for(const elem of otherInits) {
+			unvisited.delete(elem)
+			inits.push(elem)
 		}
 	}
 	return sorted
+}
+
+function topologicallyInsertDecoratorElements(decoratorsOfLastOthers: Set<NameOfStep>, stepMap: Map<NameOfStep, IStep>, unvisited: Set<NameOfStep>, inits: NameOfStep[]) {
+	let changed = true
+	while(changed) {
+		changed = false
+		for(const elem of [...decoratorsOfLastOthers]) {
+			const step = stepMap.get(elem) as IStep
+			const hasUnvisitedDeps = step.dependencies.some(d => unvisited.has(d))
+			if(!hasUnvisitedDeps) {
+				unvisited.delete(elem)
+				decoratorsOfLastOthers.delete(elem)
+				inits.push(elem)
+				changed = true
+			}
+		}
+	}
+	if(decoratorsOfLastOthers.size > 0) {
+		throw new InvalidPipelineError(`5) Pipeline contains at least one decoration cycle: ${JSON.stringify(decoratorsOfLastOthers)}`)
+	}
 }
 
 function checkForInvalidDependency(steps: IStep[], stepMap: Map<NameOfStep, IStep>) {

@@ -1,6 +1,5 @@
 import { IStep, NameOfStep, StepHasToBeExecuted } from '../step'
 import { verifyAndBuildPipeline } from './create'
-import { satisfies } from 'semver'
 
 /**
  * A pipeline is a collection of {@link Pipeline#steps|steps} that are executed in a certain {@link Pipeline#order|order}.

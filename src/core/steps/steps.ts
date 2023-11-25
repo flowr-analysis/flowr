@@ -13,27 +13,6 @@
  * @module
  */
 
-import {
-	normalize,
-	retrieveXmlFromRCode
-} from '../../r-bridge'
-import { produceDataFlowGraph } from '../../dataflow'
-import { reconstructToCode, staticSlicing } from '../../slicing'
-import { internalPrinter, StepOutputFormat } from '../print/print'
-import {
-	normalizedAstToJson,
-	normalizedAstToQuads,
-	printNormalizedAstToMermaid,
-	printNormalizedAstToMermaidUrl
-} from '../print/normalize-printer'
-import {
-	dataflowGraphToJson,
-	dataflowGraphToMermaid,
-	dataflowGraphToMermaidUrl,
-	dataflowGraphToQuads
-} from '../print/dataflow-printer'
-import { parseToQuads } from '../print/parse-printer'
-import { IStep, StepHasToBeExecuted } from './step'
 import { PARSE_WITH_R_SHELL_STEP } from './all/core/00-parse'
 import { NORMALIZE } from './all/core/10-normalize'
 import { LEGACY_STATIC_DATAFLOW } from './all/core/20-dataflow'
@@ -60,8 +39,3 @@ export type StepName = keyof typeof STEPS
 export type Step<Name extends StepName> = typeof STEPS[Name]
 export type StepProcessor<Name extends StepName> = Step<Name>['processor']
 export type StepResult<Name extends StepName> = Awaited<ReturnType<StepProcessor<Name>>>
-
-export function executeSingleSubStep<Name extends StepName, Processor extends StepProcessor<Name>>(subStep: Name, ...input: Parameters<Processor>): ReturnType<Processor> {
-	// @ts-expect-error - this is safe, as we know that the function arguments are correct by 'satisfies', this saves an explicit cast with 'as'
-	return STEPS[subStep].processor(...input as unknown as never[]) as ReturnType<Processor>
-}

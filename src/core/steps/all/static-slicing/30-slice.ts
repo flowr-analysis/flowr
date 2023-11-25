@@ -18,9 +18,10 @@ export const SliceRequiredInput = {
 export const STATIC_SLICE = {
 	name:        'slice',
 	description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
-	processor:   (results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<typeof SliceRequiredInput>) => staticSlicing((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold),
-	executed:    StepHasToBeExecuted.OncePerRequest,
-	printer:     {
+	processor:   (results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<typeof SliceRequiredInput>) =>
+		staticSlicing((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold),
+	executed: StepHasToBeExecuted.OncePerRequest,
+	printer:  {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
 	dependencies:  [ 'dataflow' ],

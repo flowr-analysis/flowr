@@ -125,10 +125,9 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * Returns true only if 1) there are more steps to-do for the current stage and 2) we have not yet reached the end of the pipeline.
 	 */
 	public hasNextStep(): boolean {
-		return this.stepCounter < this.pipeline.order.length && (
-			this.currentExecutionStage !== StepHasToBeExecuted.OncePerFile ||
+		return (this.stepCounter < this.pipeline.order.length &&
+			this.currentExecutionStage !== StepHasToBeExecuted.OncePerFile) ||
 				this.stepCounter < this.pipeline.firstStepPerRequest
-		)
 	}
 
 	/**
@@ -225,6 +224,6 @@ export class PipelineExecutor<P extends Pipeline> {
 				await this.nextStep()
 			}
 		}
-		return this.hasNextStep() ? this.getResults(true) : this.getResults()
+		return this.stepCounter < this.pipeline.steps.size ? this.getResults(true) : this.getResults()
 	}
 }

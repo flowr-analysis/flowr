@@ -6,21 +6,40 @@ import {
 	StepName, StepHasToBeExecuted, NameOfStep
 } from './steps'
 import { SlicingCriteria } from '../slicing'
-import { createPipeline, PipelineOutput, PipelineStepOutputWithName } from './steps/pipeline'
+import { createPipeline, Pipeline, PipelineOutput, PipelineStepOutputWithName } from './steps/pipeline'
 import { PARSE_WITH_R_SHELL_STEP } from './steps/all/core/00-parse'
 import { NORMALIZE } from './steps/all/core/10-normalize'
 import { LEGACY_STATIC_DATAFLOW } from './steps/all/core/20-dataflow'
 import { STATIC_SLICE } from './steps/all/static-slicing/30-slice'
 import { NAIVE_RECONSTRUCT } from './steps/all/static-slicing/40-reconstruct'
 import { PipelineExecutor } from './pipeline-executor'
+import { assertUnreachable } from '../util/assert'
 
-const SteppingSlicerLegacyPipeline = createPipeline(
-	PARSE_WITH_R_SHELL_STEP,
-	NORMALIZE,
-	LEGACY_STATIC_DATAFLOW,
-	STATIC_SLICE,
-	NAIVE_RECONSTRUCT
-)
+type LegacyPipelineType<InterestedIn extends StepName> =
+	Pipeline<InterestedIn extends 'parse' ? typeof PARSE_WITH_R_SHELL_STEP :
+		InterestedIn extends 'normalize' ? typeof PARSE_WITH_R_SHELL_STEP | typeof NORMALIZE :
+			InterestedIn extends 'dataflow' ? typeof PARSE_WITH_R_SHELL_STEP | typeof NORMALIZE | typeof LEGACY_STATIC_DATAFLOW :
+				InterestedIn extends 'slice' ? typeof PARSE_WITH_R_SHELL_STEP | typeof NORMALIZE | typeof LEGACY_STATIC_DATAFLOW | typeof STATIC_SLICE :
+					InterestedIn extends 'reconstruct' ? typeof PARSE_WITH_R_SHELL_STEP | typeof NORMALIZE | typeof LEGACY_STATIC_DATAFLOW | typeof STATIC_SLICE | typeof NAIVE_RECONSTRUCT :
+						never>
+
+function getLegacyPipeline(interestedIn: StepName): Pipeline {
+	// brrh, but who cares, it is legacy!
+	switch(interestedIn) {
+		case 'parse':
+			return createPipeline(PARSE_WITH_R_SHELL_STEP)
+		case 'normalize':
+			return createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE)
+		case 'dataflow':
+			return createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW)
+		case 'slice':
+			return createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE)
+		case 'reconstruct':
+			return createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE, NAIVE_RECONSTRUCT)
+		default:
+			assertUnreachable(interestedIn)
+	}
+}
 
 /**
  * This is ultimately the root of flowR's static slicing procedure.
@@ -82,17 +101,15 @@ const SteppingSlicerLegacyPipeline = createPipeline(
  * @see SteppingSlicer#doNextStep
  * @see StepName
  */
-export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof LAST_STEP> {
-	private readonly stepOfInterest: InterestedIn
-	private executor:                PipelineExecutor<typeof SteppingSlicerLegacyPipeline>
+export class SteppingSlicer<InterestedIn extends StepName = typeof LAST_STEP> {
+	private executor: PipelineExecutor<LegacyPipelineType<InterestedIn>>
 
 	/**
 	 * Create a new stepping slicer. For more details on the arguments please see {@link SteppingSlicerInput}.
 	 */
 	constructor(input: SteppingSlicerInput<InterestedIn>) {
 		// TODO: subset pipeline based on interested in
-		this.executor = new PipelineExecutor(SteppingSlicerLegacyPipeline, input)
-		this.stepOfInterest = (input.stepOfInterest ?? LAST_STEP) as InterestedIn
+		this.executor = new PipelineExecutor(getLegacyPipeline(input.stepOfInterest ?? LAST_STEP), input) as PipelineExecutor<LegacyPipelineType<InterestedIn>>
 	}
 
 	/**
@@ -114,8 +131,8 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 	}
 
 
-	public getResults(intermediate?:false): PipelineOutput<typeof SteppingSlicerLegacyPipeline>
-	public getResults(intermediate: true): Partial<PipelineOutput<typeof SteppingSlicerLegacyPipeline>>
+	public getResults(intermediate?:false): PipelineOutput<LegacyPipelineType<InterestedIn>>
+	public getResults(intermediate: true): Partial<PipelineOutput<LegacyPipelineType<InterestedIn>>>
 	/**
 	 * Returns the result of the step of interest, as well as the results of all steps before it.
 	 *
@@ -123,7 +140,7 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 	 * 		 However, if you pass `true` to this parameter, you can also receive the results *before* the step of interest,
 	 * 		 although the typing system then can not guarantee which of the steps have already happened.
 	 */
-	public getResults(intermediate = false): PipelineOutput<typeof SteppingSlicerLegacyPipeline> | Partial<PipelineOutput<typeof SteppingSlicerLegacyPipeline>> {
+	public getResults(intermediate = false): PipelineOutput<LegacyPipelineType<InterestedIn>> | Partial<PipelineOutput<LegacyPipelineType<InterestedIn>>> {
 		return this.executor.getResults(intermediate)
 	}
 
@@ -144,7 +161,7 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 	 */
 	public async nextStep<PassedName extends NameOfStep>(expectedStepName?: PassedName): Promise<{
 		name:   typeof expectedStepName extends undefined ? NameOfStep : PassedName
-		result: typeof expectedStepName extends undefined ? unknown : PipelineStepOutputWithName<typeof SteppingSlicerLegacyPipeline, Exclude<PassedName, undefined>>
+		result: typeof expectedStepName extends undefined ? unknown : PipelineStepOutputWithName<LegacyPipelineType<InterestedIn>, Exclude<PassedName, undefined>>
 	}> {
 		return this.executor.nextStep(expectedStepName)
 	}
@@ -160,7 +177,8 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 	 * @param newCriterion - the new slicing criterion to use for the next slice
 	 */
 	public updateCriterion(newCriterion: SlicingCriteria): void {
-		this.executor.updateRequest(newCriterion)
+		// @ts-expect-error -- it is legacy
+		this.executor.updateRequest({ criterion: newCriterion })
 	}
 
 	public async allRemainingSteps(canSwitchStage: false): Promise<Partial<StepResults<InterestedIn extends keyof typeof STEPS_PER_SLICE | undefined ? typeof LAST_PER_FILE_STEP : InterestedIn>>>

@@ -13,32 +13,19 @@ import { LEGACY_STATIC_DATAFLOW } from './steps/all/core/20-dataflow'
 import { STATIC_SLICE } from './steps/all/static-slicing/30-slice'
 import { NAIVE_RECONSTRUCT } from './steps/all/static-slicing/40-reconstruct'
 import { PipelineExecutor } from './pipeline-executor'
-import { assertUnreachable } from '../util/assert'
 
-type LegacyPipelineType<InterestedIn extends StepName> =
-	Pipeline<InterestedIn extends 'parse' ? typeof PARSE_WITH_R_SHELL_STEP :
-		InterestedIn extends 'normalize' ? typeof PARSE_WITH_R_SHELL_STEP | typeof NORMALIZE :
-			InterestedIn extends 'dataflow' ? typeof PARSE_WITH_R_SHELL_STEP | typeof NORMALIZE | typeof LEGACY_STATIC_DATAFLOW :
-				InterestedIn extends 'slice' ? typeof PARSE_WITH_R_SHELL_STEP | typeof NORMALIZE | typeof LEGACY_STATIC_DATAFLOW | typeof STATIC_SLICE :
-					InterestedIn extends 'reconstruct' ? typeof PARSE_WITH_R_SHELL_STEP | typeof NORMALIZE | typeof LEGACY_STATIC_DATAFLOW | typeof STATIC_SLICE | typeof NAIVE_RECONSTRUCT :
-						never>
+const legacyPipelines = {
+	// brrh, but who cares, it is legacy!
+	'parse':       createPipeline(PARSE_WITH_R_SHELL_STEP),
+	'normalize':   createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE),
+	'dataflow':    createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW),
+	'slice':       createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE),
+	'reconstruct': createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE, NAIVE_RECONSTRUCT)
+}
+type LegacyPipelineType<InterestedIn extends StepName> = typeof legacyPipelines[InterestedIn]
 
 function getLegacyPipeline(interestedIn: StepName): Pipeline {
-	// brrh, but who cares, it is legacy!
-	switch(interestedIn) {
-		case 'parse':
-			return createPipeline(PARSE_WITH_R_SHELL_STEP)
-		case 'normalize':
-			return createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE)
-		case 'dataflow':
-			return createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW)
-		case 'slice':
-			return createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE)
-		case 'reconstruct':
-			return createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE, NAIVE_RECONSTRUCT)
-		default:
-			assertUnreachable(interestedIn)
-	}
+	return legacyPipelines[interestedIn]
 }
 
 /**

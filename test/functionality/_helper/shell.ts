@@ -213,6 +213,7 @@ export function assertSliced(name: string, shell: RShell, input: string, criteri
 		}).allRemainingSteps()
 
 
+		console.log(Object.keys(result), result.reconstruct)
 		try {
 			assert.strictEqual(
 				result.reconstruct.code, expected,

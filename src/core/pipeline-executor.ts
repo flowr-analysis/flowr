@@ -218,7 +218,7 @@ export class PipelineExecutor<P extends Pipeline> {
 		while(this.hasNextStep()) {
 			await this.nextStep()
 		}
-		if(canSwitchStage && this.hasNextStep() && this.currentExecutionStage === StepHasToBeExecuted.OncePerFile) {
+		if(canSwitchStage && this.stepCounter < this.pipeline.steps.size && this.currentExecutionStage === StepHasToBeExecuted.OncePerFile) {
 			this.switchToRequestStage()
 			while(this.hasNextStep()) {
 				await this.nextStep()

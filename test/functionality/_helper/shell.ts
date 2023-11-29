@@ -20,6 +20,7 @@ import { testRequiresRVersion } from './version'
 import { deepMergeObject, MergeableRecord } from '../../../src/util/objects'
 import { LAST_STEP, SteppingSlicer } from '../../../src/core'
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/40-reconstruct'
+import { italic } from '../../../src/statistics'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -34,36 +35,42 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
 	})
 }
 
+const shell = new RShell()
+const end = () => {
+	shell.close()
+}
+process.on('SIGINT', end)
+process.on('SIGTERM', end)
+
+after(() => {
+	end()
+})
+
 /**
  * produces a shell session for you, can be used within a `describe` block
  * @param fn       - function to use the shell
  * @param packages - packages to be ensured when the shell is created
  */
 export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xmlparsedata']): () => void {
-	return function() {
-		const shell = new RShell()
-
-		// this way we probably do not have to reinstall even if we launch from WebStorm
-		before('setup shell', async function() {
-			this.timeout('15min')
-			shell.tryToInjectHomeLibPath()
-			let network = false
-			for(const pkg of packages) {
-				if(!await shell.isPackageInstalled(pkg)) {
-					if(!network) {
-						await testRequiresNetworkConnection(this)
-					}
-					network = true
-					await shell.ensurePackageInstalled(pkg, true)
-				} else {
-					shell.sendCommand(`library(${ts2r(pkg)})`)
+	// this way we probably do not have to reinstall even if we launch from WebStorm
+	before('setup shell', async function() {
+		this.timeout('15min')
+		shell.tryToInjectHomeLibPath()
+		let network = false
+		for(const pkg of packages) {
+			if(!await shell.isPackageInstalled(pkg)) {
+				if(!network) {
+					await testRequiresNetworkConnection(this)
 				}
+				network = true
+				await shell.ensurePackageInstalled(pkg, true)
+			} else {
+				shell.sendCommand(`library(${ts2r(pkg)})`)
 			}
-		})
+		}
+	})
+	return function() {
 		fn(shell)
-		after(() => {
-			shell.close()
-		})
 	}
 }
 

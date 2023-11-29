@@ -118,7 +118,7 @@ export class RShell {
 	private tempDirs         = new Set<string>()
 
 	public constructor(options?: Partial<RShellOptions>) {
-		this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
+		this.options = { ...DEFAULT_R_SHELL_OPTIONS, ...options }
 		this.log = log.getSubLogger({ name: this.options.sessionName })
 
 		this.session = new RShellSession(this.options, this.log)

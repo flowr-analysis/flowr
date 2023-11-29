@@ -14,6 +14,7 @@ unclean=false
 if [ -n "$(git status --porcelain)" ]; then
   # if we directly assign the test set -eu will not approve
   unclean=true
+  trap reset EXIT
   echo "Working tree is not clean, so we reset in temporary folder"
   # backwards compatible platform independence
   flowrtmpdir=$(mktemp -d 2>/dev/null || mktemp -d -t 'flowrtmpdir')

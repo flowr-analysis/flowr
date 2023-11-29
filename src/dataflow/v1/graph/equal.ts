@@ -46,7 +46,7 @@ export function equalFunctionArguments(a: false | FunctionArgument[], b: false |
 			if(!equalFunctionArgumentsReferences(aArg[1], bArg[1])) {
 				return false
 			}
-		} else if(!equalFunctionArgumentsReferences(aArg , bArg )) {
+		} else if(!equalFunctionArgumentsReferences(aArg as PositionalFunctionArgument, bArg as PositionalFunctionArgument)) {
 			return false
 		}
 	}

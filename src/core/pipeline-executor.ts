@@ -156,28 +156,27 @@ export class PipelineExecutor<P extends Pipeline> {
 		name:   typeof expectedStepName extends undefined ? NameOfStep : PassedName
 		result: typeof expectedStepName extends undefined ? unknown : PipelineStepOutputWithName<P, PassedName>
 	}> {
-		const { step, result } = await this._doNextStep(expectedStepName)
+		const [step, result] = this._doNextStep(expectedStepName)
+		const awaitedResult = await result
 
-		this.output[step as PipelineStepNames<P>] = result
+		this.output[step as PipelineStepNames<P>] = awaitedResult
 		this.stepCounter++
 
-		return { name: step as PassedName, result }
+		return { name: step as PassedName, result: awaitedResult }
 	}
 
-	// TODO: make it private after the stepping slicer is removed
-	public async _doNextStep(expectedStepName: Readonly<NameOfStep | undefined>): Promise<{
+	private _doNextStep(expectedStepName: Readonly<NameOfStep | undefined>): [
 		step:   NameOfStep,
-		result: PipelineStepOutputWithName<P, NameOfStep>
-	}> {
+		result: Promise<PipelineStepOutputWithName<P, NameOfStep>>
+	] {
 		const step = this.pipeline.steps.get(this.pipeline.order[this.stepCounter])
 		guard(step !== undefined, `Cannot execute next step, step ${this.pipeline.order[this.stepCounter]} does not exist.`)
 
 		if(expectedStepName !== undefined) {
 			guard(step.name === expectedStepName, () => `Cannot execute next step, expected step ${JSON.stringify(expectedStepName)} but got ${step.name}.`)
 		}
-		const result = await step.processor(this.output, this.input) as unknown
 
-		return { step: step.name, result: result as PipelineStepOutputWithName<P, NameOfStep> }
+		return [step.name, step.processor(this.output, this.input) as unknown as PipelineStepOutputWithName<P, NameOfStep>]
 	}
 
 	/**

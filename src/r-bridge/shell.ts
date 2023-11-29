@@ -1,4 +1,4 @@
-import { type ChildProcessWithoutNullStreams, spawn } from 'child_process'
+import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process'
 import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, type Logger } from 'tslog'
 import * as readline from 'node:readline'
@@ -76,8 +76,8 @@ export interface RShellSessionOptions extends MergeableRecord {
 	readonly cwd:                string
 	/** The character to use to mark the end of a line. Is probably always `\n` (even on windows). */
 	readonly eol:                string
-	/** The environment variables available in the R session. */
-	readonly env:                NodeJS.ProcessEnv
+	/** The environment variables available in the R session (undefined uses the child-process default). */
+	readonly env:                NodeJS.ProcessEnv | undefined
 	/** If set, the R session will be restarted if it exits due to an error */
 	readonly revive:             RShellReviveOptions
 	/** Called when the R session is restarted, this makes only sense if `revive` is not set to `'never'` */
@@ -99,7 +99,7 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 	pathToRExecutable:  getPlatform() === 'windows' ? 'R.exe' : 'R',
 	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
 	cwd:                process.cwd(),
-	env:                process.env,
+	env:                undefined,
 	eol:                '\n',
 	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
 	revive:             RShellReviveOptions.Never,

@@ -11,9 +11,7 @@ class ValueConversionError extends Error {
  * transforms a value to something R can understand (e.g., booleans to TRUE/FALSE)
  */
 export function ts2r<T>(value: T): string {
-	if(typeof value === 'undefined') {
-		return 'NA'
-	} else if(typeof value === 'string') {
+	if(typeof value === 'string') {
 		return JSON.stringify(value)
 	} else if(typeof value === 'number') {
 		return value.toString()
@@ -21,6 +19,8 @@ export function ts2r<T>(value: T): string {
 		return value ? 'TRUE' : 'FALSE'
 	} else if(value === null) {
 		return 'NULL'
+	} else if(typeof value === 'undefined') {
+		return 'NA'
 	} else if(Array.isArray(value)) {
 		return `c(${value.map(ts2r).join(', ')})`
 	} else if(typeof value === 'object') {

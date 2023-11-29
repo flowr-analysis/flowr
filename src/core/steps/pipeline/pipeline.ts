@@ -1,7 +1,6 @@
 import { IPipelineStep, NameOfStep, PipelineStepStage } from '../step'
 import { verifyAndBuildPipeline } from './create'
 import { DeepReadonly, UnionToIntersection } from 'ts-essentials'
-import { DEFAULT_SLICING_PIPELINE } from './default'
 
 /**
  * A pipeline is a collection of {@link Pipeline#steps|steps} that are executed in a certain {@link Pipeline#order|order}.
@@ -35,8 +34,6 @@ export type PipelineStepOutputWithName<P extends Pipeline, Name extends NameOfSt
 
 
 export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep<P>['requiredInput']>
-
-type T = PipelineInput<typeof DEFAULT_SLICING_PIPELINE>
 
 /**
  * Only gets the union of 'requiredInput' of those PipelineSteps which have a 'execute' field of type 'OncePerRequest'.

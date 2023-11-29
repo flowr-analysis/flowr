@@ -125,27 +125,28 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * Returns the results of the pipeline.
 	 *
 	 * @param intermediate - Normally you can only receive the results *after* the stepper completed the step of interested.
-	 * 		 However, if you pass `true` to this parameter, you can also receive the results *before* the pipeline completed,
-	 * 		 although the typing system then can not guarantee which of the steps have already happened.
+	 * 		 However, if you pass `true` to this parameter, you can also receive the results *before* the {@link PipelineExecutor|pipeline executor}
+	 * 		 completed, although the typing system then can not guarantee which of the steps have already happened.
 	 */
 	public getResults(intermediate = false): PipelineOutput<P> | Partial<PipelineOutput<P>> {
-		guard(intermediate || this.stepCounter >= this.pipeline.order.length, 'Without the intermediate flag, the pipeline must be completed before providing access to the results.')
+		guard(intermediate || this.stepCounter >= this.length, 'Without the intermediate flag, the pipeline must be completed before providing access to the results.')
 		return this.output
 	}
 
 	/**
-	 * Returns true only if 1) there are more steps to-do for the current stage and 2) we have not yet reached the end of the pipeline.
+	 * Returns true only if
+	 * 1) there are more {@link IPipelineStep|steps} to-do for the current {@link StepHasToBeExecuted|stage} and
+	 * 2) we have not yet reached the end of the {@link Pipeline|pipeline}.
 	 */
 	public hasNextStep(): boolean {
-		return (this.stepCounter < this.pipeline.order.length &&
-			this.currentExecutionStage !== StepHasToBeExecuted.OncePerFile) ||
-				this.stepCounter < this.pipeline.firstStepPerRequest
+		return (this.stepCounter < this.length && this.currentExecutionStage !== StepHasToBeExecuted.OncePerFile)
+			|| this.stepCounter < this.pipeline.firstStepPerRequest
 	}
 
 	/**
-	 * Execute the next step and return the name of the step that was executed,
-	 * so you can guard if the step differs from what you are interested in.
-	 * Furthermore, it returns the step's result.
+	 * Execute the next {@link IPipelineStep|step} and return the name of the {@link IPipelineStep|step} that was executed,
+	 * so you can guard if the {@link IPipelineStep|step} differs from what you are interested in.
+	 * Furthermore, it returns the {@link IPipelineStep|step's} result.
 	 *
 	 * @param expectedStepName - A safeguard if you want to retrieve the result.
 	 * 												   If given, it causes the execution to fail if the next step is not the one you expect.

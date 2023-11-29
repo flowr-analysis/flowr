@@ -43,20 +43,14 @@ Currently, the following `<type(s)>` are at your disposal (more may have been or
 | `test`/`tests`                                  | Introduced new or modified existing tests.                                                         |
 | `refactor`                                      | Represents a refactoring of existing code.                                                         |
 | `ci`                                            | Updated the ci pipeline of *flowR*.                                                                |
-| `docker`                                        | Regards the docker version of *flowR*.                                                             |
 | `dep`                                           | Regards the explicit update of dependencies (or the addition of new dependencies.                  |
-| `git`                                           | Performed something git-specific (like updating the git-hooks).                                    |
 | `lint`                                          | Adapted or updated linter-issues.                                                                  |
-| `doc`                                           | Updated the documentation of *flowR*.                                                              |
-| `typo`                                          | Dealt with a small typo/a grammatical mistake.                                                     |
-| `ts`                                            | Performed something typescript-specific (e.g., reconfigured the `tsconfig.json`).                  |
 | `wip`                                           | *Use this only in combination with another type*. It marks the commit to be unfinished.            |
-| `special`                                       | *Use this only if none of the other categories apply*. Explain the details in your commit message. |
+| `meta`                                          | *Use this only if none of the other categories apply*. Explain the details in your commit message. |
 
-You can suffix each type with either
+You can suffix each type with
 
 * `-fix` to denote that you fixed the respective type (this is potentially redundant when used in combination with a type like `typo` and can be omitted there)
-* `-fail` to denote an expected failure of the corresponding addition (usually combined with `wip` because the corresponding feature or test ist not completed yet)
 
 Furthermore, types can be combined with a comma followed by an optional space.
 Although you can give the same type repeatedly - if you think you should, please consider splitting the commit into multiple smaller commits.

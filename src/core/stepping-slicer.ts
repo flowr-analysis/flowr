@@ -3,7 +3,7 @@ import {
 	STEPS_PER_SLICE,
 	SteppingSlicerInput,
 	StepResults,
-	StepName, PipelineStepStage, NameOfStep
+	StepName, PipelineStepStage, PipelineStepName
 } from './steps'
 import { SlicingCriteria } from '../slicing'
 import { createPipeline, Pipeline, PipelineOutput, PipelineStepOutputWithName } from './steps/pipeline'
@@ -144,8 +144,8 @@ export class SteppingSlicer<InterestedIn extends StepName = typeof LAST_STEP> {
 	 * If given, it causes the execution to fail if the next step is not the one you expect.
 	 * *Without step, please refrain from accessing the result.*
 	 */
-	public async nextStep<PassedName extends NameOfStep>(expectedStepName?: PassedName): Promise<{
-		name:   typeof expectedStepName extends undefined ? NameOfStep : PassedName
+	public async nextStep<PassedName extends PipelineStepName>(expectedStepName?: PassedName): Promise<{
+		name:   typeof expectedStepName extends undefined ? PipelineStepName : PassedName
 		result: typeof expectedStepName extends undefined ? unknown : PipelineStepOutputWithName<LegacyPipelineType<InterestedIn>, Exclude<PassedName, undefined>>
 	}> {
 		return this.executor.nextStep(expectedStepName)

@@ -1,5 +1,5 @@
 import { createPipeline } from '../../../../src/core/steps/pipeline'
-import { IPipelineStep, NameOfStep } from '../../../../src/core/steps'
+import { IPipelineStep, PipelineStepName } from '../../../../src/core/steps'
 import { expect } from 'chai'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../../src/core/steps/all/core/00-parse'
 import { allPermutations } from '../../../../src/util/arrays'
@@ -65,7 +65,7 @@ describe('Create Pipeline (includes dependency checks)', () => {
 		})
 	})
 	describe('default behavior', () => {
-		function positive(name: string, rawSteps: IPipelineStep[], expected: NameOfStep[], indexOfFirstPerFile: number = expected.length) {
+		function positive(name: string, rawSteps: IPipelineStep[], expected: PipelineStepName[], indexOfFirstPerFile: number = expected.length) {
 			it(`${name} (all permutations)`, () => {
 				for(const steps of allPermutations(rawSteps)) {
 					const pipeline = createPipeline(...steps)

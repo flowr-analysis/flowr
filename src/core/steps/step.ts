@@ -30,13 +30,13 @@ export const enum PipelineStepStage {
 	OncePerRequest
 }
 
-export type NameOfStep = string & { __brand?: 'StepName' }
+export type PipelineStepName = string & { __brand?: 'StepName' }
 
 /**
  * Contains the data to specify the order of {@link IPipelineStep|steps} in a pipeline.
  */
 export interface IPipelineStepOrder<
-	Name extends NameOfStep = NameOfStep,
+	Name extends PipelineStepName = PipelineStepName,
 > {
 	/**
 	 * Name of the respective step, it does not have to be unique in general but only unique per-pipeline.
@@ -48,7 +48,7 @@ export interface IPipelineStepOrder<
 	 * Give the names of other steps this one requires to be completed as a prerequisite (e.g., to gain access to their input).
 	 * Does not have to be transitive, this will be checked by the scheduler of the pipeline.
 	 */
-	readonly dependencies: readonly NameOfStep[]
+	readonly dependencies: readonly PipelineStepName[]
 	/* does this step has to be repeated for each new request or can it be performed only once in the initialization */
 	readonly executed:     PipelineStepStage
 	/**
@@ -58,7 +58,7 @@ export interface IPipelineStepOrder<
 	 *
 	 * If so, it is ensured that _this_ step is executed _after_ the step it decorates, but before any step that depends on it.
 	 */
-	readonly decorates?:   NameOfStep
+	readonly decorates?:   PipelineStepName
 }
 
 /**
@@ -67,7 +67,7 @@ export interface IPipelineStepOrder<
  * Steps will be executed synchronously, in-sequence, based on their {@link IPipelineStep#dependencies|dependencies}.
  */
 export interface IPipelineStep<
-	Name extends NameOfStep = NameOfStep,
+	Name extends PipelineStepName = PipelineStepName,
 	// eslint-disable-next-line -- by default, we assume nothing about the function shape
 	Fn extends StepProcessingFunction = (...args: any[]) => any,
 > extends MergeableRecord, IPipelineStepOrder<Name> {

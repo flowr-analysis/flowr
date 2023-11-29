@@ -1,4 +1,4 @@
-import { NameOfStep, PipelineStepStage } from './steps'
+import { PipelineStepName, PipelineStepStage } from './steps'
 import { guard } from '../util/assert'
 import {
 	Pipeline,
@@ -176,8 +176,8 @@ export class PipelineExecutor<P extends Pipeline> {
 	 *
 	 * _Without `expectedStepName`, please refrain from accessing the result, as you have no safeguards if the pipeline changes._
 	 */
-	public async nextStep<PassedName extends NameOfStep>(expectedStepName?: PassedName): Promise<{
-		name:   typeof expectedStepName extends undefined ? NameOfStep : PassedName
+	public async nextStep<PassedName extends PipelineStepName>(expectedStepName?: PassedName): Promise<{
+		name:   typeof expectedStepName extends undefined ? PipelineStepName : PassedName
 		result: typeof expectedStepName extends undefined ? unknown : PipelineStepOutputWithName<P, PassedName>
 	}> {
 		const [step, result] = this._doNextStep(expectedStepName)
@@ -189,9 +189,9 @@ export class PipelineExecutor<P extends Pipeline> {
 		return { name: step as PassedName, result: awaitedResult }
 	}
 
-	private _doNextStep(expectedStepName: Readonly<NameOfStep | undefined>): [
-		step:   NameOfStep,
-		result: Promise<PipelineStepOutputWithName<P, NameOfStep>>
+	private _doNextStep(expectedStepName: Readonly<PipelineStepName | undefined>): [
+		step:   PipelineStepName,
+		result: Promise<PipelineStepOutputWithName<P, PipelineStepName>>
 	] {
 		const step = this.pipeline.steps.get(this.pipeline.order[this.stepCounter])
 		guard(step !== undefined, () => `Cannot execute next step, step ${this.pipeline.order[this.stepCounter]} does not exist.`)
@@ -200,7 +200,7 @@ export class PipelineExecutor<P extends Pipeline> {
 			guard(step.name === expectedStepName, () => `Cannot execute next step, expected step ${JSON.stringify(expectedStepName)} but got ${step.name}.`)
 		}
 
-		return [step.name, step.processor(this.output, this.input) as unknown as PipelineStepOutputWithName<P, NameOfStep>]
+		return [step.name, step.processor(this.output, this.input) as unknown as PipelineStepOutputWithName<P, PipelineStepName>]
 	}
 
 	/**
@@ -219,7 +219,7 @@ export class PipelineExecutor<P extends Pipeline> {
 		this.stepCounter = requestStep
 		// clear the results for all steps with an index >= firstStepPerRequest, this is more of a sanity check
 		for(let i = requestStep; i < this.length; i++) {
-			this.output[this.pipeline.order[i] as PipelineStepNames<P>] = undefined as unknown as PipelineStepOutputWithName<P, NameOfStep>
+			this.output[this.pipeline.order[i] as PipelineStepNames<P>] = undefined as unknown as PipelineStepOutputWithName<P, PipelineStepName>
 		}
 	}
 

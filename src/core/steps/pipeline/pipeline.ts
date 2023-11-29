@@ -1,4 +1,4 @@
-import { IPipelineStep, NameOfStep, PipelineStepStage } from '../step'
+import { IPipelineStep, PipelineStepName, PipelineStepStage } from '../step'
 import { verifyAndBuildPipeline } from './create'
 import { DeepReadonly, UnionToIntersection } from 'ts-essentials'
 
@@ -9,7 +9,7 @@ import { DeepReadonly, UnionToIntersection } from 'ts-essentials'
  * If you want to get the type of all steps in the pipeline (given they are created canonically using const step names), refer to {@link PipelineStepNames}.
  */
 export interface Pipeline<T extends IPipelineStep = IPipelineStep> {
-	readonly steps:               ReadonlyMap<NameOfStep, DeepReadonly<IPipelineStep>>
+	readonly steps:               ReadonlyMap<PipelineStepName, DeepReadonly<IPipelineStep>>
 	readonly order:               readonly T['name'][]
 	/**
 	 * In the order, this is the index of the first step that
@@ -27,10 +27,10 @@ export interface Pipeline<T extends IPipelineStep = IPipelineStep> {
 export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name']
 export type PipelineStep<P extends Pipeline> = P extends Pipeline<infer U> ? U : never
 
-export type PipelineStepWithName<P extends Pipeline, Name extends NameOfStep> = P extends Pipeline<infer U> ? U extends IPipelineStep<Name> ? U : never : never
-export type PipelineStepProcessorWithName<P extends Pipeline, Name extends NameOfStep> = PipelineStepWithName<P, Name>['processor']
-export type PipelineStepPrintersWithName<P extends Pipeline, Name extends NameOfStep> = PipelineStepWithName<P, Name>['printer']
-export type PipelineStepOutputWithName<P extends Pipeline, Name extends NameOfStep> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>>
+export type PipelineStepWithName<P extends Pipeline, Name extends PipelineStepName> = P extends Pipeline<infer U> ? U extends IPipelineStep<Name> ? U : never : never
+export type PipelineStepProcessorWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['processor']
+export type PipelineStepPrintersWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['printer']
+export type PipelineStepOutputWithName<P extends Pipeline, Name extends PipelineStepName> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>>
 
 
 export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep<P>['requiredInput']>

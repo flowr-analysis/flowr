@@ -61,6 +61,12 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
 	errorStopsWaiting:       true
 }
 
+export const enum RShellReviveOptions {
+	Never,
+	OnError,
+	Always
+}
+
 export interface RShellSessionOptions extends MergeableRecord {
 	/** The path to the R executable, can be only the executable if it is to be found on the PATH. */
 	readonly pathToRExecutable:  string
@@ -73,7 +79,7 @@ export interface RShellSessionOptions extends MergeableRecord {
 	/** The environment variables available in the R session. */
 	readonly env:                NodeJS.ProcessEnv
 	/** If set, the R session will be restarted if it exits due to an error */
-	readonly revive:             'never' | 'on-error' | 'always'
+	readonly revive:             RShellReviveOptions
 	/** Called when the R session is restarted, this makes only sense if `revive` is not set to `'never'` */
 	readonly onRevive:           (code: number, signal: string | null) => void
 	/** The path to the library directory, use undefined to let R figure that out for itself */
@@ -96,7 +102,7 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 	env:                process.env,
 	eol:                '\n',
 	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
-	revive:             'never',
+	revive:             RShellReviveOptions.Never,
 	onRevive:           () => { /* do nothing */ }
 } as const
 
@@ -126,12 +132,12 @@ export class RShell {
 	}
 
 	private revive() {
-		if(this.options.revive === 'never') {
+		if(this.options.revive === RShellReviveOptions.Never) {
 			return
 		}
 
 		this.session.onExit((code, signal) => {
-			if(this.options.revive === 'always' || (this.options.revive === 'on-error' && code !== 0)) {
+			if(this.options.revive === RShellReviveOptions.Always || (this.options.revive === RShellReviveOptions.OnError && code !== 0)) {
 				this.log.warn(`R session exited with code ${code}, reviving!`)
 				this.options.onRevive(code, signal)
 				this.session = new RShellSession(this.options, this.log)

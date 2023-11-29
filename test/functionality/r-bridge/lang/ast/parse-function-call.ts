@@ -4,7 +4,7 @@ import { rangeFrom } from '../../../../../src/util/range'
 import { RType } from '../../../../../src/r-bridge'
 import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/internal'
 
-describe('Parse function calls', withShell((shell) => {
+describe('Parse function calls', withShell(shell => {
 	describe('functions without arguments', () => {
 		assertAst(
 			'f()',

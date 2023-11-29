@@ -194,7 +194,7 @@ export class PipelineExecutor<P extends Pipeline> {
 		result: Promise<PipelineStepOutputWithName<P, NameOfStep>>
 	] {
 		const step = this.pipeline.steps.get(this.pipeline.order[this.stepCounter])
-		guard(step !== undefined, `Cannot execute next step, step ${this.pipeline.order[this.stepCounter]} does not exist.`)
+		guard(step !== undefined, () => `Cannot execute next step, step ${this.pipeline.order[this.stepCounter]} does not exist.`)
 
 		if(expectedStepName !== undefined) {
 			guard(step.name === expectedStepName, () => `Cannot execute next step, expected step ${JSON.stringify(expectedStepName)} but got ${step.name}.`)

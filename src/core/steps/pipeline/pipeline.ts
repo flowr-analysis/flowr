@@ -1,5 +1,6 @@
 import { IPipelineStep, NameOfStep, StepHasToBeExecuted } from '../step'
 import { verifyAndBuildPipeline } from './create'
+import { DeepReadonly } from 'ts-essentials'
 
 /**
  * A pipeline is a collection of {@link Pipeline#steps|steps} that are executed in a certain {@link Pipeline#order|order}.
@@ -8,7 +9,7 @@ import { verifyAndBuildPipeline } from './create'
  * If you want to get the type of all steps in the pipeline (given they are created canonically using const step names), refer to {@link PipelineStepNames}.
  */
 export interface Pipeline<T extends IPipelineStep = IPipelineStep> {
-	readonly steps:               ReadonlyMap<NameOfStep, IPipelineStep>
+	readonly steps:               ReadonlyMap<NameOfStep, DeepReadonly<IPipelineStep>>
 	readonly order:               readonly T['name'][]
 	/**
 	 * In the order, this is the index of the first step that

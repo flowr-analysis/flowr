@@ -71,15 +71,15 @@ import {
  */
 export class PipelineExecutor<P extends Pipeline> {
 	private readonly pipeline: P
-	private input:             PipelineInput<P>
-	private output:            PipelineOutput<P> = {} as PipelineOutput<P>
 
+	private input:  PipelineInput<P>
+	private output: PipelineOutput<P> = {} as PipelineOutput<P>
 	private currentExecutionStage = StepHasToBeExecuted.OncePerFile
 	private stepCounter = 0
 
 	/**
-	 * Create a new pipeline executor. The required additional input is specified by the {@link IPipelineStep#requiredInput|required input configuration}
-	 * of each step in the `pipeline`.
+	 * Construct a new pipeline executor.
+	 * The required additional input is specified by the {@link IPipelineStep#requiredInput|required input configuration} of each step in the `pipeline`.
 	 *
 	 * @param pipeline - The {@link Pipeline} to execute, probably created with {@link createPipeline}.
 	 * @param input    - External {@link PipelineInput|configuration and input} required to execute the given pipeline.
@@ -90,7 +90,8 @@ export class PipelineExecutor<P extends Pipeline> {
 	}
 
 	/**
-	 * Retrieve the current stage the pipeline executor is in.
+	 * Retrieve the current {@link StepHasToBeExecuted|stage} the pipeline executor is in.
+	 *
 	 * @see currentExecutionStage
 	 * @see switchToRequestStage
 	 */

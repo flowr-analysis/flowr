@@ -12,7 +12,7 @@ import {
 } from '../r-bridge'
 import { IStoppableStopwatch, Measurements } from './stopwatch'
 import { guard } from '../util/assert'
-import { DataflowInformation } from '../dataflow/internal/info'
+import { DataflowInformation } from '../dataflow/v1/internal/info'
 import {
 	SlicingCriteria,
 	collectAllSlicingCriteria,

@@ -14,7 +14,7 @@ import {
 	XmlParserHooks
 } from '../../../src/r-bridge'
 import { assert } from 'chai'
-import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow'
+import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
 import { SlicingCriteria } from '../../../src/slicing'
 import { testRequiresRVersion } from './version'
 import { deepMergeObject, MergeableRecord } from '../../../src/util/objects'

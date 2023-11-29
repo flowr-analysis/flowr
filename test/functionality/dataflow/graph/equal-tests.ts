@@ -1,4 +1,4 @@
-import { DataflowGraph, diffGraphsToMermaidUrl, EdgeType } from '../../../../src/dataflow'
+import { DataflowGraph, diffGraphsToMermaidUrl, EdgeType } from '../../../../src/dataflow/v1'
 import { assert } from 'chai'
 
 function test(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, text: string) {

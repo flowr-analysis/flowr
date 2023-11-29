@@ -25,7 +25,7 @@ import { defaultQuadIdGenerator, QuadSerializationConfiguration } from '../../..
 import { deepMergeObject } from '../../../util/objects'
 import { LogLevel } from '../../../util/log'
 import { printStepResult, StepOutputFormat } from '../../../core/print/print'
-import { DataflowInformation } from '../../../dataflow/internal/info'
+import { DataflowInformation } from '../../../dataflow/v1/internal/info'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse'
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize'
 import { LEGACY_STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow'

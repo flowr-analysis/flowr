@@ -6,7 +6,7 @@ import {
 	graphToMermaidUrl,
 	initializeCleanEnvironments,
 	REnvironmentInformation
-} from '../../dataflow'
+} from '../../dataflow/v1'
 import { guard } from '../../util/assert'
 import {
 	collectAllIds,
@@ -17,10 +17,10 @@ import {
 	RType
 } from '../../r-bridge'
 import { log } from '../../util/log'
-import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
-import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
+import { getAllLinkedFunctionDefinitions } from '../../dataflow/v1/internal/linker'
+import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/v1/environments'
 import objectHash from 'object-hash'
-import { LocalScope } from '../../dataflow/environments/scopes'
+import { LocalScope } from '../../dataflow/v1/environments/scopes'
 import { convertAllSlicingCriteriaToIds, DecodedCriteria, SlicingCriteria } from '../criterion'
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })

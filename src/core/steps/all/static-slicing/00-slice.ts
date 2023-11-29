@@ -3,7 +3,7 @@ import { IPipelineStep, PipelineStepStage } from '../../step'
 import { SlicingCriteria, staticSlicing } from '../../../../slicing'
 import { DeepReadonly } from 'ts-essentials'
 import { NormalizeRequiredInput } from '../core/10-normalize'
-import { DataflowInformation } from '../../../../dataflow/internal/info'
+import { DataflowInformation } from '../../../../dataflow/v1/internal/info'
 import { NormalizedAst } from '../../../../r-bridge'
 
 export interface SliceRequiredInput extends NormalizeRequiredInput {

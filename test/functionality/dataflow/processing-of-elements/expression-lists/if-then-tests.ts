@@ -1,10 +1,10 @@
 import {
 	DataflowGraph, EdgeType,
 	initializeCleanEnvironments
-} from '../../../../../src/dataflow'
+} from '../../../../../src/dataflow/v1'
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
-import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
+import { appendEnvironments, define } from '../../../../../src/dataflow/v1/environments'
+import { GlobalScope, LocalScope } from '../../../../../src/dataflow/v1/environments/scopes'
 
 describe('Lists with if-then constructs', withShell(shell => {
 	for(const assign of [ '<-', '<<-', '=']) {

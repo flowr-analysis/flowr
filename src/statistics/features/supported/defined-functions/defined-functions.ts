@@ -10,7 +10,7 @@ import {
 	RType,
 	visitAst
 } from '../../../../r-bridge'
-import { EdgeType } from '../../../../dataflow'
+import { EdgeType } from '../../../../dataflow/v1'
 import { guard, isNotUndefined } from '../../../../util/assert'
 import { postProcess } from './post-process'
 

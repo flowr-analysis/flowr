@@ -2,7 +2,7 @@ import { Feature, FeatureProcessorInput } from '../../feature'
 import { appendStatisticsFile } from '../../../output'
 import { Writable } from 'ts-essentials'
 import { RNodeWithParent, RType, visitAst } from '../../../../r-bridge'
-import { EdgeType } from '../../../../dataflow'
+import { EdgeType } from '../../../../dataflow/v1'
 import {
 	CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts,

@@ -1,6 +1,6 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import { IPipelineStep, PipelineStepStage } from '../../step'
-import { produceDataFlowGraph } from '../../../../dataflow'
+import { produceDataFlowGraph } from '../../../../dataflow/v1'
 import {
 	dataflowGraphToJson,
 	dataflowGraphToMermaid,
@@ -10,7 +10,7 @@ import {
 import { DeepReadonly } from 'ts-essentials'
 import { NormalizedAst } from '../../../../r-bridge'
 
-function processor(results: { normalize?: NormalizedAst }) {
+function legacyProcessor(results: { normalize?: NormalizedAst }) {
 	return produceDataFlowGraph(results.normalize as NormalizedAst)
 }
 
@@ -30,6 +30,12 @@ const staticDataflowCommon = {
 
 export const LEGACY_STATIC_DATAFLOW = {
 	...staticDataflowCommon,
-	processor,
+	processor:     legacyProcessor,
 	requiredInput: {}
-} as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof processor>>
+} as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof legacyProcessor>>
+
+export const V2_STATIC_DATAFLOW = {
+	...staticDataflowCommon,
+	processor:     legacyProcessor,
+	requiredInput: {}
+} as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof legacyProcessor>>

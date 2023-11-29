@@ -71,6 +71,7 @@ import {
  */
 export class PipelineExecutor<P extends Pipeline> {
 	private readonly pipeline: P
+	private readonly length:   number
 
 	private input:  PipelineInput<P>
 	private output: PipelineOutput<P> = {} as PipelineOutput<P>
@@ -86,6 +87,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 */
 	constructor(pipeline: P, input: PipelineInput<P>) {
 		this.pipeline = pipeline
+		this.length = pipeline.order.length
 		this.input = input
 	}
 
@@ -94,13 +96,18 @@ export class PipelineExecutor<P extends Pipeline> {
 	 *
 	 * @see currentExecutionStage
 	 * @see switchToRequestStage
+	 * @see StepHasToBeExecuted
 	 */
 	public getCurrentStage(): StepHasToBeExecuted {
 		return this.currentExecutionStage
 	}
 
 	/**
-	 * Switch to the next stage of the stepping slicer.
+	 * Switch to the next {@link StepHasToBeExecuted|stage} of the pipeline executor.
+	 *
+	 * This will fail if either a step change is currently not valid (as not all steps have been executed),
+	 * or if there is no next stage (i.e., the pipeline is already completed or in the last stage).
+	 *
 	 * @see PipelineExecutor
 	 * @see getCurrentStage
 	 */
@@ -136,7 +143,8 @@ export class PipelineExecutor<P extends Pipeline> {
 	}
 
 	/**
-	 * Execute the next step (guarded with {@link hasNextStep}) and return the name of the step that was executed, so you can guard if the step differs from what you are interested in.
+	 * Execute the next step and return the name of the step that was executed,
+	 * so you can guard if the step differs from what you are interested in.
 	 * Furthermore, it returns the step's result.
 	 *
 	 * @param expectedStepName - A safeguard if you want to retrieve the result.
@@ -148,8 +156,6 @@ export class PipelineExecutor<P extends Pipeline> {
 		name:   typeof expectedStepName extends undefined ? NameOfStep : PassedName
 		result: typeof expectedStepName extends undefined ? unknown : PipelineStepOutputWithName<P, PassedName>
 	}> {
-		guard(this.hasNextStep(), 'No more steps to do in the pipeline.')
-
 		const guardStep = this.getGuardStep(expectedStepName)
 
 		const { step, result } = await this._doNextStep(guardStep)
@@ -175,7 +181,7 @@ export class PipelineExecutor<P extends Pipeline> {
 		step:   NameOfStep,
 		result: PipelineStepOutputWithName<P, NameOfStep>
 	}> {
-		guard(this.stepCounter >= 0 && this.stepCounter < this.pipeline.order.length, `Cannot execute next step, already reached end of pipeline or unexpected index (${this.stepCounter}).`)
+		guard(this.stepCounter >= 0 && this.stepCounter < this.length, `Cannot execute next step, already reached end of pipeline or unexpected index (${this.stepCounter}).`)
 		const step = this.pipeline.steps.get(this.pipeline.order[this.stepCounter])
 		guard(step !== undefined, `Cannot execute next step, step ${this.pipeline.order[this.stepCounter]} does not exist.`)
 
@@ -189,17 +195,18 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * This only makes sense if you have already run a request and want to re-use the per-file results for a new one.
 	 * (or if for whatever reason you did not pass information for the pipeline with the constructor).
 	 *
-	 * @param newRequestData - data for the new request
+	 * @param newRequestData - Data for the new request
 	 */
 	public updateRequest(newRequestData: PipelinePerRequestInput<P>): void {
-		guard(this.stepCounter >= this.pipeline.firstStepPerRequest, 'Cannot reset slice prior to once-per-slice stage')
+		const requestStep = this.pipeline.firstStepPerRequest
+		guard(this.stepCounter >= requestStep, 'Cannot reset slice prior to once-per-slice stage')
 		this.input = {
 			...this.input,
 			...newRequestData
 		}
-		this.stepCounter = this.pipeline.firstStepPerRequest
+		this.stepCounter = requestStep
 		// clear the results for all steps with an index >= firstStepPerRequest, this is more of a sanity check
-		for(let i = this.pipeline.firstStepPerRequest; i < this.pipeline.order.length; i++) {
+		for(let i = requestStep; i < this.length; i++) {
 			this.output[this.pipeline.order[i] as PipelineStepNames<P>] = undefined as unknown as PipelineStepOutputWithName<P, NameOfStep>
 		}
 	}
@@ -208,27 +215,29 @@ export class PipelineExecutor<P extends Pipeline> {
 	public async allRemainingSteps(canSwitchStage?: true): Promise<PipelineOutput<P>>
 	public async allRemainingSteps(canSwitchStage: boolean): Promise<PipelineOutput<P> | Partial<PipelineOutput<P>>>
 	/**
-	 * Execute all remaining steps and automatically call {@link switchToSliceStage} if necessary.
-	 * @param canSwitchStage - if true, automatically switch to the request stage if necessary
+	 * Execute all remaining steps and automatically call {@link switchToRequestStage} if necessary.
+	 * @param canSwitchStage - If true, automatically switch to the request stage if necessary
 	 *       (i.e., this is what you want if you have never executed {@link nextStep} and you want to execute *all* steps).
 	 *       However, passing false allows you to only execute the steps of the 'once-per-file' stage (i.e., the steps that can be cached).
 	 *
 	 * @note There is a small type difference if you pass 'false' and already have manually switched to the 'once-per-request' stage.
 	 *       Because now, the results of these steps are no longer part of the result type (although they are still included).
 	 *       In such a case, you may be better off with simply passing 'true' as the function will detect that the stage is already switched.
-	 *       We could solve this type problem by separating the PipelineExecutor class into two for each stage, but this would break the improved readability and unified handling
-	 *       of the executor that I wanted to achieve with this class.
+	 *       We could solve this type problem by separating the {@link PipelineExecutor} class into two for each stage,
+	 *       but this would break the improved readability and unified handling of the executor that I wanted to achieve with this class.
 	 */
 	public async allRemainingSteps(canSwitchStage = true): Promise<PipelineOutput<P> | Partial<PipelineOutput<P>>> {
 		while(this.hasNextStep()) {
 			await this.nextStep()
 		}
-		if(canSwitchStage && this.stepCounter < this.pipeline.steps.size && this.currentExecutionStage === StepHasToBeExecuted.OncePerFile) {
+
+		if(canSwitchStage && this.stepCounter < this.length && this.currentExecutionStage === StepHasToBeExecuted.OncePerFile) {
 			this.switchToRequestStage()
 			while(this.hasNextStep()) {
 				await this.nextStep()
 			}
 		}
-		return this.stepCounter < this.pipeline.steps.size ? this.getResults(true) : this.getResults()
+
+		return this.stepCounter < this.length ? this.getResults(true) : this.getResults()
 	}
 }

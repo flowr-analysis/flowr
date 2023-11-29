@@ -17,8 +17,6 @@ import { InternalStepPrinter, IPipelineStepPrinter, StepOutputFormat } from '../
  * ensured at runtime by your dependencies. If you want to make sure, that the information is present,
  * list all steps that you require as your {@link IPipelineStepOrder#dependencies|dependencies}, even if they would be
  * already covered transitively.
- *
- * TODO: we could use prototypic cores for each step name
  */
 export type StepProcessingFunction =
 	(results: Record<string, unknown>, input: Record<string, unknown>) => unknown
@@ -32,7 +30,6 @@ export const enum PipelineStepStage {
 	OncePerRequest
 }
 
-// TODO: rename to StepName
 export type NameOfStep = string & { __brand?: 'StepName' }
 
 /**
@@ -92,8 +89,6 @@ export interface IPipelineStep<
 	 * Required inputs of dependencies do not have to, but can be repeated.
 	 * <p>
 	 * Use the pattern `undefined as unknown as T` to indicate that the value is required but not provided.
-	 *
-	 * TODO: respect default values.
 	 */
 	readonly requiredInput: object
 }

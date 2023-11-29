@@ -144,7 +144,8 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 	while(queue.nonEmpty()) {
 		const current = queue.next()
 
-		const baseEnvFingerprint = envFingerprint(current.baseEnvironment)
+		const baseEnvironment = current.baseEnvironment
+		const baseEnvFingerprint = envFingerprint(baseEnvironment)
 
 		const currentInfo = dataflowGraph.get(current.id, true)
 
@@ -165,14 +166,14 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 
 		for(const [target, edge] of currentEdges) {
 			if(edge.types.has(EdgeType.SideEffectOnCall)) {
-				queue.add(target, current.baseEnvironment, baseEnvFingerprint, true)
+				queue.add(target, baseEnvironment, baseEnvFingerprint, true)
 			}
 			if(edge.types.has(EdgeType.Reads) || edge.types.has(EdgeType.DefinedBy) || edge.types.has(EdgeType.Argument) || edge.types.has(EdgeType.Calls) || edge.types.has(EdgeType.Relates) || edge.types.has(EdgeType.DefinesOnCall)) {
-				queue.add(target, current.baseEnvironment, baseEnvFingerprint, false)
+				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
 			}
 		}
 		for(const controlFlowDependency of addControlDependencies(currentVertex.id, idMap)) {
-			queue.add(controlFlowDependency, current.baseEnvironment, baseEnvFingerprint, false)
+			queue.add(controlFlowDependency, baseEnvironment, baseEnvFingerprint, false)
 		}
 	}
 

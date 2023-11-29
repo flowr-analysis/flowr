@@ -94,7 +94,6 @@ export class SteppingSlicer<InterestedIn extends StepName = typeof LAST_STEP> {
 	 * Create a new stepping slicer. For more details on the arguments please see {@link SteppingSlicerInput}.
 	 */
 	constructor(input: SteppingSlicerInput<InterestedIn>) {
-		// TODO: subset pipeline based on interested in
 		this.executor = new PipelineExecutor(getLegacyPipeline(input.stepOfInterest ?? LAST_STEP), input) as PipelineExecutor<LegacyPipelineType<InterestedIn>>
 	}
 

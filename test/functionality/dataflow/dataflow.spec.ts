@@ -1,5 +1,9 @@
 import { requireAllTestsInFolder } from '../_helper/collect-tests'
 import path from 'path'
+import { PipelineExecutor } from '../../../src/core/pipeline-executor'
+import { DEFAULT_SLICING_PIPELINE } from '../../../src/core/steps/pipeline'
+import { withShell } from '../_helper/shell'
+import { requestFromInput } from '../../../src/r-bridge'
 
 describe('Dataflow', () => {
 	describe('Environments', () =>
@@ -10,6 +14,27 @@ describe('Dataflow', () => {
 		requireAllTestsInFolder(path.join(__dirname, 'graph'))
 	)
 
+	describe('x', withShell(shell => {
+		it('foo', async() => {
+			const stepper = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
+				shell,
+				criterion: ['2@b'],
+				request:   requestFromInput('b <- 3\ncat(b)'),
+			})
+
+			while(stepper.hasNextStep()) {
+				await stepper.nextStep()
+			}
+
+			stepper.switchToRequestStage()
+
+			while(stepper.hasNextStep()) {
+				await stepper.nextStep()
+			}
+
+			console.log(stepper.getResults())
+		})
+	}))
 
 	require('./processing-of-elements/processing-of-elements')
 })

@@ -1,6 +1,7 @@
-import { IPipelineStep, NameOfStep, StepHasToBeExecuted } from '../step'
+import { IPipelineStep, NameOfStep, PipelineStepStage } from '../step'
 import { verifyAndBuildPipeline } from './create'
-import { DeepReadonly } from 'ts-essentials'
+import { DeepReadonly, UnionToIntersection } from 'ts-essentials'
+import { DEFAULT_SLICING_PIPELINE } from './default'
 
 /**
  * A pipeline is a collection of {@link Pipeline#steps|steps} that are executed in a certain {@link Pipeline#order|order}.
@@ -13,8 +14,8 @@ export interface Pipeline<T extends IPipelineStep = IPipelineStep> {
 	readonly order:               readonly T['name'][]
 	/**
 	 * In the order, this is the index of the first step that
-	 * is executed {@link StepHasToBeExecuted#OncePerRequest|once per request}.
-	 * If it is "out of bounds" (i.e., the number of steps), all steps are executed {@link StepHasToBeExecuted#OncePerFile|once per file}.
+	 * is executed {@link PipelineStepStage#OncePerRequest|once per request}.
+	 * If it is "out of bounds" (i.e., the number of steps), all steps are executed {@link PipelineStepStage#OncePerFile|once per file}.
 	 */
 	readonly firstStepPerRequest: number
 }
@@ -32,14 +33,17 @@ export type PipelineStepProcessorWithName<P extends Pipeline, Name extends NameO
 export type PipelineStepPrintersWithName<P extends Pipeline, Name extends NameOfStep> = PipelineStepWithName<P, Name>['printer']
 export type PipelineStepOutputWithName<P extends Pipeline, Name extends NameOfStep> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>>
 
-export type PipelineInput<P extends Pipeline> = PipelineStep<P>['requiredInput']
+
+export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep<P>['requiredInput']>
+
+type T = PipelineInput<typeof DEFAULT_SLICING_PIPELINE>
 
 /**
  * Only gets the union of 'requiredInput' of those PipelineSteps which have a 'execute' field of type 'OncePerRequest'.
  * In other words, information that you may want to change for another request (e.g., another slice) with the same file.
  */
 export type PipelinePerRequestInput<P extends Pipeline> = {
-	[K in PipelineStepNames<P>]: PipelineStep<P>['executed'] extends StepHasToBeExecuted.OncePerFile ? never : PipelineStepWithName<P, K>['requiredInput']
+	[K in PipelineStepNames<P>]: PipelineStep<P>['executed'] extends PipelineStepStage.OncePerFile ? never : PipelineStepWithName<P, K>['requiredInput']
 }[PipelineStepNames<P>]
 
 export type PipelineOutput<P extends Pipeline> = {
@@ -58,7 +62,7 @@ export type PipelineOutput<P extends Pipeline> = {
  * 4) the target of a {@link IPipelineStepOrder#decorates|step's decoration} exists
  * 5) if a {@link IPipelineStepOrder#decorates|decoration} applies, all of its {@link IPipelineStepOrder#dependencies|dependencies} are already in the pipeline
  * 6) in the resulting {@link Pipeline|pipeline}, there is a strict cut between {@link IPipelineStep|steps} that are executed
- * 		{@link StepHasToBeExecuted#OncePerFile|once per file} and {@link StepHasToBeExecuted#OncePerRequest|once per request}.
+ * 		{@link PipelineStepStage#OncePerFile|once per file} and {@link PipelineStepStage#OncePerRequest|once per request}.
  *
  * @returns The function will try to order your collection steps so that all the constraints hold.
  * If it succeeds it will return the resulting {@link Pipeline|pipeline}, otherwise it will throw an {@link InvalidPipelineError}.

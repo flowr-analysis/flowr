@@ -1,4 +1,4 @@
-import { IPipelineStep, NameOfStep, StepHasToBeExecuted } from '../step'
+import { IPipelineStep, NameOfStep, PipelineStepStage } from '../step'
 import { InvalidPipelineError } from './invalid-pipeline-error'
 import { Pipeline } from './pipeline'
 import { jsonReplacer } from '../../../util/json'
@@ -12,7 +12,7 @@ export function verifyAndBuildPipeline(steps: readonly IPipelineStep[]): Pipelin
 		throw new InvalidPipelineError('0) Pipeline is empty')
 	}
 
-	const [perFileSteps, perRequestSteps] = partitionArray(steps, s => s.executed === StepHasToBeExecuted.OncePerFile)
+	const [perFileSteps, perRequestSteps] = partitionArray(steps, s => s.executed === PipelineStepStage.OncePerFile)
 
 	// we construct a map linking each name to its respective step
 	const perFileStepMap = new Map<NameOfStep, IPipelineStep>()

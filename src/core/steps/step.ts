@@ -25,7 +25,7 @@ export type StepProcessingFunction =
 /**
  * This represents the required execution frequency of a step.
  */
-export const enum StepHasToBeExecuted {
+export const enum PipelineStepStage {
 	/** This step has to be executed once per file */
 	OncePerFile,
 	/** This step has to be executed once per request (e.g., slice for a given variable) */
@@ -53,7 +53,7 @@ export interface IPipelineStepOrder<
 	 */
 	readonly dependencies: readonly NameOfStep[]
 	/* does this step has to be repeated for each new request or can it be performed only once in the initialization */
-	readonly executed:     StepHasToBeExecuted
+	readonly executed:     PipelineStepStage
 	/**
 	 * This is similar to {@link dependencies}, but is used to say that a given step _decorates_ another one.
 	 * This imbues two requirements:
@@ -92,8 +92,10 @@ export interface IPipelineStep<
 	 * Required inputs of dependencies do not have to, but can be repeated.
 	 * <p>
 	 * Use the pattern `undefined as unknown as T` to indicate that the value is required but not provided.
+	 *
+	 * TODO: respect default values.
 	 */
-	readonly requiredInput?: Record<string, unknown>
+	readonly requiredInput: object
 }
 
 

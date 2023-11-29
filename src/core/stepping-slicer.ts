@@ -3,7 +3,7 @@ import {
 	STEPS_PER_SLICE,
 	SteppingSlicerInput,
 	StepResults,
-	StepName, StepHasToBeExecuted, NameOfStep
+	StepName, PipelineStepStage, NameOfStep
 } from './steps'
 import { SlicingCriteria } from '../slicing'
 import { createPipeline, Pipeline, PipelineOutput, PipelineStepOutputWithName } from './steps/pipeline'
@@ -99,10 +99,10 @@ export class SteppingSlicer<InterestedIn extends StepName = typeof LAST_STEP> {
 
 	/**
 	 * Retrieve the current stage the stepping slicer is in.
-	 * @see StepHasToBeExecuted
+	 * @see PipelineStepStage
 	 * @see switchToSliceStage
 	 */
-	public getCurrentStage(): StepHasToBeExecuted {
+	public getCurrentStage(): PipelineStepStage {
 		return this.executor.getCurrentStage()
 	}
 

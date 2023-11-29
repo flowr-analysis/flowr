@@ -1,4 +1,4 @@
-import { NameOfStep, StepHasToBeExecuted } from './steps'
+import { NameOfStep, PipelineStepStage } from './steps'
 import { guard } from '../util/assert'
 import {
 	Pipeline,
@@ -10,17 +10,20 @@ import {
 } from './steps/pipeline'
 
 /**
- * TODO: This is ultimately the root of flowR's static slicing procedure.
- * It clearly defines the steps that are to be executed and splits them into two stages.
- * - `once-per-file`: for steps that are executed once per file. These can be performed *without* the knowledge of a slicing criteria,
- *   and they can be cached and re-used if you want to slice the same file multiple times.
- * - `once-per-slice`: for steps that are executed once per slice. These can only be performed *with* a slicing criteria.
+ * The pipeline executor allows to execute arbitrary {@link Pipeline|pipelines} in a step-by-step fashion.
+ * If you are not yet in the possession of a {@link Pipeline|pipeline}, you can use the {@link createPipeline} function
+ * to create one for yourself, based on the steps that you want to execute.
  *
- * Furthermore, this stepper follows an iterable fashion to be *as flexible as possible* (e.g., to be instrumented with measurements).
- * So, you can use the stepping slicer like this:
+ * Those steps are split into two phases or "stages" (which is the name that we will use in the following), represented
+ * by the {@link PipelineStepStage} type. These allow us to separate things that have to be done
+ * once per-file, e.g., actually parsing the AST, from those, that we need to repeat 'once per request' (whatever this
+ * request may be). In other words, what can be cached between operations and what can not.
+ *
+ * Furthermore, this executor follows an iterable fashion to be *as flexible as possible*
+ * (e.g., to be instrumented with measurements). So, you can use the pipeline executor like this:
  *
  * ```ts
- * const slicer = new SteppingSlicer({ ... })
+ * const slicer = new PipelineExecutor({ ... })
  * while(slicer.hasNextStep()) {
  *     await slicer.nextStep()
  * }
@@ -75,7 +78,7 @@ export class PipelineExecutor<P extends Pipeline> {
 
 	private input:  PipelineInput<P>
 	private output: PipelineOutput<P> = {} as PipelineOutput<P>
-	private currentExecutionStage = StepHasToBeExecuted.OncePerFile
+	private currentExecutionStage = PipelineStepStage.OncePerFile
 	private stepCounter = 0
 
 	/**
@@ -92,18 +95,18 @@ export class PipelineExecutor<P extends Pipeline> {
 	}
 
 	/**
-	 * Retrieve the current {@link StepHasToBeExecuted|stage} the pipeline executor is in.
+	 * Retrieve the current {@link PipelineStepStage|stage} the pipeline executor is in.
 	 *
 	 * @see currentExecutionStage
 	 * @see switchToRequestStage
-	 * @see StepHasToBeExecuted
+	 * @see PipelineStepStage
 	 */
-	public getCurrentStage(): StepHasToBeExecuted {
+	public getCurrentStage(): PipelineStepStage {
 		return this.currentExecutionStage
 	}
 
 	/**
-	 * Switch to the next {@link StepHasToBeExecuted|stage} of the pipeline executor.
+	 * Switch to the next {@link PipelineStepStage|stage} of the pipeline executor.
 	 *
 	 * This will fail if either a step change is currently not valid (as not all steps have been executed),
 	 * or if there is no next stage (i.e., the pipeline is already completed or in the last stage).
@@ -113,8 +116,8 @@ export class PipelineExecutor<P extends Pipeline> {
 	 */
 	public switchToRequestStage(): void {
 		guard(this.stepCounter === this.pipeline.firstStepPerRequest, 'First need to complete all steps before switching')
-		guard(this.currentExecutionStage === StepHasToBeExecuted.OncePerFile, 'Cannot switch to next stage, already in per-request stage.')
-		this.currentExecutionStage = StepHasToBeExecuted.OncePerRequest
+		guard(this.currentExecutionStage === PipelineStepStage.OncePerFile, 'Cannot switch to next stage, already in per-request stage.')
+		this.currentExecutionStage = PipelineStepStage.OncePerRequest
 	}
 
 
@@ -135,11 +138,11 @@ export class PipelineExecutor<P extends Pipeline> {
 
 	/**
 	 * Returns true only if
-	 * 1) there are more {@link IPipelineStep|steps} to-do for the current {@link StepHasToBeExecuted|stage} and
+	 * 1) there are more {@link IPipelineStep|steps} to-do for the current {@link PipelineStepStage|stage} and
 	 * 2) we have not yet reached the end of the {@link Pipeline|pipeline}.
 	 */
 	public hasNextStep(): boolean {
-		return (this.stepCounter < this.length && this.currentExecutionStage !== StepHasToBeExecuted.OncePerFile)
+		return (this.stepCounter < this.length && this.currentExecutionStage !== PipelineStepStage.OncePerFile)
 			|| this.stepCounter < this.pipeline.firstStepPerRequest
 	}
 
@@ -151,7 +154,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 * @param expectedStepName - A safeguard if you want to retrieve the result.
 	 * 												   If given, it causes the execution to fail if the next step is not the one you expect.
 	 *
-	 * *Without `expectedStepName`, please refrain from accessing the result, as you have no safeguards if the pipeline changes.*
+	 * _Without `expectedStepName`, please refrain from accessing the result, as you have no safeguards if the pipeline changes._
 	 */
 	public async nextStep<PassedName extends NameOfStep>(expectedStepName?: PassedName): Promise<{
 		name:   typeof expectedStepName extends undefined ? NameOfStep : PassedName
@@ -190,9 +193,9 @@ export class PipelineExecutor<P extends Pipeline> {
 		const requestStep = this.pipeline.firstStepPerRequest
 		guard(this.stepCounter >= requestStep, 'Cannot reset slice prior to once-per-slice stage')
 		this.input = {
-			...this.input,
+			...(this.input as object),
 			...newRequestData
-		}
+		} as PipelineInput<P>
 		this.stepCounter = requestStep
 		// clear the results for all steps with an index >= firstStepPerRequest, this is more of a sanity check
 		for(let i = requestStep; i < this.length; i++) {
@@ -220,7 +223,7 @@ export class PipelineExecutor<P extends Pipeline> {
 			await this.nextStep()
 		}
 
-		if(canSwitchStage && this.stepCounter < this.length && this.currentExecutionStage === StepHasToBeExecuted.OncePerFile) {
+		if(canSwitchStage && this.stepCounter < this.length && this.currentExecutionStage === PipelineStepStage.OncePerFile) {
 			this.switchToRequestStage()
 			while(this.hasNextStep()) {
 				await this.nextStep()

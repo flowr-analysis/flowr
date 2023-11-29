@@ -1,5 +1,5 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
-import { IPipelineStep, StepHasToBeExecuted } from '../../step'
+import { IPipelineStep, PipelineStepStage } from '../../step'
 import { produceDataFlowGraph } from '../../../../dataflow'
 import {
 	dataflowGraphToJson,
@@ -14,7 +14,7 @@ export const LEGACY_STATIC_DATAFLOW = {
 	name:        'dataflow',
 	description: 'Construct the dataflow graph',
 	processor:   (results: { normalize?: NormalizedAst }) => produceDataFlowGraph(results.normalize as NormalizedAst),
-	executed:    StepHasToBeExecuted.OncePerFile,
+	executed:    PipelineStepStage.OncePerFile,
 	printer:     {
 		[StepOutputFormat.Internal]:   internalPrinter,
 		[StepOutputFormat.Json]:       dataflowGraphToJson,
@@ -22,5 +22,6 @@ export const LEGACY_STATIC_DATAFLOW = {
 		[StepOutputFormat.Mermaid]:    dataflowGraphToMermaid,
 		[StepOutputFormat.MermaidUrl]: dataflowGraphToMermaidUrl
 	},
-	dependencies: [ 'normalize' ]
+	dependencies:  [ 'normalize' ],
+	requiredInput: {}
 } as const satisfies DeepReadonly<IPipelineStep<'dataflow', (results: { normalize?: NormalizedAst }) => ReturnType<typeof produceDataFlowGraph>>>

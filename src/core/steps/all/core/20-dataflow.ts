@@ -15,7 +15,7 @@ function processor(results: { normalize?: NormalizedAst }) {
 }
 
 const staticDataflowCommon = {
-	name:        'staticDataflow',
+	name:        'dataflow',
 	description: 'Construct the dataflow graph',
 	executed:    PipelineStepStage.OncePerFile,
 	printer:     {
@@ -32,4 +32,4 @@ export const LEGACY_STATIC_DATAFLOW = {
 	...staticDataflowCommon,
 	processor,
 	requiredInput: {}
-} as const satisfies DeepReadonly<IPipelineStep<'staticDataflow', typeof processor>>
+} as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof processor>>

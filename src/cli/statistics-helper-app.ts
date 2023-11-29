@@ -16,7 +16,7 @@ import { printStepResult, StepOutputFormat } from '../core/print/print'
 import { date2string } from '../util/time'
 import { PARSE_WITH_R_SHELL_STEP } from '../core/steps/all/core/00-parse'
 import { NORMALIZE } from '../core/steps/all/core/10-normalize'
-import { LEGACY_STATIC_DATAFLOW } from '../core/steps/all/core/20-static-dataflow'
+import { LEGACY_STATIC_DATAFLOW } from '../core/steps/all/core/20-dataflow'
 
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 

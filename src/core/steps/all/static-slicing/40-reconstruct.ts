@@ -3,7 +3,7 @@ import { IPipelineStep, PipelineStepStage } from '../../step'
 import { AutoSelectPredicate, reconstructToCode, SliceResult } from '../../../../slicing'
 import { DeepReadonly } from 'ts-essentials'
 import { NormalizedAst } from '../../../../r-bridge'
-import { SliceRequiredInput } from './00-slice'
+import { SliceRequiredInput } from './30-slice'
 
 export interface ReconstructRequiredInput extends SliceRequiredInput {
 	autoSelectIf?: AutoSelectPredicate

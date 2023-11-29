@@ -13,8 +13,8 @@ export interface SliceRequiredInput extends NormalizeRequiredInput {
 	readonly threshold?: number
 }
 
-function processor(results: { staticDataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>) {
-	return staticSlicing((results.staticDataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold)
+function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>) {
+	return staticSlicing((results.dataflow as DataflowInformation).graph, results.normalize as NormalizedAst, input.criterion as SlicingCriteria, input.threshold)
 }
 
 export const STATIC_SLICE = {
@@ -25,6 +25,6 @@ export const STATIC_SLICE = {
 	printer:     {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
-	dependencies:  [ 'staticDataflow' ],
+	dependencies:  [ 'dataflow' ],
 	requiredInput: undefined as unknown as SliceRequiredInput
 } as const satisfies DeepReadonly<IPipelineStep<'slice', typeof processor>>

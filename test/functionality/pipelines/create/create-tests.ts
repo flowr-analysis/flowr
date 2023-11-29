@@ -4,9 +4,9 @@ import { expect } from 'chai'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../../src/core/steps/all/core/00-parse'
 import { allPermutations } from '../../../../src/util/arrays'
 import { NORMALIZE } from '../../../../src/core/steps/all/core/10-normalize'
-import { LEGACY_STATIC_DATAFLOW } from '../../../../src/core/steps/all/core/20-static-dataflow'
-import { STATIC_SLICE } from '../../../../src/core/steps/all/static-slicing/00-slice'
-import { NAIVE_RECONSTRUCT } from '../../../../src/core/steps/all/static-slicing/10-reconstruct'
+import { LEGACY_STATIC_DATAFLOW } from '../../../../src/core/steps/all/core/20-dataflow'
+import { STATIC_SLICE } from '../../../../src/core/steps/all/static-slicing/30-slice'
+import { NAIVE_RECONSTRUCT } from '../../../../src/core/steps/all/static-slicing/40-reconstruct'
 
 describe('Create Pipeline (includes dependency checks)', () => {
 	describe('error-cases', () => {
@@ -93,7 +93,7 @@ describe('Create Pipeline (includes dependency checks)', () => {
 				LEGACY_STATIC_DATAFLOW,
 				STATIC_SLICE,
 				NAIVE_RECONSTRUCT
-			], ['parse', 'normalize', 'staticDataflow', 'slice', 'reconstruct'], 3)
+			], ['parse', 'normalize', 'dataflow', 'slice', 'reconstruct'], 3)
 		})
 		describe('with decorators', () => {
 			positive('simple decorator on first step', [
@@ -154,11 +154,11 @@ describe('Create Pipeline (includes dependency checks)', () => {
 				{
 					...LEGACY_STATIC_DATAFLOW,
 					name:      'dataflow-decorator',
-					decorates: 'staticDataflow'
+					decorates: 'dataflow'
 				},
 				STATIC_SLICE,
 				NAIVE_RECONSTRUCT
-			], ['parse', 'normalize', 'staticDataflow', 'dataflow-decorator',  'slice', 'reconstruct'], 4)
+			], ['parse', 'normalize', 'dataflow', 'dataflow-decorator',  'slice', 'reconstruct'], 4)
 		})
 	})
 })

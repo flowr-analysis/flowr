@@ -10,10 +10,14 @@ import {
 import { DeepReadonly } from 'ts-essentials'
 import { NormalizedAst } from '../../../../r-bridge'
 
+function processor(results: { normalize?: NormalizedAst }) {
+	return produceDataFlowGraph(results.normalize as NormalizedAst)
+}
+
 export const LEGACY_STATIC_DATAFLOW = {
 	name:        'dataflow',
 	description: 'Construct the dataflow graph',
-	processor:   (results: { normalize?: NormalizedAst }) => produceDataFlowGraph(results.normalize as NormalizedAst),
+	processor,
 	executed:    PipelineStepStage.OncePerFile,
 	printer:     {
 		[StepOutputFormat.Internal]:   internalPrinter,
@@ -24,4 +28,4 @@ export const LEGACY_STATIC_DATAFLOW = {
 	},
 	dependencies:  [ 'normalize' ],
 	requiredInput: {}
-} as const satisfies DeepReadonly<IPipelineStep<'dataflow', (results: { normalize?: NormalizedAst }) => ReturnType<typeof produceDataFlowGraph>>>
+} as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof processor>>

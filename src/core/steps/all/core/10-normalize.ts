@@ -1,7 +1,8 @@
 import {
 	IdGenerator,
 	NoInfo,
-	normalize, RShell,
+	normalize,
+	RShell,
 	XmlParserHooks
 } from '../../../../r-bridge'
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
@@ -22,10 +23,14 @@ export interface NormalizeRequiredInput extends ParseRequiredInput {
 	readonly getId?: IdGenerator<NoInfo>
 }
 
+async function processor(results: { parse?: string }, input: Partial<NormalizeRequiredInput>) {
+	return normalize(results.parse as string, await (input.shell as RShell).tokenMap(), input.hooks, input.getId)
+}
+
 export const NORMALIZE = {
 	name:        'normalize',
 	description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
-	processor:   async(results: { parse?: string }, input: Partial<NormalizeRequiredInput>) => normalize(results.parse as string, await (input.shell as RShell).tokenMap(), input.hooks, input.getId),
+	processor,
 	executed:    PipelineStepStage.OncePerFile,
 	printer:     {
 		[StepOutputFormat.Internal]:   internalPrinter,
@@ -36,4 +41,4 @@ export const NORMALIZE = {
 	},
 	dependencies:  [ 'parse' ],
 	requiredInput: undefined as unknown as NormalizeRequiredInput
-} as const satisfies DeepReadonly<IPipelineStep<'normalize', (results: { parse?: string }, input: Partial<NormalizeRequiredInput>) => ReturnType<typeof normalize>>>
+} as const satisfies DeepReadonly<IPipelineStep<'normalize', typeof processor>>

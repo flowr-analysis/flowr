@@ -11,10 +11,14 @@ export interface ParseRequiredInput {
 	readonly request: RParseRequest
 }
 
+function processor(_results: unknown, input: Partial<ParseRequiredInput>) {
+	return retrieveXmlFromRCode(input.request as RParseRequest, input.shell as RShell)
+}
+
 export const PARSE_WITH_R_SHELL_STEP = {
 	name:        'parse',
 	description: 'Parse the given R code into an AST',
-	processor:   (_results: object, input: Partial<ParseRequiredInput>) => retrieveXmlFromRCode(input.request as RParseRequest, input.shell as RShell),
+	processor,
 	executed:    PipelineStepStage.OncePerFile,
 	printer:     {
 		[StepOutputFormat.Internal]: internalPrinter,
@@ -24,4 +28,4 @@ export const PARSE_WITH_R_SHELL_STEP = {
 	dependencies:  [],
 	requiredInput: undefined as unknown as ParseRequiredInput
 } as const satisfies DeepReadonly<
-	IPipelineStep<'parse', (results: object, input: Partial<ParseRequiredInput>) => ReturnType<typeof retrieveXmlFromRCode>>>
+IPipelineStep<'parse', typeof processor>>

@@ -78,7 +78,11 @@ export class PipelineExecutor<P extends Pipeline> {
 	private stepCounter = 0
 
 	/**
-	 * Create a new stepping slicer. For more details on the arguments please see {@link SteppingSlicerInput}.
+	 * Create a new pipeline executor. The required additional input is specified by the {@link IPipelineStep#requiredInput|required input configuration}
+	 * of each step in the `pipeline`.
+	 *
+	 * @param pipeline - The {@link Pipeline} to execute, probably created with {@link createPipeline}.
+	 * @param input    - External {@link PipelineInput|configuration and input} required to execute the given pipeline.
 	 */
 	constructor(pipeline: P, input: PipelineInput<P>) {
 		this.pipeline = pipeline

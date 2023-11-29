@@ -1,4 +1,4 @@
-import { IStep, NameOfStep, StepHasToBeExecuted } from '../step'
+import { IPipelineStep, NameOfStep, StepHasToBeExecuted } from '../step'
 import { verifyAndBuildPipeline } from './create'
 
 /**
@@ -7,8 +7,8 @@ import { verifyAndBuildPipeline } from './create'
  *
  * If you want to get the type of all steps in the pipeline (given they are created canonically using const step names), refer to {@link PipelineStepNames}.
  */
-export interface Pipeline<T extends IStep = IStep> {
-	readonly steps:               ReadonlyMap<NameOfStep, IStep>
+export interface Pipeline<T extends IPipelineStep = IPipelineStep> {
+	readonly steps:               ReadonlyMap<NameOfStep, IPipelineStep>
 	readonly order:               readonly T['name'][]
 	/**
 	 * In the order, this is the index of the first step that
@@ -26,7 +26,7 @@ export interface Pipeline<T extends IStep = IStep> {
 export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name']
 export type PipelineStep<P extends Pipeline> = P extends Pipeline<infer U> ? U : never
 
-export type PipelineStepWithName<P extends Pipeline, Name extends NameOfStep> = P extends Pipeline<infer U> ? U extends IStep<Name> ? U : never : never
+export type PipelineStepWithName<P extends Pipeline, Name extends NameOfStep> = P extends Pipeline<infer U> ? U extends IPipelineStep<Name> ? U : never : never
 export type PipelineStepProcessorWithName<P extends Pipeline, Name extends NameOfStep> = PipelineStepWithName<P, Name>['processor']
 export type PipelineStepPrintersWithName<P extends Pipeline, Name extends NameOfStep> = PipelineStepWithName<P, Name>['printer']
 export type PipelineStepOutputWithName<P extends Pipeline, Name extends NameOfStep> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>>
@@ -46,9 +46,24 @@ export type PipelineOutput<P extends Pipeline> = {
 }
 
 /**
- * Creates a pipeline from the given steps.
- * Refer to {@link verifyAndBuildPipeline} for details and constraints on the steps.
+ * Creates a {@link Pipeline|pipeline} from a given collection of {@link IPipelineStep|steps}.
+ * In order to be valid, the collection of {@link IPipelineStep|steps} must satisfy the following set of constraints
+ * (which should be logical, when you consider what a pipeline should accomplish):
+ *
+ * 0) the collection of {@link IPipelineStep|steps} is not empty
+ * 1) all {@link IPipelineStepOrder#name|names} of {@link IPipelineStep|steps} are unique for the given pipeline
+ * 2) all {@link IPipelineStepOrder#dependencies|dependencies} of all {@link IPipelineStep|steps} are exist
+ * 3) there are no cycles in the dependency graph
+ * 4) the target of a {@link IPipelineStepOrder#decorates|step's decoration} exists
+ * 5) if a {@link IPipelineStepOrder#decorates|decoration} applies, all of its {@link IPipelineStepOrder#dependencies|dependencies} are already in the pipeline
+ * 6) in the resulting {@link Pipeline|pipeline}, there is a strict cut between {@link IPipelineStep|steps} that are executed
+ * 		{@link StepHasToBeExecuted#OncePerFile|once per file} and {@link StepHasToBeExecuted#OncePerRequest|once per request}.
+ *
+ * @returns The function will try to order your collection steps so that all the constraints hold.
+ * If it succeeds it will return the resulting {@link Pipeline|pipeline}, otherwise it will throw an {@link InvalidPipelineError}.
+ *
+ * @throws InvalidPipelineError If any of the constraints listed above are not satisfied.
  */
-export function createPipeline<T extends readonly IStep[]>(...steps: T): Pipeline<T[number]> {
+export function createPipeline<T extends readonly IPipelineStep[]>(...steps: T): Pipeline<T[number]> {
 	return verifyAndBuildPipeline(steps)
 }

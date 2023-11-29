@@ -1,5 +1,5 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
-import { IStep, StepHasToBeExecuted } from '../../step'
+import { IPipelineStep, StepHasToBeExecuted } from '../../step'
 import { autoSelectLibrary, AutoSelectPredicate, reconstructToCode, SliceResult } from '../../../../slicing'
 import { DeepReadonly } from 'ts-essentials'
 import { NormalizedAst } from '../../../../r-bridge'
@@ -21,4 +21,4 @@ export const NAIVE_RECONSTRUCT = {
 	},
 	dependencies:  [ 'slice' ],
 	requiredInput: ReconstructRequiredInput
-} as const satisfies DeepReadonly<IStep<'reconstruct', (results: { normalize?: NormalizedAst, slice?: SliceResult }, input: Partial<typeof ReconstructRequiredInput>) => ReturnType<typeof reconstructToCode>>>
+} as const satisfies DeepReadonly<IPipelineStep<'reconstruct', (results: { normalize?: NormalizedAst, slice?: SliceResult }, input: Partial<typeof ReconstructRequiredInput>) => ReturnType<typeof reconstructToCode>>>

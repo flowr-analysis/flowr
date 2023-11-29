@@ -1,5 +1,5 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
-import { IStep, StepHasToBeExecuted } from '../../step'
+import { IPipelineStep, StepHasToBeExecuted } from '../../step'
 import { SlicingCriteria, staticSlicing } from '../../../../slicing'
 import { DeepReadonly } from 'ts-essentials'
 import { NormalizeRequiredInput } from '../core/10-normalize'
@@ -26,4 +26,4 @@ export const STATIC_SLICE = {
 	},
 	dependencies:  [ 'dataflow' ],
 	requiredInput: SliceRequiredInput
-} as const satisfies DeepReadonly<IStep<'slice', (results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<typeof SliceRequiredInput>) => ReturnType<typeof staticSlicing>>>
+} as const satisfies DeepReadonly<IPipelineStep<'slice', (results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<typeof SliceRequiredInput>) => ReturnType<typeof staticSlicing>>>

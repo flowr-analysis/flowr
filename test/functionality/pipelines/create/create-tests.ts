@@ -1,5 +1,5 @@
 import { createPipeline } from '../../../../src/core/steps/pipeline'
-import { IStep, NameOfStep } from '../../../../src/core/steps'
+import { IPipelineStep, NameOfStep } from '../../../../src/core/steps'
 import { expect } from 'chai'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../../src/core/steps/all/core/00-parse'
 import { allPermutations } from '../../../../src/util/arrays'
@@ -10,7 +10,7 @@ import { NAIVE_RECONSTRUCT } from '../../../../src/core/steps/all/static-slicing
 
 describe('Create Pipeline (includes dependency checks)', () => {
 	describe('error-cases', () => {
-		function negative(name: string, rawSteps: IStep[], message: string | RegExp) {
+		function negative(name: string, rawSteps: IPipelineStep[], message: string | RegExp) {
 			it(`${name} (all permutations)`, () => {
 				for(const steps of allPermutations(rawSteps)) {
 					expect(() => createPipeline(...steps)).to.throw(message)
@@ -65,7 +65,7 @@ describe('Create Pipeline (includes dependency checks)', () => {
 		})
 	})
 	describe('default behavior', () => {
-		function positive(name: string, rawSteps: IStep[], expected: NameOfStep[], indexOfFirstPerFile: number = expected.length) {
+		function positive(name: string, rawSteps: IPipelineStep[], expected: NameOfStep[], indexOfFirstPerFile: number = expected.length) {
 			it(`${name} (all permutations)`, () => {
 				for(const steps of allPermutations(rawSteps)) {
 					const pipeline = createPipeline(...steps)

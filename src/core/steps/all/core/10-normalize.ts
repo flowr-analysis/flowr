@@ -11,7 +11,7 @@ import {
 	printNormalizedAstToMermaid,
 	printNormalizedAstToMermaidUrl
 } from '../../../print/normalize-printer'
-import { IStep, StepHasToBeExecuted } from '../../step'
+import { IPipelineStep, StepHasToBeExecuted } from '../../step'
 import { DeepPartial, DeepReadonly } from 'ts-essentials'
 import { ParseRequiredInput } from './00-parse'
 
@@ -37,4 +37,4 @@ export const NORMALIZE = {
 	},
 	dependencies:  [ 'parse' ],
 	requiredInput: NormalizeRequiredInput
-} as const satisfies DeepReadonly<IStep<'normalize', (results: { parse?: string }, input: Partial<typeof NormalizeRequiredInput>) => ReturnType<typeof normalize>>>
+} as const satisfies DeepReadonly<IPipelineStep<'normalize', (results: { parse?: string }, input: Partial<typeof NormalizeRequiredInput>) => ReturnType<typeof normalize>>>

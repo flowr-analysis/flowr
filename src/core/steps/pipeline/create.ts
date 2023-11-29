@@ -1,22 +1,13 @@
-import { IStep, NameOfStep, StepHasToBeExecuted } from '../step'
+import { IPipelineStep, NameOfStep, StepHasToBeExecuted } from '../step'
 import { InvalidPipelineError } from './invalid-pipeline-error'
 import { Pipeline } from './pipeline'
 import { jsonReplacer } from '../../../util/json'
 import { partitionArray } from '../../../util/arrays'
 
 /**
- * Given a set of {@link IStep|steps} with their dependencies, this function verifies that
- * 0) the pipeline is not empty
- * 1) all names of steps are unique for the given pipeline
- * 2) all {@link IStepOrder#dependencies|dependencies} of all steps are exist
- * 3) there are no cycles in the dependency graph
- * 4) the target of a {@link IStepOrder#decorates|decoration} exists
- * 5) if a decoration applies, all of its dependencies are already in the pipeline
- * 6) in the resulting pipeline, there is a strict cut between steps that are executed once per file and once per request
- * If successful, it returns the topologically sorted list of steps in order of desired execution.
- * @throws InvalidPipelineError if any of the above conditions are not met
+ * Given a set of {@link IPipelineStep|steps} with their dependencies, this function verifies all requirements of {@link createPipeline}.
  */
-export function verifyAndBuildPipeline(steps: readonly IStep[]): Pipeline {
+export function verifyAndBuildPipeline(steps: readonly IPipelineStep[]): Pipeline {
 	if(steps.length === 0) {
 		throw new InvalidPipelineError('0) Pipeline is empty')
 	}
@@ -24,7 +15,7 @@ export function verifyAndBuildPipeline(steps: readonly IStep[]): Pipeline {
 	const [perFileSteps, perRequestSteps] = partitionArray(steps, s => s.executed === StepHasToBeExecuted.OncePerFile)
 
 	// we construct a map linking each name to its respective step
-	const perFileStepMap = new Map<NameOfStep, IStep>()
+	const perFileStepMap = new Map<NameOfStep, IPipelineStep>()
 	const initsPerFile: NameOfStep[] = []
 	const visited = new Set<NameOfStep>()
 
@@ -34,7 +25,7 @@ export function verifyAndBuildPipeline(steps: readonly IStep[]): Pipeline {
 	const sortedPerFile = topologicalSort(initsPerFile, perFileStepMap, visited)
 	validateStepOutput(sortedPerFile, perFileStepMap, steps)
 
-	const perRequestStepMap = new Map<NameOfStep, IStep>(perFileStepMap)
+	const perRequestStepMap = new Map<NameOfStep, IPipelineStep>(perFileStepMap)
 	// we track all elements without dependencies, i.e., those that start the pipeline
 	const initsPerRequest: NameOfStep[] = []
 
@@ -52,7 +43,7 @@ export function verifyAndBuildPipeline(steps: readonly IStep[]): Pipeline {
 	}
 }
 
-function validateStepOutput(sorted: NameOfStep[], stepMap: Map<NameOfStep, IStep>, steps: readonly IStep[]) {
+function validateStepOutput(sorted: NameOfStep[], stepMap: Map<NameOfStep, IPipelineStep>, steps: readonly IPipelineStep[]) {
 	if(sorted.length !== stepMap.size) {
 		// check if any of the dependencies in the map are invalid
 		checkForInvalidDependency(steps, stepMap)
@@ -61,11 +52,11 @@ function validateStepOutput(sorted: NameOfStep[], stepMap: Map<NameOfStep, IStep
 	}
 }
 
-function allDependenciesAreVisited(step: IStep, visited: ReadonlySet<NameOfStep>) {
+function allDependenciesAreVisited(step: IPipelineStep, visited: ReadonlySet<NameOfStep>) {
 	return step.dependencies.every(d => visited.has(d))
 }
 
-function handleStep(step: IStep, init: NameOfStep, visited: Set<NameOfStep>, sorted: NameOfStep[], elem: NameOfStep, decoratorsOfLastOthers: Set<NameOfStep>, inits: NameOfStep[]) {
+function handleStep(step: IPipelineStep, init: NameOfStep, visited: Set<NameOfStep>, sorted: NameOfStep[], elem: NameOfStep, decoratorsOfLastOthers: Set<NameOfStep>, inits: NameOfStep[]) {
 	if(step.decorates === init) {
 		if(allDependenciesAreVisited(step, visited)) {
 			sorted.push(elem)
@@ -78,7 +69,7 @@ function handleStep(step: IStep, init: NameOfStep, visited: Set<NameOfStep>, sor
 	}
 }
 
-function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>, visited: Set<NameOfStep>) {
+function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IPipelineStep>, visited: Set<NameOfStep>) {
 	const sorted: NameOfStep[] = []
 
 	while(inits.length > 0) {
@@ -101,7 +92,7 @@ function topologicalSort(inits: NameOfStep[], stepMap: Map<NameOfStep, IStep>, v
 	return sorted
 }
 
-function topologicallyInsertDecoratorElements(decoratorsOfLastOthers: Set<NameOfStep>, stepMap: Map<NameOfStep, IStep>, visited: Set<NameOfStep>, sorted: NameOfStep[]) {
+function topologicallyInsertDecoratorElements(decoratorsOfLastOthers: Set<NameOfStep>, stepMap: Map<NameOfStep, IPipelineStep>, visited: Set<NameOfStep>, sorted: NameOfStep[]) {
 	if(decoratorsOfLastOthers.size === 0) {
 		return
 	}
@@ -110,7 +101,7 @@ function topologicallyInsertDecoratorElements(decoratorsOfLastOthers: Set<NameOf
 	while(changed) {
 		changed = false
 		for(const elem of [...decoratorsOfLastOthers]) {
-			const step = stepMap.get(elem) as IStep
+			const step = stepMap.get(elem) as IPipelineStep
 			if(allDependenciesAreVisited(step, visited)) {
 				decoratorsOfLastOthers.delete(elem)
 				sorted.push(elem)
@@ -124,7 +115,7 @@ function topologicallyInsertDecoratorElements(decoratorsOfLastOthers: Set<NameOf
 	}
 }
 
-function checkForInvalidDependency(steps: readonly IStep[], stepMap: Map<NameOfStep, IStep>) {
+function checkForInvalidDependency(steps: readonly IPipelineStep[], stepMap: Map<NameOfStep, IPipelineStep>) {
 	for(const step of steps) {
 		for(const dep of step.dependencies) {
 			if(!stepMap.has(dep)) {
@@ -137,7 +128,7 @@ function checkForInvalidDependency(steps: readonly IStep[], stepMap: Map<NameOfS
 	}
 }
 
-function initializeSteps(steps: readonly IStep[], stepMap: Map<NameOfStep, IStep>, inits: NameOfStep[], visited: ReadonlySet<NameOfStep>) {
+function initializeSteps(steps: readonly IPipelineStep[], stepMap: Map<NameOfStep, IPipelineStep>, inits: NameOfStep[], visited: ReadonlySet<NameOfStep>) {
 	for(const step of steps) {
 		const name = step.name
 		// if the name is already in the map we have a duplicate

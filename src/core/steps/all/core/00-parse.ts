@@ -1,6 +1,6 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import { parseToQuads } from '../../../print/parse-printer'
-import { IStep, StepHasToBeExecuted } from '../../step'
+import { IPipelineStep, StepHasToBeExecuted } from '../../step'
 import { retrieveXmlFromRCode, RParseRequest, RShell } from '../../../../r-bridge'
 import { DeepReadonly } from 'ts-essentials'
 
@@ -23,4 +23,4 @@ export const PARSE_WITH_R_SHELL_STEP = {
 	},
 	dependencies:  [],
 	requiredInput: ParseRequiredInput
-} as const satisfies DeepReadonly<IStep<'parse', (results: object, input: Partial<typeof ParseRequiredInput>) => ReturnType<typeof retrieveXmlFromRCode>>>
+} as const satisfies DeepReadonly<IPipelineStep<'parse', (results: object, input: Partial<typeof ParseRequiredInput>) => ReturnType<typeof retrieveXmlFromRCode>>>

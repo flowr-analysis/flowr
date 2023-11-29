@@ -126,11 +126,7 @@ export class SteppingSlicer<InterestedIn extends StepName = typeof LAST_STEP> {
 	 * 		 although the typing system then can not guarantee which of the steps have already happened.
 	 */
 	public getResults(intermediate = false): PipelineOutput<LegacyPipelineType<InterestedIn>> | Partial<PipelineOutput<LegacyPipelineType<InterestedIn>>> {
-		const res = this.executor.getResults(intermediate)
-		return {
-			...res,
-			dataflow: res.staticDataflow
-		}
+		return this.executor.getResults(intermediate)
 	}
 
 	/**

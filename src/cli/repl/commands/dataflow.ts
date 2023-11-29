@@ -4,7 +4,7 @@ import { requestFromInput, RShell } from '../../../r-bridge'
 import {
 	graphToMermaid,
 	graphToMermaidUrl
-} from '../../../util/mermaid'
+} from '../../../util/mermaid/dfg'
 
 async function dataflow(shell: RShell, remainingLine: string) {
 	return await new SteppingSlicer({

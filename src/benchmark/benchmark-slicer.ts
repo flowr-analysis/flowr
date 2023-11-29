@@ -132,7 +132,7 @@ export class BenchmarkSlicer {
 
 		this.loadedXml = await this.measureCommonStep('parse', 'retrieve AST from R code')
 		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST')
-		this.dataflow = await this.measureCommonStep('staticDataflow', 'produce dataflow information')
+		this.dataflow = await this.measureCommonStep('dataflow', 'produce dataflow information')
 
 		this.stepper.switchToSliceStage()
 
@@ -232,7 +232,7 @@ export class BenchmarkSlicer {
 		}
 
 		// if it is not in the dataflow graph it was kept to be safe and should not count to the included nodes
-		stats.numberOfDataflowNodesSliced = [...slicedOutput.result].filter(id => results.staticDataflow.graph.hasNode(id, false)).length
+		stats.numberOfDataflowNodesSliced = [...slicedOutput.result].filter(id => results.dataflow.graph.hasNode(id, false)).length
 		stats.timesHitThreshold = slicedOutput.timesHitThreshold
 
 		stats.measurements = measurements.get()

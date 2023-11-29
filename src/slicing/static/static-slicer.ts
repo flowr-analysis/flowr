@@ -74,9 +74,9 @@ export interface SliceResult {
 
 class VisitingQueue {
 	private readonly threshold: number
-	private timesHitThreshold = 0
-	private seen = new Map<Fingerprint, NodeId>()
-	private idThreshold = new DefaultMap<NodeId, number>(() => 0)
+	private timesHitThreshold                 = 0
+	private seen                              = new Map<Fingerprint, NodeId>()
+	private idThreshold                       = new DefaultMap<NodeId, number>(() => 0)
 	private queue:              NodeToSlice[] = []
 
 	constructor(threshold: number) {
@@ -85,6 +85,7 @@ class VisitingQueue {
 
 	public add(target: NodeId, env: REnvironmentInformation, envFingerprint: string, onlyForSideEffects: boolean): void {
 		const idCounter = this.idThreshold.get(target)
+
 		if(idCounter > this.threshold) {
 			slicerLogger.warn(`id: ${target} has been visited ${idCounter} times, skipping`)
 			this.timesHitThreshold++
@@ -133,9 +134,10 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 
 	// every node ships the call environment which registers the calling environment
 	{
-		const basePrint = envFingerprint(initializeCleanEnvironments())
+		const emptyEnv = initializeCleanEnvironments()
+		const basePrint = envFingerprint(emptyEnv)
 		for(const startId of decodedCriteria) {
-			queue.add(startId.id, initializeCleanEnvironments(), basePrint, false)
+			queue.add(startId.id, emptyEnv, basePrint, false)
 		}
 	}
 

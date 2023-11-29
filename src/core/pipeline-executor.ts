@@ -159,7 +159,7 @@ export class PipelineExecutor<P extends Pipeline> {
 		const { step, result } = await this._doNextStep(expectedStepName)
 
 		this.output[step as PipelineStepNames<P>] = result
-		this.stepCounter += 1
+		this.stepCounter++
 
 		return { name: step as PassedName, result }
 	}
@@ -169,7 +169,6 @@ export class PipelineExecutor<P extends Pipeline> {
 		step:   NameOfStep,
 		result: PipelineStepOutputWithName<P, NameOfStep>
 	}> {
-		guard(this.stepCounter >= 0 && this.stepCounter < this.length, `Cannot execute next step, already reached end of pipeline or unexpected index (${this.stepCounter}).`)
 		const step = this.pipeline.steps.get(this.pipeline.order[this.stepCounter])
 		guard(step !== undefined, `Cannot execute next step, step ${this.pipeline.order[this.stepCounter]} does not exist.`)
 

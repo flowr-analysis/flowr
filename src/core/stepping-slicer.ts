@@ -85,7 +85,6 @@ function getLegacyPipeline(interestedIn: StepName): Pipeline {
  * for, for example, the dataflow analysis.
  *
  * @see retrieveResultOfStep
- * @see SteppingSlicer#doNextStep
  * @see StepName
  */
 export class SteppingSlicer<InterestedIn extends StepName = typeof LAST_STEP> {
@@ -151,10 +150,6 @@ export class SteppingSlicer<InterestedIn extends StepName = typeof LAST_STEP> {
 		result: typeof expectedStepName extends undefined ? unknown : PipelineStepOutputWithName<LegacyPipelineType<InterestedIn>, Exclude<PassedName, undefined>>
 	}> {
 		return this.executor.nextStep(expectedStepName)
-	}
-
-	private async doNextStep(guardStep: <K extends NameOfStep>(name: K) => K) {
-		return this.executor._doNextStep(guardStep)
 	}
 
 	/**

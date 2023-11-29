@@ -18,7 +18,7 @@ Although far from being as detailed as the in-depth explanation of [*flowR*](htt
   - [Interfacing With the File System](#interfacing-with-the-file-system)
 - [⚒️ Writing Code](#️-writing-code)
   - [Interfacing With R by Using The `RShell`](#interfacing-with-r-by-using-the-rshell)
-  - [Slicing With The `SteppingSlicer`](#slicing-with-the-steppingslicer)
+  - [(Deprecated) Slicing With The `SteppingSlicer`](#deprecated-slicing-with-the-steppingslicer)
     - [Understanding the Steps](#understanding-the-steps)
     - [Benchmark the Slicer With The `BenchmarkSlicer`](#benchmark-the-slicer-with-the-benchmarkslicer)
   - [Augmenting the Normalization](#augmenting-the-normalization)
@@ -954,7 +954,11 @@ With a shell object (let's call it `shell`), you can execute R code by using `RS
 Besides that, the command `RShell::tryToInjectHomeLibPath` may be of interest, as it enables all libraries available on the host system.
 
 
-### Slicing With The `SteppingSlicer`
+
+### (Deprecated) Slicing With The `SteppingSlicer`
+
+> 💡 Information\
+> Please note, that the `SteppingSlicer` has been deprecated with the *Dataflow v2* update, in favor of a far more general `PipelineExecutor` (which now backs the `SteppingSlicer` using a custom legacy-`Pipeline` to ensure that it behaves similar).
 
 The main class that represents *flowR*'s slicing is the [`SteppingSlicer`](https://code-inspect.github.io/flowr/doc/classes/src_core_slicer.SteppingSlicer.html) class. With *flowR*, this allows you to slice code like this:
 

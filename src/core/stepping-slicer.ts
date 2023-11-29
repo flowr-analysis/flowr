@@ -10,8 +10,8 @@ import { createPipeline, Pipeline, PipelineOutput, PipelineStepOutputWithName } 
 import { PARSE_WITH_R_SHELL_STEP } from './steps/all/core/00-parse'
 import { NORMALIZE } from './steps/all/core/10-normalize'
 import { LEGACY_STATIC_DATAFLOW } from './steps/all/core/20-dataflow'
-import { STATIC_SLICE } from './steps/all/static-slicing/30-slice'
-import { NAIVE_RECONSTRUCT } from './steps/all/static-slicing/40-reconstruct'
+import { STATIC_SLICE } from './steps/all/static-slicing/00-slice'
+import { NAIVE_RECONSTRUCT } from './steps/all/static-slicing/10-reconstruct'
 import { PipelineExecutor } from './pipeline-executor'
 
 const legacyPipelines = {

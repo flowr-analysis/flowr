@@ -2,7 +2,7 @@ import { Feature, FeatureProcessorInput } from '../../feature'
 import { Writable } from 'ts-essentials'
 import { isSpecialSymbol, NodeId, RType, visitAst } from '../../../../r-bridge'
 import { appendStatisticsFile } from '../../../output'
-import { EdgeType } from '../../../../dataflow'
+import { EdgeType } from '../../../../dataflow/v1'
 import { postProcess } from './post-process'
 
 

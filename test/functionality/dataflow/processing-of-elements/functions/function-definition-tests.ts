@@ -1,12 +1,12 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { BuiltIn, DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { BuiltIn, DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
 import {
 	define,
 	popLocalEnvironment,
 	pushLocalEnvironment
-} from '../../../../../src/dataflow/environments'
-import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/internal/process/functions/argument'
-import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
+} from '../../../../../src/dataflow/common/environments'
+import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/argument'
+import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 
 describe('Function Definition', withShell(shell => {
 	describe('Only functions', () => {

@@ -5,8 +5,8 @@ import { PARSE_WITH_R_SHELL_STEP } from '../../../../src/core/steps/all/core/00-
 import { allPermutations } from '../../../../src/util/arrays'
 import { NORMALIZE } from '../../../../src/core/steps/all/core/10-normalize'
 import { LEGACY_STATIC_DATAFLOW } from '../../../../src/core/steps/all/core/20-dataflow'
-import { STATIC_SLICE } from '../../../../src/core/steps/all/static-slicing/30-slice'
-import { NAIVE_RECONSTRUCT } from '../../../../src/core/steps/all/static-slicing/40-reconstruct'
+import { STATIC_SLICE } from '../../../../src/core/steps/all/static-slicing/00-slice'
+import { NAIVE_RECONSTRUCT } from '../../../../src/core/steps/all/static-slicing/10-reconstruct'
 
 describe('Create Pipeline (includes dependency checks)', () => {
 	describe('error-cases', () => {

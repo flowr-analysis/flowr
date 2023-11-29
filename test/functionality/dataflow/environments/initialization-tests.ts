@@ -1,6 +1,6 @@
-import { DefaultEnvironmentMemory, Environment, initializeCleanEnvironments } from '../../../../src/dataflow'
+import { DefaultEnvironmentMemory, Environment, initializeCleanEnvironments } from '../../../../src/dataflow/v1'
 import { expect } from 'chai'
-import { GlobalScope } from '../../../../src/dataflow/environments/scopes'
+import { GlobalScope } from '../../../../src/dataflow/common/environments/scopes'
 
 describe('Initialization', () => {
 	it('Clean creation should have no info but the default information', () => {

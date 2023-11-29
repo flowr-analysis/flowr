@@ -13,12 +13,12 @@ import { processIfThenElse } from './internal/process/if-then-else'
 import { processFunctionCall } from './internal/process/functions/function-call'
 import { processFunctionDefinition } from './internal/process/functions/function-definition'
 import { processFunctionParameter } from './internal/process/functions/parameter'
-import { DataflowScopeName, initializeCleanEnvironments } from './environments'
+import { DataflowScopeName, initializeCleanEnvironments } from '../common/environments'
 import { processFunctionArgument } from './internal/process/functions/argument'
 import { processAssignment } from './internal/process/operators/assignment'
 import { processAccess } from './internal/process/access'
 import { processPipeOperation } from './internal/process/operators/pipe'
-import { LocalScope } from './environments/scopes'
+import { LocalScope } from '../common/environments/scopes'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
 const processors: DataflowProcessors<any> = {

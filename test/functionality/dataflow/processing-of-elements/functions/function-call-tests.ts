@@ -1,9 +1,9 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
-import { define, popLocalEnvironment, pushLocalEnvironment } from '../../../../../src/dataflow/v1/environments'
+import { define, popLocalEnvironment, pushLocalEnvironment } from '../../../../../src/dataflow/common/environments'
 import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/argument'
 import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/function-call'
-import { LocalScope } from '../../../../../src/dataflow/v1/environments/scopes'
+import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 
 describe('Function Call', withShell(shell => {

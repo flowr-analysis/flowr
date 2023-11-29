@@ -1,6 +1,6 @@
 import { DataflowInformation } from '../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
-import { appendEnvironments, IdentifierReference, makeAllMaybe } from '../../environments'
+import { appendEnvironments, IdentifierReference, makeAllMaybe } from '../../../common/environments'
 import { linkIngoingVariablesInSameScope } from '../linker'
 import { ParentInformation, RIfThenElse } from '../../../../r-bridge'
 

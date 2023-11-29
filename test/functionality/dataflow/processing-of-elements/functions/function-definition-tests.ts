@@ -4,9 +4,9 @@ import {
 	define,
 	popLocalEnvironment,
 	pushLocalEnvironment
-} from '../../../../../src/dataflow/v1/environments'
+} from '../../../../../src/dataflow/common/environments'
 import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/argument'
-import { GlobalScope, LocalScope } from '../../../../../src/dataflow/v1/environments/scopes'
+import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 
 describe('Function Definition', withShell(shell => {
 	describe('Only functions', () => {

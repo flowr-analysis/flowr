@@ -18,9 +18,9 @@ import {
 } from '../../r-bridge'
 import { log } from '../../util/log'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/v1/internal/linker'
-import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/v1/environments'
+import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/common/environments'
 import objectHash from 'object-hash'
-import { LocalScope } from '../../dataflow/v1/environments/scopes'
+import { LocalScope } from '../../dataflow/common/environments/scopes'
 import { convertAllSlicingCriteriaToIds, DecodedCriteria, SlicingCriteria } from '../criterion'
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })

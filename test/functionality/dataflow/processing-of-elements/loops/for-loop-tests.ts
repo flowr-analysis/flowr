@@ -1,7 +1,7 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
-import { appendEnvironments, define } from '../../../../../src/dataflow/v1/environments'
-import { LocalScope } from '../../../../../src/dataflow/v1/environments/scopes'
+import { appendEnvironments, define } from '../../../../../src/dataflow/common/environments'
+import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 
 describe('for', withShell(shell => {
 	assertDataflow('Single-vector for Loop',

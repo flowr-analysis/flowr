@@ -1,6 +1,6 @@
 import { MergeableRecord } from '../../../util/objects'
 import { NodeId } from '../../../r-bridge'
-import { DataflowScopeName, REnvironmentInformation } from '../environments'
+import { DataflowScopeName, REnvironmentInformation } from '../../common/environments'
 import { DataflowGraphEdgeAttribute } from './edge'
 import { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 

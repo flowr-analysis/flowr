@@ -1,5 +1,5 @@
 import { DataflowGraph } from '../graph'
-import { REnvironmentInformation, IdentifierReference, DataflowScopeName } from '../environments'
+import { REnvironmentInformation, IdentifierReference, DataflowScopeName } from '../../common/environments'
 import { DataflowProcessorInformation } from '../processor'
 
 /**
@@ -20,7 +20,7 @@ export interface DataflowInformation {
 	graph:             DataflowGraph
 }
 
-export function initializeCleanInfo<T>(data: DataflowProcessorInformation<T>): DataflowInformation {
+export function initializeCleanDataflowInformation<T>(data: Pick<DataflowProcessorInformation<T>, 'activeScope' | 'environments'>): DataflowInformation {
 	return {
 		unknownReferences: [],
 		in:                [],

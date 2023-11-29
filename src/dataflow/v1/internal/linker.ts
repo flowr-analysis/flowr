@@ -12,14 +12,14 @@ import {
 	IdentifierReference,
 	REnvironmentInformation,
 	resolveByName
-} from '../environments'
+} from '../../common/environments'
 import { DefaultMap } from '../../../util/defaultmap'
 import { guard } from '../../../util/assert'
 import { log } from '../../../util/log'
 import { DecoratedAstMap, NodeId, ParentInformation, RParameter, RType } from '../../../r-bridge'
 import { slicerLogger } from '../../../slicing'
 import { dataflowLogger, EdgeType } from '../index'
-import { LocalScope } from '../environments/scopes'
+import { LocalScope } from '../../common/environments/scopes'
 
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
 	const nameIdShares = produceNameSharedIdMap(references)

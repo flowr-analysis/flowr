@@ -6,9 +6,9 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../../_helper/provider'
-import { appendEnvironments, define } from '../../../../../src/dataflow/v1/environments'
+import { appendEnvironments, define } from '../../../../../src/dataflow/common/environments'
 import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/argument'
-import { GlobalScope, LocalScope } from '../../../../../src/dataflow/v1/environments/scopes'
+import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 
 describe('Atomic (dataflow information)', withShell((shell) => {

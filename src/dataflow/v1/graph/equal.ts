@@ -1,4 +1,4 @@
-import { environmentsEqual, equalIdentifierReferences, IdentifierReference } from '../environments'
+import { environmentsEqual, equalIdentifierReferences, IdentifierReference } from '../../common/environments'
 import { NodeId } from '../../../r-bridge'
 import { FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
 import { DataflowGraphVertices, dataflowLogger } from '../index'
@@ -46,7 +46,7 @@ export function equalFunctionArguments(a: false | FunctionArgument[], b: false |
 			if(!equalFunctionArgumentsReferences(aArg[1], bArg[1])) {
 				return false
 			}
-		} else if(!equalFunctionArgumentsReferences(aArg as PositionalFunctionArgument, bArg as PositionalFunctionArgument)) {
+		} else if(!equalFunctionArgumentsReferences(aArg , bArg )) {
 			return false
 		}
 	}

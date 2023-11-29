@@ -5,7 +5,7 @@ import {
 	IdentifierDefinition,
 	IdentifierReference,
 	initializeCleanEnvironments
-} from '../environments'
+} from '../../common/environments'
 import { BiMap } from '../../../util/bimap'
 import { log } from '../../../util/log'
 import { DataflowGraphEdge, DataflowGraphEdgeAttribute, EdgeType } from './edge'

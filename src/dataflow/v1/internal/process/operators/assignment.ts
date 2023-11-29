@@ -7,10 +7,10 @@ import {
 	IdentifierDefinition,
 	IdentifierReference,
 	overwriteEnvironments
-} from '../../../environments'
+} from '../../../../common/environments'
 import { log } from '../../../../../util/log'
 import { dataflowLogger } from '../../../index'
-import { GlobalScope, LocalScope } from '../../../environments/scopes'
+import { GlobalScope, LocalScope } from '../../../../common/environments/scopes'
 
 export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)

@@ -8,13 +8,13 @@ import {
 	pushLocalEnvironment,
 	REnvironmentInformation,
 	resolveByName
-} from '../../../environments'
+} from '../../../../common/environments'
 import { linkInputs } from '../../linker'
 import { DataflowFunctionFlowInformation, DataflowGraph, dataflowLogger, DataflowMap, EdgeType } from '../../../index'
 import { collectAllIds, NodeId, ParentInformation, RFunctionDefinition } from '../../../../../r-bridge'
 import { retrieveExitPointsOfFunctionDefinition } from './exit-points'
 import { guard } from '../../../../../util/assert'
-import { LocalScope } from '../../../environments/scopes'
+import { LocalScope } from '../../../../common/environments/scopes'
 
 
 function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph: DataflowGraph, outEnvironment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>) {

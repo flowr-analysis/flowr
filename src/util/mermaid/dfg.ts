@@ -13,7 +13,7 @@ import {
 } from '../../dataflow/v1'
 import { guard } from '../assert'
 import { jsonReplacer } from '../json'
-import { DataflowScopeName } from '../../dataflow/v1/environments'
+import { DataflowScopeName } from '../../dataflow/common/environments'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
 
 

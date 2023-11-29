@@ -7,7 +7,7 @@ import {
 	RNodeWithParent
 } from '../../r-bridge'
 import { DataflowInformation } from './internal/info'
-import { DataflowScopeName, REnvironmentInformation } from './environments'
+import { DataflowScopeName, REnvironmentInformation } from '../common/environments'
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	/**

@@ -4,5 +4,5 @@ export const dataflowLogger = log.getSubLogger({ name: 'dataflow' })
 
 export * from './graph'
 export * from './extractor'
-export * from './environments/environment'
+export * from '../common/environments/environment'
 export * from '../../util/mermaid/dfg'

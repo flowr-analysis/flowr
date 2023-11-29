@@ -3,8 +3,8 @@ import {
 	initializeCleanEnvironments
 } from '../../../../../src/dataflow/v1'
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { appendEnvironments, define } from '../../../../../src/dataflow/v1/environments'
-import { GlobalScope, LocalScope } from '../../../../../src/dataflow/v1/environments/scopes'
+import { appendEnvironments, define } from '../../../../../src/dataflow/common/environments'
+import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 
 describe('Lists with if-then constructs', withShell(shell => {
 	for(const assign of [ '<-', '<<-', '=']) {

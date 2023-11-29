@@ -1,10 +1,10 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { define, IdentifierDefinition } from '../../../environments'
+import { define, IdentifierDefinition } from '../../../../common/environments'
 import { ParentInformation, RParameter, RType } from '../../../../../r-bridge'
 import { log } from '../../../../../util/log'
 import { EdgeType } from '../../../graph'
-import { LocalScope } from '../../../environments/scopes'
+import { LocalScope } from '../../../../common/environments/scopes'
 
 export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const name = processDataflowFor(parameter.name, data)

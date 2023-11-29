@@ -3,7 +3,7 @@ import { DataflowProcessorInformation, processDataflowFor } from '../../../proce
 import {
 	appendEnvironments,
 	makeAllMaybe,
-} from '../../../environments'
+} from '../../../../common/environments'
 import { linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../linker'
 import { ParentInformation, RWhileLoop } from '../../../../../r-bridge'
 

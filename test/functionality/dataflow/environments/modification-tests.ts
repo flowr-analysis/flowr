@@ -2,8 +2,8 @@ import { NodeId } from '../../../../src/r-bridge'
 import { DefaultEnvironmentMemory, IEnvironment, initializeCleanEnvironments } from '../../../../src/dataflow/v1'
 import { guard } from '../../../../src/util/assert'
 import { expect } from 'chai'
-import { appendEnvironments, define, overwriteEnvironments } from '../../../../src/dataflow/v1/environments'
-import { GlobalScope, LocalScope } from '../../../../src/dataflow/v1/environments/scopes'
+import { appendEnvironments, define, overwriteEnvironments } from '../../../../src/dataflow/common/environments'
+import { GlobalScope, LocalScope } from '../../../../src/dataflow/common/environments/scopes'
 import { variable } from '../../_helper/environment-builder'
 
 /** if you pass multiple `definedAt`, this will expect the node to have multiple definitions */

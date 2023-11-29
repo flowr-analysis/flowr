@@ -1,11 +1,11 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import { define, overwriteEnvironments, resolveByName } from '../../../environments'
+import { define, overwriteEnvironments, resolveByName } from '../../../../common/environments'
 import { ParentInformation, RFunctionCall, RType } from '../../../../../r-bridge'
 import { guard } from '../../../../../util/assert'
 import { DataflowGraph, dataflowLogger, EdgeType, FunctionArgument } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
-import { LocalScope } from '../../../environments/scopes'
+import { LocalScope } from '../../../../common/environments/scopes'
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 

@@ -1,5 +1,5 @@
 import { Identifier, IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
-import { dataflowLogger } from '../index'
+import { dataflowLogger } from '../../v1'
 import { DataflowScopeName, LocalScope } from './scopes'
 
 /**

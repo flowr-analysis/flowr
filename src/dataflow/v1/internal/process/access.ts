@@ -1,7 +1,7 @@
 import { ParentInformation, RAccess } from '../../../../r-bridge'
 import { DataflowInformation } from '../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
-import { makeAllMaybe, overwriteEnvironments } from '../../environments'
+import { makeAllMaybe, overwriteEnvironments } from '../../../common/environments'
 import { EdgeType } from '../../graph'
 
 export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {

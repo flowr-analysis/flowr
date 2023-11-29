@@ -2,7 +2,7 @@
  * Processes a list of expressions joining their dataflow graphs accordingly.
  * @module
  */
-import { DataflowInformation, initializeCleanInfo } from '../info'
+import { DataflowInformation, initializeCleanDataflowInformation } from '../info'
 import { NodeId, ParentInformation, RExpressionList, RType, visitAst } from '../../../../r-bridge'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import {
@@ -10,7 +10,7 @@ import {
 	overwriteEnvironments, popLocalEnvironment,
 	REnvironmentInformation,
 	resolveByName
-} from '../../environments'
+} from '../../../common/environments'
 import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../../util/defaultmap'
 import { DataflowGraph, DataflowGraphVertexInfo } from '../../graph'
@@ -107,7 +107,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 	const expressions = exprList.children
 	dataflowLogger.trace(`processing expression list with ${expressions.length} expressions`)
 	if(expressions.length === 0) {
-		return initializeCleanInfo(data)
+		return initializeCleanDataflowInformation(data)
 	}
 
 	let environments = data.environments

@@ -9,7 +9,7 @@ import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 import fs from 'fs'
 import { removeTokenMapQuotationMarks, TokenMap } from './retriever'
-import { DeepWritable } from 'ts-essentials'
+import { DeepReadonly, DeepWritable } from 'ts-essentials'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -369,28 +369,36 @@ class RShellSession {
 	private readonly bareSession:   ChildProcessWithoutNullStreams
 	private readonly sessionStdOut: readline.Interface
 	private readonly sessionStdErr: readline.Interface
-	private readonly options:       RShellSessionOptions
+	private readonly options:       DeepReadonly<RShellSessionOptions>
 	private readonly log:           Logger<ILogObj>
 	private collectionTimeout:      NodeJS.Timeout | undefined
 
-	public constructor(options: RShellSessionOptions, log: Logger<ILogObj>) {
+	public constructor(options: DeepReadonly<RShellSessionOptions>, log: Logger<ILogObj>) {
 		this.bareSession = spawn(options.pathToRExecutable, options.commandLineOptions, {
 			env:         options.env,
 			cwd:         options.cwd,
 			windowsHide: true
 		})
-		this.sessionStdOut = readline.createInterface({
-			input:    this.bareSession.stdout,
-			terminal: false
-		})
-		this.sessionStdErr = readline.createInterface({
-			input:    this.bareSession.stderr,
-			terminal: false
-		})
-		this.onExit(() => { this.end() })
+
+		this.sessionStdOut = readline.createInterface({ input: this.bareSession.stdout })
+		this.sessionStdErr = readline.createInterface({ input: this.bareSession.stderr })
+
+		this.onExit(() => this.end())
 		this.options = options
 		this.log = log
-		this.setupRSessionLoggers()
+
+		if(log.settings.minLevel >= LogLevel.Trace) {
+			this.bareSession.stdout.on('data', (data: Buffer) => {
+				log.trace(`< ${data.toString()}`)
+			})
+			this.bareSession.on('close', (code: number) => {
+				log.trace(`session exited with code ${code}`)
+			})
+		}
+
+		this.bareSession.stderr.on('data', (data: string) => {
+			log.warn(`< ${data}`)
+		})
 	}
 
 	public write(data: string): void {
@@ -471,20 +479,6 @@ class RShellSession {
 		this.sessionStdErr.close()
 		log.info(`killed R session with pid ${this.bareSession.pid ?? '<unknown>'} and result ${killResult ? 'successful' : 'failed'} (including streams)`)
 		return killResult
-	}
-
-	private setupRSessionLoggers(): void {
-		if(this.log.settings.minLevel >= LogLevel.Trace) {
-			this.bareSession.stdout.on('data', (data: Buffer) => {
-				this.log.trace(`< ${data.toString()}`)
-			})
-			this.bareSession.on('close', (code: number) => {
-				this.log.trace(`session exited with code ${code}`)
-			})
-		}
-		this.bareSession.stderr.on('data', (data: string) => {
-			this.log.warn(`< ${data}`)
-		})
 	}
 
 	public onExit(callback: (code: number, signal: string | null) => void): void {

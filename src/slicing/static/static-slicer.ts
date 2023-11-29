@@ -20,7 +20,6 @@ import { log } from '../../util/log'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
 import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
 import objectHash from 'object-hash'
-import { DefaultMap } from '../../util/defaultmap'
 import { LocalScope } from '../../dataflow/environments/scopes'
 import { convertAllSlicingCriteriaToIds, DecodedCriteria, SlicingCriteria } from '../criterion'
 
@@ -76,7 +75,7 @@ class VisitingQueue {
 	private readonly threshold: number
 	private timesHitThreshold                 = 0
 	private seen                              = new Map<Fingerprint, NodeId>()
-	private idThreshold                       = new DefaultMap<NodeId, number>(() => 0)
+	private idThreshold                       = new Map<NodeId, number>()
 	private queue:              NodeToSlice[] = []
 
 	constructor(threshold: number) {
@@ -84,7 +83,7 @@ class VisitingQueue {
 	}
 
 	public add(target: NodeId, env: REnvironmentInformation, envFingerprint: string, onlyForSideEffects: boolean): void {
-		const idCounter = this.idThreshold.get(target)
+		const idCounter = this.idThreshold.get(target) ?? 0
 
 		if(idCounter > this.threshold) {
 			slicerLogger.warn(`id: ${target} has been visited ${idCounter} times, skipping`)

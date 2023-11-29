@@ -1,4 +1,4 @@
-export { SteppingSlicer } from './slicer'
-export * from './steps'
-export * from './input'
-export * from './output'
+export { SteppingSlicer } from './stepping-slicer'
+export * from './steps/steps'
+export * from './steps/input'
+export * from './steps/output'

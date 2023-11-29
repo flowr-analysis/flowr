@@ -1,4 +1,4 @@
-import { type ChildProcessWithoutNullStreams, spawn } from 'child_process'
+import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process'
 import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, type Logger } from 'tslog'
 import * as readline from 'node:readline'
@@ -9,7 +9,7 @@ import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 import fs from 'fs'
 import { removeTokenMapQuotationMarks, TokenMap } from './retriever'
-import { DeepWritable } from 'ts-essentials'
+import { DeepReadonly, DeepWritable } from 'ts-essentials'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -61,6 +61,12 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
 	errorStopsWaiting:       true
 }
 
+export const enum RShellReviveOptions {
+	Never,
+	OnError,
+	Always
+}
+
 export interface RShellSessionOptions extends MergeableRecord {
 	/** The path to the R executable, can be only the executable if it is to be found on the PATH. */
 	readonly pathToRExecutable:  string
@@ -70,10 +76,10 @@ export interface RShellSessionOptions extends MergeableRecord {
 	readonly cwd:                string
 	/** The character to use to mark the end of a line. Is probably always `\n` (even on windows). */
 	readonly eol:                string
-	/** The environment variables available in the R session. */
-	readonly env:                NodeJS.ProcessEnv
+	/** The environment variables available in the R session (undefined uses the child-process default). */
+	readonly env:                NodeJS.ProcessEnv | undefined
 	/** If set, the R session will be restarted if it exits due to an error */
-	readonly revive:             'never' | 'on-error' | 'always'
+	readonly revive:             RShellReviveOptions
 	/** Called when the R session is restarted, this makes only sense if `revive` is not set to `'never'` */
 	readonly onRevive:           (code: number, signal: string | null) => void
 	/** The path to the library directory, use undefined to let R figure that out for itself */
@@ -93,10 +99,10 @@ export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
 	pathToRExecutable:  getPlatform() === 'windows' ? 'R.exe' : 'R',
 	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
 	cwd:                process.cwd(),
-	env:                process.env,
+	env:                undefined,
 	eol:                '\n',
 	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
-	revive:             'never',
+	revive:             RShellReviveOptions.Never,
 	onRevive:           () => { /* do nothing */ }
 } as const
 
@@ -118,7 +124,7 @@ export class RShell {
 	private tempDirs         = new Set<string>()
 
 	public constructor(options?: Partial<RShellOptions>) {
-		this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
+		this.options = { ...DEFAULT_R_SHELL_OPTIONS, ...options }
 		this.log = log.getSubLogger({ name: this.options.sessionName })
 
 		this.session = new RShellSession(this.options, this.log)
@@ -126,12 +132,12 @@ export class RShell {
 	}
 
 	private revive() {
-		if(this.options.revive === 'never') {
+		if(this.options.revive === RShellReviveOptions.Never) {
 			return
 		}
 
 		this.session.onExit((code, signal) => {
-			if(this.options.revive === 'always' || (this.options.revive === 'on-error' && code !== 0)) {
+			if(this.options.revive === RShellReviveOptions.Always || (this.options.revive === RShellReviveOptions.OnError && code !== 0)) {
 				this.log.warn(`R session exited with code ${code}, reviving!`)
 				this.options.onRevive(code, signal)
 				this.session = new RShellSession(this.options, this.log)
@@ -363,28 +369,36 @@ class RShellSession {
 	private readonly bareSession:   ChildProcessWithoutNullStreams
 	private readonly sessionStdOut: readline.Interface
 	private readonly sessionStdErr: readline.Interface
-	private readonly options:       RShellSessionOptions
+	private readonly options:       DeepReadonly<RShellSessionOptions>
 	private readonly log:           Logger<ILogObj>
 	private collectionTimeout:      NodeJS.Timeout | undefined
 
-	public constructor(options: RShellSessionOptions, log: Logger<ILogObj>) {
+	public constructor(options: DeepReadonly<RShellSessionOptions>, log: Logger<ILogObj>) {
 		this.bareSession = spawn(options.pathToRExecutable, options.commandLineOptions, {
 			env:         options.env,
 			cwd:         options.cwd,
 			windowsHide: true
 		})
-		this.sessionStdOut = readline.createInterface({
-			input:    this.bareSession.stdout,
-			terminal: false
-		})
-		this.sessionStdErr = readline.createInterface({
-			input:    this.bareSession.stderr,
-			terminal: false
-		})
-		this.onExit(() => { this.end() })
+
+		this.sessionStdOut = readline.createInterface({ input: this.bareSession.stdout })
+		this.sessionStdErr = readline.createInterface({ input: this.bareSession.stderr })
+
+		this.onExit(() => this.end())
 		this.options = options
 		this.log = log
-		this.setupRSessionLoggers()
+
+		if(log.settings.minLevel >= LogLevel.Trace) {
+			this.bareSession.stdout.on('data', (data: Buffer) => {
+				log.trace(`< ${data.toString()}`)
+			})
+			this.bareSession.on('close', (code: number) => {
+				log.trace(`session exited with code ${code}`)
+			})
+		}
+
+		this.bareSession.stderr.on('data', (data: string) => {
+			log.warn(`< ${data}`)
+		})
 	}
 
 	public write(data: string): void {
@@ -465,20 +479,6 @@ class RShellSession {
 		this.sessionStdErr.close()
 		log.info(`killed R session with pid ${this.bareSession.pid ?? '<unknown>'} and result ${killResult ? 'successful' : 'failed'} (including streams)`)
 		return killResult
-	}
-
-	private setupRSessionLoggers(): void {
-		if(this.log.settings.minLevel >= LogLevel.Trace) {
-			this.bareSession.stdout.on('data', (data: Buffer) => {
-				this.log.trace(`< ${data.toString()}`)
-			})
-			this.bareSession.on('close', (code: number) => {
-				this.log.trace(`session exited with code ${code}`)
-			})
-		}
-		this.bareSession.stderr.on('data', (data: string) => {
-			this.log.warn(`< ${data}`)
-		})
 	}
 
 	public onExit(callback: (code: number, signal: string | null) => void): void {

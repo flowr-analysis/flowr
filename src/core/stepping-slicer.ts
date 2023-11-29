@@ -1,23 +1,32 @@
 import {
-	NormalizedAst, IdGenerator,
-	NoInfo,
-	RParseRequest,
-	RShell,
-	XmlParserHooks
-} from '../r-bridge'
-import {
-	executeSingleSubStep, LAST_PER_FILE_STEP, LAST_STEP,
-	StepRequired, STEPS,
-	STEPS_PER_FILE,
+	LAST_PER_FILE_STEP, LAST_STEP,
 	STEPS_PER_SLICE,
-	StepName, StepResult
+	SteppingSlicerInput,
+	StepResults,
+	StepName, PipelineStepStage, PipelineStepName
 } from './steps'
-import { guard } from '../util/assert'
-import { SliceResult, SlicingCriteria } from '../slicing'
-import { DeepPartial } from 'ts-essentials'
-import { SteppingSlicerInput } from './input'
-import { StepResults } from './output'
-import { DataflowInformation } from '../dataflow/internal/info'
+import { SlicingCriteria } from '../slicing'
+import { createPipeline, Pipeline, PipelineOutput, PipelineStepOutputWithName } from './steps/pipeline'
+import { PARSE_WITH_R_SHELL_STEP } from './steps/all/core/00-parse'
+import { NORMALIZE } from './steps/all/core/10-normalize'
+import { LEGACY_STATIC_DATAFLOW } from './steps/all/core/20-dataflow'
+import { STATIC_SLICE } from './steps/all/static-slicing/30-slice'
+import { NAIVE_RECONSTRUCT } from './steps/all/static-slicing/40-reconstruct'
+import { PipelineExecutor } from './pipeline-executor'
+
+const legacyPipelines = {
+	// brrh, but who cares, it is legacy!
+	'parse':       createPipeline(PARSE_WITH_R_SHELL_STEP),
+	'normalize':   createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE),
+	'dataflow':    createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW),
+	'slice':       createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE),
+	'reconstruct': createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE, NAIVE_RECONSTRUCT)
+}
+type LegacyPipelineType<InterestedIn extends StepName> = typeof legacyPipelines[InterestedIn]
+
+function getLegacyPipeline(interestedIn: StepName): Pipeline {
+	return legacyPipelines[interestedIn]
+}
 
 /**
  * This is ultimately the root of flowR's static slicing procedure.
@@ -76,46 +85,25 @@ import { DataflowInformation } from '../dataflow/internal/info'
  * for, for example, the dataflow analysis.
  *
  * @see retrieveResultOfStep
- * @see SteppingSlicer#doNextStep
  * @see StepName
  */
-export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof LAST_STEP> {
-	public static readonly maximumNumberOfStepsPerFile = Object.keys(STEPS_PER_FILE).length
-	public static readonly maximumNumberOfStepsPerSlice = SteppingSlicer.maximumNumberOfStepsPerFile + Object.keys(STEPS_PER_SLICE).length
-
-	private readonly shell:          RShell
-	private readonly stepOfInterest: InterestedIn
-	private readonly request:        RParseRequest
-	private readonly hooks?:         DeepPartial<XmlParserHooks>
-	private readonly getId?:         IdGenerator<NoInfo>
-
-	private criterion?: SlicingCriteria
-
-	private results = {} as Record<keyof typeof STEPS, unknown>
-
-	private stage: StepRequired = 'once-per-file'
-	private stepCounter = 0
-	private reachedWanted = false
+export class SteppingSlicer<InterestedIn extends StepName = typeof LAST_STEP> {
+	private executor: PipelineExecutor<LegacyPipelineType<InterestedIn>>
 
 	/**
 	 * Create a new stepping slicer. For more details on the arguments please see {@link SteppingSlicerInput}.
 	 */
 	constructor(input: SteppingSlicerInput<InterestedIn>) {
-		this.shell = input.shell
-		this.request = input.request
-		this.hooks = input.hooks
-		this.getId = input.getId
-		this.stepOfInterest = (input.stepOfInterest ?? LAST_STEP) as InterestedIn
-		this.criterion = input.criterion
+		this.executor = new PipelineExecutor(getLegacyPipeline(input.stepOfInterest ?? LAST_STEP), input) as PipelineExecutor<LegacyPipelineType<InterestedIn>>
 	}
 
 	/**
 	 * Retrieve the current stage the stepping slicer is in.
-	 * @see StepRequired
+	 * @see PipelineStepStage
 	 * @see switchToSliceStage
 	 */
-	public getCurrentStage(): StepRequired {
-		return this.stage
+	public getCurrentStage(): PipelineStepStage {
+		return this.executor.getCurrentStage()
 	}
 
 	/**
@@ -124,14 +112,12 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 	 * @see getCurrentStage
 	 */
 	public switchToSliceStage(): void {
-		guard(this.stepCounter === SteppingSlicer.maximumNumberOfStepsPerFile, 'First need to complete all steps before switching')
-		guard(this.stage === 'once-per-file', 'Cannot switch to next stage, already in once-per-slice stage')
-		this.stage = 'once-per-slice'
+		this.executor.switchToRequestStage()
 	}
 
 
-	public getResults(intermediate?:false): StepResults<InterestedIn>
-	public getResults(intermediate: true): Partial<StepResults<InterestedIn>>
+	public getResults(intermediate?:false): PipelineOutput<LegacyPipelineType<InterestedIn>>
+	public getResults(intermediate: true): Partial<PipelineOutput<LegacyPipelineType<InterestedIn>>>
 	/**
 	 * Returns the result of the step of interest, as well as the results of all steps before it.
 	 *
@@ -139,19 +125,15 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 	 * 		 However, if you pass `true` to this parameter, you can also receive the results *before* the step of interest,
 	 * 		 although the typing system then can not guarantee which of the steps have already happened.
 	 */
-	public getResults(intermediate = false): StepResults<InterestedIn> | Partial<StepResults<InterestedIn>> {
-		guard(intermediate || this.reachedWanted, 'Before reading the results, we need to reach the step we are interested in')
-		return this.results as StepResults<InterestedIn>
+	public getResults(intermediate = false): PipelineOutput<LegacyPipelineType<InterestedIn>> | Partial<PipelineOutput<LegacyPipelineType<InterestedIn>>> {
+		return this.executor.getResults(intermediate)
 	}
 
 	/**
 	 * Returns true only if 1) there are more steps to-do for the current stage and 2) we have not yet reached the step we are interested in
 	 */
 	public hasNextStep(): boolean {
-		return !this.reachedWanted && (this.stage === 'once-per-file' ?
-			this.stepCounter < SteppingSlicer.maximumNumberOfStepsPerFile
-			: this.stepCounter < SteppingSlicer.maximumNumberOfStepsPerSlice
-		)
+		return this.executor.hasNextStep()
 	}
 
 	/**
@@ -162,65 +144,11 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 	 * If given, it causes the execution to fail if the next step is not the one you expect.
 	 * *Without step, please refrain from accessing the result.*
 	 */
-	public async nextStep<PassedName extends StepName>(expectedStepName?: PassedName): Promise<{
-		name:   typeof expectedStepName extends undefined ? StepName : PassedName
-		result: typeof expectedStepName extends undefined ? unknown : StepResult<Exclude<PassedName, undefined>>
+	public async nextStep<PassedName extends PipelineStepName>(expectedStepName?: PassedName): Promise<{
+		name:   typeof expectedStepName extends undefined ? PipelineStepName : PassedName
+		result: typeof expectedStepName extends undefined ? unknown : PipelineStepOutputWithName<LegacyPipelineType<InterestedIn>, Exclude<PassedName, undefined>>
 	}> {
-		guard(this.hasNextStep(), 'No more steps to do')
-
-		const guardStep = this.getGuardStep(expectedStepName)
-
-		const { step, result } = await this.doNextStep(guardStep)
-
-		this.results[step] = result
-		this.stepCounter += 1
-		if(this.stepOfInterest === step) {
-			this.reachedWanted = true
-		}
-
-		return { name: step as PassedName, result: result as StepResult<PassedName> }
-	}
-
-	private getGuardStep(expectedStepName: StepName | undefined) {
-		return expectedStepName === undefined ?
-			<K extends StepName>(name: K): K => name
-			:
-			<K extends StepName>(name: K): K => {
-				guard(expectedStepName === name, `Expected step ${expectedStepName} but got ${name}`)
-				return name
-			}
-	}
-
-	private async doNextStep(guardStep: <K extends StepName>(name: K) => K) {
-		let step: StepName
-		let result: unknown
-
-		switch(this.stepCounter) {
-			case 0:
-				step = guardStep('parse')
-				result = await executeSingleSubStep(step, this.request, this.shell)
-				break
-			case 1:
-				step = guardStep('normalize')
-				result = await executeSingleSubStep(step, this.results.parse as string, await this.shell.tokenMap(), this.hooks, this.getId)
-				break
-			case 2:
-				step = guardStep('dataflow')
-				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst)
-				break
-			case 3:
-				guard(this.criterion !== undefined, 'Cannot decode criteria without a criterion')
-				step = guardStep('slice')
-				result = executeSingleSubStep(step, (this.results.dataflow as DataflowInformation).graph, this.results.normalize as NormalizedAst, this.criterion)
-				break
-			case 4:
-				step = guardStep('reconstruct')
-				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst<NoInfo>, (this.results.slice as SliceResult).result)
-				break
-			default:
-				throw new Error(`Unknown step ${this.stepCounter}, reaching this should not happen!`)
-		}
-		return { step, result }
+		return this.executor.nextStep(expectedStepName)
 	}
 
 	/**
@@ -230,14 +158,8 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 	 * @param newCriterion - the new slicing criterion to use for the next slice
 	 */
 	public updateCriterion(newCriterion: SlicingCriteria): void {
-		guard(this.stepCounter >= SteppingSlicer.maximumNumberOfStepsPerFile , 'Cannot reset slice prior to once-per-slice stage')
-		this.criterion = newCriterion
-		this.stepCounter = SteppingSlicer.maximumNumberOfStepsPerFile
-		this.results.slice = undefined
-		this.results.reconstruct = undefined
-		if(this.stepOfInterest === 'slice' || this.stepOfInterest === 'reconstruct') {
-			this.reachedWanted = false
-		}
+		// @ts-expect-error -- it is legacy
+		this.executor.updateRequest({ criterion: newCriterion })
 	}
 
 	public async allRemainingSteps(canSwitchStage: false): Promise<Partial<StepResults<InterestedIn extends keyof typeof STEPS_PER_SLICE | undefined ? typeof LAST_PER_FILE_STEP : InterestedIn>>>
@@ -255,15 +177,6 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 	 *       of the slicer that I wanted to achieve with this class.
 	 */
 	public async allRemainingSteps(canSwitchStage = true): Promise<StepResults<InterestedIn | typeof LAST_PER_FILE_STEP> | Partial<StepResults<InterestedIn | typeof LAST_PER_FILE_STEP>>> {
-		while(this.hasNextStep()) {
-			await this.nextStep()
-		}
-		if(canSwitchStage && !this.reachedWanted && this.stage === 'once-per-file') {
-			this.switchToSliceStage()
-			while(this.hasNextStep()) {
-				await this.nextStep()
-			}
-		}
-		return this.reachedWanted ? this.getResults() : this.getResults(true)
+		return this.executor.allRemainingSteps(canSwitchStage)
 	}
 }

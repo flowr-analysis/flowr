@@ -1,6 +1,11 @@
 import { guard } from './assert'
 
 /**
+ * Returns the tail of an array (all elements except the first one).
+ */
+export type TailOfArray<T extends unknown[]> = T extends [infer _, ...infer Rest] ? Rest : never;
+
+/**
  * Splits the array every time the given predicate fires.
  * The element the split appears on will not be included!
  *
@@ -33,6 +38,23 @@ export function splitArrayOn<T>(arr: T[], predicate: (elem: T) => boolean): T[][
 		result.push(current)
 	}
 	return result
+}
+
+/**
+ * Returns a tuple of two arrays, where the first one contains all elements for which the predicate returned true,
+ * and the second one contains all elements for which the predicate returned false.
+ */
+export function partitionArray<T>(arr: readonly T[], predicate: (elem: T) => boolean): [T[], T[]] {
+	const left: T[] = []
+	const right: T[] = []
+	for(const elem of arr) {
+		if(predicate(elem)) {
+			left.push(elem)
+		} else {
+			right.push(elem)
+		}
+	}
+	return [left, right]
 }
 
 /**

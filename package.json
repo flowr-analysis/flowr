@@ -18,7 +18,7 @@
     "lint": "npm run license-compat -- --summary && eslint src/ test/",
     "license-compat": "license-checker --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
     "doc": "typedoc",
-    "test": "nyc --no-clean mocha --require ts-node/register --timeout 60000 \"test/**/*.spec.ts\"",
+    "test": "nyc --source-map --produce-source-map mocha --require ts-node/register --timeout 60000 \"test/**/*.spec.ts\"",
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2; cd ../../; }; func",
     "test-full": "npm run test -- --test-installation"
   },
@@ -29,14 +29,13 @@
     "all": true,
     "per-file": true,
     "check-coverage": false,
-    "skip-full": false,
+    "skip-full": true,
     "lines": 70,
     "extension": [
       ".ts"
     ],
     "include": "src/**/*.ts",
     "reporter": [
-      "html",
       "text",
       "lcov",
       "cobertura"
@@ -173,7 +172,7 @@
       "check-file/filename-naming-convention": [
         "error",
         {
-          "**/*.ts": "?([A-Z])+([a-z])*((-|.)?([A-Z])+([a-z]))"
+          "**/*.ts": "?([0-9]+-)?([A-Z])+([a-z])*((-|.)?([A-Z])+([a-z]))"
         }
       ],
       "check-file/folder-match-with-fex": [

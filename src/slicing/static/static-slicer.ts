@@ -102,11 +102,11 @@ class VisitingQueue {
 		}
 	}
 
-	public next(): NodeToSlice | undefined {
-		return this.queue.pop()
+	public next(): NodeToSlice {
+		return this.queue.pop() as NodeToSlice
 	}
 
-	public has(): boolean {
+	public nonEmpty(): boolean {
 		return this.queue.length > 0
 	}
 
@@ -122,7 +122,7 @@ class VisitingQueue {
 /**
  * This returns the ids to include in the slice, when slicing with the given seed id's (must be at least one).
  * <p>
- * The returned ids can be used to {@link reconstructToCode | reconstruct the slice to R code}.
+ * The returned ids can be used to {@link reconstructToCode|reconstruct the slice to R code}.
  */
 export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice')
@@ -142,32 +142,29 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 	}
 
 
-	while(queue.has()) {
+	while(queue.nonEmpty()) {
 		const current = queue.next()
-
-		if(current === undefined) {
-			continue
-		}
 
 		const baseEnvFingerprint = envFingerprint(current.baseEnvironment)
 
 		const currentInfo = dataflowGraph.get(current.id, true)
-		// slicerLogger.trace(`visiting id: ${current.id} with name: ${currentInfo?.[0].name ?? '<unknown>'}`)
 
 		if(currentInfo === undefined) {
 			slicerLogger.warn(`id: ${current.id} must be in graph but can not be found, keep in slice to be sure`)
 			continue
 		}
 
-		if(currentInfo[0].tag === 'function-call' && !current.onlyForSideEffects) {
+		const [currentVertex, currentEdges] = currentInfo
+
+		if(currentVertex.tag === 'function-call' && !current.onlyForSideEffects) {
 			slicerLogger.trace(`${current.id} is a function call`)
-			sliceForCall(current, idMap, currentInfo[0], dataflowGraph, queue)
+			sliceForCall(current, idMap, currentVertex, dataflowGraph, queue)
 		}
 
 		const currentNode = idMap.get(current.id)
 		guard(currentNode !== undefined, () => `id: ${current.id} must be in dataflowIdMap is not in ${graphToMermaidUrl(dataflowGraph, idMap)}`)
 
-		for(const [target, edge] of currentInfo[1]) {
+		for(const [target, edge] of currentEdges) {
 			if(edge.types.has(EdgeType.SideEffectOnCall)) {
 				queue.add(target, current.baseEnvironment, baseEnvFingerprint, true)
 			}
@@ -175,7 +172,7 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 				queue.add(target, current.baseEnvironment, baseEnvFingerprint, false)
 			}
 		}
-		for(const controlFlowDependency of addControlDependencies(currentInfo[0].id, idMap)) {
+		for(const controlFlowDependency of addControlDependencies(currentVertex.id, idMap)) {
 			queue.add(controlFlowDependency, current.baseEnvironment, baseEnvFingerprint, false)
 		}
 	}

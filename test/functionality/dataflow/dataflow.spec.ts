@@ -19,7 +19,7 @@ describe('Dataflow', () => {
 			const stepper = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
 				shell,
 				criterion: ['2@b'],
-				request:   requestFromInput('b <- 3\ncat(b)'),
+				request:   requestFromInput('b <- 3; x <- 5\ncat(b)'),
 			})
 
 			while(stepper.hasNextStep()) {
@@ -32,7 +32,20 @@ describe('Dataflow', () => {
 				await stepper.nextStep()
 			}
 
-			console.log(stepper.getResults())
+			const result = stepper.getResults()
+			console.log(result)
+		})
+		it('bar', async() => {
+			const stepper = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
+				shell,
+				criterion: ['2@b'],
+				request:   requestFromInput('b <- 3; x <- 5\ncat(b)'),
+			})
+			console.log(await stepper.allRemainingSteps())
+			stepper.updateRequest({
+				criterion: ['1@x']
+			})
+			console.log(await stepper.allRemainingSteps())
 		})
 	}))
 

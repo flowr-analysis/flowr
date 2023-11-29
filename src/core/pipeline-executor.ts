@@ -23,54 +23,74 @@ import {
  * (e.g., to be instrumented with measurements). So, you can use the pipeline executor like this:
  *
  * ```ts
- * const slicer = new PipelineExecutor({ ... })
- * while(slicer.hasNextStep()) {
- *     await slicer.nextStep()
+ * const stepper = new PipelineExecutor( ... )
+ * while(stepper.hasNextStep()) {
+ *     await stepper.nextStep()
  * }
  *
- * slicer.switchToSliceStage()
+ * stepper.switchToRequestStage()
  *
- * while(slicer.hasNextStep()) {
- *     await slicer.nextStep()
+ * while(stepper.hasNextStep()) {
+ *     await stepper.nextStep()
  * }
  *
- * const result = slicer.getResults()
+ * const result = stepper.getResults()
  * ```
  *
- * Of course, you might think, that this is rather overkill if you simply want to receive the slice of a given input source or in general
- * the result of any step. And this is true. Therefore, if you do not want to perform some kind of magic in-between steps, you can use the
+ * Of course, you might think, that this is rather overkill if you simply want to receive the result.
+ * And this is true. Therefore, if you do not want to perform some kind of magic in-between steps, you can use the
  * **{@link allRemainingSteps}** function like this:
  *
  * ```ts
- * const slicer = new SteppingSlicer({ ... })
- * const result = await slicer.allRemainingSteps()
+ * const stepper = new PipelineExecutor( ... )
+ * const result = await stepper.allRemainingSteps()
  * ```
  *
- * As the name suggest, you can combine this name with previous calls to {@link nextStep} to only execute the remaining steps.
+ * As the name suggest, you can combine this name with previous calls to {@link nextStep} to only execute the remaining
+ * steps in case, for whatever reason you only want to instrument some steps.
  *
- * Giving the **step of interest** allows you to declare the maximum step to execute.
- * So, if you pass `dataflow` as the step of interest, the stepping slicer will stop after the dataflow step.
- * If you do not pass a step, the stepping slicer will execute all steps.
- *
- * By default, the {@link PipelineExecutor} does not offer an automatic way to repeat the per-slice steps for multiple slices (this is mostly to prevent accidental errors).
- * However, you can use the **{@link updateCriterion}** function to reset the per-slice steps and re-execute them for a new slice. This allows something like the following:
+ * By default, the {@link PipelineExecutor} does not offer an automatic way to repeat requests (mostly to prevent accidental errors).
+ * However, you can use the
+ * **{@link updateRequest}** function to reset the request steps and re-execute them for a new request. This allows something like the following:
  *
  * ```ts
- * const slicer = new SteppingSlicer({ ... })
- * const result = await slicer.allRemainingSteps()
+ * const stepper = new PipelineExecutor( ... )
+ * const result = await stepper.allRemainingSteps()
  *
- * slicer.updateCriterion(...)
- * const result2 = await slicer.allRemainingSteps()
+ * stepper.updateRequest( ... )
+ * const result2 = await stepper.allRemainingSteps()
  * ```
  *
- * @note Even though, using the stepping slicer introduces some performance overhead, we consider
- * it to be the baseline for performance benchmarking. It may very well be possible to squeeze out some more performance by
- * directly constructing the steps in the right order. However, we consider this to be negligible when compared with the time required
- * for, for example, the dataflow analysis.
+ * **Example - Slicing With the Pipeline Executor**:
  *
- * @see retrieveResultOfStep
- * @see PipelineExecutor#_doNextStep
- * @see StepName
+ * Suppose, you want to... you know _slice_ a file (which was, at one point the origin of flowR), then you can
+ * either create a pipeline yourself with the respective steps, or you can use the {@link DEFAULT_SLICING_PIPELINE} (and friends).
+ * With it, slicing essentially becomes 'easy-as-pie':
+ *
+ * ```ts
+ * const slicer = new PipelineExecutor(DEFAULT_SLICING_PIPELINE, {
+ *    shell,
+ *    // of course, the criterion and request given here are just examples, you can use whatever you want to slice!
+ *    criterion: ['2@b'],
+ *    request:   requestFromInput('b <- 3; x <- 5\ncat(b)'),
+ * })
+ * const result = await slicer.allRemainingSteps()
+ * ```
+ *
+ * But now, we want to slice for `x` in the first line as well! We can do that by adding:
+ *
+ * ```ts
+ * stepper.updateRequest({ criterion: ['1@x'] })
+ * const result2 = await stepper.allRemainingSteps()
+ * ```
+ *
+ * @note Even though using the pipeline executor introduces a small performance overhead, we consider
+ * it to be the baseline for performance benchmarking. It may very well be possible to squeeze out a little bit more by
+ * directly constructing the steps in the right order. However, we consider this to be negligible when compared with the time required
+ * for, for example, the dataflow analysis of larger files.
+ *
+ * @see PipelineExecutor#allRemainingSteps
+ * @see PipelineExecutor#nextStep
  */
 export class PipelineExecutor<P extends Pipeline> {
 	private readonly pipeline: P
@@ -191,7 +211,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	 */
 	public updateRequest(newRequestData: PipelinePerRequestInput<P>): void {
 		const requestStep = this.pipeline.firstStepPerRequest
-		guard(this.stepCounter >= requestStep, 'Cannot reset slice prior to once-per-slice stage')
+		guard(this.stepCounter >= requestStep, 'Cannot reset request prior to once-per-request stage')
 		this.input = {
 			...(this.input as object),
 			...newRequestData

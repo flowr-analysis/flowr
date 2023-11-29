@@ -124,7 +124,7 @@ export class PipelineExecutor<P extends Pipeline> {
 	/**
 	 * Returns the results of the pipeline.
 	 *
-	 * @param intermediate - normally you can only receive the results *after* the stepper completed the step of interested.
+	 * @param intermediate - Normally you can only receive the results *after* the stepper completed the step of interested.
 	 * 		 However, if you pass `true` to this parameter, you can also receive the results *before* the pipeline completed,
 	 * 		 although the typing system then can not guarantee which of the steps have already happened.
 	 */
@@ -156,9 +156,7 @@ export class PipelineExecutor<P extends Pipeline> {
 		name:   typeof expectedStepName extends undefined ? NameOfStep : PassedName
 		result: typeof expectedStepName extends undefined ? unknown : PipelineStepOutputWithName<P, PassedName>
 	}> {
-		const guardStep = this.getGuardStep(expectedStepName)
-
-		const { step, result } = await this._doNextStep(guardStep)
+		const { step, result } = await this._doNextStep(expectedStepName)
 
 		this.output[step as PipelineStepNames<P>] = result
 		this.stepCounter += 1
@@ -166,18 +164,8 @@ export class PipelineExecutor<P extends Pipeline> {
 		return { name: step as PassedName, result }
 	}
 
-	private getGuardStep(expectedStepName: NameOfStep | undefined) {
-		return expectedStepName === undefined ?
-			<K extends NameOfStep>(name: K): K => name
-			:
-			<K extends NameOfStep>(name: K): K => {
-				guard(expectedStepName === name, `Expected step ${expectedStepName} but got ${String(name)}`)
-				return name
-			}
-	}
-
 	// TODO: make it private after the stepping slicer is removed
-	public async _doNextStep(guardStep: <K extends NameOfStep>(name: K) => K): Promise<{
+	public async _doNextStep(expectedStepName: Readonly<NameOfStep | undefined>): Promise<{
 		step:   NameOfStep,
 		result: PipelineStepOutputWithName<P, NameOfStep>
 	}> {
@@ -185,7 +173,9 @@ export class PipelineExecutor<P extends Pipeline> {
 		const step = this.pipeline.steps.get(this.pipeline.order[this.stepCounter])
 		guard(step !== undefined, `Cannot execute next step, step ${this.pipeline.order[this.stepCounter]} does not exist.`)
 
-		guardStep(step.name)
+		if(expectedStepName !== undefined) {
+			guard(step.name === expectedStepName, () => `Cannot execute next step, expected step ${JSON.stringify(expectedStepName)} but got ${step.name}.`)
+		}
 		const result = await step.processor(this.output, this.input) as unknown
 
 		return { step: step.name, result: result as PipelineStepOutputWithName<P, NameOfStep> }

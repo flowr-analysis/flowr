@@ -1,9 +1,12 @@
 {
-	"extends": ["@commitlint/config-angular"],
+	"extends": [
+		"@commitlint/config-angular"
+	],
 	"defaultIgnores": true,
 	"helpUrl": "https://github.com/Code-Inspect/flowr/blob/main/.github/CONTRIBUTING.md",
 	"rules": {
-		"subject-min-length": [1, "always", 10],
+		"subject-min-length": [1, "always", 6],
+		"subject-max-length": [1, "always", 42],
 		"subject-exclamation-mark": [2, "never", "!"],
 		"scope-case": [2, "always", "kebab-case"],
 		"scope-min-length": [1, "always", 3],
@@ -12,7 +15,7 @@
 		"type-enum": [2, "always", [
 			"build", "build-fix",
 			"ci", "ci-fix",
-			"docs", "docs-fix",
+			"doc", "docs", "doc-fix", "docs-fix",
 			"feat", "feat-fix",
 			"perf",
 			"refactor",

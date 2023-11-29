@@ -29,7 +29,7 @@
     "all": true,
     "per-file": true,
     "check-coverage": false,
-    "skip-full": false,
+    "skip-full": true,
     "lines": 70,
     "extension": [
       ".ts"

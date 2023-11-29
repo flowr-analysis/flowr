@@ -14,10 +14,9 @@ function processor(results: { normalize?: NormalizedAst }) {
 	return produceDataFlowGraph(results.normalize as NormalizedAst)
 }
 
-export const LEGACY_STATIC_DATAFLOW = {
+const staticDataflowCommon = {
 	name:        'dataflow',
 	description: 'Construct the dataflow graph',
-	processor,
 	executed:    PipelineStepStage.OncePerFile,
 	printer:     {
 		[StepOutputFormat.Internal]:   internalPrinter,
@@ -26,6 +25,11 @@ export const LEGACY_STATIC_DATAFLOW = {
 		[StepOutputFormat.Mermaid]:    dataflowGraphToMermaid,
 		[StepOutputFormat.MermaidUrl]: dataflowGraphToMermaidUrl
 	},
-	dependencies:  [ 'normalize' ],
+	dependencies: [ 'normalize' ],
+} as const
+
+export const LEGACY_STATIC_DATAFLOW = {
+	...staticDataflowCommon,
+	processor,
 	requiredInput: {}
 } as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof processor>>

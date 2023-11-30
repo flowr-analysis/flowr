@@ -1,4 +1,5 @@
 import { NodeId, ParentInformation, RNode, RType } from '../r-bridge'
+import { SourcePosition } from '../util/range'
 import { ReconstructionConfiguration } from './reconstruct'
 
 
@@ -8,68 +9,69 @@ import { ReconstructionConfiguration } from './reconstruct'
 export type Selection = Set<NodeId>
 interface PrettyPrintLinePart {
 	part:   string
-	spaces: number
+	loc: SourcePosition
 }
 export interface PrettyPrintLine {
-	line:   string
+	linePart: PrettyPrintLinePart[]
 	indent: number
 }
-export interface WrappedPrettyPrintLine { //change name to be more fitting
-	linePart: PrettyPrintLinePart[]
-	indent:   number
-}
-export function plain(text: string,space: number): Code {
-	return [unwrapPrettyPrintLine({linePart: [{part: text,spaces: space}],indent: 0})]
-}
-export type Code = PrettyPrintLine[]
 
-export function unwrapPrettyPrintLine(wrappedLine: WrappedPrettyPrintLine): PrettyPrintLine {
-	const text = ''
-	for(let index = 0; index < wrappedLine.linePart.length; index++) {
-		const element = wrappedLine.linePart[index]
-		for(let indent = 0; indent < wrappedLine.linePart[index].spaces; indent++) {
-			text === text + ' '
+/**
+ * Splits text on '\n' to create lineParts and encapsulates them in the Code type
+ * @param text lexeme which needs to be converted to Code
+ * @param location of the lexeme within the R Code
+ * @returns text and location converted into the Code type
+ */
+export function plain(text: string, location: SourcePosition): Code {
+	let part = ""
+	let printLine: PrettyPrintLine = {linePart: [], indent: 0}
+	for (let character = 0; character < text.length; character++) {
+		const element = text[character]
+		if(element === '\n') {
+			printLine.linePart.concat({part: part, loc: location})
 		}
-		text === text + wrappedLine.linePart[index].part
+		else {
+			part = part.concat(element)
+		}
 	}
-	return {line: text,indent: 0}
+	return [printLine]
 }
 
-export function wrappPrettyPrintLine(code: Code): WrappedPrettyPrintLine[] {
-	let result:WrappedPrettyPrintLine[] = []
-	for(let line = 0; line < code.length; line++) {
-		const wrappedLine: WrappedPrettyPrintLine = {linePart: [], indent: code[line].indent}
-		for(let i = 0; i < code[line].line.length; i++) {
-			let space = 0
-			let linePart = ''
-			let newPart = true
-			if(code[line].line[i] === ' ') {
-				if(newPart) {
-					space = space + 1
-				}
-				else {
-					const part: PrettyPrintLinePart = {part: linePart,spaces: space}
-					wrappedLine.linePart = wrappedLine.linePart.concat(part)
-					space = 0
-					newPart = true
-				}
-			}
-			else {
-				newPart = false
-				linePart = linePart + code[line].line[i]
-			}
-		}
-		result = result.concat(wrappedLine)
+/**
+ * this function will merge up to n code pieces into a singular code piece, garanting that there are no duplicate lines and all lines are in order
+ * @param snipbits list of code snipbits that need to be merged
+ * @returns the snipbits array as a single merged code element
+ */
+export function merge(snipbits: Code[]): Code {
+	let buckets: PrettyPrintLine[] = []
+	let result:Code = []
+
+	//seperate and group lineParts by lines
+	snipbits.forEach(code => {
+		code.forEach(line => {
+			line.linePart.forEach(part => {
+				const line = part.loc.line
+				buckets[line].linePart.concat(part)
+			})
+		})
+	});
+
+	//sort buckets by column and stich lines into single code piece
+	for (const line in buckets) {
+		buckets[line].linePart.sort((a, b) => a.loc.column - b.loc.column)
+		result.concat(buckets[line])
 	}
+
 	return result
 }
+export type Code = PrettyPrintLine[]
 
 //look up exact function
 /*
 --helper function--
 */
 export function indentBy(lines: Code, indent: number): Code {
-	return lines.map(({ line, indent: i }) => ({ line, indent: i + indent }))
+	return lines.map(({ linePart, indent: i }) => ({ linePart, indent: i + indent }))
 }
 
 /*
@@ -83,7 +85,7 @@ export function isSelected(configuration: ReconstructionConfiguration, n: RNode<
 --helper function--
 */
 export function removeExpressionListWrap(code: Code) {
-	if(code.length > 0 && code[0].line === '{' && code[code.length - 1].line === '}') {
+	if(code.length > 0 && code[0].linePart[0].part === '{' && code[code.length - 1].linePart[code[code.length - 1].linePart.length - 1].part === '}') {
 		return indentBy(code.slice(1, code.length - 1), -1)
 	} else {
 		return code
@@ -129,14 +131,14 @@ export function getIndentString(indent: number): string {
 --helper function--
 */
 export function prettyPrintCodeToString(code: Code, lf = '\n'): string {
-	return code.map(({ line, indent }) => `${getIndentString(indent)}${line}`).join(lf)
+	return code.map(({ linePart, indent }) => `${getIndentString(indent)}${linePart}`).join(lf)
 }
 
 /*
 --helper function--
 */
 export function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSelected: number) {
-	if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
+	if(result.length > 1 && result[0].linePart[0].part === '{' && result[result.length - 1].linePart[result[result.length - 1].linePart.length - 1].part === '}') {
 		// remove outer block
 		return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), autoSelected }
 	} else {

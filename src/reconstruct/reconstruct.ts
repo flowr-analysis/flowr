@@ -60,14 +60,15 @@ const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionC
 	// return selectionHasLeaf ? wouldBe : []
 }
 
-const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n), n.location? n.location.start.column : 0)
+const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n), n.location? n.location.start : {line: 0, column: 0})
 
 /*
 --reconstruct--
 */
 function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, expressions: Code[], configuration: ReconstructionConfiguration): Code {
+	let position =  exprList.location? exprList.location.start : {line: 0, column: 0}
 	if(isSelected(configuration, exprList)) {
-		return plain(getLexeme(exprList), exprList.location? exprList.location.start.column : 0)
+		return plain(getLexeme(exprList), position)
 	}
 
 	const subExpressions = expressions.filter(e => e.length > 0)
@@ -77,9 +78,9 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 		return subExpressions[0]
 	} else {
 		return [
-			{ line: '{', indent: 0 },
+			{ linePart: [{part: '{', loc: position}] , indent: 0 },
 			...indentBy(subExpressions.flat(), 1),
-			{ line: '}', indent: 0 }
+			{ linePart: [{part: '}', loc: position}], indent: 0 }
 		]
 	}
 }
@@ -90,7 +91,7 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: PrettyPrintLine[]) {
 	return [  // inline pretty print
 		...lhs.slice(0, lhs.length - 1),
-		{ line: `${lhs[lhs.length - 1].line} ${n} ${rhs[0].line}`, indent: 0 },
+		{ line: `${lhs[lhs.length - 1].linePart[lhs.length - 1]} ${n} ${rhs[0].linePart[0]}`, indent: 0 },
 		...indentBy(rhs.slice(1, rhs.length), 1)
 	]
 }
@@ -114,7 +115,7 @@ function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration:
 */
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, n)) {
-		return plain(getLexeme(n),n.location? n.location.start.column : 0)
+		return plain(getLexeme(n), n.location.start)
 	}
 
 	if(lhs.length === 0 && rhs.length === 0) {
@@ -124,7 +125,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 		return rhs
 	}
 	if(rhs.length === 0) { // if we have no rhs we have to keep everything to get the rhs
-		return plain(getLexeme(n), n.location? n.location.start.column : 0)
+		return plain(getLexeme(n), n.location.start)
 	}
 
 	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)
@@ -135,25 +136,25 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 */
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop), loop.location? loop.location.start.column : 0)
+		return plain(getLexeme(loop), loop.location.start)
 	}
 	if(body.length === 0 && variable.length === 0 && vector.length === 0) {
 		return []
 	} else {
 		if(body.length <= 1) {
 			// 'inline'
-			return [{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
-		} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
+			return [{ linePart: [{part:`for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) ${body.length === 0 ? '{}' : body[0].linePart}`,loc: loop.location.start}], indent: 0 }]
+		} else if(body[0].linePart[0].part === '{' && body[body.length - 1].linePart[body[body.length - 1].linePart.length - 1].part === '}') {
 			// 'block'
 			return [
-				{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) {`, indent: 0 },
+				{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) {`, loc: loop.location.start}], indent: 0 },
 				...body.slice(1, body.length - 1),
-				{ line: '}', indent: 0 }
+				{ linePart: [{part: '}', loc: loop.location.start}], indent: 0 }
 			]
 		} else {
 			// unknown
 			return [
-				{ line: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, indent: 0 },
+				{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, loc: loop.location.start}], indent: 0 },
 				...indentBy(body, 1)
 			]
 		}
@@ -165,24 +166,24 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 */
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop), loop.location? loop.location.start.column : 0)
+		return plain(getLexeme(loop), loop.location.start)
 	} else if(body.length === 0) {
 		return []
 	} else {
 		if(body.length <= 1) {
 			// 'inline'
-			return [{ line: `repeat ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
-		} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
+			return [{ linePart: [{part: `repeat ${body.length === 0 ? '{}' : body[0].linePart[0]}`,loc: loop.location.start}], indent: 0 }]
+		} else if(body[0].linePart[0].part === '{' && body[body.length - 1].linePart[body[body.length - 1].linePart.length - 1].part === '}') {
 			// 'block'
 			return [
-				{ line: 'repeat {', indent: 0 },
+				{ linePart: [{part: 'repeat {', loc: loop.location.start}], indent: 0 },
 				...body.slice(1, body.length - 1),
-				{ line: '}', indent: 0 }
+				{ linePart: [{part: '}', loc: loop.location.start}], indent: 0 }
 			]
 		} else {
 			// unknown
 			return [
-				{ line: 'repeat', indent: 0 },
+				{ linePart: [{part: 'repeat', loc: loop.location.start}], indent: 0 },
 				...indentBy(body, 1)
 			]
 		}
@@ -193,8 +194,11 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 --reconstruct--
 */
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
+	const startPos = ifThenElse.location.start
+	const endPos = ifThenElse.location.end
+	const conditionPos = ifThenElse.condition.location? ifThenElse.condition.location.start : {line: 0, column: 0}
 	if(isSelected(configuration, ifThenElse)) {
-		return plain(getLexeme(ifThenElse), ifThenElse.location? ifThenElse.location.start.column : 0)
+		return plain(getLexeme(ifThenElse), startPos)
 	}
 	otherwise ??= []
 	if(condition.length === 0 && when.length === 0 && otherwise.length === 0) {
@@ -202,27 +206,27 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	}
 	if(otherwise.length === 0 && when.length === 0) {
 		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) { }`, indent: 0 }
+			{ linePart: [{part: `if(${getLexeme(ifThenElse.condition)}) { }`, loc: startPos}], indent: 0 }
 		]
 	} else if(otherwise.length === 0) {
 		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) {`, indent: 0 },
+			{ linePart: [{part: `if(${getLexeme(ifThenElse.condition)}) {`, loc: startPos}], indent: 0 },
 			...indentBy(removeExpressionListWrap(when), 1),
-			{ line: '}', indent: 0 }
+			{ linePart: [{part: '}', loc: endPos}], indent: 0 }
 		]
 	} else if(when.length === 0) {
 		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) { } else {`, indent: 0 },
+			{ linePart: [{part: `if(${getLexeme(ifThenElse.condition)}) { } else {`, loc: startPos}], indent: 0 },
 			...indentBy(removeExpressionListWrap(otherwise), 1),
-			{ line: '}', indent: 0 }
+			{ linePart: [{part: '}', loc: startPos}], indent: 0 }
 		]
 	} else {
 		return [
-			{ line: `if(${getLexeme(ifThenElse.condition)}) {`, indent: 0 },
+			{ linePart: [{part: `if(${getLexeme(ifThenElse.condition)}) {`, loc: startPos}], indent: 0 },
 			...indentBy(removeExpressionListWrap(when), 1),
-			{ line: '} else {', indent: 0 },
+			{ linePart: [{part: '} else {', loc: conditionPos}], indent: 0 },
 			...indentBy(removeExpressionListWrap(otherwise), 1),
-			{ line: '}', indent: 0 }
+			{ linePart: [{part: '}', loc: endPos}], indent: 0 }
 		]
 	}
 }
@@ -231,26 +235,27 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 --reconstruct--
 */
 function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, configuration: ReconstructionConfiguration): Code {
+	const start = loop.location.start
 	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop), loop.location? loop.location.start.column : 0)
+		return plain(getLexeme(loop), start)
 	}
 	if(body.length === 0 && condition.length === 0) {
 		return []
 	} else {
 		if(body.length <= 1) {
 			// 'inline'
-			return [{ line: `while(${getLexeme(loop.condition)}) ${body.length === 0 ? '{}' : body[0].line}`, indent: 0 }]
-		} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
+			return [{ linePart: [{part: `while(${getLexeme(loop.condition)}) ${body.length === 0 ? '{}' : body[0].linePart[0]}`, loc: start}], indent: 0 }]
+		} else if(body[0].linePart[0].part === '{' && body[body.length - 1].linePart[body[body.length - 1].linePart.length - 1].part === '}') {
 			// 'block'
 			return [
-				{ line: `while(${getLexeme(loop.condition)}) {`, indent: 0 },
+				{ linePart: [{part: `while(${getLexeme(loop.condition)}) {`, loc: start}], indent: 0 },
 				...body.slice(1, body.length - 1),
-				{ line: '}', indent: 0 }
+				{ linePart: [{part: '}', loc: loop.location.end}], indent: 0 }
 			]
 		} else {
 			// unknown
 			return [
-				{ line: `while(${getLexeme(loop.condition)})`, indent: 0 },
+				{ linePart: [{part: `while(${getLexeme(loop.condition)})`, loc: start}], indent: 0 },
 				...indentBy(body, 1)
 			]
 		}
@@ -277,8 +282,9 @@ function reconstructParameters(parameters: RParameter<ParentInformation>[]): str
 --reconstruct--
 */
 function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: string | (Code | null)[], configuration: ReconstructionConfiguration): Code {
+	const start = node.location.start
 	if(isSelected(configuration, node)) {
-		return plain(getLexeme(node), node.location? node.location.start.column : 0)
+		return plain(getLexeme(node), start)
 	}
 
 	if(accessed.length === 0) {
@@ -289,19 +295,20 @@ function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code,
 		}
 	}
 
-	return plain(getLexeme(node), node.location? node.location.start.column : 0)
+	return plain(getLexeme(node), start)
 }
 
 /*
 --reconstruct--
 */
 function reconstructArgument(argument: RArgument<ParentInformation>, name: Code | undefined, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
+	const start = argument.location.start
 	if(isSelected(configuration, argument)) {
-		return plain(getLexeme(argument), argument.location? argument.location.start.column : 0)
+		return plain(getLexeme(argument), start)
 	}
 
 	if(argument.name !== undefined && name !== undefined && name.length > 0) {
-		return plain(`${getLexeme(argument.name)}=${argument.value ? getLexeme(argument.value) : ''}`, argument.location? argument.location.start.column : 0)
+		return plain(`${getLexeme(argument.name)}=${argument.value ? getLexeme(argument.value) : ''}`, start)
 	} else {
 		return value ?? []
 	}
@@ -311,14 +318,15 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 --reconstruct--
 */
 function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
+	const start = parameter.location.start
 	if(isSelected(configuration, parameter)) {
-		return plain(getLexeme(parameter), parameter.location? parameter.location.start.column : 0)
+		return plain(getLexeme(parameter), start)
 	}
 
 	if(parameter.defaultValue !== undefined && name.length > 0) {
-		return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`, parameter.location? parameter.location.start.column : 0)
+		return plain(`${getLexeme(parameter.name)}=${getLexeme(parameter.defaultValue)}`, start)
 	} else if(parameter.defaultValue !== undefined && name.length === 0) {
-		return plain(getLexeme(parameter.defaultValue), parameter.location? parameter.location.start.column : 0)
+		return plain(getLexeme(parameter.defaultValue), start)
 	} else {
 		return name
 	}
@@ -333,24 +341,26 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 		return body
 	}
 	const parameters = reconstructParameters(definition.parameters).join(', ')
+	const startPos = definition.location.start
+	const endPos = definition.location.end
 	if(body.length <= 1) {
 		// 'inline'
-		const bodyStr = body.length === 0 ? '' : `${body[0].line} ` /* add suffix space */
+		const bodyStr = body.length === 0 ? '' : `${body[0].linePart[0]} ` /* add suffix space */
 		// we keep the braces in every case because I do not like no-brace functions
-		return [{ line: `function(${parameters}) { ${bodyStr}}`, indent: 0 }]
-	} else if(body[0].line === '{' && body[body.length - 1].line === '}') {
+		return [{ linePart: [{part: `function(${parameters}) { ${bodyStr}}`, loc: startPos}], indent: 0 }]
+	} else if(body[0].linePart[0].part === '{' && body[body.length - 1].linePart[body[body.length - 1].linePart.length - 1].part === '}') {
 		// 'block'
 		return [
-			{ line: `function(${parameters}) {`, indent: 0 },
+			{ linePart: [{part: `function(${parameters}) {`, loc: startPos}], indent: 0 },
 			...body.slice(1, body.length - 1),
-			{ line: '}', indent: 0 }
+			{ linePart: [{part: '}', loc: endPos}], indent: 0 }
 		]
 	} else {
 		// unknown -> we add the braces just to be sure
 		return [
-			{ line: `function(${parameters}) {`, indent: 0 },
+			{ linePart: [{part: `function(${parameters}) {`, loc: startPos}], indent: 0 },
 			...indentBy(body, 1),
-			{ line: '}', indent: 0 }
+			{ linePart: [{part: '}', loc: endPos}], indent: 0 }
 		]
 	}
 
@@ -371,15 +381,15 @@ function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: R
 	// else if (rhs === undefined || rhs.length === 0) {
 	// if rhs is undefined we still  have to keep both now, but reconstruct manually :/
 	if(lhs !== undefined && lhs.length > 0) {
-		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n')
+		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${l.linePart}`).join('\n')
 		if(rhs !== undefined && rhs.length > 0) {
-			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n')
-			return plain(`${lhsText} ${call.functionName.content} ${rhsText}`, call.location? call.location.start.column : 0)
+			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${l.linePart}`).join('\n')
+			return plain(`${lhsText} ${call.functionName.content} ${rhsText}`, call.location.start)
 		} else {
-			return plain(lhsText, call.location? call.location.start.column : 0)
+			return plain(lhsText, call.location.start)
 		}
 	}
-	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`, call.location? call.location.start.column : 0)
+	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`, call.location.start)
 }
 
 /*
@@ -390,7 +400,7 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 		return reconstructSpecialInfixFunctionCall(args, call)
 	}
 	if(call.flavor === 'named' && isSelected(configuration, call)) {
-		return plain(getLexeme(call), call.location? call.location.start.column : 0)
+		return plain(getLexeme(call), call.location.start)
 	}
 	const filteredArgs = args.filter(a => a !== undefined && a.length > 0)
 	if(functionName.length === 0 && filteredArgs.length === 0) {
@@ -399,17 +409,17 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 
 	if(args.length === 0) {
 		guard(functionName.length === 1, `without args, we need the function name to be present! got: ${JSON.stringify(functionName)}`)
-		if(call.flavor === 'unnamed' && !functionName[0].line.endsWith(')')) {
-			functionName[0].line = `(${functionName[0].line})`
+		if(call.flavor === 'unnamed' && !functionName[0].linePart[functionName[0].linePart.length - 1].part.endsWith(')')) {
+			functionName[0].linePart[0].part = `(${functionName[0].linePart[0].part})`
 		}
 
-		if(!functionName[0].line.endsWith('()')) {
+		if(!functionName[0].linePart[functionName[0].linePart.length - 1].part.endsWith('()')) {
 			// add empty call braces if not present
-			functionName[0].line += '()'
+			functionName[0].linePart[functionName[0].linePart.length - 1].part += '()'
 		}
-		return [{ line: functionName[0].line, indent: functionName[0].indent }]
+		return [{ linePart: functionName[0].linePart, indent: functionName[0].indent }]
 	} else {
-		return plain(getLexeme(call), call.location? call.location.start.column : 0)
+		return plain(getLexeme(call), call.location.start)
 	}
 }
 

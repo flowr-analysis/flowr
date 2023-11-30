@@ -66,7 +66,7 @@ const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n), n.location
 --reconstruct--
 */
 function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, expressions: Code[], configuration: ReconstructionConfiguration): Code {
-	let position =  exprList.location? exprList.location.start : {line: 0, column: 0}
+	const position =  exprList.location? exprList.location.start : {line: 0, column: 0}
 	if(isSelected(configuration, exprList)) {
 		return plain(getLexeme(exprList), position)
 	}
@@ -143,7 +143,7 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	} else {
 		if(body.length <= 1) {
 			// 'inline'
-			return [{ linePart: [{part:`for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) ${body.length === 0 ? '{}' : body[0].linePart}`,loc: loop.location.start}], indent: 0 }]
+			return [{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) ${body.length === 0 ? '{}' : body[0].linePart}`,loc: loop.location.start}], indent: 0 }]
 		} else if(body[0].linePart[0].part === '{' && body[body.length - 1].linePart[body[body.length - 1].linePart.length - 1].part === '}') {
 			// 'block'
 			return [

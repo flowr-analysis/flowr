@@ -8,24 +8,21 @@ import { ReconstructionConfiguration } from './reconstruct'
 */
 export type Selection = Set<NodeId>
 interface PrettyPrintLinePart {
-	part:   string
-	loc: SourcePosition
+	part: string
+	loc:  SourcePosition
 }
 export interface PrettyPrintLine {
 	linePart: PrettyPrintLinePart[]
-	indent: number
+	indent:   number
 }
 
 /**
  * Splits text on '\n' to create lineParts and encapsulates them in the Code type
- * @param text lexeme which needs to be converted to Code
- * @param location of the lexeme within the R Code
- * @returns text and location converted into the Code type
  */
 export function plain(text: string, location: SourcePosition): Code {
-	let part = ""
-	let printLine: PrettyPrintLine = {linePart: [], indent: 0}
-	for (let character = 0; character < text.length; character++) {
+	let part = ''
+	const printLine: PrettyPrintLine = {linePart: [], indent: 0}
+	for(let character = 0; character < text.length; character++) {
 		const element = text[character]
 		if(element === '\n') {
 			printLine.linePart.concat({part: part, loc: location})
@@ -39,12 +36,10 @@ export function plain(text: string, location: SourcePosition): Code {
 
 /**
  * this function will merge up to n code pieces into a singular code piece, garanting that there are no duplicate lines and all lines are in order
- * @param snipbits list of code snipbits that need to be merged
- * @returns the snipbits array as a single merged code element
  */
 export function merge(snipbits: Code[]): Code {
-	let buckets: PrettyPrintLine[] = []
-	let result:Code = []
+	const buckets: PrettyPrintLine[] = []
+	const result:Code = []
 
 	//seperate and group lineParts by lines
 	snipbits.forEach(code => {
@@ -54,12 +49,12 @@ export function merge(snipbits: Code[]): Code {
 				buckets[line].linePart.concat(part)
 			})
 		})
-	});
+	})
 
 	//sort buckets by column and stich lines into single code piece
-	for (const line in buckets) {
-		buckets[line].linePart.sort((a, b) => a.loc.column - b.loc.column)
-		result.concat(buckets[line])
+	for (const line of buckets) {
+		line.linePart.sort((a, b) => a.loc.column - b.loc.column)
+		result.concat(line)
 	}
 
 	return result

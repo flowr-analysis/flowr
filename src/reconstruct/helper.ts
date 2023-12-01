@@ -18,19 +18,18 @@ export interface PrettyPrintLine {
 }
 
 /**
- * Splits text on '\n' to create lineParts and encapsulates them in the Code type
+ * Splits text on linebreak to create lineParts and encapsulates them in the Code type
  */
 export function plain(text: string, location: SourcePosition): Code {
 	let part = ''
 	const printLine: PrettyPrintLine = {linePart: [], indent: 0}
-	for(let character = 0; character < text.length; character++) {
-		const element = text[character]
-		if(element === '\n') {
+	for(const character of text) {
+		if(character === '\n') {
 			printLine.linePart.push({part: part, loc: location})
 			location.line += 1
 		}
 		else {
-			part = part.concat(element)
+			part = part.concat(character)
 		}
 	}
 	return [printLine]
@@ -44,20 +43,31 @@ export function merge(snipbits: Code[]): Code {
 	const result:Code = []
 
 	//seperate and group lineParts by lines
-	for (const code of snipbits) {
-		for (const line of code) {
-			for (const part of line.linePart) {
+	for(const code of snipbits) {
+		for(const line of code) {
+			for(const part of line.linePart) {
 				buckets[part.loc.line].linePart.push(part)
 			}
 		}
 	}
 
 	//sort buckets by column and stich lines into single code piece
-	for (const line of buckets) {
+	for(const line of buckets) {
 		line.linePart.sort((a, b) => a.loc.column - b.loc.column)
-		result.concat(line)
+		result.push(line)
 	}
 
+	return result
+}
+
+function prettyPrintPartToString(line: PrettyPrintLinePart[]): string {
+	const result = '' 
+	for(const part of line) {
+		for(let I = 0; I < part.loc.column; I++) {
+			result.concat(' ')			
+		}
+		result.concat(part.part)
+	}
 	return result
 }
 
@@ -125,7 +135,7 @@ export function getIndentString(indent: number): string {
 --helper function--
 */
 export function prettyPrintCodeToString(code: Code, lf = '\n'): string {
-	return code.map(({ linePart, indent }) => `${getIndentString(indent)}${linePart}`).join(lf)
+	return code.map(({ linePart, indent }) => `${getIndentString(indent)}${prettyPrintPartToString(linePart)}`).join(lf)
 }
 
 /*

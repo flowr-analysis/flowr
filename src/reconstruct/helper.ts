@@ -21,16 +21,12 @@ export interface PrettyPrintLine {
  * Splits text on linebreak to create lineParts and encapsulates them in the Code type
  */
 export function plain(text: string, location: SourcePosition): Code {
-	let part = ''
 	const printLine: PrettyPrintLine = {linePart: [], indent: 0}
-	for(const character of text) {
-		if(character === '\n') {
-			printLine.linePart.push({part: part, loc: location})
-			location.line += 1
-		}
-		else {
-			part = part.concat(character)
-		}
+	const split = text.split('\n')
+	let locationLine = location.line
+
+	for(const line of split) {
+		printLine.linePart.push({part: line, loc: { column: location.column, line: locationLine++ }})
 	}
 	return [printLine]
 }
@@ -42,7 +38,7 @@ export function merge(snipbits: Code[]): Code {
 	const buckets: PrettyPrintLine[] = []
 	const result:Code = []
 
-	//seperate and group lineParts by lines
+	//separate and group lineParts by lines
 	for(const code of snipbits) {
 		for(const line of code) {
 			for(const part of line.linePart) {
@@ -60,11 +56,11 @@ export function merge(snipbits: Code[]): Code {
 	return result
 }
 
-function prettyPrintPartToString(line: PrettyPrintLinePart[]): string {
-	const result = '' 
+export function prettyPrintPartToString(line: PrettyPrintLinePart[]): string {
+	const result = ''
 	for(const part of line) {
 		for(let I = 0; I < part.loc.column; I++) {
-			result.concat(' ')			
+			result.concat(' ')
 		}
 		result.concat(part.part)
 	}

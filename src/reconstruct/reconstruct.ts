@@ -26,7 +26,7 @@ import {
 import { log } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
-import { Selection } from './helper'
+import { Selection, prettyPrintPartToString } from './helper'
 import { PrettyPrintLine } from './helper'
 import { plain } from './helper'
 import { Code } from './helper'
@@ -88,10 +88,10 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 /*
 --reconstruct--
 */
-function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: PrettyPrintLine[]) {
+function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: PrettyPrintLine[]): Code {
 	return [  // inline pretty print
 		...lhs.slice(0, lhs.length - 1),
-		{ line: `${lhs[lhs.length - 1].linePart[lhs.length - 1]} ${n} ${rhs[0].linePart[0]}`, indent: 0 },
+		{ linePart: [{ part: `${lhs[lhs.length - 1].linePart[lhs.length - 1].part} ${n} ${rhs[0].linePart[0].part}`, loc: lhs[lhs.length - 1].linePart[lhs.length - 1].loc }], indent: 0 },
 		...indentBy(rhs.slice(1, rhs.length), 1)
 	]
 }
@@ -143,7 +143,7 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	} else {
 		if(body.length <= 1) {
 			// 'inline'
-			return [{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) ${body.length === 0 ? '{}' : body[0].linePart}`,loc: loop.location.start}], indent: 0 }]
+			return [{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) ${body.length === 0 ? '{}' : body[0].linePart[0].part}`,loc: loop.location.start}], indent: 0 }]
 		} else if(body[0].linePart[0].part === '{' && body[body.length - 1].linePart[body[body.length - 1].linePart.length - 1].part === '}') {
 			// 'block'
 			return [
@@ -172,7 +172,7 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 	} else {
 		if(body.length <= 1) {
 			// 'inline'
-			return [{ linePart: [{part: `repeat ${body.length === 0 ? '{}' : body[0].linePart[0]}`,loc: loop.location.start}], indent: 0 }]
+			return [{ linePart: [{part: `repeat ${body.length === 0 ? '{}' : body[0].linePart[0].part}`,loc: loop.location.start}], indent: 0 }]
 		} else if(body[0].linePart[0].part === '{' && body[body.length - 1].linePart[body[body.length - 1].linePart.length - 1].part === '}') {
 			// 'block'
 			return [
@@ -244,7 +244,7 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 	} else {
 		if(body.length <= 1) {
 			// 'inline'
-			return [{ linePart: [{part: `while(${getLexeme(loop.condition)}) ${body.length === 0 ? '{}' : body[0].linePart[0]}`, loc: start}], indent: 0 }]
+			return [{ linePart: [{part: `while(${getLexeme(loop.condition)}) ${body.length === 0 ? '{}' : body[0].linePart[0].part}`, loc: start}], indent: 0 }]
 		} else if(body[0].linePart[0].part === '{' && body[body.length - 1].linePart[body[body.length - 1].linePart.length - 1].part === '}') {
 			// 'block'
 			return [
@@ -345,7 +345,7 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 	const endPos = definition.location.end
 	if(body.length <= 1) {
 		// 'inline'
-		const bodyStr = body.length === 0 ? '' : `${body[0].linePart[0]} ` /* add suffix space */
+		const bodyStr = body.length === 0 ? '' : `${body[0].linePart[0].part} ` /* add suffix space */
 		// we keep the braces in every case because I do not like no-brace functions
 		return [{ linePart: [{part: `function(${parameters}) { ${bodyStr}}`, loc: startPos}], indent: 0 }]
 	} else if(body[0].linePart[0].part === '{' && body[body.length - 1].linePart[body[body.length - 1].linePart.length - 1].part === '}') {
@@ -381,9 +381,9 @@ function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: R
 	// else if (rhs === undefined || rhs.length === 0) {
 	// if rhs is undefined we still  have to keep both now, but reconstruct manually :/
 	if(lhs !== undefined && lhs.length > 0) {
-		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${l.linePart}`).join('\n')
+		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart)}`).join('\n')
 		if(rhs !== undefined && rhs.length > 0) {
-			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${l.linePart}`).join('\n')
+			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart)}`).join('\n')
 			return plain(`${lhsText} ${call.functionName.content} ${rhsText}`, call.location.start)
 		} else {
 			return plain(lhsText, call.location.start)

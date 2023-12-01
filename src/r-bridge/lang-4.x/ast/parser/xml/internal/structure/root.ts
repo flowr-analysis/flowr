@@ -9,15 +9,16 @@ export function parseRootObjToAst(
 	data: ParserData,
 	obj: XmlBasedJson
 ): RExpressionList {
+	const config = data.config
 	const exprContent = getKeysGuarded<XmlBasedJson>(obj, RawRType.ExpressionList)
-	assureTokenType(data.config.tokenMap, exprContent, RawRType.ExpressionList)
+	assureTokenType(config.tokenMap, exprContent, RawRType.ExpressionList)
 
 	let parsedChildren: RNode[] = []
 
-	if(data.config.childrenName in exprContent) {
+	if(config.childrenName in exprContent) {
 		const children = getKeysGuarded<XmlBasedJson[]>(
 			exprContent,
-			data.config.childrenName
+			config.childrenName
 		)
 		parsedChildren = normalizeBasedOnType(data, children)
 	} else {

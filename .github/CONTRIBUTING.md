@@ -1,4 +1,21 @@
-# Thank You, for Every Contribution
+# Contribution Guidelines
+
+First of all: **Thank You for Every Contribution!**
+
+On this page, you will find some guidelines on how to contribute to *flowR*. If you have any questions or problems, feel free to open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) or email me at <florian.sihler@uni-ulm.de>.
+
+- [Contribution Guidelines](#contribution-guidelines)
+  - [Git-Hooks](#git-hooks)
+  - [Commits and Commit Messages](#commits-and-commit-messages)
+    - [Commit Types](#commit-types)
+    - [Commit Scopes](#commit-scopes)
+    - [Commit Subject](#commit-subject)
+    - [Commit Body](#commit-body)
+    - [Examples](#examples)
+  - [Coding Style and ToDo Comments](#coding-style-and-todo-comments)
+  - [Releases](#releases)
+
+## Git-Hooks
 
 Before you commit, please enable the project-specific git-hooks by running:
 
@@ -31,48 +48,63 @@ Linting project (local mode)...
 
 If you have any questions, refer to the [wiki](https://github.com/Code-Inspect/flowr/wiki) or just email me at: <florian.sihler@uni-ulm.de>.
 
-## Commit Messages
+## Commits and Commit Messages
 
-We structure our commit messages (enforced by our git-hooks) using the format `<type(s)>(<scope>): <description>` (with `(<scope>)` being optional).
-Currently, the following `<type(s)>` are at your disposal (more may have been or are still available, but please restrict yourself to the following):
+We prioritize smaller commits over big-bang patches. Besides, we only enforce a basic message format for the commits.
 
+With [#521](https://github.com/Code-Inspect/flowr/pull/521), we follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), configured by the [.github/.commitlintrc.json](https://github.com/Code-Inspect/flowr/blob/main/.github/.commitlintrc.json) and enforced by our [git-hooks](#git-hooks).<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a> In general, these commits have the following shape:
 
-| name                                            | description                                                                                        |
-|:------------------------------------------------|----------------------------------------------------------------------------------------------------|
-| `feat`                                          | Introduced a new feature.                                                                          |
-| `test`/`tests`                                  | Introduced new or modified existing tests.                                                         |
-| `refactor`                                      | Represents a refactoring of existing code.                                                         |
-| `ci`                                            | Updated the ci pipeline of *flowR*.                                                                |
-| `docker`                                        | Regards the docker version of *flowR*.                                                             |
-| `dep`                                           | Regards the explicit update of dependencies (or the addition of new dependencies.                  |
-| `git`                                           | Performed something git-specific (like updating the git-hooks).                                    |
-| `lint`                                          | Adapted or updated linter-issues.                                                                  |
-| `doc`                                           | Updated the documentation of *flowR*.                                                              |
-| `typo`                                          | Dealt with a small typo/a grammatical mistake.                                                     |
-| `ts`                                            | Performed something typescript-specific (e.g., reconfigured the `tsconfig.json`).                  |
-| `wip`                                           | *Use this only in combination with another type*. It marks the commit to be unfinished.            |
-| `special`                                       | *Use this only if none of the other categories apply*. Explain the details in your commit message. |
+```text
+<type>(<scope(s)>): <subject>
 
-You can suffix each type with either
+[<body>]
+```
 
-* `-fix` to denote that you fixed the respective type (this is potentially redundant when used in combination with a type like `typo` and can be omitted there)
-* `-fail` to denote an expected failure of the corresponding addition (usually combined with `wip` because the corresponding feature or test ist not completed yet)
+### Commit Types
 
-Furthermore, types can be combined with a comma followed by an optional space.
-Although you can give the same type repeatedly - if you think you should, please consider splitting the commit into multiple smaller commits.
+We support the following commit types:
 
+| name                                   | description                                                                                        |
+| :------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `build`                                | Changes that affect the build system or external dependencies (e.g., npm).                         |
+| `ci`, `ci-fix`                         | Updates or fixes the continuous integration (ci) pipeline of *flowR*.                                                       |
+| `doc`/`docs`, `doc-fix`/`docs-fix`     | Changes that only affect documentation.                                                            |
+| `feat`, `feat-fix`                     | Introduces a new feature.                                                                          |
+| `perf`                                 | Improves performance.                                                                              |
+| `refactor`                             | Represents a refactoring of existing code.                                                         |
+| `test`/`tests`, `test-fix`/`tests-fix` | Introduces new or modifies existing tests.                                                         |
+| `dep`                                  | Regards the explicit update of dependencies (or the addition of new dependencies.                  |
+| `lint`, `lint-fix`                     | Adapts or updates linter-issues.                                                                   |
+| `wip`                                  | *Use this only in combination with another type*. It marks the commit to be unfinished.            |
+| `meta`                                 | *Use this only if none of the other categories apply*. Explain the details in your commit message. |
 
-With this, the artificial message
+Although we have done that earlier, we do no longer allow more than one type (as enforced by [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)). If you think you require more, please separate the commits. However, does that mean that you have to separate, for example, `feat` and `test` commits? No! Tests should be an inherent part of a feature, and thus, should be included in the same commit. The `test` type signals that the commit is focused on tests (e.g., to add or refine tests for an existing feature).
 
-> `feat, test-fix: Support for branching in dataflow, fixed branching test`
+Similarly, we no longer allow skipping the ci with a prefix like `[ci skip]`. If you suspect the ci to fail, it should!
 
-represents the addition of a new feature and the fix of a corresponding test.
+### Commit Scopes
+
+Currently we do not really enforce rules on the scope as, at least for the time being, we do not see a benefit in having to update the allowed scopes all the time. However, they have to be in [kebab-case](https://www.theserverside.com/definition/Kebab-case), and we strongly suggest you use a scope (and stay consistent with it).
+
+### Commit Subject
+
+The subject of your commit should be a terse, not-too-long (maximum of 42 characters) and not-too-short (minimum of 6 characters) although we only warn if you roam outside of these bounds.
+
+Use the (optional) [body](#commit-body) to explain the details of your commit.
+
+### Commit Body
+
+The body is optional, but feel free to use it to describe your commit in more detail.
+
+### Examples
+
+With this, the artificial message represents the addition of a new feature:
+
+> `feat: Support for branching in dataflow`
+
 With scopes, it could look like this:
 
-> `feat, test-fix(dataflow): Support branching & fixed branching test`
-
-To skip the `ci`, you can prefix the commit message with `[skip ci]`.
-
+> `feat(dataflow): Support branching`
 
 ## Coding Style and ToDo Comments
 
@@ -87,3 +119,5 @@ please refer to the [Test](https://github.com/Code-Inspect/flowr/wiki/Linting-an
 
 Releases are to be scheduled by the administrators of the repository. Please do not try to create a release yourself.
 
+-----
+<a id="note1" href="#note1ref">&lt;1&gt;</a>: If you have already worked with *flowR* before, do not forget to update your dependencies!

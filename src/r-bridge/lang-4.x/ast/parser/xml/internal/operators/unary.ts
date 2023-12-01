@@ -40,7 +40,7 @@ export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson,
 
 function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
 	parseLog.debug(`[unary op] parse ${flavor}`); // <- semicolon sadly required for not miss-interpreting the destructuring match as call
-	({ flavor, operator, operand} = executeHook(data.hooks.operators.onUnary.before, data, { flavor, operator, operand }))
+	({ flavor, operator, operand } = executeHook(data.hooks.operators.onUnary.before, data, { flavor, operator, operand }))
 
 	const parsedOperand = tryNormalizeSingleNode(data, operand)
 

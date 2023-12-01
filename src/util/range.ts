@@ -10,9 +10,9 @@ export interface SourcePosition {
 
 export interface SourceRange {
 	/** inclusive start position */
-	start: SourcePosition
+	readonly start: SourcePosition
 	/** inclusive end position */
-	end:   SourcePosition
+	readonly end:   SourcePosition
 }
 
 /**

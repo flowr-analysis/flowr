@@ -6,6 +6,7 @@ import { ReconstructionConfiguration } from './reconstruct'
 /*
 --helper function--
 */
+export type Code = PrettyPrintLine[]
 export type Selection = Set<NodeId>
 interface PrettyPrintLinePart {
 	part: string
@@ -25,7 +26,8 @@ export function plain(text: string, location: SourcePosition): Code {
 	for(let character = 0; character < text.length; character++) {
 		const element = text[character]
 		if(element === '\n') {
-			printLine.linePart.concat({part: part, loc: location})
+			printLine.linePart.push({part: part, loc: location})
+			location.line += 1
 		}
 		else {
 			part = part.concat(element)
@@ -42,14 +44,13 @@ export function merge(snipbits: Code[]): Code {
 	const result:Code = []
 
 	//seperate and group lineParts by lines
-	snipbits.forEach(code => {
-		code.forEach(line => {
-			line.linePart.forEach(part => {
-				const line = part.loc.line
-				buckets[line].linePart.concat(part)
-			})
-		})
-	})
+	for (const code of snipbits) {
+		for (const line of code) {
+			for (const part of line.linePart) {
+				buckets[part.loc.line].linePart.push(part)
+			}
+		}
+	}
 
 	//sort buckets by column and stich lines into single code piece
 	for (const line of buckets) {
@@ -59,9 +60,7 @@ export function merge(snipbits: Code[]): Code {
 
 	return result
 }
-export type Code = PrettyPrintLine[]
 
-//look up exact function
 /*
 --helper function--
 */

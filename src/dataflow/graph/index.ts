@@ -1,4 +1,4 @@
 export * from './graph'
 export * from './edge'
 export * from './vertex'
-export * from './equal'
+export * from './diff'

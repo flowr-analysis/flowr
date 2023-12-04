@@ -27,5 +27,4 @@ export const PARSE_WITH_R_SHELL_STEP = {
 	},
 	dependencies:  [],
 	requiredInput: undefined as unknown as ParseRequiredInput
-} as const satisfies DeepReadonly<
-IPipelineStep<'parse', typeof processor>>
+} as const satisfies DeepReadonly<IPipelineStep<'parse', typeof processor>>

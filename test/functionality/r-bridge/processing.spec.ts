@@ -1,5 +1,5 @@
-import { assertDecoratedAst, retrieveNormalizedAst, withShell } from '../helper/shell'
-import { numVal } from '../helper/ast-builder'
+import { assertDecoratedAst, retrieveNormalizedAst, withShell } from '../_helper/shell'
+import { numVal } from '../_helper/ast-builder'
 import { rangeFrom } from '../../../src/util/range'
 import {
 	RType,

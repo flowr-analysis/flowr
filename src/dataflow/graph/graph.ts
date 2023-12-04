@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert'
-import { NodeId, RNodeWithParent } from '../../r-bridge'
+import { NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
 import {
 	cloneEnvironments,
 	IdentifierDefinition,
@@ -24,7 +24,7 @@ import {
 import { DifferenceReport } from '../../util/diff'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
-export type DataflowMap<OtherInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
+export type DataflowMap<OtherInfo=NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
 
 
 

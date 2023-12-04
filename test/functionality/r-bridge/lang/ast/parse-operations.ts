@@ -1,10 +1,10 @@
-import { assertAst, withShell } from '../../../helper/shell'
-import { exprList, numVal } from '../../../helper/ast-builder'
+import { assertAst, withShell } from '../../../_helper/shell'
+import { exprList, numVal } from '../../../_helper/ast-builder'
 import {
 	RArithmeticBinaryOpPool,
 	RLogicalBinaryOpPool,
 	RUnaryOpPool,
-} from '../../../helper/provider'
+} from '../../../_helper/provider'
 import { type RShell, RType, ComparisonOperators } from '../../../../../src/r-bridge'
 import { rangeFrom } from '../../../../../src/util/range'
 

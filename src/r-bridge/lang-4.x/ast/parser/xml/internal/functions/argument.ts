@@ -35,10 +35,11 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 	if(symbolOrExpr.name === RawRType.Expression) {
 		name = undefined
 		parsedValue = tryNormalizeSingleNode(data, symbolOrExpr)
-	} else if(symbolOrExpr.name === RawRType.SymbolSub) {
+	} else if(symbolOrExpr.name === RawRType.SymbolSub || symbolOrExpr.name === RawRType.StringConst) {
 		name =    {
 			type:      RType.Symbol,
-			location, content,
+			location,
+			content:   symbolOrExpr.name === RawRType.StringConst ? content.slice(1,-1) : content,
 			namespace: undefined,
 			lexeme:    content,
 			info:      {

@@ -1,6 +1,6 @@
-import { assertAst, withShell } from '../../../helper/shell'
-import { exprList, numVal } from '../../../helper/ast-builder'
-import { RAssignmentOpPool } from '../../../helper/provider'
+import { assertAst, withShell } from '../../../_helper/shell'
+import { exprList, numVal } from '../../../_helper/ast-builder'
+import { RAssignmentOpPool } from '../../../_helper/provider'
 import { rangeFrom } from '../../../../../src/util/range'
 import { RType } from '../../../../../src/r-bridge'
 

@@ -2,11 +2,42 @@
 
 set -eu
 
-if ! [ -x "$(command -v npm)" ]; then
-  echo 'Error: npm not found. Make it available to the host shell (e.g., with "nvm use --lts").'
-  exit 2
-fi
+find_npm_linux() {
+  export NPM_CMD="npm"
 
+  if ! (type $NPM_CMD >> /dev/null); then
+    echo "npm not found, trying to make it available using nvm..."
+    if type nvm >> /dev/null; then
+      echo "nvm found, using it to install the latest lts node"
+      nvm use --lts
+    else
+      echo "nvm not found, trying to make it available using the nvm.sh"
+      # try to make it available based on https://github.com/typicode/husky/issues/912#issuecomment-817522060
+      export NVM_DIR="$HOME/.nvm/nvm.sh"
+      . "$(dirname $NVM_DIR)/nvm.sh"
+
+      export NVM_DIR="$HOME/.nvm"
+      a=$(nvm ls --no-colors | grep 'node')
+      v=$(echo "$a" | sed -E 's/.*\(-> ([^ ]+).*/\1/')
+
+      export PATH="$NVM_DIR/versions/node/$v/bin:$PATH"
+
+      if ! (type $NPM_CMD >> /dev/null); then
+        echo "no variant of npm or nvm found, trying to use the npm.cmd"
+        export NPM_CMD="npm.cmd"
+      fi
+    fi
+  fi
+}
+
+if [ -z "${OSTYPE+x}" ]; then
+  find_npm_linux
+else
+  case "$OSTYPE" in
+    msys*) export NPM_CMD="npm.cmd";;
+    *)     find_npm_linux ;;
+  esac
+fi
 
 reset() {
   echo "Cleaning up and return control"
@@ -18,6 +49,7 @@ unclean=false
 if [ -n "$(git status --porcelain)" ]; then
   # if we directly assign the test set -eu will not approve
   unclean=true
+  trap reset EXIT
   echo "Working tree is not clean, so we reset in temporary folder"
   # backwards compatible platform independence
   flowrtmpdir=$(mktemp -d 2>/dev/null || mktemp -d -t 'flowrtmpdir')
@@ -32,12 +64,11 @@ if [ -n "$(git status --porcelain)" ]; then
   cd "$flowrtmpdir"
 
   git reset --hard
-  trap reset EXIT
   echo "Setup completed."
 fi
 
 echo "Linting project (local mode)..."
-npm run lint-local
+$NPM_CMD run lint-local
 
 
 # shellcheck disable=SC2124 # we want the argument splitting

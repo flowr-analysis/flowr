@@ -3,7 +3,6 @@ import { createStream, type Options } from 'rotating-file-stream'
 
 export class FlowrLogger extends Logger<ILogObj> {
 	/** by keeping track of all children we can propagate updates of the settings (e.g., in tests) */
-
 	private readonly childLoggers: Logger<ILogObj>[] = []
 
 	public getSubLogger(

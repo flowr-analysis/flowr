@@ -10,8 +10,10 @@ import { assert } from 'chai'
 import { RShell } from '../../../src/r-bridge'
 import { deepMergeObject } from '../../../src/util/objects'
 import { jsonReplacer, jsonRetriever } from '../../../src/util/json'
-import { ensureConfig, TestConfiguration } from '../helper/shell'
+import { ensureConfig, TestConfiguration } from '../_helper/shell'
 import { DeepPartial } from 'ts-essentials'
+import { requireAllTestsInFolder } from '../_helper/collect-tests'
+import path from 'path'
 
 async function requestFeature<T extends FeatureKey>(shell: RShell, feature: T, code: string): Promise<FeatureValue<T>> {
 	const results = await extractUsageStatistics(shell, () => { /* do nothing */ }, new Set([feature]), staticRequests({ request: 'text', content: code }))
@@ -59,11 +61,5 @@ export function testForFeatureForInput<T extends FeatureKey>(shell: RShell, feat
 }
 
 describe('Statistics', () => {
-	require('./features/control-flow.ts')
-	require('./features/used-functions.ts')
-	require('./features/loops.ts')
-	require('./features/data-access.ts')
-	require('./features/defined-functions.ts')
-	require('./features/variables.ts')
-	require('./features/assignments.ts')
+	requireAllTestsInFolder(path.join(__dirname, 'features'))
 })

@@ -10,6 +10,5 @@ describe('Dataflow', () => {
 		requireAllTestsInFolder(path.join(__dirname, 'graph'))
 	)
 
-
 	require('./processing-of-elements/processing-of-elements')
 })

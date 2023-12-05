@@ -147,7 +147,22 @@ describe('Parse expression lists',
 						type:     RType.ExpressionList,
 						location: rangeFrom(1, 1, 2, 3),
 						lexeme:   '{ 42\na }',
-						info:     {},
+						info:     {
+							additionalTokens: [
+								{
+									type:     RType.Delimiter,
+									subtype:  RawRType.BraceLeft,
+									location: rangeFrom(1, 1, 1, 1),
+									lexeme:   '{'
+								},
+								{
+									type:     RType.Delimiter,
+									subtype:  RawRType.BraceRight,
+									location: rangeFrom(2, 3, 2, 3),
+									lexeme:   '}'
+								}
+							]
+						},
 						children: [
 							{
 								type:     RType.Number,
@@ -167,12 +182,35 @@ describe('Parse expression lists',
 						],
 					},
 					{
-						type:      RType.Symbol,
-						location:  rangeFrom(3, 3, 3, 3),
-						namespace: undefined,
-						lexeme:    'x',
-						content:   'x',
-						info:      {}
+						type:     RType.ExpressionList,
+						location: rangeFrom(3, 1, 3, 5),
+						lexeme:   '{ x }',
+						children: [
+							{
+								type:      RType.Symbol,
+								location:  rangeFrom(3, 3, 3, 3),
+								namespace: undefined,
+								lexeme:    'x',
+								content:   'x',
+								info:      {}
+							}
+						],
+						info: {
+							additionalTokens: [
+								{
+									type:     RType.Delimiter,
+									subtype:  RawRType.BraceLeft,
+									location: rangeFrom(3, 1, 3, 1),
+									lexeme:   '{'
+								},
+								{
+									type:     RType.Delimiter,
+									subtype:  RawRType.BraceRight,
+									location: rangeFrom(3, 5, 3, 5),
+									lexeme:   '}'
+								}
+							]
+						},
 					}
 				)
 			)

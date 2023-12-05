@@ -1,5 +1,5 @@
 import { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
-import { splitArrayOn } from '../../../../../../../util/arrays'
+import { partition, splitArrayOn } from '../../../../../../../util/arrays'
 import { parseLog } from '../../parser'
 import { getWithTokenType } from '../meta'
 import { ParserData } from '../../data'
@@ -12,7 +12,7 @@ import {
 	tryNormalizeWhile
 } from '../loops'
 import { tryNormalizeIfThenElse, tryNormalizeIfThen } from '../control'
-import { RType, RNode, RawRType } from '../../../../model'
+import { RType, RNode, RawRType, Base } from '../../../../model'
 import { log } from '../../../../../../../util/log'
 import { normalizeComment } from '../other'
 import { RDelimiter } from '../../../../model/nodes/info'
@@ -169,9 +169,16 @@ export function normalizeBasedOnType(
 	const parsedComments = comments.map(c => normalizeComment(data, c.content))
 
 	const result = normalizeMappedWithoutSemicolonBasedOnType(others, data)
+	const [delimiters, nodes] = partition(result, elem => elem.type === RType.Delimiter)
+
+
+	if(nodes.length > 0) {
+		const last = (nodes[nodes.length - 1] as Base<unknown>).info
+		last.additionalTokens = last.additionalTokens ? [...last.additionalTokens, ...delimiters] : delimiters
+	}
+
 	// we hoist comments
-	// TODO: check types
-	return [...parsedComments, ...result as RNode[]]
+	return [...parsedComments, ...nodes] as RNode[]
 }
 
 export function parseNodesWithUnknownType(data: ParserData, mappedWithName: NamedXmlBasedJson[]): (RNode | RDelimiter)[] {

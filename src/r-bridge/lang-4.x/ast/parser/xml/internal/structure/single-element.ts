@@ -1,7 +1,6 @@
 import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
 import { normalizeNumber, normalizeString, tryNormalizeSymbol } from '../values'
 import { guard } from '../../../../../../../util/assert'
-import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { normalizeExpression } from '../expression'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'

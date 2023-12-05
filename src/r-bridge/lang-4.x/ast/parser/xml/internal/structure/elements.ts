@@ -15,11 +15,11 @@ import { tryNormalizeIfThenElse, tryNormalizeIfThen } from '../control'
 import { RType, RNode, RawRType } from '../../../../model'
 import { log } from '../../../../../../../util/log'
 import { normalizeComment } from '../other'
+import { RDelimiter } from '../../../../model/nodes/info'
 
-function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData) {
+function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RNode | RDelimiter)[] {
 	if(mappedWithName.length === 1) {
-		const parsed = tryNormalizeSingleNode(data, mappedWithName[0])
-		return parsed !== undefined ? [parsed] : []
+		return [tryNormalizeSingleNode(data, mappedWithName[0])]
 	} else if(mappedWithName.length === 2) {
 		const unaryOp = tryNormalizeUnary(
 			data,
@@ -170,17 +170,16 @@ export function normalizeBasedOnType(
 
 	const result = normalizeMappedWithoutSemicolonBasedOnType(others, data)
 	// we hoist comments
-	return [...parsedComments, ...result]
+	// TODO: check types
+	return [...parsedComments, ...result as RNode[]]
 }
 
-export function parseNodesWithUnknownType(data: ParserData, mappedWithName: NamedXmlBasedJson[]) {
-	const parsedNodes: RNode[] = []
+export function parseNodesWithUnknownType(data: ParserData, mappedWithName: NamedXmlBasedJson[]): (RNode | RDelimiter)[] {
+	const parsedNodes: (RNode | RDelimiter)[] = []
 	// used to indicate the new root node of this set of nodes
 	for(const elem of mappedWithName) {
 		const retrieved = tryNormalizeSingleNode(data, elem)
-		if(retrieved !== undefined) {
-			parsedNodes.push(retrieved)
-		}
+		parsedNodes.push(retrieved)
 	}
 	return parsedNodes
 }

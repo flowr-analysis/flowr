@@ -1,4 +1,5 @@
 import { RType } from '../../type'
+import { Location } from '../../model'
 import { MergeableRecord } from '../../../../../../util/objects'
 
 

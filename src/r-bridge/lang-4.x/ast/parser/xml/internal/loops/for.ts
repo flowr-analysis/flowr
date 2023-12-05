@@ -43,7 +43,7 @@ export function tryNormalizeFor(
 	if(
 		parsedVariable === undefined ||
     parsedVector === undefined ||
-    parseBody === undefined
+    parseBody.type === RType.Delimiter
 	) {
 		throw new XmlParseError(
 			`unexpected under-sided for-loop, received ${JSON.stringify([

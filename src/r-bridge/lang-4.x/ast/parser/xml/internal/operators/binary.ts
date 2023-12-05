@@ -60,7 +60,7 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 	let parsedLhs = tryNormalizeSingleNode(data, lhs)
 	let parsedRhs = tryNormalizeSingleNode(data, rhs)
 
-	if(parsedLhs === undefined || parsedRhs === undefined) {
+	if(parsedLhs.type === RType.Delimiter || parsedRhs.type === RType.Delimiter) {
 		throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, operator, rhs])}`)
 	}
 

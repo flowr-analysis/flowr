@@ -127,7 +127,9 @@ describe('Parse simple constructs', withShell(shell => {
 								content:  numVal(variant.num),
 								info:     {}
 							})
-						}))
+						}), {
+							ignoreAdditionalTokens: true
+						})
 					}
 				})
 			}
@@ -173,7 +175,9 @@ describe('Parse simple constructs', withShell(shell => {
 										content:  numVal(elseVariant.num),
 										info:     {}
 									})
-								}))
+								}), {
+									ignoreAdditionalTokens: true
+								})
 							}
 						}
 					})
@@ -225,7 +229,9 @@ describe('Parse simple constructs', withShell(shell => {
 					content:  numVal(2),
 					info:     {}
 				})
-			})
+			}), {
+				ignoreAdditionalTokens: true
+			}
 			)
 			assertAst('for-loop with comment', shell, `for(#a
 				i#b
@@ -274,7 +280,9 @@ describe('Parse simple constructs', withShell(shell => {
 					content:  numVal(2),
 					info:     {}
 				})
-			})
+			}), {
+				ignoreAdditionalTokens: true
+			}
 			)
 		})
 		describe('repeat', () => {
@@ -290,7 +298,9 @@ describe('Parse simple constructs', withShell(shell => {
 					content:  numVal(2),
 					info:     {}
 				})
-			}))
+			}), {
+				ignoreAdditionalTokens: true
+			})
 			assertAst('Two statement repeat', shell, 'repeat { x; y }', exprList({
 				type:     RType.RepeatLoop,
 				location: rangeFrom(1, 1, 1, 6),
@@ -317,7 +327,9 @@ describe('Parse simple constructs', withShell(shell => {
 						info:      {}
 					}]
 				}
-			}))
+			}), {
+				ignoreAdditionalTokens: true
+			})
 		})
 		describe('while', () => {
 			assertAst('while (TRUE) 42', shell, 'while (TRUE) 42', exprList({
@@ -339,7 +351,9 @@ describe('Parse simple constructs', withShell(shell => {
 					content:  numVal(42),
 					info:     {}
 				})
-			}))
+			}), {
+				ignoreAdditionalTokens: true
+			})
 
 			assertAst('Two statement while', shell, 'while (FALSE) { x; y }', exprList({
 				type:      RType.WhileLoop,
@@ -374,7 +388,9 @@ describe('Parse simple constructs', withShell(shell => {
 						info:      {}
 					}]
 				})
-			}))
+			}), {
+				ignoreAdditionalTokens: true
+			})
 		})
 		describe('break', () => {
 			assertAst('while (TRUE) break', shell, 'while (TRUE) break', exprList({

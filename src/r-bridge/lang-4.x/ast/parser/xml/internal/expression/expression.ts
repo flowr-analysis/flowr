@@ -59,7 +59,7 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 	let result: RNode
 	if(nodes.length === 1) {
 		result = nodes[0] as RNode
-		result.info.additionalTokens = [...result.info.additionalTokens ?? []]
+		result.info.additionalTokens = [...result.info.additionalTokens ?? [], ...delimiters]
 	} else {
 		result = {
 			type:     RType.ExpressionList,

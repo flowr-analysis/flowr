@@ -1,7 +1,7 @@
 import { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
-import { partition, splitArrayOn } from '../../../../../../../util/arrays'
+import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseLog } from '../../parser'
-import { getWithTokenType } from '../meta'
+import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from './single-element'
 import { tryNormalizeSymbol } from '../values'
@@ -12,7 +12,7 @@ import {
 	tryNormalizeWhile
 } from '../loops'
 import { tryNormalizeIfThenElse, tryNormalizeIfThen } from '../control'
-import { RType, RNode, RawRType, Base } from '../../../../model'
+import { RType, RNode, RawRType } from '../../../../model'
 import { log } from '../../../../../../../util/log'
 import { normalizeComment } from '../other'
 import { RDelimiter } from '../../../../model/nodes/info'
@@ -140,9 +140,22 @@ export function normalizeBasedOnType(
 
 	log.trace(`[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(', ')}]`)
 
+	const semiColons: RDelimiter[] = []
 	const splitOnSemicolon = splitArrayOn(
 		mappedWithName,
-		({ name }) => name === RawRType.Semicolon
+		node => {
+			const res = node.name === RawRType.Semicolon
+			if(res) {
+				const { location, content } = retrieveMetaStructure(data.config, node.content)
+				semiColons.push({
+					type:     RType.Delimiter,
+					subtype:  RawRType.Semicolon,
+					location: location,
+					lexeme:  	content
+				})
+			}
+			return res
+		}
 	)
 
 	if(splitOnSemicolon.length > 1) {
@@ -156,7 +169,7 @@ export function normalizeBasedOnType(
 				flattened.push(...result)
 			}
 		}
-		return flattened
+		return [...flattened, ...semiColons]
 	}
 
 	/*

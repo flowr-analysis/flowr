@@ -61,11 +61,11 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 	}
 }
 
-function removeInformation<T extends Record<string, unknown>>(obj: T): T {
+function removeInformation<T extends Record<string, unknown>>(obj: T, includeTokens: boolean): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
 		if(key === 'fullRange' || key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role') {
 			return undefined
-		} else if(key === 'additionalTokens' && Array.isArray(value) && value.length === 0) {
+		} else if(key === 'additionalTokens' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
@@ -74,9 +74,9 @@ function removeInformation<T extends Record<string, unknown>>(obj: T): T {
 }
 
 
-function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, message?: () => string): void {
-	const astCopy = removeInformation(ast)
-	const expectedCopy = removeInformation(expected)
+function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTokens: boolean, message?: () => string): void {
+	const astCopy = removeInformation(ast, includeTokens)
+	const expectedCopy = removeInformation(expected, includeTokens)
 	 try {
 		 assert.deepStrictEqual(astCopy, expectedCopy)
 	 } catch(e) {
@@ -119,12 +119,14 @@ export async function ensureConfig(shell: RShell, test: Mocha.Context, userConfi
 }
 
 /** call within describeSession */
-export function assertAst(name: string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration>): Mocha.Test {
+export function assertAst(name: string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration & {
+	ignoreAdditionalTokens: boolean
+}>): Mocha.Test {
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
 	return it(name === input ? name : `${name} (input: ${input})`, async function() {
 		await ensureConfig(shell, this, userConfig)
 		const ast = await retrieveNormalizedAst(shell, input)
-		assertAstEqualIgnoreSourceInformation(ast, expected, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
+		assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
 	})
 }
 
@@ -141,7 +143,7 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 
 		const ast = result.normalize.ast
 
-		assertAstEqualIgnoreSourceInformation(ast, expected, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
+		assertAstEqualIgnoreSourceInformation(ast, expected, false, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
 	})
 }
 

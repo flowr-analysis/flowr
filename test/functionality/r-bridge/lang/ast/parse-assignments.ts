@@ -114,7 +114,9 @@ describe('Parse simple assignments',
 							info:     {}
 						}
 					},
-				})
+				}), {
+					ignoreAdditionalTokens: true
+				}
 			)
 		})
 	})

@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RType } from '../../../../../src/r-bridge'
+import { RawRType, RType } from '../../../../../src/r-bridge'
 
 describe('Parse expression lists',
 	withShell((shell) => {
@@ -102,7 +102,22 @@ describe('Parse expression lists',
 					type:     RType.ExpressionList,
 					location: rangeFrom(1, 1, 2, 3),
 					lexeme:   '{ 42\na }',
-					info:     {},
+					info:     {
+						additionalTokens: [
+							{
+								type:     RType.Delimiter,
+								subtype:  RawRType.BraceLeft,
+								location: rangeFrom(1, 1, 1, 1),
+								lexeme:   '{'
+							},
+							{
+								type:     RType.Delimiter,
+								subtype:  RawRType.BraceRight,
+								location: rangeFrom(2, 3, 2, 3),
+								lexeme:   '}'
+							}
+						]
+					},
 					children: [
 						{
 							type:     RType.Number,

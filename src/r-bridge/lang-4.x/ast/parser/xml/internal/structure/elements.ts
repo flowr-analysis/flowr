@@ -121,7 +121,7 @@ export function splitComments(mappedWithName: NamedXmlBasedJson[]) {
 export function normalizeBasedOnType(
 	data: ParserData,
 	obj: XmlBasedJson[] | NamedXmlBasedJson[]
-): RNode[] {
+): (RNode | RDelimiter)[] {
 	if(obj.length === 0) {
 		parseLog.warn('no children received, skipping')
 		return []
@@ -169,16 +169,9 @@ export function normalizeBasedOnType(
 	const parsedComments = comments.map(c => normalizeComment(data, c.content))
 
 	const result = normalizeMappedWithoutSemicolonBasedOnType(others, data)
-	const [delimiters, nodes] = partition(result, elem => elem.type === RType.Delimiter)
-
-
-	if(nodes.length > 0) {
-		const last = (nodes[nodes.length - 1] as Base<unknown>).info
-		last.additionalTokens = last.additionalTokens ? [...last.additionalTokens, ...delimiters] : delimiters
-	}
 
 	// we hoist comments
-	return [...parsedComments, ...nodes] as RNode[]
+	return [...parsedComments, ...result]
 }
 
 export function parseNodesWithUnknownType(data: ParserData, mappedWithName: NamedXmlBasedJson[]): (RNode | RDelimiter)[] {

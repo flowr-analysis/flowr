@@ -4,6 +4,8 @@ import { normalizeBasedOnType } from './elements'
 import { ParserData } from '../../data'
 import { RType, RExpressionList, RawRType, RNode } from '../../../../model'
 import { log } from '../../../../../../../util/log'
+import { partition } from '../../../../../../../util/arrays'
+import { RDelimiter } from '../../../../model/nodes/info'
 
 export function parseRootObjToAst(
 	data: ParserData,
@@ -13,25 +15,28 @@ export function parseRootObjToAst(
 	const exprContent = getKeysGuarded<XmlBasedJson>(obj, RawRType.ExpressionList)
 	assureTokenType(config.tokenMap, exprContent, RawRType.ExpressionList)
 
-	let parsedChildren: RNode[] = []
+	let parsedChildren: (RNode | RDelimiter)[] = []
 
 	if(config.childrenName in exprContent) {
 		const children = getKeysGuarded<XmlBasedJson[]>(
 			exprContent,
 			config.childrenName
 		)
+
 		parsedChildren = normalizeBasedOnType(data, children)
 	} else {
 		log.debug('no children found, assume empty input')
 	}
 
+	const [delimiters, nodes] = partition(parsedChildren, x => x.type === RType.Delimiter)
+
 	return {
 		type:     RType.ExpressionList,
-		children: parsedChildren,
+		children: nodes as RNode[],
 		lexeme:   undefined,
 		info:     {
 			fullRange:        data.currentRange,
-			additionalTokens: [],
+			additionalTokens: delimiters,
 			fullLexeme:       data.currentLexeme
 		}
 	}

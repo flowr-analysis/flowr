@@ -63,7 +63,9 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 
 function removeInformation<T extends Record<string, unknown>>(obj: T): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
-		if(key === 'fullRange' || key === 'additionalTokens' || key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role') {
+		if(key === 'fullRange' || key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role') {
+			return undefined
+		} else if(key === 'additionalTokens' && Array.isArray(value) && value.length === 0) {
 			return undefined
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return

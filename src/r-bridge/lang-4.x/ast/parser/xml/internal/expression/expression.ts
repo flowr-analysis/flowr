@@ -54,12 +54,13 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 
 	const children = normalizeBasedOnType(childData, childrenSource)
 
-	let result: RNode
-	if(children.length === 1) {
-		result = children[0] as RNode
-	} else {
-		const [delimiters, nodes] = partition(children, x => x.type === RType.Delimiter)
+	const [delimiters, nodes] = partition(children, x => x.type === RType.Delimiter)
 
+	let result: RNode
+	if(nodes.length === 1) {
+		result = nodes[0] as RNode
+		result.info.additionalTokens = [...result.info.additionalTokens ?? []]
+	} else {
 		result = {
 			type:     RType.ExpressionList,
 			location,

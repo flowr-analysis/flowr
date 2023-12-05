@@ -294,7 +294,9 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 						info:     {}
 					}
 				}
-			))
+			), {
+				ignoreAdditionalTokens: true
+			})
 		}
 
 		const invertedPrecedenceInput = `1 ${op.str} (1 ${op.str} 42)`
@@ -336,6 +338,8 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 					}
 				}
 			}
-		))
+		), {
+			ignoreAdditionalTokens: true
+		})
 	})
 }

@@ -5,12 +5,13 @@ import { tryNormalizeSingleNode } from '../structure'
 import { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
 import {
-	RType,
-	RNode,
-	RUnaryOp,
 	ArithmeticOperatorsRAst,
 	LogicalOperatorsRAst,
-	UnaryOperatorFlavor, ModelFormulaOperatorsRAst
+	ModelFormulaOperatorsRAst,
+	RNode,
+	RType,
+	RUnaryOp,
+	UnaryOperatorFlavor
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
@@ -40,11 +41,11 @@ export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson,
 
 function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
 	parseLog.debug(`[unary op] parse ${flavor}`); // <- semicolon sadly required for not miss-interpreting the destructuring match as call
-	({ flavor, operator, operand} = executeHook(data.hooks.operators.onUnary.before, data, { flavor, operator, operand }))
+	({ flavor, operator, operand } = executeHook(data.hooks.operators.onUnary.before, data, { flavor, operator, operand }))
 
 	const parsedOperand = tryNormalizeSingleNode(data, operand)
 
-	guard(parsedOperand !== undefined, () => 'unexpected under-sided unary op')
+	guard(parsedOperand.type !== RType.Delimiter, () => 'unexpected under-sided unary op')
 
 	const operationName = retrieveOpName(data.config, operator)
 	const { location, content } = retrieveMetaStructure(data.config, operator.content)

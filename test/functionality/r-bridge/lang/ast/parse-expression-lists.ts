@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RType } from '../../../../../src/r-bridge'
+import { RawRType, RType } from '../../../../../src/r-bridge'
 
 describe('Parse expression lists',
 	withShell((shell) => {
@@ -102,7 +102,22 @@ describe('Parse expression lists',
 					type:     RType.ExpressionList,
 					location: rangeFrom(1, 1, 2, 3),
 					lexeme:   '{ 42\na }',
-					info:     {},
+					info:     {
+						additionalTokens: [
+							{
+								type:     RType.Delimiter,
+								subtype:  RawRType.BraceLeft,
+								location: rangeFrom(1, 1, 1, 1),
+								lexeme:   '{'
+							},
+							{
+								type:     RType.Delimiter,
+								subtype:  RawRType.BraceRight,
+								location: rangeFrom(2, 3, 2, 3),
+								lexeme:   '}'
+							}
+						]
+					},
 					children: [
 						{
 							type:     RType.Number,
@@ -132,7 +147,22 @@ describe('Parse expression lists',
 						type:     RType.ExpressionList,
 						location: rangeFrom(1, 1, 2, 3),
 						lexeme:   '{ 42\na }',
-						info:     {},
+						info:     {
+							additionalTokens: [
+								{
+									type:     RType.Delimiter,
+									subtype:  RawRType.BraceLeft,
+									location: rangeFrom(1, 1, 1, 1),
+									lexeme:   '{'
+								},
+								{
+									type:     RType.Delimiter,
+									subtype:  RawRType.BraceRight,
+									location: rangeFrom(2, 3, 2, 3),
+									lexeme:   '}'
+								}
+							]
+						},
 						children: [
 							{
 								type:     RType.Number,
@@ -157,7 +187,22 @@ describe('Parse expression lists',
 						namespace: undefined,
 						lexeme:    'x',
 						content:   'x',
-						info:      {}
+						info:      {
+							additionalTokens: [
+								{
+									type:     RType.Delimiter,
+									subtype:  RawRType.BraceLeft,
+									location: rangeFrom(3, 1, 3, 1),
+									lexeme:   '{'
+								},
+								{
+									type:     RType.Delimiter,
+									subtype:  RawRType.BraceRight,
+									location: rangeFrom(3, 5, 3, 5),
+									lexeme:   '}'
+								}
+							]
+						}
 					}
 				)
 			)
@@ -166,23 +211,38 @@ describe('Parse expression lists',
 		describe('Expression lists with semicolons', () => {
 			assertAst('"42;a" (two elements in same line)', shell,
 				'42;a',
-				exprList(
-					{
-						type:     RType.Number,
-						location: rangeFrom(1, 1, 1, 2),
-						lexeme:   '42',
-						content:  numVal(42),
-						info:     {}
+				{
+					type:   RType.ExpressionList,
+					lexeme: undefined,
+					info:   {
+						additionalTokens: [
+							{
+								type:     RType.Delimiter,
+								subtype:  RawRType.Semicolon,
+								location: rangeFrom(1, 3, 1, 3),
+								lexeme:   ';'
+							}
+						]
 					},
-					{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 4, 1, 4),
-						namespace: undefined,
-						lexeme:    'a',
-						content:   'a',
-						info:      {}
-					}
-				)
+					children: [
+						{
+							type:     RType.Number,
+							location: rangeFrom(1, 1, 1, 2),
+							lexeme:   '42',
+							content:  numVal(42),
+							info:     {}
+						},
+						{
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 4, 1, 4),
+							namespace: undefined,
+							lexeme:    'a',
+							content:   'a',
+							info:      {}
+						}
+					]
+				}
+
 			)
 
 			assertAst('"{ 3; }" (empty)', shell,
@@ -192,39 +252,75 @@ describe('Parse expression lists',
 					location: rangeFrom(1, 3, 1, 3),
 					lexeme:   '3',
 					content:  numVal(3),
-					info:     {}
+					info:     {
+						additionalTokens: [
+							{
+								type:     RType.Delimiter,
+								subtype:  RawRType.Semicolon,
+								location: rangeFrom(1, 4, 1, 4),
+								lexeme:   ';'
+							},
+							{
+								type:     RType.Delimiter,
+								subtype:  RawRType.BraceLeft,
+								location: rangeFrom(1, 1, 1, 1),
+								lexeme:   '{'
+							},
+							{
+								type:     RType.Delimiter,
+								subtype:  RawRType.BraceRight,
+								location: rangeFrom(1, 6, 1, 6),
+								lexeme:   '}'
+							}
+						]
+					}
 				})
 			)
 
 
 			assertAst('Inconsistent split with semicolon', shell,
 				'1\n2; 3\n4',
-				exprList({
-					type:     RType.Number,
-					location: rangeFrom(1, 1, 1, 1),
-					lexeme:   '1',
-					content:  numVal(1),
-					info:     {}
-				}, {
-					type:     RType.Number,
-					location: rangeFrom(2, 1, 2, 1),
-					lexeme:   '2',
-					content:  numVal(2),
-					info:     {}
-				}, {
-					type:     RType.Number,
-					location: rangeFrom(2, 4, 2, 4),
-					lexeme:   '3',
-					content:  numVal(3),
-					info:     {}
-				}, {
-					type:     RType.Number,
-					location: rangeFrom(3, 1, 3, 1),
-					lexeme:   '4',
-					content:  numVal(4),
-					info:     {}
+				{
+					type:   RType.ExpressionList,
+					lexeme: undefined,
+					info:   {
+						additionalTokens: [
+							{
+								type:     RType.Delimiter,
+								subtype:  RawRType.Semicolon,
+								location: rangeFrom(2, 2, 2, 2),
+								lexeme:   ';'
+							}
+						]
+					},
+					children: [
+						{
+							type:     RType.Number,
+							location: rangeFrom(1, 1, 1, 1),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						}, {
+							type:     RType.Number,
+							location: rangeFrom(2, 1, 2, 1),
+							lexeme:   '2',
+							content:  numVal(2),
+							info:     {}
+						}, {
+							type:     RType.Number,
+							location: rangeFrom(2, 4, 2, 4),
+							lexeme:   '3',
+							content:  numVal(3),
+							info:     {}
+						}, {
+							type:     RType.Number,
+							location: rangeFrom(3, 1, 3, 1),
+							lexeme:   '4',
+							content:  numVal(4),
+							info:     {}
+						}
+					]
 				}
-				)
 			)
 		})
 	})

@@ -1,6 +1,6 @@
 import { ParserData } from '../../data'
 import { NamedXmlBasedJson } from '../../input-format'
-import { RType, RParameter, RFunctionDefinition, RawRType } from '../../../../model'
+import { RawRType, RFunctionDefinition, RParameter, RType } from '../../../../model'
 import { parseLog } from '../../parser'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
@@ -53,7 +53,7 @@ export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName:
 	guard(bodyStructure.length === 1, () => `expected function body to be unique, yet received ${bodyStructure.length}`)
 
 	const body = normalizeBasedOnType(data, bodyStructure)
-	guard(body.length === 1, () => `expected function body to yield one normalized expression, but ${body.length}`)
+	guard(body.length === 1 && body[0].type !== RType.Delimiter, () => `expected function body to yield one normalized expression, but ${body.length}`)
 
 
 	const result: RFunctionDefinition = {

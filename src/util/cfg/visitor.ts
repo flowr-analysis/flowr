@@ -74,18 +74,13 @@ class ControlFlowGraphExecutionTraceVisitor {
 		return predecessors
 	}
 
-	// TODO: refactor join with single
-	private visitNodeArray(ids: NodeId[], cfg: ControlFlowInformation) {
-		const visited = new Set<NodeId>()
-		for(const id of ids) {
-			const node = cfg.graph.vertices().get(id)
-			guard(node !== undefined, () => `Node with id ${id} not found`)
-			this.visitSingle(node, { parent: 'root', cfg, siblings: [...ids], visited })
-		}
-	}
-
 	visit(cfg: ControlFlowInformation): void {
-		this.visitNodeArray(cfg.entryPoints, cfg)
+		const visited = new Set<NodeId>
+		for(const id of cfg.entryPoints) {
+			const node = cfg.graph.vertices().get(id)
+			guard(node !== undefined, `Node with id ${id} not present`)
+			this.visitSingle(node, {parent: 'root', cfg, siblings: [...cfg.entryPoints], visited})
+		}
 	}
 
 }

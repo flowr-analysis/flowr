@@ -9,21 +9,26 @@ import {
 import { assertUnreachable } from '../../../../../util/assert'
 
 interface ExitPointsInformation {
+	/** For those it is known that they exit the current scope, (e.g. return statements) */
 	knownIds:     NodeId[]
+	/** Those _can_ exit the current scope (e.g. an implicit return) */
 	potentialIds: NodeId[]
 }
 
+// TODO: wir wollen exit points für alle expression lists nicht nur für function definitions -> wir schlagen alle mit einer klappe :3
 export function retrieveExitPointsOfFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>): NodeId[] {
 	const exitPoints = visitExitPoints(functionDefinition.body)
 	return exitPoints.knownIds.concat(exitPoints.potentialIds)
 }
 
+// TODO: fold
 function visitExitPoints<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): ExitPointsInformation {
 	const type = node.type
 	switch(type) {
 		case RType.ExpressionList:
 			return visitExpressionList(node)
 		case RType.FunctionCall:
+			// TODO: what if return is overwritten
 			if(node.flavor === 'named' && node.functionName.content === 'return') {
 				return {
 					knownIds:     [ node.info.id ],
@@ -63,6 +68,7 @@ function visitExitPoints<OtherInfo>(node: RNode<OtherInfo & ParentInformation>):
 		case RType.LineDirective:
 		case RType.Break:
 		case RType.Next:
+			// TODO: wrong for loops
 			return { knownIds: [], potentialIds: [] }
 		default:
 			assertUnreachable(type)

@@ -150,16 +150,24 @@ export function graph2quads<AdditionalVertexInformation extends MergeableRecord,
 function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
 	for(const [index, element] of value.entries()) {
 		if(element !== null && element !== undefined && isObjectOrArray(element)) {
-			const context= retrieveContext(config.context, obj)
+			const context = retrieveContext(config.context, obj)
 			quads.push(quad(
 				namedNode(domain + config.getId(obj, context)),
-				namedNode(domain + key + '-' + String(index)),
+				namedNode(domain + key),
 				namedNode(domain + config.getId(element, context)),
+				namedNode(context)
+			))
+			// add a new edge with the unique name 'order' which contains the number,
+			// this should keep predicates unique
+			quads.push(quad(
+				namedNode(domain + config.getId(element, context)),
+				namedNode(domain + 'order'),
+				literal(String(index), namedNode('http://www.w3.org/2001/XMLSchema#integer')),
 				namedNode(context)
 			))
 			serializeObject(element as DataForQuad, quads, config)
 		} else {
-			processLiteralEntry(element, key + '-' + String(index), obj, quads, config)
+			processLiteralEntry(element, key, obj, quads, config, index)
 		}
 	}
 }
@@ -187,14 +195,37 @@ function objToType(value: unknown): NamedNode | undefined {
 	return suffix ? namedNode(`http://www.w3.org/2001/XMLSchema#${suffix}`) : undefined
 }
 
-function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
+function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>, index: number | undefined) {
 	const context = retrieveContext(config.context, obj)
-	quads.push(quad(
-		namedNode(domain + config.getId(obj, context)),
-		namedNode(domain + key),
-		literal(String(value), objToType(value)),
-		namedNode(context)
-	))
+	// we have to create an object if there is an index, so that we can link the index!
+	if(index !== undefined) {
+		const newId = `${key}-${index}`
+		quads.push(quad(
+			namedNode(domain + config.getId(obj, context)),
+			namedNode(domain + key),
+			namedNode(domain + config.getId(newId, context)),
+			namedNode(context)
+		))
+		quads.push(quad(
+			namedNode(domain + config.getId(newId, context)),
+			namedNode(domain + 'value'),
+			literal(String(value), objToType(value)),
+			namedNode(context)
+		))
+		quads.push(quad(
+			namedNode(domain + newId),
+			namedNode(domain + 'order'),
+			literal(String(index), namedNode('http://www.w3.org/2001/XMLSchema#integer')),
+			namedNode(context)
+		))
+	} else {
+		quads.push(quad(
+			namedNode(domain + config.getId(obj, context)),
+			namedNode(domain + key),
+			literal(String(value), objToType(value)),
+			namedNode(context)
+		))
+	}
 }
 
 function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
@@ -211,7 +242,7 @@ function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads
 			processObjectEntries(key, value, obj, quads, config)
 		}
 	} else {
-		processLiteralEntry(value, key, obj, quads, config)
+		processLiteralEntry(value, key, obj, quads, config, undefined)
 	}
 }
 

@@ -19,7 +19,8 @@ describe('Quads', withShell(shell => {
 		// ids are deterministic, so we can compare the quads
 		await compareQuads('1', `
 <${idPrefix}0> <${domain}type> "${RType.ExpressionList}" <test> .
-<${idPrefix}0> <${domain}children-0> <${idPrefix}1> <test> .
+<${idPrefix}0> <${domain}children> <${idPrefix}1> <test> .
+<${idPrefix}1> <${domain}order> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
 <${idPrefix}1> <${domain}location> <${idPrefix}2> <test> .
 <${idPrefix}2> <${domain}start> <${idPrefix}3> <test> .
 <${idPrefix}3> <${domain}line> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .

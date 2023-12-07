@@ -4,6 +4,7 @@ For the latest code-coverage information, see [codecov.io](https://codecov.io/gh
   - [Functionality Tests](#functionality-tests)
     - [Test Structure](#test-structure)
     - [Writing a Test](#writing-a-test)
+    - [Running Only Some Tests](#running-only-some-tests)
   - [Performance Tests](#performance-tests)
 - [CI Pipeline](#ci-pipeline)
 - [Linting](#linting)
@@ -50,6 +51,11 @@ Besides folders can (theoretically) arbitrarily structure their tests. We use th
 #### Writing a Test
 
 Currently this is heavily dependend on what you want to test (normalization, dataflow, quad-export, ...) and it is probably best to have a look at existing tests in that area to get an idea of what comfort functionality is available.
+
+#### Running Only Some Tests
+
+To run only some of the tests, the mocha test runner allows several options.
+You can specify so [in the code](https://mochajs.org/#exclusive-tests) or [via the command line](https://mochajs.org/#-grep-regexp-g-regexp). If you modify the code, please make sure to remove the changes before committing!
 
 ### Performance Tests
 

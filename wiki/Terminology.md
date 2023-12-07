@@ -1,6 +1,5 @@
 Based on the explanations in my [master's thesis](http://dx.doi.org/10.18725/OPARU-50107), this page collects the definitions for terms which are of interest in the context of *flowR*.
 
-
 <!-- TOC -->
 - [Program Slicing](#program-slicing)
   - [Slicing Criterion](#slicing-criterion)
@@ -12,7 +11,6 @@ Based on the explanations in my [master's thesis](http://dx.doi.org/10.18725/OPA
     - [Static](#static)
     - [Dynamic](#dynamic)
 <!-- TOC -->
-
 
 ## Program Slicing
 
@@ -35,7 +33,6 @@ Weiser originally defined it as a combination of a line number and a set of vari
 | `$id`           | `$42`        | this criteria is probably best used internally and refers to the unique id assigned by *flowR*                                                                  |
 
 Furthermore, slicing criteria can be joined by the use of a `;`-semicolon. `10@sum;12@product` refers to the first occurrence of `sum` in line 10 and the first occurrence of `product` in line 12 as two variables to be used for slicing.
-
 
 ### Program Slice
 
@@ -64,7 +61,7 @@ print(x + z)
 
 Let's slice for the last definition of `x` in line 9 (`x <- y`).
 
-* the smallest [backward slice](#backward-slice) is:
+- the smallest [backward slice](#backward-slice) is:
 
     ```R
     if(x > 4) {
@@ -79,16 +76,13 @@ Let's slice for the last definition of `x` in line 9 (`x <- y`).
     It does not contain `z <- 3` as it is not necessary to define `x` in the last line, however it includes the if's condition, as it decides the active branch and hence the active definition for `y` in the definition.
     If `x <- y` itself is to be included in the slice depends on the program slicer. *flowR* includes it.
 
-
-* the smallest [forward slice](#forward-slice) is:
+- the smallest [forward slice](#forward-slice) is:
 
     ```R
     print(x + z)
     ```
 
   It contains all statements affected by the definition of `x`. *flowR* does not support forward slicing in its current form.
-
-
 
 ### Slicing Direction
 
@@ -101,7 +95,6 @@ See the explanation of [program slices](#program-slice) for an example.
 
 Based on a [slicing criterion](#slicing-criterion) and a program, a forward slice is a subset of the program that might be influenced by the [slicing criterion](#slicing-criterion).
 See the explanation of [program slices](#program-slice) for an example.
-
 
 ### Information Used for Slicing
 

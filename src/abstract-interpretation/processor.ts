@@ -26,7 +26,14 @@ interface IHandler<ValueType> {
 	next:  (value: ValueType) => void
 }
 
-type Intervals = Set<{min: number, minInclusive: boolean, max: number, maxInclusive: boolean}>
+interface Interval {
+	min:          number,
+	max:          number,
+	minInclusive: boolean,
+	maxInclusive: boolean
+}
+
+type Intervals = Set<Interval>
 
 interface Constraints {
 	node:      NodeId,

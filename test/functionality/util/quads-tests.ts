@@ -1,5 +1,5 @@
 import { retrieveNormalizedAst, withShell } from '../_helper/shell'
-import { decorateAst, deterministicCountingIdGenerator, requestFromInput, RType } from '../../../src/r-bridge'
+import { decorateAst, requestFromInput, RType } from '../../../src/r-bridge'
 import { defaultQuadIdGenerator, serialize2quads } from '../../../src/util/quads'
 import { assert } from 'chai'
 import { SteppingSlicer } from '../../../src/core'

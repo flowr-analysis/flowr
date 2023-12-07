@@ -74,11 +74,11 @@ function unifyDomains(domains: Domain[]): Domain {
 	return resultingDomain
 }
 
-function intervalFromNumber(n: number): Domain {
+function domainFromScalar(n: number): Domain {
 	return new Set([{min: n, minInclusive: true, max: n, maxInclusive: true}])
 }
 
-function getIntervalsOfDfgChild(node: NodeId, dfg: DataflowInformation): Domain {
+function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation): Domain {
 	const dfgNode: [DataflowGraphVertexInfo, OutgoingEdges] | undefined = dfg.graph.get(node)
 	guard(dfgNode !== undefined, `No DFG-Node found with ID ${node}`)
 	const [_, children] = dfgNode
@@ -169,14 +169,14 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 		} else if(astNode?.type === RType.Symbol) {
 			operationStack.peek()?.next({
 				node:     astNode.info.id,
-				domain:   getIntervalsOfDfgChild(node.id, dfg),
+				domain:   getDomainOfDfgChild(node.id, dfg),
 				debugMsg: 'Symbol'
 			})
 		} else if(astNode?.type === RType.Number){
 			const num = astNode.content.num
 			operationStack.peek()?.next({
 				node:     astNode.info.id,
-				domain:   intervalFromNumber(num),
+				domain:   domainFromScalar(num),
 				debugMsg: 'Number'
 			})
 		} else if(node.type === CfgVertexType.EndMarker) {

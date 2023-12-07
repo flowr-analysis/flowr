@@ -1,5 +1,5 @@
 import {DataflowInformation} from '../dataflow/internal/info'
-import {NodeId, NormalizedAst, ParentInformation, RBinaryOp, RType} from '../r-bridge'
+import {NodeId, NormalizedAst, ParentInformation, RAssignmentOp, RBinaryOp, RType} from '../r-bridge'
 import {CfgVertexType, extractCFG} from '../util/cfg/cfg'
 import {visitCfg} from '../util/cfg/visitor'
 import {guard} from '../util/assert'
@@ -65,10 +65,10 @@ function getIntervalsOfDfgChild(node: NodeId, dfg: DataflowInformation): Interva
 class Assignment implements IHandler<Constraints> {
 	private lhs:           NodeId | undefined
 	private rhs:           NodeId | undefined
-	private readonly node: RBinaryOp<ParentInformation>
+	private readonly node: RAssignmentOp<ParentInformation>
 	name = 'Assignment'
 
-	constructor(node: RBinaryOp<ParentInformation>) {
+	constructor(node: RAssignmentOp<ParentInformation>) {
 		this.node = node
 	}
 
@@ -130,7 +130,7 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 		// TODO: avoid if-else
 		if(astNode?.type === RType.BinaryOp) {
 			switch(astNode.flavor) {
-				case 'assignment': operationStack.push(new Assignment(astNode)).enter(); break
+				case 'assignment': operationStack.push(new Assignment(astNode as RAssignmentOp<ParentInformation>)).enter(); break
 				case 'arithmetic': operationStack.push(new BinOp(astNode)).enter; break
 				default: guard(false, `Unknown binary op ${astNode.flavor}`)
 			}

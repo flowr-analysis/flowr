@@ -20,20 +20,20 @@ describe('Quads', withShell(shell => {
 		const idPrefix =  `${domain}${context}/`
 		// ids are deterministic, so we can compare the quads
 		await compareQuadsCfg('1', `
-<${idPrefix}0> <${domain}type> "${RType.ExpressionList}" <test> .
-<${idPrefix}0> <${domain}children> <${idPrefix}1> <test> .
-<${idPrefix}1> <${domain}order> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
-<${idPrefix}1> <${domain}location> <${idPrefix}2> <test> .
-<${idPrefix}2> <${domain}start> <${idPrefix}3> <test> .
-<${idPrefix}3> <${domain}line> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
-<${idPrefix}3> <${domain}column> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
-<${idPrefix}2> <${domain}end> <${idPrefix}4> <test> .
-<${idPrefix}4> <${domain}line> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
-<${idPrefix}4> <${domain}column> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
-<${idPrefix}1> <${domain}lexeme> "1" <test> .
-<${idPrefix}1> <${domain}type> "${RType.Number}" <test> .
-<${idPrefix}1> <${domain}content> <${idPrefix}5> <test> .
-<${idPrefix}5> <${domain}num> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <test> .
+<${idPrefix}0> <${domain}type> "${RType.ExpressionList}" <${context}> .
+<${idPrefix}0> <${domain}children> <${idPrefix}1> <${context}> .
+<${idPrefix}1> <${domain}order> "0"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}1> <${domain}location> <${idPrefix}2> <${context}> .
+<${idPrefix}2> <${domain}start> <${idPrefix}3> <${context}> .
+<${idPrefix}3> <${domain}line> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}3> <${domain}column> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}2> <${domain}end> <${idPrefix}4> <${context}> .
+<${idPrefix}4> <${domain}line> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}4> <${domain}column> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}1> <${domain}lexeme> "1" <${context}> .
+<${idPrefix}1> <${domain}type> "${RType.Number}" <${context}> .
+<${idPrefix}1> <${domain}content> <${idPrefix}5> <${context}> .
+<${idPrefix}5> <${domain}num> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
     `)
 	})
 

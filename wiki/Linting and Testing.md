@@ -47,7 +47,6 @@ Besides folders can (theoretically) arbitrarily structure their tests. We use th
 - `*.spec.ts` denotes a test file which is to be collected when all tests are run, it may require other files to avoid big testing files and improve structure, but those should never end in `*.spec.ts`.
 . `-tests.ts` denotes test files which are required by `*.spec.ts` files. To require them, there is also the helper function `requireAllTestsInFolder` which performs sanity checks to avoid forgotten tests.
 
-
 #### Writing a Test
 
 Currently this is heavily dependend on what you want to test (normalization, dataflow, quad-export, ...) and it is probably best to have a look at existing tests in that area to get an idea of what comfort functionality is available.
@@ -96,15 +95,9 @@ And a weaker version of the first (allowing for *todo* comments) which is run au
 npm run lint-local
 ```
 
-Besides checking coding style (as defined in the [package.json](../package.json)), the linter runs the [license checker](#license-checker).
+Besides checking coding style (as defined in the [package.json](../package.json)), the *full* linter runs the [license checker](#license-checker).
 
 If you are unaware, several linting problems can be automatically fixed by [eslint](https://eslint.org/docs/latest/use/command-line-interface#fix-problems). So you may be fine by just running:
-
-```shell
-npm run lint -- --fix
-```
-
-Similarly, for `lint-local`:
 
 ```shell
 npm run lint-local -- --fix

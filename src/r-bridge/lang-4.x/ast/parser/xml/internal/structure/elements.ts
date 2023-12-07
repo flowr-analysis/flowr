@@ -1,7 +1,7 @@
 import { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseLog } from '../../parser'
-import { getWithTokenType } from '../meta'
+import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from './single-element'
 import { tryNormalizeSymbol } from '../values'
@@ -15,11 +15,11 @@ import { tryNormalizeIfThenElse, tryNormalizeIfThen } from '../control'
 import { RType, RNode, RawRType } from '../../../../model'
 import { log } from '../../../../../../../util/log'
 import { normalizeComment } from '../other'
+import { RDelimiter } from '../../../../model/nodes/info'
 
-function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData) {
+function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RNode | RDelimiter)[] {
 	if(mappedWithName.length === 1) {
-		const parsed = tryNormalizeSingleNode(data, mappedWithName[0])
-		return parsed !== undefined ? [parsed] : []
+		return [tryNormalizeSingleNode(data, mappedWithName[0])]
 	} else if(mappedWithName.length === 2) {
 		const unaryOp = tryNormalizeUnary(
 			data,
@@ -121,7 +121,7 @@ export function splitComments(mappedWithName: NamedXmlBasedJson[]) {
 export function normalizeBasedOnType(
 	data: ParserData,
 	obj: XmlBasedJson[] | NamedXmlBasedJson[]
-): RNode[] {
+): (RNode | RDelimiter)[] {
 	if(obj.length === 0) {
 		parseLog.warn('no children received, skipping')
 		return []
@@ -140,9 +140,22 @@ export function normalizeBasedOnType(
 
 	log.trace(`[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(', ')}]`)
 
+	const semiColons: RDelimiter[] = []
 	const splitOnSemicolon = splitArrayOn(
 		mappedWithName,
-		({ name }) => name === RawRType.Semicolon
+		node => {
+			const res = node.name === RawRType.Semicolon
+			if(res) {
+				const { location, content } = retrieveMetaStructure(data.config, node.content)
+				semiColons.push({
+					type:     RType.Delimiter,
+					subtype:  RawRType.Semicolon,
+					location: location,
+					lexeme:  	content
+				})
+			}
+			return res
+		}
 	)
 
 	if(splitOnSemicolon.length > 1) {
@@ -156,7 +169,7 @@ export function normalizeBasedOnType(
 				flattened.push(...result)
 			}
 		}
-		return flattened
+		return [...flattened, ...semiColons]
 	}
 
 	/*
@@ -169,18 +182,17 @@ export function normalizeBasedOnType(
 	const parsedComments = comments.map(c => normalizeComment(data, c.content))
 
 	const result = normalizeMappedWithoutSemicolonBasedOnType(others, data)
+
 	// we hoist comments
 	return [...parsedComments, ...result]
 }
 
-export function parseNodesWithUnknownType(data: ParserData, mappedWithName: NamedXmlBasedJson[]) {
-	const parsedNodes: RNode[] = []
+export function parseNodesWithUnknownType(data: ParserData, mappedWithName: NamedXmlBasedJson[]): (RNode | RDelimiter)[] {
+	const parsedNodes: (RNode | RDelimiter)[] = []
 	// used to indicate the new root node of this set of nodes
 	for(const elem of mappedWithName) {
 		const retrieved = tryNormalizeSingleNode(data, elem)
-		if(retrieved !== undefined) {
-			parsedNodes.push(retrieved)
-		}
+		parsedNodes.push(retrieved)
 	}
 	return parsedNodes
 }

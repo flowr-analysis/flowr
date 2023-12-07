@@ -10,7 +10,8 @@
 
 
 import { RNode } from '../../model'
+import { RDelimiter } from './r-delimiter'
 
 export * from './r-delimiter'
 
-export type OtherInfoNode = RNode
+export type OtherInfoNode = RNode | RDelimiter

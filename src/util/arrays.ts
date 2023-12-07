@@ -63,6 +63,19 @@ export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
 	}
 }
 
+export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T[]] {
+	const left: T[] = []
+	const right: T[] = []
+	for(const elem of arr) {
+		if(predicate(elem)) {
+			left.push(elem)
+		} else {
+			right.push(elem)
+		}
+	}
+	return [left, right]
+}
+
 /**
  * Generate all unique combinations of the array with the given size.
  * In other words, given `[a,b,c]`, as well as `minSize=2` and `maxSize=2`, this will generate `[a,b]`, `[a,c]` and `[b,c]`,

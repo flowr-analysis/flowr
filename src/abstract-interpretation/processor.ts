@@ -33,19 +33,19 @@ interface Interval {
 	maxInclusive: boolean
 }
 
-type Intervals = Set<Interval>
+type Domain = Set<Interval>
 
 interface Constraints {
-	node:      NodeId,
-	intervals: Intervals,
-	debugMsg:  string
+	node:     NodeId,
+	domain:   Domain,
+	debugMsg: string
 }
 
-function intervalFromNumber(n: number): Intervals {
+function intervalFromNumber(n: number): Domain {
 	return new Set([{min: n, minInclusive: true, max: n, maxInclusive: true}])
 }
 
-function getIntervalsOfDfgChild(node: NodeId, dfg: DataflowInformation): Intervals {
+function getIntervalsOfDfgChild(node: NodeId, dfg: DataflowInformation): Domain {
 	const dfgNode: [DataflowGraphVertexInfo, OutgoingEdges] | undefined = dfg.graph.get(node)
 	guard(dfgNode !== undefined, `No DFG-Node found with ID ${node}`)
 	const [_, children] = dfgNode
@@ -59,7 +59,7 @@ function getIntervalsOfDfgChild(node: NodeId, dfg: DataflowInformation): Interva
 	const id = ids[0]
 	const constraint = constraintMap.get(id)
 	guard(constraint !== undefined, `No constraint found for ID ${id}`)
-	return constraint.intervals
+	return constraint.domain
 }
 
 class Assignment implements IHandler<Constraints> {
@@ -79,9 +79,9 @@ class Assignment implements IHandler<Constraints> {
 	exit(): Constraints {
 		console.log(`Exited ${this.name} ${this.node.info.id}`)
 		return {
-			node:      this.lhs as NodeId,
-			intervals: new Set(), // TODO: check interval of the rhs
-			debugMsg:  this.name
+			node:     this.lhs as NodeId,
+			domain:   new Set(), // TODO: check interval of the assignments source
+			debugMsg: this.name
 		}
 	}
 
@@ -111,9 +111,9 @@ class BinOp implements IHandler<Constraints> {
 	exit(): Constraints {
 		console.log(`Exited ${this.name}`)
 		return {
-			node:      this.node.info.id,
-			intervals: new Set(), // TODO: Check the operands constraints and see how the operation affects those
-			debugMsg:  this.name
+			node:     this.node.info.id,
+			domain:   new Set(), // TODO: Check the operands constraints and see how the operation affects those
+			debugMsg: this.name
 		}
 	}
 
@@ -131,21 +131,21 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 		if(astNode?.type === RType.BinaryOp) {
 			switch(astNode.flavor) {
 				case 'assignment': operationStack.push(new Assignment(astNode as RAssignmentOp<ParentInformation>)).enter(); break
-				case 'arithmetic': operationStack.push(new BinOp(astNode)).enter; break
+				case 'arithmetic': operationStack.push(new BinOp(astNode)).enter(); break
 				default: guard(false, `Unknown binary op ${astNode.flavor}`)
 			}
 		} else if(astNode?.type === RType.Symbol) {
 			operationStack.peek()?.next({
-				node:      astNode.info.id,
-				intervals: getIntervalsOfDfgChild(node.id, dfg),
-				debugMsg:  'Symbol'
+				node:     astNode.info.id,
+				domain:   getIntervalsOfDfgChild(node.id, dfg),
+				debugMsg: 'Symbol'
 			})
 		} else if(astNode?.type === RType.Number){
 			const num = astNode.content.num
 			operationStack.peek()?.next({
-				node:      astNode.info.id,
-				intervals: intervalFromNumber(num),
-				debugMsg:  'Number'
+				node:     astNode.info.id,
+				domain:   intervalFromNumber(num),
+				debugMsg: 'Number'
 			})
 		} else if(node.type === CfgVertexType.EndMarker) {
 			const operation = operationStack.pop()

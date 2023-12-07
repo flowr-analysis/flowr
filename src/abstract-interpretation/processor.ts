@@ -41,6 +41,39 @@ interface Constraints {
 	debugMsg: string
 }
 
+function compareIntervals(interval1: Interval, interval2: Interval): number {
+	const diff = interval1.min - interval2.min
+	if(diff !== 0) {
+		return diff
+	}
+	return Number(!interval1.minInclusive) - Number(!interval2.minInclusive)
+}
+
+function unifyDomains(domains: Domain[]): Domain {
+	const allIntervals = new Array<Interval>()
+	domains.forEach(domain => allIntervals.push(...domain))
+	allIntervals.sort(compareIntervals)
+	if(!allIntervals.length) {
+		return new Set<Interval>()
+	}
+
+	const resultingDomain = new Set<Interval>()
+	let currentInterval = allIntervals[0]
+	allIntervals.forEach(interval => {
+		if(interval.min < currentInterval.max) {
+			if(interval.max > currentInterval.max) {
+				currentInterval.max = interval.max
+				currentInterval.maxInclusive = interval.maxInclusive
+			}
+		} else {
+			resultingDomain.add(currentInterval)
+			currentInterval = interval
+		}
+	})
+	resultingDomain.add(currentInterval)
+	return resultingDomain
+}
+
 function intervalFromNumber(n: number): Domain {
 	return new Set([{min: n, minInclusive: true, max: n, maxInclusive: true}])
 }
@@ -52,14 +85,13 @@ function getIntervalsOfDfgChild(node: NodeId, dfg: DataflowInformation): Domain 
 	const ids = Array.from(children.entries())
 		.filter(([_, edge]) => edge.types.has(EdgeType.Reads))
 		.map(([id, _]) => id)
-	if(ids.length === 0) {
-		return new Set()
+	const domains = new Array<Domain>()
+	for(const id of ids) {
+		const constraint = constraintMap.get(id)
+		guard(constraint !== undefined, `No constraint found for ID ${id}`)
+		domains.push(constraint.domain)
 	}
-	guard(ids.length === 1, `Multiple reads-edges found for node ${node}`)
-	const id = ids[0]
-	const constraint = constraintMap.get(id)
-	guard(constraint !== undefined, `No constraint found for ID ${id}`)
-	return constraint.domain
+	return unifyDomains(domains)
 }
 
 class Assignment implements IHandler<Constraints> {

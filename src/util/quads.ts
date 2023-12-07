@@ -147,8 +147,8 @@ export function graph2quads<AdditionalVertexInformation extends MergeableRecord,
 }
 
 
-function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
-	for(const [index, element] of value.entries()) {
+function processArrayEntries(key: string, values: unknown[], obj: DataForQuad, quads: Quad[], config:  Required<QuadSerializationConfiguration>) {
+	for(const [index, element] of values.entries()) {
 		if(element !== null && element !== undefined && isObjectOrArray(element)) {
 			const context = retrieveContext(config.context, obj)
 			quads.push(quad(
@@ -167,7 +167,8 @@ function processArrayEntries(key: string, value: unknown[], obj: DataForQuad, qu
 			))
 			serializeObject(element as DataForQuad, quads, config)
 		} else {
-			processLiteralEntry(element, key, obj, quads, config, index)
+			// for the time being, the index does not seem of interest for the graph summary team.
+			processLiteralEntry(element, key, obj, quads, config, undefined)
 		}
 	}
 }
@@ -273,6 +274,7 @@ function serializeObject(obj: DataForQuad | undefined | null, quads: Quad[], con
 	} else if(obj instanceof Set) {
 		let i = 0
 		for(const value of obj.values()) {
+			console.log('set', value)
 			processObjectEntry('idx-'+String(i++), value, obj, quads, config)
 		}
 	} else {

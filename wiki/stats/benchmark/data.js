@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1700657321113,
+  "lastUpdate": 1702046953713,
   "repoUrl": "https://github.com/Code-Inspect/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -1225,6 +1225,102 @@ window.BENCHMARK_DATA = {
             "unit": "ms",
             "range": 0.2603715463019149,
             "extra": "median: 0.41ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7329390759026896,
+            "unit": "#",
+            "extra": "std: 0.1494698363920617"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.720988345209971,
+            "unit": "#",
+            "extra": "std: 0.13987413604166843"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "7cef37c8fb8e93c1e22647fa0efed2c1ddcf21a9",
+          "message": "[release:patch] Quads With Repeated Edge Types",
+          "timestamp": "2023-12-08T15:24:04+01:00",
+          "tree_id": "e7a3ab3994be6ef3dfd8e8b13a4957bbfe0242b5",
+          "url": "https://github.com/Code-Inspect/flowr/commit/7cef37c8fb8e93c1e22647fa0efed2c1ddcf21a9"
+        },
+        "date": 1702046952548,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Total per-file",
+            "value": 3914.897785181818,
+            "unit": "ms",
+            "range": 5561.047944408685,
+            "extra": "median: 2246.12ms"
+          },
+          {
+            "name": "Retrieve AST from R code",
+            "value": 79.23541877272727,
+            "unit": "ms",
+            "range": 156.85010382325788,
+            "extra": "median: 38.27ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 99.36930672727273,
+            "unit": "ms",
+            "range": 160.20652435903554,
+            "extra": "median: 68.56ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 69.87000995454545,
+            "unit": "ms",
+            "range": 181.50457342713372,
+            "extra": "median: 17.65ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.0929919935168906,
+            "unit": "ms",
+            "range": 1.3580169345320046,
+            "extra": "median: 1.90ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 1.418837559285864,
+            "unit": "ms",
+            "range": 1.2078497990535682,
+            "extra": "median: 1.16ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.654821339733212,
+            "unit": "ms",
+            "range": 0.40929627079838377,
+            "extra": "median: 0.64ms"
           },
           {
             "name": "failed to reconstruct/re-parse",
@@ -2571,6 +2667,102 @@ window.BENCHMARK_DATA = {
             "unit": "ms",
             "range": 0.31033593750624766,
             "extra": "median: 0.57ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 9,
+            "unit": "#",
+            "extra": "out of 11321 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 967,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.898713819973478,
+            "unit": "#",
+            "extra": "std: 0.08614825965194707"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8579790415512589,
+            "unit": "#",
+            "extra": "std: 0.11594939184257376"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "7cef37c8fb8e93c1e22647fa0efed2c1ddcf21a9",
+          "message": "[release:patch] Quads With Repeated Edge Types",
+          "timestamp": "2023-12-08T15:24:04+01:00",
+          "tree_id": "e7a3ab3994be6ef3dfd8e8b13a4957bbfe0242b5",
+          "url": "https://github.com/Code-Inspect/flowr/commit/7cef37c8fb8e93c1e22647fa0efed2c1ddcf21a9"
+        },
+        "date": 1702046953709,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Total per-file",
+            "value": 5547.87590246,
+            "unit": "ms",
+            "range": 5808.9007657238435,
+            "extra": "median: 3142.30ms"
+          },
+          {
+            "name": "Retrieve AST from R code",
+            "value": 83.26392776,
+            "unit": "ms",
+            "range": 74.69286976317407,
+            "extra": "median: 48.41ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 114.04236388,
+            "unit": "ms",
+            "range": 68.66664360803951,
+            "extra": "median: 82.39ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 165.24087462,
+            "unit": "ms",
+            "range": 281.0471116203503,
+            "extra": "median: 48.28ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 8.55444112926569,
+            "unit": "ms",
+            "range": 14.175433877418497,
+            "extra": "median: 6.35ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 8.023095687643547,
+            "unit": "ms",
+            "range": 14.039065545508109,
+            "extra": "median: 5.86ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.5223300878196391,
+            "unit": "ms",
+            "range": 0.27511931827473707,
+            "extra": "median: 0.46ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

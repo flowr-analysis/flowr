@@ -47,7 +47,15 @@ class Interval {
 	}
 }
 
-type Domain = Set<Interval>
+class Domain extends Set<Interval> {
+	constructor(...intervals: Interval[]) {
+		super(intervals)
+	}
+
+	toString(): string {
+		return `{${Array.from(this).join(', ')}}`
+	}
+}
 
 interface Constraints {
 	node:     NodeId,
@@ -104,10 +112,10 @@ function doIntervalsOverlap(interval1: Interval, interval2: Interval): boolean {
 function unifyDomains(domains: Domain[]) : Domain {
 	const sortedIntervals = domains.flatMap(domain => [...domain]).sort(compareIntervalsByTheirMinimum)
 	if(sortedIntervals.length === 0) {
-		return new Set()
+		return new Domain()
 	}
 
-	const unifiedDomain = new Set<Interval>()
+	const unifiedDomain = new Domain()
 	let currentInterval = sortedIntervals[0]
 	sortedIntervals.forEach(nextInterval => {
 		if(doIntervalsOverlap(currentInterval, nextInterval)) {
@@ -126,11 +134,13 @@ function unifyDomains(domains: Domain[]) : Domain {
 	return unifiedDomain
 }
 
+// Bottom -> optionales dirty flag
+// infinity -> infinity (+ * Inclusive: false)
 function domainFromScalar(n: number): Domain {
-	return new Set([{
+	return new Domain({
 		min: {value: n, inclusive: true},
 		max: {value: n, inclusive: true}}
-	])
+	)
 }
 
 function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation): Domain {
@@ -167,7 +177,7 @@ class Assignment implements IHandler<Constraints> {
 		console.log(`Exited ${this.name} ${this.node.info.id}`)
 		return {
 			node:     this.lhs as NodeId,
-			domain:   new Set(), // TODO: check interval of the assignments source
+			domain:   new Domain(), // TODO: check interval of the assignments source
 			debugMsg: this.name
 		}
 	}
@@ -199,7 +209,7 @@ class BinOp implements IHandler<Constraints> {
 		console.log(`Exited ${this.name}`)
 		return {
 			node:     this.node.info.id,
-			domain:   new Set(), // TODO: Check the operands constraints and see how the operation affects those
+			domain:   new Domain(), // TODO: Check the operands constraints and see how the operation affects those
 			debugMsg: this.name
 		}
 	}

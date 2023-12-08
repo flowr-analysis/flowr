@@ -338,11 +338,11 @@
     "nyc": "^15.1.0",
     "release-it": "^16.1.5",
     "ts-essentials": "^9.3.2",
-    "ts-node": "^10.9.1",
-    "typedoc": "^0.24.8",
+    "ts-node": "^10.9.2",
+    "typedoc": "^0.25.4",
     "typedoc-plugin-missing-exports": "^2.0.0",
     "typedoc-theme-hierarchy": "^4.1.0",
-    "typedoc-umlclass": "^0.7.1",
+    "typedoc-umlclass": "^0.8.0",
     "typescript": "^5.3.3"
   },
   "dependencies": {

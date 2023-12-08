@@ -57,12 +57,10 @@ export function merge(snipbits: Code[]): Code {
 }
 
 export function prettyPrintPartToString(line: PrettyPrintLinePart[]): string {
-	const result = ''
+	let result = ''
 	for(const part of line) {
-		for(let I = 0; I < part.loc.column; I++) {
-			result.concat(' ')
-		}
-		result.concat(part.part)
+		result += ' '.repeat(part.loc.column)
+		result = result.concat(part.part)
 	}
 	return result
 }

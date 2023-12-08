@@ -65,7 +65,7 @@ describe('Simple', withShell(shell => {
 
 		describe('for', () => {
 			const largeFor = `
-      for (i in 1:20) { 
+      for (i in 1:20) {
         y <- 9
         x <- 5
         12 -> x

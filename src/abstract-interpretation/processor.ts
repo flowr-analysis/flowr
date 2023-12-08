@@ -19,7 +19,7 @@ class Stack<ElementType> {
 	}
 }
 
-interface IHandler<ValueType> {
+interface Handler<ValueType> {
 	name:  string,
 	enter: () => void
 	exit:  () => ValueType
@@ -117,7 +117,7 @@ function unifyDomains(domains: Domain[]) : Domain {
 
 	const unifiedDomain = new Domain()
 	let currentInterval = sortedIntervals[0]
-	sortedIntervals.forEach(nextInterval => {
+	for(const nextInterval of sortedIntervals) {
 		if(doIntervalsOverlap(currentInterval, nextInterval)) {
 			const intervalWithEarlierStart = compareIntervalsByTheirMinimum(currentInterval, nextInterval) < 0 ? currentInterval : nextInterval
 			const intervalWithLaterEnd = compareIntervalsByTheirMaximum(currentInterval, nextInterval) > 0 ? currentInterval : nextInterval
@@ -129,7 +129,7 @@ function unifyDomains(domains: Domain[]) : Domain {
 			unifiedDomain.add(currentInterval)
 			currentInterval = nextInterval
 		}
-	})
+	}
 	unifiedDomain.add(currentInterval)
 	return unifiedDomain
 }
@@ -159,7 +159,7 @@ function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation): Domain {
 	return unifyDomains(domains)
 }
 
-class Assignment implements IHandler<Constraints> {
+class Assignment implements Handler<Constraints> {
 	private lhs:           NodeId | undefined
 	private rhs:           NodeId | undefined
 	private readonly node: RAssignmentOp<ParentInformation>
@@ -192,7 +192,7 @@ class Assignment implements IHandler<Constraints> {
 	}
 }
 
-class BinOp implements IHandler<Constraints> {
+class BinOp implements Handler<Constraints> {
 	private readonly node: RBinaryOp<ParentInformation>
 
 	constructor(node: RBinaryOp<ParentInformation>) {
@@ -221,7 +221,7 @@ class BinOp implements IHandler<Constraints> {
 
 export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInformation): DataflowInformation {
 	const cfg = extractCFG(ast)
-	const operationStack = new Stack<IHandler<Constraints>>()
+	const operationStack = new Stack<Handler<Constraints>>()
 	visitCfg(cfg, (node, _) => {
 		const astNode = ast.idMap.get(node.id)
 		// TODO: avoid if-else

@@ -8,7 +8,7 @@ import { RNode, RawRType, RType } from '../../../../model'
 import { normalizeComment } from '../other'
 import { normalizeBreak, normalizeNext } from '../loops'
 import { normalizeLineDirective } from '../other/line-directive'
-import { RDelimiter } from '../../../../model/nodes/info'
+import { RDelimiter, RDelimiterNode } from '../../../../model/nodes/info'
 
 function normalizeDelimiter(data: ParserData, elem: NamedXmlBasedJson): RDelimiter {
 	const {
@@ -19,7 +19,7 @@ function normalizeDelimiter(data: ParserData, elem: NamedXmlBasedJson): RDelimit
 		type:    RType.Delimiter,
 		location,
 		lexeme:  content,
-		subtype: elem.name
+		subtype: elem.name as RDelimiterNode
 	}
 }
 

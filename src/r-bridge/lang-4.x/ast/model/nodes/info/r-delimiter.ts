@@ -10,5 +10,5 @@ import { MergeableRecord } from '../../../../../../util/objects'
 export interface RDelimiter extends MergeableRecord, Location {
 	readonly type:    RType.Delimiter;
 	readonly lexeme:  string;
-	readonly subtype: RawRType;
+	readonly subtype: RawRType.BraceLeft | RawRType.BraceRight | RawRType.ParenLeft | RawRType.ParenRight;
 }

@@ -3,9 +3,8 @@
 command -v git-lfs >/dev/null 2>&1 || { echo >&2 "\nThis repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting '.git/hooks/post-merge'.\n"; exit 2; }
 git lfs post-merge "$@"
 
-# Let's check for updates to the package.json and if so suggest an update
-# TODO: we have to do the same then fo ra checkout/switch there is to my knowledge no classic "post-pull"
-# TODO: git diff with ORIG_HEAD and HEAD to check if there was a change in package.json or package-lock.json
+# Let's check for updates to the package.json and if so suggest an update, currently duplicated in
+# post-checkout as, to my knowledge, there is no "post-pull" hook unifying the semantics.
 changedFiles="$(git diff-tree -r --name-only --no-commit-id HEAD@{1} HEAD)"
 echo "$changedFiles" | (grep --quiet "package.json" && echo "package.json changed, it may be good to run 'npm ci'")
 

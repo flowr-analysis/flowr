@@ -26,12 +26,12 @@ interface Handler<ValueType> {
 	next:  (value: ValueType) => void
 }
 
-interface IntervalBound {
+export interface IntervalBound {
 	value:     number,
 	inclusive: boolean
 }
 
-class Interval {
+export class Interval {
 	readonly min: IntervalBound
 	readonly max: IntervalBound
 
@@ -47,7 +47,7 @@ class Interval {
 	}
 }
 
-class Domain extends Set<Interval> {
+export class Domain extends Set<Interval> {
 	constructor(...intervals: Interval[]) {
 		super(intervals)
 	}
@@ -57,20 +57,20 @@ class Domain extends Set<Interval> {
 	}
 }
 
-interface Constraints {
+export interface Constraints {
 	node:     NodeId,
 	domain:   Domain,
 	debugMsg: string
 }
 
-const enum CompareType {
+export const enum CompareType {
 	/** The bound that's inclusive is the smaller one */
 	Min,
 	/** The bound that's inclusive is the greater one */
 	Max
 }
 
-function compareIntervals(compareType: CompareType, interval1: IntervalBound, interval2: IntervalBound): number {
+export function compareIntervals(compareType: CompareType, interval1: IntervalBound, interval2: IntervalBound): number {
 	const diff = interval1.value - interval2.value
 	if(diff !== 0) {
 		return diff
@@ -82,15 +82,15 @@ function compareIntervals(compareType: CompareType, interval1: IntervalBound, in
 	}
 }
 
-function compareIntervalsByTheirMinimum(interval1: Interval, interval2: Interval): number {
+export function compareIntervalsByTheirMinimum(interval1: Interval, interval2: Interval): number {
 	return compareIntervals(CompareType.Min, interval1.min, interval2.min)
 }
 
-function compareIntervalsByTheirMaximum(interval1: Interval, interval2: Interval): number {
+export function compareIntervalsByTheirMaximum(interval1: Interval, interval2: Interval): number {
 	return compareIntervals(CompareType.Max, interval1.max, interval2.max)
 }
 
-function doIntervalsOverlap(interval1: Interval, interval2: Interval): boolean {
+export function doIntervalsOverlap(interval1: Interval, interval2: Interval): boolean {
 	const diff1 = compareIntervals(CompareType.Max, interval1.max, interval2.min)
 	const diff2 = compareIntervals(CompareType.Max, interval2.max, interval1.min)
 
@@ -109,7 +109,7 @@ function doIntervalsOverlap(interval1: Interval, interval2: Interval): boolean {
 	return true
 }
 
-function unifyDomains(domains: Domain[]) : Domain {
+export function unifyDomains(domains: Domain[]) : Domain {
 	const sortedIntervals = domains.flatMap(domain => [...domain]).sort(compareIntervalsByTheirMinimum)
 	if(sortedIntervals.length === 0) {
 		return new Domain()

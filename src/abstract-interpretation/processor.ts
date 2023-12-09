@@ -36,10 +36,10 @@ class Interval {
 	readonly max: IntervalBound
 
 	constructor(min: IntervalBound, max: IntervalBound) {
-		guard(min.value <= max.value, `The interval ${this.toString()} has a minimum that is greater than its maximum`)
-		guard(min.value !== max.value || (min.inclusive === max.inclusive), `The bound ${min.value} cannot be in- and exclusive at the same time`)
 		this.min = min
 		this.max = max
+		guard(min.value <= max.value, `The interval ${this.toString()} has a minimum that is greater than its maximum`)
+		guard(min.value !== max.value || (min.inclusive === max.inclusive), `The bound ${min.value} cannot be in- and exclusive at the same time`)
 	}
 
 	toString(): string {

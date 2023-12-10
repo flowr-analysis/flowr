@@ -47,13 +47,24 @@ export class Interval {
 	}
 }
 
-export class Domain extends Set<Interval> {
+export class Domain {
+	private readonly _intervals: Set<Interval>
+
 	constructor(...intervals: Interval[]) {
-		super(intervals)
+		this._intervals = new Set(intervals)
+	}
+
+	get intervals(): Set<Interval> {
+		return this._intervals
+	}
+
+	addInterval(interval: Interval): void {
+		// TODO: check if the interval overlaps with any of the existing ones
+		this.intervals.add(interval)
 	}
 
 	toString(): string {
-		return `{${Array.from(this).join(', ')}}`
+		return `{${Array.from(this.intervals).join(', ')}}`
 	}
 }
 
@@ -112,7 +123,7 @@ export function doIntervalsOverlap(interval1: Interval, interval2: Interval): bo
 }
 
 export function unifyDomains(domains: Domain[]) : Domain {
-	const sortedIntervals = domains.flatMap(domain => [...domain]).sort(compareIntervalsByTheirMinimum)
+	const sortedIntervals = domains.flatMap(domain => [...domain.intervals]).sort(compareIntervalsByTheirMinimum)
 	if(sortedIntervals.length === 0) {
 		return new Domain()
 	}
@@ -128,11 +139,11 @@ export function unifyDomains(domains: Domain[]) : Domain {
 				max: intervalWithLaterEnd.max,
 			}
 		} else {
-			unifiedDomain.add(currentInterval)
+			unifiedDomain.addInterval(currentInterval)
 			currentInterval = nextInterval
 		}
 	}
-	unifiedDomain.add(currentInterval)
+	unifiedDomain.addInterval(currentInterval)
 	return unifiedDomain
 }
 

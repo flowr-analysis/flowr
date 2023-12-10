@@ -41,13 +41,13 @@ describe('Abstract Interpretation', () => {
 	})
 
 	it('Domain unification', () => {
-		assert.isEmpty(unifyDomains([]), 'Unifying no domains results in an empty domain')
+		assert.isEmpty(unifyDomains([]).intervals, 'Unifying no domains results in an empty domain')
 
 		const nonOverlappingDomain1 = domainFromScalar(1)
 		const nonOverlappingDomain2 = domainFromScalar(2)
 		assert.deepEqual(
 			unifyDomains([nonOverlappingDomain1, nonOverlappingDomain2]),
-			new Domain(...nonOverlappingDomain1, ...nonOverlappingDomain2),
+			new Domain(...nonOverlappingDomain1.intervals, ...nonOverlappingDomain2.intervals),
 			'Unifying two non overlapping domains results in a domain containing all intervals of the original domains'
 		)
 

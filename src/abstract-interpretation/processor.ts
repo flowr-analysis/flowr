@@ -138,7 +138,7 @@ export function unifyDomains(domains: Domain[]) : Domain {
 
 // Bottom -> optionales dirty flag
 // infinity -> infinity (+ * Inclusive: false)
-function domainFromScalar(n: number): Domain {
+export function domainFromScalar(n: number): Domain {
 	return new Domain({
 		min: {value: n, inclusive: true},
 		max: {value: n, inclusive: true}}

@@ -152,7 +152,7 @@ function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation): Domain {
 	const ids = Array.from(children.entries())
 		.filter(([_, edge]) => edge.types.has(EdgeType.Reads))
 		.map(([id, _]) => id)
-	const domains = new Array<Domain>()
+	const domains: Domain[] = []
 	for(const id of ids) {
 		const constraint = constraintMap.get(id)
 		guard(constraint !== undefined, `No constraint found for ID ${id}`)

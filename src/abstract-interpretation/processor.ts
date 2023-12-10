@@ -67,12 +67,14 @@ export const enum CompareType {
 	/** The bound that's inclusive is the smaller one */
 	Min,
 	/** The bound that's inclusive is the greater one */
-	Max
+	Max,
+	/** Equality is only based on the "raw" values */
+	IgnoreInclusivity
 }
 
 export function compareIntervals(compareType: CompareType, interval1: IntervalBound, interval2: IntervalBound): number {
 	const diff = interval1.value - interval2.value
-	if(diff !== 0) {
+	if(diff !== 0 || compareType === CompareType.IgnoreInclusivity) {
 		return diff
 	}
 	switch(compareType) {
@@ -91,8 +93,8 @@ export function compareIntervalsByTheirMaximum(interval1: Interval, interval2: I
 }
 
 export function doIntervalsOverlap(interval1: Interval, interval2: Interval): boolean {
-	const diff1 = compareIntervals(CompareType.Max, interval1.max, interval2.min)
-	const diff2 = compareIntervals(CompareType.Max, interval2.max, interval1.min)
+	const diff1 = compareIntervals(CompareType.IgnoreInclusivity, interval1.max, interval2.min)
+	const diff2 = compareIntervals(CompareType.IgnoreInclusivity, interval2.max, interval1.min)
 
 	// If one interval ends before the other starts, they don't overlap
 	if(diff1 < 0 || diff2 < 0) {

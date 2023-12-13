@@ -60,7 +60,6 @@ The [core](https://github.com/Code-Inspect/flowr/tree/main/src/core) module cont
 
 The [utility](https://github.com/Code-Inspect/flowr/tree/main/src/util) module is of no further interest for the usage of *flowR*
 
-
 The following sections explain how to use these features.
 
 ## Using *flowR*
@@ -128,7 +127,6 @@ Sleep 200ms
 </details>
 
 The server allows to access the REPL as well (see the [interface](https://github.com/Code-Inspect/flowr/wiki/Interface) wiki page for more information).
-
 
 ## Calling the Scripts Directly
 
@@ -215,7 +213,6 @@ See
 ```shell
 npm run stats -- --help
 ```
-
 
 ### Export RDF N-Quads
 

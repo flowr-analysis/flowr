@@ -3,7 +3,7 @@ import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { tryNormalizeSingleNode } from '../structure'
 import { ParserData } from '../../data'
-import { RType, RWhileLoop, RawRType } from '../../../../model'
+import { RawRType, RType, RWhileLoop } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 export function tryNormalizeWhile(
@@ -41,7 +41,7 @@ export function tryNormalizeWhile(
 	const parsedCondition = tryNormalizeSingleNode(data, condition)
 	const parseBody = tryNormalizeSingleNode(data, body)
 
-	if(parsedCondition === undefined || parseBody === undefined) {
+	if(parsedCondition.type === RType.Delimiter || parseBody.type === RType.Delimiter) {
 		throw new XmlParseError(
 			`unexpected under-sided while-loop, received ${JSON.stringify([
 				parsedCondition,

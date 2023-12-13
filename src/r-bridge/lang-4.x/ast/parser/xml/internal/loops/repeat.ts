@@ -3,7 +3,7 @@ import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from '../structure'
-import { RType, RRepeatLoop, RawRType } from '../../../../model'
+import { RawRType, RRepeatLoop, RType } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
@@ -26,7 +26,7 @@ export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJ
 	({ repeatToken, body } = executeHook(data.hooks.loops.onRepeatLoop.before, data, { repeatToken, body }))
 
 	const parseBody = tryNormalizeSingleNode(data, body)
-	guard(parseBody !== undefined, () => `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(body)})`)
+	guard(parseBody.type !== RType.Delimiter, () => `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(body)})`)
 
 	const {
 		location,

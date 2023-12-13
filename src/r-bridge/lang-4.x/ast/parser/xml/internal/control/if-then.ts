@@ -3,7 +3,7 @@ import { tryNormalizeSingleNode } from '../structure'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
-import { RType, RIfThenElse, RawRType } from '../../../../model'
+import { RawRType, RIfThenElse, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 /**
@@ -34,7 +34,7 @@ export function tryNormalizeIfThen(
 	const parsedThen = tryNormalizeSingleNode(data, tokens[4])
 
 
-	if(parsedCondition === undefined || parsedThen === undefined) {
+	if(parsedCondition.type === RType.Delimiter || parsedThen.type === RType.Delimiter) {
 		throw new XmlParseError(`unexpected missing parts of if, received ${JSON.stringify([parsedCondition, parsedThen])} for ${JSON.stringify(tokens)}`)
 	}
 

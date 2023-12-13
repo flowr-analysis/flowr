@@ -7,6 +7,7 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../util/log'
 import { guard } from '../../../../../../../util/assert'
 import { tryNormalizeSingleNode } from '../structure'
+import { RDelimiter } from '../../../../model/nodes/info'
 
 /**
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.
@@ -30,7 +31,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 	const symbolOrExpr = objs[0]
 	const { location, content } = retrieveMetaStructure(data.config, symbolOrExpr.content)
 
-	let parsedValue: RNode | undefined | null
+	let parsedValue: RNode | RDelimiter | undefined |  null
 	let name: RSymbol | undefined
 	if(symbolOrExpr.name === RawRType.Expression) {
 		name = undefined
@@ -54,7 +55,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 		return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
 	}
 
-	guard(parsedValue !== undefined, () => `[argument] parsed value must not be undefined, yet: ${JSON.stringify(objs)}`)
+	guard(parsedValue !== undefined && parsedValue?.type !== RType.Delimiter, () => `[argument] parsed value must not be undefined, yet: ${JSON.stringify(objs)}`)
 
 	const result: RArgument = {
 		type:   RType.Argument,
@@ -72,7 +73,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 	return executeHook(data.hooks.functions.onArgument.after, data, result)
 }
 
-function parseWithValue(data: ParserData, objs: NamedXmlBasedJson[]): RNode | undefined | null{
+function parseWithValue(data: ParserData, objs: NamedXmlBasedJson[]): RNode | RDelimiter | undefined | null{
 	guard(objs[1].name === RawRType.EqualSub, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`)
 	guard(objs.length === 2 || objs[2].name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression or undefined (for 'x=') but: ${JSON.stringify(objs)}`)
 	return objs[2] ? tryNormalizeSingleNode(data, objs[2]) : null

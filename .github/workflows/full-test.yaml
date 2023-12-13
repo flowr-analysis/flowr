@@ -33,5 +33,5 @@ jobs:
       timeout-minutes: 25
       r-version: ${{ matrix.r-version }}
       image: ${{ matrix.os }}
-      action: test-full
+      action: test-full -- --forbid-only
       coverage: false

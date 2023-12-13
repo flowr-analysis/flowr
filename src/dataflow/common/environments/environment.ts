@@ -1,13 +1,15 @@
 /**
  * Provides an environment structure similar to R.
  * This allows the dataflow to hold current definition locations for variables, based on the current scope.
+ *
  * @module
  */
 import { NodeId } from '../../../r-bridge'
-import { DataflowGraph, DataflowGraphEdgeAttribute } from '../../v1/graph'
-import { dataflowLogger } from '../../v1'
-import { resolveByName } from './resolve-by-name'
+import { DataflowGraph, DataflowGraphEdgeAttribute } from '../../v1'
 import { DataflowScopeName, GlobalScope, LocalScope } from './scopes'
+import { GenericDifferenceInformation, setDifference } from '../../../util/diff'
+import { resolveByName } from './resolve-by-name'
+import { jsonReplacer } from '../../../util/json'
 
 /** identifiers are branded to avoid confusion with other string-like types */
 export type Identifier = string & { __brand?: 'identifier' }
@@ -43,8 +45,19 @@ export interface IdentifierReference {
 	used:   DataflowGraphEdgeAttribute
 }
 
-export function equalIdentifierReferences(a: IdentifierReference, b: IdentifierReference): boolean {
-	return a.name === b.name && a.scope === b.scope && a.nodeId === b.nodeId && a.used === b.used
+export function diffIdentifierReferences(a: IdentifierReference, b: IdentifierReference, info: GenericDifferenceInformation): void {
+	if(a.name !== b.name) {
+		info.report.addComment(`${info.position}Different identifier names: ${a.name} vs. ${b.name}`)
+	}
+	if(a.scope !== b.scope) {
+		info.report.addComment(`${info.position}Different scopes: ${a.scope} vs. ${b.scope}`)
+	}
+	if(a.nodeId !== b.nodeId) {
+		info.report.addComment(`${info.position}Different nodeIds: ${a.nodeId} vs. ${b.nodeId}`)
+	}
+	if(a.used !== b.used) {
+		info.report.addComment(`${info.position}Different used: ${a.used} vs. ${b.used}`)
+	}
 }
 
 export function makeAllMaybe(references: IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference[] {
@@ -146,44 +159,59 @@ export function initializeCleanEnvironments(): REnvironmentInformation {
 }
 
 
-export function environmentEqual(a: IEnvironment | undefined, b: IEnvironment | undefined): boolean {
+export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | undefined, info: GenericDifferenceInformation): void {
 	if(a === undefined || b === undefined) {
-		dataflowLogger.warn(`Comparing undefined environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
-		return a === b
+		if(a !== b) {
+			info.report.addComment(`${info.position}Different environments. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
+		}
+		return
 	}
-	if(a.name !== b.name || a.memory.size !== b.memory.size) {
-		dataflowLogger.warn(`Different environments: ${a.name}!=${b.name} or ${a.memory.size}!=${b.memory.size}; ${JSON.stringify(a)} and ${JSON.stringify(b)} due to different names or sizes (${JSON.stringify([...a.memory.entries()])} vs. ${JSON.stringify([...b.memory.entries()])})`)
-		return false
+	if(a.name !== b.name) {
+		info.report.addComment(`${info.position}Different environment names. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
+	}
+	if(a.memory.size !== b.memory.size) {
+		info.report.addComment(`${info.position}Different environment sizes. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
+		setDifference(new Set([...a.memory.keys()]), new Set([...b.memory.keys()]), {...info, position: `${info.position}Key comparison. `})
 	}
 	for(const [key, value] of a.memory) {
 		const value2 = b.memory.get(key)
 		if(value2 === undefined || value.length !== value2.length) {
-			dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)} due to different sizes of ${JSON.stringify(key)} (${JSON.stringify(value)} vs. ${JSON.stringify(value2)})`)
-			return false
+			info.report.addComment(`${info.position}Different definitions for ${key}. ${info.leftname}: ${JSON.stringify(value, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(value2, jsonReplacer)}`)
+			continue
 		}
 
 		for(let i = 0; i < value.length; ++i) {
 			const aVal = value[i]
 			const bVal = value2[i]
-			if(aVal.name !== bVal.name || aVal.nodeId !== bVal.nodeId || aVal.scope !== bVal.scope || aVal.used !== bVal.used || aVal.definedAt !== bVal.definedAt || aVal.kind !== bVal.kind) {
-				dataflowLogger.warn(`Different definitions ${JSON.stringify(aVal)} and ${JSON.stringify(bVal)} within environments`)
-				return false
+			if(aVal.name !== bVal.name) {
+				info.report.addComment(`${info.position}Different names for ${key}. ${info.leftname}: ${aVal.name} vs. ${info.rightname}: ${bVal.name}`)
+			}
+			if(aVal.nodeId !== bVal.nodeId) {
+				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`)
+			}
+			if(aVal.scope !== bVal.scope) {
+				info.report.addComment(`${info.position}Different scopes for ${key}. ${info.leftname}: ${aVal.scope} vs. ${info.rightname}: ${bVal.scope}`)
+			}
+			if(aVal.used !== bVal.used) {
+				info.report.addComment(`${info.position}Different used for ${key}. ${info.leftname}: ${aVal.used} vs. ${info.rightname}: ${bVal.used}`)
+			}
+			if(aVal.definedAt !== bVal.definedAt) {
+				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key}. ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)
+			}
+			if(aVal.kind !== bVal.kind) {
+				info.report.addComment(`${info.position}Different kinds for ${key}. ${info.leftname}: ${aVal.kind} vs. ${info.rightname}: ${bVal.kind}`)
 			}
 		}
 	}
-	return environmentEqual(a.parent, b.parent)
+	diffEnvironment(a.parent, b.parent, { ...info, position: `${info.position}Parents of ${a.id} & ${b.id}. `})
 }
 
-export function environmentsEqual(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined): boolean {
+export function diffEnvironments(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined, info: GenericDifferenceInformation): void {
 	if(a === undefined || b === undefined) {
-		dataflowLogger.warn(`Comparing undefined environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
-		return a === b
+		info.report.addComment(`${info.position}Different environments: ${JSON.stringify(a, jsonReplacer)} vs. ${JSON.stringify(b, jsonReplacer)}`)
+		return
 	}
-	if(!environmentEqual(a.current, b.current)) {
-		dataflowLogger.warn(`Different environments ${JSON.stringify(a)} and ${JSON.stringify(b)}`)
-		return false
-	}
-	return true
+	diffEnvironment(a.current, b.current, info)
 }
 
 function cloneEnvironment(environment: IEnvironment, recurseParents: boolean): IEnvironment

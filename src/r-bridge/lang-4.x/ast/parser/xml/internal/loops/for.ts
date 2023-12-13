@@ -1,16 +1,11 @@
-import {
-	getKeysGuarded,
-	NamedXmlBasedJson,
-	XmlBasedJson,
-	XmlParseError,
-} from '../../input-format'
+import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '../../input-format'
 import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { guard } from '../../../../../../../util/assert'
 import { ParserData } from '../../data'
 import { tryNormalizeSymbol } from '../values'
 import { normalizeBasedOnType, splitComments, tryNormalizeSingleNode } from '../structure'
-import { RType, RSymbol, RForLoop, RNode, RawRType, RComment } from '../../../../model'
+import { RawRType, RComment, RForLoop, RNode, RSymbol, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { normalizeComment } from '../other'
 
@@ -43,7 +38,7 @@ export function tryNormalizeFor(
 	if(
 		parsedVariable === undefined ||
     parsedVector === undefined ||
-    parseBody === undefined
+    parseBody.type === RType.Delimiter
 	) {
 		throw new XmlParseError(
 			`unexpected under-sided for-loop, received ${JSON.stringify([
@@ -90,7 +85,7 @@ function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { varia
 	guard((variable as RNode).type === RType.Symbol, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
 
 	const vector = normalizeBasedOnType(data, [others[inPosition + 1]])
-	guard(vector.length === 1, () => `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`)
+	guard(vector.length === 1 && vector[0].type !== RType.Delimiter, () => `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`)
 	const parsedComments = comments.map(c => normalizeComment(data, c.content))
 
 	return { variable, vector: vector[0], comments: parsedComments }

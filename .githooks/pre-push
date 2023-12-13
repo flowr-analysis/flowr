@@ -4,7 +4,7 @@ git lfs pre-push "$@"
 
 set -eu
 
-sh .githooks/load-npm.sh
+. .githooks/load-npm.sh
 
 reset() {
   echo "Cleaning up and return control"

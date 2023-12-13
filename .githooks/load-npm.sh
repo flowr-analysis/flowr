@@ -2,6 +2,7 @@
 
 find_npm_linux() {
   export NPM_CMD="npm"
+  export NPX_CMD="npx"
 
   if ! (type $NPM_CMD >> /dev/null); then
     echo "npm not found, trying to make it available using nvm..."
@@ -23,6 +24,7 @@ find_npm_linux() {
       if ! (type $NPM_CMD >> /dev/null); then
         echo "no variant of npm or nvm found, trying to use the npm.cmd"
         export NPM_CMD="npm.cmd"
+        export NPX_CMD="npx.cmd"
       fi
     fi
   fi
@@ -32,7 +34,7 @@ if [ -z "${OSTYPE+x}" ]; then
   find_npm_linux
 else
   case "$OSTYPE" in
-    msys*) export NPM_CMD="npm.cmd";;
+    msys*) export NPM_CMD="npm.cmd"; export NPX_CMD="npx.cmd";;
     *)     find_npm_linux ;;
   esac
 fi

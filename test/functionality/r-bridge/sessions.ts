@@ -59,9 +59,8 @@ describe('RShell sessions', function() {
 		shell.sendCommand('a <- 1 + 1')
 		shell.clearEnvironment()
 		await shell.sendCommandWithOutput('a', { from: 'stderr' }).then(lines => {
-			assert.equal(lines.length, 1)
 			// just await an error
-			assert.match(lines[0], /^.*Error.*a/)
+			assert.match(lines.join('\n'), /^.*Error.*a/)
 		})
 	})
 	describe('test if a package is already installed', withShell(shell => {

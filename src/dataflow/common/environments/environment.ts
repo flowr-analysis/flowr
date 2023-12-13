@@ -190,16 +190,16 @@ export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | u
 				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`)
 			}
 			if(aVal.scope !== bVal.scope) {
-				info.report.addComment(`${info.position}Different scopes for ${key}. ${info.leftname}: ${aVal.scope} vs. ${info.rightname}: ${bVal.scope}`)
+				info.report.addComment(`${info.position}Different scopes for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.scope} vs. ${info.rightname}: ${bVal.scope}`)
 			}
 			if(aVal.used !== bVal.used) {
-				info.report.addComment(`${info.position}Different used for ${key}. ${info.leftname}: ${aVal.used} vs. ${info.rightname}: ${bVal.used}`)
+				info.report.addComment(`${info.position}Different used for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.used} vs. ${info.rightname}: ${bVal.used}`)
 			}
 			if(aVal.definedAt !== bVal.definedAt) {
-				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key}. ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)
+				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)
 			}
 			if(aVal.kind !== bVal.kind) {
-				info.report.addComment(`${info.position}Different kinds for ${key}. ${info.leftname}: ${aVal.kind} vs. ${info.rightname}: ${bVal.kind}`)
+				info.report.addComment(`${info.position}Different kinds for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.kind} vs. ${info.rightname}: ${bVal.kind}`)
 			}
 		}
 	}

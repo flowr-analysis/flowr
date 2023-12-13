@@ -53,6 +53,7 @@ export function merge(snipbits: Code[]): Code {
 
 	//sort buckets by column and stich lines into single code piece
 	for(const line of buckets) {
+		if(line === undefined){ //appers to be necessary as 'buckets' may be sparce (empty elements count as undefined)
 			continue
 		}
 		line.linePart.sort((a, b) => a.loc.column - b.loc.column)

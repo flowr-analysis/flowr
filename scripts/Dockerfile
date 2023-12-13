@@ -11,7 +11,7 @@ RUN npm install
 RUN npm run build
 
 
-FROM node:20.8-alpine3.17 AS flowR
+FROM node:21.4-alpine3.19 AS flowR
 
 LABEL author="Florian Sihler" git="https://github.com/Code-Inspect/flowr"
 

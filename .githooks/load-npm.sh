@@ -34,7 +34,8 @@ if [ -z "${OSTYPE+x}" ]; then
   find_npm_linux
 else
   case "$OSTYPE" in
-    msys*) export NPM_CMD="npm.cmd"; export NPX_CMD="npx.cmd";;
+    msys*) export NPM_CMD="npm.cmd" ;
+           export NPX_CMD="npx.cmd" ;;
     *)     find_npm_linux ;;
   esac
 fi

@@ -83,4 +83,21 @@ describe('Lists with if-then constructs', withShell(shell => {
 			})
 		})
 	}
+	/*describe('Branch Coverage', () => {
+		//All test related to branch coverage (testing the interaction between then end else block)
+		assertDataflow('read previous def in cond',
+							shell,
+							`x <- 1\nif(r) { x <- 2 } else { x <- 3}; x`,
+							new DataflowGraph()
+								.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope})
+								.addVertex( { tag: 'use', id:'3', name: 'r', scope:LocalScope } )
+								.addVertex( { tag: 'variable-definition', id:'4', name:'x', scope: LocalScope } )
+								.addVertex( { tag: 'variable-definition', id:'8', name:'x', scope: LocalScope } )
+								.addEdge('0', '8', EdgeType.SameDefDef, 'maybe')
+								.addEdge('0', '4', EdgeType.SameDefDef, 'maybe')
+								//.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
+								//.addVertex( { tag: 'use', id: '3', name: 'x', environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
+								//.addEdge('3', '0', EdgeType.Reads, 'always')
+						)
+	})*/
 }))

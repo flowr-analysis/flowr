@@ -3,13 +3,14 @@ import { DataflowInformation } from '../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
 import { makeAllMaybe, overwriteEnvironments } from '../../../common/environments'
 import { EdgeType } from '../../graph'
+import { jsonReplacer } from '../../../../util/json'
 
 export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const processedAccessed = processDataflowFor(node.accessed, data)
 	const nextGraph = processedAccessed.graph
 	const outgoing = processedAccessed.out
 	const ingoing = processedAccessed.in
-	const environments = processedAccessed.environments
+	let environments = processedAccessed.environments
 
 	const accessedNodes = processedAccessed.unknownReferences
 
@@ -18,6 +19,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 			if(access === null || access.value === undefined) {
 				continue
 			}
+			data = { ...data, environments }
 			const processedAccess = processDataflowFor(access, data)
 
 			nextGraph.mergeWith(processedAccess.graph)
@@ -29,11 +31,11 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 				}
 			}
 			ingoing.push(...processedAccess.in, ...processedAccess.unknownReferences)
-			overwriteEnvironments(environments, processedAccess.environments)
+			environments = processedAccess.environments
 		}
 	}
 
-	return {
+	const res =  {
 		/*
      * keep active nodes in case of assignments etc.
      * We make them maybe as a kind of hack.
@@ -52,4 +54,6 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 		scope:             data.activeScope,
 		graph:             nextGraph
 	}
+	console.log(JSON.stringify(res, jsonReplacer, 2))
+	return res
 }

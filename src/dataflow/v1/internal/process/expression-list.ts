@@ -96,7 +96,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 				}
 				current = current.parent
 			}
-			// we update all definitions to be linked with teh corresponding function call
+			// we update all definitions to be linked with the corresponding function call
 			environments = overwriteEnvironments(environments, environment)
 		}
 	}
@@ -155,7 +155,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, functionCallIds, processed.graph)
 
-		environments = processed.environments
+		environments = overwriteEnvironments(environments, processed.environments)
 
 		// if the called function has global redefinitions, we have to keep them within our environment
 		environments = updateSideEffectsForCalledFunctions(calledEnvs, environments, nextGraph)

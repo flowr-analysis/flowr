@@ -16,7 +16,7 @@ import {
 	RNodeWithParent,
 	RType
 } from '../../r-bridge'
-import { log } from '../../util/log'
+import { log, LogLevel } from '../../util/log'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
 import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
 import objectHash from 'object-hash'
@@ -127,8 +127,9 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice')
 	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, ast)
 	const idMap = ast.idMap
-	slicerLogger.trace(`calculating slice for ${decodedCriteria.length} seed ids: ${decodedCriteria.join(', ')}`)
-
+	if(slicerLogger.settings.minLevel <= LogLevel.Trace) {
+		slicerLogger.trace(`calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`)
+	}
 	const queue = new VisitingQueue(threshold)
 
 	// every node ships the call environment which registers the calling environment

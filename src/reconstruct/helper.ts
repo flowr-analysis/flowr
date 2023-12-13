@@ -42,13 +42,19 @@ export function merge(snipbits: Code[]): Code {
 	for(const code of snipbits) {
 		for(const line of code) {
 			for(const part of line.linePart) {
-				buckets[part.loc.line].linePart.push(part)
+				const lineNumber = part.loc.line
+				if(buckets[lineNumber] === undefined) {	//may be necessary as empty elements count as undefined and we don't want to reassign filled buckets
+					buckets[lineNumber] = {linePart: [], indent: line.indent}
+				}
+				buckets[lineNumber].linePart.push(part)
 			}
 		}
 	}
 
 	//sort buckets by column and stich lines into single code piece
 	for(const line of buckets) {
+			continue
+		}
 		line.linePart.sort((a, b) => a.loc.column - b.loc.column)
 		result.push(line)
 	}
@@ -129,6 +135,7 @@ export function getIndentString(indent: number): string {
 --helper function--
 */
 export function prettyPrintCodeToString(code: Code, lf = '\n'): string {
+	code = merge([code])
 	return code.map(({ linePart, indent }) => `${getIndentString(indent)}${prettyPrintPartToString(linePart)}`).join(lf)
 }
 

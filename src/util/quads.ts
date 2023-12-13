@@ -157,14 +157,17 @@ function processArrayEntries(key: string, values: unknown[], obj: DataForQuad, q
 				namedNode(domain + config.getId(element, context)),
 				namedNode(context)
 			))
-			// add a new edge with the unique name 'order' which contains the number,
-			// this should keep predicates unique
-			quads.push(quad(
-				namedNode(domain + config.getId(element, context)),
-				namedNode(domain + 'order'),
-				literal(String(index), namedNode('http://www.w3.org/2001/XMLSchema#integer')),
-				namedNode(context)
-			))
+			// we now add a next link to the next vertex
+			const next = values[index + 1]
+			if(next !== undefined) {
+				const nextId = config.getId(next, context)
+				quads.push(quad(
+					namedNode(domain + config.getId(element, context)),
+					namedNode(domain + 'next'),
+					namedNode(domain + nextId),
+					namedNode(context)
+				))
+			}
 			serializeObject(element as DataForQuad, quads, config)
 		} else {
 			// for the time being, the index does not seem of interest for the graph summary team.

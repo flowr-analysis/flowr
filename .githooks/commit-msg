@@ -1,5 +1,5 @@
 #!/bin/sh
 
 message_file="${1}"
-commitlint --config '.github/.commitlintrc.json' --edit "${message_file}" ||
+npx commitlint --config '.github/.commitlintrc.json' --edit "${message_file}" ||
   (printf "Run the following to fix the commit message:\n\ngit commit --edit --file=\"%s\"\n" "${message_file}" && exit 1)

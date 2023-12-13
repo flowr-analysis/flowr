@@ -1,9 +1,8 @@
 import { ParentInformation, RAccess } from '../../../../r-bridge'
 import { DataflowInformation } from '../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
-import { makeAllMaybe, overwriteEnvironments } from '../../../common/environments'
+import { makeAllMaybe } from '../../../common/environments'
 import { EdgeType } from '../../graph'
-import { jsonReplacer } from '../../../../util/json'
 
 export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const processedAccessed = processDataflowFor(node.accessed, data)
@@ -35,7 +34,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 		}
 	}
 
-	const res =  {
+	return {
 		/*
      * keep active nodes in case of assignments etc.
      * We make them maybe as a kind of hack.
@@ -54,6 +53,4 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 		scope:             data.activeScope,
 		graph:             nextGraph
 	}
-	console.log(JSON.stringify(res, jsonReplacer, 2))
-	return res
 }

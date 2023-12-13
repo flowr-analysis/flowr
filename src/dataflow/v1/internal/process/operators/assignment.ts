@@ -37,6 +37,7 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 			}
 		}
 	}
+
 	return {
 		unknownReferences: [],
 		in:                readTargets,
@@ -124,7 +125,6 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
 	for(const write of writeNodes) {
 		environments = define(write, global ? GlobalScope: LocalScope, environments)
 	}
-
 	return {
 		readTargets:   [...source.unknownReferences, ...read, ...readFromSourceWritten],
 		writeTargets:  [...writeNodes, ...target.out, ...readFromSourceWritten],

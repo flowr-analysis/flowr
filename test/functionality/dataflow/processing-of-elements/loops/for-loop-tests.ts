@@ -63,7 +63,7 @@ x`,
 	)
 
 	const envOutFor = () => define({ nodeId: '3', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '11', used: 'always' }, LocalScope,
-		define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())
+		define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'maybe' }, LocalScope, initializeCleanEnvironments())
 	)
 
 	const envWithSecondX = () => define({ nodeId: '7', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'maybe' }, LocalScope,
@@ -78,7 +78,7 @@ x`,
 			.addVertex( { tag: 'variable-definition', id: '3', name: 'i', scope: LocalScope, environment: envWithFirstX() })
 			.addVertex( { tag: 'variable-definition', id: '7', name: 'x', when: 'maybe', scope: LocalScope, environment: envInFor() })
 			.addVertex( { tag: 'use', id: '12', name: 'x', environment: appendEnvironments(envOutFor(), envWithSecondX()) })
-			.addEdge('12', '0', EdgeType.Reads, 'always')
+			.addEdge('12', '0', EdgeType.Reads, 'maybe')
 			.addEdge('12', '7', EdgeType.Reads, 'maybe')
 			.addEdge('0', '7', EdgeType.SameDefDef, 'maybe')
 	)

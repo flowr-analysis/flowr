@@ -60,23 +60,26 @@ export function diffIdentifierReferences(a: IdentifierReference, b: IdentifierRe
 	}
 }
 
+
+function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference {
+	const node = graph.get(ref.nodeId, true)
+	const definitions = resolveByName(ref.name, LocalScope, environments)
+	for(const definition of definitions ?? []) {
+		if(definition.kind !== 'built-in-function') {
+			definition.used = 'maybe'
+		}
+	}
+	if(node) {
+		node[0].when = 'maybe'
+	}
+	return { ...ref, used: 'maybe'}
+}
+
 export function makeAllMaybe(references: IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference[] {
 	if(references === undefined) {
 		return []
 	}
-	return references.map(ref => {
-		const node = graph.get(ref.nodeId, true)
-		const definitions = resolveByName(ref.name, LocalScope, environments)
-		for(const definition of definitions ?? []) {
-			if(definition.kind !== 'built-in-function') {
-				definition.used = 'maybe'
-			}
-		}
-		if(node) {
-			node[0].when = 'maybe'
-		}
-		return { ...ref, used: 'maybe'}
-	})
+	return references.map(ref => makeReferenceMaybe(ref, graph, environments))
 }
 
 

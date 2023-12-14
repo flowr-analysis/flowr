@@ -129,6 +129,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
 		if(!foundNextOrBreak) {
 			visitAst(expression, n => {
+				// we should track returns more consistently
 				if(n.type === RType.Next || n.type === RType.Break) {
 					foundNextOrBreak = true
 				}

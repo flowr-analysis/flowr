@@ -156,7 +156,11 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, functionCallIds, processed.graph)
 
-		environments = processed.environments
+		if(foundNextOrBreak) {
+			environments = overwriteEnvironments(environments, processed.environments)
+		} else {
+			environments = processed.environments
+		}
 
 		// if the called function has global redefinitions, we have to keep them within our environment
 		environments = updateSideEffectsForCalledFunctions(calledEnvs, environments, nextGraph)

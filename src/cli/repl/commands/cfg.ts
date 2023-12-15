@@ -15,7 +15,7 @@ async function controlflow(shell: RShell, remainingLine: string) {
 export const controlflowCommand: ReplCommand = {
 	description:  'Get mermaid code for the control-flow graph of R code, start with \'file://\' to indicate a file',
 	usageExample: ':controlflow',
-	aliases:      [ 'cf' ],
+	aliases:      [ 'cfg', 'cf' ],
 	script:       false,
 	fn:           async(output, shell, remainingLine) => {
 		const result = await controlflow(shell, remainingLine)

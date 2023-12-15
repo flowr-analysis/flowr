@@ -1,7 +1,7 @@
 import { assert } from 'chai'
 import { plain, Code, merge, prettyPrintCodeToString } from '../../../../src/reconstruct/helper'
 
-describe('Functions_Reconstruct', () => {
+describe('Functions Reconstruct', () => {
 	describe('plain', () => {
 		function positive(input: string, line: number, column: number, expected: Code) {
 			it(`${input} for ${line}:${column}`, () => {
@@ -15,12 +15,12 @@ describe('Functions_Reconstruct', () => {
 			{input: 'Hello World', line: 4, column: 3, expected: [{linePart: [{part: 'Hello World', loc: {line: 4, column: 3}}],indent: 0}]},
 			{input: 'Hello\nWorld', line: 1, column: 1, expected: [{linePart: [{part: 'Hello', loc: {line: 1, column: 1}},{part: 'World', loc: {line: 2, column: 1}}],indent: 0}]},
 			{input: 'Hello\nWorld', line: 3, column: 4, expected: [{linePart: [{part: 'Hello', loc: {line: 3, column: 4}},{part: 'World', loc: {line: 4, column: 4}}],indent: 0}]},
-			{input: 'Hello\nWorld\n24', line: 1, column: 1, expected: [{linePart: [{part: 'Hello', loc: {line: 1, column: 1}},{part: 'World', loc: {line: 2, column: 1}},{part: '24', loc: {line: 3, column: 1}}],indent: 0}]}
+			{input: 'Hello\n World\n24', line: 1, column: 1, expected: [{linePart: [{part: 'Hello', loc: {line: 1, column: 1}},{part: ' World', loc: {line: 2, column: 1}},{part: '24', loc: {line: 3, column: 1}}],indent: 0}]}
 		]) {
 			positive(testCase.input, testCase.line, testCase.column, testCase.expected)
 		}
 	})
-	describe.only('merge', () => {
+	describe('merge', () => {
 		function positive(snipbits: Code[],expected: Code) {
 			it(prettyPrintCodeToString(expected),() => {
 				const result:Code = merge(snipbits)
@@ -118,9 +118,9 @@ describe('Functions_Reconstruct', () => {
 			}
 			function checkTestCase(code: Code): boolean {
 				let currentLoc = {line: 0, column: 0}
-				for(let line = 0; line < code.length; line++) {
-					for(let part = 0; part < code[line].linePart.length; part++) {
-						const nextLoc = code[line].linePart[part].loc
+				for(const line of code) {
+					for(const part of line.linePart) {
+						const nextLoc = part.loc
 						if(currentLoc.line <= nextLoc.line && currentLoc.column <= nextLoc.column) {
 							currentLoc = nextLoc
 						}

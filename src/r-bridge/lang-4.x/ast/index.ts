@@ -1,2 +1,2 @@
 export * from './model'
-export * from './parser/xml'
+export * from './parser/xml/v1'

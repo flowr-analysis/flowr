@@ -10,7 +10,7 @@ import {
 	getTokenType,
 	objectWithArrUnwrap,
 	xlm2jsonObject
-} from '../../../r-bridge/lang-4.x/ast/parser/xml/internal'
+} from '../../../r-bridge/lang-4.x/ast/parser/xml/v1/internal'
 import { FontStyles, OutputFormatter } from '../../../statistics'
 import { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../core'

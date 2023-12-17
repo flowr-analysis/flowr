@@ -1,5 +1,5 @@
 import { QuadSerializationConfiguration, serialize2quads } from '../../util/quads'
-import { xlm2jsonObject } from '../../r-bridge/lang-4.x/ast/parser/xml/internal'
+import { xlm2jsonObject } from '../../r-bridge/lang-4.x/ast/parser/xml/v1/internal'
 import { XmlBasedJson, XmlParserConfig } from '../../r-bridge'
 
 function filterObject(obj: XmlBasedJson, keys: Set<string>): XmlBasedJson[] | XmlBasedJson {

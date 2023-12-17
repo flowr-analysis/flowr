@@ -22,6 +22,10 @@ import { LAST_STEP, SteppingSlicer } from '../../../src/core'
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct'
 import { DifferenceReport } from '../../../src/util/diff'
 import { guard } from '../../../src/util/assert'
+import { createPipeline } from '../../../src/core/steps/pipeline'
+import { PipelineExecutor } from '../../../src/core/pipeline-executor'
+import { PARSE_WITH_R_SHELL_STEP } from '../../../src/core/steps/all/core/00-parse'
+import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -126,16 +130,40 @@ export async function ensureConfig(shell: RShell, test: Mocha.Context, userConfi
 	}
 }
 
-/** call within describeSession */
-export function assertAst(name: string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration & {
+/**
+ * Call within describeSession
+ * For a given input code this takes multiple ASTs depending on the respective normalizer step to run!
+ */
+export function assertAst(name: string, shell: RShell, input: string, expected: { step: typeof NORMALIZE | typeof DESUGAR_NORMALIZE, wanted: RExpressionList }[] | RExpressionList, userConfig?: Partial<TestConfiguration & {
 	ignoreAdditionalTokens: boolean
-}>): Mocha.Test {
+}>): Mocha.Suite | Mocha.Test {
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
-	return it(name === input ? name : `${name} (input: ${input})`, async function() {
-		await ensureConfig(shell, this, userConfig)
-		const ast = await retrieveNormalizedAst(shell, input)
-		assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
-	})
+	if(Array.isArray(expected)) {
+		return describe(`${name} (input: ${input})`, () => {
+			for(const { step, wanted } of expected) {
+				it(`${step.humanReadableName}`, async function() {
+					await ensureConfig(shell, this, userConfig)
+
+					// TODO: cache pipelines
+					const pipeline = new PipelineExecutor(createPipeline(PARSE_WITH_R_SHELL_STEP, step), {
+						shell,
+						request: requestFromInput(input)
+					})
+					const result = await pipeline.allRemainingSteps()
+					const ast = result.normalize.ast
+
+					assertAstEqualIgnoreSourceInformation(ast, wanted, !userConfig?.ignoreAdditionalTokens, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(wanted)}`)
+				})
+			}
+		})
+	} else {
+		// TODO: remove just while migrating
+		return it(name === input ? name : `${name} (input: ${input})`, async function() {
+			await ensureConfig(shell, this, userConfig)
+			const ast = await retrieveNormalizedAst(shell, input)
+			assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
+		})
+	}
 }
 
 /** call within describeSession */

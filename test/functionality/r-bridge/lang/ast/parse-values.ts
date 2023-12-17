@@ -10,6 +10,7 @@ import { retrieveXmlFromRCode, RType } from '../../../../../src/r-bridge'
 import chai, { assert } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { MIN_VERSION_RAW_STABLE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
+import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 chai.use(chaiAsPromised)
 
 
@@ -20,7 +21,13 @@ describe('Constant Parsing',
 				'nothing',
 				shell,
 				'',
-				exprList()
+				[{
+					step:   NORMALIZE,
+					wanted: exprList()
+				}, {
+					step:   DESUGAR_NORMALIZE,
+					wanted: exprList()
+				}]
 			)
 		})
 		describe('parse single', () => {

@@ -31,8 +31,9 @@ function legacyProcessor(results: { normalize?: NormalizedAst }) {
 
 export const LEGACY_STATIC_DATAFLOW = {
 	...staticDataflowCommon,
-	processor:     legacyProcessor,
-	requiredInput: {}
+	humanReadableName: 'v1 dataflow',
+	processor:         legacyProcessor,
+	requiredInput:     {}
 } as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof legacyProcessor>>
 
 function v2Processor() {
@@ -41,6 +42,7 @@ function v2Processor() {
 
 export const V2_STATIC_DATAFLOW = {
 	...staticDataflowCommon,
-	processor:     v2Processor,
-	requiredInput: {}
+	humanReadableName: 'v2 dataflow',
+	processor:         v2Processor,
+	requiredInput:     {}
 } as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof v2Processor>>

@@ -29,11 +29,12 @@ async function processor(results: { parse?: string }, input: Partial<NormalizeRe
 }
 
 export const NORMALIZE = {
-	name:        'normalize',
-	description: 'Normalize the AST to flowR\'s AST',
+	name:              'normalize',
+	humanReadableName: 'v1 normalize',
+	description:       'Normalize the AST to flowR\'s AST',
 	processor,
-	executed:    PipelineStepStage.OncePerFile,
-	printer:     {
+	executed:          PipelineStepStage.OncePerFile,
+	printer:           {
 		[StepOutputFormat.Internal]:   internalPrinter,
 		[StepOutputFormat.Json]:       normalizedAstToJson,
 		[StepOutputFormat.RdfQuads]:   normalizedAstToQuads,
@@ -52,11 +53,12 @@ async function desugarProcessor(results: { parse?: string }, input: Partial<Desu
 }
 
 export const DESUGAR_NORMALIZE = {
-	name:        'normalize',
-	description: 'Normalize the AST to flowR\'s AST (v2, with desugaring)',
-	processor:   desugarProcessor,
-	executed:    PipelineStepStage.OncePerFile,
-	printer:     {
+	name:              'normalize',
+	humanReadableName: 'v2 normalize',
+	description:       'Normalize the AST to flowR\'s AST (v2, with desugaring)',
+	processor:         desugarProcessor,
+	executed:          PipelineStepStage.OncePerFile,
+	printer:           {
 		[StepOutputFormat.Internal]:   internalPrinter,
 		[StepOutputFormat.Json]:       normalizedAstToJson,
 		[StepOutputFormat.RdfQuads]:   normalizedAstToQuads,

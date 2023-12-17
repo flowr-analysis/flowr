@@ -1,4 +1,4 @@
-import { XmlBasedJson } from '../../input-format'
+import { XmlBasedJson } from '../../../common/input-format'
 import { RComment, RLineDirective, RType } from '../../../../../model'
 import { parseLog } from '../../normalize'
 import { retrieveMetaStructure } from '../meta'

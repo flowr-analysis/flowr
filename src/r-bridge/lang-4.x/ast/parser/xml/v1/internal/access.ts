@@ -1,4 +1,4 @@
-import { NamedXmlBasedJson } from '../input-format'
+import { NamedXmlBasedJson } from '../../common/input-format'
 import { retrieveMetaStructure } from './meta'
 import { parseLog } from '../normalize'
 import { ParserData } from '../data'

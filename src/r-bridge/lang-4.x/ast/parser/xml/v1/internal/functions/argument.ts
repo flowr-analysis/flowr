@@ -1,4 +1,4 @@
-import { NamedXmlBasedJson } from '../../input-format'
+import { NamedXmlBasedJson } from '../../../common/input-format'
 import { parseLog } from '../../normalize'
 import { retrieveMetaStructure } from '../meta'
 import { RNode, RType, RSymbol, RArgument, RawRType } from '../../../../../model'

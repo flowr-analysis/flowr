@@ -1,5 +1,5 @@
 import { ParserData } from '../../data'
-import { NamedXmlBasedJson } from '../../input-format'
+import { NamedXmlBasedJson } from '../../../common/input-format'
 import { RawRType, RFunctionDefinition, RParameter, RType } from '../../../../../model'
 import { parseLog } from '../../normalize'
 import { executeHook, executeUnknownHook } from '../../hooks'

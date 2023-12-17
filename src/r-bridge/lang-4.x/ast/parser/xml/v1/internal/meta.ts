@@ -1,4 +1,4 @@
-import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '../input-format'
+import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '../../common/input-format'
 import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from '../../../../../../../util/range'
 import { XmlParserConfig } from '../../common/config'
 import { RawRType, RExpressionList, RNode, RType } from '../../../../model'

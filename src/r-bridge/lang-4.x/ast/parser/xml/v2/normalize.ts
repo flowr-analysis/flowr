@@ -1,7 +1,5 @@
-import { deepMergeObject } from '../../../../../../util/objects'
 import { log } from '../../../../../../util/log'
 import { DEFAULT_XML_PARSER_CONFIG } from '../common/config'
-import { xlm2jsonObject, normalizeRootObjToAst } from './internal'
 import { NormalizeConfiguration } from './data'
 import {
 	decorateAst,
@@ -11,6 +9,7 @@ import {
 	NoInfo
 } from '../../../model'
 import { TokenMap } from '../../../../../retriever'
+import { xlm2jsonObject } from '../common/xml-to-json'
 
 export const normalizeLog = log.getSubLogger({ name: 'v2-normalize' })
 

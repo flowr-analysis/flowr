@@ -1,4 +1,4 @@
-import { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
+import { NamedXmlBasedJson, XmlBasedJson } from '../../../common/input-format'
 import { splitArrayOn } from '../../../../../../../../util/arrays'
 import { parseLog } from '../../normalize'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'

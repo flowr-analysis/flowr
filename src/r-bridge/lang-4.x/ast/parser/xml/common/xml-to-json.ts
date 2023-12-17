@@ -1,6 +1,6 @@
 import * as xml2js from 'xml2js'
-import { XmlParserConfig } from '../../common/config'
-import { XmlBasedJson } from '../input-format'
+import { XmlParserConfig } from './config'
+import { XmlBasedJson } from './input-format'
 
 const xml2jsOptions: xml2js.OptionsV2 = {
 	charsAsChildren:       false,

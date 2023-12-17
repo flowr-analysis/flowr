@@ -1,4 +1,4 @@
-import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
+import { NamedXmlBasedJson, XmlParseError } from '../../../common/input-format'
 import { parseLog } from '../../normalize'
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../meta'
 import { identifySpecialOp } from './special'

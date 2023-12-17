@@ -1,4 +1,4 @@
-import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
+import { NamedXmlBasedJson, XmlParseError } from '../../../common/input-format'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../normalize'
 import { tryNormalizeSingleNode } from '../structure'

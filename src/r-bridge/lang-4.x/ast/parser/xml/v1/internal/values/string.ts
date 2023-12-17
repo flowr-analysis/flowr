@@ -1,4 +1,4 @@
-import { XmlBasedJson } from '../../input-format'
+import { XmlBasedJson } from '../../../common/input-format'
 import { retrieveMetaStructure } from '../meta'
 import { string2ts } from '../../../../../../values'
 import { parseLog } from '../../normalize'

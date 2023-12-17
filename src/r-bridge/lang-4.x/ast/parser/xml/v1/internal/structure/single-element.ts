@@ -1,4 +1,4 @@
-import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
+import { NamedXmlBasedJson, XmlParseError } from '../../../common/input-format'
 import { normalizeNumber, normalizeString, tryNormalizeSymbol } from '../values'
 import { guard } from '../../../../../../../../util/assert'
 import { ParserData } from '../../data'

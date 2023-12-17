@@ -1,4 +1,4 @@
-import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '../../input-format'
+import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '../../../common/input-format'
 import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../normalize'
 import { guard } from '../../../../../../../../util/assert'

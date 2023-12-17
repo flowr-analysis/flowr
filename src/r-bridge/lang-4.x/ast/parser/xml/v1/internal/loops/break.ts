@@ -1,5 +1,5 @@
 import { ParserData } from '../../data'
-import { XmlBasedJson } from '../../input-format'
+import { XmlBasedJson } from '../../../common/input-format'
 import { parseLog } from '../../normalize'
 import { executeHook } from '../../hooks'
 import { retrieveMetaStructure } from '../meta'

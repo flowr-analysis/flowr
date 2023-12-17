@@ -1,4 +1,4 @@
-import { NamedXmlBasedJson } from '../../input-format'
+import { NamedXmlBasedJson } from '../../../common/input-format'
 import { tryNormalizeSingleNode } from '../structure'
 import { parseLog } from '../../normalize'
 import { ParserData } from '../../data'

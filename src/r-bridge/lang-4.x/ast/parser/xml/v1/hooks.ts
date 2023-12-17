@@ -1,4 +1,4 @@
-import { NamedXmlBasedJson, XmlBasedJson } from './input-format'
+import { NamedXmlBasedJson, XmlBasedJson } from '../common/input-format'
 import {
 	RNumber,
 	NoInfo,

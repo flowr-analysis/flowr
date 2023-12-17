@@ -31,30 +31,31 @@ export interface NamedXmlBasedJson {
 }
 
 
+function error(key: string, obj: XmlBasedJson) {
+	throw new XmlParseError(`expected obj to have key ${key}, yet received ${JSON.stringify(obj)}`)
+}
+
 /**
- * Retrieves the given key(s) from the converted xml.
+ * Single-key variant of {@link getKeysGuarded}. Will throw an {@link XmlParseError} if the key is not present.
+ */
+export function getKeyGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, key: string): T {
+	const res = obj[key]
+	if(res === undefined) {
+		error(key, obj)
+	}
+	return res as T
+}
+
+/**
+ * Retrieves the given keys from the converted xml. For a single key, see {@link getKeyGuarded}.
  * Will throw an {@link XmlParseError} if at least one of the keys is not present
  *
  * @typeParam T - the type of the values to retrieve. Note, that this type is not checked at runtime.
  */
-export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, key: string): T
-export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ...key: string[]): Record<string, T>
-export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ...key: string[]): (Record<string, T> | T) {
-	const keys = Object.keys(obj)
-
-	const check = (key: string): T => {
-		if(!keys.includes(key)) {
-			throw new XmlParseError(`expected obj to have key ${key}, yet received ${JSON.stringify(obj)}`)
-		}
-		return obj[key] as T
+export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ...keys: string[]): Record<string, T> {
+	const out = {} as Record<string, T>
+	for(const k of keys) {
+		out[k] = getKeyGuarded(obj, k)
 	}
-
-	if(key.length === 1) {
-		return check(key[0])
-	} else {
-		return key.reduce<Record<string, T>>((acc, key) => {
-			acc[key] = check(key)
-			return acc
-		}, {})
-	}
+	return out
 }

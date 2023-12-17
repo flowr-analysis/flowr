@@ -1,5 +1,5 @@
 import {
-	DEFAULT_XML_PARSER_CONFIG,
+	DEFAULT_XML_PARSER_CONFIG, getKeyGuarded,
 	getKeysGuarded, RawRType,
 	requestFromInput,
 	XmlBasedJson,
@@ -19,7 +19,7 @@ import { deepMergeObject } from '../../../util/objects'
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 
 function toDepthMap(xml: XmlBasedJson, config: XmlParserConfig): DepthList {
-	const root = getKeysGuarded<XmlBasedJson>(xml, RawRType.ExpressionList)
+	const root = getKeyGuarded<XmlBasedJson>(xml, RawRType.ExpressionList)
 	const visit = [ { depth: 0, node: root } ]
 	const result: DepthList = []
 

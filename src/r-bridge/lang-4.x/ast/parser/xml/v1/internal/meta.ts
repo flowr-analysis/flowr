@@ -1,4 +1,10 @@
-import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '../../common/input-format'
+import {
+	getKeyGuarded,
+	getKeysGuarded,
+	NamedXmlBasedJson,
+	XmlBasedJson,
+	XmlParseError
+} from '../../common/input-format'
 import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from '../../../../../../../util/range'
 import { XmlParserConfig } from '../../common/config'
 import { RawRType, RExpressionList, RNode, RType } from '../../../../model'
@@ -79,7 +85,7 @@ export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlB
  * @param content  - the json object to extract the token-type from
  */
 export function getTokenType(tokenMap: XmlParserConfig['tokenMap'], content: XmlBasedJson): RawRType {
-	return revertTokenReplacement(tokenMap, getKeysGuarded(content, '#name')) as RawRType
+	return revertTokenReplacement(tokenMap, getKeyGuarded(content, '#name')) as RawRType
 }
 
 export function getWithTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson[]) {

@@ -1,17 +1,17 @@
+/*
 import { getKeysGuarded, XmlBasedJson } from '../../../common/input-format'
 import { assureTokenType } from '../meta'
 import { normalizeBasedOnType } from './elements'
-import { ParserData } from '../../data'
 import { RType, RExpressionList, RawRType, RNode } from '../../../../../model'
 import { log } from '../../../../../../../../util/log'
 import { partition } from '../../../../../../../../util/arrays'
 import { RDelimiter } from '../../../../../model/nodes/info'
+import { NormalizeConfiguration } from '../data'
 
 export function normalizeRootObjToAst(
-	data: ParserData,
+	config: NormalizeConfiguration,
 	obj: XmlBasedJson
 ): RExpressionList {
-	const config = data.config
 	const exprContent = getKeysGuarded<XmlBasedJson>(obj, RawRType.ExpressionList)
 	assureTokenType(config.tokenMap, exprContent, RawRType.ExpressionList)
 
@@ -23,7 +23,7 @@ export function normalizeRootObjToAst(
 			config.children
 		)
 
-		parsedChildren = normalizeBasedOnType(data, children)
+		parsedChildren = normalizeBasedOnType(config, children)
 	} else {
 		log.debug('no children found, assume empty input')
 	}
@@ -35,9 +35,10 @@ export function normalizeRootObjToAst(
 		children: nodes as RNode[],
 		lexeme:   undefined,
 		info:     {
-			fullRange:        data.currentRange,
+			fullRange:        config.currentRange,
 			additionalTokens: delimiters,
-			fullLexeme:       data.currentLexeme
+			fullLexeme:       config.currentLexeme
 		}
 	}
 }
+*/

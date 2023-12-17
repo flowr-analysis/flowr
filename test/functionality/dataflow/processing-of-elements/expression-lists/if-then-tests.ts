@@ -87,7 +87,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 		//All test related to branch coverage (testing the interaction between then end else block)
 		const envWithX = () => define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())
 		const envThenBranch = () => define({nodeId: '4', scope: LocalScope, name: 'x', used: 'maybe', kind: 'variable',definedAt: '6'}, LocalScope, initializeCleanEnvironments())
-		assertDataflow('assigment both branches in if',
+		assertDataflow('assignment both branches in if',
 			shell,
 			'x <- 1\nif(r) { x <- 2 } else { x <- 3}\n y <- x',
 			new DataflowGraph()

@@ -108,6 +108,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 			//define({nodeId:'4', scope:LocalScope, name:'x', used: 'maybe', kind:'variable',definedAt:'6'}, LocalScope, envElseBranch())
 		)
 		const envWithXMaybe = () => define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'maybe' }, LocalScope, initializeCleanEnvironments())
+		const envWithSecondXMaybe = () => define({ nodeId: '4', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '6', used: 'maybe' }, LocalScope, initializeCleanEnvironments())
 		assertDataflow('assignment if one branch',
 			shell,
 			'x <- 1\nif(r) { x <- 2 } \n y <- x',
@@ -115,10 +116,9 @@ describe('Lists with if-then constructs', withShell(shell => {
 				.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope})
 				.addVertex( { tag: 'use', id: '3', name: 'r', scope: LocalScope, environment: envWithX()} )
 				.addVertex( { tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: envWithX(), when: 'maybe' } )
-				.addVertex( { tag: 'use', id: '10', name: 'x', scope: LocalScope, environment: define({ nodeId: '4',scope: LocalScope, name: 'x', used: 'maybe', kind: 'variable', definedAt: '6'}, LocalScope, envWithXMaybe())})
-				.addVertex( { tag: 'variable-definition', id: '9', name: 'y', scope: LocalScope, environment: define({ nodeId: '4',scope: LocalScope, name: 'x', used: 'maybe', kind: 'variable', definedAt: '6'}, LocalScope, envWithXMaybe())})
-				.addEdge('0', '9', EdgeType.SameDefDef, 'maybe')
-				.addEdge('4', '9', EdgeType.SameDefDef, 'maybe')
+				.addVertex( { tag: 'use', id: '10', name: 'x', scope: LocalScope, environment: appendEnvironments(envWithSecondXMaybe(), envWithXMaybe()) })
+				.addVertex( { tag: 'variable-definition', id: '9', name: 'y', scope: LocalScope, environment: appendEnvironments(envWithSecondXMaybe(), envWithXMaybe()) })
+				.addEdge('0', '4', EdgeType.SameDefDef, 'maybe')
 				.addEdge('10', '0', EdgeType.Reads, 'maybe')
 				.addEdge('10', '4', EdgeType.Reads, 'maybe')
 				.addEdge('9', '10', EdgeType.DefinedBy, 'always')

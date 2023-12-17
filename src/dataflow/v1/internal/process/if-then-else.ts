@@ -30,7 +30,8 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
 	const nextGraph = cond.graph.mergeWith(then?.graph).mergeWith(otherwise?.graph)
 
 	const thenEnvironment = then?.environments ?? cond.environments
-	const finalEnvironment = otherwise ? appendEnvironments(thenEnvironment, otherwise.environments) :thenEnvironment
+	// if there is no "else" case we have to recover whatever we had before as it may be not executed
+	const finalEnvironment = appendEnvironments(thenEnvironment, otherwise ? otherwise.environments : cond.environments)
 
 	// again within an if-then-else we consider all actives to be read
 	const ingoing: IdentifierReference[] = [

@@ -1,3 +1,4 @@
+import { guard } from '../../../util/assert'
 import { cloneEnvironments, IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
 import { DataflowScopeName, GlobalScope, LocalScope } from './scopes'
 
@@ -23,10 +24,21 @@ export function define(definition: IdentifierDefinition, withinScope: DataflowSc
 	} else if(withinScope === GlobalScope) {
 		newEnvironments = cloneEnvironments(environments, true)
 		let current: IEnvironment | undefined = newEnvironments.current
+		let last = undefined
+		let found = false
 		do{
-			defInEnv(current, definition)
+			if(current.memory.has(definition.name)) {
+				current.memory.set(definition.name, [definition])
+				found = true
+				break
+			}
+			last = current
 			current = current.parent
 		} while(current !== undefined)
+		if(!found) {
+			guard(last !== undefined, () => `Could not find global scope for ${definition.name}`)
+			last.memory.set(definition.name, [definition])
+		}
 	}
 	return newEnvironments
 }

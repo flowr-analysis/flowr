@@ -5,10 +5,10 @@
  * @module
  */
 import { NodeId } from '../../../r-bridge'
-import { DataflowGraph, DataflowGraphEdgeAttribute } from '../../v1'
+import { DataflowGraph, DataflowGraphEdgeAttribute } from '../../v1/graph'
+import { resolveByName } from './resolve-by-name'
 import { DataflowScopeName, GlobalScope, LocalScope } from './scopes'
 import { GenericDifferenceInformation, setDifference } from '../../../util/diff'
-import { resolveByName } from './resolve-by-name'
 import { jsonReplacer } from '../../../util/json'
 
 /** identifiers are branded to avoid confusion with other string-like types */

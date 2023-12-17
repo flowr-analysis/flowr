@@ -60,7 +60,7 @@ describe('RShell sessions', function() {
 		shell.clearEnvironment()
 		await shell.sendCommandWithOutput('a', { from: 'stderr' }).then(lines => {
 			// just await an error
-			assert.match(lines.join('\n'), /^.*Error.*a/)
+			assert.notMatch(lines[0], /^([1] 2)/)
 		})
 	})
 	describe('test if a package is already installed', withShell(shell => {

@@ -1,13 +1,13 @@
+import { diffIdentifierReferences, IdentifierReference, diffEnvironments } from '../../common/environments'
 import { NodeId } from '../../../r-bridge'
 import { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
+import { guard } from '../../../util/assert'
 import {
 	setDifference,
 	GenericDifferenceInformation,
 	WriteableDifferenceReport, DifferenceReport
 } from '../../../util/diff'
 import { jsonReplacer } from '../../../util/json'
-import { diffEnvironments, diffIdentifierReferences, IdentifierReference } from '../../common/environments'
-import { guard } from '../../../util/assert'
 
 class DataflowDifferenceReport implements WriteableDifferenceReport {
 	_comments: string[] | undefined      = undefined

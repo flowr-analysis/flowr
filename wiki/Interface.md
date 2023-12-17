@@ -954,7 +954,6 @@ With a shell object (let's call it `shell`), you can execute R code by using `RS
 
 Besides that, the command `RShell::tryToInjectHomeLibPath` may be of interest, as it enables all libraries available on the host system.
 
-<<<<<<< HEAD
 ### The Pipeline Executor
 
 Once, in the beginning, *flowR* was meant to produce a dataflow graph merely to provide *program slices*. However, with continuous extensions the dataflow graph repeatedly proofs to be the interesting part.
@@ -984,9 +983,6 @@ See the [documentation](https://code-inspect.github.io/flowr/doc/classes/src_cor
 
 > 💡 Information\
 > Please note, that the `SteppingSlicer` has been deprecated with the *Dataflow v2* update, in favor of a far more general `PipelineExecutor` (which now backs the `SteppingSlicer` using a custom legacy-`Pipeline` to ensure that it behaves similar).
-=======
-### Slicing With The `SteppingSlicer`
->>>>>>> main
 
 The main class that represents *flowR*'s slicing is the [`SteppingSlicer`](https://code-inspect.github.io/flowr/doc/classes/src_core_slicer.SteppingSlicer.html) class. With *flowR*, this allows you to slice code like this:
 

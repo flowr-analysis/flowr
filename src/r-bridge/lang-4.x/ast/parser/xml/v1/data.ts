@@ -1,6 +1,6 @@
 import { MergeableRecord } from '../../../../../../util/objects'
 import { DeepReadonly } from 'ts-essentials'
-import { XmlParserConfig } from './config'
+import { XmlParserConfig } from '../common/config'
 import { XmlParserHooks } from './hooks'
 import { SourceRange } from '../../../../../../util/range'
 

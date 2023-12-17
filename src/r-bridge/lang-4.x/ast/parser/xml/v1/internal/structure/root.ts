@@ -17,10 +17,10 @@ export function normalizeRootObjToAst(
 
 	let parsedChildren: (RNode | RDelimiter)[] = []
 
-	if(config.childrenName in exprContent) {
+	if(config.children in exprContent) {
 		const children = getKeysGuarded<XmlBasedJson[]>(
 			exprContent,
-			config.childrenName
+			config.children
 		)
 
 		parsedChildren = normalizeBasedOnType(data, children)

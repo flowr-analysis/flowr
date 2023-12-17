@@ -9,13 +9,13 @@ import { TokenMap } from '../../../../../retriever'
  */
 export interface XmlParserConfig extends MergeableRecord {
 	/** attributes (line, col, ...) are referenced by the given name */
-	attributeName: string
+	attr:     string
 	/** the content (lexeme) is referenced by the given name */
-	contentName:   string
+	content:  string
 	/** the children are referenced by the given name */
-	childrenName:  string
+	children: string
 	/** Mapping from xml tag name to the real operation of the node */
-	tokenMap:      TokenMap
+	tokenMap: TokenMap
 }
 
 /**
@@ -25,8 +25,8 @@ export interface XmlParserConfig extends MergeableRecord {
  * shell environment.
  */
 export const DEFAULT_XML_PARSER_CONFIG: XmlParserConfig = {
-	attributeName: '@a',
-	contentName:   '@v',
-	childrenName:  '@c',
-	tokenMap:      { /* this should not be used, but just so that we can omit null-checks */ }
+	attr:     '@a',
+	content:  '@v',
+	children: '@c',
+	tokenMap: { /* this should not be used, but just so that we can omit null-checks */ }
 }

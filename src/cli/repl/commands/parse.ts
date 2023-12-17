@@ -29,7 +29,7 @@ function toDepthMap(xml: XmlBasedJson, config: XmlParserConfig): DepthList {
 			continue
 		}
 
-		const children = current.node[config.childrenName] as XmlBasedJson[] | undefined ?? []
+		const children = current.node[config.children] as XmlBasedJson[] | undefined ?? []
 		result.push({ ...current, leaf: children.length === 0 })
 		children.reverse()
 
@@ -97,8 +97,8 @@ function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig,
 		result += f.reset()
 
 		const raw = objectWithArrUnwrap(node)
-		const content = raw[config.contentName] as string | undefined
-		const locationRaw = raw[config.attributeName] as XmlBasedJson | undefined
+		const content = raw[config.content] as string | undefined
+		const locationRaw = raw[config.attr] as XmlBasedJson | undefined
 		let location = ''
 		if(locationRaw !== undefined) {
 			location = retrieveLocationString(locationRaw)

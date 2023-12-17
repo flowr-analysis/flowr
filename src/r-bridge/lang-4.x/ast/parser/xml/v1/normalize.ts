@@ -1,6 +1,6 @@
 import { deepMergeObject } from '../../../../../../util/objects'
 import { log } from '../../../../../../util/log'
-import { DEFAULT_XML_PARSER_CONFIG } from './config'
+import { DEFAULT_XML_PARSER_CONFIG } from '../common/config'
 import { xlm2jsonObject, normalizeRootObjToAst } from './internal'
 import { ParserData } from './data'
 import {

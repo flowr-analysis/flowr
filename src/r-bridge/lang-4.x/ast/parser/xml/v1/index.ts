@@ -1,5 +1,5 @@
 export * from './data'
 export * from './hooks'
-export * from './config'
+export * from '../common/config'
 export * from './normalize'
 export * from './input-format'

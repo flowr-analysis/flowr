@@ -72,7 +72,7 @@ export function tryNormalizeFor(
 
 function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined, comments: RComment[] } {
 	// must have a child which is `in`, a variable on the left, and a vector on the right
-	const children: NamedXmlBasedJson[] = getKeysGuarded<XmlBasedJson[]>(forCondition, data.config.childrenName).map(content => ({
+	const children: NamedXmlBasedJson[] = getKeysGuarded<XmlBasedJson[]>(forCondition, data.config.children).map(content => ({
 		name: getTokenType(data.config.tokenMap, content),
 		content
 	}))

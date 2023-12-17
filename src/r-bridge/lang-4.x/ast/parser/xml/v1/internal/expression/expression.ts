@@ -26,7 +26,7 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 		location
 	} = retrieveMetaStructure(data.config, obj)
 
-	const childrenSource = getKeysGuarded<XmlBasedJson[]>(unwrappedObj, data.config.childrenName)
+	const childrenSource = getKeysGuarded<XmlBasedJson[]>(unwrappedObj, data.config.children)
 	const typed: NamedXmlBasedJson[] = getWithTokenType(data.config.tokenMap, childrenSource)
 
 	const { others, comments } = splitComments(typed)

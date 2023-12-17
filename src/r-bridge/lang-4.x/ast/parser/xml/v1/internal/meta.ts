@@ -1,6 +1,6 @@
 import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '../input-format'
 import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from '../../../../../../../util/range'
-import { XmlParserConfig } from '../config'
+import { XmlParserConfig } from '../../common/config'
 import { RawRType, RExpressionList, RNode, RType } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
 
@@ -48,8 +48,8 @@ export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson
 	content:      string
 } {
 	const unwrappedObj = objectWithArrUnwrap(obj)
-	const attributes = obj[config.attributeName] as XmlBasedJson | undefined
-	const content = obj[config.contentName] as string | undefined ?? ''
+	const attributes = obj[config.attr] as XmlBasedJson | undefined
+	const content = obj[config.content] as string | undefined ?? ''
 	guard(attributes !== undefined, () => `expected attributes to be defined for ${JSON.stringify(obj)}`)
 	const location = extractLocation(attributes)
 	return {
@@ -93,7 +93,7 @@ export function retrieveOpName(config: XmlParserConfig, operator: NamedXmlBasedJ
 	/*
    * only real arithmetic ops have their operation as their own name, the others identify via content
    */
-	return operator.content[config.contentName] as string
+	return operator.content[config.content] as string
 }
 
 /**
@@ -104,8 +104,8 @@ export function retrieveOpName(config: XmlParserConfig, operator: NamedXmlBasedJ
  * @param second - the second child which should be the rhs
  */
 export function ensureChildrenAreLhsAndRhsOrdered(config: XmlParserConfig, first: XmlBasedJson, second: XmlBasedJson): void {
-	const firstOtherLoc = extractLocation(first[config.attributeName] as XmlBasedJson)
-	const secondOtherLoc = extractLocation(second[config.attributeName] as XmlBasedJson)
+	const firstOtherLoc = extractLocation(first[config.attr] as XmlBasedJson)
+	const secondOtherLoc = extractLocation(second[config.attr] as XmlBasedJson)
 	if(!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
 		throw new XmlParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`)
 	}

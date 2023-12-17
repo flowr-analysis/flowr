@@ -47,7 +47,7 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 	const {
 		unwrappedObj, content, location
 	} = retrieveMetaStructure(data.config, fnBase.content)
-	const symbolContent: XmlBasedJson[] = getKeysGuarded(unwrappedObj, data.config.childrenName)
+	const symbolContent: XmlBasedJson[] = getKeysGuarded(unwrappedObj, data.config.children)
 
 	let result: RFunctionCall | RNext | RBreak
 

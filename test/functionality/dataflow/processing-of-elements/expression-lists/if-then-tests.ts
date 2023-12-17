@@ -83,21 +83,46 @@ describe('Lists with if-then constructs', withShell(shell => {
 			})
 		})
 	}
-	/*describe('Branch Coverage', () => {
+	describe.only('Branch Coverage', () => {
 		//All test related to branch coverage (testing the interaction between then end else block)
-		assertDataflow('read previous def in cond',
+		const envWithX = () => define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())
+		const envThenBranch = () => define({nodeId:'4', scope:LocalScope, name:'x', used: 'maybe', kind:'variable',definedAt:'6'}, LocalScope, initializeCleanEnvironments())
+		const envElseBranch = () => define({ nodeId:'8',scope:LocalScope, name:'x', used:'maybe',kind:'variable',definedAt:'10'}, LocalScope, initializeCleanEnvironments())
+		assertDataflow('assigment both branches in if',
 							shell,
-							`x <- 1\nif(r) { x <- 2 } else { x <- 3}; x`,
+							`x <- 1\nif(r) { x <- 2 } else { x <- 3}\n y <- x`,
 							new DataflowGraph()
 								.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope})
-								.addVertex( { tag: 'use', id:'3', name: 'r', scope:LocalScope } )
-								.addVertex( { tag: 'variable-definition', id:'4', name:'x', scope: LocalScope } )
-								.addVertex( { tag: 'variable-definition', id:'8', name:'x', scope: LocalScope } )
+								.addVertex( { tag: 'use', id:'3', name: 'r', scope:LocalScope,environment: envWithX()} )
+								.addVertex( { tag: 'variable-definition', id:'4', name:'x', scope: LocalScope, environment:envWithX(), when: 'maybe' } )
+								.addVertex( { tag: 'variable-definition', id:'8', name:'x', scope: LocalScope, environment:envWithX(), when: 'maybe' } )
+								.addVertex( { tag: 'use', id: '14', name: 'x', scope: LocalScope, environment: define({ nodeId:'8',scope:LocalScope, name:'x', used:'maybe',kind:'variable',definedAt:'10'}, LocalScope, envThenBranch())})
+								.addVertex( { tag: 'variable-definition', id: '13', name: 'y', scope: LocalScope, environment: define({ nodeId:'8',scope:LocalScope, name:'x', used:'maybe',kind:'variable',definedAt:'10'}, LocalScope, envThenBranch())})
 								.addEdge('0', '8', EdgeType.SameDefDef, 'maybe')
 								.addEdge('0', '4', EdgeType.SameDefDef, 'maybe')
+								.addEdge('14', '4', EdgeType.Reads, 'maybe')
+								.addEdge('14', '8', EdgeType.Reads, 'maybe')
+								.addEdge('13', '14', EdgeType.DefinedBy, 'always')
 								//.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
 								//.addVertex( { tag: 'use', id: '3', name: 'x', environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
 								//.addEdge('3', '0', EdgeType.Reads, 'always')
+								//define({nodeId:'4', scope:LocalScope, name:'x', used: 'maybe', kind:'variable',definedAt:'6'}, LocalScope, envElseBranch())
 						)
-	})*/
+						const envWithXMaybe = () => define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'maybe' }, LocalScope, initializeCleanEnvironments())
+		assertDataflow('assignment if one branch',
+							shell,
+							`x <- 1\nif(r) { x <- 2 } \n y <- x`,
+							new DataflowGraph()
+								.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope})
+								.addVertex( { tag: 'use', id:'3', name: 'r', scope:LocalScope, environment: envWithX()} )
+								.addVertex( { tag: 'variable-definition', id:'4', name:'x', scope: LocalScope, environment:envWithX(), when: 'maybe' } )
+								.addVertex( { tag: 'use', id: '10', name: 'x', scope: LocalScope, environment: define({ nodeId:'4',scope:LocalScope, name:'x', used:'maybe', kind:'variable', definedAt:'6'}, LocalScope, envWithXMaybe())})
+								.addVertex( { tag: 'variable-definition', id: '9', name: 'y', scope: LocalScope, environment: define({ nodeId:'4',scope:LocalScope, name:'x', used:'maybe', kind:'variable', definedAt:'6'}, LocalScope, envWithXMaybe())})
+								.addEdge('0', '9', EdgeType.SameDefDef, 'maybe')
+								.addEdge('4', '9', EdgeType.SameDefDef, 'maybe')
+								.addEdge('10', '0', EdgeType.Reads, 'maybe')
+								.addEdge('10', '4', EdgeType.Reads, 'maybe')
+								.addEdge('9', '10', EdgeType.DefinedBy, 'always')
+						)
+	})
 }))

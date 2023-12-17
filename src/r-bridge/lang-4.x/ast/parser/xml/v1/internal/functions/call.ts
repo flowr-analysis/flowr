@@ -1,4 +1,4 @@
-import { getKeyGuarded, getKeysGuarded, NamedXmlBasedJson, XmlBasedJson } from '../../../common/input-format'
+import { getKeyGuarded, NamedXmlBasedJson, XmlBasedJson } from '../../../common/input-format'
 import { guard } from '../../../../../../../../util/assert'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { splitArrayOn } from '../../../../../../../../util/arrays'

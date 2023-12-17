@@ -21,7 +21,7 @@ import {
 	DataflowGraphVertexInfo,
 	DataflowGraphVertices
 } from './vertex'
-import { DifferenceReport } from '../../../util/diff';
+import { DifferenceReport } from '../../../util/diff'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo=NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>

@@ -1,6 +1,6 @@
+import { guard } from '../../../util/assert'
 import { cloneEnvironments, IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
 import { DataflowScopeName, GlobalScope, LocalScope } from './scopes'
-import { guard } from '../../util/assert'
 
 /**
  * Insert the given `definition` --- defined within the given scope --- into the passed along `environments` will take care of propagation.

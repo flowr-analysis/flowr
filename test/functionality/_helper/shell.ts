@@ -20,8 +20,8 @@ import { testRequiresRVersion } from './version'
 import { deepMergeObject, MergeableRecord } from '../../../src/util/objects'
 import { LAST_STEP, SteppingSlicer } from '../../../src/core'
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct'
-import { DifferenceReport } from '../../../src/util/diff';
-import { guard } from '../../../src/util/assert';
+import { DifferenceReport } from '../../../src/util/diff'
+import { guard } from '../../../src/util/assert'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {

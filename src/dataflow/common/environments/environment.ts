@@ -6,7 +6,6 @@
  */
 import { NodeId } from '../../../r-bridge'
 import { DataflowGraph, DataflowGraphEdgeAttribute } from '../../v1/graph'
-import { dataflowLogger } from '../../v1'
 import { resolveByName } from './resolve-by-name'
 import { DataflowScopeName, GlobalScope, LocalScope } from './scopes'
 import { GenericDifferenceInformation, setDifference } from '../../../util/diff'

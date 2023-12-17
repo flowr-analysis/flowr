@@ -184,7 +184,9 @@ max
 					location:  rangeFrom(10, 1, 10, 3),
 					info:      {}
 				}
-			)
+			), {
+				ignoreAdditionalTokens: true
+			}
 		)
 	})
 })

@@ -131,7 +131,6 @@ and the grouping with `{`<sup>T61</sup> and `}`<sup>T62</sup>, the normalization
 
 <li> <details> <summary><b>Separators</b>&emsp;(full)</summary>
 
-
 Separators help R to distinguish between otherwise ambiguous expressions
 like `a <- 1` and `a < -1`. They are partially defined by [Section 10.3.5](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Separators),
 with more separator tokens on the [Tokens](https://github.com/Code-Inspect/flowr/wiki/Tokens#tokens-used-to-delimit-parts-of-expressions) wiki page. The most common
@@ -141,7 +140,6 @@ this is [discouraged](https://style.tidyverse.org/syntax.html#semicolons), and n
 
 Nevertheless, the normalization of *flowR* does handle the use of semicolons, as well as `,`<sup>T59</sup>, in combination with arguments and parameters.
 </details></li>
-
 
 </ol>
 
@@ -274,13 +272,12 @@ special way (although we prevent assignments and references, similar to
 our handling of `NULL`).
 </details></li>
 
-
 </ol>
 
 ### Data Types
 
 R is dynamically typed and assigns a type to each R object, which can be
-queried at runtime with the typeof function. The list of existing types is
+queried at runtime with the `typeof` function. The list of existing types is
 documented at the beginning of [Section 2](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Objects).
 These types include symbols, primitive types like characters, booleans (logical values), integers,
 doubles, complex numbers, and more. Since the intricate details of these
@@ -419,7 +416,6 @@ within arguments and parameter the behavior changes, alongside the
 corresponding change in the token type from `EQ_ASSIGN` to `EQ_SUB`
 and `EQ_FORMALS`.
 For another important differentiation when used in arguments, we recommend Section&nbsp;8.2.26 of the great [The R Inferno](https://www.burns-stat.com/pages/Tutor/R_inferno.pdf) by Burns.
-
 
 Besides using `=`, there is the older variant of the local equal assignment
 using an additional colon: `:=`. While (from [lintr](https://github.com/r-lib/lintr/blob/3d9e6d78efe7fc41d8b545a845a984a0821cfbbe/R/assignment_linter.R#L95-L96))

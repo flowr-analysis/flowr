@@ -4,6 +4,7 @@ For the latest code-coverage information, see [codecov.io](https://codecov.io/gh
   - [Functionality Tests](#functionality-tests)
     - [Test Structure](#test-structure)
     - [Writing a Test](#writing-a-test)
+    - [Running Only Some Tests](#running-only-some-tests)
   - [Performance Tests](#performance-tests)
 - [CI Pipeline](#ci-pipeline)
 - [Linting](#linting)
@@ -30,7 +31,7 @@ What may be counter-intuitive is that this does not run *all* tests by default b
 npm run test-full
 ```
 
-However, depending on your local R version, your network connection and potentially other factors, some tests may be skipped automatically as they do not apply to your current system setup (or can't be tested with the current prerequisites). Each test can speciy such requirements as part of the `TestConfiguration`, which is then enforced by the [`ensureConfig`](https://github.com/Code-Inspect/flowr/blob/main/test/functionality/_helper/shell.ts) function.
+However, depending on your local R version, your network connection and potentially other factors, some tests may be skipped automatically as they do not apply to your current system setup (or can't be tested with the current prerequisites). Each test can specify such requirements as part of the `TestConfiguration`, which is then enforced by the [`ensureConfig`](https://github.com/Code-Inspect/flowr/blob/main/test/functionality/_helper/shell.ts) function.
 It is up to the [ci](#ci-pipeline) to run the tests on different systems to ensure that those tests are ensured to run.
 
 #### Test Structure
@@ -47,10 +48,14 @@ Besides folders can (theoretically) arbitrarily structure their tests. We use th
 - `*.spec.ts` denotes a test file which is to be collected when all tests are run, it may require other files to avoid big testing files and improve structure, but those should never end in `*.spec.ts`.
 . `-tests.ts` denotes test files which are required by `*.spec.ts` files. To require them, there is also the helper function `requireAllTestsInFolder` which performs sanity checks to avoid forgotten tests.
 
-
 #### Writing a Test
 
-Currently this is heavily dependend on what you want to test (normalization, dataflow, quad-export, ...) and it is probably best to have a look at existing tests in that area to get an idea of what comfort functionality is available.
+Currently this is heavily dependent on what you want to test (normalization, dataflow, quad-export, ...) and it is probably best to have a look at existing tests in that area to get an idea of what comfort functionality is available.
+
+#### Running Only Some Tests
+
+To run only some of the tests, the mocha test runner allows several options.
+You can specify so [in the code](https://mochajs.org/#exclusive-tests) or [via the command line](https://mochajs.org/#-grep-regexp-g-regexp). If you modify the code, please make sure to remove the changes before committing!
 
 ### Performance Tests
 
@@ -71,7 +76,7 @@ We have several workflows defined in [.github/workflows](../.github/workflows/) 
 We explain the most important workflows in the following:
 
 - [run.yaml](../.github/workflows/run.yaml) is a [reusable workflow](https://docs.github.com/en/actions/using-workflows/reusing-workflows) that we use *whenever* we want to run a *flowR* npm script in the pipeline (furthermore, this hides necessary extra steps for coverage, documentation, and benchmarks).
-- [qa.yaml](../.github/workflows/qa.yaml) is the main workflow which will run different steps depending on several factors. It is repsonsible for:
+- [qa.yaml](../.github/workflows/qa.yaml) is the main workflow which will run different steps depending on several factors. It is responsible for:
   - running the [functionality](#functionality-tests) and [performance tests](#performance-tests)
     - uploading the results to the [benchmark page](https://code-inspect.github.io/flowr/wiki/stats/benchmark) for releases
     - running the [functionality tests](#functionality-tests) on different operating systems (Windows, macOS, Linux) and with different versions of R
@@ -96,15 +101,9 @@ And a weaker version of the first (allowing for *todo* comments) which is run au
 npm run lint-local
 ```
 
-Besides checking coding style (as defined in the [package.json](../package.json)), the linter runs the [license checker](#license-checker).
+Besides checking coding style (as defined in the [package.json](../package.json)), the *full* linter runs the [license checker](#license-checker).
 
 If you are unaware, several linting problems can be automatically fixed by [eslint](https://eslint.org/docs/latest/use/command-line-interface#fix-problems). So you may be fine by just running:
-
-```shell
-npm run lint -- --fix
-```
-
-Similarly, for `lint-local`:
 
 ```shell
 npm run lint-local -- --fix

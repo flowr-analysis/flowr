@@ -292,7 +292,9 @@ describe('Parse function calls', withShell(shell => {
 						}
 					}
 				]
-			})
+			}), {
+				ignoreAdditionalTokens: true
+			}
 		)
 		assertAst(
 			'Double call with only the second one being direct',

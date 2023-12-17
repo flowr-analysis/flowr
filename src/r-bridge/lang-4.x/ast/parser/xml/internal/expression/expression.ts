@@ -8,6 +8,7 @@ import { RType, RNode } from '../../../../model'
 import { executeHook } from '../../hooks'
 import { tryNormalizeAccess } from '../access'
 import { normalizeComment } from '../other'
+import { partition } from '../../../../../../../util/arrays'
 
 /**
  * Returns an expression list if there are multiple children, otherwise returns the single child directly with no expr wrapper
@@ -53,18 +54,21 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 
 	const children = normalizeBasedOnType(childData, childrenSource)
 
+	const [delimiters, nodes] = partition(children, x => x.type === RType.Delimiter)
+
 	let result: RNode
-	if(children.length === 1) {
-		result = children[0]
+	if(nodes.length === 1) {
+		result = nodes[0] as RNode
+		result.info.additionalTokens = [...result.info.additionalTokens ?? [], ...delimiters]
 	} else {
 		result = {
-			type:   RType.ExpressionList,
+			type:     RType.ExpressionList,
 			location,
-			children,
-			lexeme: content,
-			info:   {
+			children: nodes as RNode[],
+			lexeme:   content,
+			info:     {
 				fullRange:        childData.currentRange,
-				additionalTokens: [],
+				additionalTokens: delimiters,
 				fullLexeme:       childData.currentLexeme
 			}
 		}

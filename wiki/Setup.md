@@ -25,7 +25,6 @@ This should drop you into *flowR*'s read-evaluate-print loop.
 Enter `:help` to receive more information and `:quit` to leave.
 Please remember, that you have to link external directories to make them available within the running container:
 
-
 ## ⚒️ Building From Scratch
 
 To use *flowR*, you need [*R*](https://www.r-project.org/) installed and on your path.
@@ -54,7 +53,6 @@ N <- 10
 for(i in 1:(N-1)) product <- product * i
 cat("Product:", product, "\n")
 ```
-
 
 At the time of writing this, there is currently no page for frequently encountered errors. So just [message me](mailto:florian.sihler@uni-ulm.de) in case of problems.
 

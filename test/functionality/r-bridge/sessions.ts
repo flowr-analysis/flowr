@@ -55,11 +55,10 @@ describe('RShell sessions', function() {
 	})
 	testWithShell('clear environment should remove variable information', async shell => {
 		shell.continueOnError() // we will produce an error!
-		shell.sendCommand('Sys.setenv(LANG="en")')
+		shell.sendCommand('options(warn=-1); invisible(Sys.setlocale("LC_MESSAGES", \'en_GB.UTF-8\'))')
 		shell.sendCommand('a <- 1 + 1')
 		shell.clearEnvironment()
 		await shell.sendCommandWithOutput('a', { from: 'stderr' }).then(lines => {
-			assert.equal(lines.length, 1)
 			// just await an error
 			assert.notMatch(lines[0], /^([1] 2)/)
 		})

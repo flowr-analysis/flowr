@@ -116,7 +116,7 @@ function parseAccessArgument(operator: RAccess['operator'], data: ParserData, el
 	// console.log('parseAccessArgument', elements.map(x => x.name))
 	if(operator === '@' || operator === '$') {
 		const parse = normalizeBasedOnType(data, elements)
-		return parse.length !== 1 ? undefined : parse[0]
+		return parse.length !== 1 ? undefined : parse[0] as RNode
 	} else {
 		return tryToNormalizeArgument(data, elements)
 	}

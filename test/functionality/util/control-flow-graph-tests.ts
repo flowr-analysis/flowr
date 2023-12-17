@@ -121,42 +121,48 @@ describe('Control Flow Graph', withShell(shell => {
 
 		const content = cfg2quads(cfg, { context, domain, getId: defaultQuadIdGenerator() })
 
-		assert.strictEqual(content, `<${domain}${context}/0> <${domain}rootIds-0> "3" <${context}> .
-<${domain}${context}/0> <${domain}rootIds-1> "3-exit" <${context}> .
-<${domain}${context}/0> <${domain}rootIds-2> "0" <${context}> .
-<${domain}${context}/0> <${domain}rootIds-3> "1" <${context}> .
-<${domain}${context}/0> <${domain}vertices-0> <${domain}${context}/1> <${context}> .
+		assert.strictEqual(content, `<${domain}${context}/0> <${domain}rootIds> "3" <${context}> .
+<${domain}${context}/0> <${domain}rootIds> "3-exit" <${context}> .
+<${domain}${context}/0> <${domain}rootIds> "0" <${context}> .
+<${domain}${context}/0> <${domain}rootIds> "1" <${context}> .
+<${domain}${context}/0> <${domain}vertices> <${domain}${context}/1> <${context}> .
+<${domain}${context}/1> <${domain}next> <${domain}${context}/2> <${context}> .
 <${domain}${context}/1> <${domain}id> "3" <${context}> .
 <${domain}${context}/1> <${domain}name> "RIfThenElse" <${context}> .
-<${domain}${context}/0> <${domain}vertices-1> <${domain}${context}/2> <${context}> .
+<${domain}${context}/0> <${domain}vertices> <${domain}${context}/2> <${context}> .
+<${domain}${context}/2> <${domain}next> <${domain}${context}/3> <${context}> .
 <${domain}${context}/2> <${domain}id> "3-exit" <${context}> .
 <${domain}${context}/2> <${domain}name> "if-exit" <${context}> .
-<${domain}${context}/0> <${domain}vertices-2> <${domain}${context}/3> <${context}> .
+<${domain}${context}/0> <${domain}vertices> <${domain}${context}/3> <${context}> .
+<${domain}${context}/3> <${domain}next> <${domain}${context}/4> <${context}> .
 <${domain}${context}/3> <${domain}id> "0" <${context}> .
 <${domain}${context}/3> <${domain}name> "RLogical" <${context}> .
-<${domain}${context}/0> <${domain}vertices-3> <${domain}${context}/4> <${context}> .
+<${domain}${context}/0> <${domain}vertices> <${domain}${context}/4> <${context}> .
 <${domain}${context}/4> <${domain}id> "1" <${context}> .
 <${domain}${context}/4> <${domain}name> "RNumber" <${context}> .
-<${domain}${context}/0> <${domain}edges-0> <${domain}${context}/5> <${context}> .
+<${domain}${context}/0> <${domain}edges> <${domain}${context}/5> <${context}> .
+<${domain}${context}/5> <${domain}next> <${domain}${context}/6> <${context}> .
 <${domain}${context}/5> <${domain}from> "1" <${context}> .
 <${domain}${context}/5> <${domain}to> "0" <${context}> .
 <${domain}${context}/5> <${domain}type> "CD" <${context}> .
 <${domain}${context}/5> <${domain}when> "TRUE" <${context}> .
-<${domain}${context}/0> <${domain}edges-1> <${domain}${context}/6> <${context}> .
+<${domain}${context}/0> <${domain}edges> <${domain}${context}/6> <${context}> .
+<${domain}${context}/6> <${domain}next> <${domain}${context}/7> <${context}> .
 <${domain}${context}/6> <${domain}from> "0" <${context}> .
 <${domain}${context}/6> <${domain}to> "3" <${context}> .
 <${domain}${context}/6> <${domain}type> "FD" <${context}> .
-<${domain}${context}/0> <${domain}edges-2> <${domain}${context}/7> <${context}> .
+<${domain}${context}/0> <${domain}edges> <${domain}${context}/7> <${context}> .
+<${domain}${context}/7> <${domain}next> <${domain}${context}/8> <${context}> .
 <${domain}${context}/7> <${domain}from> "3-exit" <${context}> .
 <${domain}${context}/7> <${domain}to> "1" <${context}> .
 <${domain}${context}/7> <${domain}type> "FD" <${context}> .
-<${domain}${context}/0> <${domain}edges-3> <${domain}${context}/8> <${context}> .
+<${domain}${context}/0> <${domain}edges> <${domain}${context}/8> <${context}> .
 <${domain}${context}/8> <${domain}from> "3-exit" <${context}> .
 <${domain}${context}/8> <${domain}to> "0" <${context}> .
 <${domain}${context}/8> <${domain}type> "CD" <${context}> .
 <${domain}${context}/8> <${domain}when> "FALSE" <${context}> .
-<${domain}${context}/0> <${domain}entryPoints-0> "3" <${context}> .
-<${domain}${context}/0> <${domain}exitPoints-0> "3-exit" <${context}> .
+<${domain}${context}/0> <${domain}entryPoints> "3" <${context}> .
+<${domain}${context}/0> <${domain}exitPoints> "3-exit" <${context}> .
 `)
 	})
 }))

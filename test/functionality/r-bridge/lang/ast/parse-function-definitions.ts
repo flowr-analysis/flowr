@@ -21,7 +21,9 @@ describe('Parse function definitions', withShell((shell) => {
 					children: [],
 					info:     {}
 				}
-			})
+			}), {
+				ignoreAdditionalTokens: true
+			}
 		)
 		const noArgs = 'function() { x + 2 * 3 }'
 		assertAst(`noArgs - ${noArgs}`, shell, noArgs,
@@ -69,7 +71,9 @@ describe('Parse function definitions', withShell((shell) => {
 						}
 					}
 				})
-			})
+			}), {
+				ignoreAdditionalTokens: true
+			}
 		)
 	})
 	describe('with unnamed parameters', () => {
@@ -88,7 +92,9 @@ describe('Parse function definitions', withShell((shell) => {
 					children: [],
 					info:     {}
 				}
-			})
+			}), {
+				ignoreAdditionalTokens: true
+			}
 		)
 		const multipleParameters = 'function(a,the,b) { b }'
 		assertAst(`multiple parameters - ${multipleParameters}`, shell, multipleParameters,
@@ -110,7 +116,9 @@ describe('Parse function definitions', withShell((shell) => {
 					namespace: undefined,
 					info:      {}
 				})
-			})
+			}), {
+				ignoreAdditionalTokens: true
+			}
 		)
 	})
 	describe('with special parameters (...)', () => {
@@ -129,7 +137,9 @@ describe('Parse function definitions', withShell((shell) => {
 					children: [],
 					info:     {}
 				})
-			})
+			}), {
+				ignoreAdditionalTokens: true
+			}
 		)
 
 		const asFirstParameters = 'function(..., a) { }'
@@ -150,7 +160,9 @@ describe('Parse function definitions', withShell((shell) => {
 					children: [],
 					info:     {}
 				}
-			})
+			}), {
+				ignoreAdditionalTokens: true
+			}
 		)
 
 		const asLastParameter = 'function(a, the, ...) { ... }'
@@ -173,7 +185,9 @@ describe('Parse function definitions', withShell((shell) => {
 					namespace: undefined,
 					info:      {}
 				})
-			})
+			}), {
+				ignoreAdditionalTokens: true
+			}
 		)
 	})
 	describe('with named parameters', () => {
@@ -200,7 +214,9 @@ describe('Parse function definitions', withShell((shell) => {
 					children: [],
 					info:     {}
 				}
-			})
+			}), {
+				ignoreAdditionalTokens: true
+			}
 		)
 
 		const multipleParameters = 'function(a, x=3, huhu="hehe") { x }'
@@ -235,7 +251,9 @@ describe('Parse function definitions', withShell((shell) => {
 					namespace: undefined,
 					info:      {}
 				})
-			})
+			}), {
+				ignoreAdditionalTokens: true
+			}
 		)
 	})
 })

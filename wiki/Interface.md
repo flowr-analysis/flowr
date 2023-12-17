@@ -694,7 +694,6 @@ Within the started session, type the following message and press enter to see th
 {"type": "request-file-analysis","id":"0","filetoken":"x","content":"x <- 1\nx + 1"}
 ```
 
-
 ##### Using Python
 
 In python, a similar process would look like this.
@@ -736,6 +735,7 @@ sequenceDiagram
     end
     deactivate  Server
 ```
+
 </details>
 
 In order to slice, you have to send a file analysis request first. The `filetoken` you assign is of use here as you can re-use it to repeatedly slice the same file.
@@ -1120,7 +1120,6 @@ Whenever this name appears, you may substitute this with whatever name fits your
 
 3. **Add it to the feature-mapping**\
    Now, in the `feature.ts` file in `src/statistics/features`, add your feature to the `ALL_FEATURES` object.
-
 
 Now, we want to extract something. For the *example* feature created in the previous steps, we choose to count the amount of `COMMENT` tokens.
 So we define a corresponding [XPath](https://developer.mozilla.org/en-US/docs/Web/XPath) query:

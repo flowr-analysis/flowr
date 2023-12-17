@@ -9,6 +9,7 @@ import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from '../../../..
 import { XmlParserConfig } from '../../common/config'
 import { RawRType, RExpressionList, RNode, RType } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
+import { XML_NAME } from '../../common/xml-to-json'
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper
@@ -85,11 +86,11 @@ export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlB
  * @param content  - the json object to extract the token-type from
  */
 export function getTokenType(tokenMap: XmlParserConfig['tokenMap'], content: XmlBasedJson): RawRType {
-	return revertTokenReplacement(tokenMap, getKeyGuarded(content, '#name')) as RawRType
+	return revertTokenReplacement(tokenMap, getKeyGuarded(content, XML_NAME)) as RawRType
 }
 
 export function getWithTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson[]) {
-	return obj.map((content) => ({
+	return obj.map(content => ({
 		name: getTokenType(tokenMap, content),
 		content
 	}))

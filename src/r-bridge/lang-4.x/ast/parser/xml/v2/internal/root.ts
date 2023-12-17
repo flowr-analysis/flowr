@@ -1,44 +1,29 @@
-/*
-import { getKeysGuarded, XmlBasedJson } from '../../../common/input-format'
-import { assureTokenType } from '../meta'
-import { normalizeBasedOnType } from './elements'
-import { RType, RExpressionList, RawRType, RNode } from '../../../../../model'
-import { log } from '../../../../../../../../util/log'
-import { partition } from '../../../../../../../../util/arrays'
-import { RDelimiter } from '../../../../../model/nodes/info'
 import { NormalizeConfiguration } from '../data'
+import { getKeyGuarded, XmlBasedJson } from '../../common/input-format'
+import { RawRType, RExpressionList, RNode, RType } from '../../../../model'
+import { normalizeExpression } from './expression'
+import { normalizeLog } from '../normalize'
 
-export function normalizeRootObjToAst(
+export function normalizeRoot(
 	config: NormalizeConfiguration,
 	obj: XmlBasedJson
 ): RExpressionList {
-	const exprContent = getKeysGuarded<XmlBasedJson>(obj, RawRType.ExpressionList)
-	assureTokenType(config.tokenMap, exprContent, RawRType.ExpressionList)
+	const exprContent: XmlBasedJson = getKeyGuarded(obj, RawRType.ExpressionList)
 
-	let parsedChildren: (RNode | RDelimiter)[] = []
+	let normalized: RNode[] = []
 
+	// the children of an expression list are an array of expressions
 	if(config.children in exprContent) {
-		const children = getKeysGuarded<XmlBasedJson[]>(
-			exprContent,
-			config.children
-		)
-
-		parsedChildren = normalizeBasedOnType(config, children)
+		const children: XmlBasedJson[] = getKeyGuarded(exprContent, config.children)
+		normalized = normalizeExpression(config, children)
 	} else {
-		log.debug('no children found, assume empty input')
+		normalizeLog.debug('assume empty root')
 	}
-
-	const [delimiters, nodes] = partition(parsedChildren, x => x.type === RType.Delimiter)
 
 	return {
 		type:     RType.ExpressionList,
-		children: nodes as RNode[],
+		children: normalized,
 		lexeme:   undefined,
-		info:     {
-			fullRange:        config.currentRange,
-			additionalTokens: delimiters,
-			fullLexeme:       config.currentLexeme
-		}
+		info:     {}
 	}
 }
-*/

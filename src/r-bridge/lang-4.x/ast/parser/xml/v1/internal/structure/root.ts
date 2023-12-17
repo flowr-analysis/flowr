@@ -1,4 +1,4 @@
-import { getKeyGuarded, getKeysGuarded, XmlBasedJson } from '../../../common/input-format'
+import { getKeyGuarded, XmlBasedJson } from '../../../common/input-format'
 import { assureTokenType } from '../meta'
 import { normalizeBasedOnType } from './elements'
 import { ParserData } from '../../data'

@@ -138,7 +138,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 				.addVertex({ tag: 'variable-definition', id: '3', name: 'y', scope: LocalScope, environment: envWithX()})
 				.addVertex({ tag: 'use', id: '6', name: 'r', scope: LocalScope, environment: appendEnvironments(envWithX(), envWithY())})
 				.addVertex({ tag: 'variable-definition', id: '7', name: 'x', scope: LocalScope, environment: appendEnvironments(envWithX(),envWithY()), when: 'maybe' })
-				.addVertex({ tag: 'variable-definition', id: '10', name: 'y', scope: LocalScope, environemts: appendEnvironments(envWithXThen(), envWithY()), when: 'maybe'})
+				.addVertex({ tag: 'variable-definition', id: '10', name: 'y', scope: LocalScope, environment: appendEnvironments(envWithXThen(), envWithY()), when: 'maybe'})
 				.addVertex({ tag: 'variable-definition', id: '14', name: 'x', scope: LocalScope, environment: appendEnvironments(envWithX(),envWithY()), when: 'maybe' })
 				.addVertex({ tag: 'use', id: '20', name: 'x', scope: LocalScope, environment: envDirectlyAfterIf()})
 				.addVertex({ tag: 'use', id: '23', name: 'y', scope: LocalScope, environment: appendEnvironments(envDirectlyAfterIf(), envWithZ())})

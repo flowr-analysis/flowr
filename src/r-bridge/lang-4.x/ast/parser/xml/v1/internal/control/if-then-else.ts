@@ -6,7 +6,7 @@ import { tryNormalizeIfThen } from './if-then'
 import { guard } from '../../../../../../../../util/assert'
 import { RIfThenElse, RawRType, RType } from '../../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import { ensureExpressionList } from '../meta'
+import { ensureExpressionList } from '../../../common/meta'
 
 /**
  * Try to parse the construct as a {@link RIfThenElse}.

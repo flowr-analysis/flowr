@@ -1,6 +1,6 @@
 import { NamedXmlBasedJson } from '../../../common/input-format'
 import { parseLog } from '../../normalize'
-import { retrieveMetaStructure } from '../meta'
+import { retrieveMetaStructure } from '../../../common/meta'
 import { RNode, RType, RSymbol, RArgument, RawRType } from '../../../../../model'
 import { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'

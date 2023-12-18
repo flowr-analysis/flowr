@@ -2,7 +2,7 @@ import { ParserData } from '../../data'
 import { XmlBasedJson } from '../../../common/input-format'
 import { parseLog } from '../../normalize'
 import { executeHook } from '../../hooks'
-import { retrieveMetaStructure } from '../meta'
+import { retrieveMetaStructure } from '../../../common/meta'
 import { RBreak, RType } from '../../../../../model'
 
 export function normalizeBreak(data: ParserData, obj: XmlBasedJson): RBreak {

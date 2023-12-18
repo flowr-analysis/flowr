@@ -1,5 +1,5 @@
 import { getKeyGuarded, NamedXmlBasedJson, XmlBasedJson } from '../../../common/input-format'
-import { getWithTokenType, retrieveMetaStructure } from '../meta'
+import { getWithTokenType, retrieveMetaStructure } from '../../../common/meta'
 import { parseLog } from '../../normalize'
 import { ParserData } from '../../data'
 import { normalizeBasedOnType, splitComments } from '../structure'

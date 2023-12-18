@@ -1,5 +1,5 @@
 import { getKeyGuarded, XmlBasedJson } from '../../../common/input-format'
-import { assureTokenType } from '../meta'
+import { assureTokenType } from '../../../common/meta'
 import { normalizeBasedOnType } from './elements'
 import { ParserData } from '../../data'
 import { RType, RExpressionList, RawRType, RNode } from '../../../../../model'

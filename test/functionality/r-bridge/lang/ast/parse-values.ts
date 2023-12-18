@@ -45,13 +45,25 @@ describe('Constant Parsing',
 						number.str,
 						shell,
 						number.str,
-						exprList({
-							type:     RType.Number,
-							location: range,
-							lexeme:   number.str,
-							content:  number.val,
-							info:     {}
-						})
+						[{
+							step:   NORMALIZE,
+							wanted: exprList({
+								type:     RType.Number,
+								location: range,
+								lexeme:   number.str,
+								content:  number.val,
+								info:     {}
+							})
+						}, {
+							step:   DESUGAR_NORMALIZE,
+							wanted: exprList({
+								type:     RType.Number,
+								location: range,
+								lexeme:   number.str,
+								content:  number.val,
+								info:     {}
+							})
+						}]
 					)
 				}
 			})
@@ -62,13 +74,25 @@ describe('Constant Parsing',
 						string.str,
 						shell,
 						string.str,
-						exprList({
-							type:     RType.String,
-							location: range,
-							lexeme:   string.str,
-							content:  string.val,
-							info:     {}
-						}),
+						[{
+							step:   NORMALIZE,
+							wanted: exprList({
+								type:     RType.String,
+								location: range,
+								lexeme:   string.str,
+								content:  string.val,
+								info:     {}
+							})
+						}, {
+							step:   DESUGAR_NORMALIZE,
+							wanted: exprList({
+								type:     RType.String,
+								location: range,
+								lexeme:   string.str,
+								content:  string.val,
+								info:     {}
+							})
+						}],
 						{
 							// just a hackey way to not outright flag all
 							minRVersion: string.str.startsWith('r') || string.str.startsWith('R') ? MIN_VERSION_RAW_STABLE : undefined

@@ -1,6 +1,6 @@
 import { getKeyGuarded, NamedXmlBasedJson, XmlBasedJson } from '../../../common/input-format'
 import { guard } from '../../../../../../../../util/assert'
-import { getWithTokenType, retrieveMetaStructure } from '../meta'
+import { getWithTokenType, retrieveMetaStructure } from '../../../common/meta'
 import { splitArrayOn } from '../../../../../../../../util/arrays'
 import { parseLog } from '../../normalize'
 import { normalizeString, tryNormalizeSymbol } from '../values'

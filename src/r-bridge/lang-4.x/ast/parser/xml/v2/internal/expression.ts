@@ -4,6 +4,7 @@ import { XmlParserConfig } from '../../common/config'
 import { normalizeLog } from '../normalize'
 import { expensiveTrace } from '../../../../../../../util/log'
 import { XML_NAME } from '../../common/xml-to-json'
+import { normalizeSingleNode } from './single-element'
 
 /*
 
@@ -111,6 +112,8 @@ function handleSemicolons(tokens: XmlBasedJson[]) {
 	return segments
 }
 
+
+// TODO: guard with and without semicolon?
 export function normalizeExpression(
 	config: XmlParserConfig,
 	tokens: XmlBasedJson[]
@@ -122,19 +125,28 @@ export function normalizeExpression(
 
 	expensiveTrace(normalizeLog,() => `[expr] ${tokens.map(x => x[XML_NAME]).join(', ')}`)
 
-	// iterate over types, find all semicolons, and segment the tokens based on them
-	const segments = handleSemicolons(tokens)
+	if(tokens.length > 1) {
+		// iterate over types, find all semicolons, and segment the tokens based on them.
+		// we could potentially optimize as not all expr may have semicolons but not for now
+		const segments = handleSemicolons(tokens)
 
-	if(segments.length > 1) {
-		normalizeLog.trace(`found ${segments.length} ';' segments`)
-		return segments.flatMap(segment => normalizeExpression(config, segment))
+		if(segments.length > 1) {
+			normalizeLog.trace(`found ${segments.length} ';' segments`)
+			return segments.flatMap(segment => normalizeExpression(config, segment))
+		}
+
+		/*
+		 * if splitOnSemicolon.length === 1, we can continue with the normal parsing, but we may have had a trailing semicolon, with this, it is removed as well.
+		 * splitOnSemicolon.length === 0 is not possible, as we would have had an empty array before, split does not add elements.
+		 */
+		tokens = segments[0]
 	}
 
-	/*
-   * if splitOnSemicolon.length === 1, we can continue with the normal parsing, but we may have had a trailing semicolon, with this, it is removed as well.
-   * splitOnSemicolon.length === 0 is not possible, as we would have had an empty array before, split does not add elements.
-   */
-	tokens = segments[0]
+	// again we optimize for lone nodes
+	if(tokens.length === 1) {
+		return normalizeSingleNode(config, tokens[0])
+	}
+	// TODO: normalize exprs
 
 	console.log(tokens)
 	return []

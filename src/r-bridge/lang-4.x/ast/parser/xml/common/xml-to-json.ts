@@ -2,7 +2,7 @@ import * as xml2js from 'xml2js'
 import { XmlParserConfig } from './config'
 import { XmlBasedJson } from './input-format'
 
-export const XML_NAME = '#name'
+export const XML_NAME = '#name' as const
 
 const xml2jsOptions: xml2js.OptionsV2 = {
 	charsAsChildren:       false,

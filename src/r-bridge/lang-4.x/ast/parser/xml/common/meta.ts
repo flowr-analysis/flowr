@@ -1,15 +1,14 @@
 import {
 	getKeyGuarded,
-	getKeysGuarded,
 	NamedXmlBasedJson,
 	XmlBasedJson,
 	XmlParseError
-} from '../../common/input-format'
-import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from '../../../../../../../util/range'
-import { XmlParserConfig } from '../../common/config'
-import { RawRType, RExpressionList, RNode, RType } from '../../../../model'
-import { guard } from '../../../../../../../util/assert'
-import { XML_NAME } from '../../common/xml-to-json'
+} from './input-format'
+import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from '../../../../../../util/range'
+import { XmlParserConfig } from './config'
+import { RawRType, RExpressionList, RNode, RType } from '../../../model'
+import { guard } from '../../../../../../util/assert'
+import { XML_NAME } from './xml-to-json'
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper
@@ -31,13 +30,12 @@ export function objectWithArrUnwrap(obj: XmlBasedJson[] | XmlBasedJson): XmlBase
  * given a xml element, extract the source location of the corresponding element in the R-ast
  */
 export function extractLocation(ast: XmlBasedJson): SourceRange {
-	const {
-		line1,
-		col1,
-		line2,
-		col2
-	} = getKeysGuarded<string>(ast, 'line1', 'col1', 'line2', 'col2')
-	return rangeFrom(line1, col1, line2, col2)
+	return rangeFrom(
+		ast['line1'] as string,
+		ast['col1'] as string,
+		ast['line2'] as string,
+		ast['col2'] as string
+	)
 }
 
 /**
@@ -56,8 +54,8 @@ export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson
 } {
 	const unwrappedObj = objectWithArrUnwrap(obj)
 	const attributes = obj[config.attr] as XmlBasedJson | undefined
-	const content = obj[config.content] as string | undefined ?? ''
 	guard(attributes !== undefined, () => `expected attributes to be defined for ${JSON.stringify(obj)}`)
+	const content = obj[config.content] as string | undefined ?? ''
 	const location = extractLocation(attributes)
 	return {
 		unwrappedObj,

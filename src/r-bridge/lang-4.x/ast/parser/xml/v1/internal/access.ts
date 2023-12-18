@@ -1,5 +1,5 @@
 import { NamedXmlBasedJson } from '../../common/input-format'
-import { retrieveMetaStructure } from './meta'
+import { retrieveMetaStructure } from '../../common/meta'
 import { parseLog } from '../normalize'
 import { ParserData } from '../data'
 import { RType, RAccess, RNode, RArgument, RawRType } from '../../../../model'

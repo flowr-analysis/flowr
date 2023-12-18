@@ -1,5 +1,5 @@
 import { NamedXmlBasedJson, XmlParseError } from '../../../common/input-format'
-import { ensureExpressionList, retrieveMetaStructure } from '../meta'
+import { ensureExpressionList, retrieveMetaStructure } from '../../../common/meta'
 import { parseLog } from '../../normalize'
 import { tryNormalizeSingleNode } from '../structure'
 import { ParserData } from '../../data'

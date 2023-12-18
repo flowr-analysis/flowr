@@ -1,6 +1,6 @@
 import { NamedXmlBasedJson } from '../../../common/input-format'
 import { guard } from '../../../../../../../../util/assert'
-import { retrieveMetaStructure } from '../meta'
+import { retrieveMetaStructure } from '../../../common/meta'
 import { parseLog } from '../../normalize'
 import { isSymbol, RType, RSymbol } from '../../../../../model'
 import { ParserData } from '../../data'

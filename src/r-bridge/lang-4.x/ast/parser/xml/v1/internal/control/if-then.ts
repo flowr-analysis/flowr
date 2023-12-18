@@ -1,6 +1,6 @@
 import { NamedXmlBasedJson, XmlParseError } from '../../../common/input-format'
 import { tryNormalizeSingleNode } from '../structure'
-import { ensureExpressionList, retrieveMetaStructure } from '../meta'
+import { ensureExpressionList, retrieveMetaStructure } from '../../../common/meta'
 import { parseLog } from '../../normalize'
 import { ParserData } from '../../data'
 import { RawRType, RIfThenElse, RType } from '../../../../../model'

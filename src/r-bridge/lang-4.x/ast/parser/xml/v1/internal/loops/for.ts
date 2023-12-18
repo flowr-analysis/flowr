@@ -4,7 +4,7 @@ import {
 	XmlBasedJson,
 	XmlParseError
 } from '../../../common/input-format'
-import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../meta'
+import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../../../common/meta'
 import { parseLog } from '../../normalize'
 import { guard } from '../../../../../../../../util/assert'
 import { ParserData } from '../../data'

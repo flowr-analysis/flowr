@@ -1,7 +1,7 @@
 import { XmlBasedJson } from '../../../common/input-format'
 import { RComment, RLineDirective, RType } from '../../../../../model'
 import { parseLog } from '../../normalize'
-import { retrieveMetaStructure } from '../meta'
+import { retrieveMetaStructure } from '../../../common/meta'
 import { guard } from '../../../../../../../../util/assert'
 import { executeHook } from '../../hooks'
 import { ParserData } from '../../data'

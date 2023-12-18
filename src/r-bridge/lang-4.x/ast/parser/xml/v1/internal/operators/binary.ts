@@ -1,6 +1,6 @@
 import { NamedXmlBasedJson, XmlParseError } from '../../../common/input-format'
 import { parseLog } from '../../normalize'
-import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../meta'
+import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../../common/meta'
 import { identifySpecialOp } from './special'
 import { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from '../structure'

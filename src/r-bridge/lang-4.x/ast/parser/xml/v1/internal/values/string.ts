@@ -1,5 +1,5 @@
 import { XmlBasedJson } from '../../../common/input-format'
-import { retrieveMetaStructure } from '../meta'
+import { retrieveMetaStructure } from '../../../common/meta'
 import { string2ts } from '../../../../../../values'
 import { parseLog } from '../../normalize'
 import { RType, RString } from '../../../../../model'

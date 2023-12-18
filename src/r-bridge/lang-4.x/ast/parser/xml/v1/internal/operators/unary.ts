@@ -1,5 +1,5 @@
 import { NamedXmlBasedJson } from '../../../common/input-format'
-import { retrieveMetaStructure, retrieveOpName } from '../meta'
+import { retrieveMetaStructure, retrieveOpName } from '../../../common/meta'
 import { parseLog } from '../../normalize'
 import { tryNormalizeSingleNode } from '../structure'
 import { ParserData } from '../../data'

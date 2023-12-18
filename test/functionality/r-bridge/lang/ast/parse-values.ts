@@ -142,13 +142,25 @@ describe('Constant Parsing',
 						`${lexeme} as ${JSON.stringify(content)}`,
 						shell,
 						lexeme,
-						exprList({
-							type:     RType.Logical,
-							location: rangeFrom(1, 1, 1, lexeme.length),
-							lexeme,
-							content,
-							info:     {}
-						})
+						[{
+							step:   NORMALIZE,
+							wanted: exprList({
+								type:     RType.Logical,
+								location: rangeFrom(1, 1, 1, lexeme.length),
+								lexeme,
+								content,
+								info:     {}
+							})
+						}, {
+							step:   DESUGAR_NORMALIZE,
+							wanted: exprList({
+								type:     RType.Logical,
+								location: rangeFrom(1, 1, 1, lexeme.length),
+								lexeme,
+								content,
+								info:     {}
+							})
+						}]
 					)
 				}
 			})
@@ -157,13 +169,25 @@ describe('Constant Parsing',
 					'simple line comment',
 					shell,
 					'# Hello World',
-					exprList({
-						type:     RType.Comment,
-						location: rangeFrom(1, 1, 1, 13),
-						lexeme:   '# Hello World',
-						content:  ' Hello World',
-						info:     {}
-					})
+					[{
+						step:   NORMALIZE,
+						wanted: exprList({
+							type:     RType.Comment,
+							location: rangeFrom(1, 1, 1, 13),
+							lexeme:   '# Hello World',
+							content:  ' Hello World',
+							info:     {}
+						})
+					}, {
+						step:   DESUGAR_NORMALIZE,
+						wanted: exprList({
+							type:     RType.Comment,
+							location: rangeFrom(1, 1, 1, 13),
+							lexeme:   '# Hello World',
+							content:  ' Hello World',
+							info:     {}
+						})
+					}]
 				)
 			})
 		})

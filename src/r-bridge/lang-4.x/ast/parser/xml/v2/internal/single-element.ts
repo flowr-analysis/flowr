@@ -7,6 +7,8 @@ import { normalizeNumber } from './values'
 import { normalizeString } from './values/string'
 import { tryNormalizeSymbolNoNamespace } from './values/symbol'
 import { guard } from '../../../../../../../util/assert'
+import { normalizeComment } from './other'
+import { normalizeLineDirective } from './other/line-directive'
 
 const todo = (...x: unknown[]) => { throw new Error('not implemented: ' + JSON.stringify(x)) }
 
@@ -28,9 +30,9 @@ export function normalizeSingleNode(config: NormalizeConfiguration, elem: XmlBas
 		case RawRType.BraceRight:
 			return todo(name)
 		case RawRType.Comment:
-			return todo(name)
+			return normalizeComment(config, elem)
 		case RawRType.LineDirective:
-			return todo(name)
+			return normalizeLineDirective(config, elem)
 		case RawRType.ExpressionList:
 		case RawRType.Expression:
 		case RawRType.ExprOfAssignOrHelp: {

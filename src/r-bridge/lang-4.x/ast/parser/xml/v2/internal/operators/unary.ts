@@ -1,6 +1,6 @@
 import { XmlBasedJson } from '../../../common/input-format'
 import { retrieveMetaStructure } from '../../../common/meta'
-import { RFunctionCall, RType, RUnaryOp } from '../../../../../model'
+import { RFunctionCall, RType } from '../../../../../model'
 import { NormalizeConfiguration } from '../../data'
 import { normalizeSingleNode } from '../single-element'
 
@@ -20,7 +20,6 @@ export function normalizeUnary(config: NormalizeConfiguration, [operator, operan
 		type:         RType.FunctionCall,
 		lexeme:       config.currentLexeme ?? content,
 		location,
-		content,
 		flavor:       'named',
 		functionName: {
 			type:      RType.Symbol,

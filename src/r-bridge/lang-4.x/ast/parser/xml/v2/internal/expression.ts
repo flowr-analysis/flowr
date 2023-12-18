@@ -7,6 +7,7 @@ import { normalizeSingleNode } from './single-element'
 import { NormalizeConfiguration } from '../data'
 import { normalizeUnary } from './operators'
 import { tryNormalizeSymbolWithNamespace } from './values/symbol'
+import { tryNormalizeBinary } from './operators/binary'
 
 function handleSemicolons(tokens: XmlBasedJson[]) {
 	let last = 0, i = 0
@@ -65,8 +66,8 @@ function normalizeElems(config: NormalizeConfiguration, tokens: readonly XmlBase
 			return normalizeSingleNode(config, tokens[0])
 		case 2: // TODO: repeat
 			return normalizeUnary(config, tokens as [XmlBasedJson, XmlBasedJson])
-		case 3: // TODO: binary, for
-			return tryNormalizeSymbolWithNamespace(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? todo(tokens)
+		case 3: // TODO: for
+			return tryNormalizeSymbolWithNamespace(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? tryNormalizeBinary(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
 		case 5:
 			return todo(tokens)
 		case 7:

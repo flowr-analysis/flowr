@@ -1,40 +1,72 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
-import {
-	RArithmeticBinaryOpPool,
-	RLogicalBinaryOpPool,
-	RUnaryOpPool,
-} from '../../../_helper/provider'
-import { type RShell, RType, ComparisonOperators } from '../../../../../src/r-bridge'
+import { RArithmeticBinaryOpPool, RLogicalBinaryOpPool, RUnaryOpPool } from '../../../_helper/provider'
+import { ComparisonOperators, type RShell, RType } from '../../../../../src/r-bridge'
 import { rangeFrom } from '../../../../../src/util/range'
+import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 
 describe('Parse simple operations',
-	withShell((shell) => {
+	withShell(shell => {
 		describe('unary operations', () => {
 			for(const opSuite of RUnaryOpPool) {
 				describe(`${opSuite.label} operations`, () => {
 					for(const op of opSuite.pool) {
 						const simpleInput = `${op.str}42`
 						const opOffset = op.str.length - 1
-						assertAst(
-							`${simpleInput}`,
+						assertAst(`${simpleInput}`,
 							shell,
 							simpleInput,
-							exprList({
-								type:     RType.UnaryOp,
-								operator: op.str,
-								flavor:   op.flavor,
-								lexeme:   op.str,
-								location: rangeFrom(1, 1, 1, 1 + opOffset),
-								info:     {},
-								operand:  {
-									type:     RType.Number,
-									location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
-									lexeme:   '42',
-									content:  numVal(42),
-									info:     {}
-								},
-							})
+							[
+								{
+									step:   NORMALIZE,
+									wanted: exprList({
+										type:     RType.UnaryOp,
+										operator: op.str,
+										flavor:   op.flavor,
+										lexeme:   op.str,
+										location: rangeFrom(1, 1, 1, 1 + opOffset),
+										info:     {},
+										operand:  {
+											type:     RType.Number,
+											location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
+											lexeme:   '42',
+											content:  numVal(42),
+											info:     {}
+										},
+									})
+								}, {
+									step:   DESUGAR_NORMALIZE,
+									wanted: exprList({
+										type:         RType.FunctionCall,
+										lexeme:       simpleInput,
+										flavor:       'named',
+										location:     rangeFrom(1, 1, 1, 1 + opOffset),
+										info:         {},
+										functionName: {
+											type:      RType.Symbol,
+											lexeme:    op.str,
+											content:   op.str,
+											namespace: undefined,
+											location:  rangeFrom(1, 1, 1, 1 + opOffset),
+											info:      {}
+										},
+										arguments: [{
+											type:     RType.Argument,
+											name:     undefined,
+											location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
+											lexeme:   '42',
+											info:     {},
+											value:    {
+												type:     RType.Number,
+												location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
+												lexeme:   '42',
+												content:  numVal(42),
+												info:     {}
+											}
+										}]
+									})
+								}
+							]
 						)
 					}
 				})
@@ -45,22 +77,59 @@ describe('Parse simple operations',
 				'? x',
 				shell,
 				'? x',
-				exprList({
-					type:     RType.UnaryOp,
-					location: rangeFrom(1, 1, 1, 1),
-					operator: '?',
-					lexeme:   '?',
-					flavor:   'logical',
-					info:     {},
-					operand:  {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 3, 1, 3),
-						lexeme:    'x',
-						content:   'x',
-						namespace: undefined,
-						info:      {}
+				[
+					{
+						step:   NORMALIZE,
+						wanted: exprList({
+							type:     RType.UnaryOp,
+							location: rangeFrom(1, 1, 1, 1),
+							operator: '?',
+							lexeme:   '?',
+							flavor:   'logical',
+							info:     {},
+							operand:  {
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 3, 1, 3),
+								lexeme:    'x',
+								content:   'x',
+								namespace: undefined,
+								info:      {}
+							}
+						})
+					}, {
+						step:   DESUGAR_NORMALIZE,
+						wanted: exprList({
+							type:         RType.FunctionCall,
+							lexeme:       '? x',
+							flavor:       'named',
+							location:     rangeFrom(1, 1, 1, 1),
+							info:         {},
+							functionName: {
+								type:      RType.Symbol,
+								lexeme:    '?',
+								content:   '?',
+								namespace: undefined,
+								location:  rangeFrom(1, 1, 1, 1),
+								info:      {}
+							},
+							arguments: [{
+								type:     RType.Argument,
+								name:     undefined,
+								location: rangeFrom(1, 3, 1, 3),
+								lexeme:   'x',
+								info:     {},
+								value:    {
+									type:      RType.Symbol,
+									location:  rangeFrom(1, 3, 1, 3),
+									lexeme:    'x',
+									content:   'x',
+									namespace: undefined,
+									info:      {}
+								}
+							}]
+						})
 					}
-				})
+				]
 			)
 		})
 
@@ -220,30 +289,79 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 	describe(`${op.str} (${op.flavor})`, () => {
 		const simpleInput = `1 ${op.str} 1`
 		const opOffset = op.str.length - 1
-		assertAst(simpleInput, shell, simpleInput, exprList(
+		assertAst(simpleInput, shell, simpleInput, [
 			{
-				type:     RType.BinaryOp,
-				operator: op.str,
-				lexeme:   op.str,
-				flavor:   op.flavor,
-				location: rangeFrom(1, 3, 1, 3 + opOffset),
-				info:     {},
-				lhs:      {
-					type:     RType.Number,
-					location: rangeFrom(1, 1, 1, 1),
-					lexeme:   '1',
-					content:  numVal(1),
-					info:     {}
-				},
-				rhs: {
-					type:     RType.Number,
-					location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
-					lexeme:   '1',
-					content:  numVal(1),
-					info:     {}
+				step:   NORMALIZE,
+				wanted: exprList({
+					type:     RType.BinaryOp,
+					operator: op.str,
+					lexeme:   op.str,
+					flavor:   op.flavor,
+					location: rangeFrom(1, 3, 1, 3 + opOffset),
+					info:     {},
+					lhs:      {
+						type:     RType.Number,
+						location: rangeFrom(1, 1, 1, 1),
+						lexeme:   '1',
+						content:  numVal(1),
+						info:     {}
+					},
+					rhs: {
+						type:     RType.Number,
+						location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
+						lexeme:   '1',
+						content:  numVal(1),
+						info:     {}
+					}
 				}
+				)
+			},
+			{
+				step:   DESUGAR_NORMALIZE,
+				wanted: exprList({
+					type:         RType.FunctionCall,
+					lexeme:       simpleInput,
+					flavor:       'named',
+					location:     rangeFrom(1, 3, 1, 3 + opOffset),
+					info:         {},
+					functionName: {
+						type:      RType.Symbol,
+						lexeme:    op.str,
+						content:   op.str,
+						namespace: undefined,
+						location:  rangeFrom(1, 3, 1, 3 + opOffset),
+						info:      {}
+					},
+					arguments: [{
+						type:     RType.Argument,
+						name:     undefined,
+						location: rangeFrom(1, 1, 1, 1),
+						lexeme:   '1',
+						info:     {},
+						value:    {
+							type:     RType.Number,
+							location: rangeFrom(1, 1, 1, 1),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						}
+					}, {
+						type:     RType.Argument,
+						name:     undefined,
+						location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
+						lexeme:   '1',
+						info:     {},
+						value:    {
+							type:     RType.Number,
+							location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						}
+					}]
+				})
 			}
-		))
+		])
 
 		// offsets encode additional shifts by parenthesis
 		const precedenceTests = [
@@ -255,6 +373,7 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 			precedenceTests.push({ input: `1 ${op.str} 1 ${op.str} 42`, offsetL: 0, offsetC: 0, offsetR: 0 })
 		}
 
+		// TODO: test with desugaring too
 		for(const defaultPrecedence of precedenceTests) {
 			assertAst(defaultPrecedence.input, shell, defaultPrecedence.input, exprList(
 				{

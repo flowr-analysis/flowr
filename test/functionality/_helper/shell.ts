@@ -131,8 +131,17 @@ export async function ensureConfig(shell: RShell, test: Mocha.Context, userConfi
 }
 
 /**
+ * Comfort for {@link assertAst} to run the same test for multiple steps
+ */
+export function sameForSteps<T>(steps: (typeof NORMALIZE | typeof DESUGAR_NORMALIZE)[], wanted: T): { step: typeof NORMALIZE | typeof DESUGAR_NORMALIZE, wanted: T }[] {
+	return steps.map(step => ({ step, wanted }))
+}
+
+/**
  * Call within describeSession
  * For a given input code this takes multiple ASTs depending on the respective normalizer step to run!
+ *
+ * @see sameForSteps
  */
 export function assertAst(name: string, shell: RShell, input: string, expected: { step: typeof NORMALIZE | typeof DESUGAR_NORMALIZE, wanted: RExpressionList }[] | RExpressionList, userConfig?: Partial<TestConfiguration & {
 	ignoreAdditionalTokens: boolean

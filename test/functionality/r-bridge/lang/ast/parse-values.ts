@@ -1,4 +1,4 @@
-import { assertAst, withShell } from '../../../_helper/shell'
+import { assertAst, sameForSteps, withShell } from '../../../_helper/shell'
 import {
 	RNumberPool,
 	RStringPool,
@@ -21,13 +21,9 @@ describe('Constant Parsing',
 				'nothing',
 				shell,
 				'',
-				[{
-					step:   NORMALIZE,
-					wanted: exprList()
-				}, {
-					step:   DESUGAR_NORMALIZE,
-					wanted: exprList()
-				}]
+				sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+					exprList()
+				)
 			)
 		})
 		describe('parse single', () => {
@@ -74,25 +70,15 @@ describe('Constant Parsing',
 						string.str,
 						shell,
 						string.str,
-						[{
-							step:   NORMALIZE,
-							wanted: exprList({
+						sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+							exprList({
 								type:     RType.String,
 								location: range,
 								lexeme:   string.str,
 								content:  string.val,
 								info:     {}
 							})
-						}, {
-							step:   DESUGAR_NORMALIZE,
-							wanted: exprList({
-								type:     RType.String,
-								location: range,
-								lexeme:   string.str,
-								content:  string.val,
-								info:     {}
-							})
-						}],
+						),
 						{
 							// just a hackey way to not outright flag all
 							minRVersion: string.str.startsWith('r') || string.str.startsWith('R') ? MIN_VERSION_RAW_STABLE : undefined
@@ -112,9 +98,8 @@ describe('Constant Parsing',
 						symbol.str,
 						shell,
 						symbol.str,
-						[{
-							step:   NORMALIZE,
-							wanted: exprList({
+						sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+							exprList({
 								type:      RType.Symbol,
 								namespace: symbol.namespace,
 								location:  range,
@@ -122,17 +107,7 @@ describe('Constant Parsing',
 								content:   symbol.val,
 								info:      {}
 							})
-						}, {
-							step:   DESUGAR_NORMALIZE,
-							wanted: exprList({
-								type:      RType.Symbol,
-								namespace: symbol.namespace,
-								location:  range,
-								lexeme:    symbol.val,
-								content:   symbol.val,
-								info:      {}
-							})
-						}]
+						)
 					)
 				}
 			})
@@ -142,25 +117,15 @@ describe('Constant Parsing',
 						`${lexeme} as ${JSON.stringify(content)}`,
 						shell,
 						lexeme,
-						[{
-							step:   NORMALIZE,
-							wanted: exprList({
+						sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+							exprList({
 								type:     RType.Logical,
 								location: rangeFrom(1, 1, 1, lexeme.length),
 								lexeme,
 								content,
 								info:     {}
 							})
-						}, {
-							step:   DESUGAR_NORMALIZE,
-							wanted: exprList({
-								type:     RType.Logical,
-								location: rangeFrom(1, 1, 1, lexeme.length),
-								lexeme,
-								content,
-								info:     {}
-							})
-						}]
+						)
 					)
 				}
 			})
@@ -169,25 +134,15 @@ describe('Constant Parsing',
 					'simple line comment',
 					shell,
 					'# Hello World',
-					[{
-						step:   NORMALIZE,
-						wanted: exprList({
+					sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+						exprList({
 							type:     RType.Comment,
 							location: rangeFrom(1, 1, 1, 13),
 							lexeme:   '# Hello World',
 							content:  ' Hello World',
 							info:     {}
 						})
-					}, {
-						step:   DESUGAR_NORMALIZE,
-						wanted: exprList({
-							type:     RType.Comment,
-							location: rangeFrom(1, 1, 1, 13),
-							lexeme:   '# Hello World',
-							content:  ' Hello World',
-							info:     {}
-						})
-					}]
+					)
 				)
 			})
 		})

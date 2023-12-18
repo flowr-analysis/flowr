@@ -1,101 +1,12 @@
 import { XmlBasedJson } from '../../common/input-format'
 import { RawRType, RNode } from '../../../../model'
-import { XmlParserConfig } from '../../common/config'
 import { normalizeLog } from '../normalize'
 import { expensiveTrace } from '../../../../../../../util/log'
 import { XML_NAME } from '../../common/xml-to-json'
 import { normalizeSingleNode } from './single-element'
-
-/*
-
-function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RNode | RDelimiter)[] {
-	if(mappedWithName.length === 1) {
-		return [tryNormalizeSingleNode(data, mappedWithName[0])]
-	} else if(mappedWithName.length === 2) {
-		const unaryOp = tryNormalizeUnary(
-			data,
-			mappedWithName[0],
-			mappedWithName[1]
-		)
-		if(unaryOp !== undefined) {
-			return [unaryOp]
-		}
-		const repeatLoop = tryNormalizeRepeat(
-			data,
-			mappedWithName[0],
-			mappedWithName[1]
-		)
-		if(repeatLoop !== undefined) {
-			return [repeatLoop]
-		}
-	} else if(mappedWithName.length === 3) {
-		const binary = tryNormalizeBinary(
-			data,
-			mappedWithName[0],
-			mappedWithName[1],
-			mappedWithName[2]
-		)
-		if(binary !== undefined) {
-			return [binary]
-		} else {
-			const forLoop = tryNormalizeFor(
-				data,
-				mappedWithName[0],
-				mappedWithName[1],
-				mappedWithName[2]
-			)
-			if(forLoop !== undefined) {
-				return [forLoop]
-			} else {
-				// could be a symbol with namespace information
-				const symbol = tryNormalizeSymbol(data, mappedWithName)
-				if(symbol !== undefined) {
-					return [symbol]
-				}
-			}
-		}
-	} else if(mappedWithName.length === 5) {
-		const ifThen = tryNormalizeIfThen(data, [
-			mappedWithName[0],
-			mappedWithName[1],
-			mappedWithName[2],
-			mappedWithName[3],
-			mappedWithName[4]
-		])
-		if(ifThen !== undefined) {
-			return [ifThen]
-		} else {
-			const whileLoop = tryNormalizeWhile(
-				data,
-				mappedWithName[0],
-				mappedWithName[1],
-				mappedWithName[2],
-				mappedWithName[3],
-				mappedWithName[4]
-			)
-			if(whileLoop !== undefined) {
-				return [whileLoop]
-			}
-		}
-	} else if(mappedWithName.length === 7) {
-		const ifThenElse = tryNormalizeIfThenElse(data, [
-			mappedWithName[0],
-			mappedWithName[1],
-			mappedWithName[2],
-			mappedWithName[3],
-			mappedWithName[4],
-			mappedWithName[5],
-			mappedWithName[6]
-		])
-		if(ifThenElse !== undefined) {
-			return [ifThenElse]
-		}
-	}
-
-	// otherwise perform default parsing
-	return parseNodesWithUnknownType(data, mappedWithName)
-}
-*/
+import { NormalizeConfiguration } from '../data'
+import { normalizeUnary } from './operators'
+import { tryNormalizeSymbolWithNamespace } from './values/symbol'
 
 function handleSemicolons(tokens: XmlBasedJson[]) {
 	let last = 0, i = 0
@@ -115,7 +26,7 @@ function handleSemicolons(tokens: XmlBasedJson[]) {
 
 // TODO: guard with and without semicolon?
 export function normalizeExpression(
-	config: XmlParserConfig,
+	config: NormalizeConfiguration,
 	tokens: XmlBasedJson[]
 ): RNode[] {
 	if(tokens.length === 0) {
@@ -142,15 +53,29 @@ export function normalizeExpression(
 		tokens = segments[0]
 	}
 
-	// again we optimize for lone nodes
-	if(tokens.length === 1) {
-		return normalizeSingleNode(config, tokens[0])
-	}
-	// TODO: normalize exprs
-
-	console.log(tokens)
-	return []
+	// const types = tokens.map(x => x[XML_NAME] as string)
+	return [normalizeElems(config, tokens)]
 }
+
+const todo = (...x: unknown[]) => { throw new Error('not implemented: ' + JSON.stringify(x)) }
+
+function normalizeElems(config: NormalizeConfiguration, tokens: readonly XmlBasedJson[]): RNode {
+	switch(tokens.length) {
+		case 1:
+			return normalizeSingleNode(config, tokens[0])
+		case 2: // TODO: repeat
+			return normalizeUnary(config, tokens as [XmlBasedJson, XmlBasedJson])
+		case 3: // TODO: binary, for
+			return tryNormalizeSymbolWithNamespace(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? todo(tokens)
+		case 5:
+			return todo(tokens)
+		case 7:
+			return todo(tokens)
+		default:
+			return todo(tokens)
+	}
+}
+
 
 /*export function parseNodesWithUnknownType(data: ParserData, mappedWithName: NamedXmlBasedJson[]): (RNode | RDelimiter)[] {
 	const parsedNodes: (RNode | RDelimiter)[] = []

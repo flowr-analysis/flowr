@@ -4,6 +4,9 @@ import { NormalizeConfiguration } from '../data'
 import { XML_NAME } from '../../common/xml-to-json'
 import { normalizeExpression } from './expression'
 import { normalizeNumber } from './values'
+import { normalizeString } from './values/string'
+import { tryNormalizeSymbolNoNamespace } from './values/symbol'
+import { guard } from '../../../../../../../util/assert'
 
 const todo = (...x: unknown[]) => { throw new Error('not implemented: ' + JSON.stringify(x)) }
 
@@ -15,8 +18,9 @@ const todo = (...x: unknown[]) => { throw new Error('not implemented: ' + JSON.s
  *
  * @returns The parsed element as an `RNode` or an `RDelimiter` if it is such.
  */
-export function normalizeSingleNode(config: NormalizeConfiguration, elem: XmlBasedJson): RNode[] {
+export function normalizeSingleNode(config: NormalizeConfiguration, elem: XmlBasedJson): RNode {
 	const name = elem[XML_NAME] as string
+
 	switch(name) {
 		case RawRType.ParenLeft:
 		case RawRType.ParenRight:
@@ -29,12 +33,16 @@ export function normalizeSingleNode(config: NormalizeConfiguration, elem: XmlBas
 			return todo(name)
 		case RawRType.ExpressionList:
 		case RawRType.Expression:
-		case RawRType.ExprOfAssignOrHelp:
-			return normalizeExpression(config, getKeyGuarded(elem, config.children))
+		case RawRType.ExprOfAssignOrHelp: {
+			config.currentLexeme = elem[config.content] as string
+			const res = normalizeExpression(config, getKeyGuarded(elem, config.children))
+			guard(res.length === 1, () => `expected only one element in the expression list, yet received ${JSON.stringify(res)}`)
+			return res[0]
+		}
 		case RawRType.NumericConst:
-			return [normalizeNumber(config, elem)]
+			return normalizeNumber(config, elem)
 		case RawRType.StringConst:
-			return todo(name)
+			return normalizeString(config, elem)
 		case RawRType.Break:
 			return todo(name)
 		case RawRType.Next:
@@ -42,10 +50,10 @@ export function normalizeSingleNode(config: NormalizeConfiguration, elem: XmlBas
 		case RawRType.Symbol:
 		case RawRType.Slot:
 		case RawRType.NullConst: {
-			return todo(name)
-			/*const symbol =  tryNormalizeSymbol(config, getWithTokenType(data.config.tokenMap, [elem.content]))
+			// TODO: optimize manually?
+			const symbol = tryNormalizeSymbolNoNamespace(config, elem)
 			guard(symbol !== undefined, () => `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
-			return symbol*/
+			return symbol
 		}
 		default:
 			throw new XmlParseError(`unknown type ${name} for ${JSON.stringify(elem)} in ${JSON.stringify(config)}`)

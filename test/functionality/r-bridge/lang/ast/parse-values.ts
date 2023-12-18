@@ -112,14 +112,27 @@ describe('Constant Parsing',
 						symbol.str,
 						shell,
 						symbol.str,
-						exprList({
-							type:      RType.Symbol,
-							namespace: symbol.namespace,
-							location:  range,
-							lexeme:    symbol.val,
-							content:   symbol.val,
-							info:      {}
-						})
+						[{
+							step:   NORMALIZE,
+							wanted: exprList({
+								type:      RType.Symbol,
+								namespace: symbol.namespace,
+								location:  range,
+								lexeme:    symbol.val,
+								content:   symbol.val,
+								info:      {}
+							})
+						}, {
+							step:   DESUGAR_NORMALIZE,
+							wanted: exprList({
+								type:      RType.Symbol,
+								namespace: symbol.namespace,
+								location:  range,
+								lexeme:    symbol.val,
+								content:   symbol.val,
+								info:      {}
+							})
+						}]
 					)
 				}
 			})

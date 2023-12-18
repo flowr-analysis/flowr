@@ -183,9 +183,13 @@ export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | u
 			continue
 		}
 
+		// we sort both value arrays by their id so that we have no problems with differently ordered arrays (which have no impact)
+		const sorted = [...value].sort((a, b) => a.nodeId.localeCompare(b.nodeId))
+		const sorted2 = [...value2].sort((a, b) => a.nodeId.localeCompare(b.nodeId))
+
 		for(let i = 0; i < value.length; ++i) {
-			const aVal = value[i]
-			const bVal = value2[i]
+			const aVal = sorted[i]
+			const bVal = sorted2[i]
 			if(aVal.name !== bVal.name) {
 				info.report.addComment(`${info.position}Different names for ${key}. ${info.leftname}: ${aVal.name} vs. ${info.rightname}: ${bVal.name}`)
 			}

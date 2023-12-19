@@ -154,5 +154,20 @@ describe('Lists with if-then constructs', withShell(shell => {
 				.addEdge('14', '0', EdgeType.SameDefDef, 'maybe')
 				.addEdge('10', '3', EdgeType.SameDefDef, 'maybe')
 		)
+		const envWithElseXMaybe = () => define({ nodeId: '5', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '7', used: 'maybe' }, LocalScope, initializeCleanEnvironments())
+		assertDataflow('assignment in else block',
+			shell,
+			'x <- 1 \n if(r){} else{x <- 2} \n y <- x',
+			new DataflowGraph()
+				.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope})
+				.addVertex( { tag: 'use', id: '3', name: 'r', scope: LocalScope, environment: envWithX()} )
+				.addVertex( { tag: 'variable-definition', id: '5', name: 'x', scope: LocalScope, environment: envWithX(), when: 'maybe' } )
+				.addVertex( { tag: 'use', id: '11', name: 'x', scope: LocalScope, environment: appendEnvironments(envWithElseXMaybe(), envWithXMaybe()) })
+				.addVertex( { tag: 'variable-definition', id: '10', name: 'y', scope: LocalScope, environment: appendEnvironments(envWithElseXMaybe(), envWithXMaybe()) })
+				.addEdge('0', '5', EdgeType.SameDefDef, 'maybe')
+				.addEdge('11', '0', EdgeType.Reads, 'maybe')
+				.addEdge('11', '5', EdgeType.Reads, 'maybe')
+				.addEdge('10', '11', EdgeType.DefinedBy, 'always')
+		)
 	})
 }))

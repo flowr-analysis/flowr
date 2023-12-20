@@ -6,7 +6,11 @@
 
 import { log, LogLevel } from '../../src/util/log'
 import { serverLog } from '../../src/cli/repl/server/server'
+import chai from 'chai'
 
+chai.config.includeStack = true
+chai.config.showDiff = true
+chai.config.truncateThreshold = 0
 
 /**
  * Update the minimum level of all flowr loggers (including the detacthed {@link serverLog}).

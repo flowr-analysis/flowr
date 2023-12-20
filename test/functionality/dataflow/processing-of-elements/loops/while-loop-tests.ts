@@ -1,7 +1,7 @@
-import { define, initializeCleanEnvironments } from '../../../../../src/dataflow/common/environments'
-import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
-import { DataflowGraph, EdgeType } from '../../../../../src/dataflow/v1'
 import { assertDataflow, withShell } from '../../../_helper/shell'
+import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
+import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
+import { define } from '../../../../../src/dataflow/common/environments'
 
 describe('while', withShell(shell => {
 	assertDataflow('simple constant while', shell,

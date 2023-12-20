@@ -15,7 +15,6 @@ import { normalizeSingleNode } from '../single-element'
  */
 export function normalizeUnary(config: NormalizeConfiguration, [operator, operand]: XmlBasedJson[]): RFunctionCall {
 	const { location, content } = retrieveMetaStructure(config, operator)
-	const { location: opLocation, content: opContent } = retrieveMetaStructure(config, operand)
 	return {
 		type:         RType.FunctionCall,
 		lexeme:       config.currentLexeme ?? content,
@@ -29,14 +28,7 @@ export function normalizeUnary(config: NormalizeConfiguration, [operator, operan
 			lexeme:    content,
 			info:      {}
 		},
-		arguments: [{
-			type:     RType.Argument,
-			location: opLocation,
-			lexeme:   opContent,
-			name:     undefined,
-			value:    normalizeSingleNode(config, operand),
-			info:     {}
-		}],
-		info: {}
+		arguments: [normalizeSingleNode(config, operand)],
+		info:      {}
 	}
 }

@@ -60,23 +60,26 @@ export function diffIdentifierReferences(a: IdentifierReference, b: IdentifierRe
 	}
 }
 
+
+function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference {
+	const node = graph.get(ref.nodeId, true)
+	const definitions = resolveByName(ref.name, LocalScope, environments)
+	for(const definition of definitions ?? []) {
+		if(definition.kind !== 'built-in-function') {
+			definition.used = 'maybe'
+		}
+	}
+	if(node) {
+		node[0].when = 'maybe'
+	}
+	return { ...ref, used: 'maybe'}
+}
+
 export function makeAllMaybe(references: IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference[] {
 	if(references === undefined) {
 		return []
 	}
-	return references.map(ref => {
-		const node = graph.get(ref.nodeId, true)
-		const definitions = resolveByName(ref.name, LocalScope, environments)
-		for(const definition of definitions ?? []) {
-			if(definition.kind !== 'built-in-function') {
-				definition.used = 'maybe'
-			}
-		}
-		if(node) {
-			node[0].when = 'maybe'
-		}
-		return { ...ref, used: 'maybe'}
-	})
+	return references.map(ref => makeReferenceMaybe(ref, graph, environments))
 }
 
 
@@ -180,9 +183,13 @@ export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | u
 			continue
 		}
 
+		// we sort both value arrays by their id so that we have no problems with differently ordered arrays (which have no impact)
+		const sorted = [...value].sort((a, b) => a.nodeId.localeCompare(b.nodeId))
+		const sorted2 = [...value2].sort((a, b) => a.nodeId.localeCompare(b.nodeId))
+
 		for(let i = 0; i < value.length; ++i) {
-			const aVal = value[i]
-			const bVal = value2[i]
+			const aVal = sorted[i]
+			const bVal = sorted2[i]
 			if(aVal.name !== bVal.name) {
 				info.report.addComment(`${info.position}Different names for ${key}. ${info.leftname}: ${aVal.name} vs. ${info.rightname}: ${bVal.name}`)
 			}
@@ -190,16 +197,16 @@ export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | u
 				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`)
 			}
 			if(aVal.scope !== bVal.scope) {
-				info.report.addComment(`${info.position}Different scopes for ${key}. ${info.leftname}: ${aVal.scope} vs. ${info.rightname}: ${bVal.scope}`)
+				info.report.addComment(`${info.position}Different scopes for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.scope} vs. ${info.rightname}: ${bVal.scope}`)
 			}
 			if(aVal.used !== bVal.used) {
-				info.report.addComment(`${info.position}Different used for ${key}. ${info.leftname}: ${aVal.used} vs. ${info.rightname}: ${bVal.used}`)
+				info.report.addComment(`${info.position}Different used for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.used} vs. ${info.rightname}: ${bVal.used}`)
 			}
 			if(aVal.definedAt !== bVal.definedAt) {
-				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key}. ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)
+				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)
 			}
 			if(aVal.kind !== bVal.kind) {
-				info.report.addComment(`${info.position}Different kinds for ${key}. ${info.leftname}: ${aVal.kind} vs. ${info.rightname}: ${bVal.kind}`)
+				info.report.addComment(`${info.position}Different kinds for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.kind} vs. ${info.rightname}: ${bVal.kind}`)
 			}
 		}
 	}

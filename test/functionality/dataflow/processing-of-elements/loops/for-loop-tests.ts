@@ -63,7 +63,7 @@ x`,
 	)
 
 	const envOutFor = () => define({ nodeId: '3', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '11', used: 'always' }, LocalScope,
-		define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())
+		define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'maybe' }, LocalScope, initializeCleanEnvironments())
 	)
 
 	const envWithSecondX = () => define({ nodeId: '7', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'maybe' }, LocalScope,
@@ -78,7 +78,7 @@ x`,
 			.addVertex( { tag: 'variable-definition', id: '3', name: 'i', scope: LocalScope, environment: envWithFirstX() })
 			.addVertex( { tag: 'variable-definition', id: '7', name: 'x', when: 'maybe', scope: LocalScope, environment: envInFor() })
 			.addVertex( { tag: 'use', id: '12', name: 'x', environment: appendEnvironments(envOutFor(), envWithSecondX()) })
-			.addEdge('12', '0', EdgeType.Reads, 'always')
+			.addEdge('12', '0', EdgeType.Reads, 'maybe')
 			.addEdge('12', '7', EdgeType.Reads, 'maybe')
 			.addEdge('0', '7', EdgeType.SameDefDef, 'maybe')
 	)
@@ -91,7 +91,7 @@ x`,
 			.addVertex( { tag: 'variable-definition', id: '7', name: 'x', scope: LocalScope, when: 'maybe', environment: envInFor() })
 			.addVertex( { tag: 'use', id: '8', name: 'x', when: 'maybe', environment: envInFor() })
 			.addVertex( { tag: 'use', id: '12', name: 'x', environment: appendEnvironments(envOutFor(), envWithSecondX()) })
-			.addEdge('12', '0', EdgeType.Reads, 'always')
+			.addEdge('12', '0', EdgeType.Reads, 'maybe')
 			.addEdge('12', '7', EdgeType.Reads, 'maybe')
 			.addEdge('8', '0', EdgeType.Reads, 'maybe')
 			.addEdge('8', '7', EdgeType.Reads, 'maybe')
@@ -111,6 +111,8 @@ x`,
 		envInLargeFor()
 	)
 
+	const envWithFirstXmaybe = () => define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'maybe' }, LocalScope, initializeCleanEnvironments())
+
 	assertDataflow('Redefinition within loop',
 		shell,
 		'x <- 9\nfor(i in 1:10) { x <- x; x <- x }\n x',
@@ -121,11 +123,11 @@ x`,
 			.addVertex( { tag: 'use', id: '8', name: 'x', when: 'maybe', environment: envInLargeFor() })
 			.addVertex( { tag: 'variable-definition', id: '10', name: 'x', when: 'maybe', scope: LocalScope, environment: envInLargeFor2() })
 			.addVertex( { tag: 'use', id: '11', name: 'x', when: 'always' /* this is wrong, but uncertainty is not fully supported in the impl atm.*/, environment: envInLargeFor2() })
-			.addVertex( { tag: 'use', id: '15', name: 'x', environment: appendEnvironments(envWithFirstX(), envOutLargeFor()) })
+			.addVertex( { tag: 'use', id: '15', name: 'x', environment: appendEnvironments(envWithFirstXmaybe(), envOutLargeFor()) })
 			.addEdge('11', '7', EdgeType.Reads, 'always')// second x <- *x* always reads first *x* <- x
 			.addEdge('8', '0', EdgeType.Reads, 'maybe')
 			.addEdge('8', '10', EdgeType.Reads, 'maybe')
-			.addEdge('15', '0', EdgeType.Reads, 'always')
+			.addEdge('15', '0', EdgeType.Reads, 'maybe')
 			.addEdge('15', '10', EdgeType.Reads, 'maybe')
 			.addEdge('7', '8', EdgeType.DefinedBy, 'always')
 			.addEdge('10', '11', EdgeType.DefinedBy, 'always')

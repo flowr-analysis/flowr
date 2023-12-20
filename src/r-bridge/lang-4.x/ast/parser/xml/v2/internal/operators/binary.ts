@@ -16,8 +16,6 @@ export function tryNormalizeBinary(
 	[lhs, operator, rhs]: XmlBasedJson[]
 ): RFunctionCall {
 	const { location, content } = retrieveMetaStructure(config, operator)
-	const { location: lhsLocation, content: lhsContent } = retrieveMetaStructure(config, lhs)
-	const { location: rhsLocation, content: rhsContent } = retrieveMetaStructure(config, rhs)
 	return {
 		type:         RType.FunctionCall,
 		lexeme:       config.currentLexeme ?? content,
@@ -31,21 +29,7 @@ export function tryNormalizeBinary(
 			lexeme:    content,
 			info:      {}
 		},
-		arguments: [{
-			type:     RType.Argument,
-			location: lhsLocation,
-			lexeme:   lhsContent,
-			name:     undefined,
-			value:    normalizeSingleNode(config, lhs),
-			info:     {}
-		}, {
-			type:     RType.Argument,
-			location: rhsLocation,
-			lexeme:   rhsContent,
-			name:     undefined,
-			value:    normalizeSingleNode(config, rhs),
-			info:     {}
-		}],
-		info: {}
+		arguments: [normalizeSingleNode(config, lhs), normalizeSingleNode(config, rhs)],
+		info:      {}
 	}
 }

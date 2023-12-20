@@ -54,7 +54,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		finalGraph.mergeWith(processed.graph)
 
 		guard(processed.out.length > 0, () => `Argument ${JSON.stringify(arg)} has no out references, but needs one for the unnamed arg`)
-		if(arg.name === undefined) {
+		if(arg.type !== RType.Argument || !arg.name) {
 			callArgs.push(processed.out[0])
 		} else {
 			callArgs.push([arg.name.content, processed.out[0]])

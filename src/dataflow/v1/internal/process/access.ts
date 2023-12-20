@@ -1,7 +1,7 @@
 import { ParentInformation, RAccess } from '../../../../r-bridge'
 import { DataflowInformation } from '../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
-import { makeAllMaybe, overwriteEnvironments } from '../../../common/environments'
+import { makeAllMaybe } from '../../../common/environments'
 import { EdgeType } from '../../graph'
 
 export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
@@ -9,7 +9,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 	const nextGraph = processedAccessed.graph
 	const outgoing = processedAccessed.out
 	const ingoing = processedAccessed.in
-	const environments = processedAccessed.environments
+	let environments = processedAccessed.environments
 
 	const accessedNodes = processedAccessed.unknownReferences
 
@@ -18,6 +18,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 			if(access === null || access.value === undefined) {
 				continue
 			}
+			data = { ...data, environments }
 			const processedAccess = processDataflowFor(access, data)
 
 			nextGraph.mergeWith(processedAccess.graph)
@@ -29,7 +30,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 				}
 			}
 			ingoing.push(...processedAccess.in, ...processedAccess.unknownReferences)
-			overwriteEnvironments(environments, processedAccess.environments)
+			environments = processedAccess.environments
 		}
 	}
 

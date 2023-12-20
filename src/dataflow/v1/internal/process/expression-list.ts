@@ -96,7 +96,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 				}
 				current = current.parent
 			}
-			// we update all definitions to be linked with teh corresponding function call
+			// we update all definitions to be linked with the corresponding function call
 			environments = overwriteEnvironments(environments, environment)
 		}
 	}
@@ -129,6 +129,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
 		if(!foundNextOrBreak) {
 			visitAst(expression, n => {
+				// we should track returns more consistently
 				if(n.type === RType.Next || n.type === RType.Break) {
 					foundNextOrBreak = true
 				}
@@ -155,7 +156,11 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, functionCallIds, processed.graph)
 
-		environments = overwriteEnvironments(environments, processed.environments)
+		if(foundNextOrBreak) {
+			environments = overwriteEnvironments(environments, processed.environments)
+		} else {
+			environments = processed.environments
+		}
 
 		// if the called function has global redefinitions, we have to keep them within our environment
 		environments = updateSideEffectsForCalledFunctions(calledEnvs, environments, nextGraph)

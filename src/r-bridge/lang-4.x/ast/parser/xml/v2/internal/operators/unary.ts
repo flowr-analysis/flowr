@@ -29,14 +29,7 @@ export function normalizeUnary(config: NormalizeConfiguration, [operator, operan
 			lexeme:    content,
 			info:      {}
 		},
-		arguments: [{
-			type:     RType.Argument,
-			location: opLocation,
-			lexeme:   opContent,
-			name:     undefined,
-			value:    normalizeSingleNode(config, operand),
-			info:     {}
-		}],
+		arguments: [normalizeSingleNode(config, operand)],
 		info: {}
 	}
 }

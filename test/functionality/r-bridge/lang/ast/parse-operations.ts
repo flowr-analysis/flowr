@@ -51,18 +51,11 @@ describe('Parse simple operations',
 											info:      {}
 										},
 										arguments: [{
-											type:     RType.Argument,
-											name:     undefined,
-											location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
-											lexeme:   '42',
-											info:     {},
-											value:    {
 												type:     RType.Number,
 												location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
 												lexeme:   '42',
 												content:  numVal(42),
 												info:     {}
-											}
 										}]
 									})
 								}
@@ -113,19 +106,12 @@ describe('Parse simple operations',
 								info:      {}
 							},
 							arguments: [{
-								type:     RType.Argument,
-								name:     undefined,
-								location: rangeFrom(1, 3, 1, 3),
-								lexeme:   'x',
-								info:     {},
-								value:    {
 									type:      RType.Symbol,
 									location:  rangeFrom(1, 3, 1, 3),
 									lexeme:    'x',
 									content:   'x',
 									namespace: undefined,
 									info:      {}
-								}
 							}]
 						})
 					}
@@ -333,31 +319,17 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 						info:      {}
 					},
 					arguments: [{
-						type:     RType.Argument,
-						name:     undefined,
-						location: rangeFrom(1, 1, 1, 1),
-						lexeme:   '1',
-						info:     {},
-						value:    {
 							type:     RType.Number,
 							location: rangeFrom(1, 1, 1, 1),
 							lexeme:   '1',
 							content:  numVal(1),
 							info:     {}
-						}
 					}, {
-						type:     RType.Argument,
-						name:     undefined,
-						location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
-						lexeme:   '1',
-						info:     {},
-						value:    {
 							type:     RType.Number,
 							location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
 							lexeme:   '1',
 							content:  numVal(1),
 							info:     {}
-						}
 					}]
 				})
 			}

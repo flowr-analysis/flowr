@@ -13,7 +13,7 @@ export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location 
 	readonly flavor: 'named';
 	functionName:    RSymbol<Info>;
 	/** arguments can be undefined, for example when calling as `a(1, ,3)` */
-	arguments:       (RArgument<Info> | RNode<Info> | undefined)[];
+	arguments:       (RNode<Info> | undefined)[];
 }
 
 
@@ -29,7 +29,7 @@ export interface RUnnamedFunctionCall<Info = NoInfo> extends Base<Info>, Locatio
 	/** marks function calls like `3 %xx% 4` which have been written in special infix notation */
 	infixSpecial?:   boolean;
 	/** arguments can be undefined, for example when calling as `a(1, ,3)` */
-	arguments:       (RArgument<Info> | RNode<Info> | undefined)[];
+	arguments:       (RNode<Info> | undefined)[];
 }
 
 export type RFunctionCall<Info = NoInfo> = RNamedFunctionCall<Info> | RUnnamedFunctionCall<Info>;

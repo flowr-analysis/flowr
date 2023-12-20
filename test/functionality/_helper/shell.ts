@@ -39,7 +39,8 @@ function installWarning(pkg: string) {
 	const banner = '-'.repeat(142)
 	console.error(`${banner}
 Test's have to install package ${pkg}. 
-This slows them down significantly! Please see https://github.com/Code-Inspect/flowr/wiki/Linting-and-Testing for more information.
+This slows them down significantly! 
+Please see https://github.com/Code-Inspect/flowr/wiki/Linting-and-Testing#oh-no-the-tests-are-slow for more information.
 ${banner}`)
 }
 
@@ -57,7 +58,7 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 			shell.tryToInjectHomeLibPath()
 			for(const pkg of packages) {
 				if(!await shell.isPackageInstalled(pkg)) {
-					installWarning(pkg);
+					installWarning(pkg)
 					await testRequiresNetworkConnection(this)
 				}
 				await shell.ensurePackageInstalled(pkg, true)

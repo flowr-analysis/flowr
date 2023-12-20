@@ -1,6 +1,7 @@
 import {
 	DEFAULT_XML_PARSER_CONFIG,
-	getKeysGuarded, RawRType,
+	getKeyGuarded,
+	RawRType,
 	requestFromInput,
 	XmlBasedJson,
 	XmlParserConfig
@@ -10,7 +11,7 @@ import {
 	getTokenType,
 	objectWithArrUnwrap,
 	xlm2jsonObject
-} from '../../../r-bridge/lang-4.x/ast/parser/xml/internal'
+} from '../../../r-bridge/lang-4.x/ast/parser/xml/v1/internal'
 import { FontStyles, OutputFormatter } from '../../../statistics'
 import { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../core'
@@ -19,7 +20,7 @@ import { deepMergeObject } from '../../../util/objects'
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 
 function toDepthMap(xml: XmlBasedJson, config: XmlParserConfig): DepthList {
-	const root = getKeysGuarded<XmlBasedJson>(xml, RawRType.ExpressionList)
+	const root = getKeyGuarded<XmlBasedJson>(xml, RawRType.ExpressionList)
 	const visit = [ { depth: 0, node: root } ]
 	const result: DepthList = []
 
@@ -29,7 +30,7 @@ function toDepthMap(xml: XmlBasedJson, config: XmlParserConfig): DepthList {
 			continue
 		}
 
-		const children = current.node[config.childrenName] as XmlBasedJson[] | undefined ?? []
+		const children = current.node[config.children] as XmlBasedJson[] | undefined ?? []
 		result.push({ ...current, leaf: children.length === 0 })
 		children.reverse()
 
@@ -97,8 +98,8 @@ function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig,
 		result += f.reset()
 
 		const raw = objectWithArrUnwrap(node)
-		const content = raw[config.contentName] as string | undefined
-		const locationRaw = raw[config.attributeName] as XmlBasedJson | undefined
+		const content = raw[config.content] as string | undefined
+		const locationRaw = raw[config.attr] as XmlBasedJson | undefined
 		let location = ''
 		if(locationRaw !== undefined) {
 			location = retrieveLocationString(locationRaw)

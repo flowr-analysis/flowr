@@ -14,11 +14,12 @@ function processor(results: { normalize?: NormalizedAst, slice?: SliceResult }, 
 }
 
 export const NAIVE_RECONSTRUCT = {
-	name:        'reconstruct',
-	description: 'Reconstruct R code from the static slice',
+	name:              'reconstruct',
+	humanReadableName: 'static code reconstruction',
+	description:       'Reconstruct R code from the static slice',
 	processor,
-	executed:    PipelineStepStage.OncePerRequest,
-	printer:     {
+	executed:          PipelineStepStage.OncePerRequest,
+	printer:           {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
 	dependencies:  [ 'slice' ],

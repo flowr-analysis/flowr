@@ -9,7 +9,7 @@ import { versionCommand } from './version'
 import { parseCommand } from './parse'
 import { guard } from '../../../util/assert'
 import { executeCommand } from './execute'
-import { normalizeCommand, normalizeStarCommand } from './normalize'
+import { normalizeCommand, normalizeStarCommand, normalizeV2Command, normalizeV2StarCommand } from './normalize'
 import { dataflowCommand, dataflowStarCommand } from './dataflow'
 import { controlflowCommand, controlflowStarCommand } from './cfg'
 
@@ -61,6 +61,8 @@ const commands: Record<string, ReplCommand> = {
 	'parse':        parseCommand,
 	'normalize':    normalizeCommand,
 	'normalize*':   normalizeStarCommand,
+	'normalize2':   normalizeV2Command,
+	'normalize2*':  normalizeV2StarCommand,
 	'dataflow':     dataflowCommand,
 	'dataflow*':    dataflowStarCommand,
 	'controlflow':  controlflowCommand,

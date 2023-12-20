@@ -1,5 +1,5 @@
 import { QuadSerializationConfiguration, serialize2quads } from '../../util/quads'
-import { xlm2jsonObject } from '../../r-bridge/lang-4.x/ast/parser/xml/internal'
+import { xlm2jsonObject } from '../../r-bridge/lang-4.x/ast/parser/xml/v1/internal'
 import { XmlBasedJson, XmlParserConfig } from '../../r-bridge'
 
 function filterObject(obj: XmlBasedJson, keys: Set<string>): XmlBasedJson[] | XmlBasedJson {
@@ -27,7 +27,7 @@ export async function parseToQuads(code: string, config: QuadSerializationConfig
 	const obj = await xlm2jsonObject(parseConfig, code)
 	// recursively filter so that if the object contains one of the keys 'a', 'b' or 'c', all other keys are ignored
 	return serialize2quads(
-		filterObject(obj, new Set([parseConfig.attributeName, parseConfig.childrenName, parseConfig.contentName])) as XmlBasedJson,
+		filterObject(obj, new Set([parseConfig.attr, parseConfig.children, parseConfig.content])) as XmlBasedJson,
 		config
 	)
 }

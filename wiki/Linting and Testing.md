@@ -6,6 +6,7 @@ For the latest code-coverage information, see [codecov.io](https://codecov.io/gh
     - [Writing a Test](#writing-a-test)
     - [Running Only Some Tests](#running-only-some-tests)
   - [Performance Tests](#performance-tests)
+  - [Oh no, the tests are slow](#oh-no-the-tests-are-slow)
 - [CI Pipeline](#ci-pipeline)
 - [Linting](#linting)
   - [Oh no, the linter fails](#oh-no-the-linter-fails)
@@ -69,6 +70,20 @@ npm run performance-test
 ```
 
 See [test/performance](https://github.com/Code-Inspect/flowr/tree/main/test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](https://code-inspect.github.io/flowr/wiki/stats/benchmark).
+
+### Oh no, the tests are slow
+
+If you have just installed *flowR* and&nbsp;*R* for the first time, the tests may take really long to run! If this is the case, please inspect the output for a banner informing you that the tests have to install a specific package (probably [`xmlparsedata`](https://cran.r-project.org/package=xmlparsedata)) &mdash; if this is the case ,it's probably best to install the package yourself, locally so that it can be found by *flowR* once.
+For this, drop into the &nbsp&nbsp;*R* shell and issue:
+
+```r
+install.packages("xmlparsedata")
+```
+
+R&nbsp; may ask you if it should create a personal library, which you should confirm by typing `y` and pressing <kbd>enter</kbd> (it may ask again to create the package, answer this question with yes too). Afterwards you may have to select a mirror (any should be fine) and wait for the installation to finish. Once it is done, you can exit the R shell by typing `q()` and pressing <kbd>enter</kbd> (you do not have to save the workspace).
+Now, the tests should run much faster!
+
+If, however, you have already installed the package, or the tests are still too slow for your taste, you may want to check out how to [run only some of the tests](#running-only-some-tests).
 
 ## CI Pipeline
 

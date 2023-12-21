@@ -35,6 +35,15 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
 	})
 }
 
+function installWarning(pkg: string) {
+	const banner = '-'.repeat(142)
+	console.error(`${banner}
+Test's have to install package ${pkg}. 
+This slows them down significantly! 
+Please see https://github.com/Code-Inspect/flowr/wiki/Linting-and-Testing#oh-no-the-tests-are-slow for more information.
+${banner}`)
+}
+
 /**
  * produces a shell session for you, can be used within a `describe` block
  * @param fn       - function to use the shell
@@ -49,6 +58,7 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 			shell.tryToInjectHomeLibPath()
 			for(const pkg of packages) {
 				if(!await shell.isPackageInstalled(pkg)) {
+					installWarning(pkg)
 					await testRequiresNetworkConnection(this)
 				}
 				await shell.ensurePackageInstalled(pkg, true)
@@ -109,7 +119,7 @@ export const defaultTestConfiguration: TestConfiguration = {
 }
 
 export async function ensureConfig(shell: RShell, test: Mocha.Context, userConfig?: Partial<TestConfiguration>): Promise<void> {
-	const config = deepMergeObject(defaultTestConfiguration, userConfig)
+	const config = deepMergeObject<Partial<TestConfiguration>>(defaultTestConfiguration, userConfig)
 	if(config.needsNetworkConnection) {
 		await testRequiresNetworkConnection(test)
 	}

@@ -14,14 +14,13 @@ import {
 	XmlParserHooks
 } from '../../../src/r-bridge'
 import { assert } from 'chai'
-import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
-import { SlicingCriteria } from '../../../src/slicing'
+import { reconstructToCode, SlicingCriteria } from '../../../src/slicing'
 import { testRequiresRVersion } from './version'
 import { deepMergeObject, MergeableRecord } from '../../../src/util/objects'
 import { LAST_STEP, SteppingSlicer } from '../../../src/core'
-import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct'
 import { DifferenceReport } from '../../../src/util/diff'
 import { guard } from '../../../src/util/assert'
+import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -34,6 +33,15 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
 			shell?.close()
 		}
 	})
+}
+
+function installWarning(pkg: string) {
+	const banner = '-'.repeat(142)
+	console.error(`${banner}
+Test's have to install package ${pkg}. 
+This slows them down significantly! 
+Please see https://github.com/Code-Inspect/flowr/wiki/Linting-and-Testing#oh-no-the-tests-are-slow for more information.
+${banner}`)
 }
 
 /**
@@ -53,6 +61,7 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 			for(const pkg of packages) {
 				if(!await shell.isPackageInstalled(pkg)) {
 					if(!network) {
+						installWarning(pkg)
 						await testRequiresNetworkConnection(this)
 					}
 					network = true
@@ -190,7 +199,7 @@ function printIdMapping(ids: NodeId[], map: DecoratedAstMap): string {
 }
 
 /**
- * Please note, that this executes the reconstruction step separately, as it predefines the result of the slice with the given ids.
+ * Please note, that theis executes the reconstruction step separately, as it predefines the result of the slice with the given ids.
  */
 export function assertReconstructed(name: string, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfiguration>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
 	const selectedIds = Array.isArray(ids) ? ids : [ids]
@@ -203,14 +212,7 @@ export function assertReconstructed(name: string, shell: RShell, input: string, 
 			request:        requestFromInput(input),
 			shell
 		}).allRemainingSteps()
-		const reconstructed = NAIVE_RECONSTRUCT.processor({
-			normalize: result.normalize,
-			slice:     {
-				decodedCriteria:   [],
-				timesHitThreshold: 0,
-				result:            new Set(selectedIds)
-			}
-		}, {})
+		const reconstructed = reconstructToCode(result.normalize,  new Set(selectedIds))
 		assert.strictEqual(reconstructed.code, expected, `got: ${reconstructed.code}, vs. expected: ${expected}, for input ${input} (ids: ${printIdMapping(selectedIds, result.normalize.idMap)})`)
 	})
 }
@@ -225,6 +227,7 @@ export function assertSliced(name: string, shell: RShell, input: string, criteri
 			shell,
 			criterion:      criteria,
 		}).allRemainingSteps()
+
 
 		try {
 			assert.strictEqual(

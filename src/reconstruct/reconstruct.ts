@@ -26,18 +26,12 @@ import {
 import { log } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
+import { Selection, prettyPrintPartToString } from './helper'
+import { PrettyPrintLine, plain, Code, indentBy, isSelected, removeExpressionListWrap, AutoSelectPredicate, getIndentString } from './helper'
 
-//
-type Selection = Set<NodeId>
-interface PrettyPrintLine {
-	line:   string
-	indent: number
-}
-function plain(text: string): PrettyPrintLine[] {
-	return [{ line: text, indent: 0 }]
-}
-type Code = PrettyPrintLine[]
-
+/*
+--logger--
+*/
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
 
 /*
@@ -127,7 +121,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 	}
 	if(rhs.length === 0) {
 		//console.log(`lhs at ${JSON.stringify(n.lhs.location?.start)}, ${JSON.stringify(n.lhs.location?.end)}`)
-		//console.log(`${getLexeme(n)} at ${JSON.stringify(n.location.start)}, ${JSON.stringify(n.location.end)}`) 
+		//console.log(`${getLexeme(n)} at ${JSON.stringify(n.location.start)}, ${JSON.stringify(n.location.end)}`)
 		// if we have no rhs we have to keep everything to get the rhs
 		return plain(getLexeme(n), n.lhs.location? n.lhs.location.start : n.location.start)
 	}

@@ -69,7 +69,7 @@ export function prettyPrintPartToString(line: PrettyPrintLinePart[]): string {
 	let result = ''
 	for(const part of line) {
 		const currLength = result.length
-		//console.log(part.loc.column - currLength)
+		console.log(part.loc.column - currLength)
 		//we have to 0 any negative values as they can happen???
 		result += ' '.repeat(Math.max(part.loc.column - currLength - 1, 0))
 		result = result.concat(part.part)

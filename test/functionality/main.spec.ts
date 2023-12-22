@@ -13,7 +13,7 @@ chai.config.showDiff = true
 chai.config.truncateThreshold = 0
 
 /**
- * Update the minimum level of all flowr loggers (including the detacthed {@link serverLog}).
+ * Update the minimum level of all flowr loggers (including the detached {@link serverLog}).
  * @param minLevel - The new minimum level to show messages from (inclusive)
  * @param log2File - Whether to log to a file as well
  */

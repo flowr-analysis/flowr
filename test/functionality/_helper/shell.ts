@@ -14,7 +14,6 @@ import {
 	XmlParserHooks
 } from '../../../src/r-bridge'
 import { assert } from 'chai'
-import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
 import { SlicingCriteria } from '../../../src/slicing'
 import { testRequiresRVersion } from './version'
 import { deepMergeObject, MergeableRecord } from '../../../src/util/objects'
@@ -26,6 +25,7 @@ import { createPipeline } from '../../../src/core/steps/pipeline'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../src/core/steps/all/core/00-parse'
 import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
+import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -38,6 +38,15 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
 			shell?.close()
 		}
 	})
+}
+
+function installWarning(pkg: string) {
+	const banner = '-'.repeat(142)
+	console.error(`${banner}
+Test's have to install package ${pkg}. 
+This slows them down significantly! 
+Please see https://github.com/Code-Inspect/flowr/wiki/Linting-and-Testing#oh-no-the-tests-are-slow for more information.
+${banner}`)
 }
 
 /**
@@ -57,6 +66,7 @@ export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xm
 			for(const pkg of packages) {
 				if(!await shell.isPackageInstalled(pkg)) {
 					if(!network) {
+						installWarning(pkg)
 						await testRequiresNetworkConnection(this)
 					}
 					network = true

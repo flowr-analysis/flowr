@@ -26,8 +26,20 @@ import {
 import { log } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
-import { Selection, prettyPrintPartToString } from './helper'
-import { PrettyPrintLine, plain, Code, indentBy, isSelected, removeExpressionListWrap, AutoSelectPredicate, getIndentString } from './helper'
+import {
+	Selection,
+	prettyPrintPartToString,
+	PrettyPrintLine,
+	plain,
+	Code,
+	indentBy,
+	isSelected,
+	removeExpressionListWrap,
+	AutoSelectPredicate,
+	getIndentString, merge, removeOuterExpressionListIfApplicable
+} from './helper'
+import {SourcePosition, SourceRange} from "../util/range";
+import {jsonReplacer} from "../util/json";
 
 /*
 --logger--
@@ -59,22 +71,20 @@ const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n), n.location
 --reconstruct--
 */
 function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, expressions: Code[], configuration: ReconstructionConfiguration): Code {
-	const position =  exprList.location? exprList.location.start : {line: 0, column: 0}
 	if(isSelected(configuration, exprList)) {
-		return plain(getLexeme(exprList), position)
+		const positionStart = exprList.location? exprList.location.start : {line: 0, column: 0}
+		return plain(getLexeme(exprList), positionStart)
 	}
 
 	const subExpressions = expressions.filter(e => e.length > 0)
 	if(subExpressions.length === 0) {
 		return []
-	} else if(subExpressions.length === 1) {
-		return subExpressions[0]
 	} else {
-		return [
-			{ linePart: [{part: '{', loc: position}] , indent: 0 },
-			...indentBy(subExpressions.flat(), 1),
-			{ linePart: [{part: '}', loc: position}], indent: 0 }
-		]
+		const additionalTokens = reconstructAdditionalTokens(exprList);
+		return merge([
+			...subExpressions,
+			...additionalTokens
+		])
 	}
 }
 
@@ -138,25 +148,21 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	}
 	if(body.length === 0 && variable.length === 0 && vector.length === 0) {
 		return []
+	} else if(body.length !== 0 && (variable.length !== 0 || vector.length !== 0)) {
+		const additionalTokens = reconstructAdditionalTokens(loop);
+		return merge([
+			[{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, loc: loop.location.start}], indent: 0 }],
+			body,
+			...additionalTokens
+		])
 	} else {
-		if(body.length <= 1) {
-			// 'inline'
-			return [{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) ${body.length === 0 ? '{}' : body[0].linePart[0].part}`,loc: loop.location.start}], indent: 0 }]
-		} else if(body[0].linePart[0].part === '{' && body[body.length - 1].linePart[body[body.length - 1].linePart.length - 1].part === '}') {
-			// 'block'
-			return [
-				{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)}) {`, loc: loop.location.start}], indent: 0 },
-				...body.slice(1, body.length - 1),
-				{ linePart: [{part: '}', loc: loop.location.start}], indent: 0 }
-			]
-		} else {
-			// unknown
-			return [
-				{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, loc: loop.location.start}], indent: 0 },
-				...indentBy(body, 1)
-			]
-		}
+		return body
 	}
+}
+
+function reconstructAdditionalTokens(loop: RNodeWithParent): Code[] {
+	return loop.info.additionalTokens?.filter(t => t.lexeme && t.location)
+		.map(t => plain(t.lexeme as string, (t.location as SourceRange).start)) ?? []
 }
 
 /*
@@ -168,23 +174,12 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 	} else if(body.length === 0) {
 		return []
 	} else {
-		if(body.length <= 1) {
-			// 'inline'
-			return [{ linePart: [{part: `repeat ${body.length === 0 ? '{}' : body[0].linePart[0].part}`,loc: loop.location.start}], indent: 0 }]
-		} else if(body[0].linePart[0].part === '{' && body[body.length - 1].linePart[body[body.length - 1].linePart.length - 1].part === '}') {
-			// 'block'
-			return [
-				{ linePart: [{part: 'repeat {', loc: loop.location.start}], indent: 0 },
-				...body.slice(1, body.length - 1),
-				{ linePart: [{part: '}', loc: loop.location.start}], indent: 0 }
-			]
-		} else {
-			// unknown
-			return [
-				{ linePart: [{part: 'repeat', loc: loop.location.start}], indent: 0 },
-				...indentBy(body, 1)
-			]
-		}
+		const additionalTokens = reconstructAdditionalTokens(loop);
+		return merge([
+			[{ linePart: [{part: 'repeat', loc: loop.location.start}], indent: 0 }],
+			body,
+			...additionalTokens
+		])
 	}
 }
 

@@ -1,5 +1,5 @@
 import { ReconstructionResult, reconstructLogger, reconstructAstFolds } from './reconstruct'
-import { removeOuterExpressionListIfApplicable } from './helper'
+import {prettyPrintCodeToString, removeOuterExpressionListIfApplicable} from './helper'
 import { autoSelectLibrary } from './helper'
 import { AutoSelectPredicate } from './helper'
 import { Selection } from './helper'
@@ -44,5 +44,5 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 		reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
 	}
 
-	return removeOuterExpressionListIfApplicable(result, autoSelected)
+	return { code: prettyPrintCodeToString(removeOuterExpressionListIfApplicable(result)), autoSelected }
 }

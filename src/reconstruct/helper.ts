@@ -1,6 +1,7 @@
 import { NodeId, ParentInformation, RNode, RType } from '../r-bridge'
 import { SourcePosition } from '../util/range'
 import { ReconstructionConfiguration } from './reconstruct'
+import {jsonReplacer} from "../util/json";
 
 
 /*
@@ -54,7 +55,7 @@ export function merge(snipbits: Code[]): Code {
 
 	//sort buckets by column and stich lines into single code piece
 	for(const line of buckets) {
-		if(line === undefined){ //appers to be necessary as 'buckets' may be sparce (empty elements count as undefined)
+		if(line === undefined){ //appears to be necessary as 'buckets' may be sparse (empty elements count as undefined)
 			continue
 		}
 		line.linePart.sort((a, b) => a.loc.column - b.loc.column)
@@ -65,13 +66,16 @@ export function merge(snipbits: Code[]): Code {
 }
 
 export function prettyPrintPartToString(line: PrettyPrintLinePart[]): string {
+	if(line.length === 0) {
+		return ''
+	}
 	line.sort((a, b) => a.loc.column - b.loc.column)
+	let columnOffset = line[0].loc.column
 	let result = ''
 	for(const part of line) {
-		const currLength = result.length
-		console.log(part.loc.column - currLength)
+		const currLength = result.length + columnOffset
 		//we have to 0 any negative values as they can happen???
-		result += ' '.repeat(Math.max(part.loc.column - currLength - 1, 0))
+		result += ' '.repeat(Math.max(part.loc.column - currLength, 0))
 		result = result.concat(part.part)
 	}
 	return result
@@ -148,12 +152,16 @@ export function prettyPrintCodeToString(code: Code, lf = '\n'): string {
 /*
 --helper function--
 */
-export function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSelected: number) {
-	if(result.length > 1 && result[0].linePart[0].part === '{' && result[result.length - 1].linePart[result[result.length - 1].linePart.length - 1].part === '}') {
+export function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[]): Code {
+	const first = result[0]?.linePart
+	if(result.length === 1  && first[0].part === '{' && first[result[0].linePart.length - 1].part === '}') {
+		// we are in a single line
+		return [{ linePart: first.slice(1, first.length - 1), indent: result[0].indent }]
+	} else if(result.length > 1 && first[0].part === '{' && result[result.length - 1].linePart[result[result.length - 1].linePart.length - 1].part === '}') {
 		// remove outer block
-		return { code: prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1)), autoSelected }
+		return indentBy(result.slice(1, result.length - 1), -1)
 	} else {
-		return { code: prettyPrintCodeToString(result), autoSelected }
+		return result
 	}
 }
 

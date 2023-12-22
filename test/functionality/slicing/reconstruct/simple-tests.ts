@@ -8,7 +8,7 @@ describe('Simple', withShell(shell => {
 			'{ x <- 5 }',
 			'{ x <- 5; y <- 9 }'
 		]) {
-			assertReconstructed(code, shell, code, '0', 'x <- 5')
+			assertReconstructed(code, shell, code, '0', code.includes(';') ? 'x <- 5;' : 'x <- 5')
 		}
 	})
 	describe('Nested Assignments', () => {
@@ -17,8 +17,9 @@ describe('Simple', withShell(shell => {
 			['y <- x <- 42', '1', 'x <- 42' ],
 			['y <- x <- 42', '0', 'y <- x <- 42' ],
 			// we are not smart enough right now to see, that the write is constant.
-			['for (i in 1:20) { x <- 5 }', '4', 'for(i in 1:20) x <- 5' ]
-		]) {
+			['for(i in 1:20) { x <- 5 }', '4', 'x <- 5' ],
+			['for(i in 1:20) { x <- 5 }', ['0', '4'], 'for(i in 1:20) { x <- 5 }' ]
+		] as const) {
 			assertReconstructed(code, shell, code, id, expected)
 		}
 	})
@@ -35,8 +36,8 @@ describe('Simple', withShell(shell => {
 	describe('Loops', () => {
 		describe('repeat', () => {
 			const pool: [string, string | string[], string][] = [
-				['repeat { x }', '0', 'repeat x'],
-				['repeat { x <- 5; y <- 9 }', '0', 'repeat x <- 5'],
+				['repeat { x }', '0', 'repeat { x }'],
+				['repeat { x <- 5; y <- 9 }', '0', 'repeat { x <- 5;        }'],
 				['repeat { x <- 5; y <- 9 }', ['0', '1', '4'], 'repeat {\n    x <- 5\n    9\n}']
 			]
 			for(const [code, id, expected] of pool) {

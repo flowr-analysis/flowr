@@ -194,7 +194,7 @@ function printIdMapping(ids: NodeId[], map: DecoratedAstMap): string {
 /**
  * Please note, that this executes the reconstruction step separately, as it predefines the result of the slice with the given ids.
  */
-export function assertReconstructed(name: string, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfiguration>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
+export function assertReconstructed(name: string, shell: RShell, input: string, ids: NodeId | readonly NodeId[], expected: string, userConfig?: Partial<TestConfiguration>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Mocha.Test {
 	const selectedIds = Array.isArray(ids) ? ids : [ids]
 	return it(name, async function() {
 		await ensureConfig(shell, this, userConfig)

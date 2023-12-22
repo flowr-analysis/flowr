@@ -26,19 +26,18 @@ import {
 import { log } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
 import { MergeableRecord } from '../util/objects'
-import { Selection, prettyPrintPartToString } from './helper'
-import { PrettyPrintLine } from './helper'
-import { plain } from './helper'
-import { Code } from './helper'
-import { indentBy } from './helper'
-import { isSelected } from './helper'
-import { removeExpressionListWrap } from './helper'
-import { AutoSelectPredicate } from './helper'
-import { getIndentString } from './helper'
 
-/*
---logger--
-*/
+//
+type Selection = Set<NodeId>
+interface PrettyPrintLine {
+	line:   string
+	indent: number
+}
+function plain(text: string): PrettyPrintLine[] {
+	return [{ line: text, indent: 0 }]
+}
+type Code = PrettyPrintLine[]
+
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
 
 /*

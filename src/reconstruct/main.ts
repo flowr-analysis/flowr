@@ -39,6 +39,7 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 	// fold of the normalized ast
 	const result = foldAstStateful(ast.ast, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
 
+	//console.log(JSON.stringify(result))
 	if(reconstructLogger.settings.minLevel >= LogLevel.Trace) {
 		reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
 	}

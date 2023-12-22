@@ -115,7 +115,9 @@ function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration:
 */
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, n)) {
-		return plain(getLexeme(n), n.location.start)
+		//console.log(`lhs at ${JSON.stringify(n.lhs.location?.start)}, ${JSON.stringify(n.lhs.location?.end)}`)
+		//console.log(`${getLexeme(n)} at ${JSON.stringify(n.location.start)}, ${JSON.stringify(n.location.end)}`)
+		return plain(getLexeme(n), n.lhs.location? n.lhs.location.start : n.location.start)
 	}
 
 	if(lhs.length === 0 && rhs.length === 0) {
@@ -124,8 +126,11 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 	if(lhs.length === 0) { // if we have no lhs, only return rhs
 		return rhs
 	}
-	if(rhs.length === 0) { // if we have no rhs we have to keep everything to get the rhs
-		return plain(getLexeme(n), n.location.start)
+	if(rhs.length === 0) {
+		//console.log(`lhs at ${JSON.stringify(n.lhs.location?.start)}, ${JSON.stringify(n.lhs.location?.end)}`)
+		//console.log(`${getLexeme(n)} at ${JSON.stringify(n.location.start)}, ${JSON.stringify(n.location.end)}`) 
+		// if we have no rhs we have to keep everything to get the rhs
+		return plain(getLexeme(n), n.lhs.location? n.lhs.location.start : n.location.start)
 	}
 
 	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)

@@ -8,7 +8,7 @@ import { ReconstructionConfiguration } from './reconstruct'
 */
 export type Code = PrettyPrintLine[]
 export type Selection = Set<NodeId>
-interface PrettyPrintLinePart {
+export interface PrettyPrintLinePart {
 	part: string
 	loc:  SourcePosition
 }
@@ -28,6 +28,7 @@ export function plain(text: string, location: SourcePosition): Code {
 	for(const line of split) {
 		printLine.linePart.push({part: line, loc: { column: location.column, line: locationLine++ }})
 	}
+	//console.log(JSON.stringify(printLine))
 	return [printLine]
 }
 
@@ -64,9 +65,13 @@ export function merge(snipbits: Code[]): Code {
 }
 
 export function prettyPrintPartToString(line: PrettyPrintLinePart[]): string {
+	line.sort((a, b) => a.loc.column - b.loc.column)
 	let result = ''
 	for(const part of line) {
-		result += ' '.repeat(part.loc.column)
+		const currLength = result.length
+		//console.log(part.loc.column - currLength)
+		//we have to 0 any negative values as they can happen???
+		result += ' '.repeat(Math.max(part.loc.column - currLength - 1, 0))
 		result = result.concat(part.part)
 	}
 	return result

@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import { plain, Code, merge, prettyPrintCodeToString } from '../../../../src/reconstruct/helper'
+import { plain, Code, merge, prettyPrintCodeToString, PrettyPrintLinePart, prettyPrintPartToString } from '../../../../src/reconstruct/helper'
 
 describe('Functions Reconstruct', () => {
 	describe('plain', () => {
@@ -138,9 +138,26 @@ describe('Functions Reconstruct', () => {
 					assert.isTrue(checkTestCase(merged), JSON.stringify(merged))
 				})
 			}
-			for(let i = 0; i < 15; i++) {
+			for(let i = 0; i < 20; i++) {
 				positive(i)
 			}
 		})
+	})
+	describe('printLinePart', () => {
+		function positive(input: PrettyPrintLinePart[], expected: string, msg: string) {
+			it(`Convert ${JSON.stringify(input)} to string`, () => {
+				const out = prettyPrintPartToString(input)
+				assert.strictEqual(out, expected, msg)
+			})
+		}
+		for(const testCase of [
+			{input: [{part: 'Hello', loc: {line: 0, column: 0}}],expected: 'Hello',msg: 'No Spaces anywhere'},
+			{input: [{part: 'Hello World', loc: {line: 0, column: 0}}],expected: 'Hello World',msg: 'Spaces get preserved'},
+			{input: [{part: 'Hello', loc: {line: 0, column: 0}}, {part: 'World', loc: {line: 0, column: 7}}],expected: 'Hello World',msg: 'Spaces get added within the string'},
+			{input: [{part: 'Hello', loc: {line: 0, column: 7}}],expected: '      Hello',msg: 'Spaces get added at the beginning'},
+			{input: [{part: 'World', loc: {line: 0, column: 7}},{part: 'Hello', loc: {line: 0, column: 0}}],expected: 'Hello World',msg: 'Spaces get added within the string, wrong order'},
+		]) {
+			positive(testCase.input, testCase.expected, testCase.msg)
+		}
 	})
 })

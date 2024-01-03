@@ -28,20 +28,28 @@ describe('Parse value access', withShell(shell => {
 			}, {
 				step:   DESUGAR_NORMALIZE,
 				wanted: exprList({
-					type:     RType.Access,
-					location: rangeFrom(1, 2, 1, 2),
-					lexeme:   '[',
-					operator: '[',
-					info:     {},
-					accessed: {
+					type:         RType.FunctionCall,
+					info:         {},
+					lexeme:       '[',
+					functionName: {
 						type:      RType.Symbol,
-						location:  rangeFrom(1, 1, 1, 1),
-						namespace: undefined,
+						lexeme:    '[',
+						content:   '[',
+						info:      {},
+						location:  rangeFrom(1, 2, 1, 2),
+						namespace: undefined
+					},
+					location:  rangeFrom(1, 2, 1, 2),
+					flavor:    'named',
+					arguments: [{
+						type:      RType.Symbol,
 						lexeme:    'a',
 						content:   'a',
-						info:      {}
-					},
-					access: []
+						info:      {},
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined
+					}// TODO: must this be a list function call?
+					]
 				})
 			}
 		])

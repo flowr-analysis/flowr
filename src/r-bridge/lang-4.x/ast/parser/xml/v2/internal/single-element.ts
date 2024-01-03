@@ -1,7 +1,6 @@
 import { getKeyGuarded, XmlBasedJson, XmlParseError } from '../../common/input-format'
 import { RawRType, RNode } from '../../../../model'
 import { NormalizeConfiguration } from '../data'
-import { XML_NAME } from '../../common/xml-to-json'
 import { normalizeExpression } from './expression'
 import { normalizeNumber } from './values'
 import { normalizeString } from './values/string'

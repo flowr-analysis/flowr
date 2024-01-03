@@ -22,7 +22,7 @@ RUN apk add --no-cache R
 RUN Rscript -e "install.packages('xmlparsedata',repos='https://cloud.r-project.org/')"
 
 # we keep the package.json for module resolution
-COPY ../package.json LICENSE /app/
+COPY ../package.json ../test/tesfiles/demo.R LICENSE /app/
 RUN npm install --omit=dev
 
 COPY --from=builder /app/dist/src /app/dist

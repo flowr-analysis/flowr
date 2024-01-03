@@ -41,25 +41,15 @@ describe('Constant Parsing',
 						number.str,
 						shell,
 						number.str,
-						[{
-							step:   NORMALIZE,
-							wanted: exprList({
+						sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+							exprList({
 								type:     RType.Number,
 								location: range,
 								lexeme:   number.str,
 								content:  number.val,
 								info:     {}
 							})
-						}, {
-							step:   DESUGAR_NORMALIZE,
-							wanted: exprList({
-								type:     RType.Number,
-								location: range,
-								lexeme:   number.str,
-								content:  number.val,
-								info:     {}
-							})
-						}]
+						)
 					)
 				}
 			})

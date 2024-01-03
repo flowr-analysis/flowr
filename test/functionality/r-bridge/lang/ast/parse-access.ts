@@ -2,25 +2,49 @@ import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
 import { RType } from '../../../../../src/r-bridge'
+import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 
 describe('Parse value access', withShell(shell => {
 	describe('Single bracket', () => {
-		assertAst('Empty', shell, 'a[]', exprList({
-			type:     RType.Access,
-			location: rangeFrom(1, 2, 1, 2),
-			lexeme:   '[',
-			operator: '[',
-			info:     {},
-			accessed: {
-				type:      RType.Symbol,
-				location:  rangeFrom(1, 1, 1, 1),
-				namespace: undefined,
-				lexeme:    'a',
-				content:   'a',
-				info:      {}
-			},
-			access: []
-		}))
+		assertAst('Empty', shell, 'a[]', [
+			{
+				step:   NORMALIZE,
+				wanted: exprList({
+					type:     RType.Access,
+					location: rangeFrom(1, 2, 1, 2),
+					lexeme:   '[',
+					operator: '[',
+					info:     {},
+					accessed: {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'a',
+						content:   'a',
+						info:      {}
+					},
+					access: []
+				})
+			}, {
+				step:   DESUGAR_NORMALIZE,
+				wanted: exprList({
+					type:     RType.Access,
+					location: rangeFrom(1, 2, 1, 2),
+					lexeme:   '[',
+					operator: '[',
+					info:     {},
+					accessed: {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'a',
+						content:   'a',
+						info:      {}
+					},
+					access: []
+				})
+			}
+		])
 		assertAst('One value', shell, 'a[1]', exprList({
 			type:     RType.Access,
 			location: rangeFrom(1, 2, 1, 2),

@@ -3,11 +3,12 @@ import { RawRType, RNode } from '../../../../model'
 import { normalizeLog } from '../normalize'
 import { expensiveTrace } from '../../../../../../../util/log'
 import { XML_NAME } from '../../common/xml-to-json'
-import { normalizeSingleNode } from './single-element'
+import { normalizeSingleToken } from './single-element'
 import { NormalizeConfiguration } from '../data'
-import { normalizeUnary } from './operators'
+import { normalizeUnary, tryNormalizeBinary } from './operators'
 import { tryNormalizeSymbolWithNamespace } from './values/symbol'
-import { tryNormalizeBinary } from './operators/binary'
+import { getTokenType } from '../../common/meta'
+import { normalizeAccess } from './access'
 
 function handleSemicolons(tokens: XmlBasedJson[]) {
 	let last = 0, i = 0
@@ -60,14 +61,38 @@ export function normalizeExpression(
 
 const todo = (...x: unknown[]) => { throw new Error('not implemented: ' + JSON.stringify(x)) }
 
+/**
+ * Parses a single structure in the ast based on its type (e.g., a constant, function call, symbol, ...)
+ * @param config - The data used to normalize (see {@link NormalizeConfiguration})
+ * @param tokens - The non-empty list of tokens to parse
+ */
 function normalizeElems(config: NormalizeConfiguration, tokens: readonly XmlBasedJson[]): RNode {
-	switch(tokens.length) {
-		case 1:
-			return normalizeSingleNode(config, tokens[0])
-		case 2: // TODO: repeat
-			return normalizeUnary(config, tokens as [XmlBasedJson, XmlBasedJson])
+	const length = tokens.length
+	if(length === 1) {
+		return normalizeSingleToken(config, tokens[0])
+	} else if(length === 2) {
+		return normalizeUnary(config, tokens as [XmlBasedJson, XmlBasedJson])
+	}
+	// otherwise, before we check for fixed-length constructs we have to check for the *second* element
+	// in case we have a function-call, access, ...
+	const second = getTokenType(config.tokenMap, tokens[1])
+
+	// TODO: use internal functions directly and not named if they can not be overwritten!
+	switch(second) {
+		case RawRType.ParenLeft:
+			return todo(tokens)
+		case RawRType.Dollar:
+		case RawRType.At:
+		case RawRType.BracketLeft:
+		case RawRType.DoubleBracketLeft:
+			return normalizeAccess(config, tokens, second)
+	}
+
+
+	switch(length) {
 		case 3: // TODO: for
-			return tryNormalizeSymbolWithNamespace(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? tryNormalizeBinary(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
+			return tryNormalizeSymbolWithNamespace(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
+				?? tryNormalizeBinary(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
 		case 5:
 			return todo(tokens)
 		case 7:

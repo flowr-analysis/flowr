@@ -2,7 +2,7 @@ import { XmlBasedJson } from '../../../common/input-format'
 import { retrieveMetaStructure } from '../../../common/meta'
 import { RFunctionCall, RType } from '../../../../../model'
 import { NormalizeConfiguration } from '../../data'
-import { normalizeSingleNode } from '../single-element'
+import { normalizeSingleToken } from '../single-element'
 
 /**
  * Parses the construct as a unary op.
@@ -28,7 +28,7 @@ export function normalizeUnary(config: NormalizeConfiguration, [operator, operan
 			lexeme:    content,
 			info:      {}
 		},
-		arguments: [normalizeSingleNode(config, operand)],
+		arguments: [normalizeSingleToken(config, operand)],
 		info:      {}
 	}
 }

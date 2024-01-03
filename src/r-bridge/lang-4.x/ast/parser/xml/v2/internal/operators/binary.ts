@@ -5,7 +5,7 @@ import {
 	RType
 } from '../../../../../model'
 import { NormalizeConfiguration } from '../../data'
-import { normalizeSingleNode } from '../single-element'
+import { normalizeSingleToken } from '../single-element'
 
 /**
  * Parsing binary operations includes the pipe, even though the produced PIPE construct is not a binary operation,
@@ -29,7 +29,7 @@ export function tryNormalizeBinary(
 			lexeme:    content,
 			info:      {}
 		},
-		arguments: [normalizeSingleNode(config, lhs), normalizeSingleNode(config, rhs)],
+		arguments: [normalizeSingleToken(config, lhs), normalizeSingleToken(config, rhs)],
 		info:      {}
 	}
 }

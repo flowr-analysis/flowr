@@ -25,7 +25,6 @@ export const normalizeLog = log.getSubLogger({ name: 'v2-normalize' })
  */
 export async function normalize(xmlString: string, tokenMap: TokenMap, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Promise<NormalizedAst> {
 	const config: NormalizeConfiguration = { ...DEFAULT_XML_PARSER_CONFIG, tokenMap, currentLexeme: undefined }
-
 	const object = await xlm2jsonObject(config, xmlString)
 
 	return decorateAst(normalizeRoot(config, object), getId)

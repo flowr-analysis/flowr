@@ -9,6 +9,7 @@ import { tryNormalizeSymbolNoNamespace } from './values/symbol'
 import { guard } from '../../../../../../../util/assert'
 import { normalizeComment } from './other'
 import { normalizeLineDirective } from './other/line-directive'
+import { getTokenType } from '../../common/meta'
 
 const todo = (...x: unknown[]) => { throw new Error('not implemented: ' + JSON.stringify(x)) }
 
@@ -16,12 +17,12 @@ const todo = (...x: unknown[]) => { throw new Error('not implemented: ' + JSON.s
  * Parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)
  *
  * @param config - The data used by the parser (see {@link ParserData})
- * @param elem - The element to parse
+ * @param token  - The element to parse
  *
  * @returns The parsed element as an `RNode` or an `RDelimiter` if it is such.
  */
-export function normalizeSingleNode(config: NormalizeConfiguration, elem: XmlBasedJson): RNode {
-	const name = elem[XML_NAME] as string
+export function normalizeSingleToken(config: NormalizeConfiguration, token: XmlBasedJson): RNode {
+	const name = getTokenType(config.tokenMap, token)
 
 	switch(name) {
 		case RawRType.ParenLeft:
@@ -30,21 +31,21 @@ export function normalizeSingleNode(config: NormalizeConfiguration, elem: XmlBas
 		case RawRType.BraceRight:
 			return todo(name)
 		case RawRType.Comment:
-			return normalizeComment(config, elem)
+			return normalizeComment(config, token)
 		case RawRType.LineDirective:
-			return normalizeLineDirective(config, elem)
+			return normalizeLineDirective(config, token)
 		case RawRType.ExpressionList:
 		case RawRType.Expression:
 		case RawRType.ExprOfAssignOrHelp: {
-			config.currentLexeme = elem[config.content] as string
-			const res = normalizeExpression(config, getKeyGuarded(elem, config.children))
+			config.currentLexeme = token[config.content] as string
+			const res = normalizeExpression(config, getKeyGuarded(token, config.children))
 			guard(res.length === 1, () => `expected only one element in the expression list, yet received ${JSON.stringify(res)}`)
 			return res[0]
 		}
 		case RawRType.NumericConst:
-			return normalizeNumber(config, elem)
+			return normalizeNumber(config, token)
 		case RawRType.StringConst:
-			return normalizeString(config, elem)
+			return normalizeString(config, token)
 		case RawRType.Break:
 			return todo(name)
 		case RawRType.Next:
@@ -53,11 +54,11 @@ export function normalizeSingleNode(config: NormalizeConfiguration, elem: XmlBas
 		case RawRType.Slot:
 		case RawRType.NullConst: {
 			// TODO: optimize manually?
-			const symbol = tryNormalizeSymbolNoNamespace(config, elem)
+			const symbol = tryNormalizeSymbolNoNamespace(config, token)
 			guard(symbol !== undefined, () => `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
 			return symbol
 		}
 		default:
-			throw new XmlParseError(`unknown type ${name} for ${JSON.stringify(elem)} in ${JSON.stringify(config)}`)
+			throw new XmlParseError(`unknown type ${name} for ${JSON.stringify(token)} in ${JSON.stringify(config)}`)
 	}
 }

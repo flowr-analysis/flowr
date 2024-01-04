@@ -23,6 +23,11 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '21.x'
+          registry-url: 'https://registry.npmjs.org/'
+
       - name: Name and Email for Git (config)
         run: |
           git config --local user.email "action@github.com"
@@ -44,6 +49,19 @@ jobs:
           npm run release -- $step --github.releaseName="Release v\${version} (${title})"
         env:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Ensure up-to-date Dependencies
+        run: npm ci
+
+      - name: Publish on NPM
+        # we use publish library because flowr itself is a runnable, and we do not want to publish something with extra
+        # dist paths etc.
+        # besides, we make dead-sure we have a clean directory to work on!
+        run: |
+          rm -rf dist
+          npm publish-library
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 
   performance-test:
     name: "Performance Test"

@@ -17,4 +17,7 @@ node_modules/
 /.settings/
 
 /.DS_Store
-src/.DS_Store
+src/**
+test/**
+**/*.map
+.idea/

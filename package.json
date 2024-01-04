@@ -1,8 +1,16 @@
 {
   "name": "flowr",
   "version": "1.3.7",
-  "description": "Program Slicer and Analyzer for R Programs",
+  "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "main": "dist/src/flowr.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Code-Inspect/flowr.git"
+  },
+  "homepage": "https://github.com/Code-Inspect/flowr",
+  "bugs": {
+    "url": "https://github.com/Code-Inspect/flowr/issues"
+  },
   "scripts": {
     "main": "ts-node src/flowr.ts",
     "stats": "ts-node src/cli/statistics-app.ts",
@@ -22,7 +30,14 @@
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2; cd ../../; }; func",
     "test-full": "npm run test -- --test-installation"
   },
-  "keywords": [],
+  "keywords": [
+    "static code analysis",
+    "R programming language",
+    "R",
+    "programming",
+    "slicing",
+    "dataflow analysis"
+  ],
   "author": "Florian Sihler",
   "license": "ISC",
   "nyc": {

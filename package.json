@@ -1,5 +1,5 @@
 {
-  "name": "@code-inspect/flowr",
+  "name": "@eagleoutice/flowr",
   "version": "1.3.10",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "main": "dist/src/flowr.js",

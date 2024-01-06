@@ -26,10 +26,10 @@ class Stack<ElementType> {
 }
 
 interface Handler<ValueType> {
-	getName:  () => string,
-	enter: () => void
-	exit:  () => ValueType
-	next:  (value: ValueType) => void
+	getName: () => string,
+	enter:   () => void
+	exit:    () => ValueType
+	next:    (value: ValueType) => void
 }
 
 export interface IntervalBound {
@@ -189,8 +189,8 @@ function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation): Domain {
 }
 
 class BinOp implements Handler<AINode> {
-	private lhs: AINode | undefined
-	private rhs: AINode | undefined
+	private lhs:           AINode | undefined
+	private rhs:           AINode | undefined
 	private readonly node: RBinaryOp<ParentInformation>
 
 	constructor(node: RBinaryOp<ParentInformation>) {

@@ -1,11 +1,17 @@
 import {DataflowInformation} from '../dataflow/internal/info'
-import {NodeId, NormalizedAst, ParentInformation, RAssignmentOp, RBinaryOp, RType} from '../r-bridge'
+import {NodeId, NormalizedAst, ParentInformation, RAssignmentOp, RBinaryOp, RNodeWithParent, RType} from '../r-bridge'
 import {CfgVertexType, extractCFG} from '../util/cfg/cfg'
 import {visitCfg} from '../util/cfg/visitor'
 import {assertUnreachable, guard} from '../util/assert'
 import {DataflowGraphVertexInfo, EdgeType, OutgoingEdges} from '../dataflow'
 
+interface AINode {
+	readonly id:      NodeId
+	readonly astNode: RNodeWithParent<ParentInformation>
+}
+
 const constraintMap = new Map<NodeId, Constraints>()
+const nodes = new Map<NodeId, AINode>()
 
 class Stack<ElementType> {
 	private backingStore: ElementType[] = []
@@ -237,6 +243,9 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 	const operationStack = new Stack<Handler<Constraints>>()
 	visitCfg(cfg, (node, _) => {
 		const astNode = ast.idMap.get(node.id)
+		if(astNode !== undefined) {
+			nodes.set(node.id, {id: node.id, astNode: astNode})
+		}
 		// TODO: avoid if-else
 		if(astNode?.type === RType.BinaryOp) {
 			switch(astNode.flavor) {

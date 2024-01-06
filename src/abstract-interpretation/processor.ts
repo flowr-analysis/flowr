@@ -1,5 +1,5 @@
 import {DataflowInformation} from '../dataflow/internal/info'
-import {NodeId, NormalizedAst, ParentInformation, RAssignmentOp, RBinaryOp, RNodeWithParent, RType} from '../r-bridge'
+import {NodeId, NormalizedAst, ParentInformation, RBinaryOp, RNodeWithParent, RType} from '../r-bridge'
 import {CfgVertexType, extractCFG} from '../util/cfg/cfg'
 import {visitCfg} from '../util/cfg/visitor'
 import {assertUnreachable, guard} from '../util/assert'
@@ -26,7 +26,7 @@ class Stack<ElementType> {
 }
 
 interface Handler<ValueType> {
-	name:  string,
+	getName:  () => string,
 	enter: () => void
 	exit:  () => ValueType
 	next:  (value: ValueType) => void
@@ -172,59 +172,34 @@ function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation): Domain {
 	return unifyDomains(domains)
 }
 
-class Assignment implements Handler<AINode> {
-	private lhs:           AINode | undefined
-	private rhs:           AINode | undefined
-	private readonly node: RAssignmentOp<ParentInformation>
-
-	constructor(node: RAssignmentOp<ParentInformation>) {
-		this.node = node
-	}
-
-	name = 'Assignment'
-
-	enter(): void {
-		console.log(`Entered ${this.name} ${this.node.info.id}`)
-	}
-
-	exit(): AINode {
-		console.log(`Exited ${this.name} ${this.node.info.id}`)
-		guard(this.lhs !== undefined, `No LHS found for assignment ${this.node.info.id}`)
-		guard(this.rhs !== undefined, `No RHS found for assignment ${this.node.info.id}`)
-		return {
-			id:      this.lhs.id,
-			domain:  this.rhs.domain,
-			astNode: this.node.lhs,
-		}
-	}
-
-	next(node: AINode): void {
-		if(this.lhs === undefined) {
-			this.lhs = node
-		} else if(this.rhs === undefined){
-			this.rhs = node
-		} else {
-			guard(false, `Assignment ${this.node.info.id} already has both LHS and RHS`)
-		}
-		console.log(`${this.name} received`)
-	}
-}
-
 class BinOp implements Handler<AINode> {
+	private lhs: AINode | undefined
+	private rhs: AINode | undefined
 	private readonly node: RBinaryOp<ParentInformation>
 
 	constructor(node: RBinaryOp<ParentInformation>) {
 		this.node = node
 	}
 
-	name = 'Bin Op'
+	getName(): string {
+		return `Bin Op (${this.node.flavor})`
+	}
 
 	enter(): void {
-		console.log(`Entered ${this.name}`)
+		console.log(`Entered ${this.getName()}`)
 	}
 
 	exit(): AINode {
-		console.log(`Exited ${this.name}`)
+		console.log(`Exited ${this.getName()}`)
+		if(this.node.flavor === 'assignment') {
+			guard(this.lhs !== undefined, `No LHS found for assignment ${this.node.info.id}`)
+			guard(this.rhs !== undefined, `No RHS found for assignment ${this.node.info.id}`)
+			return {
+				id:      this.lhs.id,
+				domain:  this.rhs.domain,
+				astNode: this.node.lhs,
+			}
+		}
 		return {
 			id:      this.node.info.id,
 			domain:  new Domain(), // TODO: Check the operands domains and see how the operation affects those
@@ -232,9 +207,17 @@ class BinOp implements Handler<AINode> {
 		}
 	}
 
-	next(_: AINode): void {
-		console.log(`${this.name} received`)
+	next(node: AINode): void {
+		console.log(`${this.getName()} received`)
+		if(this.lhs === undefined) {
+			this.lhs = node
+		} else if(this.rhs === undefined){
+			this.rhs = node
+		} else {
+			guard(false, `BinOp ${this.node.info.id} already has both LHS and RHS`)
+		}
 	}
+
 }
 
 export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInformation): DataflowInformation {
@@ -244,11 +227,7 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 		const astNode = ast.idMap.get(node.id)
 		// TODO: avoid if-else
 		if(astNode?.type === RType.BinaryOp) {
-			switch(astNode.flavor) {
-				case 'assignment': operationStack.push(new Assignment(astNode as RAssignmentOp<ParentInformation>)).enter(); break
-				case 'arithmetic': operationStack.push(new BinOp(astNode)).enter(); break
-				default: guard(false, `Unknown binary op ${astNode.flavor}`)
-			}
+			operationStack.push(new BinOp(astNode)).enter()
 		} else if(astNode?.type === RType.Symbol) {
 			operationStack.peek()?.next({
 				id:      astNode.info.id,

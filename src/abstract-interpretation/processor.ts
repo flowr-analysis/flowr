@@ -7,11 +7,11 @@ import {DataflowGraphVertexInfo, EdgeType, OutgoingEdges} from '../dataflow'
 
 interface AINode {
 	readonly id:      NodeId
+	readonly domain:  Domain
 	readonly astNode: RNodeWithParent<ParentInformation>
 }
 
-const constraintMap = new Map<NodeId, Constraints>()
-const nodes = new Map<NodeId, AINode>()
+const nodeMap = new Map<NodeId, AINode>()
 
 class Stack<ElementType> {
 	private backingStore: ElementType[] = []
@@ -72,12 +72,6 @@ export class Domain {
 	toString(): string {
 		return `{${Array.from(this.intervals).join(', ')}}`
 	}
-}
-
-export interface Constraints {
-	node:     NodeId,
-	domain:   Domain,
-	debugMsg: string
 }
 
 export const enum CompareType {
@@ -171,47 +165,52 @@ function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation): Domain {
 		.map(([id, _]) => id)
 	const domains: Domain[] = []
 	for(const id of ids) {
-		const constraint = constraintMap.get(id)
-		guard(constraint !== undefined, `No constraint found for ID ${id}`)
-		domains.push(constraint.domain)
+		const domain = nodeMap.get(id)?.domain
+		guard(domain !== undefined, `No domain found for ID ${id}`)
+		domains.push(domain)
 	}
 	return unifyDomains(domains)
 }
 
-class Assignment implements Handler<Constraints> {
-	private lhs:           NodeId | undefined
-	private rhs:           NodeId | undefined
+class Assignment implements Handler<AINode> {
+	private lhs:           AINode | undefined
+	private rhs:           AINode | undefined
 	private readonly node: RAssignmentOp<ParentInformation>
-	name = 'Assignment'
 
 	constructor(node: RAssignmentOp<ParentInformation>) {
 		this.node = node
 	}
 
+	name = 'Assignment'
+
 	enter(): void {
 		console.log(`Entered ${this.name} ${this.node.info.id}`)
 	}
 
-	exit(): Constraints {
+	exit(): AINode {
 		console.log(`Exited ${this.name} ${this.node.info.id}`)
+		guard(this.lhs !== undefined, `No LHS found for assignment ${this.node.info.id}`)
+		guard(this.rhs !== undefined, `No RHS found for assignment ${this.node.info.id}`)
 		return {
-			node:     this.lhs as NodeId,
-			domain:   new Domain(), // TODO: check interval of the assignments source
-			debugMsg: this.name
+			id:      this.lhs.id,
+			domain:  this.rhs.domain,
+			astNode: this.node.lhs,
 		}
 	}
 
-	next(constraint: Constraints): void {
+	next(node: AINode): void {
 		if(this.lhs === undefined) {
-			this.lhs = constraint.node
+			this.lhs = node
 		} else if(this.rhs === undefined){
-			this.rhs = constraint.node
+			this.rhs = node
+		} else {
+			guard(false, `Assignment ${this.node.info.id} already has both LHS and RHS`)
 		}
-		console.log(`${this.name} received ${constraint.debugMsg}`)
+		console.log(`${this.name} received`)
 	}
 }
 
-class BinOp implements Handler<Constraints> {
+class BinOp implements Handler<AINode> {
 	private readonly node: RBinaryOp<ParentInformation>
 
 	constructor(node: RBinaryOp<ParentInformation>) {
@@ -224,28 +223,25 @@ class BinOp implements Handler<Constraints> {
 		console.log(`Entered ${this.name}`)
 	}
 
-	exit(): Constraints {
+	exit(): AINode {
 		console.log(`Exited ${this.name}`)
 		return {
-			node:     this.node.info.id,
-			domain:   new Domain(), // TODO: Check the operands constraints and see how the operation affects those
-			debugMsg: this.name
+			id:      this.node.info.id,
+			domain:  new Domain(), // TODO: Check the operands domains and see how the operation affects those
+			astNode: this.node,
 		}
 	}
 
-	next(value: Constraints): void {
-		console.log(`${this.name} received ${value.debugMsg}`)
+	next(_: AINode): void {
+		console.log(`${this.name} received`)
 	}
 }
 
 export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInformation): DataflowInformation {
 	const cfg = extractCFG(ast)
-	const operationStack = new Stack<Handler<Constraints>>()
+	const operationStack = new Stack<Handler<AINode>>()
 	visitCfg(cfg, (node, _) => {
 		const astNode = ast.idMap.get(node.id)
-		if(astNode !== undefined) {
-			nodes.set(node.id, {id: node.id, astNode: astNode})
-		}
 		// TODO: avoid if-else
 		if(astNode?.type === RType.BinaryOp) {
 			switch(astNode.flavor) {
@@ -255,16 +251,16 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 			}
 		} else if(astNode?.type === RType.Symbol) {
 			operationStack.peek()?.next({
-				node:     astNode.info.id,
-				domain:   getDomainOfDfgChild(node.id, dfg),
-				debugMsg: 'Symbol'
+				id:      astNode.info.id,
+				domain:  getDomainOfDfgChild(node.id, dfg),
+				astNode: astNode,
 			})
 		} else if(astNode?.type === RType.Number){
 			const num = astNode.content.num
 			operationStack.peek()?.next({
-				node:     astNode.info.id,
-				domain:   domainFromScalar(num),
-				debugMsg: 'Number'
+				id:      astNode.info.id,
+				domain:  domainFromScalar(num),
+				astNode: astNode,
 			})
 		} else if(node.type === CfgVertexType.EndMarker) {
 			const operation = operationStack.pop()
@@ -272,8 +268,8 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 				return
 			}
 			const operationResult = operation.exit()
-			guard(!constraintMap.has(operationResult.node), `No constraint for the given ID ${operationResult.node}`)
-			constraintMap.set(operationResult.node, operationResult)
+			guard(!nodeMap.has(operationResult.id), `Domain for ID ${operationResult.id} already exists`)
+			nodeMap.set(operationResult.id, operationResult)
 			operationStack.peek()?.next(operationResult)
 		} else {
 			guard(false, `Unknown node type ${node.type}`)

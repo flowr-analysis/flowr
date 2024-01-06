@@ -207,19 +207,33 @@ class BinOp implements Handler<AINode> {
 
 	exit(): AINode {
 		console.log(`Exited ${this.getName()}`)
-		if(this.node.flavor === 'assignment') {
-			guard(this.lhs !== undefined, `No LHS found for assignment ${this.node.info.id}`)
-			guard(this.rhs !== undefined, `No RHS found for assignment ${this.node.info.id}`)
-			return {
-				id:      this.lhs.id,
-				domain:  this.rhs.domain,
-				astNode: this.node.lhs,
-			}
-		}
-		return {
-			id:      this.node.info.id,
-			domain:  new Domain(), // TODO: Check the operands domains and see how the operation affects those
-			astNode: this.node,
+		guard(this.lhs !== undefined, `No LHS found for assignment ${this.node.info.id}`)
+		guard(this.rhs !== undefined, `No RHS found for assignment ${this.node.info.id}`)
+		switch(this.node.flavor) {
+			case 'assignment':
+				return {
+					id:      this.lhs.id,
+					domain:  this.rhs.domain,
+					astNode: this.node.lhs,
+				}
+			case 'arithmetic':
+				switch(this.node.operator) {
+					case '+':
+						return {
+							id:      this.node.info.id,
+							domain:  addDomains(this.lhs.domain, this.rhs.domain),
+							astNode: this.node,
+						}
+					default:
+						guard(false, `Unknown arithmetic operator ${this.node.operator}`)
+				}
+				break // Dead code, but TypeScript doesn't know that
+			case 'logical':
+			case 'model formula':
+			case 'comparison':
+				guard(false, 'Not implemented yet')
+				break // Again, dead code (bad TypeScript)
+			default: assertUnreachable(this.node.flavor)
 		}
 	}
 

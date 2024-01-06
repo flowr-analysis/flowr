@@ -1,4 +1,5 @@
 import {
+	addDomains,
 	doIntervalsOverlap,
 	Domain,
 	domainFromScalar,
@@ -66,6 +67,35 @@ describe('Abstract Interpretation', () => {
 				new Interval({value: 5, inclusive: true}, {value: 8, inclusive: true}),
 			),
 			'Unifying two overlapping domains results in unifying the domains intervals'
+		)
+
+		// TODO: more tests for in and exluded bounds
+	})
+
+	it('Domain addition', () => {
+		assert.isEmpty(addDomains(new Domain(), new Domain()).intervals, 'Adding two empty domains results in an empty domain')
+
+		let domain1 = domainFromScalar(4)
+		let domain2 = domainFromScalar(2)
+		assert.deepEqual(
+			addDomains(domain1, domain2),
+			new Domain(new Interval({value: 6, inclusive: true}, {value: 6, inclusive: true})),
+			'Adding two domains of a scalar, results in a domain containing the sum of the scalars'
+		)
+
+		domain2 = new Domain(new Interval({value: 6, inclusive: true}, {value: 9, inclusive: true}))
+		assert.deepEqual(
+			addDomains(domain1, domain2),
+			new Domain(new Interval({value: 10, inclusive: true}, {value: 13, inclusive: true})),
+			'Adding one scalar-domain to a wider domain, adds the scalar to the start and end of the wider domain'
+		)
+
+		domain1 = new Domain(new Interval({value: 6, inclusive: true}, {value: 9, inclusive: true}))
+		domain2 = new Domain(new Interval({value: 4, inclusive: true}, {value: 7, inclusive: true}))
+		assert.deepEqual(
+			addDomains(domain1, domain2),
+			new Domain(new Interval({value: 10, inclusive: true}, {value: 16, inclusive: true})),
+			'Adding two domains with overlapping intervals, adds the intervals'
 		)
 
 		// TODO: more tests for in and exluded bounds

@@ -147,6 +147,22 @@ export function unifyDomains(domains: Domain[]) : Domain {
 	return unifiedDomain
 }
 
+export function addDomains(domain1: Domain, domain2: Domain): Domain {
+	const intervals = new Set<Interval>()
+	for(const interval1 of domain1.intervals) {
+		for(const interval2 of domain2.intervals) {
+			intervals.add(new Interval({
+				value:     interval1.min.value + interval2.min.value,
+				inclusive: interval1.min.inclusive && interval2.min.inclusive
+			}, {
+				value:     interval1.max.value + interval2.max.value,
+				inclusive: interval1.max.inclusive && interval2.max.inclusive
+			}))
+		}
+	}
+	return new Domain(...intervals)
+}
+
 // Bottom -> optionales dirty flag
 // infinity -> infinity (+ * Inclusive: false)
 export function domainFromScalar(n: number): Domain {

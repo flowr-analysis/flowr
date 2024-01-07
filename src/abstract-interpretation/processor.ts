@@ -134,10 +134,7 @@ export function unifyDomains(domains: Domain[]) : Domain {
 		if(doIntervalsOverlap(currentInterval, nextInterval)) {
 			const intervalWithEarlierStart = compareIntervalsByTheirMinimum(currentInterval, nextInterval) < 0 ? currentInterval : nextInterval
 			const intervalWithLaterEnd = compareIntervalsByTheirMaximum(currentInterval, nextInterval) > 0 ? currentInterval : nextInterval
-			currentInterval = {
-				min: intervalWithEarlierStart.min,
-				max: intervalWithLaterEnd.max,
-			}
+			currentInterval = new Interval( intervalWithEarlierStart.min, intervalWithLaterEnd.max)
 		} else {
 			unifiedDomain.addInterval(currentInterval)
 			currentInterval = nextInterval
@@ -166,10 +163,10 @@ export function addDomains(domain1: Domain, domain2: Domain): Domain {
 // Bottom -> optionales dirty flag
 // infinity -> infinity (+ * Inclusive: false)
 export function domainFromScalar(n: number): Domain {
-	return new Domain({
-		min: {value: n, inclusive: true},
-		max: {value: n, inclusive: true}}
-	)
+	return new Domain(new Interval(
+		{value: n, inclusive: true},
+		{value: n, inclusive: true}
+	))
 }
 
 function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation): Domain {

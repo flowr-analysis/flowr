@@ -244,7 +244,6 @@ class BinOp implements Handler<AINode> {
 			guard(false, `BinOp ${this.node.info.id} already has both LHS and RHS`)
 		}
 	}
-
 }
 
 export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInformation): DataflowInformation {

@@ -69,7 +69,7 @@ describe('Abstract Interpretation', () => {
 			'Unifying two overlapping domains results in unifying the domains intervals'
 		)
 
-		// TODO: more tests for in and exluded bounds
+		// TODO: more tests for in and excluded bounds
 	})
 
 	it('Domain addition', () => {
@@ -98,6 +98,6 @@ describe('Abstract Interpretation', () => {
 			'Adding two domains with overlapping intervals, adds the intervals'
 		)
 
-		// TODO: more tests for in and exluded bounds
+		// TODO: more tests for in and excluded bounds
 	})
 })

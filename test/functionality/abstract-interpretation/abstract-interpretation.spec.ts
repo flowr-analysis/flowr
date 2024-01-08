@@ -6,7 +6,7 @@ import {
 	Interval,
 	subtractDomains,
 	unifyDomains
-} from '../../../src/abstract-interpretation/processor'
+} from '../../../src/abstract-interpretation/domain'
 import {assert} from 'chai'
 
 describe('Abstract Interpretation', () => {

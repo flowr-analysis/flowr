@@ -4,6 +4,7 @@ import {
 	Domain,
 	domainFromScalar,
 	Interval,
+	subtractDomains,
 	unifyDomains
 } from '../../../src/abstract-interpretation/processor'
 import {assert} from 'chai'
@@ -96,6 +97,42 @@ describe('Abstract Interpretation', () => {
 			addDomains(domain1, domain2),
 			new Domain(new Interval({value: 10, inclusive: true}, {value: 16, inclusive: true})),
 			'Adding two domains with overlapping intervals, adds the intervals'
+		)
+
+		// TODO: more tests for in and excluded bounds
+	})
+
+	it('Domain subtraction', () => {
+		assert.isEmpty(subtractDomains(new Domain(), new Domain()).intervals, 'Subtracting two empty domains results in an empty domain')
+
+		let domain1 = domainFromScalar(4)
+		let domain2 = domainFromScalar(2)
+		assert.deepEqual(
+			subtractDomains(domain1, domain2),
+			new Domain(new Interval({value: 2, inclusive: true}, {value: 2, inclusive: true})),
+			'Subtracting two domains of a scalar, results in a domain containing the difference of the scalars'
+		)
+
+		domain2 = new Domain(new Interval({value: 6, inclusive: true}, {value: 9, inclusive: true}))
+		assert.deepEqual(
+			subtractDomains(domain2, domain1),
+			new Domain(new Interval({value: 2, inclusive: true}, {value: 5, inclusive: true})),
+			'Subtracting a scalar-domain from a wider domain, subtracts the scalar from the start and end of the wider domain'
+		)
+
+		domain2 = new Domain(new Interval({value: 1, inclusive: true}, {value: 3, inclusive: true}))
+		assert.deepEqual(
+			subtractDomains(domain1, domain2),
+			new Domain(new Interval({value: 1, inclusive: true}, {value: 3, inclusive: true})),
+			'Subtracting a wider domain from a scalar-domain, subtracts the start and end of the wider domain from the scalar'
+		)
+
+		domain1 = new Domain(new Interval({value: 6, inclusive: true}, {value: 9, inclusive: true}))
+		domain2 = new Domain(new Interval({value: 4, inclusive: true}, {value: 5, inclusive: true}))
+		assert.deepEqual(
+			subtractDomains(domain1, domain2),
+			new Domain(new Interval({value: 1, inclusive: true}, {value: 5, inclusive: true})),
+			'Subtracting two domains with overlapping intervals, subtracts the intervals'
 		)
 
 		// TODO: more tests for in and excluded bounds

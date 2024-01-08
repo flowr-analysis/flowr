@@ -1,6 +1,5 @@
 import { Expression } from 'xpath-ts2'
 import { Environment } from '../v1'
-import { Literal } from 'n3'
 
 export enum ExecutionState{
 	Always,
@@ -10,7 +9,7 @@ export enum ExecutionState{
 
 
 export interface IExecutionTuple {
-	readonly executed:               ExecutionState
+	readonly executed:               ExecutionState,
 	readonly influencingExpressions: Expression[] //TODO: correct?
 }
 
@@ -23,11 +22,7 @@ export class ExecutionTuple implements IExecutionTuple{
 	}
 }
 
-export function expressionExecution(previousExecutionState: ExecutionState, 
-																																				environmentUntilNow: Environment, 
-																																				currentExpression: Expression, 
-																																				callStack: Expression[], 
-																																				influencingExpressions: Expression[]){
+export function expressionExecution(previousExecutionState: ExecutionState, environmentUntilNow: Environment, currentExpression: Expression, _callStack: Expression[], _influencingExpressions: Expression[]){
 	//Set the State in which the Expression was found in
 	//Expression.entry = previousExecutionState
 	//TODO: how to save? efficient way unknown
@@ -71,12 +66,12 @@ enum ExpressionType{
 }
 
 
-function evaluateExpressionType(toEvaluateExpression: Expression, currentEnvironment: Environment):ExpressionType {
+function evaluateExpressionType(_toEvaluateExpression: Expression, _currentEnvironment: Environment):ExpressionType {
 	//TODO: actually implement that 
 	return ExpressionType.Function //TODO: comment out
 }
 
-export function onCallStackReduction(lowerLevel: ExpressionType, upperLevel: ExpressionType):ExecutionTuple{
+export function onCallStackReduction(_lowerLevel: ExpressionType, _upperLevel: ExpressionType):ExecutionTuple{
    
    
    

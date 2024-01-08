@@ -94,12 +94,17 @@ export function doIntervalsOverlap(interval1: Interval, interval2: Interval): bo
 }
 
 export function unifyDomains(domains: Domain[]): Domain {
-	const sortedIntervals = domains.flatMap(domain => [...domain.intervals]).sort(compareIntervalsByTheirMinimum)
+	const unifiedIntervals = unifyIntervals(domains.flatMap(domain => Array.from(domain.intervals)))
+	return new Domain(...unifiedIntervals)
+}
+
+export function unifyIntervals(intervals: Interval[]): Interval[] {
+	const sortedIntervals = intervals.sort(compareIntervalsByTheirMinimum)
 	if(sortedIntervals.length === 0) {
-		return new Domain()
+		return []
 	}
 
-	const unifiedDomain = new Domain()
+	const unifiedIntervals: Interval[] = []
 	let currentInterval = sortedIntervals[0]
 	for(const nextInterval of sortedIntervals) {
 		if(doIntervalsOverlap(currentInterval, nextInterval)) {
@@ -107,12 +112,12 @@ export function unifyDomains(domains: Domain[]): Domain {
 			const intervalWithLaterEnd = compareIntervalsByTheirMaximum(currentInterval, nextInterval) > 0 ? currentInterval : nextInterval
 			currentInterval = new Interval(intervalWithEarlierStart.min, intervalWithLaterEnd.max)
 		} else {
-			unifiedDomain.addInterval(currentInterval)
+			unifiedIntervals.push(currentInterval)
 			currentInterval = nextInterval
 		}
 	}
-	unifiedDomain.addInterval(currentInterval)
-	return unifiedDomain
+	unifiedIntervals.push(currentInterval)
+	return unifiedIntervals
 }
 
 export function addDomains(domain1: Domain, domain2: Domain): Domain {

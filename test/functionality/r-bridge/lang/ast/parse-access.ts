@@ -3,6 +3,7 @@ import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
 import { RType } from '../../../../../src/r-bridge'
 import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
+import {InternalScope} from "../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v2/internal/internal";
 
 describe('Parse value access', withShell(shell => {
 	describe('Single bracket', () => {
@@ -37,7 +38,7 @@ describe('Parse value access', withShell(shell => {
 						content:   '[',
 						info:      {},
 						location:  rangeFrom(1, 2, 1, 2),
-						namespace: undefined
+						namespace: InternalScope
 					},
 					location:  rangeFrom(1, 2, 1, 2),
 					flavor:    'named',
@@ -53,35 +54,79 @@ describe('Parse value access', withShell(shell => {
 				})
 			}
 		])
-		assertAst('One value', shell, 'a[1]', exprList({
-			type:     RType.Access,
-			location: rangeFrom(1, 2, 1, 2),
-			lexeme:   '[',
-			operator: '[',
-			info:     {},
-			accessed: {
-				type:      RType.Symbol,
-				location:  rangeFrom(1, 1, 1, 1),
-				namespace: undefined,
-				lexeme:    'a',
-				content:   'a',
-				info:      {}
+		assertAst('One value', shell, 'a[1]', [
+			{
+				step: NORMALIZE,
+				wanted: exprList({
+					type: RType.Access,
+					location: rangeFrom(1, 2, 1, 2),
+					lexeme: '[',
+					operator: '[',
+					info: {},
+					accessed: {
+						type: RType.Symbol,
+						location: rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme: 'a',
+						content: 'a',
+						info: {}
+					},
+					access: [{
+						type: RType.Argument,
+						location: rangeFrom(1, 3, 1, 3),
+						lexeme: '1',
+						name: undefined,
+						info: {},
+						value: {
+							type: RType.Number,
+							location: rangeFrom(1, 3, 1, 3),
+							lexeme: '1',
+							content: numVal(1),
+							info: {}
+						}
+					}]
+				})
 			},
-			access: [{
-				type:     RType.Argument,
-				location: rangeFrom(1, 3, 1, 3),
-				lexeme:   '1',
-				name:     undefined,
-				info:     {},
-				value:    {
-					type:     RType.Number,
-					location: rangeFrom(1, 3, 1, 3),
-					lexeme:   '1',
-					content:  numVal(1),
-					info:     {}
-				}
-			}]
-		}))
+			{
+				step: DESUGAR_NORMALIZE,
+				wanted: exprList({
+					type:         RType.FunctionCall,
+					info:         {},
+					lexeme:       '[',
+					functionName: {
+						type:      RType.Symbol,
+						lexeme:    '[',
+						content:   '[',
+						info:      {},
+						location:  rangeFrom(1, 2, 1, 2),
+						namespace: InternalScope
+					},
+					location:  rangeFrom(1, 2, 1, 2),
+					flavor:    'named',
+					arguments: [{
+						type:      RType.Symbol,
+						lexeme:    'a',
+						content:   'a',
+						info:      {},
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined
+					}, {
+						type: RType.Argument,
+						location: rangeFrom(1, 3, 1, 3),
+						lexeme: '1',
+						name: undefined,
+						info: {},
+						value: {
+							type: RType.Number,
+							location: rangeFrom(1, 3, 1, 3),
+							lexeme: '1',
+							content: numVal(1),
+							info: {}
+						}
+					}]
+				})
+			}
+			])
 		assertAst('One variable', shell, 'a[x]', exprList({
 			type:     RType.Access,
 			location: rangeFrom(1, 2, 1, 2),

@@ -6,6 +6,7 @@ import { splitArrayOn } from '../../../../../../../util/arrays'
 import { NormalizeConfiguration } from '../data'
 import { normalizeSingleToken } from './single-element'
 import { tryToNormalizeArgument } from './functions/argument'
+import {InternalScope} from "./internal";
 
 /**
  * Normalize the given data as access (e.g., indexing).
@@ -53,8 +54,7 @@ export function normalizeAccess(configuration: NormalizeConfiguration, tokens: r
 			flavor:       'named',
 			functionName: {
 				type:      RType.Symbol,
-				// TODO: just lock "internal" here
-				namespace: undefined,
+				namespace: InternalScope,
 				lexeme:    content,
 				info:      {},
 				content,
@@ -84,8 +84,7 @@ export function normalizeAccess(configuration: NormalizeConfiguration, tokens: r
 		flavor:       'named',
 		functionName: {
 			type:      RType.Symbol,
-			// TODO: just lock "internal" here
-			namespace: undefined,
+			namespace: InternalScope,
 			lexeme:    content,
 			info:      {},
 			content,

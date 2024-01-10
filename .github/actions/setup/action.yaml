@@ -8,7 +8,7 @@ inputs:
     r-version:
         description: "The R version to use"
         required: false
-        default: "4.2.3"
+        default: "4.3.2"
 
 
 runs:

@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20 AS builder
+FROM node:21.4-alpine3.19 AS builder
 
 WORKDIR /app
 
-COPY ../src /app/src/
-COPY ./package*.json ./tsconfig.json /app/
+COPY ./src /app/src/
+COPY ./package.json ./package-lock.json ./tsconfig.json /app/
 
 RUN npm install
 RUN npm run build
@@ -22,7 +22,7 @@ RUN apk add --no-cache R
 RUN Rscript -e "install.packages('xmlparsedata',repos='https://cloud.r-project.org/')"
 
 # we keep the package.json for module resolution
-COPY ../package.json LICENSE /app/
+COPY ./package.json ./scripts/demo.R LICENSE /app/
 RUN npm install --omit=dev
 
 COPY --from=builder /app/dist/src /app/dist

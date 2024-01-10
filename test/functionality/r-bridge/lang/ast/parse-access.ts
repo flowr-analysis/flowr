@@ -111,18 +111,11 @@ describe('Parse value access', withShell(shell => {
 						location:  rangeFrom(1, 1, 1, 1),
 						namespace: undefined
 					}, {
-						type: RType.Argument,
+						type: RType.Number,
 						location: rangeFrom(1, 3, 1, 3),
 						lexeme: '1',
-						name: undefined,
-						info: {},
-						value: {
-							type: RType.Number,
-							location: rangeFrom(1, 3, 1, 3),
-							lexeme: '1',
-							content: numVal(1),
-							info: {}
-						}
+						content: numVal(1),
+						info: {}
 					}]
 				})
 			}

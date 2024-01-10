@@ -16,7 +16,7 @@ import { normalizeSingleToken } from '../single-element'
  *
  * @returns The parsed argument or `undefined` if the given object is not an argument.
  */
-export function tryToNormalizeArgument(configuration: NormalizeConfiguration, objs: readonly XmlBasedJson[]): RArgument | undefined {
+export function tryToNormalizeArgument(configuration: NormalizeConfiguration, objs: readonly XmlBasedJson[]): RNode | undefined {
 	if(objs.length < 1 || objs.length > 3) {
 		log.warn(`Either [expr|value], [SYMBOL_SUB, EQ_SUB], or [SYMBOL_SUB, EQ_SUB, expr], but got: ${objs.map(o => JSON.stringify(o)).join(', ')}`)
 		return undefined
@@ -51,16 +51,20 @@ export function tryToNormalizeArgument(configuration: NormalizeConfiguration, ob
 
 	guard(parsedValue !== undefined && parsedValue?.type !== RType.Delimiter, () => `[argument] parsed value must not be undefined, yet: ${JSON.stringify(objs)}`)
 
-	return {
-		type:   RType.Argument,
-		location,
-		lexeme: content,
-		name,
-		value:  parsedValue ?? undefined,
-		info:   {
-			fullRange:        location,
-			fullLexeme:       content,
-			additionalTokens: []
+	if(name === undefined) {
+		return parsedValue ?? undefined
+	} else {
+		return {
+			type: RType.Argument,
+			location,
+			lexeme: content,
+			name,
+			value: parsedValue ?? undefined,
+			info: {
+				fullRange: location,
+				fullLexeme: content,
+				additionalTokens: []
+			}
 		}
 	}
 }

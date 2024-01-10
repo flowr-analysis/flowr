@@ -99,7 +99,7 @@ export function normalizeAccess(configuration: NormalizeConfiguration, tokens: r
 }
 
 
-function normalizeAccessArgument(config: NormalizeConfiguration, elements: readonly XmlBasedJson[]): RArgument {
+function normalizeAccessArgument(config: NormalizeConfiguration, elements: readonly XmlBasedJson[]): RNode {
 	const res = tryToNormalizeArgument(config, elements)
 	guard(res !== undefined, () => `expected one access result in access as argument, yet received ${JSON.stringify(res)} for ${JSON.stringify(elements)}`)
 	return res

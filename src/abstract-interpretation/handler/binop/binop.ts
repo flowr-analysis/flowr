@@ -1,5 +1,5 @@
 import {Handler} from '../handler'
-import {AINode} from '../../processor'
+import {aiLogger, AINode} from '../../processor'
 import {BinaryOperatorFlavor, ParentInformation, RBinaryOp} from '../../../r-bridge'
 import {guard} from '../../../util/assert'
 import {operators} from './operators'
@@ -19,18 +19,18 @@ export class BinOp implements Handler<AINode> {
 	}
 
 	enter(): void {
-		console.log(`Entered ${this.getName()}`)
+		aiLogger.trace(`Entered ${this.getName()}`)
 	}
 
 	exit(): AINode {
-		console.log(`Exited ${this.getName()}`)
+		aiLogger.trace(`Exited ${this.getName()}`)
 		guard(this.lhs !== undefined, `No LHS found for assignment ${this.node.info.id}`)
 		guard(this.rhs !== undefined, `No RHS found for assignment ${this.node.info.id}`)
 		return operators[this.node.flavor](this.lhs, this.rhs, this.node)
 	}
 
 	next(node: AINode): void {
-		console.log(`${this.getName()} received`)
+		aiLogger.trace(`${this.getName()} received`)
 		if(this.lhs === undefined) {
 			this.lhs = node
 		} else if(this.rhs === undefined) {

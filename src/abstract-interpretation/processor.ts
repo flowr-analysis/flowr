@@ -7,6 +7,9 @@ import {DataflowGraphVertexInfo, EdgeType, OutgoingEdges} from '../dataflow'
 import {Handler} from './handler/handler'
 import {BinOp} from './handler/binop/binop'
 import {Domain, domainFromScalar, unifyDomains} from './domain'
+import {log} from '../util/log'
+
+export const aiLogger = log.getSubLogger({name: 'abstract-interpretation'})
 
 export interface AINode {
 	readonly id:      NodeId

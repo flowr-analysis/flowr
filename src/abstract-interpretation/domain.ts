@@ -1,18 +1,13 @@
 import {assertUnreachable, guard} from '../util/assert'
 
 interface IntervalBound {
-	value:     number,
-	inclusive: boolean
+	readonly value:     number,
+	readonly inclusive: boolean
 }
 
 export class Interval {
-	readonly min: IntervalBound
-	readonly max: IntervalBound
-
-	constructor(min: IntervalBound, max: IntervalBound) {
-		this.min = min
-		this.max = max
-		guard(min.value <= max.value, `The interval ${this.toString()} has a minimum that is greater than its maximum`)
+	constructor(readonly min: IntervalBound, readonly max: IntervalBound) {
+		guard(min.value <= max.value, () => `The interval ${this.toString()} has a minimum that is greater than its maximum`)
 		guard(min.value !== max.value || (min.inclusive === max.inclusive), `The bound ${min.value} cannot be in- and exclusive at the same time`)
 	}
 
@@ -40,7 +35,7 @@ export class Domain {
 	}
 
 	addInterval(interval: Interval): void {
-		this.intervals = unifyIntervals([...this.intervals, interval])
+		this.intervals = unifyOverlappingIntervals([...this.intervals, interval])
 	}
 
 	toString(): string {
@@ -49,9 +44,9 @@ export class Domain {
 }
 
 const enum CompareType {
-	/** The bound that's inclusive is the smaller one */
+	/** If qual, the bound that's inclusive is the smaller one */
 	Min,
-	/** The bound that's inclusive is the greater one */
+	/** If equal, the bound that's inclusive is the greater one */
 	Max,
 	/** Equality is only based on the "raw" values */
 	IgnoreInclusivity
@@ -100,15 +95,15 @@ export function doIntervalsOverlap(interval1: Interval, interval2: Interval): bo
 }
 
 export function unifyDomains(domains: Domain[]): Domain {
-	const unifiedIntervals = unifyIntervals(domains.flatMap(domain => Array.from(domain.intervals)))
+	const unifiedIntervals = unifyOverlappingIntervals(domains.flatMap(domain => Array.from(domain.intervals)))
 	return new Domain(...unifiedIntervals)
 }
 
-export function unifyIntervals(intervals: Interval[]): Interval[] {
-	const sortedIntervals = intervals.sort(compareIntervalsByTheirMinimum)
-	if(sortedIntervals.length === 0) {
+export function unifyOverlappingIntervals(intervals: Interval[]): Interval[] {
+	if(intervals.length === 0) {
 		return []
 	}
+	const sortedIntervals = intervals.sort(compareIntervalsByTheirMinimum)
 
 	const unifiedIntervals: Interval[] = []
 	let currentInterval = sortedIntervals[0]

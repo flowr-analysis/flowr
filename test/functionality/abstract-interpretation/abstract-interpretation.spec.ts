@@ -5,7 +5,7 @@ import {
 	domainFromScalar,
 	Interval,
 	subtractDomains,
-	unifyIntervals
+	unifyOverlappingIntervals
 } from '../../../src/abstract-interpretation/domain'
 import {assert} from 'chai'
 
@@ -43,11 +43,11 @@ describe('Abstract Interpretation', () => {
 	})
 
 	it('Interval unification', () => {
-		assert.isEmpty(unifyIntervals([]), 'Unifying no intervals results in nothing')
+		assert.isEmpty(unifyOverlappingIntervals([]), 'Unifying no intervals results in nothing')
 
 		let intervals = [...domainFromScalar(1).intervals, ...domainFromScalar(2).intervals]
 		assert.deepEqual(
-			unifyIntervals(intervals),
+			unifyOverlappingIntervals(intervals),
 			intervals,
 			'Unifying two non overlapping intervals results in no change'
 		)
@@ -59,7 +59,7 @@ describe('Abstract Interpretation', () => {
 			new Interval({value: 6, inclusive: true}, {value: 8, inclusive: true}),
 		]
 		assert.deepEqual(
-			unifyIntervals(intervals),
+			unifyOverlappingIntervals(intervals),
 			[
 				new Interval({value: 1, inclusive: true}, {value: 4, inclusive: true}),
 				new Interval({value: 5, inclusive: true}, {value: 8, inclusive: true}),

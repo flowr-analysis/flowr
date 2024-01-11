@@ -1,6 +1,6 @@
-import { NodeId } from '../../r-bridge'
-import { guard } from '../assert'
-import { CfgEdge, CfgVertex, ControlFlowInformation } from './cfg'
+import {NodeId} from '../../r-bridge'
+import {guard} from '../assert'
+import {CfgEdge, CfgVertex, ControlFlowInformation} from './cfg'
 
 export interface NodeVisitingContext {
 	parent:   {
@@ -85,9 +85,6 @@ class ControlFlowGraphExecutionTraceVisitor {
 
 }
 
-/**
- * TODO
- */
 export function visitCfg(cfg: ControlFlowInformation, onVisit: OnEnterVisitNode): void {
 	return new ControlFlowGraphExecutionTraceVisitor(onVisit).visit(cfg)
 }

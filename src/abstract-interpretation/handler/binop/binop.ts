@@ -9,13 +9,10 @@ export type BinOpOperators = {
 }
 
 export class BinOp implements Handler<AINode> {
-	lhs:           AINode | undefined
-	rhs:           AINode | undefined
-	readonly node: RBinaryOp<ParentInformation>
+	lhs: AINode | undefined
+	rhs: AINode | undefined
 
-	constructor(node: RBinaryOp<ParentInformation>) {
-		this.node = node
-	}
+	constructor(readonly node: RBinaryOp<ParentInformation>) {}
 
 	getName(): string {
 		return `Bin Op (${this.node.flavor})`

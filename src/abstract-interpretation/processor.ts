@@ -6,7 +6,7 @@ import {guard} from '../util/assert'
 import {DataflowGraphVertexInfo, EdgeType, OutgoingEdges} from '../dataflow'
 import {Handler} from './handler/handler'
 import {BinOp} from './handler/binop/binop'
-import {Domain, domainFromScalar, unifyDomains} from './domain'
+import {Domain, unifyDomains} from './domain'
 import {log} from '../util/log'
 
 export const aiLogger = log.getSubLogger({name: 'abstract-interpretation'})
@@ -65,7 +65,7 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 			const num = astNode.content.num
 			operationStack.peek()?.next({
 				id:      astNode.info.id,
-				domain:  domainFromScalar(num),
+				domain:  Domain.fromScalar(num),
 				astNode: astNode,
 			})
 		} else if(node.type === CfgVertexType.EndMarker) {

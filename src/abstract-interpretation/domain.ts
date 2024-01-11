@@ -19,8 +19,23 @@ export class Interval {
 export class Domain {
 	private readonly _intervals: Set<Interval>
 
-	constructor(...intervals: Interval[]) {
-		this._intervals = new Set(intervals)
+	private constructor(intervals: Interval[] = []) {
+		this._intervals = new Set(unifyOverlappingIntervals(intervals))
+	}
+
+	static bottom(): Domain {
+		return new Domain()
+	}
+
+	static fromIntervals(intervals: Interval[] | Set<Interval>): Domain {
+		return new Domain(Array.from(intervals))
+	}
+
+	static fromScalar(n: number): Domain {
+		return new Domain([new Interval(
+			{value: n, inclusive: true},
+			{value: n, inclusive: true}
+		)])
 	}
 
 	get intervals(): Set<Interval> {
@@ -96,7 +111,7 @@ export function doIntervalsOverlap(interval1: Interval, interval2: Interval): bo
 
 export function unifyDomains(domains: Domain[]): Domain {
 	const unifiedIntervals = unifyOverlappingIntervals(domains.flatMap(domain => Array.from(domain.intervals)))
-	return new Domain(...unifiedIntervals)
+	return Domain.fromIntervals(unifiedIntervals)
 }
 
 export function unifyOverlappingIntervals(intervals: Interval[]): Interval[] {
@@ -134,7 +149,7 @@ export function addDomains(domain1: Domain, domain2: Domain): Domain {
 			}))
 		}
 	}
-	return new Domain(...intervals)
+	return Domain.fromIntervals(intervals)
 }
 
 export function subtractDomains(domain1: Domain, domain2: Domain): Domain {
@@ -150,12 +165,5 @@ export function subtractDomains(domain1: Domain, domain2: Domain): Domain {
 			}))
 		}
 	}
-	return new Domain(...intervals)
-}
-
-export function domainFromScalar(n: number): Domain {
-	return new Domain(new Interval(
-		{value: n, inclusive: true},
-		{value: n, inclusive: true}
-	))
+	return Domain.fromIntervals(intervals)
 }

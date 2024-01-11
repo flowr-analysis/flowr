@@ -2,7 +2,6 @@ import {
 	addDomains,
 	doIntervalsOverlap,
 	Domain,
-	domainFromScalar,
 	Interval,
 	subtractDomains,
 	unifyOverlappingIntervals
@@ -45,7 +44,7 @@ describe('Abstract Interpretation', () => {
 	it('Interval unification', () => {
 		assert.isEmpty(unifyOverlappingIntervals([]), 'Unifying no intervals results in nothing')
 
-		let intervals = [...domainFromScalar(1).intervals, ...domainFromScalar(2).intervals]
+		let intervals = [...Domain.fromScalar(1).intervals, ...Domain.fromScalar(2).intervals]
 		assert.deepEqual(
 			unifyOverlappingIntervals(intervals),
 			intervals,
@@ -72,28 +71,28 @@ describe('Abstract Interpretation', () => {
 	// TODO: Maybe add tests for domain unification (even though it's just a wrapper around interval unification)
 
 	it('Domain addition', () => {
-		assert.isEmpty(addDomains(new Domain(), new Domain()).intervals, 'Adding two empty domains results in an empty domain')
+		assert.isEmpty(addDomains(Domain.bottom(), Domain.bottom()).intervals, 'Adding two empty domains results in an empty domain')
 
-		let domain1 = domainFromScalar(4)
-		let domain2 = domainFromScalar(2)
+		let domain1 = Domain.fromScalar(4)
+		let domain2 = Domain.fromScalar(2)
 		assert.deepEqual(
 			addDomains(domain1, domain2),
-			new Domain(new Interval({value: 6, inclusive: true}, {value: 6, inclusive: true})),
+			Domain.fromScalar(6),
 			'Adding two domains of a scalar, results in a domain containing the sum of the scalars'
 		)
 
-		domain2 = new Domain(new Interval({value: 6, inclusive: true}, {value: 9, inclusive: true}))
+		domain2 = Domain.fromIntervals([new Interval({value: 6, inclusive: true}, {value: 9, inclusive: true})])
 		assert.deepEqual(
 			addDomains(domain1, domain2),
-			new Domain(new Interval({value: 10, inclusive: true}, {value: 13, inclusive: true})),
+			Domain.fromIntervals([new Interval({value: 10, inclusive: true}, {value: 13, inclusive: true})]),
 			'Adding one scalar-domain to a wider domain, adds the scalar to the start and end of the wider domain'
 		)
 
-		domain1 = new Domain(new Interval({value: 6, inclusive: true}, {value: 9, inclusive: true}))
-		domain2 = new Domain(new Interval({value: 4, inclusive: true}, {value: 7, inclusive: true}))
+		domain1 = Domain.fromIntervals([new Interval({value: 6, inclusive: true}, {value: 9, inclusive: true})])
+		domain2 = Domain.fromIntervals([new Interval({value: 4, inclusive: true}, {value: 7, inclusive: true})])
 		assert.deepEqual(
 			addDomains(domain1, domain2),
-			new Domain(new Interval({value: 10, inclusive: true}, {value: 16, inclusive: true})),
+			Domain.fromIntervals([new Interval({value: 10, inclusive: true}, {value: 16, inclusive: true})]),
 			'Adding two domains with overlapping intervals, adds the intervals'
 		)
 
@@ -101,35 +100,35 @@ describe('Abstract Interpretation', () => {
 	})
 
 	it('Domain subtraction', () => {
-		assert.isEmpty(subtractDomains(new Domain(), new Domain()).intervals, 'Subtracting two empty domains results in an empty domain')
+		assert.isEmpty(subtractDomains(Domain.bottom(), Domain.bottom()).intervals, 'Subtracting two empty domains results in an empty domain')
 
-		let domain1 = domainFromScalar(4)
-		let domain2 = domainFromScalar(2)
+		let domain1 = Domain.fromScalar(4)
+		let domain2 = Domain.fromScalar(2)
 		assert.deepEqual(
 			subtractDomains(domain1, domain2),
-			new Domain(new Interval({value: 2, inclusive: true}, {value: 2, inclusive: true})),
+			Domain.fromIntervals([new Interval({value: 2, inclusive: true}, {value: 2, inclusive: true})]),
 			'Subtracting two domains of a scalar, results in a domain containing the difference of the scalars'
 		)
 
-		domain2 = new Domain(new Interval({value: 6, inclusive: true}, {value: 9, inclusive: true}))
+		domain2 = Domain.fromIntervals([new Interval({value: 6, inclusive: true}, {value: 9, inclusive: true})])
 		assert.deepEqual(
 			subtractDomains(domain2, domain1),
-			new Domain(new Interval({value: 2, inclusive: true}, {value: 5, inclusive: true})),
+			Domain.fromIntervals([new Interval({value: 2, inclusive: true}, {value: 5, inclusive: true})]),
 			'Subtracting a scalar-domain from a wider domain, subtracts the scalar from the start and end of the wider domain'
 		)
 
-		domain2 = new Domain(new Interval({value: 1, inclusive: true}, {value: 3, inclusive: true}))
+		domain2 = Domain.fromIntervals([new Interval({value: 1, inclusive: true}, {value: 3, inclusive: true})])
 		assert.deepEqual(
 			subtractDomains(domain1, domain2),
-			new Domain(new Interval({value: 1, inclusive: true}, {value: 3, inclusive: true})),
+			Domain.fromIntervals([new Interval({value: 1, inclusive: true}, {value: 3, inclusive: true})]),
 			'Subtracting a wider domain from a scalar-domain, subtracts the start and end of the wider domain from the scalar'
 		)
 
-		domain1 = new Domain(new Interval({value: 6, inclusive: true}, {value: 9, inclusive: true}))
-		domain2 = new Domain(new Interval({value: 4, inclusive: true}, {value: 5, inclusive: true}))
+		domain1 = Domain.fromIntervals([new Interval({value: 6, inclusive: true}, {value: 9, inclusive: true})])
+		domain2 = Domain.fromIntervals([new Interval({value: 4, inclusive: true}, {value: 5, inclusive: true})])
 		assert.deepEqual(
 			subtractDomains(domain1, domain2),
-			new Domain(new Interval({value: 1, inclusive: true}, {value: 5, inclusive: true})),
+			Domain.fromIntervals([new Interval({value: 1, inclusive: true}, {value: 5, inclusive: true})]),
 			'Subtracting two domains with overlapping intervals, subtracts the intervals'
 		)
 

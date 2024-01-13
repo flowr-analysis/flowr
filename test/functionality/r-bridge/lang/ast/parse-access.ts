@@ -482,7 +482,6 @@ describe('Parse value access', withShell(shell => {
 				info:      {}
 			},
 			access: [{
-
 				type:     RType.Argument,
 				location: rangeFrom(1, 4, 1, 4),
 				lexeme:   '5',

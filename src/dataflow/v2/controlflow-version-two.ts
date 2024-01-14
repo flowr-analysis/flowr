@@ -1,5 +1,6 @@
-import { Environment } from '../v1'
-import { NodeId, RType } from '../../r-bridge'
+import { NodeId } from '../../r-bridge'
+import { Identifier, IdentifierDefinition, REnvironmentInformation, resolveByName } from '../common/environments'
+import { LocalScope } from '../common/environments/scopes'
 
 
 
@@ -129,19 +130,46 @@ interface NeverExecutionTuple{
 export type ExecutionTuple = AlwaysExecutionTuple | MaybeExecutionTuple | NeverExecutionTuple
 
 
-export function expressionExecution(previousExecutionState: ExecutionState, environmentUntilNow: Environment, currentExpression: NodeId, _callStack: NodeId[], _influencingExpressions: NodeId[]){
+export function expressionExecution(previousExecutionState: ExecutionTuple, _currentExpression: NodeId, expressionIdentifier: Identifier, environmentUntilNow: REnvironmentInformation, _callStack: NodeId[]){
 	//Set the State in which the Expression was found in
 	//Expression.entry = previousExecutionState
 	//TODO: how to save? efficient way unknown
     
-	if(previousExecutionState == ExecutionState.Never){
+	if(previousExecutionState.executed === ExecutionState.Never){
 		//Expression.exit = new ExecutionTuple(previousExecutionState, influencingExpressions)
 		return
 	}
+	const currentExpressionType:undefined | IdentifierDefinition[] = resolveByName(expressionIdentifier, LocalScope, environmentUntilNow)//evaluateExpressionType(currentExpression, environmentUntilNow)
 
-	const _currentExpressionType = evaluateExpressionType(currentExpression, environmentUntilNow)
+	if(currentExpressionType === undefined){
+		//Expression.exit = previousExecutionState
+		return
+	}
 
-	/*switch(currentExpressionType){
+	let amountOfAbortingExpressions = 0
+	const listOfAbortingExpressions : NodeId[] = []
+
+  
+	for(const identifierDefinition of currentExpressionType){
+		//TODO refactor this
+		if(identifierDefinition.kind === 'built-in-function' && identifierDefinition.name == 'next'){
+			amountOfAbortingExpressions++
+			listOfAbortingExpressions.push(identifierDefinition.nodeId)
+		} else if(identifierDefinition.kind === 'built-in-function' && identifierDefinition.name == 'break'){
+			amountOfAbortingExpressions++
+			listOfAbortingExpressions.push(identifierDefinition.nodeId)
+		} else if(identifierDefinition.kind === 'built-in-function' && identifierDefinition.name == 'return'){
+			amountOfAbortingExpressions++
+			listOfAbortingExpressions.push(identifierDefinition.nodeId)
+		}
+	}
+
+	//if all statements are not aborting it is always executed if not 
+	const _afterExpressionExecution = amountOfAbortingExpressions === 0 ? ExecutionState.Always : amountOfAbortingExpressions === currentExpressionType.length ? ExecutionState.Never : ExecutionState.Maybe
+
+
+	/*
+  switch(currentExpressionType){
 		case ExpressionType.Literal:
 		case ExpressionType.If:
 		case ExpressionType.Loop:
@@ -161,6 +189,7 @@ export function expressionExecution(previousExecutionState: ExecutionState, envi
 	*/
 }
 
+//TODO possibly remove
 enum ExpressionType{
 	Literal,
 	If,
@@ -173,11 +202,6 @@ enum ExpressionType{
 	Next
 }
 
-
-function evaluateExpressionType(_toEvaluateExpression: NodeId, _currentEnvironment: Environment):RType {
-	//TODO: actually implement that 
-	return RType.Comment //TODO: comment out
-}
 
 export function onCallStackReduction(_lowerLevel: ExpressionType, _upperLevel: ExpressionType):ExecutionTuple{
    
@@ -193,3 +217,5 @@ export function onCallStackReduction(_lowerLevel: ExpressionType, _upperLevel: E
 	return <ExecutionTuple>({ executed: ExecutionState.Always}) //TODO comment out
 }
 
+//how to save
+//to to find out if we are looking at then or else block in if-then-else

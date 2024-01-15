@@ -64,11 +64,7 @@ describe('Abstract Interpretation', () => {
 				new Interval({value: 5, inclusive: true}, {value: 8, inclusive: true}),
 			],
 		)
-
-		// TODO: more tests for in and excluded bounds
 	})
-
-	// TODO: Maybe add tests for domain unification (even though it's just a wrapper around interval unification)
 
 	it('Domain addition', () => {
 		assert.isEmpty(addDomains(Domain.bottom(), Domain.bottom()).intervals, 'Adding two empty domains results in an empty domain')
@@ -95,8 +91,6 @@ describe('Abstract Interpretation', () => {
 			Domain.fromIntervals([new Interval({value: 10, inclusive: true}, {value: 16, inclusive: true})]),
 			'Adding two domains with overlapping intervals, adds the intervals'
 		)
-
-		// TODO: more tests for in and excluded bounds
 	})
 
 	it('Domain subtraction', () => {
@@ -131,7 +125,5 @@ describe('Abstract Interpretation', () => {
 			Domain.fromIntervals([new Interval({value: 1, inclusive: true}, {value: 5, inclusive: true})]),
 			'Subtracting two domains with overlapping intervals, subtracts the intervals'
 		)
-
-		// TODO: more tests for in and excluded bounds
 	})
 })

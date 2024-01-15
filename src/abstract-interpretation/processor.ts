@@ -52,7 +52,6 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 	const operationStack = new Stack<Handler<AINode>>()
 	visitCfg(cfg, (node, _) => {
 		const astNode = ast.idMap.get(node.id)
-		// TODO: avoid if-else
 		if(astNode?.type === RType.BinaryOp) {
 			operationStack.push(new BinOp(astNode)).enter()
 		} else if(astNode?.type === RType.Symbol) {

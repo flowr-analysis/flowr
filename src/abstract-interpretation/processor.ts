@@ -17,8 +17,6 @@ export interface AINode {
 	readonly astNode: RNodeWithParent<ParentInformation>
 }
 
-const nodeMap = new Map<NodeId, AINode>()
-
 class Stack<ElementType> {
 	private backingStore: ElementType[] = []
 
@@ -31,7 +29,7 @@ class Stack<ElementType> {
 	}
 }
 
-function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation): Domain {
+function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation, nodeMap: Map<NodeId, AINode>): Domain {
 	const dfgNode: [DataflowGraphVertexInfo, OutgoingEdges] | undefined = dfg.graph.get(node)
 	guard(dfgNode !== undefined, `No DFG-Node found with ID ${node}`)
 	const [_, children] = dfgNode
@@ -50,6 +48,7 @@ function getDomainOfDfgChild(node: NodeId, dfg: DataflowInformation): Domain {
 export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInformation): DataflowInformation {
 	const cfg = extractCFG(ast)
 	const operationStack = new Stack<Handler<AINode>>()
+	const nodeMap = new Map<NodeId, AINode>()
 	visitCfg(cfg, (node, _) => {
 		const astNode = ast.idMap.get(node.id)
 		if(astNode?.type === RType.BinaryOp) {
@@ -57,7 +56,7 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 		} else if(astNode?.type === RType.Symbol) {
 			operationStack.peek()?.next({
 				id:      astNode.info.id,
-				domain:  getDomainOfDfgChild(node.id, dfg),
+				domain:  getDomainOfDfgChild(node.id, dfg, nodeMap),
 				astNode: astNode,
 			})
 		} else if(astNode?.type === RType.Number){

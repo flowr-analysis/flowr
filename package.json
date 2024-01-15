@@ -12,7 +12,7 @@
     "url": "https://github.com/Code-Inspect/flowr/issues"
   },
   "scripts": {
-    "publish-library": "cp .npmignore package.json README.md LICENSE dist/src/ && cd dist/src && rm ./flowr.js ./flowr.d.ts && rm -r ./cli/ && npm publish --access public",
+    "publish-library": "cp .npmignore package.json README.md LICENSE dist/src/ && cd dist/src && npm publish --access public",
     "main": "ts-node src/flowr.ts",
     "stats": "ts-node src/cli/statistics-app.ts",
     "stats-helper": "ts-node src/cli/statistics-helper-app.ts",

@@ -1,4 +1,4 @@
-import Joi from 'joi'
+import * as Joi from 'joi'
 import { sendMessage } from './send'
 import { baseMessage, FlowrMessage, IdMessageBase, MessageDefinition } from './messages/messages'
 import { FlowrErrorMessage } from './messages/error'

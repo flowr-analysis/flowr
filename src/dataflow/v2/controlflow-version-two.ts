@@ -1,4 +1,5 @@
-import { NodeId } from '../../r-bridge'
+import { NodeId, NormalizedAst, RNodeWithParent, RoleInParent } from '../../r-bridge'
+import { guard } from '../../util/assert'
 import { Identifier, IdentifierDefinition, REnvironmentInformation, resolveByName } from '../common/environments'
 import { LocalScope } from '../common/environments/scopes'
 
@@ -129,67 +130,58 @@ interface NeverExecutionTuple{
 
 export type ExecutionTuple = AlwaysExecutionTuple | MaybeExecutionTuple | NeverExecutionTuple
 
+interface CfgInfo {
+	entry?: ExecutionTuple,
+	exit?:  ExecutionTuple 
+}
 
-export function expressionExecution(previousExecutionState: ExecutionTuple, _currentExpression: NodeId, expressionIdentifier: Identifier, environmentUntilNow: REnvironmentInformation, _callStack: NodeId[]){
+
+export function expressionExecution(previousExecutionState: ExecutionTuple, 
+																																				currentExpression: NodeId, ast: NormalizedAst, 
+																																				expressionIdentifier: Identifier, environmentUntilNow: REnvironmentInformation){
 	//Set the State in which the Expression was found in
-	//Expression.entry = previousExecutionState
-	//TODO: how to save? efficient way unknown
-    
+	const expressionNode: RNodeWithParent<CfgInfo>| undefined = ast.idMap.get(currentExpression)
+  
+	guard(expressionNode !== undefined, 'Node not found in ast')
+  
+	expressionNode.info.entry = previousExecutionState
+	  
 	if(previousExecutionState.executed === ExecutionState.Never){
-		//Expression.exit = new ExecutionTuple(previousExecutionState, influencingExpressions)
+		expressionNode.info.exit = {executed: ExecutionState.Never, influencingExpressions: [currentExpression]} satisfies ExecutionTuple
 		return
 	}
-	const currentExpressionType:undefined | IdentifierDefinition[] = resolveByName(expressionIdentifier, LocalScope, environmentUntilNow)//evaluateExpressionType(currentExpression, environmentUntilNow)
 
-	if(currentExpressionType === undefined){
-		//Expression.exit = previousExecutionState
+	const currentExpressionTypeList:undefined | IdentifierDefinition[] = resolveByName(expressionIdentifier, LocalScope, environmentUntilNow)//evaluateExpressionType(currentExpression, environmentUntilNow)
+
+	if(currentExpressionTypeList === undefined){
+		expressionNode.info.exit = previousExecutionState
 		return
 	}
 
 	let amountOfAbortingExpressions = 0
 	const listOfAbortingExpressions : NodeId[] = []
 
-  
-	for(const identifierDefinition of currentExpressionType){
-		//TODO refactor this
+	for(const identifierDefinition of currentExpressionTypeList){
 		if(identifierDefinition.kind === 'built-in-function' && identifierDefinition.name == 'next'){
 			amountOfAbortingExpressions++
 			listOfAbortingExpressions.push(identifierDefinition.nodeId)
-		} else if(identifierDefinition.kind === 'built-in-function' && identifierDefinition.name == 'break'){
+		} else if(identifierDefinition.kind === 'built-in-function' && identifierDefinition.name === 'break'){
 			amountOfAbortingExpressions++
 			listOfAbortingExpressions.push(identifierDefinition.nodeId)
-		} else if(identifierDefinition.kind === 'built-in-function' && identifierDefinition.name == 'return'){
+		} else if(identifierDefinition.kind === 'built-in-function' && identifierDefinition.name === 'return'){
 			amountOfAbortingExpressions++
 			listOfAbortingExpressions.push(identifierDefinition.nodeId)
 		}
 	}
 
-	//if all statements are not aborting it is always executed if not 
-	const _afterExpressionExecution = amountOfAbortingExpressions === 0 ? ExecutionState.Always : amountOfAbortingExpressions === currentExpressionType.length ? ExecutionState.Never : ExecutionState.Maybe
+	//if all expressions are aborting it is never exited if some are it is maybe exited and if no are aborting it is always executed
+	const afterExpressionExecution = amountOfAbortingExpressions === 0 ? ExecutionState.Always : amountOfAbortingExpressions === currentExpressionTypeList.length ? ExecutionState.Never : ExecutionState.Maybe
 
-
-	/*
-  switch(currentExpressionType){
-		case ExpressionType.Literal:
-		case ExpressionType.If:
-		case ExpressionType.Loop:
-		case ExpressionType.Function:
-		case ExpressionType.Then:
-		case ExpressionType.Else:
-			//TODO how to save
-			//Expr.exit = (ALWAYS, List(empty))
-			break
-		case ExpressionType.Break:
-		case ExpressionType.Next:
-		case ExpressionType.Return:
-			//TODO how to save    
-			//Expr.exit = (NEVER, List(Expr))
-			break
-	}
-	*/
+	expressionNode.info.exit= {executed: afterExpressionExecution, influencingExpressions: listOfAbortingExpressions}
 }
 
 //TODO possibly remove
+/*
 enum ExpressionType{
 	Literal,
 	If,
@@ -201,21 +193,156 @@ enum ExpressionType{
 	Break,
 	Next
 }
+*/
 
+export function onCallStackReduction(lowerLevel: NodeId, upperLevel: NodeId, ast: NormalizedAst):ExecutionTuple{
+/*
+  expressionUpwardsCallStack(lowerLevel, nextLevel)#returns the exit executionStaet for the next expression to walk down to
+  switch(lowerLevel)
+    #for those instances it is enough to look at the entry and exitpoint
+    Rliteral: Rif: Rreturn: Rbreak: Rnext:
+      return unionEntryExit(nextLevel.entry, lowerLevel.exit) # unionEntry ExitExplained further down
+    Rthen:
+      return nextLevel.entry
+    Relse:
+      #Get the information necessary for decision
+      (thenBlockExec, thenBlockInflList) = nextLevel.then.exit
+      (elseBlockExec, elseBlockInflList) = lowerLevel.exit
+      
+      #Variable for the exit State
+      exitState = NULL
 
-export function onCallStackReduction(_lowerLevel: ExpressionType, _upperLevel: ExpressionType):ExecutionTuple{
+      #Both always active then continue always
+      if(thenBlockExec == ALWAYS and elseBlockExec = ALWAYS)
+        exitState = (ALWAYS, List(empty))
+      
+      #One of the blocks is maybe active
+      if(thenBlockExecuted or elseBlockExecuted == MAYBE)
+         exitState (MAYBE, Union(thenBlockinfList, elseBlockinfList) )
+      
+      #Both not executed till the end
+      if(thenBlockExec == NEVER and elseBlockExec = NEVER)
+        exitState =  (NEVER, Union(thenBlockInflList, elseBlockInflList))
+
+      #Depending if the implicit Returns are in exitState they need to be removed from exitState.inflList
+      #Not done here just a question for implimentation
+      return unionEntryExit(nextLevel.entry, exitState)
+    Rloop:
+      #either always executed or only with next or break stopped then the execution is just like the entry
+      #because no additional entrys are given 
+      if(lowerLevel.exit.execState == ALWAYS or removeNextAndBreak(lowerLevel.exit.inflList) == List(empty))
+        return nextLevel.Entry
+      
+      #if one of the possiblities to stop execution is a next or a break then the execution does MAYBE continue
+      if(lowerLevel.exit.exitState == NEVER and amountNextOrBreak(lowerLevel.exit.inflList) > 0)
+        return unionEntryAndExit(nextLevel.entry, (MAYBE, removeNextAndBreak(lowerLevel.exit.inflList)) 
+      
+      return unionEntryAndExit( nextLevel.entry, (lowerLevel.exit.execState,  removeNextAndBreak(lowerLevel.exit.inflList)) )
+    Rfunction:
+      #a function is the top level and is not skipped by either break, next or return
+      return nextLevel.entry
+*/
+	const lowerLevelNode: RNodeWithParent<CfgInfo> | undefined  = ast.idMap.get(lowerLevel)
+	guard(lowerLevelNode !== undefined, 'Node not found in ast')
+	const upperLevelNode: RNodeWithParent<CfgInfo> | undefined = ast.idMap.get(upperLevel)
+	guard(upperLevelNode !== undefined, 'Node not found in ast')
+   
+	let toReturn: ExecutionTuple 
+
    
    
+	switch(lowerLevelNode.info.role){
+		case RoleInParent.IfThen:
+			guard(upperLevelNode.info.entry !== undefined, 'Entry not defined at point it should be')
+			toReturn = upperLevelNode.info.entry
+			break
+		case RoleInParent.IfOtherwise:
+      
+			/*const ifArguementList = upperLevelNode.arguments as (RArgument<Info> | undefined)[]
+      guard(ifArguementList !== undefined, 'Arguments of if should not be undefined')
+      const thenExecutionArgument: RArgument<Info> | undefined = ifArguementList.at(1) as RArgument<Info> | undefined
+      guard(thenExecutionArgument !== undefined, 'Arguments of if should not be undefined')
+      const thenExecutionTuple = thenExecutionArgument.value as RNode<CfgInfo>
+      */
+			break
+		case RoleInParent.Root:
+		case RoleInParent.IfCondition:
+		case RoleInParent.WhileCondition:
+		case RoleInParent.WhileBody:
+		case RoleInParent.RepeatBody:
+		case RoleInParent.ForVariable:
+		case RoleInParent.ForVector:
+		case RoleInParent.ForBody:
+		case RoleInParent.FunctionCallName:
+		case RoleInParent.FunctionCallArgument:
+		case RoleInParent.FunctionDefinitionBody:
+		case RoleInParent.FunctionDefinitionParameter:
+		case RoleInParent.ExpressionListChild:
+		case RoleInParent.BinaryOperationLhs:
+		case RoleInParent.BinaryOperationRhs:
+		case RoleInParent.PipeLhs:
+		case RoleInParent.PipeRhs:
+		case RoleInParent.UnaryOperand:
+		case RoleInParent.ParameterName:
+		case RoleInParent.ParameterDefaultValue:
+		case RoleInParent.ArgumentName:
+		case RoleInParent.ArgumentValue:
+		case RoleInParent.Accessed:
+		case RoleInParent.IndexAccess:
+      
+	}
    
    
-   
-   
-   
-   
-   
-   
-	return <ExecutionTuple>({ executed: ExecutionState.Always}) //TODO comment out
+	upperLevelNode.info.exit = toReturn
+	lowerLevelNode.info.exit = toReturn
+	return toReturn
+	//return { executed: ExecutionState.Always} //TODO comment out
 }
 
-//how to save
-//to to find out if we are looking at then or else block in if-then-else
+
+
+
+/*
+
+#unions the entry execution State with the List of possible Escapes that happened
+unionEntryExit( (entryExecState, entryList), (exitExecState, exitList) )
+  #easy if both are always executed
+  if( exitExecState == ALWAYS and exitExecState == ALWAYS)
+    return (ALWAYS, List(empty))
+
+  #if exitState in NEVER overall exit state is NEVER
+  #not sure if List should be unioned or only the exitState should be used
+  if(exitExecState == NEVER)
+    return ( NEVER, exitList)
+  
+  #union if one is MAYBE
+  if(entryExecState or exitExecState == MAYBE)
+    return ( MAYBE, unionList(entryList,exitList) )
+
+ */
+function _unionEntryAndExit(entry: ExecutionTuple, exit: ExecutionTuple):ExecutionTuple{
+	if(entry.executed === ExecutionState.Always && exit.executed === ExecutionState.Always){
+		return entry
+	}
+
+	if(entry.executed === ExecutionState.Always && (exit.executed === ExecutionState.Never || exit.executed === ExecutionState.Maybe)){
+		return exit
+	}
+
+	if((entry.executed === ExecutionState.Never || entry.executed == ExecutionState.Maybe) && exit.executed === ExecutionState.Always){
+		return entry
+	}
+
+	if((entry.executed === ExecutionState.Never || entry.executed == ExecutionState.Maybe) && (exit.executed === ExecutionState.Never || exit.executed === ExecutionState.Maybe)){
+		const newExecuted = entry.executed === ExecutionState.Never && exit.executed === ExecutionState.Never ? ExecutionState.Never : ExecutionState.Maybe
+
+		//union lists (removing duplicates)
+		const newInfluencingExpressionList = entry.influencingExpressions.concat(exit.influencingExpressions.filter(nodeId => !entry.influencingExpressions.includes(nodeId)))
+		return {executed: newExecuted, influencingExpressions: newInfluencingExpressionList }
+	}
+
+	guard(true, 'Unreachable case in control flow analysis')
+	return {executed: ExecutionState.Always}
+}
+
+//TODO how to know if if-then-else has no else block

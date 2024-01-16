@@ -600,68 +600,189 @@ describe('Parse value access', withShell(shell => {
 				})
 			}
 		])
-		assertAst('Multiple with empty', shell, 'b[[5,,]]', exprList({
-			type:     RType.Access,
-			location: rangeFrom(1, 2, 1, 3),
-			lexeme:   '[[',
-			operator: '[[',
-			info:     {},
-			accessed: {
-				type:      RType.Symbol,
-				location:  rangeFrom(1, 1, 1, 1),
-				namespace: undefined,
-				lexeme:    'b',
-				content:   'b',
-				info:      {}
+		assertAst('Multiple with empty', shell, 'b[[5,,]]', [
+			{
+				step:   NORMALIZE,
+				wanted: exprList({
+					type:     RType.Access,
+					location: rangeFrom(1, 2, 1, 3),
+					lexeme:   '[[',
+					operator: '[[',
+					info:     {},
+					accessed: {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'b',
+						content:   'b',
+						info:      {}
+					},
+					access: [{
+
+						type:     RType.Argument,
+						location: rangeFrom(1, 4, 1, 4),
+						lexeme:   '5',
+						name:     undefined,
+						info:     {},
+						value:    {
+							type:     RType.Number,
+							location: rangeFrom(1, 4, 1, 4),
+							lexeme:   '5',
+							content:  numVal(5),
+							info:     {}
+						}
+					}, null, null]
+				})
 			},
-			access: [{
-				type:     RType.Argument,
-				location: rangeFrom(1, 4, 1, 4),
-				lexeme:   '5',
-				name:     undefined,
-				info:     {},
-				value:    {
-					type:     RType.Number,
-					location: rangeFrom(1, 4, 1, 4),
-					lexeme:   '5',
-					content:  numVal(5),
-					info:     {}
-				}
-			}, null, null]
-		}))
+			{
+				step:   DESUGAR_NORMALIZE,
+				wanted: exprList({
+					type:         RType.FunctionCall,
+					location:     rangeFrom(1, 2, 1, 3),
+					lexeme:       '[[',
+					info:         {},
+					functionName: {
+						type:      RType.Symbol,
+						lexeme:    '[[',
+						content:   '[[',
+						info:      {},
+						location:  rangeFrom(1, 2, 1, 3),
+						namespace: undefined
+					},
+					flavor:    'named',
+					arguments: [{
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'b',
+						content:   'b',
+						info:      {}
+					}, {
+						type:     RType.Argument,
+						location: rangeFrom(1, 4, 1, 4),
+						lexeme:   '5',
+						name:     undefined,
+						info:     {},
+						value:    {
+							type:     RType.Number,
+							location: rangeFrom(1, 4, 1, 4),
+							lexeme:   '5',
+							content:  numVal(5),
+							info:     {}
+						}
+					}, undefined, undefined]
+				})
+			}
+		])
 	})
 	describe('Dollar and Slot', () => {
-		assertAst('Dollar access', shell, 'c$x', exprList({
-			type:     RType.Access,
-			location: rangeFrom(1, 2, 1, 2),
-			lexeme:   '$',
-			operator: '$',
-			info:     {},
-			accessed: {
-				type:      RType.Symbol,
-				location:  rangeFrom(1, 1, 1, 1),
-				namespace: undefined,
-				lexeme:    'c',
-				content:   'c',
-				info:      {}
+		assertAst('Dollar access', shell, 'c$x', [
+			{
+				step:   NORMALIZE,
+				wanted: exprList({
+					type:     RType.Access,
+					location: rangeFrom(1, 2, 1, 2),
+					lexeme:   '$',
+					operator: '$',
+					info:     {},
+					accessed: {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'c',
+						content:   'c',
+						info:      {}
+					},
+					access: 'x'
+				})
 			},
-			access: 'x'
-		}))
-		assertAst('Slot based access', shell, 'd@y', exprList({
-			type:     RType.Access,
-			location: rangeFrom(1, 2, 1, 2),
-			lexeme:   '@',
-			operator: '@',
-			info:     {},
-			accessed: {
-				type:      RType.Symbol,
-				location:  rangeFrom(1, 1, 1, 1),
-				namespace: undefined,
-				lexeme:    'd',
-				content:   'd',
-				info:      {}
+			{
+				step:   DESUGAR_NORMALIZE,
+				wanted: exprList({
+					type:         RType.FunctionCall,
+					location:     rangeFrom(1, 2, 1, 2),
+					lexeme:       '$',
+					info:         {},
+					functionName: {
+						type:      RType.Symbol,
+						lexeme:    '$',
+						content:   '$',
+						info:      {},
+						location:  rangeFrom(1, 2, 1, 2),
+						namespace: undefined
+					},
+					flavor:    'named',
+					arguments: [{
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'c',
+						content:   'c',
+						info:      {}
+					}, {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 3, 1, 3),
+						namespace: undefined,
+						lexeme:    'x',
+						content:   'x',
+						info:      {}
+					}]
+				})
+			}
+		])
+		assertAst('Slot based access', shell, 'd@y', [
+			{
+				step:   NORMALIZE,
+				wanted: exprList({
+					type:     RType.Access,
+					location: rangeFrom(1, 2, 1, 2),
+					lexeme:   '@',
+					operator: '@',
+					info:     {},
+					accessed: {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'd',
+						content:   'd',
+						info:      {}
+					},
+					access: 'y'
+				})
 			},
-			access: 'y'
-		}))
+			{
+				step:   DESUGAR_NORMALIZE,
+				wanted: exprList({
+					type:         RType.FunctionCall,
+					location:     rangeFrom(1, 2, 1, 2),
+					lexeme:       '@',
+					info:         {},
+					functionName: {
+						type:      RType.Symbol,
+						lexeme:    '@',
+						content:   '@',
+						info:      {},
+						location:  rangeFrom(1, 2, 1, 2),
+						namespace: undefined
+					},
+					flavor:    'named',
+					arguments: [{
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'd',
+						content:   'd',
+						info:      {}
+					}, {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 3, 1, 3),
+						namespace: undefined,
+						lexeme:    'y',
+						content:   'y',
+						info:      {}
+					}]
+				})
+			}
+		])
 	})
 }))

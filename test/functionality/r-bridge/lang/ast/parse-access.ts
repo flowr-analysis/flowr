@@ -380,93 +380,227 @@ describe('Parse value access', withShell(shell => {
 		}))
 	})
 	describe('Double bracket', () => {
-		assertAst('Empty', shell, 'b[[]]', exprList({
-			type:     RType.Access,
-			location: rangeFrom(1, 2, 1, 3),
-			lexeme:   '[[',
-			operator: '[[',
-			info:     {},
-			accessed: {
-				type:      RType.Symbol,
-				location:  rangeFrom(1, 1, 1, 1),
-				namespace: undefined,
-				lexeme:    'b',
-				content:   'b',
-				info:      {}
+		assertAst('Empty', shell, 'b[[]]', [
+			{
+				step:   NORMALIZE,
+				wanted: exprList({
+					type:     RType.Access,
+					location: rangeFrom(1, 2, 1, 3),
+					lexeme:   '[[',
+					operator: '[[',
+					info:     {},
+					accessed: {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'b',
+						content:   'b',
+						info:      {}
+					},
+					access: []
+				})
 			},
-			access: []
-		}))
-		assertAst('One element', shell, 'b[[5]]', exprList({
-			type:     RType.Access,
-			location: rangeFrom(1, 2, 1, 3),
-			lexeme:   '[[',
-			operator: '[[',
-			info:     {},
-			accessed: {
-				type:      RType.Symbol,
-				location:  rangeFrom(1, 1, 1, 1),
-				namespace: undefined,
-				lexeme:    'b',
-				content:   'b',
-				info:      {}
+			{
+				step:   DESUGAR_NORMALIZE,
+				wanted: exprList({
+					type:         RType.FunctionCall,
+					info:         {},
+					lexeme:       '[[',
+					functionName: {
+						type:      RType.Symbol,
+						lexeme:    '[[',
+						content:   '[[',
+						info:      {},
+						location:  rangeFrom(1, 2, 1, 3),
+						namespace: undefined
+					},
+					location:  rangeFrom(1, 2, 1, 3),
+					flavor:    'named',
+					arguments: [{
+						type:      RType.Symbol,
+						lexeme:    'b',
+						content:   'b',
+						info:      {},
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined
+					}]
+				})
+			}
+		])
+		assertAst('One element', shell, 'b[[5]]', [
+			{
+				step:   NORMALIZE,
+				wanted: exprList({
+					type:     RType.Access,
+					location: rangeFrom(1, 2, 1, 3),
+					lexeme:   '[[',
+					operator: '[[',
+					info:     {},
+					accessed: {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'b',
+						content:   'b',
+						info:      {}
+					},
+					access: [{
+						type:     RType.Argument,
+						location: rangeFrom(1, 4, 1, 4),
+						lexeme:   '5',
+						name:     undefined,
+						info:     {},
+						value:    {
+							type:     RType.Number,
+							location: rangeFrom(1, 4, 1, 4),
+							lexeme:   '5',
+							content:  numVal(5),
+							info:     {}
+						}
+					}]
+				})
 			},
-			access: [{
-				type:     RType.Argument,
-				location: rangeFrom(1, 4, 1, 4),
-				lexeme:   '5',
-				name:     undefined,
-				info:     {},
-				value:    {
-					type:     RType.Number,
-					location: rangeFrom(1, 4, 1, 4),
-					lexeme:   '5',
-					content:  numVal(5),
-					info:     {}
-				}
-			}]
-		}))
-		assertAst('Multiple', shell, 'b[[5,3]]', exprList({
-			type:     RType.Access,
-			location: rangeFrom(1, 2, 1, 3),
-			lexeme:   '[[',
-			operator: '[[',
-			info:     {},
-			accessed: {
-				type:      RType.Symbol,
-				location:  rangeFrom(1, 1, 1, 1),
-				namespace: undefined,
-				lexeme:    'b',
-				content:   'b',
-				info:      {}
+			{
+				step:   DESUGAR_NORMALIZE,
+				wanted: exprList({
+					type:         RType.FunctionCall,
+					info:         {},
+					location:     rangeFrom(1, 2, 1, 3),
+					lexeme:       '[[',
+					functionName: {
+						type:      RType.Symbol,
+						lexeme:    '[[',
+						content:   '[[',
+						info:      {},
+						location:  rangeFrom(1, 2, 1, 3),
+						namespace: undefined
+					},
+					flavor:    'named',
+					arguments: [{
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'b',
+						content:   'b',
+						info:      {}
+					}, {
+						type:     RType.Argument,
+						location: rangeFrom(1, 4, 1, 4),
+						lexeme:   '5',
+						name:     undefined,
+						info:     {},
+						value:    {
+							type:     RType.Number,
+							location: rangeFrom(1, 4, 1, 4),
+							lexeme:   '5',
+							content:  numVal(5),
+							info:     {}
+						}
+					}]
+				})
+			}
+		])
+		assertAst('Multiple', shell, 'b[[5,3]]', [
+			{
+				step:   NORMALIZE,
+				wanted: exprList({
+					type:     RType.Access,
+					location: rangeFrom(1, 2, 1, 3),
+					lexeme:   '[[',
+					operator: '[[',
+					info:     {},
+					accessed: {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'b',
+						content:   'b',
+						info:      {}
+					},
+					access: [{
+						type:     RType.Argument,
+						location: rangeFrom(1, 4, 1, 4),
+						lexeme:   '5',
+						name:     undefined,
+						info:     {},
+						value:    {
+							type:     RType.Number,
+							location: rangeFrom(1, 4, 1, 4),
+							lexeme:   '5',
+							content:  numVal(5),
+							info:     {}
+						}
+					}, {
+						type:     RType.Argument,
+						location: rangeFrom(1, 6, 1, 6),
+						lexeme:   '3',
+						name:     undefined,
+						info:     {},
+						value:    {
+							type:     RType.Number,
+							location: rangeFrom(1, 6, 1, 6),
+							lexeme:   '3',
+							content:  numVal(3),
+							info:     {}
+						}
+					}]
+				})
 			},
-			access: [{
-				type:     RType.Argument,
-				location: rangeFrom(1, 4, 1, 4),
-				lexeme:   '5',
-				name:     undefined,
-				info:     {},
-				value:    {
-					type:     RType.Number,
-					location: rangeFrom(1, 4, 1, 4),
-					lexeme:   '5',
-					content:  numVal(5),
-					info:     {}
-				}
-			}, {
-				type:     RType.Argument,
-				location: rangeFrom(1, 6, 1, 6),
-				lexeme:   '3',
-				name:     undefined,
-				info:     {},
-				value:    {
-					type:     RType.Number,
-					location: rangeFrom(1, 6, 1, 6),
-					lexeme:   '3',
-					content:  numVal(3),
-					info:     {}
-				}
-			}]
-		}))
+			{
+				step:   DESUGAR_NORMALIZE,
+				wanted: exprList({
+					type:         RType.FunctionCall,
+					location:     rangeFrom(1, 2, 1, 3),
+					lexeme:       '[[',
+					info:         {},
+					functionName: {
+						type:      RType.Symbol,
+						lexeme:    '[[',
+						content:   '[[',
+						info:      {},
+						location:  rangeFrom(1, 2, 1, 3),
+						namespace: undefined
+					},
+					flavor:    'named',
+					arguments: [{
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						namespace: undefined,
+						lexeme:    'b',
+						content:   'b',
+						info:      {}
+					}, {
+						type:     RType.Argument,
+						location: rangeFrom(1, 4, 1, 4),
+						lexeme:   '5',
+						name:     undefined,
+						info:     {},
+						value:    {
+							type:     RType.Number,
+							location: rangeFrom(1, 4, 1, 4),
+							lexeme:   '5',
+							content:  numVal(5),
+							info:     {}
+						}
+					}, {
+						// TODO this seems to be unexpected in the actual result - why?
+						type:     RType.Argument,
+						location: rangeFrom(1, 6, 1, 6),
+						lexeme:   '3',
+						name:     undefined,
+						info:     {},
+						value:    {
+							type:     RType.Number,
+							location: rangeFrom(1, 6, 1, 6),
+							lexeme:   '3',
+							content:  numVal(3),
+							info:     {}
+						}
+					}
+					]
+				})
+			}
+		])
 		assertAst('Multiple with empty', shell, 'b[[5,,]]', exprList({
 			type:     RType.Access,
 			location: rangeFrom(1, 2, 1, 3),
@@ -494,7 +628,7 @@ describe('Parse value access', withShell(shell => {
 					content:  numVal(5),
 					info:     {}
 				}
-			},null,null]
+			}, null, null]
 		}))
 	})
 	describe('Dollar and Slot', () => {
@@ -532,4 +666,3 @@ describe('Parse value access', withShell(shell => {
 		}))
 	})
 }))
-

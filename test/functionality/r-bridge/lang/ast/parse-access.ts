@@ -545,7 +545,6 @@ describe('Parse value access', withShell(shell => {
 							info:     {}
 						}
 					}, {
-						// TODO this seems to be unexpected in the actual result - why?
 						type:     RType.Argument,
 						location: rangeFrom(1, 6, 1, 6),
 						lexeme:   '3',

@@ -412,7 +412,7 @@ describe('Parse value access', withShell(shell => {
 						content:   '[[',
 						info:      {},
 						location:  rangeFrom(1, 2, 1, 3),
-						namespace: undefined
+						namespace: InternalScope
 					},
 					location:  rangeFrom(1, 2, 1, 3),
 					flavor:    'named',
@@ -473,7 +473,7 @@ describe('Parse value access', withShell(shell => {
 						content:   '[[',
 						info:      {},
 						location:  rangeFrom(1, 2, 1, 3),
-						namespace: undefined
+						namespace: InternalScope
 					},
 					flavor:    'named',
 					arguments: [{
@@ -484,18 +484,11 @@ describe('Parse value access', withShell(shell => {
 						content:   'b',
 						info:      {}
 					}, {
-						type:     RType.Argument,
+						type:     RType.Number,
 						location: rangeFrom(1, 4, 1, 4),
 						lexeme:   '5',
-						name:     undefined,
-						info:     {},
-						value:    {
-							type:     RType.Number,
-							location: rangeFrom(1, 4, 1, 4),
-							lexeme:   '5',
-							content:  numVal(5),
-							info:     {}
-						}
+						content:  numVal(5),
+						info:     {}
 					}]
 				})
 			}
@@ -559,7 +552,7 @@ describe('Parse value access', withShell(shell => {
 						content:   '[[',
 						info:      {},
 						location:  rangeFrom(1, 2, 1, 3),
-						namespace: undefined
+						namespace: InternalScope
 					},
 					flavor:    'named',
 					arguments: [{
@@ -570,33 +563,18 @@ describe('Parse value access', withShell(shell => {
 						content:   'b',
 						info:      {}
 					}, {
-						type:     RType.Argument,
+						type:     RType.Number,
 						location: rangeFrom(1, 4, 1, 4),
 						lexeme:   '5',
-						name:     undefined,
-						info:     {},
-						value:    {
-							type:     RType.Number,
-							location: rangeFrom(1, 4, 1, 4),
-							lexeme:   '5',
-							content:  numVal(5),
-							info:     {}
-						}
-					}, {
-						type:     RType.Argument,
+						content:  numVal(5),
+						info:     {}
+					},  {
+						type:     RType.Number,
 						location: rangeFrom(1, 6, 1, 6),
 						lexeme:   '3',
-						name:     undefined,
-						info:     {},
-						value:    {
-							type:     RType.Number,
-							location: rangeFrom(1, 6, 1, 6),
-							lexeme:   '3',
-							content:  numVal(3),
-							info:     {}
-						}
-					}
-					]
+						content:  numVal(3),
+						info:     {}
+					}]
 				})
 			}
 		])
@@ -647,7 +625,7 @@ describe('Parse value access', withShell(shell => {
 						content:   '[[',
 						info:      {},
 						location:  rangeFrom(1, 2, 1, 3),
-						namespace: undefined
+						namespace: InternalScope
 					},
 					flavor:    'named',
 					arguments: [{
@@ -658,18 +636,11 @@ describe('Parse value access', withShell(shell => {
 						content:   'b',
 						info:      {}
 					}, {
-						type:     RType.Argument,
+						type:     RType.Number,
 						location: rangeFrom(1, 4, 1, 4),
 						lexeme:   '5',
-						name:     undefined,
-						info:     {},
-						value:    {
-							type:     RType.Number,
-							location: rangeFrom(1, 4, 1, 4),
-							lexeme:   '5',
-							content:  numVal(5),
-							info:     {}
-						}
+						content:  numVal(5),
+						info:     {}
 					}, undefined, undefined]
 				})
 			}
@@ -709,7 +680,7 @@ describe('Parse value access', withShell(shell => {
 						content:   '$',
 						info:      {},
 						location:  rangeFrom(1, 2, 1, 2),
-						namespace: undefined
+						namespace: InternalScope
 					},
 					flavor:    'named',
 					arguments: [{
@@ -763,7 +734,7 @@ describe('Parse value access', withShell(shell => {
 						content:   '@',
 						info:      {},
 						location:  rangeFrom(1, 2, 1, 2),
-						namespace: undefined
+						namespace: InternalScope
 					},
 					flavor:    'named',
 					arguments: [{

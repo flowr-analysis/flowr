@@ -37,7 +37,7 @@ jobs:
         run: npm ci
       - name: Release
         run: |
-          msg="${{ github.event.head_commit.message }}"
+          msg='${{ github.event.head_commit.message }}'
           step=$(echo "$msg" | sed -n -E 's/\[release:(patch|minor|major)].*/\1/p')
           title=$(echo "$msg" | sed -n -E 's/\[release:(patch|minor|major)] (.*)/\2/p')
 

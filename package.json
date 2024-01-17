@@ -172,6 +172,12 @@
       "@typescript-eslint/non-nullable-type-assertion-style": "off",
       "@typescript-eslint/no-unsafe-enum-comparison": "off",
       "@typescript-eslint/no-redundant-type-constituents": "off",
+      "@typescript-eslint/consistent-type-assertions": [
+        "error",
+        {
+          "assertionStyle": "as"
+        }
+      ],
       "@typescript-eslint/key-spacing": [
         "error",
         {

@@ -55,14 +55,14 @@ export function tryToNormalizeArgument(configuration: NormalizeConfiguration, ob
 		return parsedValue ?? undefined
 	} else {
 		return {
-			type: RType.Argument,
+			type:   RType.Argument,
 			location,
 			lexeme: content,
 			name,
-			value: parsedValue ?? undefined,
-			info: {
-				fullRange: location,
-				fullLexeme: content,
+			value:  parsedValue ?? undefined,
+			info:   {
+				fullRange:        location,
+				fullLexeme:       content,
 				additionalTokens: []
 			}
 		}

@@ -1,1 +1,1 @@
-export const InternalScope = ".$internal"
+export const InternalScope = '.$internal'

@@ -3,7 +3,7 @@ import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
 import { RType } from '../../../../../src/r-bridge'
 import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
-import {InternalScope} from "../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v2/internal/internal";
+import {InternalScope} from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v2/internal/internal'
 
 describe('Parse value access', withShell(shell => {
 	describe('Single bracket', () => {
@@ -56,39 +56,39 @@ describe('Parse value access', withShell(shell => {
 		])
 		assertAst('One value', shell, 'a[1]', [
 			{
-				step: NORMALIZE,
+				step:   NORMALIZE,
 				wanted: exprList({
-					type: RType.Access,
+					type:     RType.Access,
 					location: rangeFrom(1, 2, 1, 2),
-					lexeme: '[',
+					lexeme:   '[',
 					operator: '[',
-					info: {},
+					info:     {},
 					accessed: {
-						type: RType.Symbol,
-						location: rangeFrom(1, 1, 1, 1),
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
 						namespace: undefined,
-						lexeme: 'a',
-						content: 'a',
-						info: {}
+						lexeme:    'a',
+						content:   'a',
+						info:      {}
 					},
 					access: [{
-						type: RType.Argument,
+						type:     RType.Argument,
 						location: rangeFrom(1, 3, 1, 3),
-						lexeme: '1',
-						name: undefined,
-						info: {},
-						value: {
-							type: RType.Number,
+						lexeme:   '1',
+						name:     undefined,
+						info:     {},
+						value:    {
+							type:     RType.Number,
 							location: rangeFrom(1, 3, 1, 3),
-							lexeme: '1',
-							content: numVal(1),
-							info: {}
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
 						}
 					}]
 				})
 			},
 			{
-				step: DESUGAR_NORMALIZE,
+				step:   DESUGAR_NORMALIZE,
 				wanted: exprList({
 					type:         RType.FunctionCall,
 					info:         {},
@@ -111,15 +111,15 @@ describe('Parse value access', withShell(shell => {
 						location:  rangeFrom(1, 1, 1, 1),
 						namespace: undefined
 					}, {
-						type: RType.Number,
+						type:     RType.Number,
 						location: rangeFrom(1, 3, 1, 3),
-						lexeme: '1',
-						content: numVal(1),
-						info: {}
+						lexeme:   '1',
+						content:  numVal(1),
+						info:     {}
 					}]
 				})
 			}
-			])
+		])
 		assertAst('One variable', shell, 'a[x]', exprList({
 			type:     RType.Access,
 			location: rangeFrom(1, 2, 1, 2),

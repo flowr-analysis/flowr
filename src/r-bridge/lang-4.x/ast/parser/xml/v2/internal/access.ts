@@ -6,7 +6,7 @@ import { splitArrayOn } from '../../../../../../../util/arrays'
 import { NormalizeConfiguration } from '../data'
 import { normalizeSingleToken } from './single-element'
 import { tryToNormalizeArgument } from './functions/argument'
-import {InternalScope} from "./internal";
+import {InternalScope} from './internal'
 
 /**
  * Normalize the given data as access (e.g., indexing).
@@ -70,7 +70,9 @@ export function normalizeAccess(configuration: NormalizeConfiguration, tokens: r
 	// otherwise we have to process
 	const remaining: readonly XmlBasedJson[] = tokens.slice(2, tokens.length - closingLength)
 
-	const splitAccessOnComma = splitArrayOn(remaining, elem => elem.name === RawRType.Comma)
+	const splitAccessOnComma = splitArrayOn(remaining, elem =>
+		getTokenType(configuration.tokenMap, elem) === RawRType.Comma
+	)
 
 	const parsedAccess: (RNode | undefined)[] = splitAccessOnComma.map((elems: readonly XmlBasedJson[]) =>
 		elems.length === 0 ? undefined : normalizeAccessArgument(configuration, elems)

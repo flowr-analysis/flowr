@@ -1,6 +1,6 @@
 import { XmlBasedJson, XmlParseError } from '../../../common/input-format'
 import { getTokenType, retrieveMetaStructure } from '../../../common/meta'
-import { RNode, RType, RSymbol, RArgument, RawRType } from '../../../../../model'
+import { RNode, RType, RSymbol, RawRType } from '../../../../../model'
 import { NormalizeConfiguration } from '../../data'
 import { log } from '../../../../../../../../util/log'
 import { guard } from '../../../../../../../../util/assert'

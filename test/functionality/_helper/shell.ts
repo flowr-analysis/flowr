@@ -26,7 +26,6 @@ import { PipelineExecutor } from '../../../src/core/pipeline-executor'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../src/core/steps/all/core/00-parse'
 import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
 import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
-import {LEGACY_STATIC_DATAFLOW} from '../../../src/core/steps/all/core/20-dataflow'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {

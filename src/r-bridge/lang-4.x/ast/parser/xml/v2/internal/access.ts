@@ -1,6 +1,6 @@
 import { XmlBasedJson, XmlParseError } from '../../common/input-format'
 import { getTokenType, retrieveMetaStructure } from '../../common/meta'
-import { RType, RNode, RArgument, RawRType, RFunctionCall } from '../../../../model'
+import { RType, RNode, RawRType, RFunctionCall } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { NormalizeConfiguration } from '../data'

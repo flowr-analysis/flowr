@@ -85,7 +85,7 @@ jobs:
           && !failure()
           && (inputs.force-full || (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'))
       }}
-    uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@591-ensure-xmlparsedata-in-ci-test-environment
+    uses: Code-Inspect/flowr/.github/workflows/full-test.yaml@main
 
   deploy-doc:
     needs: [ test, full-test, performance-test ]

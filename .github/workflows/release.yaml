@@ -37,9 +37,8 @@ jobs:
         run: npm ci
       - name: Release
         run: |
-          msg='${{ github.event.head_commit.message }}'
-          step=$(echo "$msg" | sed -n -E 's/\[release:(patch|minor|major)].*/\1/p')
-          title=$(echo "$msg" | sed -n -E 's/\[release:(patch|minor|major)] (.*)/\2/p')
+          step=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)].*/\1/p')
+          title=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)] (.*)/\2/p')
 
           if [ -z "$step" ]; then
             echo "fatal: Release step not found in commit message."
@@ -49,6 +48,9 @@ jobs:
           npm run release -- $step --github.releaseName="Release v\${version} (${title})"
         env:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          # apparently putting the message into an env variable first sanitizes it
+          # (see https://github.com/Code-Inspect/flowr/security/code-scanning/29)
+          MESSAGE: ${{ github.event.head_commit.message }}
 
       - name: Ensure up-to-date Dependencies
         run: npm ci

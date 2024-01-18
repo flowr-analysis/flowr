@@ -45,7 +45,7 @@ jobs:
     timeout-minutes: ${{ inputs.timeout-minutes }}
     steps:
       - name: "Setup the Environment"
-        uses: Code-Inspect/flowr/.github/actions/setup@main
+        uses: Code-Inspect/flowr/.github/actions/setup@591-ensure-xmlparsedata-in-ci-test-environment
         with:
           node-version: ${{ inputs.node-version }}
           r-version: ${{ inputs.r-version }}

@@ -25,7 +25,7 @@ jobs:
            - os: windows-latest
              r-version: '4.3.2'
     name: "Test Suite (full)"
-    uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
+    uses: Code-Inspect/flowr/.github/workflows/run.yaml@591-ensure-xmlparsedata-in-ci-test-environment
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}-${{ matrix.r-version }}-${{ matrix.os }}
       cancel-in-progress: true

@@ -146,7 +146,7 @@ describe('Functions Reconstruct', () => {
 	describe('printLinePart', () => {
 		function positive(input: PrettyPrintLinePart[], expected: string, msg: string) {
 			it(`Convert ${JSON.stringify(input)} to string`, () => {
-				const out = prettyPrintPartToString(input)
+				const out = prettyPrintPartToString(input, input[0].loc.column)
 				assert.strictEqual(out, expected, msg)
 			})
 		}

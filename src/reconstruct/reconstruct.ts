@@ -36,10 +36,8 @@ import {
 	isSelected,
 	removeExpressionListWrap,
 	AutoSelectPredicate,
-	getIndentString, merge, removeOuterExpressionListIfApplicable
-} from './helper'
-import {SourcePosition, SourceRange} from "../util/range";
-import {jsonReplacer} from "../util/json";
+	getIndentString, merge } from './helper'
+import { SourceRange} from '../util/range'
 
 /*
 --logger--
@@ -80,7 +78,7 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 	if(subExpressions.length === 0) {
 		return []
 	} else {
-		const additionalTokens = reconstructAdditionalTokens(exprList);
+		const additionalTokens = reconstructAdditionalTokens(exprList)
 		return merge([
 			...subExpressions,
 			...additionalTokens
@@ -143,21 +141,30 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 --reconstruct--
 */
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
-	if(isSelected(configuration, loop)) {
+	const start = loop.info.fullRange?.start //may be unnesseccary
+	const additionalTokens = reconstructAdditionalTokens(loop)
+	const out = merge([
+		[{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, loc: start ? start :loop.location.start}], indent: 0 }],
+		body,
+		...additionalTokens
+	])
+	return out
+	/*if(isSelected(configuration, loop)) {
 		return plain(getLexeme(loop), loop.location.start)
 	}
 	if(body.length === 0 && variable.length === 0 && vector.length === 0) {
 		return []
 	} else if(body.length !== 0 && (variable.length !== 0 || vector.length !== 0)) {
-		const additionalTokens = reconstructAdditionalTokens(loop);
-		return merge([
-			[{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, loc: loop.location.start}], indent: 0 }],
+		const additionalTokens = reconstructAdditionalTokens(loop)
+		const out = merge([
+			[{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, loc: start ? start :loop.location.start}], indent: 0 }],
 			body,
 			...additionalTokens
 		])
+		return out
 	} else {
 		return body
-	}
+	}*/
 }
 
 function reconstructAdditionalTokens(loop: RNodeWithParent): Code[] {
@@ -174,7 +181,7 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 	} else if(body.length === 0) {
 		return []
 	} else {
-		const additionalTokens = reconstructAdditionalTokens(loop);
+		const additionalTokens = reconstructAdditionalTokens(loop)
 		return merge([
 			[{ linePart: [{part: 'repeat', loc: loop.location.start}], indent: 0 }],
 			body,
@@ -374,9 +381,9 @@ function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: R
 	// else if (rhs === undefined || rhs.length === 0) {
 	// if rhs is undefined we still  have to keep both now, but reconstruct manually :/
 	if(lhs !== undefined && lhs.length > 0) {
-		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart)}`).join('\n')
+		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart, lhs[0].linePart[0].loc.column)}`).join('\n')
 		if(rhs !== undefined && rhs.length > 0) {
-			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart)}`).join('\n')
+			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${prettyPrintPartToString(l.linePart, rhs[0].linePart[0].loc.column)}`).join('\n')
 			return plain(`${lhsText} ${call.functionName.content} ${rhsText}`, call.location.start)
 		} else {
 			return plain(lhsText, call.location.start)

@@ -1,8 +1,6 @@
 import { NodeId, ParentInformation, RNode, RType } from '../r-bridge'
 import { SourcePosition } from '../util/range'
 import { ReconstructionConfiguration } from './reconstruct'
-import {jsonReplacer} from "../util/json";
-
 
 /*
 --helper function--
@@ -65,12 +63,11 @@ export function merge(snipbits: Code[]): Code {
 	return result
 }
 
-export function prettyPrintPartToString(line: PrettyPrintLinePart[]): string {
+export function prettyPrintPartToString(line: PrettyPrintLinePart[],columnOffset: number): string {
 	if(line.length === 0) {
 		return ''
 	}
 	line.sort((a, b) => a.loc.column - b.loc.column)
-	let columnOffset = line[0].loc.column
 	let result = ''
 	for(const part of line) {
 		const currLength = result.length + columnOffset
@@ -146,7 +143,7 @@ export function getIndentString(indent: number): string {
 */
 export function prettyPrintCodeToString(code: Code, lf = '\n'): string {
 	code = merge([code])
-	return code.map(({ linePart, indent }) => `${getIndentString(indent)}${prettyPrintPartToString(linePart)}`).join(lf)
+	return code.map(({ linePart, indent }) => `${getIndentString(indent)}${prettyPrintPartToString(linePart, code[0].linePart[0].loc.column)}`).join(lf)
 }
 
 /*

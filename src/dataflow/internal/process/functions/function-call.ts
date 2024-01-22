@@ -40,6 +40,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		finalGraph.mergeWith(functionName.graph)
 	}
 
+
 	for(const arg of functionCall.arguments) {
 		if(arg === undefined) {
 			callArgs.push('empty')

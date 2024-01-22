@@ -37,7 +37,6 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		finalGraph.mergeWith(functionName.graph)
 	}
 
-
 	for(const arg of functionCall.arguments) {
 		if(arg === undefined) {
 			callArgs.push('empty')
@@ -103,6 +102,11 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		// push the called function to the ids:
 		inIds.push(...functionName.in, ...functionName.unknownReferences)
 	}
+
+	// TODO do source processing here?
+	// if found, follow the source (currently, only if the argument is given as a constant).
+	//     this could be checked whenever the dataflow processor is checking a named function call
+
 
 	return {
 		unknownReferences: [],

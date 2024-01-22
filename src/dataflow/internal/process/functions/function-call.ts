@@ -1,11 +1,12 @@
 import { DataflowInformation } from '../../info'
 import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
 import { define, overwriteEnvironments, resolveByName } from '../../../environments'
-import { ParentInformation, RFunctionCall, RType } from '../../../../r-bridge'
+import {ParentInformation, RFunctionCall, RParseRequest, RShell, RType} from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
 import { DataflowGraph, dataflowLogger, EdgeType, FunctionArgument } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
 import { LocalScope } from '../../../environments/scopes'
+import {SteppingSlicer} from '../../../../core'
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 
@@ -103,10 +104,26 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		inIds.push(...functionName.in, ...functionName.unknownReferences)
 	}
 
-	// TODO do source processing here?
-	// if found, follow the source (currently, only if the argument is given as a constant).
-	//     this could be checked whenever the dataflow processor is checking a named function call
-
+	if(named && functionCallName == 'source') {
+		const sourceFile = functionCall.arguments[0]
+		if(sourceFile?.value?.type == RType.String) {
+			const request: RParseRequest = {
+				request:                'file',
+				content:                sourceFile.lexeme,
+				// TODO what does this do
+				ensurePackageInstalled: true
+			}
+			// TODO is this how to get a shell for this?
+			const shell = new RShell()
+			const slicer = new SteppingSlicer({
+				stepOfInterest: 'normalize',
+				criterion:      [],
+				shell, request
+			})
+			console.log(slicer)
+			shell.close()
+		}
+	}
 
 	return {
 		unknownReferences: [],

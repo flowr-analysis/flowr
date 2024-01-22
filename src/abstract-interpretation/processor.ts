@@ -76,7 +76,7 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 			nodeMap.set(operationResult.id, operationResult)
 			operationStack.peek()?.next(operationResult)
 		} else {
-			guard(false, `Unknown node type ${node.type}`)
+			aiLogger.warn(`Unknown node type ${node.type}`)
 		}
 	})
 	return dfg

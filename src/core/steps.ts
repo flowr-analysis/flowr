@@ -35,7 +35,8 @@ import {
 	dataflowGraphToMermaidUrl,
 	dataflowGraphToQuads
 } from './print/dataflow-printer'
-import { runAbstractInterpretation } from '../abstract-interpretation/processor'
+import {DataflowInformation} from '../dataflow/internal/info'
+import {runAbstractInterpretation} from '../abstract-interpretation/processor'
 
 /**
  * This represents close a function that we know completely nothing about.
@@ -106,7 +107,7 @@ export const STEPS_PER_FILE = {
 	} satisfies IStep<typeof produceDataFlowGraph>,
 	'ai': {
 		description: 'Run abstract interpretation',
-		processor:   runAbstractInterpretation,
+		processor:   (_, dfInfo: DataflowInformation) => dfInfo, // Use runAbstractInterpretation here when it's ready
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter

@@ -1,4 +1,4 @@
-import { NodeId, NormalizedAst, RNodeWithParent, RoleInParent } from '../../r-bridge'
+import { NodeId, NormalizedAst, RNodeWithParent, RType, RoleInParent } from '../../r-bridge'
 import { guard } from '../../util/assert'
 import { Identifier, IdentifierDefinition, REnvironmentInformation, resolveByName } from '../common/environments'
 import { LocalScope } from '../common/environments/scopes'
@@ -246,25 +246,73 @@ export function onCallStackReduction(lowerLevel: NodeId, upperLevel: NodeId, ast
 	guard(lowerLevelNode !== undefined, 'Node not found in ast')
 	const upperLevelNode: RNodeWithParent<CfgInfo> | undefined = ast.idMap.get(upperLevel)
 	guard(upperLevelNode !== undefined, 'Node not found in ast')
-   
-	let toReturn: ExecutionTuple 
+
+
+	let toReturn: ExecutionTuple = {executed: ExecutionState.Always} //TODO Remove 
 
    
-   
-	switch(lowerLevelNode.info.role){
+	const role = lowerLevelNode.info.role
+	switch(role){
 		case RoleInParent.IfThen:
-			guard(upperLevelNode.info.entry !== undefined, 'Entry not defined at point it should be')
-			toReturn = upperLevelNode.info.entry
-			break
-		case RoleInParent.IfOtherwise:
+			const ifThenParent = upperLevelNode
+			guard(ifThenParent.type === RType.IfThenElse, 'Parent of IfThen was not IfThenElse')
+			guard(lowerLevelNode.info.exit !== undefined, 'Exit not defined at point it should be')
+			guard(upperLevelNode.info.entry !== undefined, 'Entry should be set at this point')
+
+
+			const ifThenCondition = ifThenParent.condition
+			guard(ifThenCondition.info.exit !== undefined, 'Exit not defined where it should be')
       
-			/*const ifArguementList = upperLevelNode.arguments as (RArgument<Info> | undefined)[]
-      guard(ifArguementList !== undefined, 'Arguments of if should not be undefined')
-      const thenExecutionArgument: RArgument<Info> | undefined = ifArguementList.at(1) as RArgument<Info> | undefined
-      guard(thenExecutionArgument !== undefined, 'Arguments of if should not be undefined')
-      const thenExecutionTuple = thenExecutionArgument.value as RNode<CfgInfo>
-      */
+      
+			if(ifThenParent.otherwise !== undefined){
+				let exitAfterConditionAndThen : ExecutionTuple
+				if(ifThenCondition.info.exit.executed == ExecutionState.Always && lowerLevelNode.info.exit.executed === ExecutionState.Always){
+					exitAfterConditionAndThen = {executed: ExecutionState.Always}
+				} else if(ifThenCondition.info.exit.executed == ExecutionState.Never && lowerLevelNode.info.exit.executed === ExecutionState.Never) {
+					exitAfterConditionAndThen = ifThenCondition.info.exit
+				} else {
+					const ifConditionInfluencingList = ifThenCondition.info.exit.executed === ExecutionState.Always ? [] : ifThenCondition.info.exit.influencingExpressions
+					const ifThenInfluencingList = lowerLevelNode.info.exit.executed === ExecutionState.Always ? [] : lowerLevelNode.info.exit.influencingExpressions
+          
+					//remove doubles in List
+					const exitList = unionLists(ifConditionInfluencingList, ifThenInfluencingList)
+					exitAfterConditionAndThen = {executed: ExecutionState.Maybe, influencingExpressions: exitList}
+				}
+        
+				toReturn = unionEntryAndExit(upperLevelNode.info.entry, exitAfterConditionAndThen)
+			} else {
+				//return exit to set entry of otherwise correctly
+				toReturn = unionEntryAndExit(upperLevelNode.info.entry, ifThenCondition.info.exit)
+			}
 			break
+		case RoleInParent.IfOtherwise:      
+			const ifThenElseParent = upperLevelNode
+			guard(ifThenElseParent.type === RType.IfThenElse, 'Parent of IfOtherwise was not IfThenElse')
+      
+			guard(lowerLevelNode.info.exit !== undefined, 'Exit not defined at point it should be')
+			guard(upperLevelNode.info.entry !== undefined, 'Entry should be set at this point')
+
+			const ifThenElseCondition = ifThenElseParent.condition
+			guard(ifThenElseCondition.info.exit !== undefined, 'Exit not defined where it should be')
+
+			const ifThenExit = ifThenElseParent.then.info.exit
+			guard(ifThenExit !== undefined, 'Exit not defined at point it should be')
+			const ifElseExit = lowerLevelNode.info.exit
+      
+			let thenElseExit : ExecutionTuple
+			if(ifThenExit.executed === ExecutionState.Always && ifElseExit.executed === ExecutionState.Always){
+				thenElseExit = {executed: ExecutionState.Always}
+			} else if( ifThenExit.executed === ExecutionState.Never && ifElseExit.executed === ExecutionState.Never){
+				const neverExecutedInfluencingList = unionLists(ifThenExit.influencingExpressions, ifElseExit.influencingExpressions)
+				thenElseExit = {executed: ExecutionState.Never, influencingExpressions: neverExecutedInfluencingList}
+			} else {
+				const thenExitInfluencingList = ifThenExit.executed === ExecutionState.Always ? [] : ifThenExit.influencingExpressions
+				const elseExitInfluencingList = ifElseExit.executed === ExecutionState.Always ? [] : ifElseExit.influencingExpressions
+				const maybeExecutedInfluencingList = unionLists(thenExitInfluencingList, elseExitInfluencingList)
+				thenElseExit = {executed: ExecutionState.Maybe, influencingExpressions: maybeExecutedInfluencingList}
+			}
+			toReturn = unionEntryAndExit(upperLevelNode.info.entry, thenElseExit)
+		  break
 		case RoleInParent.Root:
 		case RoleInParent.IfCondition:
 		case RoleInParent.WhileCondition:
@@ -289,14 +337,15 @@ export function onCallStackReduction(lowerLevel: NodeId, upperLevel: NodeId, ast
 		case RoleInParent.ArgumentValue:
 		case RoleInParent.Accessed:
 		case RoleInParent.IndexAccess:
-      
+		default:
+      //TODO find out why this doesnt work 
+      //assertUnreachable(role)
 	}
    
    
 	upperLevelNode.info.exit = toReturn
 	lowerLevelNode.info.exit = toReturn
 	return toReturn
-	//return { executed: ExecutionState.Always} //TODO comment out
 }
 
 
@@ -320,7 +369,7 @@ unionEntryExit( (entryExecState, entryList), (exitExecState, exitList) )
     return ( MAYBE, unionList(entryList,exitList) )
 
  */
-function _unionEntryAndExit(entry: ExecutionTuple, exit: ExecutionTuple):ExecutionTuple{
+function unionEntryAndExit(entry: ExecutionTuple, exit: ExecutionTuple):ExecutionTuple{
 	if(entry.executed === ExecutionState.Always && exit.executed === ExecutionState.Always){
 		return entry
 	}
@@ -337,7 +386,8 @@ function _unionEntryAndExit(entry: ExecutionTuple, exit: ExecutionTuple):Executi
 		const newExecuted = entry.executed === ExecutionState.Never && exit.executed === ExecutionState.Never ? ExecutionState.Never : ExecutionState.Maybe
 
 		//union lists (removing duplicates)
-		const newInfluencingExpressionList = entry.influencingExpressions.concat(exit.influencingExpressions.filter(nodeId => !entry.influencingExpressions.includes(nodeId)))
+		const newInfluencingExpressionList = unionLists(entry.influencingExpressions, exit.influencingExpressions)
+		//entry.influencingExpressions.concat(exit.influencingExpressions.filter(nodeId => !entry.influencingExpressions.includes(nodeId)))
 		return {executed: newExecuted, influencingExpressions: newInfluencingExpressionList }
 	}
 
@@ -345,4 +395,9 @@ function _unionEntryAndExit(entry: ExecutionTuple, exit: ExecutionTuple):Executi
 	return {executed: ExecutionState.Always}
 }
 
+
+
+function unionLists<T>(firstList:readonly T[],secondList:readonly T[]):T[]{
+	return firstList.concat(secondList.filter(elem => !firstList.includes(elem)))
+}
 //TODO how to know if if-then-else has no else block

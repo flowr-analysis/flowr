@@ -1,0 +1,40 @@
+import {DEFAULT_R_SHELL_OPTIONS, RShellOptions} from './shell'
+import {deepMergeObject} from '../util/objects'
+import {spawnSync} from 'child_process'
+import {ts2r} from './lang-4.x'
+import {SemVer} from 'semver'
+import semver from 'semver/preload'
+import type {ILogObj, Logger} from 'tslog'
+import {log} from '../util/log'
+
+export class RShellExecutor {
+	// TODO use a custom options class that doesn't have all the session stuff?
+	public readonly options: Readonly<RShellOptions>
+	private readonly log:    Logger<ILogObj>
+
+	public constructor(options?: Partial<RShellOptions>) {
+		this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
+		this.log = log.getSubLogger({ name: this.options.sessionName })
+	}
+
+	// TODO copy over more of the util methods from shell
+
+	public usedRVersion(): SemVer | null{
+		const version = this.run(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
+		this.log.trace(`raw version: ${JSON.stringify(version)}`)
+		return semver.coerce(version)
+	}
+
+	public run(command: string | string[], returnErr = false): string {
+		this.log.trace(`> ${JSON.stringify(command)}`)
+
+		const returns = spawnSync(this.options.pathToRExecutable, this.options.commandLineOptions, {
+			env:      this.options.env,
+			cwd:      this.options.cwd,
+			encoding: 'utf8',
+			input:    typeof command == 'string' ? command : command.join(this.options.eol)
+		})
+		return returnErr ? returns.stderr : returns.stdout
+	}
+
+}

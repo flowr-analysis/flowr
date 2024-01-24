@@ -5,6 +5,7 @@ describe('R-Bridge', () => {
 
 	require('./lang/ast/model')
 	require('./sessions')
+	require('./sync')
 	require('./retriever')
 
 	describe('Retrieve AST from R', () => {

@@ -4,6 +4,7 @@ import semver from 'semver/preload'
 import {RShellExecutor} from '../../../src/r-bridge/shell-executor'
 import fs from 'fs'
 import {testRequiresNetworkConnection} from '../_helper/network'
+import {isInstallTest} from '../main.spec'
 
 describe('RShellExecutor', function() {
 	const executor = new RShellExecutor()
@@ -29,7 +30,9 @@ describe('RShellExecutor', function() {
 		}).timeout('1m') // this is much slower than the async one since we start a new shell every time
 
 		it('ensure installed', async() => {
+			isInstallTest(this.ctx)
 			await testRequiresNetworkConnection(this.ctx)
+
 			for(const pkg of ['xmlparsedata', 'glue']) {
 				const result = executor.ensurePackageInstalled(pkg, true)
 				assert.equal(result.packageName, pkg)

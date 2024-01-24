@@ -11,5 +11,5 @@ assignees: ''
 Describe the unclarity and maybe even say how other contributors/users could be informed,
 to answer this question in the documentation.
 
-**Additional Information/Material regarding the question**
+**Additional Information/Material regarding the question (Optional)**
 Code/Screenshots/etc.

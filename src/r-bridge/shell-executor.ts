@@ -10,15 +10,34 @@ import fs from 'fs'
 
 export class RShellExecutor {
 	// TODO use a custom options class that doesn't have all the session stuff?
-	public readonly options: Readonly<RShellOptions>
-	private readonly log:    Logger<ILogObj>
+	public readonly options:        Readonly<RShellOptions>
+	private readonly log:           Logger<ILogObj>
+	private readonly prerequisites: string[] = []
 
 	public constructor(options?: Partial<RShellOptions>) {
 		this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
 		this.log = log.getSubLogger({ name: this.options.sessionName })
 	}
 
-	// TODO copy over more of the util methods from shell
+	public continueOnError(): void {
+		this.log.info('continue in case of Errors')
+		this.prerequisites.push('options(error=function() {})')
+	}
+
+	public injectLibPaths(...paths: string[]): void {
+		this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
+		this.prerequisites.push(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
+	}
+
+	public tryToInjectHomeLibPath(): void {
+		if(this.options.homeLibPath === undefined) {
+			this.log.debug('ensuring home lib path exists (automatic inject)')
+			this.prerequisites.push('if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }')
+			this.prerequisites.push('.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))')
+		} else {
+			this.injectLibPaths(this.options.homeLibPath)
+		}
+	}
 
 	public usedRVersion(): SemVer | null{
 		const version = this.run(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
@@ -34,11 +53,10 @@ export class RShellExecutor {
 
 	public isPackageInstalled(packageName: string): boolean {
 		this.log.debug(`checking if package "${packageName}" is installed`)
-		const result = this.run(`cat(system.file(package="${packageName}")!="","${this.options.eol}")`)
-		return result === 'TRUE'
+		return this.run(`cat(system.file(package="${packageName}")!="","${this.options.eol}")`) === 'TRUE'
 	}
 
-	public ensurePackageInstalled(packageName: string, force = false): {
+	public ensurePackageInstalled(packageName: string, autoload = false, force = false): {
 		packageName:           string
 		packageExistedAlready: boolean
 		/** the temporary directory used for the installation, undefined if none was used */
@@ -47,6 +65,8 @@ export class RShellExecutor {
 		const packageExistedAlready = this.isPackageInstalled(packageName)
 		if(!force && packageExistedAlready) {
 			this.log.info(`package "${packageName}" is already installed`)
+			if(autoload)
+				this.prerequisites.push(`library(${ts2r(packageName)})`)
 			return {packageName, packageExistedAlready}
 		}
 
@@ -54,6 +74,8 @@ export class RShellExecutor {
 		this.log.debug(`using temporary directory: "${tempDir}" to install package "${packageName}"`)
 
 		this.run(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`)
+		if(autoload)
+			this.prerequisites.push(`library(${ts2r(packageName)},lib.loc=temp)`)
 
 		return {packageName, packageExistedAlready, libraryLocation: tempDir}
 	}
@@ -77,14 +99,14 @@ export class RShellExecutor {
 		return tempDir
 	}
 
-	public run(command: string | string[], returnErr = false): string {
-		this.log.trace(`> ${JSON.stringify(command)}`)
+	public run(commands: string | string[], returnErr = false): string {
+		this.log.trace(`> ${JSON.stringify(commands)}`)
 
 		const returns = spawnSync(this.options.pathToRExecutable, this.options.commandLineOptions, {
 			env:      this.options.env,
 			cwd:      this.options.cwd,
 			encoding: 'utf8',
-			input:    typeof command == 'string' ? command : command.join(this.options.eol)
+			input:    this.prerequisites.concat(typeof commands == 'string' ? [commands] : commands).join(this.options.eol)
 		})
 		return (returnErr ? returns.stderr : returns.stdout).trim()
 	}

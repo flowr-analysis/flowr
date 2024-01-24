@@ -140,7 +140,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 /*
 --reconstruct--
 */
-function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
+function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code): Code {
 	const start = loop.info.fullRange?.start //may be unnesseccary
 	const additionalTokens = reconstructAdditionalTokens(loop)
 	const out = merge([
@@ -149,22 +149,6 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 		...additionalTokens
 	])
 	return out
-	/*if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop), loop.location.start)
-	}
-	if(body.length === 0 && variable.length === 0 && vector.length === 0) {
-		return []
-	} else if(body.length !== 0 && (variable.length !== 0 || vector.length !== 0)) {
-		const additionalTokens = reconstructAdditionalTokens(loop)
-		const out = merge([
-			[{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, loc: start ? start :loop.location.start}], indent: 0 }],
-			body,
-			...additionalTokens
-		])
-		return out
-	} else {
-		return body
-	}*/
 }
 
 function reconstructAdditionalTokens(loop: RNodeWithParent): Code[] {
@@ -239,7 +223,13 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 	if(isSelected(configuration, loop)) {
 		return plain(getLexeme(loop), start)
 	}
-	if(body.length === 0 && condition.length === 0) {
+	const additionalTokens = reconstructAdditionalTokens(loop)
+	const constructedLoop: Code = [{linePart: [{part: '', loc: {line: 0, column: 0}}], indent: 0}]
+	constructedLoop[0].linePart.push({part: `while(${getLexeme(loop.condition)})`, loc: loop.location.start})
+	constructedLoop.push(...body)
+	return merge([constructedLoop, ...additionalTokens])
+
+	/*if(body.length === 0 && condition.length === 0) {
 		return []
 	} else {
 		if(body.length <= 1) {
@@ -259,7 +249,7 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 				...indentBy(body, 1)
 			]
 		}
-	}
+	}*/
 }
 
 /*

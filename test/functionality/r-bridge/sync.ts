@@ -5,7 +5,7 @@ import {RShellExecutor} from '../../../src/r-bridge/shell-executor'
 import fs from 'fs'
 import {testRequiresNetworkConnection} from '../_helper/network'
 
-describe('RShell sessions', function() {
+describe('RShellExecutor', function() {
 	const executor = new RShellExecutor()
 
 	it('R version', () => {

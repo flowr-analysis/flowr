@@ -2,7 +2,7 @@
 name: Question
 about: Ask A Question About flowR
 title: 'Question:'
-labels: enhancement
+labels: question
 assignees: ''
 
 ---

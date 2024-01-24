@@ -1,4 +1,4 @@
-import {DEFAULT_R_SHELL_OPTIONS, RShellOptions} from './shell'
+import {DEFAULT_R_SHELL_OPTIONS, RShellExecutionOptions} from './shell'
 import {deepMergeObject} from '../util/objects'
 import {spawnSync} from 'child_process'
 import {ts2r} from './lang-4.x'
@@ -9,14 +9,14 @@ import {log} from '../util/log'
 import fs from 'fs'
 
 export class RShellExecutor {
-	// TODO use a custom options class that doesn't have all the session stuff?
-	public readonly options:        Readonly<RShellOptions>
+
+	public readonly options:        Readonly<RShellExecutionOptions>
 	private readonly log:           Logger<ILogObj>
 	private readonly prerequisites: string[] = []
 
-	public constructor(options?: Partial<RShellOptions>) {
+	public constructor(options?: Partial<RShellExecutionOptions>) {
 		this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
-		this.log = log.getSubLogger({ name: this.options.sessionName })
+		this.log = log.getSubLogger({ name: 'RShellExecutor' })
 	}
 
 	public continueOnError(): void {

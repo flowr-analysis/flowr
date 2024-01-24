@@ -8,7 +8,7 @@ import { normalizeBasedOnType, splitComments, tryNormalizeSingleNode } from '../
 import { RawRType, RComment, RForLoop, RNode, RSymbol, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { normalizeComment } from '../other'
-import { RDelimiter } from '../../../../model/nodes/info';
+import { RDelimiter } from '../../../../model/nodes/info'
 
 export function tryNormalizeFor(
 	data: ParserData,

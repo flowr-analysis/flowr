@@ -75,10 +75,12 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 	}
 
 	const subExpressions = expressions.filter(e => e.length > 0)
+
 	if(subExpressions.length === 0) {
 		return []
 	} else {
 		const additionalTokens = reconstructAdditionalTokens(exprList)
+
 		return merge([
 			...subExpressions,
 			...additionalTokens

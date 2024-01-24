@@ -8,6 +8,7 @@ import { normalizeBasedOnType, splitComments, tryNormalizeSingleNode } from '../
 import { RawRType, RComment, RForLoop, RNode, RSymbol, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { normalizeComment } from '../other'
+import { RDelimiter } from '../../../../model/nodes/info';
 
 export function tryNormalizeFor(
 	data: ParserData,
@@ -31,7 +32,7 @@ export function tryNormalizeFor(
 
 	({ forToken, condition: head, body } = executeHook(data.hooks.loops.onForLoop.before, data, { forToken, condition: head, body }))
 
-	const { variable: parsedVariable, vector: parsedVector, comments } =
+	const { variable: parsedVariable, vector: parsedVector, additionalTokens: comments } =
     normalizeForHead(newParseData, head.content)
 	const parseBody = tryNormalizeSingleNode(newParseData, body)
 
@@ -70,7 +71,7 @@ export function tryNormalizeFor(
 	return executeHook(data.hooks.loops.onForLoop.after, data, result)
 }
 
-function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined, comments: RComment[] } {
+function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined, additionalTokens: (RNode | RDelimiter)[] } {
 	// must have a child which is `in`, a variable on the left, and a vector on the right
 	const children: NamedXmlBasedJson[] = getKeysGuarded<XmlBasedJson[]>(forCondition, data.config.childrenName).map(content => ({
 		name: getTokenType(data.config.tokenMap, content),
@@ -86,7 +87,8 @@ function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { varia
 
 	const vector = normalizeBasedOnType(data, [others[inPosition + 1]])
 	guard(vector.length === 1 && vector[0].type !== RType.Delimiter, () => `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`)
-	const parsedComments = comments.map(c => normalizeComment(data, c.content))
+	const parsedComments: (RNode | RDelimiter)[] = comments.map(c => normalizeComment(data, c.content))
+	parsedComments.push(...normalizeBasedOnType(data, [others[0]])) // e.g., push '('
 
-	return { variable, vector: vector[0], comments: parsedComments }
+	return { variable, vector: vector[0], additionalTokens: parsedComments }
 }

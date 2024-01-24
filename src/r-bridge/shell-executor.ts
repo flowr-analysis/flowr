@@ -1,12 +1,14 @@
 import {DEFAULT_R_SHELL_OPTIONS, RShellExecutionOptions} from './shell'
 import {deepMergeObject} from '../util/objects'
 import {spawnSync} from 'child_process'
-import {ts2r} from './lang-4.x'
+import {parseCSV, ts2r} from './lang-4.x'
 import {SemVer} from 'semver'
 import semver from 'semver/preload'
 import type {ILogObj, Logger} from 'tslog'
 import {log} from '../util/log'
 import fs from 'fs'
+import {removeTokenMapQuotationMarks, TokenMap} from './retriever'
+import {DeepWritable} from 'ts-essentials'
 
 export class RShellExecutor {
 
@@ -97,6 +99,22 @@ export class RShellExecutor {
 		process.on('SIGTERM', deleteOnExit)
 
 		return tempDir
+	}
+
+	public getTokenMap(): TokenMap {
+		this.ensurePackageInstalled('xmlparsedata', true)
+
+		// we invert the token map to get a mapping back from the replacement
+		const parsed = parseCSV(this.run('write.table(xmlparsedata::xml_parse_token_map,sep=",",col.names=FALSE)').split('\n'))
+
+		if(parsed.some(s => s.length !== 2))
+			throw new Error(`Expected two columns in token map, but got ${JSON.stringify(parsed)}`)
+
+		// we swap key and value to get the other direction, furthermore we remove quotes from keys if they are quoted
+		const ret: DeepWritable<TokenMap> = {}
+		for(const [key, value] of parsed)
+			ret[value] = removeTokenMapQuotationMarks(key)
+		return ret as TokenMap
 	}
 
 	public run(commands: string | string[], returnErr = false): string {

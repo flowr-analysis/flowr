@@ -69,4 +69,9 @@ describe('RShellExecutor', function() {
 			assert.isTrue(got.map(g => g[1]).includes('xmlparsedata'), `expected package xmlparsedata to be loaded, but got: ${JSON.stringify(got)}`)
 		})
 	})
+
+	it('token map', () => {
+		const executor = new RShellExecutor()
+		assert.doesNotThrow(() => executor.getTokenMap())
+	})
 })

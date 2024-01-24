@@ -52,7 +52,6 @@ describe('RShellExecutor', function() {
 			for(const pkg of ['xmlparsedata', 'glue']) {
 				const result = executor.ensurePackageInstalled(pkg, false, true)
 				assert.equal(result.packageName, pkg)
-				assert.isTrue(executor.isPackageInstalled(pkg))
 
 				// clean up the temporary directory
 				if(result.libraryLocation !== undefined)

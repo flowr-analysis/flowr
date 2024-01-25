@@ -21,17 +21,19 @@ export class RShellExecutor {
 		this.log = log.getSubLogger({ name: 'RShellExecutor' })
 	}
 
-	public continueOnError(): void {
+	public continueOnError(): RShellExecutor {
 		this.log.info('continue in case of Errors')
 		this.prerequisites.push('options(error=function() {})')
+		return this
 	}
 
-	public injectLibPaths(...paths: string[]): void {
+	public injectLibPaths(...paths: string[]): RShellExecutor {
 		this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
 		this.prerequisites.push(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
+		return this
 	}
 
-	public tryToInjectHomeLibPath(): void {
+	public tryToInjectHomeLibPath(): RShellExecutor {
 		if(this.options.homeLibPath === undefined) {
 			this.log.debug('ensuring home lib path exists (automatic inject)')
 			this.prerequisites.push('if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }')
@@ -39,6 +41,7 @@ export class RShellExecutor {
 		} else {
 			this.injectLibPaths(this.options.homeLibPath)
 		}
+		return this
 	}
 
 	public usedRVersion(): SemVer | null{

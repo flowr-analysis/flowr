@@ -60,8 +60,7 @@ describe('RShellExecutor', function() {
 		})
 
 		it('ensure installed w/ autoload', () => {
-			const executor = new RShellExecutor()
-			executor.tryToInjectHomeLibPath()
+			const executor = new RShellExecutor().tryToInjectHomeLibPath()
 			executor.ensurePackageInstalled('xmlparsedata', true)
 			// prove if we have it as a loaded namespace (fresh shell!)
 			const got = parseCSV(executor.run('write.table(as.character(.packages()),sep=",", col.names=FALSE)').split('\n'))

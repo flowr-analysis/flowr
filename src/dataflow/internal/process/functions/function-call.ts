@@ -2,13 +2,14 @@ import type { DataflowInformation } from '../../info'
 import type { DataflowProcessorInformation} from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import { define, overwriteEnvironments, resolveByName } from '../../../environments'
-import {ParentInformation, RFunctionCall, RParseRequest, RShell, RType} from '../../../../r-bridge'
+import {ParentInformation, RFunctionCall, RType} from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
 import type { FunctionArgument } from '../../../index'
 import { DataflowGraph, dataflowLogger, EdgeType } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
 import { LocalScope } from '../../../environments/scopes'
-import {SteppingSlicer} from '../../../../core'
+import {RShellExecutor} from '../../../../r-bridge/shell-executor'
+import {executeSingleSubStep} from '../../../../core'
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 
@@ -106,24 +107,19 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		inIds.push(...functionName.in, ...functionName.unknownReferences)
 	}
 
+	// parse a source call and analyze the referenced code
 	if(named && functionCallName == 'source') {
 		const sourceFile = functionCall.arguments[0]
 		if(sourceFile?.value?.type == RType.String) {
-			const request: RParseRequest = {
+			const executor = new RShellExecutor()
+			const parsed = executeSingleSubStep('parse', {
 				request:                'file',
 				content:                sourceFile.lexeme,
-				// TODO what does this do
 				ensurePackageInstalled: true
-			}
-			// TODO is this how to get a shell for this?
-			const shell = new RShell()
-			const slicer = new SteppingSlicer({
-				stepOfInterest: 'normalize',
-				criterion:      [],
-				shell, request
-			})
-			console.log(slicer)
-			shell.close()
+			}, executor) as string
+			const normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap())
+			console.log('NORMALIZED:')
+			console.log(normalized)
 		}
 	}
 

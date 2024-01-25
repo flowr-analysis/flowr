@@ -23,24 +23,31 @@ export class RShellExecutor {
 
 	public continueOnError(): RShellExecutor {
 		this.log.info('continue in case of Errors')
-		this.prerequisites.push('options(error=function() {})')
+		this.addPrerequisites('options(error=function() {})')
 		return this
 	}
 
 	public injectLibPaths(...paths: string[]): RShellExecutor {
 		this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
-		this.prerequisites.push(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
+		this.addPrerequisites(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
 		return this
 	}
 
 	public tryToInjectHomeLibPath(): RShellExecutor {
 		if(this.options.homeLibPath === undefined) {
 			this.log.debug('ensuring home lib path exists (automatic inject)')
-			this.prerequisites.push('if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }')
-			this.prerequisites.push('.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))')
+			this.addPrerequisites([
+				'if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }',
+				'.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))'
+			])
 		} else {
 			this.injectLibPaths(this.options.homeLibPath)
 		}
+		return this
+	}
+
+	public addPrerequisites(commands: string | string[]): RShellExecutor{
+		this.prerequisites.push(...(typeof commands == 'string' ? [commands] : commands))
 		return this
 	}
 
@@ -71,7 +78,7 @@ export class RShellExecutor {
 		if(!force && packageExistedAlready) {
 			this.log.info(`package "${packageName}" is already installed`)
 			if(autoload)
-				this.prerequisites.push(`library(${ts2r(packageName)})`)
+				this.addPrerequisites(`library(${ts2r(packageName)})`)
 			return {packageName, packageExistedAlready}
 		}
 
@@ -80,7 +87,7 @@ export class RShellExecutor {
 
 		this.run(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`)
 		if(autoload)
-			this.prerequisites.push(`library(${ts2r(packageName)},lib.loc=temp)`)
+			this.addPrerequisites(`library(${ts2r(packageName)},lib.loc=temp)`)
 
 		return {packageName, packageExistedAlready, libraryLocation: tempDir}
 	}

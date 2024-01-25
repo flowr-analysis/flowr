@@ -17,6 +17,7 @@ describe('RShellExecutor', function() {
 
 	it('ignore errors', () => {
 		const executor = new RShellExecutor()
+			.addPrerequisites('options(warn=-1); invisible(Sys.setlocale("LC_MESSAGES", \'en_GB.UTF-8\'))')
 
 		// check regular result when an error occurs
 		const error = executor.run('a', true)

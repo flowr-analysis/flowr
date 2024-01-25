@@ -29,7 +29,7 @@ describe('Constant Parsing',
 					request:                'text',
 					content:                '{',
 					ensurePackageInstalled: true
-				}, shell))
+				}, shell) as Promise<string>)
 			)
 			describe('numbers', () => {
 				for(const number of RNumberPool) {

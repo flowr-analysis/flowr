@@ -8,8 +8,11 @@ import { XmlBasedJson } from '../input-format'
  * @param config    - The configuration to use (i.e., what names should be used for the attributes, children, ...)
  * @param xmlString - The xml input to parse
  */
-export function xlm2jsonObject(config: XmlParserConfig, xmlString: string): Promise<XmlBasedJson> {
-	return xml2js.parseStringPromise(xmlString, {
+export function xlm2jsonObject(config: XmlParserConfig, xmlString: string): XmlBasedJson {
+	let result: XmlBasedJson = {}
+	xml2js.parseString(xmlString, {
+		// we want this to be strictly synchronous!
+		async:                 false,
 		attrkey:               config.attributeName,
 		charkey:               config.contentName,
 		childkey:              config.childrenName,
@@ -22,5 +25,6 @@ export function xlm2jsonObject(config: XmlParserConfig, xmlString: string): Prom
 		includeWhiteChars:     true,
 		normalize:             false,
 		strict:                true
-	}) as Promise<XmlBasedJson>
+	}, (_, r)=> result = r as XmlBasedJson)
+	return result 
 }

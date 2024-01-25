@@ -3,6 +3,7 @@ import { ts2r, XmlParserHooks, normalize, NormalizedAst } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
 import { DeepPartial, DeepReadonly } from 'ts-essentials'
 import { guard } from '../util/assert'
+import {RShellExecutor} from './shell-executor'
 
 export interface RParseRequestFromFile {
 	request: 'file';
@@ -53,22 +54,37 @@ const ErrorMarker = 'err'
  * Throws if the file could not be parsed.
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
-export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell): Promise<string> {
-	if(request.ensurePackageInstalled) {
-		await shell.ensurePackageInstalled('xmlparsedata', true)
-	}
-
+export function retrieveXmlFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): (Promise<string> | string) {
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
-
-	shell.sendCommands(`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
+	const setupCommands = [
+		`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
 		// now, try to retrieve the ast
 		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
-		'try(flowr_output<-xmlparsedata::xml_parse_data(flowr_parsed,includeText=TRUE,pretty=FALSE),silent=FALSE)'
-	)
-	const xml = await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)
-	const output = xml.join(shell.options.eol)
-	guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
-	return output
+		'try(flowr_output<-xmlparsedata::xml_parse_data(flowr_parsed,includeText=TRUE,pretty=FALSE),silent=FALSE)',
+	]
+	const outputCommand = `cat(flowr_output,${ts2r(shell.options.eol)})`
+
+	if(shell instanceof RShellExecutor){
+		if(request.ensurePackageInstalled)
+			shell.ensurePackageInstalled('xmlparsedata',true)
+
+		shell.run(setupCommands)
+		const output = shell.run(outputCommand)
+		guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
+		return output
+	} else {
+		const run = async() => {
+			if(request.ensurePackageInstalled)
+				await shell.ensurePackageInstalled('xmlparsedata', true)
+
+			shell.sendCommands(...setupCommands)
+			const output = (await shell.sendCommandWithOutput(outputCommand)).join(shell.options.eol)
+			guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
+			return output
+		}
+		return run()
+	}
+
 }
 
 /**
@@ -77,7 +93,7 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<NormalizedAst> {
 	const xml = await retrieveXmlFromRCode(request, shell)
-	return await normalize(xml, await shell.tokenMap(), hooks)
+	return normalize(xml, await shell.tokenMap(), hooks)
 }
 
 /**

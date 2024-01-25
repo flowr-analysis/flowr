@@ -127,7 +127,7 @@ export class RShellExecutor {
 			env:      this.options.env,
 			cwd:      this.options.cwd,
 			encoding: 'utf8',
-			input:    this.prerequisites.concat(typeof commands == 'string' ? [commands] : commands).join(this.options.eol)
+			input:    [...this.prerequisites, commands].join(this.options.eol)
 		})
 		return (returnErr ? returns.stderr : returns.stdout).trim()
 	}

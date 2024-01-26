@@ -37,6 +37,7 @@ export function tryNormalizeSingleNode(data: ParserData, elem: NamedXmlBasedJson
 		case RawRType.ParenRight:
 		case RawRType.BraceLeft:
 		case RawRType.BraceRight:
+		case RawRType.ForIn:
 			return normalizeDelimiter(data, elem)
 		case RawRType.Comment:
 			return normalizeComment(data, elem.content)

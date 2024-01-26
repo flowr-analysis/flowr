@@ -1,12 +1,10 @@
 #!/bin/sh
+command -v git-lfs >/dev/null 2>&1 || { echo >&2 "\nThis repository is configured for Git LFS but 'git-lfs' was not found on your path. If you no longer wish to use Git LFS, remove this hook by deleting the 'pre-push' file in the hooks directory (set by 'core.hookspath'; usually '.git/hooks').\n"; exit 2; }
+git lfs pre-push "$@"
 
 set -eu
 
-if ! [ -x "$(command -v npm)" ]; then
-  echo 'Error: npm not found. Make it available to the host shell (e.g., with "nvm use --lts").'
-  exit 2
-fi
-
+. .githooks/load-npm.sh
 
 reset() {
   echo "Cleaning up and return control"
@@ -18,6 +16,7 @@ unclean=false
 if [ -n "$(git status --porcelain)" ]; then
   # if we directly assign the test set -eu will not approve
   unclean=true
+  trap reset EXIT
   echo "Working tree is not clean, so we reset in temporary folder"
   # backwards compatible platform independence
   flowrtmpdir=$(mktemp -d 2>/dev/null || mktemp -d -t 'flowrtmpdir')
@@ -32,12 +31,11 @@ if [ -n "$(git status --porcelain)" ]; then
   cd "$flowrtmpdir"
 
   git reset --hard
-  trap reset EXIT
   echo "Setup completed."
 fi
 
 echo "Linting project (local mode)..."
-npm run lint-local
+$NPM_CMD run lint-local
 
 
 # shellcheck disable=SC2124 # we want the argument splitting

@@ -4,7 +4,7 @@ import { parseLog } from '../../parser'
 import { ParserData } from '../../data'
 import { tryNormalizeIfThen } from './if-then'
 import { guard } from '../../../../../../../util/assert'
-import { RIfThenElse, RawRType } from '../../../../model'
+import { RIfThenElse, RawRType, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { ensureExpressionList } from '../meta'
 
@@ -34,7 +34,7 @@ export function tryNormalizeIfThenElse(
 	guard(tokens[5].name === RawRType.Else, () => `expected else token for if-then-else but found ${JSON.stringify(tokens[5])}`)
 
 	const parsedElse = tryNormalizeSingleNode(data, tokens[6])
-	guard(parsedElse !== undefined, () => `unexpected missing else-part of if-then-else, received ${JSON.stringify([parsedIfThen, parsedElse])} for ${JSON.stringify(tokens)}`)
+	guard(parsedElse.type !== RType.Delimiter, () => `unexpected missing else-part of if-then-else, received ${JSON.stringify([parsedIfThen, parsedElse])} for ${JSON.stringify(tokens)}`)
 
 	const result: RIfThenElse = {
 		...parsedIfThen,

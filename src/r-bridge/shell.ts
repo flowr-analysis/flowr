@@ -61,7 +61,7 @@ export const DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION: OutputCollectorConfiguratio
 	errorStopsWaiting:       true
 }
 
-export interface RShellSessionOptions extends MergeableRecord {
+export interface RShellExecutionOptions extends MergeableRecord {
 	/** The path to the R executable, can be only the executable if it is to be found on the PATH. */
 	readonly pathToRExecutable:  string
 	/** Command line options to use when starting the R session. */
@@ -72,12 +72,15 @@ export interface RShellSessionOptions extends MergeableRecord {
 	readonly eol:                string
 	/** The environment variables available in the R session. */
 	readonly env:                NodeJS.ProcessEnv
-	/** If set, the R session will be restarted if it exits due to an error */
-	readonly revive:             'never' | 'on-error' | 'always'
-	/** Called when the R session is restarted, this makes only sense if `revive` is not set to `'never'` */
-	readonly onRevive:           (code: number, signal: string | null) => void
 	/** The path to the library directory, use undefined to let R figure that out for itself */
 	readonly homeLibPath:        string | undefined
+}
+
+export interface RShellSessionOptions extends RShellExecutionOptions {
+	/** If set, the R session will be restarted if it exits due to an error */
+	readonly revive:   'never' | 'on-error' | 'always'
+	/** Called when the R session is restarted, this makes only sense if `revive` is not set to `'never'` */
+	readonly onRevive: (code: number, signal: string | null) => void
 }
 
 /**
@@ -88,16 +91,20 @@ export interface RShellOptions extends RShellSessionOptions {
 	readonly sessionName: string
 }
 
-export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
-	sessionName:        'default',
+export const DEFAULT_R_SHELL_EXEC_OPTIONS: RShellExecutionOptions = {
 	pathToRExecutable:  getPlatform() === 'windows' ? 'R.exe' : 'R',
 	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
 	cwd:                process.cwd(),
 	env:                process.env,
 	eol:                '\n',
 	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
-	revive:             'never',
-	onRevive:           () => { /* do nothing */ }
+} as const
+
+export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
+	...DEFAULT_R_SHELL_EXEC_OPTIONS,
+	sessionName: 'default',
+	revive:      'never',
+	onRevive:    () => { /* do nothing */ }
 } as const
 
 /**

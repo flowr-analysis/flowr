@@ -14,7 +14,7 @@ type StepResultsHelper<InterestedIn extends StepName> = {
 	'parse':       Out<'parse'>
 	'normalize':   StepResultsHelper<'parse'> & Out<'normalize'>
 	'dataflow':    StepResultsHelper<'normalize'> & Out<'dataflow'>
-	'slice':       StepResultsHelper<'dataflow'> & Out<'slice'>
+	'ai':          StepResultsHelper<'dataflow'> & Out<'ai'>
+	'slice':       StepResultsHelper<'ai'> & Out<'slice'>
 	'reconstruct': StepResultsHelper<'slice'> & Out<'reconstruct'>
 }[InterestedIn]
-

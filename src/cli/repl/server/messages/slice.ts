@@ -1,7 +1,7 @@
 import { SlicingCriteria } from '../../../../slicing'
 import { LAST_PER_FILE_STEP, LAST_STEP, StepResults } from '../../../../core'
 import { IdMessageBase, MessageDefinition } from './messages'
-import Joi from 'joi'
+import * as Joi from 'joi'
 
 /**
  * Can only be sent after you have sent the {@link FileAnalysisRequestMessage}.

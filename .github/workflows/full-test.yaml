@@ -17,13 +17,13 @@ jobs:
       fail-fast: false
       matrix:
         # currently we offer no official support for 3.x
-        r-version: [ '4.2.3', '4.0.0' ]
+        r-version: [ '4.3.2', '4.2.3', '4.0.0' ]
         os: [ ubuntu-latest ]
         include:
            - os: macos-latest
-             r-version: '4.2.3'
+             r-version: '4.3.2'
            - os: windows-latest
-             r-version: '4.2.3'
+             r-version: '4.3.2'
     name: "Test Suite (full)"
     uses: Code-Inspect/flowr/.github/workflows/run.yaml@main
     concurrency:

@@ -4,11 +4,10 @@
  * @module
  */
 import { RShell } from '../../r-bridge'
-import readline from 'readline/promises'
 import { bold } from '../../statistics'
 import { prompt } from './prompt'
 import { commandNames, getCommand, ReplOutput, standardReplOutput } from './commands'
-import { ReadLineOptions } from 'node:readline'
+import * as readline from 'node:readline'
 import { splitAtEscapeSensitive } from '../../util/args'
 import { executeRShellCommand } from './commands/execute'
 
@@ -21,7 +20,7 @@ export function replCompleter(line: string): [string[], string] {
 	return [replCompleterKeywords.filter(k => k.startsWith(line)), line]
 }
 
-export const DEFAULT_REPL_READLINE_CONFIGURATION: ReadLineOptions = {
+export const DEFAULT_REPL_READLINE_CONFIGURATION: readline.ReadLineOptions = {
 	input:                   process.stdin,
 	output:                  process.stdout,
 	tabSize:                 4,
@@ -81,8 +80,14 @@ export async function repl(shell = new RShell({ revive: 'always' }), rl = readli
 	// the incredible repl :D, we kill it with ':quit'
 	// eslint-disable-next-line no-constant-condition,@typescript-eslint/no-unnecessary-condition
 	while(true) {
-		const answer: string = await rl.question(prompt())
-
-		await replProcessAnswer(output, answer, shell)
+		await new Promise<void>((resolve, reject) => {
+			rl.question(prompt(), answer => {
+				rl.pause()
+				replProcessAnswer(output, answer, shell).then(() => {
+					rl.resume()
+					resolve()
+				}).catch(reject)
+			})
+		})
 	}
 }

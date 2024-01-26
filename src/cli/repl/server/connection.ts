@@ -20,12 +20,12 @@ import {
 } from './messages/repl'
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
-import { cfg2quads, ControlFlowInformation, extractCFG } from '../../../util/cfg'
-import { defaultQuadIdGenerator, QuadSerializationConfiguration } from '../../../util/quads'
 import { deepMergeObject } from '../../../util/objects'
 import { LogLevel } from '../../../util/log'
+import { cfg2quads, ControlFlowInformation, extractCFG } from '../../../util/cfg/cfg'
 import { StepOutputFormat } from '../../../core/print/print'
 import { DataflowInformation } from '../../../dataflow/internal/info'
+import { defaultQuadIdGenerator, QuadSerializationConfiguration } from '../../../util/quads'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -137,6 +137,7 @@ export class FlowRServerConnection {
 					parse:     await printStepResult('parse', results.parse as string, StepOutputFormat.RdfQuads, config(), parseConfig),
 					normalize: await printStepResult('normalize', results.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
 					dataflow:  await printStepResult('dataflow', results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config()),
+					ai:        ''
 				}
 			})
 		} else {

@@ -7,14 +7,14 @@ import {
 import { log } from '../util/log'
 import { processCommandLineArgs } from './common'
 import { jsonReplacer } from '../util/json'
-import { extractCFG } from '../util/cfg'
-import { create } from 'tar'
 import fs from 'fs'
 import { guard } from '../util/assert'
 import { retrieveArchiveName } from './common/features'
 import { printStepResult } from '../core'
 import { StepOutputFormat } from '../core/print/print'
 import { date2string } from '../util/time'
+import { create } from 'tar'
+import { extractCFG } from '../util/cfg/cfg'
 
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 

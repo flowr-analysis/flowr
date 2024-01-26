@@ -3,7 +3,7 @@
  *
  * @module
  */
-import Joi from 'joi'
+import * as Joi from 'joi'
 import { FlowrHelloResponseMessage } from './hello'
 import { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from './analysis'
 import { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './repl'

@@ -82,6 +82,7 @@ export class BenchmarkSlicer {
 	private loadedXml:      string | undefined
 	private tokenMap:       Record<string, string> | undefined
 	private dataflow:       DataflowInformation | undefined
+	private ai:             DataflowInformation | undefined
 	private normalizedAst:  NormalizedAst | undefined
 	private totalStopwatch: IStoppableStopwatch
 	private finished = false
@@ -133,6 +134,7 @@ export class BenchmarkSlicer {
 		this.loadedXml = await this.measureCommonStep('parse', 'retrieve AST from R code')
 		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST')
 		this.dataflow = await this.measureCommonStep('dataflow', 'produce dataflow information')
+		this.ai = await this.measureCommonStep('ai', 'run abstract interpretation')
 
 		this.stepper.switchToSliceStage()
 

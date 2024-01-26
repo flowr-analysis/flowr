@@ -12,7 +12,7 @@ import {
 	ExecuteIntermediateResponseMessage,
 	ExecuteRequestMessage
 } from '../../../src/cli/repl/server/messages/repl'
-import { extractCFG } from '../../../src/util/cfg'
+import { extractCFG } from '../../../src/util/cfg/cfg'
 
 describe('flowr', () => {
 	describe('Server', withShell(shell => {

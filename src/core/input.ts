@@ -29,7 +29,7 @@ interface BaseSteppingSlicerInput<InterestedIn extends StepName | undefined> ext
 	autoSelectIf?:   AutoSelectPredicate
 }
 
-interface NormalizeSteppingSlicerInput<InterestedIn extends 'dataflow' | 'normalize'> extends BaseSteppingSlicerInput<InterestedIn> {
+interface NormalizeSteppingSlicerInput<InterestedIn extends 'ai' | 'dataflow' | 'normalize'> extends BaseSteppingSlicerInput<InterestedIn> {
 	stepOfInterest: InterestedIn
 }
 

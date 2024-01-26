@@ -1,7 +1,7 @@
 import { IdMessageBase, MessageDefinition } from './messages'
 import { LAST_PER_FILE_STEP, StepResults } from '../../../../core'
-import * as Joi from 'joi'
-import { ControlFlowInformation } from '../../../../util/cfg'
+import Joi from 'joi'
+import { ControlFlowInformation } from '../../../../util/cfg/cfg'
 
 /**
  * Send by the client to request an analysis of a given file.

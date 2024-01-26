@@ -2,7 +2,7 @@ import { SingleSlicingCriterion, SlicingCriteria } from '../../slicing'
 import { NodeId, RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge'
 import { ReconstructionResult } from '../../slicing'
 
-export const CommonSlicerMeasurements = ['initialize R session', 'inject home path', 'ensure installation of xmlparsedata', 'retrieve token map', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const
+export const CommonSlicerMeasurements = ['initialize R session', 'inject home path', 'ensure installation of xmlparsedata', 'retrieve token map', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'run abstract interpretation', 'close R session', 'total'] as const
 export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]
 
 export const PerSliceMeasurements = ['static slicing', 'reconstruct code', 'total'] as const

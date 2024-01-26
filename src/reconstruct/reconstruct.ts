@@ -146,7 +146,8 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	const start = loop.info.fullRange?.start //may be unnesseccary
 	const additionalTokens = reconstructAdditionalTokens(loop)
 	const out = merge([
-		[{ linePart: [{part: `for(${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, loc: start ? start :loop.location.start}], indent: 0 }],
+		[{ linePart: [{part: 'for', loc: start ? start :loop.location.start}], indent: 0 }],
+		[{ linePart: [{part: `${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, loc: loop.variable.location.start}], indent: 0}],
 		body,
 		...additionalTokens
 	])

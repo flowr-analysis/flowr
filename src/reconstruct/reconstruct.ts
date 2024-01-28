@@ -145,9 +145,12 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code): Code {
 	const start = loop.info.fullRange?.start //may be unnesseccary
 	const additionalTokens = reconstructAdditionalTokens(loop)
+	const vectorLocation = loop.vector.location? loop.vector.location.start : vector[0].linePart[0].loc
+	const reconstructedVector = plain(getLexeme(loop.vector), vectorLocation)
 	const out = merge([
 		[{ linePart: [{part: 'for', loc: start ? start :loop.location.start}], indent: 0 }],
-		[{ linePart: [{part: `${getLexeme(loop.variable)} in ${getLexeme(loop.vector)})`, loc: loop.variable.location.start}], indent: 0}],
+		variable,
+		reconstructedVector,
 		body,
 		...additionalTokens
 	])

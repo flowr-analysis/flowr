@@ -142,8 +142,11 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 /*
 --reconstruct--
 */
-function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code): Code {
+function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	const start = loop.info.fullRange?.start //may be unnesseccary
+	if(isSelected(configuration, loop)) {
+		return plain(getLexeme(loop), start ? start :loop.location.start)
+	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
 	const vectorLocation: SourcePosition = loop.vector.location? loop.vector.location.start : vector[0].linePart[0].loc
 	vectorLocation.column -= 1 //somehow the vector is consitently one space to late
@@ -240,10 +243,18 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 		return plain(getLexeme(loop), start)
 	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
-	const constructedLoop: Code = [{linePart: [{part: '', loc: {line: 0, column: 0}}], indent: 0}]
-	constructedLoop[0].linePart.push({part: `while(${getLexeme(loop.condition)})`, loc: loop.location.start})
-	constructedLoop.push(...body)
-	return merge([constructedLoop, ...additionalTokens])
+	const out = merge([
+		[{ linePart: [{part: `while(${getLexeme(loop.condition)})`, loc: start ? start :loop.location.start}], indent: 0 }],
+		...additionalTokens
+	])
+	if(body.length < 1) {
+		//we need to get the location of the body but we have no idea what the location might be
+		out.push({linePart: [{part: '{}', loc: loop.location.end}], indent: 0})
+	}
+	else {
+		out.push(...body)
+	}
+	return merge([out])
 
 	/*if(body.length === 0 && condition.length === 0) {
 		return []

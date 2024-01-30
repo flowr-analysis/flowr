@@ -1,9 +1,9 @@
 import { jsonReplacer } from '../../util/json'
-import { DataflowInformation } from '../../dataflow/internal/info'
-import { QuadSerializationConfiguration } from '../../util/quads'
+import type { DataflowInformation } from '../../dataflow/internal/info'
+import type { QuadSerializationConfiguration } from '../../util/quads'
 import { df2quads } from '../../dataflow/graph/quads'
 import { graphToMermaid, graphToMermaidUrl } from '../../util/mermaid'
-import { DataflowMap } from '../../dataflow'
+import type { DataflowMap } from '../../dataflow'
 
 
 function mayObjectJson(d: unknown): string {

@@ -1,12 +1,13 @@
-import {
+import type {
 	CommonSlicerMeasurements, PerSliceMeasurements,
 	PerSliceStats,
-	SlicerStats,
+	SlicerStats} from '../../../../benchmark'
+import {
 	stats2string,
 	summarizeSlicerStats
 } from '../../../../benchmark'
 import { guard } from '../../../assert'
-import { SlicingCriteria } from '../../../../slicing'
+import type { SlicingCriteria } from '../../../../slicing'
 import { escape } from '../../../../statistics'
 import fs from 'fs'
 import { jsonReplacer } from '../../../json'

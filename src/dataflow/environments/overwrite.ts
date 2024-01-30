@@ -1,5 +1,6 @@
 import { guard } from '../../util/assert'
-import { REnvironmentInformation, IEnvironment, Environment, IdentifierDefinition } from './environment'
+import type { REnvironmentInformation, IEnvironment, IdentifierDefinition } from './environment'
+import { Environment } from './environment'
 
 function anyIsMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
 	if(values.length === 0) {

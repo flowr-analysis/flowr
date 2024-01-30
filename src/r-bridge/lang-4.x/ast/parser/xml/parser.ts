@@ -2,17 +2,20 @@ import { deepMergeObject } from '../../../../../util/objects'
 import { log } from '../../../../../util/log'
 import { DEFAULT_XML_PARSER_CONFIG } from './config'
 import { xlm2jsonObject, parseRootObjToAst } from './internal'
-import { ParserData } from './data'
-import {
-	decorateAst,
+import type { ParserData } from './data'
+import type {
 	NormalizedAst,
-	deterministicCountingIdGenerator,
 	IdGenerator,
 	NoInfo
 } from '../../model'
-import { DEFAULT_PARSER_HOOKS, XmlParserHooks } from './hooks'
-import { DeepPartial } from 'ts-essentials'
-import { TokenMap } from '../../../../retriever'
+import {
+	decorateAst,
+	deterministicCountingIdGenerator
+} from '../../model'
+import type { XmlParserHooks } from './hooks'
+import { DEFAULT_PARSER_HOOKS } from './hooks'
+import type { DeepPartial } from 'ts-essentials'
+import type { TokenMap } from '../../../../retriever'
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 

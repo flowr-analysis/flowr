@@ -1,9 +1,11 @@
+import type {
+	XmlBasedJson,
+	XmlParserConfig
+} from '../../../r-bridge'
 import {
 	DEFAULT_XML_PARSER_CONFIG,
 	getKeysGuarded, RawRType,
-	requestFromInput,
-	XmlBasedJson,
-	XmlParserConfig
+	requestFromInput
 } from '../../../r-bridge'
 import {
 	extractLocation,
@@ -11,8 +13,9 @@ import {
 	objectWithArrUnwrap,
 	xlm2jsonObject
 } from '../../../r-bridge/lang-4.x/ast/parser/xml/internal'
-import { FontStyles, OutputFormatter } from '../../../statistics'
-import { ReplCommand } from './main'
+import type { OutputFormatter } from '../../../statistics'
+import { FontStyles } from '../../../statistics'
+import type { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../core'
 import { deepMergeObject } from '../../../util/objects'
 

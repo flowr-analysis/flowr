@@ -1,5 +1,6 @@
-import { NodeId, NormalizedAst } from '../../r-bridge'
-import { mergeRanges, rangeCompare, rangesOverlap, SourceRange } from '../../util/range'
+import type { NodeId, NormalizedAst } from '../../r-bridge'
+import type { SourceRange } from '../../util/range'
+import { mergeRanges, rangeCompare, rangesOverlap } from '../../util/range'
 import { isNotUndefined } from '../../util/assert'
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../statistics'
 

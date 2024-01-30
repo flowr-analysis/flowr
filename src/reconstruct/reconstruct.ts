@@ -4,7 +4,7 @@
  * @module
  */
 
-import {
+import type {
 	NormalizedAst,
 	NodeId,
 	ParentInformation,
@@ -21,14 +21,16 @@ import {
 	RParameter,
 	RRepeatLoop,
 	RWhileLoop,
-	RType,
 	RPipe,
-	foldAstStateful,
 	StatefulFoldFunctions
+} from '../r-bridge'
+import {
+	RType,
+	foldAstStateful
 } from '../r-bridge'
 import { log, LogLevel } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
-import { MergeableRecord } from '../util/objects'
+import type { MergeableRecord } from '../util/objects'
 //
 type Selection = Set<NodeId>
 interface PrettyPrintLine {

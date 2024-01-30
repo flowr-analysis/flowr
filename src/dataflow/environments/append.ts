@@ -1,5 +1,6 @@
 import { guard } from '../../util/assert'
-import { REnvironmentInformation, IEnvironment, IdentifierDefinition, Environment } from './environment'
+import type { REnvironmentInformation, IEnvironment, IdentifierDefinition} from './environment'
+import { Environment } from './environment'
 
 function uniqueMergeValues(old: IdentifierDefinition[], value: IdentifierDefinition[]): IdentifierDefinition[] {
 	const result = old

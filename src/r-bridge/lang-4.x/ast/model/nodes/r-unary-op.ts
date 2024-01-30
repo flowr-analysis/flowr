@@ -1,6 +1,6 @@
-import { Base, Location, NoInfo, RNode } from '../model'
-import { RType } from '../type'
-import { UnaryOperatorFlavor } from '../operators'
+import type { Base, Location, NoInfo, RNode } from '../model'
+import type { RType } from '../type'
+import type { UnaryOperatorFlavor } from '../operators'
 
 export interface RUnaryOp<Info = NoInfo> extends Base<Info>, Location {
 	readonly type:   RType.UnaryOp;

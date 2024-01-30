@@ -1,23 +1,25 @@
-import {
+import type {
 	NormalizedAst, IdGenerator,
 	NoInfo,
 	RParseRequest,
 	RShell,
 	XmlParserHooks
 } from '../r-bridge'
-import {
-	executeSingleSubStep, LAST_PER_FILE_STEP, LAST_STEP,
+import type { LAST_PER_FILE_STEP,
 	StepRequired, STEPS,
-	STEPS_PER_FILE,
-	STEPS_PER_SLICE,
 	StepName, StepResult
 } from './steps'
+import {
+	executeSingleSubStep, LAST_STEP,
+	STEPS_PER_FILE,
+	STEPS_PER_SLICE
+} from './steps'
 import { guard } from '../util/assert'
-import { SliceResult, SlicingCriteria } from '../slicing'
-import { DeepPartial } from 'ts-essentials'
-import { SteppingSlicerInput } from './input'
-import { StepResults } from './output'
-import { DataflowInformation } from '../dataflow/internal/info'
+import type { SliceResult, SlicingCriteria } from '../slicing'
+import type { DeepPartial } from 'ts-essentials'
+import type { SteppingSlicerInput } from './input'
+import type { StepResults } from './output'
+import type { DataflowInformation } from '../dataflow/internal/info'
 
 /**
  * This is ultimately the root of flowR's static slicing procedure.

@@ -1,7 +1,7 @@
 import { assert } from 'chai'
 import { setEquals } from '../../../src/util/set'
 import { jsonReplacer } from '../../../src/util/json'
-import { Test } from 'mocha'
+import type { Test } from 'mocha'
 
 describe('Set (operations)', () => {
 	 describe('setEquals', () => {

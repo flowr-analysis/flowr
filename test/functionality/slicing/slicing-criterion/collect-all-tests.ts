@@ -1,11 +1,14 @@
+import type {
+	SlicingCriteriaFilter,
+	SlicingCriteria
+} from '../../../../src/slicing'
 import {
 	collectAllSlicingCriteria,
 	DefaultAllVariablesFilter,
-	SlicingCriteriaFilter,
-	convertAllSlicingCriteriaToIds,
-	SlicingCriteria
+	convertAllSlicingCriteriaToIds
 } from '../../../../src/slicing'
-import { decorateAst, RShell } from '../../../../src/r-bridge'
+import type { RShell } from '../../../../src/r-bridge'
+import { decorateAst } from '../../../../src/r-bridge'
 import { retrieveNormalizedAst, withShell } from '../../_helper/shell'
 import { assert } from 'chai'
 

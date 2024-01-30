@@ -1,6 +1,7 @@
-import { NormalizedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation, RNodeWithParent, RType } from '../../r-bridge'
+import type { NormalizedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation, RNodeWithParent} from '../../r-bridge'
+import { RType } from '../../r-bridge'
 import { slicerLogger } from '../static'
-import { SourcePosition } from '../../util/range'
+import type { SourcePosition } from '../../util/range'
 
 /** Either `line:column`, `line@variable-name`, or `$id` */
 export type SingleSlicingCriterion = `${number}:${number}` | `${number}@${string}` | `$${number}`

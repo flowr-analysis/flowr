@@ -1,7 +1,7 @@
 import { assertUnreachable } from '../../../../../util/assert'
-import { DeepReadonly } from 'ts-essentials'
+import type { DeepReadonly } from 'ts-essentials'
 import { RType } from '../type'
-import {
+import type {
 	RExpressionList,
 	RNumber,
 	RSymbol,
@@ -32,7 +32,7 @@ import {
 	RLineDirective,
 	RPipe
 } from '../nodes'
-import { RNode } from '../model'
+import type { RNode } from '../model'
 
 
 /**

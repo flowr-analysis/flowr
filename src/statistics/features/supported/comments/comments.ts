@@ -1,8 +1,8 @@
-import { Feature, FeatureProcessorInput, Query } from '../../feature'
+import type { Feature, FeatureProcessorInput, Query } from '../../feature'
 import * as xpath from 'xpath-ts2'
 import { guard, isNotNull, isNotUndefined } from '../../../../util/assert'
 import { appendStatisticsFile } from '../../../output'
-import { Writable } from 'ts-essentials'
+import type { Writable } from 'ts-essentials'
 import { postProcess } from './post-process'
 
 

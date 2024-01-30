@@ -1,5 +1,5 @@
 import {guard} from '../../../util/assert'
-import {BinOpOperators} from './binop'
+import type {BinOpOperators} from './binop'
 import {addDomains, subtractDomains} from '../../domain'
 
 export const operators: BinOpOperators = {

@@ -1,4 +1,5 @@
-import { retrieveNormalizedAstFromRCode, RParseRequestFromFile, RShell } from '../r-bridge'
+import type { RParseRequestFromFile} from '../r-bridge'
+import { retrieveNormalizedAstFromRCode, RShell } from '../r-bridge'
 import { log } from '../util/log'
 import { serialize2quads } from '../util/quads'
 import fs from 'fs'

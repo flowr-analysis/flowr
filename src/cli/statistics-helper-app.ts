@@ -1,8 +1,9 @@
 import { RShell } from '../r-bridge'
+import type { FeatureKey} from '../statistics'
 import {
 	extractUsageStatistics,
 	setFormatter,
-	voidFormatter, staticRequests, FeatureKey, initFileProvider, statisticsFileProvider
+	voidFormatter, staticRequests, initFileProvider, statisticsFileProvider
 } from '../statistics'
 import { log } from '../util/log'
 import { processCommandLineArgs } from './common'

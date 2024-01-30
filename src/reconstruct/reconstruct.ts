@@ -37,7 +37,7 @@ import {
 	removeExpressionListWrap,
 	AutoSelectPredicate,
 	getIndentString, merge } from './helper'
-import { SourceRange} from '../util/range'
+import { SourcePosition, SourceRange} from '../util/range'
 
 /*
 --logger--
@@ -145,16 +145,26 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code): Code {
 	const start = loop.info.fullRange?.start //may be unnesseccary
 	const additionalTokens = reconstructAdditionalTokens(loop)
-	const vectorLocation = loop.vector.location? loop.vector.location.start : vector[0].linePart[0].loc
+	const vectorLocation: SourcePosition = loop.vector.location? loop.vector.location.start : vector[0].linePart[0].loc
+	vectorLocation.column -= 1 //somehow the vector is consitently one space to late
 	const reconstructedVector = plain(getLexeme(loop.vector), vectorLocation)
 	const out = merge([
 		[{ linePart: [{part: 'for', loc: start ? start :loop.location.start}], indent: 0 }],
-		variable,
+		[{ linePart: [{part: getLexeme(loop.variable), loc: loop.variable.location.start}], indent: 0}],
 		reconstructedVector,
-		body,
 		...additionalTokens
 	])
-	return out
+	//if body empty
+	if(body.length < 1) {
+		// puts {} with one space separation after for(...)
+		const hBody = out[out.length - 1].linePart
+		const bodyLoc = hBody[hBody.length - 1].loc
+		out.push({ linePart: [{part: '{}', loc: {line: bodyLoc.line, column: bodyLoc.column + 2}}], indent: 0})
+		return out
+	}
+	//normal reconstruct
+	out.push(...body)
+	return merge([out])
 }
 
 function reconstructAdditionalTokens(loop: RNodeWithParent): Code[] {

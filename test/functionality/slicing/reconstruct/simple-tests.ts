@@ -52,13 +52,13 @@ describe.only('Simple', withShell(shell => {
 				['while(TRUE) { x }', '1', 'while(TRUE) { x }'],
 				['while(TRUE) { x <- 5 }', '1', 'while(TRUE) { x <- 5 }'],
 				['while(TRUE) { x <- 5; y <- 9 }', '1', 'while(TRUE) {x <- 5;        }'],
-				['while(TRUE) { x <- 5; y <- 9 }', '0', 'while(TRUE) {}'], //empty body may need to be seperate case
+				['while(TRUE) { x <- 5; y <- 9 }', '0', 'while(TRUE) {}'],
 				['while(TRUE) { x <- 5; y <- 9 }', ['0', '1'], 'while(TRUE) {x <- 5;        }'],
 				['while(TRUE) { x <- 5; y <- 9 }', ['0', '1', '2'], 'while(TRUE) {x <- 5;        }'],
 				['while(TRUE) { x <- 5; y <- 9 }', ['0', '4'], 'while(TRUE) {       ; y <- 9}'],
 				['while(TRUE) { x <- 5; y <- 9 }', ['0', '1', '4'], 'while(TRUE) { x <- 5; y <- 9 }',],
 				['while(TRUE) {\n    x <- 5\n    y <- 9\n}', ['0', '1', '4'], 'while(TRUE) {\n    x <- 5\n    y <- 9\n}'],
-				['while(x + 2 > 3) { x <- 0 }', ['0'], 'while(x + 2 > 3) {}'], //empty body may need to be seperate case
+				['while(x + 2 > 3) { x <- 0 }', ['0'], 'while(x + 2 > 3) {}'],
 				['while(x + 2 > 3) { x <- 0 }', ['5'], 'while(x + 2 > 3) { x <- 0 }'],
 				['while(x + 2 > 3) { x <- 0 }', ['0', '5'], 'while(x + 2 > 3) { x <- 0 }']
 			]
@@ -76,17 +76,17 @@ describe.only('Simple', withShell(shell => {
       }
     `
 			const pool: [string, string | string[], string][] = [
-				[largeFor, '0', 'for(i in 1:20) {}'], //reconstruct for(i in 1:20) ?
-				[largeFor, '4', 'for(i in 1:20) {\n  y <- 9\n}'],
+				[largeFor, '0', 'for (i in 1:20) {}'],
+				[largeFor, '4', 'for (i in 1:20) {\n  y <- 9\n}'],
 				//more spaces after for
-				[largeFor, ['0', '4'], 'for(i in 1:20) {\n  y <- 9\n}'],
+				[largeFor, ['0', '4'], 'for (i in 1:20) {\n  y <- 9\n}'],
 				//more spaces after for
-				[largeFor, ['0', '4', '7'], `for(i in 1:20) {
+				[largeFor, ['0', '4', '7'], `for (i in 1:20) {
   y <- 9
   x <- 5
 }`],
 				//more spaces after for
-				[largeFor, ['0', '4', '10'], `for(i in 1:20) {
+				[largeFor, ['0', '4', '10'], `for (i in 1:20) {
   y <- 9
   12 -> x
 }`],

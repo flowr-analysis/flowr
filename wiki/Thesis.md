@@ -10,7 +10,7 @@ The submission state is still available with [v1.0.0](https://github.com/Code-In
 
 Each step assumes, that you start in the root directory of this repository. You need a working installation of *R* and *npm*.
 
-> 💡 Information\
+> [!IMPORTANT]  
 > Since [v1.0.0](https://github.com/Code-Inspect/flowr/releases/tag/v1.0.0) we heavily extended on the statistics recorded and changed the way that *flowR* should be used. Hence, to reproduce the results, please make sure to work on [v1.0.0](https://github.com/Code-Inspect/flowr/releases/tag/v1.0.0).
 
 This mainly describes how to extract the statistics from the CRAN package sources, however, starting from step&nbsp;3,

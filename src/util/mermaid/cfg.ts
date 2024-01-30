@@ -1,5 +1,5 @@
-import { NormalizedAst, RNodeWithParent } from '../../r-bridge'
-import { ControlFlowInformation } from '../cfg/cfg'
+import type { NormalizedAst, RNodeWithParent } from '../../r-bridge'
+import type { ControlFlowInformation } from '../cfg/cfg'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
 
 function getLexeme(n?: RNodeWithParent) {

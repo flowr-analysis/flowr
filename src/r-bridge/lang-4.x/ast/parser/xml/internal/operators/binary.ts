@@ -1,20 +1,22 @@
-import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
+import type { NamedXmlBasedJson} from '../../input-format'
+import { XmlParseError } from '../../input-format'
 import { parseLog } from '../../parser'
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../meta'
 import { identifySpecialOp } from './special'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from '../structure'
-import {
-	ArithmeticOperatorsRAst,
-	AssignmentsRAst,
+import type {
 	BinaryOperatorFlavor,
-	ComparisonOperatorsRAst,
-	LogicalOperatorsRAst,
-	ModelFormulaOperatorsRAst, RawRType,
 	RBinaryOp, RFunctionCall, RNamedFunctionCall,
 	RNode,
 	RPipe,
-	RSymbol,
+	RSymbol} from '../../../../model'
+import {
+	ArithmeticOperatorsRAst,
+	AssignmentsRAst,
+	ComparisonOperatorsRAst,
+	LogicalOperatorsRAst,
+	ModelFormulaOperatorsRAst, RawRType,
 	RType
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'

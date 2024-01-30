@@ -1,5 +1,7 @@
-import { cloneEnvironments, IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
-import { DataflowScopeName, GlobalScope, LocalScope } from './scopes'
+import type { IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
+import { cloneEnvironments } from './environment'
+import type { DataflowScopeName} from './scopes'
+import { GlobalScope, LocalScope } from './scopes'
 import { guard } from '../../util/assert'
 
 /**

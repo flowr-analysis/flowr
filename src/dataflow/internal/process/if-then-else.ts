@@ -1,8 +1,10 @@
-import { DataflowInformation } from '../info'
-import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
-import { appendEnvironments, IdentifierReference, makeAllMaybe } from '../../environments'
+import type { DataflowInformation } from '../info'
+import type { DataflowProcessorInformation} from '../../processor'
+import { processDataflowFor } from '../../processor'
+import type { IdentifierReference} from '../../environments'
+import { appendEnvironments, makeAllMaybe } from '../../environments'
 import { linkIngoingVariablesInSameScope } from '../linker'
-import { ParentInformation, RIfThenElse } from '../../../r-bridge'
+import type { ParentInformation, RIfThenElse } from '../../../r-bridge'
 
 export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const cond = processDataflowFor(ifThen.condition, data)

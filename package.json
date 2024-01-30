@@ -294,7 +294,8 @@
             "PascalCase"
           ]
         }
-      ]
+      ],
+      "@typescript-eslint/consistent-type-imports": "error"
     }
   },
   "release-it": {

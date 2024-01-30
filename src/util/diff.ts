@@ -6,7 +6,7 @@
  */
 
 import { setMinus } from './set'
-import { MergeableRecord } from './objects'
+import type { MergeableRecord } from './objects'
 
 /**
  * Unifies the shape of all difference reports.

@@ -1,7 +1,8 @@
-import { Feature, FeatureProcessorInput } from '../../feature'
+import type { Feature, FeatureProcessorInput } from '../../feature'
 import { appendStatisticsFile } from '../../../output'
-import { Writable } from 'ts-essentials'
-import { RNodeWithParent, RType, visitAst } from '../../../../r-bridge'
+import type { Writable } from 'ts-essentials'
+import type { RNodeWithParent} from '../../../../r-bridge'
+import { RType, visitAst } from '../../../../r-bridge'
 import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import { postProcess } from './post-process'
 

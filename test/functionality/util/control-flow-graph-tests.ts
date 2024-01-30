@@ -1,10 +1,11 @@
 import { assert } from 'chai'
 import { withShell } from '../_helper/shell'
+import type {
+	ControlFlowInformation} from '../../../src/util/cfg/cfg'
 import {
 	cfg2quads,
 	CfgVertexType,
 	ControlFlowGraph,
-	ControlFlowInformation,
 	emptyControlFlowInformation,
 	equalCfg,
 	extractCFG

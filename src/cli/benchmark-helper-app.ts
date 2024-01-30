@@ -1,7 +1,7 @@
 import { log } from '../util/log'
 import { BenchmarkSlicer } from '../benchmark'
 import { DefaultAllVariablesFilter } from '../slicing'
-import { RParseRequestFromFile } from '../r-bridge'
+import type { RParseRequestFromFile } from '../r-bridge'
 import fs from 'fs'
 import { jsonReplacer } from '../util/json'
 import { guard } from '../util/assert'

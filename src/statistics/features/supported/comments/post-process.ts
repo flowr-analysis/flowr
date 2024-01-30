@@ -1,16 +1,18 @@
-import { FeatureStatisticsWithMeta } from '../../feature'
+import type { FeatureStatisticsWithMeta } from '../../feature'
+import type {
+	SummarizedMeasurement} from '../../../../util/summarizer/benchmark/data'
 import {
-	SummarizedMeasurement,
 	summarizedMeasurement2Csv,
 	summarizedMeasurement2CsvHeader
 } from '../../../../util/summarizer/benchmark/data'
-import { MergeableRecord } from '../../../../util/objects'
-import { CommentInfo, initialCommentInfo } from './comments'
+import type { MergeableRecord } from '../../../../util/objects'
+import type { CommentInfo} from './comments'
+import { initialCommentInfo } from './comments'
 import { guard } from '../../../../util/assert'
 import fs from 'node:fs'
 import path from 'path'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
-import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
+import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
 
 
 type CommentsPostProcessing<Measurement=SummarizedMeasurement> = MergeableRecord & {

@@ -1,9 +1,10 @@
-import { ParserData } from '../../data'
-import { XmlBasedJson } from '../../input-format'
+import type { ParserData } from '../../data'
+import type { XmlBasedJson } from '../../input-format'
 import { parseLog } from '../../parser'
 import { executeHook } from '../../hooks'
 import { retrieveMetaStructure } from '../meta'
-import { RNext, RType } from '../../../../model'
+import type { RNext} from '../../../../model'
+import { RType } from '../../../../model'
 
 export function normalizeNext(data: ParserData, obj: XmlBasedJson): RNext {
 	parseLog.debug(`[next] try: ${JSON.stringify(obj)}`)

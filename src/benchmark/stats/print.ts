@@ -3,8 +3,8 @@
  * @module
  */
 import { guard } from '../../util/assert'
-import { ElapsedTime, PerSliceMeasurements } from './stats'
-import {
+import type { ElapsedTime, PerSliceMeasurements } from './stats'
+import type {
 	SummarizedMeasurement,
 	SummarizedPerSliceStats,
 	SummarizedSlicerStats,

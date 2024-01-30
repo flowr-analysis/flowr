@@ -1,4 +1,4 @@
-import { MergeableRecord } from '../../../../util/objects'
+import type { MergeableRecord } from '../../../../util/objects'
 import { RawRType } from './type'
 
 /**

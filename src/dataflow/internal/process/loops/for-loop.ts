@@ -3,10 +3,11 @@ import {
 	linkIngoingVariablesInSameScope,
 	produceNameSharedIdMap
 } from '../../linker'
-import { DataflowInformation } from '../../info'
-import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
+import type { DataflowInformation } from '../../info'
+import type { DataflowProcessorInformation} from '../../../processor'
+import { processDataflowFor } from '../../../processor'
 import { appendEnvironments, define, makeAllMaybe, overwriteEnvironments } from '../../../environments'
-import { ParentInformation, RForLoop } from '../../../../r-bridge'
+import type { ParentInformation, RForLoop } from '../../../../r-bridge'
 import { EdgeType } from '../../../graph'
 import { LocalScope } from '../../../environments/scopes'
 

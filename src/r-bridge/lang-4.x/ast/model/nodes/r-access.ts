@@ -1,6 +1,6 @@
-import { Base, Location, NoInfo, RNode } from '../model'
-import { RType } from '../type'
-import { RArgument } from './r-argument'
+import type { Base, Location, NoInfo, RNode } from '../model'
+import type { RType } from '../type'
+import type { RArgument } from './r-argument'
 
 /**
  * Represents an R Indexing operation with `$`, `@`, `[[`, or `[`.

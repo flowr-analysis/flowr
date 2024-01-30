@@ -1,4 +1,4 @@
-import { RawRType } from '../../model'
+import type { RawRType } from '../../model'
 
 /**
  * Thrown if the given input xml is not valid/contains unexpected elements.

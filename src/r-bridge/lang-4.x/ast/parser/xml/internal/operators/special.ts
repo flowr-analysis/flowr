@@ -1,6 +1,7 @@
+import type {
+	BinaryOperatorFlavor} from '../../../../model'
 import {
 	ArithmeticOperatorsRAst,
-	BinaryOperatorFlavor,
 	ComparisonOperatorsRAst,
 	LogicalOperatorsRAst
 } from '../../../../model'

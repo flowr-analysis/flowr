@@ -1,12 +1,13 @@
-import { FeatureStatisticsWithMeta } from '../../feature'
-import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
-import { MergeableRecord } from '../../../../util/objects'
+import type { FeatureStatisticsWithMeta } from '../../feature'
+import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
+import type { MergeableRecord } from '../../../../util/objects'
+import type {
+	CommonSyntaxTypeCounts} from '../../common-syntax-probability'
 import {
 	appendCommonSyntaxTypeCounter,
-	CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
-import { AssignmentInfo } from './assignments'
+import type { AssignmentInfo } from './assignments'
 import { bigint2number } from '../../../../util/numbers'
 import fs from 'node:fs'
 import path from 'path'

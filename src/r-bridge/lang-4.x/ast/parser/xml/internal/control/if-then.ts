@@ -1,9 +1,11 @@
-import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
+import type { NamedXmlBasedJson} from '../../input-format'
+import { XmlParseError } from '../../input-format'
 import { tryNormalizeSingleNode } from '../structure'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
-import { ParserData } from '../../data'
-import { RawRType, RIfThenElse, RType } from '../../../../model'
+import type { ParserData } from '../../data'
+import type { RIfThenElse} from '../../../../model'
+import { RawRType, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 /**

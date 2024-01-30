@@ -1,7 +1,8 @@
 import { type RShell } from './shell'
-import { ts2r, XmlParserHooks, normalize, NormalizedAst } from './lang-4.x'
+import type { XmlParserHooks, NormalizedAst } from './lang-4.x'
+import { ts2r, normalize } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
-import { DeepPartial, DeepReadonly } from 'ts-essentials'
+import type { DeepPartial, DeepReadonly } from 'ts-essentials'
 import { guard } from '../util/assert'
 
 export interface RParseRequestFromFile {

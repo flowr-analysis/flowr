@@ -1,17 +1,19 @@
-import {
-	ALL_FEATURES, AppendFnType,
+import type { AppendFnType,
 	DummyAppendMemoryMap,
-	extractUsageStatistics,
 	FeatureKey,
-	FeatureValue, initDummyFileProvider,
+	FeatureValue} from '../../../src/statistics'
+import {
+	ALL_FEATURES,
+	extractUsageStatistics, initDummyFileProvider,
 	staticRequests
 } from '../../../src/statistics'
 import { assert } from 'chai'
-import { RShell } from '../../../src/r-bridge'
+import type { RShell } from '../../../src/r-bridge'
 import { deepMergeObject } from '../../../src/util/objects'
 import { jsonReplacer, jsonRetriever } from '../../../src/util/json'
-import { ensureConfig, TestConfiguration } from '../_helper/shell'
-import { DeepPartial } from 'ts-essentials'
+import type { TestConfiguration } from '../_helper/shell'
+import { ensureConfig } from '../_helper/shell'
+import type { DeepPartial } from 'ts-essentials'
 import { requireAllTestsInFolder } from '../_helper/collect-tests'
 import path from 'path'
 

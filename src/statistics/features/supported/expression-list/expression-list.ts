@@ -1,5 +1,5 @@
-import { Writable } from 'ts-essentials'
-import { Feature, FeatureProcessorInput } from '../../feature'
+import type { Writable } from 'ts-essentials'
+import type { Feature, FeatureProcessorInput } from '../../feature'
 import { RType, visitAst } from '../../../../r-bridge'
 import { postProcess } from './post-process'
 

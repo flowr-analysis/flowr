@@ -1,4 +1,4 @@
-import { RShell } from '../../../src/r-bridge'
+import type { RShell } from '../../../src/r-bridge'
 import semver from 'semver/preload'
 
 /**

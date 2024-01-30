@@ -1,7 +1,8 @@
-import { DataflowInformation } from '../../info'
-import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
+import type { DataflowInformation } from '../../info'
+import type { DataflowProcessorInformation} from '../../../processor'
+import { processDataflowFor } from '../../../processor'
 import { linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap } from '../../linker'
-import { ParentInformation, RRepeatLoop } from '../../../../r-bridge'
+import type { ParentInformation, RRepeatLoop } from '../../../../r-bridge'
 
 export function processRepeatLoop<OtherInfo>(loop: RRepeatLoop<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const body = processDataflowFor(loop.body, data)

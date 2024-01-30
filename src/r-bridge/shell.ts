@@ -4,12 +4,13 @@ import { type ILogObj, type Logger } from 'tslog'
 import * as readline from 'node:readline'
 import { parseCSV, ts2r } from './lang-4.x'
 import { log, LogLevel } from '../util/log'
-import { SemVer } from 'semver'
+import type { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 import fs from 'fs'
-import { removeTokenMapQuotationMarks, TokenMap } from './retriever'
-import { DeepWritable } from 'ts-essentials'
+import type { TokenMap } from './retriever'
+import { removeTokenMapQuotationMarks } from './retriever'
+import type { DeepWritable } from 'ts-essentials'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 

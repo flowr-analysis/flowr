@@ -2,18 +2,23 @@
  * Processes a list of expressions joining their dataflow graphs accordingly.
  * @module
  */
-import { DataflowInformation, initializeCleanInfo } from '../info'
-import { NodeId, ParentInformation, RExpressionList, RType, visitAst } from '../../../r-bridge'
-import { DataflowProcessorInformation, processDataflowFor } from '../../processor'
-import {
-	IdentifierReference, IEnvironment, makeAllMaybe,
+import type { DataflowInformation} from '../info'
+import { initializeCleanInfo } from '../info'
+import type { NodeId, ParentInformation, RExpressionList} from '../../../r-bridge'
+import { RType, visitAst } from '../../../r-bridge'
+import type { DataflowProcessorInformation} from '../../processor'
+import { processDataflowFor } from '../../processor'
+import type {
+	IdentifierReference, IEnvironment,
+	REnvironmentInformation} from '../../environments'
+import { makeAllMaybe,
 	overwriteEnvironments, popLocalEnvironment,
-	REnvironmentInformation,
 	resolveByName
 } from '../../environments'
 import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
-import { DataflowGraph, DataflowGraphVertexInfo } from '../../graph'
+import type { DataflowGraphVertexInfo } from '../../graph'
+import { DataflowGraph } from '../../graph'
 import { dataflowLogger, EdgeType } from '../../index'
 import { guard } from '../../../util/assert'
 

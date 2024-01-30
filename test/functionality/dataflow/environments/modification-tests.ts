@@ -1,5 +1,6 @@
-import { NodeId } from '../../../../src/r-bridge'
-import { DefaultEnvironmentMemory, IEnvironment, initializeCleanEnvironments } from '../../../../src/dataflow'
+import type { NodeId } from '../../../../src/r-bridge'
+import type { IEnvironment} from '../../../../src/dataflow'
+import { DefaultEnvironmentMemory, initializeCleanEnvironments } from '../../../../src/dataflow'
 import { guard } from '../../../../src/util/assert'
 import { expect } from 'chai'
 import { appendEnvironments, define, overwriteEnvironments } from '../../../../src/dataflow/environments'

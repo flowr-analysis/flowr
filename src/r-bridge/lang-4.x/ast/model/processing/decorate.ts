@@ -9,12 +9,12 @@
  * @module
  */
 
-import { NoInfo, RNode } from '../model'
+import type { NoInfo, RNode } from '../model'
 import { guard } from '../../../../../util/assert'
-import { SourceRange } from '../../../../../util/range'
+import type { SourceRange } from '../../../../../util/range'
 import { BiMap } from '../../../../../util/bimap'
 import { foldAst } from './fold'
-import {
+import type {
 	RArgument,
 	RBinaryOp,
 	RFunctionCall,
@@ -23,7 +23,7 @@ import {
 	RPipe,
 	RUnnamedFunctionCall
 } from '../nodes'
-import { MergeableRecord } from '../../../../../util/objects'
+import type { MergeableRecord } from '../../../../../util/objects'
 import { RoleInParent } from './role'
 import { RType } from '../type'
 

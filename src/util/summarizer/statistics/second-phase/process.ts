@@ -1,15 +1,17 @@
 import fs from 'fs'
 import path from 'path'
-import {
-	ALL_FEATURES,
+import type {
 	FeatureStatistics, FeatureStatisticsWithMeta,
 	MetaStatistics
 } from '../../../../statistics'
-import { CommonSummarizerConfiguration } from '../../summarizer'
+import {
+	ALL_FEATURES
+} from '../../../../statistics'
+import type { CommonSummarizerConfiguration } from '../../summarizer'
 import { readLineByLineSync } from '../../../files'
 import { guard } from '../../../assert'
 import { date2string } from '../../../time'
-import { StatisticsSummarizerConfiguration } from '../summarizer'
+import type { StatisticsSummarizerConfiguration } from '../summarizer'
 import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../benchmark/data'
 import { summarizeMeasurement } from '../../benchmark/first-phase/process'
 import { sum } from '../../../arrays'

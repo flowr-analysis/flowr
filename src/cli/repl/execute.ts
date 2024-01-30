@@ -1,6 +1,6 @@
 import { log } from '../../util/log'
 import cp from 'child_process'
-import { Readable, Writable } from 'node:stream'
+import type { Readable, Writable } from 'node:stream'
 import readline from 'node:readline'
 import { guard } from '../../util/assert'
 

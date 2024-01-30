@@ -1,7 +1,7 @@
 import * as tmp from 'tmp'
-import { Reduction, SliceSizeCollection, SummarizedMeasurement, SummarizedSlicerStats } from '../data'
+import type { Reduction, SliceSizeCollection, SummarizedMeasurement, SummarizedSlicerStats } from '../data'
 import { isNotUndefined } from '../../../assert'
-import {
+import type {
 	PerSliceMeasurements,
 	PerSliceStats,
 	SlicerStats,
@@ -9,7 +9,7 @@ import {
 	SlicerStatsInput
 } from '../../../../benchmark'
 import { log } from '../../../log'
-import { SlicingCriteria } from '../../../../slicing'
+import type { SlicingCriteria } from '../../../../slicing'
 import { DefaultMap } from '../../../defaultmap'
 import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse, RShell, visitAst } from '../../../../r-bridge'
 import { withoutWhitespace } from '../../../strings'

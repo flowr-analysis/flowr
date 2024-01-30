@@ -1,4 +1,4 @@
-import { StepFunction } from '../steps'
+import type { StepFunction } from '../steps'
 
 /**
  * Defines the output format of a step that you are interested in.

@@ -1,9 +1,11 @@
-import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
+import type { NamedXmlBasedJson} from '../../input-format'
+import { XmlParseError } from '../../input-format'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { parseLog } from '../../parser'
 import { tryNormalizeSingleNode } from '../structure'
-import { ParserData } from '../../data'
-import { RawRType, RType, RWhileLoop } from '../../../../model'
+import type { ParserData } from '../../data'
+import type { RWhileLoop } from '../../../../model'
+import { RawRType, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 
 export function tryNormalizeWhile(

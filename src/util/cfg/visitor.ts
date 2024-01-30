@@ -1,6 +1,6 @@
-import {NodeId} from '../../r-bridge'
+import type {NodeId} from '../../r-bridge'
 import {guard} from '../assert'
-import {CfgEdge, CfgVertex, ControlFlowInformation} from './cfg'
+import type {CfgEdge, CfgVertex, ControlFlowInformation} from './cfg'
 
 export interface NodeVisitingContext {
 	parent:   {

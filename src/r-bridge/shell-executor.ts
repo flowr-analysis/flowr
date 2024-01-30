@@ -1,14 +1,16 @@
-import {DEFAULT_R_SHELL_OPTIONS, RShellExecutionOptions} from './shell'
+import type { RShellExecutionOptions} from './shell'
+import {DEFAULT_R_SHELL_OPTIONS} from './shell'
 import {deepMergeObject} from '../util/objects'
 import {spawnSync} from 'child_process'
 import {parseCSV, ts2r} from './lang-4.x'
-import {SemVer} from 'semver'
+import type {SemVer} from 'semver'
 import semver from 'semver/preload'
 import type {ILogObj, Logger} from 'tslog'
 import {log} from '../util/log'
 import fs from 'fs'
-import {removeTokenMapQuotationMarks, TokenMap} from './retriever'
-import {DeepWritable} from 'ts-essentials'
+import type { TokenMap} from './retriever'
+import {removeTokenMapQuotationMarks} from './retriever'
+import type {DeepWritable} from 'ts-essentials'
 
 export class RShellExecutor {
 

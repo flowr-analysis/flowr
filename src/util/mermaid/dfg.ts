@@ -1,19 +1,21 @@
-import { NodeId } from '../../r-bridge'
-import { SourceRange } from '../range'
-import {
-	BuiltIn,
+import type { NodeId } from '../../r-bridge'
+import type { SourceRange } from '../range'
+import type {
 	DataflowFunctionFlowInformation,
 	DataflowGraph,
 	DataflowGraphEdgeAttribute,
-	EdgeType,
 	DataflowGraphVertexInfo,
 	DataflowMap,
 	FunctionArgument,
 	IdentifierReference
 } from '../../dataflow'
+import {
+	BuiltIn,
+	EdgeType
+} from '../../dataflow'
 import { guard } from '../assert'
 import { jsonReplacer } from '../json'
-import { DataflowScopeName } from '../../dataflow/environments'
+import type { DataflowScopeName } from '../../dataflow/environments'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
 
 

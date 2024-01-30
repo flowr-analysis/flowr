@@ -9,8 +9,8 @@
  */
 
 
-import { RNode } from '../../model'
-import { RDelimiter } from './r-delimiter'
+import type { RNode } from '../../model'
+import type { RDelimiter } from './r-delimiter'
 
 export * from './r-delimiter'
 

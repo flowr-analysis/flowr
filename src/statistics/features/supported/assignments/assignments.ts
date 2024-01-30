@@ -1,8 +1,9 @@
-import { Feature, FeatureProcessorInput } from '../../feature'
-import { Writable } from 'ts-essentials'
+import type { Feature, FeatureProcessorInput } from '../../feature'
+import type { Writable } from 'ts-essentials'
 import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../../common-syntax-probability'
+import type {
+	RNodeWithParent} from '../../../../r-bridge'
 import {
-	RNodeWithParent,
 	RType,
 	visitAst
 } from '../../../../r-bridge'

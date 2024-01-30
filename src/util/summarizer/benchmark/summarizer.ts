@@ -2,8 +2,9 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SlicerStats}).
  * @module
  */
-import { CommonSummarizerConfiguration, Summarizer } from '../summarizer'
-import { SummarizedSlicerStats, UltimateSlicerStats } from './data'
+import type { CommonSummarizerConfiguration} from '../summarizer'
+import { Summarizer } from '../summarizer'
+import type { SummarizedSlicerStats, UltimateSlicerStats } from './data'
 import fs from 'fs'
 import { processNestMeasurement } from './first-phase/input'
 import { jsonReplacer } from '../../json'

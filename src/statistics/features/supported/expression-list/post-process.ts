@@ -1,12 +1,14 @@
-import { FeatureStatisticsWithMeta } from '../../feature'
-import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
-import {
-	emptySummarizedWithProject,
-	recordFilePath,
+import type { FeatureStatisticsWithMeta } from '../../feature'
+import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
+import type {
 	ReplaceKeysForSummary,
 	SummarizedWithProject
 } from '../../post-processing'
-import { ExpressionListInfo } from './expression-list'
+import {
+	emptySummarizedWithProject,
+	recordFilePath
+} from '../../post-processing'
+import type { ExpressionListInfo } from './expression-list'
 import fs from 'node:fs'
 import path from 'path'
 import { summarizedMeasurement2Csv, summarizedMeasurement2CsvHeader } from '../../../../util/summarizer/benchmark/data'

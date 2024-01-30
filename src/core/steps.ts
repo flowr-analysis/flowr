@@ -13,14 +13,15 @@
  * @module
  */
 
-import { MergeableRecord } from '../util/objects'
+import type { MergeableRecord } from '../util/objects'
 import {
 	normalize,
 	retrieveXmlFromRCode
 } from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode, staticSlicing } from '../slicing'
-import { internalPrinter, IStepPrinter, StepOutputFormat } from './print/print'
+import type { IStepPrinter} from './print/print'
+import { internalPrinter, StepOutputFormat } from './print/print'
 import {
 	normalizedAstToJson,
 	normalizedAstToQuads,
@@ -35,8 +36,8 @@ import {
 	dataflowGraphToMermaidUrl,
 	dataflowGraphToQuads
 } from './print/dataflow-printer'
-import {DataflowInformation} from '../dataflow/internal/info'
-import {runAbstractInterpretation} from '../abstract-interpretation/processor'
+import type {DataflowInformation} from '../dataflow/internal/info'
+import type {runAbstractInterpretation} from '../abstract-interpretation/processor'
 
 /**
  * This represents close a function that we know completely nothing about.

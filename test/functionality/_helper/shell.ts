@@ -1,26 +1,30 @@
 import { it } from 'mocha'
 import { testRequiresNetworkConnection } from './network'
-import { DeepPartial } from 'ts-essentials'
-import {
+import type { DeepPartial } from 'ts-essentials'
+import type {
 	DecoratedAstMap,
-	deterministicCountingIdGenerator,
 	IdGenerator,
 	NodeId,
-	NoInfo, requestFromInput,
+	NoInfo,
 	RExpressionList,
 	RNode,
 	RNodeWithParent,
-	RShell,
 	XmlParserHooks
 } from '../../../src/r-bridge'
+import {
+	deterministicCountingIdGenerator, requestFromInput,
+	RShell
+} from '../../../src/r-bridge'
 import { assert } from 'chai'
-import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow'
-import { SlicingCriteria } from '../../../src/slicing'
+import type { DataflowGraph} from '../../../src/dataflow'
+import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow'
+import type { SlicingCriteria } from '../../../src/slicing'
 import { testRequiresRVersion } from './version'
-import { deepMergeObject, MergeableRecord } from '../../../src/util/objects'
+import type { MergeableRecord } from '../../../src/util/objects'
+import { deepMergeObject } from '../../../src/util/objects'
 import { executeSingleSubStep, LAST_STEP, SteppingSlicer } from '../../../src/core'
 import { guard } from '../../../src/util/assert'
-import { DifferenceReport } from '../../../src/util/diff'
+import type { DifferenceReport } from '../../../src/util/diff'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {

@@ -1,23 +1,26 @@
-import {
-	foldAst,
+import type {
 	FoldFunctions,
 	NodeId,
 	NormalizedAst,
 	ParentInformation,
 	RAccess, RBinaryOp,
-	RFalse,
 	RForLoop,
 	RFunctionCall,
 	RFunctionDefinition,
-	RNodeWithParent,
-	RoleInParent, RPipe,
+	RNodeWithParent, RPipe,
 	RRepeatLoop,
-	RTrue,
 	RWhileLoop
 } from '../../r-bridge'
-import { MergeableRecord } from '../objects'
+import {
+	foldAst,
+	RFalse,
+	RoleInParent,
+	RTrue
+} from '../../r-bridge'
+import type { MergeableRecord } from '../objects'
 import { setEquals } from '../set'
-import { graph2quads, QuadSerializationConfiguration } from '../quads'
+import type { QuadSerializationConfiguration } from '../quads'
+import { graph2quads } from '../quads'
 import { log } from '../log'
 import { jsonReplacer } from '../json'
 

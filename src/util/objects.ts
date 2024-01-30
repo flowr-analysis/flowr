@@ -1,4 +1,4 @@
-import { DeepPartial, DeepRequired } from 'ts-essentials'
+import type { DeepPartial, DeepRequired } from 'ts-essentials'
 import { jsonReplacer } from './json'
 
 /**

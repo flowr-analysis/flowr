@@ -1,11 +1,12 @@
 import type { DataflowInformation } from '../../info'
-import type { DataflowProcessorInformation} from '../../../processor'
+import type {DataflowProcessorInformation} from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import { define, overwriteEnvironments, resolveByName } from '../../../environments'
-import type {ParentInformation, RFunctionCall} from '../../../../r-bridge'
+import type {NormalizedAst, ParentInformation, RFunctionCall} from '../../../../r-bridge'
+import { removeTokenMapQuotationMarks} from '../../../../r-bridge'
 import { RType} from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
-import type { FunctionArgument } from '../../../index'
+import type {FunctionArgument} from '../../../index'
 import { DataflowGraph, dataflowLogger, EdgeType } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
 import { LocalScope } from '../../../environments/scopes'
@@ -113,14 +114,16 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		const sourceFile = functionCall.arguments[0]
 		if(sourceFile?.value?.type == RType.String) {
 			const executor = new RShellExecutor()
+			const path = removeTokenMapQuotationMarks(sourceFile.lexeme)
 			const parsed = executeSingleSubStep('parse', {
 				request:                'file',
-				content:                sourceFile.lexeme,
+				content:                path,
 				ensurePackageInstalled: true
 			}, executor) as string
-			const normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap())
-			console.log('NORMALIZED:')
-			console.log(normalized)
+			const normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap())  as NormalizedAst<OtherInfo & ParentInformation>
+			const dataflow = processDataflowFor(normalized.ast, { ...data, environments: finalEnv })
+			// TODO integrate this into the current graph somehow
+			console.log(dataflow)
 		}
 	}
 

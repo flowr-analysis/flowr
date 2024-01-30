@@ -69,7 +69,7 @@ export function retrieveXmlFromRCode(request: RParseRequest, shell: (RShell | RS
 		if(request.ensurePackageInstalled)
 			shell.ensurePackageInstalled('xmlparsedata',true)
 
-		shell.run(setupCommands)
+		shell.addPrerequisites(setupCommands)
 		const output = shell.run(outputCommand)
 		guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
 		return output

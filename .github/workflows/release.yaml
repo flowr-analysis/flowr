@@ -21,6 +21,12 @@ jobs:
       - name: "Setup the Environment"
         uses: Code-Inspect/flowr/.github/actions/setup@main
 
+      - name: "Checkout Repository"
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          fetch-depth: 0
+
       - name: Name and Email for Git (config)
         run: |
           git config --local user.email "action@github.com"
@@ -40,7 +46,7 @@ jobs:
             exit 1
           fi
 
-          npm run release -- $step --github.releaseName="Release v\${version} (${title})"
+          npm run release -- --increment "$step" --ci --verbose --github.releaseName="Release v\${version} (${title})"
         env:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           # apparently, putting the message into an env variable first sanitizes it

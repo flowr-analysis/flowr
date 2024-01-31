@@ -2,9 +2,10 @@
  * This is just a simple layer to allow me to mock the server's behavior in tests.
  */
 import net from 'node:net'
-import WebSocket, {WebSocketServer} from 'ws'
-import * as Buffer from "buffer";
-import {serverLog} from "./server";
+import type WebSocket from 'ws'
+import {WebSocketServer} from 'ws'
+import type * as Buffer from 'buffer'
+import {serverLog} from './server'
 
 /** Function handler that should be triggered when the respective socket connects */
 export type OnConnect = (c: Socket) => void
@@ -23,7 +24,7 @@ export interface Server {
 
 
 export class WebSocketServerWrapper implements Server {
-	private server: WebSocket.Server | undefined
+	private server:         WebSocket.Server | undefined
 	private connectHandler: ((c: Socket) => void) | undefined
 
 	public onConnect(handler: OnConnect) {
@@ -32,7 +33,7 @@ export class WebSocketServerWrapper implements Server {
 
 	start(port: number) {
 		this.server = new WebSocketServer({ port })
-		serverLog.info(`WebSocket-Server wrapper is active!`)
+		serverLog.info('WebSocket-Server wrapper is active!')
 		this.server.on('connection', c => this.connectHandler?.(new WebSocketWrapper(c)))
 	}
 }
@@ -71,7 +72,7 @@ export class WebSocketWrapper implements Socket {
 	}
 
 	on(event: 'data' | 'close' | 'error', listener: (data: Buffer) => void) {
-		if (event === 'data') {
+		if(event === 'data') {
 			this.socket.on('message', listener)
 		} else {
 			this.socket.on(event, listener)

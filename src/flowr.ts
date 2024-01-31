@@ -19,7 +19,8 @@ import { version } from '../package.json'
 import { printVersionInformation } from './cli/repl/commands/version'
 import { FlowRServer } from './cli/repl/server/server'
 import { standardReplOutput } from './cli/repl/commands'
-import {NetServer, Server, WebSocketServerWrapper} from "./cli/repl/server/net";
+import type { Server} from './cli/repl/server/net'
+import {NetServer, WebSocketServerWrapper} from './cli/repl/server/net'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, {type}]) => type === 'master script'), ([k,]) => k).join(', ')
 

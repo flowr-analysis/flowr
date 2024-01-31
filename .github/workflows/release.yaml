@@ -26,8 +26,7 @@ jobs:
       - name: "Setup the Environment"
         uses: Code-Inspect/flowr/.github/actions/setup@main
         with:
-          node-version: ${{ inputs.node-version }}
-          r-version: ${{ inputs.r-version }}
+          node-version: "21.6.x"
 
       - name: Name and Email for Git (config)
         run: |
@@ -36,6 +35,7 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci
+
       - name: Release
         run: |
           step=$(echo "$MESSAGE" | sed -n -E 's/\[release:(patch|minor|major)].*/\1/p')
@@ -49,7 +49,7 @@ jobs:
           npm run release -- $step --github.releaseName="Release v\${version} (${title})"
         env:
           RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          # apparently putting the message into an env variable first sanitizes it
+          # apparently, putting the message into an env variable first sanitizes it
           # (see https://github.com/Code-Inspect/flowr/security/code-scanning/29)
           MESSAGE: ${{ github.event.head_commit.message }}
 

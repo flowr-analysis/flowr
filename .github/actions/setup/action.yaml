@@ -1,4 +1,5 @@
 name: "Setup the node and R version"
+description: "Prepare a CI environment for flowR"
 
 inputs:
     node-version:

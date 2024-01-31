@@ -20,8 +20,6 @@ jobs:
     steps:
       - name: "Setup the Environment"
         uses: Code-Inspect/flowr/.github/actions/setup@main
-        with:
-          node-version: "21.6.x"
 
       - name: Name and Email for Git (config)
         run: |

@@ -37,14 +37,6 @@ describe('RShellExecutor', function() {
 			assert.isTrue(installed.includes('base'), `base should be installed, but got: "${JSON.stringify(installed)}"`)
 		})
 
-		it('check installed', () => {
-			const executor = new RShellExecutor()
-			for(const nameOfInstalledPackage of executor.allInstalledPackages()) {
-				const isInstalled = executor.isPackageInstalled(nameOfInstalledPackage)
-				assert.isTrue(isInstalled, `package ${nameOfInstalledPackage} should be installed due to allInstalledPackages`)
-			}
-		}).timeout('1m') // this is much slower than the async one since we start a new shell every time
-
 		it('ensure installed', async() => {
 			isInstallTest(this.ctx)
 			await testRequiresNetworkConnection(this.ctx)

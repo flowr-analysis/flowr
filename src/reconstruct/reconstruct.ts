@@ -248,8 +248,10 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 		...additionalTokens
 	])
 	if(body.length < 1) {
+		const hBody = out[out.length - 1].linePart
+		const bodyLoc = {line: hBody[hBody.length - 1].loc.line, column: hBody[hBody.length - 1].loc.column + hBody[hBody.length - 1].part.length}
 		//we need to get the location of the body but we have no idea what the location might be
-		out.push({linePart: [{part: '{}', loc: loop.location.end}], indent: 0})
+		out.push({linePart: [{part: '{}', loc: {line: bodyLoc.line, column: bodyLoc.column + 1}}], indent: 0})
 	}
 	else {
 		out.push(...body)

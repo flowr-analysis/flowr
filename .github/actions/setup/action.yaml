@@ -31,4 +31,4 @@ runs:
     - name: Install R packages
       if: ${{ inputs.r-version != '' }}
       shell: Rscript {0}
-      run: install.packages("xmlparsedata", repos="http://cran.us.r-project.org")
+      run: install.packages("xmlparsedata", repos="https://cloud.r-project.org/")

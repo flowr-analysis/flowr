@@ -1,6 +1,6 @@
 import { assertReconstructed, withShell } from '../../_helper/shell'
 
-describe.only('Simple', withShell(shell => {
+describe('Simple', withShell(shell => {
 	describe('Constant assignments', () => {
 		for(const code of [
 			'x <- 5',
@@ -17,7 +17,7 @@ describe.only('Simple', withShell(shell => {
 			['y <- x <- 42', '1', 'x <- 42' ],
 			['y <- x <- 42', '0', 'y <- x <- 42' ],
 			// we are not smart enough right now to see, that the write is constant.
-			['for(i in 1:20) { x <- 5 }', '4', 'x <- 5' ], //somehow this now fails
+			['for(i in 1:20) { x <- 5 }', '7', 'x <- 5' ],
 			['for(i in 1:20) { x <- 5 }', ['0', '4'], 'for(i in 1:20) { x <- 5 }' ]
 		] as const) {
 			assertReconstructed(code, shell, code, id, expected)

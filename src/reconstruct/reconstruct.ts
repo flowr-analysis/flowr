@@ -117,11 +117,9 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	const start = loop.info.fullRange?.start //may be unnesseccary
 	if(isSelected(configuration, loop)) {
-		console.log('loop selected')
 		return plain(getLexeme(loop), start ? start :loop.location.start)
 	}
 	if(isSelected(configuration, loop.body)) {
-		console.log('body selected')
 		return merge([body])
 	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
@@ -136,14 +134,12 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	])
 	//if body empty
 	if(body.length < 1) {
-		console.log('no body')
 		// puts {} with one space separation after for(...)
 		const hBody = out[out.length - 1].linePart
 		const bodyLoc = hBody[hBody.length - 1].loc
 		out.push({ linePart: [{part: '{}', loc: {line: bodyLoc.line, column: bodyLoc.column + 2}}], indent: 0})
 		return out
 	}
-	console.log('normal')
 	//normal reconstruct
 	out.push(...body)
 	return merge([out])

@@ -4,7 +4,6 @@
  * @module
  */
 
-//imports {note: as of current, do not change}
 import {
 	ParentInformation,
 	RAccess,
@@ -39,19 +38,11 @@ import {
 	getIndentString, merge } from './helper'
 import { SourcePosition, SourceRange} from '../util/range'
 
-/*
---logger--
-*/
+
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
 
-/*
---helper function--
-*/
 const getLexeme = (n: RNodeWithParent) => n.info.fullLexeme ?? n.lexeme ?? ''
 
-/*
---reconstruct--
-*/
 const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code => {
 	const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf)
 	if(selectionHasLeaf) {
@@ -65,9 +56,6 @@ const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionC
 
 const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n), n.location? n.location.start : {line: 0, column: 0})
 
-/*
---reconstruct--
-*/
 function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, expressions: Code[], configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, exprList)) {
 		const positionStart = exprList.location? exprList.location.start : {line: 0, column: 0}
@@ -88,9 +76,6 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 	}
 }
 
-/*
---reconstruct--
-*/
 function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: PrettyPrintLine[]): Code {
 	return [  // inline pretty print
 		...lhs.slice(0, lhs.length - 1),
@@ -99,9 +84,6 @@ function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: Pr
 	]
 }
 
-/*
---reconstruct--
-*/
 function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration: ReconstructionConfiguration) {
 	if(configuration.selection.has(leaf.info.id)) {
 		return foldToConst(leaf)
@@ -113,13 +95,8 @@ function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration:
 	}
 }
 
-/*
---reconstruct--
-*/
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, n)) {
-		//console.log(`lhs at ${JSON.stringify(n.lhs.location?.start)}, ${JSON.stringify(n.lhs.location?.end)}`)
-		//console.log(`${getLexeme(n)} at ${JSON.stringify(n.location.start)}, ${JSON.stringify(n.location.end)}`)
 		return plain(getLexeme(n), n.lhs.location? n.lhs.location.start : n.location.start)
 	}
 
@@ -130,8 +107,6 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 		return rhs
 	}
 	if(rhs.length === 0) {
-		//console.log(`lhs at ${JSON.stringify(n.lhs.location?.start)}, ${JSON.stringify(n.lhs.location?.end)}`)
-		//console.log(`${getLexeme(n)} at ${JSON.stringify(n.location.start)}, ${JSON.stringify(n.location.end)}`)
 		// if we have no rhs we have to keep everything to get the rhs
 		return plain(getLexeme(n), n.lhs.location? n.lhs.location.start : n.location.start)
 	}
@@ -139,13 +114,15 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)
 }
 
-/*
---reconstruct--
-*/
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	const start = loop.info.fullRange?.start //may be unnesseccary
 	if(isSelected(configuration, loop)) {
+		console.log('loop selected')
 		return plain(getLexeme(loop), start ? start :loop.location.start)
+	}
+	if(isSelected(configuration, loop.body)) {
+		console.log('body selected')
+		return merge([body])
 	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
 	const vectorLocation: SourcePosition = loop.vector.location? loop.vector.location.start : vector[0].linePart[0].loc
@@ -159,12 +136,14 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	])
 	//if body empty
 	if(body.length < 1) {
+		console.log('no body')
 		// puts {} with one space separation after for(...)
 		const hBody = out[out.length - 1].linePart
 		const bodyLoc = hBody[hBody.length - 1].loc
 		out.push({ linePart: [{part: '{}', loc: {line: bodyLoc.line, column: bodyLoc.column + 2}}], indent: 0})
 		return out
 	}
+	console.log('normal')
 	//normal reconstruct
 	out.push(...body)
 	return merge([out])
@@ -175,9 +154,6 @@ function reconstructAdditionalTokens(loop: RNodeWithParent): Code[] {
 		.map(t => plain(t.lexeme as string, (t.location as SourceRange).start)) ?? []
 }
 
-/*
---reconstruct--
-*/
 function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, loop)) {
 		return plain(getLexeme(loop), loop.location.start)
@@ -193,9 +169,6 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 	}
 }
 
-/*
---reconstruct--
-*/
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	const startPos = ifThenElse.location.start
 	const endPos = ifThenElse.location.end
@@ -234,9 +207,6 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	}
 }
 
-/*
---reconstruct--
-*/
 function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	const start = loop.location.start
 	if(isSelected(configuration, loop)) {
@@ -248,42 +218,17 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 		...additionalTokens
 	])
 	if(body.length < 1) {
+		//this puts {} one space after while(...)
 		const hBody = out[out.length - 1].linePart
 		const bodyLoc = {line: hBody[hBody.length - 1].loc.line, column: hBody[hBody.length - 1].loc.column + hBody[hBody.length - 1].part.length}
-		//we need to get the location of the body but we have no idea what the location might be
 		out.push({linePart: [{part: '{}', loc: {line: bodyLoc.line, column: bodyLoc.column + 1}}], indent: 0})
 	}
 	else {
 		out.push(...body)
 	}
 	return merge([out])
-
-	/*if(body.length === 0 && condition.length === 0) {
-		return []
-	} else {
-		if(body.length <= 1) {
-			// 'inline'
-			return [{ linePart: [{part: `while(${getLexeme(loop.condition)}) ${body.length === 0 ? '{}' : body[0].linePart[0].part}`, loc: start}], indent: 0 }]
-		} else if(body[0].linePart[0].part === '{' && body[body.length - 1].linePart[body[body.length - 1].linePart.length - 1].part === '}') {
-			// 'block'
-			return [
-				{ linePart: [{part: `while(${getLexeme(loop.condition)}) {`, loc: start}], indent: 0 },
-				...body.slice(1, body.length - 1),
-				{ linePart: [{part: '}', loc: loop.location.end}], indent: 0 }
-			]
-		} else {
-			// unknown
-			return [
-				{ linePart: [{part: `while(${getLexeme(loop.condition)})`, loc: start}], indent: 0 },
-				...indentBy(body, 1)
-			]
-		}
-	}*/
 }
 
-/*
---reconstruct--
-*/
 function reconstructParameters(parameters: RParameter<ParentInformation>[]): string[] {
 	// const baseParameters = parameters.flatMap(p => plain(getLexeme(p)))
 	return parameters.map(p => {
@@ -295,11 +240,6 @@ function reconstructParameters(parameters: RParameter<ParentInformation>[]): str
 	})
 }
 
-
-//foldAccess?? Arrayzugriffe
-/*
---reconstruct--
-*/
 function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: string | (Code | null)[], configuration: ReconstructionConfiguration): Code {
 	const start = node.location.start
 	if(isSelected(configuration, node)) {
@@ -317,9 +257,6 @@ function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code,
 	return plain(getLexeme(node), start)
 }
 
-/*
---reconstruct--
-*/
 function reconstructArgument(argument: RArgument<ParentInformation>, name: Code | undefined, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	const start = argument.location.start
 	if(isSelected(configuration, argument)) {
@@ -333,9 +270,6 @@ function reconstructArgument(argument: RArgument<ParentInformation>, name: Code 
 	}
 }
 
-/*
---reconstruct--
-*/
 function reconstructParameter(parameter: RParameter<ParentInformation>, name: Code, value: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	const start = parameter.location.start
 	if(isSelected(configuration, parameter)) {
@@ -351,9 +285,6 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 	}
 }
 
-/*
---reconstruct--
-*/
 function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: Code[], body: Code, configuration: ReconstructionConfiguration): Code {
 	// if a definition is not selected, we only use the body - slicing will always select the definition
 	if(!isSelected(configuration, definition) && functionParameters.every(p => p.length === 0)) {
@@ -385,9 +316,6 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 
 }
 
-/*
---reconstruct--
-*/
 function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: RFunctionCall<ParentInformation>): Code {
 	guard(args.length === 2, () => `infix special call must have exactly two arguments, got: ${args.length} (${JSON.stringify(args)})`)
 	guard(call.flavor === 'named', `infix special call must be named, got: ${call.flavor}`)
@@ -411,9 +339,6 @@ function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: R
 	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`, call.location.start)
 }
 
-/*
---reconstruct--
-*/
 function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: (Code | undefined)[], configuration: ReconstructionConfiguration): Code {
 	if(call.infixSpecial === true) {
 		return reconstructSpecialInfixFunctionCall(args, call)
@@ -442,18 +367,12 @@ function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functio
 	}
 }
 
-/*
---interface--
-*/
 export interface ReconstructionConfiguration extends MergeableRecord {
 	selection:    Selection
 	/** if true, this will force the ast part to be reconstructed, this can be used, for example, to force include `library` statements */
 	autoSelectIf: AutoSelectPredicate
 }
 
-/*
---reconstruct--
-*/
 /**
  * The fold functions used to reconstruct the ast in {@link reconstructToCode}.
  */
@@ -501,9 +420,6 @@ export const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, Recon
 }
 
 
-/*
---interface--
-*/
 export interface ReconstructionResult {
 	code:         string
 	/** number of nodes that triggered the `autoSelectIf` predicate {@link reconstructToCode} */

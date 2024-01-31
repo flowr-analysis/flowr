@@ -2,9 +2,6 @@ import { NodeId, ParentInformation, RNode, RType } from '../r-bridge'
 import { SourcePosition } from '../util/range'
 import { ReconstructionConfiguration } from './reconstruct'
 
-/*
---helper function--
-*/
 export type Code = PrettyPrintLine[]
 export type Selection = Set<NodeId>
 export interface PrettyPrintLinePart {
@@ -27,7 +24,6 @@ export function plain(text: string, location: SourcePosition): Code {
 	for(const line of split) {
 		printLine.linePart.push({part: line, loc: { column: location.column, line: locationLine++ }})
 	}
-	//console.log(JSON.stringify(printLine))
 	return [printLine]
 }
 
@@ -78,23 +74,14 @@ export function prettyPrintPartToString(line: PrettyPrintLinePart[],columnOffset
 	return result
 }
 
-/*
---helper function--
-*/
 export function indentBy(lines: Code, indent: number): Code {
 	return lines.map(({ linePart, indent: i }) => ({ linePart, indent: i + indent }))
 }
 
-/*
---helper function--
-*/
 export function isSelected(configuration: ReconstructionConfiguration, n: RNode<ParentInformation>) {
 	return configuration.selection.has(n.info.id) || configuration.autoSelectIf(n)
 }
 
-/*
---helper function--
-*/
 export function removeExpressionListWrap(code: Code) {
 	if(code.length > 0 && code[0].linePart[0].part === '{' && code[code.length - 1].linePart[code[code.length - 1].linePart.length - 1].part === '}') {
 		return indentBy(code.slice(1, code.length - 1), -1)
@@ -103,27 +90,15 @@ export function removeExpressionListWrap(code: Code) {
 	}
 }
 
-/*
---helper function--
-*/
 /** The structure of the predicate that should be used to determine if a given normalized node should be included in the reconstructed code independent of if it is selected by the slice or not */
 export type AutoSelectPredicate = (node: RNode<ParentInformation>) => boolean
 
-/*
---helper function--
-*/
 export function doNotAutoSelect(_node: RNode<ParentInformation>): boolean {
 	return false
 }
 
-/*
---helper function--
-*/
 export const libraryFunctionCall = /^(library|require|((require|load|attach)Namespace))$/
 
-/*
---helper function--
-*/
 export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
 	if(node.type !== RType.FunctionCall || node.flavor !== 'named') {
 		return false
@@ -131,24 +106,15 @@ export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
 	return libraryFunctionCall.test(node.functionName.content)
 }
 
-/*
---helper function--
-*/
 export function getIndentString(indent: number): string {
 	return ' '.repeat(indent * 4)
 }
 
-/*
---helper function--
-*/
 export function prettyPrintCodeToString(code: Code, lf = '\n'): string {
 	code = merge([code])
 	return code.map(({ linePart, indent }) => `${getIndentString(indent)}${prettyPrintPartToString(linePart, code[0].linePart[0].loc.column)}`).join(lf)
 }
 
-/*
---helper function--
-*/
 export function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[]): Code {
 	const first = result[0]?.linePart
 	if(result.length === 1  && first[0].part === '{' && first[result[0].linePart.length - 1].part === '}') {

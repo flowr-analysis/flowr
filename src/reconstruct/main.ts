@@ -8,9 +8,6 @@ import { NormalizedAst, RNode, ParentInformation, foldAstStateful } from '../r-b
 import { LogLevel } from '../util/log'
 
 
-/*
---main function--
-*/
 /**
  * Reconstructs parts of a normalized R ast into R code on an expression basis.
  *

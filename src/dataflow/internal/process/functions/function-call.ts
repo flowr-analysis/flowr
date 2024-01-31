@@ -8,7 +8,6 @@ import { removeTokenMapQuotationMarks} from '../../../../r-bridge'
 import { RType} from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
 import type {FunctionArgument} from '../../../index'
-import { graphToMermaidUrl} from '../../../index'
 import { DataflowGraph, dataflowLogger, EdgeType } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
 import { LocalScope } from '../../../environments/scopes'
@@ -136,8 +135,6 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 				data.completeAst.idMap.set(k,v)
 		}
 	}
-
-	console.log(graphToMermaidUrl(finalGraph, data.completeAst.idMap))
 
 	return {
 		unknownReferences: [],

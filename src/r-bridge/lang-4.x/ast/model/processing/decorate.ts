@@ -46,6 +46,11 @@ export function deterministicCountingIdGenerator(start = 0): () => NodeId {
 	return () => `${id++}`
 }
 
+export function fileNameDeterministicCountingIdGenerator(filename: string, start = 0): () => NodeId {
+	let id = start
+	return () => `${filename}-${id++}`
+}
+
 function loc2Id(loc: SourceRange) {
 	return `${loc.start.line}:${loc.start.column}-${loc.end.line}:${loc.end.column}`
 }

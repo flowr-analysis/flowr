@@ -11,6 +11,9 @@ import { commandNames, getCommand, standardReplOutput } from './commands'
 import * as readline from 'node:readline'
 import { splitAtEscapeSensitive } from '../../util/args'
 import { executeRShellCommand } from './commands/execute'
+import { guard } from '../../util/assert'
+import { scripts } from '../common/scripts-info'
+import { OptionDefinition } from 'command-line-usage'
 
 const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
 
@@ -18,6 +21,30 @@ const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
  * Used by the repl to provide automatic completions for a given (partial) input line
  */
 export function replCompleter(line: string): [string[], string] {
+	const singleCommand = replCompleterKeywords.find(k => (k + ' ') === line)
+	if(singleCommand !== undefined){
+		const applicableCommand = getCommand(singleCommand.substring(1))
+		guard(applicableCommand !== undefined, 'Command should be defined')
+		if(applicableCommand.script){
+			let scriptOptions: OptionDefinition[] | undefined
+			for(const [script, { options}] of Object.entries(scripts)){
+				if(script === line.trimEnd().substring(1)){
+					scriptOptions = options
+					break
+				}
+			}
+			guard(scriptOptions !== undefined, 'script should be in script record')
+			const autoCompleteList : string[] = []
+			autoCompleteList.push(line)
+			scriptOptions.forEach(option => {
+				autoCompleteList.push(line + ' --' + option.name)
+				if(option.alias !== undefined){
+					autoCompleteList.push(line + ' -' + option.alias)
+				}
+			})
+			return [autoCompleteList, line]
+		}
+	}
 	return [replCompleterKeywords.filter(k => k.startsWith(line)), line]
 }
 

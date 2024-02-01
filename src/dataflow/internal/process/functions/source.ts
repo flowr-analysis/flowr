@@ -1,4 +1,5 @@
-import type {RArgument, RParseRequest} from '../../../../r-bridge'
+import type {RArgument, RParseRequestProvider} from '../../../../r-bridge'
+import { requestProviderFromFile} from '../../../../r-bridge'
 import {fileNameDeterministicCountingIdGenerator, type NormalizedAst, type ParentInformation, removeTokenMapQuotationMarks, type RFunctionCall, RType} from '../../../../r-bridge'
 import {RShellExecutor} from '../../../../r-bridge/shell-executor'
 import {executeSingleSubStep} from '../../../../core'
@@ -6,26 +7,10 @@ import {type DataflowProcessorInformation, processDataflowFor} from '../../../pr
 import {type DataflowScopeName, type Identifier, overwriteEnvironments, type REnvironmentInformation, resolveByName} from '../../../environments'
 import type {DataflowInformation} from '../../info'
 
-let sourceProvider: SourceProvider = {
-	createRequest(path: string): RParseRequest {
-		return {
-			request:                'file',
-			content:                path,
-			ensurePackageInstalled: true
-		}
-	}
-}
+let sourceProvider = requestProviderFromFile()
 
-export function setTextSourceProvider(sources: Map<string,string>): void {
-	sourceProvider = {
-		createRequest(path: string): RParseRequest {
-			return {
-				request:                'text',
-				content:                sources.get(path) as string,
-				ensurePackageInstalled: true
-			}
-		}
-	}
+export function setSourceProvider(provider: RParseRequestProvider): void {
+	sourceProvider = provider
 }
 
 export function isSourceCall(name: Identifier, scope: DataflowScopeName, environments: REnvironmentInformation): boolean {
@@ -57,8 +42,4 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 		return newInformation
 	}
 	return information
-}
-
-export interface SourceProvider {
-	createRequest(path: string): RParseRequest
 }

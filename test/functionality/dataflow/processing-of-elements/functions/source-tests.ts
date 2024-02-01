@@ -1,14 +1,14 @@
 import {assertDataflow, withShell} from '../../../_helper/shell'
-import { setTextSourceProvider} from '../../../../../src/dataflow/internal/process/functions/source'
-import {BuiltIn, DataflowGraph, EdgeType, initializeCleanEnvironments} from '../../../../../src'
+import {setSourceProvider} from '../../../../../src/dataflow/internal/process/functions/source'
+import {BuiltIn, DataflowGraph, EdgeType, initializeCleanEnvironments, requestProviderFromText} from '../../../../../src'
 import {LocalScope} from '../../../../../src/dataflow/environments/scopes'
 import {UnnamedArgumentPrefix} from '../../../../../src/dataflow/internal/process/functions/argument'
 import {define} from '../../../../../src/dataflow/environments'
 
 describe('source', withShell(shell => {
-	setTextSourceProvider(new Map<string, string>([
-		['simple', 'N <- 9']
-	]))
+	setSourceProvider(requestProviderFromText({
+		simple: 'N <- 9'
+	}))
 
 	const envWithN = define(
 		{nodeId: 'simple-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-2' },

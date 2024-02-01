@@ -26,6 +26,10 @@ interface RParseRequestBase {
 	ensurePackageInstalled: boolean
 }
 
+export interface RParseRequestProvider {
+	createRequest(path: string): RParseRequest
+}
+
 /**
  * A request that can be passed along to {@link retrieveXmlFromRCode}.
  */
@@ -43,6 +47,29 @@ export function requestFromInput(input: `file://${string}` | string): RParseRequ
 		request:                file ? 'file' : 'text',
 		content:                file ? input.slice(7) : input,
 		ensurePackageInstalled: false // should be called within describeSession for that!
+	}
+}
+
+export function requestProviderFromFile(): RParseRequestProvider {
+	return {
+		createRequest(path: string): RParseRequest {
+			return {
+				request:                'file',
+				content:                path,
+				ensurePackageInstalled: false}
+		}
+	}
+}
+
+export function requestProviderFromText(text: {[path: string]: string}): RParseRequestProvider{
+	return {
+		createRequest(path: string): RParseRequest {
+			return {
+				request:                'text',
+				content:                text[path],
+				ensurePackageInstalled: false
+			}
+		}
 	}
 }
 

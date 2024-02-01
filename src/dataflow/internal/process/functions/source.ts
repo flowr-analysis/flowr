@@ -1,3 +1,4 @@
+import type { RArgument} from '../../../../r-bridge'
 import {fileNameDeterministicCountingIdGenerator, type NormalizedAst, type ParentInformation, removeTokenMapQuotationMarks, type RFunctionCall, RType} from '../../../../r-bridge'
 import {RShellExecutor} from '../../../../r-bridge/shell-executor'
 import {executeSingleSubStep} from '../../../../core'
@@ -6,7 +7,7 @@ import {overwriteEnvironments} from '../../../environments'
 import type {DataflowInformation} from '../../info'
 
 export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation): DataflowInformation {
-	const sourceFile = functionCall.arguments[0]
+	const sourceFile = functionCall.arguments[0] as RArgument<ParentInformation>
 	if(sourceFile?.value?.type == RType.String) {
 		const executor = new RShellExecutor()
 		const path = removeTokenMapQuotationMarks(sourceFile.lexeme)

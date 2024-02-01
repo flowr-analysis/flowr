@@ -18,7 +18,6 @@ interface PredecessorInformation {
 	edge:   CfgEdge
 }
 
-// TODO: enter expression/statement and exit
 export type OnEnterVisitNode = (node: CfgVertex, context: NodeVisitingContext) => void
 
 class ControlFlowGraphExecutionTraceVisitor {
@@ -45,7 +44,6 @@ class ControlFlowGraphExecutionTraceVisitor {
 
 		this.onEnter(node, context)
 
-		// TODO: deal with function definitions!
 		// find all ingoing edges
 		const predecessors = this.retrieveAllPredecessors(context, node)
 		const siblings = predecessors.map(p => p.source)

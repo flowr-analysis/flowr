@@ -34,6 +34,10 @@ Currently, every connection is handled by the same underlying `RShell` - so the 
 
 Every message has to be given in a single line (i.e., without a newline in-between) and end with a newline character. Nevertheless, we will pretty-print example given in the following segments for the ease of reading.
 
+> [!NOTE]
+> The default `--server` uses a simple [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)
+> connection. If you want *flowR* to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the `--ws` flag (i.e., `--server --ws`) when starting *flowR* from the command line.
+
 ### The Hello Message
 
 <details open>
@@ -102,7 +106,7 @@ sequenceDiagram
 The request allows the server to analyze a file and prepare it for slicing.
 The message can contain a `filetoken`, which is used to identify the file in later slice requests (if you do not add one, the request will not be stored and therefore be unavailable for slicing).
 
-> 💡 Information\
+> [!IMPORTANT]
 > If you want to send and process a lot of analysis requests, but do not want to slice them, please do not pass the `filetoken` field. This will save the server a lot of memory allocation.
 
 Furthermore, it must contain either a `content` field to directly pass the file's content or a `filepath` field which contains the path to the file (which must be accessible for the server to be useful).
@@ -841,7 +845,7 @@ The REPL execution message allows to send a REPL command to receive its output. 
 You only have to pass the command you want to execute in the `expression` field. Furthermore, you can set the `ansi` field to `true` if you are interested in output formatted using [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code).
 We strongly recommend you to make use of the `id` field to link answers with requests as you can theoretically request the execution of multiple scripts, which then happens in parallel.
 
-> ⚠️ Warning\
+> [!WARNING]
 > There is currently no automatic sandboxing or safeguarding against such requests. They simply execute the respective&nbsp;R code on your machine.
 
 The answer on such a request is different from the other messages as the `request-repl-execution` message may be sent multiple times. This allows to better handle requests that require more time but already output intermediate results.
@@ -943,7 +947,7 @@ R> :parse file://test/testfiles/example.R
 The [`RShell`](https://code-inspect.github.io/flowr/doc/classes/src_r_bridge_shell.RShell.html) class allows to interface with the `R`&nbsp;ecosystem installed on the host system.
 For now there are no alternatives (although we plan on providing more flexible drop-in replacements).
 
-> 💡 Information\
+> [!IMPORTANT]
 > Each `RShell` controls a new instance of the R&nbsp;interpreter, make sure to call `RShell::close()` when you are done.
 
 You can start a new "session" simply by constructing a new object with `new RShell()`.
@@ -1011,7 +1015,7 @@ const result = slicer.finish()
 
 Please create a new `BenchmarkSlicer` object per input file (this will probably change as soon as *flowR* allows for multiple input files).
 
-> 💡 Information\
+> [!TIP]
 > Calling `BenchmarkSlicer::finish` will automatically take care of closing the underlying shell session.
 > However, if you want to be sure (or need it in case of exceptions), you can use `BenchmarkSlicer::ensureSessionClosed`.
 

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1705359156310,
+  "lastUpdate": 1706713172669,
   "repoUrl": "https://github.com/Code-Inspect/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -1801,6 +1801,109 @@ window.BENCHMARK_DATA = {
             "unit": "ms",
             "range": 0.19367073211054742,
             "extra": "median: 0.40ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7329390759026896,
+            "unit": "#",
+            "extra": "std: 0.1494698363920617"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.720988345209971,
+            "unit": "#",
+            "extra": "std: 0.13987413604166843"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "d69018e52ccd36d2a4c6749a259bc7347a5c8a5d",
+          "message": "[release:patch] npm for WebSocket Server",
+          "timestamp": "2024-01-31T15:39:17+01:00",
+          "tree_id": "e208ae0ae2bb451ea46ccc05df594033cd4f95bc",
+          "url": "https://github.com/Code-Inspect/flowr/commit/d69018e52ccd36d2a4c6749a259bc7347a5c8a5d"
+        },
+        "date": 1706713170342,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Total per-file",
+            "value": 1511.494083,
+            "unit": "ms",
+            "range": 3708.3225553463017,
+            "extra": "median: 450.67ms"
+          },
+          {
+            "name": "Retrieve AST from R code",
+            "value": 64.46248863636363,
+            "unit": "ms",
+            "range": 125.66414120100016,
+            "extra": "median: 34.34ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 94.99519236363636,
+            "unit": "ms",
+            "range": 152.9376581920758,
+            "extra": "median: 66.70ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 65.2556795909091,
+            "unit": "ms",
+            "range": 167.18441854609554,
+            "extra": "median: 17.49ms"
+          },
+          {
+            "name": "Run abstract interpretation",
+            "value": 0.03478995454545455,
+            "unit": "ms",
+            "range": 0.01086253065474186,
+            "extra": "median: 0.03ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 1.8724288794806876,
+            "unit": "ms",
+            "range": 1.3873679811565907,
+            "extra": "median: 1.62ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 1.4074784311593942,
+            "unit": "ms",
+            "range": 1.3118563756339259,
+            "extra": "median: 1.13ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.4524929302663976,
+            "unit": "ms",
+            "range": 0.22636683004337768,
+            "extra": "median: 0.41ms"
           },
           {
             "name": "failed to reconstruct/re-parse",
@@ -3722,6 +3825,109 @@ window.BENCHMARK_DATA = {
             "value": 0.5170374517553479,
             "unit": "ms",
             "range": 0.28554733887508554,
+            "extra": "median: 0.46ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 9,
+            "unit": "#",
+            "extra": "out of 11321 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 967,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.898713819973478,
+            "unit": "#",
+            "extra": "std: 0.08614825965194707"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8579790415512589,
+            "unit": "#",
+            "extra": "std: 0.11594939184257376"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "d69018e52ccd36d2a4c6749a259bc7347a5c8a5d",
+          "message": "[release:patch] npm for WebSocket Server",
+          "timestamp": "2024-01-31T15:39:17+01:00",
+          "tree_id": "e208ae0ae2bb451ea46ccc05df594033cd4f95bc",
+          "url": "https://github.com/Code-Inspect/flowr/commit/d69018e52ccd36d2a4c6749a259bc7347a5c8a5d"
+        },
+        "date": 1706713172666,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Total per-file",
+            "value": 3566.86774236,
+            "unit": "ms",
+            "range": 5920.286185213901,
+            "extra": "median: 1072.56ms"
+          },
+          {
+            "name": "Retrieve AST from R code",
+            "value": 72.22227936,
+            "unit": "ms",
+            "range": 60.97026629229811,
+            "extra": "median: 43.58ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 113.02594858,
+            "unit": "ms",
+            "range": 70.71306906384982,
+            "extra": "median: 80.14ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 163.44175874,
+            "unit": "ms",
+            "range": 276.9623037407309,
+            "extra": "median: 48.05ms"
+          },
+          {
+            "name": "Run abstract interpretation",
+            "value": 0.06162254,
+            "unit": "ms",
+            "range": 0.02971958909151336,
+            "extra": "median: 0.06ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 8.599255365044066,
+            "unit": "ms",
+            "range": 14.312877376595168,
+            "extra": "median: 6.34ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 8.071953766135923,
+            "unit": "ms",
+            "range": 14.188089279803133,
+            "extra": "median: 5.84ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.5187709959800451,
+            "unit": "ms",
+            "range": 0.27627204677573897,
             "extra": "median: 0.46ms"
           },
           {

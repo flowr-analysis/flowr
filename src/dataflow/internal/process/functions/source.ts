@@ -7,7 +7,7 @@ import {overwriteEnvironments} from '../../../environments'
 import type {DataflowInformation} from '../../info'
 
 export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation): DataflowInformation {
-	const sourceFile = functionCall.arguments[0] as RArgument<ParentInformation>
+	const sourceFile = functionCall.arguments[0] as RArgument<ParentInformation> | undefined
 	if(sourceFile?.value?.type == RType.String) {
 		const executor = new RShellExecutor()
 		const path = removeTokenMapQuotationMarks(sourceFile.lexeme)

@@ -13,7 +13,7 @@ import { splitAtEscapeSensitive } from '../../util/args'
 import { executeRShellCommand } from './commands/execute'
 import { guard } from '../../util/assert'
 import { scripts } from '../common/scripts-info'
-import { OptionDefinition } from 'command-line-usage'
+import type { OptionDefinition } from 'command-line-usage'
 
 const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
 

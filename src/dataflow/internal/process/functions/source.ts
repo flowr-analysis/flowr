@@ -6,16 +6,26 @@ import {type DataflowProcessorInformation, processDataflowFor} from '../../../pr
 import {type DataflowScopeName, type Identifier, overwriteEnvironments, type REnvironmentInformation, resolveByName} from '../../../environments'
 import type {DataflowInformation} from '../../info'
 
-let sourceFileProvider: (path: string) => RParseRequest = path => {
-	return {
-		request:                'file',
-		content:                path,
-		ensurePackageInstalled: true
+let sourceProvider: SourceProvider = {
+	createRequest(path: string): RParseRequest {
+		return {
+			request:                'file',
+			content:                path,
+			ensurePackageInstalled: true
+		}
 	}
 }
 
-export function setSourceFileProvider(provider: (path: string) => RParseRequest): void {
-	sourceFileProvider = provider
+export function setTextSourceProvider(sources: Map<string,string>): void {
+	sourceProvider = {
+		createRequest(path: string): RParseRequest {
+			return {
+				request:                'text',
+				content:                sources.get(path) as string,
+				ensurePackageInstalled: true
+			}
+		}
+	}
 }
 
 export function isSourceCall(name: Identifier, scope: DataflowScopeName, environments: REnvironmentInformation): boolean {
@@ -30,9 +40,10 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 	if(sourceFile?.value?.type == RType.String) {
 		const executor = new RShellExecutor()
 		const path = removeTokenMapQuotationMarks(sourceFile.lexeme)
+		const request = sourceProvider.createRequest(path)
 
 		// parse, normalize and dataflow the sourced file
-		const parsed = executeSingleSubStep('parse', sourceFileProvider(path), executor) as string
+		const parsed = executeSingleSubStep('parse', request, executor) as string
 		const normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap(), undefined, fileNameDeterministicCountingIdGenerator(path)) as NormalizedAst<OtherInfo & ParentInformation>
 		const dataflow = processDataflowFor(normalized.ast, {...data, environments: information.environments})
 
@@ -46,4 +57,8 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 		return newInformation
 	}
 	return information
+}
+
+export interface SourceProvider {
+	createRequest(path: string): RParseRequest
 }

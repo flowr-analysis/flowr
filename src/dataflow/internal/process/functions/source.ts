@@ -32,7 +32,7 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 	    const newInformation = {...information}
 		newInformation.environments = overwriteEnvironments(information.environments, dataflow.environments)
 		newInformation.graph.mergeWith(dataflow.graph)
-		// TODO is this the way it should be?? just changing the data ast seems fishy
+		// this can be improved, see issue #628
 		for(const [k, v] of normalized.idMap)
 			data.completeAst.idMap.set(k, v)
 		return newInformation

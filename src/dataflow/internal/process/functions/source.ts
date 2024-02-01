@@ -1,10 +1,18 @@
-import type { RArgument} from '../../../../r-bridge'
+import type {RArgument, RParseRequest} from '../../../../r-bridge'
 import {fileNameDeterministicCountingIdGenerator, type NormalizedAst, type ParentInformation, removeTokenMapQuotationMarks, type RFunctionCall, RType} from '../../../../r-bridge'
 import {RShellExecutor} from '../../../../r-bridge/shell-executor'
 import {executeSingleSubStep} from '../../../../core'
 import {type DataflowProcessorInformation, processDataflowFor} from '../../../processor'
 import {type DataflowScopeName, type Identifier, overwriteEnvironments, type REnvironmentInformation, resolveByName} from '../../../environments'
 import type {DataflowInformation} from '../../info'
+
+export const sourceFileProvider: (path: string) => RParseRequest = path => {
+	return {
+		request:                'file',
+		content:                path,
+		ensurePackageInstalled: true
+	}
+}
 
 export function isSourceCall(name: Identifier, scope: DataflowScopeName, environments: REnvironmentInformation): boolean {
 	if(name != 'source')
@@ -20,11 +28,7 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 		const path = removeTokenMapQuotationMarks(sourceFile.lexeme)
 
 		// parse, normalize and dataflow the sourced file
-		const parsed = executeSingleSubStep('parse', {
-			request:                'file',
-			content:                path,
-			ensurePackageInstalled: true
-		}, executor) as string
+		const parsed = executeSingleSubStep('parse', sourceFileProvider(path), executor) as string
 		const normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap(), undefined, fileNameDeterministicCountingIdGenerator(path)) as NormalizedAst<OtherInfo & ParentInformation>
 		const dataflow = processDataflowFor(normalized.ast, {...data, environments: information.environments})
 

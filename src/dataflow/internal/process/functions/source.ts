@@ -6,12 +6,16 @@ import {type DataflowProcessorInformation, processDataflowFor} from '../../../pr
 import {type DataflowScopeName, type Identifier, overwriteEnvironments, type REnvironmentInformation, resolveByName} from '../../../environments'
 import type {DataflowInformation} from '../../info'
 
-export const sourceFileProvider: (path: string) => RParseRequest = path => {
+let sourceFileProvider: (path: string) => RParseRequest = path => {
 	return {
 		request:                'file',
 		content:                path,
 		ensurePackageInstalled: true
 	}
+}
+
+export function setSourceFileProvider(provider: (path: string) => RParseRequest): void {
+	sourceFileProvider = provider
 }
 
 export function isSourceCall(name: Identifier, scope: DataflowScopeName, environments: REnvironmentInformation): boolean {

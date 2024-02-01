@@ -2,7 +2,7 @@ import { type RShell } from './shell'
 import type { XmlParserHooks, NormalizedAst } from './lang-4.x'
 import { ts2r, normalize } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
-import type { DeepPartial, DeepReadonly } from 'ts-essentials'
+import type {AsyncOrSync, DeepPartial, DeepReadonly} from 'ts-essentials'
 import { guard } from '../util/assert'
 import {RShellExecutor} from './shell-executor'
 
@@ -55,7 +55,7 @@ const ErrorMarker = 'err'
  * Throws if the file could not be parsed.
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
-export function retrieveXmlFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): (Promise<string> | string) {
+export function retrieveXmlFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
 	const setupCommands = [
 		`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
@@ -70,22 +70,22 @@ export function retrieveXmlFromRCode(request: RParseRequest, shell: (RShell | RS
 			shell.ensurePackageInstalled('xmlparsedata',true)
 
 		shell.addPrerequisites(setupCommands)
-		const output = shell.run(outputCommand)
-		guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
-		return output
+		return guardOutput(shell.run(outputCommand))
 	} else {
 		const run = async() => {
 			if(request.ensurePackageInstalled)
 				await shell.ensurePackageInstalled('xmlparsedata', true)
 
 			shell.sendCommands(...setupCommands)
-			const output = (await shell.sendCommandWithOutput(outputCommand)).join(shell.options.eol)
-			guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
-			return output
+			return guardOutput((await shell.sendCommandWithOutput(outputCommand)).join(shell.options.eol))
 		}
 		return run()
 	}
 
+	function guardOutput(output: string): string {
+		guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
+		return output
+	}
 }
 
 /**

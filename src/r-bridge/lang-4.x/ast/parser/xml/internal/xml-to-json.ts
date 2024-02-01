@@ -11,7 +11,7 @@ import type { XmlBasedJson } from '../input-format'
 export function xlm2jsonObject(config: XmlParserConfig, xmlString: string): XmlBasedJson {
 	let result: XmlBasedJson = {}
 	xml2js.parseString(xmlString, {
-		// we want this to be strictly synchronous!
+		// we want this to be strictly synchronous so that the result can be returned immediately below!
 		async:                 false,
 		attrkey:               config.attributeName,
 		charkey:               config.contentName,

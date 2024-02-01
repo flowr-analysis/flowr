@@ -2,17 +2,14 @@ import type { DataflowInformation } from '../../info'
 import type {DataflowProcessorInformation} from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import {define, overwriteEnvironments, resolveByName} from '../../../environments'
-import type {NormalizedAst, ParentInformation, RFunctionCall} from '../../../../r-bridge'
-import {fileNameDeterministicCountingIdGenerator} from '../../../../r-bridge'
-import { removeTokenMapQuotationMarks} from '../../../../r-bridge'
+import type {ParentInformation, RFunctionCall} from '../../../../r-bridge'
 import { RType} from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
 import type {FunctionArgument} from '../../../index'
 import { DataflowGraph, dataflowLogger, EdgeType } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
 import { LocalScope } from '../../../environments/scopes'
-import {RShellExecutor} from '../../../../r-bridge/shell-executor'
-import {executeSingleSubStep} from '../../../../core'
+import {processSourceCall} from './source'
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 
@@ -110,33 +107,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		inIds.push(...functionName.in, ...functionName.unknownReferences)
 	}
 
-	// parse a source call and analyze the referenced code
-	if(named && functionCallName == 'source') {
-		const sourceFile = functionCall.arguments[0]
-		if(sourceFile?.value?.type == RType.String) {
-			const executor = new RShellExecutor()
-			const path = removeTokenMapQuotationMarks(sourceFile.lexeme)
-
-			// parse, normalize and dataflow the sourced file
-			const parsed = executeSingleSubStep('parse', {
-				request:                'file',
-				content:                path,
-				ensurePackageInstalled: true
-			}, executor) as string
-			const normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap(), undefined, fileNameDeterministicCountingIdGenerator(path)) as NormalizedAst<OtherInfo & ParentInformation>
-			const dataflow = processDataflowFor(normalized.ast, { ...data, environments: finalEnv })
-
-			// update our graph with the sourced file's information
-			// TODO just set finalEnv, use overwriteEnvironments or appendEnvironments? makes no difference in the current example
-			finalEnv = overwriteEnvironments(finalEnv, dataflow.environments)
-			finalGraph.mergeWith(dataflow.graph)
-			// TODO is this the way it should be?? just changing the data ast seems fishy
-			for(const [k,v] of normalized.idMap)
-				data.completeAst.idMap.set(k,v)
-		}
-	}
-
-	return {
+	let info: DataflowInformation = {
 		unknownReferences: [],
 		in:                inIds,
 		out:               functionName.out, // we do not keep argument out as it has been linked by the function
@@ -144,5 +115,11 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		environments:      finalEnv,
 		scope:             data.activeScope
 	}
+
+	// parse a source call and analyze the referenced code
+	if(named && functionCallName == 'source')
+		info = processSourceCall(functionCall, data, info)
+
+	return info
 }
 

@@ -96,7 +96,6 @@ export const STEPS_PER_FILE = {
 	} satisfies IStep<typeof normalize>,
 	'dataflow': {
 		description: 'Construct the dataflow graph',
-		// TODO avoid cyclic dependency when using step executor in function-call (feels like a dirty hack)
 		processor:   a => produceDataFlowGraph(a),
 		required:    'once-per-file',
 		printer:     {

@@ -148,7 +148,6 @@ export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition
 		name:      'print',
 		nodeId:    BuiltIn
 	}]],
-	// TODO is this the correct definition for source?
 	['source', [{
 		kind:      'built-in-function',
 		scope:     GlobalScope,

@@ -9,7 +9,7 @@ import type {FunctionArgument} from '../../../index'
 import { DataflowGraph, dataflowLogger, EdgeType } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
 import { LocalScope } from '../../../environments/scopes'
-import {processSourceCall} from './source'
+import {isSourceCall, processSourceCall} from './source'
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 
@@ -117,7 +117,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 	}
 
 	// parse a source call and analyze the referenced code
-	if(named && functionCallName == 'source')
+	if(isSourceCall(functionCallName, data.activeScope,finalEnv))
 		info = processSourceCall(functionCall, data, info)
 
 	return info

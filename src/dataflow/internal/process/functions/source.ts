@@ -3,8 +3,15 @@ import {fileNameDeterministicCountingIdGenerator, type NormalizedAst, type Paren
 import {RShellExecutor} from '../../../../r-bridge/shell-executor'
 import {executeSingleSubStep} from '../../../../core'
 import {type DataflowProcessorInformation, processDataflowFor} from '../../../processor'
-import {overwriteEnvironments} from '../../../environments'
+import {type DataflowScopeName, type Identifier, overwriteEnvironments, type REnvironmentInformation, resolveByName} from '../../../environments'
 import type {DataflowInformation} from '../../info'
+
+export function isSourceCall(name: Identifier, scope: DataflowScopeName, environments: REnvironmentInformation): boolean {
+	if(name != 'source')
+		return false
+	const definitions = resolveByName(name, scope, environments)
+	return definitions !== undefined && definitions.some(d => d.kind == 'built-in-function')
+}
 
 export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation): DataflowInformation {
 	const sourceFile = functionCall.arguments[0] as RArgument<ParentInformation> | undefined

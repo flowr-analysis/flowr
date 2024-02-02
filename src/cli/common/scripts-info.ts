@@ -99,3 +99,11 @@ const _scripts = {
 
 export const scripts = _scripts as Record<keyof typeof _scripts, ScriptInformation>
 
+export function getScriptInformation(scriptName: string): ScriptInformation | undefined{
+	for(const [script, info] of Object.entries(scripts)){
+		if(script === scriptName){
+			return info
+		}
+	}
+	return undefined
+}

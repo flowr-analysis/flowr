@@ -12,7 +12,7 @@ import * as readline from 'node:readline'
 import { splitAtEscapeSensitive } from '../../util/args'
 import { executeRShellCommand } from './commands/execute'
 import { guard } from '../../util/assert'
-import { scripts } from '../common/scripts-info'
+import { getScriptInformation} from '../common/scripts-info'
 import type { OptionDefinition } from 'command-line-usage'
 
 const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
@@ -21,31 +21,88 @@ const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
  * Used by the repl to provide automatic completions for a given (partial) input line
  */
 export function replCompleter(line: string): [string[], string] {
-	const singleCommand = replCompleterKeywords.find(k => (k + ' ') === line)
-	if(singleCommand !== undefined){
-		const applicableCommand = getCommand(singleCommand.substring(1))
-		guard(applicableCommand !== undefined, 'Command should be defined')
-		if(applicableCommand.script){
-			let scriptOptions: OptionDefinition[] | undefined
-			for(const [script, { options}] of Object.entries(scripts)){
-				if(script === line.trimEnd().substring(1)){
-					scriptOptions = options
-					break
-				}
-			}
-			guard(scriptOptions !== undefined, 'script should be in script record')
-			const autoCompleteList : string[] = []
-			autoCompleteList.push(line)
-			scriptOptions.forEach(option => {
-				autoCompleteList.push(line + ' --' + option.name)
-				if(option.alias !== undefined){
-					autoCompleteList.push(line + ' -' + option.alias)
+	const splitCommandList = splitAtEscapeSensitive(line)
+	console.log(splitCommandList)
+	//find command in commandlist
+	const keyword = replCompleterKeywords.find(k => splitCommandList[0] === k)
+	if(keyword !== undefined && keyword.startsWith(':')){
+		const singleCommand = getCommand(keyword.slice(1))
+		guard(singleCommand !== undefined, 'Keyword does not match any command')
+		if(singleCommand.script){
+			const scriptInformation = getScriptInformation(keyword.slice(1))
+			guard(scriptInformation !== undefined, 'script should be in script record')
+			const scriptOptions: OptionDefinition[] = scriptInformation.options
+			//console.log(scriptOptions)//TODO REMOVE
+			const possibleOptions : string[] = []
+			getPossibleCommandLineOptions(scriptOptions,splitCommandList).forEach(o => {
+				possibleOptions.push('--' + o.name)
+				if(o.alias !== undefined){
+					possibleOptions.push('-' + o.alias)
 				}
 			})
-			return [autoCompleteList, line]
+			//console.log(possibleOptions)//TODO REMOVE
+			//Only command was specified
+			if(splitCommandList.length < 2){
+				//console.log(possibleOptions)//TODO REMOVE
+				possibleOptions.push(line)
+				return [possibleOptions, line]
+			}
+
+			const lastOptionInProgress = splitCommandList.at(-1)
+			guard(lastOptionInProgress !== undefined, 'splitCommandList cannot be of lenth 0')
+			console.log(lastOptionInProgress) //TODO REMOVE
+			//console.log(possibleOptions) //TODO REMOVE
+			const matchingOptionsLeft = possibleOptions.filter(o => o.startsWith(lastOptionInProgress))
+			if(matchingOptionsLeft.length === 1){
+				const commandWithoutLastEntry = splitCommandList.slice(0, -1).join(' ')
+				return [[commandWithoutLastEntry + ' ' + matchingOptionsLeft[0]], line]
+			}
+			matchingOptionsLeft.push(line)
+			return [matchingOptionsLeft, line]
 		}
 	}
 	return [replCompleterKeywords.filter(k => k.startsWith(line)), line]
+}
+
+function getPossibleCommandLineOptions(scriptOptions: OptionDefinition[], splitCommandList: string[]): OptionDefinition[] {
+	const optionUsed: Map<string, boolean> = new Map <string, boolean>()
+	scriptOptions.forEach(o => optionUsed.set(o.name, false))
+	for(let commandLineOptionIndex = 1; commandLineOptionIndex < splitCommandList.length; commandLineOptionIndex++){
+		if(splitCommandList[commandLineOptionIndex].substring(0,1) !== '-'){
+			continue
+		}
+		let cliOptionWithOutLeadingMinus: string = splitCommandList[commandLineOptionIndex].slice(1)
+		if(cliOptionWithOutLeadingMinus.substring(0,1) !== '-'){
+			const option = scriptOptions.find(o => o.alias === cliOptionWithOutLeadingMinus)
+			//console.log(option) //TODO Remove
+			if(option !== undefined){
+				optionUsed.set(option.name, true)
+			} else {
+				continue
+			}
+		}
+
+		cliOptionWithOutLeadingMinus = cliOptionWithOutLeadingMinus.slice(1)
+		if(cliOptionWithOutLeadingMinus.substring(0,1) !== '-'){
+			if(optionUsed.has(cliOptionWithOutLeadingMinus)){
+				optionUsed.set(cliOptionWithOutLeadingMinus, true)
+			}
+		}
+	}
+	const possibleOptions : OptionDefinition[] = []
+	optionUsed.forEach((usedValue, optionName) => {
+		const newOption = scriptOptions.find(o => o.name === optionName)
+		guard(newOption !== undefined, 'Option contained must be in original Options list')	
+		if(usedValue){
+			if(newOption.multiple !== undefined && newOption.multiple){
+				possibleOptions.push(newOption)
+			}
+		} else {
+			possibleOptions.push(newOption)
+		}
+	})
+	//console.log(optionUsed) //TODO Remove
+	return possibleOptions
 }
 
 export const DEFAULT_REPL_READLINE_CONFIGURATION: readline.ReadLineOptions = {

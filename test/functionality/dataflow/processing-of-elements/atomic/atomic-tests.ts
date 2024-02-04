@@ -10,11 +10,12 @@ import { appendEnvironments, define } from '../../../../../src/dataflow/common/e
 import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
+import { label } from '../../../_helper/label'
 
 describe('Atomic (dataflow information)', withShell((shell) => {
-	describe('uninteresting leafs', () => {
-		for(const input of ['42', '"test"', 'TRUE', 'NA', 'NULL']) {
-			assertDataflow(input, shell, input, new DataflowGraph())
+	describe('Uninteresting Leafs', () => {
+		for(const [input, id] of [['42', '2/2/1'], ['"test"', '2/2/2'], ['TRUE', '2/2/3'], ['NA', '2/2/1'], ['NULL', '2/2/4']] as const) {
+			assertDataflow(label(input, id), shell, input, new DataflowGraph())
 		}
 	})
 

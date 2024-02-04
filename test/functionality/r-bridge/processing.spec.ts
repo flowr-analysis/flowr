@@ -1,12 +1,13 @@
 import { assertDecoratedAst, retrieveNormalizedAst, withShell } from '../_helper/shell'
 import { numVal } from '../_helper/ast-builder'
 import { rangeFrom } from '../../../src/util/range'
+import type {
+	RNodeWithParent,
+	NodeId} from '../../../src/r-bridge'
 import {
 	RType,
 	decorateAst,
-	RNodeWithParent,
-	collectAllIds,
-	NodeId, RoleInParent
+	collectAllIds, RoleInParent
 } from '../../../src/r-bridge'
 import { assert } from 'chai'
 

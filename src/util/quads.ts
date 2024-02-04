@@ -8,15 +8,17 @@
  * @module
  */
 
-import { DataFactory, NamedNode, Quad, Writer } from 'n3'
+import type { NamedNode, Quad} from 'n3'
+import { DataFactory, Writer } from 'n3'
 import namedNode = DataFactory.namedNode
 import quad = DataFactory.quad
-import { deepMergeObject, isObjectOrArray, MergeableRecord } from './objects'
+import type { MergeableRecord } from './objects'
+import { deepMergeObject, isObjectOrArray } from './objects'
 import { guard } from './assert'
 import { DefaultMap } from './defaultmap'
 import literal = DataFactory.literal
 import { log } from './log'
-import { NodeId } from '../r-bridge'
+import type { NodeId } from '../r-bridge'
 
 const domain = 'https://uni-ulm.de/r-ast/'
 

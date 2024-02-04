@@ -1,8 +1,8 @@
-import { MergeableRecord } from '../../util/objects'
-import { IdGenerator, NoInfo, RParseRequest, RShell, XmlParserHooks } from '../../r-bridge'
-import { DeepPartial } from 'ts-essentials'
-import { AutoSelectPredicate, SlicingCriteria } from '../../slicing'
-import { STEPS_PER_SLICE, StepName, STEPS_PER_FILE } from './steps'
+import type { MergeableRecord } from '../../util/objects'
+import type { IdGenerator, NoInfo, RParseRequest, RShell, XmlParserHooks } from '../../r-bridge'
+import type { DeepPartial } from 'ts-essentials'
+import type { AutoSelectPredicate, SlicingCriteria } from '../../slicing'
+import type { STEPS_PER_SLICE, StepName, STEPS_PER_FILE } from './steps'
 
 /**
  * We split the types, as if you are only interested in what can be done per-file, you do not need a slicing criterion.
@@ -29,7 +29,7 @@ interface BaseSteppingSlicerInput<InterestedIn extends StepName | undefined> ext
 	autoSelectIf?:   AutoSelectPredicate
 }
 
-interface NormalizeSteppingSlicerInput<InterestedIn extends 'dataflow' | 'normalize'> extends BaseSteppingSlicerInput<InterestedIn> {
+interface NormalizeSteppingSlicerInput<InterestedIn extends 'ai' | 'dataflow' | 'normalize'> extends BaseSteppingSlicerInput<InterestedIn> {
 	stepOfInterest: InterestedIn
 }
 

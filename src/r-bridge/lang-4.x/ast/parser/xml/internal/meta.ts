@@ -1,7 +1,10 @@
-import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '../input-format'
-import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from '../../../../../../util/range'
-import { XmlParserConfig } from '../config'
-import { RawRType, RExpressionList, RNode, RType } from '../../../model'
+import type { NamedXmlBasedJson, XmlBasedJson} from '../input-format'
+import { getKeysGuarded, XmlParseError } from '../input-format'
+import type { SourceRange } from '../../../../../../util/range'
+import { rangeFrom, rangeStartsCompletelyBefore } from '../../../../../../util/range'
+import type { XmlParserConfig } from '../config'
+import type { RawRType, RExpressionList, RNode} from '../../../model'
+import { RType } from '../../../model'
 import { guard } from '../../../../../../util/assert'
 
 /**

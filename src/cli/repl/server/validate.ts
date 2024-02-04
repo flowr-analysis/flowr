@@ -1,8 +1,9 @@
-import Joi from 'joi'
+import type * as Joi from 'joi'
 import { sendMessage } from './send'
-import { baseMessage, FlowrMessage, IdMessageBase, MessageDefinition } from './messages/messages'
-import { FlowrErrorMessage } from './messages/error'
-import { Socket } from './net'
+import type { FlowrMessage, IdMessageBase, MessageDefinition } from './messages/messages'
+import { baseMessage } from './messages/messages'
+import type { FlowrErrorMessage } from './messages/error'
+import type { Socket } from './net'
 
 export interface ValidationErrorResult { type: 'error', reason: Joi.ValidationError | Error }
 export interface SuccessValidationResult<T extends IdMessageBase> { type: 'success', message: T }

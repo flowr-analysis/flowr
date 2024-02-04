@@ -1,5 +1,5 @@
-import { MergeableRecord } from '../../../../../util/objects'
-import { TokenMap } from '../../../../retriever'
+import type { MergeableRecord } from '../../../../../util/objects'
+import type { TokenMap } from '../../../../retriever'
 
 /**
  * Configures the settings for the xml parser (like what names should be used to represent the given objects,

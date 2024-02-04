@@ -1,15 +1,18 @@
-import {
+import type {
 	RParseRequest,
 	RParseRequestFromFile,
 	RParseRequestFromText,
 	RShell
 } from '../r-bridge'
-import { ALL_FEATURES, allFeatureNames, Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features'
+import type { Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features'
+import { ALL_FEATURES, allFeatureNames } from './features'
 import { DOMParser } from '@xmldom/xmldom'
 import fs from 'fs'
 import { log } from '../util/log'
-import { initialMetaStatistics, MetaStatistics } from './meta-statistics'
-import { SteppingSlicer,StepResults } from '../core'
+import type { MetaStatistics } from './meta-statistics'
+import { initialMetaStatistics } from './meta-statistics'
+import type {StepResults } from '../core'
+import { SteppingSlicer } from '../core'
 import { jsonReplacer, jsonRetriever } from '../util/json'
 
 /**

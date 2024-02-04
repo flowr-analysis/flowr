@@ -1,23 +1,25 @@
-import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
+import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
+import { getKeysGuarded } from '../../input-format'
 import { guard } from '../../../../../../../util/assert'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { parseLog } from '../../parser'
 import { normalizeString, tryNormalizeSymbol } from '../values'
-import { ParserData } from '../../data'
-import {
-	RType,
+import type { ParserData } from '../../data'
+import type {
 	RNode,
 	RFunctionCall,
 	RUnnamedFunctionCall,
 	RNamedFunctionCall,
 	RNext,
 	RBreak,
-	RArgument, RawRType
+	RArgument} from '../../../../model'
+import {
+	RType, RawRType
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { tryToNormalizeArgument } from './argument'
-import { SourceRange } from '../../../../../../../util/range'
+import type { SourceRange } from '../../../../../../../util/range'
 import { normalizeExpression } from '../expression'
 
 /**

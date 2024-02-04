@@ -1,9 +1,7 @@
 import {
 	LAST_PER_FILE_STEP, LAST_STEP,
 	STEPS_PER_SLICE,
-	SteppingSlicerInput,
-	StepResults,
-	StepName, PipelineStepStage, PipelineStepName
+	StepName
 } from './steps'
 import { SlicingCriteria } from '../slicing'
 import { createPipeline, Pipeline, PipelineOutput, PipelineStepOutputWithName } from './steps/pipeline'
@@ -21,7 +19,8 @@ const legacyPipelines = {
 	'dataflow':    createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW),
 	'slice':       createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE),
 	'reconstruct': createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE, NAIVE_RECONSTRUCT)
-}
+} as const
+
 type LegacyPipelineType<InterestedIn extends StepName> = typeof legacyPipelines[InterestedIn]
 
 function getLegacyPipeline(interestedIn: StepName): Pipeline {

@@ -1,26 +1,31 @@
 import { it } from 'mocha'
 import { testRequiresNetworkConnection } from './network'
-import { DeepPartial } from 'ts-essentials'
+import type { DeepPartial } from 'ts-essentials'
 import {
 	DecoratedAstMap,
-	deterministicCountingIdGenerator,
 	IdGenerator,
 	NodeId,
-	NoInfo, requestFromInput,
+	NoInfo,
 	RExpressionList,
 	RNode,
 	RNodeWithParent,
-	RShell, ts2r,
+	ts2r,
 	XmlParserHooks
 } from '../../../src/r-bridge'
+import {
+	deterministicCountingIdGenerator, requestFromInput,
+	RShell
+} from '../../../src/r-bridge'
 import { assert } from 'chai'
-import { reconstructToCode, SlicingCriteria } from '../../../src/slicing'
+import type { DataflowGraph} from '../../../src/dataflow/v1'
+import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
+import { reconstructToCode, type SlicingCriteria } from '../../../src/slicing'
 import { testRequiresRVersion } from './version'
-import { deepMergeObject, MergeableRecord } from '../../../src/util/objects'
+import type { MergeableRecord } from '../../../src/util/objects'
+import { deepMergeObject } from '../../../src/util/objects'
 import { LAST_STEP, SteppingSlicer } from '../../../src/core'
-import { DifferenceReport } from '../../../src/util/diff'
 import { guard } from '../../../src/util/assert'
-import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
+import type { DifferenceReport } from '../../../src/util/diff'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -38,8 +43,8 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
 function installWarning(pkg: string) {
 	const banner = '-'.repeat(142)
 	console.error(`${banner}
-Test's have to install package ${pkg}. 
-This slows them down significantly! 
+Test's have to install package ${pkg}.
+This slows them down significantly!
 Please see https://github.com/Code-Inspect/flowr/wiki/Linting-and-Testing#oh-no-the-tests-are-slow for more information.
 ${banner}`)
 }

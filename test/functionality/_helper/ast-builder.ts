@@ -1,5 +1,6 @@
-import { type RNumberValue, RType, RExpressionList, RNode, RParameter } from '../../../src/r-bridge'
-import { SourceRange } from '../../../src/util/range'
+import type { RExpressionList, RNode, RParameter } from '../../../src/r-bridge'
+import { type RNumberValue, RType } from '../../../src/r-bridge'
+import type { SourceRange } from '../../../src/util/range'
 
 const emptyInfo = { fullRange: undefined, additionalTokens: [], fullLexeme: undefined }
 

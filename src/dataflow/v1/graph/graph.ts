@@ -1,27 +1,29 @@
 import { guard } from '../../../util/assert'
-import { NodeId, NoInfo, RNodeWithParent } from '../../../r-bridge'
+import type { NodeId, NoInfo, RNodeWithParent } from '../.././r-bridge'
+import type {
+	IdentifierDefinition,
+	IdentifierReference} from '../../common/environments'
 import {
 	cloneEnvironments,
-	IdentifierDefinition,
-	IdentifierReference,
 	initializeCleanEnvironments
 } from '../../common/environments'
-import { BiMap } from '../../../util/bimap'
+import type { BiMap } from '../../../util/bimap'
 import { log } from '../../../util/log'
-import { DataflowGraphEdge, DataflowGraphEdgeAttribute, EdgeType } from './edge'
-import { DataflowInformation } from '../internal/info'
+import type { DataflowGraphEdge, DataflowGraphEdgeAttribute} from './edge'
+import { EdgeType } from './edge'
+import type { DataflowInformation } from '../internal/info'
 import {
 	diffOfDataflowGraphs,
 	equalExitPoints, equalFunctionArguments
 } from './diff'
-import {
+import type {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
 	DataflowGraphVertices
 } from './vertex'
-import { DifferenceReport } from '../../../util/diff'
+import type { DifferenceReport } from '../../../util/diff'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo=NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>

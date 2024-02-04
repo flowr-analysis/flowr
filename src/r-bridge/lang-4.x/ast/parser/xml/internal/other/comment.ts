@@ -1,10 +1,11 @@
-import { XmlBasedJson } from '../../input-format'
-import { RComment, RType } from '../../../../model'
+import type { XmlBasedJson } from '../../input-format'
+import type { RComment} from '../../../../model'
+import { RType } from '../../../../model'
 import { parseLog } from '../../parser'
 import { retrieveMetaStructure } from '../meta'
 import { guard } from '../../../../../../../util/assert'
 import { executeHook } from '../../hooks'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 
 /**
  * Normalize the given object as an R comment.

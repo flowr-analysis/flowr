@@ -1,10 +1,12 @@
 import { assert } from 'chai'
+import type {
+	SourceRange
+} from '../../../src/util/range'
 import {
 	addRanges,
 	mergeRanges, rangeCompare,
 	rangeFrom, rangesOverlap,
-	rangeStartsCompletelyBefore,
-	SourceRange
+	rangeStartsCompletelyBefore
 } from '../../../src/util/range'
 import { allPermutations } from '../../../src/util/arrays'
 import { formatRange } from '../../../src/dataflow/v1'

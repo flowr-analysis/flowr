@@ -3,8 +3,8 @@
  *
  * @module
  */
-import { MergeableRecord } from '../../util/objects'
-import { OptionDefinition } from 'command-line-usage'
+import type { MergeableRecord } from '../../util/objects'
+import type { OptionDefinition } from 'command-line-usage'
 import {
 	benchmarkHelperOptions,
 	benchmarkOptions,

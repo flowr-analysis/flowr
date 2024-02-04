@@ -1,17 +1,20 @@
 import { assert } from 'chai'
 import { withShell } from '../_helper/shell'
+import type {
+	ControlFlowInformation} from '../../../src/util/cfg/cfg'
 import {
-	ControlFlowGraph,
 	cfg2quads,
-	ControlFlowInformation,
+	CfgVertexType,
+	ControlFlowGraph,
 	emptyControlFlowInformation,
 	equalCfg,
 	extractCFG
-} from '../../../src/util/cfg'
+} from '../../../src/util/cfg/cfg'
 import { SteppingSlicer } from '../../../src/core'
 import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
 import { defaultQuadIdGenerator } from '../../../src/util/quads'
 import { cfgToMermaidUrl } from '../../../src/util/mermaid'
+import { visitCfg } from '../../../src/util/cfg/visitor'
 
 describe('Control Flow Graph', withShell(shell => {
 	 function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
@@ -44,10 +47,10 @@ describe('Control Flow Graph', withShell(shell => {
 	   entryPoints: [ '3' ],
 		 exitPoints:  [ '3-exit' ],
 		 graph:       new ControlFlowGraph()
-			.addVertex({ id: '0', name: RType.Logical })
-			.addVertex({ id: '1', name: RType.Number })
-			.addVertex({ id: '3', name: RType.IfThenElse })
-			.addVertex({ id: '3-exit', name: 'if-exit' })
+			.addVertex({ id: '0', name: RType.Logical, type: CfgVertexType.Expression })
+			.addVertex({ id: '1', name: RType.Number, type: CfgVertexType.Expression })
+			.addVertex({ id: '3', name: RType.IfThenElse, type: CfgVertexType.Statement })
+			.addVertex({ id: '3-exit', name: 'if-exit', type: CfgVertexType.EndMarker })
 			.addEdge('0', '3', { label: 'FD' })
 			.addEdge('1', '0', { label: 'CD', when: RTrue })
 			.addEdge('3-exit', '1', { label: 'FD' })
@@ -58,10 +61,10 @@ describe('Control Flow Graph', withShell(shell => {
 		entryPoints: [ '2' ],
 		exitPoints:  [ '2-exit' ],
 		graph:       new ControlFlowGraph()
-			.addVertex({ id: '0', name: RType.Number })
-			.addVertex({ id: '1', name: RType.Number })
-			.addVertex({ id: '2', name: RType.BinaryOp })
-			.addVertex({ id: '2-exit', name: 'binOp-exit' })
+			.addVertex({ id: '0', name: RType.Number, type: CfgVertexType.Expression })
+			.addVertex({ id: '1', name: RType.Number, type: CfgVertexType.Expression })
+			.addVertex({ id: '2', name: RType.BinaryOp, type: CfgVertexType.Expression })
+			.addVertex({ id: '2-exit', name: 'binOp-exit', type: CfgVertexType.EndMarker })
 			.addEdge('0', '2', { label: 'FD' })
 			.addEdge('1', '0', { label: 'FD' })
 			.addEdge('2-exit', '1', { label: 'FD' })
@@ -71,24 +74,24 @@ describe('Control Flow Graph', withShell(shell => {
 		entryPoints: [ '8' ],
 		exitPoints:  [ '8-exit' ],
 		graph:       new ControlFlowGraph()
-			.addVertex({ id: '0', name: RType.Symbol })
-			.addVertex({ id: '8', name: RType.FunctionCall })
-			.addVertex({ id: '8-name', name: 'call-name' })
-			.addVertex({ id: '8-exit', name: 'call-exit' })
+			.addVertex({ id: '0', name: RType.Symbol, type: CfgVertexType.Expression })
+			.addVertex({ id: '8', name: RType.FunctionCall, type: CfgVertexType.Statement  })
+			.addVertex({ id: '8-name', name: 'call-name', type: CfgVertexType.MidMarker })
+			.addVertex({ id: '8-exit', name: 'call-exit', type: CfgVertexType.EndMarker })
 
-			.addVertex({ id: '4', name: RType.Argument })
-			.addVertex({ id: '4-before-value', name: 'before-value' })
-			.addVertex({ id: '1', name: RType.Number })
-			.addVertex({ id: '2', name: RType.Number })
-			.addVertex({ id: '3', name: RType.BinaryOp })
-			.addVertex({ id: '3-exit', name: 'binOp-exit' })
-			.addVertex({ id: '4-exit', name: 'exit' })
+			.addVertex({ id: '4', name: RType.Argument, type: CfgVertexType.Expression })
+			.addVertex({ id: '4-before-value', name: 'before-value', type: CfgVertexType.MidMarker })
+			.addVertex({ id: '1', name: RType.Number, type: CfgVertexType.Expression })
+			.addVertex({ id: '2', name: RType.Number, type: CfgVertexType.Expression })
+			.addVertex({ id: '3', name: RType.BinaryOp, type: CfgVertexType.Expression })
+			.addVertex({ id: '3-exit', name: 'binOp-exit', type: CfgVertexType.EndMarker })
+			.addVertex({ id: '4-exit', name: 'exit', type: CfgVertexType.EndMarker })
 
-			.addVertex({ id: '7', name: RType.Argument })
-			.addVertex({ id: '5', name: RType.Symbol })
-			.addVertex({ id: '7-before-value', name: 'before-value' })
-			.addVertex({ id: '6', name: RType.Number })
-			.addVertex({ id: '7-exit', name: 'exit' })
+			.addVertex({ id: '7', name: RType.Argument, type: CfgVertexType.Expression })
+			.addVertex({ id: '5', name: RType.Symbol, type: CfgVertexType.Expression })
+			.addVertex({ id: '7-before-value', name: 'before-value', type: CfgVertexType.MidMarker })
+			.addVertex({ id: '6', name: RType.Number, type: CfgVertexType.Expression })
+			.addVertex({ id: '7-exit', name: 'exit', type: CfgVertexType.EndMarker })
 
 			.addEdge('0', '8', { label: 'FD' })
 			.addEdge('8-name', '0', { label: 'FD' })
@@ -165,4 +168,18 @@ describe('Control Flow Graph', withShell(shell => {
 <${domain}${context}/0> <${domain}exitPoints> "3-exit" <${context}> .
 `)
 	})
+
+	describe('visit cfg', withShell(shell => {
+		it('foo', async() => {
+			const result = await new SteppingSlicer({
+				stepOfInterest: 'normalize',
+				shell,
+				request:        requestFromInput('if(TRUE) 1; print(a=3)')
+			}).allRemainingSteps()
+			const cfg = extractCFG(result.normalize)
+			visitCfg(cfg, (node, context) => {
+				console.log(node, context.parent, context.siblings)
+			})
+		})
+	}))
 }))

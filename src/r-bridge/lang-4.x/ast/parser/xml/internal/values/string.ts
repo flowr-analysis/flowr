@@ -1,10 +1,11 @@
-import { XmlBasedJson } from '../../input-format'
+import type { XmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure } from '../meta'
 import { string2ts } from '../../../../../values'
 import { parseLog } from '../../parser'
-import { RType, RString } from '../../../../model'
+import type { RString } from '../../../../model'
+import { RType } from '../../../../model'
 import { executeHook } from '../../hooks'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
 
 /**

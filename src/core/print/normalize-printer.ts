@@ -1,6 +1,7 @@
-import { NormalizedAst } from '../../r-bridge'
+import type { NormalizedAst } from '../../r-bridge'
 import { jsonReplacer } from '../../util/json'
-import { QuadSerializationConfiguration, serialize2quads } from '../../util/quads'
+import type { QuadSerializationConfiguration} from '../../util/quads'
+import { serialize2quads } from '../../util/quads'
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../util/mermaid'
 
 /** Should work with larger things as well */

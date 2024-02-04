@@ -3,12 +3,12 @@
  * This module provides a function to collect all slicing criteria.
  * @module
  */
-import { MergeableRecord } from '../../util/objects'
-import {
+import type { MergeableRecord } from '../../util/objects'
+import type {
 	NodeId,
 	RNodeWithParent
 } from '../../r-bridge'
-import { SingleSlicingCriterion, SlicingCriteria } from './parse'
+import type { SingleSlicingCriterion, SlicingCriteria } from './parse'
 import { guard } from '../../util/assert'
 import { getUniqueCombinationsOfSize } from '../../util/arrays'
 

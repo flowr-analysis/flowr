@@ -1,5 +1,5 @@
 import fs, { promises as fsPromise } from 'fs'
-import { RParseRequestFromFile } from '../r-bridge'
+import type { RParseRequestFromFile } from '../r-bridge'
 import path from 'path'
 import { log } from './log'
 import LineByLine from 'n-readlines'

@@ -1,4 +1,4 @@
-import { LAST_STEP, StepName, StepResult } from './steps'
+import type { LAST_STEP, StepName, StepResult } from './steps'
 
 /** Represents the return value of the processor linked to the step with the name 'K' */
 type Out<K extends StepName> = Record<K, StepResult<K>>;
@@ -14,7 +14,7 @@ type StepResultsHelper<InterestedIn extends StepName> = {
 	'parse':       Out<'parse'>
 	'normalize':   StepResultsHelper<'parse'> & Out<'normalize'>
 	'dataflow':    StepResultsHelper<'normalize'> & Out<'dataflow'>
-	'slice':       StepResultsHelper<'dataflow'> & Out<'slice'>
+	'ai':          StepResultsHelper<'dataflow'> & Out<'ai'>
+	'slice':       StepResultsHelper<'ai'> & Out<'slice'>
 	'reconstruct': StepResultsHelper<'slice'> & Out<'reconstruct'>
 }[InterestedIn]
-

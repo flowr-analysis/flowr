@@ -1,14 +1,13 @@
 import { RShell } from '../r-bridge'
+import type { FeatureKey} from '../statistics'
 import {
 	extractUsageStatistics,
 	setFormatter,
-	voidFormatter, staticRequests, FeatureKey, initFileProvider, statisticsFileProvider
+	voidFormatter, staticRequests, initFileProvider, statisticsFileProvider
 } from '../statistics'
 import { log } from '../util/log'
 import { processCommandLineArgs } from './common'
 import { jsonReplacer } from '../util/json'
-import { extractCFG } from '../util/cfg'
-import { create } from 'tar'
 import fs from 'fs'
 import { guard } from '../util/assert'
 import { retrieveArchiveName } from './common/features'
@@ -17,6 +16,8 @@ import { date2string } from '../util/time'
 import { PARSE_WITH_R_SHELL_STEP } from '../core/steps/all/core/00-parse'
 import { NORMALIZE } from '../core/steps/all/core/10-normalize'
 import { LEGACY_STATIC_DATAFLOW } from '../core/steps/all/core/20-dataflow'
+import { create } from 'tar'
+import { extractCFG } from '../util/cfg/cfg'
 
 // apps should never depend on other apps when forking (otherwise, they are "run" on load :/)
 

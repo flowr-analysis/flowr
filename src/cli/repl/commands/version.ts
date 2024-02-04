@@ -1,4 +1,4 @@
-import { ReplCommand, ReplOutput } from './main'
+import type { ReplCommand, ReplOutput } from './main'
 import { RShell } from '../../../r-bridge'
 import { version } from '../../../../package.json'
 import { guard } from '../../../util/assert'

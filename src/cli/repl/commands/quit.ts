@@ -1,4 +1,4 @@
-import { ReplCommand } from './main'
+import type { ReplCommand } from './main'
 import { log } from '../../../util/log'
 
 export const quitCommand: ReplCommand = {

@@ -4,12 +4,13 @@ import { type ILogObj, type Logger } from 'tslog'
 import * as readline from 'node:readline'
 import { parseCSV, ts2r } from './lang-4.x'
 import { log, LogLevel } from '../util/log'
-import { SemVer } from 'semver'
+import type { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 import fs from 'fs'
-import { removeTokenMapQuotationMarks, TokenMap } from './retriever'
-import { DeepReadonly, DeepWritable } from 'ts-essentials'
+import type { TokenMap } from './retriever'
+import { removeTokenMapQuotationMarks } from './retriever'
+import type { DeepReadonly, DeepWritable } from 'ts-essentials'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -67,7 +68,7 @@ export const enum RShellReviveOptions {
 	Always
 }
 
-export interface RShellSessionOptions extends MergeableRecord {
+export interface RShellExecutionOptions extends MergeableRecord {
 	/** The path to the R executable, can be only the executable if it is to be found on the PATH. */
 	readonly pathToRExecutable:  string
 	/** Command line options to use when starting the R session. */
@@ -76,14 +77,17 @@ export interface RShellSessionOptions extends MergeableRecord {
 	readonly cwd:                string
 	/** The character to use to mark the end of a line. Is probably always `\n` (even on windows). */
 	readonly eol:                string
-	/** The environment variables available in the R session (undefined uses the child-process default). */
+	/** The environment variables available in the R session. */
 	readonly env:                NodeJS.ProcessEnv | undefined
+	/** The path to the library directory, use undefined to let R figure that out for itself */
+	readonly homeLibPath:        string | undefined
+}
+
+export interface RShellSessionOptions extends RShellExecutionOptions {
 	/** If set, the R session will be restarted if it exits due to an error */
 	readonly revive:             RShellReviveOptions
 	/** Called when the R session is restarted, this makes only sense if `revive` is not set to `'never'` */
 	readonly onRevive:           (code: number, signal: string | null) => void
-	/** The path to the library directory, use undefined to let R figure that out for itself */
-	readonly homeLibPath:        string | undefined
 }
 
 /**
@@ -94,16 +98,20 @@ export interface RShellOptions extends RShellSessionOptions {
 	readonly sessionName: string
 }
 
-export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
-	sessionName:        'default',
+export const DEFAULT_R_SHELL_EXEC_OPTIONS: RShellExecutionOptions = {
 	pathToRExecutable:  getPlatform() === 'windows' ? 'R.exe' : 'R',
 	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
 	cwd:                process.cwd(),
 	env:                undefined,
 	eol:                '\n',
 	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
-	revive:             RShellReviveOptions.Never,
-	onRevive:           () => { /* do nothing */ }
+} as const
+
+export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
+	...DEFAULT_R_SHELL_EXEC_OPTIONS,
+	sessionName: 'default',
+	revive:      RShellReviveOptions.Never,
+	onRevive:    () => { /* do nothing */ }
 } as const
 
 /**

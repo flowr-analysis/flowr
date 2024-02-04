@@ -16,13 +16,13 @@ import {
 	usedPackages,
 	values
 } from './supported'
-import { EvalOptions } from 'xpath-ts2/src/parse-api'
-import { MergeableRecord } from '../../util/objects'
-import { NormalizedAst } from '../../r-bridge'
-import { DataflowInformation } from '../../dataflow/v1/internal/info'
+import type { EvalOptions } from 'xpath-ts2/src/parse-api'
+import type { MergeableRecord } from '../../util/objects'
+import type { NormalizedAst } from '../../r-bridge'
+import type { DataflowInformation } from '../../dataflow/v1/internal/info'
 import { variables } from './supported/variables/variables'
-import { MetaStatistics } from '../meta-statistics'
-import { StatisticsSummarizerConfiguration } from '../../util/summarizer/statistics/summarizer'
+import type { MetaStatistics } from '../meta-statistics'
+import type { StatisticsSummarizerConfiguration } from '../../util/summarizer/statistics/summarizer'
 
 /**
  * Maps each sub-feature name to the number of occurrences of that sub-feature.

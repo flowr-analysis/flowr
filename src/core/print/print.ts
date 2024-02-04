@@ -1,6 +1,4 @@
-import { IPipelineStep, StepProcessingFunction } from '../steps'
-import { TailOfArray } from '../../util/arrays'
-import { guard } from '../../util/assert'
+import type { StepFunction } from '../steps'
 
 /**
  * Defines the output format of a step that you are interested in.

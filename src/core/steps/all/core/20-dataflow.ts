@@ -1,5 +1,6 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
-import { IPipelineStep, PipelineStepStage } from '../../step'
+import type { IPipelineStep} from '../../step'
+import { PipelineStepStage } from '../../step'
 import { produceDataFlowGraph as legacyDataflowGraph } from '../../../../dataflow/v1'
 import {
 	dataflowGraphToJson,
@@ -7,8 +8,8 @@ import {
 	dataflowGraphToMermaidUrl,
 	dataflowGraphToQuads
 } from '../../../print/dataflow-printer'
-import { DeepReadonly } from 'ts-essentials'
-import { NormalizedAst } from '../../../../r-bridge'
+import type { DeepReadonly } from 'ts-essentials'
+import type { NormalizedAst } from '../../../../r-bridge'
 import { produceDataFlowGraph as v2DataflowGraph } from '../../../../dataflow/v2/entry'
 
 const staticDataflowCommon = {

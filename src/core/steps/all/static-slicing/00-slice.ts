@@ -1,10 +1,12 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
-import { IPipelineStep, PipelineStepStage } from '../../step'
-import { SlicingCriteria, staticSlicing } from '../../../../slicing'
-import { DeepReadonly } from 'ts-essentials'
-import { NormalizeRequiredInput } from '../core/10-normalize'
-import { DataflowInformation } from '../../../../dataflow/v1/internal/info'
-import { NormalizedAst } from '../../../../r-bridge'
+import type { IPipelineStep} from '../../step'
+import { PipelineStepStage } from '../../step'
+import type { SlicingCriteria} from '../../../../slicing'
+import { staticSlicing } from '../../../../slicing'
+import type { DeepReadonly } from 'ts-essentials'
+import type { NormalizeRequiredInput } from '../core/10-normalize'
+import type { DataflowInformation } from '../../../../dataflow/v1/internal/info'
+import type { NormalizedAst } from '../../../../r-bridge'
 
 export interface SliceRequiredInput extends NormalizeRequiredInput {
 	/** The slicing criterion is only of interest if you actually want to slice the R code */

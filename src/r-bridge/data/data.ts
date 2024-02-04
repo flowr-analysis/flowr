@@ -1,4 +1,4 @@
-import { FlowrCapabilities } from './types'
+import type { FlowrCapabilities } from './types'
 
 export const flowrCapabilities = {
 	name:         'Capabilities of flowR',

@@ -1,6 +1,7 @@
-import { IPipelineStep, PipelineStepName, PipelineStepStage } from '../step'
+import type { IPipelineStep, PipelineStepName} from '../step'
+import { PipelineStepStage } from '../step'
 import { InvalidPipelineError } from './invalid-pipeline-error'
-import { Pipeline } from './pipeline'
+import type { Pipeline } from './pipeline'
 import { jsonReplacer } from '../../../util/json'
 import { partitionArray } from '../../../util/arrays'
 

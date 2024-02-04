@@ -1,4 +1,5 @@
-import { DataflowInformation, initializeCleanDataflowInformation } from '../v1/internal/info'
+import type { DataflowInformation} from '../v1/internal/info'
+import { initializeCleanDataflowInformation } from '../v1/internal/info'
 import { initializeCleanEnvironments } from '../common/environments'
 import { GlobalScope } from '../common/environments/scopes'
 

@@ -11,7 +11,7 @@ import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/p
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { label } from '../../../_helper/label'
-import { FlowrCapabilityId } from '../../../../../src/r-bridge/data'
+import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data'
 
 describe('Atomic (dataflow information)', withShell((shell) => {
 	describe('Uninteresting Leafs', () => {

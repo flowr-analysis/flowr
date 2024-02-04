@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert'
-import { FlowrCapability } from './types'
+import type { FlowrCapability } from './types'
 import { flowrCapabilities } from './data'
 
 

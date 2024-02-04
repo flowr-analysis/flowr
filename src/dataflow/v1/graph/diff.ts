@@ -1,11 +1,14 @@
-import { diffIdentifierReferences, IdentifierReference, diffEnvironments } from '../../common/environments'
-import { NodeId } from '../../../r-bridge'
-import { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
+import type { IdentifierReference} from '../../common/environments'
+import { diffIdentifierReferences, diffEnvironments } from '../../common/environments'
+import type { NodeId } from '../../../r-bridge'
+import type { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
 import { guard } from '../../../util/assert'
-import {
-	setDifference,
+import type {
 	GenericDifferenceInformation,
 	WriteableDifferenceReport, DifferenceReport
+} from '../../../util/diff'
+import {
+	setDifference
 } from '../../../util/diff'
 import { jsonReplacer } from '../../../util/json'
 

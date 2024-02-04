@@ -8,7 +8,8 @@
 
 import { DefaultMap } from '../../../src/util/defaultmap'
 import { guard } from '../../../src/util/assert'
-import { FlowrCapabilityWithPath, FlowrCapabilityId, getCapabilityById } from '../../../src/r-bridge/data'
+import type { FlowrCapabilityWithPath, FlowrCapabilityId} from '../../../src/r-bridge/data'
+import { getCapabilityById } from '../../../src/r-bridge/data'
 
 const TheGlobalLabelMap: DefaultMap<FlowrCapabilityWithPath, string[]> = new DefaultMap(() => [])
 

@@ -1,6 +1,6 @@
-import { IPipelineStep, PipelineStepName, PipelineStepStage } from '../step'
+import type { IPipelineStep, PipelineStepName, PipelineStepStage } from '../step'
 import { verifyAndBuildPipeline } from './create'
-import { DeepReadonly, UnionToIntersection } from 'ts-essentials'
+import type { DeepReadonly, UnionToIntersection } from 'ts-essentials'
 
 /**
  * A pipeline is a collection of {@link Pipeline#steps|steps} that are executed in a certain {@link Pipeline#order|order}.

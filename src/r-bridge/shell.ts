@@ -85,9 +85,9 @@ export interface RShellExecutionOptions extends MergeableRecord {
 
 export interface RShellSessionOptions extends RShellExecutionOptions {
 	/** If set, the R session will be restarted if it exits due to an error */
-	readonly revive:             RShellReviveOptions
+	readonly revive:   RShellReviveOptions
 	/** Called when the R session is restarted, this makes only sense if `revive` is not set to `'never'` */
-	readonly onRevive:           (code: number, signal: string | null) => void
+	readonly onRevive: (code: number, signal: string | null) => void
 }
 
 /**

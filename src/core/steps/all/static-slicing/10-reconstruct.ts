@@ -1,9 +1,11 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
-import { IPipelineStep, PipelineStepStage } from '../../step'
-import { AutoSelectPredicate, reconstructToCode, SliceResult } from '../../../../slicing'
-import { DeepReadonly } from 'ts-essentials'
-import { NormalizedAst } from '../../../../r-bridge'
-import { SliceRequiredInput } from './00-slice'
+import type { IPipelineStep} from '../../step'
+import { PipelineStepStage } from '../../step'
+import type { AutoSelectPredicate, SliceResult } from '../../../../slicing'
+import { reconstructToCode } from '../../../../slicing'
+import type { DeepReadonly } from 'ts-essentials'
+import type { NormalizedAst } from '../../../../r-bridge'
+import type { SliceRequiredInput } from './00-slice'
 
 export interface ReconstructRequiredInput extends SliceRequiredInput {
 	autoSelectIf?: AutoSelectPredicate

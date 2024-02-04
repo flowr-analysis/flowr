@@ -1,4 +1,4 @@
-import { FlowrCapability } from './types'
+import type { FlowrCapability } from './types'
 import { flowrCapabilities } from './data'
 
 const supportedSymbolMap: Map<string, string> = new Map([

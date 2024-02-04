@@ -39,8 +39,8 @@ export function label(testname: string, ...ids: FlowrCapabilityId[]): string {
 }
 
 function getSortedByPath(): [FlowrCapabilityWithPath, string[]][] {
-	// sort entries alpha-numerically
-	const entries = Array.from(TheGlobalLabelMap.entries()).sort(([{ path: a }], [{ path: b }]) => {
+	// sort entries by path
+	return Array.from(TheGlobalLabelMap.entries()).sort(([{ path: a }], [{ path: b }]) => {
 		for(let i = 0; i < Math.min(a.length, b.length); i++) {
 			if(a[i] < b[i]) {
 				return -1
@@ -51,7 +51,6 @@ function getSortedByPath(): [FlowrCapabilityWithPath, string[]][] {
 		}
 		return a.length - b.length
 	})
-	return entries
 }
 
 after(() => {

@@ -18,6 +18,7 @@ import { NORMALIZE } from './all/core/10-normalize'
 import { LEGACY_STATIC_DATAFLOW } from './all/core/20-dataflow'
 import { STATIC_SLICE } from './all/static-slicing/00-slice'
 import { NAIVE_RECONSTRUCT } from './all/static-slicing/10-reconstruct'
+import { ABSTRACT_INTERPRETATION } from './all/core/21-abstract-interpretation'
 
 
 export const STEPS_PER_FILE = {

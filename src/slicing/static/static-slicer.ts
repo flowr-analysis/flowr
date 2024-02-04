@@ -24,6 +24,8 @@ import objectHash from 'object-hash'
 import { LocalScope } from '../../dataflow/common/environments/scopes'
 import type { DecodedCriteria, SlicingCriteria } from '../criterion'
 import { convertAllSlicingCriteriaToIds } from '../criterion'
+import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/common/environments'
+import { getAllLinkedFunctionDefinitions } from '../../dataflow/v1/internal/linker'
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })
 

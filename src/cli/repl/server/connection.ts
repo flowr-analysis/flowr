@@ -33,9 +33,9 @@ import { printStepResult, StepOutputFormat } from '../../../core/print/print'
 import type { DataflowInformation } from '../../../dataflow/v1/internal/info'
 import type { QuadSerializationConfiguration } from '../../../util/quads'
 import { defaultQuadIdGenerator } from '../../../util/quads'
-import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
-import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
-import { LEGACY_STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
+import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse'
+import { NORMALIZE } from '../../../core/steps/all/core/10-normalize'
+import { LEGACY_STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow'
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -146,8 +146,7 @@ export class FlowRServerConnection {
 				results: {
 					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, results.parse as string, StepOutputFormat.RdfQuads, config(), parseConfig),
 					normalize: await printStepResult(NORMALIZE, results.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
-					dataflow:  await printStepResult(LEGACY_STATIC_DATAFLOW, results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config()),
-					ai:        ''
+					dataflow:  await printStepResult(LEGACY_STATIC_DATAFLOW, results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
 				}
 			})
 		} else {

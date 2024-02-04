@@ -1,10 +1,14 @@
-import {
-	LAST_PER_FILE_STEP, LAST_STEP,
-	STEPS_PER_SLICE,
-	StepName
+import type {
+	LAST_PER_FILE_STEP,
+	StepName, SteppingSlicerInput, PipelineStepName
+	, PipelineStepStage
 } from './steps'
-import { SlicingCriteria } from '../slicing'
-import { createPipeline, Pipeline, PipelineOutput, PipelineStepOutputWithName } from './steps/pipeline'
+import {
+	LAST_STEP
+} from './steps'
+import type { SlicingCriteria } from '../slicing'
+import type { Pipeline, PipelineOutput, PipelineStepOutputWithName } from './steps/pipeline'
+import { createPipeline } from './steps/pipeline'
 import { PARSE_WITH_R_SHELL_STEP } from './steps/all/core/00-parse'
 import { NORMALIZE } from './steps/all/core/10-normalize'
 import { LEGACY_STATIC_DATAFLOW } from './steps/all/core/20-dataflow'
@@ -17,6 +21,7 @@ const legacyPipelines = {
 	'parse':       createPipeline(PARSE_WITH_R_SHELL_STEP),
 	'normalize':   createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE),
 	'dataflow':    createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW),
+	'ai':          createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW),
 	'slice':       createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE),
 	'reconstruct': createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE, NAIVE_RECONSTRUCT)
 } as const
@@ -161,8 +166,8 @@ export class SteppingSlicer<InterestedIn extends StepName = typeof LAST_STEP> {
 		this.executor.updateRequest({ criterion: newCriterion })
 	}
 
-	public async allRemainingSteps(canSwitchStage: false): Promise<Partial<StepResults<InterestedIn extends keyof typeof STEPS_PER_SLICE | undefined ? typeof LAST_PER_FILE_STEP : InterestedIn>>>
-	public async allRemainingSteps(canSwitchStage?: true): Promise<StepResults<InterestedIn>>
+	public async allRemainingSteps(canSwitchStage: false): Promise<Partial<PipelineOutput<LegacyPipelineType<InterestedIn | typeof LAST_PER_FILE_STEP>>>>
+	public async allRemainingSteps(canSwitchStage?: true): Promise<PipelineOutput<LegacyPipelineType<InterestedIn | typeof LAST_PER_FILE_STEP>>>
 	/**
 	 * Execute all remaining steps and automatically call {@link switchToSliceStage} if necessary.
 	 * @param canSwitchStage - if true, automatically switch to the slice stage if necessary
@@ -175,7 +180,7 @@ export class SteppingSlicer<InterestedIn extends StepName = typeof LAST_STEP> {
 	 *       We could solve this type problem by separating the SteppingSlicer class into two for each stage, but this would break the improved readability and unified handling
 	 *       of the slicer that I wanted to achieve with this class.
 	 */
-	public async allRemainingSteps(canSwitchStage = true): Promise<StepResults<InterestedIn | typeof LAST_PER_FILE_STEP> | Partial<StepResults<InterestedIn | typeof LAST_PER_FILE_STEP>>> {
+	public async allRemainingSteps(canSwitchStage = true): Promise<PipelineOutput<LegacyPipelineType<InterestedIn | typeof LAST_PER_FILE_STEP>> | Partial<PipelineOutput<LegacyPipelineType<InterestedIn | typeof LAST_PER_FILE_STEP>>>> {
 		return this.executor.allRemainingSteps(canSwitchStage)
 	}
 }

@@ -1,7 +1,7 @@
 import { it } from 'mocha'
 import { testRequiresNetworkConnection } from './network'
 import type { DeepPartial } from 'ts-essentials'
-import {
+import type {
 	DecoratedAstMap,
 	IdGenerator,
 	NodeId,
@@ -9,21 +9,23 @@ import {
 	RExpressionList,
 	RNode,
 	RNodeWithParent,
-	ts2r,
 	XmlParserHooks
-} from '../../../src/r-bridge'
+} from '../../../src'
+import {
+	ts2r
+} from '../../../src'
 import {
 	deterministicCountingIdGenerator, requestFromInput,
 	RShell
-} from '../../../src/r-bridge'
+} from '../../../src'
 import { assert } from 'chai'
 import type { DataflowGraph} from '../../../src/dataflow/v1'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
-import { reconstructToCode, type SlicingCriteria } from '../../../src/slicing'
+import { reconstructToCode, type SlicingCriteria } from '../../../src'
 import { testRequiresRVersion } from './version'
 import type { MergeableRecord } from '../../../src/util/objects'
 import { deepMergeObject } from '../../../src/util/objects'
-import { LAST_STEP, SteppingSlicer } from '../../../src/core'
+import { LAST_STEP, SteppingSlicer } from '../../../src'
 import { guard } from '../../../src/util/assert'
 import type { DifferenceReport } from '../../../src/util/diff'
 

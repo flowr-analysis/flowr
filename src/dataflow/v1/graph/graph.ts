@@ -1,5 +1,5 @@
 import { guard } from '../../../util/assert'
-import type { NodeId, NoInfo, RNodeWithParent } from '../.././r-bridge'
+import type { NodeId, NoInfo, RNodeWithParent } from '../../../r-bridge'
 import type {
 	IdentifierDefinition,
 	IdentifierReference} from '../../common/environments'

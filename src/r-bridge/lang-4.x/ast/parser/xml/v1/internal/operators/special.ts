@@ -1,5 +1,5 @@
 import type {
-	BinaryOperatorFlavor} from '../../../../model'
+	BinaryOperatorFlavor} from '../../../../../model'
 import {
 	ArithmeticOperatorsRAst,
 	ComparisonOperatorsRAst,

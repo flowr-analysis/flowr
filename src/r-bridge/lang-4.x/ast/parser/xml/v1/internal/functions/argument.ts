@@ -4,10 +4,11 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../../util/log'
 import { guard } from '../../../../../../../../util/assert'
 import { tryNormalizeSingleNode } from '../structure'
-import { RArgument, RNode, RSymbol, RType, RawRType } from '../../../../../model';
-import { parseLog } from '../../normalize';
-import { retrieveMetaStructure } from '../../../common/meta';
-import { RDelimiter } from '../../../../../model/nodes/info';
+import type { RArgument, RNode, RSymbol} from '../../../../../model'
+import { RType, RawRType } from '../../../../../model'
+import { parseLog } from '../../normalize'
+import { retrieveMetaStructure } from '../../../common/meta'
+import type { RDelimiter } from '../../../../../model/nodes/info'
 
 /**
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.

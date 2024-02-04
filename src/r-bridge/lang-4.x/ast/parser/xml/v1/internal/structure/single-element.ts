@@ -1,14 +1,16 @@
-import { NamedXmlBasedJson, XmlParseError } from '../../../common/input-format'
+import type { NamedXmlBasedJson} from '../../../common/input-format'
+import { XmlParseError } from '../../../common/input-format'
 import { normalizeNumber, normalizeString, tryNormalizeSymbol } from '../values'
 import { guard } from '../../../../../../../../util/assert'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 import { normalizeExpression } from '../expression'
 import { getWithTokenType, retrieveMetaStructure } from '../../../common/meta'
-import { RNode, RawRType, RType } from '../../../../../model'
+import type { RNode} from '../../../../../model'
+import { RawRType, RType } from '../../../../../model'
 import { normalizeComment } from '../other'
 import { normalizeBreak, normalizeNext } from '../loops'
 import { normalizeLineDirective } from '../other/line-directive'
-import { RDelimiter } from '../../../../../model/nodes/info'
+import type { RDelimiter } from '../../../../../model/nodes/info'
 
 function normalizeDelimiter(data: ParserData, elem: NamedXmlBasedJson): RDelimiter {
 	const {

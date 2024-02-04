@@ -10,15 +10,16 @@ function processor(results: { dataflow?: DataflowInformation }, _input: unknown)
 }
 
 export const ABSTRACT_INTERPRETATION = {
-	description:   'Run abstract interpretation',
-	processor:     processor,
-	required:      'once-per-file',
-	executed:      PipelineStepStage.OncePerFile,
-	dependencies:  [ 'dataflow' ],
-	decorates:     'dataflow',
-	name:          'ai',
-	requiredInput: {},
-	printer:       {
+	humanReadableName: 'Abstract Interpretation',
+	description:       'Run abstract interpretation',
+	processor:         processor,
+	required:          'once-per-file',
+	executed:          PipelineStepStage.OncePerFile,
+	dependencies:      [ 'dataflow' ],
+	decorates:         'dataflow',
+	name:              'ai',
+	requiredInput:     {},
+	printer:           {
 		[StepOutputFormat.Internal]: internalPrinter
 	}
 } as const satisfies DeepReadonly<IPipelineStep<'ai', typeof processor>>

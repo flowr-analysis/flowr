@@ -5,7 +5,7 @@ import type {
 import {
 	DEFAULT_XML_PARSER_CONFIG,
 	getKeyGuarded,
-	getKeysGuarded, RawRType,
+	RawRType,
 	requestFromInput
 } from '../../../r-bridge'
 import type { OutputFormatter } from '../../../statistics'
@@ -13,8 +13,8 @@ import { FontStyles } from '../../../statistics'
 import type { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../core'
 import { deepMergeObject } from '../../../util/objects'
-import { extractLocation, getTokenType, objectWithArrUnwrap } from '../../../r-bridge/lang-4.x/ast/parser/xml/common/meta';
-import { xlm2jsonObject } from '../../../r-bridge/lang-4.x/ast/parser/xml/common/xml-to-json';
+import { extractLocation, getTokenType, objectWithArrUnwrap } from '../../../r-bridge/lang-4.x/ast/parser/xml/common/meta'
+import { xlm2jsonObject } from '../../../r-bridge/lang-4.x/ast/parser/xml/common/xml-to-json'
 
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 

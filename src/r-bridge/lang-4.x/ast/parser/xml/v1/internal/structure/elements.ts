@@ -1,8 +1,8 @@
-import { NamedXmlBasedJson, XmlBasedJson } from '../../../common/input-format'
+import type { NamedXmlBasedJson, XmlBasedJson } from '../../../common/input-format'
 import { splitArrayOn } from '../../../../../../../../util/arrays'
 import { parseLog } from '../../normalize'
 import { getWithTokenType, retrieveMetaStructure } from '../../../common/meta'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from './single-element'
 import { tryNormalizeSymbol } from '../values'
 import { tryNormalizeUnary, tryNormalizeBinary } from '../operators'
@@ -12,10 +12,11 @@ import {
 	tryNormalizeWhile
 } from '../loops'
 import { tryNormalizeIfThenElse, tryNormalizeIfThen } from '../control'
-import { RType, RNode, RawRType } from '../../../../../model'
+import type { RNode} from '../../../../../model'
+import { RType, RawRType } from '../../../../../model'
 import { log } from '../../../../../../../../util/log'
 import { normalizeComment } from '../other'
-import { RDelimiter } from '../../../../../model/nodes/info'
+import type { RDelimiter } from '../../../../../model/nodes/info'
 
 function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RNode | RDelimiter)[] {
 	if(mappedWithName.length === 1) {

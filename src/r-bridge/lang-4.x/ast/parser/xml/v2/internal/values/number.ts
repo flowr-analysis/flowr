@@ -1,7 +1,9 @@
-import { XmlBasedJson } from '../../../common/input-format'
-import { boolean2ts, isBoolean, isNA, number2ts, RNa } from '../../../../../../values'
-import { RType, RLogical, RSymbol, NoInfo, RNumber } from '../../../../../model'
-import { NormalizeConfiguration } from '../../data'
+import type { XmlBasedJson } from '../../../common/input-format'
+import type { RNa } from '../../../../../../values'
+import { boolean2ts, isBoolean, isNA, number2ts } from '../../../../../../values'
+import type { RLogical, RSymbol, NoInfo, RNumber } from '../../../../../model'
+import { RType } from '../../../../../model'
+import type { NormalizeConfiguration } from '../../data'
 import { retrieveMetaStructure } from '../../../common/meta'
 
 /**

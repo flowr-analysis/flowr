@@ -1,10 +1,11 @@
-import { XmlBasedJson } from '../../../common/input-format'
+import type { XmlBasedJson } from '../../../common/input-format'
 import { retrieveMetaStructure } from '../../../common/meta'
+import type {
+	RFunctionCall} from '../../../../../model'
 import {
-	RFunctionCall,
 	RType
 } from '../../../../../model'
-import { NormalizeConfiguration } from '../../data'
+import type { NormalizeConfiguration } from '../../data'
 import { normalizeSingleToken } from '../single-element'
 
 /**

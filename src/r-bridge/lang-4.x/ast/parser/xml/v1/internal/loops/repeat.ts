@@ -1,9 +1,10 @@
-import { NamedXmlBasedJson } from '../../../common/input-format'
+import type { NamedXmlBasedJson } from '../../../common/input-format'
 import { ensureExpressionList, retrieveMetaStructure } from '../../../common/meta'
 import { parseLog } from '../../normalize'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from '../structure'
-import { RawRType, RRepeatLoop, RType } from '../../../../../model'
+import type { RRepeatLoop} from '../../../../../model'
+import { RawRType, RType } from '../../../../../model'
 import { guard } from '../../../../../../../../util/assert'
 import { executeHook, executeUnknownHook } from '../../hooks'
 

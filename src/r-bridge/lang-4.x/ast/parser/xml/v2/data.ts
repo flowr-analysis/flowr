@@ -1,5 +1,5 @@
-import { DeepReadonly } from 'ts-essentials'
-import { XmlParserConfig } from '../common/config'
+import type { DeepReadonly } from 'ts-essentials'
+import type { XmlParserConfig } from '../common/config'
 
 /**
  * Contains all information populated and present during parsing, normalizing, and desugaring of the R AST.

@@ -1,9 +1,10 @@
-import { XmlBasedJson } from '../../../common/input-format'
+import type { XmlBasedJson } from '../../../common/input-format'
 import { retrieveMetaStructure } from '../../../common/meta'
 import { string2ts } from '../../../../../../values'
-import { RType, RString } from '../../../../../model'
+import type { RString } from '../../../../../model'
+import { RType } from '../../../../../model'
 import { guard } from '../../../../../../../../util/assert'
-import { NormalizeConfiguration } from '../../data'
+import type { NormalizeConfiguration } from '../../data'
 
 /**
  * Normalize the given object as a R string (see {@link string2ts}).

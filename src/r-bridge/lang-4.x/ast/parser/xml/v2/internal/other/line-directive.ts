@@ -1,7 +1,8 @@
-import { XmlBasedJson } from '../../../common/input-format'
-import { RComment, RLineDirective, RType } from '../../../../../model'
+import type { XmlBasedJson } from '../../../common/input-format'
+import type { RComment, RLineDirective} from '../../../../../model'
+import { RType } from '../../../../../model'
 import { retrieveMetaStructure } from '../../../common/meta'
-import { NormalizeConfiguration } from '../../data'
+import type { NormalizeConfiguration } from '../../data'
 
 const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/
 

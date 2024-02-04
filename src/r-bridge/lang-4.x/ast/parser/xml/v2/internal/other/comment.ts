@@ -1,7 +1,8 @@
-import { XmlBasedJson } from '../../../common/input-format'
-import { RComment, RType } from '../../../../../model'
+import type { XmlBasedJson } from '../../../common/input-format'
+import type { RComment} from '../../../../../model'
+import { RType } from '../../../../../model'
 import { retrieveMetaStructure } from '../../../common/meta'
-import { NormalizeConfiguration } from '../../data'
+import type { NormalizeConfiguration } from '../../data'
 
 /**
  * Normalize the given object as an R comment.

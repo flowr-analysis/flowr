@@ -1,5 +1,6 @@
-import { XmlBasedJson } from '../../../common/input-format'
-import { RComment, RType } from '../../../../../model'
+import type { XmlBasedJson } from '../../../common/input-format'
+import type { RComment} from '../../../../../model'
+import { RType } from '../../../../../model'
 import { parseLog } from '../../normalize'
 import { retrieveMetaStructure } from '../../../common/meta'
 import { guard } from '../../../../../../../../util/assert'

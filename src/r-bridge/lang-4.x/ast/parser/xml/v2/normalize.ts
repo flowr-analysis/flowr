@@ -1,14 +1,16 @@
 import { log } from '../../../../../../util/log'
 import { DEFAULT_XML_PARSER_CONFIG } from '../common/config'
-import { NormalizeConfiguration } from './data'
-import {
-	decorateAst,
+import type { NormalizeConfiguration } from './data'
+import type {
 	NormalizedAst,
-	deterministicCountingIdGenerator,
 	IdGenerator,
 	NoInfo
 } from '../../../model'
-import { TokenMap } from '../../../../../retriever'
+import {
+	decorateAst,
+	deterministicCountingIdGenerator
+} from '../../../model'
+import type { TokenMap } from '../../../../../retriever'
 import { xlm2jsonObject } from '../common/xml-to-json'
 import { normalizeRoot } from './internal/root'
 

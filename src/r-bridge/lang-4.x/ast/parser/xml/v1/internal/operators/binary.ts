@@ -1,4 +1,5 @@
-import { NamedXmlBasedJson, XmlParseError } from '../../../common/input-format'
+import type { NamedXmlBasedJson} from '../../../common/input-format'
+import { XmlParseError } from '../../../common/input-format'
 import { parseLog } from '../../normalize'
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../../common/meta'
 import { identifySpecialOp } from './special'
@@ -9,7 +10,7 @@ import type {
 	RBinaryOp, RFunctionCall, RNamedFunctionCall,
 	RNode,
 	RPipe,
-	RSymbol} from '../../../../model'
+	RSymbol} from '../../../../../model'
 import {
 	ArithmeticOperatorsRAst,
 	AssignmentsRAst,

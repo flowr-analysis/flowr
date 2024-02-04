@@ -15,7 +15,7 @@ import type { XmlParserHooks } from './hooks'
 import { DEFAULT_PARSER_HOOKS } from './hooks'
 import type { DeepPartial } from 'ts-essentials'
 import type { TokenMap } from '../../../../../retriever'
-import { DEFAULT_XML_PARSER_CONFIG } from '../common/config';
+import { DEFAULT_XML_PARSER_CONFIG } from '../common/config'
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 

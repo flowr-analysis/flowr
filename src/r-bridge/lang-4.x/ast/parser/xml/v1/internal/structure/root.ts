@@ -1,11 +1,13 @@
-import { getKeyGuarded, XmlBasedJson } from '../../../common/input-format'
+import type { XmlBasedJson } from '../../../common/input-format'
+import { getKeyGuarded } from '../../../common/input-format'
 import { assureTokenType } from '../../../common/meta'
 import { normalizeBasedOnType } from './elements'
-import { ParserData } from '../../data'
-import { RType, RExpressionList, RawRType, RNode } from '../../../../../model'
+import type { ParserData } from '../../data'
+import type { RExpressionList, RNode } from '../../../../../model'
+import { RType, RawRType } from '../../../../../model'
 import { log } from '../../../../../../../../util/log'
 import { partition } from '../../../../../../../../util/arrays'
-import { RDelimiter } from '../../../../../model/nodes/info'
+import type { RDelimiter } from '../../../../../model/nodes/info'
 
 export function normalizeRootObjToAst(
 	data: ParserData,

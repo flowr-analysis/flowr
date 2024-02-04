@@ -4,9 +4,10 @@ import type { ParserData } from '../../data'
 import { tryNormalizeIfThen } from './if-then'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { ensureExpressionList } from '../../../common/meta'
-import { RIfThenElse, RType, RawRType } from '../../../../../model';
-import { parseLog } from '../../normalize';
-import { guard } from '../../../../../../../../util/assert';
+import type { RIfThenElse} from '../../../../../model'
+import { RType, RawRType } from '../../../../../model'
+import { parseLog } from '../../normalize'
+import { guard } from '../../../../../../../../util/assert'
 
 /**
  * Try to parse the construct as a {@link RIfThenElse}.

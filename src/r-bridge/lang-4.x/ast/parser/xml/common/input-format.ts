@@ -1,5 +1,5 @@
-import { RawRType } from '../../../model'
-import { DeepReadonly } from 'ts-essentials'
+import type { RawRType } from '../../../model'
+import type { DeepReadonly } from 'ts-essentials'
 
 /**
  * Thrown if the given input xml is not valid/contains unexpected elements.

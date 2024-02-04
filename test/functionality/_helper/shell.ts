@@ -19,18 +19,20 @@ import {
 	RShell
 } from '../../../src'
 import { assert } from 'chai'
-import { SlicingCriteria } from '../../../src/slicing'
+import type { SlicingCriteria } from '../../../src/slicing'
 import { testRequiresRVersion } from './version'
-import { deepMergeObject, MergeableRecord } from '../../../src/util/objects'
+import type { MergeableRecord } from '../../../src/util/objects'
+import { deepMergeObject } from '../../../src/util/objects'
 import { LAST_STEP, SteppingSlicer } from '../../../src/core'
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct'
-import { DifferenceReport } from '../../../src/util/diff'
+import type { DifferenceReport } from '../../../src/util/diff'
 import { guard } from '../../../src/util/assert'
 import { createPipeline } from '../../../src/core/steps/pipeline'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../src/core/steps/all/core/00-parse'
-import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
-import { DataflowGraph, diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
+import type { DESUGAR_NORMALIZE, NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
+import type { DataflowGraph} from '../../../src/dataflow/v1'
+import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {

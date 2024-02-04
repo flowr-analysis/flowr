@@ -1,6 +1,8 @@
-import { NormalizeConfiguration } from '../data'
-import { getKeyGuarded, XmlBasedJson } from '../../common/input-format'
-import { RawRType, RExpressionList, RNode, RType } from '../../../../model'
+import type { NormalizeConfiguration } from '../data'
+import type { XmlBasedJson } from '../../common/input-format'
+import { getKeyGuarded } from '../../common/input-format'
+import type { RExpressionList, RNode} from '../../../../model'
+import { RawRType, RType } from '../../../../model'
 import { normalizeExpression } from './expression'
 import { normalizeLog } from '../normalize'
 

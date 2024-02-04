@@ -1,9 +1,11 @@
-import {
+import type {
 	IdGenerator,
 	NoInfo,
-	normalize as oldNormalize,
 	RShell,
 	XmlParserHooks
+} from '../../../../r-bridge'
+import {
+	normalize as oldNormalize
 } from '../../../../r-bridge'
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import {
@@ -12,9 +14,10 @@ import {
 	printNormalizedAstToMermaid,
 	printNormalizedAstToMermaidUrl
 } from '../../../print/normalize-printer'
-import { IPipelineStep, PipelineStepStage } from '../../step'
-import { DeepPartial, DeepReadonly } from 'ts-essentials'
-import { ParseRequiredInput } from './00-parse'
+import type { IPipelineStep} from '../../step'
+import { PipelineStepStage } from '../../step'
+import type { DeepPartial, DeepReadonly } from 'ts-essentials'
+import type { ParseRequiredInput } from './00-parse'
 import { normalize as normalizeV2 } from '../../../../r-bridge/lang-4.x/ast/parser/xml/v2/normalize'
 
 export interface NormalizeRequiredInput extends ParseRequiredInput {

@@ -1,8 +1,8 @@
 import type { DeepReadonly } from 'ts-essentials'
 import type { XmlParserHooks } from './hooks'
-import { MergeableRecord } from '../../../../../../util/objects';
-import { XmlParserConfig } from '../common/config';
-import { SourceRange } from '../../../../../../util/range';
+import type { MergeableRecord } from '../../../../../../util/objects'
+import type { XmlParserConfig } from '../common/config'
+import type { SourceRange } from '../../../../../../util/range'
 
 /**
  * Contains all information populated and present during parsing and normalization of the R AST.

@@ -1,16 +1,18 @@
+import type {
+	NamedXmlBasedJson,
+	XmlBasedJson} from '../../../common/input-format'
 import {
 	getKeyGuarded,
-	NamedXmlBasedJson,
-	XmlBasedJson,
 	XmlParseError
 } from '../../../common/input-format'
 import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../../../common/meta'
 import { parseLog } from '../../normalize'
 import { guard } from '../../../../../../../../util/assert'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 import { tryNormalizeSymbol } from '../values'
 import { normalizeBasedOnType, splitComments, tryNormalizeSingleNode } from '../structure'
-import { RawRType, RComment, RForLoop, RNode, RSymbol, RType } from '../../../../../model'
+import type { RComment, RForLoop, RNode, RSymbol} from '../../../../../model'
+import { RawRType, RType } from '../../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { normalizeComment } from '../other'
 

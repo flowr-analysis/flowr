@@ -5,9 +5,10 @@ import { normalizeBasedOnType } from './structure'
 import { guard } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { tryToNormalizeArgument } from './functions/argument'
-import { RAccess, RArgument, RNode, RType, RawRType } from '../../../../model';
-import { parseLog } from '../normalize';
-import { retrieveMetaStructure } from '../../common/meta';
+import type { RAccess, RArgument, RNode} from '../../../../model'
+import { RType, RawRType } from '../../../../model'
+import { parseLog } from '../normalize'
+import { retrieveMetaStructure } from '../../common/meta'
 
 /**
  * Tries to normalize the given data as access (e.g., indexing).

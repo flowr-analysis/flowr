@@ -1,8 +1,9 @@
-import { XmlBasedJson } from '../../../common/input-format'
+import type { XmlBasedJson } from '../../../common/input-format'
 import { retrieveMetaStructure } from '../../../common/meta'
-import { isSymbol, RType, RSymbol } from '../../../../../model'
+import type { RSymbol } from '../../../../../model'
+import { isSymbol, RType } from '../../../../../model'
 import { startAndEndsWith } from '../../../../../../../../util/strings'
-import { NormalizeConfiguration } from '../../data'
+import type { NormalizeConfiguration } from '../../data'
 import { XML_NAME } from '../../../common/xml-to-json'
 
 // remove backticks from symbol

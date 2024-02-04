@@ -1,10 +1,12 @@
-import { XmlBasedJson, XmlParseError } from '../../../common/input-format'
+import type { XmlBasedJson} from '../../../common/input-format'
+import { XmlParseError } from '../../../common/input-format'
 import { getTokenType, retrieveMetaStructure } from '../../../common/meta'
-import { RNode, RType, RSymbol, RawRType } from '../../../../../model'
-import { NormalizeConfiguration } from '../../data'
+import type { RNode, RSymbol} from '../../../../../model'
+import { RType, RawRType } from '../../../../../model'
+import type { NormalizeConfiguration } from '../../data'
 import { log } from '../../../../../../../../util/log'
 import { guard } from '../../../../../../../../util/assert'
-import { RDelimiter } from '../../../../../model/nodes/info'
+import type { RDelimiter } from '../../../../../model/nodes/info'
 import { normalizeSingleToken } from '../single-element'
 
 /**

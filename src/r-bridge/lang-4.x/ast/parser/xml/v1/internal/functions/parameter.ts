@@ -1,13 +1,14 @@
-import { NamedXmlBasedJson } from '../../../common/input-format'
+import type { NamedXmlBasedJson } from '../../../common/input-format'
 import { parseLog } from '../../normalize'
 import { retrieveMetaStructure } from '../../../common/meta'
-import { RNode, RType, RParameter, RawRType } from '../../../../../model'
-import { ParserData } from '../../data'
+import type { RNode, RParameter} from '../../../../../model'
+import { RType, RawRType } from '../../../../../model'
+import type { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../../util/log'
 import { guard } from '../../../../../../../../util/assert'
 import { tryNormalizeSingleNode } from '../structure'
-import { RDelimiter } from '../../../../../model/nodes/info'
+import type { RDelimiter } from '../../../../../model/nodes/info'
 
 /**
  * Either parses `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]` as a parameter of a function definition in R.

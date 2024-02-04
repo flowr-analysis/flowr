@@ -39,9 +39,12 @@ function printAsMarkdown(capabilities: readonly FlowrCapability[], depth = 0, li
 	return lines.join('\n')
 }
 
-export const preamble = `
-# Flowr Capabilities	
-This is to be moved into the wiki afterward, as part of the capabilities.
+function getPreamble(): string {
+	const currentDateAndTime = new Date().toISOString().replace('T', ', ').replace(/\.\d+Z$/, ' UTC')
+	return `
+# Flowr Capabilities
+
+_This document was generated automatically from '${module.filename}' on ${currentDateAndTime}_
 
 Ticks indicate that a corresponding test exists. Besides we use colored bullets like this:
 
@@ -54,8 +57,9 @@ Ticks indicate that a corresponding test exists. Besides we use colored bullets 
 :cloud: This could be a feature diagram... :cloud:
 
 `
+}
 
 /** if we run this script, we want a markdown representation of the capabilities */
 if(require.main === module) {
-	console.log(preamble + printAsMarkdown(flowrCapabilities.capabilities))
+	console.log(getPreamble() + printAsMarkdown(flowrCapabilities.capabilities))
 }

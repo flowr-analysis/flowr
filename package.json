@@ -22,6 +22,7 @@
     "benchmark": "ts-node src/cli/benchmark-app.ts",
     "summarizer": "ts-node src/cli/summarizer-app.ts",
     "export-quads": "ts-node src/cli/export-quads-app.ts",
+    "capabilities-markdown": "ts-node src/r-bridge/data/print.ts",
     "build": "tsc --project .",
     "lint-local": "eslint src/ test/ --rule \"no-warning-comments: off\"",
     "lint": "npm run license-compat -- --summary && eslint src/ test/",

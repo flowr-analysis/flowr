@@ -10,22 +10,35 @@ import { appendEnvironments, define } from '../../../../../src/dataflow/common/e
 import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
+import { label } from '../../../_helper/label'
+import { FlowrCapabilityId } from '../../../../../src/r-bridge/data'
 
 describe('Atomic (dataflow information)', withShell((shell) => {
-	describe('uninteresting leafs', () => {
-		for(const input of ['42', '"test"', 'TRUE', 'NA', 'NULL']) {
-			assertDataflow(input, shell, input, new DataflowGraph())
+	describe('Uninteresting Leafs', () => {
+		for(const [input, id] of [
+			['42', 'numbers'],
+			['-3.14', 'numbers'],
+			['"test"', 'strings'],
+			['\'test\'', 'strings'],
+			['TRUE', 'logical'],
+			['FALSE', 'logical'],
+			['NA', 'numbers'],
+			['NULL', 'null'],
+			['Inf', 'inf-and-nan'],
+			['NaN', 'inf-and-nan']
+		] as [string, FlowrCapabilityId][]) {
+			assertDataflow(label(input, id), shell, input, new DataflowGraph())
 		}
 	})
 
-	assertDataflow('simple variable', shell,
+	assertDataflow(label('simple variable', 'name-normal'), shell,
 		'xylophone',
 		new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'xylophone' })
 	)
 
 	describe('access', () => {
 		describe('const access', () => {
-			assertDataflow('single constant', shell,
+			assertDataflow(label('single constant', 'name-normal', 'numbers', 'single-bracket-access'), shell,
 				'a[2]',
 				new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe' })
 					.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2` })

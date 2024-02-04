@@ -632,7 +632,7 @@ export const flowrCapabilities = {
 							description: '_Handle S4 classes and methods as one unit. Including Dispatch and Inheritance_ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{
-							name:        '[R6]',
+							name:        'R6',
 							id:          'oop-r6',
 							note:        'https://adv-r.hadley.nz/r6.html',
 							supported:   'not',

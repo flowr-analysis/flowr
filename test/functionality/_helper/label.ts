@@ -49,8 +49,8 @@ after(() => {
 	console.log('='.repeat(80))
 	// sort entries alpha-numerically
 	const entries = Array.from(TheGlobalLabelMap.entries()).sort(([a], [b]) => a.localeCompare(b))
-	const maxTestLength = Math.max(...entries.map(([, tests]) => tests.length)) - 1
-	const maxLabelLength = Math.max(...entries.map(([label]) => label.length)) - 1
+	const maxTestLength = Math.max(...entries.map(([, tests]) => tests.length.toString().length))
+	const maxLabelLength = Math.max(...entries.map(([label]) => label.length))
 
 	for(const [label, testNames] of entries) {
 		const paddedLabel = label.padEnd(maxLabelLength, ' ')

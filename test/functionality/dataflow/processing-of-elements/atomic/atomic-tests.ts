@@ -14,19 +14,30 @@ import { label } from '../../../_helper/label'
 
 describe('Atomic (dataflow information)', withShell((shell) => {
 	describe('Uninteresting Leafs', () => {
-		for(const [input, id] of [['42', '2/2/1'], ['"test"', '2/2/2'], ['TRUE', '2/2/3'], ['NA', '2/2/1'], ['NULL', '2/2/4']] as const) {
+		for(const [input, id] of [
+			['42', '2/2/1'],
+			['-3.14', '2/2/1'],
+			['"test"', '2/2/2'],
+			['\'test\'', '2/2/2'],
+			['TRUE', '2/2/3'],
+			['FALSE', '2/2/3'],
+			['NA', '2/2/1'],
+			['NULL', '2/2/4'],
+			['Inf', '2/2/5'],
+			['NaN', '2/2/5']
+		] as const) {
 			assertDataflow(label(input, id), shell, input, new DataflowGraph())
 		}
 	})
 
-	assertDataflow('simple variable', shell,
+	assertDataflow(label('simple variable', '1/1/1'), shell,
 		'xylophone',
 		new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'xylophone' })
 	)
 
 	describe('access', () => {
 		describe('const access', () => {
-			assertDataflow('single constant', shell,
+			assertDataflow(label('single constant', '1/1/1', '2/2/1', '2/1/6/1'), shell,
 				'a[2]',
 				new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe' })
 					.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2` })

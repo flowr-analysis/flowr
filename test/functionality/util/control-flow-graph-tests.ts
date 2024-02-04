@@ -177,8 +177,8 @@ describe('Control Flow Graph', withShell(shell => {
 				request:        requestFromInput('if(TRUE) 1; print(a=3)')
 			}).allRemainingSteps()
 			const cfg = extractCFG(result.normalize)
-			visitCfg(cfg, (node, context) => {
-				console.log(node, context.parent, context.siblings)
+			visitCfg(cfg, (_node, _context) => {
+				// console.log(node, context.parent, context.siblings)
 			})
 		})
 	}))

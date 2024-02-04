@@ -15,19 +15,19 @@ export const flowrCapabilities = {
 					capabilities: [
 						{
 							name:        'Normal',
-							id:          'normal',
+							id:          'name-normal',
 							supported:   'fully',
 							description: '_Recognize constructs like `a`, `plot`, ..._'
 						},
 						{
 							name:        'Quoted',
-							id:          'quoted',
+							id:          'name-quoted',
 							supported:   'fully',
 							description: "_Recognize `\"a\"`, `'plot'`, ..._"
 						},
 						{
 							name:        'Escaped',
-							id:          'escaped',
+							id:          'name-escaped',
 							supported:   'fully',
 							description: '_Recognize `` `a` ``, `` `plot` ``, ..._'
 						}
@@ -387,25 +387,25 @@ export const flowrCapabilities = {
 									capabilities: [
 										{
 											name:        'Named',
-											id:          'named',
+											id:          'formals-named',
 											supported:   'fully',
 											description: '_Handle `function(x) x`, ..._'
 										},
 										{
 											name:        'Default',
-											id:          'default',
+											id:          'formals-default',
 											supported:   'fully',
 											description: '_Handle `function(x = 3) x`, ..._'
 										},
 										{
 											name:        'Dot-Dot-Dot',
-											id:          'dot-dot-dot',
+											id:          'formals-dot-dot-dot',
 											supported:   'fully',
 											description: '_Handle `function(...) 3`, ..._'
 										},
 										{
 											name:        'Promises',
-											id:          'promises',
+											id:          'formals-promises',
 											supported:   'partially',
 											description: '_Handle `function(x = y) { y <- 3; x }`, `function(x = { x <- 3; x}) { x * x }`, ..._ We _try_ to identify promises correctly but this is really rudimentary.'
 										}
@@ -431,31 +431,31 @@ export const flowrCapabilities = {
 							capabilities: [
 								{
 									name:        'Pipe and Pipe-Bind',
-									id:          'pipe-and-pipe-bind',
+									id:          'built-in-pipe-and-pipe-bind',
 									supported:   'partially',
 									description: '_Handle the [new (4.1) pipe and pipe-bind syntax](https://www.r-bloggers.com/2021/05/the-new-r-pipe/): `|>`, and `=>`._ We have not enough tests and do not support pipe-bind.'
 								},
 								{
-									name:        'sequencing',
-									id:          'sequencing',
+									name:        'Sequencing',
+									id:          'built-in-sequencing',
 									supported:   'not',
 									description: '_Handle `:`, `seq`, ... as they are used often._'
 								},
 								{
 									name:        'Internal and Primitive Functions',
-									id:          'internal-and-primitive-functions',
+									id:          'built-in-internal-and-primitive-functions',
 									supported:   'partially',
 									description: '_Handle `.Internal`, `.Primitive`, ..._ In general we can not handle them as they refer to non-R code. Yet we support some (like control-flow) as defined above.'
 								},
 								{
 									name:        'Options',
-									id:          'options',
+									id:          'built-in-options',
 									supported:   'not',
 									description: '_Handle `options`, `getOption`, ..._ Currently, we do not support the function at all.'
 								},
 								{
 									name:        'Help',
-									id:          'help',
+									id:          'built-in-help',
 									supported:   'partially',
 									description: '_Handle `help`, `?`, ..._ We do not support the function in a sensible way but just ignore it (although this does not happen resolved).'
 								},
@@ -477,19 +477,19 @@ export const flowrCapabilities = {
 										},
 										{
 											name:        'Quoting',
-											id:          'quoting',
+											id:          'built-in-quoting',
 											supported:   'partially',
 											description: '_Handle `quote`, `substitute`, `bquote`, ..._ We partially ignore some of them but most likely not all.'
 										},
 										{
 											name:        'Evaluation',
-											id:          'evaluation',
+											id:          'built-in-evaluation',
 											supported:   'not',
 											description: '_Handle `eval`, `evalq`, `eval.parent`, ..._ We do not handle them at all.'
 										},
 										{
 											name:        'Parsing',
-											id:          'parsing',
+											id:          'built-in-parsing',
 											supported:   'partially',
 											description: '_Handle `parse`, `deparse`, ..._ We handle them as unknown function calls, which, in a sense, is already doing something.'
 										}
@@ -591,25 +591,25 @@ export const flowrCapabilities = {
 			capabilities: [
 				{
 					name:        'Primitive',
-					id:          'primitive',
+					id:          'types-primitive',
 					supported:   'not',
 					description: '_Recognize and resolve primitive types like `numeric`, `character`, ..._ We do not support typing currently.'
 				},
 				{
 					name:        'Non-Primitive',
-					id:          'non-primitive',
+					id:          'types-non-primitive',
 					supported:   'not',
 					description: '_Recognize and resolve non-primitive/composite types._ We do not support typing currently.'
 				},
 				{
 					name:        'Inference',
-					id:          'inference',
+					id:          'types-inference',
 					supported:   'not',
 					description: '_Infer types from the code._ We do not support typing currently.'
 				},
 				{
 					name:        'Coercion',
-					id:          'coercion',
+					id:          'types-coercion',
 					supported:   'not',
 					description: '_Handle coercion of types._ We do not support typing currently.'
 				},
@@ -619,21 +619,21 @@ export const flowrCapabilities = {
 					capabilities: [
 						{
 							name:        'S3',
-							id:          's3',
+							id:          'oop-s3',
 							note:        'https://adv-r.hadley.nz/s3.html',
 							supported:   'not',
 							description: '_Handle S3 classes and methods as one unit (with attributes etc.). Including Dispatch and Inheritance._ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{
 							name:        'S4',
-							id:          's4',
+							id:          'oop-s4',
 							note:        'https://adv-r.hadley.nz/s4.html',
 							supported:   'not',
 							description: '_Handle S4 classes and methods as one unit. Including Dispatch and Inheritance_ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{
 							name:        '[R6]',
-							id:          'r6',
+							id:          'oop-r6',
 							note:        'https://adv-r.hadley.nz/r6.html',
 							supported:   'not',
 							description: '_Handle R6 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Access Control, Finalizers, and Introspection._ We do not support typing currently and do not handle objects of these classes "as units."'

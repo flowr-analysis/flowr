@@ -11,33 +11,34 @@ import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/p
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { label } from '../../../_helper/label'
+import { FlowrCapabilityId } from '../../../../../src/r-bridge/data'
 
 describe('Atomic (dataflow information)', withShell((shell) => {
 	describe('Uninteresting Leafs', () => {
 		for(const [input, id] of [
-			['42', '2/2/1'],
-			['-3.14', '2/2/1'],
-			['"test"', '2/2/2'],
-			['\'test\'', '2/2/2'],
-			['TRUE', '2/2/3'],
-			['FALSE', '2/2/3'],
-			['NA', '2/2/1'],
-			['NULL', '2/2/4'],
-			['Inf', '2/2/5'],
-			['NaN', '2/2/5']
-		] as const) {
+			['42', 'numbers'],
+			['-3.14', 'numbers'],
+			['"test"', 'strings'],
+			['\'test\'', 'strings'],
+			['TRUE', 'logical'],
+			['FALSE', 'logical'],
+			['NA', 'numbers'],
+			['NULL', 'null'],
+			['Inf', 'inf-and-nan'],
+			['NaN', 'inf-and-nan']
+		] as [string, FlowrCapabilityId][]) {
 			assertDataflow(label(input, id), shell, input, new DataflowGraph())
 		}
 	})
 
-	assertDataflow(label('simple variable', '1/1/1'), shell,
+	assertDataflow(label('simple variable', 'name-normal'), shell,
 		'xylophone',
 		new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'xylophone' })
 	)
 
 	describe('access', () => {
 		describe('const access', () => {
-			assertDataflow(label('single constant', '1/1/1', '2/2/1', '2/1/6/1'), shell,
+			assertDataflow(label('single constant', 'name-normal', 'numbers', 'single-bracket-access'), shell,
 				'a[2]',
 				new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe' })
 					.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2` })

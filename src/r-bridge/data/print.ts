@@ -45,7 +45,8 @@ function getPreamble(): string {
 
 _This document was generated automatically from '${module.filename}' on ${currentDateAndTime}_
 
-Ticks indicate that a corresponding test exists. Besides we use colored bullets like this:
+The code-font behind each capability name is a link to the capability's id. This id can be used to reference the capability in a labeled test within flowR.
+Besides we use colored bullets like this:
 
 | <!-- -->               | <!-- -->                                              |
 | ---------------------- | ----------------------------------------------------- |

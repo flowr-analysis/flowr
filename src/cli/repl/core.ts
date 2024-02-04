@@ -22,7 +22,7 @@ const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
  */
 export function replCompleter(line: string): [string[], string] {
 	const splitCommandList = splitAtEscapeSensitive(line)
-	console.log(splitCommandList)
+	//console.log(splitCommandList)
 	//find command in commandlist
 	const keyword = replCompleterKeywords.find(k => splitCommandList[0] === k)
 	if(keyword !== undefined && keyword.startsWith(':')){
@@ -33,26 +33,21 @@ export function replCompleter(line: string): [string[], string] {
 			guard(scriptInformation !== undefined, 'script should be in script record')
 			const scriptOptions: OptionDefinition[] = scriptInformation.options
 			//console.log(scriptOptions)//TODO REMOVE
-			const possibleOptions : string[] = []
-			getPossibleCommandLineOptions(scriptOptions,splitCommandList).forEach(o => {
-				possibleOptions.push('--' + o.name)
-				if(o.alias !== undefined){
-					possibleOptions.push('-' + o.alias)
-				}
-			})
+			const possibleOptions :OptionDefinition[] = getPossibleCommandLineOptions(scriptOptions, splitCommandList)
+			const possibleCliOptionsAsString : string[] = extractCliStringsFromCommandOptions(possibleOptions)
 			//console.log(possibleOptions)//TODO REMOVE
 			//Only command was specified
 			if(splitCommandList.length < 2){
 				//console.log(possibleOptions)//TODO REMOVE
-				possibleOptions.push(line)
-				return [possibleOptions, line]
+				possibleCliOptionsAsString.push(line)
+				return [possibleCliOptionsAsString, line]
 			}
 
 			const lastOptionInProgress = splitCommandList.at(-1)
 			guard(lastOptionInProgress !== undefined, 'splitCommandList cannot be of lenth 0')
 			console.log(lastOptionInProgress) //TODO REMOVE
 			//console.log(possibleOptions) //TODO REMOVE
-			const matchingOptionsLeft = possibleOptions.filter(o => o.startsWith(lastOptionInProgress))
+			const matchingOptionsLeft = possibleCliOptionsAsString.filter(o => o.startsWith(lastOptionInProgress))
 			if(matchingOptionsLeft.length === 1){
 				const commandWithoutLastEntry = splitCommandList.slice(0, -1).join(' ')
 				return [[commandWithoutLastEntry + ' ' + matchingOptionsLeft[0]], line]
@@ -62,6 +57,17 @@ export function replCompleter(line: string): [string[], string] {
 		}
 	}
 	return [replCompleterKeywords.filter(k => k.startsWith(line)), line]
+}
+
+export function extractCliStringsFromCommandOptions(options: OptionDefinition[]):string[]{
+	const extractedCliStrings:string[] = []
+	options.forEach(o => {
+		extractedCliStrings.push('--' + o.name)
+		if(o.alias !== undefined){
+			extractedCliStrings.push('-' + o.alias)
+		}
+	})
+	return extractedCliStrings
 }
 
 function getPossibleCommandLineOptions(scriptOptions: OptionDefinition[], splitCommandList: string[]): OptionDefinition[] {

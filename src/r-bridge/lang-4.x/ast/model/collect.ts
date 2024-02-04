@@ -1,5 +1,6 @@
-import { NodeId, ParentInformation, visitAst } from './processing'
-import { RNode } from './model'
+import type { NodeId, ParentInformation} from './processing'
+import { visitAst } from './processing'
+import type { RNode } from './model'
 
 /**
  * Collects all node ids within a tree given by a respective root node

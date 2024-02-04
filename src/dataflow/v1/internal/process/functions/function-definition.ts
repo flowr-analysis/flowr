@@ -1,17 +1,21 @@
-import { DataflowInformation } from '../../info'
-import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import {
+import type { DataflowInformation } from '../../info'
+import type { DataflowProcessorInformation} from '../../../processor'
+import { processDataflowFor } from '../../../processor'
+import type {
 	IdentifierReference,
+	REnvironmentInformation} from '../../../../common/environments'
+import {
 	initializeCleanEnvironments,
 	overwriteEnvironments,
 	popLocalEnvironment,
 	pushLocalEnvironment,
-	REnvironmentInformation,
 	resolveByName
 } from '../../../../common/environments'
 import { linkInputs } from '../../linker'
-import { DataflowFunctionFlowInformation, DataflowGraph, dataflowLogger, DataflowMap, EdgeType } from '../../../index'
-import { collectAllIds, NodeId, ParentInformation, RFunctionDefinition } from '../../../../../r-bridge'
+import type { DataflowFunctionFlowInformation, DataflowMap} from '../../../index'
+import { DataflowGraph, dataflowLogger, EdgeType } from '../../../index'
+import type { NodeId, ParentInformation, RFunctionDefinition } from '../../../../../r-bridge'
+import { collectAllIds } from '../../../../../r-bridge'
 import { retrieveExitPointsOfFunctionDefinition } from './exit-points'
 import { guard } from '../../../../../util/assert'
 import { LocalScope } from '../../../../common/environments/scopes'

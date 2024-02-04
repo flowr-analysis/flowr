@@ -4,7 +4,7 @@ import { parseLog } from '../../normalize'
 import { retrieveMetaStructure } from '../../../common/meta'
 import { guard } from '../../../../../../../../util/assert'
 import { executeHook } from '../../hooks'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 
 const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/
 

@@ -1,6 +1,6 @@
-import { SingleSlicingCriterion, SlicingCriteria } from '../../slicing'
-import { NodeId, RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge'
-import { ReconstructionResult } from '../../slicing'
+import type { SingleSlicingCriterion, SlicingCriteria } from '../../slicing'
+import type { NodeId, RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge'
+import type { ReconstructionResult } from '../../slicing'
 
 export const CommonSlicerMeasurements = ['initialize R session', 'inject home path', 'ensure installation of xmlparsedata', 'retrieve token map', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const
 export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]

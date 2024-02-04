@@ -1,5 +1,5 @@
-import { IdMessageBase, MessageDefinition } from './messages'
-import Joi from 'joi'
+import type { IdMessageBase, MessageDefinition } from './messages'
+import * as Joi from 'joi'
 
 /**
  * Request the execution of the given expression as a REPL statement.

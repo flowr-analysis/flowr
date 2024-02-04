@@ -1,4 +1,4 @@
-import { NodeId } from '../../../../../src/r-bridge'
+import type { NodeId } from '../../../../../src/r-bridge'
 import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { define } from '../../../../../src/dataflow/common/environments'

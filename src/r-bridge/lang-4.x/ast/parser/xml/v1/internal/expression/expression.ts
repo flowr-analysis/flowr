@@ -1,14 +1,15 @@
-import { getKeyGuarded, NamedXmlBasedJson, XmlBasedJson } from '../../../common/input-format'
-import { getWithTokenType, retrieveMetaStructure } from '../../../common/meta'
-import { parseLog } from '../../normalize'
-import { ParserData } from '../../data'
+import type { NamedXmlBasedJson, XmlBasedJson } from '../../../common/input-format'
+import { getKeyGuarded, getKeysGuarded } from '../../../common/input-format'
+import type { ParserData } from '../../data'
 import { normalizeBasedOnType, splitComments } from '../structure'
 import { tryNormalizeFunctionCall, tryNormalizeFunctionDefinition } from '../functions'
-import { RType, RNode } from '../../../../../model'
 import { executeHook } from '../../hooks'
 import { tryNormalizeAccess } from '../access'
 import { normalizeComment } from '../other'
 import { partition } from '../../../../../../../../util/arrays'
+import { parseLog } from '../../normalize';
+import { getWithTokenType, retrieveMetaStructure } from '../../../common/meta';
+import { RNode, RType } from '../../../../../model';
 
 /**
  * Returns an expression list if there are multiple children, otherwise returns the single child directly with no expr wrapper

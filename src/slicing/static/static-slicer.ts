@@ -1,25 +1,29 @@
-import {
+import type {
 	DataflowGraph,
 	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
-	EdgeType,
-	graphToMermaidUrl,
-	initializeCleanEnvironments,
 	REnvironmentInformation
 } from '../../dataflow/v1'
-import { guard } from '../../util/assert'
 import {
-	collectAllIds,
+	EdgeType,
+	graphToMermaidUrl,
+	initializeCleanEnvironments
+} from '../../dataflow/v1'
+import { guard } from '../../util/assert'
+import type {
 	DecoratedAstMap,
 	NodeId,
 	NormalizedAst,
-	RNodeWithParent,
+	RNodeWithParent} from '../../r-bridge'
+import {
+	collectAllIds,
 	RType
 } from '../../r-bridge'
 import { log, LogLevel } from '../../util/log'
 import objectHash from 'object-hash'
 import { LocalScope } from '../../dataflow/common/environments/scopes'
-import { convertAllSlicingCriteriaToIds, DecodedCriteria, SlicingCriteria } from '../criterion'
+import type { DecodedCriteria, SlicingCriteria } from '../criterion'
+import { convertAllSlicingCriteriaToIds } from '../criterion'
 import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/common/environments'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/v1/internal/linker'
 

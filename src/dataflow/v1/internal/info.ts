@@ -1,6 +1,6 @@
 import { DataflowGraph } from '../graph'
-import { REnvironmentInformation, IdentifierReference, DataflowScopeName } from '../../common/environments'
-import { DataflowProcessorInformation } from '../processor'
+import type { REnvironmentInformation, IdentifierReference, DataflowScopeName } from '../../common/environments'
+import type { DataflowProcessorInformation } from '../processor'
 
 /**
  * Continuously updated during the dataflow analysis to hold the current state.

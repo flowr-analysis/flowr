@@ -1,6 +1,7 @@
-import { Identifier, IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
+import type { Identifier, IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
 import { dataflowLogger } from '../../v1'
-import { DataflowScopeName, LocalScope } from './scopes'
+import type { DataflowScopeName} from './scopes'
+import { LocalScope } from './scopes'
 
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.

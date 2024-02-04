@@ -4,8 +4,8 @@
  * @module
  */
 
-import { MergeableRecord } from '../../util/objects'
-import { InternalStepPrinter, IPipelineStepPrinter, StepOutputFormat } from '../print/print'
+import type { MergeableRecord } from '../../util/objects'
+import type { InternalStepPrinter, IPipelineStepPrinter, StepOutputFormat } from '../print/print'
 
 /**
  * This represents the format of a step processor which retrieves two things:

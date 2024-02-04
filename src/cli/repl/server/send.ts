@@ -1,6 +1,6 @@
 import { jsonReplacer } from '../../../util/json'
-import { IdMessageBase } from './messages/messages'
-import { Socket } from './net'
+import type { IdMessageBase } from './messages/messages'
+import type { Socket } from './net'
 import { serverLog } from './server'
 import { LogLevel } from '../../../util/log'
 

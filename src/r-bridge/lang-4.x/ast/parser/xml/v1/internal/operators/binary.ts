@@ -2,19 +2,20 @@ import { NamedXmlBasedJson, XmlParseError } from '../../../common/input-format'
 import { parseLog } from '../../normalize'
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../../common/meta'
 import { identifySpecialOp } from './special'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from '../structure'
-import {
-	ArithmeticOperatorsRAst,
-	AssignmentsRAst,
+import type {
 	BinaryOperatorFlavor,
-	ComparisonOperatorsRAst,
-	LogicalOperatorsRAst,
-	ModelFormulaOperatorsRAst, RawRType,
 	RBinaryOp, RFunctionCall, RNamedFunctionCall,
 	RNode,
 	RPipe,
-	RSymbol,
+	RSymbol} from '../../../../model'
+import {
+	ArithmeticOperatorsRAst,
+	AssignmentsRAst,
+	ComparisonOperatorsRAst,
+	LogicalOperatorsRAst,
+	ModelFormulaOperatorsRAst, RawRType,
 	RType
 } from '../../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'

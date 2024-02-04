@@ -1,5 +1,5 @@
-import { IPipelineStep, StepProcessingFunction } from '../steps'
-import { TailOfArray } from '../../util/arrays'
+import type { IPipelineStep, StepProcessingFunction } from '../steps/step'
+import type { TailOfArray } from '../../util/arrays'
 import { guard } from '../../util/assert'
 
 /**

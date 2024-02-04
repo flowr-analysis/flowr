@@ -1,13 +1,13 @@
-import { NamedXmlBasedJson } from '../../common/input-format'
-import { retrieveMetaStructure } from '../../common/meta'
-import { parseLog } from '../normalize'
-import { ParserData } from '../data'
-import { RType, RAccess, RNode, RArgument, RawRType } from '../../../../model'
+import type { NamedXmlBasedJson } from '../../common/input-format'
+import type { ParserData } from '../data'
 import { executeHook, executeUnknownHook } from '../hooks'
 import { normalizeBasedOnType } from './structure'
 import { guard } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { tryToNormalizeArgument } from './functions/argument'
+import { RAccess, RArgument, RNode, RType, RawRType } from '../../../../model';
+import { parseLog } from '../normalize';
+import { retrieveMetaStructure } from '../../common/meta';
 
 /**
  * Tries to normalize the given data as access (e.g., indexing).

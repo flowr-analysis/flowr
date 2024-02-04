@@ -1,10 +1,11 @@
-import { Reduction, SummarizedMeasurement, SummarizedSlicerStats, UltimateSlicerStats } from '../data'
+import type { Reduction, SummarizedMeasurement, SummarizedSlicerStats, UltimateSlicerStats } from '../data'
 import { DefaultMap } from '../../../defaultmap'
-import {
+import type {
 	CommonSlicerMeasurements,
 	PerSliceMeasurements,
 	SlicerStatsDataflow,
-	SlicerStatsInput,
+	SlicerStatsInput} from '../../../../benchmark'
+import {
 	summarizeMeasurement,
 	summarizeSummarizedMeasurement
 } from '../../../../benchmark'

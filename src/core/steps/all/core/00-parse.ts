@@ -1,8 +1,10 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import { parseToQuads } from '../../../print/parse-printer'
-import { IPipelineStep, PipelineStepStage } from '../../step'
-import { retrieveXmlFromRCode, RParseRequest, RShell } from '../../../../r-bridge'
-import { DeepReadonly } from 'ts-essentials'
+import type { IPipelineStep} from '../../step'
+import { PipelineStepStage } from '../../step'
+import type { RParseRequest, RShell } from '../../../../r-bridge'
+import { retrieveXmlFromRCode } from '../../../../r-bridge'
+import type { DeepReadonly } from 'ts-essentials'
 
 export interface ParseRequiredInput {
 	/** This is the {@link RShell} connection to be used to obtain the original parses AST of the R code */

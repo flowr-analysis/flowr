@@ -1,5 +1,6 @@
-import { graph2quads, QuadSerializationConfiguration } from '../../../util/quads'
-import { DataflowGraph } from './graph'
+import type { QuadSerializationConfiguration } from '../../../util/quads'
+import { graph2quads } from '../../../util/quads'
+import type { DataflowGraph } from './graph'
 
 /**
  * @see cfg2quads

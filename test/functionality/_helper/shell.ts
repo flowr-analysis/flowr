@@ -1,18 +1,23 @@
 import { it } from 'mocha'
 import { testRequiresNetworkConnection } from './network'
-import { DeepPartial } from 'ts-essentials'
-import {
+import type { DeepPartial } from 'ts-essentials'
+import type {
 	DecoratedAstMap,
-	deterministicCountingIdGenerator,
 	IdGenerator,
 	NodeId,
-	NoInfo, requestFromInput,
+	NoInfo,
 	RExpressionList,
 	RNode,
 	RNodeWithParent,
-	RShell, ts2r,
 	XmlParserHooks
-} from '../../../src/r-bridge'
+} from '../../../src'
+import {
+	ts2r
+} from '../../../src'
+import {
+	deterministicCountingIdGenerator, requestFromInput,
+	RShell
+} from '../../../src'
 import { assert } from 'chai'
 import { SlicingCriteria } from '../../../src/slicing'
 import { testRequiresRVersion } from './version'
@@ -43,8 +48,8 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
 function installWarning(pkg: string) {
 	const banner = '-'.repeat(142)
 	console.error(`${banner}
-Test's have to install package ${pkg}. 
-This slows them down significantly! 
+Test's have to install package ${pkg}.
+This slows them down significantly!
 Please see https://github.com/Code-Inspect/flowr/wiki/Linting-and-Testing#oh-no-the-tests-are-slow for more information.
 ${banner}`)
 }

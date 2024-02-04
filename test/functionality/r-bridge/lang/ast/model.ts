@@ -1,5 +1,6 @@
 import { assert } from 'chai'
-import { mergeRanges, rangeFrom, SourceRange } from '../../../../../src/util/range'
+import type { SourceRange } from '../../../../../src/util/range'
+import { mergeRanges, rangeFrom } from '../../../../../src/util/range'
 import { allPermutations } from '../../../../../src/util/arrays'
 
 describe('Model specific tests', () => {

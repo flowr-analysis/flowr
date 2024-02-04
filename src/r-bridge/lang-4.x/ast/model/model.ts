@@ -1,8 +1,8 @@
-import { SourceRange } from '../../../../util/range'
-import { RType } from './type'
-import { MergeableRecord } from '../../../../util/objects'
-import { RNa, RNull } from '../../values'
-import {
+import type { SourceRange } from '../../../../util/range'
+import type { RType } from './type'
+import type { MergeableRecord } from '../../../../util/objects'
+import type { RNa, RNull } from '../../values'
+import type {
 	RExpressionList,
 	RNumber,
 	RSymbol,
@@ -26,7 +26,7 @@ import {
 	RLineDirective,
 	RPipe
 } from './nodes'
-import { OtherInfoNode } from './nodes/info'
+import type { OtherInfoNode } from './nodes/info'
 
 /** Simply an empty interface used to say that there are additional decorations (see {@link Base}). */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface

@@ -1,7 +1,8 @@
-import { DataflowInformation } from '../../info'
-import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
+import type { DataflowInformation } from '../../info'
+import type { DataflowProcessorInformation} from '../../../processor'
+import { processDataflowFor } from '../../../processor'
 import { linkIngoingVariablesInSameScope } from '../../linker'
-import { ParentInformation, RBinaryOp } from '../../../../../r-bridge'
+import type { ParentInformation, RBinaryOp } from '../../../../../r-bridge'
 import { appendEnvironments, overwriteEnvironments } from '../../../../common/environments'
 
 export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {

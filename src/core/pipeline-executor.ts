@@ -1,6 +1,5 @@
-import { PipelineStepName, PipelineStepStage } from './steps'
 import { guard } from '../util/assert'
-import {
+import type {
 	Pipeline,
 	PipelineInput,
 	PipelineOutput,
@@ -8,6 +7,8 @@ import {
 	PipelineStepNames,
 	PipelineStepOutputWithName
 } from './steps/pipeline'
+import type { PipelineStepName} from './steps/step'
+import { PipelineStepStage } from './steps/step'
 
 /**
  * The pipeline executor allows to execute arbitrary {@link Pipeline|pipelines} in a step-by-step fashion.

@@ -3,23 +3,28 @@
  * @module
  */
 
+import type {
+	NormalizedAst,
+	RParseRequestFromFile, RParseRequestFromText, TokenMap
+} from '../r-bridge'
 import {
 	collectAllIds,
-	NormalizedAst,
 	retrieveNumberOfRTokensOfLastParse,
-	RParseRequestFromFile, RParseRequestFromText,
-	RShell, TokenMap
+	RShell
 } from '../r-bridge'
-import { IStoppableStopwatch, Measurements } from './stopwatch'
+import type { IStoppableStopwatch} from './stopwatch'
+import { Measurements } from './stopwatch'
 import { guard } from '../util/assert'
-import { DataflowInformation } from '../dataflow/v1/internal/info'
-import {
+import type { DataflowInformation } from '../dataflow/v1/internal/info'
+import type {
 	SlicingCriteria,
-	collectAllSlicingCriteria,
 	SlicingCriteriaFilter,
 	SliceResult, ReconstructionResult
 } from '../slicing'
 import {
+	collectAllSlicingCriteria
+} from '../slicing'
+import type {
 	CommonSlicerMeasurements,
 	ElapsedTime,
 	PerSliceMeasurements,
@@ -28,8 +33,9 @@ import {
 } from './stats'
 import fs from 'fs'
 import { log, LogLevel } from '../util/log'
-import { MergeableRecord } from '../util/objects'
-import { LAST_STEP, SteppingSlicer, STEPS, StepResult } from '../core'
+import type { MergeableRecord } from '../util/objects'
+import type { STEPS, StepResult } from '../core'
+import { LAST_STEP, SteppingSlicer } from '../core'
 import { withoutWhitespace } from '../util/strings'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
@@ -82,6 +88,7 @@ export class BenchmarkSlicer {
 	private loadedXml:      string | undefined
 	private tokenMap:       Record<string, string> | undefined
 	private dataflow:       DataflowInformation | undefined
+	private ai:             DataflowInformation | undefined
 	private normalizedAst:  NormalizedAst | undefined
 	private totalStopwatch: IStoppableStopwatch
 	private finished = false

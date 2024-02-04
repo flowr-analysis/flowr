@@ -1,5 +1,5 @@
-import { Base, Location, NoInfo, RNode } from '../model'
-import { RType } from '../type'
+import type { Base, Location, NoInfo, RNode } from '../model'
+import type { RType } from '../type'
 
 export interface RPipe<Info = NoInfo> extends Base<Info>, Location {
 	readonly type: RType.Pipe;

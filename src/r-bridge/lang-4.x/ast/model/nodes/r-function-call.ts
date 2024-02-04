@@ -1,6 +1,6 @@
-import { Base, Location, NoInfo, RNode } from '../model'
-import { RType } from '../type'
-import { RSymbol } from './r-symbol'
+import type { Base, Location, NoInfo, RNode } from '../model'
+import type { RType } from '../type'
+import type { RSymbol } from './r-symbol'
 
 /**
  * Calls of functions like `a()` and `foo(42, "hello")`.

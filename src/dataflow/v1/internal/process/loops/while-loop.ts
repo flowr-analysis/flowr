@@ -1,11 +1,12 @@
-import { DataflowInformation } from '../../info'
-import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
+import type { DataflowInformation } from '../../info'
+import type { DataflowProcessorInformation} from '../../../processor'
+import { processDataflowFor } from '../../../processor'
 import {
 	appendEnvironments,
 	makeAllMaybe,
 } from '../../../../common/environments'
 import { linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../linker'
-import { ParentInformation, RWhileLoop } from '../../../../../r-bridge'
+import type { ParentInformation, RWhileLoop } from '../../../../../r-bridge'
 
 export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const condition = processDataflowFor(loop.condition, data)

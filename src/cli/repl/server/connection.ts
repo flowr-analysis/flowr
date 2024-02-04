@@ -1,31 +1,38 @@
-import { LAST_STEP, SteppingSlicer, StepResults, STEPS_PER_SLICE } from '../../../core'
-import { DEFAULT_XML_PARSER_CONFIG, NormalizedAst, RShell, XmlParserConfig } from '../../../r-bridge'
+import type { StepResults} from '../../../core'
+import { LAST_STEP, SteppingSlicer, STEPS_PER_SLICE } from '../../../core'
+import type { NormalizedAst, RShell, XmlParserConfig } from '../../../r-bridge'
+import { DEFAULT_XML_PARSER_CONFIG } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
-import {
+import type {
 	FileAnalysisRequestMessage,
-	FileAnalysisResponseMessageNQuads,
+	FileAnalysisResponseMessageNQuads} from './messages/analysis'
+import {
 	requestAnalysisMessage
 } from './messages/analysis'
-import { requestSliceMessage, SliceRequestMessage, SliceResponseMessage } from './messages/slice'
-import { FlowrErrorMessage } from './messages/error'
-import { Socket } from './net'
+import type { SliceRequestMessage, SliceResponseMessage } from './messages/slice'
+import { requestSliceMessage } from './messages/slice'
+import type { FlowrErrorMessage } from './messages/error'
+import type { Socket } from './net'
 import { serverLog } from './server'
-import { ILogObj, Logger } from 'tslog'
-import {
+import type { ILogObj, Logger } from 'tslog'
+import type {
 	ExecuteEndMessage,
 	ExecuteIntermediateResponseMessage,
-	ExecuteRequestMessage,
+	ExecuteRequestMessage} from './messages/repl'
+import {
 	requestExecuteReplExpressionMessage
 } from './messages/repl'
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
-import { cfg2quads, ControlFlowInformation, extractCFG } from '../../../util/cfg'
-import { defaultQuadIdGenerator, QuadSerializationConfiguration } from '../../../util/quads'
 import { deepMergeObject } from '../../../util/objects'
 import { LogLevel } from '../../../util/log'
+import type { ControlFlowInformation} from '../../../util/cfg/cfg'
+import { cfg2quads, extractCFG } from '../../../util/cfg/cfg'
 import { printStepResult, StepOutputFormat } from '../../../core/print/print'
-import { DataflowInformation } from '../../../dataflow/v1/internal/info'
+import type { DataflowInformation } from '../../../dataflow/v1/internal/info'
+import type { QuadSerializationConfiguration } from '../../../util/quads'
+import { defaultQuadIdGenerator } from '../../../util/quads'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse'
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize'
 import { LEGACY_STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow'
@@ -139,7 +146,7 @@ export class FlowRServerConnection {
 				results: {
 					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, results.parse as string, StepOutputFormat.RdfQuads, config(), parseConfig),
 					normalize: await printStepResult(NORMALIZE, results.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
-					dataflow:  await printStepResult(LEGACY_STATIC_DATAFLOW, results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config()),
+					dataflow:  await printStepResult(LEGACY_STATIC_DATAFLOW, results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
 				}
 			})
 		} else {

@@ -1,12 +1,13 @@
-import { Feature, FeatureProcessorInput } from '../../feature'
+import type { Feature, FeatureProcessorInput } from '../../feature'
 import { appendStatisticsFile } from '../../../output'
-import { Writable } from 'ts-essentials'
-import { SourcePosition } from '../../../../util/range'
-import { MergeableRecord } from '../../../../util/objects'
-import {
+import type { Writable } from 'ts-essentials'
+import type { SourcePosition } from '../../../../util/range'
+import type { MergeableRecord } from '../../../../util/objects'
+import type {
 	ParentInformation,
 	RFunctionDefinition,
-	RNodeWithParent,
+	RNodeWithParent} from '../../../../r-bridge'
+import {
 	RType,
 	visitAst
 } from '../../../../r-bridge'

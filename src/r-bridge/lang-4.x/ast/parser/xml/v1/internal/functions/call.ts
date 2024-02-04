@@ -4,20 +4,21 @@ import { getWithTokenType, retrieveMetaStructure } from '../../../common/meta'
 import { splitArrayOn } from '../../../../../../../../util/arrays'
 import { parseLog } from '../../normalize'
 import { normalizeString, tryNormalizeSymbol } from '../values'
-import { ParserData } from '../../data'
-import {
-	RType,
+import type { ParserData } from '../../data'
+import type {
 	RNode,
 	RFunctionCall,
 	RUnnamedFunctionCall,
 	RNamedFunctionCall,
 	RNext,
 	RBreak,
-	RArgument, RawRType
+	RArgument} from '../../../../../model'
+import {
+	RType, RawRType
 } from '../../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { tryToNormalizeArgument } from './argument'
-import { SourceRange } from '../../../../../../../../util/range'
+import type { SourceRange } from '../../../../../../../../util/range'
 import { normalizeExpression } from '../expression'
 
 /**

@@ -1,10 +1,11 @@
-import { NamedXmlBasedJson, XmlParseError } from '../../../common/input-format'
+import type { NamedXmlBasedJson} from '../../../common/input-format'
+import { XmlParseError } from '../../../common/input-format'
 import { tryNormalizeSingleNode } from '../structure'
-import { ensureExpressionList, retrieveMetaStructure } from '../../../common/meta'
-import { parseLog } from '../../normalize'
-import { ParserData } from '../../data'
-import { RawRType, RIfThenElse, RType } from '../../../../../model'
+import type { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
+import { RIfThenElse, RType, RawRType } from '../../../../../model';
+import { parseLog } from '../../normalize';
+import { ensureExpressionList, retrieveMetaStructure } from '../../../common/meta';
 
 /**
  * Try to parse the construct as a {@link RIfThenElse}.

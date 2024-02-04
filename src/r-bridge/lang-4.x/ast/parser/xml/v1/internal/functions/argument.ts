@@ -1,13 +1,13 @@
-import { NamedXmlBasedJson } from '../../../common/input-format'
-import { parseLog } from '../../normalize'
-import { retrieveMetaStructure } from '../../../common/meta'
-import { RNode, RType, RSymbol, RArgument, RawRType } from '../../../../../model'
-import { ParserData } from '../../data'
+import type { NamedXmlBasedJson } from '../../../common/input-format'
+import type { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../../util/log'
 import { guard } from '../../../../../../../../util/assert'
 import { tryNormalizeSingleNode } from '../structure'
-import { RDelimiter } from '../../../../../model/nodes/info'
+import { RArgument, RNode, RSymbol, RType, RawRType } from '../../../../../model';
+import { parseLog } from '../../normalize';
+import { retrieveMetaStructure } from '../../../common/meta';
+import { RDelimiter } from '../../../../../model/nodes/info';
 
 /**
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.

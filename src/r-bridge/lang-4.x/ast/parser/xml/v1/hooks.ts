@@ -1,5 +1,4 @@
-import { NamedXmlBasedJson, XmlBasedJson } from '../common/input-format'
-import {
+import type {
 	RNumber,
 	NoInfo,
 	RBinaryOp,
@@ -25,9 +24,10 @@ import {
 	RLineDirective,
 	RPipe
 } from '../../../model'
-import { RNa } from '../../../../values'
-import { ParserData } from './data'
-import { DeepReadonly, DeepRequired } from 'ts-essentials'
+import type { RNa } from '../../../../values'
+import type { ParserData } from './data'
+import type { DeepReadonly, DeepRequired } from 'ts-essentials'
+import { NamedXmlBasedJson, XmlBasedJson } from '../common/input-format';
 
 /** Denotes that if you return `undefined`, the parser will automatically take the original arguments (unchanged) */
 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- makes writing hooks easier

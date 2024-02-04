@@ -1,14 +1,11 @@
-import {
-	getKeyGuarded,
-	NamedXmlBasedJson,
-	XmlBasedJson,
-	XmlParseError
-} from './input-format'
-import { rangeFrom, rangeStartsCompletelyBefore, SourceRange } from '../../../../../../util/range'
-import { XmlParserConfig } from './config'
-import { RawRType, RExpressionList, RNode, RType } from '../../../model'
+import type { SourceRange } from '../../../../../../util/range'
+import { rangeFrom, rangeStartsCompletelyBefore } from '../../../../../../util/range'
+import type { RawRType, RExpressionList, RNode} from '../../../model'
+import { RType } from '../../../model'
 import { guard } from '../../../../../../util/assert'
 import { XML_NAME } from './xml-to-json'
+import { NamedXmlBasedJson, XmlBasedJson, XmlParseError, getKeyGuarded } from './input-format';
+import { XmlParserConfig } from './config';
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper

@@ -1,4 +1,5 @@
-import { Environment, REnvironmentInformation } from './environment'
+import type { REnvironmentInformation } from './environment'
+import { Environment } from './environment'
 import { guard } from '../../../util/assert'
 import { LocalScope } from './scopes'
 

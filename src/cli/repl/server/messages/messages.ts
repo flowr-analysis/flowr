@@ -3,12 +3,12 @@
  *
  * @module
  */
-import Joi from 'joi'
-import { FlowrHelloResponseMessage } from './hello'
-import { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from './analysis'
-import { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './repl'
-import { SliceRequestMessage, SliceResponseMessage } from './slice'
-import { FlowrErrorMessage } from './error'
+import * as Joi from 'joi'
+import type { FlowrHelloResponseMessage } from './hello'
+import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from './analysis'
+import type { ExecuteEndMessage, ExecuteIntermediateResponseMessage, ExecuteRequestMessage } from './repl'
+import type { SliceRequestMessage, SliceResponseMessage } from './slice'
+import type { FlowrErrorMessage } from './error'
 
 /**
  * If you send a message it must *not* contain a newline but the message must be terminated by a newline.

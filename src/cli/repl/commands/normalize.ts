@@ -1,5 +1,6 @@
-import { ReplCommand } from './main'
-import { requestFromInput, RShell } from '../../../r-bridge'
+import type { ReplCommand } from './main'
+import type { RShell } from '../../../r-bridge'
+import { requestFromInput } from '../../../r-bridge'
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util/mermaid'
 import { PipelineExecutor } from '../../../core/pipeline-executor'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse'

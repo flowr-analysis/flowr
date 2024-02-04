@@ -2,6 +2,7 @@
   "compilerOptions": {
     "incremental": true,
     "esModuleInterop": true,
+    "declaration": true,
     "resolveJsonModule": true,
     "target": "ESNext",
     "module": "commonjs",
@@ -14,7 +15,7 @@
   },
   "lib": [ "esnext", "dom" ],
   "exclude": [
-    "node_modules",
-    "node_modules/*"
+    "node_modules/**/*",
+    "dist/**/*"
   ]
 }

@@ -1,5 +1,5 @@
-import { MergeableRecord } from '../../../objects'
-import { UltimateSlicerStats } from '../data'
+import type { MergeableRecord } from '../../../objects'
+import type { UltimateSlicerStats } from '../data'
 import fs from 'fs'
 import { jsonReplacer } from '../../../json'
 

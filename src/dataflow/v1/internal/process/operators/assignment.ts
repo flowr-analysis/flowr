@@ -1,11 +1,14 @@
-import { collectAllIds, NodeId, ParentInformation, RAssignmentOp, RNode, RType } from '../../../../../r-bridge'
-import { DataflowInformation } from '../../info'
-import { DataflowProcessorInformation, processDataflowFor } from '../../../processor'
+import type { NodeId, ParentInformation, RAssignmentOp, RNode} from '../../../../../r-bridge'
+import { collectAllIds, RType } from '../../../../../r-bridge'
+import type { DataflowInformation } from '../../info'
+import type { DataflowProcessorInformation} from '../../../processor'
+import { processDataflowFor } from '../../../processor'
 import { EdgeType } from '../../../graph'
+import type {
+	IdentifierDefinition,
+	IdentifierReference} from '../../../../common/environments'
 import {
 	define,
-	IdentifierDefinition,
-	IdentifierReference,
 	overwriteEnvironments
 } from '../../../../common/environments'
 import { log } from '../../../../../util/log'

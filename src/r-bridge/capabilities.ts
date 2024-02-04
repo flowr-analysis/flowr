@@ -1,4 +1,4 @@
-import { guard } from '../../src/util/assert'
+import { guard } from '../util/assert'
 
 const enum RequiredFeature {
 	/** https://github.com/Code-Inspect/flowr/labels/typing */
@@ -768,4 +768,3 @@ export const flowrCapabilities = {
 		}
 	]
 } as const satisfies FlowrCapabilities
-

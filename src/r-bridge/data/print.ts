@@ -1,4 +1,3 @@
-// TODO automatically produce wiki page from this!
 import { FlowrCapability } from './types'
 import { flowrCapabilities } from './data'
 

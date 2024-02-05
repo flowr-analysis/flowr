@@ -30,7 +30,7 @@ export const DEFAULT_REPL_READLINE_CONFIGURATION: readline.ReadLineOptions = {
 	output:                  process.stdout,
 	tabSize:                 4,
 	terminal:                true,
-	history:                 loadHistory(defaultHistoryFile),
+	history:                 loadReplHistory(defaultHistoryFile),
 	removeHistoryDuplicates: true,
 	completer:               replCompleter
 }
@@ -101,7 +101,7 @@ export async function repl(shell = new RShell({ revive: 'always' }), rl = readli
 	}
 }
 
-function loadHistory(historyFile: string): string[] | undefined {
+export function loadReplHistory(historyFile: string): string[] | undefined {
 	if(!fs.existsSync(historyFile))
 		return undefined
 	return fs.readFileSync(historyFile, {encoding: 'utf-8'}).split('\n')

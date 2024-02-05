@@ -28,6 +28,7 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 		const path = removeTokenMapQuotationMarks(sourceFile.lexeme)
 		const request = sourceProvider.createRequest(path)
 
+		// TODO we shouldn't skip a re-analysis *always*, just when it's a cycle - right?
 		// check if the sourced file has already been dataflow analyzed, and if so, skip it
 		if(data.sourceReferences.has(path)) {
 			dataflowLogger.info(`Sourced file ${path} was already dataflow analyzed, skipping`)

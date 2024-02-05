@@ -7,7 +7,9 @@ import {define} from '../../../../../src/dataflow/environments'
 
 describe('source', withShell(shell => {
 	const sources = {
-		simple: 'N <- 9'
+		simple:     'N <- 9',
+		recursive1: 'x <- 1\nsource("recursive2")',
+		recursive2: 'cat(x)\nsource("recursive1")'
 	}
 	setSourceProvider(requestProviderFromText(sources))
 
@@ -95,4 +97,6 @@ describe('source', withShell(shell => {
 		.addEdge('3', '2', EdgeType.Argument, 'always')
 		.addEdge('3', BuiltIn, EdgeType.Reads, 'always')
 	)
+
+	assertDataflow('recursive source', shell, sources.recursive1, new DataflowGraph())
 }))

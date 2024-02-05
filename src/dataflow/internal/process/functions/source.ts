@@ -6,6 +6,7 @@ import {executeSingleSubStep} from '../../../../core'
 import {type DataflowProcessorInformation, processDataflowFor} from '../../../processor'
 import {type DataflowScopeName, type Identifier, overwriteEnvironments, type REnvironmentInformation, resolveByName} from '../../../environments'
 import type {DataflowInformation} from '../../info'
+import {dataflowLogger} from '../../../index'
 
 let sourceProvider = requestProviderFromFile()
 
@@ -28,7 +29,13 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 		const request = sourceProvider.createRequest(path)
 
 		// parse, normalize and dataflow the sourced file
-		const parsed = executeSingleSubStep('parse', request, executor) as string
+		let parsed: string
+		try {
+			parsed = executeSingleSubStep('parse', request, executor) as string
+		} catch(e) {
+			dataflowLogger.warn(`Failed to parse sourced file ${path}, ignoring: ${(e as Error).message}`)
+			return information
+		}
 		const normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap(), undefined, fileNameDeterministicCountingIdGenerator(path)) as NormalizedAst<OtherInfo & ParentInformation>
 		const dataflow = processDataflowFor(normalized.ast, {...data, environments: information.environments})
 

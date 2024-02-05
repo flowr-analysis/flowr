@@ -6,9 +6,10 @@ import {UnnamedArgumentPrefix} from '../../../../../src/dataflow/internal/proces
 import {define} from '../../../../../src/dataflow/environments'
 
 describe('source', withShell(shell => {
-	setSourceProvider(requestProviderFromText({
+	const sources = {
 		simple: 'N <- 9'
-	}))
+	}
+	setSourceProvider(requestProviderFromText(sources))
 
 	const envWithN = define(
 		{nodeId: 'simple-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-2' },
@@ -76,5 +77,22 @@ describe('source', withShell(shell => {
 		.addEdge('8', 'simple-0', EdgeType.Reads, 'always')
 		.addEdge('9', '8', EdgeType.Reads, 'always')
 		.addEdge('10', '9', EdgeType.Argument, 'always')
-		.addEdge('10', BuiltIn, EdgeType.Reads, 'always'))
+		.addEdge('10', BuiltIn, EdgeType.Reads, 'always')
+	)
+
+	// missing sources should just be ignored
+	assertDataflow('missing source', shell, 'source("missing")', new DataflowGraph()
+		.addVertex({
+			tag:         'function-call',
+			name:        'source',
+			id:          '3',
+			environment: initializeCleanEnvironments(),
+			args:        [{
+				nodeId: '2', name: `${UnnamedArgumentPrefix}2`, scope: LocalScope, used: 'always'
+			}]
+		})
+		.addVertex({tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2`})
+		.addEdge('3', '2', EdgeType.Argument, 'always')
+		.addEdge('3', BuiltIn, EdgeType.Reads, 'always')
+	)
 }))

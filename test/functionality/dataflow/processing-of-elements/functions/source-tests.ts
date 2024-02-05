@@ -15,6 +15,7 @@ describe('source', withShell(shell => {
 		LocalScope,
 		initializeCleanEnvironments()
 	)
+
 	assertDataflow('simple source', shell, 'source("simple")\ncat(N)', new DataflowGraph()
 		.addVertex({ tag: 'variable-definition', id: 'simple-0', name: 'N', scope: LocalScope })
 		.addVertex({
@@ -44,4 +45,36 @@ describe('source', withShell(shell => {
 		.addEdge('7', '6', EdgeType.Argument, 'always')
 		.addEdge('7', BuiltIn, EdgeType.Reads, 'always')
 	)
+
+	assertDataflow('conditional', shell, 'if (x) { source("simple") }\ncat(N)', new DataflowGraph()
+		.addVertex({ tag: 'variable-definition', id: 'simple-0', name: 'N', scope: LocalScope })
+		.addVertex({
+			tag:         'function-call',
+			name:        'source',
+			id:          '4',
+			environment: initializeCleanEnvironments(),
+			args:        [{
+				nodeId: '3', name: `${UnnamedArgumentPrefix}3`, scope: LocalScope, used: 'always' }
+			],
+			when: 'maybe'
+		})
+		.addVertex({
+			tag:         'function-call',
+			name:        'cat',
+			id:          '10',
+			environment: envWithN,
+			args:        [{
+				nodeId: '9', name: `${UnnamedArgumentPrefix}9`, scope: LocalScope, used: 'always'
+			}]
+		})
+		.addVertex({tag: 'use', id: '0', name: 'x', scope: LocalScope})
+		.addVertex({tag: 'use', id: '8', name: 'N', environment: envWithN})
+		.addVertex({tag: 'use', id: '3', name: `${UnnamedArgumentPrefix}3`})
+		.addVertex({tag: 'use', id: '9', name: `${UnnamedArgumentPrefix}9`, environment: envWithN})
+		.addEdge('4', '3', EdgeType.Argument, 'always')
+		.addEdge('4', BuiltIn, EdgeType.Reads, 'maybe')
+		.addEdge('8', 'simple-0', EdgeType.Reads, 'always')
+		.addEdge('9', '8', EdgeType.Reads, 'always')
+		.addEdge('10', '9', EdgeType.Argument, 'always')
+		.addEdge('10', BuiltIn, EdgeType.Reads, 'always'))
 }))

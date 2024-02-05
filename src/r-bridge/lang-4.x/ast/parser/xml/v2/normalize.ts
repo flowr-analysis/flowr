@@ -31,3 +31,4 @@ export async function normalize(xmlString: string, tokenMap: TokenMap, getId: Id
 
 	return decorateAst(normalizeRoot(config, object), getId)
 }
+

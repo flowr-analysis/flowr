@@ -13,7 +13,7 @@ import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { label } from '../../../_helper/label'
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data'
 
-describe('Atomic (dataflow information)', withShell((shell) => {
+describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {
 		for(const [input, id] of [
 			['42', 'numbers'],
@@ -38,24 +38,24 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 
 	describe('access', () => {
 		describe('const access', () => {
-			assertDataflow(label('single constant', 'name-normal', 'numbers', 'single-bracket-access'), shell,
-				'a[2]',
+			assertDataflow(label('single constant', 'name-normal', 'numbers', 'single-bracket-access'),
+				shell,'a[2]',
 				new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe' })
 					.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2` })
 					.addEdge('0', '2', EdgeType.Reads, 'always')
 			)
-			assertDataflow('double constant', shell,
-				'a[[2]]',
+			assertDataflow(label('double constant', 'name-normal', 'numbers', 'double-bracket-access'),
+				shell, 'a[[2]]',
 				new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe' })
 					.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2` })
 					.addEdge('0', '2', EdgeType.Reads, 'always')
 			)
-			assertDataflow('dollar constant', shell,
-				'a$b',
+			assertDataflow(label('dollar constant', 'name-normal', 'dollar-access'),
+				shell, 'a$b',
 				new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe' })
 			)
-			assertDataflow('at constant', shell,
-				'a@b',
+			assertDataflow(label('at constant','name-normal', 'slotted-access'),
+				shell, 'a@b',
 				new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe' })
 			)
 			assertDataflow('chained constant', shell,

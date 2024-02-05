@@ -54,15 +54,16 @@ function getSortedByPath(): [FlowrCapabilityWithPath, string[]][] {
 	})
 }
 
-after(() => {
+function printLabelSummary(): void {
 	console.log('='.repeat(80))
 	const entries = getSortedByPath()
-	const maxTestLength = Math.max(...entries.map(([, tests]) => tests.length.toString().length))
 
 	for(const [label, testNames] of entries) {
 		const paddedLabel = `[${label.path.join('/')}] ${label.name}`
-		const paddedTestLength = testNames.length.toString().padStart(maxTestLength, ' ')
 		const tests = testNames.length > 1 ? 'tests:' : 'test: '
-		console.log(`\x1b[1m${paddedLabel}\x1b[0m is covered by ${paddedTestLength} ${tests}\n     \x1b[36m${testNames.join('\x1b[m, \x1b[36m')}\x1b[m`)
+		console.log(`\x1b[1m${paddedLabel}\x1b[0m is covered by ${testNames.length} ${tests}\n     \x1b[36m${testNames.join('\x1b[m, \x1b[36m')}\x1b[m`)
 	}
-})
+}
+
+after(printLabelSummary)
+process.on('exit', printLabelSummary)

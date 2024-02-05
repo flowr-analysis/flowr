@@ -1,5 +1,5 @@
 import type {RArgument, RParseRequestProvider} from '../../../../r-bridge'
-import { requestProviderFromFile} from '../../../../r-bridge'
+import {requestProviderFromFile} from '../../../../r-bridge'
 import {fileNameDeterministicCountingIdGenerator, type NormalizedAst, type ParentInformation, removeTokenMapQuotationMarks, type RFunctionCall, RType} from '../../../../r-bridge'
 import {RShellExecutor} from '../../../../r-bridge/shell-executor'
 import {executeSingleSubStep} from '../../../../core'
@@ -28,6 +28,12 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 		const path = removeTokenMapQuotationMarks(sourceFile.lexeme)
 		const request = sourceProvider.createRequest(path)
 
+		// check if the sourced file has already been dataflow analyzed, and if so, skip it
+		if(data.sourceReferences.has(path)) {
+			dataflowLogger.info(`Sourced file ${path} was already dataflow analyzed, skipping`)
+			return information
+		}
+
 		// parse, normalize and dataflow the sourced file
 		let parsed: string
 		try {
@@ -36,11 +42,15 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 			dataflowLogger.warn(`Failed to parse sourced file ${path}, ignoring: ${(e as Error).message}`)
 			return information
 		}
+
+		// make the currently analyzed file remember that it already referenced the path
+		data.sourceReferences.set(data.currentPath, [...(data.sourceReferences.get(data.currentPath) ?? []), path])
+
 		const normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap(), undefined, fileNameDeterministicCountingIdGenerator(path)) as NormalizedAst<OtherInfo & ParentInformation>
-		const dataflow = processDataflowFor(normalized.ast, {...data, environments: information.environments})
+		const dataflow = processDataflowFor(normalized.ast, {...data, currentPath: path, environments: information.environments})
 
 		// update our graph with the sourced file's information
-	    const newInformation = {...information}
+		const newInformation = {...information}
 		newInformation.environments = overwriteEnvironments(information.environments, dataflow.environments)
 		newInformation.graph.mergeWith(dataflow.graph)
 		// this can be improved, see issue #628

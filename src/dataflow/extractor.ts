@@ -49,7 +49,14 @@ const processors: DataflowProcessors<any> = {
 }
 
 export function produceDataFlowGraph<OtherInfo>(ast: NormalizedAst<OtherInfo & ParentInformation>, initialScope: DataflowScopeName = LocalScope): DataflowInformation {
-	return processDataflowFor<OtherInfo>(ast.ast, { completeAst: ast, activeScope: initialScope, environments: initializeCleanEnvironments(), processors: processors as DataflowProcessors<OtherInfo & ParentInformation> })
+	return processDataflowFor<OtherInfo>(ast.ast, {
+		completeAst:      ast,
+		activeScope:      initialScope,
+		environments:     initializeCleanEnvironments(),
+		processors:       processors as DataflowProcessors<OtherInfo & ParentInformation>,
+		currentPath:      'initial',
+		sourceReferences: new Map<string, string[]>()
+	})
 }
 
 export function processBinaryOp<OtherInfo>(node: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {

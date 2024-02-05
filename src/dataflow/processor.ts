@@ -13,20 +13,23 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	/**
    * Initial and frozen ast-information
    */
-	readonly completeAst:  NormalizedAst<OtherInfo>
+	readonly completeAst:      NormalizedAst<OtherInfo>
 	/**
    * Correctly contains pushed local scopes introduced by `function` scopes.
    * Will by default *not* contain any symbol-bindings introduces along the way, they have to be decorated when moving up the tree.
    */
-	readonly environments: REnvironmentInformation
+	readonly environments:     REnvironmentInformation
 	/**
    * Name of the currently active scope, (hopefully) always {@link LocalScope | Local}
    */
-	readonly activeScope:  DataflowScopeName
+	readonly activeScope:      DataflowScopeName
 	/**
    * Other processors to be called by the given functions
    */
-	readonly processors:   DataflowProcessors<OtherInfo>
+	readonly processors:       DataflowProcessors<OtherInfo>
+	// TODO using "initial" as the default path doesn't allow us to skip re-sourcing the initial file - how do we find out the initial file's name/path?
+	readonly currentPath:      string | 'initial'
+	readonly sourceReferences: Map<string, string[]>
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation
@@ -55,6 +58,3 @@ export type DataflowProcessors<OtherInfo> = {
 export function processDataflowFor<OtherInfo>(current: RNodeWithParent<OtherInfo>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	return data.processors[current.type](current as never, data)
 }
-
-
-

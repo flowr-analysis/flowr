@@ -36,7 +36,7 @@ export type ScriptInformation = MasterScriptInformation | HelperScriptInformatio
 /**
  * We hold `_scripts` internally, as the modifiable variant and export the readonly scripts
  */
-const _scripts = {
+const _scripts: Record<string, ScriptInformation> = {
 	'slicer': {
 		toolName:     'slicer',
 		target:       'slicer-app',
@@ -100,10 +100,5 @@ const _scripts = {
 export const scripts = _scripts as Record<keyof typeof _scripts, ScriptInformation>
 
 export function getScriptInformation(scriptName: string): ScriptInformation | undefined{
-	for(const [script, info] of Object.entries(scripts)){
-		if(script === scriptName){
-			return info
-		}
-	}
-	return undefined
+	return scripts[scriptName]
 }

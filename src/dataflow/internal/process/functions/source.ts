@@ -1,6 +1,7 @@
 import type {RArgument, RParseRequestProvider} from '../../../../r-bridge'
+import { sourcedDeterministicCountingIdGenerator} from '../../../../r-bridge'
 import {requestProviderFromFile} from '../../../../r-bridge'
-import {fileNameDeterministicCountingIdGenerator, type NormalizedAst, type ParentInformation, removeTokenMapQuotationMarks, type RFunctionCall, RType} from '../../../../r-bridge'
+import {type NormalizedAst, type ParentInformation, removeTokenMapQuotationMarks, type RFunctionCall, RType} from '../../../../r-bridge'
 import {RShellExecutor} from '../../../../r-bridge/shell-executor'
 import {executeSingleSubStep} from '../../../../core'
 import {type DataflowProcessorInformation, processDataflowFor} from '../../../processor'
@@ -34,16 +35,19 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 			dataflowLogger.info(`Found loop in dataflow analysis for ${requestString}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`)
 			return information
 		}
-		// we push the request into the reference chain regardless of whether it fails so that it doesn't have to re-fail later
-		data.referenceChain.push(request)
 
 		// parse, normalize and dataflow the sourced file
 		let normalized: NormalizedAst<OtherInfo & ParentInformation>
 		let dataflow: DataflowInformation
 		try {
 			const parsed = executeSingleSubStep('parse', request, executor) as string
-			normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap(), undefined, fileNameDeterministicCountingIdGenerator(path)) as NormalizedAst<OtherInfo & ParentInformation>
-			dataflow = processDataflowFor(normalized.ast, {...data, currentRequest: request, environments: information.environments})
+			normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap(), undefined, sourcedDeterministicCountingIdGenerator(path, functionCall.location)) as NormalizedAst<OtherInfo & ParentInformation>
+			dataflow = processDataflowFor(normalized.ast, {
+				...data,
+				currentRequest: request,
+				environments:   information.environments,
+				referenceChain: [...data.referenceChain, request]
+			})
 		} catch(e) {
 			dataflowLogger.warn(`Failed to analyze sourced file ${requestString}, skipping: ${(e as Error).message}`)
 			return information

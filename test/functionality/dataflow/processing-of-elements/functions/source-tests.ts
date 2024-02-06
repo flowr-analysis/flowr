@@ -14,12 +14,12 @@ describe('source', withShell(shell => {
 	setSourceProvider(requestProviderFromText(sources))
 
 	const envWithSimpleN = define(
-		{nodeId: 'simple-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-2' },
+		{nodeId: 'simple-1:1-1:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-1:1-1:6-2' },
 		LocalScope,
 		initializeCleanEnvironments()
 	)
 	assertDataflow('simple source', shell, 'source("simple")\ncat(N)', new DataflowGraph()
-		.addVertex({ tag: 'variable-definition', id: 'simple-0', name: 'N', scope: LocalScope })
+		.addVertex({ tag: 'variable-definition', id: 'simple-1:1-1:6-0', name: 'N', scope: LocalScope })
 		.addVertex({
 			tag:         'function-call',
 			name:        'source',
@@ -43,17 +43,12 @@ describe('source', withShell(shell => {
 		.addVertex({tag: 'use', id: '6', name: `${UnnamedArgumentPrefix}6`, environment: envWithSimpleN})
 		.addEdge('3', '2', EdgeType.Argument, 'always')
 		.addEdge('3', BuiltIn, EdgeType.Reads, 'always')
-		.addEdge('5', 'simple-0', EdgeType.Reads, 'always')
+		.addEdge('5', 'simple-1:1-1:6-0', EdgeType.Reads, 'always')
 		.addEdge('6', '5', EdgeType.Reads, 'always')
 		.addEdge('7', '6', EdgeType.Argument, 'always')
 		.addEdge('7', BuiltIn, EdgeType.Reads, 'always')
 	)
 
-	const envWithLocalN = define(
-		{nodeId: '4', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: '6' },
-		LocalScope,
-		initializeCleanEnvironments()
-	)
 	assertDataflow('multiple source', shell, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)', new DataflowGraph()
 		.addVertex({
 			tag:         'function-call',
@@ -69,7 +64,7 @@ describe('source', withShell(shell => {
 			tag:         'function-call',
 			name:        'source',
 			id:          '10',
-			environment: envWithLocalN,
+			environment: define({nodeId: '4', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: '6' }, LocalScope, initializeCleanEnvironments()),
 			args:        [{
 				nodeId: '9', name: `${UnnamedArgumentPrefix}9`, scope: LocalScope, used: 'always' }
 			],
@@ -79,18 +74,40 @@ describe('source', withShell(shell => {
 			tag:         'function-call',
 			name:        'cat',
 			id:          '14',
-			environment: envWithLocalN,
+			environment: define({nodeId: 'simple-3:1-3:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-3:1-3:6-2' }, LocalScope, initializeCleanEnvironments()),
 			args:        [{
 				nodeId: '13', name: `${UnnamedArgumentPrefix}13`, scope: LocalScope, used: 'always' }
 			],
 			when: 'always'
 		})
-		.addVertex({ tag: 'variable-definition', id: 'simple-0', name: 'N', scope: LocalScope })
+		.addVertex({
+			tag:         'variable-definition',
+			id:          'simple-3:1-3:6-0',
+			name:        'N',
+			scope:       LocalScope,
+			environment: define({nodeId: '4', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: '6' }, LocalScope, initializeCleanEnvironments())
+		})
+		.addVertex({ tag: 'variable-definition', id: 'simple-1:1-1:6-0', name: 'N', scope: LocalScope })
 		.addVertex({ tag: 'variable-definition', id: '4', name: 'N', scope: LocalScope, environment: envWithSimpleN })
 		.addVertex({tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2` })
-		.addVertex({tag: 'use', id: '9', name: `${UnnamedArgumentPrefix}9`, environment: envWithLocalN })
-		.addVertex({tag: 'use', id: '13', name: `${UnnamedArgumentPrefix}13`, environment: envWithLocalN })
-		.addVertex({tag: 'use', id: '12', name: 'N', environment: envWithLocalN })
+		.addVertex({
+			tag:         'use',
+			id:          '9',
+			name:        `${UnnamedArgumentPrefix}9`,
+			environment: define({nodeId: '4', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: '6' }, LocalScope, initializeCleanEnvironments())
+		})
+		.addVertex({
+			tag:         'use',
+			id:          '13',
+			name:        `${UnnamedArgumentPrefix}13`,
+			environment: define({nodeId: 'simple-3:1-3:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-3:1-3:6-2' }, LocalScope, initializeCleanEnvironments())
+		})
+		.addVertex({
+			tag:         'use',
+			id:          '12',
+			name:        'N',
+			environment: define({nodeId: 'simple-3:1-3:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-3:1-3:6-2' }, LocalScope, initializeCleanEnvironments())
+		})
 		.addEdge('3', '10', EdgeType.SameReadRead, 'always')
 		.addEdge('3', '2', EdgeType.Argument, 'always')
 		.addEdge('14', '13', EdgeType.Argument, 'always')
@@ -99,12 +116,18 @@ describe('source', withShell(shell => {
 		.addEdge('10', BuiltIn, EdgeType.Reads, 'always')
 		.addEdge('14', BuiltIn, EdgeType.Reads, 'always')
 		.addEdge('13', '12', EdgeType.Reads, 'always')
-		.addEdge('12', '4', EdgeType.Reads, 'always')
-		.addEdge('4', 'simple-0', EdgeType.SameDefDef, 'always')
+		.addEdge('12', 'simple-3:1-3:6-0', EdgeType.Reads, 'always')
+		.addEdge('simple-3:1-3:6-0', '4', EdgeType.SameDefDef, 'always')
+		.addEdge('4', 'simple-1:1-1:6-0', EdgeType.SameDefDef, 'always')
 	)
 
+	const envWithConditionalN = define(
+		{nodeId: 'simple-1:10-1:15-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-1:10-1:15-2' },
+		LocalScope,
+		initializeCleanEnvironments()
+	)
 	assertDataflow('conditional', shell, 'if (x) { source("simple") }\ncat(N)', new DataflowGraph()
-		.addVertex({ tag: 'variable-definition', id: 'simple-0', name: 'N', scope: LocalScope })
+		.addVertex({ tag: 'variable-definition', id: 'simple-1:10-1:15-0', name: 'N', scope: LocalScope })
 		.addVertex({
 			tag:         'function-call',
 			name:        'source',
@@ -119,18 +142,18 @@ describe('source', withShell(shell => {
 			tag:         'function-call',
 			name:        'cat',
 			id:          '10',
-			environment: envWithSimpleN,
+			environment: envWithConditionalN,
 			args:        [{
 				nodeId: '9', name: `${UnnamedArgumentPrefix}9`, scope: LocalScope, used: 'always'
 			}]
 		})
 		.addVertex({tag: 'use', id: '0', name: 'x', scope: LocalScope})
-		.addVertex({tag: 'use', id: '8', name: 'N', environment: envWithSimpleN})
+		.addVertex({tag: 'use', id: '8', name: 'N', environment: envWithConditionalN})
 		.addVertex({tag: 'use', id: '3', name: `${UnnamedArgumentPrefix}3`})
-		.addVertex({tag: 'use', id: '9', name: `${UnnamedArgumentPrefix}9`, environment: envWithSimpleN})
+		.addVertex({tag: 'use', id: '9', name: `${UnnamedArgumentPrefix}9`, environment: envWithConditionalN})
 		.addEdge('4', '3', EdgeType.Argument, 'always')
 		.addEdge('4', BuiltIn, EdgeType.Reads, 'maybe')
-		.addEdge('8', 'simple-0', EdgeType.Reads, 'always')
+		.addEdge('8', 'simple-1:10-1:15-0', EdgeType.Reads, 'always')
 		.addEdge('9', '8', EdgeType.Reads, 'always')
 		.addEdge('10', '9', EdgeType.Argument, 'always')
 		.addEdge('10', BuiltIn, EdgeType.Reads, 'always')
@@ -157,6 +180,7 @@ describe('source', withShell(shell => {
 		LocalScope,
 		initializeCleanEnvironments()
 	)
+	const recursive2Prefix = 'recursive2-2:1-2:6-'
 	assertDataflow('recursive source', shell, sources.recursive1, new DataflowGraph()
 		.addVertex({
 			tag:         'function-call',
@@ -171,36 +195,36 @@ describe('source', withShell(shell => {
 		.addVertex({
 			tag:         'function-call',
 			name:        'source',
-			id:          'recursive2-7',
+			id:          `${recursive2Prefix}7`,
 			environment: envWithX,
 			args:        [{
-				nodeId: 'recursive2-6', name: `${UnnamedArgumentPrefix}recursive2-6`, scope: LocalScope, used: 'always' }
+				nodeId: `${recursive2Prefix}6`, name: `${UnnamedArgumentPrefix}${recursive2Prefix}6`, scope: LocalScope, used: 'always' }
 			],
 			when: 'always'
 		})
 		.addVertex({
 			tag:         'function-call',
 			name:        'cat',
-			id:          'recursive2-3',
+			id:          `${recursive2Prefix}3`,
 			environment: envWithX,
 			args:        [{
-				nodeId: 'recursive2-2', name: `${UnnamedArgumentPrefix}recursive2-2`, scope: LocalScope, used: 'always' }
+				nodeId: `${recursive2Prefix}2`, name: `${UnnamedArgumentPrefix}${recursive2Prefix}2`, scope: LocalScope, used: 'always' }
 			],
 			when: 'always'
 		})
 		.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
 		.addVertex({tag: 'use', id: '5', name: `${UnnamedArgumentPrefix}5`, environment: envWithX })
-		.addVertex({tag: 'use', id: 'recursive2-6', name: `${UnnamedArgumentPrefix}recursive2-6`, environment: envWithX })
-		.addVertex({tag: 'use', id: 'recursive2-2', name: `${UnnamedArgumentPrefix}recursive2-2`, environment: envWithX })
-		.addVertex({tag: 'use', id: 'recursive2-1', name: 'x', environment: envWithX })
+		.addVertex({tag: 'use', id: `${recursive2Prefix}6`, name: `${UnnamedArgumentPrefix}${recursive2Prefix}6`, environment: envWithX })
+		.addVertex({tag: 'use', id: `${recursive2Prefix}2`, name: `${UnnamedArgumentPrefix}${recursive2Prefix}2`, environment: envWithX })
+		.addVertex({tag: 'use', id: `${recursive2Prefix}1`, name: 'x', environment: envWithX })
 		.addEdge('6', '5', EdgeType.Argument, 'always')
 		.addEdge('6', BuiltIn, EdgeType.Reads, 'always')
-		.addEdge('recursive2-3', BuiltIn, EdgeType.Reads, 'always')
-		.addEdge('recursive2-3', 'recursive2-2', EdgeType.Argument, 'always')
-		.addEdge('recursive2-2', 'recursive2-1', EdgeType.Reads, 'always')
-		.addEdge('recursive2-1', '0', EdgeType.Reads, 'always')
-		.addEdge('recursive2-7', 'recursive2-6', EdgeType.Argument, 'always')
-		.addEdge('recursive2-7', BuiltIn, EdgeType.Reads, 'always')
+		.addEdge(`${recursive2Prefix}3`, BuiltIn, EdgeType.Reads, 'always')
+		.addEdge(`${recursive2Prefix}3`, `${recursive2Prefix}2`, EdgeType.Argument, 'always')
+		.addEdge(`${recursive2Prefix}2`, `${recursive2Prefix}1`, EdgeType.Reads, 'always')
+		.addEdge(`${recursive2Prefix}1`, '0', EdgeType.Reads, 'always')
+		.addEdge(`${recursive2Prefix}7`, `${recursive2Prefix}6`, EdgeType.Argument, 'always')
+		.addEdge(`${recursive2Prefix}7`, BuiltIn, EdgeType.Reads, 'always')
 	)
 
 	// we currently don't support (and ignore) source calls with non-constant arguments!

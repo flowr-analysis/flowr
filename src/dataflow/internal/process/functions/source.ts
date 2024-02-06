@@ -34,21 +34,20 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 			dataflowLogger.info(`Found loop in dataflow analysis for ${requestString}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`)
 			return information
 		}
-
-		// parse, normalize and dataflow the sourced file
-		let parsed: string
-		try {
-			parsed = executeSingleSubStep('parse', request, executor) as string
-		} catch(e) {
-			dataflowLogger.warn(`Failed to parse sourced file ${path}, ignoring: ${(e as Error).message}`)
-			return information
-		}
-
-		// make the currently analyzed file remember that it already referenced the path
+		// we push the request into the reference chain regardless of whether it fails so that it doesn't have to re-fail later
 		data.referenceChain.push(request)
 
-		const normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap(), undefined, fileNameDeterministicCountingIdGenerator(path)) as NormalizedAst<OtherInfo & ParentInformation>
-		const dataflow = processDataflowFor(normalized.ast, {...data, currentRequest: request, environments: information.environments})
+		// parse, normalize and dataflow the sourced file
+		let normalized: NormalizedAst<OtherInfo & ParentInformation>
+		let dataflow: DataflowInformation
+		try {
+			const parsed = executeSingleSubStep('parse', request, executor) as string
+			normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap(), undefined, fileNameDeterministicCountingIdGenerator(path)) as NormalizedAst<OtherInfo & ParentInformation>
+			dataflow = processDataflowFor(normalized.ast, {...data, currentRequest: request, environments: information.environments})
+		} catch(e) {
+			dataflowLogger.warn(`Failed to analyze sourced file ${requestString}, skipping: ${(e as Error).message}`)
+			return information
+		}
 
 		// update our graph with the sourced file's information
 		const newInformation = {...information}

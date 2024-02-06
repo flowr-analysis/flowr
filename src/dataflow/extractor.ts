@@ -1,4 +1,4 @@
-import type { NormalizedAst, ParentInformation, RAssignmentOp, RBinaryOp} from '../r-bridge'
+import type {NormalizedAst, ParentInformation, RAssignmentOp, RBinaryOp, RParseRequest} from '../r-bridge'
 import { RType } from '../r-bridge'
 import type { DataflowInformation } from './internal/info'
 import type { DataflowProcessorInformation, DataflowProcessors} from './processor'
@@ -48,13 +48,13 @@ const processors: DataflowProcessors<any> = {
 	[RType.ExpressionList]:     processExpressionList,
 }
 
-export function produceDataFlowGraph<OtherInfo>(ast: NormalizedAst<OtherInfo & ParentInformation>, initialScope: DataflowScopeName = LocalScope): DataflowInformation {
+export function produceDataFlowGraph<OtherInfo>(request: RParseRequest, ast: NormalizedAst<OtherInfo & ParentInformation>, initialScope: DataflowScopeName = LocalScope): DataflowInformation {
 	return processDataflowFor<OtherInfo>(ast.ast, {
 		completeAst:      ast,
 		activeScope:      initialScope,
 		environments:     initializeCleanEnvironments(),
 		processors:       processors as DataflowProcessors<OtherInfo & ParentInformation>,
-		currentPath:      'initial',
+		currentRequest:   request,
 		sourceReferences: new Map<string, string[]>()
 	})
 }

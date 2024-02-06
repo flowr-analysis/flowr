@@ -4,7 +4,7 @@
 import type {
 	NormalizedAst,
 	ParentInformation, RNode,
-	RNodeWithParent
+	RNodeWithParent, RParseRequest
 } from '../r-bridge'
 import type { DataflowInformation } from './internal/info'
 import type { DataflowScopeName, REnvironmentInformation } from './environments'
@@ -27,8 +27,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
    * Other processors to be called by the given functions
    */
 	readonly processors:       DataflowProcessors<OtherInfo>
-	// TODO using "initial" as the default path doesn't allow us to skip re-sourcing the initial file - how do we find out the initial file's name/path?
-	readonly currentPath:      string | 'initial'
+	readonly currentRequest:   RParseRequest
 	readonly sourceReferences: Map<string, string[]>
 }
 

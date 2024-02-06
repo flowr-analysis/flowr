@@ -208,7 +208,7 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 				break
 			case 2:
 				step = guardStep('dataflow')
-				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst)
+				result = executeSingleSubStep(step, this.request, this.results.normalize as NormalizedAst)
 				break
 			case 3:
 				step = guardStep('ai')

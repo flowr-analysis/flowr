@@ -147,4 +147,25 @@ describe('source', withShell(shell => {
 		.addEdge('recursive2-7', 'recursive2-6', EdgeType.Argument, 'always')
 		.addEdge('recursive2-7', BuiltIn, EdgeType.Reads, 'always')
 	)
+
+	// we currently don't support (and ignore) source calls with non-constant arguments!
+	assertDataflow('non-constant source', shell, 'x <- "recursive1"\nsource(x)', new DataflowGraph()
+		.addVertex({
+			tag:         'function-call',
+			name:        'source',
+			id:          '6',
+			environment: envWithX,
+			args:        [{
+				nodeId: '5', name: `${UnnamedArgumentPrefix}5`, scope: LocalScope, used: 'always' }
+			],
+			when: 'always'
+		})
+		.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
+		.addVertex({tag: 'use', id: '5', name: `${UnnamedArgumentPrefix}5`, environment: envWithX })
+		.addVertex({tag: 'use', id: '4', name: 'x', environment: envWithX })
+		.addEdge('6', '5', EdgeType.Argument, 'always')
+		.addEdge('6', BuiltIn, EdgeType.Reads, 'always')
+		.addEdge('5', '4', EdgeType.Reads, 'always')
+		.addEdge('4', '0', EdgeType.Reads, 'always')
+	)
 }))

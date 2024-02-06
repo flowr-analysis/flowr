@@ -57,6 +57,8 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 		for(const [k, v] of normalized.idMap)
 			data.completeAst.idMap.set(k, v)
 		return newInformation
+	} else {
+		dataflowLogger.info(`Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`)
+		return information
 	}
-	return information
 }

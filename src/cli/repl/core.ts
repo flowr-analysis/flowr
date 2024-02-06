@@ -9,7 +9,7 @@ import { prompt } from './prompt'
 import type { ReplOutput} from './commands'
 import { commandNames, getCommand, standardReplOutput } from './commands'
 import * as readline from 'node:readline'
-import { splitAtEscapeSensitive } from '../../util/args'
+import { splitAtEscapeSensitive, splitAtEscapeSensitiveWithEmptyParameters } from '../../util/args'
 import { executeRShellCommand } from './commands/execute'
 import { guard } from '../../util/assert'
 import { getScriptInformation} from '../common/scripts-info'
@@ -21,8 +21,7 @@ const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
  * Used by the repl to provide automatic completions for a given (partial) input line
  */
 export function replCompleter(line: string): [string[], string] {
-	const splitCommandList = splitAtEscapeSensitive(line)
-	//console.log(splitCommandList)
+	const splitCommandList = splitAtEscapeSensitiveWithEmptyParameters(line)
 	//find command in commandlist
 	const keyword = replCompleterKeywords.find(k => splitCommandList[0] === k)
 	if(keyword !== undefined && keyword.startsWith(':')){
@@ -32,27 +31,25 @@ export function replCompleter(line: string): [string[], string] {
 			const scriptInformation = getScriptInformation(keyword.slice(1))
 			guard(scriptInformation !== undefined, 'script should be in script record')
 			const scriptOptions: OptionDefinition[] = scriptInformation.options
-			//console.log(scriptOptions)//TODO REMOVE
 			const possibleOptions :OptionDefinition[] = getPossibleCommandLineOptions(scriptOptions, splitCommandList)
 			const possibleCliOptionsAsString : string[] = extractCliStringsFromCommandOptions(possibleOptions)
-			//console.log(possibleOptions)//TODO REMOVE
 			//Only command was specified
 			if(splitCommandList.length < 2){
-				//console.log(possibleOptions)//TODO REMOVE
-				possibleCliOptionsAsString.push(line)
+				possibleCliOptionsAsString.push(' ')
 				return [possibleCliOptionsAsString, line]
 			}
 
 			const lastOptionInProgress = splitCommandList.at(-1)
 			guard(lastOptionInProgress !== undefined, 'splitCommandList cannot be of lenth 0')
-			console.log(lastOptionInProgress) //TODO REMOVE
-			//console.log(possibleOptions) //TODO REMOVE
 			const matchingOptionsLeft = possibleCliOptionsAsString.filter(o => o.startsWith(lastOptionInProgress))
+			if(matchingOptionsLeft.length === 0){
+				return [[], line]
+			}
 			if(matchingOptionsLeft.length === 1){
 				const commandWithoutLastEntry = splitCommandList.slice(0, -1).join(' ')
 				return [[commandWithoutLastEntry + ' ' + matchingOptionsLeft[0]], line]
 			}
-			matchingOptionsLeft.push(line)
+			matchingOptionsLeft.push(' ')
 			return [matchingOptionsLeft, line]
 		}
 	}
@@ -80,7 +77,6 @@ function getPossibleCommandLineOptions(scriptOptions: OptionDefinition[], splitC
 		let cliOptionWithOutLeadingMinus: string = splitCommandList[commandLineOptionIndex].slice(1)
 		if(cliOptionWithOutLeadingMinus.substring(0,1) !== '-'){
 			const option = scriptOptions.find(o => o.alias === cliOptionWithOutLeadingMinus)
-			//console.log(option) //TODO Remove
 			if(option !== undefined){
 				optionUsed.set(option.name, true)
 			} else {
@@ -107,7 +103,6 @@ function getPossibleCommandLineOptions(scriptOptions: OptionDefinition[], splitC
 			possibleOptions.push(newOption)
 		}
 	})
-	//console.log(optionUsed) //TODO Remove
 	return possibleOptions
 }
 

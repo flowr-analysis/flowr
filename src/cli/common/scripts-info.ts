@@ -97,7 +97,7 @@ const _scripts: Record<string, ScriptInformation> = {
 	}
 }
 
-export const scripts = _scripts as Record<keyof typeof _scripts, ScriptInformation>
+export const scripts = _scripts satisfies Record<keyof typeof _scripts, ScriptInformation>
 
 export function getScriptInformation(scriptName: string): ScriptInformation | undefined{
 	return scripts[scriptName]

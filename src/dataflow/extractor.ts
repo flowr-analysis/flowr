@@ -50,12 +50,12 @@ const processors: DataflowProcessors<any> = {
 
 export function produceDataFlowGraph<OtherInfo>(request: RParseRequest, ast: NormalizedAst<OtherInfo & ParentInformation>, initialScope: DataflowScopeName = LocalScope): DataflowInformation {
 	return processDataflowFor<OtherInfo>(ast.ast, {
-		completeAst:      ast,
-		activeScope:      initialScope,
-		environments:     initializeCleanEnvironments(),
-		processors:       processors as DataflowProcessors<OtherInfo & ParentInformation>,
-		currentRequest:   request,
-		sourceReferences: new Map<string, string[]>()
+		completeAst:    ast,
+		activeScope:    initialScope,
+		environments:   initializeCleanEnvironments(),
+		processors:     processors as DataflowProcessors<OtherInfo & ParentInformation>,
+		currentRequest: request,
+		referenceChain: [request]
 	})
 }
 

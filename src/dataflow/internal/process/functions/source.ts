@@ -28,10 +28,10 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 		const path = removeTokenMapQuotationMarks(sourceFile.lexeme)
 		const request = sourceProvider.createRequest(path)
 
-		// TODO we shouldn't skip a re-analysis *always*, just when it's a cycle - right?
 		// check if the sourced file has already been dataflow analyzed, and if so, skip it
-		if(data.sourceReferences.has(JSON.stringify(request))) {
-			dataflowLogger.info(`Sourced file ${path} was already dataflow analyzed, skipping`)
+		const requestString = JSON.stringify(request)
+		if(data.referenceChain.some(r => JSON.stringify(r) == requestString)) {
+			dataflowLogger.info(`Found loop in dataflow analysis for ${requestString}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`)
 			return information
 		}
 
@@ -45,8 +45,7 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 		}
 
 		// make the currently analyzed file remember that it already referenced the path
-		const currRequest = JSON.stringify(data.currentRequest)
-		data.sourceReferences.set(currRequest, [...(data.sourceReferences.get(currRequest) ?? []), path])
+		data.referenceChain.push(request)
 
 		const normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap(), undefined, fileNameDeterministicCountingIdGenerator(path)) as NormalizedAst<OtherInfo & ParentInformation>
 		const dataflow = processDataflowFor(normalized.ast, {...data, currentRequest: request, environments: information.environments})

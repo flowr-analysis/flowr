@@ -18,7 +18,6 @@ describe('source', withShell(shell => {
 		LocalScope,
 		initializeCleanEnvironments()
 	)
-
 	assertDataflow('simple source', shell, 'source("simple")\ncat(N)', new DataflowGraph()
 		.addVertex({ tag: 'variable-definition', id: 'simple-0', name: 'N', scope: LocalScope })
 		.addVertex({
@@ -98,5 +97,54 @@ describe('source', withShell(shell => {
 		.addEdge('3', BuiltIn, EdgeType.Reads, 'always')
 	)
 
-	assertDataflow('recursive source', shell, sources.recursive1, new DataflowGraph())
+	const envWithX = define(
+		{nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+		LocalScope,
+		initializeCleanEnvironments()
+	)
+	assertDataflow('recursive source', shell, sources.recursive1, new DataflowGraph()
+		.addVertex({
+			tag:         'function-call',
+			name:        'source',
+			id:          '6',
+			environment: envWithX,
+			args:        [{
+				nodeId: '5', name: `${UnnamedArgumentPrefix}5`, scope: LocalScope, used: 'always' }
+			],
+			when: 'always'
+		})
+		.addVertex({
+			tag:         'function-call',
+			name:        'source',
+			id:          'recursive2-7',
+			environment: envWithX,
+			args:        [{
+				nodeId: 'recursive2-6', name: `${UnnamedArgumentPrefix}recursive2-6`, scope: LocalScope, used: 'always' }
+			],
+			when: 'always'
+		})
+		.addVertex({
+			tag:         'function-call',
+			name:        'cat',
+			id:          'recursive2-3',
+			environment: envWithX,
+			args:        [{
+				nodeId: 'recursive2-2', name: `${UnnamedArgumentPrefix}recursive2-2`, scope: LocalScope, used: 'always' }
+			],
+			when: 'always'
+		})
+		.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
+		.addVertex({tag: 'use', id: '5', name: `${UnnamedArgumentPrefix}5`, environment: envWithX })
+		.addVertex({tag: 'use', id: 'recursive2-6', name: `${UnnamedArgumentPrefix}recursive2-6`, environment: envWithX })
+		.addVertex({tag: 'use', id: 'recursive2-2', name: `${UnnamedArgumentPrefix}recursive2-2`, environment: envWithX })
+		.addVertex({tag: 'use', id: 'recursive2-1', name: 'x', environment: envWithX })
+		.addEdge('6', '5', EdgeType.Argument, 'always')
+		.addEdge('6', BuiltIn, EdgeType.Reads, 'always')
+		.addEdge('recursive2-3', BuiltIn, EdgeType.Reads, 'always')
+		.addEdge('recursive2-3', 'recursive2-2', EdgeType.Argument, 'always')
+		.addEdge('recursive2-2', 'recursive2-1', EdgeType.Reads, 'always')
+		.addEdge('recursive2-1', '0', EdgeType.Reads, 'always')
+		.addEdge('recursive2-7', 'recursive2-6', EdgeType.Argument, 'always')
+		.addEdge('recursive2-7', BuiltIn, EdgeType.Reads, 'always')
+	)
 }))

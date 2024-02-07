@@ -1,6 +1,6 @@
 import {assertDataflow, withShell} from '../../../_helper/shell'
 import {setSourceProvider} from '../../../../../src/dataflow/internal/process/functions/source'
-import {BuiltIn, DataflowGraph, EdgeType, initializeCleanEnvironments, requestProviderFromText} from '../../../../../src'
+import {BuiltIn, DataflowGraph, EdgeType, initializeCleanEnvironments, requestProviderFromText, sourcedDeterministicCountingIdGenerator} from '../../../../../src'
 import {LocalScope} from '../../../../../src/dataflow/environments/scopes'
 import {UnnamedArgumentPrefix} from '../../../../../src/dataflow/internal/process/functions/argument'
 import {define} from '../../../../../src/dataflow/environments'
@@ -175,12 +175,12 @@ describe('source', withShell(shell => {
 		.addEdge('3', BuiltIn, EdgeType.Reads, 'always')
 	)
 
+	const recursive2Id = (id: number) => sourcedDeterministicCountingIdGenerator('recursive2', {start: {line: 2, column: 1}, end: {line: 2, column: 6}}, id)()
 	const envWithX = define(
 		{nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
 		LocalScope,
 		initializeCleanEnvironments()
 	)
-	const recursive2Prefix = 'recursive2-2:1-2:6-'
 	assertDataflow('recursive source', shell, sources.recursive1, new DataflowGraph()
 		.addVertex({
 			tag:         'function-call',
@@ -195,36 +195,36 @@ describe('source', withShell(shell => {
 		.addVertex({
 			tag:         'function-call',
 			name:        'source',
-			id:          `${recursive2Prefix}7`,
+			id:          recursive2Id(7),
 			environment: envWithX,
 			args:        [{
-				nodeId: `${recursive2Prefix}6`, name: `${UnnamedArgumentPrefix}${recursive2Prefix}6`, scope: LocalScope, used: 'always' }
+				nodeId: recursive2Id(6), name: `${UnnamedArgumentPrefix}${recursive2Id(6)}`, scope: LocalScope, used: 'always' }
 			],
 			when: 'always'
 		})
 		.addVertex({
 			tag:         'function-call',
 			name:        'cat',
-			id:          `${recursive2Prefix}3`,
+			id:          recursive2Id(3),
 			environment: envWithX,
 			args:        [{
-				nodeId: `${recursive2Prefix}2`, name: `${UnnamedArgumentPrefix}${recursive2Prefix}2`, scope: LocalScope, used: 'always' }
+				nodeId: recursive2Id(2), name: `${UnnamedArgumentPrefix}${recursive2Id(2)}`, scope: LocalScope, used: 'always' }
 			],
 			when: 'always'
 		})
 		.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
 		.addVertex({tag: 'use', id: '5', name: `${UnnamedArgumentPrefix}5`, environment: envWithX })
-		.addVertex({tag: 'use', id: `${recursive2Prefix}6`, name: `${UnnamedArgumentPrefix}${recursive2Prefix}6`, environment: envWithX })
-		.addVertex({tag: 'use', id: `${recursive2Prefix}2`, name: `${UnnamedArgumentPrefix}${recursive2Prefix}2`, environment: envWithX })
-		.addVertex({tag: 'use', id: `${recursive2Prefix}1`, name: 'x', environment: envWithX })
+		.addVertex({tag: 'use', id: recursive2Id(6), name: `${UnnamedArgumentPrefix}${recursive2Id(6)}`, environment: envWithX })
+		.addVertex({tag: 'use', id: recursive2Id(2), name: `${UnnamedArgumentPrefix}${recursive2Id(2)}`, environment: envWithX })
+		.addVertex({tag: 'use', id: recursive2Id(1), name: 'x', environment: envWithX })
 		.addEdge('6', '5', EdgeType.Argument, 'always')
 		.addEdge('6', BuiltIn, EdgeType.Reads, 'always')
-		.addEdge(`${recursive2Prefix}3`, BuiltIn, EdgeType.Reads, 'always')
-		.addEdge(`${recursive2Prefix}3`, `${recursive2Prefix}2`, EdgeType.Argument, 'always')
-		.addEdge(`${recursive2Prefix}2`, `${recursive2Prefix}1`, EdgeType.Reads, 'always')
-		.addEdge(`${recursive2Prefix}1`, '0', EdgeType.Reads, 'always')
-		.addEdge(`${recursive2Prefix}7`, `${recursive2Prefix}6`, EdgeType.Argument, 'always')
-		.addEdge(`${recursive2Prefix}7`, BuiltIn, EdgeType.Reads, 'always')
+		.addEdge(recursive2Id(3), BuiltIn, EdgeType.Reads, 'always')
+		.addEdge(recursive2Id(3), recursive2Id(2), EdgeType.Argument, 'always')
+		.addEdge(recursive2Id(2), recursive2Id(1), EdgeType.Reads, 'always')
+		.addEdge(recursive2Id(1), '0', EdgeType.Reads, 'always')
+		.addEdge(recursive2Id(7), recursive2Id(6), EdgeType.Argument, 'always')
+		.addEdge(recursive2Id(7), BuiltIn, EdgeType.Reads, 'always')
 	)
 
 	// we currently don't support (and ignore) source calls with non-constant arguments!

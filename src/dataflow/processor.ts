@@ -27,8 +27,15 @@ export interface DataflowProcessorInformation<OtherInfo> {
    * Other processors to be called by the given functions
    */
 	readonly processors:     DataflowProcessors<OtherInfo>
+	/**
+	 * The {@link RParseRequest} that is currently being parsed
+	 */
 	readonly currentRequest: RParseRequest
-	readonly referenceChain: RParseRequest[]
+	/**
+	 * The chain of {@link RParseRequest} fingerprints ({@link requestFingerprint}) that lead to the {@link currentRequest}.
+	 * The most recent (last) entry is expected to always be the {@link currentRequest}.
+	 */
+	readonly referenceChain: string[]
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation

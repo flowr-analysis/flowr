@@ -117,9 +117,9 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 	}
 
 	// parse a source call and analyze the referenced code
-	if(isSourceCall(functionCallName, data.activeScope,finalEnv))
+	if(isSourceCall(functionCallName, data.activeScope,finalEnv)) {
 		info = processSourceCall(functionCall, data, info)
+	}
 
 	return info
 }
-

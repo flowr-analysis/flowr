@@ -26,6 +26,9 @@ interface RParseRequestBase {
 	ensurePackageInstalled: boolean
 }
 
+/**
+ * A provider for an {@link RParseRequest} that can be used, for example, to override source file parsing behavior in tests
+ */
 export interface RParseRequestProvider {
 	createRequest(path: string): RParseRequest
 }
@@ -71,6 +74,11 @@ export function requestProviderFromText(text: {[path: string]: string}): RParseR
 			}
 		}
 	}
+}
+
+export function requestFingerprint(request: RParseRequest): string {
+	// eventually we should do this properly, like using a hashing function etc.
+	return JSON.stringify(request)
 }
 
 const ErrorMarker = 'err'

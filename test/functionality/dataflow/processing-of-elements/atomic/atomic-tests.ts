@@ -44,7 +44,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2` })
 					.addEdge('0', '2', EdgeType.Reads, 'always')
 			)
-			assertDataflow('double constant', shell,
+			assertDataflow(label('double constant', 'name-normal', 'numbers', 'double-bracket-access'), shell,
 				'a[[2]]',
 				new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe' })
 					.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2` })

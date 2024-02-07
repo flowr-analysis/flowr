@@ -96,7 +96,7 @@ export const STEPS_PER_FILE = {
 	} satisfies IStep<typeof normalize>,
 	'dataflow': {
 		description: 'Construct the dataflow graph',
-		processor:   produceDataFlowGraph,
+		processor:   (r, a) => produceDataFlowGraph(r, a),
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]:   internalPrinter,

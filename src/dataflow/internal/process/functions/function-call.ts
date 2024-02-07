@@ -1,14 +1,15 @@
 import type { DataflowInformation } from '../../info'
-import type { DataflowProcessorInformation} from '../../../processor'
+import type {DataflowProcessorInformation} from '../../../processor'
 import { processDataflowFor } from '../../../processor'
-import { define, overwriteEnvironments, resolveByName } from '../../../environments'
-import type { ParentInformation, RFunctionCall} from '../../../../r-bridge'
-import { RType } from '../../../../r-bridge'
+import {define, overwriteEnvironments, resolveByName} from '../../../environments'
+import type {ParentInformation, RFunctionCall} from '../../../../r-bridge'
+import { RType} from '../../../../r-bridge'
 import { guard } from '../../../../util/assert'
-import type { FunctionArgument } from '../../../index'
+import type {FunctionArgument} from '../../../index'
 import { DataflowGraph, dataflowLogger, EdgeType } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
 import { LocalScope } from '../../../environments/scopes'
+import {isSourceCall, processSourceCall} from './source'
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 
@@ -39,7 +40,6 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		// keep the defined function
 		finalGraph.mergeWith(functionName.graph)
 	}
-
 
 	for(const arg of functionCall.arguments) {
 		if(arg === undefined) {
@@ -107,7 +107,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		inIds.push(...functionName.in, ...functionName.unknownReferences)
 	}
 
-	return {
+	let info: DataflowInformation = {
 		unknownReferences: [],
 		in:                inIds,
 		out:               functionName.out, // we do not keep argument out as it has been linked by the function
@@ -115,5 +115,11 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		environments:      finalEnv,
 		scope:             data.activeScope
 	}
-}
 
+	// parse a source call and analyze the referenced code
+	if(isSourceCall(functionCallName, data.activeScope,finalEnv)) {
+		info = processSourceCall(functionCall, data, info)
+	}
+
+	return info
+}

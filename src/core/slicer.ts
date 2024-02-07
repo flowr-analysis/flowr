@@ -204,11 +204,11 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 				break
 			case 1:
 				step = guardStep('normalize')
-				result = await executeSingleSubStep(step, this.results.parse as string, await this.shell.tokenMap(), this.hooks, this.getId)
+				result = executeSingleSubStep(step, this.results.parse as string, await this.shell.tokenMap(), this.hooks, this.getId)
 				break
 			case 2:
 				step = guardStep('dataflow')
-				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst)
+				result = executeSingleSubStep(step, this.request, this.results.normalize as NormalizedAst)
 				break
 			case 3:
 				step = guardStep('ai')

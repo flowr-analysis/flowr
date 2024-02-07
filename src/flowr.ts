@@ -23,6 +23,8 @@ import type { Server} from './cli/repl/server/net'
 import {NetServer, WebSocketServerWrapper} from './cli/repl/server/net'
 import fs from 'fs'
 import path from 'path'
+import type { MergeableRecord} from './util/objects'
+import {deepMergeObject} from './util/objects'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, {type}]) => type === 'master script'), ([k,]) => k).join(', ')
 
@@ -53,7 +55,7 @@ export interface FlowrCliOptions {
 	script:    string | undefined
 }
 
-export interface FlowrConfigOptions {
+export interface FlowrConfigOptions extends MergeableRecord {
 	ignoreSourceCalls: boolean
 }
 
@@ -177,7 +179,7 @@ function parseConfigOptions(): FlowrConfigOptions {
 			try {
 				const read = fs.readFileSync(configPath,{encoding: 'utf-8'})
 				// assign default values to all config options except for the specified ones
-				const ret = Object.assign(defaultConfigOptions, JSON.parse(read) as FlowrConfigOptions)
+				const ret = deepMergeObject(defaultConfigOptions, JSON.parse(read) as FlowrConfigOptions)
 				log.info(`Using config ${JSON.stringify(ret)} from ${configPath}`)
 				return ret
 			} catch(e) {

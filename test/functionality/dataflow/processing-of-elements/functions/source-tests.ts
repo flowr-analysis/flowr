@@ -1,11 +1,14 @@
 import {assertDataflow, withShell} from '../../../_helper/shell'
 import {setSourceProvider} from '../../../../../src/dataflow/internal/process/functions/source'
-import {BuiltIn, DataflowGraph, EdgeType, initializeCleanEnvironments, requestProviderFromText, sourcedDeterministicCountingIdGenerator} from '../../../../../src'
+import {BuiltIn, DataflowGraph, EdgeType, initializeCleanEnvironments, requestProviderFromFile, requestProviderFromText, sourcedDeterministicCountingIdGenerator} from '../../../../../src'
 import {LocalScope} from '../../../../../src/dataflow/environments/scopes'
 import {UnnamedArgumentPrefix} from '../../../../../src/dataflow/internal/process/functions/argument'
 import {define} from '../../../../../src/dataflow/environments'
 
 describe('source', withShell(shell => {
+	// reset the source provider back to the default value after our tests
+	after(() => setSourceProvider(requestProviderFromFile()))
+
 	const sources = {
 		simple:     'N <- 9',
 		recursive1: 'x <- 1\nsource("recursive2")',

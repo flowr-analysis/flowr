@@ -86,7 +86,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				.addEdge('2', '1', EdgeType.Reads, 'always')
 				.addEdge('5', '4', EdgeType.Reads, 'always')
 		)
-		assertDataflow('assign on access', shell,
+		assertDataflow(label('assign on access', 'local-left-assignment', 'single-bracket-access'), shell,
 			'a[x] <- 5',
 			new DataflowGraph()
 				.addVertex({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope, when: 'maybe' })

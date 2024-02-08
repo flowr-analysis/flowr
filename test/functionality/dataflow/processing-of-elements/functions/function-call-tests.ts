@@ -5,6 +5,7 @@ import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/p
 import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/function-call'
 import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
+import { label } from '../../../_helper/label'
 
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {
@@ -22,7 +23,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithFirstI
 		)
-		assertDataflow('Calling function a', shell, 'i <- 4; a <- function(x) { x }\na(i)',
+		assertDataflow(label('Calling function a', 'local-left-assignment', 'unnamed-arguments', 'normal'), shell, 'i <- 4; a <- function(x) { x }\na(i)',
 			new DataflowGraph()
 				.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
 				.addVertex({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
@@ -68,7 +69,9 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithIA
 		)
-		assertDataflow('Calling function a with an indirection', shell, 'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
+		assertDataflow(label('Calling function a with an indirection', 'local-left-assignment', 'unnamed-arguments', 'normal'), 
+		shell, 
+		'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
 			new DataflowGraph()
 				.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
 				.addVertex({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
@@ -132,7 +135,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithFirstI
 		)
-		assertDataflow('Calling with a constant function', shell, `i <- 4
+		assertDataflow(label('Calling with a constant function', 'unnamed-arguments', 'normal'), shell, `i <- 4
 a <- function(x) { x <- x; x <- 3; 1 }
 a(i)`, new DataflowGraph()
 			.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })

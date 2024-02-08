@@ -6,6 +6,7 @@ import { expect } from 'chai'
 import { appendEnvironments, define, overwriteEnvironments } from '../../../../src/dataflow/common/environments'
 import { GlobalScope, LocalScope } from '../../../../src/dataflow/common/environments/scopes'
 import { variable } from '../../_helper/environment-builder'
+import { label } from '../../_helper/label'
 
 /** if you pass multiple `definedAt`, this will expect the node to have multiple definitions */
 function existsDefinedAt(name: string, definedAt: NodeId[], result: IEnvironment | undefined, message?: string) {
@@ -20,7 +21,7 @@ function existsDefinedAt(name: string, definedAt: NodeId[], result: IEnvironment
 
 describe('Modification', () => {
 	describe('Global', () => {
-		it('Different variables', () => {
+		it(label('Different variables', 'global-scope', 'normal'), () => {
 			let clean = initializeCleanEnvironments()
 			clean = define(variable('x', '_1'), GlobalScope, clean)
 			let overwrite = initializeCleanEnvironments()
@@ -32,7 +33,7 @@ describe('Modification', () => {
 			existsDefinedAt('y', ['_2'], result.current, 'globals must be defined locally as well')
 		})
 
-		it('Same variables', () => {
+		it(label('Same variables', 'global-scope'), () => {
 			let clean = initializeCleanEnvironments()
 			clean = define(variable('x', '_1'), GlobalScope, clean)
 			let overwrite = initializeCleanEnvironments()
@@ -45,7 +46,7 @@ describe('Modification', () => {
 	})
 
 	describe('Local', () => {
-		it('Different variables', () => {
+		it(label('Different variables', 'lexicographic-scope'), () => {
 			let clean = initializeCleanEnvironments()
 			clean = define(variable('long', '_1'), LocalScope, clean)
 			let overwrite = initializeCleanEnvironments()
@@ -58,7 +59,7 @@ describe('Modification', () => {
 			existsDefinedAt('short', ['_2'], result.current)
 		})
 
-		it('Same variables', () => {
+		it(label('Same variables', 'lexicographic-scope'), () => {
 			let clean = initializeCleanEnvironments()
 			clean = define(variable('long', '_1'), LocalScope, clean)
 			let overwrite = initializeCleanEnvironments()
@@ -74,7 +75,7 @@ describe('Modification', () => {
 
 describe('Append', () => {
 	describe('Global', () => {
-		it('Different variables', () => {
+		it(label('Different variables', 'global-scope', 'lexicographic-scope'), () => {
 			let clean = initializeCleanEnvironments()
 			clean = define(variable('x', '_1'), GlobalScope, clean)
 			let append = initializeCleanEnvironments()
@@ -86,7 +87,7 @@ describe('Append', () => {
 			existsDefinedAt('y', ['_2'], result.current, 'globals must be defined locally as well')
 		})
 
-		it('Same variables', () => {
+		it(label('Same variables', 'global-scope', 'lexicographic-scope'), () => {
 			let clean = initializeCleanEnvironments()
 			clean = define(variable('x', '_1'), GlobalScope, clean)
 			let append = initializeCleanEnvironments()
@@ -99,7 +100,7 @@ describe('Append', () => {
 	})
 
 	describe('Local', () => {
-		it('Different variables', () => {
+		it(label('Different variables', 'lexicographic-scope'), () => {
 			let clean = initializeCleanEnvironments()
 			clean = define(variable('local-long', '_1'), LocalScope, clean)
 			let append = initializeCleanEnvironments()
@@ -112,7 +113,7 @@ describe('Append', () => {
 			existsDefinedAt('local-short', ['_2'], result.current)
 		})
 
-		it('Same variables', () => {
+		it(label('Same variables', 'lexicographic-scope'), () => {
 			let clean = initializeCleanEnvironments()
 			clean = define(variable('local-long', '_1'), LocalScope, clean)
 			let append = initializeCleanEnvironments()

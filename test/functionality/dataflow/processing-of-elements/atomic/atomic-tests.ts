@@ -50,15 +50,15 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2` })
 					.addEdge('0', '2', EdgeType.Reads, 'always')
 			)
-			assertDataflow('dollar constant', shell,
+			assertDataflow(label('dollar constant', 'dollar-access', 'normal'), shell,
 				'a$b',
 				new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe' })
 			)
-			assertDataflow('at constant', shell,
+			assertDataflow(label('at constant', 'normal', 'slotted-access'), shell,
 				'a@b',
 				new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe' })
 			)
-			assertDataflow('chained constant', shell,
+			assertDataflow(label('chained constant', 'normal', 'numbers', 'single-bracket-access'), shell,
 				'a[2][3]',
 				new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe' })
 					.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2` })
@@ -66,14 +66,14 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					.addVertex({ tag: 'use', id: '5', name: `${UnnamedArgumentPrefix}5` })
 					.addEdge('0', '5', EdgeType.Reads, 'always')
 			)
-			assertDataflow('chained mixed constant', shell,
+			assertDataflow(label('chained mixed constant', 'normal', 'dollar-access', 'single-bracket-access'), shell,
 				'a[2]$a',
 				new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe' })
 					.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2` })
 					.addEdge('0', '2', EdgeType.Reads, 'always')
 			)
 		})
-		assertDataflow('chained bracket access with variables', shell,
+		assertDataflow(label('chained bracket access with variables', 'normal', 'single-bracket-access'), shell,
 			'a[x][y]',
 			new DataflowGraph()
 				.addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe'})
@@ -86,7 +86,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				.addEdge('2', '1', EdgeType.Reads, 'always')
 				.addEdge('5', '4', EdgeType.Reads, 'always')
 		)
-		assertDataflow('assign on access', shell,
+		assertDataflow(label('assign on access', 'normal', 'single-bracket-access', 'local-left-assignment'), shell,
 			'a[x] <- 5',
 			new DataflowGraph()
 				.addVertex({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope, when: 'maybe' })
@@ -102,7 +102,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			describe(`${opSuite.label} operations`, () => {
 				for(const op of opSuite.pool) {
 					const inputDifferent = `${op.str}x`
-					assertDataflow(`${op.str}x`, shell,
+					assertDataflow(label(`${op.str}x`, 'unary-operator', 'normal'), shell,
 						inputDifferent,
 						new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'x' })
 					)
@@ -118,14 +118,14 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				for(const op of opSuite.pool) {
 					describe(`${op.str}`, () => {
 						const inputDifferent = `x ${op.str} y`
-						assertDataflow(`${inputDifferent} (different variables)`,
+						assertDataflow(label(`${inputDifferent} (different variables)`, 'binary-operator', 'normal'),
 							shell,
 							inputDifferent,
 							new DataflowGraph().addVertex({ tag: 'use', id: '0', name: 'x' }).addVertex({ tag: 'use', id: '1', name: 'y' })
 						)
 
 						const inputSame = `x ${op.str} x`
-						assertDataflow(`${inputSame} (same variables)`,
+						assertDataflow(label(`${inputSame} (same variables)`, 'binary-operator', 'normal'),
 							shell,
 							inputSame,
 							new DataflowGraph()
@@ -141,7 +141,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 
 	describe('Pipes', () => {
 		describe('Passing one argument', () => {
-			assertDataflow('No parameter function', shell, 'x |> f()',
+			assertDataflow(label('No parameter function', 'built-in-pipe-and-pipe-bind'), shell, 'x |> f()',
 				new DataflowGraph()
 					.addVertex({ tag: 'use', id: '0', name: 'x' })
 					.addVertex({
@@ -155,7 +155,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					.addEdge('1', '0', EdgeType.Reads, 'always'),
 				{ minRVersion: MIN_VERSION_PIPE }
 			)
-			assertDataflow('Nested calling', shell, 'x |> f() |> g()',
+			assertDataflow(label('Nested calling', 'built-in-pipe-and-pipe-bind'), shell, 'x |> f() |> g()',
 				new DataflowGraph()
 					.addVertex({ tag: 'use', id: '0', name: 'x' })
 					.addVertex({
@@ -178,7 +178,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					.addEdge('1', '0', EdgeType.Reads, 'always'),
 				{ minRVersion: MIN_VERSION_PIPE }
 			)
-			assertDataflow('Multi-Parameter function', shell, 'x |> f(y,z)',
+			assertDataflow(label('Multi-Parameter function', 'built-in-pipe-and-pipe-bind'), shell, 'x |> f(y,z)',
 				new DataflowGraph()
 					.addVertex({ tag: 'use', id: '0', name: 'x' })
 					.addVertex({
@@ -361,7 +361,9 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				LocalScope,
 				initializeCleanEnvironments()
 			)
-			assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'a <- foo(x=3,y,z)',
+			assertDataflow(label('define call with multiple args should only be defined by the call-return', 'local-left-assignment', 'named-arguments', 'unnamed-arguments','normal'), 
+			shell, 
+			'a <- foo(x=3,y,z)',
 				new DataflowGraph()
 					.addVertex({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
 					.addVertex({

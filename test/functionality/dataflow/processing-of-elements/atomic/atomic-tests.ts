@@ -362,8 +362,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				initializeCleanEnvironments()
 			)
 			assertDataflow(label('define call with multiple args should only be defined by the call-return', 'local-left-assignment', 'named-arguments', 'unnamed-arguments','normal'), 
-			shell, 
-			'a <- foo(x=3,y,z)',
+				shell, 
+				'a <- foo(x=3,y,z)',
 				new DataflowGraph()
 					.addVertex({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
 					.addVertex({

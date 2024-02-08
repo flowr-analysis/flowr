@@ -70,8 +70,8 @@ describe('Function Call', withShell(shell => {
 			envWithIA
 		)
 		assertDataflow(label('Calling function a with an indirection', 'local-left-assignment', 'unnamed-arguments', 'normal'), 
-		shell, 
-		'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
+			shell, 
+			'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
 			new DataflowGraph()
 				.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
 				.addVertex({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })

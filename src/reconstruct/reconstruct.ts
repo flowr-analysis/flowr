@@ -284,27 +284,36 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: Code[], body: Code, configuration: ReconstructionConfiguration): Code {
 	// if a definition is not selected, we only use the body - slicing will always select the definition
 	if(!isSelected(configuration, definition) && functionParameters.every(p => p.length === 0)) {
+		console.log('function without parameter unselected')
 		return merge([body])
 	}
 
 	if(isSelected(configuration, definition.body)) {
-		return merge([body])
+		console.log('fbody selected')
+		const out = merge([body])
+		const h = out[out.length - 1].linePart
+		if(h[h.length - 1].part === ';') {
+			out.pop()
+		}
+		return out
 	}
 
 	const startPos = definition.location.start
 	const endPos = definition.location.end
 
 	if(isSelected(configuration, definition)) {
+		console.log('definition selected')
 		return plain(getLexeme(definition), startPos)
 	}
 
+	console.log('normal function reconstruct')
 	const parameters = reconstructParameters(definition.parameters).join(', ')
 	const additionalTokens = reconstructAdditionalTokens(definition)
 	const reconstructedBody = reconstructExpressionList(definition.body, [plain(getLexeme(definition.body), startPos)], configuration)
 	//body.length === 0 ? [{linePart: [{part: '', loc: startPos}], indent: 0}] : body.slice(1, body.length - 1)
 	const parameterLoc = definition.parameters.length === 0 ? startPos : definition.parameters[definition.parameters.length - 1].location.start
 
-	const out = merge([[{linePart: [{part: getLexeme(definition), loc: startPos}], indent: 0}],
+	const out = merge([[{ linePart: [{part: `function(${parameters})`, loc: startPos}], indent: 0 }],
 					   reconstructedBody,
 					   plain(parameters, parameterLoc),
 					   ...additionalTokens])

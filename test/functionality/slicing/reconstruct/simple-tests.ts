@@ -78,14 +78,11 @@ describe('Simple', withShell(shell => {
 			const pool: [string, string | string[], string][] = [
 				[largeFor, '0', 'for (i in 1:20) {}'],
 				[largeFor, '4', 'for (i in 1:20) {\n  y <- 9\n}'],
-				//more spaces after for
 				[largeFor, ['0', '4'], 'for (i in 1:20) {\n  y <- 9\n}'],
-				//more spaces after for
 				[largeFor, ['0', '4', '7'], `for (i in 1:20) {
   y <- 9
   x <- 5
 }`],
-				//more spaces after for
 				[largeFor, ['0', '4', '10'], `for (i in 1:20) {
   y <- 9
   12 -> x
@@ -94,6 +91,17 @@ describe('Simple', withShell(shell => {
 
 			for(const [code, id, expected] of pool) {
 				assertReconstructed(`${JSON.stringify(id)}: ${code}`, shell, code, id, expected)
+			}
+		})
+
+		describe.only('function definition', () => {
+			const testCases: {name: string, case: string, argument: [string], expected: string}[] = [
+				{name: 'simple function', case: 'a <- function (x) { x <- 2 }', argument: ['0'], expected: 'a <- function (x) { x <- 2 }'},
+				{name: 'function body extracted', case: 'a <- function (x) { x <- 2 }', argument: ['5'], expected: 'x <- 2'},
+				{name: 'multi-line function', case: 'a <- function (x) { x <- 2;\n x + 4 }', argument: ['0'], expected: 'a <- function (x) { x <- 2;\n x + 4 }'}
+			]
+			for(const test of testCases) {
+				assertReconstructed(test.name, shell, test.case, test.argument, test.expected)
 			}
 		})
 	})

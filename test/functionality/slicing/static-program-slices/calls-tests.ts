@@ -1,6 +1,6 @@
 import { assertSliced, withShell } from '../../_helper/shell'
 
-describe.only('Calls', withShell(shell => {
+describe('Calls', withShell(shell => {
 	describe('Simple Calls', () => {
 		const code = `i <- 4
 a <- function(x) { x }
@@ -12,7 +12,7 @@ a(i)`
 a <- function(x) { x <- 2; 1 }
 a(i)`
 		assertSliced('Function call with constant function', shell, constFunction, ['3:1'], `i <- 4
-a <- function(x) {         1 }
+a <- function(x) { 1 }
 a(i)`)
 		assertSliced('Slice function definition', shell, constFunction, ['2@a'], 'a <- function(x) { }')
 		assertSliced('Slice within function', shell, constFunction, ['2:20'], 'x <- 2')
@@ -302,7 +302,13 @@ a()(y)
 cat(x)`, ['5@x'], `x <- 2
 cat(x)`)
 
-		assertSliced('Must work with nested globals and maybe assignments', shell, `a <- function() { function(b) { if(runif() > .5) { x <<- b } } }
+		assertSliced('Must work with nested globals and maybe assignments', shell, `a <- function() {
+			function(b) {
+				if(runif() > .5) {
+					x <<- b
+				}
+			}
+		}
 y <- 5
 x <- 2
 a()(y)

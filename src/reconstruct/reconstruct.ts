@@ -20,7 +20,7 @@ import {
 	RWhileLoop,
 	RType,
 	RPipe,
-	StatefulFoldFunctions
+	StatefulFoldFunctions,
 } from '../r-bridge'
 import { log } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
@@ -284,21 +284,33 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: Code[], body: Code, configuration: ReconstructionConfiguration): Code {
 	// if a definition is not selected, we only use the body - slicing will always select the definition
 	if(!isSelected(configuration, definition) && functionParameters.every(p => p.length === 0)) {
-		return body
+		return merge([body])
 	}
-	const parameters = reconstructParameters(definition.parameters).join(', ')
+
+	if(isSelected(configuration, definition.body)) {
+		return merge([body])
+	}
+
 	const startPos = definition.location.start
 	const endPos = definition.location.end
+
+	if(isSelected(configuration, definition)) {
+		return plain(getLexeme(definition), startPos)
+	}
+
+	const parameters = reconstructParameters(definition.parameters).join(', ')
 	const additionalTokens = reconstructAdditionalTokens(definition)
-	const reconstructedBody = body.length === 0 ? [{linePart: [{part: '', loc: startPos}], indent: 0}] : body.slice(1, body.length - 1)
+	const reconstructedBody = reconstructExpressionList(definition.body, [plain(getLexeme(definition.body), startPos)], configuration)
+	//body.length === 0 ? [{linePart: [{part: '', loc: startPos}], indent: 0}] : body.slice(1, body.length - 1)
 	const parameterLoc = definition.parameters.length === 0 ? startPos : definition.parameters[definition.parameters.length - 1].location.start
 
 	const out = merge([[{linePart: [{part: getLexeme(definition), loc: startPos}], indent: 0}],
 					   reconstructedBody,
-					   [{linePart: [{part: parameters, loc: parameterLoc}], indent: 0}],
+					   plain(parameters, parameterLoc),
 					   ...additionalTokens])
 
 	return out
+
 	if(body.length <= 1) {
 		// 'inline'
 		const bodyStr = body.length === 0 ? '' : `${body[0].linePart[0].part} ` /* add suffix space */

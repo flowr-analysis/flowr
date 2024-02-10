@@ -12,7 +12,7 @@ import { normalizeSingleToken } from '../single-element'
  * Parsing binary operations includes the pipe, even though the produced PIPE construct is not a binary operation,
  * to ensure it is handled separately from the others (especially in the combination of a pipe bind)
  */
-export function tryNormalizeBinary(
+export function normalizeBinary(
 	config: NormalizeConfiguration,
 	[lhs, operator, rhs]: XmlBasedJson[]
 ): RFunctionCall {

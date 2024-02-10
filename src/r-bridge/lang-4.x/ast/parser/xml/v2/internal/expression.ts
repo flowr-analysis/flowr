@@ -6,7 +6,7 @@ import { expensiveTrace } from '../../../../../../../util/log'
 import { XML_NAME } from '../../common/xml-to-json'
 import { normalizeSingleToken } from './single-element'
 import type { NormalizeConfiguration } from '../data'
-import { normalizeUnary, tryNormalizeBinary } from './operators'
+import { normalizeUnary, normalizeBinary } from './operators'
 import { tryNormalizeSymbolWithNamespace } from './values/symbol'
 import { getTokenType, retrieveMetaStructure } from '../../common/meta'
 import { normalizeAccess } from './access'
@@ -14,6 +14,7 @@ import { guard } from '../../../../../../../util/assert'
 import { jsonReplacer } from '../../../../../../../util/json'
 import { tryNormalizeIfThen } from './control/if-then'
 import { tryNormalizeIfThenElse } from './control/if-then-else'
+import { tryNormalizeFor } from './loops/for'
 
 
 /**
@@ -129,9 +130,10 @@ function normalizeElems(config: NormalizeConfiguration, tokens: readonly XmlBase
 
 
 	switch(length) {
-		case 3: // TODO: for
+		case 3:
 			return tryNormalizeSymbolWithNamespace(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
-				?? tryNormalizeBinary(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
+				?? tryNormalizeFor(config, tokens[0], tokens[1], tokens[2])
+				?? normalizeBinary(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
 		case 5: // TODO: while
 			return tryNormalizeIfThen(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? undefined as unknown as RNode
 		case 7: // TODO: other cases?

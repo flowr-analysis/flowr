@@ -325,49 +325,119 @@ describe('Parse simple constructs', withShell(shell => {
 	})
 	describe('loops', () => {
 		describe('for', () => {
-			assertAst(label('for(i in 1:10) 2', 'for-loop', 'name-normal', 'numbers', 'built-in-sequencing'), shell, 'for(i in 1:42)2', exprList({
-				type:     RType.ForLoop,
-				location: rangeFrom(1, 1, 1, 3),
-				lexeme:   'for',
-				info:     {},
-				variable: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 5, 1, 5),
-					namespace: undefined,
-					lexeme:    'i',
-					content:   'i',
-					info:      {}
+			assertAst(label('for(i in 1:10) 2', 'for-loop', 'name-normal', 'numbers', 'built-in-sequencing'), shell, 'for(i in 1:42)2', [
+				{
+					step:   NORMALIZE,
+					wanted: exprList({
+						type:     RType.ForLoop,
+						location: rangeFrom(1, 1, 1, 3),
+						lexeme:   'for',
+						info:     {},
+						variable: {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 5, 1, 5),
+							namespace: undefined,
+							lexeme:    'i',
+							content:   'i',
+							info:      {}
+						},
+						vector: {
+							type:     RType.BinaryOp,
+							flavor:   'arithmetic',
+							operator: ':',
+							location: rangeFrom(1, 11, 1, 11),
+							lexeme:   ':',
+							info:     {},
+							lhs:      {
+								type:     RType.Number,
+								location: rangeFrom(1, 10, 1, 10),
+								lexeme:   '1',
+								content:  numVal(1),
+								info:     {}
+							},
+							rhs: {
+								type:     RType.Number,
+								location: rangeFrom(1, 12, 1, 13),
+								lexeme:   '42',
+								content:  numVal(42),
+								info:     {}
+							}
+						},
+						body: ensureExpressionList({
+							type:     RType.Number,
+							location: rangeFrom(1, 15, 1, 15),
+							lexeme:   '2',
+							content:  numVal(2),
+							info:     {}
+						})
+					})
 				},
-				vector: {
-					type:     RType.BinaryOp,
-					flavor:   'arithmetic',
-					operator: ':',
-					location: rangeFrom(1, 11, 1, 11),
-					lexeme:   ':',
-					info:     {},
-					lhs:      {
-						type:     RType.Number,
-						location: rangeFrom(1, 10, 1, 10),
-						lexeme:   '1',
-						content:  numVal(1),
-						info:     {}
-					},
-					rhs: {
-						type:     RType.Number,
-						location: rangeFrom(1, 12, 1, 13),
-						lexeme:   '42',
-						content:  numVal(42),
-						info:     {}
-					}
-				},
-				body: ensureExpressionList({
-					type:     RType.Number,
-					location: rangeFrom(1, 15, 1, 15),
-					lexeme:   '2',
-					content:  numVal(2),
-					info:     {}
-				})
-			}), {
+				{
+					step:   DESUGAR_NORMALIZE,
+					wanted: exprList({
+						type:         RType.FunctionCall,
+						location:     rangeFrom(1, 1, 1, 3),
+						lexeme:       'for',
+						info:         {},
+						flavor:       'named',
+						functionName: {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 1, 1, 3),
+							lexeme:    'for',
+							content:   'for',
+							namespace: undefined,
+							info:      {}
+						},
+						arguments: [
+							{
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 5, 1, 5),
+								lexeme:    'i',
+								content:   'i',
+								info:      {},
+								namespace: undefined
+							},
+							{
+								type:         RType.FunctionCall,
+								location:     rangeFrom(1, 11, 1, 11),
+								lexeme:       '1:42',
+								info:         {},
+								flavor:       'named',
+								functionName: {
+									type: 		   RType.Symbol,
+									location: 	rangeFrom(1, 11, 1, 11),
+									lexeme: 	  ':',
+									content: 	 ':',
+									namespace: undefined,
+									info: 		   {}
+								},
+								arguments: [
+									{
+										type:     RType.Number,
+										location: rangeFrom(1, 10, 1, 10),
+										lexeme:   '1',
+										content:  numVal(1),
+										info:     {}
+									},
+									{
+										type:     RType.Number,
+										location: rangeFrom(1, 12, 1, 13),
+										lexeme:   '42',
+										content:  numVal(42),
+										info:     {}
+									}
+								]
+							},
+							{
+								type:     RType.Number,
+								location: rangeFrom(1, 15, 1, 15),
+								lexeme:   '2',
+								content:  numVal(2),
+								info:     {}
+							}
+						]
+					})
+				}], {
 				ignoreAdditionalTokens: true
 			}
 			)

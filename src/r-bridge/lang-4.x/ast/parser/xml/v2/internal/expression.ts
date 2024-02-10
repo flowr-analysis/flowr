@@ -12,6 +12,7 @@ import { getTokenType, retrieveMetaStructure } from '../../common/meta'
 import { normalizeAccess } from './access'
 import { guard } from '../../../../../../../util/assert'
 import { jsonReplacer } from '../../../../../../../util/json'
+import { normalizeIfThen } from './control/if-then'
 
 
 /**
@@ -115,8 +116,9 @@ function normalizeElems(config: NormalizeConfiguration, tokens: readonly XmlBase
 
 	// TODO: use internal functions directly and not named if they can not be overwritten!
 	switch(second) {
-		case RawRType.ParenLeft:
+		/* case RawRType.ParenLeft:
 			return todo(tokens)
+		 */
 		case RawRType.Dollar:
 		case RawRType.At:
 		case RawRType.BracketLeft:
@@ -129,22 +131,11 @@ function normalizeElems(config: NormalizeConfiguration, tokens: readonly XmlBase
 		case 3: // TODO: for
 			return tryNormalizeSymbolWithNamespace(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
 				?? tryNormalizeBinary(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
-		case 5:
-			return todo(tokens)
-		case 7:
+		case 5: // TODO: while
+			return normalizeIfThen(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? undefined as unknown as RNode
+		case 7: // TODO: if-else
 			return todo(tokens)
 		default:
 			return todo(tokens)
 	}
 }
-
-
-/*export function parseNodesWithUnknownType(data: ParserData, mappedWithName: NamedXmlBasedJson[]): (RNode | RDelimiter)[] {
-	const parsedNodes: (RNode | RDelimiter)[] = []
-	// used to indicate the new root node of this set of nodes
-	for(const elem of mappedWithName) {
-		const retrieved = tryNormalizeSingleNode(data, elem)
-		parsedNodes.push(retrieved)
-	}
-	return parsedNodes
-}*/

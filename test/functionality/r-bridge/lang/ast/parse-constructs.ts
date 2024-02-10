@@ -1,16 +1,20 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
+import type { SourceRange } from '../../../../../src/util/range'
 import { addRanges, rangeFrom } from '../../../../../src/util/range'
+import type { RNode} from '../../../../../src'
 import { RType } from '../../../../../src'
 import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v1/internal'
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import { label } from '../../../_helper/label'
+import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 
 interface IfThenSpacing {
 	str:          string
 	locationTrue: ReturnType<typeof rangeFrom>
+	then:         RNode
+	num:          number,
 	locationNum:  ReturnType<typeof rangeFrom>
-	num:          number
 	end:          ReturnType<typeof rangeFrom>
 	/* yes, we could give them just once, but if we ever want to modify the list this is more flexible */
 	capabilities: FlowrCapabilityId[]
@@ -20,72 +24,100 @@ const IfThenSpacingVariants: IfThenSpacing[] = [
 	{
 		str:          'if(TRUE)1',
 		locationTrue: rangeFrom(1, 4, 1, 7),
-		locationNum:  rangeFrom(1, 9, 1, 9),
+		then:         { type: RType.Number, location: rangeFrom(1, 9, 1, 9), lexeme: '1', content: numVal(1), info: {} },
 		num:          1,
+		locationNum:  rangeFrom(1, 9, 1, 9),
 		end:          rangeFrom(1, 9, 1, 9),
 		capabilities: ['if', 'logical', 'numbers']
 	},
 	{
 		str:          'if(TRUE) 1',
 		locationTrue: rangeFrom(1, 4, 1, 7),
-		locationNum:  rangeFrom(1, 10, 1, 10),
+		then:         { type: RType.Number, location: rangeFrom(1, 10, 1, 10), lexeme: '1', content: numVal(1), info: {} },
 		num:          1,
+		locationNum:  rangeFrom(1, 10, 1, 10),
 		end:          rangeFrom(1, 10, 1, 10),
 		capabilities: ['if', 'logical', 'numbers']
 	},
 	{
 		str:          'if (TRUE) 1',
 		locationTrue: rangeFrom(1, 5, 1, 8),
-		locationNum:  rangeFrom(1, 11, 1, 11),
 		num:          1,
+		locationNum:  rangeFrom(1, 11, 1, 11),
+		then:         { type: RType.Number, location: rangeFrom(1, 11, 1, 11), lexeme: '1', content: numVal(1), info: {} },
 		end:          rangeFrom(1, 11, 1, 11),
 		capabilities: ['if', 'logical', 'numbers']
 	},
 	{
 		str:          'if     (TRUE)  42',
 		locationTrue: rangeFrom(1, 9, 1, 12),
-		locationNum:  rangeFrom(1, 16, 1, 17),
 		num:          42,
+		locationNum:  rangeFrom(1, 16, 1, 17),
+		then:         { type: RType.Number, location: rangeFrom(1, 16, 1, 17), lexeme: '42', content: numVal(42), info: {} },
 		end:          rangeFrom(1, 17, 1, 17),
 		capabilities: ['if', 'logical', 'numbers']
 	},
 	{
 		str:          'if\n(TRUE)1',
 		locationTrue: rangeFrom(2, 2, 2, 5),
-		locationNum:  rangeFrom(2, 7, 2, 7),
 		num:          1,
+		locationNum:  rangeFrom(2,7,2,7),
+		then:         { type: RType.Number, location: rangeFrom(2, 7, 2, 7), lexeme: '1', content: numVal(1), info: {} },
 		end:          rangeFrom(2, 7, 2, 7),
 		capabilities: ['if', 'logical', 'numbers']
 	},
 	{
 		str:          'if(TRUE)\n1',
 		locationTrue: rangeFrom(1, 4, 1, 7),
-		locationNum:  rangeFrom(2, 1, 2, 1),
 		num:          1,
+		locationNum:  rangeFrom(2,1,2,1),
+		then:         { type: RType.Number, location: rangeFrom(2, 1, 2, 1), lexeme: '1', content: numVal(1), info: {} },
 		end:          rangeFrom(2, 1, 2, 1),
 		capabilities: ['if', 'logical', 'numbers']
 	},
 	{
 		str:          'if\n(\nTRUE\n)\n1',
 		locationTrue: rangeFrom(3, 1, 3, 4),
-		locationNum:  rangeFrom(5, 1, 5, 1),
 		num:          1,
+		locationNum:  rangeFrom(5,1,5,1),
+		then:         { type: RType.Number, location: rangeFrom(5, 1, 5, 1), lexeme: '1', content: numVal(1), info: {} },
 		end:          rangeFrom(5, 1, 5, 1),
 		capabilities: ['if', 'logical', 'numbers']
 	},
 ]
 
+function inBrace(location: SourceRange, content: RNode): RNode {
+	return {
+		type:         RType.FunctionCall,
+		location,
+		lexeme:       '{',
+		flavor:       'named',
+		info:         {},
+		functionName: {
+			type:      RType.Symbol,
+			location,
+			lexeme:    '{',
+			content:   '{',
+			namespace: undefined,
+			info:      {}
+		},
+		arguments: [content]
+	}
+}
+
 const IfThenBraceVariants: IfThenSpacing[] = [{
 	str:          'if(TRUE){1}',
 	locationTrue: rangeFrom(1, 4, 1, 7),
-	locationNum:  rangeFrom(1, 10, 1, 10),
 	num:          1,
+	locationNum:  rangeFrom(1,10,1,10),
+	then:         inBrace(rangeFrom(1, 9, 1, 9), { type: RType.Number, location: rangeFrom(1, 10, 1, 10), lexeme: '1', content: numVal(1), info: {}}),
 	end:          rangeFrom(1, 11, 1, 11),
 	capabilities: ['if', 'logical', 'numbers', 'grouping']
 }, {
 	str:          'if(TRUE){42}',
 	locationTrue: rangeFrom(1, 4, 1, 7),
 	locationNum:  rangeFrom(1, 10, 1, 11),
+	then:         inBrace(rangeFrom(1, 9, 1, 9), { type: RType.Number, location: rangeFrom(1, 10, 1, 11), lexeme: '42', content: numVal(42), info: {}}),
 	num:          42,
 	end:          rangeFrom(1, 12, 1, 12),
 	capabilities: ['if', 'logical', 'numbers', 'grouping']
@@ -93,6 +125,11 @@ const IfThenBraceVariants: IfThenSpacing[] = [{
 	str:          'if(TRUE){{{1}}}',
 	locationTrue: rangeFrom(1, 4, 1, 7),
 	locationNum:  rangeFrom(1, 12, 1, 12),
+	then:         inBrace(rangeFrom(1, 9, 1, 9),
+		inBrace(rangeFrom(1, 10, 1, 10),
+			inBrace(rangeFrom(1, 11, 1, 11), { type: RType.Number, location: rangeFrom(1, 12, 1, 12), lexeme: '1', content: numVal(1), info: {}})
+		)
+	),
 	num:          1,
 	end:          rangeFrom(1, 15, 1, 15),
 	capabilities: ['if', 'logical', 'numbers', 'grouping']
@@ -141,26 +178,55 @@ describe('Parse simple constructs', withShell(shell => {
 				describe(`${pool.name} variants`, () => {
 					for(const variant of pool.variants) {
 						const strNum = `${variant.num}`
-						assertAst(label(JSON.stringify(variant.str), ...variant.capabilities), shell, variant.str, exprList({
-							type:      RType.IfThenElse,
-							location:  rangeFrom(1, 1, 1, 2),
-							lexeme:    'if',
-							info:      {},
-							condition: {
-								type:     RType.Logical,
-								location: variant.locationTrue,
-								lexeme:   'TRUE',
-								content:  true,
-								info:     {}
-							},
-							then: ensureExpressionList({
-								type:     RType.Number,
-								location: variant.locationNum,
-								lexeme:   strNum,
-								content:  numVal(variant.num),
-								info:     {}
-							})
-						}), {
+						assertAst(label(JSON.stringify(variant.str), ...variant.capabilities), shell, variant.str, [
+							{
+								step:   NORMALIZE,
+								wanted: exprList({
+									type:      RType.IfThenElse,
+									location:  rangeFrom(1, 1, 1, 2),
+									lexeme:    'if',
+									info:      {},
+									condition: {
+										type:     RType.Logical,
+										location: variant.locationTrue,
+										lexeme:   'TRUE',
+										content:  true,
+										info:     {}
+									},
+									then: ensureExpressionList({
+										type:     RType.Number,
+										location: variant.locationNum,
+										lexeme:   strNum,
+										content:  numVal(variant.num),
+										info:     {}
+									})
+								})
+							}, {
+								step:   DESUGAR_NORMALIZE,
+								wanted: exprList({
+									type:         RType.FunctionCall,
+									location:     rangeFrom(1, 1, 1, 2),
+									lexeme:       'if',
+									info:         {},
+									flavor:       'named',
+									functionName: {
+										type:      RType.Symbol,
+										location:  rangeFrom(1, 1, 1, 2),
+										lexeme:    'if',
+										content:   'if',
+										namespace: undefined,
+										info:      {}
+									},
+									arguments: [{
+										type:     RType.Logical,
+										location: variant.locationTrue,
+										lexeme:   'TRUE',
+										content:  true,
+										info:     {}
+									}, variant.then ]
+								})
+							}
+						], {
 							ignoreAdditionalTokens: true
 						})
 					}

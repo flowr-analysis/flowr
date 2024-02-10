@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RType } from '../../../../../src/r-bridge'
+import { RType } from '../../../../../src'
 import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 import {InternalScope} from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v2/internal/internal'
 
@@ -49,8 +49,7 @@ describe('Parse value access', withShell(shell => {
 						info:      {},
 						location:  rangeFrom(1, 1, 1, 1),
 						namespace: undefined
-					}// TODO: must this be a list function call?
-					]
+					}]
 				})
 			}
 		])

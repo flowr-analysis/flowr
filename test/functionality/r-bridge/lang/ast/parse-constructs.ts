@@ -1,16 +1,29 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { addRanges, rangeFrom } from '../../../../../src/util/range'
-import { RType } from '../../../../../src/r-bridge'
+import { RType } from '../../../../../src'
 import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v1/internal'
+import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data'
+import { label } from '../../../_helper/label'
 
-const IfThenSpacingVariants = [
+interface IfThenSpacing {
+	str:          string
+	locationTrue: ReturnType<typeof rangeFrom>
+	locationNum:  ReturnType<typeof rangeFrom>
+	num:          number
+	end:          ReturnType<typeof rangeFrom>
+	/* yes, we could give them just once, but if we ever want to modify the list this is more flexible */
+	capabilities: FlowrCapabilityId[]
+}
+
+const IfThenSpacingVariants: IfThenSpacing[] = [
 	{
 		str:          'if(TRUE)1',
 		locationTrue: rangeFrom(1, 4, 1, 7),
 		locationNum:  rangeFrom(1, 9, 1, 9),
 		num:          1,
 		end:          rangeFrom(1, 9, 1, 9),
+		capabilities: ['if', 'logical', 'numbers']
 	},
 	{
 		str:          'if(TRUE) 1',
@@ -18,6 +31,7 @@ const IfThenSpacingVariants = [
 		locationNum:  rangeFrom(1, 10, 1, 10),
 		num:          1,
 		end:          rangeFrom(1, 10, 1, 10),
+		capabilities: ['if', 'logical', 'numbers']
 	},
 	{
 		str:          'if (TRUE) 1',
@@ -25,6 +39,7 @@ const IfThenSpacingVariants = [
 		locationNum:  rangeFrom(1, 11, 1, 11),
 		num:          1,
 		end:          rangeFrom(1, 11, 1, 11),
+		capabilities: ['if', 'logical', 'numbers']
 	},
 	{
 		str:          'if     (TRUE)  42',
@@ -32,6 +47,7 @@ const IfThenSpacingVariants = [
 		locationNum:  rangeFrom(1, 16, 1, 17),
 		num:          42,
 		end:          rangeFrom(1, 17, 1, 17),
+		capabilities: ['if', 'logical', 'numbers']
 	},
 	{
 		str:          'if\n(TRUE)1',
@@ -39,6 +55,7 @@ const IfThenSpacingVariants = [
 		locationNum:  rangeFrom(2, 7, 2, 7),
 		num:          1,
 		end:          rangeFrom(2, 7, 2, 7),
+		capabilities: ['if', 'logical', 'numbers']
 	},
 	{
 		str:          'if(TRUE)\n1',
@@ -46,6 +63,7 @@ const IfThenSpacingVariants = [
 		locationNum:  rangeFrom(2, 1, 2, 1),
 		num:          1,
 		end:          rangeFrom(2, 1, 2, 1),
+		capabilities: ['if', 'logical', 'numbers']
 	},
 	{
 		str:          'if\n(\nTRUE\n)\n1',
@@ -53,49 +71,64 @@ const IfThenSpacingVariants = [
 		locationNum:  rangeFrom(5, 1, 5, 1),
 		num:          1,
 		end:          rangeFrom(5, 1, 5, 1),
+		capabilities: ['if', 'logical', 'numbers']
 	},
 ]
 
-const IfThenBraceVariants = [{
+const IfThenBraceVariants: IfThenSpacing[] = [{
 	str:          'if(TRUE){1}',
 	locationTrue: rangeFrom(1, 4, 1, 7),
 	locationNum:  rangeFrom(1, 10, 1, 10),
 	num:          1,
-	end:          rangeFrom(1, 11, 1, 11)
+	end:          rangeFrom(1, 11, 1, 11),
+	capabilities: ['if', 'logical', 'numbers', 'grouping']
 }, {
 	str:          'if(TRUE){42}',
 	locationTrue: rangeFrom(1, 4, 1, 7),
 	locationNum:  rangeFrom(1, 10, 1, 11),
 	num:          42,
-	end:          rangeFrom(1, 12, 1, 12)
+	end:          rangeFrom(1, 12, 1, 12),
+	capabilities: ['if', 'logical', 'numbers', 'grouping']
 }, {
 	str:          'if(TRUE){{{1}}}',
 	locationTrue: rangeFrom(1, 4, 1, 7),
 	locationNum:  rangeFrom(1, 12, 1, 12),
 	num:          1,
-	end:          rangeFrom(1, 15, 1, 15)
+	end:          rangeFrom(1, 15, 1, 15),
+	capabilities: ['if', 'logical', 'numbers', 'grouping']
 }]
 
+interface ElseSpacing {
+	str:          string
+	locationElse: ReturnType<typeof rangeFrom>
+	num:          number,
+	capabilities: FlowrCapabilityId[]
+}
+
 // suffix of if-then counterparts
-const ElseSpacingVariants = [{
+const ElseSpacingVariants: ElseSpacing[] = [{
 	/* one space/newline around is the minimum for R */
 	str:          ' else 2',
 	locationElse: rangeFrom(0, 7, 0, 7),
-	num:          2
+	num:          2,
+	capabilities: ['if', 'numbers']
 }, {
 	str:          ' else  2',
 	locationElse: rangeFrom(0, 8, 0, 8),
-	num:          2
+	num:          2,
+	capabilities: ['if', 'numbers']
 }]
 
-const ElseBracesVariants = [{
+const ElseBracesVariants: ElseSpacing[] = [{
 	str:          ' else {2}',
 	locationElse: rangeFrom(0, 8, 0, 8),
-	num:          2
+	num:          2,
+	capabilities: ['if', 'numbers', 'grouping']
 }, {
 	str:          ' else {{{42}}}',
 	locationElse: rangeFrom(0, 10, 0, 11),
-	num:          42
+	num:          42,
+	capabilities: ['if', 'numbers', 'grouping']
 }]
 
 describe('Parse simple constructs', withShell(shell => {
@@ -108,7 +141,7 @@ describe('Parse simple constructs', withShell(shell => {
 				describe(`${pool.name} variants`, () => {
 					for(const variant of pool.variants) {
 						const strNum = `${variant.num}`
-						assertAst(JSON.stringify(variant.str), shell, variant.str, exprList({
+						assertAst(label(JSON.stringify(variant.str), ...variant.capabilities), shell, variant.str, exprList({
 							type:      RType.IfThenElse,
 							location:  rangeFrom(1, 1, 1, 2),
 							lexeme:    'if',

@@ -2,7 +2,7 @@ import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import type { SourceRange } from '../../../../../src/util/range'
 import { addRanges, rangeFrom } from '../../../../../src/util/range'
-import type { RNode} from '../../../../../src'
+import type { RNode } from '../../../../../src'
 import { RType } from '../../../../../src'
 import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v1/internal'
 import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data'
@@ -138,6 +138,7 @@ const IfThenBraceVariants: IfThenSpacing[] = [{
 interface ElseSpacing {
 	str:          string
 	locationElse: ReturnType<typeof rangeFrom>
+	otherwise:    RNode,
 	num:          number,
 	capabilities: FlowrCapabilityId[]
 }
@@ -148,22 +149,30 @@ const ElseSpacingVariants: ElseSpacing[] = [{
 	str:          ' else 2',
 	locationElse: rangeFrom(0, 7, 0, 7),
 	num:          2,
+	otherwise:    { type: RType.Number, location: rangeFrom(0, 9, 0, 9), lexeme: '2', content: numVal(2), info: {} },
 	capabilities: ['if', 'numbers']
 }, {
 	str:          ' else  2',
 	locationElse: rangeFrom(0, 8, 0, 8),
 	num:          2,
+	otherwise:    { type: RType.Number, location: rangeFrom(0, 8, 0, 8), lexeme: '2', content: numVal(2), info: {} },
 	capabilities: ['if', 'numbers']
 }]
 
 const ElseBracesVariants: ElseSpacing[] = [{
 	str:          ' else {2}',
 	locationElse: rangeFrom(0, 8, 0, 8),
+	otherwise: 	  inBrace(rangeFrom(0, 7, 0, 7), { type: RType.Number, location: rangeFrom(0, 9, 0, 9), lexeme: '2', content: numVal(2), info: {}}),
 	num:          2,
 	capabilities: ['if', 'numbers', 'grouping']
 }, {
 	str:          ' else {{{42}}}',
 	locationElse: rangeFrom(0, 10, 0, 11),
+	otherwise:    inBrace(rangeFrom(0, 7, 0, 7),
+		inBrace(rangeFrom(0, 8, 0, 8),
+			inBrace(rangeFrom(0, 9, 0, 9), { type: RType.Number, location: rangeFrom(0, 10, 0, 11), lexeme: '42', content: numVal(42), info: {}})
+		)
+	),
 	num:          42,
 	capabilities: ['if', 'numbers', 'grouping']
 }]
@@ -248,7 +257,7 @@ describe('Parse simple constructs', withShell(shell => {
 								const thenNum = `${ifThenVariant.num}`
 								const elseNum = `${elseVariant.num}`
 								const input = `${ifThenVariant.str}${elseVariant.str}`
-								assertAst('if-then-else', shell, input, exprList({
+								assertAst(label(JSON.stringify(input), ...ifThenVariant.capabilities, ...elseVariant.capabilities), shell, input, exprList({
 									type:      RType.IfThenElse,
 									location:  rangeFrom(1, 1, 1, 2),
 									lexeme:    'if',

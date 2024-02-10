@@ -437,58 +437,128 @@ describe('Parse simple constructs', withShell(shell => {
 							}
 						]
 					})
-				}], {
+				}
+			], {
 				ignoreAdditionalTokens: true
 			}
 			)
-			assertAst('for-loop with comment', shell, `for(#a
+			assertAst(label('for-loop with comment', 'for-loop', 'name-normal', 'numbers', 'built-in-sequencing', 'comments'), shell, `for(#a
 				i#b
 				in#c
 				1:42#d
 			)
-			2`, exprList({
-				type:     RType.ForLoop,
-				location: rangeFrom(1, 1, 1, 3),
-				lexeme:   'for',
-				info:     {},
-				variable: {
-					type:      RType.Symbol,
-					location:  rangeFrom(2, 33, 2, 33),
-					namespace: undefined,
-					lexeme:    'i',
-					content:   'i',
-					info:      {}
-				},
-				vector: {
-					type:     RType.BinaryOp,
-					flavor:   'arithmetic',
-					operator: ':',
-					location: rangeFrom(4, 34, 4, 34),
-					lexeme:   ':',
+			2`,[{
+				step:   NORMALIZE, wanted: exprList({
+					type:     RType.ForLoop,
+					location: rangeFrom(1, 1, 1, 3),
+					lexeme:   'for',
 					info:     {},
-					lhs:      {
-						type:     RType.Number,
-						location: rangeFrom(4, 33, 4, 33),
-						lexeme:   '1',
-						content:  numVal(1),
-						info:     {}
+					variable: {
+						type:      RType.Symbol,
+						location:  rangeFrom(2, 33, 2, 33),
+						namespace: undefined,
+						lexeme:    'i',
+						content:   'i',
+						info:      {}
 					},
-					rhs: {
+					vector: {
+						type:     RType.BinaryOp,
+						flavor:   'arithmetic',
+						operator: ':',
+						location: rangeFrom(4, 34, 4, 34),
+						lexeme:   ':',
+						info:     {},
+						lhs:      {
+							type:     RType.Number,
+							location: rangeFrom(4, 33, 4, 33),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						},
+						rhs: {
+							type:     RType.Number,
+							location: rangeFrom(4, 35, 4, 36),
+							lexeme:   '42',
+							content:  numVal(42),
+							info:     {}
+						}
+					},
+					body: ensureExpressionList({
 						type:     RType.Number,
-						location: rangeFrom(4, 35, 4, 36),
-						lexeme:   '42',
-						content:  numVal(42),
+						location: rangeFrom(6, 25, 6, 25),
+						lexeme:   '2',
+						content:  numVal(2),
 						info:     {}
-					}
-				},
-				body: ensureExpressionList({
-					type:     RType.Number,
-					location: rangeFrom(6, 25, 6, 25),
-					lexeme:   '2',
-					content:  numVal(2),
-					info:     {}
+					})
 				})
-			}), {
+			},
+			{
+				step:   DESUGAR_NORMALIZE,
+				wanted: exprList({
+					type:         RType.FunctionCall,
+					location:     rangeFrom(1, 1, 1, 3),
+					lexeme:       'for',
+					info:         {},
+					flavor:       'named',
+					functionName: {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 3),
+						lexeme:    'for',
+						content:   'for',
+						namespace: undefined,
+						info:      {}
+					},
+					arguments: [
+						{
+							type:      RType.Symbol,
+							location:  rangeFrom(2, 33, 2, 33),
+							lexeme:    'i',
+							content:   'i',
+							info:      {},
+							namespace: undefined
+						},
+						{
+							type:         RType.FunctionCall,
+							location:     rangeFrom(4, 34, 4, 34),
+							lexeme:       '1:42',
+							info:         {},
+							flavor:       'named',
+							functionName: {
+								type: 		   RType.Symbol,
+								location: 	rangeFrom(4, 34, 4, 34),
+								lexeme: 	  ':',
+								content: 	 ':',
+								namespace: undefined,
+								info: 		   {}
+							},
+							arguments: [
+								{
+									type:     RType.Number,
+									location: rangeFrom(4, 33, 4, 33),
+									lexeme:   '1',
+									content:  numVal(1),
+									info:     {}
+								},
+								{
+									type:     RType.Number,
+									location: rangeFrom(4, 35, 4, 36),
+									lexeme:   '42',
+									content:  numVal(42),
+									info:     {}
+								}
+							]
+						},
+						{
+							type:     RType.Number,
+							location: rangeFrom(6, 25, 6, 25),
+							lexeme:   '2',
+							content:  numVal(2),
+							info:     {}
+						}
+					]
+				})
+			}
+			], {
 				ignoreAdditionalTokens: true
 			}
 			)

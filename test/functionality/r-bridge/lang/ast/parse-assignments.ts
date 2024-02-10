@@ -218,28 +218,51 @@ describe('Parse simple assignments',
 									namespace: undefined,
 									info:      {}
 								},
-								// TODO: call for brace
 								{
-									type:     RType.BinaryOp,
-									location: rangeFrom(1, 10, 1, 10),
-									flavor:   'arithmetic',
-									lexeme:   '*',
-									operator: '*',
-									info:     {},
-									lhs:      {
-										type:     RType.Number,
-										location: rangeFrom(1, 8, 1, 8),
-										lexeme:   '2',
-										content:  numVal(2),
-										info:     {}
+									type:         RType.FunctionCall,
+									location:     rangeFrom(1, 6, 1, 6),
+									lexeme:       '{',
+									flavor:       'named',
+									info:         {},
+									functionName: {
+										type:      RType.Symbol,
+										location:  rangeFrom(1, 6, 1, 6),
+										lexeme:    '{',
+										content:   '{',
+										namespace: undefined,
+										info:      {}
 									},
-									rhs: {
-										type:     RType.Number,
-										location: rangeFrom(1, 12, 1, 12),
-										lexeme:   '3',
-										content:  numVal(3),
-										info:     {}
-									}
+									arguments: [{
+										type:         RType.FunctionCall,
+										location:     rangeFrom(1, 10, 1, 10),
+										lexeme:       '2 * 3',
+										flavor:       'named',
+										info:         {},
+										functionName: {
+											type:      RType.Symbol,
+											location:  rangeFrom(1, 10, 1, 10),
+											lexeme:    '*',
+											content:   '*',
+											namespace: undefined,
+											info:      {}
+										},
+										arguments: [
+											{
+												type:     RType.Number,
+												location: rangeFrom(1, 8, 1, 8),
+												lexeme:   '2',
+												content:  numVal(2),
+												info:     {}
+											},
+											{
+												type:     RType.Number,
+												location: rangeFrom(1, 12, 1, 12),
+												lexeme:   '3',
+												content:  numVal(3),
+												info:     {}
+											}
+										]
+									}]
 								}
 							]
 						})

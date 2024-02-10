@@ -1,6 +1,6 @@
 import type { XmlBasedJson } from '../../common/input-format'
 import type { RNode } from '../../../../model'
-import { RawRType } from '../../../../model'
+import { RawRType, RType } from '../../../../model'
 import { normalizeLog } from '../normalize'
 import { expensiveTrace } from '../../../../../../../util/log'
 import { XML_NAME } from '../../common/xml-to-json'
@@ -8,26 +8,40 @@ import { normalizeSingleToken } from './single-element'
 import type { NormalizeConfiguration } from '../data'
 import { normalizeUnary, tryNormalizeBinary } from './operators'
 import { tryNormalizeSymbolWithNamespace } from './values/symbol'
-import { getTokenType } from '../../common/meta'
+import { getTokenType, retrieveMetaStructure } from '../../common/meta'
 import { normalizeAccess } from './access'
+import { guard } from '../../../../../../../util/assert'
+import { jsonReplacer } from '../../../../../../../util/json'
 
-function handleSemicolons(tokens: XmlBasedJson[]) {
-	let last = 0, i = 0
-	const segments: XmlBasedJson[][] = []
-	for(const token of tokens) {
-		if(token[XML_NAME] === RawRType.Semicolon) {
-			segments.push(tokens.slice(last, i++))
-			last = i + 1
+
+/**
+ * Handles semicolons within _and_ braces at the start and end of the expression
+ * @param tokens - The tokens to split
+ * @param config - The normalizer config to use
+ */
+function handleExpressionList(tokens: XmlBasedJson[], config: NormalizeConfiguration): { segments: XmlBasedJson[][], braces: undefined | [start: XmlBasedJson, end: XmlBasedJson] } {
+	if(getTokenType(config.tokenMap, tokens[0]) === RawRType.BraceLeft) {
+		const endType = getTokenType(config.tokenMap, tokens[tokens.length - 1])
+		guard(endType === RawRType.BraceRight, () => `expected a brace at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`)
+		const nested = handleExpressionList(tokens.slice(1, tokens.length - 1), config)
+		return { segments: nested.segments, braces: [tokens[0], tokens[tokens.length - 1]] }
+	} else {
+		let last = 0, i = 0
+		const segments: XmlBasedJson[][] = []
+		for(const token of tokens) {
+			if(token[XML_NAME] === RawRType.Semicolon) {
+				segments.push(tokens.slice(last, i++))
+				last = i + 1
+			}
 		}
+		if(last < tokens.length) {
+			segments.push(tokens.slice(last, tokens.length))
+		}
+		return { segments: segments, braces: undefined }
 	}
-	if(last < tokens.length) {
-		segments.push(tokens.slice(last, tokens.length))
-	}
-	return segments
 }
 
 
-// TODO: guard with and without semicolon?
 export function normalizeExpression(
 	config: NormalizeConfiguration,
 	tokens: XmlBasedJson[]
@@ -42,11 +56,32 @@ export function normalizeExpression(
 	if(tokens.length > 1) {
 		// iterate over types, find all semicolons, and segment the tokens based on them.
 		// we could potentially optimize as not all expr may have semicolons but not for now
-		const segments = handleSemicolons(tokens)
+		const { segments, braces } = handleExpressionList(tokens, config)
 
-		if(segments.length > 1) {
+		if(segments.length > 1 || braces) {
 			normalizeLog.trace(`found ${segments.length} ';' segments`)
-			return segments.flatMap(segment => normalizeExpression(config, segment))
+			const processed = segments.flatMap(segment => normalizeExpression(config, segment))
+			if(braces) {
+				const { location, content } = retrieveMetaStructure(config, braces[0])
+				return [{
+					type:         RType.FunctionCall,
+					lexeme:       content,
+					flavor:       'named',
+					location,
+					info:         {},
+					functionName: {
+						type:      RType.Symbol,
+						info:      {},
+						lexeme:    content,
+						namespace: undefined,
+						content,
+						location
+					},
+					arguments: processed
+				}]
+			} else {
+				return processed
+			}
 		}
 
 		/*

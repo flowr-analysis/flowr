@@ -10,6 +10,7 @@ import {
 	OperatorArity,
 	OperatorDatabase, ModelFormulaOperators
 } from '../../../src/r-bridge'
+import type { FlowrCapabilityId } from '../../../src/r-bridge/data'
 
 // maps a string to the expected R number parse value
 export const RNumberPool: { val: RNumberValue, str: string }[] = [
@@ -125,8 +126,8 @@ export const RComparisonBinaryOpPool: { flavor: 'comparison', str: string }[] =
 export const RModelFormulaBinaryOpPool: { flavor: 'model formula', str: string }[] =
   ModelFormulaOperators.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'model formula' }))
 
-export const RAssignmentOpPool: { flavor: 'assignment', str: string }[] =
-    Assignments.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'assignment' }))
+export const RAssignmentOpPool: { flavor: 'assignment', str: string, capabilities: readonly FlowrCapabilityId[] }[] =
+    Assignments.filter(canBeABinaryOp).map(op => ({ str: op, flavor: 'assignment', capabilities: OperatorDatabase[op].capabilities }))
 
 export const RNonAssignmentBinaryOpPool: { label: 'arithmetic' | 'logical' | 'comparison' | 'model formula', pool: typeof RArithmeticBinaryOpPool | typeof RLogicalBinaryOpPool | typeof RComparisonBinaryOpPool | typeof RModelFormulaBinaryOpPool }[] =
 	[

@@ -4,13 +4,14 @@ import { RAssignmentOpPool } from '../../../_helper/provider'
 import { rangeFrom } from '../../../../../src/util/range'
 import { RType } from '../../../../../src'
 import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
+import { label } from '../../../_helper/label'
 
 describe('Parse simple assignments',
 	withShell(shell => {
 		describe('Constant Assignments', () => {
 			for(const op of RAssignmentOpPool) {
 				const opOffset = op.str.length - 1
-				assertAst('Assign to 5',
+				assertAst(label(`x ${op.str} 5`, 'binary-operator', ...op.capabilities),
 					shell,
 					`x ${op.str} 5`,[{
 						step:   NORMALIZE,

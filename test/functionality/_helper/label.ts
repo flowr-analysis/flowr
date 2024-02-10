@@ -7,7 +7,6 @@
 
 
 import { DefaultMap } from '../../../src/util/defaultmap'
-import { guard } from '../../../src/util/assert'
 import type { FlowrCapabilityWithPath, FlowrCapabilityId} from '../../../src/r-bridge/data'
 import { getCapabilityById } from '../../../src/r-bridge/data'
 
@@ -24,14 +23,14 @@ const uniqueTestId = (() => {
  * @param ids      - the capability ids to attach to the test
  */
 export function label(testname: string, ...ids: FlowrCapabilityId[]): string {
-	// assert ids in array are unique
-	guard(new Set(ids).size === ids.length, () => `Labels must be unique, but are not for ${JSON.stringify(ids)}`)
+	// if ids appear multiple times we only want to count each one once
+	const uniques = [...new Set(ids)]
 
 	const id = uniqueTestId()
-	const fullName = `[${id}, ${ids.join(', ')}] ${testname}`
+	const fullName = `#${id} ${testname} [${uniques.join(', ')}]`
 	const idName = `#${id} (${testname})`
 
-	for(const l of ids) {
+	for(const l of uniques) {
 		const capability = getCapabilityById(l)
 		TheGlobalLabelMap.get(capability).push(idName)
 	}

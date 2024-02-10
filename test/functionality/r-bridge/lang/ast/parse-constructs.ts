@@ -138,7 +138,7 @@ const IfThenBraceVariants: IfThenSpacing[] = [{
 interface ElseSpacing {
 	str:          string
 	locationElse: ReturnType<typeof rangeFrom>
-	otherwise:    RNode,
+	otherwise:    (offset: SourceRange) => RNode,
 	num:          number,
 	capabilities: FlowrCapabilityId[]
 }
@@ -149,28 +149,28 @@ const ElseSpacingVariants: ElseSpacing[] = [{
 	str:          ' else 2',
 	locationElse: rangeFrom(0, 7, 0, 7),
 	num:          2,
-	otherwise:    { type: RType.Number, location: rangeFrom(0, 9, 0, 9), lexeme: '2', content: numVal(2), info: {} },
+	otherwise:    off => ({ type: RType.Number, location: addRanges(off, rangeFrom(0, 7, 0, 7)), lexeme: '2', content: numVal(2), info: {} }),
 	capabilities: ['if', 'numbers']
 }, {
-	str:          ' else  2',
+	str:          ' else  9',
 	locationElse: rangeFrom(0, 8, 0, 8),
-	num:          2,
-	otherwise:    { type: RType.Number, location: rangeFrom(0, 8, 0, 8), lexeme: '2', content: numVal(2), info: {} },
+	num:          9,
+	otherwise:    off => ({ type: RType.Number, location: addRanges(off, rangeFrom(0, 8, 0, 8)), lexeme: '9', content: numVal(9), info: {} }),
 	capabilities: ['if', 'numbers']
 }]
 
 const ElseBracesVariants: ElseSpacing[] = [{
 	str:          ' else {2}',
 	locationElse: rangeFrom(0, 8, 0, 8),
-	otherwise: 	  inBrace(rangeFrom(0, 7, 0, 7), { type: RType.Number, location: rangeFrom(0, 9, 0, 9), lexeme: '2', content: numVal(2), info: {}}),
+	otherwise: 	  off => inBrace(addRanges(off, rangeFrom(0, 7, 0, 7)), { type: RType.Number, location: addRanges(off, rangeFrom(0, 8, 0, 8)), lexeme: '2', content: numVal(2), info: {}}),
 	num:          2,
 	capabilities: ['if', 'numbers', 'grouping']
 }, {
 	str:          ' else {{{42}}}',
 	locationElse: rangeFrom(0, 10, 0, 11),
-	otherwise:    inBrace(rangeFrom(0, 7, 0, 7),
-		inBrace(rangeFrom(0, 8, 0, 8),
-			inBrace(rangeFrom(0, 9, 0, 9), { type: RType.Number, location: rangeFrom(0, 10, 0, 11), lexeme: '42', content: numVal(42), info: {}})
+	otherwise:    off => inBrace(addRanges(off, rangeFrom(0, 7, 0, 7)),
+		inBrace(addRanges(off, rangeFrom(0, 8, 0, 8)),
+			inBrace(addRanges(off, rangeFrom(0, 9, 0, 9)), { type: RType.Number, location: addRanges(off, rangeFrom(0, 10, 0, 11)), lexeme: '42', content: numVal(42), info: {}})
 		)
 	),
 	num:          42,
@@ -257,33 +257,63 @@ describe('Parse simple constructs', withShell(shell => {
 								const thenNum = `${ifThenVariant.num}`
 								const elseNum = `${elseVariant.num}`
 								const input = `${ifThenVariant.str}${elseVariant.str}`
-								assertAst(label(JSON.stringify(input), ...ifThenVariant.capabilities, ...elseVariant.capabilities), shell, input, exprList({
-									type:      RType.IfThenElse,
-									location:  rangeFrom(1, 1, 1, 2),
-									lexeme:    'if',
-									info:      {},
-									condition: {
-										type:     RType.Logical,
-										location: ifThenVariant.locationTrue,
-										lexeme:   'TRUE',
-										content:  true,
-										info:     {}
-									},
-									then: ensureExpressionList({
-										type:     RType.Number,
-										location: ifThenVariant.locationNum,
-										lexeme:   thenNum,
-										content:  numVal(ifThenVariant.num),
-										info:     {}
-									}),
-									otherwise: ensureExpressionList({
-										type:     RType.Number,
-										location: addRanges(elseVariant.locationElse, ifThenVariant.end),
-										lexeme:   elseNum,
-										content:  numVal(elseVariant.num),
-										info:     {}
+								assertAst(label(JSON.stringify(input), ...ifThenVariant.capabilities, ...elseVariant.capabilities), shell, input, [
+									{
+										step: NORMALIZE,
+										wanted:
+									exprList({
+										type:      RType.IfThenElse,
+										location:  rangeFrom(1, 1, 1, 2),
+										lexeme:    'if',
+										info:      {},
+										condition: {
+											type:     RType.Logical,
+											location: ifThenVariant.locationTrue,
+											lexeme:   'TRUE',
+											content:  true,
+											info:     {}
+										},
+										then: ensureExpressionList({
+											type:     RType.Number,
+											location: ifThenVariant.locationNum,
+											lexeme:   thenNum,
+											content:  numVal(ifThenVariant.num),
+											info:     {}
+										}),
+										otherwise: ensureExpressionList({
+											type:     RType.Number,
+											location: addRanges(elseVariant.locationElse, ifThenVariant.end),
+											lexeme:   elseNum,
+											content:  numVal(elseVariant.num),
+											info:     {}
+										})
 									})
-								}), {
+									},
+									{
+										step:   DESUGAR_NORMALIZE,
+										wanted: exprList({
+											type:         RType.FunctionCall,
+											location:     rangeFrom(1, 1, 1, 2),
+											lexeme:       'if',
+											info:         {},
+											flavor:       'named',
+											functionName: {
+												type:      RType.Symbol,
+												location:  rangeFrom(1, 1, 1, 2),
+												lexeme:    'if',
+												content:   'if',
+												namespace: undefined,
+												info:      {}
+											},
+											arguments: [{
+												type:     RType.Logical,
+												location: ifThenVariant.locationTrue,
+												lexeme:   'TRUE',
+												content:  true,
+												info:     {}
+											}, ifThenVariant.then, elseVariant.otherwise(ifThenVariant.end) ]
+										})
+									}], {
 									ignoreAdditionalTokens: true
 								})
 							}

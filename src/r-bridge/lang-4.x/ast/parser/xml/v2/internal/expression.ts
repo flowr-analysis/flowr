@@ -12,7 +12,8 @@ import { getTokenType, retrieveMetaStructure } from '../../common/meta'
 import { normalizeAccess } from './access'
 import { guard } from '../../../../../../../util/assert'
 import { jsonReplacer } from '../../../../../../../util/json'
-import { normalizeIfThen } from './control/if-then'
+import { tryNormalizeIfThen } from './control/if-then'
+import { tryNormalizeIfThenElse } from './control/if-then-else'
 
 
 /**
@@ -132,9 +133,9 @@ function normalizeElems(config: NormalizeConfiguration, tokens: readonly XmlBase
 			return tryNormalizeSymbolWithNamespace(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
 				?? tryNormalizeBinary(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
 		case 5: // TODO: while
-			return normalizeIfThen(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? undefined as unknown as RNode
-		case 7: // TODO: if-else
-			return todo(tokens)
+			return tryNormalizeIfThen(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? undefined as unknown as RNode
+		case 7: // TODO: other cases?
+			return tryNormalizeIfThenElse(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? undefined as unknown as RNode
 		default:
 			return todo(tokens)
 	}

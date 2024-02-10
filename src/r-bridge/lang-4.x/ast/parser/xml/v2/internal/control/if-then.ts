@@ -9,7 +9,7 @@ import type { NormalizeConfiguration } from '../../data'
 /**
  * Try to parse the construct as a <pre> `if`(condition, then) </pre> function call.
  */
-export function normalizeIfThen(
+export function tryNormalizeIfThen(
 	config: NormalizeConfiguration,
 	tokens: readonly [
 		 ifToken:    XmlBasedJson,

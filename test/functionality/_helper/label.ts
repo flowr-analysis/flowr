@@ -60,7 +60,8 @@ function printLabelSummary(): void {
 	for(const [label, testNames] of entries) {
 		const paddedLabel = `[${label.path.join('/')}] ${label.name}`
 		const tests = testNames.length > 1 ? 'tests:' : 'test: '
-		console.log(`\x1b[1m${paddedLabel}\x1b[0m is covered by ${testNames.length} ${tests}\n     \x1b[36m${testNames.join('\x1b[m, \x1b[36m')}\x1b[m`)
+		const formattedTestNames = `\x1b[36m${testNames.map(n => n.length > 25 ? n.substring(0, 25) + '…' : n).join('\x1b[m, \x1b[36m')}\x1b[m`
+		console.log(`\x1b[1m${paddedLabel}\x1b[0m is covered by ${testNames.length} ${tests}\n     ${formattedTestNames}`)
 	}
 }
 

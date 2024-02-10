@@ -325,7 +325,7 @@ describe('Parse simple constructs', withShell(shell => {
 	})
 	describe('loops', () => {
 		describe('for', () => {
-			assertAst('for(i in 1:10) 2', shell, 'for(i in 1:42)2', exprList({
+			assertAst(label('for(i in 1:10) 2', 'for-loop', 'name-normal', 'numbers', 'built-in-sequencing'), shell, 'for(i in 1:42)2', exprList({
 				type:     RType.ForLoop,
 				location: rangeFrom(1, 1, 1, 3),
 				lexeme:   'for',

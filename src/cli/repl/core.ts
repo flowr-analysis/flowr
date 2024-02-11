@@ -58,7 +58,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, shell
  */
 export async function replProcessAnswer(output: ReplOutput, expr: string, shell: RShell): Promise<void> {
 
-	const statements = splitAtEscapeSensitive(expr, ';')
+	const statements = splitAtEscapeSensitive(expr, false, ';')
 
 	for(const statement of statements) {
 		await replProcessStatement(output, statement, shell)

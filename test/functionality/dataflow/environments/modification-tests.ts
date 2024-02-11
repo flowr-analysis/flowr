@@ -21,7 +21,7 @@ function existsDefinedAt(name: string, definedAt: NodeId[], result: IEnvironment
 
 describe('Modification', () => {
 	describe('Global', () => {
-		it(label('Different variables', 'global-scope', 'normal'), () => {
+		it(label('Different variables', 'global-scope', 'name-normal'), () => {
 			let clean = initializeCleanEnvironments()
 			clean = define(variable('x', '_1'), GlobalScope, clean)
 			let overwrite = initializeCleanEnvironments()

@@ -23,7 +23,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithFirstI
 		)
-		assertDataflow(label('Calling function a', 'local-left-assignment', 'unnamed-arguments', 'normal'), shell, 'i <- 4; a <- function(x) { x }\na(i)',
+		assertDataflow(label('Calling function a', 'local-left-assignment', 'unnamed-arguments', 'normal', 'name-normal'), shell, 'i <- 4; a <- function(x) { x }\na(i)',
 			new DataflowGraph()
 				.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
 				.addVertex({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
@@ -69,7 +69,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithIA
 		)
-		assertDataflow(label('Calling function a with an indirection', 'local-left-assignment', 'unnamed-arguments', 'normal'), 
+		assertDataflow(label('Calling function a with an indirection', 'local-left-assignment', 'unnamed-arguments', 'normal', 'name-normal'), 
 			shell, 
 			'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
 			new DataflowGraph()
@@ -135,7 +135,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithFirstI
 		)
-		assertDataflow(label('Calling with a constant function', 'unnamed-arguments', 'normal'), shell, `i <- 4
+		assertDataflow(label('Calling with a constant function', 'unnamed-arguments', 'normal', 'name-normal'), shell, `i <- 4
 a <- function(x) { x <- x; x <- 3; 1 }
 a(i)`, new DataflowGraph()
 			.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
@@ -230,7 +230,7 @@ a(i)`, new DataflowGraph()
 			.addEdge('9', '4', EdgeType.Returns, 'always')
 			.addEdge('8', '0', EdgeType.DefinesOnCall, 'always')
 
-		assertDataflow('Calling with constant argument using lambda', shell, '(\\(x) { x + 1 })(2)',
+		assertDataflow(label('Calling with constant argument using lambda'), shell, '(\\(x) { x + 1 })(2)',
 			outGraph,
 			{ minRVersion: MIN_VERSION_LAMBDA }
 		)

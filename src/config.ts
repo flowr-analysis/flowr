@@ -8,15 +8,14 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	ignoreSourceCalls: boolean
 }
 
+export const defaultConfigFile = 'flowr.json'
 export const defaultConfigOptions: FlowrConfigOptions = {
 	ignoreSourceCalls: false
 }
+export const config = parseConfigOptions(process.cwd())
 
-export const configFile = 'flowr.json'
-export const config = parseConfigOptions()
-
-function parseConfigOptions(): FlowrConfigOptions {
-	let searchPath = path.resolve(process.cwd())
+function parseConfigOptions(workingDirectory: string, configFile = defaultConfigFile): FlowrConfigOptions {
+	let searchPath = path.resolve(workingDirectory)
 	do{
 		const configPath = path.join(searchPath, configFile)
 		if(fs.existsSync(configPath)) {

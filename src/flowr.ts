@@ -157,6 +157,7 @@ async function mainServer(backend: Server = new NetServer()) {
 	await new FlowRServer(shell, backend).start(options.port)
 }
 
+
 if(options.server) {
 	void mainServer(options.ws ? new WebSocketServerWrapper() : new NetServer())
 } else {

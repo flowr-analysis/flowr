@@ -5,6 +5,7 @@ import { startAndEndsWith } from '../util/strings'
 import type {AsyncOrSync, DeepPartial, DeepReadonly} from 'ts-essentials'
 import { guard } from '../util/assert'
 import {RShellExecutor} from './shell-executor'
+import objectHash from 'object-hash'
 
 export interface RParseRequestFromFile {
 	request: 'file';
@@ -77,8 +78,7 @@ export function requestProviderFromText(text: {[path: string]: string}): RParseR
 }
 
 export function requestFingerprint(request: RParseRequest): string {
-	// eventually we should do this properly, like using a hashing function etc.
-	return JSON.stringify(request)
+	return objectHash(request)
 }
 
 const ErrorMarker = 'err'

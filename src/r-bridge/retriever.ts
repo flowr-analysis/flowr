@@ -96,7 +96,7 @@ export function retrieveXmlFromRCode(request: RParseRequest, shell: (RShell | RS
 		`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
 		// now, try to retrieve the ast
 		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
-		'try(flowr_output<-xmlparsedata::xml_parse_data(flowr_parsed,includeText=TRUE,pretty=FALSE),silent=FALSE)',
+		'try(flowr_output<-write.table(getParseData(flowr_parsed),sep=",",col.names=TRUE))',
 	]
 	const outputCommand = `cat(flowr_output,${ts2r(shell.options.eol)})`
 

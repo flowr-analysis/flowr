@@ -21,15 +21,10 @@ import { FlowRServer } from './cli/repl/server/server'
 import { standardReplOutput } from './cli/repl/commands'
 import type { Server} from './cli/repl/server/net'
 import {NetServer, WebSocketServerWrapper} from './cli/repl/server/net'
-import fs from 'fs'
-import path from 'path'
-import type { MergeableRecord} from './util/objects'
-import {deepMergeObject} from './util/objects'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, {type}]) => type === 'master script'), ([k,]) => k).join(', ')
 
 export const toolName = 'flowr'
-export const configFile = `${toolName}.json`
 
 export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging (will be passed to the corresponding script)' },
@@ -55,14 +50,6 @@ export interface FlowrCliOptions {
 	script:    string | undefined
 }
 
-export interface FlowrConfigOptions extends MergeableRecord {
-	ignoreSourceCalls: boolean
-}
-
-export const defaultConfigOptions: FlowrConfigOptions = {
-	ignoreSourceCalls: false
-}
-
 export const optionHelp = [
 	{
 		header:  `flowR (version ${String(version)})`,
@@ -85,7 +72,6 @@ export const optionHelp = [
 ]
 
 const options = commandLineArgs(optionDefinitions) as FlowrCliOptions
-export const config = parseConfigOptions()
 
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.Trace : LogLevel.Error)
 log.info('running with options', options)
@@ -169,29 +155,6 @@ async function mainServer(backend: Server = new NetServer()) {
 	process.on('SIGINT', end)
 	process.on('SIGTERM', end)
 	await new FlowRServer(shell, backend).start(options.port)
-}
-
-function parseConfigOptions(): FlowrConfigOptions {
-	let searchPath = path.resolve(process.cwd())
-	do{
-		const configPath = path.join(searchPath, configFile)
-		if(fs.existsSync(configPath)) {
-			try {
-				const read = fs.readFileSync(configPath,{encoding: 'utf-8'})
-				// assign default values to all config options except for the specified ones
-				const ret = deepMergeObject(defaultConfigOptions, JSON.parse(read) as FlowrConfigOptions)
-				log.info(`Using config ${JSON.stringify(ret)} from ${configPath}`)
-				return ret
-			} catch(e) {
-				log.error(`Failed to parse config file at ${configPath}: ${(e as Error).message}`)
-			}
-		}
-		// move up to parent directory (apparently this is somehow the best way to do it in node, what)
-		searchPath = searchPath.split(path.sep).slice(0, -1).join(path.sep)
-	} while(fs.existsSync(searchPath))
-
-	log.info('Using default config')
-	return defaultConfigOptions
 }
 
 if(options.server) {

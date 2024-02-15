@@ -96,7 +96,7 @@ export function retrieveXmlFromRCode(request: RParseRequest, shell: (RShell | RS
 		`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
 		// now, try to retrieve the ast
 		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
-		'try(flowr_output<-write.table(getParseData(flowr_parsed),sep=",",col.names=TRUE))',
+		'try(flowr_output<-xmlparsedata::xml_parse_data(flowr_parsed,includeText=TRUE,pretty=FALSE),silent=FALSE)',
 	]
 	const outputCommand = `cat(flowr_output,${ts2r(shell.options.eol)})`
 
@@ -105,21 +105,37 @@ export function retrieveXmlFromRCode(request: RParseRequest, shell: (RShell | RS
 			shell.ensurePackageInstalled('xmlparsedata',true)
 
 		shell.addPrerequisites(setupCommands)
-		return guardOutput(shell.run(outputCommand))
+		return guardRetrievedOutput(shell.run(outputCommand), request)
 	} else {
 		const run = async() => {
 			if(request.ensurePackageInstalled)
 				await shell.ensurePackageInstalled('xmlparsedata', true)
 
 			shell.sendCommands(...setupCommands)
-			return guardOutput((await shell.sendCommandWithOutput(outputCommand)).join(shell.options.eol))
+			return guardRetrievedOutput((await shell.sendCommandWithOutput(outputCommand)).join(shell.options.eol), request)
 		}
 		return run()
 	}
+}
 
-	function guardOutput(output: string): string {
-		guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
-		return output
+export function retrieveCsvFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
+	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
+	const setupCommands = [
+		`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
+		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
+		'try(flowr_output<-write.table(getParseData(flowr_parsed),sep=",",col.names=TRUE))',
+	]
+	const outputCommand = `cat(flowr_output,${ts2r(shell.options.eol)})`
+
+	if(shell instanceof RShellExecutor){
+		shell.addPrerequisites(setupCommands)
+		return guardRetrievedOutput(shell.run(outputCommand), request)
+	} else {
+		const run = async() => {
+			shell.sendCommands(...setupCommands)
+			return guardRetrievedOutput((await shell.sendCommandWithOutput(outputCommand)).join(shell.options.eol), request)
+		}
+		return run()
 	}
 }
 
@@ -152,4 +168,9 @@ export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise
 	const result = await shell.sendCommandWithOutput(`cat(nrow(getParseData(flowr_parsed)),${ts2r(shell.options.eol)})`)
 	guard(result.length === 1, () => `expected exactly one line to obtain the number of R tokens, but got: ${JSON.stringify(result)}`)
 	return Number(result[0])
+}
+
+function guardRetrievedOutput(output: string,  request: RParseRequest): string {
+	guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
+	return output
 }

@@ -84,8 +84,9 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter)
 }
 
-if(options['config-file'])
+if(options['config-file']) {
 	setConfigFile(undefined, options['config-file'])
+}
 
 async function retrieveShell(): Promise<RShell> {
 	// we keep an active shell session to allow other parse investigations :)

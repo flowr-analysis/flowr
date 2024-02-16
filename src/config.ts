@@ -7,6 +7,9 @@ import {getParentDirectory} from './util/files'
 import Joi from 'joi'
 
 export interface FlowrConfigOptions extends MergeableRecord {
+	/**
+	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
+	 */
 	ignoreSourceCalls: boolean
 }
 
@@ -16,7 +19,7 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 export const defaultConfigFile = 'flowr.json'
 
 const schema = Joi.object({
-	ignoreSourceCalls: Joi.string().optional()
+	ignoreSourceCalls: Joi.boolean().optional()
 })
 
 let configWorkingDirectory = process.cwd()

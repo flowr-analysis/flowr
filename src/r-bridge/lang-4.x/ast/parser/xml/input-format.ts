@@ -30,6 +30,7 @@ export interface NamedXmlBasedJson {
 	content: XmlBasedJson
 }
 
+
 /**
  * Retrieves the given key(s) from the converted xml.
  * Will throw an {@link XmlParseError} if at least one of the keys is not present

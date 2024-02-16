@@ -21,6 +21,7 @@ import { FlowRServer } from './cli/repl/server/server'
 import { standardReplOutput } from './cli/repl/commands'
 import type { Server} from './cli/repl/server/net'
 import {NetServer, WebSocketServerWrapper} from './cli/repl/server/net'
+import {setConfigFile} from './config'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, {type}]) => type === 'master script'), ([k,]) => k).join(', ')
 
@@ -36,18 +37,20 @@ export const optionDefinitions: OptionDefinition[] = [
 	{ name: 'execute',      alias: 'e', type: String,  description: 'Execute the given command and exit. Use a semicolon ";" to separate multiple commands.', typeLabel: '{underline command}', multiple: false },
 	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.'},
 	{ name: 'script',       alias: 's', type: String,  description: `The sub-script to run (${scriptsText})`, multiple: false, defaultOption: true, typeLabel: '{underline files}', defaultValue: undefined },
+	{ name: 'config-file', type: String, description: 'The name of the configuration file to use', multiple: false}
 ]
 
 export interface FlowrCliOptions {
-	verbose:   boolean
-	version:   boolean
-	help:      boolean
-	server:    boolean
-	ws:        boolean
-	port:      number
-	'no-ansi': boolean
-	execute:   string | undefined
-	script:    string | undefined
+	verbose:       boolean
+	version:       boolean
+	help:          boolean
+	server:        boolean
+	ws:            boolean
+	port:          number
+	'no-ansi':     boolean
+	execute:       string | undefined
+	script:        string | undefined
+	'config-file': string
 }
 
 export const optionHelp = [
@@ -81,6 +84,8 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter)
 }
 
+if(options['config-file'])
+	setConfigFile(undefined, options['config-file'])
 
 async function retrieveShell(): Promise<RShell> {
 	// we keep an active shell session to allow other parse investigations :)

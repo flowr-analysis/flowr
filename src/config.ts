@@ -11,12 +11,13 @@ export interface FlowrConfigOptions extends MergeableRecord {
 export const defaultConfigOptions: FlowrConfigOptions = {
 	ignoreSourceCalls: false
 }
+export const defaultConfigFile = 'flowr.json'
 
 let configWorkingDirectory = process.cwd()
-let configFile = 'flowr.json'
+let configFile = defaultConfigFile
 let currentConfig: FlowrConfigOptions | undefined
 
-export function setConfigFile(workingDirectory: string, file: string) {
+export function setConfigFile(workingDirectory = process.cwd(), file = defaultConfigFile) {
 	configWorkingDirectory = workingDirectory
 	configFile = file
 

@@ -33,7 +33,7 @@ For 🪟&nbsp;Windows, see [here](https://www.hanss.info/sebastian/post/rtools-p
 
 Furthermore, you need the [node package manager](https://www.npmjs.com/) (for Linux, we recommend using [nvm](https://github.com/nvm-sh/nvm)).
 
-After cloning the repository, you can install the dependencies with:<a href="#note2" id="note2ref"><sup>&lt;2&gt;</sup></a>
+After cloning the repository,<a href="#note2" id="note2ref"><sup>&lt;2&gt;</sup></a> you can install the dependencies with:
 
 ```shell
 npm i

@@ -101,8 +101,10 @@ With Visual Studio Code (or Codium), you also require the Mocha Test Explorer ad
 
 ![Overview on all functionality tests in VS Code](img/testing-vs-code.png)
 
-3. To run the full test suite, press the Play button (▶️) above. To only run a single, or some of the tests, navigate to it, and press the Play button, too. You can cancel running tests by clicking on the Stop button (⏹️).
-   Successful tests are marked with a checkmark (✅), while failing tests are marked with a cross (❌).
+3. To run the full test suite, press the Play button (▶️) above. 
+   - To only run a single, or some of the tests, navigate to it, and press the Play button, too. 
+   - You can cancel running tests by clicking on the Stop button (⏹️).
+   - Successful tests are marked with a checkmark (✅), while failing tests are marked with a cross (❌).
 4. To debug a failing test, navigate to it, and then press the Debug (🪲) button. This will automatically open the Run and Debug menu of VS Code.
 
 #### Using WebStorm
@@ -114,11 +116,11 @@ With WebStorm, you can set up Run and Debug configurations from the IDE to run t
 2. If you want to run the whole test suite, you need to set-up a new Run/Debug configuration:
    1. In the Run/Debug Configurations part of WebStorm, click the Drop-Down menu, and then `Edit Configurations`.
    2. Click on `+` to add a new configuration, and then select `Mocha`.
-   3. Set the name of this new configuration, and select `File patterns` to run all specified functionality tests, like in this example:
-
+   3. Set the name of this new configuration, and select `File patterns` to run all specified functionality tests, like in the example above.
 ![A possible Run configuration for flowR's functionality tests in WebStorm](img/testing-config-webstorm.png)
 
-   1. Press `OK` to save the test run configuration.
+   4. Press `OK` to save the test run configuration.
+   
    Afterwards, you can run or debug the flowR functionality test suite from the Run/Debug configurations part, by clicking on the Play and Debug buttons (▶️/🪲), respectively.
 
 ## CI Pipeline

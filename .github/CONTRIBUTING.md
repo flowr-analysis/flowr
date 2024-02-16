@@ -1,10 +1,13 @@
-# Contribution Guidelines
+# How to Contribute
 
 First of all: **Thank You for Every Contribution!**
 
-On this page, you will find some guidelines on how to contribute to *flowR*. If you have any questions or problems, feel free to open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) or email me at <florian.sihler@uni-ulm.de>.
+On this page, you will find some guidelines and tips on how to contribute to *flowR*. If you have any questions or problems, feel free to open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) or email me directly at <florian.sihler@uni-ulm.de>.
 
-- [Contribution Guidelines](#contribution-guidelines)
+- [How to Contribute](#how-to-contribute)
+  - [Obtaining the Source Code](#obtaining-the-source-code)
+    - [Git-LFS Usage](#git-lfs-usage)
+    - [Cloning the Repository](#cloning-the-repository)
   - [Git-Hooks](#git-hooks)
   - [Commits and Commit Messages](#commits-and-commit-messages)
     - [Commit Types](#commit-types)
@@ -14,6 +17,30 @@ On this page, you will find some guidelines on how to contribute to *flowR*. If 
     - [Examples](#examples)
   - [Coding Style and ToDo Comments](#coding-style-and-todo-comments)
   - [Releases](#releases)
+
+## Obtaining the Source Code
+
+If you found a small typo or want to fix a minor wording problem, you can use GitHub's web interface to edit the file directly (e.g., to edit the main readme file, you can use [this link](https://github.com/Code-Inspect/flowr/edit/main/README.md)). In case you have never contributed to a project before or you are unsure how git works, [GitHub's guide][github-guide] is a good place to start.
+
+### Git-LFS Usage
+
+We use [git-lfs](https://git-lfs.github.com/) to store large file blobs (like images). While most of *flowR* works perfectly fine without it, if you want to work with the wiki or add a big file, please make sure you have it installed using the instructions on the [git-lfs website](https://git-lfs.com/). If you have a copy of the repository already, `git lfs pull` should be enough to retrieve all files stored using the large file storage.
+
+### Cloning the Repository
+
+To clone the repository, you can use the following command:
+
+```shell
+git clone https://github.com/Code-Inspect/flowr.git
+```
+
+If you prefer ssh, you can use the following command:
+
+```shell
+git clone git@github.com:Code-Inspect/flowr.git
+```
+
+For more information on how to clone and work with a repository, please see [GitHub's guide][github-guide].
 
 ## Git-Hooks
 
@@ -121,3 +148,6 @@ Releases are to be scheduled by the administrators of the repository. Please do 
 
 -----
 <a id="note1" href="#note1ref">&lt;1&gt;</a>: If you have already worked with *flowR* before, do not forget to update your dependencies!
+
+-------
+[github-guide]: https://docs.github.com/en/get-started/exploring-projects-on-github/contributing-to-a-project

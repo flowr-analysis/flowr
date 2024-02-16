@@ -1,4 +1,4 @@
-import type { MergeableRecord} from './util/objects'
+import type {MergeableRecord} from './util/objects'
 import {deepMergeObject} from './util/objects'
 import path from 'path'
 import fs from 'fs'

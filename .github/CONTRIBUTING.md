@@ -2,7 +2,7 @@
 
 First of all: **Thank You for Every Contribution!**
 
-On this page, you will find some guidelines and tips on how to contribute to *flowR*. If you have any questions or problems, feel free to open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) or email me directly at <florian.sihler@uni-ulm.de>.
+On this page, you can find some guidelines and tips on how to contribute to *flowR*. If you have any questions or problems, feel free to open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose) or email me directly at <florian.sihler@uni-ulm.de>.
 
 - [How to Contribute](#how-to-contribute)
   - [Obtaining the Source Code](#obtaining-the-source-code)

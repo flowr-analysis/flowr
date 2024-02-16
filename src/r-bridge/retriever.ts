@@ -34,7 +34,7 @@ export interface RParseRequestProvider {
 }
 
 /**
- * A request that can be passed along to {@link retrieveXmlFromRCode}.
+ * A request that can be passed along to {@link retrieveCsvFromRCode}.
  */
 export type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseRequestBase
 
@@ -90,34 +90,6 @@ const ErrorMarker = 'err'
  * Throws if the file could not be parsed.
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
-export function retrieveXmlFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
-	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
-	const setupCommands = [
-		`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
-		// now, try to retrieve the ast
-		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
-		'try(flowr_output<-xmlparsedata::xml_parse_data(flowr_parsed,includeText=TRUE,pretty=FALSE),silent=FALSE)',
-	]
-	const outputCommand = `cat(flowr_output,${ts2r(shell.options.eol)})`
-
-	if(shell instanceof RShellExecutor){
-		if(request.ensurePackageInstalled)
-			shell.ensurePackageInstalled('xmlparsedata',true)
-
-		shell.addPrerequisites(setupCommands)
-		return guardRetrievedOutput(shell.run(outputCommand), request)
-	} else {
-		const run = async() => {
-			if(request.ensurePackageInstalled)
-				await shell.ensurePackageInstalled('xmlparsedata', true)
-
-			shell.sendCommands(...setupCommands)
-			return guardRetrievedOutput((await shell.sendCommandWithOutput(outputCommand)).join(shell.options.eol), request)
-		}
-		return run()
-	}
-}
-
 export function retrieveCsvFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
 	const setupCommands = [
@@ -140,12 +112,12 @@ export function retrieveCsvFromRCode(request: RParseRequest, shell: (RShell | RS
 }
 
 /**
- * Uses {@link retrieveXmlFromRCode} and returns the nicely formatted object-AST.
+ * Uses {@link retrieveCsvFromRCode} and returns the nicely formatted object-AST.
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<NormalizedAst> {
-	const xml = await retrieveXmlFromRCode(request, shell)
-	return normalize(xml, await shell.tokenMap(), hooks)
+	const csv = await retrieveCsvFromRCode(request, shell)
+	return normalize(csv, await shell.tokenMap(), hooks)
 }
 
 /**
@@ -162,7 +134,7 @@ export function removeTokenMapQuotationMarks(str: string): string {
 export type TokenMap = DeepReadonly<Record<string, string>>
 
 /**
- * Needs to be called *after*  {@link retrieveXmlFromRCode} (or {@link retrieveNormalizedAstFromRCode})
+ * Needs to be called *after*  {@link retrieveCsvFromRCode} (or {@link retrieveNormalizedAstFromRCode})
  */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise<number> {
 	const result = await shell.sendCommandWithOutput(`cat(nrow(getParseData(flowr_parsed)),${ts2r(shell.options.eol)})`)
@@ -172,5 +144,13 @@ export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise
 
 function guardRetrievedOutput(output: string,  request: RParseRequest): string {
 	guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
+
+	// we add a dummy header to the first line because of weird behavior with the returned csv
+	// example: line1 is mapped to 7, which is the same as the "id" column's entry
+	// "line1","col1","line2","col2","id","parent","token","terminal","text"
+	// "7",1,1,1,5,7,0,"expr",FALSE,""
+	// (see https://github.com/Code-Inspect/flowr/issues/653)
+	output = `"id2dummy",${output}`
+
 	return output
 }

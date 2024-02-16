@@ -7,6 +7,8 @@ For the latest code-coverage information, see [codecov.io](https://codecov.io/gh
     - [Running Only Some Tests](#running-only-some-tests)
   - [Performance Tests](#performance-tests)
   - [Oh no, the tests are slow](#oh-no-the-tests-are-slow)
+  - [Testing Within Your IDE](#testing-within-your-ide)
+    - [Using Visual Studio Code](#using-visual-studio-code)
 - [CI Pipeline](#ci-pipeline)
 - [Linting](#linting)
   - [Oh no, the linter fails](#oh-no-the-linter-fails)
@@ -84,6 +86,23 @@ R&nbsp; may ask you if it should create a personal library, which you should con
 Now, the tests should run much faster!
 
 If, however, you have already installed the package, or the tests are still too slow for your taste, you may want to check out how to [run only some of the tests](#running-only-some-tests).
+
+### Testing Within Your IDE
+
+From your IDE of choice, you may also run all or some of the functionality tests that flowR provides.
+
+#### Using Visual Studio Code
+
+Using the Mocha Test Explorer extension, you may run all or some functionality tests from VS Code (or VSCodium). To do so:
+
+1. Install and enable the [Mocha Test Explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-mocha-test-adapter).
+2. In your copy of the flowR repository, open the Testing menu. You should see all functionality tests available for execution, like this: 
+
+![Overview on all functionality tests in VS Code](img/testing-vs-code.png)
+
+3. To run the full test suite, press the Play button (▶️) above. To only run a single, or some of the tests, navigate to it, and press the Play button, too. You can cancel running tests by clicking on the Stop button (⏹️).
+   Successful tests are marked with a checkmark (✅), while failing tests are marked with a cross (❌).
+4. To debug a failing test, navigate to it, and then press the Debug (🪲) button. This will automatically open the Run and Debug menu of VS Code.
 
 ## CI Pipeline
 

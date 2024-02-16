@@ -45,7 +45,7 @@ export interface CsvEntry extends Record<string, unknown> {
 }
 
 export function csvToRecord(csv: string[][]): ParsedCsv {
-	const ret: ParsedCsv = []
+	const ret: ParsedCsv = {}
 	const headers = csv[0]
 	for(let rowIdx = 1; rowIdx < csv.length; rowIdx++){
 		const content: Record<string,string> = {}

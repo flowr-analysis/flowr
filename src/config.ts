@@ -3,6 +3,7 @@ import {deepMergeObject} from './util/objects'
 import path from 'path'
 import fs from 'fs'
 import {log} from './util/log'
+import {getParentDirectory} from './util/files'
 
 export interface FlowrConfigOptions extends MergeableRecord {
 	ignoreSourceCalls: boolean
@@ -52,8 +53,8 @@ function parseConfigOptions(workingDirectory: string, configFile: string): Flowr
 				log.error(`Failed to parse config file at ${configPath}: ${(e as Error).message}`)
 			}
 		}
-		// move up to parent directory (apparently this is somehow the best way to do it in node, what)
-		searchPath = searchPath.split(path.sep).slice(0, -1).join(path.sep)
+		// move up to parent directory
+		searchPath = getParentDirectory(searchPath)
 	} while(fs.existsSync(searchPath))
 
 	log.info(`Using default config ${JSON.stringify(defaultConfigOptions)}`)

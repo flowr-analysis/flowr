@@ -182,4 +182,3 @@ function processLhsAndRhsForAssignment(data: ParserData, opName: string, parsedL
 	}
 	return isRhs ? [parsedLhs, result] : [result, parsedRhs]
 }
-

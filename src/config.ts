@@ -4,6 +4,7 @@ import path from 'path'
 import fs from 'fs'
 import {log} from './util/log'
 import {getParentDirectory} from './util/files'
+import Joi from 'joi'
 
 export interface FlowrConfigOptions extends MergeableRecord {
 	ignoreSourceCalls: boolean
@@ -13,6 +14,10 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 	ignoreSourceCalls: false
 }
 export const defaultConfigFile = 'flowr.json'
+
+const schema = Joi.object({
+	ignoreSourceCalls: Joi.string().optional()
+})
 
 let configWorkingDirectory = process.cwd()
 let configFile = defaultConfigFile
@@ -44,11 +49,17 @@ function parseConfigOptions(workingDirectory: string, configFile: string): Flowr
 		const configPath = path.join(searchPath, configFile)
 		if(fs.existsSync(configPath)) {
 			try {
-				const read = fs.readFileSync(configPath,{encoding: 'utf-8'})
-				// assign default values to all config options except for the specified ones
-				const ret = deepMergeObject(defaultConfigOptions, JSON.parse(read) as FlowrConfigOptions)
-				log.info(`Using config ${JSON.stringify(ret)} from ${configPath}`)
-				return ret
+				const text = fs.readFileSync(configPath,{encoding: 'utf-8'})
+				const parsed = JSON.parse(text) as FlowrConfigOptions
+				const validate = schema.validate(parsed)
+				if(!validate.error) {
+					// assign default values to all config options except for the specified ones
+					const ret = deepMergeObject(defaultConfigOptions, parsed)
+					log.info(`Using config ${JSON.stringify(ret)} from ${configPath}`)
+					return ret
+				} else {
+					log.error(`Failed to validate config file at ${configPath}: ${validate.error.message}`)
+				}
 			} catch(e) {
 				log.error(`Failed to parse config file at ${configPath}: ${(e as Error).message}`)
 			}

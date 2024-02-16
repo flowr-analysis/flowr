@@ -6,10 +6,11 @@ import {
 } from '../../../_helper/provider'
 import { exprList } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import {csvToRecord, parseCSV, retrieveCsvFromRCode, RType} from '../../../../../src'
+import {parseCSV, retrieveCsvFromRCode, RType} from '../../../../../src'
 import chai, { assert } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { MIN_VERSION_RAW_STABLE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
+import {csvToRecord} from '../../../../../src/r-bridge/lang-4.x/ast/parser/csv/format'
 chai.use(chaiAsPromised)
 
 describe('CSV parsing', withShell(shell => {

@@ -8,13 +8,35 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	ignoreSourceCalls: boolean
 }
 
-export const defaultConfigFile = 'flowr.json'
 export const defaultConfigOptions: FlowrConfigOptions = {
 	ignoreSourceCalls: false
 }
-export const config = parseConfigOptions(process.cwd())
 
-function parseConfigOptions(workingDirectory: string, configFile = defaultConfigFile): FlowrConfigOptions {
+let configWorkingDirectory = process.cwd()
+let configFile = 'flowr.json'
+let currentConfig: FlowrConfigOptions | undefined
+
+export function setConfigFile(workingDirectory: string, file: string) {
+	configWorkingDirectory = workingDirectory
+	configFile = file
+
+	// reset the config so it's reloaded next time
+	currentConfig = undefined
+}
+
+export function setConfig(config: FlowrConfigOptions) {
+	currentConfig = config
+}
+
+export function getConfig(): FlowrConfigOptions {
+	// lazy-load the config based on the current settings
+	if(currentConfig === undefined) {
+		setConfig(parseConfigOptions(configWorkingDirectory, configFile))
+	}
+	return currentConfig as FlowrConfigOptions
+}
+
+function parseConfigOptions(workingDirectory: string, configFile: string): FlowrConfigOptions {
 	let searchPath = path.resolve(workingDirectory)
 	do{
 		const configPath = path.join(searchPath, configFile)

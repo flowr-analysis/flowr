@@ -1,4 +1,4 @@
-import type { XmlBasedJson } from '../../input-format'
+import type {ParsedCsv, XmlBasedJson} from '../../input-format'
 import { getKeysGuarded } from '../../input-format'
 import { assureTokenType } from '../meta'
 import { normalizeBasedOnType } from './elements'
@@ -11,7 +11,7 @@ import type { RDelimiter } from '../../../../model/nodes/info'
 
 export function parseRootObjToAst(
 	data: ParserData,
-	obj: XmlBasedJson
+	obj: ParsedCsv
 ): RExpressionList {
 	const config = data.config
 	const exprContent = getKeysGuarded<XmlBasedJson>(obj, RawRType.ExpressionList)

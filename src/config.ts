@@ -56,6 +56,6 @@ function parseConfigOptions(workingDirectory: string, configFile: string): Flowr
 		searchPath = searchPath.split(path.sep).slice(0, -1).join(path.sep)
 	} while(fs.existsSync(searchPath))
 
-	log.info('Using default config')
+	log.info(`Using default config ${JSON.stringify(defaultConfigOptions)}`)
 	return defaultConfigOptions
 }

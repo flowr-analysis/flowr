@@ -149,5 +149,4 @@ Releases are to be scheduled by the administrators of the repository. Please do 
 -----
 <a id="note1" href="#note1ref">&lt;1&gt;</a>: If you have already worked with *flowR* before, do not forget to update your dependencies!
 
--------
 [github-guide]: https://docs.github.com/en/get-started/exploring-projects-on-github/contributing-to-a-project

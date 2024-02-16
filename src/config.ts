@@ -26,12 +26,15 @@ let configWorkingDirectory = process.cwd()
 let configFile = defaultConfigFile
 let currentConfig: FlowrConfigOptions | undefined
 
-export function setConfigFile(workingDirectory = process.cwd(), file = defaultConfigFile) {
+export function setConfigFile(workingDirectory = process.cwd(), file = defaultConfigFile, forceLoad = false) {
 	configWorkingDirectory = workingDirectory
 	configFile = file
 
-	// reset the config so it's reloaded next time
+	// reset the config so it gets reloaded
 	currentConfig = undefined
+	if(forceLoad) {
+		getConfig()
+	}
 }
 
 export function setConfig(config: FlowrConfigOptions) {

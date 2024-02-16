@@ -21,7 +21,7 @@ import { FlowRServer } from './cli/repl/server/server'
 import { standardReplOutput } from './cli/repl/commands'
 import type { Server} from './cli/repl/server/net'
 import {NetServer, WebSocketServerWrapper} from './cli/repl/server/net'
-import {setConfigFile} from './config'
+import {defaultConfigFile, setConfigFile} from './config'
 
 const scriptsText = Array.from(Object.entries(scripts).filter(([, {type}]) => type === 'master script'), ([k,]) => k).join(', ')
 
@@ -84,9 +84,7 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter)
 }
 
-if(options['config-file']) {
-	setConfigFile(undefined, options['config-file'])
-}
+setConfigFile(undefined, options['config-file'] ?? defaultConfigFile, true)
 
 async function retrieveShell(): Promise<RShell> {
 	// we keep an active shell session to allow other parse investigations :)

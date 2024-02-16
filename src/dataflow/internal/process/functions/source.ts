@@ -9,6 +9,7 @@ import {type DataflowProcessorInformation, processDataflowFor} from '../../../pr
 import {type DataflowScopeName, type Identifier, overwriteEnvironments, type REnvironmentInformation, resolveByName} from '../../../environments'
 import type {DataflowInformation} from '../../info'
 import {dataflowLogger} from '../../../index'
+import {getConfig} from '../../../../config'
 
 let sourceProvider = requestProviderFromFile()
 
@@ -31,6 +32,12 @@ export function isSourceCall(name: Identifier, scope: DataflowScopeName, environ
 
 export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation): DataflowInformation {
 	const sourceFile = functionCall.arguments[0] as RArgument<ParentInformation> | undefined
+
+	if(getConfig().ignoreSourceCalls) {
+		dataflowLogger.info(`Skipping source call ${JSON.stringify(sourceFile)} (disabled in config file)`)
+		return information
+	}
+
 	if(sourceFile?.value?.type == RType.String) {
 		const path = removeTokenMapQuotationMarks(sourceFile.lexeme)
 		const request = sourceProvider.createRequest(path)

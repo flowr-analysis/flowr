@@ -7,6 +7,9 @@ For the latest code-coverage information, see [codecov.io](https://codecov.io/gh
     - [Running Only Some Tests](#running-only-some-tests)
   - [Performance Tests](#performance-tests)
   - [Oh no, the tests are slow](#oh-no-the-tests-are-slow)
+  - [Testing Within Your IDE](#testing-within-your-ide)
+    - [Using Visual Studio Code](#using-visual-studio-code)
+    - [Using WebStorm](#using-webstorm)
 - [CI Pipeline](#ci-pipeline)
 - [Linting](#linting)
   - [Oh no, the linter fails](#oh-no-the-linter-fails)
@@ -84,6 +87,41 @@ R&nbsp; may ask you if it should create a personal library, which you should con
 Now, the tests should run much faster!
 
 If, however, you have already installed the package, or the tests are still too slow for your taste, you may want to check out how to [run only some of the tests](#running-only-some-tests).
+
+### Testing Within Your IDE
+
+From your IDE of choice, you can also run all or some of the functionality tests that flowR provides.
+
+#### Using Visual Studio Code
+
+With Visual Studio Code (or Codium), you also require the Mocha Test Explorer add-on. To run functionality tests, follow these steps:
+
+1. Install and enable the [Mocha Test Explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-mocha-test-adapter).
+2. In your copy of the flowR repository, open the Testing menu. You should see all functionality tests available for execution, like this: 
+
+![Overview on all functionality tests in VS Code](img/testing-vs-code.png)
+
+3. To run the full test suite, press the Play button (▶️) above. 
+   - To only run a single, or some of the tests, navigate to it, and press the Play button, too. 
+   - You can cancel running tests by clicking on the Stop button (⏹️).
+   - Successful tests are marked with a checkmark (✅), while failing tests are marked with a cross (❌).
+4. To debug a failing test, navigate to it, and then press the Debug (🪲) button. This will automatically open the Run and Debug menu of VS Code.
+
+#### Using WebStorm
+
+With WebStorm, you can set up Run and Debug configurations from the IDE to run tests without additional add-ons.
+
+1. If you only want to run those tests from a single test file, navigate to that file in the Project view, and then right-click on it. Then select `Run (file)`, or `Debug (file)`.
+   You can also open the test file directly, to run a single test from it.
+2. If you want to run the whole test suite, you need to set-up a new Run/Debug configuration:
+   1. In the Run/Debug Configurations part of WebStorm, click the Drop-Down menu, and then `Edit Configurations`.
+   2. Click on `+` to add a new configuration, and then select `Mocha`.
+   3. Set the name of this new configuration, and select `File patterns` to run all specified functionality tests, like in the example above.
+![A possible Run configuration for flowR's functionality tests in WebStorm](img/testing-config-webstorm.png)
+
+   4. Press `OK` to save the test run configuration.
+   
+   Afterwards, you can run or debug the flowR functionality test suite from the Run/Debug configurations part, by clicking on the Play and Debug buttons (▶️/🪲), respectively.
 
 ## CI Pipeline
 

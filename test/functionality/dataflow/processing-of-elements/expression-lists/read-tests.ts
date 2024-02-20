@@ -8,8 +8,8 @@ describe('Lists with variable references', withShell(shell => {
 	describe('read-read same variable', () => {
 		const sameGraph = (id1: NodeId, id2: NodeId) =>
 			new DataflowGraph()
-				.addVertex( { tag: 'use', id: id1, name: 'x' })
-				.addVertex( { tag: 'use', id: id2, name: 'x' })
+				.uses(id1, 'x')
+				.uses(id2, 'x')
 				.addEdge(id1, id2, EdgeType.SameReadRead, 'always')
 		assertDataflow('directly together', shell,
 			'x\nx',
@@ -31,9 +31,9 @@ describe('Lists with variable references', withShell(shell => {
 		assertDataflow('multiple occurrences of same variable', shell,
 			'x\nx\n3\nx',
 			new DataflowGraph()
-				.addVertex( { tag: 'use', id: '0', name: 'x' })
-				.addVertex( { tag: 'use', id: '1', name: 'x' })
-				.addVertex( { tag: 'use', id: '3', name: 'x' })
+				.uses('0', 'x')
+				.uses('1', 'x')
+				.uses('3', 'x')
 				.addEdge('0', '1', EdgeType.SameReadRead, 'always')
 				.addEdge('0', '3', EdgeType.SameReadRead, 'always')
 		)
@@ -79,8 +79,8 @@ describe('Lists with variable references', withShell(shell => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
 			new DataflowGraph()
 				.addVertex( { tag: 'variable-definition', id: id1, name: 'x', scope: LocalScope })
-				.addVertex( { tag: 'use', id: id2, name: 'x', environment: define({ nodeId: id1, name: 'x', scope: LocalScope, kind: 'variable', definedAt, used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.reads(id2, id1, 'always')
+				.uses(id2, 'x', 'always', define({ nodeId: id1, name: 'x', scope: LocalScope, kind: 'variable', definedAt, used: 'always' }, LocalScope, initializeCleanEnvironments()))
+				.reads(id2, id1)
 		assertDataflow('directly together', shell,
 			'x <- 1\nx',
 			sameGraph('0', '3', '2')
@@ -102,8 +102,8 @@ describe('Lists with variable references', withShell(shell => {
 			new DataflowGraph()
 				.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
 				.addVertex( { tag: 'variable-definition', id: '3', name: 'x', scope: LocalScope, environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.addVertex( { tag: 'use', id: '6', name: 'x', environment: define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.reads('6', '3', 'always')
+				.uses('6', 'x', 'always', define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments()))
+				.reads('6', '3')
 				.addEdge('0', '3', EdgeType.SameDefDef, 'always')
 		)
 		assertDataflow('multiple redefinition with circular definition', shell,
@@ -111,23 +111,23 @@ describe('Lists with variable references', withShell(shell => {
 			new DataflowGraph()
 				.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
 				.addVertex( { tag: 'variable-definition', id: '3', name: 'x', scope: LocalScope, environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.addVertex( { tag: 'use', id: '4', name: 'x' , environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.addVertex( { tag: 'use', id: '6', name: 'x', environment: define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.reads('4', '0', 'always')
+				.uses('4', 'x' , 'always', define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()))
+				.uses('6', 'x', 'always', define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments()))
+				.reads('4', '0')
 				.addEdge('3', '4', EdgeType.DefinedBy, 'always')
 				.addEdge('0', '3', EdgeType.SameDefDef, 'always')
-				.reads('6', '3', 'always')
+				.reads('6', '3')
 		)
 		assertDataflow('duplicate circular definition', shell,
 			'x <- x; x <- x;',
 			new DataflowGraph()
 				.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
-				.addVertex( { tag: 'use', id: '1', name: 'x' })
+				.uses('1', 'x')
 				.addVertex( { tag: 'variable-definition', id: '3', name: 'x', scope: LocalScope, environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.addVertex( { tag: 'use', id: '4', name: 'x', environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
+				.uses('4', 'x', 'always', define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()))
 				.addEdge('0', '1', EdgeType.DefinedBy, 'always')
 				.addEdge('3', '4', EdgeType.DefinedBy, 'always')
-				.reads('4', '0', 'always')
+				.reads('4', '0')
 				.addEdge('0', '3', EdgeType.SameDefDef, 'always')
 		)
 	})

@@ -36,7 +36,7 @@ describe('Equal', () => {
 		describe('More elements', () => {
 			neq('Additional root vertex', new DataflowGraph(), new DataflowGraph().uses('0', 'x'))
 			neq('Additional non-root vertex', new DataflowGraph(), new DataflowGraph().uses('0', 'x', undefined, undefined, false))
-			neq('Additional edge', new DataflowGraph(), new DataflowGraph().reads('0', '1', 'always'))
+			neq('Additional edge', new DataflowGraph(), new DataflowGraph().reads('0', '1'))
 		})
 		describe('Different elements', () => {
 			describe('Different vertices', () => {
@@ -46,9 +46,9 @@ describe('Equal', () => {
 				neq('Tag', new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'exit-point' }), rhs)
 			})
 			describe('Different edges', () => {
-				const rhs = new DataflowGraph().reads('0', '1', 'always')
-				neq('Source Id', new DataflowGraph().reads('2', '1', 'always'), rhs)
-				neq('Target Id', new DataflowGraph().reads('0', '2', 'always'), rhs)
+				const rhs = new DataflowGraph().reads('0', '1')
+				neq('Source Id', new DataflowGraph().reads('2', '1'), rhs)
+				neq('Target Id', new DataflowGraph().reads('0', '2'), rhs)
 				neq('Type', new DataflowGraph().addEdge('0', '1', EdgeType.Calls, 'always'), rhs)
 				neq('Attribute', new DataflowGraph().reads('0', '1', 'maybe'), rhs)
 			})

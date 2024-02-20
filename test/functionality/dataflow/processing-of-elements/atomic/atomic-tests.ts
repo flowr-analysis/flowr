@@ -29,13 +29,13 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				'a[2]',
 				new DataflowGraph().uses('0', 'a', 'maybe')
 					.uses('2', `${UnnamedArgumentPrefix}2`)
-					.reads('0', '2', 'always')
+					.reads('0', '2')
 			)
 			assertDataflow('double constant', shell,
 				'a[[2]]',
 				new DataflowGraph().uses('0', 'a', 'maybe')
 					.uses('2', `${UnnamedArgumentPrefix}2`)
-					.reads('0', '2', 'always')
+					.reads('0', '2')
 			)
 			assertDataflow('dollar constant', shell,
 				'a$b',
@@ -49,15 +49,15 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				'a[2][3]',
 				new DataflowGraph().uses('0', 'a', 'maybe')
 					.uses('2', `${UnnamedArgumentPrefix}2`)
-					.reads('0', '2', 'always')
+					.reads('0', '2')
 					.uses('5', `${UnnamedArgumentPrefix}5`)
-					.reads('0', '5', 'always')
+					.reads('0', '5')
 			)
 			assertDataflow('chained mixed constant', shell,
 				'a[2]$a',
 				new DataflowGraph().uses('0', 'a', 'maybe')
 					.uses('2', `${UnnamedArgumentPrefix}2`)
-					.reads('0', '2', 'always')
+					.reads('0', '2')
 			)
 		})
 		assertDataflow('chained bracket access with variables', shell,
@@ -68,10 +68,10 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				.uses('4', 'y')
 				.uses('2', `${UnnamedArgumentPrefix}2`)
 				.uses('5', `${UnnamedArgumentPrefix}5`)
-				.reads('0', '2', 'always')
-				.reads('0', '5', 'always')
-				.reads('2', '1', 'always')
-				.reads('5', '4', 'always')
+				.reads('0', '2')
+				.reads('0', '5')
+				.reads('2', '1')
+				.reads('5', '4')
 		)
 		assertDataflow('assign on access', shell,
 			'a[x] <- 5',
@@ -79,8 +79,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				.addVertex({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope, when: 'maybe' })
 				.uses('1', 'x')
 				.uses('2', `${UnnamedArgumentPrefix}2`)
-				.reads('0', '2', 'always')
-				.reads('2', '1', 'always')
+				.reads('0', '2')
+				.reads('2', '1')
 		)
 	})
 
@@ -139,7 +139,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					})
 					.uses('1', `${UnnamedArgumentPrefix}1`)
 					.addEdge('3', '1', EdgeType.Argument, 'always')
-					.reads('1', '0', 'always'),
+					.reads('1', '0'),
 				{ minRVersion: MIN_VERSION_PIPE }
 			)
 			assertDataflow('Nested calling', shell, 'x |> f() |> g()',
@@ -161,8 +161,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					.uses('5', `${UnnamedArgumentPrefix}5`)
 					.addEdge('3', '1', EdgeType.Argument, 'always')
 					.addEdge('7', '5', EdgeType.Argument, 'always')
-					.reads('5', '3', 'always')
-					.reads('1', '0', 'always'),
+					.reads('5', '3')
+					.reads('1', '0'),
 				{ minRVersion: MIN_VERSION_PIPE }
 			)
 			assertDataflow('Multi-Parameter function', shell, 'x |> f(y,z)',
@@ -187,9 +187,9 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					.addEdge('7', '1', EdgeType.Argument, 'always')
 					.addEdge('7', '4', EdgeType.Argument, 'always')
 					.addEdge('7', '6', EdgeType.Argument, 'always')
-					.reads('1', '0', 'always')
-					.reads('4', '3', 'always')
-					.reads('6', '5', 'always'),
+					.reads('1', '0')
+					.reads('4', '3')
+					.reads('6', '5'),
 				{ minRVersion: MIN_VERSION_PIPE }
 			)
 		})
@@ -329,7 +329,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 							const whileCode = build('x', 'while (x) 3')
 							assertDataflow(`"${whileCode}"`, shell, whileCode, new DataflowGraph()
 								.addVertex({ tag: 'variable-definition', id: assignment.defId[1], name: 'x', scope })
-								.addVertex({ tag: 'use', id: assignment.readId[1], name: 'x' }))
+								.uses(assignment.readId[1], 'x'))
 
 							const forCode = build('x', 'for (x in 1:4) 3')
 							assertDataflow(`"${forCode}"`, shell, forCode,
@@ -370,8 +370,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					.addEdge('9', '4', EdgeType.Argument, 'always')
 					.addEdge('9', '6', EdgeType.Argument, 'always')
 					.addEdge('9', '8', EdgeType.Argument, 'always')
-					.reads('6', '5', 'always')
-					.reads('8', '7', 'always')
+					.reads('6', '5')
+					.reads('8', '7')
 			)
 		})
 	})
@@ -427,7 +427,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 						new DataflowGraph()
 							.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope, when: 'always' })
 							.uses('3', 'x', 'maybe', define({ name: 'x', definedAt: '2', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments()) )
-							.reads('3', '0', 'always')
+							.reads('3', '0')
 					)
 				})
 
@@ -502,8 +502,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				.addVertex({ id: '4', tag: 'variable-definition', name: 'y', scope: LocalScope, environment: environmentWithY })
 				.addVertex({ id: '3', tag: 'use', name: 'x', scope: LocalScope, environment: environmentWithY })
 				.addVertex({ id: '8', tag: 'use', name: 'y', scope: LocalScope, environment: appendEnvironments(environmentWithY, environmentWithOtherY) })
-				.reads('8', '0', 'always')
-				.reads('8', '4', 'always')
+				.reads('8', '0')
+				.reads('8', '4')
 				.addEdge('0', '4', EdgeType.SameDefDef, 'always')
 		)
 	})

@@ -185,6 +185,7 @@ export class DataflowGraph {
 	 * @param when - always or maybe; defaults to always
 	 * @param environment - Environment the use occurs in
 	 * @param asRoot - boolean; defaults to true.
+	 * @param scope - 
 	 */
 	public uses(id: string, name: string, when: DataflowGraphEdgeAttribute = 'always', environment?: REnvironmentInformation, asRoot: boolean = true) {
 		return this.addVertex({ tag: 'use', id, name, when, environment }, asRoot)

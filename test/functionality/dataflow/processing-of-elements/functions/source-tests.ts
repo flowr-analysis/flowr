@@ -22,7 +22,7 @@ describe('source', withShell(shell => {
 		initializeCleanEnvironments()
 	)
 	assertDataflow('simple source', shell, 'source("simple")\ncat(N)', new DataflowGraph()
-		.addVertex({ tag: 'variable-definition', id: 'simple-1:1-1:6-0', name: 'N', scope: LocalScope })
+		.definesVariable('simple-1:1-1:6-0', 'N')
 		.addVertex({
 			tag:         'function-call',
 			name:        'source',
@@ -90,8 +90,8 @@ describe('source', withShell(shell => {
 			scope:       LocalScope,
 			environment: define({nodeId: '4', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: '6' }, LocalScope, initializeCleanEnvironments())
 		})
-		.addVertex({ tag: 'variable-definition', id: 'simple-1:1-1:6-0', name: 'N', scope: LocalScope })
-		.addVertex({ tag: 'variable-definition', id: '4', name: 'N', scope: LocalScope, environment: envWithSimpleN })
+		.definesVariable('simple-1:1-1:6-0', 'N')
+		.definesVariable('4', 'N', LocalScope, 'always', envWithSimpleN )
 		.uses('2', `${UnnamedArgumentPrefix}2` )
 		.addVertex({
 			tag:         'use',
@@ -128,7 +128,7 @@ describe('source', withShell(shell => {
 		initializeCleanEnvironments()
 	)
 	assertDataflow('conditional', shell, 'if (x) { source("simple") }\ncat(N)', new DataflowGraph()
-		.addVertex({ tag: 'variable-definition', id: 'simple-1:10-1:15-0', name: 'N', scope: LocalScope })
+		.definesVariable('simple-1:10-1:15-0', 'N')
 		.addVertex({
 			tag:         'function-call',
 			name:        'source',
@@ -213,7 +213,7 @@ describe('source', withShell(shell => {
 			],
 			when: 'always'
 		})
-		.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
+		.definesVariable('0', 'x')
 		.uses('5', `${UnnamedArgumentPrefix}5`, 'always', envWithX )
 		.uses(recursive2Id(6), `${UnnamedArgumentPrefix}${recursive2Id(6)}`, 'always', envWithX )
 		.uses(recursive2Id(2), `${UnnamedArgumentPrefix}${recursive2Id(2)}`, 'always', envWithX )
@@ -240,7 +240,7 @@ describe('source', withShell(shell => {
 			],
 			when: 'always'
 		})
-		.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
+		.definesVariable('0', 'x')
 		.uses('5', `${UnnamedArgumentPrefix}5`, 'always', envWithX )
 		.uses('4', 'x', 'always', envWithX )
 		.addEdge('6', '5', EdgeType.Argument, 'always')

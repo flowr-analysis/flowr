@@ -14,11 +14,11 @@ describe('while', withShell(shell => {
 	)
 	assertDataflow('assignment in loop body', shell,
 		'while (TRUE) { x <- 3 }',
-		new DataflowGraph().addVertex({ tag: 'variable-definition', id: '1', name: 'x', scope: LocalScope, when: 'maybe' })
+		new DataflowGraph().definesVariable('1', 'x', LocalScope, 'maybe')
 	)
 	assertDataflow('def compare in loop', shell, 'while ((x <- x - 1) > 0) { x }',
 		new DataflowGraph()
-			.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
+			.definesVariable('0', 'x')
 			.uses('1', 'x')
 			.uses('7', 'x', 'maybe', define({ name: 'x', nodeId: '0', definedAt: '4', used: 'always', kind: 'variable', scope: LocalScope }, LocalScope, initializeCleanEnvironments()))
 			.reads('7', '0', 'maybe')

@@ -20,7 +20,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 							shell,
 							`x ${assign} 2\nif(x) { 1 } ${b.text}`,
 							new DataflowGraph()
-								.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: scope })
+								.definesVariable('0', 'x', scope)
 								.uses('3', 'x', 'always', define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments()))
 								.reads('3', '0')
 						)
@@ -28,7 +28,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 							shell,
 							`x ${assign} 2\nif(TRUE) { x } ${b.text}`,
 							new DataflowGraph()
-								.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: scope })
+								.definesVariable('0', 'x', scope)
 								.uses('4', 'x', 'always', define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments()) )
 								.reads('4', '0')
 						)
@@ -38,7 +38,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 					shell,
 					`x ${assign} 2\nif(FALSE) { 42 } else { x }`,
 					new DataflowGraph()
-						.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: scope })
+						.definesVariable('0', 'x', scope)
 						.uses('6', 'x', 'always', define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments()) )
 						.reads('6', '0')
 				)
@@ -52,7 +52,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 						shell,
 						`if(TRUE) { x ${assign} 2 }\nx`,
 						new DataflowGraph()
-							.addVertex( { tag: 'variable-definition', id: '1', name: 'x', when: 'always', scope: scope })
+							.definesVariable('1', 'x', scope)
 							.uses('6', 'x', 'always', define({ nodeId: '1', name: 'x', scope, kind: 'variable', definedAt: '3', used: 'always' }, scope, initializeCleanEnvironments()))
 							.reads('6', '1')
 					)
@@ -61,7 +61,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 					shell,
 					`if(FALSE) { 42 } else { x ${assign} 5 }\nx`,
 					new DataflowGraph()
-						.addVertex( { tag: 'variable-definition', id: '3', name: 'x', when: 'always', scope: scope })
+						.definesVariable('3', 'x', scope)
 						.uses('8', 'x', 'always', define({ nodeId: '3', name: 'x', scope, kind: 'variable', definedAt: '5', used: 'always' }, scope, initializeCleanEnvironments()))
 						.reads('8', '3')
 				)
@@ -74,8 +74,8 @@ describe('Lists with if-then constructs', withShell(shell => {
 					`if(z) { x ${assign} 7 } else { x ${assign} 5 }\nx`,
 					new DataflowGraph()
 						.addVertex( { tag: 'use', id: '0', name: 'z', when: 'always', scope: scope })
-						.addVertex( { tag: 'variable-definition', id: '1', name: 'x', scope: scope, when: 'maybe' })
-						.addVertex( { tag: 'variable-definition', id: '5', name: 'x', scope: scope, when: 'maybe' })
+						.definesVariable('1', 'x', scope, 'maybe')
+						.definesVariable('5', 'x', scope, 'maybe')
 						.uses('10', 'x', 'always', appendEnvironments(whenEnvironment, otherwiseEnvironment))
 						.reads('10', '1', 'maybe')
 						.reads('10', '5', 'maybe')

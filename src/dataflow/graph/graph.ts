@@ -25,6 +25,7 @@ import type {
 	DataflowGraphVertices
 } from './vertex'
 import type { DifferenceReport } from '../../util/diff'
+import { LocalScope } from '../environments/scopes'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo=NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
@@ -178,6 +179,7 @@ export class DataflowGraph {
 		return this
 	}
 
+
 	/**
 	 * Adds a vertex for variable use. Intended for creating dataflow graphs as part of function tests.
 	 * @param id - AST node id
@@ -185,11 +187,24 @@ export class DataflowGraph {
 	 * @param when - always or maybe; defaults to always
 	 * @param environment - Environment the use occurs in
 	 * @param asRoot - boolean; defaults to true.
-	 * @param scope - 
+	 * @param scope - string
 	 */
 	public uses(id: string, name: string, when: DataflowGraphEdgeAttribute = 'always', environment?: REnvironmentInformation, asRoot: boolean = true) {
 		return this.addVertex({ tag: 'use', id, name, when, environment }, asRoot)
 	}
+
+	/**
+	 * Adds a vertex for a variable definition.
+	 * @param id - AST node ID
+	 * @param name - Variable name
+	 * @param scope - Scope (global/local/custom), defaults to local.
+	 * @param when - always or maybe; defaults to maybe.
+	 * @param environment - Environment the variable is defined in.
+	 * @param asRoot - boolean; defaults to true.
+	 */
+	public definesVariable(id: string, name: string, scope: string = LocalScope, when: DataflowGraphEdgeAttribute = 'always', environment?: REnvironmentInformation, asRoot: boolean = true) {
+		return this.addVertex({tag: 'variable-definition', id, name, scope, when, environment}, asRoot)
+	}     
 
 	/** Basically only exists for creations in tests, within the dataflow-extraction, this 3-argument variant will determine `attribute` automatically */
 	public addEdge(from: NodeId, to: NodeId, type: EdgeType, attribute: DataflowGraphEdgeAttribute): this

@@ -76,7 +76,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		assertDataflow('assign on access', shell,
 			'a[x] <- 5',
 			new DataflowGraph()
-				.addVertex({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope, when: 'maybe' })
+				.definesVariable('0', 'a', LocalScope, 'maybe')
 				.uses('1', 'x')
 				.uses('2', `${UnnamedArgumentPrefix}2`)
 				.reads('0', '2')
@@ -205,7 +205,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				assertDataflow(`${constantAssignment} (constant assignment)`,
 					shell,
 					constantAssignment,
-					new DataflowGraph().addVertex({ tag: 'variable-definition', id: swapSourceAndTarget ? '1' : '0', name: 'x', scope })
+					new DataflowGraph().definesVariable(swapSourceAndTarget ? '1' : '0', 'x', scope)
 				)
 
 				const variableAssignment = `x ${op.str} y`
@@ -213,11 +213,11 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				if(swapSourceAndTarget) {
 					dataflowGraph
 						.uses('0', 'x')
-						.addVertex({ tag: 'variable-definition', id: '1', name: 'y', scope })
+						.definesVariable('1', 'y', scope)
 						.addEdge('1', '0', EdgeType.DefinedBy, 'always')
 				} else {
 					dataflowGraph
-						.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope })
+						.definesVariable('0', 'x', scope)
 						.uses('1', 'y')
 						.addEdge('0', '1', EdgeType.DefinedBy, 'always')
 				}
@@ -233,11 +233,11 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				if(swapSourceAndTarget) {
 					circularGraph
 						.uses('0', 'x')
-						.addVertex({ tag: 'variable-definition', id: '1', name: 'x', scope })
+						.definesVariable('1', 'x', scope)
 						.addEdge('1', '0', EdgeType.DefinedBy, 'always')
 				} else {
 					circularGraph
-						.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope })
+						.definesVariable('0', 'x', scope)
 						.uses('1', 'x')
 						.addEdge('0', '1', EdgeType.DefinedBy, 'always')
 				}
@@ -253,30 +253,30 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('"x <- y <- 1"', shell,
 				'x <- y <- 1',
 				new DataflowGraph()
-					.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
-					.addVertex({ tag: 'variable-definition', id: '1', name: 'y', scope: LocalScope })
+					.definesVariable('0', 'x')
+					.definesVariable('1', 'y')
 					.addEdge('0', '1', EdgeType.DefinedBy, 'always')
 			)
 			assertDataflow('"1 -> x -> y"', shell,
 				'1 -> x -> y',
 				new DataflowGraph()
-					.addVertex({ tag: 'variable-definition', id: '1', name: 'x', scope: LocalScope })
-					.addVertex({ tag: 'variable-definition', id: '3', name: 'y', scope: LocalScope })
+					.definesVariable('1', 'x')
+					.definesVariable('3', 'y')
 					.addEdge('3', '1', EdgeType.DefinedBy, 'always')
 			)
 			// still by indirection (even though y is overwritten?)
 			assertDataflow('"x <- 1 -> y"', shell,
 				'x <- 1 -> y',
 				new DataflowGraph()
-					.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
-					.addVertex({ tag: 'variable-definition', id: '2', name: 'y', scope: LocalScope })
+					.definesVariable('0', 'x')
+					.definesVariable('2', 'y')
 					.addEdge('0', '2', EdgeType.DefinedBy, 'always')
 			)
 			assertDataflow('"x <- y <- z"', shell,
 				'x <- y <- z',
 				new DataflowGraph()
-					.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
-					.addVertex({ tag: 'variable-definition', id: '1', name: 'y', scope: LocalScope })
+					.definesVariable('0', 'x')
+					.definesVariable('1', 'y')
 					.uses('2', 'z')
 					.addEdge('0', '1', EdgeType.DefinedBy, 'always')
 					.addEdge('1', '2', EdgeType.DefinedBy, 'always')
@@ -285,8 +285,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('nested global assignments', shell,
 				'x <<- y <<- z',
 				new DataflowGraph()
-					.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: GlobalScope })
-					.addVertex({ tag: 'variable-definition', id: '1', name: 'y', scope: GlobalScope })
+					.definesVariable('0', 'x', GlobalScope)
+					.definesVariable('1', 'y', GlobalScope)
 					.uses('2', 'z')
 					.addEdge('0', '1', EdgeType.DefinedBy, 'always')
 					.addEdge('1', '2', EdgeType.DefinedBy, 'always')
@@ -295,9 +295,9 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('nested global mixed with local assignments', shell,
 				'x <<- y <- y2 <<- z',
 				new DataflowGraph()
-					.addVertex({ tag: 'variable-definition', id: '0', name: 'x',  scope: GlobalScope })
-					.addVertex({ tag: 'variable-definition', id: '1', name: 'y',  scope: LocalScope })
-					.addVertex({ tag: 'variable-definition', id: '2', name: 'y2', scope: GlobalScope })
+					.definesVariable('0', 'x', GlobalScope)
+					.definesVariable('1', 'y')
+					.definesVariable('2', 'y2', GlobalScope)
 					.uses('3', 'z')
 					.addEdge('0', '1', EdgeType.DefinedBy, 'always')
 					.addEdge('0', '2', EdgeType.DefinedBy, 'always')
@@ -322,20 +322,20 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 
 							const repeatCode = build('x', 'repeat x')
 							assertDataflow(`"${repeatCode}"`, shell, repeatCode, new DataflowGraph()
-								.addVertex({ tag: 'variable-definition', id: assignment.defId[0], name: 'x', scope })
+								.definesVariable(assignment.defId[0], 'x', scope)
 								.uses(assignment.readId[0], 'x')
 							)
 
 							const whileCode = build('x', 'while (x) 3')
 							assertDataflow(`"${whileCode}"`, shell, whileCode, new DataflowGraph()
-								.addVertex({ tag: 'variable-definition', id: assignment.defId[1], name: 'x', scope })
+								.definesVariable(assignment.defId[1], 'x', scope)
 								.uses(assignment.readId[1], 'x'))
 
 							const forCode = build('x', 'for (x in 1:4) 3')
 							assertDataflow(`"${forCode}"`, shell, forCode,
 								new DataflowGraph()
-									.addVertex({ tag: 'variable-definition', id: assignment.defId[2], name: 'x', scope })
-									.addVertex({ tag: 'variable-definition', id: assignment.readId[2], name: 'x', scope: LocalScope })
+									.definesVariable(assignment.defId[2], 'x', scope)
+									.definesVariable(assignment.readId[2], 'x')
 							)
 						}
 					})
@@ -350,7 +350,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			)
 			assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'a <- foo(x=3,y,z)',
 				new DataflowGraph()
-					.addVertex({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
+					.definesVariable('0', 'a')
 					.addVertex({
 						tag:  'function-call',
 						id:   '9',
@@ -425,7 +425,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					assertDataflow('definition in if', shell,
 						`if (x <- 3) ${b.func('x')}`,
 						new DataflowGraph()
-							.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope, when: 'always' })
+							.definesVariable('0', 'x', LocalScope)
 							.uses('3', 'x', 'maybe', define({ name: 'x', definedAt: '2', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments()) )
 							.reads('3', '0')
 					)
@@ -498,8 +498,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		)
 		assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'y <- 15; x && (y <- 13); y',
 			new DataflowGraph()
-				.addVertex({ id: '0', tag: 'variable-definition', name: 'y', scope: LocalScope })
-				.addVertex({ id: '4', tag: 'variable-definition', name: 'y', scope: LocalScope, environment: environmentWithY })
+				.definesVariable('0', 'y')
+				.definesVariable('4', 'y', LocalScope, 'always', environmentWithY)
 				.addVertex({ id: '3', tag: 'use', name: 'x', scope: LocalScope, environment: environmentWithY })
 				.addVertex({ id: '8', tag: 'use', name: 'y', scope: LocalScope, environment: appendEnvironments(environmentWithY, environmentWithOtherY) })
 				.reads('8', '0')
@@ -512,12 +512,12 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		describe('for', () => {
 			assertDataflow('simple constant for-loop', shell,
 				'for(i in 1:10) { 1 }',
-				new DataflowGraph().addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
+				new DataflowGraph().definesVariable('0', 'i')
 			)
 			assertDataflow('using loop variable in body', shell,
 				'for(i in 1:10) { i }',
 				new DataflowGraph()
-					.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
+					.definesVariable('0', 'i')
 					.uses('4', 'i', 'maybe', define({ name: 'i', definedAt: '6', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments()))
 					.reads('4', '0', 'maybe')
 			)
@@ -534,12 +534,12 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			)
 			assertDataflow('using loop variable in body', shell,
 				'repeat { x <- 1 }',
-				new DataflowGraph().addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
+				new DataflowGraph().definesVariable('0', 'x')
 			)
 			assertDataflow('using variable in body', shell,
 				'repeat { x <- y }',
 				new DataflowGraph()
-					.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
+					.definesVariable('0', 'x')
 					.uses('1', 'y')
 					.addEdge('0', '1', EdgeType.DefinedBy, 'always')
 			)

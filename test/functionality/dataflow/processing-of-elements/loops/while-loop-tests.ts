@@ -10,7 +10,7 @@ describe('while', withShell(shell => {
 	)
 	assertDataflow('using variable in body', shell,
 		'while (TRUE) x',
-		new DataflowGraph().addVertex({ tag: 'use', id: '1', name: 'x', when: 'maybe' })
+		new DataflowGraph().uses('1', 'x', 'maybe')
 	)
 	assertDataflow('assignment in loop body', shell,
 		'while (TRUE) { x <- 3 }',
@@ -19,9 +19,9 @@ describe('while', withShell(shell => {
 	assertDataflow('def compare in loop', shell, 'while ((x <- x - 1) > 0) { x }',
 		new DataflowGraph()
 			.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
-			.addVertex({ tag: 'use', id: '1', name: 'x' })
-			.addVertex({ tag: 'use', id: '7', name: 'x', when: 'maybe', environment: define({ name: 'x', nodeId: '0', definedAt: '4', used: 'always', kind: 'variable', scope: LocalScope }, LocalScope, initializeCleanEnvironments()) })
-			.addEdge('7', '0', EdgeType.Reads, 'maybe')
+			.uses('1', 'x')
+			.uses('7', 'x', 'maybe', define({ name: 'x', nodeId: '0', definedAt: '4', used: 'always', kind: 'variable', scope: LocalScope }, LocalScope, initializeCleanEnvironments()))
+			.reads('7', '0', 'maybe')
 			.addEdge('0', '1', EdgeType.DefinedBy, 'always')
 	)
 	assertDataflow('Endless while loop',
@@ -33,7 +33,7 @@ describe('while', withShell(shell => {
 		shell,
 		'while(x) y',
 		new DataflowGraph()
-			.addVertex({ tag: 'use', id: '0', name: 'x', when: 'always' })
-			.addVertex({ tag: 'use', id: '1', name: 'y', when: 'maybe' })
+			.uses('0', 'x', 'always')
+			.uses('1', 'y', 'maybe')
 	)
 }))

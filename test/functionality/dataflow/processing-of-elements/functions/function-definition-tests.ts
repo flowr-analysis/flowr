@@ -73,7 +73,7 @@ describe('Function Definition', withShell(shell => {
 					environment: envWithXDefined,
 					when:        'always'
 				}, false)
-				.addEdge('2', '0', EdgeType.Reads, 'always')
+				.reads('2', '0', 'always')
 		)
 		assertDataflow('read of parameter in return', shell, 'function(x) { return(x) }',
 			new DataflowGraph()
@@ -122,12 +122,12 @@ describe('Function Definition', withShell(shell => {
 					environment: envWithXDefined,
 					when:        'always',
 				}, false)
-				.addEdge('5', BuiltIn, EdgeType.Reads, 'always')
+				.reads('5', BuiltIn, 'always')
 				.addEdge('5', BuiltIn, EdgeType.Calls, 'always')
-				.addEdge('3', '0', EdgeType.Reads, 'always')
+				.reads('3', '0', 'always')
 				.addEdge('5', '4', EdgeType.Argument, 'always')
 				.addEdge('5', '4', EdgeType.Returns, 'always')
-				.addEdge('4', '3', EdgeType.Reads, 'always')
+				.reads('4', '3', 'always')
 		)
 
 		describe('x', () => {
@@ -178,12 +178,12 @@ describe('Function Definition', withShell(shell => {
 						environment: envWithXDefined,
 						when:        'always',
 					}, false)
-					.addEdge('6', BuiltIn, EdgeType.Reads, 'always')
+					.reads('6', BuiltIn, 'always')
 					.addEdge('6', BuiltIn, EdgeType.Calls, 'always')
-					.addEdge('4', '0', EdgeType.Reads, 'always')
+					.reads('4', '0', 'always')
 					.addEdge('6', '5', EdgeType.Argument, 'always')
 					.addEdge('6', '5', EdgeType.Returns, 'always')
-					.addEdge('5', '4', EdgeType.Reads, 'always')
+					.reads('5', '4', 'always')
 			)
 		})
 
@@ -226,7 +226,7 @@ describe('Function Definition', withShell(shell => {
 				.addVertex({ tag: 'variable-definition', id: '2', name: 'y', environment: envWithXParam, scope: LocalScope, when: 'always' }, false)
 				.addVertex({ tag: 'variable-definition', id: '4', name: 'z', environment: envWithXYParam, scope: LocalScope, when: 'always' }, false)
 				.addVertex( { tag: 'use', id: '6', name: 'y', environment: envWithXYZParam, when: 'always' }, false)
-				.addEdge('6', '2', EdgeType.Reads, 'always')
+				.reads('6', '2', 'always')
 		)
 	})
 	describe('Scoping of body', () => {
@@ -406,7 +406,7 @@ describe('Function Definition', withShell(shell => {
 						kind:      'variable'
 					}, LocalScope, initializeCleanEnvironments())
 				})
-				.addEdge('9', '0', EdgeType.Reads, 'always')
+				.reads('9', '0', 'always')
 				.addVertex({
 					tag:        'function-definition',
 					id:         '8',
@@ -437,7 +437,7 @@ describe('Function Definition', withShell(shell => {
 					scope:       LocalScope,
 					when:        'always'
 				}, false)
-				.addEdge('6', '3', EdgeType.Reads, 'always')
+				.reads('6', '3', 'always')
 		)
 		assertDataflow('shadow in body with closure', shell, 'x <- 2; function() { x <- x; x }; x',
 			new DataflowGraph()
@@ -451,7 +451,7 @@ describe('Function Definition', withShell(shell => {
 						LocalScope,
 						initializeCleanEnvironments())
 				})
-				.addEdge('9', '0', EdgeType.Reads, 'always')
+				.reads('9', '0', 'always')
 				.addVertex({
 					tag:        'function-definition',
 					id:         '8',
@@ -496,7 +496,7 @@ describe('Function Definition', withShell(shell => {
 					}, LocalScope, pushLocalEnvironment(initializeCleanEnvironments())),
 					when: 'always'
 				}, false)
-				.addEdge('6', '3', EdgeType.Reads, 'always')
+				.reads('6', '3', 'always')
 				.addEdge('3', '4', EdgeType.DefinedBy, 'always')
 		)
 	})
@@ -532,7 +532,7 @@ describe('Function Definition', withShell(shell => {
 					environment: envWithXDefined,
 					when:        'always'
 				}, false)
-				.addEdge('5', '3', EdgeType.Reads, 'always')
+				.reads('5', '3', 'always')
 		)
 	})
 	describe('Access dot-dot-dot', () => {
@@ -566,7 +566,7 @@ describe('Function Definition', withShell(shell => {
 					environment: envWithParam,
 					when:        'always'
 				}, false)
-				.addEdge('2', '0', EdgeType.Reads, 'always')
+				.reads('2', '0', 'always')
 		)
 	})
 	describe('Using named arguments', () => {
@@ -615,9 +615,9 @@ describe('Function Definition', withShell(shell => {
 				}, false)
 				.addVertex({ tag: 'use', id: '4', name: 'a', environment: envWithA, when: 'always' }, false)
 				.addVertex({ tag: 'use', id: '6', name: 'b', environment: envWithAB, when: 'always' }, false)
-				.addEdge('4', '0', EdgeType.Reads, 'always')
+				.reads('4', '0', 'always')
 				.addEdge('3', '4', EdgeType.DefinedBy, 'maybe' /* default values can be overridden */)
-				.addEdge('6', '3', EdgeType.Reads, 'always')
+				.reads('6', '3', 'always')
 		)
 
 		const envWithFirstParam = define(
@@ -668,10 +668,10 @@ describe('Function Definition', withShell(shell => {
 				.addVertex({ tag: 'exit-point', id: '15', name: '+', scope: LocalScope, when: 'always', environment: envWithBothParamSecondB }, false)
 				.addEdge('15', '13', EdgeType.Relates, 'always')
 				.addEdge('13', '9', EdgeType.SameReadRead, 'always')
-				.addEdge('9', '0', EdgeType.Reads, 'always')
-				.addEdge('13', '0', EdgeType.Reads, 'always')
+				.reads('9', '0', 'always')
+				.reads('13', '0', 'always')
 				.addEdge('0', '1', EdgeType.DefinedBy, 'maybe')
-				.addEdge('1', '6', EdgeType.Reads, 'always')
+				.reads('1', '6', 'always')
 				.addEdge('10', '6', EdgeType.SameDefDef, 'always')
 		)
 	})
@@ -717,8 +717,8 @@ describe('Function Definition', withShell(shell => {
 				}, false)
 				.addVertex({ tag: 'use', id: '6', name: `${UnnamedArgumentPrefix}6`, when: 'always', environment: envWithASpecial }, false)
 				.addEdge('7', '6', EdgeType.Argument, 'always')
-				.addEdge('6', '5', EdgeType.Reads, 'always')
-				.addEdge('5', '2', EdgeType.Reads, 'always')
+				.reads('6', '5', 'always')
+				.reads('5', '2', 'always')
 		)
 	})
 	describe('Bind environment to correct exit point', () => {
@@ -796,14 +796,14 @@ describe('Function Definition', withShell(shell => {
 				}
 			}, false)
 			.addEdge('0', '3', EdgeType.DefinedBy, 'always')
-			.addEdge('1', '5', EdgeType.Reads, 'maybe')
-			.addEdge('1', '15', EdgeType.Reads, 'maybe')
-			.addEdge('18', '0', EdgeType.Reads, 'always')
-			.addEdge('10', '0', EdgeType.Reads, 'always')
-			.addEdge('11', '10', EdgeType.Reads, 'always')
+			.reads('1', '5', 'maybe')
+			.reads('1', '15', 'maybe')
+			.reads('18', '0', 'always')
+			.reads('10', '0', 'always')
+			.reads('11', '10', 'always')
 			.addEdge('12', '11', EdgeType.Argument, 'always')
 			.addEdge('12', '11', EdgeType.Returns, 'always')
-			.addEdge('12', BuiltIn, EdgeType.Reads, 'maybe')
+			.reads('12', BuiltIn, 'maybe')
 			.addEdge('12', BuiltIn, EdgeType.Calls, 'maybe')
 			.addEdge('5', '15', EdgeType.SameDefDef, 'always')
 
@@ -882,7 +882,7 @@ describe('Function Definition', withShell(shell => {
 					environment: envWithA
 				})
 				.addVertex( { tag: 'use', id: '17', name: 'a', environment: envWithAB })
-				.addEdge('17', '0', EdgeType.Reads, 'always')
+				.reads('17', '0', 'always')
 				.addVertex({
 					tag:        'function-definition',
 					id:         '12',
@@ -925,7 +925,7 @@ describe('Function Definition', withShell(shell => {
 						environments: withinNestedFunctionWithDef
 					}
 				}, false)
-				.addEdge('10', '1', EdgeType.Reads, 'always')
+				.reads('10', '1', 'always')
 				.addEdge('1', '8', EdgeType.DefinedBy, 'always')
 
 				.addVertex({ tag: 'use', id: '5', name: 'b', environment: withinNestedFunctionWithParam }, false)

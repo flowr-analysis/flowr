@@ -2,7 +2,8 @@ import { guard } from '../../util/assert'
 import type { NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
 import type {
 	IdentifierDefinition,
-	IdentifierReference} from '../environments'
+	IdentifierReference,
+	REnvironmentInformation} from '../environments'
 import {
 	cloneEnvironments,
 	initializeCleanEnvironments
@@ -177,6 +178,18 @@ export class DataflowGraph {
 		return this
 	}
 
+	/**
+	 * Adds a vertex for variable use. Intended for creating dataflow graphs as part of function tests.
+	 * @param id - AST node id
+	 * @param name - Variable name
+	 * @param when - always or maybe; defaults to always
+	 * @param environment - Environment the use occurs in
+	 * @param asRoot - boolean; defaults to true.
+	 */
+	public uses(id: string, name: string, when: DataflowGraphEdgeAttribute = 'always', environment?: REnvironmentInformation, asRoot: boolean = true) {
+		return this.addVertex({ tag: 'use', id, name, when, environment }, asRoot)
+	}
+
 	/** Basically only exists for creations in tests, within the dataflow-extraction, this 3-argument variant will determine `attribute` automatically */
 	public addEdge(from: NodeId, to: NodeId, type: EdgeType, attribute: DataflowGraphEdgeAttribute): this
 	/** {@inheritDoc} */
@@ -267,6 +280,16 @@ export class DataflowGraph {
 		return this
 	}
 
+	/**
+	 * Adds a read edge for simple testing.
+	 * 
+	 * @param from - Vertex/Node id
+	 * @param to   - see from
+	 * @param when - always (default), or maybe
+	 */
+	public reads(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
+		return this.addEdge(from, to, EdgeType.Reads, when)
+	}
 
 	/**
 	 * Merges the other graph into *this* one (in-place). The return value is only for convenience.

@@ -30,12 +30,12 @@ export const parseLog = log.getSubLogger({ name: 'ast-parser' })
  *
  * @returns The normalized and decorated AST (i.e., as a doubly linked tree)
  */
-export async function normalize(xmlString: string, tokenMap: TokenMap, hooks?: DeepPartial<XmlParserHooks>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): Promise<NormalizedAst> {
+export function normalize(xmlString: string, tokenMap: TokenMap, hooks?: DeepPartial<XmlParserHooks>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
 	const config = { ...DEFAULT_XML_PARSER_CONFIG, tokenMap }
 	const hooksWithDefaults = deepMergeObject(DEFAULT_PARSER_HOOKS, hooks) as XmlParserHooks
 
 	const data: ParserData = { config, hooks: hooksWithDefaults, currentRange: undefined, currentLexeme: undefined }
-	const object = await xlm2jsonObject(config, xmlString)
+	const object = xlm2jsonObject(config, xmlString)
 
 	return decorateAst(normalizeRootObjToAst(data, object), getId)
 }

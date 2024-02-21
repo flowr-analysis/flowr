@@ -2,8 +2,10 @@ import { type RShell } from './shell'
 import type { XmlParserHooks, NormalizedAst } from './lang-4.x'
 import { ts2r, normalize } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
-import type { DeepPartial, DeepReadonly } from 'ts-essentials'
+import type {AsyncOrSync, DeepPartial, DeepReadonly} from 'ts-essentials'
 import { guard } from '../util/assert'
+import {RShellExecutor} from './shell-executor'
+import objectHash from 'object-hash'
 
 export interface RParseRequestFromFile {
 	request: 'file';
@@ -26,6 +28,13 @@ interface RParseRequestBase {
 }
 
 /**
+ * A provider for an {@link RParseRequest} that can be used, for example, to override source file parsing behavior in tests
+ */
+export interface RParseRequestProvider {
+	createRequest(path: string): RParseRequest
+}
+
+/**
  * A request that can be passed along to {@link retrieveXmlFromRCode}.
  */
 export type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseRequestBase
@@ -45,6 +54,33 @@ export function requestFromInput(input: `file://${string}` | string): RParseRequ
 	}
 }
 
+export function requestProviderFromFile(): RParseRequestProvider {
+	return {
+		createRequest(path: string): RParseRequest {
+			return {
+				request:                'file',
+				content:                path,
+				ensurePackageInstalled: false}
+		}
+	}
+}
+
+export function requestProviderFromText(text: {[path: string]: string}): RParseRequestProvider{
+	return {
+		createRequest(path: string): RParseRequest {
+			return {
+				request:                'text',
+				content:                text[path],
+				ensurePackageInstalled: false
+			}
+		}
+	}
+}
+
+export function requestFingerprint(request: RParseRequest): string {
+	return objectHash(request)
+}
+
 const ErrorMarker = 'err'
 
 /**
@@ -54,22 +90,37 @@ const ErrorMarker = 'err'
  * Throws if the file could not be parsed.
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
-export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell): Promise<string> {
-	if(request.ensurePackageInstalled) {
-		await shell.ensurePackageInstalled('xmlparsedata', true)
-	}
-
+export function retrieveXmlFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
-
-	shell.sendCommands(`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
+	const setupCommands = [
+		`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
 		// now, try to retrieve the ast
 		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
-		'try(flowr_output<-xmlparsedata::xml_parse_data(flowr_parsed,includeText=TRUE,pretty=FALSE),silent=FALSE)'
-	)
-	const xml = await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)
-	const output = xml.join(shell.options.eol)
-	guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
-	return output
+		'try(flowr_output<-xmlparsedata::xml_parse_data(flowr_parsed,includeText=TRUE,pretty=FALSE),silent=FALSE)',
+	]
+	const outputCommand = `cat(flowr_output,${ts2r(shell.options.eol)})`
+
+	if(shell instanceof RShellExecutor){
+		if(request.ensurePackageInstalled)
+			shell.ensurePackageInstalled('xmlparsedata',true)
+
+		shell.addPrerequisites(setupCommands)
+		return guardOutput(shell.run(outputCommand))
+	} else {
+		const run = async() => {
+			if(request.ensurePackageInstalled)
+				await shell.ensurePackageInstalled('xmlparsedata', true)
+
+			shell.sendCommands(...setupCommands)
+			return guardOutput((await shell.sendCommandWithOutput(outputCommand)).join(shell.options.eol))
+		}
+		return run()
+	}
+
+	function guardOutput(output: string): string {
+		guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
+		return output
+	}
 }
 
 /**
@@ -78,7 +129,7 @@ export async function retrieveXmlFromRCode(request: RParseRequest, shell: RShell
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<NormalizedAst> {
 	const xml = await retrieveXmlFromRCode(request, shell)
-	return await normalize(xml, await shell.tokenMap(), hooks)
+	return normalize(xml, await shell.tokenMap(), hooks)
 }
 
 /**

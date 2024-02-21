@@ -132,7 +132,7 @@ export const parseCommand: ReplCommand = {
 		}).allRemainingSteps()
 
 		const config = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap: await shell.tokenMap() })
-		const object = await xlm2jsonObject(config, result.parse)
+		const object = xlm2jsonObject(config, result.parse)
 
 		output.stdout(depthListToTextTree(toDepthMap(object, config), config, output.formatter))
 	}

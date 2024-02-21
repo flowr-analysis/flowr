@@ -3,10 +3,10 @@ import { rangeFrom, rangeStartsCompletelyBefore } from '../../../../../../util/r
 import type { RawRType, RExpressionList, RNode} from '../../../model'
 import { RType } from '../../../model'
 import { guard } from '../../../../../../util/assert'
-import { XML_NAME } from './xml-to-json'
 import type { NamedXmlBasedJson, XmlBasedJson} from './input-format'
 import { XmlParseError, getKeyGuarded } from './input-format'
 import type { XmlParserConfig } from './config'
+import { XML_NAME } from './xml-to-json';
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper

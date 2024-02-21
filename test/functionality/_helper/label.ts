@@ -8,10 +8,11 @@
 
 import { DefaultMap } from '../../../src/util/defaultmap'
 import { guard } from '../../../src/util/assert'
-import type { FlowrCapabilityWithPath, FlowrCapabilityId} from '../../../src/r-bridge/data'
-import { getCapabilityById } from '../../../src/r-bridge/data'
+import type { FlowrCapabilityId} from '../../../src/r-bridge/data'
+import { getAllCapabilities } from '../../../src/r-bridge/data'
 
-const TheGlobalLabelMap: DefaultMap<FlowrCapabilityWithPath, string[]> = new DefaultMap(() => [])
+// map flowr ids to the capabilities
+const TheGlobalLabelMap: DefaultMap<string, string[]> = new DefaultMap(() => [])
 
 const uniqueTestId = (() => {
 	let id = 0
@@ -31,38 +32,27 @@ export function label(testname: string, ...ids: FlowrCapabilityId[]): string {
 	const fullName = `[${id}, ${ids.join(', ')}] ${testname}`
 	const idName = `#${id} (${testname})`
 
-	for(const l of ids) {
-		const capability = getCapabilityById(l)
-		TheGlobalLabelMap.get(capability).push(idName)
+	for(const i of ids) {
+		TheGlobalLabelMap.get(i).push(idName)
 	}
 
 	return fullName
 }
 
-function getSortedByPath(): [FlowrCapabilityWithPath, string[]][] {
-	// sort entries by path
-	return Array.from(TheGlobalLabelMap.entries()).sort(([{ path: a }], [{ path: b }]) => {
-		for(let i = 0; i < Math.min(a.length, b.length); i++) {
-			if(a[i] < b[i]) {
-				return -1
-			}
-			if(a[i] > b[i]) {
-				return 1
-			}
-		}
-		return a.length - b.length
-	})
-}
-
 after(() => {
 	console.log('='.repeat(80))
-	const entries = getSortedByPath()
+	const allCapabilities = [...getAllCapabilities()]
+	const entries = allCapabilities.map(c => [c, TheGlobalLabelMap.get(c.id)] as const)
 	const maxTestLength = Math.max(...entries.map(([, tests]) => tests.length.toString().length))
 
 	for(const [label, testNames] of entries) {
 		const paddedLabel = `[${label.path.join('/')}] ${label.name}`
 		const paddedTestLength = testNames.length.toString().padStart(maxTestLength, ' ')
 		const tests = testNames.length > 1 ? 'tests:' : 'test: '
+		if(testNames.length === 0) {
+			console.log(`\x1b[1;31m${paddedLabel} is not covered by any tests\x1b[0m`)
+			continue
+		}
 		console.log(`\x1b[1m${paddedLabel}\x1b[0m is covered by ${paddedTestLength} ${tests}\n     \x1b[36m${testNames.join('\x1b[m, \x1b[36m')}\x1b[m`)
 	}
 })

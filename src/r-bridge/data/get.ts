@@ -14,7 +14,7 @@ type ExtractAllIds<T extends FlowrCapability> =
 type Capabilities = (typeof flowrCapabilities)['capabilities'][number]
 export type FlowrCapabilityId = ExtractAllIds<Capabilities>
 
-type PathToCapability = number[]
+type PathToCapability = readonly number[]
 
 export interface FlowrCapabilityWithPath extends FlowrCapability{
 	path: PathToCapability
@@ -48,5 +48,22 @@ export function getCapabilityById(id: FlowrCapabilityId): FlowrCapabilityWithPat
 	guard(value !== undefined, () => `Could not find capability with id ${id}`)
 	capabilityCache.set(id, value)
 	return value
+}
+
+export function getAllCapabilities(): readonly FlowrCapabilityWithPath[] {
+	const result: FlowrCapabilityWithPath[] = []
+	function traverse(capabilities: readonly FlowrCapability[], currentPath: PathToCapability = []) {
+		let idx = 0
+		for(const capability of capabilities) {
+			idx++
+			const nextPath = [...currentPath, idx]
+			result.push({ ...capability, path: nextPath })
+			if(capability.capabilities) {
+				traverse(capability.capabilities, nextPath)
+			}
+		}
+	}
+	traverse(flowrCapabilities.capabilities, [])
+	return result
 }
 

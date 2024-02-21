@@ -150,6 +150,14 @@ export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition
 		definedAt: BuiltIn,
 		name:      'print',
 		nodeId:    BuiltIn
+	}]],
+	['source', [{
+		kind:      'built-in-function',
+		scope:     GlobalScope,
+		used:      'always',
+		definedAt: BuiltIn,
+		name:      'source',
+		nodeId:    BuiltIn
 	}]]
 ])
 

@@ -5,14 +5,18 @@
  */
 
 /**
- * This splits an input string on the given split string (e.g., ` `) but checks if the string is quoted or escaped.
+ * This splits an input string on the given split string (e.g., ` `), but checks if the string is quoted or escaped.
  *
- * Given an input string like `a "b c" d` with a space character as split this splits the arguments similar to common shell interpreters (i.e., `a`, `b c`, and `d`).
+ * Given an input string like `a "b c" d`, with a space character as split, and escapeQuote set to true,
+ * this splits the arguments similar to common shell interpreters (i.e., `a`, `b c`, and `d`).
+ * 
+ * When escapeQuote is set to false instead, we keep quotation marks in the result (i.e., `a`, `"b c"`, and `d`.).
  *
  * @param inputString - The string to split
- * @param split       - The **single** character to split on (can not be the backslash or quote)
+ * @param escapeQuote - Keep quotes in args
+ * @param split       - The **single** character to split on (can not be backslash or quote)
  */
-export function splitAtEscapeSensitive(inputString: string, split = ' '): string[] {
+export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, split = ' '): string[] {
 	const args = []
 	let current = ''
 	let inQuotes = false
@@ -35,6 +39,9 @@ export function splitAtEscapeSensitive(inputString: string, split = ' '): string
 			current = ''
 		} else if(c === '"' || c === "'") {
 			inQuotes = !inQuotes
+			if(!escapeQuote) {
+				current += c
+			}
 		} else if(c === '\\') {
 			escaped = true
 		} else {

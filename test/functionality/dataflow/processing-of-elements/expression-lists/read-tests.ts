@@ -3,6 +3,7 @@ import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../.
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { define } from '../../../../../src/dataflow/common/environments'
 import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
+import { label } from '../../../_helper/label'
 
 describe('Lists with variable references', withShell(shell => {
 	describe('read-read same variable', () => {
@@ -38,7 +39,7 @@ describe('Lists with variable references', withShell(shell => {
 				.addEdge('0', '3', EdgeType.SameReadRead, 'always')
 		)
 	})
-	describe('def-def same variable', () => {
+	describe(label('def-def same variable', 'numbers', 'name-normal', 'local-left-assignment', 'grouping'), () => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
 			new DataflowGraph()
 				.addVertex( { tag: 'variable-definition', id: id1, name: 'x', scope: LocalScope })
@@ -75,7 +76,7 @@ describe('Lists with variable references', withShell(shell => {
 				.addEdge('3', '7', EdgeType.SameDefDef, 'always')
 		)
 	})
-	describe('def followed by read', () => {
+	describe(label('def followed by read', 'name-normal', 'numbers', 'local-left-assignment', 'grouping'), () => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
 			new DataflowGraph()
 				.addVertex( { tag: 'variable-definition', id: id1, name: 'x', scope: LocalScope })

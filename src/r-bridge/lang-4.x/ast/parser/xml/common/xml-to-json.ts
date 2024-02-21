@@ -1,6 +1,6 @@
 import * as xml2js from 'xml2js'
-import { XmlParserConfig } from './config';
-import { XmlBasedJson } from './input-format';
+import type { XmlParserConfig } from './config'
+import type { XmlBasedJson } from './input-format'
 
 export const XML_NAME = '#name' as const
 

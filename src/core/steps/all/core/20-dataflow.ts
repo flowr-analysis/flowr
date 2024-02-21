@@ -34,7 +34,7 @@ export const LEGACY_STATIC_DATAFLOW = {
 	...staticDataflowCommon,
 	humanReadableName: 'v1 dataflow',
 	processor:         legacyProcessor,
-	requiredInput: {
+	requiredInput:     {
 		request: undefined as unknown as RParseRequest
 	}
 } as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof legacyProcessor>>

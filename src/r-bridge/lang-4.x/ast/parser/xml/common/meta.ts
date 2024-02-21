@@ -6,7 +6,7 @@ import { guard } from '../../../../../../util/assert'
 import type { NamedXmlBasedJson, XmlBasedJson} from './input-format'
 import { XmlParseError, getKeyGuarded } from './input-format'
 import type { XmlParserConfig } from './config'
-import { XML_NAME } from './xml-to-json';
+import { XML_NAME } from './xml-to-json'
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper

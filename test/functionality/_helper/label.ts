@@ -39,6 +39,10 @@ export function label(testname: string, ...ids: FlowrCapabilityId[]): string {
 }
 
 
+function limitTestNameLength(n: string) {
+	return n.length > 25 ? n.substring(0, 25) + '…' : n;
+}
+
 function printLabelSummary(): void {
 	console.log('== Test Capability Coverage ' + '='.repeat(80))
 	// only list those for which we have a support claim
@@ -58,7 +62,7 @@ function printLabelSummary(): void {
 			}
 			continue
 		}
-		const formattedTestNames = `\x1b[36m${testNames.map(n => n.length > 25 ? n.substring(0, 25) + '…' : n).join('\x1b[m, \x1b[36m')}\x1b[m`
+		const formattedTestNames = `\x1b[36m${testNames.map(limitTestNameLength).join('\x1b[m, \x1b[36m')}\x1b[m`
 		console.log(`\x1b[1m${paddedLabel}\x1b[0m is covered by ${testNames.length} ${tests}\n     ${formattedTestNames}`)
 	}
 }

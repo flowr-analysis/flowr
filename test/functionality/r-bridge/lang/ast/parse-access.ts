@@ -4,10 +4,12 @@ import { rangeFrom } from '../../../../../src/util/range'
 import { RType } from '../../../../../src'
 import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 import { InternalScope } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v2/internal/internal'
+import {label} from "../../../_helper/label";
 
 describe('Parse value access', withShell(shell => {
 	describe('Single bracket', () => {
-		assertAst('Empty', shell, 'a[]', [
+		assertAst(label('Empty Access', 'name-normal', 'single-bracket-access', 'access-with-empty'),
+			shell, 'a[]', [
 			{
 				step:   NORMALIZE,
 				wanted: exprList({
@@ -53,7 +55,8 @@ describe('Parse value access', withShell(shell => {
 				})
 			}
 		])
-		assertAst('One value', shell, 'a[1]', [
+		assertAst(label('One Constant', 'name-normal', 'single-bracket-access', 'numbers'),
+			shell, 'a[1]', [
 			{
 				step:   NORMALIZE,
 				wanted: exprList({
@@ -119,7 +122,8 @@ describe('Parse value access', withShell(shell => {
 				})
 			}
 		])
-		assertAst('One variable', shell, 'a[x]', [
+		assertAst(label('One Variable', 'name-normal', 'single-bracket-access'),
+			shell, 'a[x]', [
 			{
 				step:   NORMALIZE,
 				wanted: exprList({
@@ -187,7 +191,8 @@ describe('Parse value access', withShell(shell => {
 				})
 			}
 		])
-		assertAst('One expression', shell, 'a[x + 3]', [
+		assertAst(label('One Expression', 'name-normal', 'single-bracket-access', 'binary-operator', 'numbers'),
+			shell, 'a[x + 3]', [
 			{
 				step:   NORMALIZE,
 				wanted: exprList({
@@ -290,7 +295,8 @@ describe('Parse value access', withShell(shell => {
 				})
 			}
 		])
-		assertAst('Multiple', shell, 'a[3,2]', [
+		assertAst(label('Multiple Access', 'name-normal', 'single-bracket-access', 'numbers'),
+			shell, 'a[3,2]', [
 			{
 				step:   NORMALIZE,
 				wanted: exprList({
@@ -375,7 +381,8 @@ describe('Parse value access', withShell(shell => {
 				})
 			}
 		])
-		assertAst('Multiple with empty', shell, 'a[,2,4]', [
+		assertAst(label('Multiple with Empty', 'name-normal', 'single-bracket-access', 'numbers', 'access-with-empty'),
+			shell, 'a[,2,4]', [
 			{
 				step:   NORMALIZE,
 				wanted: exprList({
@@ -459,7 +466,8 @@ describe('Parse value access', withShell(shell => {
 				})
 			}
 		])
-		assertAst('Named argument', shell, 'a[1,super=4]', [
+		assertAst(label('Named argument', 'name-normal', 'single-bracket-access', 'numbers', 'access-with-argument-names'),
+			shell, 'a[1,super=4]', [
 			{
 				step:   NORMALIZE,
 				wanted: exprList({
@@ -564,7 +572,8 @@ describe('Parse value access', withShell(shell => {
 				})
 			}
 		])
-		assertAst('Chained', shell, 'a[1][4]', [
+		assertAst(label('Chained', 'name-normal', 'single-bracket-access', 'numbers'),
+			shell, 'a[1][4]', [
 			{
 				step:   NORMALIZE,
 				wanted: exprList({
@@ -673,7 +682,8 @@ describe('Parse value access', withShell(shell => {
 		])
 	})
 	describe('Double bracket', () => {
-		assertAst('Empty', shell, 'b[[]]', [
+		assertAst(label('Empty', 'name-normal', 'double-bracket-access', 'access-with-empty'),
+			shell, 'b[[]]', [
 			{
 				step:   NORMALIZE,
 				wanted: exprList({
@@ -720,7 +730,8 @@ describe('Parse value access', withShell(shell => {
 				})
 			}
 		])
-		assertAst('One element', shell, 'b[[5]]', [
+		assertAst(label('One Constant', 'name-normal', 'double-bracket-access'),
+			shell, 'b[[5]]', [
 			{
 				step:   NORMALIZE,
 				wanted: exprList({

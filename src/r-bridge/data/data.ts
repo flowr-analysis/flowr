@@ -128,6 +128,12 @@ export const flowrCapabilities = {
 									description: '_Recognize and resolve calls like `f(3)`, `foo::bar(3, c(1,2))`, ..._'
 								},
 								{
+									name:        'Empty Arguments',
+									id:          'empty-arguments',
+									supported:   'fully',
+									description: '_Essentially a special form of an unnamed argument as in `a[]`, `foo::bar(3, ,42)`, ..._'
+								},
+								{
 									name:        'Named Arguments',
 									id:          'named-arguments',
 									supported:   'fully',
@@ -179,7 +185,7 @@ export const flowrCapabilities = {
 									name:        'Single Bracket Access',
 									id:          'single-bracket-access',
 									supported:   'fully',
-									description: '_Detect calls like `x[i]`, `x[i, b]` `x[[i]]`, ... This does not include the real separation of cells, which is handled extra._'
+									description: '_Detect calls like `x[i]`, `x[i, ,b]`, `x[3][y]`, ... This does not include the real separation of cells, which is handled extra._'
 								},
 								{
 									name:        'Double Bracket Access',
@@ -204,6 +210,12 @@ export const flowrCapabilities = {
 									id:          'access-with-argument-names',
 									supported:   'fully',
 									description: '_Detect calls like `x[i = 3]`, `x[[i=]]`, ..._'
+								},
+								{
+									name:        'Access with Empty',
+									id:          'access-with-empty',
+									supported:   'fully',
+									description: '_Detect calls like `x[]`, `x[2,,42]`, ..._'
 								},
 								{
 									name:        'Subsetting',

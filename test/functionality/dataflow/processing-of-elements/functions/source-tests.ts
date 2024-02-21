@@ -1,9 +1,10 @@
 import {assertDataflow, withShell} from '../../../_helper/shell'
 import {setSourceProvider} from '../../../../../src/dataflow/internal/process/functions/source'
-import {BuiltIn, DataflowGraph, EdgeType, initializeCleanEnvironments, requestProviderFromFile, requestProviderFromText, sourcedDeterministicCountingIdGenerator} from '../../../../../src'
+import {BuiltIn, EdgeType, initializeCleanEnvironments, requestProviderFromFile, requestProviderFromText, sourcedDeterministicCountingIdGenerator} from '../../../../../src'
 import {LocalScope} from '../../../../../src/dataflow/environments/scopes'
 import {UnnamedArgumentPrefix} from '../../../../../src/dataflow/internal/process/functions/argument'
 import {define} from '../../../../../src/dataflow/environments'
+import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
 describe('source', withShell(shell => {
 	// reset the source provider back to the default value after our tests
@@ -21,7 +22,7 @@ describe('source', withShell(shell => {
 		LocalScope,
 		initializeCleanEnvironments()
 	)
-	assertDataflow('simple source', shell, 'source("simple")\ncat(N)', new DataflowGraph()
+	assertDataflow('simple source', shell, 'source("simple")\ncat(N)', emptyGraph()
 		.definesVariable('simple-1:1-1:6-0', 'N')
 		.addVertex({
 			tag:         'function-call',
@@ -52,7 +53,7 @@ describe('source', withShell(shell => {
 		.reads('7', BuiltIn)
 	)
 
-	assertDataflow('multiple source', shell, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)', new DataflowGraph()
+	assertDataflow('multiple source', shell, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)', emptyGraph()
 		.addVertex({
 			tag:         'function-call',
 			name:        'source',
@@ -127,7 +128,7 @@ describe('source', withShell(shell => {
 		LocalScope,
 		initializeCleanEnvironments()
 	)
-	assertDataflow('conditional', shell, 'if (x) { source("simple") }\ncat(N)', new DataflowGraph()
+	assertDataflow('conditional', shell, 'if (x) { source("simple") }\ncat(N)', emptyGraph()
 		.definesVariable('simple-1:10-1:15-0', 'N')
 		.addVertex({
 			tag:         'function-call',
@@ -161,7 +162,7 @@ describe('source', withShell(shell => {
 	)
 
 	// missing sources should just be ignored
-	assertDataflow('missing source', shell, 'source("missing")', new DataflowGraph()
+	assertDataflow('missing source', shell, 'source("missing")', emptyGraph()
 		.addVertex({
 			tag:         'function-call',
 			name:        'source',
@@ -182,7 +183,7 @@ describe('source', withShell(shell => {
 		LocalScope,
 		initializeCleanEnvironments()
 	)
-	assertDataflow('recursive source', shell, sources.recursive1, new DataflowGraph()
+	assertDataflow('recursive source', shell, sources.recursive1, emptyGraph()
 		.addVertex({
 			tag:         'function-call',
 			name:        'source',
@@ -229,7 +230,7 @@ describe('source', withShell(shell => {
 	)
 
 	// we currently don't support (and ignore) source calls with non-constant arguments!
-	assertDataflow('non-constant source', shell, 'x <- "recursive1"\nsource(x)', new DataflowGraph()
+	assertDataflow('non-constant source', shell, 'x <- "recursive1"\nsource(x)', emptyGraph()
 		.addVertex({
 			tag:         'function-call',
 			name:        'source',

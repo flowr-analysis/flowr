@@ -1,13 +1,14 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
+import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
 describe('for', withShell(shell => {
 	assertDataflow('Single-vector for Loop',
 		shell,
 		'for(i in 0) i ',
-		new DataflowGraph()
+		emptyGraph()
 			.definesVariable('0', 'i')
 			.uses('2', 'i', 'maybe', define({ nodeId: '0', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '4', used: 'always' }, LocalScope, initializeCleanEnvironments()) )
 			.reads('2', '0', 'maybe')
@@ -24,7 +25,7 @@ describe('for', withShell(shell => {
   x <- 3
 }
 x`,
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'x')
 				.definesVariable('7', 'x', LocalScope, 'always', withXDefined)
 				.uses('3', 'z', 'always', withXDefined)
@@ -39,7 +40,7 @@ x`,
 	assertDataflow('Read in for Loop',
 		shell,
 		'x <- 12\nfor(i in 1:10) x ',
-		new DataflowGraph()
+		emptyGraph()
 			.definesVariable('0', 'x')
 			.definesVariable('3', 'i', LocalScope, 'always', envWithX())
 			.uses('7', 'x', 'maybe', define({ nodeId: '3', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'always' }, LocalScope, envWithX()) )
@@ -49,7 +50,7 @@ x`,
 	assertDataflow('Read after for loop',
 		shell,
 		'for(i in 1:10) { x <- 12 }\n x',
-		new DataflowGraph()
+		emptyGraph()
 			.definesVariable('0', 'i')
 			.definesVariable('4', 'x', LocalScope, 'maybe', envWithI())
 			.uses('9', 'x', 'always', define({ nodeId: '4', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '6', used: 'maybe' }, LocalScope, envWithI()))
@@ -73,7 +74,7 @@ x`,
 	assertDataflow('Read after for loop with outer def',
 		shell,
 		'x <- 9\nfor(i in 1:10) { x <- 12 }\n x',
-		new DataflowGraph()
+		emptyGraph()
 			.definesVariable('0', 'x')
 			.definesVariable('3', 'i', LocalScope, 'always', envWithFirstX())
 			.definesVariable('7', 'x', LocalScope, 'maybe', envInFor())
@@ -85,7 +86,7 @@ x`,
 	assertDataflow('Redefinition within loop',
 		shell,
 		'x <- 9\nfor(i in 1:10) { x <- x }\n x',
-		new DataflowGraph()
+		emptyGraph()
 			.definesVariable('0', 'x')
 			.definesVariable('3', 'i', LocalScope, 'always', envWithFirstX())
 			.definesVariable('7', 'x', LocalScope, 'maybe', envInFor())
@@ -114,7 +115,7 @@ x`,
 	assertDataflow('Redefinition within loop',
 		shell,
 		'x <- 9\nfor(i in 1:10) { x <- x; x <- x }\n x',
-		new DataflowGraph()
+		emptyGraph()
 			.definesVariable('0', 'x')
 			.definesVariable('3', 'i', LocalScope, 'always', envWithFirstX())
 			.definesVariable('7', 'x', LocalScope, 'maybe', envInLargeFor())
@@ -147,7 +148,7 @@ x`,
 	assertDataflow('Redefinition within loop',
 		shell,
 		'for(i in 1:10) { i; i <- 12 }\n i',
-		new DataflowGraph()
+		emptyGraph()
 			.definesVariable('0', 'i')
 			.definesVariable('5', 'i', LocalScope, 'maybe', forLoopWithI())
 			.uses('4', 'i', 'maybe', forLoopWithI() )

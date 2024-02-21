@@ -1,13 +1,14 @@
 import type { NodeId } from '../../../../../src/r-bridge'
-import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { define } from '../../../../../src/dataflow/environments'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
+import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
 describe('Lists with variable references', withShell(shell => {
 	describe('read-read same variable', () => {
 		const sameGraph = (id1: NodeId, id2: NodeId) =>
-			new DataflowGraph()
+			emptyGraph()
 				.uses(id1, 'x')
 				.uses(id2, 'x')
 				.addEdge(id1, id2, EdgeType.SameReadRead, 'always')
@@ -30,7 +31,7 @@ describe('Lists with variable references', withShell(shell => {
 
 		assertDataflow('multiple occurrences of same variable', shell,
 			'x\nx\n3\nx',
-			new DataflowGraph()
+			emptyGraph()
 				.uses('0', 'x')
 				.uses('1', 'x')
 				.uses('3', 'x')
@@ -40,7 +41,7 @@ describe('Lists with variable references', withShell(shell => {
 	})
 	describe('def-def same variable', () => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable(id1, 'x')
 				.definesVariable(id2, 'x', LocalScope, 'always', define({ nodeId: id1, name: 'x', scope: LocalScope, kind: 'variable', definedAt, used: 'always' }, LocalScope, initializeCleanEnvironments()))
 				.addEdge(id1, id2, EdgeType.SameDefDef, 'always')
@@ -67,7 +68,7 @@ describe('Lists with variable references', withShell(shell => {
 
 		assertDataflow('multiple occurrences of same variable', shell,
 			'x <- 1\nx <- 3\n3\nx <- 9',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'x')
 				.definesVariable('3', 'x', LocalScope, 'always', define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()))
 				.definesVariable('7', 'x', LocalScope, 'always', define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments()))
@@ -77,7 +78,7 @@ describe('Lists with variable references', withShell(shell => {
 	})
 	describe('def followed by read', () => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable(id1, 'x')
 				.uses(id2, 'x', 'always', define({ nodeId: id1, name: 'x', scope: LocalScope, kind: 'variable', definedAt, used: 'always' }, LocalScope, initializeCleanEnvironments()))
 				.reads(id2, id1)
@@ -99,7 +100,7 @@ describe('Lists with variable references', withShell(shell => {
 		)
 		assertDataflow('redefinition links correctly', shell,
 			'x <- 2; x <- 3; x',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'x')
 				.definesVariable('3', 'x', LocalScope, 'always', define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()))
 				.uses('6', 'x', 'always', define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments()))
@@ -108,7 +109,7 @@ describe('Lists with variable references', withShell(shell => {
 		)
 		assertDataflow('multiple redefinition with circular definition', shell,
 			'x <- 2; x <- x; x',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'x')
 				.definesVariable('3', 'x', LocalScope, 'always', define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()))
 				.uses('4', 'x' , 'always', define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()))
@@ -120,7 +121,7 @@ describe('Lists with variable references', withShell(shell => {
 		)
 		assertDataflow('duplicate circular definition', shell,
 			'x <- x; x <- x;',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'x')
 				.uses('1', 'x')
 				.definesVariable('3', 'x', LocalScope, 'always', define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()))

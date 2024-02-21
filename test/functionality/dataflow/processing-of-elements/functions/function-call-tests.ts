@@ -1,10 +1,11 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { define, popLocalEnvironment, pushLocalEnvironment } from '../../../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/internal/process/functions/argument'
 import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/internal/process/functions/function-call'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
+import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {
@@ -23,7 +24,7 @@ describe('Function Call', withShell(shell => {
 			envWithFirstI
 		)
 		assertDataflow('Calling function a', shell, 'i <- 4; a <- function(x) { x }\na(i)',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'i')
 				.definesVariable('3', 'a', LocalScope, 'always', envWithFirstI)
 				.uses('11', 'i', 'always', envWithIA)
@@ -69,7 +70,7 @@ describe('Function Call', withShell(shell => {
 			envWithIA
 		)
 		assertDataflow('Calling function a with an indirection', shell, 'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'i')
 				.definesVariable('3', 'a', LocalScope, 'always', envWithFirstI)
 				.definesVariable('10', 'b', LocalScope, 'always', envWithIA)
@@ -134,7 +135,7 @@ describe('Function Call', withShell(shell => {
 		)
 		assertDataflow('Calling with a constant function', shell, `i <- 4
 a <- function(x) { x <- x; x <- 3; 1 }
-a(i)`, new DataflowGraph()
+a(i)`, emptyGraph()
 			.definesVariable('0', 'i')
 			.definesVariable('3', 'a', LocalScope, 'always', envWithFirstI)
 			.uses('17', 'i', 'always', envWithIAndLargeA)
@@ -190,7 +191,7 @@ a(i)`, new DataflowGraph()
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments())
 		)
-		const outGraph = new DataflowGraph()
+		const outGraph = emptyGraph()
 			.addVertex({
 				tag:  'function-call',
 				id:   '9',
@@ -243,7 +244,7 @@ a(i)`, new DataflowGraph()
 
 		assertDataflow('Calling a function which returns another', shell, `a <- function() { function() { 42 } }
 a()()`,
-		new DataflowGraph()
+		emptyGraph()
 			.addVertex({
 				tag:         'function-call',
 				id:          '9',
@@ -308,7 +309,7 @@ a()()`,
 
 	describe('Argument which is expression', () => {
 		assertDataflow('Calling with 1 + x', shell, 'foo(1 + x)',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex({ tag: 'function-call', id: '5', name: 'foo', environment: initializeCleanEnvironments(), args: [{ nodeId: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, used: 'always' }]})
 				.uses('4', `${UnnamedArgumentPrefix}4`)
 				.uses('2', 'x')
@@ -319,7 +320,7 @@ a()()`,
 
 	describe('Argument which is anonymous function call', () => {
 		assertDataflow('Calling with a constant function', shell, 'f(function() { 3 })',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex({ tag: 'function-call', id: '5', name: 'f', environment: initializeCleanEnvironments(), args: [{ nodeId: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, used: 'always' }]})
 				.uses('4', `${UnnamedArgumentPrefix}4`)
 				.addVertex({
@@ -345,7 +346,7 @@ a()()`,
 
 	describe('Multiple out refs in arguments', () => {
 		assertDataflow('Calling \'seq\'', shell, 'seq(1, length(pkgnames), by = stepsize)',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex({
 					tag:         'function-call',
 					id:          '11',
@@ -397,7 +398,7 @@ a()()`,
 		)
 
 		assertDataflow('Late binding of y', shell, 'a <- function() { y }\ny <- 12\na()',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'a')
 				.addVertex({
 					tag:         'variable-definition',
@@ -453,7 +454,7 @@ a()()`,
 			initializeCleanEnvironments()
 		)
 		assertDataflow('Not giving first parameter', shell, `a <- function(x=3,y) { y }
-a(,3)`, new DataflowGraph()
+a(,3)`, emptyGraph()
 			.addVertex({
 				tag:         'function-call',
 				id:          '13',
@@ -501,7 +502,7 @@ a(,3)`, new DataflowGraph()
 			LocalScope,
 			initializeCleanEnvironments()
 		)
-		assertDataflow('Not giving first argument', shell, 'a(x=3, x)', new DataflowGraph()
+		assertDataflow('Not giving first argument', shell, 'a(x=3, x)', emptyGraph()
 			.addVertex({
 				tag:  'function-call',
 				id:   '6',
@@ -526,7 +527,7 @@ a(,3)`, new DataflowGraph()
 		)
 	})
 	describe('Define in parameters', () => {
-		assertDataflow('Support assignments in function calls', shell, 'foo(x <- 3); x', new DataflowGraph()
+		assertDataflow('Support assignments in function calls', shell, 'foo(x <- 3); x', emptyGraph()
 			.addVertex({
 				tag:   'function-call',
 				id:    '5',

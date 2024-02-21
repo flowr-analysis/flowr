@@ -4,50 +4,51 @@
  * This will not include functions!
  */
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../../_helper/provider'
 import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
+import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
 describe('Atomic (dataflow information)', withShell((shell) => {
 	describe('uninteresting leafs', () => {
 		for(const input of ['42', '"test"', 'TRUE', 'NA', 'NULL']) {
-			assertDataflow(input, shell, input, new DataflowGraph())
+			assertDataflow(input, shell, input, emptyGraph())
 		}
 	})
 
 	assertDataflow('simple variable', shell,
 		'xylophone',
-		new DataflowGraph().uses('0', 'xylophone')
+		emptyGraph().uses('0', 'xylophone')
 	)
 
 	describe('access', () => {
 		describe('const access', () => {
 			assertDataflow('single constant', shell,
 				'a[2]',
-				new DataflowGraph().uses('0', 'a', 'maybe')
+				emptyGraph().uses('0', 'a', 'maybe')
 					.uses('2', `${UnnamedArgumentPrefix}2`)
 					.reads('0', '2')
 			)
 			assertDataflow('double constant', shell,
 				'a[[2]]',
-				new DataflowGraph().uses('0', 'a', 'maybe')
+				emptyGraph().uses('0', 'a', 'maybe')
 					.uses('2', `${UnnamedArgumentPrefix}2`)
 					.reads('0', '2')
 			)
 			assertDataflow('dollar constant', shell,
 				'a$b',
-				new DataflowGraph().uses('0', 'a', 'maybe')
+				emptyGraph().uses('0', 'a', 'maybe')
 			)
 			assertDataflow('at constant', shell,
 				'a@b',
-				new DataflowGraph().uses('0', 'a', 'maybe')
+				emptyGraph().uses('0', 'a', 'maybe')
 			)
 			assertDataflow('chained constant', shell,
 				'a[2][3]',
-				new DataflowGraph().uses('0', 'a', 'maybe')
+				emptyGraph().uses('0', 'a', 'maybe')
 					.uses('2', `${UnnamedArgumentPrefix}2`)
 					.reads('0', '2')
 					.uses('5', `${UnnamedArgumentPrefix}5`)
@@ -55,14 +56,14 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			)
 			assertDataflow('chained mixed constant', shell,
 				'a[2]$a',
-				new DataflowGraph().uses('0', 'a', 'maybe')
+				emptyGraph().uses('0', 'a', 'maybe')
 					.uses('2', `${UnnamedArgumentPrefix}2`)
 					.reads('0', '2')
 			)
 		})
 		assertDataflow('chained bracket access with variables', shell,
 			'a[x][y]',
-			new DataflowGraph()
+			emptyGraph()
 				.uses('0', 'a', 'maybe')
 				.uses('1', 'x')
 				.uses('4', 'y')
@@ -75,7 +76,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		)
 		assertDataflow('assign on access', shell,
 			'a[x] <- 5',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'a', LocalScope, 'maybe')
 				.uses('1', 'x')
 				.uses('2', `${UnnamedArgumentPrefix}2`)
@@ -91,7 +92,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					const inputDifferent = `${op.str}x`
 					assertDataflow(`${op.str}x`, shell,
 						inputDifferent,
-						new DataflowGraph().uses('0', 'x')
+						emptyGraph().uses('0', 'x')
 					)
 				}
 			})
@@ -108,14 +109,14 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 						assertDataflow(`${inputDifferent} (different variables)`,
 							shell,
 							inputDifferent,
-							new DataflowGraph().uses('0', 'x').uses('1', 'y')
+							emptyGraph().uses('0', 'x').uses('1', 'y')
 						)
 
 						const inputSame = `x ${op.str} x`
 						assertDataflow(`${inputSame} (same variables)`,
 							shell,
 							inputSame,
-							new DataflowGraph()
+							emptyGraph()
 								.uses('0', 'x')
 								.uses('1', 'x')
 								.addEdge('0', '1', EdgeType.SameReadRead, 'always')
@@ -129,7 +130,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 	describe('Pipes', () => {
 		describe('Passing one argument', () => {
 			assertDataflow('No parameter function', shell, 'x |> f()',
-				new DataflowGraph()
+				emptyGraph()
 					.uses('0', 'x')
 					.addVertex({
 						tag:  'function-call',
@@ -143,7 +144,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				{ minRVersion: MIN_VERSION_PIPE }
 			)
 			assertDataflow('Nested calling', shell, 'x |> f() |> g()',
-				new DataflowGraph()
+				emptyGraph()
 					.uses('0', 'x')
 					.addVertex({
 						tag:  'function-call',
@@ -166,7 +167,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				{ minRVersion: MIN_VERSION_PIPE }
 			)
 			assertDataflow('Multi-Parameter function', shell, 'x |> f(y,z)',
-				new DataflowGraph()
+				emptyGraph()
 					.uses('0', 'x')
 					.addVertex({
 						tag:  'function-call',
@@ -205,11 +206,11 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				assertDataflow(`${constantAssignment} (constant assignment)`,
 					shell,
 					constantAssignment,
-					new DataflowGraph().definesVariable(swapSourceAndTarget ? '1' : '0', 'x', scope)
+					emptyGraph().definesVariable(swapSourceAndTarget ? '1' : '0', 'x', scope)
 				)
 
 				const variableAssignment = `x ${op.str} y`
-				const dataflowGraph = new DataflowGraph()
+				const dataflowGraph = emptyGraph()
 				if(swapSourceAndTarget) {
 					dataflowGraph
 						.uses('0', 'x')
@@ -229,7 +230,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 
 				const circularAssignment = `x ${op.str} x`
 
-				const circularGraph = new DataflowGraph()
+				const circularGraph = emptyGraph()
 				if(swapSourceAndTarget) {
 					circularGraph
 						.uses('0', 'x')
@@ -252,14 +253,14 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		describe('nested assignments', () => {
 			assertDataflow('"x <- y <- 1"', shell,
 				'x <- y <- 1',
-				new DataflowGraph()
+				emptyGraph()
 					.definesVariable('0', 'x')
 					.definesVariable('1', 'y')
 					.addEdge('0', '1', EdgeType.DefinedBy, 'always')
 			)
 			assertDataflow('"1 -> x -> y"', shell,
 				'1 -> x -> y',
-				new DataflowGraph()
+				emptyGraph()
 					.definesVariable('1', 'x')
 					.definesVariable('3', 'y')
 					.addEdge('3', '1', EdgeType.DefinedBy, 'always')
@@ -267,14 +268,14 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			// still by indirection (even though y is overwritten?)
 			assertDataflow('"x <- 1 -> y"', shell,
 				'x <- 1 -> y',
-				new DataflowGraph()
+				emptyGraph()
 					.definesVariable('0', 'x')
 					.definesVariable('2', 'y')
 					.addEdge('0', '2', EdgeType.DefinedBy, 'always')
 			)
 			assertDataflow('"x <- y <- z"', shell,
 				'x <- y <- z',
-				new DataflowGraph()
+				emptyGraph()
 					.definesVariable('0', 'x')
 					.definesVariable('1', 'y')
 					.uses('2', 'z')
@@ -284,7 +285,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			)
 			assertDataflow('nested global assignments', shell,
 				'x <<- y <<- z',
-				new DataflowGraph()
+				emptyGraph()
 					.definesVariable('0', 'x', GlobalScope)
 					.definesVariable('1', 'y', GlobalScope)
 					.uses('2', 'z')
@@ -294,7 +295,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			)
 			assertDataflow('nested global mixed with local assignments', shell,
 				'x <<- y <- y2 <<- z',
-				new DataflowGraph()
+				emptyGraph()
 					.definesVariable('0', 'x', GlobalScope)
 					.definesVariable('1', 'y')
 					.definesVariable('2', 'y2', GlobalScope)
@@ -321,19 +322,19 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 							const build = (a: string, b: string) => assignment.swap ? `(${wrapper(b)}) ${assignment.str} ${a}` : `${a} ${assignment.str} ${wrapper(b)}`
 
 							const repeatCode = build('x', 'repeat x')
-							assertDataflow(`"${repeatCode}"`, shell, repeatCode, new DataflowGraph()
+							assertDataflow(`"${repeatCode}"`, shell, repeatCode, emptyGraph()
 								.definesVariable(assignment.defId[0], 'x', scope)
 								.uses(assignment.readId[0], 'x')
 							)
 
 							const whileCode = build('x', 'while (x) 3')
-							assertDataflow(`"${whileCode}"`, shell, whileCode, new DataflowGraph()
+							assertDataflow(`"${whileCode}"`, shell, whileCode, emptyGraph()
 								.definesVariable(assignment.defId[1], 'x', scope)
 								.uses(assignment.readId[1], 'x'))
 
 							const forCode = build('x', 'for (x in 1:4) 3')
 							assertDataflow(`"${forCode}"`, shell, forCode,
-								new DataflowGraph()
+								emptyGraph()
 									.definesVariable(assignment.defId[2], 'x', scope)
 									.definesVariable(assignment.readId[2], 'x')
 							)
@@ -349,7 +350,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				initializeCleanEnvironments()
 			)
 			assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'a <- foo(x=3,y,z)',
-				new DataflowGraph()
+				emptyGraph()
 					.definesVariable('0', 'a')
 					.addVertex({
 						tag:  'function-call',
@@ -386,27 +387,27 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				describe('if-then, no else', () => {
 					assertDataflow('completely constant', shell,
 						`if (TRUE) ${b.func('1')}`,
-						new DataflowGraph()
+						emptyGraph()
 					)
 					assertDataflow('compare cond.', shell,
 						`if (x > 5) ${b.func('1')}`,
-						new DataflowGraph().uses('0', 'x')
+						emptyGraph().uses('0', 'x')
 					)
 					assertDataflow('compare cond. symbol in then', shell,
 						`if (x > 5) ${b.func('y')}`,
-						new DataflowGraph().uses('0', 'x')
+						emptyGraph().uses('0', 'x')
 							.uses('3', 'y', 'maybe')
 					)
 					assertDataflow('all variables', shell,
 						`if (x > y) ${b.func('z')}`,
-						new DataflowGraph()
+						emptyGraph()
 							.uses('0', 'x')
 							.uses('1', 'y')
 							.uses('3', 'z', 'maybe')
 					)
 					assertDataflow('all variables, some same', shell,
 						`if (x > y) ${b.func('x')}`,
-						new DataflowGraph()
+						emptyGraph()
 							.uses('0', 'x')
 							.uses('1', 'y')
 							.uses('3', 'x', 'maybe')
@@ -414,7 +415,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					)
 					assertDataflow('all same variables', shell,
 						`if (x > x) ${b.func('x')}`,
-						new DataflowGraph()
+						emptyGraph()
 							.uses('0', 'x')
 							.uses('1', 'x')
 							.uses('3', 'x', 'maybe')
@@ -424,7 +425,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					)
 					assertDataflow('definition in if', shell,
 						`if (x <- 3) ${b.func('x')}`,
-						new DataflowGraph()
+						emptyGraph()
 							.definesVariable('0', 'x', LocalScope)
 							.uses('3', 'x', 'maybe', define({ name: 'x', definedAt: '2', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments()) )
 							.reads('3', '0')
@@ -434,26 +435,26 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				describe('if-then, with else', () => {
 					assertDataflow('completely constant', shell,
 						'if (TRUE) { 1 } else { 2 }',
-						new DataflowGraph()
+						emptyGraph()
 					)
 					assertDataflow('compare cond.', shell,
 						'if (x > 5) { 1 } else { 42 }',
-						new DataflowGraph().uses('0', 'x')
+						emptyGraph().uses('0', 'x')
 					)
 					assertDataflow('compare cond. symbol in then', shell,
 						'if (x > 5) { y } else { 42 }',
-						new DataflowGraph().uses('0', 'x').uses('3', 'y', 'maybe')
+						emptyGraph().uses('0', 'x').uses('3', 'y', 'maybe')
 					)
 					assertDataflow('compare cond. symbol in then & else', shell,
 						'if (x > 5) { y } else { z }',
-						new DataflowGraph()
+						emptyGraph()
 							.uses('0', 'x')
 							.uses('3', 'y', 'maybe')
 							.uses('5', 'z', 'maybe')
 					)
 					assertDataflow('all variables', shell,
 						'if (x > y) { z } else { a }',
-						new DataflowGraph()
+						emptyGraph()
 							.uses('0', 'x')
 							.uses('1', 'y')
 							.uses('3', 'z', 'maybe')
@@ -461,7 +462,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					)
 					assertDataflow('all variables, some same', shell,
 						'if (y > x) { x } else { y }',
-						new DataflowGraph()
+						emptyGraph()
 							.uses('0', 'y')
 							.uses('1', 'x')
 							.uses('3', 'x', 'maybe')
@@ -471,7 +472,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					)
 					assertDataflow('all same variables', shell,
 						'if (x > x) { x } else { x }',
-						new DataflowGraph()
+						emptyGraph()
 							.uses('0', 'x')
 							.uses('1', 'x')
 							.uses('3', 'x', 'maybe')
@@ -497,7 +498,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			initializeCleanEnvironments()
 		)
 		assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'y <- 15; x && (y <- 13); y',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'y')
 				.definesVariable('4', 'y', LocalScope, 'always', environmentWithY)
 				.addVertex({ id: '3', tag: 'use', name: 'x', scope: LocalScope, environment: environmentWithY })
@@ -512,11 +513,11 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		describe('for', () => {
 			assertDataflow('simple constant for-loop', shell,
 				'for(i in 1:10) { 1 }',
-				new DataflowGraph().definesVariable('0', 'i')
+				emptyGraph().definesVariable('0', 'i')
 			)
 			assertDataflow('using loop variable in body', shell,
 				'for(i in 1:10) { i }',
-				new DataflowGraph()
+				emptyGraph()
 					.definesVariable('0', 'i')
 					.uses('4', 'i', 'maybe', define({ name: 'i', definedAt: '6', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments()))
 					.reads('4', '0', 'maybe')
@@ -526,19 +527,19 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		describe('repeat', () => {
 			assertDataflow('simple constant repeat', shell,
 				'repeat 2',
-				new DataflowGraph()
+				emptyGraph()
 			)
 			assertDataflow('using loop variable in body', shell,
 				'repeat x',
-				new DataflowGraph().uses('0', 'x')
+				emptyGraph().uses('0', 'x')
 			)
 			assertDataflow('using loop variable in body', shell,
 				'repeat { x <- 1 }',
-				new DataflowGraph().definesVariable('0', 'x')
+				emptyGraph().definesVariable('0', 'x')
 			)
 			assertDataflow('using variable in body', shell,
 				'repeat { x <- y }',
-				new DataflowGraph()
+				emptyGraph()
 					.definesVariable('0', 'x')
 					.uses('1', 'y')
 					.addEdge('0', '1', EdgeType.DefinedBy, 'always')

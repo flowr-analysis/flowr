@@ -1,5 +1,5 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { BuiltIn, DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { BuiltIn, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
 import {
 	define,
 	popLocalEnvironment,
@@ -7,11 +7,12 @@ import {
 } from '../../../../../src/dataflow/environments'
 import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
+import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
 describe('Function Definition', withShell(shell => {
 	describe('Only functions', () => {
 		assertDataflow('unknown read in function', shell, 'function() { x }',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex({
 					tag:        'function-definition',
 					id:         '2',
@@ -41,7 +42,7 @@ describe('Function Definition', withShell(shell => {
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('read of parameter', shell, 'function(x) { x }',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex({
 					tag:        'function-definition',
 					id:         '4',
@@ -76,7 +77,7 @@ describe('Function Definition', withShell(shell => {
 				.reads('2', '0')
 		)
 		assertDataflow('read of parameter in return', shell, 'function(x) { return(x) }',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex({
 					tag:        'function-definition',
 					id:         '7',
@@ -126,7 +127,7 @@ describe('Function Definition', withShell(shell => {
 
 		describe('x', () => {
 			assertDataflow('return parameter named', shell, 'function(x) { return(x=x) }',
-				new DataflowGraph()
+				emptyGraph()
 					.addVertex({
 						tag:        'function-definition',
 						id:         '8',
@@ -199,7 +200,7 @@ describe('Function Definition', withShell(shell => {
 		)
 
 		assertDataflow('read of one parameter', shell, 'function(x,y,z) y',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex({
 					tag:        'function-definition',
 					id:         '8',
@@ -225,7 +226,7 @@ describe('Function Definition', withShell(shell => {
 	})
 	describe('Scoping of body', () => {
 		assertDataflow('previously defined read in function', shell, 'x <- 3; function() { x }',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'x')
 				.addVertex({
 					tag:        'function-definition',
@@ -251,7 +252,7 @@ describe('Function Definition', withShell(shell => {
 			pushLocalEnvironment(initializeCleanEnvironments()))
 
 		assertDataflow('local define with <- in function, read after', shell, 'function() { x <- 3; }; x',
-			new DataflowGraph()
+			emptyGraph()
 				.uses('5', 'x')
 				.addVertex({
 					tag:        'function-definition',
@@ -274,7 +275,7 @@ describe('Function Definition', withShell(shell => {
 				.addEdge('2', '0', EdgeType.Relates, 'always')
 		)
 		assertDataflow('local define with = in function, read after', shell, 'function() { x = 3; }; x',
-			new DataflowGraph()
+			emptyGraph()
 				.uses('5', 'x')
 				.addVertex({
 					tag:        'function-definition',
@@ -302,7 +303,7 @@ describe('Function Definition', withShell(shell => {
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('local define with -> in function, read after', shell, 'function() { 3 -> x; }; x',
-			new DataflowGraph()
+			emptyGraph()
 				.uses('5', 'x')
 				.addVertex({
 					tag:        'function-definition',
@@ -329,7 +330,7 @@ describe('Function Definition', withShell(shell => {
 			GlobalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('global define with <<- in function, read after', shell, 'function() { x <<- 3; }; x',
-			new DataflowGraph()
+			emptyGraph()
 				.uses('5', 'x')
 				.addVertex({
 					tag:         'function-definition',
@@ -357,7 +358,7 @@ describe('Function Definition', withShell(shell => {
 			GlobalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('global define with ->> in function, read after', shell, 'function() { 3 ->> x; }; x',
-			new DataflowGraph()
+			emptyGraph()
 				.uses('5', 'x')
 				.addVertex({
 					tag:         'function-definition',
@@ -385,7 +386,7 @@ describe('Function Definition', withShell(shell => {
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('shadow in body', shell, 'x <- 2; function() { x <- 3; x }; x',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'x')
 				.addVertex({
 					tag:         'use',
@@ -434,7 +435,7 @@ describe('Function Definition', withShell(shell => {
 				.reads('6', '3')
 		)
 		assertDataflow('shadow in body with closure', shell, 'x <- 2; function() { x <- x; x }; x',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'x')
 				.addVertex({
 					tag:         'use',
@@ -500,7 +501,7 @@ describe('Function Definition', withShell(shell => {
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('parameter shadows', shell, 'x <- 3; function(x) { x }',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'x')
 				.addVertex({
 					tag:        'function-definition',
@@ -535,7 +536,7 @@ describe('Function Definition', withShell(shell => {
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('parameter shadows', shell, 'function(...) { ..11 }',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex({
 					tag:        'function-definition',
 					id:         '4',
@@ -575,7 +576,7 @@ describe('Function Definition', withShell(shell => {
 			envWithA
 		)
 		assertDataflow('Read first parameter', shell, 'function(a=3, b=a) { b }',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex({
 					tag:        'function-definition',
 					id:         '8',
@@ -635,7 +636,7 @@ describe('Function Definition', withShell(shell => {
 			envWithBothParam
 		)
 		assertDataflow('Read later definition', shell, 'function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex({
 					tag:        'function-definition',
 					id:         '17',
@@ -681,7 +682,7 @@ describe('Function Definition', withShell(shell => {
 			envWithA
 		)
 		assertDataflow('Return ...', shell, 'function(a, ...) { foo(...) }',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex({
 					tag:        'function-definition',
 					id:         '9',
@@ -739,7 +740,7 @@ describe('Function Definition', withShell(shell => {
   y <- 3
   g
 }`,
-		new DataflowGraph()
+		emptyGraph()
 			.addVertex({
 				tag:        'function-definition',
 				id:         '20',
@@ -806,7 +807,7 @@ describe('Function Definition', withShell(shell => {
 	})
 	describe('Late binding of environment variables', () => {
 		assertDataflow('define after function definition', shell, 'function() { x }; x <- 3',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('3', 'x')
 				.addVertex({
 					tag:        'function-definition',
@@ -866,7 +867,7 @@ describe('Function Definition', withShell(shell => {
 			envWithA
 		)
 		assertDataflow('double nested functions', shell, 'a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a',
-			new DataflowGraph()
+			emptyGraph()
 				.definesVariable('0', 'a')
 				.addVertex( {
 					tag:         'variable-definition',

@@ -7,7 +7,6 @@
 
 
 import { DefaultMap } from '../../../src/util/defaultmap'
-import { guard } from '../../../src/util/assert'
 import type { FlowrCapabilityId } from '../../../src/r-bridge/data'
 import { getAllCapabilities } from '../../../src/r-bridge/data'
 
@@ -44,7 +43,6 @@ function printLabelSummary(): void {
 	console.log('='.repeat(80))
 	const allCapabilities = [...getAllCapabilities()]
 	const entries = allCapabilities.map(c => [c, TheGlobalLabelMap.get(c.id)] as const)
-	const maxTestLength = Math.max(...entries.map(([, tests]) => tests.length.toString().length))
 
 	for(const [label, testNames] of entries) {
 		const paddedLabel = `[${label.path.join('/')}] ${label.name}`

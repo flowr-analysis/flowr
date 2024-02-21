@@ -1,9 +1,9 @@
-import { requestProviderFromFile, requestProviderFromText, sourcedDeterministicCountingIdGenerator } from '../../../../../src';
-import { BuiltIn, define, initializeCleanEnvironments } from '../../../../../src/dataflow/common/environments';
-import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes';
-import { DataflowGraph, EdgeType } from '../../../../../src/dataflow/v1';
-import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/argument';
-import { setSourceProvider } from '../../../../../src/dataflow/v1/internal/process/functions/source';
+import { requestProviderFromFile, requestProviderFromText, sourcedDeterministicCountingIdGenerator } from '../../../../../src'
+import { BuiltIn, define, initializeCleanEnvironments } from '../../../../../src/dataflow/common/environments'
+import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
+import { DataflowGraph, EdgeType } from '../../../../../src/dataflow/v1'
+import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/argument'
+import { setSourceProvider } from '../../../../../src/dataflow/v1/internal/process/functions/source'
 import {assertDataflow, withShell} from '../../../_helper/shell'
 
 describe('source', withShell(shell => {

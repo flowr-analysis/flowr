@@ -9,7 +9,7 @@ import type { FunctionArgument } from '../../../index'
 import { DataflowGraph, dataflowLogger, EdgeType } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
 import { LocalScope } from '../../../../common/environments/scopes'
-import { isSourceCall, processSourceCall } from './source';
+import { isSourceCall, processSourceCall } from './source'
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
 

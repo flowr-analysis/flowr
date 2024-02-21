@@ -3,11 +3,11 @@ import { requestFingerprint, sourcedDeterministicCountingIdGenerator, requestPro
 import {RShellExecutor} from '../../../../../r-bridge/shell-executor'
 import {type DataflowProcessorInformation, processDataflowFor} from '../../../processor'
 import type {DataflowInformation} from '../../info'
-import {Identifier, dataflowLogger} from '../../../index'
-import { DataflowScopeName, REnvironmentInformation, overwriteEnvironments, resolveByName } from '../../../../common/environments';
-import { getConfig } from '../../../../../config';
-import { PARSE_WITH_R_SHELL_STEP } from '../../../../../core/steps/all/core/00-parse';
-import { NORMALIZE } from '../../../../../core/steps/all/core/10-normalize';
+import type {Identifier} from '../../../index'
+import { dataflowLogger} from '../../../index'
+import type { DataflowScopeName, REnvironmentInformation} from '../../../../common/environments'
+import { overwriteEnvironments, resolveByName } from '../../../../common/environments'
+import { getConfig } from '../../../../../config'
 
 let sourceProvider = requestProviderFromFile()
 

@@ -5,7 +5,7 @@ import { PipelineStepStage } from '../../step'
 import type { RParseRequest, RShell } from '../../../../r-bridge'
 import { retrieveXmlFromRCode } from '../../../../r-bridge'
 import type { DeepReadonly } from 'ts-essentials'
-import { RShellExecutor } from '../../../../r-bridge/shell-executor';
+import type { RShellExecutor } from '../../../../r-bridge/shell-executor'
 
 export interface ParseRequiredInput {
 	/** This is the {@link RShell} connection to be used to obtain the original parses AST of the R code */

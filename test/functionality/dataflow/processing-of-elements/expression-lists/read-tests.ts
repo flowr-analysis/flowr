@@ -1,5 +1,5 @@
 import type { NodeId } from '../../../../../src/r-bridge'
-import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { define } from '../../../../../src/dataflow/environments'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'

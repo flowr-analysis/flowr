@@ -40,7 +40,7 @@ export function label(testname: string, ...ids: FlowrCapabilityId[]): string {
 
 
 function printLabelSummary(): void {
-	console.log('='.repeat(80))
+	console.log('== Test Capability Coverage ' + '='.repeat(80))
 	const allCapabilities = [...getAllCapabilities()]
 	const entries = allCapabilities.map(c => [c, TheGlobalLabelMap.get(c.id)] as const)
 

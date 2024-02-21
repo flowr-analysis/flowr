@@ -2,13 +2,13 @@ import { splitAtEscapeSensitive } from '../../../src/util/args'
 import { assert } from 'chai'
 
 describe('Arguments', () => {
-	describe('splitArguments', () => {
-		const positive = (input: string, expected: string[], split = ' ') => {
-			it(`${JSON.stringify(input)}`, () => {
-				assert.deepEqual(splitAtEscapeSensitive(input, split), expected)
-			})
-		}
+	const positive = (input: string, expected: string[], escapeQuote = true, split = ' ') => {
+		it(`${JSON.stringify(input)}`, () => {
+			assert.deepEqual(splitAtEscapeSensitive(input, escapeQuote, split), expected)
+		})
+	}
 
+	describe('split arguments', () => {		
 		positive('', [])
 		positive('a', ['a'])
 		positive('a b', ['a', 'b'])
@@ -21,5 +21,17 @@ describe('Arguments', () => {
 		positive('a "b c" d "e f"', ['a', 'b c', 'd', 'e f'])
 		positive('a \\"b c" d "e f" g', ['a', '"b', 'c d e', 'f g'])
 		positive('a\\ b', ['a b'])
+		positive('-c "2@x" -r "x <- 3 * 4\n y <- x * 2', ['-c', '2@x', '-r', 'x <- 3 * 4\n y <- x * 2'])
+	})
+
+	describe('split statements', () => {
+		const positiveStatements = (input: string, expected: string[]) => positive(input, expected, false, ';')
+		positiveStatements(':help', [':help'])
+		positiveStatements(':help;:slicer', [':help', ':slicer'])
+		// Try out slicer examples
+		positiveStatements(':slicer -c "2@x" -r "x <- 3 * 4\n y <- x * 2"', [':slicer -c "2@x" -r "x <- 3 * 4\n y <- x * 2"'])
+		positiveStatements(':slicer -c "12@product" test/testfiles/example.R', [':slicer -c "12@product" test/testfiles/example.R'])
+		positiveStatements(':slicer --help; :slicer -i example.R --stats --criterion "8:3;3:1;12@product"', 
+			[':slicer --help', ' :slicer -i example.R --stats --criterion "8:3;3:1;12@product"'])
 	})
 })

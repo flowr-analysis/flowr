@@ -9,7 +9,7 @@ import {
 	dataflowGraphToQuads
 } from '../../../print/dataflow-printer'
 import type { DeepReadonly } from 'ts-essentials'
-import type { NormalizedAst } from '../../../../r-bridge'
+import type { NormalizedAst, RParseRequest } from '../../../../r-bridge'
 import { produceDataFlowGraph as v2DataflowGraph } from '../../../../dataflow/v2/entry'
 
 const staticDataflowCommon = {
@@ -26,14 +26,16 @@ const staticDataflowCommon = {
 	dependencies: [ 'normalize' ],
 } as const
 
-function legacyProcessor(results: { normalize?: NormalizedAst }) {
-	return legacyDataflowGraph(results.normalize as NormalizedAst)
+function legacyProcessor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequest }) {
+	return legacyDataflowGraph(input.request as RParseRequest, results.normalize as NormalizedAst)
 }
 
 export const LEGACY_STATIC_DATAFLOW = {
 	...staticDataflowCommon,
 	processor:     legacyProcessor,
-	requiredInput: {}
+	requiredInput: {
+		request: undefined as unknown as RParseRequest
+	}
 } as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof legacyProcessor>>
 
 function v2Processor() {

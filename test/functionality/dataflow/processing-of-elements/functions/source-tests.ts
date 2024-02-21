@@ -1,6 +1,6 @@
 import {assertDataflow, withShell} from '../../../_helper/shell'
 import {setSourceProvider} from '../../../../../src/dataflow/internal/process/functions/source'
-import {BuiltIn, EdgeType, initializeCleanEnvironments, requestProviderFromFile, requestProviderFromText, sourcedDeterministicCountingIdGenerator} from '../../../../../src'
+import {BuiltIn, initializeCleanEnvironments, requestProviderFromFile, requestProviderFromText, sourcedDeterministicCountingIdGenerator} from '../../../../../src'
 import {LocalScope} from '../../../../../src/dataflow/environments/scopes'
 import {UnnamedArgumentPrefix} from '../../../../../src/dataflow/internal/process/functions/argument'
 import {define} from '../../../../../src/dataflow/environments'
@@ -45,11 +45,11 @@ describe('source', withShell(shell => {
 		.uses('5', 'N', 'always', envWithSimpleN)
 		.uses('2', `${UnnamedArgumentPrefix}2`)
 		.uses('6', `${UnnamedArgumentPrefix}6`, 'always', envWithSimpleN)
-		.addEdge('3', '2', EdgeType.Argument, 'always')
+		.argument('3', '2')
 		.reads('3', BuiltIn)
 		.reads('5', 'simple-1:1-1:6-0')
 		.reads('6', '5')
-		.addEdge('7', '6', EdgeType.Argument, 'always')
+		.argument('7', '6')
 		.reads('7', BuiltIn)
 	)
 
@@ -110,17 +110,17 @@ describe('source', withShell(shell => {
 			'12', 'N', 'always',
 			 define({nodeId: 'simple-3:1-3:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-3:1-3:6-2' }, LocalScope, initializeCleanEnvironments())
 		)
-		.addEdge('3', '10', EdgeType.SameReadRead, 'always')
-		.addEdge('3', '2', EdgeType.Argument, 'always')
-		.addEdge('14', '13', EdgeType.Argument, 'always')
-		.addEdge('10', '9', EdgeType.Argument, 'always')
+		.sameRead('3', '10')
+		.argument('3', '2')
+		.argument('14', '13')
+		.argument('10', '9')
 		.reads('3', BuiltIn)
 		.reads('10', BuiltIn)
 		.reads('14', BuiltIn)
 		.reads('13', '12')
 		.reads('12', 'simple-3:1-3:6-0')
-		.addEdge('simple-3:1-3:6-0', '4', EdgeType.SameDefDef, 'always')
-		.addEdge('4', 'simple-1:1-1:6-0', EdgeType.SameDefDef, 'always')
+		.sameDef('simple-3:1-3:6-0', '4')
+		.sameDef('4', 'simple-1:1-1:6-0')
 	)
 
 	const envWithConditionalN = define(
@@ -153,11 +153,11 @@ describe('source', withShell(shell => {
 		.uses('8', 'N', 'always', envWithConditionalN)
 		.uses('3', `${UnnamedArgumentPrefix}3`)
 		.uses('9', `${UnnamedArgumentPrefix}9`, 'always', envWithConditionalN)
-		.addEdge('4', '3', EdgeType.Argument, 'always')
+		.argument('4', '3')
 		.reads('4', BuiltIn, 'maybe')
 		.reads('8', 'simple-1:10-1:15-0')
 		.reads('9', '8')
-		.addEdge('10', '9', EdgeType.Argument, 'always')
+		.argument('10', '9')
 		.reads('10', BuiltIn)
 	)
 
@@ -173,7 +173,7 @@ describe('source', withShell(shell => {
 			}]
 		})
 		.uses('2', `${UnnamedArgumentPrefix}2`)
-		.addEdge('3', '2', EdgeType.Argument, 'always')
+		.argument('3', '2')
 		.reads('3', BuiltIn)
 	)
 
@@ -219,13 +219,13 @@ describe('source', withShell(shell => {
 		.uses(recursive2Id(6), `${UnnamedArgumentPrefix}${recursive2Id(6)}`, 'always', envWithX )
 		.uses(recursive2Id(2), `${UnnamedArgumentPrefix}${recursive2Id(2)}`, 'always', envWithX )
 		.uses(recursive2Id(1), 'x', 'always', envWithX )
-		.addEdge('6', '5', EdgeType.Argument, 'always')
+		.argument('6', '5')
 		.reads('6', BuiltIn)
 		.reads(recursive2Id(3), BuiltIn)
-		.addEdge(recursive2Id(3), recursive2Id(2), EdgeType.Argument, 'always')
+		.argument(recursive2Id(3), recursive2Id(2))
 		.reads(recursive2Id(2), recursive2Id(1))
 		.reads(recursive2Id(1), '0')
-		.addEdge(recursive2Id(7), recursive2Id(6), EdgeType.Argument, 'always')
+		.argument(recursive2Id(7), recursive2Id(6))
 		.reads(recursive2Id(7), BuiltIn)
 	)
 
@@ -244,7 +244,7 @@ describe('source', withShell(shell => {
 		.definesVariable('0', 'x')
 		.uses('5', `${UnnamedArgumentPrefix}5`, 'always', envWithX )
 		.uses('4', 'x', 'always', envWithX )
-		.addEdge('6', '5', EdgeType.Argument, 'always')
+		.argument('6', '5')
 		.reads('6', BuiltIn)
 		.reads('5', '4')
 		.reads('4', '0')

@@ -1,5 +1,5 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
@@ -32,7 +32,7 @@ x`,
 				.uses('12', 'x', 'always', appendEnvironments(withXDefined, otherXDefined) )
 				.reads('12', '0', 'always')
 				.reads('12', '7', 'maybe')
-				.addEdge('0', '7', EdgeType.SameDefDef, 'maybe')
+				.sameDef('0', '7', 'maybe')
 		)
 	})
 
@@ -81,7 +81,7 @@ x`,
 			.uses('12', 'x', 'always', appendEnvironments(envOutFor(), envWithSecondX()))
 			.reads('12', '0', 'always')
 			.reads('12', '7', 'maybe')
-			.addEdge('0', '7', EdgeType.SameDefDef, 'maybe')
+			.sameDef('0', '7', 'maybe')
 	)
 	assertDataflow('Redefinition within loop',
 		shell,
@@ -96,8 +96,8 @@ x`,
 			.reads('12', '7', 'maybe')
 			.reads('8', '0', 'maybe')
 			.reads('8', '7', 'maybe')
-			.addEdge('7', '8', EdgeType.DefinedBy, 'always')
-			.addEdge('0', '7', EdgeType.SameDefDef, 'maybe')
+			.definedBy('7', '8')
+			.sameDef('0', '7', 'maybe')
 	)
 
 	const envInLargeFor = () => define({ nodeId: '3', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '14', used: 'always' }, LocalScope,
@@ -128,11 +128,11 @@ x`,
 			.reads('8', '10', 'maybe')
 			.reads('15', '0', 'always')
 			.reads('15', '10', 'maybe')
-			.addEdge('7', '8', EdgeType.DefinedBy, 'always')
-			.addEdge('10', '11', EdgeType.DefinedBy, 'always')
-			.addEdge('0', '7', EdgeType.SameDefDef, 'maybe')
-			.addEdge('0', '10', EdgeType.SameDefDef, 'maybe')
-			.addEdge('7', '10', EdgeType.SameDefDef, 'always') // both in same loop execution
+			.definedBy('7', '8')
+			.definedBy('10', '11')
+			.sameDef('0', '7', 'maybe')
+			.sameDef('0', '10', 'maybe')
+			.sameDef('7', '10') // both in same loop execution
 	)
 
 	const forLoopWithI = () => define({ nodeId: '0', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'always' }, LocalScope,
@@ -156,6 +156,6 @@ x`,
 			.reads('4', '0', 'maybe')
 			.reads('10', '5', 'maybe')
 			.reads('10', '0', 'maybe')
-			.addEdge('5', '0', EdgeType.SameDefDef, 'always')
+			.sameDef('5', '0')
 	)
 }))

@@ -51,7 +51,7 @@ describe('Equal', () => {
 				const rhs = emptyGraph().reads('0', '1')
 				neq('Source Id', emptyGraph().reads('2', '1'), rhs)
 				neq('Target Id', emptyGraph().reads('0', '2'), rhs)
-				neq('Type', emptyGraph().addEdge('0', '1', EdgeType.Calls, 'always'), rhs)
+				neq('Type', emptyGraph().argument('0', '1', 'always'), rhs)
 				neq('Attribute', emptyGraph().reads('0', '1', 'maybe'), rhs)
 			})
 		})

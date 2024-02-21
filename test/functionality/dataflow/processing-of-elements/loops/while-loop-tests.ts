@@ -1,4 +1,4 @@
-import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { define } from '../../../../../src/dataflow/environments'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { assertDataflow, withShell } from '../../../_helper/shell'
@@ -23,7 +23,7 @@ describe('while', withShell(shell => {
 			.uses('1', 'x')
 			.uses('7', 'x', 'maybe', define({ name: 'x', nodeId: '0', definedAt: '4', used: 'always', kind: 'variable', scope: LocalScope }, LocalScope, initializeCleanEnvironments()))
 			.reads('7', '0', 'maybe')
-			.addEdge('0', '1', EdgeType.DefinedBy, 'always')
+			.definedBy('0', '1')
 	)
 	assertDataflow('Endless while loop',
 		shell,

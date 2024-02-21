@@ -9,6 +9,7 @@
 import { DefaultMap } from '../../../src/util/defaultmap'
 import type { FlowrCapabilityId } from '../../../src/r-bridge/data'
 import { getAllCapabilities } from '../../../src/r-bridge/data'
+import {MergeableRecord} from "../../../src/util/objects";
 
 // map flowr ids to the capabilities
 const TheGlobalLabelMap: DefaultMap<string, string[]> = new DefaultMap(() => [])
@@ -18,24 +19,36 @@ const uniqueTestId = (() => {
 	return () => `${id++}`
 })()
 
+
+export type TestLabelContext = 'parse' | 'desugar' | 'dataflow'
+export interface TestLabel extends MergeableRecord {
+	readonly id:           string
+	readonly name:         string
+	/** even if ids appear multiple times we only want to count each one once */
+	readonly capabilities: ReadonlySet<FlowrCapabilityId>
+	/** this is automatically set (hihi) by functions like `assertAst` to correctly derive what part of capability we check */
+	context?:              ReadonlySet<TestLabelContext>
+}
+
+
 /**
  * Wraps a test name with a unique identifier and label it with the given ids.
- * @param testname - the name of the test	(`it`) to be labeled
+ * @param testname - the name of the test (`it`) to be labeled
  * @param ids      - the capability ids to attach to the test
  */
 export function label(testname: string, ...ids: FlowrCapabilityId[]): string {
-	// if ids appear multiple times we only want to count each one once
-	const uniques = [...new Set(ids)]
-
-	const id = uniqueTestId()
-	const fullName = `#${id} ${testname} [${uniques.join(', ')}]`
-	const idName = `#${id} (${testname})`
-
-	for(const i of uniques) {
-		TheGlobalLabelMap.get(i).push(idName)
+	const capabilities: Set<FlowrCapabilityId> = new Set(ids)
+	const label: TestLabel = {
+		id:           uniqueTestId(),
+		name:         testname,
+		capabilities
 	}
 
-	return fullName
+	for(const i of capabilities) {
+		TheGlobalLabelMap.get(i).push(label)
+	}
+
+	return label
 }
 
 

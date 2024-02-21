@@ -1,5 +1,3 @@
-import {FlowrCapabilityId} from "./get";
-
 const enum RequiredFeature {
 	/** https://github.com/Code-Inspect/flowr/labels/typing */
 	Typing,

@@ -8,7 +8,8 @@
 
 import { DefaultMap } from '../../../src/util/defaultmap'
 import { guard } from '../../../src/util/assert'
-import { FlowrCapabilityId, getAllCapabilities } from '../../../src/r-bridge/data'
+import type { FlowrCapabilityId} from '../../../src/r-bridge/data'
+import { getAllCapabilities } from '../../../src/r-bridge/data'
 
 // map flowr ids to the capabilities
 const TheGlobalLabelMap: DefaultMap<string, string[]> = new DefaultMap(() => [])
@@ -48,7 +49,7 @@ after(() => {
 		const paddedLabel = `[${label.path.join('/')}] ${label.name}`
 		const paddedTestLength = testNames.length.toString().padStart(maxTestLength, ' ')
 		const tests = testNames.length > 1 ? 'tests:' : 'test: '
-		if (testNames.length === 0) {
+		if(testNames.length === 0) {
 			console.log(`\x1b[1;31m${paddedLabel} is not covered by any tests\x1b[0m`)
 			continue
 		}

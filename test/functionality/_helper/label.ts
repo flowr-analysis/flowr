@@ -46,8 +46,8 @@ function printLabelSummary(): void {
 	const entries = allCapabilities.map(c => [c, TheGlobalLabelMap.get(c.id)] as const)
 
 	for(const [label, testNames] of entries) {
-		const supportClaim = label.supported ? `(claim: ${label.supported} supported)` : ''
-		const paddedLabel = `${' '.repeat(label.path.length * 2 - 2)}[${label.path.join('/')}] ${label.name} ${supportClaim}`
+		const supportClaim = label.supported ? ` (claim: ${label.supported} supported)` : ''
+		const paddedLabel = `${' '.repeat(label.path.length * 2 - 2)}[${label.path.join('/')}] ${label.name}${supportClaim}`
 		const tests = testNames.length > 1 ? 'tests:' : 'test: '
 		// we only have to warn if we claim to support but do not offer
 		if(testNames.length === 0) {

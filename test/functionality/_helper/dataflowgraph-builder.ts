@@ -1,4 +1,4 @@
-import type { DataflowGraphEdgeAttribute, DataflowGraphExitPoint, DataflowGraphVertexVariableDefinition, NodeId, REnvironmentInformation } from '../../../src'
+import type { DataflowGraphEdgeAttribute, DataflowGraphExitPoint, DataflowGraphVertexUse, DataflowGraphVertexVariableDefinition, NodeId, REnvironmentInformation } from '../../../src'
 import { DataflowGraph, EdgeType } from '../../../src'
 import { LocalScope } from '../../../src/dataflow/environments/scopes'
 import { deepMergeObject } from '../../../src/util/objects'
@@ -10,15 +10,15 @@ export function emptyGraph() {
 export class DataflowGraphBuilder extends DataflowGraph {
 	/**
 	 * Adds a vertex for variable use. Intended for creating dataflow graphs as part of function tests.
+	 * 
 	 * @param id - AST node id
 	 * @param name - Variable name
-	 * @param when - always or maybe; defaults to always
-	 * @param environment - Environment the use occurs in
+	 * @param info - Additional/optional properties;
+	 * i.e. scope, when, or environment.
 	 * @param asRoot - boolean; defaults to true.
-	 * @param scope - string
 	 */
-	public uses(id: NodeId, name: string, when: DataflowGraphEdgeAttribute = 'always', environment?: REnvironmentInformation, asRoot: boolean = true) {
-		return this.addVertex({ tag: 'use', id, name, when, environment }, asRoot)
+	public uses(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
+		return this.addVertex(deepMergeObject({ tag: 'use', id, name}, info), asRoot)
 	}
 
 	/**

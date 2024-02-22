@@ -27,8 +27,8 @@ describe('Function Call', withShell(shell => {
 			emptyGraph()
 				.definesVariable('0', 'i')
 				.definesVariable('3', 'a', LocalScope, {environment: envWithFirstI})
-				.uses('11', 'i', 'always', envWithIA)
-				.uses('12', `${UnnamedArgumentPrefix}12`, 'always', envWithIA)
+				.uses('11', 'i', {environment: envWithIA})
+				.uses('12', `${UnnamedArgumentPrefix}12`, {environment: envWithIA})
 				.addVertex({
 					tag:         'function-call',
 					id:          '13',
@@ -53,7 +53,7 @@ describe('Function Call', withShell(shell => {
 						graph:             new Set(['4', '6']),
 					}})
 				.definesVariable('4', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
-				.addVertex({ tag: 'use', id: '6', name: 'x', environment: envWithXParamDefined}, false)
+				.uses('6', 'x', {environment: envWithXParamDefined}, false)
 				.reads('6', '4')
 				.reads('11', '0')
 				.definedBy('3', '8')
@@ -74,9 +74,9 @@ describe('Function Call', withShell(shell => {
 				.definesVariable('0', 'i')
 				.definesVariable('3', 'a', LocalScope, {environment: envWithFirstI})
 				.definesVariable('10', 'b', LocalScope, {environment: envWithIA})
-				.uses('11', 'a', 'always', envWithIA )
-				.uses('14', 'i', 'always', envWithIAB )
-				.uses('15', `${UnnamedArgumentPrefix}15`, 'always', envWithIAB )
+				.uses('11', 'a', {environment: envWithIA})
+				.uses('14', 'i', {environment: envWithIAB})
+				.uses('15', `${UnnamedArgumentPrefix}15`, {environment: envWithIAB})
 				.addVertex({
 					tag:         'function-call',
 					id:          '16',
@@ -101,7 +101,7 @@ describe('Function Call', withShell(shell => {
 						graph:             new Set(['4', '6'])
 					}})
 				.definesVariable('4', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
-				.addVertex({ tag: 'use', id: '6', name: 'x', environment: envWithXParamDefined}, false)
+				.uses('6', 'x', {environment: envWithXParamDefined}, false)
 				.reads('6', '4')
 				.reads('14', '0')
 				.definedBy('3', '8')
@@ -138,8 +138,8 @@ a <- function(x) { x <- x; x <- 3; 1 }
 a(i)`, emptyGraph()
 			.definesVariable('0', 'i')
 			.definesVariable('3', 'a', LocalScope, {environment: envWithFirstI})
-			.uses('17', 'i', 'always', envWithIAndLargeA)
-			.uses('18', `${UnnamedArgumentPrefix}18`, 'always', envWithIAndLargeA)
+			.uses('17', 'i', {environment: envWithIAndLargeA})
+			.uses('18', `${UnnamedArgumentPrefix}18`, {environment: envWithIAndLargeA})
 			.reads('17', '0')
 			.addVertex({
 				tag:         'function-call',
@@ -167,7 +167,7 @@ a(i)`, emptyGraph()
 			.definesVariable('4', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 			.definesVariable('6', 'x', LocalScope, {environment: envWithXConstDefined}, false)
 			.definesVariable('9', 'x', LocalScope, {environment: envWithXDefinedForFunc}, false)
-			.addVertex({ tag: 'use', id: '7', name: 'x', environment: envWithXConstDefined}, false)
+			.uses('7', 'x', {environment: envWithXConstDefined}, false)
 			.exits('12', '1', envWithLastXDefined, {}, false)
 			.definedBy('6', '7')
 			.reads('7', '4')
@@ -217,7 +217,7 @@ a(i)`, emptyGraph()
 				}
 			})
 			.definesVariable('0', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
-			.addVertex({ tag: 'use', id: '2', name: 'x', environment: envWithXParameter }, false)
+			.uses('2', 'x', {environment: envWithXParameter}, false)
 			.exits('4', '+', envWithXParameter , {}, false)
 			.relates('2', '4')
 			.reads('2', '0')
@@ -421,7 +421,7 @@ a()()`,
 						environments:      innerEnv,
 						graph:             new Set(['1'])
 					}})
-				.addVertex({ tag: 'use', id: '1', name: 'y', scope: LocalScope, environment: innerEnv }, false)
+				.uses('1', 'y', {environment: innerEnv}, false)
 				.definedBy('0', '3')
 				.calls('9', '3')
 				.reads('9', '0')
@@ -477,10 +477,10 @@ a(,3)`, emptyGraph()
 			})
 			.definesVariable('1', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 			.definesVariable('4', 'y', LocalScope, {environment: withXParameter}, false)
-			.addVertex({ tag: 'use', id: '6', name: 'y', scope: LocalScope, environment: withXYParameter }, false)
+			.uses('6', 'y', {environment: withXYParameter}, false)
 			.reads('6', '4')
 
-			.uses('12', `${UnnamedArgumentPrefix}12`, 'always', withADefined )
+			.uses('12', `${UnnamedArgumentPrefix}12`, {environment: withADefined})
 			.reads('13', '0')
 			.calls('13', '8')
 			.definedBy('0', '8')
@@ -505,14 +505,9 @@ a(,3)`, emptyGraph()
 					{ nodeId: '5', name: `${UnnamedArgumentPrefix}5`, scope: LocalScope, used: 'always' },
 				]
 			})
-			.addVertex({ tag: 'use', id: '3', name: 'x', scope: LocalScope })
-			.uses(
-				'5',
-				`${UnnamedArgumentPrefix}5`,
-				'always',
-				envWithX
-			)
-			.uses('4', 'x', 'always', envWithX)
+			.uses('3', 'x')
+			.uses('5', `${UnnamedArgumentPrefix}5`, {environment: envWithX})
+			.uses('4', 'x', {environment: envWithX})
 			.argument('6', '3')
 			.argument('6', '5')
 			.reads('5', '4')
@@ -532,16 +527,7 @@ a(,3)`, emptyGraph()
 			})
 			.uses('4', `${UnnamedArgumentPrefix}4`)
 			.definesVariable('1', 'x')
-			.addVertex({
-				tag:         'use',
-				id:          '6',
-				name:        'x',
-				scope:       LocalScope,
-				environment: define(
-					{ nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '3' },
-					LocalScope,
-					initializeCleanEnvironments()
-				) })
+			.uses('6', 'x', {environment: define({ nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '3' }, LocalScope, initializeCleanEnvironments())})
 			.argument('5', '4')
 			.reads('4', '1')
 			.reads('6', '1')

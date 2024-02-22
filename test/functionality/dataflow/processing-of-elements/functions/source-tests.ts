@@ -42,9 +42,9 @@ describe('source', withShell(shell => {
 				nodeId: '6', name: `${UnnamedArgumentPrefix}6`, scope: LocalScope, used: 'always'
 			}]
 		})
-		.uses('5', 'N', 'always', envWithSimpleN)
+		.uses('5', 'N', {environment: envWithSimpleN})
 		.uses('2', `${UnnamedArgumentPrefix}2`)
-		.uses('6', `${UnnamedArgumentPrefix}6`, 'always', envWithSimpleN)
+		.uses('6', `${UnnamedArgumentPrefix}6`, {environment: envWithSimpleN})
 		.argument('3', '2')
 		.reads('3', BuiltIn)
 		.reads('5', 'simple-1:1-1:6-0')
@@ -90,22 +90,9 @@ describe('source', withShell(shell => {
 		.definesVariable('simple-1:1-1:6-0', 'N')
 		.definesVariable('4', 'N', LocalScope, {environment: envWithSimpleN})
 		.uses('2', `${UnnamedArgumentPrefix}2`)
-		.addVertex({
-			tag:         'use',
-			id:          '9',
-			name:        `${UnnamedArgumentPrefix}9`,
-			environment: define({nodeId: '4', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: '6' }, LocalScope, initializeCleanEnvironments())
-		})
-		.addVertex({
-			tag:         'use',
-			id:          '13',
-			name:        `${UnnamedArgumentPrefix}13`,
-			environment: define({nodeId: 'simple-3:1-3:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-3:1-3:6-2' }, LocalScope, initializeCleanEnvironments())
-		})
-		.uses(
-			'12', 'N', 'always',
-			 define({nodeId: 'simple-3:1-3:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-3:1-3:6-2' }, LocalScope, initializeCleanEnvironments())
-		)
+		.uses('9', `${UnnamedArgumentPrefix}9`, {environment: define({nodeId: '4', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: '6' }, LocalScope, initializeCleanEnvironments())})
+		.uses('13', `${UnnamedArgumentPrefix}13`, {environment: define({nodeId: 'simple-3:1-3:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-3:1-3:6-2' }, LocalScope, initializeCleanEnvironments())})
+		.uses('12', 'N', {environment: define({nodeId: 'simple-3:1-3:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-3:1-3:6-2' }, LocalScope, initializeCleanEnvironments())})
 		.sameRead('3', '10')
 		.argument('3', '2')
 		.argument('14', '13')
@@ -146,9 +133,9 @@ describe('source', withShell(shell => {
 			}]
 		})
 		.uses('0', 'x')
-		.uses('8', 'N', 'always', envWithConditionalN)
+		.uses('8', 'N', {environment: envWithConditionalN})
 		.uses('3', `${UnnamedArgumentPrefix}3`)
-		.uses('9', `${UnnamedArgumentPrefix}9`, 'always', envWithConditionalN)
+		.uses('9', `${UnnamedArgumentPrefix}9`, {environment: envWithConditionalN})
 		.argument('4', '3')
 		.reads('4', BuiltIn, 'maybe')
 		.reads('8', 'simple-1:10-1:15-0')
@@ -211,10 +198,10 @@ describe('source', withShell(shell => {
 			when: 'always'
 		})
 		.definesVariable('0', 'x')
-		.uses('5', `${UnnamedArgumentPrefix}5`, 'always', envWithX )
-		.uses(recursive2Id(6), `${UnnamedArgumentPrefix}${recursive2Id(6)}`, 'always', envWithX )
-		.uses(recursive2Id(2), `${UnnamedArgumentPrefix}${recursive2Id(2)}`, 'always', envWithX )
-		.uses(recursive2Id(1), 'x', 'always', envWithX )
+		.uses('5', `${UnnamedArgumentPrefix}5`, {environment: envWithX})
+		.uses(recursive2Id(6), `${UnnamedArgumentPrefix}${recursive2Id(6)}`, {environment: envWithX})
+		.uses(recursive2Id(2), `${UnnamedArgumentPrefix}${recursive2Id(2)}`, {environment: envWithX})
+		.uses(recursive2Id(1), 'x', {environment: envWithX})
 		.argument('6', '5')
 		.reads('6', BuiltIn)
 		.reads(recursive2Id(3), BuiltIn)
@@ -238,8 +225,8 @@ describe('source', withShell(shell => {
 			when: 'always'
 		})
 		.definesVariable('0', 'x')
-		.uses('5', `${UnnamedArgumentPrefix}5`, 'always', envWithX )
-		.uses('4', 'x', 'always', envWithX )
+		.uses('5', `${UnnamedArgumentPrefix}5`, {environment: envWithX})
+		.uses('4', 'x', {environment: envWithX})
 		.argument('6', '5')
 		.reads('6', BuiltIn)
 		.reads('5', '4')

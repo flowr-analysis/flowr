@@ -28,27 +28,27 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		describe('const access', () => {
 			assertDataflow('single constant', shell,
 				'a[2]',
-				emptyGraph().uses('0', 'a', 'maybe')
+				emptyGraph().uses('0', 'a', {when: 'maybe'})
 					.uses('2', `${UnnamedArgumentPrefix}2`)
 					.reads('0', '2')
 			)
 			assertDataflow('double constant', shell,
 				'a[[2]]',
-				emptyGraph().uses('0', 'a', 'maybe')
+				emptyGraph().uses('0', 'a', {when: 'maybe'})
 					.uses('2', `${UnnamedArgumentPrefix}2`)
 					.reads('0', '2')
 			)
 			assertDataflow('dollar constant', shell,
 				'a$b',
-				emptyGraph().uses('0', 'a', 'maybe')
+				emptyGraph().uses('0', 'a', {when: 'maybe'})
 			)
 			assertDataflow('at constant', shell,
 				'a@b',
-				emptyGraph().uses('0', 'a', 'maybe')
+				emptyGraph().uses('0', 'a', {when: 'maybe'})
 			)
 			assertDataflow('chained constant', shell,
 				'a[2][3]',
-				emptyGraph().uses('0', 'a', 'maybe')
+				emptyGraph().uses('0', 'a', {when: 'maybe'})
 					.uses('2', `${UnnamedArgumentPrefix}2`)
 					.reads('0', '2')
 					.uses('5', `${UnnamedArgumentPrefix}5`)
@@ -56,7 +56,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			)
 			assertDataflow('chained mixed constant', shell,
 				'a[2]$a',
-				emptyGraph().uses('0', 'a', 'maybe')
+				emptyGraph().uses('0', 'a', {when: 'maybe'})
 					.uses('2', `${UnnamedArgumentPrefix}2`)
 					.reads('0', '2')
 			)
@@ -64,7 +64,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		assertDataflow('chained bracket access with variables', shell,
 			'a[x][y]',
 			emptyGraph()
-				.uses('0', 'a', 'maybe')
+				.uses('0', 'a', {when: 'maybe'})
 				.uses('1', 'x')
 				.uses('4', 'y')
 				.uses('2', `${UnnamedArgumentPrefix}2`)
@@ -363,10 +363,10 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 						]
 					})
 					.uses('4', 'x')
-					.uses('5', 'y', 'always', environmentWithX)
-					.uses('6', `${UnnamedArgumentPrefix}6`, 'always', environmentWithX)
-					.uses('7', 'z', 'always', environmentWithX)
-					.uses('8', `${UnnamedArgumentPrefix}8`, 'always', environmentWithX)
+					.uses('5', 'y', {environment: environmentWithX})
+					.uses('6', `${UnnamedArgumentPrefix}6`, {environment: environmentWithX})
+					.uses('7', 'z', {environment: environmentWithX})
+					.uses('8', `${UnnamedArgumentPrefix}8`, {environment: environmentWithX})
 					.definedBy('0', '9')
 					.argument('9', '4')
 					.argument('9', '6')
@@ -396,21 +396,21 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					assertDataflow('compare cond. symbol in then', shell,
 						`if (x > 5) ${b.func('y')}`,
 						emptyGraph().uses('0', 'x')
-							.uses('3', 'y', 'maybe')
+							.uses('3', 'y', {when: 'maybe'})
 					)
 					assertDataflow('all variables', shell,
 						`if (x > y) ${b.func('z')}`,
 						emptyGraph()
 							.uses('0', 'x')
 							.uses('1', 'y')
-							.uses('3', 'z', 'maybe')
+							.uses('3', 'z', {when: 'maybe'})
 					)
 					assertDataflow('all variables, some same', shell,
 						`if (x > y) ${b.func('x')}`,
 						emptyGraph()
 							.uses('0', 'x')
 							.uses('1', 'y')
-							.uses('3', 'x', 'maybe')
+							.uses('3', 'x', {when: 'maybe'})
 							.sameRead('0', '3', 'maybe')
 					)
 					assertDataflow('all same variables', shell,
@@ -418,7 +418,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 						emptyGraph()
 							.uses('0', 'x')
 							.uses('1', 'x')
-							.uses('3', 'x', 'maybe')
+							.uses('3', 'x', {when: 'maybe'})
 							.sameRead('0', '1')
 							// theoretically, they just have to be connected, so 0 is just hardcoded
 							.sameRead('0', '3', 'maybe')
@@ -427,7 +427,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 						`if (x <- 3) ${b.func('x')}`,
 						emptyGraph()
 							.definesVariable('0', 'x', LocalScope)
-							.uses('3', 'x', 'maybe', define({ name: 'x', definedAt: '2', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments()) )
+							.uses('3', 'x', {when: 'maybe', environment: define({ name: 'x', definedAt: '2', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments())})
 							.reads('3', '0')
 					)
 				})
@@ -443,30 +443,30 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					)
 					assertDataflow('compare cond. symbol in then', shell,
 						'if (x > 5) { y } else { 42 }',
-						emptyGraph().uses('0', 'x').uses('3', 'y', 'maybe')
+						emptyGraph().uses('0', 'x').uses('3', 'y', {when: 'maybe'})
 					)
 					assertDataflow('compare cond. symbol in then & else', shell,
 						'if (x > 5) { y } else { z }',
 						emptyGraph()
 							.uses('0', 'x')
-							.uses('3', 'y', 'maybe')
-							.uses('5', 'z', 'maybe')
+							.uses('3', 'y', {when: 'maybe'})
+							.uses('5', 'z', {when: 'maybe'})
 					)
 					assertDataflow('all variables', shell,
 						'if (x > y) { z } else { a }',
 						emptyGraph()
 							.uses('0', 'x')
 							.uses('1', 'y')
-							.uses('3', 'z', 'maybe')
-							.uses('5', 'a', 'maybe')
+							.uses('3', 'z', {when: 'maybe'})
+							.uses('5', 'a', {when: 'maybe'})
 					)
 					assertDataflow('all variables, some same', shell,
 						'if (y > x) { x } else { y }',
 						emptyGraph()
 							.uses('0', 'y')
 							.uses('1', 'x')
-							.uses('3', 'x', 'maybe')
-							.uses('5', 'y', 'maybe')
+							.uses('3', 'x', {when: 'maybe'})
+							.uses('5', 'y', {when: 'maybe'})
 							.sameRead('1', '3', 'maybe')
 							.sameRead('0', '5', 'maybe')
 					)
@@ -475,8 +475,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 						emptyGraph()
 							.uses('0', 'x')
 							.uses('1', 'x')
-							.uses('3', 'x', 'maybe')
-							.uses('5', 'x', 'maybe')
+							.uses('3', 'x', {when: 'maybe'})
+							.uses('5', 'x', {when: 'maybe'})
 							// 0 is just hardcoded, they actually just have to be connected
 							.sameRead('0', '1')
 							.sameRead('0', '3', 'maybe')
@@ -501,8 +501,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			emptyGraph()
 				.definesVariable('0', 'y')
 				.definesVariable('4', 'y', LocalScope, {environment: environmentWithY})
-				.addVertex({ id: '3', tag: 'use', name: 'x', scope: LocalScope, environment: environmentWithY })
-				.addVertex({ id: '8', tag: 'use', name: 'y', scope: LocalScope, environment: appendEnvironments(environmentWithY, environmentWithOtherY) })
+				.uses('3', 'x', {environment: environmentWithY})
+				.uses('8', 'y', {environment: appendEnvironments(environmentWithY, environmentWithOtherY)})
 				.reads('8', '0')
 				.reads('8', '4')
 				.sameDef('0', '4')
@@ -519,7 +519,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				'for(i in 1:10) { i }',
 				emptyGraph()
 					.definesVariable('0', 'i')
-					.uses('4', 'i', 'maybe', define({ name: 'i', definedAt: '6', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments()))
+					.uses('4', 'i', {when: 'maybe', environment: define({ name: 'i', definedAt: '6', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments())})
 					.reads('4', '0', 'maybe')
 			)
 		})

@@ -37,7 +37,7 @@ describe('Equal', () => {
 		}
 		describe('More elements', () => {
 			neq('Additional root vertex', emptyGraph(), emptyGraph().uses('0', 'x'))
-			neq('Additional non-root vertex', emptyGraph(), emptyGraph().uses('0', 'x', undefined, undefined, false))
+			neq('Additional non-root vertex', emptyGraph(), emptyGraph().uses('0', 'x', {}, false))
 			neq('Additional edge', emptyGraph(), emptyGraph().reads('0', '1'))
 		})
 		describe('Different elements', () => {

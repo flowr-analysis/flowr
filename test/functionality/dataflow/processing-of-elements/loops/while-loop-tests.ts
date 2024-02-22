@@ -11,7 +11,7 @@ describe('while', withShell(shell => {
 	)
 	assertDataflow('using variable in body', shell,
 		'while (TRUE) x',
-		emptyGraph().uses('1', 'x', 'maybe')
+		emptyGraph().uses('1', 'x', {when: 'maybe'})
 	)
 	assertDataflow('assignment in loop body', shell,
 		'while (TRUE) { x <- 3 }',
@@ -21,7 +21,7 @@ describe('while', withShell(shell => {
 		emptyGraph()
 			.definesVariable('0', 'x')
 			.uses('1', 'x')
-			.uses('7', 'x', 'maybe', define({ name: 'x', nodeId: '0', definedAt: '4', used: 'always', kind: 'variable', scope: LocalScope }, LocalScope, initializeCleanEnvironments()))
+			.uses('7', 'x', {when: 'maybe', environment: define({ name: 'x', nodeId: '0', definedAt: '4', used: 'always', kind: 'variable', scope: LocalScope }, LocalScope, initializeCleanEnvironments())})
 			.reads('7', '0', 'maybe')
 			.definedBy('0', '1')
 	)
@@ -34,7 +34,7 @@ describe('while', withShell(shell => {
 		shell,
 		'while(x) y',
 		emptyGraph()
-			.uses('0', 'x', 'always')
-			.uses('1', 'y', 'maybe')
+			.uses('0', 'x')
+			.uses('1', 'y', {when: 'maybe'})
 	)
 }))

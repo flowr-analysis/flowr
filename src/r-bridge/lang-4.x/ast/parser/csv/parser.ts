@@ -47,6 +47,7 @@ function convertEntry(csvEntry: CsvEntry, csv: ParsedCsv, config: XmlParserConfi
 		// this element has child tokens
 		xmlEntry[config.childrenName] = children
 			// sort children by the line (and then column) they appear in
+			// TODO how2sort?
 			.sort((c1,c2) => c1.line1 - c2.line1 || c1.col1 - c2.col1)
 			.map(c => convertEntry(c, csv, config))
 	} else {

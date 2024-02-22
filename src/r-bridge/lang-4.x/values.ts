@@ -163,6 +163,7 @@ export function parseCSV(lines: string | string[]): string[][] {
 	const combined = typeof lines == 'string' ? lines : lines.join('\n')
 	return parse(combined, {
 		skipEmptyLines: true,
-		relaxQuotes:    true
+		// we don't want to remove quotes automatically, so set the expected quote to an empty string
+		quote:          ''
 	}) as string[][]
 }

@@ -17,7 +17,7 @@ export function normalize(csvString: string, hooks?: DeepPartial<XmlParserHooks>
 	const hooksWithDefaults = deepMergeObject(DEFAULT_PARSER_HOOKS, hooks) as XmlParserHooks
 
 	const data: ParserData = { config, hooks: hooksWithDefaults, currentRange: undefined, currentLexeme: undefined }
-	const object = convertToXmlBasedJson(csvToRecord(parseCSV(csvString)), config)
+	const object = convertToXmlBasedJson(csvToRecord(parseCSV(csvString, true)), config)
 
 	return decorateAst(parseRootObjToAst(data, object), getId)
 }

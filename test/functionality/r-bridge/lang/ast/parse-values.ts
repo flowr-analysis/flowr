@@ -37,7 +37,7 @@ describe('CSV parsing', withShell(shell => {
 			content:                'x <- 1',
 			ensurePackageInstalled: false
 		}, shell)
-		const parsed = csvToRecord(parseCSV(code))
+		const parsed = csvToRecord(parseCSV(code, true))
 		assert.equal(JSON.stringify(parsed), '{' +
 			'"1":{"line1":"1","col1":"1","line2":"1","col2":"1","id":"1","parent":"3","token":"SYMBOL","terminal":"TRUE","text":"x"},' +
 			'"2":{"line1":"1","col1":"3","line2":"1","col2":"4","id":"2","parent":"7","token":"LEFT_ASSIGN","terminal":"TRUE","text":"<-"},' +

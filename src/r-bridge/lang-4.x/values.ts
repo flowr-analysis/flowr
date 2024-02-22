@@ -159,11 +159,10 @@ export function isNA(value: string): value is (typeof RNa) {
 	return value === RNa
 }
 
-export function parseCSV(lines: string | string[]): string[][] {
+export function parseCSV(lines: string | string[], stripQuotes = false): string[][] {
 	const combined = typeof lines == 'string' ? lines : lines.join('\n')
 	return parse(combined, {
 		skipEmptyLines: true,
-		// we don't want to remove quotes automatically, so set the expected quote to an empty string
-		quote:          ''
+		quote:          stripQuotes ? '' : '"'
 	}) as string[][]
 }

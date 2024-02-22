@@ -70,8 +70,6 @@ export interface RShellExecutionOptions extends MergeableRecord {
 	readonly eol:                string
 	/** The environment variables available in the R session. */
 	readonly env:                NodeJS.ProcessEnv
-	/** The path to the library directory, use undefined to let R figure that out for itself */
-	readonly homeLibPath:        string | undefined
 }
 
 export interface RShellSessionOptions extends RShellExecutionOptions {
@@ -94,8 +92,7 @@ export const DEFAULT_R_SHELL_EXEC_OPTIONS: RShellExecutionOptions = {
 	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
 	cwd:                process.cwd(),
 	env:                process.env,
-	eol:                '\n',
-	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
+	eol:                '\n'
 } as const
 
 export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
@@ -224,84 +221,6 @@ export class RShell {
 	public continueOnError(): void {
 		this.log.info('continue in case of Errors')
 		this._sendCommand('options(error=function() {})')
-	}
-
-	public injectLibPaths(...paths: string[]): void {
-		this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
-		this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
-	}
-
-	public tryToInjectHomeLibPath(): void {
-		// ensure the path exists first
-		if(this.options.homeLibPath === undefined) {
-			this.log.debug('ensuring home lib path exists (automatic inject)')
-			this.sendCommand('if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }')
-			this.sendCommand('.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))')
-		} else {
-			this.injectLibPaths(this.options.homeLibPath)
-		}
-	}
-
-	/**
-   * checks if a given package is already installed on the system!
-   */
-	public async isPackageInstalled(packageName: string): Promise<boolean> {
-		this.log.debug(`checking if package "${packageName}" is installed`)
-		const result = await this.sendCommandWithOutput(
-			`cat(system.file(package="${packageName}")!="","${this.options.eol}")`)
-		return result.length === 1 && result[0] === 'TRUE'
-	}
-
-	public async allInstalledPackages(): Promise<string[]> {
-		this.log.debug('getting all installed packages')
-		const [packages] = await this.sendCommandWithOutput(`cat(paste0(installed.packages()[,1], collapse=","),"${this.options.eol}")`)
-		return packages.split(',')
-	}
-
-	/**
-   * Installs the package using a temporary location
-   *
-   * @param packageName - The package to install
-   * @param autoload    - If true, the package will be loaded after installation
-   * @param force       - If true, the package will be installed no if it is already on the system and ready to be loaded
-   */
-	public async ensurePackageInstalled(packageName: string, autoload = false, force = false): Promise<{
-		packageName:           string
-		packageExistedAlready: boolean
-		/** the temporary directory used for the installation, undefined if none was used */
-		libraryLocation?:      string
-	}> {
-		const packageExistedAlready = await this.isPackageInstalled(packageName)
-		if(!force && packageExistedAlready) {
-			this.log.info(`package "${packageName}" is already installed`)
-			if(autoload) {
-				this.sendCommand(`library(${ts2r(packageName)})`)
-			}
-			return {
-				packageName,
-				packageExistedAlready: true
-			}
-		}
-
-		// obtain a temporary directory
-		const tempdir = await this.obtainTmpDir()
-
-		this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
-
-		await this.sendCommandWithOutput(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`, {
-			ms:             750_000,
-			resetOnNewData: true
-		})
-
-		if(autoload) {
-			this.sendCommand(`library(${ts2r(packageName)},lib.loc=temp)`)
-		}
-
-		return {
-			packageName,
-			libraryLocation: tempdir,
-			packageExistedAlready
-		}
 	}
 
 	/**

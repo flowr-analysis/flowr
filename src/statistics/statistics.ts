@@ -48,7 +48,6 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 	let result = initializeFeatureStatistics()
 	const meta = initialMetaStatistics()
 
-	let first = true
 	const outputs = new Map<T, StepResults<'dataflow'>>()
 	for await (const request of requests) {
 		onRequest(request)
@@ -56,14 +55,10 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 		const suffix = request.request === 'file' ? request.content.replace(new RegExp('^' + (rootPath ?? '')), '') : undefined
 		try {
 			let output
-			({ stats: result, output } = await extractSingle(result, shell, {
-				...request,
-				ensurePackageInstalled: first
-			}, features, suffix))
+			({ stats: result, output } = await extractSingle(result, shell, request, features, suffix))
 			outputs.set(request, output)
 			processMetaOnSuccessful(meta, request)
 			meta.numberOfNormalizedNodes.push(output.normalize.idMap.size)
-			first = false
 		} catch(e) {
 			log.error('for request: ', request, e)
 			processMetaOnUnsuccessful(meta, request)

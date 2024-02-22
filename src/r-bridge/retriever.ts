@@ -20,14 +20,6 @@ export interface RParseRequestFromText {
 	content: string
 }
 
-interface RParseRequestBase {
-	/**
-   * Ensure that all required packages are present and if not install them?
-   * The only reason to set this to `false` is probably in a series of parse requests for the same session.
-   */
-	ensurePackageInstalled: boolean
-}
-
 /**
  * A provider for an {@link RParseRequest} that can be used, for example, to override source file parsing behavior in tests
  */
@@ -38,10 +30,10 @@ export interface RParseRequestProvider {
 /**
  * A request that can be passed along to {@link retrieveCsvFromRCode}.
  */
-export type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseRequestBase
+export type RParseRequest = (RParseRequestFromFile | RParseRequestFromText)
 
-export function requestFromInput(input: `file://${string}`): RParseRequestFromFile & RParseRequestBase
-export function requestFromInput(input: string): RParseRequestFromText & RParseRequestBase
+export function requestFromInput(input: `file://${string}`): RParseRequestFromFile
+export function requestFromInput(input: string): RParseRequestFromText
 
 /**
  * Creates a {@link RParseRequest} from a given input.
@@ -49,9 +41,8 @@ export function requestFromInput(input: string): RParseRequestFromText & RParseR
 export function requestFromInput(input: `file://${string}` | string): RParseRequest {
 	const file = input.startsWith('file://')
 	return {
-		request:                file ? 'file' : 'text',
-		content:                file ? input.slice(7) : input,
-		ensurePackageInstalled: false // should be called within describeSession for that!
+		request: file ? 'file' : 'text',
+		content: file ? input.slice(7) : input
 	}
 }
 
@@ -59,9 +50,9 @@ export function requestProviderFromFile(): RParseRequestProvider {
 	return {
 		createRequest(path: string): RParseRequest {
 			return {
-				request:                'file',
-				content:                path,
-				ensurePackageInstalled: false}
+				request: 'file',
+				content: path,
+			}
 		}
 	}
 }
@@ -70,9 +61,8 @@ export function requestProviderFromText(text: {[path: string]: string}): RParseR
 	return {
 		createRequest(path: string): RParseRequest {
 			return {
-				request:                'text',
-				content:                text[path],
-				ensurePackageInstalled: false
+				request: 'text',
+				content: text[path]
 			}
 		}
 	}
@@ -142,7 +132,8 @@ export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise
 }
 
 function guardRetrievedOutput(output: string,  request: RParseRequest): string {
-	guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
+	guard(output !== ErrorMarker && output.trim() !== '""',
+		() => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
 
 	// we add a dummy header to the first line because of weird behavior with the returned csv
 	// example: line1 is mapped to 7, which is the same as the "id" column's entry

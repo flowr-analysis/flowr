@@ -39,35 +39,14 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
 	})
 }
 
-function installWarning(pkg: string) {
-	const banner = '-'.repeat(142)
-	console.error(`${banner}
-Test's have to install package ${pkg}. 
-This slows them down significantly! 
-Please see https://github.com/Code-Inspect/flowr/wiki/Linting-and-Testing#oh-no-the-tests-are-slow for more information.
-${banner}`)
-}
-
 /**
  * produces a shell session for you, can be used within a `describe` block
  * @param fn       - function to use the shell
  * @param packages - packages to be ensured when the shell is created
  */
-export function withShell(fn: (shell: RShell) => void, packages: string[] = ['xmlparsedata']): () => void {
+export function withShell(fn: (shell: RShell) => void): () => void {
 	return function() {
 		const shell = new RShell()
-		// this way we probably do not have to reinstall even if we launch from WebStorm
-		before(async function() {
-			this.timeout('15min')
-			shell.tryToInjectHomeLibPath()
-			for(const pkg of packages) {
-				if(!await shell.isPackageInstalled(pkg)) {
-					installWarning(pkg)
-					await testRequiresNetworkConnection(this)
-				}
-				await shell.ensurePackageInstalled(pkg, true)
-			}
-		})
 		fn(shell)
 		after(() => {
 			shell.close()
@@ -237,4 +216,3 @@ export function assertSliced(name: string, shell: RShell, input: string, criteri
 		}
 	})
 }
-

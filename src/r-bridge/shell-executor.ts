@@ -7,7 +7,6 @@ import type {SemVer} from 'semver'
 import semver from 'semver/preload'
 import type {ILogObj, Logger} from 'tslog'
 import {log} from '../util/log'
-import fs from 'fs'
 
 export class RShellExecutor {
 
@@ -26,25 +25,6 @@ export class RShellExecutor {
 		return this
 	}
 
-	public injectLibPaths(...paths: string[]): RShellExecutor {
-		this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
-		this.addPrerequisites(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
-		return this
-	}
-
-	public tryToInjectHomeLibPath(): RShellExecutor {
-		if(this.options.homeLibPath === undefined) {
-			this.log.debug('ensuring home lib path exists (automatic inject)')
-			this.addPrerequisites([
-				'if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }',
-				'.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))'
-			])
-		} else {
-			this.injectLibPaths(this.options.homeLibPath)
-		}
-		return this
-	}
-
 	public addPrerequisites(commands: string | string[]): RShellExecutor{
 		this.prerequisites.push(...(typeof commands == 'string' ? [commands] : commands))
 		return this
@@ -54,60 +34,6 @@ export class RShellExecutor {
 		const version = this.run(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
 		this.log.trace(`raw version: ${JSON.stringify(version)}`)
 		return semver.coerce(version)
-	}
-
-	public allInstalledPackages(): string[] {
-		this.log.debug('getting all installed packages')
-		const packages = this.run(`cat(paste0(installed.packages()[,1], collapse=","),"${this.options.eol}")`)
-		return packages.split(',')
-	}
-
-	public isPackageInstalled(packageName: string): boolean {
-		this.log.debug(`checking if package "${packageName}" is installed`)
-		return this.run(`cat(system.file(package="${packageName}")!="","${this.options.eol}")`) === 'TRUE'
-	}
-
-	public ensurePackageInstalled(packageName: string, autoload = false, force = false): {
-		packageName:           string
-		packageExistedAlready: boolean
-		/** the temporary directory used for the installation, undefined if none was used */
-		libraryLocation?:      string
-	} {
-		const packageExistedAlready = this.isPackageInstalled(packageName)
-		if(!force && packageExistedAlready) {
-			this.log.info(`package "${packageName}" is already installed`)
-			if(autoload)
-				this.addPrerequisites(`library(${ts2r(packageName)})`)
-			return {packageName, packageExistedAlready}
-		}
-
-		const tempDir = this.obtainTempDir()
-		this.log.debug(`using temporary directory: "${tempDir}" to install package "${packageName}"`)
-
-		this.run(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`)
-		if(autoload)
-			this.addPrerequisites(`library(${ts2r(packageName)},lib.loc=temp)`)
-
-		return {packageName, packageExistedAlready, libraryLocation: tempDir}
-	}
-
-	public obtainTempDir(): string {
-		const tempDir = this.run([
-			'temp <- tempdir()',
-			`cat(temp, ${ts2r(this.options.eol)})`
-		])
-		log.info(`obtained temp dir ${tempDir}`)
-
-		const deleteOnExit = function() {
-			if(fs.existsSync(tempDir)) {
-				log.info(`deleting temp dir ${tempDir}`)
-				fs.rmSync(tempDir, {recursive: true, force: true})
-			}
-		}
-		process.on('SIGINT', deleteOnExit)
-		process.on('SIGTERM', deleteOnExit)
-
-		return tempDir
 	}
 
 	public run(commands: string | string[], returnErr = false): string {

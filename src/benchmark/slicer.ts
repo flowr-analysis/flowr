@@ -98,10 +98,6 @@ export class BenchmarkSlicer {
 			'initialize R session',
 			() => new RShell()
 		)
-		this.commonMeasurements.measure(
-			'inject home path',
-			() => this.shell.tryToInjectHomeLibPath()
-		)
 	}
 
 	/**
@@ -112,11 +108,8 @@ export class BenchmarkSlicer {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice')
 
 		this.stepper = new SteppingSlicer({
-			shell:   this.shell,
-			request: {
-				...request,
-				ensurePackageInstalled: true
-			},
+			shell:          this.shell,
+			request:        {...request},
 			stepOfInterest: LAST_STEP,
 			criterion:      []
 		})

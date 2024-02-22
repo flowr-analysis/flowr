@@ -16,9 +16,8 @@ chai.use(chaiAsPromised)
 describe('CSV parsing', withShell(shell => {
 	it('simple', async() => {
 		const code = await retrieveCsvFromRCode({
-			request:                'text',
-			content:                'x <- 1',
-			ensurePackageInstalled: false
+			request: 'text',
+			content: 'x <- 1'
 		}, shell)
 		assert.equal(code, `
 "id2dummy","line1","col1","line2","col2","id","parent","token","terminal","text"
@@ -33,9 +32,8 @@ describe('CSV parsing', withShell(shell => {
 
 	it('to object', async() => {
 		const code = await retrieveCsvFromRCode({
-			request:                'text',
-			content:                'x <- 1',
-			ensurePackageInstalled: false
+			request: 'text',
+			content: 'x <- 1'
 		}, shell)
 		const parsed = csvToRecord(parseCSV(code))
 		assert.equal(JSON.stringify(parsed), '{' +
@@ -59,14 +57,12 @@ describe('Constant Parsing',
 			)
 		})
 		describe('parse single', () => {
-			// TODO restore this test
-			/*it('parse illegal', () =>
-				assert.throws(retrieveCsvFromRCode({
-					request:                'text',
-					content:                '{',
-					ensurePackageInstalled: true
-				}, shell) as Promise<string>)
-			)*/
+			it('parse illegal', () =>
+				assert.isRejected((retrieveCsvFromRCode({
+					request: 'text',
+					content: '{'
+				}, shell) as Promise<string>))
+			)
 			describe('numbers', () => {
 				for(const number of RNumberPool) {
 					const range = rangeFrom(1, 1, 1, number.str.length)

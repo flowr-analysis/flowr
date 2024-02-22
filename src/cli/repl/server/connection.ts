@@ -169,9 +169,8 @@ export class FlowRServerConnection {
 			shell:          this.shell,
 			// we have to make sure, that the content is not interpreted as a file path if it starts with 'file://' therefore, we do it manually
 			request:        {
-				request:                message.content === undefined ? 'file' : 'text',
-				content:                message.content ?? message.filepath as string,
-				ensurePackageInstalled: false
+				request: message.content === undefined ? 'file' : 'text',
+				content: message.content ?? message.filepath as string
 			},
 			criterion: [] // currently unknown
 		})

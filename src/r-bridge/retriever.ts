@@ -96,7 +96,7 @@ export function retrieveCsvFromRCode(request: RParseRequest, shell: (RShell | RS
 	const setupCommands = [
 		`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
 		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
-		'try(flowr_output<-write.table(getParseData(flowr_parsed),sep=",",col.names=TRUE,qmethod="d"))',
+		'try(flowr_output<-write.table(getParseData(flowr_parsed,includeText=TRUE),sep=",",col.names=TRUE,qmethod="d"))',
 	]
 	const outputCommand = `cat(flowr_output,${ts2r(shell.options.eol)})`
 

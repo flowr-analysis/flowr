@@ -28,7 +28,6 @@ export function convertToXmlBasedJson(csv: ParsedCsv, config: XmlParserConfig): 
 		// we convert all roots, which are entries with parent 0
 		.filter(v => v.parent == 0)
 		.map(v => convertEntry(v, csv, config))
-	console.log('Converted: '+JSON.stringify(exprlist, null, 2))
 	return {'exprlist': exprlist}
 }
 

@@ -14,13 +14,13 @@ export const operators: BinOpOperators = {
 		switch(node.operator) {
 			case '+':
 				return {
-					id:      lhs.id,
+					id:      node.info.id,
 					domain:  addDomains(lhs.domain, rhs.domain),
 					astNode: node,
 				}
 			case '-':
 				return {
-					id:      lhs.id,
+					id:      node.info.id,
 					domain:  subtractDomains(lhs.domain, rhs.domain),
 					astNode: node,
 				}

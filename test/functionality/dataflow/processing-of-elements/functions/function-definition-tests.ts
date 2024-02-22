@@ -271,7 +271,7 @@ describe('Function Definition', withShell(shell => {
 					}
 				})
 				.definesVariable('0', 'x', LocalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()), false)
-				.addVertex({ tag: 'exit-point', id: '2', name: '<-', when: 'always', environment: envWithXDefined }, false)
+				.exits('2', '<-', envWithXDefined, {}, false)
 				.relates('2', '0')
 		)
 		assertDataflow('local define with = in function, read after', shell, 'function() { x = 3; }; x',
@@ -294,7 +294,7 @@ describe('Function Definition', withShell(shell => {
 					}
 				})
 				.definesVariable('0', 'x', LocalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()), false)
-				.addVertex({ tag: 'exit-point', id: '2', name: '=', when: 'always', environment: envWithXDefined }, false)
+				.exits('2', '=', envWithXDefined, false)
 				.relates('2', '0')
 		)
 
@@ -322,7 +322,7 @@ describe('Function Definition', withShell(shell => {
 					}
 				})
 				.definesVariable('1', 'x', LocalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()), false)
-				.addVertex({ tag: 'exit-point', id: '2', name: '->', when: 'always', environment: envWithXDefinedR }, false)
+				.exits('2', '->', envWithXDefinedR, {}, false)
 				.relates('2', '1')
 		)
 		const envWithXDefinedGlobal = define(
@@ -350,7 +350,7 @@ describe('Function Definition', withShell(shell => {
 					}
 				})
 				.definesVariable('0', 'x', GlobalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()), false)
-				.addVertex({ tag: 'exit-point', id: '2', name: '<<-', when: 'always', environment: envWithXDefinedGlobal }, false)
+				.exits('2', '<<-', envWithXDefinedGlobal, {}, false)
 				.relates('2', '0')
 		)
 		const envWithXDefinedGlobalR = define(
@@ -378,7 +378,7 @@ describe('Function Definition', withShell(shell => {
 					}
 				})
 				.definesVariable('1', 'x', GlobalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()), false)
-				.addVertex({ tag: 'exit-point', id: '2', name: '->>', when: 'always', environment: envWithXDefinedGlobalR }, false)
+				.exits('2', '->>', envWithXDefinedGlobalR, {}, false)
 				.relates('2', '1')
 		)
 		const envDefXSingle = define(
@@ -660,7 +660,7 @@ describe('Function Definition', withShell(shell => {
 				.addVertex({ tag: 'use', id: '1', name: 'b', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.addVertex({ tag: 'use', id: '9', name: 'a', scope: LocalScope, when: 'always', environment: envWithBothParamFirstB }, false)
 				.addVertex({ tag: 'use', id: '13', name: 'a', scope: LocalScope, when: 'always', environment: envWithBothParamSecondB }, false)
-				.addVertex({ tag: 'exit-point', id: '15', name: '+', scope: LocalScope, when: 'always', environment: envWithBothParamSecondB }, false)
+				.exits('15', '+', envWithBothParamSecondB, {}, false)
 				.relates('15', '13')
 				.sameRead('13', '9')
 				.reads('9', '0')
@@ -924,7 +924,7 @@ describe('Function Definition', withShell(shell => {
 				.definedBy('1', '8')
 
 				.addVertex({ tag: 'use', id: '5', name: 'b', environment: withinNestedFunctionWithParam }, false)
-				.addVertex({ tag: 'exit-point', id: '6', name: '<-', environment: withinNestedFunctionWithDef }, false)
+				.exits('6', '<-', withinNestedFunctionWithDef, {}, false)
 				.relates('6', '4')
 				.relates('6', '5')
 				.definesVariable('4', 'x', LocalScope, 'always', withinNestedFunctionWithParam, false)

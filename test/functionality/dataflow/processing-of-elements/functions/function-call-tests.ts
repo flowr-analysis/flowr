@@ -168,7 +168,7 @@ a(i)`, emptyGraph()
 			.definesVariable('6', 'x', LocalScope, 'always', envWithXConstDefined , false)
 			.definesVariable('9', 'x', LocalScope, 'always', envWithXDefinedForFunc , false)
 			.addVertex({ tag: 'use', id: '7', name: 'x', environment: envWithXConstDefined}, false)
-			.addVertex({ tag: 'exit-point', id: '12', name: '1', environment: envWithLastXDefined}, false)
+			.exits('12', '1', envWithLastXDefined, {}, false)
 			.definedBy('6', '7')
 			.reads('7', '4')
 			.sameDef('6', '9')
@@ -218,7 +218,7 @@ a(i)`, emptyGraph()
 			})
 			.definesVariable('0', 'x', LocalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()) , false)
 			.addVertex({ tag: 'use', id: '2', name: 'x', environment: envWithXParameter }, false)
-			.addVertex({ tag: 'exit-point', id: '4', name: '+', environment: envWithXParameter }, false)
+			.exits('4', '+', envWithXParameter , {}, false)
 			.relates('2', '4')
 			.reads('2', '0')
 
@@ -294,7 +294,7 @@ a()()`,
 				}
 			}, false)
 
-			.addVertex({ tag: 'exit-point', id: '1', name: '42', environment: pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())) }, false)
+			.exits('1', '42', pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())) , {}, false)
 
 
 			.calls('9', '8')
@@ -337,7 +337,7 @@ a()()`,
 						environments:      pushLocalEnvironment(initializeCleanEnvironments()),
 						graph:             new Set()
 					}})
-				.addVertex({ tag: 'exit-point', id: '1', name: '3', environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+				.exits('1', '3', pushLocalEnvironment(initializeCleanEnvironments()) , {}, false)
 
 				.reads('4', '3')
 				.argument('5', '4')

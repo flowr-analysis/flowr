@@ -1,6 +1,7 @@
-import type { DataflowGraphEdgeAttribute, NodeId, REnvironmentInformation } from '../../../src'
+import type { DataflowGraphEdgeAttribute, DataflowGraphExitPoint, NodeId, REnvironmentInformation } from '../../../src'
 import { DataflowGraph, EdgeType } from '../../../src'
 import { LocalScope } from '../../../src/dataflow/environments/scopes'
+import { deepMergeObject } from '../../../src/util/objects'
 
 export function emptyGraph() {
 	return new DataflowGraphBuilder()
@@ -32,6 +33,21 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	public definesVariable(id: NodeId, name: string, scope: string = LocalScope, when: DataflowGraphEdgeAttribute = 'always', environment?: REnvironmentInformation, asRoot: boolean = true) {
 		return this.addVertex({tag: 'variable-definition', id, name, scope, when, environment}, asRoot)
 	}    
+
+	/**
+	 * Adds a vertex for an exit point of a function (V3).
+	 * 
+	 * @param id - AST node ID
+	 * @param name - AST node text
+	 * @param env - Environment of the function we exit.
+	 * @param info - Partial<DataflowGraphExitPoint>
+	 * @param asRoot - boolean; defaults to true.
+	 */
+	public exits(id: NodeId, name: string, environment?: REnvironmentInformation,
+		info?: Partial<DataflowGraphExitPoint>,
+		asRoot: boolean = true) {
+		return this.addVertex(deepMergeObject({tag: 'exit-point', id, environment, name}, info), asRoot)
+	}
 
 	/**
 	 * Adds a read edge (E1) for simple testing.

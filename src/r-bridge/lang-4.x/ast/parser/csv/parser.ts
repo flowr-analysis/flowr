@@ -28,7 +28,7 @@ export function convertToXmlBasedJson(csv: ParsedCsv, config: XmlParserConfig): 
 		// we convert all roots, which are entries with parent 0
 		.filter(v => v.parent == 0)
 		.map(v => convertEntry(v, csv, config))
-	console.log(JSON.stringify(exprlist, null, 2))
+	console.log('Converted: '+JSON.stringify(exprlist, null, 2))
 	return {'exprlist': exprlist}
 }
 
@@ -48,11 +48,16 @@ function convertEntry(csvEntry: CsvEntry, csv: ParsedCsv, config: XmlParserConfi
 	const children = getChildren(csv, csvEntry)
 	if(children && children.length > 0){
 		xmlEntry[config.childrenName] = children
-			// sort children by the line (and then column) they appear in
-			// TODO how2sort?
-			.sort((c1,c2) => c1.line1 - c2.line1 || c1.col1 - c2.col1)
+			// we sort children the same way xmlparsedata does (by line, by column, by inverse end line, by inverse end column, by terminal state, by combined "start" tiebreaker value)
+			// (https://github.com/r-lib/xmlparsedata/blob/main/R/package.R#L153C72-L153C78)
+			.sort((c1,c2) => c1.line1-c2.line1 || c1.col1-c2.col1 || c2.line2-c1.line2 || c2.col2-c1.col2 || Number(c1.terminal)-Number(c2.terminal) || sortTiebreak(c1)-sortTiebreak(c2))
 			.map(c => convertEntry(c, csv, config))
 	}
 
 	return xmlEntry
+}
+
+function sortTiebreak(entry: CsvEntry){
+	// see https://github.com/r-lib/xmlparsedata/blob/main/R/package.R#L110C5-L110C11
+	return entry.line1 * (Math.max(entry.col1, entry.col2) + 1) + entry.col1
 }

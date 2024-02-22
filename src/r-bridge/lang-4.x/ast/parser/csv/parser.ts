@@ -8,7 +8,6 @@ import type {CsvEntry} from './format'
 import {csvToRecord, getChildren, type ParsedCsv} from './format'
 import {parseCSV} from '../../../values'
 import {parseRootObjToAst} from '../xml/internal'
-import {guard} from '../../../../../util/assert'
 import {log} from '../../../../../util/log'
 
 export const parseLog = log.getSubLogger({name: 'ast-parser'})
@@ -24,17 +23,15 @@ export function normalize(csvString: string, hooks?: DeepPartial<XmlParserHooks>
 }
 
 export function convertToXmlBasedJson(csv: ParsedCsv, config: XmlParserConfig): XmlBasedJson{
-	// find the root, which is the expression with parent 0
-	const root = Object.values(csv).find(v => v.parent == 0)
-	guard(root != null, `No root element found in ${JSON.stringify(csv)}`)
-
 	const exprlist: XmlBasedJson =  {'#name': 'exprlist'}
-	exprlist[config.childrenName] = [convertEntry(root, csv, config)]
-	exprlist['expr'] = [convertEntry(root, csv, config, false)]
+	exprlist[config.childrenName] = Object.values(csv)
+		// we convert all roots, which are entries with parent 0
+		.filter(v => v.parent == 0)
+		.map(v => convertEntry(v, csv, config))
 	return {'exprlist': exprlist}
 }
 
-function convertEntry(csvEntry: CsvEntry, csv: ParsedCsv, config: XmlParserConfig, includeName = true): XmlBasedJson {
+function convertEntry(csvEntry: CsvEntry, csv: ParsedCsv, config: XmlParserConfig): XmlBasedJson {
 	const xmlEntry: XmlBasedJson = {}
 
 	xmlEntry[config.attributeName] = {
@@ -43,19 +40,15 @@ function convertEntry(csvEntry: CsvEntry, csv: ParsedCsv, config: XmlParserConfi
 		'line2': csvEntry.line2,
 		'col2':  csvEntry.col2
 	}
-	if(includeName)
-		xmlEntry['#name'] = csvEntry.token
+	xmlEntry['#name'] = csvEntry.token
 
 	const children = getChildren(csv, csvEntry)
 	if(children && children.length > 0){
 		// this element has child tokens
-		const xmlChildren: XmlBasedJson[] = []
-		// sort children by the line (and then column) they appear in
-		for(const child of children.sort((c1,c2) => c1.line1 - c2.line1 || c1.col1 - c2.col1)) {
-			xmlChildren.push(convertEntry(child, csv, config))
-			xmlEntry[child.token] = [...(xmlEntry[child.token] ?? []) as XmlBasedJson[], convertEntry(child, csv, config, false)]
-		}
-		xmlEntry[config.childrenName] = xmlChildren
+		xmlEntry[config.childrenName] = children
+			// sort children by the line (and then column) they appear in
+			.sort((c1,c2) => c1.line1 - c2.line1 || c1.col1 - c2.col1)
+			.map(c => convertEntry(c, csv, config))
 	} else {
 		// this element just has text content
 		xmlEntry[config.contentName] = csvEntry.text

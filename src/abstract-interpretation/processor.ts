@@ -6,6 +6,7 @@ import {guard} from '../util/assert'
 import {DataflowGraphVertexInfo, EdgeType, OutgoingEdges} from '../dataflow'
 import {Handler} from './handler/handler'
 import {BinOp} from './handler/binop/binop'
+import {Conditional} from './handler/conditional/conditional'
 import {Domain, unifyDomains} from './domain'
 import {log} from '../util/log'
 
@@ -53,6 +54,8 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 		const astNode = ast.idMap.get(node.id)
 		if(astNode?.type === RType.BinaryOp) {
 			operationStack.push(new BinOp(astNode)).enter()
+		} else if(astNode?.type === RType.IfThenElse) {
+			operationStack.push(new Conditional(astNode)).enter()
 		} else if(astNode?.type === RType.Symbol) {
 			operationStack.peek()?.next({
 				id:      astNode.info.id,

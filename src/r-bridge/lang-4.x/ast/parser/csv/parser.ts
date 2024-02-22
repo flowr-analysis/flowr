@@ -42,7 +42,8 @@ function convertEntry(csvEntry: CsvEntry, csv: ParsedCsv, config: XmlParserConfi
 		'col2':  csvEntry.col2
 	}
 	xmlEntry['#name'] = csvEntry.token
-	xmlEntry[config.contentName] = csvEntry.text
+	if(csvEntry.text)
+		xmlEntry[config.contentName] = csvEntry.text
 
 	// check and recursively iterate children
 	const children = getChildren(csv, csvEntry)

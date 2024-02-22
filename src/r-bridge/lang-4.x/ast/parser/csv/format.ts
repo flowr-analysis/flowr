@@ -26,9 +26,10 @@ export function csvToRecord(csv: string[][]): ParsedCsv {
 		for(let col = 1; col < csv[rowIdx].length; col++){
 			// we start at column 1 here, because the 0th column has a second copy of the id that has a dummy header
 			// (see https://github.com/Code-Inspect/flowr/issues/653)
-			content[headers[col]] = removeTokenMapQuotationMarks(csv[rowIdx][col])
+			content[headers[col]] = csv[rowIdx][col]
 		}
 		const entry = content as CsvEntry
+		entry.token = removeTokenMapQuotationMarks(entry.token)
 		ret[entry.id] = entry
 	}
 	return ret

@@ -17,7 +17,7 @@ export function normalize(csvString: string, hooks?: DeepPartial<XmlParserHooks>
 	const hooksWithDefaults = deepMergeObject(DEFAULT_PARSER_HOOKS, hooks) as XmlParserHooks
 
 	const data: ParserData = { config, hooks: hooksWithDefaults, currentRange: undefined, currentLexeme: undefined }
-	const object = convertToXmlBasedJson(csvToRecord(parseCSV(csvString, true)), config)
+	const object = convertToXmlBasedJson(csvToRecord(parseCSV(csvString)), config)
 
 	return decorateAst(parseRootObjToAst(data, object), getId)
 }
@@ -28,6 +28,7 @@ export function convertToXmlBasedJson(csv: ParsedCsv, config: XmlParserConfig): 
 		// we convert all roots, which are entries with parent 0
 		.filter(v => v.parent == 0)
 		.map(v => convertEntry(v, csv, config))
+	console.log(JSON.stringify(exprlist, null, 2))
 	return {'exprlist': exprlist}
 }
 
@@ -41,18 +42,16 @@ function convertEntry(csvEntry: CsvEntry, csv: ParsedCsv, config: XmlParserConfi
 		'col2':  csvEntry.col2
 	}
 	xmlEntry['#name'] = csvEntry.token
+	xmlEntry[config.contentName] = csvEntry.text
 
+	// check and recursively iterate children
 	const children = getChildren(csv, csvEntry)
 	if(children && children.length > 0){
-		// this element has child tokens
 		xmlEntry[config.childrenName] = children
 			// sort children by the line (and then column) they appear in
 			// TODO how2sort?
 			.sort((c1,c2) => c1.line1 - c2.line1 || c1.col1 - c2.col1)
 			.map(c => convertEntry(c, csv, config))
-	} else {
-		// this element just has text content
-		xmlEntry[config.contentName] = csvEntry.text
 	}
 
 	return xmlEntry

@@ -27,7 +27,7 @@ function filterObject(obj: XmlBasedJson, keys: Set<string>): XmlBasedJson[] | Xm
 }
 
 export function parseToQuads(code: string, config: QuadSerializationConfiguration, parseConfig: XmlParserConfig): string{
-	const obj = convertToXmlBasedJson(csvToRecord(parseCSV(code, true)), parseConfig)
+	const obj = convertToXmlBasedJson(csvToRecord(parseCSV(code)), parseConfig)
 	// recursively filter so that if the object contains one of the keys 'a', 'b' or 'c', all other keys are ignored
 	return serialize2quads(
 		filterObject(obj, new Set([parseConfig.attributeName, parseConfig.childrenName, parseConfig.contentName])) as XmlBasedJson,

@@ -21,13 +21,13 @@ describe('CSV parsing', withShell(shell => {
 			ensurePackageInstalled: false
 		}, shell)
 		assert.equal(code, `
-"id2dummy","line1","col1","line2","col2","id","parent","token","terminal","text"
-"7",1,1,1,6,7,0,"expr",FALSE,""
-"1",1,1,1,1,1,3,"SYMBOL",TRUE,"x"
-"3",1,1,1,1,3,7,"expr",FALSE,""
-"2",1,3,1,4,2,7,"LEFT_ASSIGN",TRUE,"<-"
-"4",1,6,1,6,4,5,"NUM_CONST",TRUE,"1"
-"5",1,6,1,6,5,7,"expr",FALSE,""
+"id2dummy",line1,col1,line2,col2,id,parent,token,terminal,text
+7,1,1,1,6,7,0,expr,FALSE,
+1,1,1,1,1,1,3,SYMBOL,TRUE,x
+3,1,1,1,1,3,7,expr,FALSE,
+2,1,3,1,4,2,7,LEFT_ASSIGN,TRUE,<-
+4,1,6,1,6,4,5,NUM_CONST,TRUE,1
+5,1,6,1,6,5,7,expr,FALSE,
 `.trimStart())
 	})
 
@@ -37,7 +37,7 @@ describe('CSV parsing', withShell(shell => {
 			content:                'x <- 1',
 			ensurePackageInstalled: false
 		}, shell)
-		const parsed = csvToRecord(parseCSV(code, true))
+		const parsed = csvToRecord(parseCSV(code))
 		assert.equal(JSON.stringify(parsed), '{' +
 			'"1":{"line1":"1","col1":"1","line2":"1","col2":"1","id":"1","parent":"3","token":"SYMBOL","terminal":"TRUE","text":"x"},' +
 			'"2":{"line1":"1","col1":"3","line2":"1","col2":"4","id":"2","parent":"7","token":"LEFT_ASSIGN","terminal":"TRUE","text":"<-"},' +

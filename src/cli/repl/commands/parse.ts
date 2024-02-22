@@ -138,7 +138,7 @@ export const parseCommand: ReplCommand = {
 		}).allRemainingSteps()
 
 		const config = { ...DEFAULT_XML_PARSER_CONFIG }
-		const object = convertToXmlBasedJson(csvToRecord(parseCSV(result.parse, true)), config)
+		const object = convertToXmlBasedJson(csvToRecord(parseCSV(result.parse)), config)
 
 		output.stdout(depthListToTextTree(toDepthMap(object, config), config, output.formatter))
 	}

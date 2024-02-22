@@ -6,11 +6,13 @@ import {
 } from '../../../_helper/provider'
 import { exprList } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import {parseCSV, retrieveCsvFromRCode, RType} from '../../../../../src'
+import {DEFAULT_XML_PARSER_CONFIG, parseCSV, retrieveCsvFromRCode, RType} from '../../../../../src'
 import chai, { assert } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { MIN_VERSION_RAW_STABLE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import {csvToRecord} from '../../../../../src/r-bridge/lang-4.x/ast/parser/csv/format'
+import {convertToXmlBasedJson} from '../../../../../src/r-bridge/lang-4.x/ast/parser/csv/csv-parser'
+import {xlm2jsonObject} from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/internal'
 chai.use(chaiAsPromised)
 
 describe('CSV parsing', withShell(shell => {
@@ -45,6 +47,29 @@ describe('CSV parsing', withShell(shell => {
 			'"4":{"line1":"1","col1":"6","line2":"1","col2":"6","id":"4","parent":"5","token":"NUM_CONST","terminal":"TRUE","text":"1"},' +
 			'"5":{"line1":"1","col1":"6","line2":"1","col2":"6","id":"5","parent":"7","token":"expr","terminal":"FALSE","text":""},' +
 			'"7":{"line1":"1","col1":"1","line2":"1","col2":"6","id":"7","parent":"0","token":"expr","terminal":"FALSE","text":""}}')
+	})
+
+	it('to xml based json', async() => {
+		const code = await retrieveCsvFromRCode({
+			request:                'text',
+			content:                '2 * x',
+			ensurePackageInstalled: false
+		}, shell)
+		const converted = convertToXmlBasedJson(csvToRecord(parseCSV(code)), DEFAULT_XML_PARSER_CONFIG)
+		const expected = xlm2jsonObject(DEFAULT_XML_PARSER_CONFIG, `
+<exprlist>
+    <expr line1="1" col1="1" line2="1" col2="5" start="7" end="11">
+        <expr line1="1" col1="1" line2="1" col2="1" start="7" end="7">
+            <NUM_CONST line1="1" col1="1" line2="1" col2="1" start="7" end="7">2</NUM_CONST>
+        </expr>
+        <OP-STAR line1="1" col1="3" line2="1" col2="3" start="9" end="9">*</OP-STAR>
+        <expr line1="1" col1="5" line2="1" col2="5" start="11" end="11">
+            <SYMBOL line1="1" col1="5" line2="1" col2="5" start="11" end="11">x</SYMBOL>
+        </expr>
+    </expr>
+</exprlist>
+`.trimStart())
+		assert.equal(converted, expected)
 	})
 }))
 

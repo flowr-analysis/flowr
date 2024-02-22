@@ -35,7 +35,7 @@ import {
 } from './print/dataflow-printer'
 import type {DataflowInformation} from '../dataflow/internal/info'
 import type {runAbstractInterpretation} from '../abstract-interpretation/processor'
-import {normalize} from '../r-bridge/lang-4.x/ast/parser/csv/csv-parser'
+import {normalize} from '../r-bridge/lang-4.x/ast/parser/csv/parser'
 
 /**
  * This represents close a function that we know completely nothing about.

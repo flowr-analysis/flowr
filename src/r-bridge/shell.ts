@@ -2,15 +2,12 @@ import { type ChildProcessWithoutNullStreams, spawn } from 'child_process'
 import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, type Logger } from 'tslog'
 import * as readline from 'node:readline'
-import { parseCSV, ts2r } from './lang-4.x'
+import { ts2r } from './lang-4.x'
 import { log, LogLevel } from '../util/log'
 import type { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 import fs from 'fs'
-import type { TokenMap } from './retriever'
-import { removeTokenMapQuotationMarks } from './retriever'
-import type { DeepWritable } from 'ts-essentials'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -121,7 +118,6 @@ export class RShell {
 	private session:         RShellSession
 	private readonly log:    Logger<ILogObj>
 	private versionCache:    SemVer | null = null
-	private tokenMapCache:   TokenMap | null = null
 	// should never be more than one, but let's be sure
 	private tempDirs         = new Set<string>()
 
@@ -170,37 +166,6 @@ export class RShell {
 		return result.length === 1 ? this.versionCache : null
 	}
 
-
-	/**
-	 * Retrieve the token map of the xmlparsedata package.
-	 *
-	 * @note For multiple calls, this makes use of caching
-	 */
-	async tokenMap(): Promise<TokenMap> {
-		if(this.tokenMapCache === null) {
-			this.tokenMapCache = await this.retrieveTokenMap()
-		}
-		return this.tokenMapCache
-	}
-
-	private async retrieveTokenMap(): Promise<TokenMap> {
-		await this.ensurePackageInstalled('xmlparsedata', true /* use some kind of environment in the future */)
-		// we invert the token map to get a mapping back from the replacement
-		const parsed = parseCSV(await this.sendCommandWithOutput(
-			'write.table(xmlparsedata::xml_parse_token_map,sep=",",col.names=FALSE)'
-		))
-
-		if(parsed.some(s => s.length !== 2)) {
-			throw new Error(`Expected two columns in token map, but got ${JSON.stringify(parsed)}`)
-		}
-
-		// we swap key and value to get the other direction, furthermore we remove quotes from keys if they are quoted
-		const cache: DeepWritable<TokenMap> = {}
-		for(const [key, value] of parsed) {
-			cache[value] = removeTokenMapQuotationMarks(key)
-		}
-		return cache
-	}
 
 	/**
    * Send a command and collect the output

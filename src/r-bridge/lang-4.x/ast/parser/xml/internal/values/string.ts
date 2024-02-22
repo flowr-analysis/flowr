@@ -1,12 +1,12 @@
 import type { XmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure } from '../meta'
 import { string2ts } from '../../../../../values'
-import { parseLog } from '../../parser'
 import type { RString } from '../../../../model'
 import { RType } from '../../../../model'
 import { executeHook } from '../../hooks'
 import type { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Normalize the given object as a R string (see {@link string2ts}).

@@ -1,12 +1,12 @@
 import type { XmlBasedJson } from '../../input-format'
 import type { RNa } from '../../../../../values'
 import { boolean2ts, isBoolean, isNA, number2ts } from '../../../../../values'
-import { parseLog } from '../../parser'
 import { retrieveMetaStructure } from '../meta'
 import type { RLogical, RSymbol, NoInfo, RNumber } from '../../../../model'
 import { RType } from '../../../../model'
 import type { ParserData } from '../../data'
 import { executeHook } from '../../hooks'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Normalize the given object as a R number (see {@link number2ts}), supporting booleans (see {@link boolean2ts}),

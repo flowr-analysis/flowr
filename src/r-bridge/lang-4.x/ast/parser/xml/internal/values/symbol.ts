@@ -1,12 +1,12 @@
 import type { NamedXmlBasedJson } from '../../input-format'
 import { guard } from '../../../../../../../util/assert'
 import { retrieveMetaStructure } from '../meta'
-import { parseLog } from '../../parser'
 import type { RSymbol } from '../../../../model'
 import { isSymbol, RType } from '../../../../model'
 import type { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { startAndEndsWith } from '../../../../../../../util/strings'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Normalize the given object as an R symbol (incorporating namespace information).

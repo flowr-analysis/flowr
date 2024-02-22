@@ -1,6 +1,5 @@
 import type { NamedXmlBasedJson } from '../input-format'
 import { retrieveMetaStructure } from './meta'
-import { parseLog } from '../parser'
 import type { ParserData } from '../data'
 import type { RAccess, RNode, RArgument} from '../../../model'
 import { RType, RawRType } from '../../../model'
@@ -9,6 +8,7 @@ import { normalizeBasedOnType } from './structure'
 import { guard } from '../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../util/arrays'
 import { tryToNormalizeArgument } from './functions/argument'
+import {parseLog} from '../../csv/parser'
 
 /**
  * Tries to normalize the given data as access (e.g., indexing).

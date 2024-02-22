@@ -3,7 +3,6 @@ import { getKeysGuarded } from '../../input-format'
 import { guard } from '../../../../../../../util/assert'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { splitArrayOn } from '../../../../../../../util/arrays'
-import { parseLog } from '../../parser'
 import { normalizeString, tryNormalizeSymbol } from '../values'
 import type { ParserData } from '../../data'
 import type {
@@ -21,6 +20,7 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 import { tryToNormalizeArgument } from './argument'
 import type { SourceRange } from '../../../../../../../util/range'
 import { normalizeExpression } from '../expression'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Tries to parse the given data as a function call.
@@ -53,7 +53,7 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 
 	let result: RFunctionCall | RNext | RBreak
 
-	const namedSymbolContent = getWithTokenType(data.config.tokenMap, symbolContent)
+	const namedSymbolContent = getWithTokenType(symbolContent)
 
 	if(namedSymbolContent.length === 1 && namedSymbolContent[0].name === RawRType.StringConst) {
 		// special handling when someone calls a function by string

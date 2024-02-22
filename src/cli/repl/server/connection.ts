@@ -1,6 +1,6 @@
 import type { StepResults} from '../../../core'
 import { LAST_STEP, printStepResult, SteppingSlicer, STEPS_PER_SLICE } from '../../../core'
-import type { NormalizedAst, RShell, XmlParserConfig } from '../../../r-bridge'
+import type { NormalizedAst, RShell } from '../../../r-bridge'
 import { DEFAULT_XML_PARSER_CONFIG } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
@@ -25,7 +25,6 @@ import {
 } from './messages/repl'
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
-import { deepMergeObject } from '../../../util/objects'
 import { LogLevel } from '../../../util/log'
 import type { ControlFlowInformation} from '../../../util/cfg/cfg'
 import { cfg2quads, extractCFG } from '../../../util/cfg/cfg'
@@ -132,7 +131,7 @@ export class FlowRServerConnection {
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() })
-		const parseConfig = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap: await this.shell.tokenMap() })
+		const parseConfig = {...DEFAULT_XML_PARSER_CONFIG}
 
 		if(message.format === 'n-quads') {
 			sendMessage<FileAnalysisResponseMessageNQuads>(this.socket, {

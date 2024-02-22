@@ -63,7 +63,7 @@ export function sourceRequest<OtherInfo>(request: RParseRequest, data: DataflowP
 	let dataflow: DataflowInformation
 	try {
 		const parsed = executeSingleSubStep('parse', request, executor) as string
-		normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap(), undefined, getId) as NormalizedAst<OtherInfo & ParentInformation>
+		normalized = executeSingleSubStep('normalize', parsed, undefined, getId) as NormalizedAst<OtherInfo & ParentInformation>
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,

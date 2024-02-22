@@ -1,6 +1,5 @@
 import type { NamedXmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure, retrieveOpName } from '../meta'
-import { parseLog } from '../../parser'
 import { tryNormalizeSingleNode } from '../structure'
 import type { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
@@ -16,6 +15,7 @@ import {
 	RType
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Parses the construct as a {@link RUnaryOp} (automatically identifies the flavor).

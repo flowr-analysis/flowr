@@ -3,6 +3,9 @@ import type {
 	XmlParserConfig
 } from '../../../r-bridge'
 import {
+	parseCSV
+} from '../../../r-bridge'
+import {
 	DEFAULT_XML_PARSER_CONFIG,
 	getKeysGuarded, RawRType,
 	requestFromInput
@@ -11,13 +14,13 @@ import {
 	extractLocation,
 	getTokenType,
 	objectWithArrUnwrap,
-	xlm2jsonObject
 } from '../../../r-bridge/lang-4.x/ast/parser/xml/internal'
 import type { OutputFormatter } from '../../../statistics'
 import { FontStyles } from '../../../statistics'
 import type { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../core'
-import { deepMergeObject } from '../../../util/objects'
+import {csvToRecord} from '../../../r-bridge/lang-4.x/ast/parser/csv/format'
+import {convertToXmlBasedJson} from '../../../r-bridge/lang-4.x/ast/parser/csv/parser'
 
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 
@@ -107,7 +110,7 @@ function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig,
 			location = retrieveLocationString(locationRaw)
 		}
 
-		const type = getTokenType(config.tokenMap, node)
+		const type = getTokenType(node)
 
 		if(leaf) {
 			const suffix = `${f.format(content ? JSON.stringify(content) : '', { style: FontStyles.Bold })}${f.format(location, { style: FontStyles.Italic })}`
@@ -134,8 +137,8 @@ export const parseCommand: ReplCommand = {
 			request:        requestFromInput(remainingLine.trim())
 		}).allRemainingSteps()
 
-		const config = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap: await shell.tokenMap() })
-		const object = xlm2jsonObject(config, result.parse)
+		const config = { ...DEFAULT_XML_PARSER_CONFIG }
+		const object = convertToXmlBasedJson(csvToRecord(parseCSV(result.parse)), config)
 
 		output.stdout(depthListToTextTree(toDepthMap(object, config), config, output.formatter))
 	}

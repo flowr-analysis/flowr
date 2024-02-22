@@ -1,11 +1,12 @@
 import { type RShell } from './shell'
 import type { XmlParserHooks, NormalizedAst } from './lang-4.x'
-import { ts2r, normalize } from './lang-4.x'
+import { ts2r } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
-import type {AsyncOrSync, DeepPartial, DeepReadonly} from 'ts-essentials'
+import type {AsyncOrSync, DeepPartial} from 'ts-essentials'
 import { guard } from '../util/assert'
 import {RShellExecutor} from './shell-executor'
 import objectHash from 'object-hash'
+import {normalize} from './lang-4.x/ast/parser/csv/parser'
 
 export interface RParseRequestFromFile {
 	request: 'file';
@@ -117,7 +118,7 @@ export function retrieveCsvFromRCode(request: RParseRequest, shell: (RShell | RS
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<NormalizedAst> {
 	const csv = await retrieveCsvFromRCode(request, shell)
-	return normalize(csv, await shell.tokenMap(), hooks)
+	return normalize(csv, hooks)
 }
 
 /**
@@ -130,8 +131,6 @@ export function removeTokenMapQuotationMarks(str: string): string {
 		return str
 	}
 }
-
-export type TokenMap = DeepReadonly<Record<string, string>>
 
 /**
  * Needs to be called *after*  {@link retrieveCsvFromRCode} (or {@link retrieveNormalizedAstFromRCode})

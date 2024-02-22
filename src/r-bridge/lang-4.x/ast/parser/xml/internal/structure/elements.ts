@@ -1,6 +1,5 @@
 import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
 import { splitArrayOn } from '../../../../../../../util/arrays'
-import { parseLog } from '../../parser'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import type { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from './single-element'
@@ -17,6 +16,7 @@ import { RType, RawRType } from '../../../../model'
 import { log } from '../../../../../../../util/log'
 import { normalizeComment } from '../other'
 import type { RDelimiter } from '../../../../model/nodes/info'
+import {parseLog} from '../../../csv/parser'
 
 function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RNode | RDelimiter)[] {
 	if(mappedWithName.length === 1) {
@@ -133,10 +133,7 @@ export function normalizeBasedOnType(
 	if(obj[0].name) {
 		mappedWithName = obj as NamedXmlBasedJson[]
 	} else {
-		mappedWithName = getWithTokenType(
-			data.config.tokenMap,
-			obj as XmlBasedJson[]
-		)
+		mappedWithName = getWithTokenType(obj as XmlBasedJson[])
 	}
 
 	log.trace(`[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(', ')}]`)

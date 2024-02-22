@@ -15,7 +15,7 @@ export function parseRootObjToAst(
 ): RExpressionList {
 	const config = data.config
 	const exprContent = getKeysGuarded<XmlBasedJson>(obj, RawRType.ExpressionList)
-	assureTokenType(config.tokenMap, exprContent, RawRType.ExpressionList)
+	assureTokenType(exprContent, RawRType.ExpressionList)
 
 	let parsedChildren: (RNode | RDelimiter)[] = []
 

@@ -1,6 +1,5 @@
 import type { NamedXmlBasedJson} from '../../input-format'
 import { XmlParseError } from '../../input-format'
-import { parseLog } from '../../parser'
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../meta'
 import { identifySpecialOp } from './special'
 import type { ParserData } from '../../data'
@@ -21,6 +20,7 @@ import {
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { guard } from '../../../../../../../util/assert'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Parsing binary operations includes the pipe, even though the produced PIPE construct is not a binary operation,

@@ -1,7 +1,9 @@
 import type { QuadSerializationConfiguration} from '../../util/quads'
 import { serialize2quads } from '../../util/quads'
-import { xlm2jsonObject } from '../../r-bridge/lang-4.x/ast/parser/xml/internal'
-import type { XmlBasedJson, XmlParserConfig } from '../../r-bridge'
+import type { XmlBasedJson, XmlParserConfig} from '../../r-bridge'
+import {parseCSV} from '../../r-bridge'
+import {csvToRecord} from '../../r-bridge/lang-4.x/ast/parser/csv/format'
+import {convertToXmlBasedJson} from '../../r-bridge/lang-4.x/ast/parser/csv/parser'
 
 function filterObject(obj: XmlBasedJson, keys: Set<string>): XmlBasedJson[] | XmlBasedJson {
 	if(typeof obj !== 'object') {
@@ -25,7 +27,7 @@ function filterObject(obj: XmlBasedJson, keys: Set<string>): XmlBasedJson[] | Xm
 }
 
 export function parseToQuads(code: string, config: QuadSerializationConfiguration, parseConfig: XmlParserConfig): string{
-	const obj = xlm2jsonObject(parseConfig, code)
+	const obj = convertToXmlBasedJson(csvToRecord(parseCSV(code)), parseConfig)
 	// recursively filter so that if the object contains one of the keys 'a', 'b' or 'c', all other keys are ignored
 	return serialize2quads(
 		filterObject(obj, new Set([parseConfig.attributeName, parseConfig.childrenName, parseConfig.contentName])) as XmlBasedJson,

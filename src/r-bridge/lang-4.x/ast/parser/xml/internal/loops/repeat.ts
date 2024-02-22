@@ -1,12 +1,12 @@
 import type { NamedXmlBasedJson } from '../../input-format'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
-import { parseLog } from '../../parser'
 import type { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from '../structure'
 import type { RRepeatLoop} from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
 import { executeHook, executeUnknownHook } from '../../hooks'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Try to parse the construct as a {@link RRepeatLoop}.

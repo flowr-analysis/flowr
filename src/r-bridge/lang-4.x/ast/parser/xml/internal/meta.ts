@@ -62,13 +62,8 @@ export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson
 	}
 }
 
-export function revertTokenReplacement(tokenMap: XmlParserConfig['tokenMap'], token: string): string {
-	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- it is still necessary as we do not know if we have a replacement for the given token
-	return tokenMap[token] ?? token
-}
-
-export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson, expectedName: RawRType): void {
-	const name = getTokenType(tokenMap, obj)
+export function assureTokenType(obj: XmlBasedJson, expectedName: RawRType): void {
+	const name = getTokenType(obj)
 	if(name !== expectedName) {
 		throw new XmlParseError(`expected name to be ${expectedName}, yet received ${name} for ${JSON.stringify(obj)}`)
 	}
@@ -81,13 +76,13 @@ export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlB
  * @param tokenMap - used to revert token types (i.e., revert `xmlparsedata`)
  * @param content  - the json object to extract the token-type from
  */
-export function getTokenType(tokenMap: XmlParserConfig['tokenMap'], content: XmlBasedJson): RawRType {
-	return revertTokenReplacement(tokenMap, getKeysGuarded(content, '#name')) as RawRType
+export function getTokenType(content: XmlBasedJson): RawRType {
+	return getKeysGuarded(content, '#name') as RawRType
 }
 
-export function getWithTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson[]) {
+export function getWithTokenType(obj: XmlBasedJson[]) {
 	return obj.map((content) => ({
-		name: getTokenType(tokenMap, content),
+		name: getTokenType(content),
 		content
 	}))
 }

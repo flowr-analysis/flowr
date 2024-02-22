@@ -1,5 +1,4 @@
 import type { NamedXmlBasedJson } from '../../input-format'
-import { parseLog } from '../../parser'
 import { retrieveMetaStructure } from '../meta'
 import type { RNode, RSymbol, RArgument} from '../../../../model'
 import { RType, RawRType } from '../../../../model'
@@ -9,6 +8,7 @@ import { log } from '../../../../../../../util/log'
 import { guard } from '../../../../../../../util/assert'
 import { tryNormalizeSingleNode } from '../structure'
 import type { RDelimiter } from '../../../../model/nodes/info'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.

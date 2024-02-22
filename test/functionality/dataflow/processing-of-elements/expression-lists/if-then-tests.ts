@@ -72,8 +72,8 @@ describe('Lists with if-then constructs', withShell(shell => {
 					`if(z) { x ${assign} 7 } else { x ${assign} 5 }\nx`,
 					emptyGraph()
 						.addVertex( { tag: 'use', id: '0', name: 'z', when: 'always', scope: scope })
-						.definesVariable('1', 'x', scope, 'maybe')
-						.definesVariable('5', 'x', scope, 'maybe')
+						.definesVariable('1', 'x', scope, {when: 'maybe'})
+						.definesVariable('5', 'x', scope, {when: 'maybe'})
 						.uses('10', 'x', 'always', appendEnvironments(whenEnvironment, otherwiseEnvironment))
 						.reads('10', '1', 'maybe')
 						.reads('10', '5', 'maybe')

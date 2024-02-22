@@ -84,16 +84,12 @@ describe('source', withShell(shell => {
 			],
 			when: 'always'
 		})
-		.addVertex({
-			tag:         'variable-definition',
-			id:          'simple-3:1-3:6-0',
-			name:        'N',
-			scope:       LocalScope,
-			environment: define({nodeId: '4', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: '6' }, LocalScope, initializeCleanEnvironments())
-		})
+		.definesVariable('simple-3:1-3:6-0', 'N', LocalScope,
+			{environment: define({nodeId: '4', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: '6'}, LocalScope, initializeCleanEnvironments())}
+		)
 		.definesVariable('simple-1:1-1:6-0', 'N')
-		.definesVariable('4', 'N', LocalScope, 'always', envWithSimpleN )
-		.uses('2', `${UnnamedArgumentPrefix}2` )
+		.definesVariable('4', 'N', LocalScope, {environment: envWithSimpleN})
+		.uses('2', `${UnnamedArgumentPrefix}2`)
 		.addVertex({
 			tag:         'use',
 			id:          '9',

@@ -15,7 +15,7 @@ describe('while', withShell(shell => {
 	)
 	assertDataflow('assignment in loop body', shell,
 		'while (TRUE) { x <- 3 }',
-		emptyGraph().definesVariable('1', 'x', LocalScope, 'maybe')
+		emptyGraph().definesVariable('1', 'x', LocalScope, {when: 'maybe'})
 	)
 	assertDataflow('def compare in loop', shell, 'while ((x <- x - 1) > 0) { x }',
 		emptyGraph()

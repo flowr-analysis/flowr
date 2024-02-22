@@ -43,7 +43,7 @@ describe('Lists with variable references', withShell(shell => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
 			emptyGraph()
 				.definesVariable(id1, 'x')
-				.definesVariable(id2, 'x', LocalScope, 'always', define({ nodeId: id1, name: 'x', scope: LocalScope, kind: 'variable', definedAt, used: 'always' }, LocalScope, initializeCleanEnvironments()))
+				.definesVariable(id2, 'x', LocalScope, {environment: define({ nodeId: id1, name: 'x', scope: LocalScope, kind: 'variable', definedAt, used: 'always' }, LocalScope, initializeCleanEnvironments())})
 				.sameDef(id1, id2)
 		assertDataflow('directly together', shell,
 			'x <- 1\nx <- 2',
@@ -70,8 +70,8 @@ describe('Lists with variable references', withShell(shell => {
 			'x <- 1\nx <- 3\n3\nx <- 9',
 			emptyGraph()
 				.definesVariable('0', 'x')
-				.definesVariable('3', 'x', LocalScope, 'always', define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()))
-				.definesVariable('7', 'x', LocalScope, 'always', define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments()))
+				.definesVariable('3', 'x', LocalScope, {environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())})
+				.definesVariable('7', 'x', LocalScope, {environment: define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments())})
 				.sameDef('0', '3')
 				.sameDef('3', '7')
 		)
@@ -102,7 +102,7 @@ describe('Lists with variable references', withShell(shell => {
 			'x <- 2; x <- 3; x',
 			emptyGraph()
 				.definesVariable('0', 'x')
-				.definesVariable('3', 'x', LocalScope, 'always', define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()))
+				.definesVariable('3', 'x', LocalScope,  {environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())})
 				.uses('6', 'x', 'always', define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments()))
 				.reads('6', '3')
 				.sameDef('0', '3')
@@ -111,7 +111,7 @@ describe('Lists with variable references', withShell(shell => {
 			'x <- 2; x <- x; x',
 			emptyGraph()
 				.definesVariable('0', 'x')
-				.definesVariable('3', 'x', LocalScope, 'always', define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()))
+				.definesVariable('3', 'x', LocalScope, {environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())})
 				.uses('4', 'x' , 'always', define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()))
 				.uses('6', 'x', 'always', define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments()))
 				.reads('4', '0')
@@ -124,7 +124,7 @@ describe('Lists with variable references', withShell(shell => {
 			emptyGraph()
 				.definesVariable('0', 'x')
 				.uses('1', 'x')
-				.definesVariable('3', 'x', LocalScope, 'always', define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()))
+				.definesVariable('3', 'x', LocalScope, {environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())})
 				.uses('4', 'x', 'always', define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()))
 				.definedBy('0', '1')
 				.definedBy('3', '4')

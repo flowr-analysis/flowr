@@ -77,7 +77,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		assertDataflow('assign on access', shell,
 			'a[x] <- 5',
 			emptyGraph()
-				.definesVariable('0', 'a', LocalScope, 'maybe')
+				.definesVariable('0', 'a', LocalScope, {when: 'maybe'})
 				.uses('1', 'x')
 				.uses('2', `${UnnamedArgumentPrefix}2`)
 				.reads('0', '2')
@@ -500,7 +500,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'y <- 15; x && (y <- 13); y',
 			emptyGraph()
 				.definesVariable('0', 'y')
-				.definesVariable('4', 'y', LocalScope, 'always', environmentWithY)
+				.definesVariable('4', 'y', LocalScope, {environment: environmentWithY})
 				.addVertex({ id: '3', tag: 'use', name: 'x', scope: LocalScope, environment: environmentWithY })
 				.addVertex({ id: '8', tag: 'use', name: 'y', scope: LocalScope, environment: appendEnvironments(environmentWithY, environmentWithOtherY) })
 				.reads('8', '0')

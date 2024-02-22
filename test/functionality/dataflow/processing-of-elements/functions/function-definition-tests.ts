@@ -59,14 +59,7 @@ describe('Function Definition', withShell(shell => {
 						environments:      envWithXDefined
 					}
 				})
-				.addVertex({
-					tag:         'variable-definition',
-					id:          '0',
-					name:        'x',
-					environment: pushLocalEnvironment(initializeCleanEnvironments()),
-					scope:       LocalScope,
-					when:        'always'
-				}, false)
+				.definesVariable('0', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.addVertex({
 					tag:         'use',
 					id:          '2',
@@ -93,14 +86,8 @@ describe('Function Definition', withShell(shell => {
 						graph:             new Set(['4', '5', '3', '0']),
 						environments:      envWithXDefined
 					}
-				}).addVertex({
-					tag:         'variable-definition',
-					id:          '0',
-					name:        'x',
-					environment: pushLocalEnvironment(initializeCleanEnvironments()),
-					scope:       LocalScope,
-					when:        'always'
-				}, false)
+				})
+				.definesVariable('0', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.uses('3', 'x', 'always', envWithXDefined, false)
 				.addVertex({
 					tag:         'function-call',
@@ -143,14 +130,8 @@ describe('Function Definition', withShell(shell => {
 							graph:             new Set(['5', '6', '4', '0']),
 							environments:      envWithXDefined
 						}
-					}).addVertex({
-						tag:         'variable-definition',
-						id:          '0',
-						name:        'x',
-						environment: pushLocalEnvironment(initializeCleanEnvironments()),
-						scope:       LocalScope,
-						when:        'always'
-					}, false)
+					})
+					.definesVariable('0', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 					.addVertex({
 						tag:         'use',
 						id:          '4',
@@ -217,9 +198,9 @@ describe('Function Definition', withShell(shell => {
 						environments:      envWithXYZParam
 					}
 				})
-				.definesVariable('0', 'x', LocalScope, 'always', envWithoutParams, false)
-				.definesVariable('2', 'y', LocalScope, 'always', envWithXParam, false)
-				.definesVariable('4', 'z', LocalScope, 'always', envWithXYParam, false)
+				.definesVariable('0', 'x', LocalScope, {environment: envWithoutParams}, false)
+				.definesVariable('2', 'y', LocalScope, {environment: envWithXParam}, false)
+				.definesVariable('4', 'z', LocalScope, {environment: envWithXYParam}, false)
 				.uses('6', 'y', 'always', envWithXYZParam, false)
 				.reads('6', '2')
 		)
@@ -270,7 +251,7 @@ describe('Function Definition', withShell(shell => {
 						environments:      envWithXDefined
 					}
 				})
-				.definesVariable('0', 'x', LocalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()), false)
+				.definesVariable('0', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.exits('2', '<-', envWithXDefined, {}, false)
 				.relates('2', '0')
 		)
@@ -293,8 +274,8 @@ describe('Function Definition', withShell(shell => {
 						environments:      envWithXDefined
 					}
 				})
-				.definesVariable('0', 'x', LocalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()), false)
-				.exits('2', '=', envWithXDefined, false)
+				.definesVariable('0', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
+				.exits('2', '=', envWithXDefined, {}, false)
 				.relates('2', '0')
 		)
 
@@ -321,7 +302,7 @@ describe('Function Definition', withShell(shell => {
 						environments:      envWithXDefinedR
 					}
 				})
-				.definesVariable('1', 'x', LocalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()), false)
+				.definesVariable('1', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.exits('2', '->', envWithXDefinedR, {}, false)
 				.relates('2', '1')
 		)
@@ -349,7 +330,7 @@ describe('Function Definition', withShell(shell => {
 						environments:      envWithXDefinedGlobal
 					}
 				})
-				.definesVariable('0', 'x', GlobalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()), false)
+				.definesVariable('0', 'x', GlobalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.exits('2', '<<-', envWithXDefinedGlobal, {}, false)
 				.relates('2', '0')
 		)
@@ -377,7 +358,7 @@ describe('Function Definition', withShell(shell => {
 						environments:      envWithXDefinedGlobalR
 					}
 				})
-				.definesVariable('1', 'x', GlobalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()), false)
+				.definesVariable('1', 'x', GlobalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.exits('2', '->>', envWithXDefinedGlobalR, {}, false)
 				.relates('2', '1')
 		)
@@ -424,14 +405,7 @@ describe('Function Definition', withShell(shell => {
 					environment: define({ nodeId: '3', definedAt: '5', used: 'always', name: 'x', scope: LocalScope, kind: 'variable'}, LocalScope, pushLocalEnvironment(initializeCleanEnvironments())),
 					when:        'always'
 				}, false)
-				.addVertex({
-					tag:         'variable-definition',
-					id:          '3',
-					name:        'x',
-					environment: pushLocalEnvironment(initializeCleanEnvironments()),
-					scope:       LocalScope,
-					when:        'always'
-				}, false)
+				.definesVariable('3', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.reads('6', '3')
 		)
 		assertDataflow('shadow in body with closure', shell, 'x <- 2; function() { x <- x; x }; x',
@@ -462,14 +436,8 @@ describe('Function Definition', withShell(shell => {
 						graph:             new Set(['3', '4', '6']),
 						environments:      envDefXSingle
 					}
-				}).addVertex({
-					tag:         'variable-definition',
-					id:          '3',
-					name:        'x',
-					environment: pushLocalEnvironment(initializeCleanEnvironments()),
-					scope:       LocalScope,
-					when:        'always'
-				}, false)
+				})
+				.definesVariable('3', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.addVertex({
 					tag:         'use',
 					id:          '4',
@@ -519,7 +487,7 @@ describe('Function Definition', withShell(shell => {
 						environments:      envWithXDefined
 					}
 				})
-				.definesVariable('3', 'x', LocalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()), false)
+				.definesVariable('3', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.addVertex({
 					tag:         'use',
 					id:          '5',
@@ -553,7 +521,7 @@ describe('Function Definition', withShell(shell => {
 						environments:      envWithParam
 					}
 				})
-				.definesVariable('0', '...', LocalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()), false)
+				.definesVariable('0', '...', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.addVertex({
 					tag:         'use',
 					id:          '2',
@@ -592,22 +560,9 @@ describe('Function Definition', withShell(shell => {
 						environments:      envWithAB,
 						graph:             new Set(['0', '3', '4', '6'])
 					}
-				}).addVertex({
-					tag:         'variable-definition',
-					id:          '0',
-					name:        'a',
-					environment: pushLocalEnvironment(initializeCleanEnvironments()),
-					scope:       LocalScope,
-					when:        'always'
-				}, false)
-				.addVertex({
-					tag:         'variable-definition',
-					id:          '3',
-					name:        'b',
-					environment: envWithA,
-					scope:       LocalScope,
-					when:        'always'
-				}, false)
+				})
+				.definesVariable('0', 'a', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
+				.definesVariable('3', 'b', LocalScope, {environment: envWithA}, false)
 				.addVertex({ tag: 'use', id: '4', name: 'a', environment: envWithA, when: 'always' }, false)
 				.addVertex({ tag: 'use', id: '6', name: 'b', environment: envWithAB, when: 'always' }, false)
 				.reads('4', '0')
@@ -653,10 +608,10 @@ describe('Function Definition', withShell(shell => {
 						graph:             new Set(['0', '3', '10', '6', '1', '9', '13'])
 					}
 				})
-				.definesVariable('0', 'a', LocalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()) , false)
-				.definesVariable('3', 'm', LocalScope, 'always', envWithFirstParam , false)
-				.definesVariable('10', 'b', LocalScope, 'always', envWithBothParamFirstB , false)
-				.definesVariable('6', 'b', LocalScope, 'always', envWithBothParam , false)
+				.definesVariable('0', 'a', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+				.definesVariable('3', 'm', LocalScope, {environment: envWithFirstParam }, false)
+				.definesVariable('10', 'b', LocalScope, {environment: envWithBothParamFirstB }, false)
+				.definesVariable('6', 'b', LocalScope, {environment: envWithBothParam }, false)
 				.addVertex({ tag: 'use', id: '1', name: 'b', scope: LocalScope, when: 'always', environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.addVertex({ tag: 'use', id: '9', name: 'a', scope: LocalScope, when: 'always', environment: envWithBothParamFirstB }, false)
 				.addVertex({ tag: 'use', id: '13', name: 'a', scope: LocalScope, when: 'always', environment: envWithBothParamSecondB }, false)
@@ -699,8 +654,8 @@ describe('Function Definition', withShell(shell => {
 						graph:             new Set(['0', '2', '5', '7', '6'])
 					}
 				})
-				.definesVariable('0', 'a', LocalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()) , false)
-				.definesVariable('2', '...', LocalScope, 'always', envWithA , false)
+				.definesVariable('0', 'a', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+				.definesVariable('2', '...', LocalScope, {environment: envWithA }, false)
 				.addVertex({ tag: 'use', id: '5', name: '...', scope: LocalScope, when: 'always', environment: envWithASpecial }, false)
 				.addVertex({
 					tag:         'function-call',
@@ -757,9 +712,9 @@ describe('Function Definition', withShell(shell => {
 					graph:             new Set(['0', '5', '15', '8', '10', '18', '11', '12', '3'])
 				}
 			})
-			.definesVariable('0', 'g', LocalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()) , false)
-			.definesVariable('5', 'y', LocalScope, 'always', envWithG , false)
-			.definesVariable('15', 'y', LocalScope, 'always', envWithFirstY , false)
+			.definesVariable('0', 'g', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+			.definesVariable('5', 'y', LocalScope, {environment: envWithG }, false)
+			.definesVariable('15', 'y', LocalScope, {environment: envWithFirstY }, false)
 			.addVertex({ tag: 'use', id: '8', name: 'z', scope: LocalScope, when: 'always', environment: envWithFirstY }, false)
 			.addVertex({ tag: 'use', id: '10', name: 'g', scope: LocalScope, when: 'always', environment: envWithFirstY }, false)
 			.addVertex({ tag: 'use', id: '18', name: 'g', scope: LocalScope, when: 'always', environment: finalEnv }, false)
@@ -869,13 +824,7 @@ describe('Function Definition', withShell(shell => {
 		assertDataflow('double nested functions', shell, 'a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a',
 			emptyGraph()
 				.definesVariable('0', 'a')
-				.addVertex( {
-					tag:         'variable-definition',
-					id:          '14',
-					name:        'b',
-					scope:       LocalScope,
-					environment: envWithA
-				})
+				.definesVariable('14', 'b', LocalScope, {environment: envWithA})
 				.uses('17', 'a', 'always', envWithAB)
 				.reads('17', '0', 'always')
 				.addVertex({
@@ -897,7 +846,7 @@ describe('Function Definition', withShell(shell => {
 				.definedBy('0', '12')
 
 				.addVertex({ tag: 'use', id: '10', name: 'x', environment: withXParameterInOuter }, false)
-				.definesVariable('1', 'x', LocalScope, 'always', pushLocalEnvironment(initializeCleanEnvironments()), false)
+				.definesVariable('1', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.addVertex({
 					tag:         'function-definition',
 					id:          '8',
@@ -927,8 +876,8 @@ describe('Function Definition', withShell(shell => {
 				.exits('6', '<-', withinNestedFunctionWithDef, {}, false)
 				.relates('6', '4')
 				.relates('6', '5')
-				.definesVariable('4', 'x', LocalScope, 'always', withinNestedFunctionWithParam, false)
-				.definesVariable('2', 'x', LocalScope, 'always', withinNestedFunctionWithoutParam, false)
+				.definesVariable('4', 'x', LocalScope, {environment: withinNestedFunctionWithParam}, false)
+				.definesVariable('2', 'x', LocalScope, {environment: withinNestedFunctionWithoutParam}, false)
 				.definedBy('4', '5')
 				.sameDef('2', '4')
 		)

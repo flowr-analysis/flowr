@@ -1,4 +1,4 @@
-import type { DataflowGraphEdgeAttribute, DataflowGraphExitPoint, NodeId, REnvironmentInformation } from '../../../src'
+import type { DataflowGraphEdgeAttribute, DataflowGraphExitPoint, DataflowGraphVertexVariableDefinition, NodeId, REnvironmentInformation } from '../../../src'
 import { DataflowGraph, EdgeType } from '../../../src'
 import { LocalScope } from '../../../src/dataflow/environments/scopes'
 import { deepMergeObject } from '../../../src/util/objects'
@@ -26,12 +26,12 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @param id - AST node ID
 	 * @param name - Variable name
 	 * @param scope - Scope (global/local/custom), defaults to local.
-	 * @param when - always or maybe; defaults to maybe.
 	 * @param environment - Environment the variable is defined in.
 	 * @param asRoot - boolean; defaults to true.
 	 */
-	public definesVariable(id: NodeId, name: string, scope: string = LocalScope, when: DataflowGraphEdgeAttribute = 'always', environment?: REnvironmentInformation, asRoot: boolean = true) {
-		return this.addVertex({tag: 'variable-definition', id, name, scope, when, environment}, asRoot)
+	public definesVariable(id: NodeId, name: string, scope: string = LocalScope,
+		info?: Partial<DataflowGraphVertexVariableDefinition>, asRoot: boolean = true) {
+		return this.addVertex(deepMergeObject({tag: 'variable-definition', id, name, scope}, info), asRoot)
 	}    
 
 	/**

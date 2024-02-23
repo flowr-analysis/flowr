@@ -10,7 +10,7 @@ import { RawRType, RType } from '../../../../model'
 import { normalizeComment } from '../other'
 import { normalizeBreak, normalizeNext } from '../loops'
 import { normalizeLineDirective } from '../other/line-directive'
-import type { RDelimiter } from '../../../../model/nodes/info'
+import type {RDelimiter, RDelimiterNode} from '../../../../model/nodes/info'
 
 function normalizeDelimiter(data: ParserData, elem: NamedXmlBasedJson): RDelimiter {
 	const {

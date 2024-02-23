@@ -16,7 +16,6 @@
 import type { MergeableRecord } from '../util/objects'
 import { retrieveCsvFromRCode } from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
-import { reconstructToCode, staticSlicing } from '../slicing'
 import type { IStepPrinter} from './print/print'
 import { internalPrinter, StepOutputFormat } from './print/print'
 import {
@@ -36,6 +35,8 @@ import {
 import type {DataflowInformation} from '../dataflow/internal/info'
 import type {runAbstractInterpretation} from '../abstract-interpretation/processor'
 import {normalize} from '../r-bridge/lang-4.x/ast/parser/csv/parser'
+import {staticSlicing} from '../slicing'
+import {reconstructToCode} from '../reconstruct/main'
 
 /**
  * This represents close a function that we know completely nothing about.

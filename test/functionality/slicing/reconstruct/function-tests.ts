@@ -1,5 +1,6 @@
 import { assert } from 'chai'
-import { plain, Code, merge, prettyPrintCodeToString, PrettyPrintLinePart, prettyPrintPartToString } from '../../../../src/reconstruct/helper'
+import type { Code, PrettyPrintLinePart} from '../../../../src/reconstruct/helper'
+import { plain, merge, prettyPrintCodeToString, prettyPrintPartToString } from '../../../../src/reconstruct/helper'
 
 describe('Functions Reconstruct', () => {
 	describe('plain', () => {
@@ -123,8 +124,7 @@ describe('Functions Reconstruct', () => {
 						const nextLoc = part.loc
 						if(currentLoc.line <= nextLoc.line && currentLoc.column <= nextLoc.column) {
 							currentLoc = nextLoc
-						}
-						else {
+						} else {
 							return false
 						}
 					}

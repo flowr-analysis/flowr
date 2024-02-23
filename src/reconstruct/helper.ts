@@ -1,6 +1,7 @@
-import { NodeId, ParentInformation, RNode, RType } from '../r-bridge'
-import { SourcePosition } from '../util/range'
-import { ReconstructionConfiguration } from './reconstruct'
+import type { NodeId, ParentInformation, RNode} from '../r-bridge'
+import { RType } from '../r-bridge'
+import type { SourcePosition } from '../util/range'
+import type { ReconstructionConfiguration } from './reconstruct'
 
 export type Code = PrettyPrintLine[]
 export type Selection = Set<NodeId>

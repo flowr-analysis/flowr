@@ -5,8 +5,6 @@
  */
 
 import type {
-	NormalizedAst,
-	NodeId,
 	ParentInformation,
 	RAccess,
 	RArgument,
@@ -21,23 +19,26 @@ import type {
 	RRepeatLoop,
 	RWhileLoop,
 	RPipe,
-	StatefulFoldFunctions,
-} from '../r-bridge'
+	StatefulFoldFunctions} from '../r-bridge'
+import { RType } from '../r-bridge'
 import { log } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
-import { MergeableRecord } from '../util/objects'
-import {
+import type { MergeableRecord } from '../util/objects'
+import type {
 	Selection,
-	prettyPrintPartToString,
 	PrettyPrintLine,
-	plain,
 	Code,
+	AutoSelectPredicate} from './helper'
+import {
+	prettyPrintPartToString,
+	plain,
 	indentBy,
 	isSelected,
 	removeExpressionListWrap,
-	AutoSelectPredicate,
-	getIndentString, merge } from './helper'
-import { SourcePosition, SourceRange} from '../util/range'
+	getIndentString,
+	merge
+} from './helper'
+import type { SourcePosition, SourceRange} from '../util/range'
 
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
@@ -97,7 +98,7 @@ function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration:
 
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, n)) {
-		return plain(getLexeme(n), n.lhs.location? n.lhs.location.start : n.location.start)
+		return plain(getLexeme(n), n.lhs.location?.start ?? n.location.start)
 	}
 
 	if(lhs.length === 0 && rhs.length === 0) {
@@ -108,7 +109,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 	}
 	if(rhs.length === 0) {
 		// if we have no rhs we have to keep everything to get the rhs
-		return plain(getLexeme(n), n.lhs.location? n.lhs.location.start : n.location.start)
+		return plain(getLexeme(n), n.lhs.location?.start ?? n.location.start)
 	}
 
 	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs)
@@ -117,17 +118,17 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, configuration: ReconstructionConfiguration): Code {
 	const start = loop.info.fullRange?.start //may be unnesseccary
 	if(isSelected(configuration, loop)) {
-		return plain(getLexeme(loop), start ? start :loop.location.start)
+		return plain(getLexeme(loop), start ?? loop.location.start)
 	}
 	if(isSelected(configuration, loop.body)) {
 		return merge([body])
 	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
 	const vectorLocation: SourcePosition = loop.vector.location? loop.vector.location.start : vector[0].linePart[0].loc
-	vectorLocation.column -= 1 //somehow the vector is consitently one space to late
+	vectorLocation.column -= 1 //somehow the vector is consistently one space to late
 	const reconstructedVector = plain(getLexeme(loop.vector), vectorLocation)
 	const out = merge([
-		[{ linePart: [{part: 'for', loc: start ? start :loop.location.start}], indent: 0 }],
+		[{ linePart: [{part: 'for', loc: start ?? loop.location.start}], indent: 0 }],
 		[{ linePart: [{part: getLexeme(loop.variable), loc: loop.variable.location.start}], indent: 0}],
 		reconstructedVector,
 		...additionalTokens
@@ -210,7 +211,7 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
 	const out = merge([
-		[{ linePart: [{part: `while(${getLexeme(loop.condition)})`, loc: start ? start :loop.location.start}], indent: 0 }],
+		[{ linePart: [{part: `while(${getLexeme(loop.condition)})`, loc: start ?? loop.location.start}], indent: 0 }],
 		...additionalTokens
 	])
 	if(body.length < 1) {
@@ -218,8 +219,7 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 		const hBody = out[out.length - 1].linePart
 		const bodyLoc = {line: hBody[hBody.length - 1].loc.line, column: hBody[hBody.length - 1].loc.column + hBody[hBody.length - 1].part.length}
 		out.push({linePart: [{part: '{}', loc: {line: bodyLoc.line, column: bodyLoc.column + 1}}], indent: 0})
-	}
-	else {
+	} else {
 		out.push(...body)
 	}
 	return merge([out])
@@ -299,7 +299,6 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 	}
 
 	const startPos = definition.location.start
-	const endPos = definition.location.end
 
 	if(isSelected(configuration, definition)) {
 		console.log('definition selected')
@@ -313,34 +312,10 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 	//body.length === 0 ? [{linePart: [{part: '', loc: startPos}], indent: 0}] : body.slice(1, body.length - 1)
 	const parameterLoc = definition.parameters.length === 0 ? startPos : definition.parameters[definition.parameters.length - 1].location.start
 
-	const out = merge([[{ linePart: [{part: `function(${parameters})`, loc: startPos}], indent: 0 }],
+	return merge([[{ linePart: [{part: `function(${parameters})`, loc: startPos}], indent: 0 }],
 					   reconstructedBody,
 					   plain(parameters, parameterLoc),
 					   ...additionalTokens])
-
-	return out
-
-	if(body.length <= 1) {
-		// 'inline'
-		const bodyStr = body.length === 0 ? '' : `${body[0].linePart[0].part} ` /* add suffix space */
-		// we keep the braces in every case because I do not like no-brace functions
-		return [{ linePart: [{part: `function(${parameters}) { ${bodyStr}}`, loc: startPos}], indent: 0 }]
-	} else if(body[0].linePart[0].part === '{' && body[body.length - 1].linePart[body[body.length - 1].linePart.length - 1].part === '}') {
-		// 'block'
-		return [
-			{ linePart: [{part: `function(${parameters}) {`, loc: startPos}], indent: 0 },
-			...body.slice(1, body.length - 1),
-			{ linePart: [{part: '}', loc: endPos}], indent: 0 }
-		]
-	} else {
-		// unknown -> we add the braces just to be sure
-		return [
-			{ linePart: [{part: `function(${parameters}) {`, loc: startPos}], indent: 0 },
-			...indentBy(body, 1),
-			{ linePart: [{part: '}', loc: endPos}], indent: 0 }
-		]
-	}
-
 }
 
 function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: RFunctionCall<ParentInformation>): Code {

@@ -22,9 +22,15 @@ export interface AINode {
 class Stack<ElementType> {
 	private backingStore: ElementType[] = []
 
-	size(): number { return this.backingStore.length }
-	peek(): ElementType | undefined { return this.backingStore[this.size() - 1] }
-	pop(): ElementType | undefined { return this.backingStore.pop() }
+	size(): number {
+		return this.backingStore.length 
+	}
+	peek(): ElementType | undefined {
+		return this.backingStore[this.size() - 1] 
+	}
+	pop(): ElementType | undefined {
+		return this.backingStore.pop() 
+	}
 	push(item: ElementType): ElementType {
 		this.backingStore.push(item)
 		return item

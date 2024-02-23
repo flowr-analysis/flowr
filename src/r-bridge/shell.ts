@@ -389,7 +389,9 @@ class RShellSession {
 			input:    this.bareSession.stderr,
 			terminal: false
 		})
-		this.onExit(() => { this.end() })
+		this.onExit(() => {
+			this.end() 
+		})
 		this.options = options
 		this.log = log
 		this.setupRSessionLoggers()
@@ -438,7 +440,9 @@ class RShellSession {
 				}
 			}
 
-			error = () => { resolve(result) }
+			error = () => {
+				resolve(result) 
+			}
 			this.onExit(error)
 			this.on(from, 'line', handler)
 			action?.()

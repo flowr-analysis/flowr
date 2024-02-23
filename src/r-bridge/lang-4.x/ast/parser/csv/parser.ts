@@ -44,8 +44,9 @@ function convertEntry(csvEntry: CsvEntry, csv: ParsedCsv): XmlBasedJson {
 		'col2':  csvEntry.col2
 	}
 	xmlEntry[nameKey] = csvEntry.token
-	if(csvEntry.text)
+	if(csvEntry.text) {
 		xmlEntry[contentKey] = csvEntry.text
+	}
 
 	// check and recursively iterate children
 	const children = getChildren(csv, csvEntry)

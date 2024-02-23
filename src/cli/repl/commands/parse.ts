@@ -1,15 +1,10 @@
-import type {
-	XmlBasedJson,
-	XmlParserConfig
-} from '../../../r-bridge'
+import type { XmlBasedJson} from '../../../r-bridge'
+import {childrenKey} from '../../../r-bridge'
+import {attributesKey, contentKey} from '../../../r-bridge'
 import {
 	parseCSV
 } from '../../../r-bridge'
-import {
-	DEFAULT_XML_PARSER_CONFIG,
-	getKeysGuarded, RawRType,
-	requestFromInput
-} from '../../../r-bridge'
+import {getKeysGuarded, RawRType, requestFromInput} from '../../../r-bridge'
 import {
 	extractLocation,
 	getTokenType,
@@ -24,7 +19,7 @@ import {convertToXmlBasedJson} from '../../../r-bridge/lang-4.x/ast/parser/csv/p
 
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 
-function toDepthMap(xml: XmlBasedJson, config: XmlParserConfig): DepthList {
+function toDepthMap(xml: XmlBasedJson): DepthList {
 	const root = getKeysGuarded<XmlBasedJson>(xml, RawRType.ExpressionList)
 	const visit = [ { depth: 0, node: root } ]
 	const result: DepthList = []
@@ -35,7 +30,7 @@ function toDepthMap(xml: XmlBasedJson, config: XmlParserConfig): DepthList {
 			continue
 		}
 
-		const children = current.node[config.childrenName] as XmlBasedJson[] | undefined ?? []
+		const children = current.node[childrenKey] as XmlBasedJson[] | undefined ?? []
 		result.push({ ...current, leaf: children.length === 0 })
 		children.reverse()
 
@@ -89,7 +84,7 @@ function retrieveLocationString(locationRaw: XmlBasedJson) {
 	}
 }
 
-function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig, f: OutputFormatter): string {
+function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): string {
 	let result = ''
 
 	const deadDepths = new Set<number>()
@@ -103,8 +98,8 @@ function depthListToTextTree(list: Readonly<DepthList>, config: XmlParserConfig,
 		result += f.reset()
 
 		const raw = objectWithArrUnwrap(node)
-		const content = raw[config.contentName] as string | undefined
-		const locationRaw = raw[config.attributeName] as XmlBasedJson | undefined
+		const content = raw[contentKey] as string | undefined
+		const locationRaw = raw[attributesKey] as XmlBasedJson | undefined
 		let location = ''
 		if(locationRaw !== undefined) {
 			location = retrieveLocationString(locationRaw)
@@ -137,9 +132,8 @@ export const parseCommand: ReplCommand = {
 			request:        requestFromInput(remainingLine.trim())
 		}).allRemainingSteps()
 
-		const config = { ...DEFAULT_XML_PARSER_CONFIG }
-		const object = convertToXmlBasedJson(csvToRecord(parseCSV(result.parse)), config)
+		const object = convertToXmlBasedJson(csvToRecord(parseCSV(result.parse)))
 
-		output.stdout(depthListToTextTree(toDepthMap(object, config), config, output.formatter))
+		output.stdout(depthListToTextTree(toDepthMap(object), output.formatter))
 	}
 }

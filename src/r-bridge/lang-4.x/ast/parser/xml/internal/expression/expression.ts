@@ -1,4 +1,5 @@
-import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
+import type { NamedXmlBasedJson, XmlBasedJson} from '../../input-format'
+import {childrenKey} from '../../input-format'
 import { getKeysGuarded } from '../../input-format'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import type { ParserData } from '../../data'
@@ -26,9 +27,9 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 		unwrappedObj,
 		content,
 		location
-	} = retrieveMetaStructure(data.config, obj)
+	} = retrieveMetaStructure(obj)
 
-	const childrenSource = getKeysGuarded<XmlBasedJson[]>(unwrappedObj, data.config.childrenName)
+	const childrenSource = getKeysGuarded<XmlBasedJson[]>(unwrappedObj, childrenKey)
 	const typed: NamedXmlBasedJson[] = getWithTokenType(childrenSource)
 
 	const { others, comments } = splitComments(typed)

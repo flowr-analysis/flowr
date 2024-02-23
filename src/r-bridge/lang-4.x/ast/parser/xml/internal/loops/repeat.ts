@@ -32,7 +32,7 @@ export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJ
 	const {
 		location,
 		content
-	} = retrieveMetaStructure(data.config, repeatToken.content)
+	} = retrieveMetaStructure(repeatToken.content)
 	const result: RRepeatLoop = {
 		type:   RType.RepeatLoop,
 		location,

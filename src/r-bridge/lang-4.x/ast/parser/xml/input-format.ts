@@ -1,5 +1,10 @@
 import type { RawRType } from '../../model'
 
+export const attributesKey = '@a'
+export const childrenKey = '@c'
+export const contentKey = '@v'
+export const nameKey = '#name'
+
 /**
  * Thrown if the given input xml is not valid/contains unexpected elements.
  */

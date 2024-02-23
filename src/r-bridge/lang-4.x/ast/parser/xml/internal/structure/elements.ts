@@ -144,7 +144,7 @@ export function normalizeBasedOnType(
 		node => {
 			const res = node.name === RawRType.Semicolon
 			if(res) {
-				const { location, content } = retrieveMetaStructure(data.config, node.content)
+				const { location, content } = retrieveMetaStructure(node.content)
 				semiColons.push({
 					type:     RType.Delimiter,
 					subtype:  RawRType.Semicolon,

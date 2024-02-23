@@ -99,6 +99,7 @@ async function extractSingle(result: FeatureStatistics, shell: RShell, request: 
 		request, shell
 	}).allRemainingSteps()
 	// await retrieveXmlFromRCode(from, shell)
+	// TODO it seems this still wants xml :(
 	const doc = parser.parseFromString(slicerOutput.parse, 'text/xml')
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any

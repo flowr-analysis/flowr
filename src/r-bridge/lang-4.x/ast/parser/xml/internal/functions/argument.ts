@@ -30,7 +30,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 
 
 	const symbolOrExpr = objs[0]
-	const { location, content } = retrieveMetaStructure(data.config, symbolOrExpr.content)
+	const { location, content } = retrieveMetaStructure(symbolOrExpr.content)
 
 	let parsedValue: RNode | RDelimiter | undefined |  null
 	let name: RSymbol | undefined

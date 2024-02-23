@@ -1,7 +1,6 @@
 import type { StepResults} from '../../../core'
 import { LAST_STEP, printStepResult, SteppingSlicer, STEPS_PER_SLICE } from '../../../core'
 import type { NormalizedAst, RShell } from '../../../r-bridge'
-import { DEFAULT_XML_PARSER_CONFIG } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
 import type {
@@ -131,7 +130,6 @@ export class FlowRServerConnection {
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() })
-		const parseConfig = {...DEFAULT_XML_PARSER_CONFIG}
 
 		if(message.format === 'n-quads') {
 			sendMessage<FileAnalysisResponseMessageNQuads>(this.socket, {
@@ -140,7 +138,7 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult('parse', results.parse as string, StepOutputFormat.RdfQuads, config(), parseConfig),
+					parse:     await printStepResult('parse', results.parse as string, StepOutputFormat.RdfQuads, config()),
 					normalize: await printStepResult('normalize', results.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
 					dataflow:  await printStepResult('dataflow', results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config()),
 					ai:        ''

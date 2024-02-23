@@ -21,7 +21,7 @@ export function normalizeLineDirective(data: ParserData, obj: XmlBasedJson): RLi
 	parseLog.debug('[line-directive]')
 	obj = executeHook(data.hooks.other.onLineDirective.before, data, obj)
 
-	const { location, content } = retrieveMetaStructure(data.config, obj)
+	const { location, content } = retrieveMetaStructure(obj)
 	guard(content.startsWith('#line'), 'line directive must start with #line')
 	const match = LineDirectiveRegex.exec(content)
 	let result: RLineDirective | RComment

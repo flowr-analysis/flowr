@@ -40,7 +40,7 @@ export function tryNormalizeIfThen(
 		throw new XmlParseError(`unexpected missing parts of if, received ${JSON.stringify([parsedCondition, parsedThen])} for ${JSON.stringify(tokens)}`)
 	}
 
-	const { location, content} = retrieveMetaStructure(data.config, tokens[0].content)
+	const { location, content} = retrieveMetaStructure(tokens[0].content)
 
 	const result: RIfThenElse = {
 		type:      RType.IfThenElse,

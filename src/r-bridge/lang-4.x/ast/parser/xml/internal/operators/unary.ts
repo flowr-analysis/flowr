@@ -49,8 +49,8 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: N
 
 	guard(parsedOperand.type !== RType.Delimiter, () => 'unexpected under-sided unary op')
 
-	const operationName = retrieveOpName(data.config, operator)
-	const { location, content } = retrieveMetaStructure(data.config, operator.content)
+	const operationName = retrieveOpName(operator)
+	const { location, content } = retrieveMetaStructure(operator.content)
 
 	const result: RUnaryOp = {
 		type:     RType.UnaryOp,

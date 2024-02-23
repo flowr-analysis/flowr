@@ -16,7 +16,7 @@ function normalizeDelimiter(data: ParserData, elem: NamedXmlBasedJson): RDelimit
 	const {
 		location,
 		content
-	} = retrieveMetaStructure(data.config, elem.content)
+	} = retrieveMetaStructure(elem.content)
 	return {
 		type:    RType.Delimiter,
 		location,

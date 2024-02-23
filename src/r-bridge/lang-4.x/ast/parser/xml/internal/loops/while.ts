@@ -52,10 +52,7 @@ export function tryNormalizeWhile(
 		)
 	}
 
-	const { location, content } = retrieveMetaStructure(
-		data.config,
-		whileToken.content
-	)
+	const { location, content } = retrieveMetaStructure(whileToken.content)
 
 	const result: RWhileLoop = {
 		type:      RType.WhileLoop,

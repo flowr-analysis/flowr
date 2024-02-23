@@ -92,7 +92,7 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 
 	const {
 		content, location
-	} = retrieveMetaStructure(data.config, accessOp.content)
+	} = retrieveMetaStructure(accessOp.content)
 
 	const result = {
 		type:     RType.Access,

@@ -20,7 +20,7 @@ export function normalizeNumber(data: ParserData, obj: XmlBasedJson): RNumber | 
 	parseLog.debug('[number]')
 	obj = executeHook(data.hooks.values.onNumber.before, data, obj)
 
-	const { location, content } = retrieveMetaStructure(data.config, obj)
+	const { location, content } = retrieveMetaStructure(obj)
 	const common = {
 		location,
 		lexeme: content,

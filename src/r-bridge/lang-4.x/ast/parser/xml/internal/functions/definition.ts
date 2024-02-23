@@ -29,7 +29,7 @@ export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName:
 	parseLog.trace('trying to parse function definition')
 	mappedWithName = executeHook(data.hooks.functions.onFunctionDefinition.before, data, mappedWithName)
 
-	const { content, location } = retrieveMetaStructure(data.config, fnBase.content)
+	const { content, location } = retrieveMetaStructure(fnBase.content)
 
 	const openParen = mappedWithName[1]
 	guard(openParen.name === RawRType.ParenLeft, () => `expected opening parenthesis, yet received ${openParen.name}`)

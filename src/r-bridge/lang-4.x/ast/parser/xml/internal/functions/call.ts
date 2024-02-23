@@ -1,4 +1,5 @@
-import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
+import type { NamedXmlBasedJson, XmlBasedJson} from '../../input-format'
+import {childrenKey} from '../../input-format'
 import { getKeysGuarded } from '../../input-format'
 import { guard } from '../../../../../../../util/assert'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
@@ -46,10 +47,8 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 	parseLog.trace('trying to parse function call')
 	mappedWithName = executeHook(data.hooks.functions.onFunctionCall.before, data, mappedWithName)
 
-	const {
-		unwrappedObj, content, location
-	} = retrieveMetaStructure(data.config, fnBase.content)
-	const symbolContent: XmlBasedJson[] = getKeysGuarded(unwrappedObj, data.config.childrenName)
+	const {unwrappedObj, content, location} = retrieveMetaStructure(fnBase.content)
+	const symbolContent: XmlBasedJson[] = getKeysGuarded(unwrappedObj, childrenKey)
 
 	let result: RFunctionCall | RNext | RBreak
 

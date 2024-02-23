@@ -37,7 +37,7 @@ export function tryNormalizeParameter(data: ParserData, objs: NamedXmlBasedJson[
 
 	const defaultValue: RNode | RDelimiter | undefined = objs.length === 3 ? parseWithDefaultValue(data, objs) : undefined
 
-	const { location, content } = retrieveMetaStructure(data.config, symbol.content)
+	const { location, content } = retrieveMetaStructure(symbol.content)
 
 	const result: RParameter = {
 		type:    RType.Parameter,

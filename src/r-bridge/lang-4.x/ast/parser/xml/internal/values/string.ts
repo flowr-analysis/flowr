@@ -19,7 +19,7 @@ export function normalizeString(data: ParserData, obj: XmlBasedJson): RString {
 	parseLog.debug('[string]')
 	obj = executeHook(data.hooks.values.onString.before, data, obj)
 
-	const { location, content } = retrieveMetaStructure(data.config, obj)
+	const { location, content } = retrieveMetaStructure(obj)
 
 	// based on https://www.rdocumentation.org/packages/utils/versions/3.6.2/topics/getParseData we do not get strings with 1000 characters or more within the text field.
 	// therefore, we recover the full string from the surrounding expr lexeme field

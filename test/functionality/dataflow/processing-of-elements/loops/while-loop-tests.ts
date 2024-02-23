@@ -11,17 +11,17 @@ describe('while', withShell(shell => {
 	)
 	assertDataflow('using variable in body', shell,
 		'while (TRUE) x',
-		emptyGraph().uses('1', 'x', {when: 'maybe'})
+		emptyGraph().use('1', 'x', {when: 'maybe'})
 	)
 	assertDataflow('assignment in loop body', shell,
 		'while (TRUE) { x <- 3 }',
-		emptyGraph().definesVariable('1', 'x', LocalScope, {when: 'maybe'})
+		emptyGraph().defineVariable('1', 'x', LocalScope, {when: 'maybe'})
 	)
 	assertDataflow('def compare in loop', shell, 'while ((x <- x - 1) > 0) { x }',
 		emptyGraph()
-			.definesVariable('0', 'x')
-			.uses('1', 'x')
-			.uses('7', 'x', {when: 'maybe', environment: define({ name: 'x', nodeId: '0', definedAt: '4', used: 'always', kind: 'variable', scope: LocalScope }, LocalScope, initializeCleanEnvironments())})
+			.defineVariable('0', 'x')
+			.use('1', 'x')
+			.use('7', 'x', {when: 'maybe', environment: define({ name: 'x', nodeId: '0', definedAt: '4', used: 'always', kind: 'variable', scope: LocalScope }, LocalScope, initializeCleanEnvironments())})
 			.reads('7', '0', 'maybe')
 			.definedBy('0', '1')
 	)
@@ -34,7 +34,7 @@ describe('while', withShell(shell => {
 		shell,
 		'while(x) y',
 		emptyGraph()
-			.uses('0', 'x')
-			.uses('1', 'y', {when: 'maybe'})
+			.use('0', 'x')
+			.use('1', 'y', {when: 'maybe'})
 	)
 }))

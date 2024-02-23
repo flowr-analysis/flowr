@@ -1,4 +1,4 @@
-import type { DataflowFunctionFlowInformation, DataflowGraphEdgeAttribute, DataflowGraphExitPoint, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse, DataflowGraphVertexVariableDefinition, NodeId, REnvironmentInformation } from '../../../src'
+import type { DataflowFunctionFlowInformation, DataflowGraphEdgeAttribute, DataflowGraphExitPoint, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse, DataflowGraphVertexVariableDefinition, FunctionArgument, NodeId, REnvironmentInformation } from '../../../src'
 import { DataflowGraph, EdgeType } from '../../../src'
 import { LocalScope } from '../../../src/dataflow/environments/scopes'
 import { deepMergeObject } from '../../../src/util/objects'
@@ -7,6 +7,11 @@ export function emptyGraph() {
 	return new DataflowGraphBuilder()
 }
 
+/**
+ * This DataflowGraphBuilder extends {@link DataflowGraph} with builder methods to
+ * easily and compactly add vertices and edges to a dataflow graph. Its usage thus
+ * simplifies writing tests for dataflows.
+ */
 export class DataflowGraphBuilder extends DataflowGraph {
 	/**
 	 * Adds a vertex for variable use (V5). Intended for creating dataflow graphs as part of function tests.
@@ -17,7 +22,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * i.e. scope, when, or environment.
 	 * @param asRoot - boolean; defaults to true.
 	 */
-	public uses(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
+	public use(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
 		return this.addVertex(deepMergeObject({ tag: 'use', id, name}, info), asRoot)
 	}
 
@@ -30,7 +35,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @param environment - Environment the variable is defined in.
 	 * @param asRoot - boolean; defaults to true.
 	 */
-	public definesVariable(id: NodeId, name: string, scope: string = LocalScope,
+	public defineVariable(id: NodeId, name: string, scope: string = LocalScope,
 		info?: Partial<DataflowGraphVertexVariableDefinition>, asRoot: boolean = true) {
 		return this.addVertex(deepMergeObject({tag: 'variable-definition', id, name, scope}, info), asRoot)
 	}    
@@ -44,10 +49,25 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @param info - Partial<DataflowGraphExitPoint>
 	 * @param asRoot - boolean; defaults to true.
 	 */
-	public exits(id: NodeId, name: string, environment?: REnvironmentInformation,
+	public exit(id: NodeId, name: string, environment?: REnvironmentInformation,
 		info?: Partial<DataflowGraphExitPoint>,
 		asRoot: boolean = true) {
 		return this.addVertex(deepMergeObject({tag: 'exit-point', id, environment, name}, info), asRoot)
+	}
+
+	/**
+	 * Adds a vertex for a function call (V2).
+	 * 
+	 * @param id - AST node ID
+	 * @param name - Function name
+	 * @param args - Function arguments; may be empty
+	 * @param info - Additional info
+	 * @param asRoot - boolean; defaults to true.
+	 */
+	public call(id: NodeId, name: string, args: FunctionArgument[],
+		info?: Partial<DataflowGraphVertexFunctionCall>,
+		asRoot: boolean = true) {
+		return this.addVertex(deepMergeObject({tag: 'function-call', id, name, args}, info), asRoot)
 	}
 
 	/**
@@ -62,7 +82,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * default scope is local.
 	 * @param asRoot - boolean; defaults to true
 	 */
-	public definesFunction(id: NodeId, name: string, 
+	public defineFunction(id: NodeId, name: string, 
 		exitPoints: NodeId[], subflow: DataflowFunctionFlowInformation,
 		info?: Partial<DataflowGraphVertexFunctionDefinition>,
 		asRoot: boolean = true) 

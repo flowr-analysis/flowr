@@ -18,16 +18,16 @@ describe('Lists with if-then constructs', withShell(shell => {
 							shell,
 							`x ${assign} 2\nif(x) { 1 } ${b.text}`,
 							emptyGraph()
-								.definesVariable('0', 'x', scope)
-								.uses('3', 'x', {environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments())})
+								.defineVariable('0', 'x', scope)
+								.use('3', 'x', {environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments())})
 								.reads('3', '0')
 						)
 						assertDataflow('read previous def in then',
 							shell,
 							`x ${assign} 2\nif(TRUE) { x } ${b.text}`,
 							emptyGraph()
-								.definesVariable('0', 'x', scope)
-								.uses('4', 'x', {environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments())})
+								.defineVariable('0', 'x', scope)
+								.use('4', 'x', {environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments())})
 								.reads('4', '0')
 						)
 					})
@@ -36,8 +36,8 @@ describe('Lists with if-then constructs', withShell(shell => {
 					shell,
 					`x ${assign} 2\nif(FALSE) { 42 } else { x }`,
 					emptyGraph()
-						.definesVariable('0', 'x', scope)
-						.uses('6', 'x', {environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments())})
+						.defineVariable('0', 'x', scope)
+						.use('6', 'x', {environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments())})
 						.reads('6', '0')
 				)
 			})
@@ -50,8 +50,8 @@ describe('Lists with if-then constructs', withShell(shell => {
 						shell,
 						`if(TRUE) { x ${assign} 2 }\nx`,
 						emptyGraph()
-							.definesVariable('1', 'x', scope)
-							.uses('6', 'x', {environment: define({ nodeId: '1', name: 'x', scope, kind: 'variable', definedAt: '3', used: 'always' }, scope, initializeCleanEnvironments())})
+							.defineVariable('1', 'x', scope)
+							.use('6', 'x', {environment: define({ nodeId: '1', name: 'x', scope, kind: 'variable', definedAt: '3', used: 'always' }, scope, initializeCleanEnvironments())})
 							.reads('6', '1')
 					)
 				}
@@ -59,8 +59,8 @@ describe('Lists with if-then constructs', withShell(shell => {
 					shell,
 					`if(FALSE) { 42 } else { x ${assign} 5 }\nx`,
 					emptyGraph()
-						.definesVariable('3', 'x', scope)
-						.uses('8', 'x', {environment: define({ nodeId: '3', name: 'x', scope, kind: 'variable', definedAt: '5', used: 'always' }, scope, initializeCleanEnvironments())})
+						.defineVariable('3', 'x', scope)
+						.use('8', 'x', {environment: define({ nodeId: '3', name: 'x', scope, kind: 'variable', definedAt: '5', used: 'always' }, scope, initializeCleanEnvironments())})
 						.reads('8', '3')
 				)
 
@@ -71,10 +71,10 @@ describe('Lists with if-then constructs', withShell(shell => {
 					shell,
 					`if(z) { x ${assign} 7 } else { x ${assign} 5 }\nx`,
 					emptyGraph()
-						.uses('0', 'z', {scope})
-						.definesVariable('1', 'x', scope, {when: 'maybe'})
-						.definesVariable('5', 'x', scope, {when: 'maybe'})
-						.uses('10', 'x', {environment: appendEnvironments(whenEnvironment, otherwiseEnvironment)})
+						.use('0', 'z', {scope})
+						.defineVariable('1', 'x', scope, {when: 'maybe'})
+						.defineVariable('5', 'x', scope, {when: 'maybe'})
+						.use('10', 'x', {environment: appendEnvironments(whenEnvironment, otherwiseEnvironment)})
 						.reads('10', '1', 'maybe')
 						.reads('10', '5', 'maybe')
 				)

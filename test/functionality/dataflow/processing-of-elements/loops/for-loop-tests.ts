@@ -9,8 +9,8 @@ describe('for', withShell(shell => {
 		shell,
 		'for(i in 0) i ',
 		emptyGraph()
-			.definesVariable('0', 'i')
-			.uses('2', 'i', {when: 'maybe', environment: define({ nodeId: '0', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '4', used: 'always' }, LocalScope, initializeCleanEnvironments())})
+			.defineVariable('0', 'i')
+			.use('2', 'i', {when: 'maybe', environment: define({ nodeId: '0', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '4', used: 'always' }, LocalScope, initializeCleanEnvironments())})
 			.reads('2', '0', 'maybe')
 	)
 
@@ -26,10 +26,10 @@ describe('for', withShell(shell => {
 }
 x`,
 			emptyGraph()
-				.definesVariable('0', 'x')
-				.definesVariable('7', 'x', LocalScope, {environment: withXDefined})
-				.uses('3', 'z', {environment: withXDefined})
-				.uses('12', 'x', {environment: appendEnvironments(withXDefined, otherXDefined)})
+				.defineVariable('0', 'x')
+				.defineVariable('7', 'x', LocalScope, {environment: withXDefined})
+				.use('3', 'z', {environment: withXDefined})
+				.use('12', 'x', {environment: appendEnvironments(withXDefined, otherXDefined)})
 				.reads('12', '0', 'always')
 				.reads('12', '7', 'maybe')
 				.sameDef('0', '7', 'maybe')
@@ -41,9 +41,9 @@ x`,
 		shell,
 		'x <- 12\nfor(i in 1:10) x ',
 		emptyGraph()
-			.definesVariable('0', 'x')
-			.definesVariable('3', 'i', LocalScope, {environment: envWithX()})
-			.uses('7', 'x', {when: 'maybe', environment: define({ nodeId: '3', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'always' }, LocalScope, envWithX())})
+			.defineVariable('0', 'x')
+			.defineVariable('3', 'i', LocalScope, {environment: envWithX()})
+			.use('7', 'x', {when: 'maybe', environment: define({ nodeId: '3', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'always' }, LocalScope, envWithX())})
 			.reads('7', '0', 'maybe')
 	)
 	const envWithI = () => define({ nodeId: '0', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '8', used: 'always' }, LocalScope, initializeCleanEnvironments())
@@ -51,9 +51,9 @@ x`,
 		shell,
 		'for(i in 1:10) { x <- 12 }\n x',
 		emptyGraph()
-			.definesVariable('0', 'i')
-			.definesVariable('4', 'x', LocalScope, {when: 'maybe', environment: envWithI()})
-			.uses('9', 'x', {environment: define({ nodeId: '4', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '6', used: 'maybe' }, LocalScope, envWithI())})
+			.defineVariable('0', 'i')
+			.defineVariable('4', 'x', LocalScope, {when: 'maybe', environment: envWithI()})
+			.use('9', 'x', {environment: define({ nodeId: '4', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '6', used: 'maybe' }, LocalScope, envWithI())})
 			.reads('9', '4', 'maybe')
 	)
 
@@ -75,10 +75,10 @@ x`,
 		shell,
 		'x <- 9\nfor(i in 1:10) { x <- 12 }\n x',
 		emptyGraph()
-			.definesVariable('0', 'x')
-			.definesVariable('3', 'i', LocalScope, {environment: envWithFirstX()})
-			.definesVariable('7', 'x', LocalScope, {when: 'maybe', environment: envInFor()})
-			.uses('12', 'x', {environment: appendEnvironments(envOutFor(), envWithSecondX())})
+			.defineVariable('0', 'x')
+			.defineVariable('3', 'i', LocalScope, {environment: envWithFirstX()})
+			.defineVariable('7', 'x', LocalScope, {when: 'maybe', environment: envInFor()})
+			.use('12', 'x', {environment: appendEnvironments(envOutFor(), envWithSecondX())})
 			.reads('12', '0')
 			.reads('12', '7', 'maybe')
 			.sameDef('0', '7', 'maybe')
@@ -87,11 +87,11 @@ x`,
 		shell,
 		'x <- 9\nfor(i in 1:10) { x <- x }\n x',
 		emptyGraph()
-			.definesVariable('0', 'x')
-			.definesVariable('3', 'i', LocalScope, {environment: envWithFirstX()})
-			.definesVariable('7', 'x', LocalScope, {when: 'maybe', environment: envInFor()})
-			.uses('8', 'x', {when: 'maybe', environment: envInFor()})
-			.uses('12', 'x', {environment: appendEnvironments(envOutFor(), envWithSecondX())})
+			.defineVariable('0', 'x')
+			.defineVariable('3', 'i', LocalScope, {environment: envWithFirstX()})
+			.defineVariable('7', 'x', LocalScope, {when: 'maybe', environment: envInFor()})
+			.use('8', 'x', {when: 'maybe', environment: envInFor()})
+			.use('12', 'x', {environment: appendEnvironments(envOutFor(), envWithSecondX())})
 			.reads('12', '0')
 			.reads('12', '7', 'maybe')
 			.reads('8', '0', 'maybe')
@@ -116,13 +116,13 @@ x`,
 		shell,
 		'x <- 9\nfor(i in 1:10) { x <- x; x <- x }\n x',
 		emptyGraph()
-			.definesVariable('0', 'x')
-			.definesVariable('3', 'i', LocalScope, {environment: envWithFirstX()})
-			.definesVariable('7', 'x', LocalScope, {when: 'maybe', environment: envInLargeFor()})
-			.uses('8', 'x', {when: 'maybe', environment: envInLargeFor() })
-			.definesVariable('10', 'x', LocalScope, {when: 'maybe', environment: envInLargeFor2()})
-			.uses('11', 'x', /* this is wrong, but uncertainty is not fully supported in the impl atm.*/ {environment: envInLargeFor2()})
-			.uses('15', 'x',{environment: appendEnvironments(envWithFirstX(), envOutLargeFor())})
+			.defineVariable('0', 'x')
+			.defineVariable('3', 'i', LocalScope, {environment: envWithFirstX()})
+			.defineVariable('7', 'x', LocalScope, {when: 'maybe', environment: envInLargeFor()})
+			.use('8', 'x', {when: 'maybe', environment: envInLargeFor() })
+			.defineVariable('10', 'x', LocalScope, {when: 'maybe', environment: envInLargeFor2()})
+			.use('11', 'x', /* this is wrong, but uncertainty is not fully supported in the impl atm.*/ {environment: envInLargeFor2()})
+			.use('15', 'x',{environment: appendEnvironments(envWithFirstX(), envOutLargeFor())})
 			.reads('11', '7')// second x <- *x* always reads first *x* <- x
 			.reads('8', '0', 'maybe')
 			.reads('8', '10', 'maybe')
@@ -149,10 +149,10 @@ x`,
 		shell,
 		'for(i in 1:10) { i; i <- 12 }\n i',
 		emptyGraph()
-			.definesVariable('0', 'i')
-			.definesVariable('5', 'i', LocalScope, {when: 'maybe', environment: forLoopWithI()})
-			.uses('4', 'i', {when: 'maybe', environment: forLoopWithI()})
-			.uses('10', 'i', {environment: appendEnvironments(forLoopWithIAfter(), forLoopAfterI())})
+			.defineVariable('0', 'i')
+			.defineVariable('5', 'i', LocalScope, {when: 'maybe', environment: forLoopWithI()})
+			.use('4', 'i', {when: 'maybe', environment: forLoopWithI()})
+			.use('10', 'i', {environment: appendEnvironments(forLoopWithIAfter(), forLoopAfterI())})
 			.reads('4', '0', 'maybe')
 			.reads('10', '5', 'maybe')
 			.reads('10', '0', 'maybe')

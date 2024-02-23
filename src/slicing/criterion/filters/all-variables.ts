@@ -1,11 +1,13 @@
-import {
-	foldAst,
-	FoldFunctions, isSpecialSymbol,
+import type {
+	FoldFunctions,
 	NodeId,
 	ParentInformation,
 	RFunctionCall, RNodeWithParent, RSymbol
 } from '../../../r-bridge'
-import { SlicingCriteriaFilter } from '../collect-all'
+import {
+	foldAst, isSpecialSymbol
+} from '../../../r-bridge'
+import type { SlicingCriteriaFilter } from '../collect-all'
 import { isNotNull } from '../../../util/assert'
 
 export const DefaultAllVariablesFilter: SlicingCriteriaFilter = {

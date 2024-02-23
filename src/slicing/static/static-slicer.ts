@@ -1,19 +1,22 @@
-import {
+import type {
 	DataflowGraph,
 	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
-	EdgeType,
-	graphToMermaidUrl,
-	initializeCleanEnvironments,
 	REnvironmentInformation
 } from '../../dataflow'
-import { guard } from '../../util/assert'
 import {
-	collectAllIds,
+	EdgeType,
+	graphToMermaidUrl,
+	initializeCleanEnvironments
+} from '../../dataflow'
+import { guard } from '../../util/assert'
+import type {
 	DecoratedAstMap,
 	NodeId,
 	NormalizedAst,
-	RNodeWithParent,
+	RNodeWithParent} from '../../r-bridge'
+import {
+	collectAllIds,
 	RType
 } from '../../r-bridge'
 import { log, LogLevel } from '../../util/log'
@@ -22,7 +25,8 @@ import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../.
 import objectHash from 'object-hash'
 import { DefaultMap } from '../../util/defaultmap'
 import { LocalScope } from '../../dataflow/environments/scopes'
-import { convertAllSlicingCriteriaToIds, DecodedCriteria, SlicingCriteria } from '../criterion'
+import type { DecodedCriteria, SlicingCriteria } from '../criterion'
+import { convertAllSlicingCriteriaToIds } from '../criterion'
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })
 

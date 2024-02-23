@@ -5,7 +5,7 @@
  */
 import { scripts } from './scripts-info'
 import commandLineUsage from 'command-line-usage'
-import { CommonOptions } from './options'
+import type { CommonOptions } from './options'
 import { log, LogLevel } from '../../util/log'
 import commandLineArgs from 'command-line-args'
 import { italic } from '../../statistics'

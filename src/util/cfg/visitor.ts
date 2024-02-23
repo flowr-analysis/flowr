@@ -1,6 +1,6 @@
-import {NodeId} from '../../r-bridge'
+import type {NodeId} from '../../r-bridge'
 import {guard} from '../assert'
-import {CfgEdge, CfgVertex, ControlFlowInformation} from './cfg'
+import type {CfgEdge, CfgVertex, ControlFlowInformation} from './cfg'
 
 export interface NodeVisitingContext {
 	parent:   {
@@ -18,7 +18,6 @@ interface PredecessorInformation {
 	edge:   CfgEdge
 }
 
-// TODO: enter expression/statement and exit
 export type OnEnterVisitNode = (node: CfgVertex, context: NodeVisitingContext) => void
 
 class ControlFlowGraphExecutionTraceVisitor {
@@ -45,7 +44,6 @@ class ControlFlowGraphExecutionTraceVisitor {
 
 		this.onEnter(node, context)
 
-		// TODO: deal with function definitions!
 		// find all ingoing edges
 		const predecessors = this.retrieveAllPredecessors(context, node)
 		const siblings = predecessors.map(p => p.source)
@@ -75,7 +73,7 @@ class ControlFlowGraphExecutionTraceVisitor {
 	}
 
 	visit(cfg: ControlFlowInformation): void {
-		const visited = new Set<NodeId>
+		const visited = new Set<NodeId>()
 		for(const id of cfg.entryPoints) {
 			const node = cfg.graph.vertices().get(id)
 			guard(node !== undefined, `Node with id ${id} not present`)

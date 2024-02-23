@@ -1,6 +1,7 @@
-import { DeepReadonly } from 'ts-essentials'
-import { RNode } from '../model'
-import { foldAstStateful, StatefulFoldFunctions } from './stateful-fold'
+import type { DeepReadonly } from 'ts-essentials'
+import type { RNode } from '../model'
+import type { StatefulFoldFunctions } from './stateful-fold'
+import { foldAstStateful } from './stateful-fold'
 
 export type FoldFunctions<Info, Out> = Omit<StatefulFoldFunctions<Info, undefined, Out>, 'down'>
 

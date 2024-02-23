@@ -1,4 +1,4 @@
-import { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge'
+import type { RParseRequestFromFile, RParseRequestFromText } from '../r-bridge'
 
 /**
  * Statistics on skipped files, the time required, and more.

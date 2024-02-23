@@ -1,13 +1,14 @@
-import { NamedXmlBasedJson } from '../input-format'
+import type { NamedXmlBasedJson } from '../input-format'
 import { retrieveMetaStructure } from './meta'
-import { parseLog } from '../parser'
-import { ParserData } from '../data'
-import { RType, RAccess, RNode, RArgument, RawRType } from '../../../model'
+import type { ParserData } from '../data'
+import type { RAccess, RNode, RArgument} from '../../../model'
+import { RType, RawRType } from '../../../model'
 import { executeHook, executeUnknownHook } from '../hooks'
 import { normalizeBasedOnType } from './structure'
 import { guard } from '../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../util/arrays'
 import { tryToNormalizeArgument } from './functions/argument'
+import {parseLog} from '../../csv/parser'
 
 /**
  * Tries to normalize the given data as access (e.g., indexing).
@@ -91,7 +92,7 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 
 	const {
 		content, location
-	} = retrieveMetaStructure(data.config, accessOp.content)
+	} = retrieveMetaStructure(accessOp.content)
 
 	const result = {
 		type:     RType.Access,

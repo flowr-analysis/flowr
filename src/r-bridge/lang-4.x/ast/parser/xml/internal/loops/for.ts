@@ -1,14 +1,16 @@
-import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson, XmlParseError } from '../../input-format'
+import type { NamedXmlBasedJson, XmlBasedJson} from '../../input-format'
+import {childrenKey} from '../../input-format'
+import { getKeysGuarded, XmlParseError } from '../../input-format'
 import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../meta'
-import { parseLog } from '../../parser'
 import { guard } from '../../../../../../../util/assert'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 import { tryNormalizeSymbol } from '../values'
 import { normalizeBasedOnType, splitComments, tryNormalizeSingleNode } from '../structure'
-import { RawRType, RForLoop, RNode, RSymbol, RType } from '../../../../model'
+import type { RComment, RForLoop, RNode, RSymbol} from '../../../../model'
+import { RawRType, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { normalizeComment } from '../other'
-import { RDelimiter } from '../../../../model/nodes/info'
+import {parseLog} from '../../../csv/parser'
 
 export function tryNormalizeFor(
 	data: ParserData,
@@ -50,10 +52,7 @@ export function tryNormalizeFor(
 		)
 	}
 
-	const { location, content } = retrieveMetaStructure(
-		data.config,
-		forToken.content
-	)
+	const { location, content } = retrieveMetaStructure(forToken.content)
 
 	const result: RForLoop = {
 		type:     RType.ForLoop,
@@ -73,10 +72,7 @@ export function tryNormalizeFor(
 
 function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined, additionalTokens: (RNode | RDelimiter)[] } {
 	// must have a child which is `in`, a variable on the left, and a vector on the right
-	const children: NamedXmlBasedJson[] = getKeysGuarded<XmlBasedJson[]>(forCondition, data.config.childrenName).map(content => ({
-		name: getTokenType(data.config.tokenMap, content),
-		content
-	}))
+	const children: NamedXmlBasedJson[] = getKeysGuarded<XmlBasedJson[]>(forCondition, childrenKey).map(content => ({name: getTokenType(content), content}))
 	const { comments, others } = splitComments(children)
 
 	const inPosition = others.findIndex(elem => elem.name === RawRType.ForIn)

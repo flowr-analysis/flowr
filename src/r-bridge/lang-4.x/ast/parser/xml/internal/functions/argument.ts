@@ -1,13 +1,14 @@
-import { NamedXmlBasedJson } from '../../input-format'
-import { parseLog } from '../../parser'
+import type { NamedXmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure } from '../meta'
-import { RNode, RType, RSymbol, RArgument, RawRType } from '../../../../model'
-import { ParserData } from '../../data'
+import type { RNode, RSymbol, RArgument} from '../../../../model'
+import { RType, RawRType } from '../../../../model'
+import type { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../util/log'
 import { guard } from '../../../../../../../util/assert'
 import { tryNormalizeSingleNode } from '../structure'
-import { RDelimiter } from '../../../../model/nodes/info'
+import type { RDelimiter } from '../../../../model/nodes/info'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.
@@ -29,7 +30,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 
 
 	const symbolOrExpr = objs[0]
-	const { location, content } = retrieveMetaStructure(data.config, symbolOrExpr.content)
+	const { location, content } = retrieveMetaStructure(symbolOrExpr.content)
 
 	let parsedValue: RNode | RDelimiter | undefined |  null
 	let name: RSymbol | undefined

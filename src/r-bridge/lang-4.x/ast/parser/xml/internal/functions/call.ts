@@ -1,24 +1,27 @@
-import { getKeysGuarded, NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
+import type { NamedXmlBasedJson, XmlBasedJson} from '../../input-format'
+import {childrenKey} from '../../input-format'
+import { getKeysGuarded } from '../../input-format'
 import { guard } from '../../../../../../../util/assert'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { splitArrayOn } from '../../../../../../../util/arrays'
-import { parseLog } from '../../parser'
 import { normalizeString, tryNormalizeSymbol } from '../values'
-import { ParserData } from '../../data'
-import {
-	RType,
+import type { ParserData } from '../../data'
+import type {
 	RNode,
 	RFunctionCall,
 	RUnnamedFunctionCall,
 	RNamedFunctionCall,
 	RNext,
 	RBreak,
-	RArgument, RawRType
+	RArgument} from '../../../../model'
+import {
+	RType, RawRType
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { tryToNormalizeArgument } from './argument'
-import { SourceRange } from '../../../../../../../util/range'
+import type { SourceRange } from '../../../../../../../util/range'
 import { normalizeExpression } from '../expression'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Tries to parse the given data as a function call.
@@ -44,20 +47,17 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 	parseLog.trace('trying to parse function call')
 	mappedWithName = executeHook(data.hooks.functions.onFunctionCall.before, data, mappedWithName)
 
-	const {
-		unwrappedObj, content, location
-	} = retrieveMetaStructure(data.config, fnBase.content)
-	const symbolContent: XmlBasedJson[] = getKeysGuarded(unwrappedObj, data.config.childrenName)
+	const {unwrappedObj, content, location} = retrieveMetaStructure(fnBase.content)
+	const symbolContent: XmlBasedJson[] = getKeysGuarded(unwrappedObj, childrenKey)
 
 	let result: RFunctionCall | RNext | RBreak
 
-	const namedSymbolContent = getWithTokenType(data.config.tokenMap, symbolContent)
+	const namedSymbolContent = getWithTokenType(symbolContent)
 
 	if(namedSymbolContent.length === 1 && namedSymbolContent[0].name === RawRType.StringConst) {
 		// special handling when someone calls a function by string
 		result = parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content)
-	}
-	else if(namedSymbolContent.findIndex(x => x.name === RawRType.SymbolFunctionCall) < 0) {
+	} else if(namedSymbolContent.findIndex(x => x.name === RawRType.SymbolFunctionCall) < 0) {
 		parseLog.trace(`is not named function call, as the name is not of type ${RType.FunctionCall}, but: ${namedSymbolContent.map(n => n.name).join(',')}`)
 		const mayResult = tryParseUnnamedFunctionCall(data, mappedWithName, location, content)
 		if(mayResult === undefined) {

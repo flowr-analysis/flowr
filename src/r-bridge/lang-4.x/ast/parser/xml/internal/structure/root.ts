@@ -1,27 +1,26 @@
-import { getKeysGuarded, XmlBasedJson } from '../../input-format'
+import type { XmlBasedJson} from '../../input-format'
+import {childrenKey} from '../../input-format'
+import { getKeysGuarded } from '../../input-format'
 import { assureTokenType } from '../meta'
 import { normalizeBasedOnType } from './elements'
-import { ParserData } from '../../data'
-import { RType, RExpressionList, RawRType, RNode } from '../../../../model'
+import type { ParserData } from '../../data'
+import type { RExpressionList, RNode } from '../../../../model'
+import { RType, RawRType } from '../../../../model'
 import { log } from '../../../../../../../util/log'
 import { partition } from '../../../../../../../util/arrays'
-import { RDelimiter } from '../../../../model/nodes/info'
+import type { RDelimiter } from '../../../../model/nodes/info'
 
 export function parseRootObjToAst(
 	data: ParserData,
 	obj: XmlBasedJson
 ): RExpressionList {
-	const config = data.config
 	const exprContent = getKeysGuarded<XmlBasedJson>(obj, RawRType.ExpressionList)
-	assureTokenType(config.tokenMap, exprContent, RawRType.ExpressionList)
+	assureTokenType(exprContent, RawRType.ExpressionList)
 
 	let parsedChildren: (RNode | RDelimiter)[] = []
 
-	if(config.childrenName in exprContent) {
-		const children = getKeysGuarded<XmlBasedJson[]>(
-			exprContent,
-			config.childrenName
-		)
+	if(childrenKey in exprContent) {
+		const children = getKeysGuarded<XmlBasedJson[]>(exprContent, childrenKey)
 
 		parsedChildren = normalizeBasedOnType(data, children)
 	} else {

@@ -1,20 +1,22 @@
-import { NamedXmlBasedJson, XmlParseError } from '../../input-format'
+import type { NamedXmlBasedJson} from '../../input-format'
+import { XmlParseError } from '../../input-format'
 import { normalizeNumber, normalizeString, tryNormalizeSymbol } from '../values'
 import { guard } from '../../../../../../../util/assert'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 import { normalizeExpression } from '../expression'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
-import { RNode, RawRType, RType } from '../../../../model'
+import type { RNode} from '../../../../model'
+import { RawRType, RType } from '../../../../model'
 import { normalizeComment } from '../other'
 import { normalizeBreak, normalizeNext } from '../loops'
 import { normalizeLineDirective } from '../other/line-directive'
-import { RDelimiter, RDelimiterNode } from '../../../../model/nodes/info'
+import type { RDelimiter } from '../../../../model/nodes/info'
 
 function normalizeDelimiter(data: ParserData, elem: NamedXmlBasedJson): RDelimiter {
 	const {
 		location,
 		content
-	} = retrieveMetaStructure(data.config, elem.content)
+	} = retrieveMetaStructure(elem.content)
 	return {
 		type:    RType.Delimiter,
 		location,
@@ -58,7 +60,7 @@ export function tryNormalizeSingleNode(data: ParserData, elem: NamedXmlBasedJson
 		case RawRType.Symbol:
 		case RawRType.Slot:
 		case RawRType.NullConst: {
-			const symbol =  tryNormalizeSymbol(data, getWithTokenType(data.config.tokenMap, [elem.content]))
+			const symbol =  tryNormalizeSymbol(data, getWithTokenType([elem.content]))
 			guard(symbol !== undefined, () => `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
 			return symbol
 		}

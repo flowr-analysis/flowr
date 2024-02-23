@@ -1,11 +1,13 @@
-import { FeatureStatisticsWithMeta } from '../../feature'
-import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
-import { emptySummarizedWithProject, recordFilePath, SummarizedWithProject } from '../../post-processing'
-import { LoopInfo } from './loops'
-import { MergeableRecord } from '../../../../util/objects'
+import type { FeatureStatisticsWithMeta } from '../../feature'
+import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
+import type { SummarizedWithProject } from '../../post-processing'
+import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
+import type { LoopInfo } from './loops'
+import type { MergeableRecord } from '../../../../util/objects'
+import type {
+	CommonSyntaxTypeCounts} from '../../common-syntax-probability'
 import {
 	appendCommonSyntaxTypeCounter,
-	CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability'
 import { bigint2number } from '../../../../util/numbers'

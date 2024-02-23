@@ -3,23 +3,28 @@
  * @module
  */
 
+import type {
+	NormalizedAst,
+	RParseRequestFromFile, RParseRequestFromText
+} from '../r-bridge'
 import {
 	collectAllIds,
-	NormalizedAst,
 	retrieveNumberOfRTokensOfLastParse,
-	RParseRequestFromFile, RParseRequestFromText,
-	RShell, TokenMap
+	RShell
 } from '../r-bridge'
-import { IStoppableStopwatch, Measurements } from './stopwatch'
+import type { IStoppableStopwatch} from './stopwatch'
+import { Measurements } from './stopwatch'
 import { guard } from '../util/assert'
-import { DataflowInformation } from '../dataflow/internal/info'
-import {
+import type { DataflowInformation } from '../dataflow/internal/info'
+import type {
 	SlicingCriteria,
-	collectAllSlicingCriteria,
 	SlicingCriteriaFilter,
 	SliceResult, ReconstructionResult
 } from '../slicing'
 import {
+	collectAllSlicingCriteria
+} from '../slicing'
+import type {
 	CommonSlicerMeasurements,
 	ElapsedTime,
 	PerSliceMeasurements,
@@ -28,8 +33,9 @@ import {
 } from './stats'
 import fs from 'fs'
 import { log, LogLevel } from '../util/log'
-import { MergeableRecord } from '../util/objects'
-import { LAST_STEP, SteppingSlicer, STEPS, StepResult } from '../core'
+import type { MergeableRecord } from '../util/objects'
+import type { STEPS, StepResult } from '../core'
+import { LAST_STEP, SteppingSlicer } from '../core'
 import { withoutWhitespace } from '../util/strings'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
@@ -41,8 +47,6 @@ export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 export interface BenchmarkSlicerStats extends MergeableRecord {
 	/** the measurements obtained during the benchmark */
 	stats:     SlicerStats
-	/** the used token map when translating what was parsed from R */
-	tokenMap:  Record<string, string>
 	/** the initial and unmodified AST produced by the R side/the 'parse' step */
 	parse:     string
 	/** the normalized AST produced by the 'normalization' step, including its parent decoration */
@@ -76,11 +80,10 @@ export interface BenchmarkSingleSliceStats extends MergeableRecord {
 export class BenchmarkSlicer {
 	/** Measures all data that is recorded *once* per slicer (complete setup up to the dataflow graph creation) */
 	private readonly commonMeasurements = new Measurements<CommonSlicerMeasurements>()
-	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>
+	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>()
 	private readonly shell: RShell
 	private stats:          SlicerStats | undefined
 	private loadedXml:      string | undefined
-	private tokenMap:       Record<string, string> | undefined
 	private dataflow:       DataflowInformation | undefined
 	private ai:             DataflowInformation | undefined
 	private normalizedAst:  NormalizedAst | undefined
@@ -95,10 +98,6 @@ export class BenchmarkSlicer {
 			'initialize R session',
 			() => new RShell()
 		)
-		this.commonMeasurements.measure(
-			'inject home path',
-			() => this.shell.tryToInjectHomeLibPath()
-		)
 	}
 
 	/**
@@ -108,27 +107,11 @@ export class BenchmarkSlicer {
 	public async init(request: RParseRequestFromFile | RParseRequestFromText) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice')
 
-
-		await this.commonMeasurements.measureAsync(
-			'ensure installation of xmlparsedata',
-			() => this.shell.ensurePackageInstalled('xmlparsedata', true),
-		)
-
-		this.tokenMap = await this.commonMeasurements.measureAsync(
-			'retrieve token map',
-			// with this being the first time, there is no preexisting caching!
-			() => this.shell.tokenMap()
-		)
-
 		this.stepper = new SteppingSlicer({
-			shell:   this.shell,
-			request: {
-				...request,
-				ensurePackageInstalled: true
-			},
+			shell:          this.shell,
+			request:        {...request},
 			stepOfInterest: LAST_STEP,
-			criterion:      [],
-			tokenMap:       this.tokenMap
+			criterion:      []
 		})
 
 		this.loadedXml = await this.measureCommonStep('parse', 'retrieve AST from R code')
@@ -310,8 +293,7 @@ export class BenchmarkSlicer {
 			stats:     this.stats,
 			parse:     this.loadedXml as string,
 			dataflow:  this.dataflow as DataflowInformation,
-			normalize: this.normalizedAst as NormalizedAst,
-			tokenMap:  this.tokenMap as TokenMap,
+			normalize: this.normalizedAst as NormalizedAst
 		}
 	}
 

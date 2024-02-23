@@ -1,23 +1,26 @@
+import type {
+	SummarizedMeasurement} from '../../../../util/summarizer/benchmark/data'
 import {
-	SummarizedMeasurement,
 	summarizedMeasurement2Csv,
 	summarizedMeasurement2CsvHeader
 } from '../../../../util/summarizer/benchmark/data'
-import { MergeableRecord } from '../../../../util/objects'
+import type { MergeableRecord } from '../../../../util/objects'
+import type {
+	CommonSyntaxTypeCounts} from '../../common-syntax-probability'
 import {
 	appendCommonSyntaxTypeCounter,
-	CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts,
 } from '../../common-syntax-probability'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
-import { FeatureStatisticsWithMeta } from '../../feature'
+import type { FeatureStatisticsWithMeta } from '../../feature'
 import { readLineByLineSync } from '../../../../util/files'
 import path from 'path'
-import { StatisticsOutputFormat } from '../../../output'
+import type { StatisticsOutputFormat } from '../../../output'
 import fs from 'node:fs'
 import { date2string } from '../../../../util/time'
-import { AllCallsFileBase, FunctionCallInformation, FunctionUsageInfo } from './used-functions'
-import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
+import type { FunctionCallInformation, FunctionUsageInfo } from './used-functions'
+import { AllCallsFileBase } from './used-functions'
+import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
 import { bigint2number } from '../../../../util/numbers'
 
 type FunctionCallSummaryInformation<Measurement, Uniques=number> = [numOfUniqueProjects: Uniques, numOfUniqueFiles: Uniques, total: Measurement, arguments: Measurement, linePercentageInFile: Measurement]

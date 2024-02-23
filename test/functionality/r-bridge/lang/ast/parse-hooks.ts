@@ -10,8 +10,12 @@ describe('Check hooks are called appropriately', withShell(shell => {
 		await retrieveNormalizedAst(shell, '1', {
 			values: {
 				onNumber: {
-					before: () => { before = true; return undefined },
-					after:  () => { after = true; return undefined }
+					before: () => {
+						before = true; return undefined 
+					},
+					after: () => {
+						after = true; return undefined 
+					}
 				},
 			},
 		})
@@ -28,7 +32,9 @@ describe('Check hooks are called appropriately', withShell(shell => {
 			hooks:          {
 				values: {
 					onString: {
-						after: () => { counter++ },
+						after: () => {
+							counter++ 
+						},
 					}
 				}
 			}

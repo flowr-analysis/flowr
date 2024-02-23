@@ -1,8 +1,9 @@
 import { RShell } from '../r-bridge'
+import type { FeatureKey} from '../statistics'
 import {
 	extractUsageStatistics,
 	setFormatter,
-	voidFormatter, staticRequests, FeatureKey, initFileProvider, statisticsFileProvider
+	voidFormatter, staticRequests, initFileProvider, statisticsFileProvider
 } from '../statistics'
 import { log } from '../util/log'
 import { processCommandLineArgs } from './common'
@@ -56,7 +57,6 @@ if(options.compress) {
 const processedFeatures = new Set<FeatureKey>(options.features as FeatureKey[])
 
 const shell = new RShell()
-shell.tryToInjectHomeLibPath()
 
 initFileProvider(options['output-dir'])
 
@@ -110,4 +110,3 @@ async function getStatsForSingleFile() {
 }
 
 void getStatsForSingleFile()
-

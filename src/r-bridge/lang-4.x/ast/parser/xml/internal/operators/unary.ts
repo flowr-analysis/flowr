@@ -1,19 +1,21 @@
-import { NamedXmlBasedJson } from '../../input-format'
+import type { NamedXmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure, retrieveOpName } from '../meta'
-import { parseLog } from '../../parser'
 import { tryNormalizeSingleNode } from '../structure'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
+import type {
+	RNode,
+	RUnaryOp,
+	UnaryOperatorFlavor
+} from '../../../../model'
 import {
 	ArithmeticOperatorsRAst,
 	LogicalOperatorsRAst,
 	ModelFormulaOperatorsRAst,
-	RNode,
-	RType,
-	RUnaryOp,
-	UnaryOperatorFlavor
+	RType
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Parses the construct as a {@link RUnaryOp} (automatically identifies the flavor).
@@ -47,8 +49,8 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: N
 
 	guard(parsedOperand.type !== RType.Delimiter, () => 'unexpected under-sided unary op')
 
-	const operationName = retrieveOpName(data.config, operator)
-	const { location, content } = retrieveMetaStructure(data.config, operator.content)
+	const operationName = retrieveOpName(operator)
+	const { location, content } = retrieveMetaStructure(operator.content)
 
 	const result: RUnaryOp = {
 		type:     RType.UnaryOp,

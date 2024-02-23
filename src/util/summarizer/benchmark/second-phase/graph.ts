@@ -1,5 +1,5 @@
-import { MergeableRecord } from '../../../objects'
-import { UltimateSlicerStats } from '../data'
+import type { MergeableRecord } from '../../../objects'
+import type { UltimateSlicerStats } from '../data'
 import fs from 'fs'
 import { jsonReplacer } from '../../../json'
 
@@ -18,7 +18,7 @@ export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath:
 
 	for(const { name, measurements} of [{ name: 'per-file', measurements: ultimate.commonMeasurements }, { name: 'per-slice', measurements: ultimate.perSliceMeasurements }]) {
 		for(const [point, measurement] of measurements) {
-			if(point === 'close R session' || point === 'initialize R session' || point === 'inject home path' || point === 'ensure installation of xmlparsedata' || point === 'retrieve token map') {
+			if(point === 'close R session' || point === 'initialize R session') {
 				continue
 			}
 			const pointName = point === 'total'? `total ${name}` : point

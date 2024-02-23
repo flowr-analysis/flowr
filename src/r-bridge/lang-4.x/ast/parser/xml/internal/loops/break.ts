@@ -1,15 +1,16 @@
-import { ParserData } from '../../data'
-import { XmlBasedJson } from '../../input-format'
-import { parseLog } from '../../parser'
+import type { ParserData } from '../../data'
+import type { XmlBasedJson } from '../../input-format'
 import { executeHook } from '../../hooks'
 import { retrieveMetaStructure } from '../meta'
-import { RBreak, RType } from '../../../../model'
+import type { RBreak} from '../../../../model'
+import { RType } from '../../../../model'
+import {parseLog} from '../../../csv/parser'
 
 export function normalizeBreak(data: ParserData, obj: XmlBasedJson): RBreak {
 	parseLog.debug(`[break] try: ${JSON.stringify(obj)}`)
 	obj = executeHook(data.hooks.loops.onBreak.before, data, obj)
 
-	const { location, content } = retrieveMetaStructure(data.config, obj)
+	const { location, content } = retrieveMetaStructure(obj)
 
 	const result: RBreak = {
 		type:   RType.Break,

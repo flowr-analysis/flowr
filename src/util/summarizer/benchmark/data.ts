@@ -1,4 +1,4 @@
-import {
+import type {
 	CommonSlicerMeasurements,
 	PerSliceMeasurements,
 	SlicerStats,

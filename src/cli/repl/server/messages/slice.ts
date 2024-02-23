@@ -1,6 +1,6 @@
-import { SlicingCriteria } from '../../../../slicing'
-import { LAST_PER_FILE_STEP, LAST_STEP, StepResults } from '../../../../core'
-import { IdMessageBase, MessageDefinition } from './messages'
+import type { SlicingCriteria } from '../../../../slicing'
+import type { LAST_PER_FILE_STEP, LAST_STEP, StepResults } from '../../../../core'
+import type { IdMessageBase, MessageDefinition } from './messages'
 import * as Joi from 'joi'
 
 /**

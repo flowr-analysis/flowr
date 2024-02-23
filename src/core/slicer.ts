@@ -1,23 +1,25 @@
-import {
+import type {
 	NormalizedAst, IdGenerator,
 	NoInfo,
 	RParseRequest,
 	RShell,
 	XmlParserHooks
 } from '../r-bridge'
-import {
-	executeSingleSubStep, LAST_PER_FILE_STEP, LAST_STEP,
+import type { LAST_PER_FILE_STEP,
 	StepRequired, STEPS,
-	STEPS_PER_FILE,
-	STEPS_PER_SLICE,
 	StepName, StepResult
 } from './steps'
+import {
+	executeSingleSubStep, LAST_STEP,
+	STEPS_PER_FILE,
+	STEPS_PER_SLICE
+} from './steps'
 import { guard } from '../util/assert'
-import { SliceResult, SlicingCriteria } from '../slicing'
-import { DeepPartial } from 'ts-essentials'
-import { SteppingSlicerInput } from './input'
-import { StepResults } from './output'
-import { DataflowInformation } from '../dataflow/internal/info'
+import type { SliceResult, SlicingCriteria } from '../slicing'
+import type { DeepPartial } from 'ts-essentials'
+import type { SteppingSlicerInput } from './input'
+import type { StepResults } from './output'
+import type { DataflowInformation } from '../dataflow/internal/info'
 
 /**
  * This is ultimately the root of flowR's static slicing procedure.
@@ -202,11 +204,11 @@ export class SteppingSlicer<InterestedIn extends StepName | undefined = typeof L
 				break
 			case 1:
 				step = guardStep('normalize')
-				result = await executeSingleSubStep(step, this.results.parse as string, await this.shell.tokenMap(), this.hooks, this.getId)
+				result = executeSingleSubStep(step, this.results.parse as string, this.hooks, this.getId)
 				break
 			case 2:
 				step = guardStep('dataflow')
-				result = executeSingleSubStep(step, this.results.normalize as NormalizedAst)
+				result = executeSingleSubStep(step, this.request, this.results.normalize as NormalizedAst)
 				break
 			case 3:
 				step = guardStep('ai')

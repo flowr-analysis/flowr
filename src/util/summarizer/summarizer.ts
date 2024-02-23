@@ -1,4 +1,4 @@
-import { MergeableRecord } from '../objects'
+import type { MergeableRecord } from '../objects'
 
 export const enum SummarizerType {
 	Benchmark	 = 'benchmark',

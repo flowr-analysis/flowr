@@ -1,23 +1,27 @@
+import type {
+	SummarizedMeasurement} from '../../../../util/summarizer/benchmark/data'
 import {
-	SummarizedMeasurement,
 	summarizedMeasurement2Csv,
 	summarizedMeasurement2CsvHeader
 } from '../../../../util/summarizer/benchmark/data'
-import { MergeableRecord } from '../../../../util/objects'
+import type { MergeableRecord } from '../../../../util/objects'
 import { summarizeMeasurement } from '../../../../util/summarizer/benchmark/first-phase/process'
-import { FeatureStatisticsWithMeta } from '../../feature'
+import type { FeatureStatisticsWithMeta } from '../../feature'
 import { readLineByLineSync } from '../../../../util/files'
 import path from 'path'
-import { StatisticsOutputFormat } from '../../../output'
+import type { StatisticsOutputFormat } from '../../../output'
 import fs from 'node:fs'
 import { date2string } from '../../../../util/time'
-import { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
-import {
-	AllDefinitionsFileBase,
+import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
+import type {
 	FunctionDefinitionInfo,
 	SingleFunctionDefinitionInformation
 } from './defined-functions'
-import { emptySummarizedWithProject, recordFilePath, SummarizedWithProject } from '../../post-processing'
+import {
+	AllDefinitionsFileBase
+} from './defined-functions'
+import type { SummarizedWithProject } from '../../post-processing'
+import { emptySummarizedWithProject, recordFilePath } from '../../post-processing'
 import { array2bag } from '../../../../util/arrays'
 
 interface FunctionDefinitionSummaryInformation<Measurement> {

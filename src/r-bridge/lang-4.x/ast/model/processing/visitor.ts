@@ -1,4 +1,4 @@
-import { NoInfo, RNode } from '../model'
+import type { NoInfo, RNode } from '../model'
 import { RType } from '../type'
 import { assertUnreachable } from '../../../../../util/assert'
 

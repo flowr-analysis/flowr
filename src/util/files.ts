@@ -1,5 +1,5 @@
 import fs, { promises as fsPromise } from 'fs'
-import { RParseRequestFromFile } from '../r-bridge'
+import type { RParseRequestFromFile } from '../r-bridge'
 import path from 'path'
 import { log } from './log'
 import LineByLine from 'n-readlines'
@@ -128,3 +128,12 @@ export function readLineByLineSync(filePath: string, onLine: (line: Buffer, line
 	}
 }
 
+/**
+ * Chops off the last part of the given directory path after a path separator, essentially returning the path's parent directory.
+ * If an absolute path is passed, the returned path is also absolute.
+ * @param directory - The directory whose parent to return
+ */
+export function getParentDirectory(directory: string): string{
+	// apparently this is somehow the best way to do it in node, what
+	return directory.split(path.sep).slice(0, -1).join(path.sep)
+}

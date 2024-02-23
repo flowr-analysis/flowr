@@ -1,7 +1,9 @@
-import { ParentInformation, RNa, RNull, RSymbol } from '../../../r-bridge'
+import type { ParentInformation, RSymbol } from '../../../r-bridge'
+import { RNa, RNull } from '../../../r-bridge'
 import { DataflowGraph } from '../../graph'
-import { DataflowInformation, initializeCleanInfo } from '../info'
-import { DataflowProcessorInformation } from '../../processor'
+import type { DataflowInformation} from '../info'
+import { initializeCleanInfo } from '../info'
+import type { DataflowProcessorInformation } from '../../processor'
 
 export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	if(symbol.content === RNull || symbol.content === RNa) {

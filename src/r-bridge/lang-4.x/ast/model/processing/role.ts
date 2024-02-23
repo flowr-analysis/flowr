@@ -1,4 +1,4 @@
-import { DecoratedAstMap, RNodeWithParent } from './decorate'
+import type { DecoratedAstMap, RNodeWithParent } from './decorate'
 
 /**
  * Describes the role of the node in its parent. For example,

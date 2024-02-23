@@ -1,4 +1,4 @@
-import { ClusterReport } from './clusterer'
+import type { ClusterReport } from './clusterer'
 import fs from 'fs'
 
 export interface FileBasedTable {

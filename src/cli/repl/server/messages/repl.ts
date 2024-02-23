@@ -1,4 +1,4 @@
-import { IdMessageBase, MessageDefinition } from './messages'
+import type { IdMessageBase, MessageDefinition } from './messages'
 import * as Joi from 'joi'
 
 /**

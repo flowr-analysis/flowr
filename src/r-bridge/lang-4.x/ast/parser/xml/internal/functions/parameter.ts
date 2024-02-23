@@ -1,13 +1,14 @@
-import { NamedXmlBasedJson } from '../../input-format'
-import { parseLog } from '../../parser'
+import type { NamedXmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure } from '../meta'
-import { RNode, RType, RParameter, RawRType } from '../../../../model'
-import { ParserData } from '../../data'
+import type { RNode, RParameter} from '../../../../model'
+import { RType, RawRType } from '../../../../model'
+import type { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../util/log'
 import { guard } from '../../../../../../../util/assert'
 import { tryNormalizeSingleNode } from '../structure'
-import { RDelimiter } from '../../../../model/nodes/info'
+import type { RDelimiter } from '../../../../model/nodes/info'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Either parses `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]` as a parameter of a function definition in R.
@@ -36,7 +37,7 @@ export function tryNormalizeParameter(data: ParserData, objs: NamedXmlBasedJson[
 
 	const defaultValue: RNode | RDelimiter | undefined = objs.length === 3 ? parseWithDefaultValue(data, objs) : undefined
 
-	const { location, content } = retrieveMetaStructure(data.config, symbol.content)
+	const { location, content } = retrieveMetaStructure(symbol.content)
 
 	const result: RParameter = {
 		type:    RType.Parameter,

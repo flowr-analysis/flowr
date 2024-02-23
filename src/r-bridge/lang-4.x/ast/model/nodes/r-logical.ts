@@ -1,5 +1,5 @@
-import { Leaf, Location, NoInfo } from '../model'
-import { RType } from '../type'
+import type { Leaf, Location, NoInfo } from '../model'
+import type { RType } from '../type'
 
 export type RLogicalValue = boolean;
 

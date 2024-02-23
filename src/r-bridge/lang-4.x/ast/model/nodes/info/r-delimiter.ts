@@ -1,6 +1,6 @@
-import { RawRType, RType } from '../../type'
-import { Location } from '../../model'
-import { MergeableRecord } from '../../../../../../util/objects'
+import type { RawRType, RType } from '../../type'
+import type { Location } from '../../model'
+import type { MergeableRecord } from '../../../../../../util/objects'
 
 export type RDelimiterNode = RawRType.BraceLeft | RawRType.BraceRight | RawRType.ParenLeft | RawRType.ParenRight | RawRType.Semicolon
 /**

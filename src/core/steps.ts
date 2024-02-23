@@ -13,15 +13,12 @@
  * @module
  */
 
-import { MergeableRecord } from '../util/objects'
-import {
-	normalize,
-	retrieveXmlFromRCode
-} from '../r-bridge'
+import type { MergeableRecord } from '../util/objects'
+import { retrieveCsvFromRCode } from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
-import { staticSlicing } from '../slicing'
-import { reconstructToCode } from '../reconstruct/main'
-import { internalPrinter, IStepPrinter, StepOutputFormat } from './print/print'
+import { reconstructToCode, staticSlicing } from '../slicing'
+import type { IStepPrinter} from './print/print'
+import { internalPrinter, StepOutputFormat } from './print/print'
 import {
 	normalizedAstToJson,
 	normalizedAstToQuads,
@@ -36,8 +33,9 @@ import {
 	dataflowGraphToMermaidUrl,
 	dataflowGraphToQuads
 } from './print/dataflow-printer'
-import {DataflowInformation} from '../dataflow/internal/info'
-import {runAbstractInterpretation} from '../abstract-interpretation/processor'
+import type {DataflowInformation} from '../dataflow/internal/info'
+import type {runAbstractInterpretation} from '../abstract-interpretation/processor'
+import {normalize} from '../r-bridge/lang-4.x/ast/parser/csv/parser'
 
 /**
  * This represents close a function that we know completely nothing about.
@@ -74,14 +72,14 @@ export interface IStep<
 export const STEPS_PER_FILE = {
 	'parse': {
 		description: 'Parse the given R code into an AST',
-		processor:   retrieveXmlFromRCode,
+		processor:   retrieveCsvFromRCode,
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter,
 			[StepOutputFormat.Json]:     text => text,
 			[StepOutputFormat.RdfQuads]: parseToQuads
 		}
-	} satisfies IStep<typeof retrieveXmlFromRCode>,
+	} satisfies IStep<typeof retrieveCsvFromRCode>,
 	'normalize': {
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
 		processor:   normalize,
@@ -96,7 +94,7 @@ export const STEPS_PER_FILE = {
 	} satisfies IStep<typeof normalize>,
 	'dataflow': {
 		description: 'Construct the dataflow graph',
-		processor:   produceDataFlowGraph,
+		processor:   (r, a) => produceDataFlowGraph(r, a),
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]:   internalPrinter,

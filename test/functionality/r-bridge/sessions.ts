@@ -1,11 +1,5 @@
 import chai, { assert } from 'chai'
-import fs from 'fs'
-import { randomString } from '../../../src/util/random'
-import { testRequiresNetworkConnection } from '../_helper/network'
-import { testWithShell, withShell } from '../_helper/shell'
-import { isInstallTest } from '../main.spec'
-import { parseCSV } from '../../../src/r-bridge'
-import { log, LogLevel } from '../../../src/util/log'
+import { testWithShell } from '../_helper/shell'
 import chaiAsPromised from 'chai-as-promised'
 import semver from 'semver/preload'
 import { guard } from '../../../src/util/assert'
@@ -63,66 +57,6 @@ describe('RShell sessions', function() {
 			assert.match(lines.join('\n'), /^.*Error.*a/)
 		})
 	})
-	describe('test if a package is already installed', withShell(shell => {
-		let installed: string[]
-		before(async() => {
-			installed = await shell.allInstalledPackages()
-		})
-		it('retrieve all installed packages', () => {
-			assert.isTrue(installed.includes('base'), `base should be installed, but got: "${JSON.stringify(installed)}"`)
-		})
-		it('is installed', async() => {
-			// of course someone could remove the packages in that instant, but for testing it should be fine
-			for(const nameOfInstalledPackage of installed.slice(0,2)) {
-				const isInstalled = await shell.isPackageInstalled(nameOfInstalledPackage)
-				assert.isTrue(isInstalled, `package ${nameOfInstalledPackage} should be installed due to allInstalledPackages`)
-			}
-		})
-		it('is not installed', async() => {
-			let unknownPackageName: string
-			do{
-				unknownPackageName = randomString(10)
-			}
-			while(installed.includes(unknownPackageName))
-
-			const isInstalled = await shell.isPackageInstalled(unknownPackageName)
-			assert.isFalse(isInstalled, `package ${unknownPackageName} should not be installed`)
-		})
-	}))
-	describe('install a package', () => {
-		testWithShell('try to install a package that is already installed', async shell => {
-			const [nameOfInstalledPackage] = await shell.allInstalledPackages()
-			const pkgLoadInfo = await shell.ensurePackageInstalled(nameOfInstalledPackage, false, false)
-			assert.equal(pkgLoadInfo.packageName, nameOfInstalledPackage)
-			assert.equal(pkgLoadInfo.libraryLocation, undefined)
-		})
-
-		// multiple packages to avoid the chance of them being preinstalled
-		installationTestSpec()
-	})
-	describe('autoload on package install', () => {
-		log.updateSettings(l => { l.settings.minLevel = LogLevel.Debug })
-		testWithShell('package is loaded', async shell => {
-			const pkg = 'xmlparsedata'
-			shell.tryToInjectHomeLibPath()
-			await shell.ensurePackageInstalled(pkg, true)
-			// prove if we have it as a loaded namespace (fresh shell!)
-			const got = parseCSV(await shell.sendCommandWithOutput('write.table(as.character(.packages()),sep=",", col.names=FALSE)'))
-
-			assert.isTrue(got.map(g => g[1]).includes(pkg), `expected package ${pkg} to be loaded, but got: ${JSON.stringify(got)}`)
-		})
-		testWithShell('load with force install', async(shell, test) => {
-			await testRequiresNetworkConnection(test)
-			isInstallTest(test)
-
-			const pkg = 'xmlparsedata'
-			await shell.ensurePackageInstalled(pkg, true, true)
-			// prove if we have it as a loaded namespace (fresh shell!)
-			const got = parseCSV(await shell.sendCommandWithOutput('write.table(as.character(.packages()),sep=",", col.names=FALSE)'))
-
-			assert.isTrue(got.map(g => g[1]).includes(pkg), `expected package ${pkg} to be loaded, but got: ${JSON.stringify(got)}`)
-		}).timeout('15min')
-	})
 	testWithShell('send multiple commands', async shell => {
 		shell.sendCommands('a <- 1', 'b <- 2', 'c <- a + b')
 
@@ -131,18 +65,3 @@ describe('RShell sessions', function() {
 		assert.equal(lines[0], '[1] 3')
 	})
 })
-
-function installationTestSpec(): void {
-	for(const pkg of ['xmlparsedata', 'glue']) { // we use for instead of foreach to avoid index syntax issues
-		testWithShell(`install ${pkg}`, async function(shell, test) {
-			isInstallTest(test)
-			await testRequiresNetworkConnection(test)
-			const pkgLoadInfo = await shell.ensurePackageInstalled(pkg, false, true)
-			assert.equal(pkgLoadInfo.packageName, pkg)
-			// clean up the temporary directory
-			if(pkgLoadInfo.libraryLocation !== undefined) {
-				fs.rmSync(pkgLoadInfo.libraryLocation, { recursive: true, force: true })
-			}
-		}).timeout('15min')
-	}
-}

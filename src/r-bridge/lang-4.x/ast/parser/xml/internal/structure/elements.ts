@@ -1,8 +1,7 @@
-import { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
+import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
 import { splitArrayOn } from '../../../../../../../util/arrays'
-import { parseLog } from '../../parser'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from './single-element'
 import { tryNormalizeSymbol } from '../values'
 import { tryNormalizeUnary, tryNormalizeBinary } from '../operators'
@@ -12,10 +11,12 @@ import {
 	tryNormalizeWhile
 } from '../loops'
 import { tryNormalizeIfThenElse, tryNormalizeIfThen } from '../control'
-import { RType, RNode, RawRType } from '../../../../model'
+import type { RNode} from '../../../../model'
+import { RType, RawRType } from '../../../../model'
 import { log } from '../../../../../../../util/log'
 import { normalizeComment } from '../other'
-import { RDelimiter } from '../../../../model/nodes/info'
+import type { RDelimiter } from '../../../../model/nodes/info'
+import {parseLog} from '../../../csv/parser'
 
 function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RNode | RDelimiter)[] {
 	if(mappedWithName.length === 1) {
@@ -132,10 +133,7 @@ export function normalizeBasedOnType(
 	if(obj[0].name) {
 		mappedWithName = obj as NamedXmlBasedJson[]
 	} else {
-		mappedWithName = getWithTokenType(
-			data.config.tokenMap,
-			obj as XmlBasedJson[]
-		)
+		mappedWithName = getWithTokenType(obj as XmlBasedJson[])
 	}
 
 	log.trace(`[parseBasedOnType] names: [${mappedWithName.map(({ name }) => name).join(', ')}]`)
@@ -146,7 +144,7 @@ export function normalizeBasedOnType(
 		node => {
 			const res = node.name === RawRType.Semicolon
 			if(res) {
-				const { location, content } = retrieveMetaStructure(data.config, node.content)
+				const { location, content } = retrieveMetaStructure(node.content)
 				semiColons.push({
 					type:     RType.Delimiter,
 					subtype:  RawRType.Semicolon,

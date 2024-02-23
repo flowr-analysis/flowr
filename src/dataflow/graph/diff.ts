@@ -1,11 +1,14 @@
-import { diffIdentifierReferences, IdentifierReference, diffEnvironments } from '../environments'
-import { NodeId } from '../../r-bridge'
-import { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
+import type { IdentifierReference} from '../environments'
+import { diffIdentifierReferences, diffEnvironments } from '../environments'
+import type { NodeId } from '../../r-bridge'
+import type { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
 import { guard } from '../../util/assert'
-import {
-	setDifference,
+import type {
 	GenericDifferenceInformation,
 	WriteableDifferenceReport, DifferenceReport
+} from '../../util/diff'
+import {
+	setDifference
 } from '../../util/diff'
 import { jsonReplacer } from '../../util/json'
 
@@ -127,8 +130,7 @@ export function diffFunctionArguments(a: false | FunctionArgument[], b: false | 
 			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
 		}
 		return
-	}
-	else if(a.length !== b.length) {
+	} else if(a.length !== b.length) {
 		ctx.report.addComment(`${ctx.position}Differs in number of arguments. ${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
 		return
 	}

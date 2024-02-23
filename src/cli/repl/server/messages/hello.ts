@@ -1,5 +1,5 @@
-import { VersionInformation } from '../../commands/version'
-import { IdMessageBase } from './messages'
+import type { VersionInformation } from '../../commands/version'
+import type { IdMessageBase } from './messages'
 
 /**
  * The hello message is automatically send by the sever upon connection.

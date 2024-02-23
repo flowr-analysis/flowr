@@ -6,12 +6,17 @@
 import { RShell } from '../../r-bridge'
 import { bold } from '../../statistics'
 import { prompt } from './prompt'
-import { commandNames, getCommand, ReplOutput, standardReplOutput } from './commands'
+import type { ReplOutput} from './commands'
+import { commandNames, getCommand, standardReplOutput } from './commands'
 import * as readline from 'node:readline'
 import { splitAtEscapeSensitive } from '../../util/args'
 import { executeRShellCommand } from './commands/execute'
+import os from 'os'
+import path from 'path'
+import fs from 'fs'
 
 const replCompleterKeywords = Array.from(commandNames, s => `:${s}`)
+const defaultHistoryFile = path.join(os.tmpdir(), '.flowrhistory')
 
 /**
  * Used by the repl to provide automatic completions for a given (partial) input line
@@ -25,6 +30,7 @@ export const DEFAULT_REPL_READLINE_CONFIGURATION: readline.ReadLineOptions = {
 	output:                  process.stdout,
 	tabSize:                 4,
 	terminal:                true,
+	history:                 loadReplHistory(defaultHistoryFile),
 	removeHistoryDuplicates: true,
 	completer:               replCompleter
 }
@@ -52,7 +58,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, shell
  */
 export async function replProcessAnswer(output: ReplOutput, expr: string, shell: RShell): Promise<void> {
 
-	const statements = splitAtEscapeSensitive(expr, ';')
+	const statements = splitAtEscapeSensitive(expr, false, ';')
 
 	for(const statement of statements) {
 		await replProcessStatement(output, statement, shell)
@@ -71,11 +77,15 @@ export async function replProcessAnswer(output: ReplOutput, expr: string, shell:
  *                    If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
  *                    For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}.
  * @param output    - Defines two methods that every function in the repl uses to output its data.
+ * @param historyFile - The file to use for persisting the repl's history. Passing undefined causes history not to be saved.
  *
  * For the execution, this function makes use of {@link replProcessAnswer}
  *
  */
-export async function repl(shell = new RShell({ revive: 'always' }), rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION), output = standardReplOutput) {
+export async function repl(shell = new RShell({ revive: 'always' }), rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION), output = standardReplOutput, historyFile: string | undefined = defaultHistoryFile) {
+	if(historyFile) {
+		rl.on('history', h => fs.writeFileSync(historyFile, h.join('\n'), {encoding: 'utf-8'}))
+	}
 
 	// the incredible repl :D, we kill it with ':quit'
 	// eslint-disable-next-line no-constant-condition,@typescript-eslint/no-unnecessary-condition
@@ -90,4 +100,11 @@ export async function repl(shell = new RShell({ revive: 'always' }), rl = readli
 			})
 		})
 	}
+}
+
+export function loadReplHistory(historyFile: string): string[] | undefined {
+	if(!fs.existsSync(historyFile)) {
+		return undefined
+	}
+	return fs.readFileSync(historyFile, {encoding: 'utf-8'}).split('\n')
 }

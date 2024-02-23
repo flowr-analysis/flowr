@@ -1,6 +1,7 @@
-import {Handler} from '../handler'
-import {aiLogger, AINode} from '../../processor'
-import {BinaryOperatorFlavor, ParentInformation, RBinaryOp} from '../../../r-bridge'
+import type {Handler} from '../handler'
+import type { AINode} from '../../processor'
+import {aiLogger} from '../../processor'
+import type {BinaryOperatorFlavor, ParentInformation, RBinaryOp} from '../../../r-bridge'
 import {guard} from '../../../util/assert'
 import {operators} from './operators'
 

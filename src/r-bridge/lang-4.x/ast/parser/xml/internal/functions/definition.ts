@@ -1,7 +1,7 @@
-import { ParserData } from '../../data'
-import { NamedXmlBasedJson } from '../../input-format'
-import { RawRType, RFunctionDefinition, RParameter, RType } from '../../../../model'
-import { parseLog } from '../../parser'
+import type { ParserData } from '../../data'
+import type { NamedXmlBasedJson } from '../../input-format'
+import type { RFunctionDefinition, RParameter} from '../../../../model'
+import { RawRType, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
 import { guard, isNotUndefined } from '../../../../../../../util/assert'
@@ -9,6 +9,7 @@ import { splitArrayOn } from '../../../../../../../util/arrays'
 import { normalizeBasedOnType } from '../structure'
 import { tryNormalizeParameter } from './parameter'
 import { log } from '../../../../../../../util/log'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Tries to parse the given data as a function definition.
@@ -28,7 +29,7 @@ export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName:
 	parseLog.trace('trying to parse function definition')
 	mappedWithName = executeHook(data.hooks.functions.onFunctionDefinition.before, data, mappedWithName)
 
-	const { content, location } = retrieveMetaStructure(data.config, fnBase.content)
+	const { content, location } = retrieveMetaStructure(fnBase.content)
 
 	const openParen = mappedWithName[1]
 	guard(openParen.name === RawRType.ParenLeft, () => `expected opening parenthesis, yet received ${openParen.name}`)

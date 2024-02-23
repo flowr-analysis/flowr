@@ -4,11 +4,13 @@
  *
  * @module
  */
-import { NodeId } from '../../r-bridge'
-import { DataflowGraph, DataflowGraphEdgeAttribute } from '../graph'
+import type { NodeId } from '../../r-bridge'
+import type { DataflowGraph, DataflowGraphEdgeAttribute } from '../graph'
 import { resolveByName } from './resolve-by-name'
-import { DataflowScopeName, GlobalScope, LocalScope } from './scopes'
-import { GenericDifferenceInformation, setDifference } from '../../util/diff'
+import type { DataflowScopeName} from './scopes'
+import { GlobalScope, LocalScope } from './scopes'
+import type { GenericDifferenceInformation} from '../../util/diff'
+import { setDifference } from '../../util/diff'
 import { jsonReplacer } from '../../util/json'
 
 /** identifiers are branded to avoid confusion with other string-like types */
@@ -144,6 +146,14 @@ export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition
 		used:      'always',
 		definedAt: BuiltIn,
 		name:      'print',
+		nodeId:    BuiltIn
+	}]],
+	['source', [{
+		kind:      'built-in-function',
+		scope:     GlobalScope,
+		used:      'always',
+		definedAt: BuiltIn,
+		name:      'source',
 		nodeId:    BuiltIn
 	}]]
 ])

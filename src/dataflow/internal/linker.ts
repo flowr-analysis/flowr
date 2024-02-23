@@ -1,4 +1,4 @@
-import {
+import type {
 	DataflowGraph,
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexInfo,
@@ -6,17 +6,19 @@ import {
 	NamedFunctionArgument,
 	PositionalFunctionArgument
 } from '../graph'
-import {
-	BuiltIn,
+import type {
 	DataflowScopeName,
 	IdentifierReference,
-	REnvironmentInformation,
+	REnvironmentInformation} from '../environments'
+import {
+	BuiltIn,
 	resolveByName
 } from '../environments'
 import { DefaultMap } from '../../util/defaultmap'
 import { guard } from '../../util/assert'
 import { log } from '../../util/log'
-import { DecoratedAstMap, NodeId, ParentInformation, RParameter, RType } from '../../r-bridge'
+import type { DecoratedAstMap, NodeId, ParentInformation, RParameter} from '../../r-bridge'
+import { RType } from '../../r-bridge'
 import { slicerLogger } from '../../slicing'
 import { dataflowLogger, EdgeType } from '../index'
 import { LocalScope } from '../environments/scopes'

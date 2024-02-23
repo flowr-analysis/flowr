@@ -1,11 +1,12 @@
-import { NamedXmlBasedJson } from '../../input-format'
+import type { NamedXmlBasedJson } from '../../input-format'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
-import { parseLog } from '../../parser'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 import { tryNormalizeSingleNode } from '../structure'
-import { RawRType, RRepeatLoop, RType } from '../../../../model'
+import type { RRepeatLoop} from '../../../../model'
+import { RawRType, RType } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
 import { executeHook, executeUnknownHook } from '../../hooks'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Try to parse the construct as a {@link RRepeatLoop}.
@@ -31,7 +32,7 @@ export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJ
 	const {
 		location,
 		content
-	} = retrieveMetaStructure(data.config, repeatToken.content)
+	} = retrieveMetaStructure(repeatToken.content)
 	const result: RRepeatLoop = {
 		type:   RType.RepeatLoop,
 		location,

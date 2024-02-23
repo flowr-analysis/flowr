@@ -1,12 +1,13 @@
-import { NamedXmlBasedJson } from '../../input-format'
+import type { NamedXmlBasedJson } from '../../input-format'
 import { tryNormalizeSingleNode } from '../structure'
-import { parseLog } from '../../parser'
-import { ParserData } from '../../data'
+import type { ParserData } from '../../data'
 import { tryNormalizeIfThen } from './if-then'
 import { guard } from '../../../../../../../util/assert'
-import { RIfThenElse, RawRType, RType } from '../../../../model'
+import type { RIfThenElse} from '../../../../model'
+import { RawRType, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { ensureExpressionList } from '../meta'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Try to parse the construct as a {@link RIfThenElse}.

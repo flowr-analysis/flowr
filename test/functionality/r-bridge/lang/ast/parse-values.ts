@@ -20,13 +20,13 @@ describe('CSV parsing', withShell(shell => {
 			content: 'x <- 1'
 		}, shell)
 		assert.equal(code, `
-"id2dummy","line1","col1","line2","col2","id","parent","token","terminal","text"
-"7",1,1,1,6,7,0,"expr",FALSE,"x <- 1"
-"1",1,1,1,1,1,3,"SYMBOL",TRUE,"x"
-"3",1,1,1,1,3,7,"expr",FALSE,"x"
-"2",1,3,1,4,2,7,"LEFT_ASSIGN",TRUE,"<-"
-"4",1,6,1,6,4,5,"NUM_CONST",TRUE,"1"
-"5",1,6,1,6,5,7,"expr",FALSE,"1"
+"line1","col1","line2","col2","id","parent","token","terminal","text"
+1,1,1,6,7,0,"expr",FALSE,"x <- 1"
+1,1,1,1,1,3,"SYMBOL",TRUE,"x"
+1,1,1,1,3,7,"expr",FALSE,"x"
+1,3,1,4,2,7,"LEFT_ASSIGN",TRUE,"<-"
+1,6,1,6,4,5,"NUM_CONST",TRUE,"1"
+1,6,1,6,5,7,"expr",FALSE,"1"
 `.trimStart())
 	})
 

@@ -22,9 +22,7 @@ export function csvToRecord(csv: string[][]): Map<number, CsvEntry> {
 	const headers = csv[0]
 	for(let rowIdx = 1; rowIdx < csv.length; rowIdx++){
 		const content: Record<string,string> = {}
-		for(let col = 1; col < csv[rowIdx].length; col++){
-			// we start at column 1 here, because the 0th column has a second copy of the id that has a dummy header
-			// (see https://github.com/Code-Inspect/flowr/issues/653)
+		for(let col = 0; col < csv[rowIdx].length; col++){
 			content[headers[col]] = csv[rowIdx][col]
 		}
 		const entry = content as CsvEntry

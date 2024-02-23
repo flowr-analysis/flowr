@@ -83,22 +83,21 @@ const ErrorMarker = 'err'
  */
 export function retrieveCsvFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
-	const setupCommands = [
-		`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
-		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
-		'try(flowr_output<-write.table(getParseData(flowr_parsed,includeText=TRUE),sep=",",col.names=TRUE,qmethod="d"))',
-	]
-	const outputCommand = `cat(flowr_output,${ts2r(shell.options.eol)})`
+	const setupCommand = [
+		`flowr_output <- flowr_parsed <- "${ErrorMarker}";`,
+		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE);`,
+		'try(flowr_output<-getParseData(flowr_parsed,includeText=TRUE));',
+	].join('')
+	const outputCommand = `cat(capture.output(data.table::fwrite(flowr_output,row.names=FALSE,col.names=TRUE,quote=TRUE,qmethod="double",eol=${ts2r(shell.options.eol)})),sep=${ts2r(shell.options.eol)})`
 
 	if(shell instanceof RShellExecutor){
-		shell.addPrerequisites(setupCommands)
-		return guardRetrievedOutput(shell.run(outputCommand), request)
+		return guardRetrievedOutput(shell.run(setupCommand + outputCommand), request)
 	} else {
-		const run = async() => {
-			shell.sendCommands(...setupCommands)
-			return guardRetrievedOutput((await shell.sendCommandWithOutput(outputCommand)).join(shell.options.eol), request)
-		}
-		return run()
+		return shell.sendCommandWithOutput(setupCommand + outputCommand).then(result => {
+			return guardRetrievedOutput(result.join(shell.options.eol), request)
+		}).catch(e => {
+			throw new Error(`unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}: ${e}`)
+		})
 	}
 }
 
@@ -126,21 +125,13 @@ export function removeTokenMapQuotationMarks(str: string): string {
  * Needs to be called *after*  {@link retrieveCsvFromRCode} (or {@link retrieveNormalizedAstFromRCode})
  */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise<number> {
-	const result = await shell.sendCommandWithOutput(`cat(nrow(getParseData(flowr_parsed)),${ts2r(shell.options.eol)})`)
+	const result = await shell.sendCommandWithOutput(`cat(nrow(flowr_output),${ts2r(shell.options.eol)})`)
 	guard(result.length === 1, () => `expected exactly one line to obtain the number of R tokens, but got: ${JSON.stringify(result)}`)
 	return Number(result[0])
 }
 
-function guardRetrievedOutput(output: string,  request: RParseRequest): string {
+function guardRetrievedOutput(output: string, request: RParseRequest): string {
 	guard(output !== ErrorMarker && output.trim() !== '""',
 		() => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
-
-	// we add a dummy header to the first line because of weird behavior with the returned csv
-	// example: line1 is mapped to 7, which is the same as the "id" column's entry
-	// "line1","col1","line2","col2","id","parent","token","terminal","text"
-	// "7",1,1,1,5,7,0,"expr",FALSE,""
-	// (see https://github.com/Code-Inspect/flowr/issues/653)
-	output = `"id2dummy",${output}`
-
 	return output
 }

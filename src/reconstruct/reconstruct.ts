@@ -284,12 +284,10 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInformation>, functionParameters: Code[], body: Code, configuration: ReconstructionConfiguration): Code {
 	// if a definition is not selected, we only use the body - slicing will always select the definition
 	if(!isSelected(configuration, definition) && functionParameters.every(p => p.length === 0)) {
-		console.log('function without parameter unselected')
 		return merge([body])
 	}
 
 	if(isSelected(configuration, definition.body)) {
-		console.log('fbody selected')
 		const out = merge([body])
 		const h = out[out.length - 1].linePart
 		if(h[h.length - 1].part === ';') {
@@ -301,11 +299,9 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 	const startPos = definition.location.start
 
 	if(isSelected(configuration, definition)) {
-		console.log('definition selected')
 		return plain(getLexeme(definition), startPos)
 	}
 
-	console.log('normal function reconstruct')
 	const parameters = reconstructParameters(definition.parameters).join(', ')
 	const additionalTokens = reconstructAdditionalTokens(definition)
 	const reconstructedBody = reconstructExpressionList(definition.body, [plain(getLexeme(definition.body), startPos)], configuration)

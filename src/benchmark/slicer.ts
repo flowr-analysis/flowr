@@ -80,7 +80,7 @@ export interface BenchmarkSingleSliceStats extends MergeableRecord {
 export class BenchmarkSlicer {
 	/** Measures all data that is recorded *once* per slicer (complete setup up to the dataflow graph creation) */
 	private readonly commonMeasurements = new Measurements<CommonSlicerMeasurements>()
-	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>
+	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>()
 	private readonly shell: RShell
 	private stats:          SlicerStats | undefined
 	private loadedXml:      string | undefined

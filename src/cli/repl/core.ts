@@ -83,8 +83,9 @@ export async function replProcessAnswer(output: ReplOutput, expr: string, shell:
  *
  */
 export async function repl(shell = new RShell({ revive: 'always' }), rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION), output = standardReplOutput, historyFile: string | undefined = defaultHistoryFile) {
-	if(historyFile)
+	if(historyFile) {
 		rl.on('history', h => fs.writeFileSync(historyFile, h.join('\n'), {encoding: 'utf-8'}))
+	}
 
 	// the incredible repl :D, we kill it with ':quit'
 	// eslint-disable-next-line no-constant-condition,@typescript-eslint/no-unnecessary-condition
@@ -102,7 +103,8 @@ export async function repl(shell = new RShell({ revive: 'always' }), rl = readli
 }
 
 export function loadReplHistory(historyFile: string): string[] | undefined {
-	if(!fs.existsSync(historyFile))
+	if(!fs.existsSync(historyFile)) {
 		return undefined
+	}
 	return fs.readFileSync(historyFile, {encoding: 'utf-8'}).split('\n')
 }

@@ -79,8 +79,9 @@ export class RShellExecutor {
 		const packageExistedAlready = this.isPackageInstalled(packageName)
 		if(!force && packageExistedAlready) {
 			this.log.info(`package "${packageName}" is already installed`)
-			if(autoload)
+			if(autoload) {
 				this.addPrerequisites(`library(${ts2r(packageName)})`)
+			}
 			return {packageName, packageExistedAlready}
 		}
 
@@ -88,8 +89,9 @@ export class RShellExecutor {
 		this.log.debug(`using temporary directory: "${tempDir}" to install package "${packageName}"`)
 
 		this.run(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`)
-		if(autoload)
+		if(autoload) {
 			this.addPrerequisites(`library(${ts2r(packageName)},lib.loc=temp)`)
+		}
 
 		return {packageName, packageExistedAlready, libraryLocation: tempDir}
 	}
@@ -119,13 +121,15 @@ export class RShellExecutor {
 		// we invert the token map to get a mapping back from the replacement
 		const parsed = parseCSV(this.run('write.table(xmlparsedata::xml_parse_token_map,sep=",",col.names=FALSE)').split('\n'))
 
-		if(parsed.some(s => s.length !== 2))
+		if(parsed.some(s => s.length !== 2)) {
 			throw new Error(`Expected two columns in token map, but got ${JSON.stringify(parsed)}`)
+		}
 
 		// we swap key and value to get the other direction, furthermore we remove quotes from keys if they are quoted
 		const ret: DeepWritable<TokenMap> = {}
-		for(const [key, value] of parsed)
+		for(const [key, value] of parsed) {
 			ret[value] = removeTokenMapQuotationMarks(key)
+		}
 		return ret as TokenMap
 	}
 

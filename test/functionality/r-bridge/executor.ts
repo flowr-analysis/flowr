@@ -47,8 +47,9 @@ describe('RShellExecutor', function() {
 				assert.equal(result.packageName, pkg)
 
 				// clean up the temporary directory
-				if(result.libraryLocation !== undefined)
+				if(result.libraryLocation !== undefined) {
 					fs.rmSync(result.libraryLocation, { recursive: true, force: true })
+				}
 			}
 		})
 

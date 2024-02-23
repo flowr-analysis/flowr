@@ -101,15 +101,17 @@ export function retrieveXmlFromRCode(request: RParseRequest, shell: (RShell | RS
 	const outputCommand = `cat(flowr_output,${ts2r(shell.options.eol)})`
 
 	if(shell instanceof RShellExecutor){
-		if(request.ensurePackageInstalled)
+		if(request.ensurePackageInstalled) {
 			shell.ensurePackageInstalled('xmlparsedata',true)
+		}
 
 		shell.addPrerequisites(setupCommands)
 		return guardOutput(shell.run(outputCommand))
 	} else {
 		const run = async() => {
-			if(request.ensurePackageInstalled)
+			if(request.ensurePackageInstalled) {
 				await shell.ensurePackageInstalled('xmlparsedata', true)
+			}
 
 			shell.sendCommands(...setupCommands)
 			return guardOutput((await shell.sendCommandWithOutput(outputCommand)).join(shell.options.eol))

@@ -300,7 +300,8 @@
           ]
         }
       ],
-      "@typescript-eslint/consistent-type-imports": "error"
+      "@typescript-eslint/consistent-type-imports": "error",
+      "curly": "error"
     }
   },
   "release-it": {

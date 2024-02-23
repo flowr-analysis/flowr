@@ -6,7 +6,7 @@ import {
 } from '../../../_helper/provider'
 import { exprList } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { parseGetParseData, retrieveCsvFromRCode, RType} from '../../../../../src'
+import { parseCSV, retrieveCsvFromRCode, RType} from '../../../../../src'
 import chai, { assert } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { MIN_VERSION_RAW_STABLE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
@@ -35,7 +35,7 @@ describe('CSV parsing', withShell(shell => {
 			request: 'text',
 			content: 'x <- 1'
 		}, shell)
-		const parsed = csvToRecord(parseGetParseData(code))
+		const parsed = csvToRecord(parseCSV(code))
 		const one = '{"line1":"1","col1":"1","line2":"1","col2":"1","id":"1","parent":"3","token":"SYMBOL","terminal":"TRUE","text":"x"}'
 		const two = '{"line1":"1","col1":"3","line2":"1","col2":"4","id":"2","parent":"7","token":"LEFT_ASSIGN","terminal":"TRUE","text":"<-"}'
 		const three = `{"line1":"1","col1":"1","line2":"1","col2":"1","id":"3","parent":"7","token":"expr","terminal":"FALSE","text":"x","children":[${one}]}`

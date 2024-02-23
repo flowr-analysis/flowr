@@ -1,6 +1,6 @@
 import { type RShell } from './shell'
 import type { XmlParserHooks, NormalizedAst } from './lang-4.x'
-import { getParseDataHeader, ts2r } from './lang-4.x'
+import { ts2r } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
 import type {AsyncOrSync, DeepPartial} from 'ts-essentials'
 import { guard } from '../util/assert'
@@ -74,8 +74,6 @@ export function requestFingerprint(request: RParseRequest): string {
 
 const ErrorMarker = 'err'
 
-const flowrInitVar = `flowr_output <- flowr_parsed <- "${ErrorMarker}";`
-
 /**
  * Provides the capability to parse R files/R code using the R parser.
  * Depends on {@link RShell} to provide a connection to R.
@@ -86,11 +84,11 @@ const flowrInitVar = `flowr_output <- flowr_parsed <- "${ErrorMarker}";`
 export function retrieveCsvFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
 	const setupCommand = [
-		flowrInitVar,
+		`flowr_output <- flowr_parsed <- "${ErrorMarker}";`,
 		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE);`,
-		'try(flowr_output<-getParseData(flowr_parsed,includeText=TRUE));'
+		'try(flowr_output<-getParseData(flowr_parsed,includeText=TRUE));',
 	].join('')
-	const outputCommand = `cat(paste0(names(flowr_output),collapse=","),${ts2r(shell.options.eol)});cat(paste0(apply(flowr_output,1,function(x) paste0(x,collapse=" ")),collapse=${ts2r(shell.options.eol)}),${ts2r(shell.options.eol)})`
+	const outputCommand = `cat(capture.output(data.table::fwrite(flowr_output,row.names=FALSE,col.names=TRUE,quote=TRUE,qmethod="double",eol=${ts2r(shell.options.eol)})),sep=${ts2r(shell.options.eol)})`
 
 	if(shell instanceof RShellExecutor){
 		return guardRetrievedOutput(shell.run(setupCommand + outputCommand), request)

@@ -1,6 +1,4 @@
 import {removeTokenMapQuotationMarks} from '../../../../retriever'
-import type { GetParseDataRow } from '../../../values'
-import { getParseDataHeader } from '../../../values'
 
 export const RootId = 0
 
@@ -17,15 +15,15 @@ export interface CsvEntry extends Record<string, unknown> {
 	children?: CsvEntry[]
 }
 
-export function csvToRecord(csv: readonly GetParseDataRow[]): Map<number, CsvEntry> {
+export function csvToRecord(csv: string[][]): Map<number, CsvEntry> {
 	const ret = new Map<number, CsvEntry>()
-	const numberOfCols = getParseDataHeader.length
 
 	// parse csv into entries
-	for(const row of csv){
+	const headers = csv[0]
+	for(let rowIdx = 1; rowIdx < csv.length; rowIdx++){
 		const content: Record<string,string> = {}
-		for(let col = 0; col < numberOfCols; col++){
-			content[getParseDataHeader[col]] = row[col] as string
+		for(let col = 0; col < csv[rowIdx].length; col++){
+			content[headers[col]] = csv[rowIdx][col]
 		}
 		const entry = content as CsvEntry
 		entry.token = removeTokenMapQuotationMarks(entry.token)

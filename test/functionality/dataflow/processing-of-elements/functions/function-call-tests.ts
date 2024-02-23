@@ -37,21 +37,14 @@ describe('Function Call', withShell(shell => {
 					args:        [{
 						nodeId: '12', name: `${UnnamedArgumentPrefix}12`, scope: LocalScope, used: 'always'
 					}] })
-				.addVertex({
-					tag:         'function-definition',
-					id:          '8',
-					name:        '8',
-					scope:       LocalScope,
-					exitPoints:  [ '6' ],
-					environment: popLocalEnvironment(envWithXParamDefined),
-					subflow:     {
-						out:               [],
-						in:                [],
-						unknownReferences: [],
-						scope:             LocalScope,
-						environments:      envWithXParamDefined,
-						graph:             new Set(['4', '6']),
-					}})
+				.definesFunction('8', '8', ['6'], {
+					out:               [],
+					in:                [],
+					unknownReferences: [],
+					scope:             LocalScope,
+					environments:      envWithXParamDefined,
+					graph:             new Set(['4', '6']),
+				}, {environment: popLocalEnvironment(envWithXParamDefined)})
 				.definesVariable('4', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.uses('6', 'x', {environment: envWithXParamDefined}, false)
 				.reads('6', '4')
@@ -85,21 +78,16 @@ describe('Function Call', withShell(shell => {
 					args:        [{
 						nodeId: '15', name: `${UnnamedArgumentPrefix}15`, scope: LocalScope, used: 'always'
 					}] })
-				.addVertex({
-					tag:         'function-definition',
-					id:          '8',
-					name:        '8',
-					scope:       LocalScope,
-					exitPoints:  [ '6' ],
-					environment: popLocalEnvironment(envWithXParamDefined),
-					subflow:     {
-						out:               [],
-						in:                [],
-						unknownReferences: [],
-						scope:             LocalScope,
-						environments:      envWithXParamDefined,
-						graph:             new Set(['4', '6'])
-					}})
+				.definesFunction('8', '8', ['6'], {
+					out:               [],
+					in:                [],
+					unknownReferences: [],
+					scope:             LocalScope,
+					environments:      envWithXParamDefined,
+					graph:             new Set(['4', '6'])
+				}, 
+				{environment: popLocalEnvironment(envWithXParamDefined)}
+				)
 				.definesVariable('4', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.uses('6', 'x', {environment: envWithXParamDefined}, false)
 				.reads('6', '4')
@@ -149,21 +137,16 @@ a(i)`, emptyGraph()
 				args:        [{
 					nodeId: '18', name: `${UnnamedArgumentPrefix}18`, scope: LocalScope, used: 'always'
 				}]})
-			.addVertex({
-				tag:         'function-definition',
-				id:          '14',
-				name:        '14',
-				environment: initializeCleanEnvironments(),
-				scope:       LocalScope,
-				exitPoints:  [ '12' ],
-				subflow:     {
-					out:               [],
-					in:                [],
-					unknownReferences: [],
-					scope:             LocalScope,
-					environments:      envWithLastXDefined,
-					graph:             new Set(['4', '6', '7', '9'])
-				}})
+			.definesFunction('14', '14', ['12'], {
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				scope:             LocalScope,
+				environments:      envWithLastXDefined,
+				graph:             new Set(['4', '6', '7', '9'])
+			},
+			{environment: initializeCleanEnvironments()}
+			)
 			.definesVariable('4', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 			.definesVariable('6', 'x', LocalScope, {environment: envWithXConstDefined}, false)
 			.definesVariable('9', 'x', LocalScope, {environment: envWithXDefinedForFunc}, false)
@@ -200,22 +183,15 @@ a(i)`, emptyGraph()
 					{ nodeId: '8', name: `${UnnamedArgumentPrefix}8`, scope: LocalScope, used: 'always' }
 				]
 			})
-			.addVertex({
-				tag:         'function-definition',
-				id:          '6',
-				name:        '6',
-				environment: initializeCleanEnvironments(),
-				scope:       LocalScope,
-				exitPoints:  [ '4' ],
-				subflow:     {
-					out:               [],
-					in:                [],
-					unknownReferences: [],
-					scope:             LocalScope,
-					environments:      envWithXParameter,
-					graph:             new Set(['0', '2'])
-				}
-			})
+			.definesFunction('6', '6', ['4'], {
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				scope:             LocalScope,
+				environments:      envWithXParameter,
+				graph:             new Set(['0', '2'])
+			},
+			{environment: initializeCleanEnvironments()})
 			.definesVariable('0', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 			.uses('2', 'x', {environment: envWithXParameter}, false)
 			.exits('4', '+', envWithXParameter , {}, false)
@@ -260,43 +236,26 @@ a()()`,
 				args:        []
 			})
 			.definesVariable('0', 'a')
-			.addVertex({
-				tag:         'function-definition',
-				id:          '5',
-				name:        '5',
-				environment: initializeCleanEnvironments(),
-				scope:       LocalScope,
-				exitPoints:  [ '3' ],
-				subflow:     {
-					out:               [],
-					in:                [],
-					unknownReferences: [],
-					scope:             LocalScope,
-					environments:      pushLocalEnvironment(initializeCleanEnvironments()),
-					graph:             new Set(['3'])
-
-				}
-			})
-			.addVertex({
-				tag:         'function-definition',
-				id:          '3',
-				name:        '3',
-				environment: pushLocalEnvironment(initializeCleanEnvironments()),
-				scope:       LocalScope,
-				exitPoints:  [ '1' ],
-				subflow:     {
-					out:               [],
-					in:                [],
-					unknownReferences: [],
-					scope:             LocalScope,
-					environments:      pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
-					graph:             new Set()
-				}
-			}, false)
-
+			.definesFunction('5', '5', ['3'], {
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				scope:             LocalScope,
+				environments:      pushLocalEnvironment(initializeCleanEnvironments()),
+				graph:             new Set(['3'])
+			},
+			{environment: initializeCleanEnvironments()}
+			)
+			.definesFunction('3', '3', ['1'], {
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				scope:             LocalScope,
+				environments:      pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
+				graph:             new Set()
+			},
+			{environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 			.exits('1', '42', pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())) , {}, false)
-
-
 			.calls('9', '8')
 			.reads('8', '0')
 			.definedBy('0', '5')
@@ -323,20 +282,14 @@ a()()`,
 			emptyGraph()
 				.addVertex({ tag: 'function-call', id: '5', name: 'f', environment: initializeCleanEnvironments(), args: [{ nodeId: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, used: 'always' }]})
 				.uses('4', `${UnnamedArgumentPrefix}4`)
-				.addVertex({
-					tag:        'function-definition',
-					id:         '3',
-					name:       '3',
-					scope:      LocalScope,
-					exitPoints: [ '1' ],
-					subflow:    {
-						out:               [],
-						in:                [],
-						unknownReferences: [],
-						scope:             LocalScope,
-						environments:      pushLocalEnvironment(initializeCleanEnvironments()),
-						graph:             new Set()
-					}})
+				.definesFunction('3', '3', ['1'], {
+					out:               [],
+					in:                [],
+					unknownReferences: [],
+					scope:             LocalScope,
+					environments:      pushLocalEnvironment(initializeCleanEnvironments()),
+					graph:             new Set()
+				})
 				.exits('1', '3', pushLocalEnvironment(initializeCleanEnvironments()) , {}, false)
 				.reads('4', '3')
 				.argument('5', '4')
@@ -407,20 +360,14 @@ a()()`,
 					environment: defWithAY,
 					args:        []
 				})
-				.addVertex({
-					tag:        'function-definition',
-					id:         '3',
-					name:       '3',
-					scope:      LocalScope,
-					exitPoints: [ '1' ],
-					subflow:    {
-						out:               [],
-						in:                [{ nodeId: '1', name: 'y', scope: LocalScope, used: 'always' }],
-						unknownReferences: [],
-						scope:             LocalScope,
-						environments:      innerEnv,
-						graph:             new Set(['1'])
-					}})
+				.definesFunction('3', '3', ['1'], {
+					out:               [],
+					in:                [{ nodeId: '1', name: 'y', scope: LocalScope, used: 'always' }],
+					unknownReferences: [],
+					scope:             LocalScope,
+					environments:      innerEnv,
+					graph:             new Set(['1'])
+				})
 				.uses('1', 'y', {environment: innerEnv}, false)
 				.definedBy('0', '3')
 				.calls('9', '3')
@@ -459,27 +406,20 @@ a(,3)`, emptyGraph()
 				]
 			})
 			.definesVariable('0', 'a')
-			.addVertex({
-				tag:         'function-definition',
-				id:          '8',
-				scope:       LocalScope,
-				name:        '8',
-				exitPoints:  [ '6' ],
-				environment: popLocalEnvironment(withXYParameter),
-				subflow:     {
-					out:               [],
-					in:                [],
-					unknownReferences: [],
-					scope:             LocalScope,
-					environments:      withXYParameter,
-					graph:             new Set(['1', '4', '6'])
-				}
-			})
+			.definesFunction('8', '8', ['6'], {
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				scope:             LocalScope,
+				environments:      withXYParameter,
+				graph:             new Set(['1', '4', '6'])
+			},
+			{environment: popLocalEnvironment(withXYParameter)}
+			)
 			.definesVariable('1', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 			.definesVariable('4', 'y', LocalScope, {environment: withXParameter}, false)
 			.uses('6', 'y', {environment: withXYParameter}, false)
 			.reads('6', '4')
-
 			.uses('12', `${UnnamedArgumentPrefix}12`, {environment: withADefined})
 			.reads('13', '0')
 			.calls('13', '8')

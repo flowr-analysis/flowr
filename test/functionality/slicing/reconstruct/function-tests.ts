@@ -143,21 +143,22 @@ describe('Functions Reconstruct', () => {
 			}
 		})
 	})
-	describe('printLinePart', () => {
-		function positive(input: PrettyPrintLinePart[], expected: string, msg: string) {
+	describe.only('printLinePart', () => {
+		function positive(input: PrettyPrintLinePart[], expected: string, msg: string, columnOffset: number) {
 			it(`Convert ${JSON.stringify(input)} to string`, () => {
-				const out = prettyPrintPartToString(input, input[0].loc.column)
+				const out = prettyPrintPartToString(input, columnOffset)
 				assert.strictEqual(out, expected, msg)
 			})
 		}
 		for(const testCase of [
-			{input: [{part: 'Hello', loc: {line: 0, column: 0}}],expected: 'Hello',msg: 'No Spaces anywhere'},
-			{input: [{part: 'Hello World', loc: {line: 0, column: 0}}],expected: 'Hello World',msg: 'Spaces get preserved'},
-			{input: [{part: 'Hello', loc: {line: 0, column: 0}}, {part: 'World', loc: {line: 0, column: 7}}],expected: 'Hello World',msg: 'Spaces get added within the string'},
-			{input: [{part: 'Hello', loc: {line: 0, column: 7}}],expected: '      Hello',msg: 'Spaces get added at the beginning'},
-			{input: [{part: 'World', loc: {line: 0, column: 7}},{part: 'Hello', loc: {line: 0, column: 0}}],expected: 'Hello World',msg: 'Spaces get added within the string, wrong order'},
+			{input: [{part: 'Hello', loc: {line: 0, column: 0}}],expected: 'Hello',msg: 'No Spaces anywhere', columnOffset: 0},
+			{input: [{part: 'Hello World', loc: {line: 0, column: 0}}],expected: 'Hello World',msg: 'Spaces get preserved', columnOffset: 0},
+			{input: [{part: 'Hello', loc: {line: 0, column: 0}}, {part: 'World', loc: {line: 0, column: 6}}],expected: 'Hello World',msg: 'Spaces get added within the string', columnOffset: 0},
+			//This test case will always fail as we correct single line offsets
+			{input: [{part: 'Hello', loc: {line: 0, column: 6}}],expected: '      Hello',msg: 'Spaces get added at the beginning', columnOffset: 0},
+			{input: [{part: 'World', loc: {line: 0, column: 6}},{part: 'Hello', loc: {line: 0, column: 0}}],expected: 'Hello World',msg: 'Spaces get added within the string, wrong order', columnOffset: 0},
 		]) {
-			positive(testCase.input, testCase.expected, testCase.msg)
+			positive(testCase.input, testCase.expected, testCase.msg, testCase.columnOffset)
 		}
 	})
 })

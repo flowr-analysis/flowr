@@ -2,7 +2,7 @@ import type { XmlBasedJson} from '../../../r-bridge'
 import {childrenKey} from '../../../r-bridge'
 import {attributesKey, contentKey} from '../../../r-bridge'
 import {
-	parseCSV
+	parseGetParseData
 } from '../../../r-bridge'
 import {getKeysGuarded, RawRType, requestFromInput} from '../../../r-bridge'
 import {
@@ -132,7 +132,7 @@ export const parseCommand: ReplCommand = {
 			request:        requestFromInput(remainingLine.trim())
 		}).allRemainingSteps()
 
-		const object = convertToXmlBasedJson(csvToRecord(parseCSV(result.parse)))
+		const object = convertToXmlBasedJson(csvToRecord(parseGetParseData(result.parse)))
 
 		output.stdout(depthListToTextTree(toDepthMap(object), output.formatter))
 	}

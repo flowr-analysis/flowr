@@ -70,8 +70,6 @@ export interface RShellExecutionOptions extends MergeableRecord {
 	readonly eol:                string
 	/** The environment variables available in the R session. */
 	readonly env:                NodeJS.ProcessEnv
-	/** The path to the library directory, use undefined to let R figure that out for itself */
-	readonly homeLibPath:        string | undefined
 }
 
 export interface RShellSessionOptions extends RShellExecutionOptions {
@@ -94,8 +92,7 @@ export const DEFAULT_R_SHELL_EXEC_OPTIONS: RShellExecutionOptions = {
 	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
 	cwd:                process.cwd(),
 	env:                process.env,
-	eol:                '\n',
-	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
+	eol:                '\n'
 } as const
 
 export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
@@ -126,7 +123,6 @@ export class RShell {
 		this.log = log.getSubLogger({ name: this.options.sessionName })
 
 		this.session = new RShellSession(this.options, this.log)
-		this.tryToInjectHomeLibPath()
 		this.revive()
 	}
 
@@ -167,21 +163,6 @@ export class RShell {
 		return result.length === 1 ? this.versionCache : null
 	}
 
-	public injectLibPaths(...paths: string[]): void {
-		this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
-		this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
-	}
-
-	public tryToInjectHomeLibPath(): void {
-		// ensure the path exists first
-		if(this.options.homeLibPath === undefined) {
-			this.log.debug('ensuring home lib path exists (automatic inject)')
-			this.sendCommand('if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }')
-			this.sendCommand('.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))')
-		} else {
-			this.injectLibPaths(this.options.homeLibPath)
-		}
-	}
 
 	/**
    * Send a command and collect the output
@@ -263,6 +244,7 @@ export class RShell {
 	}
 
 	private _sendCommand(command: string): void {
+		console.log(command)
 		this.session.writeLine(command)
 	}
 }
@@ -350,7 +332,7 @@ class RShellSession {
 			this.on(from, 'line', handler)
 			action?.()
 		}).finally(() => {
-			// this.removeListener(from, 'line', handler)
+			this.removeListener(from, 'line', handler)
 			this.bareSession.removeListener('exit', error)
 			this.bareSession.stdin.removeListener('error', error)
 		})

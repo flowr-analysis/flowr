@@ -8,8 +8,8 @@ import type {IdGenerator, NoInfo} from '../../model'
 import {decorateAst, deterministicCountingIdGenerator, type NormalizedAst} from '../../model'
 import {deepMergeObject} from '../../../../../util/objects'
 import type { CsvEntry} from './format'
-import { isRoot } from './format'
-import {csvToRecord, type ParsedCsv} from './format'
+import { RootId } from './format'
+import {csvToRecord} from './format'
 import {parseCSV} from '../../../values'
 import {parseRootObjToAst} from '../xml/internal'
 import {log} from '../../../../../util/log'
@@ -25,14 +25,20 @@ export function normalize(csvString: string, hooks?: DeepPartial<XmlParserHooks>
 	return decorateAst(parseRootObjToAst(data, object), getId)
 }
 
-export function convertToXmlBasedJson(csv: ParsedCsv): XmlBasedJson{
+export function convertToXmlBasedJson(csv: Map<number, CsvEntry>): XmlBasedJson{
 	const exprlist: XmlBasedJson =  {}
 	exprlist[nameKey] = 'exprlist'
-	exprlist[childrenKey] = Object.values(csv).filter(isRoot).map(v => convertEntry(v, csv))
+	const children = []
+	for(const entry of csv.values()) {
+		if(entry.parent == RootId) {
+			children.push(convertEntry(entry))
+		}
+	}
+	exprlist[childrenKey] = children
 	return {'exprlist': exprlist}
 }
 
-function convertEntry(csvEntry: CsvEntry, csv: ParsedCsv): XmlBasedJson {
+function convertEntry(csvEntry: CsvEntry): XmlBasedJson {
 	const xmlEntry: XmlBasedJson = {}
 
 	xmlEntry[attributesKey] = {
@@ -52,7 +58,7 @@ function convertEntry(csvEntry: CsvEntry, csv: ParsedCsv): XmlBasedJson {
 			// we sort children the same way xmlparsedata does (by line, by column, by inverse end line, by inverse end column, by terminal state, by combined "start" tiebreaker value)
 			// (https://github.com/r-lib/xmlparsedata/blob/main/R/package.R#L153C72-L153C78)
 			.sort((c1,c2) => c1.line1-c2.line1 || c1.col1-c2.col1 || c2.line2-c1.line2 || c2.col2-c1.col2 || Number(c1.terminal)-Number(c2.terminal) || sortTiebreak(c1)-sortTiebreak(c2))
-			.map(c => convertEntry(c, csv))
+			.map(convertEntry)
 	}
 
 	return xmlEntry

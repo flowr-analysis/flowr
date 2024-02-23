@@ -41,7 +41,7 @@ describe('CSV parsing', withShell(shell => {
 		const three = `{"line1":"1","col1":"1","line2":"1","col2":"1","id":"3","parent":"7","token":"expr","terminal":"FALSE","text":"x","children":[${one}]}`
 		const four = '{"line1":"1","col1":"6","line2":"1","col2":"6","id":"4","parent":"5","token":"NUM_CONST","terminal":"TRUE","text":"1"}'
 		const five = `{"line1":"1","col1":"6","line2":"1","col2":"6","id":"5","parent":"7","token":"expr","terminal":"FALSE","text":"1","children":[${four}]}`
-		assert.equal(JSON.stringify(parsed), `{"1":${one},"2":${two},"3":${three},"4":${four},"5":${five},"7":{"line1":"1","col1":"1","line2":"1","col2":"6","id":"7","parent":"0","token":"expr","terminal":"FALSE","text":"x <- 1","children":[${two},${three},${five}]}}`)
+		assert.deepEqual(Object.fromEntries(parsed), JSON.parse(`{"1":${one},"2":${two},"3":${three},"4":${four},"5":${five},"7":{"line1":"1","col1":"1","line2":"1","col2":"6","id":"7","parent":"0","token":"expr","terminal":"FALSE","text":"x <- 1","children":[${three},${two},${five}]}}`))
 	})
 }))
 

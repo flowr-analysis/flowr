@@ -1,6 +1,6 @@
 import {removeTokenMapQuotationMarks} from '../../../../retriever'
 
-export type ParsedCsv = Record<number, CsvEntry>
+export const RootId = 0
 
 export interface CsvEntry extends Record<string, unknown> {
 	line1:     number,
@@ -15,8 +15,8 @@ export interface CsvEntry extends Record<string, unknown> {
 	children?: CsvEntry[]
 }
 
-export function csvToRecord(csv: string[][]): ParsedCsv {
-	const ret: ParsedCsv = {}
+export function csvToRecord(csv: string[][]): Map<number, CsvEntry> {
+	const ret = new Map<number, CsvEntry>()
 
 	// parse csv into entries
 	const headers = csv[0]
@@ -29,21 +29,19 @@ export function csvToRecord(csv: string[][]): ParsedCsv {
 		}
 		const entry = content as CsvEntry
 		entry.token = removeTokenMapQuotationMarks(entry.token)
-		ret[entry.id] = entry
+		ret.set(entry.id, entry)
 	}
 
 	// iterate a second time to set parent-child relations (since they may be out of order in the csv)
-	for(const entry of Object.values(ret)) {
-		if(!isRoot(entry)) {
-			const parent = ret[entry.parent]
-			parent.children ??= []
-			parent.children.push(entry)
+	for(const entry of ret.values()) {
+		if(entry.parent != RootId) {
+			const parent = ret.get(entry.parent)
+			if(parent) {
+				parent.children ??= []
+				parent.children.push(entry)
+			}
 		}
 	}
 
 	return ret
-}
-
-export function isRoot(entry: CsvEntry): boolean {
-	return entry.parent == 0
 }

@@ -44,6 +44,6 @@ export function csvToRecord(csv: string[][]): ParsedCsv {
 	return ret
 }
 
-export function isRoot(entry: CsvEntry){
+export function isRoot(entry: CsvEntry): boolean {
 	return entry.parent == 0
 }

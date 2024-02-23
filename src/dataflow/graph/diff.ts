@@ -130,8 +130,7 @@ export function diffFunctionArguments(a: false | FunctionArgument[], b: false | 
 			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
 		}
 		return
-	}
-	else if(a.length !== b.length) {
+	} else if(a.length !== b.length) {
 		ctx.report.addComment(`${ctx.position}Differs in number of arguments. ${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
 		return
 	}

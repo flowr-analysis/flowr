@@ -301,7 +301,8 @@
         }
       ],
       "@typescript-eslint/consistent-type-imports": "error",
-      "curly": "error"
+      "curly": "error",
+      "brace-style": ["error", "1tbs"]
     }
   },
   "release-it": {

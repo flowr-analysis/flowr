@@ -5,10 +5,14 @@ import { deepMergeObject, isObjectOrArray } from '../../../src/util/objects'
 describe('Objects', () => {
 	describe('isObjectOrArray', () => {
 		const positive = (a: unknown, msg: string): void => {
-			it(msg, () => { assert.isTrue(isObjectOrArray(a)) })
+			it(msg, () => {
+				assert.isTrue(isObjectOrArray(a)) 
+			})
 		}
 		const negative = (a: unknown, msg: string): void => {
-			it(msg, () => { assert.isFalse(isObjectOrArray(a), `${msg} is not considered an object`) })
+			it(msg, () => {
+				assert.isFalse(isObjectOrArray(a), `${msg} is not considered an object`) 
+			})
 		}
 
 		describe('return true for objects', () => {

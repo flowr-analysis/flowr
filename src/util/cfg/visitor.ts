@@ -73,7 +73,7 @@ class ControlFlowGraphExecutionTraceVisitor {
 	}
 
 	visit(cfg: ControlFlowInformation): void {
-		const visited = new Set<NodeId>
+		const visited = new Set<NodeId>()
 		for(const id of cfg.entryPoints) {
 			const node = cfg.graph.vertices().get(id)
 			guard(node !== undefined, `Node with id ${id} not present`)

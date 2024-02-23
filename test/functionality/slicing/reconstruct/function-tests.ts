@@ -154,7 +154,6 @@ describe('Functions Reconstruct', () => {
 			{input: [{part: 'Hello', loc: {line: 0, column: 0}}],expected: 'Hello',msg: 'No Spaces anywhere', columnOffset: 0},
 			{input: [{part: 'Hello World', loc: {line: 0, column: 0}}],expected: 'Hello World',msg: 'Spaces get preserved', columnOffset: 0},
 			{input: [{part: 'Hello', loc: {line: 0, column: 0}}, {part: 'World', loc: {line: 0, column: 6}}],expected: 'Hello World',msg: 'Spaces get added within the string', columnOffset: 0},
-			//This test case will always fail as we correct single line offsets
 			{input: [{part: 'Hello', loc: {line: 0, column: 6}}],expected: '      Hello',msg: 'Spaces get added at the beginning', columnOffset: 0},
 			{input: [{part: 'World', loc: {line: 0, column: 6}},{part: 'Hello', loc: {line: 0, column: 0}}],expected: 'Hello World',msg: 'Spaces get added within the string, wrong order', columnOffset: 0},
 		]) {

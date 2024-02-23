@@ -37,7 +37,6 @@ import {
 	AutoSelectPredicate,
 	getIndentString, merge } from './helper'
 import { SourcePosition, SourceRange} from '../util/range'
-import { jsonReplacer } from '../util/json';
 
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })

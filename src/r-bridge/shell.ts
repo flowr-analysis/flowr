@@ -244,7 +244,6 @@ export class RShell {
 	}
 
 	private _sendCommand(command: string): void {
-		console.log(command)
 		this.session.writeLine(command)
 	}
 }

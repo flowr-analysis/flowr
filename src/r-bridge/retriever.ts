@@ -74,8 +74,6 @@ export function requestFingerprint(request: RParseRequest): string {
 
 const ErrorMarker = 'err'
 
-const flowrInitVar = `flowr_output <- flowr_parsed <- "${ErrorMarker}";`
-
 /**
  * Provides the capability to parse R files/R code using the R parser.
  * Depends on {@link RShell} to provide a connection to R.
@@ -85,17 +83,18 @@ const flowrInitVar = `flowr_output <- flowr_parsed <- "${ErrorMarker}";`
  */
 export function retrieveCsvFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
-	const setupCommand = [
-		flowrInitVar,
-		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE);`,
-		'try(flowr_output<-getParseData(flowr_parsed,includeText=TRUE));'
-	].join('')
-	const outputCommand = `cat(paste0(names(flowr_output),collapse=","),${ts2r(shell.options.eol)});cat(paste0(apply(flowr_output,1,function(x) paste0(x,collapse=" ")),collapse=${ts2r(shell.options.eol)}),${ts2r(shell.options.eol)})`
+	const eol = ts2r(shell.options.eol)
+	const command =
+		'tryCatch({'
+	+ `flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix});`
+	+ 'flowr_output<-getParseData(flowr_parsed,includeText=TRUE);'
+	+ `cat(paste0(apply(flowr_output,1,function(x) paste0(gsub("\n","\\\\n",x),collapse=" ")),collapse=${eol}),${eol})`
+	+ `}, error=function(e) { cat("${ErrorMarker}",${eol}) })`
 
 	if(shell instanceof RShellExecutor){
-		return guardRetrievedOutput(shell.run(setupCommand + outputCommand), request)
+		return guardRetrievedOutput(shell.run(command), request)
 	} else {
-		return shell.sendCommandWithOutput(setupCommand + outputCommand).then(result => {
+		return shell.sendCommandWithOutput(command).then(result => {
 			return guardRetrievedOutput(result.join(shell.options.eol), request)
 		}).catch(e => {
 			throw new Error(`unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}: ${e}`)
@@ -133,7 +132,8 @@ export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise
 }
 
 function guardRetrievedOutput(output: string, request: RParseRequest): string {
-	guard(output !== ErrorMarker && output.trim() !== '""',
+	guard(output !== ErrorMarker,
 		() => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
+	console.log(output)
 	return output
 }

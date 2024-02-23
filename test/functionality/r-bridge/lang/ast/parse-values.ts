@@ -27,7 +27,7 @@ describe('CSV parsing', withShell(shell => {
 1,3,1,4,2,7,"LEFT_ASSIGN",TRUE,"<-"
 1,6,1,6,4,5,"NUM_CONST",TRUE,"1"
 1,6,1,6,5,7,"expr",FALSE,"1"
-`.trimStart())
+`.trim())
 	})
 
 	it('to object', async() => {

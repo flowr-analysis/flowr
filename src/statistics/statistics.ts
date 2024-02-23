@@ -2,7 +2,8 @@ import type {
 	RParseRequest,
 	RParseRequestFromFile,
 	RParseRequestFromText,
-	RShell
+	RShell} from '../r-bridge'
+import { ts2r
 } from '../r-bridge'
 import type { Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features'
 import { ALL_FEATURES, allFeatureNames } from './features'
@@ -98,9 +99,15 @@ async function extractSingle(result: FeatureStatistics, shell: RShell, request: 
 		stepOfInterest: 'dataflow',
 		request, shell
 	}).allRemainingSteps()
-	// await retrieveXmlFromRCode(from, shell)
-	// TODO it seems this still wants xml :(
-	const doc = parser.parseFromString(slicerOutput.parse, 'text/xml')
+
+	// retrieve parsed xml through (legacy) xmlparsedata
+	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
+	shell.sendCommands(
+		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
+		'try(flowr_output<-xmlparsedata::xml_parse_data(flowr_parsed,includeText=TRUE,pretty=FALSE),silent=FALSE)',
+	)
+	const parsed = (await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)).join(shell.options.eol)
+	const doc = parser.parseFromString(parsed, 'text/xml')
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	for(const [key, feature] of Object.entries(ALL_FEATURES) as [FeatureKey, Feature<any>][]) {

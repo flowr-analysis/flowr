@@ -1,7 +1,6 @@
 import type { StepResults} from '../../../core'
 import { LAST_STEP, printStepResult, SteppingSlicer, STEPS_PER_SLICE } from '../../../core'
-import type { NormalizedAst, RShell, XmlParserConfig } from '../../../r-bridge'
-import { DEFAULT_XML_PARSER_CONFIG } from '../../../r-bridge'
+import type { NormalizedAst, RShell } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
 import type {
@@ -25,7 +24,6 @@ import {
 } from './messages/repl'
 import { replProcessAnswer } from '../core'
 import { ansiFormatter, voidFormatter } from '../../../statistics'
-import { deepMergeObject } from '../../../util/objects'
 import { LogLevel } from '../../../util/log'
 import type { ControlFlowInformation} from '../../../util/cfg/cfg'
 import { cfg2quads, extractCFG } from '../../../util/cfg/cfg'
@@ -132,7 +130,6 @@ export class FlowRServerConnection {
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() })
-		const parseConfig = deepMergeObject<XmlParserConfig>(DEFAULT_XML_PARSER_CONFIG, { tokenMap: await this.shell.tokenMap() })
 
 		if(message.format === 'n-quads') {
 			sendMessage<FileAnalysisResponseMessageNQuads>(this.socket, {
@@ -141,7 +138,7 @@ export class FlowRServerConnection {
 				id:      message.id,
 				cfg:     cfg ? cfg2quads(cfg, config()) : undefined,
 				results: {
-					parse:     await printStepResult('parse', results.parse as string, StepOutputFormat.RdfQuads, config(), parseConfig),
+					parse:     await printStepResult('parse', results.parse as string, StepOutputFormat.RdfQuads, config()),
 					normalize: await printStepResult('normalize', results.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
 					dataflow:  await printStepResult('dataflow', results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config()),
 					ai:        ''
@@ -170,9 +167,8 @@ export class FlowRServerConnection {
 			shell:          this.shell,
 			// we have to make sure, that the content is not interpreted as a file path if it starts with 'file://' therefore, we do it manually
 			request:        {
-				request:                message.content === undefined ? 'file' : 'text',
-				content:                message.content ?? message.filepath as string,
-				ensurePackageInstalled: false
+				request: message.content === undefined ? 'file' : 'text',
+				content: message.content ?? message.filepath as string
 			},
 			criterion: [] // currently unknown
 		})

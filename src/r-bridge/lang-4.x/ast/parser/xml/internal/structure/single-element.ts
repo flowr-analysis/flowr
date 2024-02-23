@@ -16,7 +16,7 @@ function normalizeDelimiter(data: ParserData, elem: NamedXmlBasedJson): RDelimit
 	const {
 		location,
 		content
-	} = retrieveMetaStructure(data.config, elem.content)
+	} = retrieveMetaStructure(elem.content)
 	return {
 		type:    RType.Delimiter,
 		location,
@@ -59,7 +59,7 @@ export function tryNormalizeSingleNode(data: ParserData, elem: NamedXmlBasedJson
 		case RawRType.Symbol:
 		case RawRType.Slot:
 		case RawRType.NullConst: {
-			const symbol =  tryNormalizeSymbol(data, getWithTokenType(data.config.tokenMap, [elem.content]))
+			const symbol =  tryNormalizeSymbol(data, getWithTokenType([elem.content]))
 			guard(symbol !== undefined, () => `should have been parsed to a symbol but was ${JSON.stringify(symbol)}`)
 			return symbol
 		}

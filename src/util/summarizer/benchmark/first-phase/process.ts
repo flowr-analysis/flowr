@@ -70,7 +70,6 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 	const collect = new DefaultMap<PerSliceMeasurements, number[]>(() => [])
 	const sizeOfSliceCriteria: number[] = []
 	const reParseShellSession = new RShell()
-	reParseShellSession.tryToInjectHomeLibPath()
 
 	const reductions: Reduction<number | undefined>[] = []
 
@@ -86,7 +85,6 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 		dataflowNodes:           []
 	}
 
-	let first = true
 	let timesHitThreshold = 0
 	for(const [criteria, perSliceStat] of perSliceStats) {
 		report(criteria, perSliceStat)
@@ -107,10 +105,9 @@ export async function summarizeSlicerStats(stats: SlicerStats, report: (criteria
 			// there seem to be encoding issues, therefore, we dump to a temp file
 			fs.writeFileSync(tempfile().name, output)
 			const reParsed = await retrieveNormalizedAstFromRCode(
-				{ request: 'file', content: tempfile().name, ensurePackageInstalled: first },
+				{ request: 'file', content: tempfile().name },
 				reParseShellSession
 			)
-			first = false
 			let numberOfNormalizedTokens = 0
 			visitAst(reParsed.ast, _ => {
 				numberOfNormalizedTokens++
@@ -202,4 +199,3 @@ export function summarizeSummarizedMeasurement(data: SummarizedMeasurement[]): S
 	const total = data.map(d => d.total).filter(isNotUndefined).reduce((a, b) => a + b, 0)
 	return { min, max, median, mean, std, total }
 }
-

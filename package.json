@@ -352,7 +352,6 @@
     "@types/n3": "^1.16.4",
     "@types/object-hash": "^3.0.6",
     "@types/tmp": "^0.2.6",
-    "@types/xml2js": "^0.4.14",
     "@typescript-eslint/eslint-plugin": "^6.13.2",
     "chai": "^4.3.10",
     "chai-as-promised": "^7.1.1",
@@ -394,7 +393,6 @@
     "ts-essentials": "^9.4.1",
     "tslog": "^4.9.2",
     "ws": "^8.16.0",
-    "xml2js": "^0.6.2",
     "xpath-ts2": "^1.4.2"
   }
 }

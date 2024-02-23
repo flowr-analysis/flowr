@@ -4,22 +4,22 @@
  * If started with arguments it may be used to run a single of the flowR scripts.
  * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
  */
-import { log, LogLevel } from './util/log'
-import { RShell } from './r-bridge'
-import type { OptionDefinition } from 'command-line-usage'
+import {log, LogLevel} from './util/log'
+import {RShell} from './r-bridge'
+import type {OptionDefinition} from 'command-line-usage'
 import commandLineUsage from 'command-line-usage'
 import commandLineArgs from 'command-line-args'
-import { guard } from './util/assert'
-import { bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter } from './statistics'
-import { repl, replProcessAnswer, waitOnScript } from './cli/repl'
-import type { ScriptInformation} from './cli/common'
-import { scripts } from './cli/common'
-import type { DeepReadonly } from 'ts-essentials'
-import { version } from '../package.json'
-import { printVersionInformation } from './cli/repl/commands/version'
-import { FlowRServer } from './cli/repl/server/server'
-import { standardReplOutput } from './cli/repl/commands'
-import type { Server} from './cli/repl/server/net'
+import {guard} from './util/assert'
+import {bold, ColorEffect, Colors, FontStyles, formatter, italic, setFormatter, voidFormatter} from './statistics'
+import {repl, replProcessAnswer, waitOnScript} from './cli/repl'
+import type {ScriptInformation} from './cli/common'
+import {scripts} from './cli/common'
+import type {DeepReadonly} from 'ts-essentials'
+import {version} from '../package.json'
+import {printVersionInformation} from './cli/repl/commands/version'
+import {FlowRServer} from './cli/repl/server/server'
+import {standardReplOutput} from './cli/repl/commands'
+import type {Server} from './cli/repl/server/net'
 import {NetServer, WebSocketServerWrapper} from './cli/repl/server/net'
 import {defaultConfigFile, setConfigFile} from './config'
 
@@ -86,19 +86,16 @@ if(options['no-ansi']) {
 
 setConfigFile(undefined, options['config-file'] ?? defaultConfigFile, true)
 
-async function retrieveShell(): Promise<RShell> {
+function retrieveShell(): RShell {
 	// we keep an active shell session to allow other parse investigations :)
-	const shell = new RShell({
+	return new RShell({
 		revive:   'always',
 		onRevive: (code, signal) => {
 			const signalText = signal == null ? '' : ` and signal ${signal}`
-			console.log(formatter.format(`R process exited with code ${code}${signalText}. Restarting...`, { color: Colors.Magenta, effect: ColorEffect.Foreground }))
+			console.log(formatter.format(`R process exited with code ${code}${signalText}. Restarting...`, {color: Colors.Magenta, effect: ColorEffect.Foreground}))
 			console.log(italic(`If you want to exit, press either Ctrl+C twice, or enter ${bold(':quit')}`))
 		},
 	})
-	shell.tryToInjectHomeLibPath()
-	await shell.ensurePackageInstalled('xmlparsedata', true)
-	return shell
 }
 
 async function mainRepl() {
@@ -122,7 +119,7 @@ async function mainRepl() {
 		process.exit(0)
 	}
 
-	const shell = await retrieveShell()
+	const shell = retrieveShell()
 
 	const end = () => {
 		if(options.execute === undefined) {
@@ -145,7 +142,7 @@ async function mainRepl() {
 }
 
 async function mainServer(backend: Server = new NetServer()) {
-	const shell = await retrieveShell()
+	const shell = retrieveShell()
 
 	const end = () => {
 		if(options.execute === undefined) {

@@ -2,11 +2,11 @@ import type { NamedXmlBasedJson} from '../../input-format'
 import { XmlParseError } from '../../input-format'
 import { tryNormalizeSingleNode } from '../structure'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
-import { parseLog } from '../../parser'
 import type { ParserData } from '../../data'
 import type { RIfThenElse} from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
+import {parseLog} from '../../../csv/parser'
 
 /**
  * Try to parse the construct as a {@link RIfThenElse}.
@@ -40,7 +40,7 @@ export function tryNormalizeIfThen(
 		throw new XmlParseError(`unexpected missing parts of if, received ${JSON.stringify([parsedCondition, parsedThen])} for ${JSON.stringify(tokens)}`)
 	}
 
-	const { location, content} = retrieveMetaStructure(data.config, tokens[0].content)
+	const { location, content} = retrieveMetaStructure(tokens[0].content)
 
 	const result: RIfThenElse = {
 		type:      RType.IfThenElse,

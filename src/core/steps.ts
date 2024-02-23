@@ -14,10 +14,7 @@
  */
 
 import type { MergeableRecord } from '../util/objects'
-import {
-	normalize,
-	retrieveXmlFromRCode
-} from '../r-bridge'
+import { retrieveCsvFromRCode } from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode, staticSlicing } from '../slicing'
 import type { IStepPrinter} from './print/print'
@@ -38,6 +35,7 @@ import {
 } from './print/dataflow-printer'
 import type {DataflowInformation} from '../dataflow/internal/info'
 import type {runAbstractInterpretation} from '../abstract-interpretation/processor'
+import {normalize} from '../r-bridge/lang-4.x/ast/parser/csv/parser'
 
 /**
  * This represents close a function that we know completely nothing about.
@@ -74,14 +72,14 @@ export interface IStep<
 export const STEPS_PER_FILE = {
 	'parse': {
 		description: 'Parse the given R code into an AST',
-		processor:   retrieveXmlFromRCode,
+		processor:   retrieveCsvFromRCode,
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter,
 			[StepOutputFormat.Json]:     text => text,
 			[StepOutputFormat.RdfQuads]: parseToQuads
 		}
-	} satisfies IStep<typeof retrieveXmlFromRCode>,
+	} satisfies IStep<typeof retrieveCsvFromRCode>,
 	'normalize': {
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
 		processor:   normalize,

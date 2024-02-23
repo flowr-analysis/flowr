@@ -57,7 +57,6 @@ if(options.compress) {
 const processedFeatures = new Set<FeatureKey>(options.features as FeatureKey[])
 
 const shell = new RShell()
-shell.tryToInjectHomeLibPath()
 
 initFileProvider(options['output-dir'])
 
@@ -111,4 +110,3 @@ async function getStatsForSingleFile() {
 }
 
 void getStatsForSingleFile()
-

@@ -1,5 +1,3 @@
 export * from './data'
 export * from './hooks'
-export * from './config'
-export * from './parser'
 export * from './input-format'

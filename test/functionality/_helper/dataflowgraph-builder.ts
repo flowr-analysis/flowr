@@ -85,8 +85,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	public defineFunction(id: NodeId, name: string, 
 		exitPoints: NodeId[], subflow: DataflowFunctionFlowInformation,
 		info?: Partial<DataflowGraphVertexFunctionDefinition>,
-		asRoot: boolean = true) 
-	{
+		asRoot: boolean = true) {
 		const scope = (info && info.scope) ? info.scope : LocalScope
 		return this.addVertex(deepMergeObject({tag: 'function-definition', id, name, subflow, exitPoints, scope}, info), asRoot)
 	}

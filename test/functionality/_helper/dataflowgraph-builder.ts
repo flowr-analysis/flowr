@@ -14,45 +14,22 @@ export function emptyGraph() {
  */
 export class DataflowGraphBuilder extends DataflowGraph {
 	/**
-	 * Adds a vertex for variable use (V5). Intended for creating dataflow graphs as part of function tests.
-	 * 
-	 * @param id - AST node id
-	 * @param name - Variable name
-	 * @param info - Additional/optional properties;
-	 * i.e. scope, when, or environment.
-	 * @param asRoot - boolean; defaults to true.
-	 */
-	public use(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({ tag: 'use', id, name}, info), asRoot)
-	}
-
-	/**
-	 * Adds a vertex for a variable definition (V4).
-	 * 
-	 * @param id - AST node ID
-	 * @param name - Variable name
-	 * @param scope - Scope (global/local/custom), defaults to local.
-	 * @param environment - Environment the variable is defined in.
-	 * @param asRoot - boolean; defaults to true.
-	 */
-	public defineVariable(id: NodeId, name: string, scope: string = LocalScope,
-		info?: Partial<DataflowGraphVertexVariableDefinition>, asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({tag: 'variable-definition', id, name, scope}, info), asRoot)
-	}    
-
-	/**
-	 * Adds a vertex for an exit point of a function (V3).
+	 * Adds a vertex for a function definition (V1).
 	 * 
 	 * @param id - AST node ID
 	 * @param name - AST node text
-	 * @param env - Environment of the function we exit.
-	 * @param info - Partial<DataflowGraphExitPoint>
-	 * @param asRoot - boolean; defaults to true.
+	 * @param subflow - Subflow data graph for the defined function.
+	 * @param exitPoints - Node IDs for exit point vertices.
+	 * @param info - Additional/optional properties.
+	 * @param asRoot - should the vertex be part of the root vertex set of the graph
+	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public exit(id: NodeId, name: string, environment?: REnvironmentInformation,
-		info?: Partial<DataflowGraphExitPoint>,
+	public defineFunction(id: NodeId, name: string, 
+		exitPoints: NodeId[], subflow: DataflowFunctionFlowInformation,
+		info?: Partial<DataflowGraphVertexFunctionDefinition>,
 		asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({tag: 'exit-point', id, environment, name}, info), asRoot)
+		const scope = (info && info.scope) ? info.scope : LocalScope
+		return this.addVertex(deepMergeObject({tag: 'function-definition', id, name, subflow, exitPoints, scope}, info), asRoot)
 	}
 
 	/**
@@ -61,8 +38,9 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @param id - AST node ID
 	 * @param name - Function name
 	 * @param args - Function arguments; may be empty
-	 * @param info - Additional info
-	 * @param asRoot - boolean; defaults to true.
+	 * @param info - Additional/optional properties.
+	 * @param asRoot - should the vertex be part of the root vertex set of the graph
+	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public call(id: NodeId, name: string, args: FunctionArgument[],
 		info?: Partial<DataflowGraphVertexFunctionCall>,
@@ -71,23 +49,48 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
-	 * Adds a vertex for a function definition (V1).
+	 * Adds a vertex for an exit point of a function (V3).
 	 * 
 	 * @param id - AST node ID
 	 * @param name - AST node text
-	 * @param subflow - Subflow data graph for the defined function.
-	 * @param exitPoints - Node IDs for exit point vertices.
-	 * @param info - Partial<DataflowGraphVertexFunctionDefinition>
-	 * Allows to specify scope, conditions, and environment;
-	 * default scope is local.
-	 * @param asRoot - boolean; defaults to true
+	 * @param env - Environment of the function we exit.
+	 * @param info - Additional/optional properties.
+	 * @param asRoot - should the vertex be part of the root vertex set of the graph
+	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public defineFunction(id: NodeId, name: string, 
-		exitPoints: NodeId[], subflow: DataflowFunctionFlowInformation,
-		info?: Partial<DataflowGraphVertexFunctionDefinition>,
+	public exit(id: NodeId, name: string, environment?: REnvironmentInformation,
+		info?: Partial<DataflowGraphExitPoint>,
 		asRoot: boolean = true) {
-		const scope = (info && info.scope) ? info.scope : LocalScope
-		return this.addVertex(deepMergeObject({tag: 'function-definition', id, name, subflow, exitPoints, scope}, info), asRoot)
+		return this.addVertex(deepMergeObject({tag: 'exit-point', id, environment, name}, info), asRoot)
+	}
+
+	/**
+	 * Adds a vertex for a variable definition (V4).
+	 * 
+	 * @param id - AST node ID
+	 * @param name - Variable name
+	 * @param scope - Scope (global/local/custom), defaults to local.
+	 * @param info - Additional/optional properties.
+	 * @param asRoot - should the vertex be part of the root vertex set of the graph
+	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
+	 */
+	public defineVariable(id: NodeId, name: string, scope: string = LocalScope,
+		info?: Partial<DataflowGraphVertexVariableDefinition>, asRoot: boolean = true) {
+		return this.addVertex(deepMergeObject({tag: 'variable-definition', id, name, scope}, info), asRoot)
+	}    
+	
+	/**
+	 * Adds a vertex for variable use (V5). Intended for creating dataflow graphs as part of function tests.
+	 * 
+	 * @param id - AST node id
+	 * @param name - Variable name
+	 * @param info - Additional/optional properties;
+	 * i.e. scope, when, or environment.
+	 * @param asRoot - should the vertex be part of the root vertex set of the graph
+	 * (i.e., be a valid entry point) or is it nested (e.g., as part of a function definition)
+	 */
+	public use(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
+		return this.addVertex(deepMergeObject({ tag: 'use', id, name}, info), asRoot)
 	}
 
 	/**

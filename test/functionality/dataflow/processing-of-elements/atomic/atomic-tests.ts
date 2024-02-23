@@ -7,10 +7,10 @@ import { assertDataflow, withShell } from '../../../_helper/shell'
 import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../../_helper/provider'
 import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
-import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
+import { unnamedArgument } from '../../../_helper/environment-builder'
 
 describe('Atomic (dataflow information)', withShell((shell) => {
 	describe('uninteresting leafs', () => {
@@ -29,13 +29,13 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('single constant', shell,
 				'a[2]',
 				emptyGraph().use('0', 'a', {when: 'maybe'})
-					.use('2', `${UnnamedArgumentPrefix}2`)
+					.use('2', unnamedArgument('2'))
 					.reads('0', '2')
 			)
 			assertDataflow('double constant', shell,
 				'a[[2]]',
 				emptyGraph().use('0', 'a', {when: 'maybe'})
-					.use('2', `${UnnamedArgumentPrefix}2`)
+					.use('2', unnamedArgument('2'))
 					.reads('0', '2')
 			)
 			assertDataflow('dollar constant', shell,
@@ -49,15 +49,15 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('chained constant', shell,
 				'a[2][3]',
 				emptyGraph().use('0', 'a', {when: 'maybe'})
-					.use('2', `${UnnamedArgumentPrefix}2`)
+					.use('2', unnamedArgument('2'))
 					.reads('0', '2')
-					.use('5', `${UnnamedArgumentPrefix}5`)
+					.use('5', unnamedArgument('5'))
 					.reads('0', '5')
 			)
 			assertDataflow('chained mixed constant', shell,
 				'a[2]$a',
 				emptyGraph().use('0', 'a', {when: 'maybe'})
-					.use('2', `${UnnamedArgumentPrefix}2`)
+					.use('2', unnamedArgument('2'))
 					.reads('0', '2')
 			)
 		})
@@ -67,8 +67,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				.use('0', 'a', {when: 'maybe'})
 				.use('1', 'x')
 				.use('4', 'y')
-				.use('2', `${UnnamedArgumentPrefix}2`)
-				.use('5', `${UnnamedArgumentPrefix}5`)
+				.use('2', unnamedArgument('2'))
+				.use('5', unnamedArgument('5'))
 				.reads('0', '2')
 				.reads('0', '5')
 				.reads('2', '1')
@@ -79,7 +79,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			emptyGraph()
 				.defineVariable('0', 'a', LocalScope, {when: 'maybe'})
 				.use('1', 'x')
-				.use('2', `${UnnamedArgumentPrefix}2`)
+				.use('2', unnamedArgument('2'))
 				.reads('0', '2')
 				.reads('2', '1')
 		)
@@ -133,9 +133,9 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				emptyGraph()
 					.use('0', 'x')
 					.call('3', 'f', [
-						{ name: `${UnnamedArgumentPrefix}1`, scope: LocalScope, nodeId: '1', used: 'always' }
+						{ name: unnamedArgument('1'), scope: LocalScope, nodeId: '1', used: 'always' }
 					])
-					.use('1', `${UnnamedArgumentPrefix}1`)
+					.use('1', unnamedArgument('1'))
 					.argument('3', '1')
 					.reads('1', '0'),
 				{ minRVersion: MIN_VERSION_PIPE }
@@ -144,13 +144,13 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				emptyGraph()
 					.use('0', 'x')
 					.call('3', 'f', [
-						{ name: `${UnnamedArgumentPrefix}1`, scope: LocalScope, nodeId: '1', used: 'always' }
+						{ name: unnamedArgument('1'), scope: LocalScope, nodeId: '1', used: 'always' }
 					])
 					.call('7', 'g', [
-						{ name: `${UnnamedArgumentPrefix}5`, scope: LocalScope, nodeId: '5', used: 'always' }
+						{ name: unnamedArgument('5'), scope: LocalScope, nodeId: '5', used: 'always' }
 					])
-					.use('1', `${UnnamedArgumentPrefix}1`)
-					.use('5', `${UnnamedArgumentPrefix}5`)
+					.use('1', unnamedArgument('1'))
+					.use('5', unnamedArgument('5'))
 					.argument('3', '1')
 					.argument('7', '5')
 					.reads('5', '3')
@@ -161,13 +161,13 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				emptyGraph()
 					.use('0', 'x')
 					.call('7', 'f', [
-						{ name: `${UnnamedArgumentPrefix}1`, scope: LocalScope, nodeId: '1', used: 'always' },
-						{ name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, nodeId: '4', used: 'always' },
-						{ name: `${UnnamedArgumentPrefix}6`, scope: LocalScope, nodeId: '6', used: 'always' }
+						{ name: unnamedArgument('1'), scope: LocalScope, nodeId: '1', used: 'always' },
+						{ name: unnamedArgument('4'), scope: LocalScope, nodeId: '4', used: 'always' },
+						{ name: unnamedArgument('6'), scope: LocalScope, nodeId: '6', used: 'always' }
 					])
-					.use('1', `${UnnamedArgumentPrefix}1`)
-					.use('4', `${UnnamedArgumentPrefix}4`)
-					.use('6', `${UnnamedArgumentPrefix}6`)
+					.use('1', unnamedArgument('1'))
+					.use('4', unnamedArgument('4'))
+					.use('6', unnamedArgument('6'))
 					.use('0', 'x')
 					.use('3', 'y')
 					.use('5', 'z')
@@ -340,14 +340,14 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 					.defineVariable('0', 'a')
 					.call('9', 'foo', [
 						['x', { name: 'x', nodeId: '4', scope: LocalScope, used: 'always' }],
-						{ name: `${UnnamedArgumentPrefix}6`, nodeId: '6', scope: LocalScope, used: 'always' },
-						{ name: `${UnnamedArgumentPrefix}8`, nodeId: '8', scope: LocalScope, used: 'always' },
+						{ name: unnamedArgument('6'), nodeId: '6', scope: LocalScope, used: 'always' },
+						{ name: unnamedArgument('8'), nodeId: '8', scope: LocalScope, used: 'always' },
 					])
 					.use('4', 'x')
 					.use('5', 'y', {environment: environmentWithX})
-					.use('6', `${UnnamedArgumentPrefix}6`, {environment: environmentWithX})
+					.use('6', unnamedArgument('6'), {environment: environmentWithX})
 					.use('7', 'z', {environment: environmentWithX})
-					.use('8', `${UnnamedArgumentPrefix}8`, {environment: environmentWithX})
+					.use('8', unnamedArgument('8'), {environment: environmentWithX})
 					.definedBy('0', '9')
 					.argument('9', '4')
 					.argument('9', '6')

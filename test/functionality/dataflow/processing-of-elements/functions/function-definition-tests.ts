@@ -5,9 +5,9 @@ import {
 	popLocalEnvironment,
 	pushLocalEnvironment
 } from '../../../../../src/dataflow/environments'
-import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
+import { unnamedArgument } from '../../../_helper/environment-builder'
 
 describe('Function Definition', withShell(shell => {
 	describe('Only functions', () => {
@@ -55,9 +55,9 @@ describe('Function Definition', withShell(shell => {
 				.defineVariable('0', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 				.use('3', 'x', {environment: envWithXDefined}, false)
 				.call('5', 'return',
-					[{ nodeId: '4', used: 'always', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope }],
+					[{ nodeId: '4', used: 'always', name: unnamedArgument('4'), scope: LocalScope }],
 					{environment: envWithXDefined}, false)
-				.use('4',`${UnnamedArgumentPrefix}4`, {environment: envWithXDefined}, false)
+				.use('4',unnamedArgument('4'), {environment: envWithXDefined}, false)
 				.reads('5', BuiltIn)
 				.calls('5', BuiltIn)
 				.reads('3', '0')
@@ -444,9 +444,9 @@ describe('Function Definition', withShell(shell => {
 				.defineVariable('2', '...', LocalScope, {environment: envWithA }, false)
 				.use('5', '...', {environment: envWithASpecial}, false)
 				.call('7', 'foo', 
-					[{nodeId: '6', name: `${UnnamedArgumentPrefix}6`, scope: LocalScope, used: 'always'}],
+					[{nodeId: '6', name: unnamedArgument('6'), scope: LocalScope, used: 'always'}],
 					{environment: envWithASpecial}, false)
-				.use('6',`${UnnamedArgumentPrefix}6`, {environment: envWithASpecial}, false)
+				.use('6',unnamedArgument('6'), {environment: envWithASpecial}, false)
 				.argument('7', '6')
 				.reads('6', '5')
 				.reads('5', '2')
@@ -491,9 +491,9 @@ describe('Function Definition', withShell(shell => {
 			.use('8', 'z', {environment: envWithFirstY}, false)
 			.use('10', 'g', {environment: envWithFirstY}, false)
 			.use('18', 'g', {environment: finalEnv}, false)
-			.use('11', `${UnnamedArgumentPrefix}11`, {environment: envWithFirstY}, false)
+			.use('11', unnamedArgument('11'), {environment: envWithFirstY}, false)
 			.call('12', 'return',
-				[{nodeId: '11', name: `${UnnamedArgumentPrefix}11`, scope: LocalScope, used: 'always'}],
+				[{nodeId: '11', name: unnamedArgument('11'), scope: LocalScope, used: 'always'}],
 				{when: 'maybe', environment: envWithFirstY}, false)
 			.defineFunction('3', '3', ['1'], {
 				out:               [],

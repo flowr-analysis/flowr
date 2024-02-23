@@ -143,7 +143,7 @@ describe('Functions Reconstruct', () => {
 			}
 		})
 	})
-	describe.only('printLinePart', () => {
+	describe('printLinePart', () => {
 		function positive(input: PrettyPrintLinePart[], expected: string, msg: string, columnOffset: number) {
 			it(`Convert ${JSON.stringify(input)} to string`, () => {
 				const out = prettyPrintPartToString(input, columnOffset)

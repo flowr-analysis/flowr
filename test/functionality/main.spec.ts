@@ -29,7 +29,9 @@ function setMinLevelOfAllLogs(minLevel: LogLevel, log2File = false) {
 }
 
 export const VERBOSE_TESTS = process.argv.includes('--verbose')
-before(() => setMinLevelOfAllLogs(VERBOSE_TESTS ? LogLevel.Trace : LogLevel.Error, VERBOSE_TESTS))
+// before(() => setMinLevelOfAllLogs(VERBOSE_TESTS ? LogLevel.Trace : LogLevel.Error, VERBOSE_TESTS))
+
+before(() => setMinLevelOfAllLogs(LogLevel.Trace))
 
 /** controlled with the `--test-installation` parameter */
 export const RUN_INSTALLATION_TESTS = process.argv.includes('--test-installation')

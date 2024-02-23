@@ -10,7 +10,7 @@ import {deepMergeObject} from '../../../../../util/objects'
 import type { CsvEntry} from './format'
 import { RootId } from './format'
 import {csvToRecord} from './format'
-import {parseCSV} from '../../../values'
+import {parseGetParseData} from '../../../values'
 import {parseRootObjToAst} from '../xml/internal'
 import {log} from '../../../../../util/log'
 
@@ -20,7 +20,7 @@ export function normalize(csvString: string, hooks?: DeepPartial<XmlParserHooks>
 	const hooksWithDefaults = deepMergeObject(DEFAULT_PARSER_HOOKS, hooks) as XmlParserHooks
 
 	const data: ParserData = { hooks: hooksWithDefaults, currentRange: undefined, currentLexeme: undefined }
-	const object = convertToXmlBasedJson(csvToRecord(parseCSV(csvString)))
+	const object = convertToXmlBasedJson(csvToRecord(parseGetParseData(csvString.split('\n'))))
 
 	return decorateAst(parseRootObjToAst(data, object), getId)
 }

@@ -94,7 +94,7 @@ describe('Simple', withShell(shell => {
 			}
 		})
 
-		describe.only('function definition', () => {
+		describe('function definition', () => {
 			const testCases: {name: string, case: string, argument: [string], expected: string}[] = [
 				{name: 'simple function', case: 'a <- function (x) { x <- 2 }', argument: ['0'], expected: 'a <- function (x) { x <- 2 }'},
 				{name: 'function body extracted', case: 'a <- function (x) { x <- 2 }', argument: ['5'], expected: 'x <- 2'},

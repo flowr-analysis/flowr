@@ -88,10 +88,7 @@ export function retrieveCsvFromRCode(request: RParseRequest, shell: (RShell | RS
 		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE);`,
 		'try(flowr_output<-getParseData(flowr_parsed,includeText=TRUE));',
 	].join('')
-	const outputCommand = `cat(capture.output(data.table::fwrite(flowr_output,row.names=FALSE,dateTimeAs="write.csv",compress="none",showProgress=FALSE,col.names=TRUE,quote=TRUE,qmethod="double",eol=${ts2r(shell.options.eol)})),sep=${ts2r(shell.options.eol)})`
-
-	console.log(setupCommand)
-	console.log(outputCommand)
+	const outputCommand = `cat(capture.output(data.table::fwrite(flowr_output,row.names=FALSE,col.names=TRUE,quote=TRUE,qmethod="double",eol=${ts2r(shell.options.eol)})),sep=${ts2r(shell.options.eol)})`
 
 	if(shell instanceof RShellExecutor){
 		return guardRetrievedOutput(shell.run(setupCommand + outputCommand), request)
@@ -134,8 +131,7 @@ export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise
 }
 
 function guardRetrievedOutput(output: string, request: RParseRequest): string {
-	guard(output !== ErrorMarker && output.trim() !== '',
+	guard(output !== ErrorMarker && output.trim() !== '""',
 		() => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
-	console.log(output)
 	return output
 }

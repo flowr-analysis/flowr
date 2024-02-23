@@ -350,7 +350,7 @@ class RShellSession {
 			this.on(from, 'line', handler)
 			action?.()
 		}).finally(() => {
-			this.removeListener(from, 'line', handler)
+			// this.removeListener(from, 'line', handler)
 			this.bareSession.removeListener('exit', error)
 			this.bareSession.stdin.removeListener('error', error)
 		})

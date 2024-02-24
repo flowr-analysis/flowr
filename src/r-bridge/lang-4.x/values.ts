@@ -159,23 +159,3 @@ export function isNA(value: string): value is (typeof RNa) {
 	return value === RNa
 }
 
-
-export const getParseDataHeader = ['line1', 'col1', 'line2', 'col2', 'id', 'parent', 'token', 'terminal', 'text']
-// TODO: maybe switch to simple split regex and pick array indices?
-const rowRegex = /^\s*(?<line1>\d+)\s+(?<col1>\d+)\s+(?<line2>\d+)\s+(?<col2>\d+)\s+(?<id>\d+)\s+(?<parent>\d+)\s+(?<token>\S+)\s+(?<terminal>TRUE|FALSE)\s+(?<text>.*)$/
-
-export type GetParseDataRow = [line1: number, col1: number, line2: number, col2: number, id: number, parent: number, token: string, terminal: string, text: string]
-
-export function parseGetParseData(lines: string | readonly string[]): GetParseDataRow[] {
-	const content = typeof lines === 'string' ? lines.split('\n') : lines
-
-	if(content.length === 0 || content[0].trim() === '') {
-		return []
-	}
-
-	return content.map(line => {
-		const match = rowRegex.exec(line)
-		guard(match?.groups !== undefined, () => `cannot parse line ${line} as CSV`)
-		return [Number(match.groups['line1']), Number(match.groups['col1']), Number(match.groups['line2']), Number(match.groups['col2']), Number(match.groups['id']), Number(match.groups['parent']), match.groups['token'], match.groups['terminal'], match.groups['text']] as const
-	})
-}

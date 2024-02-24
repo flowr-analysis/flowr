@@ -1,6 +1,5 @@
-import {removeTokenMapQuotationMarks} from '../../../../retriever'
-import type { GetParseDataRow } from '../../../values'
-import { getParseDataHeader } from '../../../values'
+import { removeTokenMapQuotationMarks } from '../../../../retriever'
+import { guard } from '../../../../../util/assert'
 
 export const RootId = 0
 
@@ -17,20 +16,15 @@ export interface CsvEntry extends Record<string, unknown> {
 	children?: CsvEntry[]
 }
 
-export function csvToRecord(csv: readonly GetParseDataRow[]): Map<number, CsvEntry> {
-	const ret = new Map<number, CsvEntry>()
-	const numberOfCols = getParseDataHeader.length
+export function prepareParsedData(data: string): Map<number, CsvEntry> {
+	const json: unknown = JSON.parse(data)
+	guard(Array.isArray(json), () => `Expected ${JSON.stringify(json)} to be an array but was not`)
 
-	// parse csv into entries
-	for(const row of csv){
-		const content: Record<string,string> = {}
-		for(let col = 0; col < numberOfCols; col++){
-			content[getParseDataHeader[col]] = row[col] as string
-		}
-		const entry = content as CsvEntry
-		entry.token = removeTokenMapQuotationMarks(entry.token)
-		ret.set(entry.id, entry)
-	}
+	// TODO: safeguard
+	const ret = new Map<number, CsvEntry>((json as CsvEntry[]).map(c => {
+		c.token = removeTokenMapQuotationMarks(c.token)
+		return [c.id, c]
+	}))
 
 	// iterate a second time to set parent-child relations (since they may be out of order in the csv)
 	for(const entry of ret.values()) {

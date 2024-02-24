@@ -9,23 +9,22 @@ import {decorateAst, deterministicCountingIdGenerator, type NormalizedAst} from 
 import {deepMergeObject} from '../../../../../util/objects'
 import type { CsvEntry} from './format'
 import { RootId } from './format'
-import {csvToRecord} from './format'
-import {parseGetParseData} from '../../../values'
+import {prepareParsedData} from './format'
 import {parseRootObjToAst} from '../xml/internal'
 import {log} from '../../../../../util/log'
 
 export const parseLog = log.getSubLogger({name: 'ast-parser'})
 
-export function normalize(csvString: string, hooks?: DeepPartial<XmlParserHooks>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
+export function normalize(jsonString: string, hooks?: DeepPartial<XmlParserHooks>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
 	const hooksWithDefaults = deepMergeObject(DEFAULT_PARSER_HOOKS, hooks) as XmlParserHooks
 
 	const data: ParserData = { hooks: hooksWithDefaults, currentRange: undefined, currentLexeme: undefined }
-	const object = convertToXmlBasedJson(csvToRecord(parseGetParseData(csvString.split('\n'))))
+	const object = convertPreparedParsedData(prepareParsedData(jsonString))
 
 	return decorateAst(parseRootObjToAst(data, object), getId)
 }
 
-export function convertToXmlBasedJson(csv: Map<number, CsvEntry>): XmlBasedJson{
+export function convertPreparedParsedData(csv: Map<number, CsvEntry>): XmlBasedJson {
 	const exprlist: XmlBasedJson =  {}
 	exprlist[nameKey] = 'exprlist'
 	const children = []

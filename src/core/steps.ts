@@ -14,7 +14,7 @@
  */
 
 import type { MergeableRecord } from '../util/objects'
-import { retrieveCsvFromRCode } from '../r-bridge'
+import { retrieveParseDataFromRCode } from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode, staticSlicing } from '../slicing'
 import type { IStepPrinter} from './print/print'
@@ -72,14 +72,14 @@ export interface IStep<
 export const STEPS_PER_FILE = {
 	'parse': {
 		description: 'Parse the given R code into an AST',
-		processor:   retrieveCsvFromRCode,
+		processor:   retrieveParseDataFromRCode,
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter,
 			[StepOutputFormat.Json]:     text => text,
 			[StepOutputFormat.RdfQuads]: parseToQuads
 		}
-	} satisfies IStep<typeof retrieveCsvFromRCode>,
+	} satisfies IStep<typeof retrieveParseDataFromRCode>,
 	'normalize': {
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
 		processor:   normalize,

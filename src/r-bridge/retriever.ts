@@ -1,6 +1,6 @@
 import { type RShell } from './shell'
 import type { XmlParserHooks, NormalizedAst } from './lang-4.x'
-import { getParseDataHeader, ts2r } from './lang-4.x'
+import { ts2r } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
 import type {AsyncOrSync, DeepPartial} from 'ts-essentials'
 import { guard } from '../util/assert'
@@ -28,7 +28,7 @@ export interface RParseRequestProvider {
 }
 
 /**
- * A request that can be passed along to {@link retrieveCsvFromRCode}.
+ * A request that can be passed along to {@link retrieveParseDataFromRCode}.
  */
 export type RParseRequest = (RParseRequestFromFile | RParseRequestFromText)
 
@@ -81,14 +81,14 @@ const ErrorMarker = 'err'
  * Throws if the file could not be parsed.
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
-export function retrieveCsvFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
+export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
 	const eol = ts2r(shell.options.eol)
 	const command =
 		'tryCatch({'
 	+ `flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix});`
 	+ 'flowr_output<-getParseData(flowr_parsed,includeText=TRUE);'
-	+ `cat(paste0(apply(flowr_output,1,function(x) paste0(gsub("\n","\\\\n",x),collapse=" ")),collapse=${eol}),${eol})`
+	+ `cat(jsonlite::toJSON(flowr_output),${eol})`
 	+ `}, error=function(e) { cat("${ErrorMarker}",${eol}) })`
 
 	if(shell instanceof RShellExecutor){
@@ -103,12 +103,12 @@ export function retrieveCsvFromRCode(request: RParseRequest, shell: (RShell | RS
 }
 
 /**
- * Uses {@link retrieveCsvFromRCode} and returns the nicely formatted object-AST.
+ * Uses {@link retrieveParseDataFromRCode} and returns the nicely formatted object-AST.
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<NormalizedAst> {
-	const csv = await retrieveCsvFromRCode(request, shell)
-	return normalize(csv, hooks)
+	const data = await retrieveParseDataFromRCode(request, shell)
+	return normalize(data, hooks)
 }
 
 /**
@@ -123,7 +123,7 @@ export function removeTokenMapQuotationMarks(str: string): string {
 }
 
 /**
- * Needs to be called *after*  {@link retrieveCsvFromRCode} (or {@link retrieveNormalizedAstFromRCode})
+ * Needs to be called *after*  {@link retrieveParseDataFromRCode} (or {@link retrieveNormalizedAstFromRCode})
  */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise<number> {
 	const result = await shell.sendCommandWithOutput(`cat(nrow(flowr_output),${ts2r(shell.options.eol)})`)
@@ -134,6 +134,5 @@ export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise
 function guardRetrievedOutput(output: string, request: RParseRequest): string {
 	guard(output !== ErrorMarker,
 		() => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
-	console.log(output)
 	return output
 }

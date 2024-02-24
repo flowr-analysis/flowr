@@ -83,6 +83,7 @@ const ErrorMarker = 'err'
  */
 export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
+	const eol = ts2r(shell.options.eol)
 	const command =
 		/* first check if flowr_get is already part of the environment */
 		'if(!base::exists("flowr_get")){'
@@ -90,10 +91,12 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
 	+ 'flowr_get<-function(...){base::tryCatch({'
 		/* the actual code to parse the R code, ... allows us to keep the old 'file=path' and 'text=content' semantics. we define flowr_output using the super assignment to persist it in the env! */
 	+ 'flowr_output<<-utils::getParseData(base::parse(...,keep.source=TRUE),includeText=TRUE);'
-		/* json conversion of the output, dataframe="values" allows us to receive a list of lists (which is more compact)! */
-	+ 'jsonlite::toJSON(flowr_output,digits=0,dataframe="values")'
+		/* json conversion of the output, dataframe="values" allows us to receive a list of lists (which is more compact)!
+		 * so we do not depend on jsonlite and friends, we do so manually (:sparkles:)
+		 * */
+	+ `cat(paste0("[",paste0(apply(flowr_output,1,function(o) paste0("[",paste(o[[1]], o[[2]], o[[3]], o[[4]], o[[5]], o[[6]], deparse(o[[7]]), if(o[[8]]) "true" else "false", deparse(o[[9]]),sep=","),"]",collapse="")),collapse=","),"]",collapse=""),${eol})`
 		/* error handling (just produce the marker) */
-	+ `},error=function(e){base::cat("${ErrorMarker}",${ts2r(shell.options.eol)})})};`
+	+ `},error=function(e){base::cat("${ErrorMarker}",${eol})})};`
 		/* we set some initial flags for the optimization */
 	+ 'flowr_get_opt<-TRUE}else if(flowr_get_opt){'
 		/* compile the function to improve perf. (but only on repeated calls) */

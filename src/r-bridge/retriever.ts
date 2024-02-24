@@ -97,10 +97,8 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
 	+ `cat("[",paste0(apply(flowr_output,1,function(o)sprintf("[%s,%s,%s,%s,%s,%s,%s,%s,%s]",o[[1]],o[[2]],o[[3]],o[[4]],o[[5]],o[[6]],deparse(o[[7]]),if(o[[8]])"true"else"false",deparse(o[[9]]))),collapse=","),"]",${eol},sep="")`
 		/* error handling (just produce the marker) */
 	+ `},error=function(e){cat("${ErrorMarker}",${eol})})};`
-		/* we set some initial flags for the optimization */
-	+ 'flowr_get_opt<-TRUE}else if(flowr_get_opt){'
-		/* compile the function to improve perf. (but only on repeated calls) */
-	+ 'flowr_get<-compiler::cmpfun(flowr_get);flowr_get_opt<-FALSE};'
+		/* compile the function to improve perf. */
+	+ 'flowr_get<-compiler::cmpfun(flowr_get)};'
 		/* call the function with the request */
 	+ `flowr_get(${request.request}=${JSON.stringify(request.content)}${suffix})`
 

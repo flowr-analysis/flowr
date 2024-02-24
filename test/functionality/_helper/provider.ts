@@ -130,10 +130,10 @@ export const RAssignmentOpPool: { flavor: 'assignment', str: string }[] =
 
 export const RNonAssignmentBinaryOpPool: { label: 'arithmetic' | 'logical' | 'comparison' | 'model formula', pool: typeof RArithmeticBinaryOpPool | typeof RLogicalBinaryOpPool | typeof RComparisonBinaryOpPool | typeof RModelFormulaBinaryOpPool }[] =
 	[
-	    { label: 'arithmetic', pool: RArithmeticBinaryOpPool },
-	    { label: 'logical',    pool: RLogicalBinaryOpPool },
-	    { label: 'comparison', pool: RComparisonBinaryOpPool },
-	    { label: 'model formula', pool: RModelFormulaBinaryOpPool }
+		{ label: 'arithmetic', pool: RArithmeticBinaryOpPool },
+		{ label: 'logical',    pool: RLogicalBinaryOpPool },
+		{ label: 'comparison', pool: RComparisonBinaryOpPool },
+		{ label: 'model formula', pool: RModelFormulaBinaryOpPool }
 	]
 
 export const RArithmeticUnaryOpPool: { flavor: 'arithmetic', str: string }[] =

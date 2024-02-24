@@ -1,7 +1,6 @@
 import type { StepResults } from '../../../core'
 import { LAST_STEP, SteppingSlicer, STEPS_PER_SLICE } from '../../../core'
-import type { NormalizedAst, RShell, XmlParserConfig } from '../../../r-bridge'
-import { DEFAULT_XML_PARSER_CONFIG } from '../../../r-bridge'
+import type { NormalizedAst, RShell } from '../../../r-bridge'
 import { sendMessage } from './send'
 import { answerForValidationError, validateBaseMessageFormat, validateMessage } from './validate'
 import type {

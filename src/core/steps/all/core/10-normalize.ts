@@ -1,11 +1,7 @@
 import type {
 	IdGenerator,
 	NoInfo,
-	RShell,
 	XmlParserHooks
-} from '../../../../r-bridge'
-import {
-	normalize
 } from '../../../../r-bridge'
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import {
@@ -18,6 +14,7 @@ import type { IPipelineStep } from '../../step'
 import { PipelineStepStage } from '../../step'
 import type { DeepPartial, DeepReadonly } from 'ts-essentials'
 import type { ParseRequiredInput } from './00-parse'
+import { normalize } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 
 export interface NormalizeRequiredInput extends ParseRequiredInput {
 	/** These hooks only make sense if you at least want to normalize the parsed R AST. They can augment the normalization process */
@@ -26,8 +23,8 @@ export interface NormalizeRequiredInput extends ParseRequiredInput {
 	readonly getId?: IdGenerator<NoInfo>
 }
 
-async function processor(results: { parse?: string }, input: Partial<NormalizeRequiredInput>) {
-	return normalize(results.parse as string, await (input.shell as RShell).tokenMap(), input.hooks, input.getId)
+function processor(results: { parse?: string }, input: Partial<NormalizeRequiredInput>) {
+	return normalize(results.parse as string, input.hooks, input.getId)
 }
 
 export const NORMALIZE = {

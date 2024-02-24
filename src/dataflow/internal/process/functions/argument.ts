@@ -1,7 +1,7 @@
 import type { DataflowInformation } from '../../info'
-import type { DataflowProcessorInformation} from '../../../processor'
+import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
-import type { ParentInformation, RArgument, RNode} from '../../../../r-bridge'
+import type { ParentInformation, RArgument, RNode } from '../../../../r-bridge'
 import { collectAllIds, RType } from '../../../../r-bridge'
 import { DataflowGraph, EdgeType } from '../../../graph'
 import type { IdentifierReference } from '../../../environments'
@@ -43,7 +43,7 @@ export function processFunctionArgument<OtherInfo>(argument: RArgument<OtherInfo
 		// active nodes of the name will be lost as they are only used to reference the corresponding parameter
 		in:                ingoingRefs,
 		// , ...value.out, ...(name?.out ?? [])
-		out:               [ { name: argumentName, scope: LocalScope, nodeId: argument.info.id, used: 'always'} ],
+		out:               [ { name: argumentName, scope: LocalScope, nodeId: argument.info.id, used: 'always' } ],
 		graph:             graph,
 		environments:      value?.environments ?? data.environments,
 		scope:             data.activeScope

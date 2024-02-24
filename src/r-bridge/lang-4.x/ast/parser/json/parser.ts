@@ -1,18 +1,18 @@
-import type {DeepPartial} from 'ts-essentials'
-import type { XmlBasedJson, XmlParserHooks} from '../xml'
-import {nameKey} from '../xml'
-import {attributesKey, contentKey} from '../xml'
-import {childrenKey} from '../xml'
-import {DEFAULT_PARSER_HOOKS, type ParserData} from '../xml'
-import type {IdGenerator, NoInfo} from '../../model'
-import {decorateAst, deterministicCountingIdGenerator, type NormalizedAst} from '../../model'
-import {deepMergeObject} from '../../../../../util/objects'
-import type { Entry} from './format'
+import type { DeepPartial } from 'ts-essentials'
+import type { XmlBasedJson, XmlParserHooks } from '../xml'
+import { nameKey } from '../xml'
+import { attributesKey, contentKey } from '../xml'
+import { childrenKey } from '../xml'
+import { DEFAULT_PARSER_HOOKS, type ParserData } from '../xml'
+import type { IdGenerator, NoInfo } from '../../model'
+import { decorateAst, deterministicCountingIdGenerator, type NormalizedAst } from '../../model'
+import { deepMergeObject } from '../../../../../util/objects'
+import type { Entry } from './format'
 import { RootId, prepareParsedData } from './format'
-import {parseRootObjToAst} from '../xml/internal'
-import {log} from '../../../../../util/log'
+import { parseRootObjToAst } from '../xml/internal'
+import { log } from '../../../../../util/log'
 
-export const parseLog = log.getSubLogger({name: 'ast-parser'})
+export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
 export function normalize(jsonString: string, hooks?: DeepPartial<XmlParserHooks>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
 	const hooksWithDefaults = deepMergeObject(DEFAULT_PARSER_HOOKS, hooks) as XmlParserHooks
@@ -33,7 +33,7 @@ export function convertPreparedParsedData(valueMapping: Map<number, Entry>): Xml
 		}
 	}
 	exprlist[childrenKey] = children
-	return {'exprlist': exprlist}
+	return { 'exprlist': exprlist }
 }
 
 function convertEntry(csvEntry: Entry): XmlBasedJson {

@@ -1,7 +1,7 @@
 import { assert } from 'chai'
 import { withShell } from '../_helper/shell'
 import type {
-	ControlFlowInformation} from '../../../src/util/cfg/cfg'
+	ControlFlowInformation } from '../../../src/util/cfg/cfg'
 import {
 	cfg2quads,
 	CfgVertexType,
@@ -18,7 +18,7 @@ import { cfgToMermaidUrl } from '../../../src/util/mermaid'
 describe('Control Flow Graph', withShell(shell => {
 	 function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
 		 // shallow copy is important to avoid killing the CFG :c
-		const expected: ControlFlowInformation = {...emptyControlFlowInformation(), ...partialExpected}
+		const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected }
 		return it(code, async()=> {
 			const result = await new SteppingSlicer({
 				stepOfInterest: 'normalize',

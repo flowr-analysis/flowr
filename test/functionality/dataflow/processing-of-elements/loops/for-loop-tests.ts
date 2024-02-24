@@ -87,7 +87,7 @@ x`,
 		'x <- 9\nfor(i in 1:10) { x <- x }\n x',
 		new DataflowGraph()
 			.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
-			.addVertex( { tag: 'variable-definition', id: '3', name: 'i', scope: LocalScope, environment: envWithFirstX()})
+			.addVertex( { tag: 'variable-definition', id: '3', name: 'i', scope: LocalScope, environment: envWithFirstX() })
 			.addVertex( { tag: 'variable-definition', id: '7', name: 'x', scope: LocalScope, when: 'maybe', environment: envInFor() })
 			.addVertex( { tag: 'use', id: '8', name: 'x', when: 'maybe', environment: envInFor() })
 			.addVertex( { tag: 'use', id: '12', name: 'x', environment: appendEnvironments(envOutFor(), envWithSecondX()) })

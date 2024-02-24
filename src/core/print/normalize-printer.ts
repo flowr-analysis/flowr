@@ -1,6 +1,6 @@
 import type { NormalizedAst } from '../../r-bridge'
 import { jsonReplacer } from '../../util/json'
-import type { QuadSerializationConfiguration} from '../../util/quads'
+import type { QuadSerializationConfiguration } from '../../util/quads'
 import { serialize2quads } from '../../util/quads'
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../util/mermaid'
 

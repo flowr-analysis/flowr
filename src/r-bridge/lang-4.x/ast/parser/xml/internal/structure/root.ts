@@ -1,5 +1,5 @@
-import type { XmlBasedJson} from '../../input-format'
-import {childrenKey, getKeysGuarded} from '../../input-format'
+import type { XmlBasedJson } from '../../input-format'
+import { childrenKey, getKeysGuarded } from '../../input-format'
 import { assureTokenType } from '../meta'
 import { normalizeBasedOnType } from './elements'
 import type { ParserData } from '../../data'

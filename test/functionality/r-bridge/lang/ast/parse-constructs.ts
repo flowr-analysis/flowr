@@ -101,7 +101,7 @@ const ElseBracesVariants = [{
 describe('Parse simple constructs', withShell(shell => {
 	describe('if', () => {
 		describe('if-then', () => {
-			for(const pool of [{name: 'braces', variants: IfThenBraceVariants}, {
+			for(const pool of [{ name: 'braces', variants: IfThenBraceVariants }, {
 				name:     'spacing',
 				variants: IfThenSpacingVariants
 			}]) {
@@ -135,11 +135,11 @@ describe('Parse simple constructs', withShell(shell => {
 			}
 		})
 		describe('if-then-else', () => {
-			for(const elsePool of [{name: 'braces', variants: ElseBracesVariants}, {
+			for(const elsePool of [{ name: 'braces', variants: ElseBracesVariants }, {
 				name:     'spacing',
 				variants: ElseSpacingVariants
 			}]) {
-				for(const ifThenPool of [{name: 'braces', variants: IfThenBraceVariants}, {
+				for(const ifThenPool of [{ name: 'braces', variants: IfThenBraceVariants }, {
 					name:     'spacing',
 					variants: IfThenSpacingVariants
 				}]) {

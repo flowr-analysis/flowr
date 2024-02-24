@@ -1,6 +1,6 @@
-import {guard} from '../../../util/assert'
-import type {BinOpOperators} from './binop'
-import {addDomains, subtractDomains} from '../../domain'
+import { guard } from '../../../util/assert'
+import type { BinOpOperators } from './binop'
+import { addDomains, subtractDomains } from '../../domain'
 
 export const operators: BinOpOperators = {
 	'assignment': (lhs, rhs, node) => {

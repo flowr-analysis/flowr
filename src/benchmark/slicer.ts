@@ -12,7 +12,7 @@ import {
 	retrieveNumberOfRTokensOfLastParse,
 	RShell
 } from '../r-bridge'
-import type { IStoppableStopwatch} from './stopwatch'
+import type { IStoppableStopwatch } from './stopwatch'
 import { Measurements } from './stopwatch'
 import { guard } from '../util/assert'
 import type { DataflowInformation } from '../dataflow/internal/info'
@@ -109,7 +109,7 @@ export class BenchmarkSlicer {
 
 		this.stepper = new SteppingSlicer({
 			shell:          this.shell,
-			request:        {...request},
+			request:        { ...request },
 			stepOfInterest: LAST_STEP,
 			criterion:      []
 		})

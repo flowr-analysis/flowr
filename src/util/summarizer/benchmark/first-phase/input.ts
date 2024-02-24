@@ -1,7 +1,7 @@
 import type {
 	CommonSlicerMeasurements, PerSliceMeasurements,
 	PerSliceStats,
-	SlicerStats} from '../../../../benchmark'
+	SlicerStats } from '../../../../benchmark'
 import {
 	stats2string,
 	summarizeSlicerStats

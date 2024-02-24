@@ -2,14 +2,14 @@ import { guard } from '../../util/assert'
 import type { NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
 import type {
 	IdentifierDefinition,
-	IdentifierReference} from '../environments'
+	IdentifierReference } from '../environments'
 import {
 	cloneEnvironments,
 	initializeCleanEnvironments
 } from '../environments'
 import type { BiMap } from '../../util/bimap'
 import { log } from '../../util/log'
-import type { DataflowGraphEdge, DataflowGraphEdgeAttribute} from './edge'
+import type { DataflowGraphEdge, DataflowGraphEdgeAttribute } from './edge'
 import { EdgeType } from './edge'
 import type { DataflowInformation } from '../internal/info'
 import {
@@ -320,7 +320,7 @@ export class DataflowGraph {
 	public equals(other: DataflowGraph, diff: true, names?: { left: string, right: string }): DifferenceReport
 	public equals(other: DataflowGraph, diff?: false, names?: { left: string, right: string }): boolean
 	public equals(other: DataflowGraph, diff = false, names = { left: 'left', right: 'right' }): boolean | DifferenceReport {
-		const report = diffOfDataflowGraphs({ name: names.left, graph: this}, { name: names.right, graph: other })
+		const report = diffOfDataflowGraphs({ name: names.left, graph: this }, { name: names.right, graph: other })
 		if(diff) {
 			return report
 		} else {

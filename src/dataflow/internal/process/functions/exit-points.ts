@@ -3,7 +3,7 @@ import type {
 	ParentInformation,
 	RExpressionList,
 	RFunctionDefinition, RIfThenElse, RLoopConstructs,
-	RNode} from '../../../../r-bridge'
+	RNode } from '../../../../r-bridge'
 import {
 	RType
 } from '../../../../r-bridge'

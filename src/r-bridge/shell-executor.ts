@@ -1,13 +1,13 @@
-import type { RShellExecutionOptions} from './shell'
-import {DEFAULT_R_SHELL_OPTIONS} from './shell'
-import {deepMergeObject} from '../util/objects'
-import {spawnSync} from 'child_process'
-import {ts2r} from './lang-4.x'
-import type {SemVer} from 'semver'
+import type { RShellExecutionOptions } from './shell'
+import { DEFAULT_R_SHELL_OPTIONS } from './shell'
+import { deepMergeObject } from '../util/objects'
+import { spawnSync } from 'child_process'
+import { ts2r } from './lang-4.x'
+import type { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { log, LogLevel } from '../util/log'
 
-const executorLog = log.getSubLogger({name: 'RShellExecutor'})
+const executorLog = log.getSubLogger({ name: 'RShellExecutor' })
 
 export class RShellExecutor {
 	public readonly options:        Readonly<RShellExecutionOptions>

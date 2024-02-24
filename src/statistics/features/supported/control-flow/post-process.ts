@@ -1,7 +1,7 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
 import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
 import type {
-	CommonSyntaxTypeCounts} from '../../common-syntax-probability'
+	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts

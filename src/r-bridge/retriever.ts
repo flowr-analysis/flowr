@@ -86,9 +86,8 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
 	const eol = ts2r(shell.options.eol)
 	const command =
 		'tryCatch({'
-	+ `flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix});`
-	+ 'flowr_output<-getParseData(flowr_parsed,includeText=TRUE);'
-	+ `cat(jsonlite::toJSON(x=flowr_output,na="null",null="null",dataframe="rows",digits=NA),${eol})`
+	+ `flowr_output<-getParseData(parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),includeText=TRUE);`
+	+ `cat(jsonlite::toJSON(x=flowr_output,digits=0),${eol})`
 	+ `}, error=function(e) { cat("${ErrorMarker}",${eol}) })`
 
 	if(shell instanceof RShellExecutor){

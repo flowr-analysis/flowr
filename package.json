@@ -137,11 +137,16 @@
     "plugins": [
       "@typescript-eslint",
       "eslint-plugin-tsdoc",
-      "check-file"
+      "check-file",
+      "@stylistic",
+      "@stylistic/migrate"
     ],
     "rules": {
       "indent": "off",
-      "object-curly-spacing": ["error", "always"],
+      "object-curly-spacing": [
+        "error",
+        "always"
+      ],
       "@typescript-eslint/indent": [
         "error",
         "tab",
@@ -303,8 +308,13 @@
       ],
       "@typescript-eslint/consistent-type-imports": "error",
       "curly": "error",
-      "brace-style": ["error", "1tbs"],
-      "new-parens": "error"
+      "brace-style": [
+        "error",
+        "1tbs"
+      ],
+      "new-parens": "error",
+      "@stylistic/migrate/migrate-js": "error",
+      "@stylistic/migrate/migrate-ts": "error"
     }
   },
   "release-it": {
@@ -344,6 +354,10 @@
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
     "@commitlint/config-angular": "^18.4.3",
+    "@stylistic/eslint-plugin": "^1.6.2",
+    "@stylistic/eslint-plugin-migrate": "^1.6.2",
+    "@stylistic/eslint-plugin-plus": "^1.6.2",
+    "@stylistic/eslint-plugin-ts": "^1.6.2",
     "@types/chai": "^4.3.11",
     "@types/chai-as-promised": "^7.1.8",
     "@types/command-line-args": "^5.2.3",

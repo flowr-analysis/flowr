@@ -1,5 +1,3 @@
-import { guard } from '../../util/assert'
-
 class ValueConversionError extends Error {
 	constructor(message: string) {
 		super(message)

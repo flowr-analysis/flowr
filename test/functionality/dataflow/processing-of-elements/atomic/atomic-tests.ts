@@ -11,7 +11,7 @@ import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/p
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { label } from '../../../_helper/label'
-import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data'
+import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 
 describe('Atomic (dataflow information)', withShell((shell) => {
 	describe('Uninteresting Leafs', () => {
@@ -26,7 +26,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			['NULL', 'null'],
 			['Inf', 'inf-and-nan'],
 			['NaN', 'inf-and-nan']
-		] as [string, FlowrCapabilityId][]) {
+		] as [string, SupportedFlowrCapabilityId][]) {
 			assertDataflow(label(input, id), shell, input, new DataflowGraph())
 		}
 	})
@@ -361,8 +361,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				LocalScope,
 				initializeCleanEnvironments()
 			)
-			assertDataflow(label('define call with multiple args should only be defined by the call-return', 'local-left-assignment', 'named-arguments', 'unnamed-arguments','normal', 'name-normal'), 
-				shell, 
+			assertDataflow(label('define call with multiple args should only be defined by the call-return', 'local-left-assignment', 'named-arguments', 'unnamed-arguments','normal', 'name-normal'),
+				shell,
 				'a <- foo(x=3,y,z)',
 				new DataflowGraph()
 					.addVertex({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })

@@ -8,7 +8,7 @@
 
 import { DefaultMap } from '../../../src/util/defaultmap'
 import { guard } from '../../../src/util/assert'
-import type { FlowrCapabilityId} from '../../../src/r-bridge/data'
+import type { SupportedFlowrCapabilityId } from '../../../src/r-bridge/data'
 import { getAllCapabilities } from '../../../src/r-bridge/data'
 
 // map flowr ids to the capabilities
@@ -24,7 +24,7 @@ const uniqueTestId = (() => {
  * @param testname - the name of the test	(`it`) to be labeled
  * @param ids      - the capability ids to attach to the test
  */
-export function label(testname: string, ...ids: FlowrCapabilityId[]): string {
+export function label(testname: string, ...ids: SupportedFlowrCapabilityId[]): string {
 	// assert ids in array are unique
 	guard(new Set(ids).size === ids.length, () => `Labels must be unique, but are not for ${JSON.stringify(ids)}`)
 

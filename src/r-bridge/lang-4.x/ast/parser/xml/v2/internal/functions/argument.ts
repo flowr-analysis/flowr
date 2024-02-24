@@ -1,7 +1,7 @@
-import type { XmlBasedJson} from '../../../common/input-format'
+import type { XmlBasedJson } from '../../../common/input-format'
 import { XmlParseError } from '../../../common/input-format'
 import { getTokenType, retrieveMetaStructure } from '../../../common/meta'
-import type { RNode, RSymbol} from '../../../../../model'
+import type { RNode, RSymbol } from '../../../../../model'
 import { RType, RawRType } from '../../../../../model'
 import type { NormalizeConfiguration } from '../../data'
 import { log } from '../../../../../../../../util/log'
@@ -25,8 +25,8 @@ export function tryToNormalizeArgument(configuration: NormalizeConfiguration, ob
 	}
 
 	const [first] = objs
-	const symbolOrExpr = getTokenType(configuration.tokenMap, first)
-	const { location, content } = retrieveMetaStructure(configuration, first)
+	const symbolOrExpr = getTokenType(first)
+	const { location, content } = retrieveMetaStructure(first)
 
 	let parsedValue: RNode | RDelimiter | undefined |  null
 	let name: RSymbol | undefined
@@ -72,8 +72,8 @@ export function tryToNormalizeArgument(configuration: NormalizeConfiguration, ob
 }
 
 function normalizeWithValue(data: NormalizeConfiguration, [fst,eq,lst]: readonly XmlBasedJson[]): RNode | RDelimiter | undefined | null {
-	const eqType = getTokenType(data.tokenMap, eq)
+	const eqType = getTokenType(eq)
 	guard(eqType === RawRType.EqualSub, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify([fst,eq,lst])}`)
-	guard(lst === undefined || getTokenType(data.tokenMap, lst) === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression or undefined (for 'x=') but: ${JSON.stringify([fst,eq,lst])}`)
+	guard(lst === undefined || getTokenType(lst) === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression or undefined (for 'x=') but: ${JSON.stringify([fst,eq,lst])}`)
 	return lst ? normalizeSingleToken(data, lst) : null
 }

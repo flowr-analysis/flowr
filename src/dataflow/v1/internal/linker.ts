@@ -9,7 +9,7 @@ import type {
 import type {
 	DataflowScopeName,
 	IdentifierReference,
-	REnvironmentInformation} from '../../common/environments'
+	REnvironmentInformation } from '../../common/environments'
 import {
 	BuiltIn,
 	resolveByName
@@ -17,7 +17,7 @@ import {
 import { DefaultMap } from '../../../util/defaultmap'
 import { guard } from '../../../util/assert'
 import { log } from '../../../util/log'
-import type { DecoratedAstMap, NodeId, ParentInformation, RParameter} from '../../../r-bridge'
+import type { DecoratedAstMap, NodeId, ParentInformation, RParameter } from '../../../r-bridge'
 import { RType } from '../../../r-bridge'
 import { slicerLogger } from '../../../slicing'
 import { dataflowLogger, EdgeType } from '../index'

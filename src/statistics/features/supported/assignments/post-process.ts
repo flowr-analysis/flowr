@@ -2,7 +2,7 @@ import type { FeatureStatisticsWithMeta } from '../../feature'
 import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
 import type { MergeableRecord } from '../../../../util/objects'
 import type {
-	CommonSyntaxTypeCounts} from '../../common-syntax-probability'
+	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts
@@ -52,7 +52,7 @@ function retrieveUsageCombinationCounts(collected: SummarizedAssignmentInfo<numb
 		return new Map()
 	}
 	const allCombinations = [...getUniqueCombinationsOfSize(ops, 1)]
-	const store = new Map<string, { uniqueProjects: Set<string>, uniqueFiles: Set<string> }>
+	const store = new Map<string, { uniqueProjects: Set<string>, uniqueFiles: Set<string> }>()
 	for(const combs of allCombinations) {
 		if(combs.length === 1) {
 			// we can just copy the information

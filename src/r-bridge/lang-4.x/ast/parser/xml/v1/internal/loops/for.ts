@@ -1,20 +1,21 @@
 import type {
 	NamedXmlBasedJson,
-	XmlBasedJson} from '../../../common/input-format'
+	XmlBasedJson } from '../../../common/input-format'
 import {
+	childrenKey,
 	getKeyGuarded,
 	XmlParseError
 } from '../../../common/input-format'
 import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../../../common/meta'
-import { parseLog } from '../../normalize'
 import { guard } from '../../../../../../../../util/assert'
 import type { ParserData } from '../../data'
 import { tryNormalizeSymbol } from '../values'
 import { normalizeBasedOnType, splitComments, tryNormalizeSingleNode } from '../structure'
-import type { RComment, RForLoop, RNode, RSymbol} from '../../../../../model'
+import type { RComment, RForLoop, RNode, RSymbol } from '../../../../../model'
 import { RawRType, RType } from '../../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { normalizeComment } from '../other'
+import { parseLog } from '../../../../json/parser'
 
 export function tryNormalizeFor(
 	data: ParserData,
@@ -56,10 +57,7 @@ export function tryNormalizeFor(
 		)
 	}
 
-	const { location, content } = retrieveMetaStructure(
-		data.config,
-		forToken.content
-	)
+	const { location, content } = retrieveMetaStructure(forToken.content)
 
 	const result: RForLoop = {
 		type:     RType.ForLoop,
@@ -79,8 +77,8 @@ export function tryNormalizeFor(
 
 function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined, comments: RComment[] } {
 	// must have a child which is `in`, a variable on the left, and a vector on the right
-	const children: NamedXmlBasedJson[] = getKeyGuarded<XmlBasedJson[]>(forCondition, data.config.children).map(content => ({
-		name: getTokenType(data.config.tokenMap, content),
+	const children: NamedXmlBasedJson[] = getKeyGuarded<XmlBasedJson[]>(forCondition, childrenKey).map(content => ({
+		name: getTokenType(content),
 		content
 	}))
 	const { comments, others } = splitComments(children)

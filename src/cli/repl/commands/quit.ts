@@ -6,5 +6,7 @@ export const quitCommand: ReplCommand = {
 	aliases:      [ 'q', 'exit' ],
 	usageExample: ':quit',
 	script:       false,
-	fn:           () => { log.info('bye'); process.exit(0) }
+	fn:           () => {
+		log.info('bye'); process.exit(0) 
+	}
 }

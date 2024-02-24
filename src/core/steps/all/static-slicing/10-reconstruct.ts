@@ -1,5 +1,5 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
-import type { IPipelineStep} from '../../step'
+import type { IPipelineStep } from '../../step'
 import { PipelineStepStage } from '../../step'
 import type { AutoSelectPredicate, SliceResult } from '../../../../slicing'
 import { reconstructToCode } from '../../../../slicing'

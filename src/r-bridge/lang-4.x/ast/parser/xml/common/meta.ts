@@ -1,12 +1,13 @@
 import type { SourceRange } from '../../../../../../util/range'
 import { rangeFrom, rangeStartsCompletelyBefore } from '../../../../../../util/range'
-import type { RawRType, RExpressionList, RNode} from '../../../model'
+import type { RawRType, RExpressionList, RNode } from '../../../model'
 import { RType } from '../../../model'
 import { guard } from '../../../../../../util/assert'
-import type { NamedXmlBasedJson, XmlBasedJson} from './input-format'
-import { XmlParseError, getKeyGuarded } from './input-format'
-import type { XmlParserConfig } from './config'
-import { XML_NAME } from './xml-to-json'
+import type {
+	NamedXmlBasedJson,
+	XmlBasedJson
+} from './input-format'
+import { XmlParseError, attributesKey, contentKey, getKeyGuarded, nameKey } from './input-format'
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper
@@ -40,10 +41,9 @@ export function extractLocation(ast: XmlBasedJson): SourceRange {
  * The json object that represents the input xml contains various meta-information.
  * This function extracts the meta-information and returns it.
  *
- * @param config - The configuration of the parser to use to retrieve the corresponding name fields
  * @param obj    - The json object to extract the meta-information from
  */
-export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson): {
+export function retrieveMetaStructure(obj: XmlBasedJson): {
 	/** the obj passed in, but potentially without surrounding array wrappers (see {@link objectWithArrUnwrap}) */
 	unwrappedObj: XmlBasedJson
 	/** location information of the corresponding R-ast element */
@@ -51,9 +51,9 @@ export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson
 	content:      string
 } {
 	const unwrappedObj = objectWithArrUnwrap(obj)
-	const attributes = obj[config.attr] as XmlBasedJson | undefined
+	const attributes = obj[attributesKey] as XmlBasedJson | undefined
+	const content = obj[contentKey] as string | undefined ?? ''
 	guard(attributes !== undefined, () => `expected attributes to be defined for ${JSON.stringify(obj)}`)
-	const content = obj[config.content] as string | undefined ?? ''
 	const location = extractLocation(attributes)
 	return {
 		unwrappedObj,
@@ -62,13 +62,8 @@ export function retrieveMetaStructure(config: XmlParserConfig, obj: XmlBasedJson
 	}
 }
 
-export function revertTokenReplacement(tokenMap: XmlParserConfig['tokenMap'], token: string): string {
-	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- it is still necessary as we do not know if we have a replacement for the given token
-	return tokenMap[token] ?? token
-}
-
-export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson, expectedName: RawRType): void {
-	const name = getTokenType(tokenMap, obj)
+export function assureTokenType(obj: XmlBasedJson, expectedName: RawRType): void {
+	const name = getTokenType(obj)
 	if(name !== expectedName) {
 		throw new XmlParseError(`expected name to be ${expectedName}, yet received ${name} for ${JSON.stringify(obj)}`)
 	}
@@ -78,37 +73,35 @@ export function assureTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlB
  * Extract the token-type of the given object. This is based on the knowledge, that all json objects created
  * from the R xml have a name attached.
  *
- * @param tokenMap - used to revert token types (i.e., revert `xmlparsedata`)
  * @param content  - the json object to extract the token-type from
  */
-export function getTokenType(tokenMap: XmlParserConfig['tokenMap'], content: XmlBasedJson): RawRType {
-	return revertTokenReplacement(tokenMap, getKeyGuarded(content, XML_NAME)) as RawRType
+export function getTokenType(content: XmlBasedJson): RawRType {
+	return getKeyGuarded(content, nameKey) as RawRType
 }
 
-export function getWithTokenType(tokenMap: XmlParserConfig['tokenMap'], obj: XmlBasedJson[]) {
-	return obj.map(content => ({
-		name: getTokenType(tokenMap, content),
+export function getWithTokenType(obj: XmlBasedJson[]) {
+	return obj.map((content) => ({
+		name: getTokenType(content),
 		content
 	}))
 }
 
-export function retrieveOpName(config: XmlParserConfig, operator: NamedXmlBasedJson): string {
+export function retrieveOpName(operator: NamedXmlBasedJson): string {
 	/*
    * only real arithmetic ops have their operation as their own name, the others identify via content
    */
-	return operator.content[config.content] as string
+	return operator.content[contentKey] as string
 }
 
 /**
  * Ensure that the first child is completely before the second child.
  *
- * @param config - the configuration of the parser to use to retrieve the corresponding name fields
  * @param first  - the first child which should be the lhs
  * @param second - the second child which should be the rhs
  */
-export function ensureChildrenAreLhsAndRhsOrdered(config: XmlParserConfig, first: XmlBasedJson, second: XmlBasedJson): void {
-	const firstOtherLoc = extractLocation(first[config.attr] as XmlBasedJson)
-	const secondOtherLoc = extractLocation(second[config.attr] as XmlBasedJson)
+export function ensureChildrenAreLhsAndRhsOrdered(first: XmlBasedJson, second: XmlBasedJson): void {
+	const firstOtherLoc = extractLocation(first[attributesKey] as XmlBasedJson)
+	const secondOtherLoc = extractLocation(second[attributesKey] as XmlBasedJson)
 	if(!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
 		throw new XmlParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`)
 	}

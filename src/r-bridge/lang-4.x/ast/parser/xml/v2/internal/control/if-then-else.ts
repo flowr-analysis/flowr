@@ -28,7 +28,7 @@ export function tryNormalizeIfThenElse(
 		return undefined
 	}
 
-	guard(getTokenType(config.tokenMap, tokens[5]) === RawRType.Else, () => `expected else token for if-then-else but found ${JSON.stringify(tokens[5])}`)
+	guard(getTokenType(tokens[5]) === RawRType.Else, () => `expected else token for if-then-else but found ${JSON.stringify(tokens[5])}`)
 
 	const parsedElse = normalizeSingleToken(config, tokens[6])
 

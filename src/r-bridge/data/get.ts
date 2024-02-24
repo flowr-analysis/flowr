@@ -3,16 +3,19 @@ import type { FlowrCapability } from './types'
 import { flowrCapabilities } from './data'
 
 
-/** Recursively extract all valid identifiers */
-type ExtractAllIds<T extends FlowrCapability> =
+type CapabilityIdFilter<T extends FlowrCapability, Filter> = T extends Filter ? T['id'] : never
+
+/** Recursively extract all valid identifiers (which have the given support predicate) */
+type ExtractAllIds<T extends FlowrCapability, Filter = FlowrCapability> =
 	T extends { readonly capabilities: infer U }
 		? U extends readonly FlowrCapability[]
-			? (T['id'] | ExtractAllIds<U[number]>)
-			: T['id']
-		: T['id']
+			? (CapabilityIdFilter<T, Filter> | ExtractAllIds<U[number]>)
+			: CapabilityIdFilter<T, Filter>
+		: CapabilityIdFilter<T, Filter>
 
 type Capabilities = (typeof flowrCapabilities)['capabilities'][number]
 export type FlowrCapabilityId = ExtractAllIds<Capabilities>
+export type SupportedFlowrCapabilityId = ExtractAllIds<Capabilities, { readonly supported: 'partial' | 'fully' }>
 
 type PathToCapability = readonly number[]
 
@@ -37,7 +40,7 @@ function search(id: FlowrCapabilityId, capabilities: readonly FlowrCapability[],
 	return undefined
 }
 
-const capabilityCache = new Map<FlowrCapabilityId, FlowrCapabilityWithPath>
+const capabilityCache = new Map<FlowrCapabilityId, FlowrCapabilityWithPath>()
 
 export function getCapabilityById(id: FlowrCapabilityId): FlowrCapabilityWithPath {
 	const cached = capabilityCache.get(id)

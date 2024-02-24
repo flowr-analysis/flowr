@@ -1,5 +1,9 @@
 import type { RawRType } from '../../../model'
-import type { DeepReadonly } from 'ts-essentials'
+
+export const attributesKey = 'a'
+export const childrenKey = 'c'
+export const contentKey = '@'
+export const nameKey = '#'
 
 /**
  * Thrown if the given input xml is not valid/contains unexpected elements.
@@ -14,21 +18,20 @@ export class XmlParseError extends Error {
 /**
  * represents json format retrieved from processing the xml input
  */
-export type XmlBasedJson = DeepReadonly<Record<string, XmlBasedJsonValue>>
+export type XmlBasedJson = Record<string, XmlBasedJsonValue>
 /**
  * A xml element in the json can either link to a string or another xml element
  */
-export type XmlBasedJsonValue = string | DeepReadonly<Record<string, unknown>> | readonly XmlBasedJson[]
-
+export type XmlBasedJsonValue = string | Record<string, unknown> | XmlBasedJson[]
 
 /**
  * We expect all xml elements to have a name attached which represents their R token type.
  */
 export interface NamedXmlBasedJson {
 	/** corresponds to the R token type */
-	readonly name:    RawRType,
+	name:    RawRType,
 	/** remaining content (e.g., children, ...) */
-	readonly content: XmlBasedJson
+	content: XmlBasedJson
 }
 
 

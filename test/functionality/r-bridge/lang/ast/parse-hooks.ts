@@ -1,7 +1,7 @@
 import { retrieveNormalizedAst, withShell } from '../../../_helper/shell'
 import { assert } from 'chai'
 import { requestFromInput } from '../../../../../src/r-bridge'
-import { SteppingSlicer } from '../../../../../src/core'
+import { SteppingSlicer } from '../../../../../src/core/stepping-slicer'
 
 describe('Check hooks are called appropriately', withShell(shell => {
 	it('Call the number hook!', async() => {
@@ -10,8 +10,12 @@ describe('Check hooks are called appropriately', withShell(shell => {
 		await retrieveNormalizedAst(shell, '1', {
 			values: {
 				onNumber: {
-					before: () => { before = true; return undefined },
-					after:  () => { after = true; return undefined }
+					before: () => {
+						before = true; return undefined
+					},
+					after: () => {
+						after = true; return undefined
+					}
 				},
 			},
 		})
@@ -28,7 +32,9 @@ describe('Check hooks are called appropriately', withShell(shell => {
 			hooks:          {
 				values: {
 					onString: {
-						after: () => { counter++ },
+						after: () => {
+							counter++
+						},
 					}
 				}
 			}

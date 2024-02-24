@@ -1,12 +1,11 @@
 import type {
 	IdGenerator,
 	NoInfo,
-	RShell,
 	XmlParserHooks
 } from '../../../../r-bridge'
 import {
 	normalize as oldNormalize
-} from '../../../../r-bridge'
+} from '../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import {
 	normalizedAstToJson,
@@ -14,7 +13,7 @@ import {
 	printNormalizedAstToMermaid,
 	printNormalizedAstToMermaidUrl
 } from '../../../print/normalize-printer'
-import type { IPipelineStep} from '../../step'
+import type { IPipelineStep } from '../../step'
 import { PipelineStepStage } from '../../step'
 import type { DeepPartial, DeepReadonly } from 'ts-essentials'
 import type { ParseRequiredInput } from './00-parse'
@@ -27,8 +26,8 @@ export interface NormalizeRequiredInput extends ParseRequiredInput {
 	readonly getId?: IdGenerator<NoInfo>
 }
 
-async function processor(results: { parse?: string }, input: Partial<NormalizeRequiredInput>) {
-	return oldNormalize(results.parse as string, await (input.shell as RShell).tokenMap(), input.hooks, input.getId)
+function processor(results: { parse?: string }, input: Partial<NormalizeRequiredInput>) {
+	return oldNormalize(results.parse as string, input.hooks, input.getId)
 }
 
 export const NORMALIZE = {
@@ -51,8 +50,8 @@ export const NORMALIZE = {
 
 type DesugarNormalizeRequiredInput = Pick<NormalizeRequiredInput, 'getId'> & ParseRequiredInput
 
-async function desugarProcessor(results: { parse?: string }, input: Partial<DesugarNormalizeRequiredInput>) {
-	return normalizeV2(results.parse as string, await (input.shell as RShell).tokenMap(), input.getId)
+function desugarProcessor(results: { parse?: string }, input: Partial<DesugarNormalizeRequiredInput>) {
+	return normalizeV2(results.parse as string, input.getId)
 }
 
 export const DESUGAR_NORMALIZE = {

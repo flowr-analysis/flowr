@@ -1,7 +1,8 @@
 import type {
 	NamedXmlBasedJson,
-	XmlBasedJson} from '../../../common/input-format'
+	XmlBasedJson } from '../../../common/input-format'
 import {
+	childrenKey,
 	getKeyGuarded,
 	XmlParseError
 } from '../../../common/input-format'
@@ -23,12 +24,12 @@ export function tryNormalizeFor(
 ): RFunctionCall | undefined {
 
 	// funny, for does not use top-level parenthesis
-	if(getTokenType(config.tokenMap, forToken) !== RawRType.For) {
+	if(getTokenType(forToken) !== RawRType.For) {
 		return undefined
-	} else if(getTokenType(config.tokenMap, head) !== RawRType.ForCondition) {
+	} else if(getTokenType(head) !== RawRType.ForCondition) {
 		throw new XmlParseError(`expected condition for for-loop but found ${JSON.stringify(head)}`)
 	} else {
-		const bodyName = getTokenType(config.tokenMap, body)
+		const bodyName = getTokenType(body)
 		if(bodyName !== RawRType.Expression && bodyName !== RawRType.ExprOfAssignOrHelp) {
 			throw new XmlParseError(`expected expr body for for-loop but found ${JSON.stringify(body)}`)
 		}
@@ -49,7 +50,7 @@ export function tryNormalizeFor(
 		)
 	}
 
-	const { location, content } = retrieveMetaStructure(config, forToken)
+	const { location, content } = retrieveMetaStructure(forToken)
 
 	return {
 		type:         RType.FunctionCall,
@@ -74,8 +75,8 @@ export function tryNormalizeFor(
 
 function normalizeForHead(config: NormalizeConfiguration, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined, comments: RComment[] } {
 	// must have a child which is `in`, a variable on the left, and a vector on the right
-	const children: NamedXmlBasedJson[] = getKeyGuarded<XmlBasedJson[]>(forCondition, config.children).map(content => ({
-		name: getTokenType(config.tokenMap, content),
+	const children: NamedXmlBasedJson[] = getKeyGuarded<XmlBasedJson[]>(forCondition, childrenKey).map(content => ({
+		name: getTokenType(content),
 		content
 	}))
 	const { comments, others } = splitComments(children)

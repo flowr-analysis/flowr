@@ -1,12 +1,12 @@
 import type { XmlBasedJson } from '../../../common/input-format'
 import type { RNa } from '../../../../../../values'
 import { boolean2ts, isBoolean, isNA, number2ts } from '../../../../../../values'
-import { parseLog } from '../../normalize'
 import { retrieveMetaStructure } from '../../../common/meta'
 import type { RLogical, RSymbol, NoInfo, RNumber } from '../../../../../model'
 import { RType } from '../../../../../model'
 import type { ParserData } from '../../data'
 import { executeHook } from '../../hooks'
+import { parseLog } from '../../../../json/parser'
 
 /**
  * Normalize the given object as a R number (see {@link number2ts}), supporting booleans (see {@link boolean2ts}),
@@ -20,7 +20,7 @@ export function normalizeNumber(data: ParserData, obj: XmlBasedJson): RNumber | 
 	parseLog.debug('[number]')
 	obj = executeHook(data.hooks.values.onNumber.before, data, obj)
 
-	const { location, content } = retrieveMetaStructure(data.config, obj)
+	const { location, content } = retrieveMetaStructure(obj)
 	const common = {
 		location,
 		lexeme: content,

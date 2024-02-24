@@ -1,11 +1,3 @@
-import type {
-	LAST_PER_FILE_STEP,
-	StepName, SteppingSlicerInput, PipelineStepName
-	, PipelineStepStage
-} from './steps'
-import {
-	LAST_STEP
-} from './steps'
 import type { SlicingCriteria } from '../slicing'
 import type { Pipeline, PipelineOutput, PipelineStepOutputWithName } from './steps/pipeline'
 import { createPipeline } from './steps/pipeline'
@@ -15,6 +7,11 @@ import { LEGACY_STATIC_DATAFLOW } from './steps/all/core/20-dataflow'
 import { STATIC_SLICE } from './steps/all/static-slicing/00-slice'
 import { NAIVE_RECONSTRUCT } from './steps/all/static-slicing/10-reconstruct'
 import { PipelineExecutor } from './pipeline-executor'
+import type { StepName } from './steps'
+import { LAST_STEP } from './steps'
+import type { PipelineStepName, PipelineStepStage } from './steps/step'
+import type { SteppingSlicerInput } from './steps/input'
+import type { LAST_PER_FILE_STEP } from './steps/steps'
 
 const legacyPipelines = {
 	// brrh, but who cares, it is legacy!

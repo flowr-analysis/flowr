@@ -1,11 +1,11 @@
 import type { Feature, FeatureProcessorInput } from '../../feature'
 import type { Writable } from 'ts-essentials'
-import type { NodeId, RNodeWithParent} from '../../../../r-bridge'
+import type { NodeId, RNodeWithParent } from '../../../../r-bridge'
 import { RType, visitAst, RoleInParent, rolesOfParents } from '../../../../r-bridge'
 import { assertUnreachable, guard } from '../../../../util/assert'
 import { appendStatisticsFile } from '../../../output'
 import type {
-	CommonSyntaxTypeCounts} from '../../common-syntax-probability'
+	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
 	emptyCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts

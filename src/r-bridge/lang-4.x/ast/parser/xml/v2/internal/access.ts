@@ -1,4 +1,4 @@
-import type { XmlBasedJson} from '../../common/input-format'
+import type { XmlBasedJson } from '../../common/input-format'
 import { XmlParseError } from '../../common/input-format'
 import { getTokenType, retrieveMetaStructure } from '../../common/meta'
 import type { RNode, RFunctionCall } from '../../../../model'
@@ -8,7 +8,7 @@ import { splitArrayOn } from '../../../../../../../util/arrays'
 import type { NormalizeConfiguration } from '../data'
 import { normalizeSingleToken } from './single-element'
 import { tryToNormalizeArgument } from './functions/argument'
-import {InternalScope} from './internal'
+import { InternalScope } from './internal'
 
 /**
  * Normalize the given data as access (e.g., indexing).
@@ -37,14 +37,14 @@ export function normalizeAccess(configuration: NormalizeConfiguration, tokens: r
 			throw new XmlParseError(`expected second element to be an access operator, yet received ${accessType}`)
 	}
 
-	const first = getTokenType(configuration.tokenMap, tokens[0])
+	const first = getTokenType(tokens[0])
 	guard(first === RawRType.Expression || first === RawRType.ExprOfAssignOrHelp,
 		() => `expected accessed element to be wrapped an expression, yet received ${first}`)
 
 	const parsedAccessed = normalizeSingleToken(configuration, tokens[0])
 	const {
 		content, location
-	} = retrieveMetaStructure(configuration, tokens[1])
+	} = retrieveMetaStructure(tokens[1])
 
 	// we can handle $ and @ directly
 	if(closingLength === 0) {
@@ -73,7 +73,7 @@ export function normalizeAccess(configuration: NormalizeConfiguration, tokens: r
 	const remaining: readonly XmlBasedJson[] = tokens.slice(2, tokens.length - closingLength)
 
 	const splitAccessOnComma = splitArrayOn(remaining, elem =>
-		getTokenType(configuration.tokenMap, elem) === RawRType.Comma
+		getTokenType(elem) === RawRType.Comma
 	)
 
 	const parsedAccess: (RNode | undefined)[] = splitAccessOnComma.map((elems: readonly XmlBasedJson[]) =>

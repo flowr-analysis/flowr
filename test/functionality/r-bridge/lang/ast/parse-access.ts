@@ -234,7 +234,7 @@ describe('Parse value access', withShell(shell => {
 							}
 						}
 					}]
-				})},
+				}) },
 			{
 				step:   DESUGAR_NORMALIZE,
 				wanted: exprList({
@@ -419,7 +419,7 @@ describe('Parse value access', withShell(shell => {
 							info:     {}
 						}
 					}]
-				})},
+				}) },
 			{
 				step:   DESUGAR_NORMALIZE,
 				wanted: exprList({
@@ -510,7 +510,7 @@ describe('Parse value access', withShell(shell => {
 							info:     {}
 						}
 					}]
-				})},
+				}) },
 			{
 				step:   DESUGAR_NORMALIZE,
 				wanted: exprList({
@@ -616,7 +616,7 @@ describe('Parse value access', withShell(shell => {
 							info:     {}
 						}
 					}]
-				})},
+				}) },
 			{
 				step:   DESUGAR_NORMALIZE,
 				wanted: exprList({

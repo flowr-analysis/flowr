@@ -7,7 +7,7 @@ import type {
 	PipelineStepNames,
 	PipelineStepOutputWithName
 } from './steps/pipeline'
-import type { PipelineStepName} from './steps/step'
+import type { PipelineStepName } from './steps/step'
 import { PipelineStepStage } from './steps/step'
 
 /**

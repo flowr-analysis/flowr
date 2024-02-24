@@ -252,7 +252,7 @@ describe('Function Definition', withShell(shell => {
 				.addVertex( { tag: 'use', id: '3', name: 'x', environment: pushLocalEnvironment(initializeCleanEnvironments()), when: 'always' }, false)
 		)
 		const envWithXDefined = define(
-			{nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+			{ nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 
@@ -304,7 +304,7 @@ describe('Function Definition', withShell(shell => {
 		)
 
 		const envWithXDefinedR = define(
-			{nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+			{ nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('local define with -> in function, read after', shell, 'function() { 3 -> x; }; x',
@@ -331,7 +331,7 @@ describe('Function Definition', withShell(shell => {
 				.addEdge('2', '1', EdgeType.Relates, 'always')
 		)
 		const envWithXDefinedGlobal = define(
-			{nodeId: '0', scope: GlobalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+			{ nodeId: '0', scope: GlobalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
 			GlobalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('global define with <<- in function, read after', shell, 'function() { x <<- 3; }; x',
@@ -359,7 +359,7 @@ describe('Function Definition', withShell(shell => {
 				.addEdge('2', '0', EdgeType.Relates, 'always')
 		)
 		const envWithXDefinedGlobalR = define(
-			{nodeId: '1', scope: GlobalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+			{ nodeId: '1', scope: GlobalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
 			GlobalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('global define with ->> in function, read after', shell, 'function() { 3 ->> x; }; x',
@@ -387,7 +387,7 @@ describe('Function Definition', withShell(shell => {
 				.addEdge('2', '1', EdgeType.Relates, 'always')
 		)
 		const envDefXSingle = define(
-			{nodeId: '3', scope: LocalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '5' },
+			{ nodeId: '3', scope: LocalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '5' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('shadow in body', shell, 'x <- 2; function() { x <- 3; x }; x',
@@ -426,7 +426,7 @@ describe('Function Definition', withShell(shell => {
 					tag:         'use',
 					id:          '6',
 					name:        'x',
-					environment: define({ nodeId: '3', definedAt: '5', used: 'always', name: 'x', scope: LocalScope, kind: 'variable'}, LocalScope, pushLocalEnvironment(initializeCleanEnvironments())),
+					environment: define({ nodeId: '3', definedAt: '5', used: 'always', name: 'x', scope: LocalScope, kind: 'variable' }, LocalScope, pushLocalEnvironment(initializeCleanEnvironments())),
 					when:        'always'
 				}, false)
 				.addVertex({
@@ -462,7 +462,7 @@ describe('Function Definition', withShell(shell => {
 					subflow:    {
 						out:               [],
 						unknownReferences: [],
-						in:                [ { nodeId: '4', used: 'always', name: 'x', scope: LocalScope} ],
+						in:                [ { nodeId: '4', used: 'always', name: 'x', scope: LocalScope } ],
 						scope:             LocalScope,
 						graph:             new Set(['3', '4', '6']),
 						environments:      envDefXSingle
@@ -502,7 +502,7 @@ describe('Function Definition', withShell(shell => {
 	})
 	describe('Scoping of parameters', () => {
 		const envWithXDefined = define(
-			{nodeId: '3', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '4' },
+			{ nodeId: '3', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '4' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('parameter shadows', shell, 'x <- 3; function(x) { x }',
@@ -537,7 +537,7 @@ describe('Function Definition', withShell(shell => {
 	})
 	describe('Access dot-dot-dot', () => {
 		const envWithParam = define(
-			{nodeId: '0', scope: 'local', name: '...', used: 'always', kind: 'parameter', definedAt: '1' },
+			{ nodeId: '0', scope: 'local', name: '...', used: 'always', kind: 'parameter', definedAt: '1' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('parameter shadows', shell, 'function(...) { ..11 }',
@@ -756,7 +756,7 @@ describe('Function Definition', withShell(shell => {
 				subflow:    {
 					out:               [],
 					unknownReferences: [],
-					in:                [ {nodeId: '8', name: 'z', used: 'always', scope: LocalScope} ],
+					in:                [ { nodeId: '8', name: 'z', used: 'always', scope: LocalScope } ],
 					scope:             LocalScope,
 					environments:      finalEnv,
 					graph:             new Set(['0', '5', '15', '8', '10', '18', '11', '12', '3'])
@@ -847,17 +847,17 @@ describe('Function Definition', withShell(shell => {
 
 	describe('Nested Function Definitions', () => {
 		const withXParameterInOuter = define(
-			{nodeId: '1', scope: LocalScope, name: 'x', used: 'always', kind: 'function', definedAt: '9' },
+			{ nodeId: '1', scope: LocalScope, name: 'x', used: 'always', kind: 'function', definedAt: '9' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		const withinNestedFunctionWithoutParam = pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments()))
 		const withinNestedFunctionWithParam = define(
-			{nodeId: '2', scope: LocalScope, name: 'x', used: 'always', kind: 'parameter', definedAt: '3' },
+			{ nodeId: '2', scope: LocalScope, name: 'x', used: 'always', kind: 'parameter', definedAt: '3' },
 			LocalScope,
 			withinNestedFunctionWithoutParam
 		)
 		const withinNestedFunctionWithDef = define(
-			{nodeId: '4', scope: LocalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '6' },
+			{ nodeId: '4', scope: LocalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '6' },
 			LocalScope,
 			pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments()))
 		)

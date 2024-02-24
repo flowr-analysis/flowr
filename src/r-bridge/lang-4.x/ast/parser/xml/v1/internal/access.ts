@@ -5,10 +5,10 @@ import { normalizeBasedOnType } from './structure'
 import { guard } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { tryToNormalizeArgument } from './functions/argument'
-import type { RAccess, RArgument, RNode} from '../../../../model'
+import type { RAccess, RArgument, RNode } from '../../../../model'
 import { RType, RawRType } from '../../../../model'
-import { parseLog } from '../normalize'
 import { retrieveMetaStructure } from '../../common/meta'
+import { parseLog } from '../../../json/parser'
 
 /**
  * Tries to normalize the given data as access (e.g., indexing).
@@ -92,7 +92,7 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 
 	const {
 		content, location
-	} = retrieveMetaStructure(data.config, accessOp.content)
+	} = retrieveMetaStructure(accessOp.content)
 
 	const result = {
 		type:     RType.Access,

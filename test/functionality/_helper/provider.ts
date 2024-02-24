@@ -1,6 +1,6 @@
 // all examples are based on the R language def (Draft of 2023-03-15, 10.3.1)
 import type {
-	NamespaceIdentifier} from '../../../src/r-bridge'
+	NamespaceIdentifier } from '../../../src/r-bridge'
 import {
 	RNa, RNull, type RNumberValue, type RStringValue,
 	ArithmeticOperators,

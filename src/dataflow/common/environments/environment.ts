@@ -7,9 +7,9 @@
 import type { NodeId } from '../../../r-bridge'
 import type { DataflowGraph, DataflowGraphEdgeAttribute } from '../../v1'
 import { resolveByName } from './resolve-by-name'
-import type { DataflowScopeName} from './scopes'
+import type { DataflowScopeName } from './scopes'
 import { GlobalScope, LocalScope } from './scopes'
-import type { GenericDifferenceInformation} from '../../../util/diff'
+import type { GenericDifferenceInformation } from '../../../util/diff'
 import { setDifference } from '../../../util/diff'
 import { jsonReplacer } from '../../../util/json'
 
@@ -74,7 +74,7 @@ function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, envi
 	if(node) {
 		node[0].when = 'maybe'
 	}
-	return { ...ref, used: 'maybe'}
+	return { ...ref, used: 'maybe' }
 }
 
 export function makeAllMaybe(references: IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference[] {
@@ -184,7 +184,7 @@ export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | u
 	}
 	if(a.memory.size !== b.memory.size) {
 		info.report.addComment(`${info.position}Different environment sizes. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
-		setDifference(new Set([...a.memory.keys()]), new Set([...b.memory.keys()]), {...info, position: `${info.position}Key comparison. `})
+		setDifference(new Set([...a.memory.keys()]), new Set([...b.memory.keys()]), { ...info, position: `${info.position}Key comparison. ` })
 	}
 	for(const [key, value] of a.memory) {
 		const value2 = b.memory.get(key)
@@ -220,7 +220,7 @@ export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | u
 			}
 		}
 	}
-	diffEnvironment(a.parent, b.parent, { ...info, position: `${info.position}Parents of ${a.id} & ${b.id}. `})
+	diffEnvironment(a.parent, b.parent, { ...info, position: `${info.position}Parents of ${a.id} & ${b.id}. ` })
 }
 
 export function diffEnvironments(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined, info: GenericDifferenceInformation): void {

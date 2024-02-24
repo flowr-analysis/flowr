@@ -1,5 +1,5 @@
 import type { XmlBasedJson } from '../../../common/input-format'
-import { getKeyGuarded } from '../../../common/input-format'
+import { childrenKey, getKeyGuarded } from '../../../common/input-format'
 import { assureTokenType } from '../../../common/meta'
 import { normalizeBasedOnType } from './elements'
 import type { ParserData } from '../../data'
@@ -13,16 +13,15 @@ export function normalizeRootObjToAst(
 	data: ParserData,
 	obj: XmlBasedJson
 ): RExpressionList {
-	const config = data.config
 	const exprContent = getKeyGuarded<XmlBasedJson>(obj, RawRType.ExpressionList)
-	assureTokenType(config.tokenMap, exprContent, RawRType.ExpressionList)
+	assureTokenType(exprContent, RawRType.ExpressionList)
 
 	let parsedChildren: (RNode | RDelimiter)[] = []
 
-	if(config.children in exprContent) {
+	if(childrenKey in exprContent) {
 		const children = getKeyGuarded<XmlBasedJson[]>(
 			exprContent,
-			config.children
+			childrenKey
 		)
 
 		parsedChildren = normalizeBasedOnType(data, children)

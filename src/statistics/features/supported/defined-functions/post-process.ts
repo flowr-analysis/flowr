@@ -1,5 +1,5 @@
 import type {
-	SummarizedMeasurement} from '../../../../util/summarizer/benchmark/data'
+	SummarizedMeasurement } from '../../../../util/summarizer/benchmark/data'
 import {
 	summarizedMeasurement2Csv,
 	summarizedMeasurement2CsvHeader
@@ -204,7 +204,7 @@ function processNextLine(data: FunctionDefinitionSummaryInformation<number[]>[],
 
 	const forFile: FunctionDefinitionSummaryInformation<number[]> = emptyFunctionDefinitionSummary()
 
-	for(const { location, length, returns, numberOfParameters, callsites} of hits) {
+	for(const { location, length, returns, numberOfParameters, callsites } of hits) {
 		const stats = info.get(context ?? '')?.stats.lines[0].length
 
 		// we retrieve the first component fo the path

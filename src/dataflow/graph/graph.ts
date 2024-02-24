@@ -2,7 +2,8 @@ import { guard } from '../../util/assert'
 import type { NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
 import type {
 	IdentifierDefinition,
-	IdentifierReference } from '../environments'
+	IdentifierReference
+} from '../environments'
 import {
 	cloneEnvironments,
 	initializeCleanEnvironments
@@ -266,7 +267,6 @@ export class DataflowGraph {
 		}
 		return this
 	}
-
 
 	/**
 	 * Merges the other graph into *this* one (in-place). The return value is only for convenience.

@@ -1,5 +1,7 @@
-import { DataflowGraph, diffGraphsToMermaidUrl, EdgeType } from '../../../../src/dataflow'
+import type { DataflowGraph } from '../../../../src/dataflow'
+import { diffGraphsToMermaidUrl } from '../../../../src/dataflow'
 import { assert } from 'chai'
+import { emptyGraph } from '../../_helper/dataflowgraph-builder'
 
 function test(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, text: string) {
 	try {
@@ -26,31 +28,31 @@ describe('Equal', () => {
 			raw(name, a, b, 'should be equal', x => assert.isTrue(x))
 		}
 
-		eq('Empty graphs', new DataflowGraph(), new DataflowGraph())
-		eq('Same vertex', new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' }), new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' }))
+		eq('Empty graphs', emptyGraph(), emptyGraph())
+		eq('Same vertex', emptyGraph().use('0', 'x'), emptyGraph().use('0', 'x'))
 	})
 	describe('Negative', () => {
 		const neq = (name: string, a: DataflowGraph, b: DataflowGraph) => {
 			raw(name, a, b, 'should differ', x => assert.isFalse(x))
 		}
 		describe('More elements', () => {
-			neq('Additional root vertex', new DataflowGraph(), new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' }))
-			neq('Additional non-root vertex', new DataflowGraph(), new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' }, false))
-			neq('Additional edge', new DataflowGraph(), new DataflowGraph().addEdge('0', '1', EdgeType.Reads, 'always'))
+			neq('Additional root vertex', emptyGraph(), emptyGraph().use('0', 'x'))
+			neq('Additional non-root vertex', emptyGraph(), emptyGraph().use('0', 'x', {}, false))
+			neq('Additional edge', emptyGraph(), emptyGraph().reads('0', '1'))
 		})
 		describe('Different elements', () => {
 			describe('Different vertices', () => {
-				const rhs = new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'use' })
-				neq('Id', new DataflowGraph().addVertex({ id: '1', name: 'x', tag: 'use' }), rhs)
-				neq('Name', new DataflowGraph().addVertex({ id: '0', name: 'y', tag: 'use' }), rhs)
-				neq('Tag', new DataflowGraph().addVertex({ id: '0', name: 'x', tag: 'exit-point' }), rhs)
+				const rhs = emptyGraph().use('0', 'x')
+				neq('Id', emptyGraph().use('1', 'x'), rhs)
+				neq('Name', emptyGraph().use('0', 'y'), rhs)
+				neq('Tag', emptyGraph().exit('0', 'x'), rhs)
 			})
 			describe('Different edges', () => {
-				const rhs = new DataflowGraph().addEdge('0', '1', EdgeType.Reads, 'always')
-				neq('Source Id', new DataflowGraph().addEdge('2', '1', EdgeType.Reads, 'always'), rhs)
-				neq('Target Id', new DataflowGraph().addEdge('0', '2', EdgeType.Reads, 'always'), rhs)
-				neq('Type', new DataflowGraph().addEdge('0', '1', EdgeType.Calls, 'always'), rhs)
-				neq('Attribute', new DataflowGraph().addEdge('0', '1', EdgeType.Reads, 'maybe'), rhs)
+				const rhs = emptyGraph().reads('0', '1')
+				neq('Source Id', emptyGraph().reads('2', '1'), rhs)
+				neq('Target Id', emptyGraph().reads('0', '2'), rhs)
+				neq('Type', emptyGraph().calls('0', '1'), rhs)
+				neq('Attribute', emptyGraph().reads('0', '1', 'maybe'), rhs)
 			})
 		})
 	})

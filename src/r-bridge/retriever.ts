@@ -88,7 +88,7 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
 		'tryCatch({'
 	+ `flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix});`
 	+ 'flowr_output<-getParseData(flowr_parsed,includeText=TRUE);'
-	+ `cat(jsonlite::toJSON(flowr_output),${eol})`
+	+ `cat(jsonlite::toJSON(x=flowr_output,na="null",null="null",dataframe="rows",digits=NA),${eol})`
 	+ `}, error=function(e) { cat("${ErrorMarker}",${eol}) })`
 
 	if(shell instanceof RShellExecutor){

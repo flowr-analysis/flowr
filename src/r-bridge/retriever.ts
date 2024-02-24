@@ -92,8 +92,8 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
 		/* the actual code to parse the R code, ... allows us to keep the old 'file=path' and 'text=content' semantics. we define flowr_output using the super assignment to persist it in the env! */
 	+ 'flowr_output<<-utils::getParseData(base::parse(...,keep.source=TRUE),includeText=TRUE);'
 		/* json conversion of the output */
-	+ `base::cat(jsonlite::toJSON(flowr_output,digits=0,dataframe="rows"),${eol})`
-		/* error handling (just produce the marker */
+	+ `base::cat(jsonlite::toJSON(flowr_output,digits=0,dataframe="values"),${eol})`
+		/* error handling (just produce the marker) */
 	+ `},error=function(e){base::cat("${ErrorMarker}",${eol})})};`
 		/* we set some initial flags for the optimization */
 	+ 'flowr_get_opt<-TRUE}else if(flowr_get_opt){'

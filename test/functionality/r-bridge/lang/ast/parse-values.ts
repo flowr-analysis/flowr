@@ -19,7 +19,7 @@ describe('CSV parsing', withShell(shell => {
 			request: 'text',
 			content: 'x <- 1'
 		}, shell)
-		assert.equal(code, '[{"line1":1,"col1":1,"line2":1,"col2":6,"id":7,"parent":0,"token":"expr","terminal":false,"text":"x <- 1"},{"line1":1,"col1":1,"line2":1,"col2":1,"id":1,"parent":3,"token":"SYMBOL","terminal":true,"text":"x"},{"line1":1,"col1":1,"line2":1,"col2":1,"id":3,"parent":7,"token":"expr","terminal":false,"text":"x"},{"line1":1,"col1":3,"line2":1,"col2":4,"id":2,"parent":7,"token":"LEFT_ASSIGN","terminal":true,"text":"<-"},{"line1":1,"col1":6,"line2":1,"col2":6,"id":4,"parent":5,"token":"NUM_CONST","terminal":true,"text":"1"},{"line1":1,"col1":6,"line2":1,"col2":6,"id":5,"parent":7,"token":"expr","terminal":false,"text":"1"}]')
+		assert.equal(code, '[[1,1,1,6,7,0,"expr",false,"x <- 1"],[1,1,1,1,1,3,"SYMBOL",true,"x"],[1,1,1,1,3,7,"expr",false,"x"],[1,3,1,4,2,7,"LEFT_ASSIGN",true,"<-"],[1,6,1,6,4,5,"NUM_CONST",true,"1"],[1,6,1,6,5,7,"expr",false,"1"]]')
 	})
 
 	it('to object', async() => {

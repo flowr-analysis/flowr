@@ -103,15 +103,7 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.Mermaid]:    dataflowGraphToMermaid,
 			[StepOutputFormat.MermaidUrl]: dataflowGraphToMermaidUrl
 		}
-	} satisfies IStep<typeof produceDataFlowGraph>,
-	'ai': {
-		description: 'Run abstract interpretation',
-		processor:   (_, dfInfo: DataflowInformation) => dfInfo, // Use runAbstractInterpretation here when it's ready
-		required:    'once-per-file',
-		printer:     {
-			[StepOutputFormat.Internal]: internalPrinter
-		}
-	} satisfies IStep<typeof runAbstractInterpretation>
+	} satisfies IStep<typeof produceDataFlowGraph>
 } as const
 
 export const STEPS_PER_SLICE = {
@@ -134,7 +126,7 @@ export const STEPS_PER_SLICE = {
 } as const
 
 export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const
-export const LAST_PER_FILE_STEP = 'ai' as const
+export const LAST_PER_FILE_STEP = 'dataflow' as const
 export const LAST_STEP = 'reconstruct' as const
 
 export type StepName = keyof typeof STEPS

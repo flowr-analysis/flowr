@@ -85,12 +85,12 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
 	const eol = ts2r(shell.options.eol)
 	const command =
-		'tryCatch({'
-	+ `flowr_output<-getParseData(parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),includeText=TRUE);`
-	+ `cat(jsonlite::toJSON(x=flowr_output,digits=0),${eol})`
-	+ `}, error=function(e) { cat("${ErrorMarker}",${eol}) })`
+		'base::tryCatch({'
+	+ `flowr_output<-utils::getParseData(base::parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),includeText=TRUE);`
+	+ `base::cat(jsonlite::toJSON(flowr_output),${eol})`
+	+ `},error=function(e){base::cat("${ErrorMarker}",${eol})})`
 
-	if(shell instanceof RShellExecutor){
+	if(shell instanceof RShellExecutor) {
 		return guardRetrievedOutput(shell.run(command), request)
 	} else {
 		return shell.sendCommandWithOutput(command).then(result => {
@@ -125,7 +125,7 @@ export function removeTokenMapQuotationMarks(str: string): string {
  * Needs to be called *after*  {@link retrieveParseDataFromRCode} (or {@link retrieveNormalizedAstFromRCode})
  */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise<number> {
-	const result = await shell.sendCommandWithOutput(`cat(nrow(flowr_output),${ts2r(shell.options.eol)})`)
+	const result = await shell.sendCommandWithOutput(`base::cat(base::nrow(flowr_output),${ts2r(shell.options.eol)})`)
 	guard(result.length === 1, () => `expected exactly one line to obtain the number of R tokens, but got: ${JSON.stringify(result)}`)
 	return Number(result[0])
 }

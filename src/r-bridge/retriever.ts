@@ -85,10 +85,22 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
 	const eol = ts2r(shell.options.eol)
 	const command =
-		'base::tryCatch({'
-	+ `flowr_output<-utils::getParseData(base::parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),includeText=TRUE);`
+		/* first check if flowr_get is already part of the environment */
+		'if(!base::exists("flowr_get")) {'
+		/* if not, define it complete wrapped in a try so that we can handle failures gracefully on stdout */
+	+ 'flowr_get <- function(...) { base::tryCatch({'
+		/* the actual code to parse the R code, ... allows us to keep the old 'file=path' and 'text=content' semantics. we define flowr_output using the super assignment to persist it in the env! */
+	+ 'flowr_output<<-utils::getParseData(base::parse(...,keep.source=TRUE),includeText=TRUE);'
+		/* json conversion of the output */
 	+ `base::cat(jsonlite::toJSON(flowr_output),${eol})`
-	+ `},error=function(e){base::cat("${ErrorMarker}",${eol})});`
+		/* error handling (just produce the marker */
+	+ `},error=function(e){base::cat("${ErrorMarker}",${eol})})};`
+		/* we set some initial flags for the optimization */
+	+ 'flowr_get_opt <- TRUE } else if (flowr_get_opt) {'
+		/* compile the function to improve perf. (but only on repeated calls) */
+	+ 'flowr_get <- compiler::cmpfun(flowr_get); flowr_get_opt <- FALSE };'
+		/* call the function with the request */
+	+ `flowr_get(${request.request}=${JSON.stringify(request.content)}${suffix})`
 
 	if(shell instanceof RShellExecutor) {
 		return guardRetrievedOutput(shell.run(command), request)

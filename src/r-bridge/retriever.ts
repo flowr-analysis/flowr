@@ -88,7 +88,7 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
 		'tryCatch({'
 	+ `flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix});`
 	+ 'flowr_output<-getParseData(flowr_parsed,includeText=TRUE);'
-	+ `cat(paste0("[",paste0(apply(flowr_output,1,function(o) paste0("[",paste0(o$line1,o$col1,o$line2,o$col2,o$id,o$parent,o$token,o$terminal,o$text,collapse=","),"]",collapse="")),collapse=","),"]",collapse=""),${eol})`
+	+ `cat(jsonlite::toJSON(x=flowr_output,na="null",null="null",dataframe="rows",digits=NA),${eol})`
 	+ `}, error=function(e) { cat("${ErrorMarker}",${eol}) })`
 
 	if(shell instanceof RShellExecutor){
@@ -132,7 +132,6 @@ export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise
 }
 
 function guardRetrievedOutput(output: string, request: RParseRequest): string {
-	console.log(output)
 	guard(output !== ErrorMarker,
 		() => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
 	return output

@@ -12,9 +12,6 @@ import type {
 	XmlParserHooks
 } from '../../../src'
 import {
-	ts2r
-} from '../../../src'
-import {
 	deterministicCountingIdGenerator, requestFromInput,
 	RShell
 } from '../../../src'

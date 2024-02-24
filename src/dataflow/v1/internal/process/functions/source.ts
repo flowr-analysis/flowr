@@ -8,7 +8,7 @@ import { dataflowLogger } from '../../../index'
 import type { DataflowScopeName, REnvironmentInformation } from '../../../../common/environments'
 import { overwriteEnvironments, resolveByName } from '../../../../common/environments'
 import { getConfig } from '../../../../../config'
-import { convertPreparedParsedData, normalize } from '../../../../../r-bridge/lang-4.x/ast/parser/json/parser'
+import { normalize } from '../../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 
 let sourceProvider = requestProviderFromFile()
 

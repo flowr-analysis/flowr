@@ -139,15 +139,15 @@
       "eslint-plugin-tsdoc",
       "check-file",
       "@stylistic",
-      "@stylistic/migrate"
+      "@stylistic/js",
+      "@stylistic/ts"
     ],
     "rules": {
-      "indent": "off",
-      "object-curly-spacing": [
+      "@stylistic/js/object-curly-spacing": [
         "error",
         "always"
       ],
-      "@typescript-eslint/indent": [
+      "@stylistic/js/indent": [
         "error",
         "tab",
         {
@@ -158,14 +158,14 @@
           "SwitchCase": 1
         }
       ],
-      "quotes": [
+      "@stylistic/js/quotes": [
         "error",
         "single",
         {
           "avoidEscape": true
         }
       ],
-      "no-mixed-spaces-and-tabs": [
+      "@stylistic/no-mixed-spaces-and-tabs": [
         "error",
         "smart-tabs"
       ],
@@ -189,21 +189,21 @@
           "assertionStyle": "as"
         }
       ],
-      "@typescript-eslint/key-spacing": [
+      "@stylistic/ts/key-spacing": [
         "error",
         {
           "align": "value"
         }
       ],
-      "semi": [
+      "@stylistic/js/semi": [
         "error",
         "never"
       ],
-      "space-before-function-paren": [
+      "@stylistic/js/space-before-function-paren": [
         "error",
         "never"
       ],
-      "keyword-spacing": "off",
+      "@stylistic/js/keyword-spacing": "off",
       "check-file/filename-naming-convention": [
         "error",
         {
@@ -216,7 +216,7 @@
           "*.spec.{js,jsx,ts,tsx}": "test/**"
         }
       ],
-      "@typescript-eslint/keyword-spacing": [
+      "@stylistic/ts/keyword-spacing": [
         "error",
         {
           "before": true,
@@ -249,7 +249,7 @@
           }
         }
       ],
-      "@typescript-eslint/space-before-function-paren": [
+      "@stylistic/ts/space-before-function-paren": [
         "error",
         "never"
       ],
@@ -308,13 +308,11 @@
       ],
       "@typescript-eslint/consistent-type-imports": "error",
       "curly": "error",
-      "brace-style": [
+      "@stylistic/js/brace-style": [
         "error",
         "1tbs"
       ],
-      "new-parens": "error",
-      "@stylistic/migrate/migrate-js": "error",
-      "@stylistic/migrate/migrate-ts": "error"
+      "@stylistic/js/new-parens": "error"
     }
   },
   "release-it": {
@@ -355,7 +353,6 @@
     "@commitlint/cli": "^18.4.3",
     "@commitlint/config-angular": "^18.4.3",
     "@stylistic/eslint-plugin": "^1.6.2",
-    "@stylistic/eslint-plugin-migrate": "^1.6.2",
     "@stylistic/eslint-plugin-plus": "^1.6.2",
     "@stylistic/eslint-plugin-ts": "^1.6.2",
     "@types/chai": "^4.3.11",

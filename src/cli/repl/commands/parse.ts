@@ -11,8 +11,8 @@ import type { OutputFormatter } from '../../../statistics'
 import { FontStyles } from '../../../statistics'
 import type { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../core'
-import {prepareParsedData} from '../../../r-bridge/lang-4.x/ast/parser/csv/format'
-import {convertPreparedParsedData} from '../../../r-bridge/lang-4.x/ast/parser/csv/parser'
+import {prepareParsedData} from '../../../r-bridge/lang-4.x/ast/parser/json/format'
+import {convertPreparedParsedData} from '../../../r-bridge/lang-4.x/ast/parser/json/parser'
 
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 

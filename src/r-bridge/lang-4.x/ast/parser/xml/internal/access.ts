@@ -8,7 +8,7 @@ import { normalizeBasedOnType } from './structure'
 import { guard } from '../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../util/arrays'
 import { tryToNormalizeArgument } from './functions/argument'
-import {parseLog} from '../../csv/parser'
+import {parseLog} from '../../json/parser'
 
 /**
  * Tries to normalize the given data as access (e.g., indexing).

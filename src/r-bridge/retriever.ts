@@ -6,18 +6,18 @@ import type {AsyncOrSync, DeepPartial} from 'ts-essentials'
 import { guard } from '../util/assert'
 import {RShellExecutor} from './shell-executor'
 import objectHash from 'object-hash'
-import {normalize} from './lang-4.x/ast/parser/csv/parser'
+import {normalize} from './lang-4.x/ast/parser/json/parser'
 
 export interface RParseRequestFromFile {
-	request: 'file';
+	readonly request:  'file';
 	/** The path to the file (absolute paths are probably best here */
-	content: string;
+	readonly  content: string;
 }
 
 export interface RParseRequestFromText {
-	request: 'text'
+	readonly request: 'text'
 	/* Source code to parse (not a file path) */
-	content: string
+	readonly content: string
 }
 
 /**
@@ -83,7 +83,6 @@ const ErrorMarker = 'err'
  */
 export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
-	const eol = ts2r(shell.options.eol)
 	const command =
 		/* first check if flowr_get is already part of the environment */
 		'if(!base::exists("flowr_get")){'
@@ -91,10 +90,10 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
 	+ 'flowr_get<-function(...){base::tryCatch({'
 		/* the actual code to parse the R code, ... allows us to keep the old 'file=path' and 'text=content' semantics. we define flowr_output using the super assignment to persist it in the env! */
 	+ 'flowr_output<<-utils::getParseData(base::parse(...,keep.source=TRUE),includeText=TRUE);'
-		/* json conversion of the output */
-	+ `base::cat(jsonlite::toJSON(flowr_output,digits=0,dataframe="values"),${eol})`
+		/* json conversion of the output, dataframe="values" allows us to receive a list of lists (which is more compact)! */
+	+ 'jsonlite::toJSON(flowr_output,digits=0,dataframe="values")'
 		/* error handling (just produce the marker) */
-	+ `},error=function(e){base::cat("${ErrorMarker}",${eol})})};`
+	+ `},error=function(e){base::cat("${ErrorMarker}",${ts2r(shell.options.eol)})})};`
 		/* we set some initial flags for the optimization */
 	+ 'flowr_get_opt<-TRUE}else if(flowr_get_opt){'
 		/* compile the function to improve perf. (but only on repeated calls) */
@@ -105,11 +104,9 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
 	if(shell instanceof RShellExecutor) {
 		return guardRetrievedOutput(shell.run(command), request)
 	} else {
-		return shell.sendCommandWithOutput(command).then(result => {
-			return guardRetrievedOutput(result.join(shell.options.eol), request)
-		}).catch(e => {
-			throw new Error(`unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}: ${e}`)
-		})
+		return shell.sendCommandWithOutput(command).then(result =>
+			guardRetrievedOutput(result.join(shell.options.eol), request)
+		)
 	}
 }
 

@@ -42,7 +42,7 @@ async function benchmark() {
 	const fileStat = fs.statSync(options.input)
 	guard(fileStat.isFile(), `File ${options.input} does not exist or is no file`)
 
-	const request = { request: 'file', content: options.input } as RParseRequestFromFile
+	const request: RParseRequestFromFile = { request: 'file', content: options.input }
 
 	const slicer = new BenchmarkSlicer()
 	try {

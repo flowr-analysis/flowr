@@ -10,7 +10,6 @@ import { log, LogLevel } from '../util/log'
 const executorLog = log.getSubLogger({name: 'RShellExecutor'})
 
 export class RShellExecutor {
-
 	public readonly options:        Readonly<RShellExecutionOptions>
 	private readonly prerequisites: string[] = []
 

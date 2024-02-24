@@ -33,7 +33,7 @@ import {
 	dataflowGraphToMermaidUrl,
 	dataflowGraphToQuads
 } from './print/dataflow-printer'
-import {normalize} from '../r-bridge/lang-4.x/ast/parser/csv/parser'
+import {normalize} from '../r-bridge/lang-4.x/ast/parser/json/parser'
 
 /**
  * This represents close a function that we know completely nothing about.

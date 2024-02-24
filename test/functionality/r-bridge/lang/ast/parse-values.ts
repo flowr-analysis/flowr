@@ -10,7 +10,7 @@ import { retrieveParseDataFromRCode, RType} from '../../../../../src'
 import chai, { assert } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { MIN_VERSION_RAW_STABLE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
-import {prepareParsedData} from '../../../../../src/r-bridge/lang-4.x/ast/parser/csv/format'
+import {prepareParsedData} from '../../../../../src/r-bridge/lang-4.x/ast/parser/json/format'
 chai.use(chaiAsPromised)
 
 describe('CSV parsing', withShell(shell => {

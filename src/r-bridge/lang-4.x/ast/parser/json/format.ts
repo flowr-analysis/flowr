@@ -3,7 +3,7 @@ import { guard } from '../../../../../util/assert'
 
 export const RootId = 0
 
-export interface CsvEntry extends Record<string, unknown> {
+export interface Entry extends Record<string, unknown> {
 	line1:     number,
 	col1:      number,
 	line2:     number,
@@ -13,17 +13,17 @@ export interface CsvEntry extends Record<string, unknown> {
 	token:     string,
 	terminal:  boolean,
 	text:      string,
-	children?: CsvEntry[]
+	children?: Entry[]
 }
 
 type ParsedDataRow = [line1: number, col1: number, line2: number, col2: number, id: number, parent: number, token: string, terminal: boolean, text: string]
 
-export function prepareParsedData(data: string): Map<number, CsvEntry> {
+export function prepareParsedData(data: string): Map<number, Entry> {
 	const json: unknown = JSON.parse(data)
 	guard(Array.isArray(json), () => `Expected ${data} to be an array but was not`)
 
-	const ret = new Map<number, CsvEntry>((json as ParsedDataRow[]).map(([line1, col1, line2, col2, id, parent, token, terminal, text]) => {
-		return [id, { line1, col1, line2, col2, id, parent, token: removeTokenMapQuotationMarks(token), terminal, text }] satisfies [number, CsvEntry]
+	const ret = new Map<number, Entry>((json as ParsedDataRow[]).map(([line1, col1, line2, col2, id, parent, token, terminal, text]) => {
+		return [id, { line1, col1, line2, col2, id, parent, token: removeTokenMapQuotationMarks(token), terminal, text }] satisfies [number, Entry]
 	}))
 
 	// iterate a second time to set parent-child relations (since they may be out of order in the csv)

@@ -6,7 +6,7 @@ import type { RRepeatLoop} from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import {parseLog} from '../../../csv/parser'
+import {parseLog} from '../../../json/parser'
 
 /**
  * Try to parse the construct as a {@link RRepeatLoop}.

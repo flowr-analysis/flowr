@@ -15,7 +15,7 @@ import {
 	RType
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import {parseLog} from '../../../csv/parser'
+import {parseLog} from '../../../json/parser'
 
 /**
  * Parses the construct as a {@link RUnaryOp} (automatically identifies the flavor).

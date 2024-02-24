@@ -42,7 +42,6 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
 /**
  * produces a shell session for you, can be used within a `describe` block
  * @param fn       - function to use the shell
- * @param packages - packages to be ensured when the shell is created
  */
 export function withShell(fn: (shell: RShell) => void): () => void {
 	return function() {

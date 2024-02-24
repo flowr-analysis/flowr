@@ -16,8 +16,8 @@ import { defaultQuadIdGenerator } from '../../../src/util/quads'
 import { cfgToMermaidUrl } from '../../../src/util/mermaid'
 
 describe('Control Flow Graph', withShell(shell => {
-	 function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
-		 // shallow copy is important to avoid killing the CFG :c
+	function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
+		// shallow copy is important to avoid killing the CFG :c
 		const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected }
 		return it(code, async()=> {
 			const result = await new SteppingSlicer({
@@ -43,9 +43,9 @@ describe('Control Flow Graph', withShell(shell => {
 	}
 
 	assertCfg('if(TRUE) 1', {
-	   entryPoints: [ '3' ],
-		 exitPoints:  [ '3-exit' ],
-		 graph:       new ControlFlowGraph()
+		entryPoints: [ '3' ],
+		exitPoints:  [ '3-exit' ],
+		graph:       new ControlFlowGraph()
 			.addVertex({ id: '0', name: RType.Logical, type: CfgVertexType.Expression })
 			.addVertex({ id: '1', name: RType.Number, type: CfgVertexType.Expression })
 			.addVertex({ id: '3', name: RType.IfThenElse, type: CfgVertexType.Statement })

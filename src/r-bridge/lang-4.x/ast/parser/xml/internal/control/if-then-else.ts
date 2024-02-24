@@ -15,13 +15,13 @@ import { parseLog } from '../../../json/parser'
 export function tryNormalizeIfThenElse(
 	data: ParserData,
 	tokens: [
-		 ifToken:    NamedXmlBasedJson,
-		 leftParen:  NamedXmlBasedJson,
-		 condition:  NamedXmlBasedJson,
-		 rightParen: NamedXmlBasedJson,
-		 then:       NamedXmlBasedJson,
-		 elseToken:  NamedXmlBasedJson,
-		 elseBlock:  NamedXmlBasedJson
+		ifToken:    NamedXmlBasedJson,
+		leftParen:  NamedXmlBasedJson,
+		condition:  NamedXmlBasedJson,
+		rightParen: NamedXmlBasedJson,
+		then:       NamedXmlBasedJson,
+		elseToken:  NamedXmlBasedJson,
+		elseBlock:  NamedXmlBasedJson
 	]): RIfThenElse | undefined {
 	// we start by parsing a regular if-then structure
 	parseLog.trace('trying to parse if-then-else structure')

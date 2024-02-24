@@ -69,14 +69,14 @@ function removeInformation<T extends Record<string, unknown>>(obj: T, includeTok
 function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTokens: boolean, message?: () => string): void {
 	const astCopy = removeInformation(ast, includeTokens)
 	const expectedCopy = removeInformation(expected, includeTokens)
-	 try {
-		 assert.deepStrictEqual(astCopy, expectedCopy)
-	 } catch(e) {
+	try {
+		assert.deepStrictEqual(astCopy, expectedCopy)
+	} catch(e) {
 		if(message) {
 			console.error(message())
 		}
 		throw e
-	 }
+	}
 }
 
 export const retrieveNormalizedAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RNodeWithParent> => {

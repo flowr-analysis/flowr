@@ -2,15 +2,12 @@ import { type ChildProcessWithoutNullStreams, spawn } from 'child_process'
 import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, type Logger } from 'tslog'
 import * as readline from 'node:readline'
-import { parseCSV, ts2r } from './lang-4.x'
+import { ts2r } from './lang-4.x'
 import { log, LogLevel } from '../util/log'
 import type { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 import fs from 'fs'
-import type { TokenMap } from './retriever'
-import { removeTokenMapQuotationMarks } from './retriever'
-import type { DeepWritable } from 'ts-essentials'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -98,7 +95,7 @@ export const DEFAULT_R_SHELL_EXEC_OPTIONS: RShellExecutionOptions = {
 	cwd:                process.cwd(),
 	env:                process.env,
 	eol:                '\n',
-	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs',
+	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs'
 } as const
 
 export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
@@ -121,7 +118,6 @@ export class RShell {
 	private session:         RShellSession
 	private readonly log:    Logger<ILogObj>
 	private versionCache:    SemVer | null = null
-	private tokenMapCache:   TokenMap | null = null
 	// should never be more than one, but let's be sure
 	private tempDirs         = new Set<string>()
 
@@ -170,37 +166,32 @@ export class RShell {
 		return result.length === 1 ? this.versionCache : null
 	}
 
+	public injectLibPaths(...paths: string[]): void {
+		this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
+		this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
+	}
+
+	public tryToInjectHomeLibPath(): void {
+		// ensure the path exists first
+		if(this.options.homeLibPath === undefined) {
+			this.log.debug('ensuring home lib path exists (automatic inject)')
+			this.sendCommand('if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }')
+			this.sendCommand('.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))')
+		} else {
+			this.injectLibPaths(this.options.homeLibPath)
+		}
+	}
 
 	/**
-	 * Retrieve the token map of the xmlparsedata package.
-	 *
-	 * @note For multiple calls, this makes use of caching
+	 * checks if a given package is already installed on the system!
 	 */
-	async tokenMap(): Promise<TokenMap> {
-		if(this.tokenMapCache === null) {
-			this.tokenMapCache = await this.retrieveTokenMap()
-		}
-		return this.tokenMapCache
+	public async isPackageInstalled(packageName: string): Promise<boolean> {
+		this.log.debug(`checking if package "${packageName}" is installed`)
+		const result = await this.sendCommandWithOutput(
+			`cat(system.file(package="${packageName}")!="","${this.options.eol}")`)
+		return result.length === 1 && result[0] === 'TRUE'
 	}
 
-	private async retrieveTokenMap(): Promise<TokenMap> {
-		await this.ensurePackageInstalled('xmlparsedata', true /* use some kind of environment in the future */)
-		// we invert the token map to get a mapping back from the replacement
-		const parsed = parseCSV(await this.sendCommandWithOutput(
-			'write.table(xmlparsedata::xml_parse_token_map,sep=",",col.names=FALSE)'
-		))
-
-		if(parsed.some(s => s.length !== 2)) {
-			throw new Error(`Expected two columns in token map, but got ${JSON.stringify(parsed)}`)
-		}
-
-		// we swap key and value to get the other direction, furthermore we remove quotes from keys if they are quoted
-		const cache: DeepWritable<TokenMap> = {}
-		for(const [key, value] of parsed) {
-			cache[value] = removeTokenMapQuotationMarks(key)
-		}
-		return cache
-	}
 
 	/**
    * Send a command and collect the output
@@ -261,84 +252,6 @@ export class RShell {
 		this._sendCommand('options(error=function() {})')
 	}
 
-	public injectLibPaths(...paths: string[]): void {
-		this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
-		this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
-	}
-
-	public tryToInjectHomeLibPath(): void {
-		// ensure the path exists first
-		if(this.options.homeLibPath === undefined) {
-			this.log.debug('ensuring home lib path exists (automatic inject)')
-			this.sendCommand('if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }')
-			this.sendCommand('.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))')
-		} else {
-			this.injectLibPaths(this.options.homeLibPath)
-		}
-	}
-
-	/**
-   * checks if a given package is already installed on the system!
-   */
-	public async isPackageInstalled(packageName: string): Promise<boolean> {
-		this.log.debug(`checking if package "${packageName}" is installed`)
-		const result = await this.sendCommandWithOutput(
-			`cat(system.file(package="${packageName}")!="","${this.options.eol}")`)
-		return result.length === 1 && result[0] === 'TRUE'
-	}
-
-	public async allInstalledPackages(): Promise<string[]> {
-		this.log.debug('getting all installed packages')
-		const [packages] = await this.sendCommandWithOutput(`cat(paste0(installed.packages()[,1], collapse=","),"${this.options.eol}")`)
-		return packages.split(',')
-	}
-
-	/**
-   * Installs the package using a temporary location
-   *
-   * @param packageName - The package to install
-   * @param autoload    - If true, the package will be loaded after installation
-   * @param force       - If true, the package will be installed no if it is already on the system and ready to be loaded
-   */
-	public async ensurePackageInstalled(packageName: string, autoload = false, force = false): Promise<{
-		packageName:           string
-		packageExistedAlready: boolean
-		/** the temporary directory used for the installation, undefined if none was used */
-		libraryLocation?:      string
-	}> {
-		const packageExistedAlready = await this.isPackageInstalled(packageName)
-		if(!force && packageExistedAlready) {
-			this.log.info(`package "${packageName}" is already installed`)
-			if(autoload) {
-				this.sendCommand(`library(${ts2r(packageName)})`)
-			}
-			return {
-				packageName,
-				packageExistedAlready: true
-			}
-		}
-
-		// obtain a temporary directory
-		const tempdir = await this.obtainTmpDir()
-
-		this.log.debug(`using temporary directory: "${tempdir}" to install package "${packageName}"`)
-
-		await this.sendCommandWithOutput(`install.packages(${ts2r(packageName)},repos="https://cloud.r-project.org/",quiet=FALSE,lib=temp)`, {
-			ms:             750_000,
-			resetOnNewData: true
-		})
-
-		if(autoload) {
-			this.sendCommand(`library(${ts2r(packageName)},lib.loc=temp)`)
-		}
-
-		return {
-			packageName,
-			libraryLocation: tempdir,
-			packageExistedAlready
-		}
-	}
-
 	/**
 	 * Obtain the temporary directory used by R.
 	 * Additionally, this marks the directory for removal when the shell exits.
@@ -389,7 +302,9 @@ class RShellSession {
 			input:    this.bareSession.stderr,
 			terminal: false
 		})
-		this.onExit(() => { this.end() })
+		this.onExit(() => {
+			this.end()
+		})
 		this.options = options
 		this.log = log
 		this.setupRSessionLoggers()
@@ -438,7 +353,9 @@ class RShellSession {
 				}
 			}
 
-			error = () => { resolve(result) }
+			error = () => {
+				resolve(result)
+			}
 			this.onExit(error)
 			this.on(from, 'line', handler)
 			action?.()

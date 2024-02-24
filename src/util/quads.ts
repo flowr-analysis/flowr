@@ -8,7 +8,7 @@
  * @module
  */
 
-import type { NamedNode, Quad} from 'n3'
+import type { NamedNode, Quad } from 'n3'
 import { DataFactory, Writer } from 'n3'
 import namedNode = DataFactory.namedNode
 import quad = DataFactory.quad

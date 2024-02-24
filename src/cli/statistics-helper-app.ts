@@ -1,5 +1,5 @@
 import { RShell } from '../r-bridge'
-import type { FeatureKey} from '../statistics'
+import type { FeatureKey } from '../statistics'
 import {
 	extractUsageStatistics,
 	setFormatter,
@@ -57,7 +57,6 @@ if(options.compress) {
 const processedFeatures = new Set<FeatureKey>(options.features as FeatureKey[])
 
 const shell = new RShell()
-shell.tryToInjectHomeLibPath()
 
 initFileProvider(options['output-dir'])
 
@@ -96,7 +95,7 @@ async function getStatsForSingleFile() {
 			statisticsFileProvider.append('output-json', 'cfg', JSON.stringify(cfg, jsonReplacer))
 		}
 
-		statisticsFileProvider.append('meta', 'stats', JSON.stringify({...stats.meta, file: options.input }, jsonReplacer))
+		statisticsFileProvider.append('meta', 'stats', JSON.stringify({ ...stats.meta, file: options.input }, jsonReplacer))
 		statisticsFileProvider.append('meta', 'features', JSON.stringify(stats.features, jsonReplacer))
 	} else {
 		log.error(`expected exactly one output vs. ${stats.outputs.size}, got: ${JSON.stringify([...stats.outputs.keys()], jsonReplacer, 2)}`)
@@ -111,4 +110,3 @@ async function getStatsForSingleFile() {
 }
 
 void getStatsForSingleFile()
-

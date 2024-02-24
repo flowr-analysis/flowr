@@ -19,7 +19,7 @@
     "slicer": "ts-node src/cli/slicer-app.ts",
     "release": "release-it --ci",
     "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
-    "benchmark": "ts-node src/cli/benchmark-app.ts",
+    "benchmark": "npm run build && node dist/src/cli/benchmark-app.js",
     "summarizer": "ts-node src/cli/summarizer-app.ts",
     "export-quads": "ts-node src/cli/export-quads-app.ts",
     "build": "tsc --project .",
@@ -137,11 +137,17 @@
     "plugins": [
       "@typescript-eslint",
       "eslint-plugin-tsdoc",
-      "check-file"
+      "check-file",
+      "@stylistic",
+      "@stylistic/js",
+      "@stylistic/ts"
     ],
     "rules": {
-      "indent": "off",
-      "@typescript-eslint/indent": [
+      "@stylistic/js/object-curly-spacing": [
+        "error",
+        "always"
+      ],
+      "@stylistic/js/indent": [
         "error",
         "tab",
         {
@@ -152,14 +158,14 @@
           "SwitchCase": 1
         }
       ],
-      "quotes": [
+      "@stylistic/js/quotes": [
         "error",
         "single",
         {
           "avoidEscape": true
         }
       ],
-      "no-mixed-spaces-and-tabs": [
+      "@stylistic/no-mixed-spaces-and-tabs": [
         "error",
         "smart-tabs"
       ],
@@ -183,21 +189,21 @@
           "assertionStyle": "as"
         }
       ],
-      "@typescript-eslint/key-spacing": [
+      "@stylistic/ts/key-spacing": [
         "error",
         {
           "align": "value"
         }
       ],
-      "semi": [
+      "@stylistic/js/semi": [
         "error",
         "never"
       ],
-      "space-before-function-paren": [
+      "@stylistic/js/space-before-function-paren": [
         "error",
         "never"
       ],
-      "keyword-spacing": "off",
+      "@stylistic/js/keyword-spacing": "off",
       "check-file/filename-naming-convention": [
         "error",
         {
@@ -210,7 +216,7 @@
           "*.spec.{js,jsx,ts,tsx}": "test/**"
         }
       ],
-      "@typescript-eslint/keyword-spacing": [
+      "@stylistic/ts/keyword-spacing": [
         "error",
         {
           "before": true,
@@ -243,7 +249,7 @@
           }
         }
       ],
-      "@typescript-eslint/space-before-function-paren": [
+      "@stylistic/ts/space-before-function-paren": [
         "error",
         "never"
       ],
@@ -300,7 +306,13 @@
           ]
         }
       ],
-      "@typescript-eslint/consistent-type-imports": "error"
+      "@typescript-eslint/consistent-type-imports": "error",
+      "curly": "error",
+      "@stylistic/js/brace-style": [
+        "error",
+        "1tbs"
+      ],
+      "@stylistic/js/new-parens": "error"
     }
   },
   "release-it": {
@@ -340,6 +352,9 @@
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
     "@commitlint/config-angular": "^18.4.3",
+    "@stylistic/eslint-plugin": "^1.6.2",
+    "@stylistic/eslint-plugin-plus": "^1.6.2",
+    "@stylistic/eslint-plugin-ts": "^1.6.2",
     "@types/chai": "^4.3.11",
     "@types/chai-as-promised": "^7.1.8",
     "@types/command-line-args": "^5.2.3",
@@ -349,7 +364,6 @@
     "@types/n3": "^1.16.4",
     "@types/object-hash": "^3.0.6",
     "@types/tmp": "^0.2.6",
-    "@types/xml2js": "^0.4.14",
     "@typescript-eslint/eslint-plugin": "^6.13.2",
     "chai": "^4.3.10",
     "chai-as-promised": "^7.1.1",
@@ -391,7 +405,6 @@
     "ts-essentials": "^9.4.1",
     "tslog": "^4.9.2",
     "ws": "^8.16.0",
-    "xml2js": "^0.6.2",
     "xpath-ts2": "^1.4.2"
   }
 }

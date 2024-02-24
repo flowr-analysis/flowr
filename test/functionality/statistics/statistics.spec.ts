@@ -1,7 +1,7 @@
 import type { AppendFnType,
 	DummyAppendMemoryMap,
 	FeatureKey,
-	FeatureValue} from '../../../src/statistics'
+	FeatureValue } from '../../../src/statistics'
 import {
 	ALL_FEATURES,
 	extractUsageStatistics, initDummyFileProvider,
@@ -51,7 +51,10 @@ export function testForFeatureForInput<T extends FeatureKey>(shell: RShell, feat
 	const featureInfo = ALL_FEATURES[feature]
 	for(const test of tests) {
 		it(test.name, async function(){
-			await ensureConfig(shell, this, test.requirements)
+			await ensureConfig(shell, this, test.requirements ? {
+				...test.requirements,
+				needsPackages: ['xmlparsedata', ...(test.requirements.needsPackages ?? [])]
+			} : { needsPackages: ['xmlparsedata'] })
 			// create a new feature map to record to, this resets the state as well
 			const map: DummyAppendMemoryMap = new Map()
 			initDummyFileProvider(map)

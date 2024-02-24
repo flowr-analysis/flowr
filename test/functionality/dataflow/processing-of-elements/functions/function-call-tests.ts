@@ -10,16 +10,16 @@ import { unnamedArgument } from '../../../_helper/environment-builder'
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {
 		const envWithXParamDefined = define(
-			{nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
+			{ nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		const envWithFirstI = define(
-			{nodeId: '0', scope: 'local', name: 'i', used: 'always', kind: 'variable', definedAt: '2' },
+			{ nodeId: '0', scope: 'local', name: 'i', used: 'always', kind: 'variable', definedAt: '2' },
 			LocalScope,
 			initializeCleanEnvironments()
 		)
 		const envWithIA = define(
-			{nodeId: '3', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '9' },
+			{ nodeId: '3', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '9' },
 			LocalScope,
 			envWithFirstI
 		)
@@ -54,7 +54,7 @@ describe('Function Call', withShell(shell => {
 				.definesOnCall('12', '4')
 		)
 		const envWithIAB = define(
-			{nodeId: '10', scope: 'local', name: 'b', used: 'always', kind: 'variable', definedAt: '12' },
+			{ nodeId: '10', scope: 'local', name: 'b', used: 'always', kind: 'variable', definedAt: '12' },
 			LocalScope,
 			envWithIA
 		)
@@ -94,21 +94,21 @@ describe('Function Call', withShell(shell => {
 				.definesOnCall('15', '4')
 		)
 		const envWithXConstDefined = define(
-			{nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
+			{ nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 
 		const envWithXDefinedForFunc = define(
-			{nodeId: '6', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '8' },
+			{ nodeId: '6', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '8' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 
 		const envWithLastXDefined = define(
-			{nodeId: '9', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '11' },
+			{ nodeId: '9', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '11' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		const envWithIAndLargeA = define(
-			{nodeId: '3', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '15' },
+			{ nodeId: '3', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '15' },
 			LocalScope,
 			envWithFirstI
 		)
@@ -157,7 +157,7 @@ a(i)`, emptyGraph()
 
 	describe('Directly calling a function', () => {
 		const envWithXParameter = define(
-			{nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '1' },
+			{ nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '1' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments())
 		)
@@ -195,7 +195,7 @@ a(i)`, emptyGraph()
 		)
 
 		const envWithADefined = define(
-			{nodeId: '0', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '6' },
+			{ nodeId: '0', scope: 'local', name: 'a', used: 'always', kind: 'function', definedAt: '6' },
 			LocalScope,
 			initializeCleanEnvironments()
 		)

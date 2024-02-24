@@ -1,5 +1,10 @@
 import type { RawRType } from '../../model'
 
+export const attributesKey = 'a'
+export const childrenKey = 'c'
+export const contentKey = '@'
+export const nameKey = '#'
+
 /**
  * Thrown if the given input xml is not valid/contains unexpected elements.
  */
@@ -38,22 +43,13 @@ export interface NamedXmlBasedJson {
  * @typeParam T - the type of the values to retrieve. Note, that this type is not checked at runtime.
  */
 export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, key: string): T
-export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ...key: string[]): Record<string, T>
-export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ...key: string[]): (Record<string, T> | T) {
-	const keys = Object.keys(obj)
-
-	const check = (key: string): T => {
-		if(!keys.includes(key)) {
-			throw new XmlParseError(`expected obj to have key ${key}, yet received ${JSON.stringify(obj)}`)
-		}
-		return obj[key] as T
-	}
-
+export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ...key: readonly string[]): Record<string, T>
+export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ...key: readonly string[]): (Record<string, T> | T) {
 	if(key.length === 1) {
-		return check(key[0])
+		return obj[key[0]] as T
 	} else {
 		return key.reduce<Record<string, T>>((acc, key) => {
-			acc[key] = check(key)
+			acc[key] = obj[key] as T
 			return acc
 		}, {})
 	}

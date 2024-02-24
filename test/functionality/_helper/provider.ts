@@ -1,6 +1,6 @@
 // all examples are based on the R language def (Draft of 2023-03-15, 10.3.1)
 import type {
-	NamespaceIdentifier} from '../../../src/r-bridge'
+	NamespaceIdentifier } from '../../../src/r-bridge'
 import {
 	RNa, RNull, type RNumberValue, type RStringValue,
 	ArithmeticOperators,
@@ -130,10 +130,10 @@ export const RAssignmentOpPool: { flavor: 'assignment', str: string }[] =
 
 export const RNonAssignmentBinaryOpPool: { label: 'arithmetic' | 'logical' | 'comparison' | 'model formula', pool: typeof RArithmeticBinaryOpPool | typeof RLogicalBinaryOpPool | typeof RComparisonBinaryOpPool | typeof RModelFormulaBinaryOpPool }[] =
 	[
-	    { label: 'arithmetic', pool: RArithmeticBinaryOpPool },
-	    { label: 'logical',    pool: RLogicalBinaryOpPool },
-	    { label: 'comparison', pool: RComparisonBinaryOpPool },
-	    { label: 'model formula', pool: RModelFormulaBinaryOpPool }
+		{ label: 'arithmetic', pool: RArithmeticBinaryOpPool },
+		{ label: 'logical',    pool: RLogicalBinaryOpPool },
+		{ label: 'comparison', pool: RComparisonBinaryOpPool },
+		{ label: 'model formula', pool: RModelFormulaBinaryOpPool }
 	]
 
 export const RArithmeticUnaryOpPool: { flavor: 'arithmetic', str: string }[] =

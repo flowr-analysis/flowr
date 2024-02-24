@@ -4,7 +4,7 @@ import {
 	produceNameSharedIdMap
 } from '../../linker'
 import type { DataflowInformation } from '../../info'
-import type { DataflowProcessorInformation} from '../../../processor'
+import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import { appendEnvironments, define, makeAllMaybe, overwriteEnvironments } from '../../../environments'
 import type { ParentInformation, RForLoop } from '../../../../r-bridge'

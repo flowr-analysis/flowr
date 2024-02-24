@@ -1,4 +1,4 @@
-import type { IdentifierReference} from '../environments'
+import type { IdentifierReference } from '../environments'
 import { diffIdentifierReferences, diffEnvironments } from '../environments'
 import type { NodeId } from '../../r-bridge'
 import type { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
@@ -74,7 +74,7 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 }
 
 function diffRootVertices(ctx: DataflowDiffContext): void {
-	setDifference(ctx.left.rootIds(), ctx.right.rootIds(), {...ctx, position: `${ctx.position}Root vertices differ in graphs. ` })
+	setDifference(ctx.left.rootIds(), ctx.right.rootIds(), { ...ctx, position: `${ctx.position}Root vertices differ in graphs. ` })
 }
 
 
@@ -130,8 +130,7 @@ export function diffFunctionArguments(a: false | FunctionArgument[], b: false | 
 			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
 		}
 		return
-	}
-	else if(a.length !== b.length) {
+	} else if(a.length !== b.length) {
 		ctx.report.addComment(`${ctx.position}Differs in number of arguments. ${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
 		return
 	}
@@ -191,7 +190,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 
 		if(lInfo.tag === 'function-call') {
 			guard(rInfo.tag === 'function-call', 'otherInfo must be a function call as well')
-			diffFunctionArguments(lInfo.args, rInfo.args, {...ctx, position: `${ctx.position}Vertex ${id} (function call) differs in arguments. ` })
+			diffFunctionArguments(lInfo.args, rInfo.args, { ...ctx, position: `${ctx.position}Vertex ${id} (function call) differs in arguments. ` })
 		}
 
 		if(lInfo.tag === 'function-definition') {
@@ -204,8 +203,8 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 			if(lInfo.subflow.scope !== rInfo.subflow.scope) {
 				ctx.report.addComment(`Vertex ${id} has different subflow scope. ${ctx.leftname}: ${JSON.stringify(lInfo.subflow, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.subflow, jsonReplacer)}`)
 			}
-			diffEnvironments(lInfo.subflow.environments, rInfo.subflow.environments, {...ctx, position: `${ctx.position}Vertex ${id} (function definition) differs in subflow environments. ` })
-			setDifference(lInfo.subflow.graph, rInfo.subflow.graph, {...ctx, position: `${ctx.position}Vertex ${id} differs in subflow graph. ` })
+			diffEnvironments(lInfo.subflow.environments, rInfo.subflow.environments, { ...ctx, position: `${ctx.position}Vertex ${id} (function definition) differs in subflow environments. ` })
+			setDifference(lInfo.subflow.graph, rInfo.subflow.graph, { ...ctx, position: `${ctx.position}Vertex ${id} differs in subflow graph. ` })
 		}
 	}
 }

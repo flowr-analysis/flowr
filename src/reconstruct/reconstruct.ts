@@ -99,8 +99,7 @@ function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: Pr
 function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration: ReconstructionConfiguration) {
 	if(configuration.selection.has(leaf.info.id)) {
 		return foldToConst(leaf)
-	}
-	else if(operand.length === 0) {
+	} else if(operand.length === 0) {
 		return []
 	} else {
 		return foldToConst(leaf)

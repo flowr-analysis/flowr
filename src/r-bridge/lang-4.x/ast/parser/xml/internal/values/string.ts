@@ -1,12 +1,12 @@
 import type { XmlBasedJson } from '../../input-format'
 import { retrieveMetaStructure } from '../meta'
 import { string2ts } from '../../../../../values'
-import { parseLog } from '../../parser'
 import type { RString } from '../../../../model'
 import { RType } from '../../../../model'
 import { executeHook } from '../../hooks'
 import type { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
+import { parseLog } from '../../../json/parser'
 
 /**
  * Normalize the given object as a R string (see {@link string2ts}).
@@ -19,7 +19,7 @@ export function normalizeString(data: ParserData, obj: XmlBasedJson): RString {
 	parseLog.debug('[string]')
 	obj = executeHook(data.hooks.values.onString.before, data, obj)
 
-	const { location, content } = retrieveMetaStructure(data.config, obj)
+	const { location, content } = retrieveMetaStructure(obj)
 
 	// based on https://www.rdocumentation.org/packages/utils/versions/3.6.2/topics/getParseData we do not get strings with 1000 characters or more within the text field.
 	// therefore, we recover the full string from the surrounding expr lexeme field

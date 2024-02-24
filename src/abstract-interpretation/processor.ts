@@ -1,17 +1,17 @@
-import type {DataflowInformation} from '../dataflow/internal/info'
-import type {NodeId, NormalizedAst, ParentInformation, RNodeWithParent} from '../r-bridge'
-import { RType} from '../r-bridge'
-import {CfgVertexType, extractCFG} from '../util/cfg/cfg'
-import {visitCfg} from '../util/cfg/visitor'
-import {guard} from '../util/assert'
-import type {DataflowGraphVertexInfo, OutgoingEdges} from '../dataflow'
-import { EdgeType} from '../dataflow'
-import type {Handler} from './handler/handler'
-import {BinOp} from './handler/binop/binop'
-import {Domain, unifyDomains} from './domain'
-import {log} from '../util/log'
+import type { DataflowInformation } from '../dataflow/internal/info'
+import type { NodeId, NormalizedAst, ParentInformation, RNodeWithParent } from '../r-bridge'
+import { RType } from '../r-bridge'
+import { CfgVertexType, extractCFG } from '../util/cfg/cfg'
+import { visitCfg } from '../util/cfg/visitor'
+import { guard } from '../util/assert'
+import type { DataflowGraphVertexInfo, OutgoingEdges } from '../dataflow'
+import { EdgeType } from '../dataflow'
+import type { Handler } from './handler/handler'
+import { BinOp } from './handler/binop/binop'
+import { Domain, unifyDomains } from './domain'
+import { log } from '../util/log'
 
-export const aiLogger = log.getSubLogger({name: 'abstract-interpretation'})
+export const aiLogger = log.getSubLogger({ name: 'abstract-interpretation' })
 
 export interface AINode {
 	readonly id:      NodeId
@@ -22,9 +22,15 @@ export interface AINode {
 class Stack<ElementType> {
 	private backingStore: ElementType[] = []
 
-	size(): number { return this.backingStore.length }
-	peek(): ElementType | undefined { return this.backingStore[this.size() - 1] }
-	pop(): ElementType | undefined { return this.backingStore.pop() }
+	size(): number {
+		return this.backingStore.length 
+	}
+	peek(): ElementType | undefined {
+		return this.backingStore[this.size() - 1] 
+	}
+	pop(): ElementType | undefined {
+		return this.backingStore.pop() 
+	}
 	push(item: ElementType): ElementType {
 		this.backingStore.push(item)
 		return item

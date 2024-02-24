@@ -119,7 +119,7 @@ describe('Parse simple operations',
 					'1 + # comment\n2',
 					shell,
 					'1 + # comment\n2',
-					exprList({// hoist children
+					exprList({ // hoist children
 						type:     RType.ExpressionList,
 						location: rangeFrom(1, 1, 2, 1),
 						info:     {},

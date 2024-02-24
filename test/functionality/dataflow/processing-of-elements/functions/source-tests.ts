@@ -1,8 +1,8 @@
-import {assertDataflow, withShell} from '../../../_helper/shell'
-import {setSourceProvider} from '../../../../../src/dataflow/internal/process/functions/source'
-import {BuiltIn, initializeCleanEnvironments, requestProviderFromFile, requestProviderFromText, sourcedDeterministicCountingIdGenerator} from '../../../../../src'
-import {LocalScope} from '../../../../../src/dataflow/environments/scopes'
-import {define} from '../../../../../src/dataflow/environments'
+import { assertDataflow, withShell } from '../../../_helper/shell'
+import { setSourceProvider } from '../../../../../src/dataflow/internal/process/functions/source'
+import { BuiltIn, initializeCleanEnvironments, requestProviderFromFile, requestProviderFromText, sourcedDeterministicCountingIdGenerator } from '../../../../../src'
+import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
+import { define} from '../../../../../src/dataflow/environments'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { unnamedArgument } from '../../../_helper/environment-builder'
 
@@ -18,7 +18,7 @@ describe('source', withShell(shell => {
 	setSourceProvider(requestProviderFromText(sources))
 
 	const envWithSimpleN = define(
-		{nodeId: 'simple-1:1-1:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-1:1-1:6-2' },
+		{ nodeId: 'simple-1:1-1:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-1:1-1:6-2' },
 		LocalScope,
 		initializeCleanEnvironments()
 	)
@@ -79,7 +79,7 @@ describe('source', withShell(shell => {
 	)
 
 	const envWithConditionalN = define(
-		{nodeId: 'simple-1:10-1:15-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-1:10-1:15-2' },
+		{ nodeId: 'simple-1:10-1:15-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-1:10-1:15-2' },
 		LocalScope,
 		initializeCleanEnvironments()
 	)
@@ -116,9 +116,9 @@ describe('source', withShell(shell => {
 		.reads('3', BuiltIn)
 	)
 
-	const recursive2Id = (id: number) => sourcedDeterministicCountingIdGenerator('recursive2', {start: {line: 2, column: 1}, end: {line: 2, column: 6}}, id)()
+	const recursive2Id = (id: number) => sourcedDeterministicCountingIdGenerator('recursive2', { start: { line: 2, column: 1 }, end: { line: 2, column: 6 } }, id)()
 	const envWithX = define(
-		{nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+		{ nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
 		LocalScope,
 		initializeCleanEnvironments()
 	)

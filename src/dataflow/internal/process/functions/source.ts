@@ -1,15 +1,15 @@
-import type {IdGenerator, NoInfo, RArgument, RParseRequest, RParseRequestProvider} from '../../../../r-bridge'
-import { requestFingerprint} from '../../../../r-bridge'
-import { sourcedDeterministicCountingIdGenerator} from '../../../../r-bridge'
-import {requestProviderFromFile} from '../../../../r-bridge'
-import {type NormalizedAst, type ParentInformation, removeTokenMapQuotationMarks, type RFunctionCall, RType} from '../../../../r-bridge'
-import {RShellExecutor} from '../../../../r-bridge/shell-executor'
-import {executeSingleSubStep} from '../../../../core'
-import {type DataflowProcessorInformation, processDataflowFor} from '../../../processor'
-import {type DataflowScopeName, type Identifier, overwriteEnvironments, type REnvironmentInformation, resolveByName} from '../../../environments'
-import type {DataflowInformation} from '../../info'
-import {dataflowLogger} from '../../../index'
-import {getConfig} from '../../../../config'
+import type { IdGenerator, NoInfo, RArgument, RParseRequest, RParseRequestProvider } from '../../../../r-bridge'
+import { requestFingerprint } from '../../../../r-bridge'
+import { sourcedDeterministicCountingIdGenerator } from '../../../../r-bridge'
+import { requestProviderFromFile } from '../../../../r-bridge'
+import { type NormalizedAst, type ParentInformation, removeTokenMapQuotationMarks, type RFunctionCall, RType } from '../../../../r-bridge'
+import { RShellExecutor } from '../../../../r-bridge/shell-executor'
+import { executeSingleSubStep } from '../../../../core'
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../processor'
+import { type DataflowScopeName, type Identifier, overwriteEnvironments, type REnvironmentInformation, resolveByName } from '../../../environments'
+import type { DataflowInformation } from '../../info'
+import { dataflowLogger } from '../../../index'
+import { getConfig } from '../../../../config'
 
 let sourceProvider = requestProviderFromFile()
 
@@ -63,7 +63,7 @@ export function sourceRequest<OtherInfo>(request: RParseRequest, data: DataflowP
 	let dataflow: DataflowInformation
 	try {
 		const parsed = executeSingleSubStep('parse', request, executor) as string
-		normalized = executeSingleSubStep('normalize', parsed, executor.getTokenMap(), undefined, getId) as NormalizedAst<OtherInfo & ParentInformation>
+		normalized = executeSingleSubStep('normalize', parsed, undefined, getId) as NormalizedAst<OtherInfo & ParentInformation>
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,
@@ -76,7 +76,7 @@ export function sourceRequest<OtherInfo>(request: RParseRequest, data: DataflowP
 	}
 
 	// update our graph with the sourced file's information
-	const newInformation = {...information}
+	const newInformation = { ...information }
 	newInformation.environments = overwriteEnvironments(information.environments, dataflow.environments)
 	newInformation.graph.mergeWith(dataflow.graph)
 	// this can be improved, see issue #628

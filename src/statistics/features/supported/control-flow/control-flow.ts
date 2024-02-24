@@ -1,7 +1,7 @@
 import type { Feature, FeatureProcessorInput } from '../../feature'
 import type { Writable } from 'ts-essentials'
 import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../../common-syntax-probability'
-import type { ParentInformation, RExpressionList, RNodeWithParent} from '../../../../r-bridge'
+import type { ParentInformation, RExpressionList, RNodeWithParent } from '../../../../r-bridge'
 import { RType, visitAst } from '../../../../r-bridge'
 import { postProcess } from './post-process'
 

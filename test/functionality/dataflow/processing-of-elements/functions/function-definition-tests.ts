@@ -141,7 +141,7 @@ describe('Function Definition', withShell(shell => {
 				.use('3', 'x', {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
 		)
 		const envWithXDefined = define(
-			{nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+			{ nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 
@@ -177,7 +177,7 @@ describe('Function Definition', withShell(shell => {
 		)
 
 		const envWithXDefinedR = define(
-			{nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+			{ nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('local define with -> in function, read after', shell, 'function() { 3 -> x; }; x',
@@ -196,7 +196,7 @@ describe('Function Definition', withShell(shell => {
 				.relates('2', '1')
 		)
 		const envWithXDefinedGlobal = define(
-			{nodeId: '0', scope: GlobalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+			{ nodeId: '0', scope: GlobalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
 			GlobalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('global define with <<- in function, read after', shell, 'function() { x <<- 3; }; x',
@@ -217,7 +217,7 @@ describe('Function Definition', withShell(shell => {
 				.relates('2', '0')
 		)
 		const envWithXDefinedGlobalR = define(
-			{nodeId: '1', scope: GlobalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+			{ nodeId: '1', scope: GlobalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
 			GlobalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('global define with ->> in function, read after', shell, 'function() { 3 ->> x; }; x',
@@ -238,7 +238,7 @@ describe('Function Definition', withShell(shell => {
 				.relates('2', '1')
 		)
 		const envDefXSingle = define(
-			{nodeId: '3', scope: LocalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '5' },
+			{ nodeId: '3', scope: LocalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '5' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('shadow in body', shell, 'x <- 2; function() { x <- 3; x }; x',
@@ -303,7 +303,7 @@ describe('Function Definition', withShell(shell => {
 	})
 	describe('Scoping of parameters', () => {
 		const envWithXDefined = define(
-			{nodeId: '3', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '4' },
+			{ nodeId: '3', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '4' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('parameter shadows', shell, 'x <- 3; function(x) { x }',
@@ -324,7 +324,7 @@ describe('Function Definition', withShell(shell => {
 	})
 	describe('Access dot-dot-dot', () => {
 		const envWithParam = define(
-			{nodeId: '0', scope: 'local', name: '...', used: 'always', kind: 'parameter', definedAt: '1' },
+			{ nodeId: '0', scope: 'local', name: '...', used: 'always', kind: 'parameter', definedAt: '1' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('parameter shadows', shell, 'function(...) { ..11 }',
@@ -541,17 +541,17 @@ describe('Function Definition', withShell(shell => {
 
 	describe('Nested Function Definitions', () => {
 		const withXParameterInOuter = define(
-			{nodeId: '1', scope: LocalScope, name: 'x', used: 'always', kind: 'function', definedAt: '9' },
+			{ nodeId: '1', scope: LocalScope, name: 'x', used: 'always', kind: 'function', definedAt: '9' },
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		const withinNestedFunctionWithoutParam = pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments()))
 		const withinNestedFunctionWithParam = define(
-			{nodeId: '2', scope: LocalScope, name: 'x', used: 'always', kind: 'parameter', definedAt: '3' },
+			{ nodeId: '2', scope: LocalScope, name: 'x', used: 'always', kind: 'parameter', definedAt: '3' },
 			LocalScope,
 			withinNestedFunctionWithoutParam
 		)
 		const withinNestedFunctionWithDef = define(
-			{nodeId: '4', scope: LocalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '6' },
+			{ nodeId: '4', scope: LocalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '6' },
 			LocalScope,
 			pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments()))
 		)

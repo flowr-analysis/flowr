@@ -14,7 +14,6 @@ import { SteppingSlicer } from '../../../src/core'
 import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
 import { defaultQuadIdGenerator } from '../../../src/util/quads'
 import { cfgToMermaidUrl } from '../../../src/util/mermaid'
-import { visitCfg } from '../../../src/util/cfg/visitor'
 
 describe('Control Flow Graph', withShell(shell => {
 	 function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
@@ -168,18 +167,4 @@ describe('Control Flow Graph', withShell(shell => {
 <${domain}${context}/0> <${domain}exitPoints> "3-exit" <${context}> .
 `)
 	})
-
-	describe('visit cfg', withShell(shell => {
-		it('foo', async() => {
-			const result = await new SteppingSlicer({
-				stepOfInterest: 'normalize',
-				shell,
-				request:        requestFromInput('if(TRUE) 1; print(a=3)')
-			}).allRemainingSteps()
-			const cfg = extractCFG(result.normalize)
-			visitCfg(cfg, (node, context) => {
-				console.log(node, context.parent, context.siblings)
-			})
-		})
-	}))
 }))

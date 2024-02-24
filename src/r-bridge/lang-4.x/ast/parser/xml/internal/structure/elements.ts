@@ -16,7 +16,7 @@ import { RType, RawRType } from '../../../../model'
 import { log } from '../../../../../../../util/log'
 import { normalizeComment } from '../other'
 import type { RDelimiter } from '../../../../model/nodes/info'
-import {parseLog} from '../../../csv/parser'
+import {parseLog} from '../../../json/parser'
 
 function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RNode | RDelimiter)[] {
 	if(mappedWithName.length === 1) {

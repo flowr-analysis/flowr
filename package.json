@@ -19,7 +19,7 @@
     "slicer": "ts-node src/cli/slicer-app.ts",
     "release": "release-it --ci",
     "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
-    "benchmark": "ts-node src/cli/benchmark-app.ts",
+    "benchmark": "npm run build && node dist/src/cli/benchmark-app.js",
     "summarizer": "ts-node src/cli/summarizer-app.ts",
     "export-quads": "ts-node src/cli/export-quads-app.ts",
     "build": "tsc --project .",

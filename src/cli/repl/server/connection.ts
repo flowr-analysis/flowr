@@ -140,8 +140,7 @@ export class FlowRServerConnection {
 				results: {
 					parse:     await printStepResult('parse', results.parse as string, StepOutputFormat.RdfQuads, config()),
 					normalize: await printStepResult('normalize', results.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
-					dataflow:  await printStepResult('dataflow', results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config()),
-					ai:        ''
+					dataflow:  await printStepResult('dataflow', results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
 				}
 			})
 		} else {

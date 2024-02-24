@@ -21,7 +21,7 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 import { tryToNormalizeArgument } from './argument'
 import type { SourceRange } from '../../../../../../../util/range'
 import { normalizeExpression } from '../expression'
-import {parseLog} from '../../../csv/parser'
+import {parseLog} from '../../../json/parser'
 
 /**
  * Tries to parse the given data as a function call.

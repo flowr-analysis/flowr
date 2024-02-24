@@ -20,7 +20,7 @@ import {
 } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { guard } from '../../../../../../../util/assert'
-import {parseLog} from '../../../csv/parser'
+import {parseLog} from '../../../json/parser'
 
 /**
  * Parsing binary operations includes the pipe, even though the produced PIPE construct is not a binary operation,

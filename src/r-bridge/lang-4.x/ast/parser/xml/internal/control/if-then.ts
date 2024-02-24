@@ -6,7 +6,7 @@ import type { ParserData } from '../../data'
 import type { RIfThenElse} from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import {parseLog} from '../../../csv/parser'
+import {parseLog} from '../../../json/parser'
 
 /**
  * Try to parse the construct as a {@link RIfThenElse}.

@@ -1,9 +1,6 @@
 import type { XmlBasedJson} from '../../../r-bridge'
 import {childrenKey} from '../../../r-bridge'
 import {attributesKey, contentKey} from '../../../r-bridge'
-import {
-	parseCSV
-} from '../../../r-bridge'
 import {getKeysGuarded, RawRType, requestFromInput} from '../../../r-bridge'
 import {
 	extractLocation,
@@ -14,8 +11,8 @@ import type { OutputFormatter } from '../../../statistics'
 import { FontStyles } from '../../../statistics'
 import type { ReplCommand } from './main'
 import { SteppingSlicer } from '../../../core'
-import {csvToRecord} from '../../../r-bridge/lang-4.x/ast/parser/csv/format'
-import {convertToXmlBasedJson} from '../../../r-bridge/lang-4.x/ast/parser/csv/parser'
+import {prepareParsedData} from '../../../r-bridge/lang-4.x/ast/parser/json/format'
+import {convertPreparedParsedData} from '../../../r-bridge/lang-4.x/ast/parser/json/parser'
 
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 
@@ -132,7 +129,7 @@ export const parseCommand: ReplCommand = {
 			request:        requestFromInput(remainingLine.trim())
 		}).allRemainingSteps()
 
-		const object = convertToXmlBasedJson(csvToRecord(parseCSV(result.parse)))
+		const object = convertPreparedParsedData(prepareParsedData(result.parse))
 
 		output.stdout(depthListToTextTree(toDepthMap(object), output.formatter))
 	}

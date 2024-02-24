@@ -1,5 +1,3 @@
-import { parse } from 'csv-parse/sync'
-
 class ValueConversionError extends Error {
 	constructor(message: string) {
 		super(message)
@@ -159,7 +157,3 @@ export function isNA(value: string): value is (typeof RNa) {
 	return value === RNa
 }
 
-export function parseCSV(lines: string | string[]): string[][] {
-	const combined = typeof lines == 'string' ? lines : lines.join('\n')
-	return parse(combined, {skipEmptyLines: true}) as string[][]
-}

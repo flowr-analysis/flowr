@@ -10,7 +10,7 @@ import type { RComment, RForLoop, RNode, RSymbol} from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { normalizeComment } from '../other'
-import {parseLog} from '../../../csv/parser'
+import {parseLog} from '../../../json/parser'
 
 export function tryNormalizeFor(
 	data: ParserData,

@@ -70,6 +70,8 @@ export interface RShellExecutionOptions extends MergeableRecord {
 	readonly eol:                string
 	/** The environment variables available in the R session. */
 	readonly env:                NodeJS.ProcessEnv
+	/** The path to the library directory, use undefined to let R figure that out for itself */
+	readonly homeLibPath:        string | undefined
 }
 
 export interface RShellSessionOptions extends RShellExecutionOptions {
@@ -92,7 +94,8 @@ export const DEFAULT_R_SHELL_EXEC_OPTIONS: RShellExecutionOptions = {
 	commandLineOptions: ['--vanilla', '--quiet', '--no-echo', '--no-save'],
 	cwd:                process.cwd(),
 	env:                process.env,
-	eol:                '\n'
+	eol:                '\n',
+	homeLibPath:        getPlatform() === 'windows' ? undefined : '~/.r-libs'
 } as const
 
 export const DEFAULT_R_SHELL_OPTIONS: RShellOptions = {
@@ -161,6 +164,32 @@ export class RShell {
 		this.log.trace(`raw version: ${JSON.stringify(result)}`)
 		this.versionCache = semver.coerce(result[0])
 		return result.length === 1 ? this.versionCache : null
+	}
+
+	public injectLibPaths(...paths: string[]): void {
+		this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
+		this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
+	}
+
+	public tryToInjectHomeLibPath(): void {
+		// ensure the path exists first
+		if(this.options.homeLibPath === undefined) {
+			this.log.debug('ensuring home lib path exists (automatic inject)')
+			this.sendCommand('if(!dir.exists(Sys.getenv("R_LIBS_USER"))) { dir.create(path=Sys.getenv("R_LIBS_USER"),showWarnings=FALSE,recursive=TRUE) }')
+			this.sendCommand('.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))')
+		} else {
+			this.injectLibPaths(this.options.homeLibPath)
+		}
+	}
+
+	/**
+	 * checks if a given package is already installed on the system!
+	 */
+	public async isPackageInstalled(packageName: string): Promise<boolean> {
+		this.log.debug(`checking if package "${packageName}" is installed`)
+		const result = await this.sendCommandWithOutput(
+			`cat(system.file(package="${packageName}")!="","${this.options.eol}")`)
+		return result.length === 1 && result[0] === 'TRUE'
 	}
 
 
@@ -274,7 +303,7 @@ class RShellSession {
 			terminal: false
 		})
 		this.onExit(() => {
-			this.end() 
+			this.end()
 		})
 		this.options = options
 		this.log = log
@@ -325,7 +354,7 @@ class RShellSession {
 			}
 
 			error = () => {
-				resolve(result) 
+				resolve(result)
 			}
 			this.onExit(error)
 			this.on(from, 'line', handler)

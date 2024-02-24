@@ -42,7 +42,6 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
 /**
  * produces a shell session for you, can be used within a `describe` block
  * @param fn       - function to use the shell
- * @param packages - packages to be ensured when the shell is created
  */
 export function withShell(fn: (shell: RShell) => void): () => void {
 	return function() {
@@ -92,13 +91,25 @@ export const retrieveNormalizedAst = async(shell: RShell, input: `file://${strin
 
 export interface TestConfiguration extends MergeableRecord {
 	/** the (inclusive) minimum version of R required to run this test, e.g., {@link MIN_VERSION_PIPE} */
-	minRVersion:            string | undefined,
-	needsNetworkConnection: boolean,
+	minRVersion:            string | undefined
+	needsPackages:          string[]
+	needsNetworkConnection: boolean
 }
 
 export const defaultTestConfiguration: TestConfiguration = {
 	minRVersion:            undefined,
-	needsNetworkConnection: false,
+	needsPackages:          [],
+	needsNetworkConnection: false
+}
+
+async function testRequiresPackages(shell: RShell, requiredPackages: string[], test: Mocha.Context) {
+	shell.tryToInjectHomeLibPath()
+	for(const pkg of requiredPackages) {
+		if(!await shell.isPackageInstalled(pkg)) {
+			console.warn(`Skipping test because package "${pkg}" is not installed (install it locally to get the tests to run).`)
+			test.skip()
+		}
+	}
 }
 
 export async function ensureConfig(shell: RShell, test: Mocha.Context, userConfig?: Partial<TestConfiguration>): Promise<void> {
@@ -108,6 +119,9 @@ export async function ensureConfig(shell: RShell, test: Mocha.Context, userConfi
 	}
 	if(config.minRVersion !== undefined) {
 		await testRequiresRVersion(shell, `>=${config.minRVersion}`, test)
+	}
+	if(config.needsPackages && config.needsPackages.length  > 0) {
+		await testRequiresPackages(shell, config.needsPackages, test)
 	}
 }
 

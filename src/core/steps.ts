@@ -17,7 +17,7 @@ import type { MergeableRecord } from '../util/objects'
 import { retrieveParseDataFromRCode } from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
 import { reconstructToCode, staticSlicing } from '../slicing'
-import type { IStepPrinter} from './print/print'
+import type { IStepPrinter } from './print/print'
 import { internalPrinter, StepOutputFormat } from './print/print'
 import {
 	normalizedAstToJson,
@@ -33,7 +33,7 @@ import {
 	dataflowGraphToMermaidUrl,
 	dataflowGraphToQuads
 } from './print/dataflow-printer'
-import {normalize} from '../r-bridge/lang-4.x/ast/parser/json/parser'
+import { normalize } from '../r-bridge/lang-4.x/ast/parser/json/parser'
 
 /**
  * This represents close a function that we know completely nothing about.

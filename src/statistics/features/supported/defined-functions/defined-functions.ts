@@ -6,7 +6,7 @@ import type { MergeableRecord } from '../../../../util/objects'
 import type {
 	ParentInformation,
 	RFunctionDefinition,
-	RNodeWithParent} from '../../../../r-bridge'
+	RNodeWithParent } from '../../../../r-bridge'
 import {
 	RType,
 	visitAst

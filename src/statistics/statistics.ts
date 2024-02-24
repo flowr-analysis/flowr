@@ -2,7 +2,7 @@ import type {
 	RParseRequest,
 	RParseRequestFromFile,
 	RParseRequestFromText,
-	RShell} from '../r-bridge'
+	RShell } from '../r-bridge'
 import { ts2r
 } from '../r-bridge'
 import type { Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features'
@@ -12,7 +12,7 @@ import fs from 'fs'
 import { log } from '../util/log'
 import type { MetaStatistics } from './meta-statistics'
 import { initialMetaStatistics } from './meta-statistics'
-import type {StepResults } from '../core'
+import type { StepResults } from '../core'
 import { SteppingSlicer } from '../core'
 import { jsonReplacer, jsonRetriever } from '../util/json'
 

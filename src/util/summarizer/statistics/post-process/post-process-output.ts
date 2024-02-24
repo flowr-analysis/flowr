@@ -3,7 +3,7 @@ import { ALL_FEATURES } from '../../../../statistics'
 import path from 'path'
 import { log } from '../../../log'
 import fs from 'fs'
-import type { ClusterContextIdMap, ClusterReport} from './clusterer'
+import type { ClusterContextIdMap, ClusterReport } from './clusterer'
 import { clusterStatisticsOutput } from './clusterer'
 import { ColorEffect, Colors, defaultStatisticsFileSuffix, FontStyles, formatter } from '../../../../statistics'
 import type { NodeId } from '../../../../r-bridge'
@@ -90,7 +90,7 @@ export function printClusterReport(report: ClusterReport, limit = 1000): string[
 		}
 	}).sort((a, b) => b.count - a.count).slice(0, limit)
 
-	const { longestName, longestCount, longestUnique } = shortStats.reduce((acc, {name, count, unique}) => {
+	const { longestName, longestCount, longestUnique } = shortStats.reduce((acc, { name, count, unique }) => {
 		return {
 			longestName:   Math.max(acc.longestName, name.length),
 			longestCount:  Math.max(acc.longestCount, count.toLocaleString().length),
@@ -99,7 +99,7 @@ export function printClusterReport(report: ClusterReport, limit = 1000): string[
 	}, { longestName: 0, longestCount: 0, longestUnique: 0 })
 
 
-	for(const {name, count, unique} of shortStats) {
+	for(const { name, count, unique } of shortStats) {
 		const strId = `${name}`.padEnd(longestName, ' ')
 		const strCount = count.toLocaleString().padStart(longestCount, ' ')
 		const strUnique = unique.toLocaleString().padStart(longestUnique, ' ')
@@ -109,5 +109,5 @@ export function printClusterReport(report: ClusterReport, limit = 1000): string[
       + (count !== unique ? uniqueSuffix : '')
 		)
 	}
-	return shortStats.map(({name}) => name)
+	return shortStats.map(({ name }) => name)
 }

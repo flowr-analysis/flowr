@@ -1,12 +1,12 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
 import type {
-	SummarizedMeasurement} from '../../../../util/summarizer/benchmark/data'
+	SummarizedMeasurement } from '../../../../util/summarizer/benchmark/data'
 import {
 	summarizedMeasurement2Csv,
 	summarizedMeasurement2CsvHeader
 } from '../../../../util/summarizer/benchmark/data'
 import type { MergeableRecord } from '../../../../util/objects'
-import type { CommentInfo} from './comments'
+import type { CommentInfo } from './comments'
 import { initialCommentInfo } from './comments'
 import { guard } from '../../../../util/assert'
 import fs from 'node:fs'

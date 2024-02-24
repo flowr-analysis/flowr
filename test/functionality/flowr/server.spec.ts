@@ -4,7 +4,7 @@ import { retrieveVersionInformation } from '../../../src/cli/repl/commands/versi
 import type { FlowrHelloResponseMessage } from '../../../src/cli/repl/server/messages/hello'
 import { assert } from 'chai'
 import type { FileAnalysisRequestMessage, FileAnalysisResponseMessageJson } from '../../../src/cli/repl/server/messages/analysis'
-import type { DecoratedAstMap, ParentInformation} from '../../../src/r-bridge'
+import type { DecoratedAstMap, ParentInformation } from '../../../src/r-bridge'
 import { requestFromInput } from '../../../src/r-bridge'
 import { LAST_PER_FILE_STEP, SteppingSlicer } from '../../../src/core'
 import { jsonReplacer } from '../../../src/util/json'

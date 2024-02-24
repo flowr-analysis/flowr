@@ -1,4 +1,4 @@
-import type { NormalizedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation, RNodeWithParent} from '../../r-bridge'
+import type { NormalizedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation, RNodeWithParent } from '../../r-bridge'
 import { RType } from '../../r-bridge'
 import { slicerLogger } from '../static'
 import type { SourcePosition } from '../../util/range'

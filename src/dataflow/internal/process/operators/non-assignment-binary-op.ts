@@ -1,5 +1,5 @@
 import type { DataflowInformation } from '../../info'
-import type { DataflowProcessorInformation} from '../../../processor'
+import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import { linkIngoingVariablesInSameScope } from '../../linker'
 import type { ParentInformation, RBinaryOp } from '../../../../r-bridge'

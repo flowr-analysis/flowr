@@ -2,7 +2,7 @@
  * This module is tasked with processing the results of the benchmarking (see {@link SlicerStats}).
  * @module
  */
-import type { CommonSummarizerConfiguration} from '../summarizer'
+import type { CommonSummarizerConfiguration } from '../summarizer'
 import { Summarizer } from '../summarizer'
 import type { SummarizedSlicerStats, UltimateSlicerStats } from './data'
 import fs from 'fs'

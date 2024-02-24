@@ -16,7 +16,7 @@ import {
 	RShell
 } from '../../../src/r-bridge'
 import { assert } from 'chai'
-import type { DataflowGraph} from '../../../src/dataflow'
+import type { DataflowGraph } from '../../../src/dataflow'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow'
 import type { SlicingCriteria } from '../../../src/slicing'
 import { testRequiresRVersion } from './version'
@@ -165,14 +165,14 @@ export function assertDataflow(name: string, shell: RShell, input: string, expec
 			getId:          deterministicCountingIdGenerator(startIndexForDeterministicIds),
 		}).allRemainingSteps()
 
-		const report: DifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got'})
+		const report: DifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got' })
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
 			guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`)
 		} catch(e) {
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected },
-				{ label: 'got', graph: info.dataflow.graph},
+				{ label: 'got', graph: info.dataflow.graph },
 				info.normalize.idMap,
 				`%% ${input.replace(/\n/g, '\n%% ')}\n`
 			)

@@ -2,15 +2,15 @@
  * Processes a list of expressions joining their dataflow graphs accordingly.
  * @module
  */
-import type { DataflowInformation} from '../info'
+import type { DataflowInformation } from '../info'
 import { initializeCleanInfo } from '../info'
-import type { NodeId, ParentInformation, RExpressionList} from '../../../r-bridge'
+import type { NodeId, ParentInformation, RExpressionList } from '../../../r-bridge'
 import { RType, visitAst } from '../../../r-bridge'
-import type { DataflowProcessorInformation} from '../../processor'
+import type { DataflowProcessorInformation } from '../../processor'
 import { processDataflowFor } from '../../processor'
 import type {
 	IdentifierReference, IEnvironment,
-	REnvironmentInformation} from '../../environments'
+	REnvironmentInformation } from '../../environments'
 import { makeAllMaybe,
 	overwriteEnvironments, popLocalEnvironment,
 	resolveByName

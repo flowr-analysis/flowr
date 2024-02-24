@@ -1,5 +1,5 @@
-import type { NamedXmlBasedJson, XmlBasedJson} from '../../input-format'
-import {childrenKey} from '../../input-format'
+import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
+import { childrenKey } from '../../input-format'
 import { getKeysGuarded } from '../../input-format'
 import { guard } from '../../../../../../../util/assert'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
@@ -13,7 +13,7 @@ import type {
 	RNamedFunctionCall,
 	RNext,
 	RBreak,
-	RArgument} from '../../../../model'
+	RArgument } from '../../../../model'
 import {
 	RType, RawRType
 } from '../../../../model'
@@ -21,7 +21,7 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 import { tryToNormalizeArgument } from './argument'
 import type { SourceRange } from '../../../../../../../util/range'
 import { normalizeExpression } from '../expression'
-import {parseLog} from '../../../json/parser'
+import { parseLog } from '../../../json/parser'
 
 /**
  * Tries to parse the given data as a function call.
@@ -47,7 +47,7 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 	parseLog.trace('trying to parse function call')
 	mappedWithName = executeHook(data.hooks.functions.onFunctionCall.before, data, mappedWithName)
 
-	const {unwrappedObj, content, location} = retrieveMetaStructure(fnBase.content)
+	const { unwrappedObj, content, location } = retrieveMetaStructure(fnBase.content)
 	const symbolContent: XmlBasedJson[] = getKeysGuarded(unwrappedObj, childrenKey)
 
 	let result: RFunctionCall | RNext | RBreak

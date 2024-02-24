@@ -6,7 +6,7 @@ import { isSymbol, RType } from '../../../../model'
 import type { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { startAndEndsWith } from '../../../../../../../util/strings'
-import {parseLog} from '../../../json/parser'
+import { parseLog } from '../../../json/parser'
 
 /**
  * Normalize the given object as an R symbol (incorporating namespace information).

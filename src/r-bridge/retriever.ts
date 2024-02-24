@@ -2,11 +2,11 @@ import { type RShell } from './shell'
 import type { XmlParserHooks, NormalizedAst } from './lang-4.x'
 import { ts2r } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
-import type {AsyncOrSync, DeepPartial} from 'ts-essentials'
+import type { AsyncOrSync, DeepPartial } from 'ts-essentials'
 import { guard } from '../util/assert'
-import {RShellExecutor} from './shell-executor'
+import { RShellExecutor } from './shell-executor'
 import objectHash from 'object-hash'
-import {normalize} from './lang-4.x/ast/parser/json/parser'
+import { normalize } from './lang-4.x/ast/parser/json/parser'
 
 export interface RParseRequestFromFile {
 	readonly request:  'file';

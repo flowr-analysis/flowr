@@ -1,14 +1,14 @@
 import type { FeatureStatisticsWithMeta } from '../../feature'
 import type { StatisticsSummarizerConfiguration } from '../../../../util/summarizer/statistics/summarizer'
 import type {
-	SummarizedMeasurement} from '../../../../util/summarizer/benchmark/data'
+	SummarizedMeasurement } from '../../../../util/summarizer/benchmark/data'
 import {
 	summarizedMeasurement2Csv,
 	summarizedMeasurement2CsvHeader
 } from '../../../../util/summarizer/benchmark/data'
 import type { MergeableRecord } from '../../../../util/objects'
 import type {
-	CommonSyntaxTypeCounts} from '../../common-syntax-probability'
+	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts

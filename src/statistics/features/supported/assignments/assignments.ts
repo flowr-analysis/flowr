@@ -2,7 +2,7 @@ import type { Feature, FeatureProcessorInput } from '../../feature'
 import type { Writable } from 'ts-essentials'
 import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import type {
-	RNodeWithParent} from '../../../../r-bridge'
+	RNodeWithParent } from '../../../../r-bridge'
 import {
 	RType,
 	visitAst

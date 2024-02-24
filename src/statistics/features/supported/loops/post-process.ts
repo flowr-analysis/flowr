@@ -5,7 +5,7 @@ import { emptySummarizedWithProject, recordFilePath } from '../../post-processin
 import type { LoopInfo } from './loops'
 import type { MergeableRecord } from '../../../../util/objects'
 import type {
-	CommonSyntaxTypeCounts} from '../../common-syntax-probability'
+	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts

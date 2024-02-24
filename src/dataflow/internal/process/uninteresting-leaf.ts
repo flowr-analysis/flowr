@@ -1,4 +1,4 @@
-import type { DataflowInformation} from '../info'
+import type { DataflowInformation } from '../info'
 import { initializeCleanInfo } from '../info'
 import type { DataflowProcessorInformation } from '../../processor'
 

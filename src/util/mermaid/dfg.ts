@@ -102,7 +102,7 @@ function encodeEdge(from: string, to: string, types: Set<EdgeType>, attribute: s
 	// sort from and to for same edges and relates be order independent
 	if(types.has(EdgeType.SameReadRead) || types.has(EdgeType.SameDefDef) || types.has(EdgeType.Relates)) {
 		if(from > to) {
-			({from, to} = {from: to, to: from})
+			({ from, to } = { from: to, to: from })
 		}
 	}
 	return `${from}->${to}["${[...types].join(':')} (${attribute})"]`

@@ -55,7 +55,7 @@ function convertEntry(csvEntry: Entry): XmlBasedJson {
 		xmlEntry[childrenKey] = csvEntry.children
 			// we sort children the same way xmlparsedata does (by line, by column, by inverse end line, by inverse end column, by terminal state, by combined "start" tiebreaker value)
 			// (https://github.com/r-lib/xmlparsedata/blob/main/R/package.R#L153C72-L153C78)
-			.toSorted((c1,c2) => c1.line1-c2.line1 || c1.col1-c2.col1 || c2.line2-c1.line2 || c2.col2-c1.col2 || Number(c1.terminal)-Number(c2.terminal) || sortTiebreak(c1)-sortTiebreak(c2))
+			.sort((c1,c2) => c1.line1-c2.line1 || c1.col1-c2.col1 || c2.line2-c1.line2 || c2.col2-c1.col2 || Number(c1.terminal)-Number(c2.terminal) || sortTiebreak(c1)-sortTiebreak(c2))
 			.map(convertEntry)
 	}
 

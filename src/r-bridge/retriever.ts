@@ -86,17 +86,17 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
 	const eol = ts2r(shell.options.eol)
 	const command =
 		/* first check if flowr_get is already part of the environment */
-		'if(!base::exists("flowr_get")){'
+		'if(!exists("flowr_get")){'
 		/* if not, define it complete wrapped in a try so that we can handle failures gracefully on stdout */
-	+ 'flowr_get<-function(...){base::tryCatch({'
+	+ 'flowr_get<-function(...){tryCatch({'
 		/* the actual code to parse the R code, ... allows us to keep the old 'file=path' and 'text=content' semantics. we define flowr_output using the super assignment to persist it in the env! */
-	+ 'flowr_output<<-utils::getParseData(base::parse(...,keep.source=TRUE),includeText=TRUE);'
+	+ 'flowr_output<<-utils::getParseData(parse(...,keep.source=TRUE),includeText=TRUE);'
 		/* json conversion of the output, dataframe="values" allows us to receive a list of lists (which is more compact)!
 		 * so we do not depend on jsonlite and friends, we do so manually (:sparkles:)
-		 * */
-	+ `cat(paste0("[",paste0(apply(flowr_output,1,function(o) paste0("[",paste(o[[1]], o[[2]], o[[3]], o[[4]], o[[5]], o[[6]], deparse(o[[7]]), if(o[[8]]) "true" else "false", deparse(o[[9]]),sep=","),"]",collapse="")),collapse=","),"]",collapse=""),${eol})`
+		 */
+	+ `cat("[",paste0(apply(flowr_output,1,function(o)sprintf("[%s,%s,%s,%s,%s,%s,%s,%s,%s]",o[[1]],o[[2]],o[[3]],o[[4]],o[[5]],o[[6]],deparse(o[[7]]),if(o[[8]])"true"else"false",deparse(o[[9]]))),collapse=","),"]",${eol},sep="")`
 		/* error handling (just produce the marker) */
-	+ `},error=function(e){base::cat("${ErrorMarker}",${eol})})};`
+	+ `},error=function(e){cat("${ErrorMarker}",${eol})})};`
 		/* we set some initial flags for the optimization */
 	+ 'flowr_get_opt<-TRUE}else if(flowr_get_opt){'
 		/* compile the function to improve perf. (but only on repeated calls) */
@@ -137,7 +137,7 @@ export function removeTokenMapQuotationMarks(str: string): string {
  * Needs to be called *after*  {@link retrieveParseDataFromRCode} (or {@link retrieveNormalizedAstFromRCode})
  */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise<number> {
-	const result = await shell.sendCommandWithOutput(`base::cat(base::nrow(flowr_output),${ts2r(shell.options.eol)})`)
+	const result = await shell.sendCommandWithOutput(`cat(nrow(flowr_output),${ts2r(shell.options.eol)})`)
 	guard(result.length === 1, () => `expected exactly one line to obtain the number of R tokens, but got: ${JSON.stringify(result)}`)
 	return Number(result[0])
 }

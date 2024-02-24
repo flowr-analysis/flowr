@@ -1,4 +1,4 @@
-import type { IPipelineStep, PipelineStepName} from '../step'
+import type { IPipelineStep, PipelineStepName } from '../step'
 import { PipelineStepStage } from '../step'
 import { InvalidPipelineError } from './invalid-pipeline-error'
 import type { Pipeline } from './pipeline'

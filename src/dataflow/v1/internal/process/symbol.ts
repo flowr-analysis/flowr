@@ -1,7 +1,7 @@
 import type { ParentInformation, RSymbol } from '../../../../r-bridge'
 import { RNa, RNull } from '../../../../r-bridge'
 import { DataflowGraph } from '../../graph'
-import { initializeCleanDataflowInformation, type DataflowInformation} from '../info'
+import { initializeCleanDataflowInformation, type DataflowInformation } from '../info'
 import type { DataflowProcessorInformation } from '../../processor'
 
 export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {

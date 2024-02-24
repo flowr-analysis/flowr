@@ -1,9 +1,9 @@
-import type {MergeableRecord} from './util/objects'
-import {deepMergeObject} from './util/objects'
+import type { MergeableRecord } from './util/objects'
+import { deepMergeObject } from './util/objects'
 import path from 'path'
 import fs from 'fs'
-import {log} from './util/log'
-import {getParentDirectory} from './util/files'
+import { log } from './util/log'
+import { getParentDirectory } from './util/files'
 import Joi from 'joi'
 
 export interface FlowrConfigOptions extends MergeableRecord {
@@ -55,7 +55,7 @@ function parseConfigOptions(workingDirectory: string, configFile: string): Flowr
 		const configPath = path.join(searchPath, configFile)
 		if(fs.existsSync(configPath)) {
 			try {
-				const text = fs.readFileSync(configPath,{encoding: 'utf-8'})
+				const text = fs.readFileSync(configPath,{ encoding: 'utf-8' })
 				const parsed = JSON.parse(text) as FlowrConfigOptions
 				const validate = schema.validate(parsed)
 				if(!validate.error) {

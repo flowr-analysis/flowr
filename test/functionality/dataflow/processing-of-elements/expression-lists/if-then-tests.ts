@@ -87,17 +87,17 @@ describe(label('Lists with if-then constructs', 'local-left-assignment', 'local-
 	describe(label('Branch Coverage', 'local-left-assignment', 'if', 'numbers', 'name-normal', 'grouping'), () => {
 		//All test related to branch coverage (testing the interaction between then end else block)
 		const envWithX = () => define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())
-		const envThenBranch = () => define({nodeId: '4', scope: LocalScope, name: 'x', used: 'maybe', kind: 'variable',definedAt: '6'}, LocalScope, initializeCleanEnvironments())
+		const envThenBranch = () => define({ nodeId: '4', scope: LocalScope, name: 'x', used: 'maybe', kind: 'variable',definedAt: '6' }, LocalScope, initializeCleanEnvironments())
 		assertDataflow('assignment both branches in if',
 			shell,
 			'x <- 1\nif(r) { x <- 2 } else { x <- 3}\n y <- x',
 			new DataflowGraph()
-				.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope})
-				.addVertex( { tag: 'use', id: '3', name: 'r', scope: LocalScope,environment: envWithX()} )
+				.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
+				.addVertex( { tag: 'use', id: '3', name: 'r', scope: LocalScope,environment: envWithX() } )
 				.addVertex( { tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: envWithX(), when: 'maybe' } )
 				.addVertex( { tag: 'variable-definition', id: '8', name: 'x', scope: LocalScope, environment: envWithX(), when: 'maybe' } )
-				.addVertex( { tag: 'use', id: '14', name: 'x', scope: LocalScope, environment: define({ nodeId: '8',scope: LocalScope, name: 'x', used: 'maybe',kind: 'variable',definedAt: '10'}, LocalScope, envThenBranch())})
-				.addVertex( { tag: 'variable-definition', id: '13', name: 'y', scope: LocalScope, environment: define({ nodeId: '8',scope: LocalScope, name: 'x', used: 'maybe',kind: 'variable',definedAt: '10'}, LocalScope, envThenBranch())})
+				.addVertex( { tag: 'use', id: '14', name: 'x', scope: LocalScope, environment: define({ nodeId: '8',scope: LocalScope, name: 'x', used: 'maybe',kind: 'variable',definedAt: '10' }, LocalScope, envThenBranch()) })
+				.addVertex( { tag: 'variable-definition', id: '13', name: 'y', scope: LocalScope, environment: define({ nodeId: '8',scope: LocalScope, name: 'x', used: 'maybe',kind: 'variable',definedAt: '10' }, LocalScope, envThenBranch()) })
 				.addEdge('0', '8', EdgeType.SameDefDef, 'maybe')
 				.addEdge('0', '4', EdgeType.SameDefDef, 'maybe')
 				.addEdge('14', '4', EdgeType.Reads, 'maybe')
@@ -110,8 +110,8 @@ describe(label('Lists with if-then constructs', 'local-left-assignment', 'local-
 			shell,
 			'x <- 1\nif(r) { x <- 2 } \n y <- x',
 			new DataflowGraph()
-				.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope})
-				.addVertex( { tag: 'use', id: '3', name: 'r', scope: LocalScope, environment: envWithX()} )
+				.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
+				.addVertex( { tag: 'use', id: '3', name: 'r', scope: LocalScope, environment: envWithX() } )
 				.addVertex( { tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: envWithX(), when: 'maybe' } )
 				.addVertex( { tag: 'use', id: '10', name: 'x', scope: LocalScope, environment: appendEnvironments(envWithSecondXMaybe(), envWithXMaybe()) })
 				.addVertex( { tag: 'variable-definition', id: '9', name: 'y', scope: LocalScope, environment: appendEnvironments(envWithSecondXMaybe(), envWithXMaybe()) })
@@ -125,7 +125,7 @@ describe(label('Lists with if-then constructs', 'local-left-assignment', 'local-
 		const envWithXThenMaybe = () => define({ nodeId: '7', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'maybe' }, LocalScope, initializeCleanEnvironments())
 		const envWithXElseMaybe = () => define({ nodeId: '14', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '16', used: 'maybe' }, LocalScope, initializeCleanEnvironments())
 		const envWithYMaybeBeforeIf = () => define({ nodeId: '3', name: 'y', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'maybe' }, LocalScope, initializeCleanEnvironments())
-		const envWithYMaybeInThen = () => define({ nodeId: '10', name: 'y', scope: LocalScope, kind: 'variable', definedAt: '12', used: 'maybe'}, LocalScope, initializeCleanEnvironments())
+		const envWithYMaybeInThen = () => define({ nodeId: '10', name: 'y', scope: LocalScope, kind: 'variable', definedAt: '12', used: 'maybe' }, LocalScope, initializeCleanEnvironments())
 		const envForYAfterIf = () => appendEnvironments(envWithYMaybeBeforeIf(), envWithYMaybeInThen())
 		const envForXAfterIf = () => appendEnvironments(envWithXThenMaybe(), envWithXElseMaybe())
 		const envDirectlyAfterIf = () => appendEnvironments(envForYAfterIf(), envForXAfterIf())
@@ -135,16 +135,16 @@ describe(label('Lists with if-then constructs', 'local-left-assignment', 'local-
 			shell,
 			'x <- 1 \n y <- 2 \n if(r){ x <- 3 \n y <- 4} else {x <- 5} \n w <- x \n z <- y',
 			new DataflowGraph()
-				.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope})
-				.addVertex({ tag: 'variable-definition', id: '3', name: 'y', scope: LocalScope, environment: envWithX()})
-				.addVertex({ tag: 'use', id: '6', name: 'r', scope: LocalScope, environment: appendEnvironments(envWithX(), envWithY())})
+				.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
+				.addVertex({ tag: 'variable-definition', id: '3', name: 'y', scope: LocalScope, environment: envWithX() })
+				.addVertex({ tag: 'use', id: '6', name: 'r', scope: LocalScope, environment: appendEnvironments(envWithX(), envWithY()) })
 				.addVertex({ tag: 'variable-definition', id: '7', name: 'x', scope: LocalScope, environment: appendEnvironments(envWithX(),envWithY()), when: 'maybe' })
-				.addVertex({ tag: 'variable-definition', id: '10', name: 'y', scope: LocalScope, environment: appendEnvironments(envWithXThen(), envWithY()), when: 'maybe'})
+				.addVertex({ tag: 'variable-definition', id: '10', name: 'y', scope: LocalScope, environment: appendEnvironments(envWithXThen(), envWithY()), when: 'maybe' })
 				.addVertex({ tag: 'variable-definition', id: '14', name: 'x', scope: LocalScope, environment: appendEnvironments(envWithX(),envWithY()), when: 'maybe' })
-				.addVertex({ tag: 'use', id: '20', name: 'x', scope: LocalScope, environment: envDirectlyAfterIf()})
-				.addVertex({ tag: 'use', id: '23', name: 'y', scope: LocalScope, environment: appendEnvironments(envDirectlyAfterIf(), envWithW())})
-				.addVertex({ tag: 'variable-definition', id: '19', name: 'w', scope: LocalScope, environment: envDirectlyAfterIf()})
-				.addVertex({ tag: 'variable-definition', id: '22', name: 'z', scope: LocalScope, environment: appendEnvironments(envDirectlyAfterIf(), envWithW())})
+				.addVertex({ tag: 'use', id: '20', name: 'x', scope: LocalScope, environment: envDirectlyAfterIf() })
+				.addVertex({ tag: 'use', id: '23', name: 'y', scope: LocalScope, environment: appendEnvironments(envDirectlyAfterIf(), envWithW()) })
+				.addVertex({ tag: 'variable-definition', id: '19', name: 'w', scope: LocalScope, environment: envDirectlyAfterIf() })
+				.addVertex({ tag: 'variable-definition', id: '22', name: 'z', scope: LocalScope, environment: appendEnvironments(envDirectlyAfterIf(), envWithW()) })
 				.addEdge('20', '7', EdgeType.Reads, 'maybe')
 				.addEdge('20', '14', EdgeType.Reads, 'maybe')
 				.addEdge('23', '3', EdgeType.Reads, 'maybe')
@@ -160,8 +160,8 @@ describe(label('Lists with if-then constructs', 'local-left-assignment', 'local-
 			shell,
 			'x <- 1 \n if(r){} else{x <- 2} \n y <- x',
 			new DataflowGraph()
-				.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope})
-				.addVertex( { tag: 'use', id: '3', name: 'r', scope: LocalScope, environment: envWithX()} )
+				.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
+				.addVertex( { tag: 'use', id: '3', name: 'r', scope: LocalScope, environment: envWithX() } )
 				.addVertex( { tag: 'variable-definition', id: '5', name: 'x', scope: LocalScope, environment: envWithX(), when: 'maybe' } )
 				.addVertex( { tag: 'use', id: '11', name: 'x', scope: LocalScope, environment: appendEnvironments(envWithElseXMaybe(), envWithXMaybe()) })
 				.addVertex( { tag: 'variable-definition', id: '10', name: 'y', scope: LocalScope, environment: appendEnvironments(envWithElseXMaybe(), envWithXMaybe()) })

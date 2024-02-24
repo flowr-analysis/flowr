@@ -54,7 +54,7 @@ export const voidFormatter: OutputFormatter = new class implements OutputFormatt
 	public reset(): string {
 		return ''
 	}
-}
+}()
 
 /**
  * This does not work if the {@link setFormatter | formatter} is void. Tries to format the text with a bold font weight.

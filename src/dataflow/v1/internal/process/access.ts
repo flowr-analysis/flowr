@@ -1,6 +1,6 @@
 import type { ParentInformation, RAccess } from '../../../../r-bridge'
 import type { DataflowInformation } from '../info'
-import type { DataflowProcessorInformation} from '../../processor'
+import type { DataflowProcessorInformation } from '../../processor'
 import { processDataflowFor } from '../../processor'
 import { makeAllMaybe } from '../../../common/environments'
 import { EdgeType } from '../../graph'

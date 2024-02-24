@@ -1,9 +1,9 @@
-import type {Handler} from '../handler'
-import type { AINode} from '../../processor'
-import {aiLogger} from '../../processor'
-import type {BinaryOperatorFlavor, ParentInformation, RBinaryOp} from '../../../r-bridge'
-import {guard} from '../../../util/assert'
-import {operators} from './operators'
+import type { Handler } from '../handler'
+import type { AINode } from '../../processor'
+import { aiLogger } from '../../processor'
+import type { BinaryOperatorFlavor, ParentInformation, RBinaryOp } from '../../../r-bridge'
+import { guard } from '../../../util/assert'
+import { operators } from './operators'
 
 export type BinOpOperators = {
 	[key in BinaryOperatorFlavor]: (lhs: AINode, rhs: AINode, node: RBinaryOp<ParentInformation>) => AINode

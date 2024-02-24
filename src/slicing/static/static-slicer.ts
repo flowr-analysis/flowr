@@ -14,7 +14,7 @@ import type {
 	DecoratedAstMap,
 	NodeId,
 	NormalizedAst,
-	RNodeWithParent} from '../../r-bridge'
+	RNodeWithParent } from '../../r-bridge'
 import {
 	collectAllIds,
 	RType

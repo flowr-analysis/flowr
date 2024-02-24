@@ -4,7 +4,7 @@ import type {
 	CommonSlicerMeasurements,
 	PerSliceMeasurements,
 	SlicerStatsDataflow,
-	SlicerStatsInput} from '../../../../benchmark'
+	SlicerStatsInput } from '../../../../benchmark'
 import {
 	summarizeMeasurement,
 	summarizeSummarizedMeasurement

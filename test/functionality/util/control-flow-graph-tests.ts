@@ -1,7 +1,7 @@
 import { assert } from 'chai'
 import { withShell } from '../_helper/shell'
 import type {
-	ControlFlowInformation} from '../../../src/util/cfg/cfg'
+	ControlFlowInformation } from '../../../src/util/cfg/cfg'
 import {
 	cfg2quads,
 	CfgVertexType,
@@ -14,12 +14,11 @@ import { SteppingSlicer } from '../../../src/core'
 import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
 import { defaultQuadIdGenerator } from '../../../src/util/quads'
 import { cfgToMermaidUrl } from '../../../src/util/mermaid'
-import { visitCfg } from '../../../src/util/cfg/visitor'
 
 describe('Control Flow Graph', withShell(shell => {
 	 function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {
 		 // shallow copy is important to avoid killing the CFG :c
-		const expected: ControlFlowInformation = {...emptyControlFlowInformation(), ...partialExpected}
+		const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected }
 		return it(code, async()=> {
 			const result = await new SteppingSlicer({
 				stepOfInterest: 'normalize',
@@ -168,18 +167,4 @@ describe('Control Flow Graph', withShell(shell => {
 <${domain}${context}/0> <${domain}exitPoints> "3-exit" <${context}> .
 `)
 	})
-
-	describe('visit cfg', withShell(shell => {
-		it('foo', async() => {
-			const result = await new SteppingSlicer({
-				stepOfInterest: 'normalize',
-				shell,
-				request:        requestFromInput('if(TRUE) 1; print(a=3)')
-			}).allRemainingSteps()
-			const cfg = extractCFG(result.normalize)
-			visitCfg(cfg, (_node, _context) => {
-				// console.log(node, context.parent, context.siblings)
-			})
-		})
-	}))
 }))

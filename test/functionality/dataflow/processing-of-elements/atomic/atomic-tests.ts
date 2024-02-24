@@ -76,7 +76,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		assertDataflow(label('chained bracket access with variables', 'name-normal', 'single-bracket-access'), shell,
 			'a[x][y]',
 			new DataflowGraph()
-				.addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe'})
+				.addVertex({ tag: 'use', id: '0', name: 'a', when: 'maybe' })
 				.addVertex({ tag: 'use', id: '1', name: 'x' })
 				.addVertex({ tag: 'use', id: '4', name: 'y' })
 				.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2` })
@@ -441,7 +441,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 						`if (x <- 3) ${b.func('x')}`,
 						new DataflowGraph()
 							.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope, when: 'always' })
-							.addVertex({ tag: 'use', id: '3', name: 'x', when: 'maybe', environment: define({ name: 'x', definedAt: '2', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments())  })
+							.addVertex({ tag: 'use', id: '3', name: 'x', when: 'maybe', environment: define({ name: 'x', definedAt: '2', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0' }, LocalScope, initializeCleanEnvironments())  })
 							.addEdge('3', '0', EdgeType.Reads, 'always')
 					)
 				})
@@ -533,7 +533,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				'for(i in 1:10) { i }',
 				new DataflowGraph()
 					.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
-					.addVertex({ tag: 'use', id: '4', name: 'i', when: 'maybe', environment: define({ name: 'i', definedAt: '6', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0'}, LocalScope, initializeCleanEnvironments()) })
+					.addVertex({ tag: 'use', id: '4', name: 'i', when: 'maybe', environment: define({ name: 'i', definedAt: '6', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0' }, LocalScope, initializeCleanEnvironments()) })
 					.addEdge('4', '0', EdgeType.Reads, 'maybe')
 			)
 		})

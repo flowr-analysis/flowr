@@ -1,7 +1,7 @@
 import { guard } from '../../../util/assert'
 import type { IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
 import { cloneEnvironments } from './environment'
-import type { DataflowScopeName} from './scopes'
+import type { DataflowScopeName } from './scopes'
 import { GlobalScope, LocalScope } from './scopes'
 
 function defInEnv(newEnvironments: IEnvironment, definition: IdentifierDefinition) {

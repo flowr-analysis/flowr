@@ -1,6 +1,6 @@
 import type { Feature, FeatureProcessorInput } from '../../feature'
 import type { Writable } from 'ts-essentials'
-import type { NodeId} from '../../../../r-bridge'
+import type { NodeId } from '../../../../r-bridge'
 import { isSpecialSymbol, RType, visitAst } from '../../../../r-bridge'
 import { appendStatisticsFile } from '../../../output'
 import { EdgeType } from '../../../../dataflow/v1'

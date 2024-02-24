@@ -1,9 +1,9 @@
 import type { DataflowInformation } from '../../info'
-import type { DataflowProcessorInformation} from '../../../processor'
+import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import type {
 	IdentifierReference,
-	REnvironmentInformation} from '../../../../common/environments'
+	REnvironmentInformation } from '../../../../common/environments'
 import {
 	initializeCleanEnvironments,
 	overwriteEnvironments,
@@ -12,7 +12,7 @@ import {
 	resolveByName
 } from '../../../../common/environments'
 import { linkInputs } from '../../linker'
-import type { DataflowFunctionFlowInformation, DataflowMap} from '../../../index'
+import type { DataflowFunctionFlowInformation, DataflowMap } from '../../../index'
 import { DataflowGraph, dataflowLogger, EdgeType } from '../../../index'
 import type { NodeId, ParentInformation, RFunctionDefinition } from '../../../../../r-bridge'
 import { collectAllIds } from '../../../../../r-bridge'

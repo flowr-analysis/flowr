@@ -1,6 +1,6 @@
 import type {
 	DummyAppendMemoryMap,
-	StatisticAppendProvider} from './file-provider'
+	StatisticAppendProvider } from './file-provider'
 import {
 	DummyAppendProvider,
 	StatisticFileProvider

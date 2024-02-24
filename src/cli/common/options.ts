@@ -24,7 +24,7 @@ const StartTimeString = date2string(new Date())
 export const benchmarkOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging [do not use for the real benchmark as this affects the time measurements, but only to find errors]' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process (if given, this will choose these files randomly and add the chosen names to the output'},
+	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process (if given, this will choose these files randomly and add the chosen names to the output' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
 	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
 	{ name: 'slice',        alias: 's', type: String,  description: 'Automatically slice for *all* variables (default) or *no* slicing and only parsing/dataflow construction', defaultValue: 'all', typeLabel: '{underline all/no}' },
@@ -43,7 +43,7 @@ export const exportQuadsOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
-	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process'},
+	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process' },
 	{ name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to {italic out.quads})', typeLabel: '{underline file}' },
 ]
 
@@ -63,11 +63,11 @@ const featureNameList = [...allFeatureNames].map(s => `"${s}"`).join(', ')
 export const statisticOptions: OptionDefinition[] = [
 	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process'},
+	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
 	{ name: 'output-dir',   alias: 'o', type: String,  description: 'Folder to write the output to', defaultValue: `${process.cwd()}/statistics-out/${date2string(new Date())}`, typeLabel: '{underline folder}' },
 	{ name: 'dump-json',                type: Boolean, description: 'Write JSON output during the extraction', typeLabel: '{underline folder}' },
-	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.'},
+	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.' },
 	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
 	{ name: 'features',                 type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: '{underline names}' },
 ]
@@ -77,10 +77,10 @@ export const statisticHelperOptions: OptionDefinition[] = [
 	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
 	{ name: 'input',        alias: 'i', type: String,  description: 'Pass single file as src to read from', multiple: false, defaultOption: true, typeLabel: '{underline file}' },
 	{ name: 'output-dir',   alias: 'o', type: String,  description: 'Folder to write the output to', typeLabel: '{underline folder}' },
-	{ name: 'root-dir',                 type: String,  description: 'Root dir for the statistics files', defaultValue: ''},
-	{ name: 'compress',                 type: Boolean, description: 'Compress the output folder to a single file', defaultValue: false},
+	{ name: 'root-dir',                 type: String,  description: 'Root dir for the statistics files', defaultValue: '' },
+	{ name: 'compress',                 type: Boolean, description: 'Compress the output folder to a single file', defaultValue: false },
 	{ name: 'dump-json',                type: Boolean, description: 'Write JSON output during the extraction', typeLabel: '{underline folder}' },
-	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.'},
+	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.' },
 	{ name: 'features',                 type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: '{underline names}' },
 ]
 

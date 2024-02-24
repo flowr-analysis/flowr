@@ -2,7 +2,8 @@ import type {
 	RParseRequest,
 	RParseRequestFromFile,
 	RParseRequestFromText,
-	RShell
+	RShell } from '../r-bridge'
+import { ts2r
 } from '../r-bridge'
 import type { Feature, FeatureKey, FeatureSelection, FeatureStatistics } from './features'
 import { ALL_FEATURES, allFeatureNames } from './features'
@@ -11,7 +12,7 @@ import fs from 'fs'
 import { log } from '../util/log'
 import type { MetaStatistics } from './meta-statistics'
 import { initialMetaStatistics } from './meta-statistics'
-import type {StepResults } from '../core'
+import type { StepResults } from '../core'
 import { SteppingSlicer } from '../core'
 import { jsonReplacer, jsonRetriever } from '../util/json'
 
@@ -48,7 +49,6 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 	let result = initializeFeatureStatistics()
 	const meta = initialMetaStatistics()
 
-	let first = true
 	const outputs = new Map<T, StepResults<'dataflow'>>()
 	for await (const request of requests) {
 		onRequest(request)
@@ -56,14 +56,10 @@ export async function extractUsageStatistics<T extends RParseRequestFromText | R
 		const suffix = request.request === 'file' ? request.content.replace(new RegExp('^' + (rootPath ?? '')), '') : undefined
 		try {
 			let output
-			({ stats: result, output } = await extractSingle(result, shell, {
-				...request,
-				ensurePackageInstalled: first
-			}, features, suffix))
+			({ stats: result, output } = await extractSingle(result, shell, request, features, suffix))
 			outputs.set(request, output)
 			processMetaOnSuccessful(meta, request)
 			meta.numberOfNormalizedNodes.push(output.normalize.idMap.size)
-			first = false
 		} catch(e) {
 			log.error('for request: ', request, e)
 			processMetaOnUnsuccessful(meta, request)
@@ -103,8 +99,15 @@ async function extractSingle(result: FeatureStatistics, shell: RShell, request: 
 		stepOfInterest: 'dataflow',
 		request, shell
 	}).allRemainingSteps()
-	// await retrieveXmlFromRCode(from, shell)
-	const doc = parser.parseFromString(slicerOutput.parse, 'text/xml')
+
+	// retrieve parsed xml through (legacy) xmlparsedata
+	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
+	shell.sendCommands(
+		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
+		'try(flowr_output<-xmlparsedata::xml_parse_data(flowr_parsed,includeText=TRUE,pretty=FALSE),silent=FALSE)',
+	)
+	const parsed = (await shell.sendCommandWithOutput(`cat(flowr_output,${ts2r(shell.options.eol)})`)).join(shell.options.eol)
+	const doc = parser.parseFromString(parsed, 'text/xml')
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	for(const [key, feature] of Object.entries(ALL_FEATURES) as [FeatureKey, Feature<any>][]) {

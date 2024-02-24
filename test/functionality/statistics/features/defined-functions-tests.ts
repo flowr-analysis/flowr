@@ -131,7 +131,7 @@ describe('Defined Functions', withShell(shell => {
 					],
 					length: {
 						lines:                   7,
-						characters:              80,
+						characters:              110,
 						nonWhitespaceCharacters: 62
 					}
 				}]]]

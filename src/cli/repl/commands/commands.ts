@@ -36,13 +36,13 @@ ${italic('[1] 2', output.formatter)}
 
 Besides that, you can use the following commands. The scripts ${italic('can', output.formatter)} accept further arguments. There are the following basic commands:
 ${
-	Array.from(Object.entries(commands)).filter(([, {script}]) => !script).map(
+	Array.from(Object.entries(commands)).filter(([, { script }]) => !script).map(
 		c => printHelpForScript(c, output.formatter)).join('\n')
 }
 
 Furthermore, you can directly call the following scripts which accept arguments. If you are unsure, try to add ${italic('--help', output.formatter)} after the command.
 ${
-	Array.from(Object.entries(commands)).filter(([, {script}]) => script).map(
+	Array.from(Object.entries(commands)).filter(([, { script }]) => script).map(
 		([command, { description }]) => `  ${bold(padCmd(':' + command), output.formatter)}${description}`).join('\n')
 }
 
@@ -68,7 +68,7 @@ const commands: Record<string, ReplCommand> = {
 	'controlflow*': controlflowStarCommand
 }
 
-for(const [script, { target, description, type}] of Object.entries(scripts)) {
+for(const [script, { target, description, type }] of Object.entries(scripts)) {
 	if(type === 'master script') {
 		commands[script] = {
 			description,

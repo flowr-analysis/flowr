@@ -14,7 +14,7 @@ import {
 	printNormalizedAstToMermaid,
 	printNormalizedAstToMermaidUrl
 } from '../../../print/normalize-printer'
-import type { IPipelineStep} from '../../step'
+import type { IPipelineStep } from '../../step'
 import { PipelineStepStage } from '../../step'
 import type { DeepPartial, DeepReadonly } from 'ts-essentials'
 import type { ParseRequiredInput } from './00-parse'

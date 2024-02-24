@@ -1,4 +1,4 @@
-import type { RNodeWithParent} from '../../r-bridge'
+import type { RNodeWithParent } from '../../r-bridge'
 import { RoleInParent, visitAst } from '../../r-bridge'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
 

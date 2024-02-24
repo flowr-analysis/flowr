@@ -1,7 +1,7 @@
 /**
  * Defines the type of syntax constructs that we track (e.g., true, false, 0, 1, T, F, conditions...)
  */
-import type { RNodeWithParent} from '../../r-bridge'
+import type { RNodeWithParent } from '../../r-bridge'
 import { RFalse, RTrue, RType } from '../../r-bridge'
 import type { SummarizedMeasurement } from '../../util/summarizer/benchmark/data'
 import { summarizeMeasurement } from '../../util/summarizer/benchmark/first-phase/process'

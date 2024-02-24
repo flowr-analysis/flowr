@@ -1,6 +1,6 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import { parseToQuads } from '../../../print/parse-printer'
-import type { IPipelineStep} from '../../step'
+import type { IPipelineStep } from '../../step'
 import { PipelineStepStage } from '../../step'
 import type { RParseRequest, RShell } from '../../../../r-bridge'
 import { retrieveXmlFromRCode } from '../../../../r-bridge'

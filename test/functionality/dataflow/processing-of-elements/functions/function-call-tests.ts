@@ -26,13 +26,13 @@ describe('Function Call', withShell(shell => {
 		assertDataflow('Calling function a', shell, 'i <- 4; a <- function(x) { x }\na(i)',
 			emptyGraph()
 				.defineVariable('0', 'i')
-				.defineVariable('3', 'a', LocalScope, {environment: envWithFirstI})
-				.use('11', 'i', {environment: envWithIA})
-				.use('12', unnamedArgument('12'), {environment: envWithIA})
+				.defineVariable('3', 'a', LocalScope, { environment: envWithFirstI })
+				.use('11', 'i', { environment: envWithIA })
+				.use('12', unnamedArgument('12'), { environment: envWithIA })
 				.call('13', 'a', [{
 					nodeId: '12', name: unnamedArgument('12'), scope: LocalScope, used: 'always'
 				}],
-				{environment: envWithIA})
+				{ environment: envWithIA })
 				.defineFunction('8', '8', ['6'], {
 					out:               [],
 					in:                [],
@@ -40,9 +40,9 @@ describe('Function Call', withShell(shell => {
 					scope:             LocalScope,
 					environments:      envWithXParamDefined,
 					graph:             new Set(['4', '6']),
-				}, {environment: popLocalEnvironment(envWithXParamDefined)})
-				.defineVariable('4', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
-				.use('6', 'x', {environment: envWithXParamDefined}, false)
+				}, { environment: popLocalEnvironment(envWithXParamDefined) })
+				.defineVariable('4', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+				.use('6', 'x', { environment: envWithXParamDefined }, false)
 				.reads('6', '4')
 				.reads('11', '0')
 				.definedBy('3', '8')
@@ -61,15 +61,15 @@ describe('Function Call', withShell(shell => {
 		assertDataflow('Calling function a with an indirection', shell, 'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
 			emptyGraph()
 				.defineVariable('0', 'i')
-				.defineVariable('3', 'a', LocalScope, {environment: envWithFirstI})
-				.defineVariable('10', 'b', LocalScope, {environment: envWithIA})
-				.use('11', 'a', {environment: envWithIA})
-				.use('14', 'i', {environment: envWithIAB})
-				.use('15', unnamedArgument('15'), {environment: envWithIAB})
+				.defineVariable('3', 'a', LocalScope, { environment: envWithFirstI })
+				.defineVariable('10', 'b', LocalScope, { environment: envWithIA })
+				.use('11', 'a', { environment: envWithIA })
+				.use('14', 'i', { environment: envWithIAB })
+				.use('15', unnamedArgument('15'), { environment: envWithIAB })
 				.call('16', 'b', [{
 					nodeId: '15', name: unnamedArgument('15'), scope: LocalScope, used: 'always'
 				}],
-				{environment: envWithIAB})
+				{ environment: envWithIAB })
 				.defineFunction('8', '8', ['6'], {
 					out:               [],
 					in:                [],
@@ -78,9 +78,9 @@ describe('Function Call', withShell(shell => {
 					environments:      envWithXParamDefined,
 					graph:             new Set(['4', '6'])
 				}, 
-				{environment: popLocalEnvironment(envWithXParamDefined)})
-				.defineVariable('4', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
-				.use('6', 'x', {environment: envWithXParamDefined}, false)
+				{ environment: popLocalEnvironment(envWithXParamDefined) })
+				.defineVariable('4', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+				.use('6', 'x', { environment: envWithXParamDefined }, false)
 				.reads('6', '4')
 				.reads('14', '0')
 				.definedBy('3', '8')
@@ -116,14 +116,14 @@ describe('Function Call', withShell(shell => {
 a <- function(x) { x <- x; x <- 3; 1 }
 a(i)`, emptyGraph()
 			.defineVariable('0', 'i')
-			.defineVariable('3', 'a', LocalScope, {environment: envWithFirstI})
-			.use('17', 'i', {environment: envWithIAndLargeA})
-			.use('18', unnamedArgument('18'), {environment: envWithIAndLargeA})
+			.defineVariable('3', 'a', LocalScope, { environment: envWithFirstI })
+			.use('17', 'i', { environment: envWithIAndLargeA })
+			.use('18', unnamedArgument('18'), { environment: envWithIAndLargeA })
 			.reads('17', '0')
 			.call('19', 'a', [{
 				nodeId: '18', name: unnamedArgument('18'), scope: LocalScope, used: 'always'
 			}],
-			{environment: envWithIAndLargeA})
+			{ environment: envWithIAndLargeA })
 			.defineFunction('14', '14', ['12'], {
 				out:               [],
 				in:                [],
@@ -132,12 +132,12 @@ a(i)`, emptyGraph()
 				environments:      envWithLastXDefined,
 				graph:             new Set(['4', '6', '7', '9'])
 			},
-			{environment: initializeCleanEnvironments()}
+			{ environment: initializeCleanEnvironments() }
 			)
-			.defineVariable('4', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
-			.defineVariable('6', 'x', LocalScope, {environment: envWithXConstDefined}, false)
-			.defineVariable('9', 'x', LocalScope, {environment: envWithXDefinedForFunc}, false)
-			.use('7', 'x', {environment: envWithXConstDefined}, false)
+			.defineVariable('4', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+			.defineVariable('6', 'x', LocalScope, { environment: envWithXConstDefined }, false)
+			.defineVariable('9', 'x', LocalScope, { environment: envWithXDefinedForFunc }, false)
+			.use('7', 'x', { environment: envWithXConstDefined }, false)
 			.exit('12', '1', envWithLastXDefined, {}, false)
 			.definedBy('6', '7')
 			.reads('7', '4')
@@ -173,9 +173,9 @@ a(i)`, emptyGraph()
 				environments:      envWithXParameter,
 				graph:             new Set(['0', '2'])
 			},
-			{environment: initializeCleanEnvironments()})
-			.defineVariable('0', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
-			.use('2', 'x', {environment: envWithXParameter}, false)
+			{ environment: initializeCleanEnvironments() })
+			.defineVariable('0', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+			.use('2', 'x', { environment: envWithXParameter }, false)
 			.exit('4', '+', envWithXParameter , {}, false)
 			.relates('2', '4')
 			.reads('2', '0')
@@ -204,9 +204,9 @@ a(i)`, emptyGraph()
 a()()`,
 		emptyGraph()
 			.call('9', `${UnnamedFunctionCallPrefix}9`, [],
-				{environment: envWithADefined})
+				{ environment: envWithADefined })
 			.call('8', 'a', [],
-				{environment: envWithADefined})
+				{ environment: envWithADefined })
 			.defineVariable('0', 'a')
 			.defineFunction('5', '5', ['3'], {
 				out:               [],
@@ -216,7 +216,7 @@ a()()`,
 				environments:      pushLocalEnvironment(initializeCleanEnvironments()),
 				graph:             new Set(['3'])
 			},
-			{environment: initializeCleanEnvironments()}
+			{ environment: initializeCleanEnvironments() }
 			)
 			.defineFunction('3', '3', ['1'], {
 				out:               [],
@@ -226,7 +226,7 @@ a()()`,
 				environments:      pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
 				graph:             new Set()
 			},
-			{environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
+			{ environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 			.exit('1', '42', pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())) , {}, false)
 			.calls('9', '8')
 			.reads('8', '0')
@@ -241,7 +241,7 @@ a()()`,
 	describe('Argument which is expression', () => {
 		assertDataflow('Calling with 1 + x', shell, 'foo(1 + x)',
 			emptyGraph()
-				.call('5', 'foo', [{ nodeId: '4', name: unnamedArgument('4'), scope: LocalScope, used: 'always' }], {environment: initializeCleanEnvironments()})
+				.call('5', 'foo', [{ nodeId: '4', name: unnamedArgument('4'), scope: LocalScope, used: 'always' }], { environment: initializeCleanEnvironments() })
 				.use('4', unnamedArgument('4'))
 				.use('2', 'x')
 				.reads('4', '2')
@@ -252,7 +252,7 @@ a()()`,
 	describe('Argument which is anonymous function call', () => {
 		assertDataflow('Calling with a constant function', shell, 'f(function() { 3 })',
 			emptyGraph()
-				.call('5', 'f', [{ nodeId: '4', name: unnamedArgument('4'), scope: LocalScope, used: 'always' }], {environment: initializeCleanEnvironments()})
+				.call('5', 'f', [{ nodeId: '4', name: unnamedArgument('4'), scope: LocalScope, used: 'always' }], { environment: initializeCleanEnvironments() })
 				.use('4', unnamedArgument('4'))
 				.defineFunction('3', '3', ['1'], {
 					out:               [],
@@ -276,7 +276,7 @@ a()()`,
 					{ nodeId: '7', name: unnamedArgument('7'), scope: LocalScope, used: 'always' },
 					['by', { nodeId: '10', name: 'by', scope: LocalScope, used: 'always' }],
 				],
-				{environment: initializeCleanEnvironments()})
+				{ environment: initializeCleanEnvironments() })
 				.use('2', unnamedArgument('2'))
 				.use('7', unnamedArgument('7'))
 				.use('10', 'by')
@@ -288,7 +288,7 @@ a()()`,
 				.call('6', 'length', [
 					{ nodeId: '5', name: unnamedArgument('5'), scope: LocalScope, used: 'always' }
 				],
-				{environment: initializeCleanEnvironments()})
+				{ environment: initializeCleanEnvironments() })
 				.reads('7', '6')
 				.use('5', unnamedArgument('5'))
 				.argument('6', '5')
@@ -314,8 +314,8 @@ a()()`,
 		assertDataflow('Late binding of y', shell, 'a <- function() { y }\ny <- 12\na()',
 			emptyGraph()
 				.defineVariable('0', 'a')
-				.defineVariable('5', 'y', LocalScope, {environment: defWithA})
-				.call('9', 'a', [], {environment: defWithAY})
+				.defineVariable('5', 'y', LocalScope, { environment: defWithA })
+				.call('9', 'a', [], { environment: defWithAY })
 				.defineFunction('3', '3', ['1'], {
 					out:               [],
 					in:                [{ nodeId: '1', name: 'y', scope: LocalScope, used: 'always' }],
@@ -324,7 +324,7 @@ a()()`,
 					environments:      innerEnv,
 					graph:             new Set(['1'])
 				})
-				.use('1', 'y', {environment: innerEnv}, false)
+				.use('1', 'y', { environment: innerEnv }, false)
 				.definedBy('0', '3')
 				.calls('9', '3')
 				.reads('9', '0')
@@ -355,7 +355,7 @@ a(,3)`, emptyGraph()
 				'empty',
 				{ nodeId: '12', name: unnamedArgument('12'), scope: LocalScope, used: 'always' }
 			],
-			{environment: withADefined})
+			{ environment: withADefined })
 			.defineVariable('0', 'a')
 			.defineFunction('8', '8', ['6'], {
 				out:               [],
@@ -365,12 +365,12 @@ a(,3)`, emptyGraph()
 				environments:      withXYParameter,
 				graph:             new Set(['1', '4', '6'])
 			},
-			{environment: popLocalEnvironment(withXYParameter)})
-			.defineVariable('1', 'x', LocalScope, {environment: pushLocalEnvironment(initializeCleanEnvironments())}, false)
-			.defineVariable('4', 'y', LocalScope, {environment: withXParameter}, false)
-			.use('6', 'y', {environment: withXYParameter}, false)
+			{ environment: popLocalEnvironment(withXYParameter) })
+			.defineVariable('1', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+			.defineVariable('4', 'y', LocalScope, { environment: withXParameter }, false)
+			.use('6', 'y', { environment: withXYParameter }, false)
 			.reads('6', '4')
-			.use('12', unnamedArgument('12'), {environment: withADefined})
+			.use('12', unnamedArgument('12'), { environment: withADefined })
 			.reads('13', '0')
 			.calls('13', '8')
 			.definedBy('0', '8')
@@ -391,8 +391,8 @@ a(,3)`, emptyGraph()
 				{ nodeId: '5', name: unnamedArgument('5'), scope: LocalScope, used: 'always' },
 			])
 			.use('3', 'x')
-			.use('5', unnamedArgument('5'), {environment: envWithX})
-			.use('4', 'x', {environment: envWithX})
+			.use('5', unnamedArgument('5'), { environment: envWithX })
+			.use('4', 'x', { environment: envWithX })
 			.argument('6', '3')
 			.argument('6', '5')
 			.reads('5', '4')
@@ -406,7 +406,7 @@ a(,3)`, emptyGraph()
 			])
 			.use('4', unnamedArgument('4'))
 			.defineVariable('1', 'x')
-			.use('6', 'x', {environment: define({ nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '3' }, LocalScope, initializeCleanEnvironments())})
+			.use('6', 'x', { environment: define({ nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '3' }, LocalScope, initializeCleanEnvironments()) })
 			.argument('5', '4')
 			.reads('4', '1')
 			.reads('6', '1')

@@ -29,7 +29,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		info?: Partial<DataflowGraphVertexFunctionDefinition>,
 		asRoot: boolean = true) {
 		const scope = (info && info.scope) ? info.scope : LocalScope
-		return this.addVertex(deepMergeObject({tag: 'function-definition', id, name, subflow, exitPoints, scope}, info), asRoot)
+		return this.addVertex(deepMergeObject({ tag: 'function-definition', id, name, subflow, exitPoints, scope }, info), asRoot)
 	}
 
 	/**
@@ -45,7 +45,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	public call(id: NodeId, name: string, args: FunctionArgument[],
 		info?: Partial<DataflowGraphVertexFunctionCall>,
 		asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({tag: 'function-call', id, name, args}, info), asRoot)
+		return this.addVertex(deepMergeObject({ tag: 'function-call', id, name, args }, info), asRoot)
 	}
 
 	/**
@@ -61,7 +61,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	public exit(id: NodeId, name: string, environment?: REnvironmentInformation,
 		info?: Partial<DataflowGraphExitPoint>,
 		asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({tag: 'exit-point', id, environment, name}, info), asRoot)
+		return this.addVertex(deepMergeObject({ tag: 'exit-point', id, environment, name }, info), asRoot)
 	}
 
 	/**
@@ -76,7 +76,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public defineVariable(id: NodeId, name: string, scope: string = LocalScope,
 		info?: Partial<DataflowGraphVertexVariableDefinition>, asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({tag: 'variable-definition', id, name, scope}, info), asRoot)
+		return this.addVertex(deepMergeObject({ tag: 'variable-definition', id, name, scope }, info), asRoot)
 	}    
 	
 	/**
@@ -90,7 +90,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point) or is it nested (e.g., as part of a function definition)
 	 */
 	public use(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({ tag: 'use', id, name}, info), asRoot)
+		return this.addVertex(deepMergeObject({ tag: 'use', id, name }, info), asRoot)
 	}
 
 	/**

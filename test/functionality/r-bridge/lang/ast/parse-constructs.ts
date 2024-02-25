@@ -5,7 +5,7 @@ import { addRanges, rangeFrom } from '../../../../../src/util/range'
 import type { RNode } from '../../../../../src'
 import { RType } from '../../../../../src'
 import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v1/internal'
-import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data'
+import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import { label } from '../../../_helper/label'
 import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 
@@ -17,7 +17,7 @@ interface IfThenSpacing {
 	locationNum:  ReturnType<typeof rangeFrom>
 	end:          ReturnType<typeof rangeFrom>
 	/* yes, we could give them just once, but if we ever want to modify the list this is more flexible */
-	capabilities: FlowrCapabilityId[]
+	capabilities: SupportedFlowrCapabilityId[]
 }
 
 const IfThenSpacingVariants: IfThenSpacing[] = [
@@ -140,7 +140,7 @@ interface ElseSpacing {
 	locationElse: ReturnType<typeof rangeFrom>
 	otherwise:    (offset: SourceRange) => RNode,
 	num:          number,
-	capabilities: FlowrCapabilityId[]
+	capabilities: SupportedFlowrCapabilityId[]
 }
 
 // suffix of if-then counterparts
@@ -564,153 +564,159 @@ describe('Parse simple constructs', withShell(shell => {
 			)
 		})
 		describe('repeat', () => {
-			assertAst('Single instruction repeat', shell, 'repeat 2', exprList({
-				type:     RType.RepeatLoop,
-				location: rangeFrom(1, 1, 1, 6),
-				lexeme:   'repeat',
-				info:     {},
-				body:     ensureExpressionList({
-					type:     RType.Number,
-					location: rangeFrom(1, 8, 1, 8),
-					lexeme:   '2',
-					content:  numVal(2),
-					info:     {}
-				})
-			}), {
-				ignoreAdditionalTokens: true
-			})
-			assertAst('Two statement repeat', shell, 'repeat { x; y }', exprList({
-				type:     RType.RepeatLoop,
-				location: rangeFrom(1, 1, 1, 6),
-				lexeme:   'repeat',
-				info:     {},
-				body:     {
-					type:     RType.ExpressionList,
-					location: rangeFrom(1, 8, 1, 15),
-					lexeme:   '{ x; y }',
+			assertAst(label('Single instruction repeat', ['repeat-loop', 'numbers']),
+				shell, 'repeat 2', exprList({
+					type:     RType.RepeatLoop,
+					location: rangeFrom(1, 1, 1, 6),
+					lexeme:   'repeat',
 					info:     {},
-					children: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 10, 1, 10),
-						namespace: undefined,
-						lexeme:    'x',
-						content:   'x',
-						info:      {},
-					}, {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 13, 1, 13),
-						namespace: undefined,
-						lexeme:    'y',
-						content:   'y',
-						info:      {}
-					}]
-				}
-			}), {
-				ignoreAdditionalTokens: true
-			})
+					body:     ensureExpressionList({
+						type:     RType.Number,
+						location: rangeFrom(1, 8, 1, 8),
+						lexeme:   '2',
+						content:  numVal(2),
+						info:     {}
+					})
+				}), {
+					ignoreAdditionalTokens: true
+				})
+			assertAst(label('Two statement repeat', ['repeat-loop', 'numbers', 'grouping']),
+				shell, 'repeat { x; y }', exprList({
+					type:     RType.RepeatLoop,
+					location: rangeFrom(1, 1, 1, 6),
+					lexeme:   'repeat',
+					info:     {},
+					body:     {
+						type:     RType.ExpressionList,
+						location: rangeFrom(1, 8, 1, 15),
+						lexeme:   '{ x; y }',
+						info:     {},
+						children: [{
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 10, 1, 10),
+							namespace: undefined,
+							lexeme:    'x',
+							content:   'x',
+							info:      {},
+						}, {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 13, 1, 13),
+							namespace: undefined,
+							lexeme:    'y',
+							content:   'y',
+							info:      {}
+						}]
+					}
+				}), {
+					ignoreAdditionalTokens: true
+				})
 		})
 		describe('while', () => {
-			assertAst('while (TRUE) 42', shell, 'while (TRUE) 42', exprList({
-				type:      RType.WhileLoop,
-				location:  rangeFrom(1, 1, 1, 5),
-				lexeme:    'while',
-				info:      {},
-				condition: {
-					type:     RType.Logical,
-					location: rangeFrom(1, 8, 1, 11),
-					lexeme:   'TRUE',
-					content:  true,
-					info:     {}
-				},
-				body: ensureExpressionList({
-					type:     RType.Number,
-					location: rangeFrom(1, 14, 1, 15),
-					lexeme:   '42',
-					content:  numVal(42),
-					info:     {}
+			assertAst(label('while (TRUE) 42', ['while-loop', 'logical', 'numbers']),
+				shell, 'while (TRUE) 42', exprList({
+					type:      RType.WhileLoop,
+					location:  rangeFrom(1, 1, 1, 5),
+					lexeme:    'while',
+					info:      {},
+					condition: {
+						type:     RType.Logical,
+						location: rangeFrom(1, 8, 1, 11),
+						lexeme:   'TRUE',
+						content:  true,
+						info:     {}
+					},
+					body: ensureExpressionList({
+						type:     RType.Number,
+						location: rangeFrom(1, 14, 1, 15),
+						lexeme:   '42',
+						content:  numVal(42),
+						info:     {}
+					})
+				}), {
+					ignoreAdditionalTokens: true
 				})
-			}), {
-				ignoreAdditionalTokens: true
-			})
 
-			assertAst('Two statement while', shell, 'while (FALSE) { x; y }', exprList({
-				type:      RType.WhileLoop,
-				location:  rangeFrom(1, 1, 1, 5),
-				lexeme:    'while',
-				info:      {},
-				condition: {
-					type:     RType.Logical,
-					location: rangeFrom(1, 8, 1, 12),
-					lexeme:   'FALSE',
-					content:  false,
-					info:     {}
-				},
-				body: ensureExpressionList({
-					type:     RType.ExpressionList,
-					location: rangeFrom(1, 15, 1, 22),
-					lexeme:   '{ x; y }',
-					info:     {},
-					children: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 17, 1, 17),
-						namespace: undefined,
-						lexeme:    'x',
-						content:   'x',
-						info:      {}
-					}, {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 20, 1, 20),
-						namespace: undefined,
-						lexeme:    'y',
-						content:   'y',
-						info:      {}
-					}]
+			assertAst(label('Two statement while', ['while-loop', 'logical', 'grouping']),
+				shell, 'while (FALSE) { x; y }', exprList({
+					type:      RType.WhileLoop,
+					location:  rangeFrom(1, 1, 1, 5),
+					lexeme:    'while',
+					info:      {},
+					condition: {
+						type:     RType.Logical,
+						location: rangeFrom(1, 8, 1, 12),
+						lexeme:   'FALSE',
+						content:  false,
+						info:     {}
+					},
+					body: ensureExpressionList({
+						type:     RType.ExpressionList,
+						location: rangeFrom(1, 15, 1, 22),
+						lexeme:   '{ x; y }',
+						info:     {},
+						children: [{
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 17, 1, 17),
+							namespace: undefined,
+							lexeme:    'x',
+							content:   'x',
+							info:      {}
+						}, {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 20, 1, 20),
+							namespace: undefined,
+							lexeme:    'y',
+							content:   'y',
+							info:      {}
+						}]
+					})
+				}), {
+					ignoreAdditionalTokens: true
 				})
-			}), {
-				ignoreAdditionalTokens: true
-			})
 		})
 		describe('break', () => {
-			assertAst('while (TRUE) break', shell, 'while (TRUE) break', exprList({
-				type:      RType.WhileLoop,
-				location:  rangeFrom(1, 1, 1, 5),
-				lexeme:    'while',
-				info:      {},
-				condition: {
-					type:     RType.Logical,
-					location: rangeFrom(1, 8, 1, 11),
-					lexeme:   'TRUE',
-					content:  true,
-					info:     {}
-				},
-				body: ensureExpressionList({
-					type:     RType.Break,
-					location: rangeFrom(1, 14, 1, 18),
-					lexeme:   'break',
-					info:     {}
-				})
-			}))
+			assertAst(label('while (TRUE) break', ['while-loop', 'logical', 'break']),
+				shell, 'while (TRUE) break', exprList({
+					type:      RType.WhileLoop,
+					location:  rangeFrom(1, 1, 1, 5),
+					lexeme:    'while',
+					info:      {},
+					condition: {
+						type:     RType.Logical,
+						location: rangeFrom(1, 8, 1, 11),
+						lexeme:   'TRUE',
+						content:  true,
+						info:     {}
+					},
+					body: ensureExpressionList({
+						type:     RType.Break,
+						location: rangeFrom(1, 14, 1, 18),
+						lexeme:   'break',
+						info:     {}
+					})
+				}))
 		})
 		describe('next', () => {
-			assertAst('Next in while', shell, 'while (TRUE) next', exprList({
-				type:      RType.WhileLoop,
-				location:  rangeFrom(1, 1, 1, 5),
-				lexeme:    'while',
-				info:      {},
-				condition: {
-					type:     RType.Logical,
-					location: rangeFrom(1, 8, 1, 11),
-					lexeme:   'TRUE',
-					content:  true,
-					info:     {}
-				},
-				body: ensureExpressionList({
-					type:     RType.Next,
-					location: rangeFrom(1, 14, 1, 17),
-					lexeme:   'next',
-					info:     {}
-				})
-			}))
+			assertAst(label('Next in while', ['while-loop', 'next']),
+				shell, 'while (TRUE) next', exprList({
+					type:      RType.WhileLoop,
+					location:  rangeFrom(1, 1, 1, 5),
+					lexeme:    'while',
+					info:      {},
+					condition: {
+						type:     RType.Logical,
+						location: rangeFrom(1, 8, 1, 11),
+						lexeme:   'TRUE',
+						content:  true,
+						info:     {}
+					},
+					body: ensureExpressionList({
+						type:     RType.Next,
+						location: rangeFrom(1, 14, 1, 17),
+						lexeme:   'next',
+						info:     {}
+					})
+				}))
 		})
 	})
 }))

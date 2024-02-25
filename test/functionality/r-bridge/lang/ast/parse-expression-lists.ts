@@ -1,26 +1,28 @@
-import { assertAst, withShell } from '../../../_helper/shell'
+import { assertAst, sameForSteps, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RawRType, RType } from '../../../../../src/r-bridge'
+import { RawRType, RType } from '../../../../../src'
+import { label } from '../../../_helper/label'
+import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 
 describe('Parse expression lists',
-	withShell((shell) => {
+	withShell(shell => {
 		describe('Expression lists with newlines and braces', () => {
 			// this is already covered by other tests, yet it is good to state it here explicitly (expr list is the default top-level token for R)
-			assertAst('"42" (single element)', shell,
-				'42',
-				exprList({
-					type:     RType.Number,
-					location: rangeFrom(1, 1, 1, 2),
-					lexeme:   '42',
-					content:  numVal(42),
-					info:     {}
-				})
+			assertAst(label('single element', ['numbers']),
+				shell, '42', sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+					exprList({
+						type:     RType.Number,
+						location: rangeFrom(1, 1, 1, 2),
+						lexeme:   '42',
+						content:  numVal(42),
+						info:     {}
+					})
+				)
 			)
 			// the r standard does not seem to allow '\r\n' or '\n\r'
-			const twoLine = '42\na'
-			assertAst(`${JSON.stringify(twoLine)} (two lines)`, shell,
-				twoLine,
+			assertAst(label('two lines', ['name-normal', 'numbers']),
+				shell, '42\na',
 				exprList(
 					{
 						type:     RType.Number,

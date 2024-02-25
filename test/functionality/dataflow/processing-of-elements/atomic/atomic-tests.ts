@@ -55,7 +55,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				shell, 'a$b',
 				emptyGraph().use('0', 'a', { when: 'maybe' })
 			)
-			assertDataflow(label('at constant', ['name-normal', 'slotted-access']),
+			assertDataflow(label('at constant', ['name-normal', 'slot-access']),
 				shell, 'a@b',
 				emptyGraph().use('0', 'a', { when: 'maybe' })
 			)

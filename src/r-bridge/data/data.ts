@@ -200,8 +200,8 @@ export const flowrCapabilities = {
 									description: '_Detect calls like `x$y`, `x$"y"`, `x$y$z`, ..._'
 								},
 								{
-									name:        'Slotted Access',
-									id:          'slotted-access',
+									name:        'Slot Access',
+									id:          'slot-access',
 									supported:   'fully',
 									description: '_Detect calls like `x@y`, `x@y@z`, ..._'
 								},

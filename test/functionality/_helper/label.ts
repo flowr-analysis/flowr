@@ -7,7 +7,7 @@
 
 
 import { DefaultMap } from '../../../src/util/defaultmap'
-import type { FlowrCapabilityId } from '../../../src/r-bridge/data'
+import type { FlowrCapabilityWithPath, SupportedFlowrCapabilityId } from '../../../src/r-bridge/data'
 import { getAllCapabilities } from '../../../src/r-bridge/data'
 import type { MergeableRecord } from '../../../src/util/objects'
 
@@ -16,16 +16,16 @@ const TheGlobalLabelMap: DefaultMap<string, TestLabel[]> = new DefaultMap(() => 
 
 const uniqueTestId = (() => {
 	let id = 0
-	return () => `${id++}`
+	return () => id++
 })()
 
 
 export type TestLabelContext = 'parse' | 'desugar' | 'dataflow' | 'other'
 export interface TestLabel extends MergeableRecord {
-	readonly id:           string
+	readonly id:           number
 	readonly name:         string
 	/** even if ids appear multiple times we only want to count each one once */
-	readonly capabilities: ReadonlySet<FlowrCapabilityId>
+	readonly capabilities: ReadonlySet<SupportedFlowrCapabilityId>
 	/** this is automatically set (hihi) by functions like `assertAst` to correctly derive what part of capability we check */
 	readonly context:      Set<TestLabelContext>
 }
@@ -37,10 +37,10 @@ export interface TestLabel extends MergeableRecord {
  * @param ids      - the capability ids to attach to the test
  * @param context  - the context in which the test is run, if not given this returns the label information for a test-helper to attach it
  */
-export function label(testname: string, ids: readonly FlowrCapabilityId[], context: readonly TestLabelContext[]): string
-export function label(testname: string, ids: readonly FlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel
-export function label(testname: string, ids: readonly FlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel | string {
-	const capabilities: Set<FlowrCapabilityId> = new Set(ids)
+export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context: readonly TestLabelContext[]): string
+export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel
+export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel | string {
+	const capabilities: Set<SupportedFlowrCapabilityId> = new Set(ids)
 	const label: TestLabel = {
 		id:      uniqueTestId(),
 		name:    testname,
@@ -79,9 +79,65 @@ export function decorateLabelContext(label: TestLabel | string, context: readonl
 	return getFullNameOfLabel(label)
 }
 
+function printIdRange(start: number, last: number): string {
+	if(start === last) {
+		return `#${start}`
+	} else {
+		return `#${start}-#${last}`
+	}
+}
 
-function testNameIds(n: TestLabel) {
-	return `#${n.id}`
+function mergeConsecutiveIds(ids: readonly number[]): string {
+	if(ids.length === 0) {
+		return ''
+	}
+
+	const sorted = ids.toSorted((a, b) => a - b)
+	const result: string[] = []
+	let start: number = sorted[0]
+	let last: number = start
+
+	for(const id of sorted.slice(1)) {
+		if(id === last + 1) {
+			last = id
+		} else {
+			result.push(printIdRange(start, last))
+			start = id
+			last = id
+		}
+	}
+	result.push(printIdRange(start, last))
+	return `\x1b[36m${result.join('\x1b[m, \x1b[36m')}\x1b[m`
+}
+
+function printCapability(label: FlowrCapabilityWithPath, testNames: TestLabel[]) {
+	const supportClaim = label.supported ? ` (claim: ${label.supported} supported)` : ''
+	const paddedLabel = `${' '.repeat(label.path.length * 2 - 2)}[${label.path.join('/')}] ${label.name}${supportClaim}`
+	const tests = testNames.length > 1 ? 'tests:' : 'test: '
+	// we only have to warn if we claim to support but do not offer
+	if(testNames.length === 0) {
+		if(label.supported !== 'not' && label.supported !== undefined) {
+			console.log(`\x1b[1;31m${paddedLabel} is not covered by any tests\x1b[0m`)
+		} else {
+			console.log(`${paddedLabel}`)
+		}
+		return
+	}
+
+	// group by contexts
+	const contextMap = new DefaultMap<TestLabelContext, TestLabel[]>(() => [])
+	for(const t of testNames) {
+		for(const c of t.context) {
+			contextMap.get(c).push(t)
+		}
+	}
+	let formattedTestNames = ''
+	for(const [context, tests] of contextMap.entries()) {
+		const formatted = mergeConsecutiveIds(tests.map(t => t.id))
+		formattedTestNames += `\n${' '.repeat(label.path.length * 2 - 2)}      - ${context} [${tests.length}]: ${formatted}`
+	}
+
+	console.log(`\x1b[1m${paddedLabel}\x1b[0m is covered by ${testNames.length} ${tests}${formattedTestNames}`)
 }
 
 function printLabelSummary(): void {
@@ -90,34 +146,8 @@ function printLabelSummary(): void {
 	const allCapabilities = [...getAllCapabilities()]
 	const entries = allCapabilities.map(c => [c, TheGlobalLabelMap.get(c.id)] as const)
 
-	for(const [label, testNames] of entries) {
-		const supportClaim = label.supported ? ` (claim: ${label.supported} supported)` : ''
-		const paddedLabel = `${' '.repeat(label.path.length * 2 - 2)}[${label.path.join('/')}] ${label.name}${supportClaim}`
-		const tests = testNames.length > 1 ? 'tests:' : 'test: '
-		// we only have to warn if we claim to support but do not offer
-		if(testNames.length === 0) {
-			if(label.supported !== 'not' && label.supported !== undefined) {
-				console.log(`\x1b[1;31m${paddedLabel} is not covered by any tests\x1b[0m`)
-			} else {
-				console.log(`${paddedLabel}`)
-			}
-			continue
-		}
-
-		// group by contexts
-		const contextMap = new DefaultMap<TestLabelContext, TestLabel[]>(() => [])
-		for(const t of testNames) {
-			for(const c of t.context) {
-				contextMap.get(c).push(t)
-			}
-		}
-		let formattedTestNames = ''
-		for(const [context, tests] of contextMap.entries()) {
-			const formatted = `\x1b[36m${tests.map(testNameIds).join('\x1b[m, \x1b[36m')}\x1b[m`
-			formattedTestNames += `\n${' '.repeat(label.path.length * 2 - 2)}      - ${context} [${tests.length}]: ${formatted}`
-		}
-
-		console.log(`\x1b[1m${paddedLabel}\x1b[0m is covered by ${testNames.length} ${tests}${formattedTestNames}`)
+	for(const [capability, testNames] of entries) {
+		printCapability(capability, testNames)
 	}
 }
 

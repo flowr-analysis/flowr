@@ -141,7 +141,6 @@ export function sameForSteps<T>(steps: (typeof NORMALIZE | typeof DESUGAR_NORMAL
 }
 
 /**
- * Call within describeSession
  * For a given input code this takes multiple ASTs depending on the respective normalizer step to run!
  *
  * @see sameForSteps
@@ -157,7 +156,6 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 				it(`${step.humanReadableName}`, async function() {
 					await ensureConfig(shell, this, userConfig)
 
-					// TODO: cache pipelines
 					const pipeline = new PipelineExecutor(createPipeline(PARSE_WITH_R_SHELL_STEP, step), {
 						shell,
 						request: requestFromInput(input)

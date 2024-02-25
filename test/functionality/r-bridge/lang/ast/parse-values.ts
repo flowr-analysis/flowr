@@ -29,12 +29,12 @@ describe('CSV parsing', withShell(shell => {
 			content: 'x <- 1'
 		}, shell)
 		const parsed = prepareParsedData(code)
-		const one = '{"line1":1,"col1":1,"line2":1,"col2":1,"id":1,"parent":3,"token":"SYMBOL","terminal":true,"text":"x"}'
-		const two = '{"line1":1,"col1":3,"line2":1,"col2":4,"id":2,"parent":7,"token":"LEFT_ASSIGN","terminal":true,"text":"<-"}'
-		const three = `{"line1":1,"col1":1,"line2":1,"col2":1,"id":3,"parent":7,"token":"expr","terminal":false,"text":"x","children":[${one}]}`
-		const four = '{"line1":1,"col1":6,"line2":1,"col2":6,"id":4,"parent":5,"token":"NUM_CONST","terminal":true,"text":"1"}'
-		const five = `{"line1":1,"col1":6,"line2":1,"col2":6,"id":5,"parent":7,"token":"expr","terminal":false,"text":"1","children":[${four}]}`
-		assert.deepEqual(Object.fromEntries(parsed), JSON.parse(`{"1":${one},"2":${two},"3":${three},"4":${four},"5":${five},"7":{"line1":1,"col1":1,"line2":1,"col2":6,"id":7,"parent":0,"token":"expr","terminal":false,"text":"x <- 1","children":[${three},${two},${five}]}}`))
+		const one = { 'line1': 1,'col1': 1,'line2': 1,'col2': 1,'id': 1,'parent': 3,'token': 'SYMBOL','terminal': true,'text': 'x' }
+		const two = { 'line1': 1,'col1': 3,'line2': 1,'col2': 4,'id': 2,'parent': 7,'token': 'LEFT_ASSIGN','terminal': true,'text': '<-' }
+		const three = { 'line1': 1,'col1': 1,'line2': 1,'col2': 1,'id': 3,'parent': 7,'token': 'expr','terminal': false,'text': 'x','children': [one] }
+		const four = { 'line1': 1,'col1': 6,'line2': 1,'col2': 6,'id': 4,'parent': 5,'token': 'NUM_CONST','terminal': true,'text': '1' }
+		const five = { 'line1': 1,'col1': 6,'line2': 1,'col2': 6,'id': 5,'parent': 7,'token': 'expr','terminal': false,'text': '1','children': [four] }
+		assert.deepEqual(parsed, [{ 'line1': 1,'col1': 1,'line2': 1,'col2': 6,'id': 7,'parent': 0,'token': 'expr','terminal': false,'text': 'x <- 1','children': [three,two,five] }])
 	})
 }))
 

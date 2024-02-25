@@ -1,11 +1,11 @@
 import type { ReplCommand } from './main'
-import { SteppingSlicer } from '../../../core'
 import type { RShell } from '../../../r-bridge'
 import { requestFromInput } from '../../../r-bridge'
 import {
 	graphToMermaid,
 	graphToMermaidUrl
 } from '../../../util/mermaid'
+import {SteppingSlicer} from "../../../core/stepping-slicer";
 
 async function dataflow(shell: RShell, remainingLine: string) {
 	return await new SteppingSlicer({

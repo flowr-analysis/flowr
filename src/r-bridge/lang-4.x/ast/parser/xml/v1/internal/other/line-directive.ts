@@ -1,11 +1,11 @@
 import type { XmlBasedJson } from '../../../common/input-format'
-import type { RComment, RLineDirective} from '../../../../../model'
+import type { RComment, RLineDirective } from '../../../../../model'
 import { RType } from '../../../../../model'
-import { parseLog } from '../../normalize'
 import { retrieveMetaStructure } from '../../../common/meta'
 import { guard } from '../../../../../../../../util/assert'
 import { executeHook } from '../../hooks'
 import type { ParserData } from '../../data'
+import { parseLog } from '../../../../json/parser'
 
 const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/
 
@@ -21,7 +21,7 @@ export function normalizeLineDirective(data: ParserData, obj: XmlBasedJson): RLi
 	parseLog.debug('[line-directive]')
 	obj = executeHook(data.hooks.other.onLineDirective.before, data, obj)
 
-	const { location, content } = retrieveMetaStructure(data.config, obj)
+	const { location, content } = retrieveMetaStructure(obj)
 	guard(content.startsWith('#line'), 'line directive must start with #line')
 	const match = LineDirectiveRegex.exec(content)
 	let result: RLineDirective | RComment

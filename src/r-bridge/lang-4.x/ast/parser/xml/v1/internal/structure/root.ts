@@ -8,22 +8,19 @@ import { RType, RawRType } from '../../../../../model'
 import { log } from '../../../../../../../../util/log'
 import { partition } from '../../../../../../../../util/arrays'
 import type { RDelimiter } from '../../../../../model/nodes/info'
+import { childrenKey } from '../../../input-format'
 
 export function normalizeRootObjToAst(
 	data: ParserData,
 	obj: XmlBasedJson
 ): RExpressionList {
-	const config = data.config
 	const exprContent = getKeyGuarded<XmlBasedJson>(obj, RawRType.ExpressionList)
-	assureTokenType(config.tokenMap, exprContent, RawRType.ExpressionList)
+	assureTokenType(exprContent, RawRType.ExpressionList)
 
 	let parsedChildren: (RNode | RDelimiter)[] = []
 
-	if(config.children in exprContent) {
-		const children = getKeyGuarded<XmlBasedJson[]>(
-			exprContent,
-			config.children
-		)
+	if(childrenKey in exprContent) {
+		const children = getKeyGuarded<XmlBasedJson[]>(exprContent, childrenKey)
 
 		parsedChildren = normalizeBasedOnType(data, children)
 	} else {

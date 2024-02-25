@@ -110,14 +110,14 @@ const IfThenBraceVariants: IfThenSpacing[] = [{
 	locationTrue: rangeFrom(1, 4, 1, 7),
 	num:          1,
 	locationNum:  rangeFrom(1,10,1,10),
-	then:         inBrace(rangeFrom(1, 9, 1, 9), { type: RType.Number, location: rangeFrom(1, 10, 1, 10), lexeme: '1', content: numVal(1), info: {}}),
+	then:         inBrace(rangeFrom(1, 9, 1, 9), { type: RType.Number, location: rangeFrom(1, 10, 1, 10), lexeme: '1', content: numVal(1), info: {} }),
 	end:          rangeFrom(1, 11, 1, 11),
 	capabilities: ['if', 'logical', 'numbers', 'grouping']
 }, {
 	str:          'if(TRUE){42}',
 	locationTrue: rangeFrom(1, 4, 1, 7),
 	locationNum:  rangeFrom(1, 10, 1, 11),
-	then:         inBrace(rangeFrom(1, 9, 1, 9), { type: RType.Number, location: rangeFrom(1, 10, 1, 11), lexeme: '42', content: numVal(42), info: {}}),
+	then:         inBrace(rangeFrom(1, 9, 1, 9), { type: RType.Number, location: rangeFrom(1, 10, 1, 11), lexeme: '42', content: numVal(42), info: {} }),
 	num:          42,
 	end:          rangeFrom(1, 12, 1, 12),
 	capabilities: ['if', 'logical', 'numbers', 'grouping']
@@ -127,7 +127,7 @@ const IfThenBraceVariants: IfThenSpacing[] = [{
 	locationNum:  rangeFrom(1, 12, 1, 12),
 	then:         inBrace(rangeFrom(1, 9, 1, 9),
 		inBrace(rangeFrom(1, 10, 1, 10),
-			inBrace(rangeFrom(1, 11, 1, 11), { type: RType.Number, location: rangeFrom(1, 12, 1, 12), lexeme: '1', content: numVal(1), info: {}})
+			inBrace(rangeFrom(1, 11, 1, 11), { type: RType.Number, location: rangeFrom(1, 12, 1, 12), lexeme: '1', content: numVal(1), info: {} })
 		)
 	),
 	num:          1,
@@ -162,7 +162,7 @@ const ElseSpacingVariants: ElseSpacing[] = [{
 const ElseBracesVariants: ElseSpacing[] = [{
 	str:          ' else {2}',
 	locationElse: rangeFrom(0, 8, 0, 8),
-	otherwise: 	  off => inBrace(addRanges(off, rangeFrom(0, 7, 0, 7)), { type: RType.Number, location: addRanges(off, rangeFrom(0, 8, 0, 8)), lexeme: '2', content: numVal(2), info: {}}),
+	otherwise: 	  off => inBrace(addRanges(off, rangeFrom(0, 7, 0, 7)), { type: RType.Number, location: addRanges(off, rangeFrom(0, 8, 0, 8)), lexeme: '2', content: numVal(2), info: {} }),
 	num:          2,
 	capabilities: ['if', 'numbers', 'grouping']
 }, {
@@ -170,7 +170,7 @@ const ElseBracesVariants: ElseSpacing[] = [{
 	locationElse: rangeFrom(0, 10, 0, 11),
 	otherwise:    off => inBrace(addRanges(off, rangeFrom(0, 7, 0, 7)),
 		inBrace(addRanges(off, rangeFrom(0, 8, 0, 8)),
-			inBrace(addRanges(off, rangeFrom(0, 9, 0, 9)), { type: RType.Number, location: addRanges(off, rangeFrom(0, 10, 0, 11)), lexeme: '42', content: numVal(42), info: {}})
+			inBrace(addRanges(off, rangeFrom(0, 9, 0, 9)), { type: RType.Number, location: addRanges(off, rangeFrom(0, 10, 0, 11)), lexeme: '42', content: numVal(42), info: {} })
 		)
 	),
 	num:          42,
@@ -180,7 +180,7 @@ const ElseBracesVariants: ElseSpacing[] = [{
 describe('Parse simple constructs', withShell(shell => {
 	describe('if', () => {
 		describe('if-then', () => {
-			for(const pool of [{name: 'braces', variants: IfThenBraceVariants}, {
+			for(const pool of [{ name: 'braces', variants: IfThenBraceVariants }, {
 				name:     'spacing',
 				variants: IfThenSpacingVariants
 			}]) {
@@ -243,11 +243,11 @@ describe('Parse simple constructs', withShell(shell => {
 			}
 		})
 		describe('if-then-else', () => {
-			for(const elsePool of [{name: 'braces', variants: ElseBracesVariants}, {
+			for(const elsePool of [{ name: 'braces', variants: ElseBracesVariants }, {
 				name:     'spacing',
 				variants: ElseSpacingVariants
 			}]) {
-				for(const ifThenPool of [{name: 'braces', variants: IfThenBraceVariants}, {
+				for(const ifThenPool of [{ name: 'braces', variants: IfThenBraceVariants }, {
 					name:     'spacing',
 					variants: IfThenSpacingVariants
 				}]) {

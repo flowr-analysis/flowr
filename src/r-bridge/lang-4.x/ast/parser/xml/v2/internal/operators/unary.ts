@@ -1,6 +1,6 @@
 import type { XmlBasedJson } from '../../../common/input-format'
 import { retrieveMetaStructure } from '../../../common/meta'
-import type { RFunctionCall} from '../../../../../model'
+import type { RFunctionCall } from '../../../../../model'
 import { RType } from '../../../../../model'
 import type { NormalizeConfiguration } from '../../data'
 import { normalizeSingleToken } from '../single-element'
@@ -15,7 +15,7 @@ import { normalizeSingleToken } from '../single-element'
  * @returns The parsed unary op function call
  */
 export function normalizeUnary(config: NormalizeConfiguration, [operator, operand]: XmlBasedJson[]): RFunctionCall {
-	const { location, content } = retrieveMetaStructure(config, operator)
+	const { location, content } = retrieveMetaStructure(operator)
 	return {
 		type:         RType.FunctionCall,
 		lexeme:       config.currentLexeme ?? content,

@@ -1,4 +1,4 @@
-import type { CommonSummarizerConfiguration} from '../summarizer'
+import type { CommonSummarizerConfiguration } from '../summarizer'
 import { Summarizer } from '../summarizer'
 import { getAllFiles } from '../../files'
 import { list } from 'tar'

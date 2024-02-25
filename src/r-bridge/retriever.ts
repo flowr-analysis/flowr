@@ -1,30 +1,23 @@
 import { type RShell } from './shell'
 import type { XmlParserHooks, NormalizedAst } from './lang-4.x'
-import { ts2r, normalize } from './lang-4.x'
+import { ts2r } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
-import type {AsyncOrSync, DeepPartial, DeepReadonly} from 'ts-essentials'
+import type { AsyncOrSync, DeepPartial } from 'ts-essentials'
 import { guard } from '../util/assert'
-import {RShellExecutor} from './shell-executor'
+import { RShellExecutor } from './shell-executor'
 import objectHash from 'object-hash'
+import { normalize } from './lang-4.x/ast/parser/json/parser'
 
 export interface RParseRequestFromFile {
-	request: 'file';
+	readonly request:  'file';
 	/** The path to the file (absolute paths are probably best here */
-	content: string;
+	readonly  content: string;
 }
 
 export interface RParseRequestFromText {
-	request: 'text'
+	readonly request: 'text'
 	/* Source code to parse (not a file path) */
-	content: string
-}
-
-interface RParseRequestBase {
-	/**
-   * Ensure that all required packages are present and if not install them?
-   * The only reason to set this to `false` is probably in a series of parse requests for the same session.
-   */
-	ensurePackageInstalled: boolean
+	readonly content: string
 }
 
 /**
@@ -35,12 +28,12 @@ export interface RParseRequestProvider {
 }
 
 /**
- * A request that can be passed along to {@link retrieveXmlFromRCode}.
+ * A request that can be passed along to {@link retrieveParseDataFromRCode}.
  */
-export type RParseRequest = (RParseRequestFromFile | RParseRequestFromText) & RParseRequestBase
+export type RParseRequest = (RParseRequestFromFile | RParseRequestFromText)
 
-export function requestFromInput(input: `file://${string}`): RParseRequestFromFile & RParseRequestBase
-export function requestFromInput(input: string): RParseRequestFromText & RParseRequestBase
+export function requestFromInput(input: `file://${string}`): RParseRequestFromFile
+export function requestFromInput(input: string): RParseRequestFromText
 
 /**
  * Creates a {@link RParseRequest} from a given input.
@@ -48,9 +41,8 @@ export function requestFromInput(input: string): RParseRequestFromText & RParseR
 export function requestFromInput(input: `file://${string}` | string): RParseRequest {
 	const file = input.startsWith('file://')
 	return {
-		request:                file ? 'file' : 'text',
-		content:                file ? input.slice(7) : input,
-		ensurePackageInstalled: false // should be called within describeSession for that!
+		request: file ? 'file' : 'text',
+		content: file ? input.slice(7) : input
 	}
 }
 
@@ -58,9 +50,9 @@ export function requestProviderFromFile(): RParseRequestProvider {
 	return {
 		createRequest(path: string): RParseRequest {
 			return {
-				request:                'file',
-				content:                path,
-				ensurePackageInstalled: false}
+				request: 'file',
+				content: path,
+			}
 		}
 	}
 }
@@ -69,9 +61,8 @@ export function requestProviderFromText(text: {[path: string]: string}): RParseR
 	return {
 		createRequest(path: string): RParseRequest {
 			return {
-				request:                'text',
-				content:                text[path],
-				ensurePackageInstalled: false
+				request: 'text',
+				content: text[path]
 			}
 		}
 	}
@@ -90,46 +81,43 @@ const ErrorMarker = 'err'
  * Throws if the file could not be parsed.
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
-export function retrieveXmlFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
+export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
-	const setupCommands = [
-		`flowr_output <- flowr_parsed <- "${ErrorMarker}"`,
-		// now, try to retrieve the ast
-		`try(flowr_parsed<-parse(${request.request}=${JSON.stringify(request.content)},keep.source=TRUE${suffix}),silent=FALSE)`,
-		'try(flowr_output<-xmlparsedata::xml_parse_data(flowr_parsed,includeText=TRUE,pretty=FALSE),silent=FALSE)',
-	]
-	const outputCommand = `cat(flowr_output,${ts2r(shell.options.eol)})`
+	const eol = ts2r(shell.options.eol)
+	const command =
+		/* first check if flowr_get is already part of the environment */
+		'if(!exists("flowr_get")){'
+		/* if not, define it complete wrapped in a try so that we can handle failures gracefully on stdout */
+	+ 'flowr_get<-function(...){tryCatch({'
+		/* the actual code to parse the R code, ... allows us to keep the old 'file=path' and 'text=content' semantics. we define flowr_output using the super assignment to persist it in the env! */
+	+ 'flowr_output<<-utils::getParseData(parse(...,keep.source=TRUE),includeText=TRUE);'
+		/* json conversion of the output, dataframe="values" allows us to receive a list of lists (which is more compact)!
+		 * so we do not depend on jsonlite and friends, we do so manually (:sparkles:)
+		 */
+	+ `cat("[",paste0(apply(flowr_output,1,function(o)sprintf("[%s,%s,%s,%s,%s,%s,%s,%s,%s]",o[[1]],o[[2]],o[[3]],o[[4]],o[[5]],o[[6]],deparse(o[[7]]),if(o[[8]])"true"else"false",deparse(o[[9]]))),collapse=","),"]",${eol},sep="")`
+		/* error handling (just produce the marker) */
+	+ `},error=function(e){cat("${ErrorMarker}",${eol})})};`
+		/* compile the function to improve perf. */
+	+ 'flowr_get<-compiler::cmpfun(flowr_get)};'
+		/* call the function with the request */
+	+ `flowr_get(${request.request}=${JSON.stringify(request.content)}${suffix})`
 
-	if(shell instanceof RShellExecutor){
-		if(request.ensurePackageInstalled)
-			shell.ensurePackageInstalled('xmlparsedata',true)
-
-		shell.addPrerequisites(setupCommands)
-		return guardOutput(shell.run(outputCommand))
+	if(shell instanceof RShellExecutor) {
+		return guardRetrievedOutput(shell.run(command), request)
 	} else {
-		const run = async() => {
-			if(request.ensurePackageInstalled)
-				await shell.ensurePackageInstalled('xmlparsedata', true)
-
-			shell.sendCommands(...setupCommands)
-			return guardOutput((await shell.sendCommandWithOutput(outputCommand)).join(shell.options.eol))
-		}
-		return run()
-	}
-
-	function guardOutput(output: string): string {
-		guard(output !== ErrorMarker, () => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
-		return output
+		return shell.sendCommandWithOutput(command).then(result =>
+			guardRetrievedOutput(result.join(shell.options.eol), request)
+		)
 	}
 }
 
 /**
- * Uses {@link retrieveXmlFromRCode} and returns the nicely formatted object-AST.
+ * Uses {@link retrieveParseDataFromRCode} and returns the nicely formatted object-AST.
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<NormalizedAst> {
-	const xml = await retrieveXmlFromRCode(request, shell)
-	return normalize(xml, await shell.tokenMap(), hooks)
+	const data = await retrieveParseDataFromRCode(request, shell)
+	return normalize(data, hooks)
 }
 
 /**
@@ -143,13 +131,17 @@ export function removeTokenMapQuotationMarks(str: string): string {
 	}
 }
 
-export type TokenMap = DeepReadonly<Record<string, string>>
-
 /**
- * Needs to be called *after*  {@link retrieveXmlFromRCode} (or {@link retrieveNormalizedAstFromRCode})
+ * Needs to be called *after*  {@link retrieveParseDataFromRCode} (or {@link retrieveNormalizedAstFromRCode})
  */
 export async function retrieveNumberOfRTokensOfLastParse(shell: RShell): Promise<number> {
-	const result = await shell.sendCommandWithOutput(`cat(nrow(getParseData(flowr_parsed)),${ts2r(shell.options.eol)})`)
+	const result = await shell.sendCommandWithOutput(`cat(nrow(flowr_output),${ts2r(shell.options.eol)})`)
 	guard(result.length === 1, () => `expected exactly one line to obtain the number of R tokens, but got: ${JSON.stringify(result)}`)
 	return Number(result[0])
+}
+
+function guardRetrievedOutput(output: string, request: RParseRequest): string {
+	guard(output !== ErrorMarker,
+		() => `unable to parse R code (see the log for more information) for request ${JSON.stringify(request)}}`)
+	return output
 }

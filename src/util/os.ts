@@ -10,11 +10,9 @@ export function getPlatform(): Os {
 	const platform =  process.platform
 	if(platform === 'darwin') {
 		platformCache = 'mac-os'
-	}
-	else if(platform === 'linux') {
+	} else if(platform === 'linux') {
 		platformCache = 'linux'
-	}
-	else if(platform === 'win32') {
+	} else if(platform === 'win32') {
 		platformCache = 'windows'
 	} else {
 		platformCache = 'unknown'

@@ -6,7 +6,7 @@
 import { RShell, RShellReviveOptions } from '../../r-bridge'
 import { bold } from '../../statistics'
 import { prompt } from './prompt'
-import type { ReplOutput} from './commands'
+import type { ReplOutput } from './commands'
 import { commandNames, getCommand, standardReplOutput } from './commands'
 import * as readline from 'node:readline'
 import { splitAtEscapeSensitive } from '../../util/args'
@@ -83,7 +83,7 @@ export async function replProcessAnswer(output: ReplOutput, expr: string, shell:
  */
 export async function repl(shell = new RShell({ revive: RShellReviveOptions.Always }), rl = readline.createInterface(DEFAULT_REPL_READLINE_CONFIGURATION), output = standardReplOutput, historyFile: string | undefined = defaultHistoryFile) {
 	if(historyFile) {
-		rl.on('history', h => fs.writeFileSync(historyFile, h.join('\n'), {encoding: 'utf-8'}))
+		rl.on('history', h => fs.writeFileSync(historyFile, h.join('\n'), { encoding: 'utf-8' }))
 	}
 
 	// the incredible repl :D, we kill it with ':quit'
@@ -102,7 +102,8 @@ export async function repl(shell = new RShell({ revive: RShellReviveOptions.Alwa
 }
 
 export function loadReplHistory(historyFile: string): string[] | undefined {
-	if(!fs.existsSync(historyFile))
+	if(!fs.existsSync(historyFile)) {
 		return undefined
-	return fs.readFileSync(historyFile, {encoding: 'utf-8'}).split('\n')
+	}
+	return fs.readFileSync(historyFile, { encoding: 'utf-8' }).split('\n')
 }

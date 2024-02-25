@@ -1,7 +1,7 @@
 import type { XmlBasedJson } from '../../../common/input-format'
 import { retrieveMetaStructure } from '../../../common/meta'
 import type {
-	RFunctionCall} from '../../../../../model'
+	RFunctionCall } from '../../../../../model'
 import {
 	RType
 } from '../../../../../model'
@@ -16,7 +16,7 @@ export function normalizeBinary(
 	config: NormalizeConfiguration,
 	[lhs, operator, rhs]: XmlBasedJson[]
 ): RFunctionCall {
-	const { location, content } = retrieveMetaStructure(config, operator)
+	const { location, content } = retrieveMetaStructure(operator)
 	return {
 		type:         RType.FunctionCall,
 		lexeme:       config.currentLexeme ?? content,

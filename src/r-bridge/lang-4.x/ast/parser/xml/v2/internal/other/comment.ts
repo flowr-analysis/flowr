@@ -1,5 +1,5 @@
 import type { XmlBasedJson } from '../../../common/input-format'
-import type { RComment} from '../../../../../model'
+import type { RComment } from '../../../../../model'
 import { RType } from '../../../../../model'
 import { retrieveMetaStructure } from '../../../common/meta'
 import type { NormalizeConfiguration } from '../../data'
@@ -12,7 +12,7 @@ import type { NormalizeConfiguration } from '../../data'
  * @param obj  - The json object to extract the meta-information from
  */
 export function normalizeComment(config: NormalizeConfiguration, obj: XmlBasedJson): RComment {
-	const { location, content } = retrieveMetaStructure(config, obj)
+	const { location, content } = retrieveMetaStructure(obj)
 	// we trust the parser here
 	// guard(content.startsWith ('#'), 'comment must start with #')
 

@@ -1,6 +1,6 @@
 import type { Identifier, IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
 import { dataflowLogger } from '../../v1'
-import type { DataflowScopeName} from './scopes'
+import type { DataflowScopeName } from './scopes'
 import { LocalScope } from './scopes'
 
 /**

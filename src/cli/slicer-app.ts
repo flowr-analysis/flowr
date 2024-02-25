@@ -84,7 +84,7 @@ async function getSlice() {
 	} else {
 		if(doSlicing && options.diff) {
 			const originalCode = options['input-is-text'] ? options.input : fs.readFileSync(options.input).toString()
-			console.log(sliceDiffAnsi((slice as SliceResult).result, normalize, new Set(mappedSlices.map(({id}) => id)), originalCode))
+			console.log(sliceDiffAnsi((slice as SliceResult).result, normalize, new Set(mappedSlices.map(({ id }) => id)), originalCode))
 		}
 		if(options.stats) {
 			console.log(sliceStatsAsString)

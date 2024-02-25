@@ -18,8 +18,6 @@ LABEL author="Florian Sihler" git="https://github.com/Code-Inspect/flowr"
 WORKDIR /app
 
 RUN apk add --no-cache R
-# install the xmlparsedata package because we need it
-RUN Rscript -e "install.packages('xmlparsedata',repos='https://cloud.r-project.org/')"
 
 # we keep the package.json for module resolution
 COPY ./package.json ./scripts/demo.R LICENSE /app/

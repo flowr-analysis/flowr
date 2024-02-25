@@ -1,4 +1,4 @@
-import type { NodeId, ParentInformation} from './processing'
+import type { NodeId, ParentInformation } from './processing'
 import { visitAst } from './processing'
 import type { RNode } from './model'
 

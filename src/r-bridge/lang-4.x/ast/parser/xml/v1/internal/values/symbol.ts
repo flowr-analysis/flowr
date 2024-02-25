@@ -1,12 +1,12 @@
 import type { NamedXmlBasedJson } from '../../../common/input-format'
 import { guard } from '../../../../../../../../util/assert'
 import { retrieveMetaStructure } from '../../../common/meta'
-import { parseLog } from '../../normalize'
 import type { RSymbol } from '../../../../../model'
 import { isSymbol, RType } from '../../../../../model'
 import type { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { startAndEndsWith } from '../../../../../../../../util/strings'
+import { parseLog } from '../../../../json/parser'
 
 /**
  * Normalize the given object as an R symbol (incorporating namespace information).
@@ -26,15 +26,15 @@ export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]):
 	let location, content, namespace
 
 	if(objs.length === 1 && isSymbol(objs[0].name)) {
-		const meta  = retrieveMetaStructure(data.config, objs[0].content)
+		const meta  = retrieveMetaStructure(objs[0].content)
 		location    = meta.location
 		content     = meta.content
 		namespace   = undefined
 	} else if(objs.length === 3 && isSymbol(objs[2].name)) {
-		const meta  = retrieveMetaStructure(data.config, objs[2].content)
+		const meta  = retrieveMetaStructure(objs[2].content)
 		location    = meta.location
 		content     = meta.content
-		namespace   = retrieveMetaStructure(data.config, objs[0].content).content
+		namespace   = retrieveMetaStructure(objs[0].content).content
 	} else {
 		return executeUnknownHook(data.hooks.values.onSymbol.unknown, data, objs)
 	}

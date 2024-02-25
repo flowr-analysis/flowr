@@ -6,7 +6,7 @@ import {
 import { log } from '../util/log'
 import { allRFilesFrom } from '../util/files'
 import { processCommandLineArgs } from './common'
-import type { Arguments} from '../util/parallel'
+import type { Arguments } from '../util/parallel'
 import { LimitedThreadPool } from '../util/parallel'
 import { retrieveArchiveName, validateFeatures } from './common/features'
 import path from 'path'

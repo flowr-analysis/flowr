@@ -3,7 +3,6 @@ import type { RNode } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { normalizeLog } from '../normalize'
 import { expensiveTrace } from '../../../../../../../util/log'
-import { XML_NAME } from '../../common/xml-to-json'
 import { normalizeSingleToken } from './single-element'
 import type { NormalizeConfiguration } from '../data'
 import { normalizeUnary, normalizeBinary } from './operators'
@@ -23,8 +22,8 @@ import { tryNormalizeFor } from './loops/for'
  * @param config - The normalizer config to use
  */
 function handleExpressionList(tokens: XmlBasedJson[], config: NormalizeConfiguration): { segments: XmlBasedJson[][], braces: undefined | [start: XmlBasedJson, end: XmlBasedJson] } {
-	if(getTokenType(config.tokenMap, tokens[0]) === RawRType.BraceLeft) {
-		const endType = getTokenType(config.tokenMap, tokens[tokens.length - 1])
+	if(getTokenType(tokens[0]) === RawRType.BraceLeft) {
+		const endType = getTokenType(tokens[tokens.length - 1])
 		guard(endType === RawRType.BraceRight, () => `expected a brace at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`)
 		const nested = handleExpressionList(tokens.slice(1, tokens.length - 1), config)
 		return { segments: nested.segments, braces: [tokens[0], tokens[tokens.length - 1]] }
@@ -32,7 +31,7 @@ function handleExpressionList(tokens: XmlBasedJson[], config: NormalizeConfigura
 		let last = 0, i = 0
 		const segments: XmlBasedJson[][] = []
 		for(const token of tokens) {
-			if(token[XML_NAME] === RawRType.Semicolon) {
+			if(getTokenType(token) === RawRType.Semicolon) {
 				segments.push(tokens.slice(last, i++))
 				last = i + 1
 			}
@@ -54,7 +53,7 @@ export function normalizeExpression(
 		return []
 	}
 
-	expensiveTrace(normalizeLog,() => `[expr] ${tokens.map(x => x[XML_NAME]).join(', ')}`)
+	expensiveTrace(normalizeLog,() => `[expr] ${tokens.map(getTokenType).join(', ')}`)
 
 	if(tokens.length > 1) {
 		// iterate over types, find all semicolons, and segment the tokens based on them.
@@ -65,7 +64,7 @@ export function normalizeExpression(
 			normalizeLog.trace(`found ${segments.length} ';' segments`)
 			const processed = segments.flatMap(segment => normalizeExpression(config, segment))
 			if(braces) {
-				const { location, content } = retrieveMetaStructure(config, braces[0])
+				const { location, content } = retrieveMetaStructure(braces[0])
 				return [{
 					type:         RType.FunctionCall,
 					lexeme:       content,
@@ -98,7 +97,9 @@ export function normalizeExpression(
 	return [normalizeElems(config, tokens)]
 }
 
-const todo = (...x: unknown[]) => { throw new Error('not implemented: ' + JSON.stringify(x)) }
+const todo = (...x: unknown[]) => {
+	throw new Error('not implemented: ' + JSON.stringify(x))
+}
 
 /**
  * Parses a single structure in the ast based on its type (e.g., a constant, function call, symbol, ...)
@@ -114,7 +115,7 @@ function normalizeElems(config: NormalizeConfiguration, tokens: readonly XmlBase
 	}
 	// otherwise, before we check for fixed-length constructs we have to check for the *second* element
 	// in case we have a function-call, access, ...
-	const second = getTokenType(config.tokenMap, tokens[1])
+	const second = getTokenType(tokens[1])
 
 	// TODO: use internal functions directly and not named if they can not be overwritten!
 	switch(second) {

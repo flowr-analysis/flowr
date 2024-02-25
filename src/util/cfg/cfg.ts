@@ -202,7 +202,7 @@ function identifyMayStatementType(node: RNodeWithParent) {
 
 function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformation, then: ControlFlowInformation, otherwise: ControlFlowInformation | undefined): ControlFlowInformation {
 	const graph = new ControlFlowGraph()
-	graph.addVertex({ id: ifNode.info.id, name: ifNode.type, type: identifyMayStatementType(ifNode)})
+	graph.addVertex({ id: ifNode.info.id, name: ifNode.type, type: identifyMayStatementType(ifNode) })
 	graph.addVertex({ id: ifNode.info.id + '-exit', name: 'if-exit', type: CfgVertexType.EndMarker })
 	graph.merge(condition.graph)
 	graph.merge(then.graph)
@@ -567,8 +567,7 @@ function equalChildren(a: NodeId[] | undefined, b: NodeId[] | undefined): boolea
 export function equalCfg(a: ControlFlowGraph | undefined, b: ControlFlowGraph | undefined): boolean {
 	if(!a || !b) {
 		return a === b
-	}
-	else if(!setEquals(a.rootVertexIds(), b.rootVertexIds())) {
+	} else if(!setEquals(a.rootVertexIds(), b.rootVertexIds())) {
 		log.debug(`root vertex ids differ ${JSON.stringify(a.rootVertexIds(), jsonReplacer)} vs. ${JSON.stringify(b.rootVertexIds(), jsonReplacer)}.`)
 		return false
 	}

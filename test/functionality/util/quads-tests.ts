@@ -2,8 +2,8 @@ import { retrieveNormalizedAst, withShell } from '../_helper/shell'
 import { decorateAst, requestFromInput, RType } from '../../../src/r-bridge'
 import { defaultQuadIdGenerator, serialize2quads } from '../../../src/util/quads'
 import { assert } from 'chai'
-import { SteppingSlicer } from '../../../src/core'
 import { dataflowGraphToQuads } from '../../../src/core/print/dataflow-printer'
+import {SteppingSlicer} from "../../../src/core/stepping-slicer";
 
 describe('Quads', withShell(shell => {
 	const context = 'test'

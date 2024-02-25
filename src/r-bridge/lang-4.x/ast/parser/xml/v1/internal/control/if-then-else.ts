@@ -4,10 +4,10 @@ import type { ParserData } from '../../data'
 import { tryNormalizeIfThen } from './if-then'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { ensureExpressionList } from '../../../common/meta'
-import type { RIfThenElse} from '../../../../../model'
+import type { RIfThenElse } from '../../../../../model'
 import { RType, RawRType } from '../../../../../model'
-import { parseLog } from '../../normalize'
 import { guard } from '../../../../../../../../util/assert'
+import { parseLog } from '../../../../json/parser'
 
 /**
  * Try to parse the construct as a {@link RIfThenElse}.
@@ -15,13 +15,13 @@ import { guard } from '../../../../../../../../util/assert'
 export function tryNormalizeIfThenElse(
 	data: ParserData,
 	tokens: [
-		 ifToken:    NamedXmlBasedJson,
-		 leftParen:  NamedXmlBasedJson,
-		 condition:  NamedXmlBasedJson,
-		 rightParen: NamedXmlBasedJson,
-		 then:       NamedXmlBasedJson,
-		 elseToken:  NamedXmlBasedJson,
-		 elseBlock:  NamedXmlBasedJson
+		ifToken:    NamedXmlBasedJson,
+		leftParen:  NamedXmlBasedJson,
+		condition:  NamedXmlBasedJson,
+		rightParen: NamedXmlBasedJson,
+		then:       NamedXmlBasedJson,
+		elseToken:  NamedXmlBasedJson,
+		elseBlock:  NamedXmlBasedJson
 	]): RIfThenElse | undefined {
 	// we start by parsing a regular if-then structure
 	parseLog.trace('trying to parse if-then-else structure')

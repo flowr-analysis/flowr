@@ -4,11 +4,11 @@ import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../../util/log'
 import { guard } from '../../../../../../../../util/assert'
 import { tryNormalizeSingleNode } from '../structure'
-import type { RArgument, RNode, RSymbol} from '../../../../../model'
+import type { RArgument, RNode, RSymbol } from '../../../../../model'
 import { RType, RawRType } from '../../../../../model'
-import { parseLog } from '../../normalize'
 import { retrieveMetaStructure } from '../../../common/meta'
 import type { RDelimiter } from '../../../../../model/nodes/info'
+import { parseLog } from '../../../../json/parser'
 
 /**
  * Either parses `[expr]` or `[SYMBOL_SUB, EQ_SUB, expr]` as an argument of a function call in R.
@@ -30,7 +30,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 
 
 	const symbolOrExpr = objs[0]
-	const { location, content } = retrieveMetaStructure(data.config, symbolOrExpr.content)
+	const { location, content } = retrieveMetaStructure(symbolOrExpr.content)
 
 	let parsedValue: RNode | RDelimiter | undefined |  null
 	let name: RSymbol | undefined

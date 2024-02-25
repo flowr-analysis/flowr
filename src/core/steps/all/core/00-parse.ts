@@ -1,9 +1,8 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import { parseToQuads } from '../../../print/parse-printer'
-import type { IPipelineStep} from '../../step'
+import type { IPipelineStep } from '../../step'
 import { PipelineStepStage } from '../../step'
-import type { RParseRequest, RShell } from '../../../../r-bridge'
-import { retrieveXmlFromRCode } from '../../../../r-bridge'
+import {retrieveParseDataFromRCode, RParseRequest, RShell} from '../../../../r-bridge'
 import type { DeepReadonly } from 'ts-essentials'
 import type { RShellExecutor } from '../../../../r-bridge/shell-executor'
 
@@ -15,7 +14,7 @@ export interface ParseRequiredInput {
 }
 
 function processor(_results: unknown, input: Partial<ParseRequiredInput>) {
-	return retrieveXmlFromRCode(input.request as RParseRequest, input.shell as RShell)
+	return retrieveParseDataFromRCode(input.request as RParseRequest, input.shell as RShell)
 }
 
 export const PARSE_WITH_R_SHELL_STEP = {

@@ -7,5 +7,3 @@ export * from './operators'
 export * from './structure'
 export * from './expression'
 export * from '../../common/meta'
-export * from '../../common/xml-to-json'
-

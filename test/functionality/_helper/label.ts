@@ -9,7 +9,7 @@
 import { DefaultMap } from '../../../src/util/defaultmap'
 import type { FlowrCapabilityId } from '../../../src/r-bridge/data'
 import { getAllCapabilities } from '../../../src/r-bridge/data'
-import {MergeableRecord} from "../../../src/util/objects";
+import type { MergeableRecord } from '../../../src/util/objects'
 
 // map flowr ids to the capabilities
 const TheGlobalLabelMap: DefaultMap<string, string[]> = new DefaultMap(() => [])
@@ -39,21 +39,21 @@ export interface TestLabel extends MergeableRecord {
 export function label(testname: string, ...ids: FlowrCapabilityId[]): string {
 	const capabilities: Set<FlowrCapabilityId> = new Set(ids)
 	const label: TestLabel = {
-		id:           uniqueTestId(),
-		name:         testname,
+		id:   uniqueTestId(),
+		name: testname,
 		capabilities
 	}
 
 	for(const i of capabilities) {
-		TheGlobalLabelMap.get(i).push(label)
+		TheGlobalLabelMap.get(i).push(testname)
 	}
 
-	return label
+	return testname
 }
 
 
 function limitTestNameLength(n: string) {
-	return n.length > 25 ? n.substring(0, 25) + '…' : n;
+	return n.length > 25 ? n.substring(0, 25) + '…' : n
 }
 
 function printLabelSummary(): void {

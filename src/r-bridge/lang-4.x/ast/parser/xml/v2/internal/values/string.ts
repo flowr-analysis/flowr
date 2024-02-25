@@ -14,7 +14,7 @@ import type { NormalizeConfiguration } from '../../data'
  * @param obj  - The json object to extract the meta-information from
  */
 export function normalizeString(config: NormalizeConfiguration, obj: XmlBasedJson): RString {
-	const { location, content } = retrieveMetaStructure(config, obj)
+	const { location, content } = retrieveMetaStructure(obj)
 
 	// based on https://www.rdocumentation.org/packages/utils/versions/3.6.2/topics/getParseData we do not get strings with 1000 characters or more within the text field.
 	// therefore, we recover the full string from the surrounding expr lexeme field

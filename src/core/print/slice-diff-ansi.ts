@@ -23,7 +23,7 @@ function mergeJointRangesInSorted(loc: { location: SourceRange; selected: boolea
 }
 
 function highlight(s: string, selected: boolean): string {
-	const primary = ansiFormatter.format(s, {color: Colors.Yellow, effect: ColorEffect.Foreground,  style: FontStyles.Bold })
+	const primary = ansiFormatter.format(s, { color: Colors.Yellow, effect: ColorEffect.Foreground,  style: FontStyles.Bold })
 	return selected ? ansiFormatter.format(primary, { style: FontStyles.Underline }) : primary
 }
 

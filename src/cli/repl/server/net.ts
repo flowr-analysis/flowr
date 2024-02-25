@@ -3,9 +3,9 @@
  */
 import net from 'node:net'
 import type WebSocket from 'ws'
-import {WebSocketServer} from 'ws'
+import { WebSocketServer } from 'ws'
 import type * as Buffer from 'buffer'
-import {serverLog} from './server'
+import { serverLog } from './server'
 
 /** Function handler that should be triggered when the respective socket connects */
 export type OnConnect = (c: Socket) => void

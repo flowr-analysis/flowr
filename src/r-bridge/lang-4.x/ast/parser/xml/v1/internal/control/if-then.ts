@@ -1,12 +1,12 @@
-import type { NamedXmlBasedJson} from '../../../common/input-format'
+import type { NamedXmlBasedJson } from '../../../common/input-format'
 import { XmlParseError } from '../../../common/input-format'
 import { tryNormalizeSingleNode } from '../structure'
 import type { ParserData } from '../../data'
 import { executeHook, executeUnknownHook } from '../../hooks'
-import type { RIfThenElse} from '../../../../../model'
+import type { RIfThenElse } from '../../../../../model'
 import { RType, RawRType } from '../../../../../model'
-import { parseLog } from '../../normalize'
 import { ensureExpressionList, retrieveMetaStructure } from '../../../common/meta'
+import { parseLog } from '../../../../json/parser'
 
 /**
  * Try to parse the construct as a {@link RIfThenElse}.
@@ -14,11 +14,11 @@ import { ensureExpressionList, retrieveMetaStructure } from '../../../common/met
 export function tryNormalizeIfThen(
 	data: ParserData,
 	tokens: [
-		 ifToken:    NamedXmlBasedJson,
-		 leftParen:  NamedXmlBasedJson,
-		 condition:  NamedXmlBasedJson,
-		 rightParen: NamedXmlBasedJson,
-		 then:       NamedXmlBasedJson
+		ifToken:    NamedXmlBasedJson,
+		leftParen:  NamedXmlBasedJson,
+		condition:  NamedXmlBasedJson,
+		rightParen: NamedXmlBasedJson,
+		then:       NamedXmlBasedJson
 	]): RIfThenElse | undefined {
 	parseLog.trace('trying to parse if-then structure')
 	if(tokens[0].name !== RawRType.If) {
@@ -40,7 +40,7 @@ export function tryNormalizeIfThen(
 		throw new XmlParseError(`unexpected missing parts of if, received ${JSON.stringify([parsedCondition, parsedThen])} for ${JSON.stringify(tokens)}`)
 	}
 
-	const { location, content} = retrieveMetaStructure(data.config, tokens[0].content)
+	const { location, content } = retrieveMetaStructure(tokens[0].content)
 
 	const result: RIfThenElse = {
 		type:      RType.IfThenElse,

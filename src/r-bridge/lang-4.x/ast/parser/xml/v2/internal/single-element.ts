@@ -1,4 +1,4 @@
-import type { XmlBasedJson} from '../../common/input-format'
+import type { XmlBasedJson } from '../../common/input-format'
 import { getKeyGuarded, XmlParseError } from '../../common/input-format'
 import type { RNode } from '../../../../model'
 import { RawRType } from '../../../../model'
@@ -11,8 +11,11 @@ import { guard } from '../../../../../../../util/assert'
 import { normalizeComment } from './other'
 import { normalizeLineDirective } from './other/line-directive'
 import { getTokenType } from '../../common/meta'
+import {childrenKey, contentKey} from "../../input-format";
 
-const todo = (...x: unknown[]) => { throw new Error('not implemented: ' + JSON.stringify(x)) }
+const todo = (...x: unknown[]) => {
+	throw new Error('not implemented: ' + JSON.stringify(x))
+}
 
 /**
  * Parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)
@@ -23,7 +26,7 @@ const todo = (...x: unknown[]) => { throw new Error('not implemented: ' + JSON.s
  * @returns The parsed element as an `RNode` or an `RDelimiter` if it is such.
  */
 export function normalizeSingleToken(config: NormalizeConfiguration, token: XmlBasedJson): RNode {
-	const name = getTokenType(config.tokenMap, token)
+	const name = getTokenType(token)
 
 	switch(name) {
 		case RawRType.ParenLeft:
@@ -38,8 +41,8 @@ export function normalizeSingleToken(config: NormalizeConfiguration, token: XmlB
 		case RawRType.ExpressionList:
 		case RawRType.Expression:
 		case RawRType.ExprOfAssignOrHelp: {
-			config.currentLexeme = token[config.content] as string
-			const res = normalizeExpression(config, getKeyGuarded(token, config.children))
+			config.currentLexeme = token[contentKey] as string
+			const res = normalizeExpression(config, getKeyGuarded(token, childrenKey))
 			guard(res.length === 1, () => `expected only one element in the expression list, yet received ${JSON.stringify(res)}`)
 			return res[0]
 		}

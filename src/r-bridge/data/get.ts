@@ -37,7 +37,7 @@ function search(id: FlowrCapabilityId, capabilities: readonly FlowrCapability[],
 	return undefined
 }
 
-const capabilityCache = new Map<FlowrCapabilityId, FlowrCapabilityWithPath>
+const capabilityCache = new Map<FlowrCapabilityId, FlowrCapabilityWithPath>()
 
 export function getCapabilityById(id: FlowrCapabilityId): FlowrCapabilityWithPath {
 	const cached = capabilityCache.get(id)

@@ -15,7 +15,7 @@ import { retrieveMetaStructure } from '../../../common/meta'
  * @param obj  - The json object to extract the meta-information from
  */
 export function normalizeNumber(config: NormalizeConfiguration, obj: XmlBasedJson): RNumber | RLogical | RSymbol<NoInfo, typeof RNa> {
-	const { location, content } = retrieveMetaStructure(config, obj)
+	const { location, content } = retrieveMetaStructure(obj)
 	const common = {
 		location,
 		lexeme: content,

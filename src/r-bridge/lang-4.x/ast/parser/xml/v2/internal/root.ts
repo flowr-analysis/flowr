@@ -1,10 +1,11 @@
 import type { NormalizeConfiguration } from '../data'
 import type { XmlBasedJson } from '../../common/input-format'
 import { getKeyGuarded } from '../../common/input-format'
-import type { RExpressionList, RNode} from '../../../../model'
+import type { RExpressionList, RNode } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { normalizeExpression } from './expression'
 import { normalizeLog } from '../normalize'
+import {childrenKey} from "../../input-format";
 
 export function normalizeRoot(
 	config: NormalizeConfiguration,
@@ -15,8 +16,8 @@ export function normalizeRoot(
 	let normalized: RNode[] = []
 
 	// the children of an expression list are an array of expressions
-	if(config.children in exprContent) {
-		const children: XmlBasedJson[] = getKeyGuarded(exprContent, config.children)
+	if(childrenKey in exprContent) {
+		const children: XmlBasedJson[] = getKeyGuarded(exprContent, childrenKey)
 		normalized = normalizeExpression(config, children)
 	} else {
 		normalizeLog.debug('assume empty root')

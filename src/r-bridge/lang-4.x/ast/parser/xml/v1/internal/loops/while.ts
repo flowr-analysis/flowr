@@ -1,12 +1,12 @@
-import type { NamedXmlBasedJson} from '../../../common/input-format'
+import type { NamedXmlBasedJson } from '../../../common/input-format'
 import { XmlParseError } from '../../../common/input-format'
 import { ensureExpressionList, retrieveMetaStructure } from '../../../common/meta'
-import { parseLog } from '../../normalize'
 import { tryNormalizeSingleNode } from '../structure'
 import type { ParserData } from '../../data'
 import type { RWhileLoop } from '../../../../../model'
 import { RawRType, RType } from '../../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
+import { parseLog } from '../../../../json/parser'
 
 export function tryNormalizeWhile(
 	data: ParserData,
@@ -52,10 +52,7 @@ export function tryNormalizeWhile(
 		)
 	}
 
-	const { location, content } = retrieveMetaStructure(
-		data.config,
-		whileToken.content
-	)
+	const { location, content } = retrieveMetaStructure(whileToken.content)
 
 	const result: RWhileLoop = {
 		type:      RType.WhileLoop,

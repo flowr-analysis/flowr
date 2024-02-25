@@ -18,7 +18,7 @@ export function tryNormalizeIfThen(
 		 rightParen: XmlBasedJson,
 		 then:       XmlBasedJson
 	]): RFunctionCall | undefined {
-	const names = tokens.map(x => getTokenType(config.tokenMap, x))
+	const names = tokens.map(x => getTokenType(x))
 	if(names[0] !== RawRType.If) {
 		return undefined
 	} else if(names[1] !== RawRType.ParenLeft) {
@@ -30,7 +30,7 @@ export function tryNormalizeIfThen(
 	const parsedCondition = normalizeSingleToken(config, tokens[2])
 	const parsedThen = normalizeSingleToken(config, tokens[4])
 
-	const { location, content } = retrieveMetaStructure(config, tokens[0])
+	const { location, content } = retrieveMetaStructure(tokens[0])
 
 	return {
 		type:         RType.FunctionCall,

@@ -1,10 +1,10 @@
 import type { XmlBasedJson } from '../../../common/input-format'
-import { retrieveMetaStructure } from '../../../common/meta'
+import {getTokenType, retrieveMetaStructure} from '../../../common/meta'
 import type { RSymbol } from '../../../../../model'
 import { isSymbol, RType } from '../../../../../model'
 import { startAndEndsWith } from '../../../../../../../../util/strings'
 import type { NormalizeConfiguration } from '../../data'
-import { XML_NAME } from '../../../common/xml-to-json'
+import {contentKey} from "../../../input-format";
 
 // remove backticks from symbol
 
@@ -16,18 +16,18 @@ function removeBackticks(content: string) {
  * Normalize the given object as an R symbol without namespace information.
  * For the variant with namespace information, see {@link tryNormalizeSymbolWithNamespace}.
  *
- * @param config - The configuration used by the normalizer
+ * @param _config - The configuration used by the normalizer
  * @param symbol - The json object to extract the symbol from
  *
  * @returns The parsed symbol or `undefined` if the given object is not a symbol.
  */
-export function tryNormalizeSymbolNoNamespace(config: NormalizeConfiguration, symbol: XmlBasedJson): RSymbol | undefined {
-	const name = symbol[XML_NAME] as string
+export function tryNormalizeSymbolNoNamespace(_config: NormalizeConfiguration, symbol: XmlBasedJson): RSymbol | undefined {
+	const name = getTokenType(symbol) as string
 	if(!isSymbol(name)) {
 		return undefined
 	}
 
-	const { location, content }  = retrieveMetaStructure(config, symbol)
+	const { location, content }  = retrieveMetaStructure(symbol)
 
 	return {
 		type:      RType.Symbol,
@@ -50,16 +50,16 @@ export function tryNormalizeSymbolNoNamespace(config: NormalizeConfiguration, sy
  * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  */
 export function tryNormalizeSymbolWithNamespace(config: NormalizeConfiguration, [namespace, , symbol]: XmlBasedJson[]): RSymbol | undefined {
-	const name = symbol[XML_NAME] as string
+	const name = getTokenType(symbol) as string
 	if(!isSymbol(name)) {
 		return undefined
 	}
 
-	const { location, content }  = retrieveMetaStructure(config, symbol)
+	const { location, content }  = retrieveMetaStructure(symbol)
 
 	return {
 		type:      RType.Symbol,
-		namespace: namespace[config.content] as string,
+		namespace: namespace[contentKey] as string,
 		location,
 		content:   removeBackticks(content),
 		lexeme:    content,

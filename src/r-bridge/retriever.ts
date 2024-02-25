@@ -94,7 +94,7 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
 		/* json conversion of the output, dataframe="values" allows us to receive a list of lists (which is more compact)!
 		 * so we do not depend on jsonlite and friends, we do so manually (:sparkles:)
 		 */
-	+ `cat("[",paste0(apply(flowr_output,1,function(o)sprintf("[%s,%s,%s,%s,%s,%s,%s,%s,%s]",o[[1]],o[[2]],o[[3]],o[[4]],o[[5]],o[[6]],deparse(o[[7]]),if(o[[8]])"true"else"false",deparse(o[[9]]))),collapse=","),"]",${eol},sep="")`
+	+ `cat(apply(flowr_output,1,function(o)sprintf("[%s,%s,%s,%s,%s,%s,%s,%s,%s],",o[[1]],o[[2]],o[[3]],o[[4]],o[[5]],o[[6]],deparse(o[[7]]),if(o[[8]])"true"else"false",deparse(o[[9]])))),${eol})`
 		/* error handling (just produce the marker) */
 	+ `},error=function(e){cat("${ErrorMarker}",${eol})})};`
 		/* compile the function to improve perf. */

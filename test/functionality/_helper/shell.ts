@@ -16,7 +16,7 @@ import {
 	RShell
 } from '../../../src'
 import { assert } from 'chai'
-import type { SlicingCriteria } from '../../../src/slicing'
+import type { SlicingCriteria } from '../../../src'
 import { testRequiresRVersion } from './version'
 import type { MergeableRecord } from '../../../src/util/objects'
 import { deepMergeObject } from '../../../src/util/objects'
@@ -53,11 +53,9 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
  */
 export function withShell(fn: (shell: RShell) => void): () => void {
 	return function() {
+		after(() => shell.close())
 		const shell = new RShell()
 		fn(shell)
-		after(() => {
-			shell.close()
-		})
 	}
 }
 

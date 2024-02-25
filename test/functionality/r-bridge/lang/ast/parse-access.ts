@@ -8,7 +8,7 @@ import { label } from '../../../_helper/label'
 
 describe('Parse value access', withShell(shell => {
 	describe('Single bracket', () => {
-		assertAst(label('Empty Access', 'name-normal', 'single-bracket-access', 'access-with-empty'),
+		assertAst(label('Empty Access', ['name-normal', 'single-bracket-access', 'access-with-empty']),
 			shell, 'a[]', [
 				{
 					step:   NORMALIZE,
@@ -55,7 +55,7 @@ describe('Parse value access', withShell(shell => {
 					})
 				}
 			])
-		assertAst(label('One Constant', 'name-normal', 'single-bracket-access', 'numbers'),
+		assertAst(label('One Constant', ['name-normal', 'single-bracket-access', 'numbers']),
 			shell, 'a[1]', [
 				{
 					step:   NORMALIZE,
@@ -122,7 +122,7 @@ describe('Parse value access', withShell(shell => {
 					})
 				}
 			])
-		assertAst(label('One Variable', 'name-normal', 'single-bracket-access'),
+		assertAst(label('One Variable', ['name-normal', 'single-bracket-access']),
 			shell, 'a[x]', [
 				{
 					step:   NORMALIZE,
@@ -191,7 +191,7 @@ describe('Parse value access', withShell(shell => {
 					})
 				}
 			])
-		assertAst(label('One Expression', 'name-normal', 'single-bracket-access', 'binary-operator', 'numbers'),
+		assertAst(label('One Expression', ['name-normal', 'single-bracket-access', 'binary-operator', 'numbers']),
 			shell, 'a[x + 3]', [
 				{
 					step:   NORMALIZE,
@@ -295,7 +295,7 @@ describe('Parse value access', withShell(shell => {
 					})
 				}
 			])
-		assertAst(label('Multiple Access', 'name-normal', 'single-bracket-access', 'numbers'),
+		assertAst(label('Multiple Access', ['name-normal', 'single-bracket-access', 'numbers']),
 			shell, 'a[3,2]', [
 				{
 					step:   NORMALIZE,
@@ -381,7 +381,7 @@ describe('Parse value access', withShell(shell => {
 					})
 				}
 			])
-		assertAst(label('Multiple with Empty', 'name-normal', 'single-bracket-access', 'numbers', 'access-with-empty'),
+		assertAst(label('Multiple with Empty', ['name-normal', 'single-bracket-access', 'numbers', 'access-with-empty']),
 			shell, 'a[,2,4]', [
 				{
 					step:   NORMALIZE,
@@ -466,7 +466,7 @@ describe('Parse value access', withShell(shell => {
 					})
 				}
 			])
-		assertAst(label('Named argument', 'name-normal', 'single-bracket-access', 'numbers', 'access-with-argument-names'),
+		assertAst(label('Named argument', ['name-normal', 'single-bracket-access', 'numbers', 'access-with-argument-names']),
 			shell, 'a[1,super=4]', [
 				{
 					step:   NORMALIZE,
@@ -572,7 +572,7 @@ describe('Parse value access', withShell(shell => {
 					})
 				}
 			])
-		assertAst(label('Chained', 'name-normal', 'single-bracket-access', 'numbers'),
+		assertAst(label('Chained', ['name-normal', 'single-bracket-access', 'numbers']),
 			shell, 'a[1][4]', [
 				{
 					step:   NORMALIZE,
@@ -682,7 +682,7 @@ describe('Parse value access', withShell(shell => {
 			])
 	})
 	describe('Double bracket', () => {
-		assertAst(label('Empty', 'name-normal', 'double-bracket-access', 'access-with-empty'),
+		assertAst(label('Empty', ['name-normal', 'double-bracket-access', 'access-with-empty']),
 			shell, 'b[[]]', [
 				{
 					step:   NORMALIZE,
@@ -730,7 +730,7 @@ describe('Parse value access', withShell(shell => {
 					})
 				}
 			])
-		assertAst(label('One Constant', 'name-normal', 'double-bracket-access'),
+		assertAst(label('One Constant', ['name-normal', 'double-bracket-access']),
 			shell, 'b[[5]]', [
 				{
 					step:   NORMALIZE,

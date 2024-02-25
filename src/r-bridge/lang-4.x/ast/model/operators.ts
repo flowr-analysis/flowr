@@ -1,6 +1,6 @@
 import type { MergeableRecord } from '../../../../util/objects'
 import { RawRType } from './type'
-import type { FlowrCapabilityId } from '../../../data'
+import type { SupportedFlowrCapabilityId } from '../../../data'
 
 /**
  * Just a type-alias so that type declarations become more readable.
@@ -39,7 +39,7 @@ export interface OperatorInformationValue extends MergeableRecord {
 	arity:                OperatorArity;
 	usedAs:               OperatorUsedAs;
 	/** The capabilities this operator maps to using the new desugaring */
-	capabilities:         FlowrCapabilityId[];
+	capabilities:         SupportedFlowrCapabilityId[];
 }
 
 /* eslint-disable */

@@ -31,6 +31,8 @@ import type { DataflowGraph } from '../../../src/dataflow/v1'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
 import { SteppingSlicer } from '../../../src/core/stepping-slicer'
 import { LAST_STEP } from '../../../src/core/steps/steps'
+import type { TestLabel } from './label'
+import { decorateLabelContext } from './label'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -144,12 +146,13 @@ export function sameForSteps<T>(steps: (typeof NORMALIZE | typeof DESUGAR_NORMAL
  *
  * @see sameForSteps
  */
-export function assertAst(name: string, shell: RShell, input: string, expected: { step: typeof NORMALIZE | typeof DESUGAR_NORMALIZE, wanted: RExpressionList }[] | RExpressionList, userConfig?: Partial<TestConfiguration & {
+export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: { step: typeof NORMALIZE | typeof DESUGAR_NORMALIZE, wanted: RExpressionList }[] | RExpressionList, userConfig?: Partial<TestConfiguration & {
 	ignoreAdditionalTokens: boolean
 }>): Mocha.Suite | Mocha.Test {
+	const fullname = decorateLabelContext(name, ['desugar'])
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
 	if(Array.isArray(expected)) {
-		return describe(`${name} (input: ${input})`, () => {
+		return describe(`${fullname} (input: ${input})`, () => {
 			for(const { step, wanted } of expected) {
 				it(`${step.humanReadableName}`, async function() {
 					await ensureConfig(shell, this, userConfig)
@@ -168,7 +171,7 @@ export function assertAst(name: string, shell: RShell, input: string, expected: 
 		})
 	} else {
 		// TODO: remove just while migrating
-		return it(name === input ? name : `${name} (input: ${input})`, async function() {
+		return it(fullname === input ? fullname : `${fullname} (input: ${input})`, async function() {
 			await ensureConfig(shell, this, userConfig)
 			const ast = await retrieveNormalizedAst(shell, input)
 			assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
@@ -193,8 +196,9 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 	})
 }
 
-export function assertDataflow(name: string, shell: RShell, input: string, expected: DataflowGraph, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
-	it(`${name} (input: ${JSON.stringify(input)})`, async function() {
+export function assertDataflow(name: string | TestLabel, shell: RShell, input: string, expected: DataflowGraph, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
+	const effectiveName = decorateLabelContext(name, ['dataflow'])
+	it(`${effectiveName} (input: ${JSON.stringify(input)})`, async function() {
 		await ensureConfig(shell, this, userConfig)
 
 		const info = await new SteppingSlicer({

@@ -11,7 +11,7 @@ describe('Parse simple assignments',
 		describe('Constant Assignments', () => {
 			for(const op of RAssignmentOpPool) {
 				const opOffset = op.str.length - 1
-				assertAst(label(`x ${op.str} 5`, 'binary-operator', ...op.capabilities),
+				assertAst(label(`x ${op.str} 5`, ['binary-operator', ...op.capabilities]),
 					shell, `x ${op.str} 5`,[
 						{
 							step:   NORMALIZE,
@@ -80,7 +80,7 @@ describe('Parse simple assignments',
 
 		// allow assignments to strings and function calls
 		describe('Assignments to strings', () => {
-			assertAst(label('Assign to given string', 'binary-operator', 'local-left-assignment', 'name-quoted', 'numbers'),
+			assertAst(label('Assign to given string', ['binary-operator', 'local-left-assignment', 'name-quoted', 'numbers']),
 				shell, '\'a\' <- 5', [
 					{
 						step:   NORMALIZE,
@@ -150,7 +150,7 @@ describe('Parse simple assignments',
 		})
 
 		describe('Assignment with an expression list', () => {
-			assertAst(label('x <- { 2 * 3 }', 'binary-operator', 'local-left-assignment', 'name-normal', 'numbers', 'grouping'),
+			assertAst(label('x <- { 2 * 3 }', ['binary-operator', 'local-left-assignment', 'name-normal', 'numbers', 'grouping']),
 				shell, 'x <- { 2 * 3 }', [
 					{
 						step:   NORMALIZE,

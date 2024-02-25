@@ -12,22 +12,22 @@ import { getAllCapabilities } from '../../../src/r-bridge/data'
 import type { MergeableRecord } from '../../../src/util/objects'
 
 // map flowr ids to the capabilities
-const TheGlobalLabelMap: DefaultMap<string, string[]> = new DefaultMap(() => [])
+const TheGlobalLabelMap: DefaultMap<string, TestLabel[]> = new DefaultMap(() => [])
 
-/*const uniqueTestId = (() => {
+const uniqueTestId = (() => {
 	let id = 0
 	return () => `${id++}`
-})()*/
+})()
 
 
-export type TestLabelContext = 'parse' | 'desugar' | 'dataflow'
+export type TestLabelContext = 'parse' | 'desugar' | 'dataflow' | 'other'
 export interface TestLabel extends MergeableRecord {
 	readonly id:           string
 	readonly name:         string
 	/** even if ids appear multiple times we only want to count each one once */
 	readonly capabilities: ReadonlySet<FlowrCapabilityId>
 	/** this is automatically set (hihi) by functions like `assertAst` to correctly derive what part of capability we check */
-	context?:              ReadonlySet<TestLabelContext>
+	readonly context:      Set<TestLabelContext>
 }
 
 
@@ -35,25 +35,53 @@ export interface TestLabel extends MergeableRecord {
  * Wraps a test name with a unique identifier and label it with the given ids.
  * @param testname - the name of the test (`it`) to be labeled
  * @param ids      - the capability ids to attach to the test
+ * @param context  - the context in which the test is run, if not given this returns the label information for a test-helper to attach it
  */
-export function label(testname: string, ...ids: FlowrCapabilityId[]): string {
+export function label(testname: string, ids: readonly FlowrCapabilityId[], context: readonly TestLabelContext[]): string
+export function label(testname: string, ids: readonly FlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel
+export function label(testname: string, ids: readonly FlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel | string {
 	const capabilities: Set<FlowrCapabilityId> = new Set(ids)
-	/*	const label: TestLabel = {
-			id:   uniqueTestId(),
-			name: testname,
-			capabilities
-		}*/
-
-	for(const i of capabilities) {
-		TheGlobalLabelMap.get(i).push(testname)
+	const label: TestLabel = {
+		id:      uniqueTestId(),
+		name:    testname,
+		capabilities,
+		context: context === undefined ? new Set() : new Set(context)
 	}
 
-	return testname
+	for(const i of capabilities) {
+		TheGlobalLabelMap.get(i).push(label)
+	}
+
+	if(context === undefined) {
+		return label
+	} else {
+		return getFullNameOfLabel(label)
+	}
+}
+
+function getFullNameOfLabel(label: TestLabel): string {
+	return `[${label.id}, ${[...label.capabilities].join(', ')}] ${label.name}`
 }
 
 
-function limitTestNameLength(n: string) {
-	return n.length > 25 ? n.substring(0, 25) + '…' : n
+/**
+ * Returns the full name of the testlabel and adds the respective contexts
+ */
+export function decorateLabelContext(label: TestLabel | string, context: readonly TestLabelContext[]): string {
+	if(typeof label === 'string') {
+		return label
+	}
+
+	for(const c of context) {
+		label.context.add(c)
+	}
+
+	return getFullNameOfLabel(label)
+}
+
+
+function testNameIds(n: TestLabel) {
+	return `#${n.id}`
 }
 
 function printLabelSummary(): void {
@@ -75,8 +103,21 @@ function printLabelSummary(): void {
 			}
 			continue
 		}
-		const formattedTestNames = `\x1b[36m${testNames.map(limitTestNameLength).join('\x1b[m, \x1b[36m')}\x1b[m`
-		console.log(`\x1b[1m${paddedLabel}\x1b[0m is covered by ${testNames.length} ${tests}\n     ${formattedTestNames}`)
+
+		// group by contexts
+		const contextMap = new DefaultMap<TestLabelContext, TestLabel[]>(() => [])
+		for(const t of testNames) {
+			for(const c of t.context) {
+				contextMap.get(c).push(t)
+			}
+		}
+		let formattedTestNames = ''
+		for(const [context, tests] of contextMap.entries()) {
+			const formatted = `\x1b[36m${tests.map(testNameIds).join('\x1b[m, \x1b[36m')}\x1b[m`
+			formattedTestNames += `\n${' '.repeat(label.path.length * 2 - 2)}      - ${context} [${tests.length}]: ${formatted}`
+		}
+
+		console.log(`\x1b[1m${paddedLabel}\x1b[0m is covered by ${testNames.length} ${tests}${formattedTestNames}`)
 	}
 }
 

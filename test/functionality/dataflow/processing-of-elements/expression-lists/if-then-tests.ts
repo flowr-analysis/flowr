@@ -5,10 +5,9 @@ import {
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { appendEnvironments, define } from '../../../../../src/dataflow/common/environments'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
-import { label } from '../../../_helper/label'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
-describe(label('Lists with if-then constructs', 'local-left-assignment', 'local-equal-assignment', 'super-left-assignment', 'if', 'name-normal', 'numbers', 'grouping'), withShell(shell => {
+describe('Lists with if-then constructs', withShell(shell => {
 	for(const assign of [ '<-', '<<-', '=']) {
 		const scope = assign === '<<-' ? GlobalScope : LocalScope
 		describe(`using ${assign}`, () => {
@@ -85,7 +84,7 @@ describe(label('Lists with if-then constructs', 'local-left-assignment', 'local-
 			})
 		})
 	}
-	describe(label('Branch Coverage', 'local-left-assignment', 'if', 'numbers', 'name-normal', 'grouping'), () => {
+	describe('Branch Coverage', () => {
 		//All test related to branch coverage (testing the interaction between then end else block)
 		const envWithX = () => define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())
 		const envThenBranch = () => define({ nodeId: '4', scope: LocalScope, name: 'x', used: 'maybe', kind: 'variable',definedAt: '6' }, LocalScope, initializeCleanEnvironments())

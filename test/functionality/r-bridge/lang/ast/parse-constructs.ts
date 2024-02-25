@@ -187,7 +187,7 @@ describe('Parse simple constructs', withShell(shell => {
 				describe(`${pool.name} variants`, () => {
 					for(const variant of pool.variants) {
 						const strNum = `${variant.num}`
-						assertAst(label(JSON.stringify(variant.str), ...variant.capabilities), shell, variant.str, [
+						assertAst(label(JSON.stringify(variant.str), variant.capabilities), shell, variant.str, [
 							{
 								step:   NORMALIZE,
 								wanted: exprList({
@@ -257,7 +257,7 @@ describe('Parse simple constructs', withShell(shell => {
 								const thenNum = `${ifThenVariant.num}`
 								const elseNum = `${elseVariant.num}`
 								const input = `${ifThenVariant.str}${elseVariant.str}`
-								assertAst(label(JSON.stringify(input), ...ifThenVariant.capabilities, ...elseVariant.capabilities), shell, input, [
+								assertAst(label(JSON.stringify(input), [...ifThenVariant.capabilities, ...elseVariant.capabilities]), shell, input, [
 									{
 										step: NORMALIZE,
 										wanted:
@@ -325,7 +325,7 @@ describe('Parse simple constructs', withShell(shell => {
 	})
 	describe('loops', () => {
 		describe('for', () => {
-			assertAst(label('for(i in 1:10) 2', 'for-loop', 'name-normal', 'numbers', 'built-in-sequencing'), shell, 'for(i in 1:42)2', [
+			assertAst(label('for(i in 1:10) 2', ['for-loop', 'name-normal', 'numbers', 'built-in-sequencing']), shell, 'for(i in 1:42)2', [
 				{
 					step:   NORMALIZE,
 					wanted: exprList({
@@ -442,7 +442,7 @@ describe('Parse simple constructs', withShell(shell => {
 				ignoreAdditionalTokens: true
 			}
 			)
-			assertAst(label('for-loop with comment', 'for-loop', 'name-normal', 'numbers', 'built-in-sequencing', 'comments'), shell, `for(#a
+			assertAst(label('for-loop with comment', ['for-loop', 'name-normal', 'numbers', 'built-in-sequencing', 'comments']), shell, `for(#a
 				i#b
 				in#c
 				1:42#d

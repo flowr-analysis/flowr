@@ -3,7 +3,6 @@ import { initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { define } from '../../../../../src/dataflow/common/environments'
 import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
-import { label } from '../../../_helper/label'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
 describe('Lists with variable references', withShell(shell => {
@@ -40,7 +39,7 @@ describe('Lists with variable references', withShell(shell => {
 				.sameRead('0', '3')
 		)
 	})
-	describe(label('def-def same variable', 'numbers', 'name-normal', 'local-left-assignment', 'grouping'), () => {
+	describe('def-def same variable', () => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
 			emptyGraph()
 				.defineVariable(id1, 'x')
@@ -77,7 +76,7 @@ describe('Lists with variable references', withShell(shell => {
 				.sameDef('3', '7')
 		)
 	})
-	describe(label('def followed by read', 'name-normal', 'numbers', 'local-left-assignment', 'grouping'), () => {
+	describe('def followed by read', () => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
 			emptyGraph()
 				.defineVariable(id1, 'x')

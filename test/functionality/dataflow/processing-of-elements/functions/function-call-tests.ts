@@ -4,9 +4,9 @@ import { define, popLocalEnvironment, pushLocalEnvironment } from '../../../../.
 import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/function-call'
 import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
-import { label } from '../../../_helper/label'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { unnamedArgument } from '../../../_helper/environment-builder'
+import { label } from '../../../_helper/label'
 
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {
@@ -24,7 +24,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithFirstI
 		)
-		assertDataflow(label('Calling function a', 'local-left-assignment', 'unnamed-arguments', 'normal', 'name-normal'), shell, 'i <- 4; a <- function(x) { x }\na(i)',
+		assertDataflow(label('Calling function a', ['local-left-assignment', 'unnamed-arguments', 'normal', 'name-normal']), shell, 'i <- 4; a <- function(x) { x }\na(i)',
 			emptyGraph()
 				.defineVariable('0', 'i')
 				.defineVariable('3', 'a', LocalScope, { environment: envWithFirstI })
@@ -59,7 +59,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithIA
 		)
-		assertDataflow(label('Calling function a with an indirection', 'local-left-assignment', 'unnamed-arguments', 'normal', 'name-normal'),
+		assertDataflow(label('Calling function a with an indirection', ['local-left-assignment', 'unnamed-arguments', 'normal', 'name-normal']),
 			shell,
 			'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
 			emptyGraph()
@@ -115,7 +115,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithFirstI
 		)
-		assertDataflow(label('Calling with a constant function', 'unnamed-arguments', 'normal', 'name-normal'), shell, `i <- 4
+		assertDataflow(label('Calling with a constant function', ['unnamed-arguments', 'normal', 'name-normal']), shell, `i <- 4
 a <- function(x) { x <- x; x <- 3; 1 }
 a(i)`, emptyGraph()
 			.defineVariable('0', 'i')
@@ -189,7 +189,7 @@ a(i)`, emptyGraph()
 			.returns('9', '4')
 			.definesOnCall('8', '0')
 
-		assertDataflow(label('Calling with constant argument using lambda'), shell, '(\\(x) { x + 1 })(2)',
+		assertDataflow('Calling with constant argument using lambda', shell, '(\\(x) { x + 1 })(2)',
 			outGraph,
 			{ minRVersion: MIN_VERSION_LAMBDA }
 		)

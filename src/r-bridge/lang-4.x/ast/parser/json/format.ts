@@ -22,7 +22,6 @@ type ParsedDataRow = [line1: number, col1: number, line2: number, col2: number, 
  * Parses the given data and sets child relationship, return the list of root entries (with a parent of {@link RootId}).
  */
 export function prepareParsedData(data: string): Entry[] {
-	console.log(data)
 	/* we add a trailing null to the json to avoid a trailing comma */
 	const json: unknown = JSON.parse(`[${data}null]`)
 	guard(Array.isArray(json), () => `Expected ${data} to be an array but was not`)

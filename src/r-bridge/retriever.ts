@@ -82,23 +82,26 @@ const ErrorMarker = 'err'
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
 export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShell | RShellExecutor)): AsyncOrSync<string> {
+	if(request.content.trim() === '') {
+		return Promise.resolve('')
+	}
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
 	const eol = ts2r(shell.options.eol)
 	const command =
 		/* first check if flowr_get is already part of the environment */
 		'if(!exists("flowr_get")){'
-		/* if not, define it complete wrapped in a try so that we can handle failures gracefully on stdout */
-	+ 'flowr_get<-function(...){tryCatch({'
+		/* if not, define it complete wrapped in a try so that we can handle failures gracefully on stdout
+		 * furthermore, we compile for performance reasons
+		 */
+	+ 'flowr_get<-compiler::cmpfun(function(...){tryCatch({'
 		/* the actual code to parse the R code, ... allows us to keep the old 'file=path' and 'text=content' semantics. we define flowr_output using the super assignment to persist it in the env! */
 	+ 'flowr_output<<-utils::getParseData(parse(...,keep.source=TRUE),includeText=TRUE);'
 		/* json conversion of the output, dataframe="values" allows us to receive a list of lists (which is more compact)!
 		 * so we do not depend on jsonlite and friends, we do so manually (:sparkles:)
 		 */
-	+ `cat(apply(flowr_output,1,function(o)sprintf("[%s,%s,%s,%s,%s,%s,%s,%s,%s],",o[[1]],o[[2]],o[[3]],o[[4]],o[[5]],o[[6]],deparse(o[[7]]),if(o[[8]])"true"else"false",deparse(o[[9]])))),${eol})`
+	+ 'apply(flowr_output,1,function(o)cat(sprintf("[%s,%s,%s,%s,%s,%s,%s,%s,%s],",o[[1]],o[[2]],o[[3]],o[[4]],o[[5]],o[[6]],deparse(o[[7]]),if(o[[8]])"true"else"false",deparse(o[[9]]))));'
 		/* error handling (just produce the marker) */
-	+ `},error=function(e){cat("${ErrorMarker}",${eol})})};`
-		/* compile the function to improve perf. */
-	+ 'flowr_get<-compiler::cmpfun(flowr_get)};'
+	+ `},error=function(e){cat("${ErrorMarker}")});cat(${eol})})};`
 		/* call the function with the request */
 	+ `flowr_get(${request.request}=${JSON.stringify(request.content)}${suffix})`
 

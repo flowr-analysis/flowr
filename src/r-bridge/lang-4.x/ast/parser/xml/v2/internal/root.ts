@@ -1,11 +1,10 @@
 import type { NormalizeConfiguration } from '../data'
 import type { XmlBasedJson } from '../../common/input-format'
-import { getKeyGuarded } from '../../common/input-format'
+import { childrenKey, getKeyGuarded } from '../../common/input-format'
 import type { RExpressionList, RNode } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { normalizeExpression } from './expression'
 import { normalizeLog } from '../normalize'
-import { childrenKey } from '../../input-format'
 
 export function normalizeRoot(
 	config: NormalizeConfiguration,

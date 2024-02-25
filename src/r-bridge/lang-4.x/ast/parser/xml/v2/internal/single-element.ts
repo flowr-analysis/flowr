@@ -1,5 +1,5 @@
 import type { XmlBasedJson } from '../../common/input-format'
-import { getKeyGuarded, XmlParseError } from '../../common/input-format'
+import { childrenKey, contentKey, getKeyGuarded, XmlParseError } from '../../common/input-format'
 import type { RNode } from '../../../../model'
 import { RawRType } from '../../../../model'
 import type { NormalizeConfiguration } from '../data'
@@ -11,7 +11,6 @@ import { guard } from '../../../../../../../util/assert'
 import { normalizeComment } from './other'
 import { normalizeLineDirective } from './other/line-directive'
 import { getTokenType } from '../../common/meta'
-import { childrenKey, contentKey } from '../../input-format'
 
 const todo = (...x: unknown[]) => {
 	throw new Error('not implemented: ' + JSON.stringify(x))

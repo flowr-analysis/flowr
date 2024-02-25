@@ -1,4 +1,4 @@
-import { expensiveTrace, log } from '../../../../../../util/log'
+import { log } from '../../../../../../util/log'
 import type {
 	NormalizedAst,
 	IdGenerator,
@@ -11,7 +11,6 @@ import {
 import { normalizeRoot } from './internal/root'
 import { prepareParsedData } from '../../json/format'
 import { convertPreparedParsedData } from '../../json/parser'
-import { jsonReplacer } from '../../../../../../util/json'
 
 export const normalizeLog = log.getSubLogger({ name: 'v2-normalize' })
 

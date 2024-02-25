@@ -4,7 +4,8 @@ import type { RSymbol } from '../../../../../model'
 import { isSymbol, RType } from '../../../../../model'
 import { startAndEndsWith } from '../../../../../../../../util/strings'
 import type { NormalizeConfiguration } from '../../data'
-import { contentKey } from '../../../input-format'
+
+import { contentKey } from '../../../common/input-format'
 
 // remove backticks from symbol
 

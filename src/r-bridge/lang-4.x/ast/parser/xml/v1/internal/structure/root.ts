@@ -1,5 +1,5 @@
 import type { XmlBasedJson } from '../../../common/input-format'
-import { getKeyGuarded } from '../../../common/input-format'
+import { childrenKey, getKeyGuarded } from '../../../common/input-format'
 import { assureTokenType } from '../../../common/meta'
 import { normalizeBasedOnType } from './elements'
 import type { ParserData } from '../../data'
@@ -8,7 +8,6 @@ import { RType, RawRType } from '../../../../../model'
 import { log } from '../../../../../../../../util/log'
 import { partition } from '../../../../../../../../util/arrays'
 import type { RDelimiter } from '../../../../../model/nodes/info'
-import { childrenKey } from '../../../input-format'
 
 export function normalizeRootObjToAst(
 	data: ParserData,

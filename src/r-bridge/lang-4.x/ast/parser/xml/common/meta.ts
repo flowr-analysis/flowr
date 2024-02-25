@@ -4,8 +4,7 @@ import type { RawRType, RExpressionList, RNode } from '../../../model'
 import { RType } from '../../../model'
 import { guard } from '../../../../../../util/assert'
 import type { NamedXmlBasedJson, XmlBasedJson } from './input-format'
-import { XmlParseError, getKeyGuarded } from './input-format'
-import { attributesKey, contentKey, nameKey } from '../input-format'
+import { XmlParseError, getKeyGuarded, attributesKey, contentKey, nameKey } from './input-format'
 
 /**
  * if the passed object is an array with only one element, remove the array wrapper

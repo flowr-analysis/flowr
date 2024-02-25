@@ -5,7 +5,7 @@ import { normalizeLog } from '../normalize'
 import { expensiveTrace } from '../../../../../../../util/log'
 import { normalizeSingleToken } from './single-element'
 import type { NormalizeConfiguration } from '../data'
-import { normalizeUnary, normalizeBinary } from './operators'
+import { normalizeBinary, normalizeUnary } from './operators'
 import { tryNormalizeSymbolWithNamespace } from './values/symbol'
 import { getTokenType, retrieveMetaStructure } from '../../common/meta'
 import { normalizeAccess } from './access'
@@ -15,13 +15,12 @@ import { tryNormalizeIfThen } from './control/if-then'
 import { tryNormalizeIfThenElse } from './control/if-then-else'
 import { tryNormalizeFor } from './loops/for'
 
-
 /**
  * Handles semicolons within _and_ braces at the start and end of the expression
  * @param tokens - The tokens to split
  * @param config - The normalizer config to use
  */
-function handleExpressionList(tokens: XmlBasedJson[], config: NormalizeConfiguration): { segments: XmlBasedJson[][], braces: undefined | [start: XmlBasedJson, end: XmlBasedJson] } {
+function handleExpressionList(tokens: readonly XmlBasedJson[], config: NormalizeConfiguration): { segments: XmlBasedJson[][], braces: undefined | [start: XmlBasedJson, end: XmlBasedJson] } {
 	if(getTokenType(tokens[0]) === RawRType.BraceLeft) {
 		const endType = getTokenType(tokens[tokens.length - 1])
 		guard(endType === RawRType.BraceRight, () => `expected a brace at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`)
@@ -29,12 +28,20 @@ function handleExpressionList(tokens: XmlBasedJson[], config: NormalizeConfigura
 		return { segments: nested.segments, braces: [tokens[0], tokens[tokens.length - 1]] }
 	} else {
 		let last = 0, i = 0
+		let lastType: RawRType | undefined = undefined
 		const segments: XmlBasedJson[][] = []
-		for(const token of tokens) {
-			if(getTokenType(token) === RawRType.Semicolon) {
-				segments.push(tokens.slice(last, i++))
+		const types = tokens.map(getTokenType)
+		for(const type of types) {
+			if(type === RawRType.Semicolon) {
+				segments.push(tokens.slice(last, i))
+				last = i + 1
+			} else if(type === RawRType.Expression && lastType === RawRType.Expression) {
+				segments.push(tokens.slice(last, i))
+				segments.push([tokens[i]])
 				last = i + 1
 			}
+			lastType = type
+			i++
 		}
 		if(last < tokens.length) {
 			segments.push(tokens.slice(last, tokens.length))
@@ -43,6 +50,26 @@ function handleExpressionList(tokens: XmlBasedJson[], config: NormalizeConfigura
 	}
 }
 
+
+function processBraces(braces: [start: XmlBasedJson, end: XmlBasedJson], processed: RNode[]) : [RNode] {
+	const { location, content } = retrieveMetaStructure(braces[0])
+	return [{
+		type:         RType.FunctionCall,
+		lexeme:       content,
+		flavor:       'named',
+		location,
+		info:         {},
+		functionName: {
+			type:      RType.Symbol,
+			info:      {},
+			lexeme:    content,
+			namespace: undefined,
+			content,
+			location
+		},
+		arguments: processed
+	}]
+}
 
 export function normalizeExpression(
 	config: NormalizeConfiguration,
@@ -61,26 +88,10 @@ export function normalizeExpression(
 		const { segments, braces } = handleExpressionList(tokens, config)
 
 		if(segments.length > 1 || braces) {
-			normalizeLog.trace(`found ${segments.length} ';' segments`)
-			const processed = segments.flatMap(segment => normalizeExpression(config, segment))
+			normalizeLog.trace(`found ${segments.length} segments`)
+			const processed = segments.flatMap(s => normalizeExpression(config, s))
 			if(braces) {
-				const { location, content } = retrieveMetaStructure(braces[0])
-				return [{
-					type:         RType.FunctionCall,
-					lexeme:       content,
-					flavor:       'named',
-					location,
-					info:         {},
-					functionName: {
-						type:      RType.Symbol,
-						info:      {},
-						lexeme:    content,
-						namespace: undefined,
-						content,
-						location
-					},
-					arguments: processed
-				}]
+				return processBraces(braces, processed)
 			} else {
 				return processed
 			}
@@ -93,8 +104,7 @@ export function normalizeExpression(
 		tokens = segments[0]
 	}
 
-	// const types = tokens.map(x => x[XML_NAME] as string)
-	return [normalizeElems(config, tokens)]
+	return [tryNormalizeElems(config, tokens)]
 }
 
 const todo = (...x: unknown[]) => {
@@ -105,13 +115,18 @@ const todo = (...x: unknown[]) => {
  * Parses a single structure in the ast based on its type (e.g., a constant, function call, symbol, ...)
  * @param config - The data used to normalize (see {@link NormalizeConfiguration})
  * @param tokens - The non-empty list of tokens to parse
+ *
+ * @returns The parsed structure or undefined if the structure could not be parsed
  */
-function normalizeElems(config: NormalizeConfiguration, tokens: readonly XmlBasedJson[]): RNode {
+function tryNormalizeElems(config: NormalizeConfiguration, tokens: readonly XmlBasedJson[]): RNode {
 	const length = tokens.length
 	if(length === 1) {
 		return normalizeSingleToken(config, tokens[0])
 	} else if(length === 2) {
-		return normalizeUnary(config, tokens as [XmlBasedJson, XmlBasedJson])
+		const unary = normalizeUnary(config, tokens as [XmlBasedJson, XmlBasedJson])
+		if(unary !== undefined) {
+			return unary
+		}
 	}
 	// otherwise, before we check for fixed-length constructs we have to check for the *second* element
 	// in case we have a function-call, access, ...

@@ -43,6 +43,37 @@ describe('Parse expression lists',
 				)
 			)
 
+			assertAst(label('three lines', ['name-normal', 'numbers']),
+				shell, 'a\nb\nc', sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+					exprList(
+						{
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 1, 1, 1),
+							lexeme:    'a',
+							content:   'a',
+							namespace: undefined,
+							info:      {}
+						},
+						{
+							type:      RType.Symbol,
+							location:  rangeFrom(2, 1, 2, 1),
+							namespace: undefined,
+							lexeme:    'b',
+							content:   'b',
+							info:      {}
+						},
+						{
+							type:      RType.Symbol,
+							location:  rangeFrom(3, 1, 3, 1),
+							lexeme:    'c',
+							content:   'c',
+							namespace: undefined,
+							info:      {}
+						},
+					)
+				)
+			)
+
 			const manyLines = 'a\nb\nc\nd\nn2\nz\n'
 			assertAst(`${JSON.stringify(manyLines)} (many lines)`, shell,
 				manyLines,

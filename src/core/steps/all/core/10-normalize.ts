@@ -15,7 +15,7 @@ import { PipelineStepStage } from '../../step'
 import type { DeepPartial, DeepReadonly } from 'ts-essentials'
 import type { ParseRequiredInput } from './00-parse'
 import { normalize as normalizeV2 } from '../../../../r-bridge/lang-4.x/ast/parser/xml/v2/normalize'
-import {normalize as oldNormalize } from "../../../../r-bridge/lang-4.x/ast/parser/json/parser";
+import { normalize as oldNormalize } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 
 export interface NormalizeRequiredInput extends ParseRequiredInput {
 	/** These hooks only make sense if you at least want to normalize the parsed R AST. They can augment the normalization process */

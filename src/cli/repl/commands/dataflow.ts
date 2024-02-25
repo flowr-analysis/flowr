@@ -5,7 +5,7 @@ import {
 	graphToMermaid,
 	graphToMermaidUrl
 } from '../../../util/mermaid'
-import {SteppingSlicer} from "../../../core/stepping-slicer";
+import { SteppingSlicer } from '../../../core/stepping-slicer'
 
 async function dataflow(shell: RShell, remainingLine: string) {
 	return await new SteppingSlicer({

@@ -13,7 +13,7 @@ import { prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/fo
 import { convertPreparedParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/parser'
 import { attributesKey, childrenKey, contentKey } from '../../../r-bridge/lang-4.x/ast/parser/xml'
 import { extractLocation, getTokenType, objectWithArrUnwrap } from '../../../r-bridge/lang-4.x/ast/parser/xml/common/meta'
-import {SteppingSlicer} from "../../../core/stepping-slicer";
+import { SteppingSlicer } from '../../../core/stepping-slicer'
 
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 

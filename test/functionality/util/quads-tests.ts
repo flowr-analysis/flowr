@@ -3,7 +3,7 @@ import { decorateAst, requestFromInput, RType } from '../../../src/r-bridge'
 import { defaultQuadIdGenerator, serialize2quads } from '../../../src/util/quads'
 import { assert } from 'chai'
 import { dataflowGraphToQuads } from '../../../src/core/print/dataflow-printer'
-import {SteppingSlicer} from "../../../src/core/stepping-slicer";
+import { SteppingSlicer } from '../../../src/core/stepping-slicer'
 
 describe('Quads', withShell(shell => {
 	const context = 'test'

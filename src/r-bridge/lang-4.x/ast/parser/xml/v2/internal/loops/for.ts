@@ -14,7 +14,7 @@ import { normalizeComment } from '../other'
 import { normalizeSingleToken } from '../single-element'
 import { splitComments } from '../../../v1/internal'
 import { tryNormalizeSymbolNoNamespace } from '../values/symbol'
-import {childrenKey} from "../../../input-format";
+import { childrenKey } from '../../../input-format'
 
 export function tryNormalizeFor(
 	config: NormalizeConfiguration,

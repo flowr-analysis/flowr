@@ -13,8 +13,8 @@ import type {
 	ExecuteRequestMessage
 } from '../../../src/cli/repl/server/messages/repl'
 import { extractCFG } from '../../../src/util/cfg/cfg'
-import {SteppingSlicer} from "../../../src/core/stepping-slicer";
-import {LAST_PER_FILE_STEP} from "../../../src/core/steps/steps";
+import { SteppingSlicer } from '../../../src/core/stepping-slicer'
+import { LAST_PER_FILE_STEP } from '../../../src/core/steps/steps'
 
 describe('flowr', () => {
 	describe('Server', withShell(shell => {

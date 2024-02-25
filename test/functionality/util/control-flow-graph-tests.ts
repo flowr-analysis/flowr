@@ -13,7 +13,7 @@ import {
 import { requestFromInput, RFalse, RTrue, RType } from '../../../src/r-bridge'
 import { defaultQuadIdGenerator } from '../../../src/util/quads'
 import { cfgToMermaidUrl } from '../../../src/util/mermaid'
-import {SteppingSlicer} from "../../../src/core/stepping-slicer";
+import { SteppingSlicer } from '../../../src/core/stepping-slicer'
 
 describe('Control Flow Graph', withShell(shell => {
 	function assertCfg(code: string, partialExpected: Partial<ControlFlowInformation>) {

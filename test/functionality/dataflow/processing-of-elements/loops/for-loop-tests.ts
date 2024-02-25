@@ -1,5 +1,5 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
+import { initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
 import { appendEnvironments, define } from '../../../../../src/dataflow/common/environments'
 import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'

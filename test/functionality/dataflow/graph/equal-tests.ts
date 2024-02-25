@@ -1,5 +1,5 @@
 import type { DataflowGraph } from '../../../../src/dataflow/v1'
-import { diffGraphsToMermaidUrl, EdgeType } from '../../../../src/dataflow/v1'
+import { diffGraphsToMermaidUrl } from '../../../../src/dataflow/v1'
 import { assert } from 'chai'
 import { emptyGraph } from '../../_helper/dataflowgraph-builder'
 

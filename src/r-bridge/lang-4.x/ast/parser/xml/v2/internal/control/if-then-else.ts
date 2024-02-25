@@ -13,13 +13,13 @@ import { normalizeSingleToken } from '../single-element'
 export function tryNormalizeIfThenElse(
 	config: NormalizeConfiguration,
 	tokens: [
-		 ifToken:    XmlBasedJson,
-		 leftParen:  XmlBasedJson,
-		 condition:  XmlBasedJson,
-		 rightParen: XmlBasedJson,
-		 then:       XmlBasedJson,
-		 elseToken:  XmlBasedJson,
-		 elseBlock:  XmlBasedJson
+		ifToken:    XmlBasedJson,
+		leftParen:  XmlBasedJson,
+		condition:  XmlBasedJson,
+		rightParen: XmlBasedJson,
+		then:       XmlBasedJson,
+		elseToken:  XmlBasedJson,
+		elseBlock:  XmlBasedJson
 	]): RFunctionCall | undefined {
 	// we start by parsing a regular if-then structure
 

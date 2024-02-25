@@ -11,7 +11,7 @@ import { guard } from '../../../../../../../util/assert'
 import { normalizeComment } from './other'
 import { normalizeLineDirective } from './other/line-directive'
 import { getTokenType } from '../../common/meta'
-import {childrenKey, contentKey} from "../../input-format";
+import { childrenKey, contentKey } from '../../input-format'
 
 const todo = (...x: unknown[]) => {
 	throw new Error('not implemented: ' + JSON.stringify(x))

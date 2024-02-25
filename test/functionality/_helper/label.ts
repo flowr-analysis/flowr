@@ -14,10 +14,10 @@ import type { MergeableRecord } from '../../../src/util/objects'
 // map flowr ids to the capabilities
 const TheGlobalLabelMap: DefaultMap<string, string[]> = new DefaultMap(() => [])
 
-const uniqueTestId = (() => {
+/*const uniqueTestId = (() => {
 	let id = 0
 	return () => `${id++}`
-})()
+})()*/
 
 
 export type TestLabelContext = 'parse' | 'desugar' | 'dataflow'
@@ -38,11 +38,11 @@ export interface TestLabel extends MergeableRecord {
  */
 export function label(testname: string, ...ids: FlowrCapabilityId[]): string {
 	const capabilities: Set<FlowrCapabilityId> = new Set(ids)
-	const label: TestLabel = {
-		id:   uniqueTestId(),
-		name: testname,
-		capabilities
-	}
+	/*	const label: TestLabel = {
+			id:   uniqueTestId(),
+			name: testname,
+			capabilities
+		}*/
 
 	for(const i of capabilities) {
 		TheGlobalLabelMap.get(i).push(testname)

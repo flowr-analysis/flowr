@@ -32,9 +32,9 @@ import { defaultQuadIdGenerator } from '../../../util/quads'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse'
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize'
 import { LEGACY_STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow'
-import {SteppingSlicer} from "../../../core/stepping-slicer";
-import {StepResults} from "../../../core/steps/output";
-import {LAST_STEP, STEPS_PER_SLICE} from "../../../core/steps/steps";
+import { SteppingSlicer } from '../../../core/stepping-slicer'
+import type { StepResults } from '../../../core/steps/output'
+import { LAST_STEP, STEPS_PER_SLICE } from '../../../core/steps/steps'
 
 /**
  * Each connection handles a single client, answering to its requests.

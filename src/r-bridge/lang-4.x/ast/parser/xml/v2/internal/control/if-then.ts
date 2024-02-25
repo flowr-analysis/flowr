@@ -12,11 +12,11 @@ import type { NormalizeConfiguration } from '../../data'
 export function tryNormalizeIfThen(
 	config: NormalizeConfiguration,
 	tokens: readonly [
-		 ifToken:    XmlBasedJson,
-		 leftParen:  XmlBasedJson,
-		 condition:  XmlBasedJson,
-		 rightParen: XmlBasedJson,
-		 then:       XmlBasedJson
+		ifToken:    XmlBasedJson,
+		leftParen:  XmlBasedJson,
+		condition:  XmlBasedJson,
+		rightParen: XmlBasedJson,
+		then:       XmlBasedJson
 	]): RFunctionCall | undefined {
 	const names = tokens.map(x => getTokenType(x))
 	if(names[0] !== RawRType.If) {

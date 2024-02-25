@@ -29,8 +29,8 @@ import { PARSE_WITH_R_SHELL_STEP } from '../../../src/core/steps/all/core/00-par
 import type { DESUGAR_NORMALIZE, NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
 import type { DataflowGraph } from '../../../src/dataflow/v1'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
-import {SteppingSlicer} from "../../../src/core/stepping-slicer";
-import {LAST_STEP} from "../../../src/core/steps/steps";
+import { SteppingSlicer } from '../../../src/core/stepping-slicer'
+import { LAST_STEP } from '../../../src/core/steps/steps'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {

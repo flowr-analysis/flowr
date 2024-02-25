@@ -9,8 +9,9 @@ import { deepMergeObject } from '../../../../../util/objects'
 import type { Entry } from './format'
 import { RootId, prepareParsedData } from './format'
 import { log } from '../../../../../util/log'
-import {DEFAULT_PARSER_HOOKS, ParserData, XmlParserHooks} from "../xml/v1";
-import {normalizeRootObjToAst} from "../xml/v1/internal";
+import type { ParserData, XmlParserHooks } from '../xml/v1'
+import { DEFAULT_PARSER_HOOKS } from '../xml/v1'
+import { normalizeRootObjToAst } from '../xml/v1/internal'
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 

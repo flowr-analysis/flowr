@@ -1,10 +1,10 @@
 import type { XmlBasedJson } from '../../../common/input-format'
-import {getTokenType, retrieveMetaStructure} from '../../../common/meta'
+import { getTokenType, retrieveMetaStructure } from '../../../common/meta'
 import type { RSymbol } from '../../../../../model'
 import { isSymbol, RType } from '../../../../../model'
 import { startAndEndsWith } from '../../../../../../../../util/strings'
 import type { NormalizeConfiguration } from '../../data'
-import {contentKey} from "../../../input-format";
+import { contentKey } from '../../../input-format'
 
 // remove backticks from symbol
 

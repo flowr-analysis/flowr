@@ -12,7 +12,7 @@ import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { label } from '../../../_helper/label'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { unnamedArgument } from '../../../_helper/environment-builder'
-import { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data';
+import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 
 describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {

@@ -34,8 +34,9 @@ import fs from 'fs'
 import { log, LogLevel } from '../util/log'
 import type { MergeableRecord } from '../util/objects'
 import { withoutWhitespace } from '../util/strings'
-import {SteppingSlicer} from "../core/stepping-slicer";
-import {LAST_STEP, StepResult, STEPS} from "../core/steps/steps";
+import { SteppingSlicer } from '../core/stepping-slicer'
+import type { StepResult, STEPS } from '../core/steps/steps'
+import { LAST_STEP } from '../core/steps/steps'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 

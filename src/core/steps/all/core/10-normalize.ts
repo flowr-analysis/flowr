@@ -1,7 +1,6 @@
 import type {
 	IdGenerator,
 	NoInfo,
-	RShell,
 	XmlParserHooks
 } from '../../../../r-bridge'
 import { internalPrinter, StepOutputFormat } from '../../../print/print'

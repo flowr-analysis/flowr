@@ -1,8 +1,6 @@
 import { requestProviderFromFile, requestProviderFromText, sourcedDeterministicCountingIdGenerator } from '../../../../../src'
 import { BuiltIn, define, initializeCleanEnvironments } from '../../../../../src/dataflow/common/environments'
 import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
-import { DataflowGraph, EdgeType } from '../../../../../src/dataflow/v1'
-import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/argument'
 import { setSourceProvider } from '../../../../../src/dataflow/v1/internal/process/functions/source'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { unnamedArgument } from '../../../_helper/environment-builder'

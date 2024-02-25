@@ -1,5 +1,5 @@
 import type { NamedXmlBasedJson, XmlBasedJson } from '../../../common/input-format'
-import { getKeyGuarded } from '../../../common/input-format'
+import { childrenKey, getKeyGuarded } from '../../../common/input-format'
 import { guard } from '../../../../../../../../util/assert'
 import { getWithTokenType, retrieveMetaStructure } from '../../../common/meta'
 import { splitArrayOn } from '../../../../../../../../util/arrays'
@@ -21,7 +21,6 @@ import { tryToNormalizeArgument } from './argument'
 import type { SourceRange } from '../../../../../../../../util/range'
 import { normalizeExpression } from '../expression'
 import { parseLog } from '../../../../json/parser'
-import { childrenKey } from '../../../input-format'
 
 /**
  * Tries to parse the given data as a function call.

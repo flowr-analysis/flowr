@@ -38,11 +38,6 @@ import { STATIC_SLICE } from './steps/all/static-slicing/00-slice'
 import { NAIVE_RECONSTRUCT } from './steps/all/static-slicing/10-reconstruct'
 
 /**
- * This represents close a function that we know completely nothing about.
- * Nevertheless, this is the basis of what a step processor should look like.
- */
-export type StepFunction = (...args: never[]) => unknown
-/**
  * This represents the required execution frequency of a step.
  */
 export type StepRequired = 'once-per-file' | 'once-per-slice'

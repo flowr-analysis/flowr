@@ -22,7 +22,7 @@ function removeBackticks(content: string) {
  * @returns The parsed symbol or `undefined` if the given object is not a symbol.
  */
 export function tryNormalizeSymbolNoNamespace(_config: NormalizeConfiguration, symbol: XmlBasedJson): RSymbol | undefined {
-	const name = getTokenType(symbol) as string
+	const name = getTokenType(symbol)
 	if(!isSymbol(name)) {
 		return undefined
 	}
@@ -43,14 +43,14 @@ export function tryNormalizeSymbolNoNamespace(_config: NormalizeConfiguration, s
  * Normalize the given object as an R symbol without namespace information.
  * For the variant without namespace information, see {@link tryNormalizeSymbolNoNamespace}.
  *
- * @param config - The configuration used by the normalizer
+ * @param _config - The configuration used by the normalizer
  * @param namespace - The json object to extract the namespace from
  * @param symbol - The json object to extract the symbol from
  *
  * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  */
-export function tryNormalizeSymbolWithNamespace(config: NormalizeConfiguration, [namespace, , symbol]: XmlBasedJson[]): RSymbol | undefined {
-	const name = getTokenType(symbol) as string
+export function tryNormalizeSymbolWithNamespace(_config: NormalizeConfiguration, [namespace, , symbol]: XmlBasedJson[]): RSymbol | undefined {
+	const name = getTokenType(symbol)
 	if(!isSymbol(name)) {
 		return undefined
 	}

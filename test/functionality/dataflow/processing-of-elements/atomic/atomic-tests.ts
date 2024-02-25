@@ -7,13 +7,12 @@ import { assertDataflow, withShell } from '../../../_helper/shell'
 import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../../_helper/provider'
 import { appendEnvironments, define } from '../../../../../src/dataflow/common/environments'
-import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/argument'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { label } from '../../../_helper/label'
-import type { FlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { unnamedArgument } from '../../../_helper/environment-builder'
+import { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data';
 
 describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {
@@ -28,7 +27,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			['NULL', 'null'],
 			['Inf', 'inf-and-nan'],
 			['NaN', 'inf-and-nan']
-		] as [string, FlowrCapabilityId][]) {
+		] as [string, SupportedFlowrCapabilityId][]) {
 			assertDataflow(label(input, id), shell, input, new DataflowGraph())
 		}
 	})

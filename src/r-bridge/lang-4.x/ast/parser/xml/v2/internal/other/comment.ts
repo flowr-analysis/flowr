@@ -8,10 +8,10 @@ import type { NormalizeConfiguration } from '../../data'
  * Normalize the given object as an R comment.
  * This requires you to check the corresponding name beforehand.
  *
- * @param config - The normalizer config to use
+ * @param _config - The normalizer config to use
  * @param obj  - The json object to extract the meta-information from
  */
-export function normalizeComment(config: NormalizeConfiguration, obj: XmlBasedJson): RComment {
+export function normalizeComment(_config: NormalizeConfiguration, obj: XmlBasedJson): RComment {
 	const { location, content } = retrieveMetaStructure(obj)
 	// we trust the parser here
 	// guard(content.startsWith ('#'), 'comment must start with #')

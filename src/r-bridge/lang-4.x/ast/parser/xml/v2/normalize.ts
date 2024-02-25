@@ -9,8 +9,8 @@ import {
 	deterministicCountingIdGenerator
 } from '../../../model'
 import { normalizeRoot } from './internal/root'
-import {prepareParsedData} from "../../json/format";
-import {convertPreparedParsedData} from "../../json/parser";
+import { prepareParsedData } from '../../json/format'
+import { convertPreparedParsedData } from '../../json/parser'
 
 export const normalizeLog = log.getSubLogger({ name: 'v2-normalize' })
 

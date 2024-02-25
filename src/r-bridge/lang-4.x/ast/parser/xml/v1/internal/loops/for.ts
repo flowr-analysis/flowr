@@ -2,6 +2,7 @@ import type {
 	NamedXmlBasedJson,
 	XmlBasedJson } from '../../../common/input-format'
 import {
+	childrenKey,
 	getKeyGuarded,
 	XmlParseError
 } from '../../../common/input-format'
@@ -15,7 +16,6 @@ import { RawRType, RType } from '../../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { normalizeComment } from '../other'
 import { parseLog } from '../../../../json/parser'
-import { childrenKey } from '../../../input-format'
 
 export function tryNormalizeFor(
 	data: ParserData,

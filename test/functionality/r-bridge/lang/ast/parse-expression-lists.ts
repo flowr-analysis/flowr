@@ -22,23 +22,24 @@ describe('Parse expression lists',
 			)
 			// the r standard does not seem to allow '\r\n' or '\n\r'
 			assertAst(label('two lines', ['name-normal', 'numbers']),
-				shell, '42\na',
-				exprList(
-					{
-						type:     RType.Number,
-						location: rangeFrom(1, 1, 1, 2),
-						lexeme:   '42',
-						content:  numVal(42),
-						info:     {}
-					},
-					{
-						type:      RType.Symbol,
-						location:  rangeFrom(2, 1, 2, 1),
-						namespace: undefined,
-						lexeme:    'a',
-						content:   'a',
-						info:      {}
-					}
+				shell, '42\na', sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+					exprList(
+						{
+							type:     RType.Number,
+							location: rangeFrom(1, 1, 1, 2),
+							lexeme:   '42',
+							content:  numVal(42),
+							info:     {}
+						},
+						{
+							type:      RType.Symbol,
+							location:  rangeFrom(2, 1, 2, 1),
+							namespace: undefined,
+							lexeme:    'a',
+							content:   'a',
+							info:      {}
+						}
+					)
 				)
 			)
 

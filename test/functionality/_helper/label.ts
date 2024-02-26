@@ -92,7 +92,7 @@ function mergeConsecutiveIds(ids: readonly number[]): string {
 		return ''
 	}
 
-	const sorted = ids.toSorted((a, b) => a - b)
+	const sorted = [...ids].sort((a, b) => a - b)
 	const result: string[] = []
 	let start: number = sorted[0]
 	let last: number = start

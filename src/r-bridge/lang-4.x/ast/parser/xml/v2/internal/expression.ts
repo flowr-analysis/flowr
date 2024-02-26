@@ -88,7 +88,6 @@ export function normalizeExpression(
 		const { segments, braces } = handleExpressionList(tokens, config)
 
 		if(segments.length > 1 || braces) {
-			normalizeLog.trace(`found ${segments.length} segments`)
 			const processed = segments.flatMap(s => normalizeExpression(config, s))
 			if(braces) {
 				return processBraces(braces, processed)

@@ -662,10 +662,28 @@ export const flowrCapabilities = {
 			]
 		},
 		{
-			name:        'Comments',
-			id:          'comments',
-			supported:   'fully',
-			description: '_Recognize comments like `# this is a comment`, ... and line-directives_'
+			name:         'Structure',
+			id:           'structure',
+			capabilities: [
+				{
+					name:        'Comments',
+					id:          'comments',
+					supported:   'fully',
+					description: '_Recognize comments like `# this is a comment`, ... and line-directives_'
+				},
+				{
+					name:        'Semicolons',
+					id:          'semicolons',
+					supported:   'fully',
+					description: '_Recognize and resolve semicolons like `a; b; c`, ..._'
+				},
+				{
+					name:        'Newlines',
+					id:          'newlines',
+					supported:   'fully',
+					description: '_Recognize and resolve newlines like `a\nb\nc`, ..._'
+				}
+			]
 		},
 		{
 			name:         'System, I/O, FFI, and Other Files',

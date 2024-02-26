@@ -14,6 +14,11 @@ export function ts2r<T>(value: T): string {
 	} else if(typeof value === 'string') {
 		return JSON.stringify(value)
 	} else if(typeof value === 'number') {
+		if(isNaN(value)) {
+			return RNa
+		} else if(!isFinite(value)) {
+			return RInf
+		}
 		return value.toString()
 	} else if(typeof value === 'boolean') {
 		return value ? 'TRUE' : 'FALSE'
@@ -82,6 +87,14 @@ export function number2ts(value: string): RNumberValue {
 	if(value === RInf) {
 		return {
 			num: Infinity,
+			complexNumber,
+			markedAsInt
+		}
+	}
+
+	if(value === RNa) {
+		return {
+			num: NaN,
 			complexNumber,
 			markedAsInt
 		}

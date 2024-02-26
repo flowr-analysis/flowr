@@ -74,10 +74,10 @@ describe('Parse expression lists',
 				)
 			)
 
-			const manyLines = 'a\nb\nc\nd\nn2\nz\n'
-			assertAst(`${JSON.stringify(manyLines)} (many lines)`, shell,
-				manyLines,
-				exprList(
+			assertAst(label('many lines', ['name-normal', 'numbers']),
+				shell, 'a\nb\nc\nd\nn2\nz\n',
+				sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+					exprList(
 					{
 						type:      RType.Symbol,
 						location:  rangeFrom(1, 1, 1, 1),
@@ -126,50 +126,88 @@ describe('Parse expression lists',
 						content:   'z',
 						info:      {}
 					}
-				)
+				))
 			)
 
-			const twoLineWithBraces = '{ 42\na }'
-			assertAst(`${JSON.stringify(twoLineWithBraces)} (two lines with braces)`, shell,
-				twoLineWithBraces,
-				exprList({
-					type:     RType.ExpressionList,
-					location: rangeFrom(1, 1, 2, 3),
-					lexeme:   '{ 42\na }',
-					info:     {
-						additionalTokens: [
-							{
-								type:     RType.Delimiter,
-								subtype:  RawRType.BraceLeft,
-								location: rangeFrom(1, 1, 1, 1),
-								lexeme:   '{'
+			assertAst(label('two lines with braces', ['name-normal', 'numbers', 'grouping']),
+				shell, '{ 42\na }', [
+					{
+						step: NORMALIZE,
+						wanted: exprList({
+							type:     RType.ExpressionList,
+							location: rangeFrom(1, 1, 2, 3),
+							lexeme:   '{ 42\na }',
+							info:     {
+								additionalTokens: [
+									{
+										type:     RType.Delimiter,
+										subtype:  RawRType.BraceLeft,
+										location: rangeFrom(1, 1, 1, 1),
+										lexeme:   '{'
+									},
+									{
+										type:     RType.Delimiter,
+										subtype:  RawRType.BraceRight,
+										location: rangeFrom(2, 3, 2, 3),
+										lexeme:   '}'
+									}
+								]
 							},
-							{
-								type:     RType.Delimiter,
-								subtype:  RawRType.BraceRight,
-								location: rangeFrom(2, 3, 2, 3),
-								lexeme:   '}'
-							}
-						]
+							children: [
+								{
+									type:     RType.Number,
+									location: rangeFrom(1, 3, 1, 4),
+									lexeme:   '42',
+									content:  numVal(42),
+									info:     {}
+								},
+								{
+									type:      RType.Symbol,
+									location:  rangeFrom(2, 1, 2, 1),
+									namespace: undefined,
+									lexeme:    'a',
+									content:   'a',
+									info:      {}
+								},
+							],
+						})
 					},
-					children: [
-						{
-							type:     RType.Number,
-							location: rangeFrom(1, 3, 1, 4),
-							lexeme:   '42',
-							content:  numVal(42),
-							info:     {}
-						},
-						{
-							type:      RType.Symbol,
-							location:  rangeFrom(2, 1, 2, 1),
-							namespace: undefined,
-							lexeme:    'a',
-							content:   'a',
-							info:      {}
-						},
-					],
-				})
+					{
+						step: DESUGAR_NORMALIZE,
+						wanted: exprList({
+							type:     RType.FunctionCall,
+							location: rangeFrom(1, 1, 1, 1),
+							lexeme:   '{',
+							flavor:   'named',
+							functionName: {
+								type:     RType.Symbol,
+								location: rangeFrom(1, 1, 1, 1),
+								namespace: undefined,
+								lexeme:    '{',
+								content:   '{',
+								info:      {}
+							},
+							info:     {},
+							arguments: [
+								{
+									type:     RType.Number,
+									location: rangeFrom(1, 3, 1, 4),
+									lexeme:   '42',
+									content:  numVal(42),
+									info:     {}
+								},
+								{
+									type:      RType.Symbol,
+									location:  rangeFrom(2, 1, 2, 1),
+									namespace: undefined,
+									lexeme:    'a',
+									content:   'a',
+									info:      {}
+								},
+							],
+						})
+					}
+				]
 			)
 
 			// { 42\na }{ x } seems to be illegal for R...

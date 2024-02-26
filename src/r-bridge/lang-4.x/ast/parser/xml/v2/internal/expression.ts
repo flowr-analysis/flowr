@@ -14,6 +14,7 @@ import { jsonReplacer } from '../../../../../../../util/json'
 import { tryNormalizeIfThen } from './control/if-then'
 import { tryNormalizeIfThenElse } from './control/if-then-else'
 import { tryNormalizeFor } from './loops/for'
+import { tryNormalizeFunctionCall } from './functions/call'
 
 /**
  * Handles semicolons within _and_ braces at the start and end of the expression
@@ -131,11 +132,14 @@ function tryNormalizeElems(config: NormalizeConfiguration, tokens: readonly XmlB
 	// in case we have a function-call, access, ...
 	const second = getTokenType(tokens[1])
 
-	// TODO: use internal functions directly and not named if they can not be overwritten!
 	switch(second) {
-		/* case RawRType.ParenLeft:
-			return todo(tokens)
-		 */
+		case RawRType.ParenLeft: {
+			const ret = tryNormalizeFunctionCall(config, tokens as [XmlBasedJson, XmlBasedJson])
+			if(ret !== undefined) {
+				return ret
+			}
+			break
+		}
 		case RawRType.Dollar:
 		case RawRType.At:
 		case RawRType.BracketLeft:
@@ -150,9 +154,9 @@ function tryNormalizeElems(config: NormalizeConfiguration, tokens: readonly XmlB
 				?? tryNormalizeFor(config, tokens[0], tokens[1], tokens[2])
 				?? normalizeBinary(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
 		case 5: // TODO: while
-			return tryNormalizeIfThen(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? undefined as unknown as RNode
+			return tryNormalizeIfThen(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? todo(tokens)
 		case 7: // TODO: other cases?
-			return tryNormalizeIfThenElse(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? undefined as unknown as RNode
+			return tryNormalizeIfThenElse(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? todo(tokens)
 		default:
 			return todo(tokens)
 	}

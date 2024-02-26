@@ -116,8 +116,8 @@ export const flowrCapabilities = {
 							description: '_Recognize groups done with `(`, `{`, ... (more precisely, their default mapping to the primitive implementations)._'
 						},
 						{
-							name:         'Normal',
-							id:           'normal',
+							name:         'Normal Call',
+							id:           'call-normal',
 							supported:    'fully',
 							description:  '_Recognize and resolve calls like `f(x)`, `foo::bar(x, y)`, ..._',
 							capabilities: [

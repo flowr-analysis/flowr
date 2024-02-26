@@ -1,31 +1,33 @@
-import { assertAst, withShell } from '../../../_helper/shell'
+import { assertAst, sameForSteps, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RType } from '../../../../../src/r-bridge'
+import { RType } from '../../../../../src'
 import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v1/internal'
+import { label } from '../../../_helper/label'
+import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 
 describe('Parse function calls', withShell(shell => {
 	describe('functions without arguments', () => {
-		assertAst(
-			'f()',
-			shell,
-			'f()',
-			exprList({
-				type:         RType.FunctionCall,
-				flavor:       'named',
-				location:     rangeFrom(1, 1, 1, 1),
-				lexeme:       'f',
-				info:         {},
-				functionName: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 1),
-					lexeme:    'f',
-					content:   'f',
-					namespace: undefined,
-					info:      {},
-				},
-				arguments: [],
-			})
+		assertAst(label('f()', ['call-normal', 'name-normal']),
+			shell, 'f()',
+			sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+				exprList({
+					type:         RType.FunctionCall,
+					flavor:       'named',
+					location:     rangeFrom(1, 1, 1, 1),
+					lexeme:       'f',
+					info:         {},
+					functionName: {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						lexeme:    'f',
+						content:   'f',
+						namespace: undefined,
+						info:      {},
+					},
+					arguments: [],
+				})
+			)
 		)
 	})
 	describe('functions with arguments', () => {

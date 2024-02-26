@@ -50,7 +50,7 @@ export function tryNormalizeSymbolNoNamespace(_config: NormalizeConfiguration, s
  *
  * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  */
-export function tryNormalizeSymbolWithNamespace(_config: NormalizeConfiguration, [namespace, , symbol]: XmlBasedJson[]): RSymbol | undefined {
+export function tryNormalizeSymbolWithNamespace(_config: NormalizeConfiguration, [namespace, , symbol]: readonly XmlBasedJson[]): RSymbol | undefined {
 	const name = getTokenType(symbol)
 	if(!isSymbol(name)) {
 		return undefined

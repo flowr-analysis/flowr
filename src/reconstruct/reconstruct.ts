@@ -19,7 +19,7 @@ import type {
 	RRepeatLoop,
 	RWhileLoop,
 	RPipe,
-	StatefulFoldFunctions} from '../r-bridge'
+	StatefulFoldFunctions } from '../r-bridge'
 import { RType } from '../r-bridge'
 import { log } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
@@ -28,7 +28,7 @@ import type {
 	Selection,
 	PrettyPrintLine,
 	Code,
-	AutoSelectPredicate} from './helper'
+	AutoSelectPredicate } from './helper'
 import {
 	prettyPrintPartToString,
 	plain,
@@ -38,7 +38,7 @@ import {
 	getIndentString,
 	merge
 } from './helper'
-import type { SourcePosition, SourceRange} from '../util/range'
+import type { SourcePosition, SourceRange } from '../util/range'
 
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' })
@@ -56,11 +56,11 @@ const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionC
 	// return selectionHasLeaf ? wouldBe : []
 }
 
-const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n), n.location? n.location.start : {line: 0, column: 0})
+const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n), n.location? n.location.start : { line: 0, column: 0 })
 
 function reconstructExpressionList(exprList: RExpressionList<ParentInformation>, expressions: Code[], configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, exprList)) {
-		const positionStart = exprList.location? exprList.location.start : {line: 0, column: 0}
+		const positionStart = exprList.location? exprList.location.start : { line: 0, column: 0 }
 		return plain(getLexeme(exprList), positionStart)
 	}
 
@@ -128,8 +128,8 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	vectorLocation.column -= 1 //somehow the vector is consistently one space to late
 	const reconstructedVector = plain(getLexeme(loop.vector), vectorLocation)
 	const out = merge([
-		[{ linePart: [{part: 'for', loc: start ?? loop.location.start}], indent: 0 }],
-		[{ linePart: [{part: getLexeme(loop.variable), loc: loop.variable.location.start}], indent: 0}],
+		[{ linePart: [{ part: 'for', loc: start ?? loop.location.start }], indent: 0 }],
+		[{ linePart: [{ part: getLexeme(loop.variable), loc: loop.variable.location.start }], indent: 0 }],
 		reconstructedVector,
 		...additionalTokens
 	])
@@ -138,7 +138,7 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 		// puts {} with one space separation after for(...)
 		const hBody = out[out.length - 1].linePart
 		const bodyLoc = hBody[hBody.length - 1].loc
-		out.push({ linePart: [{part: '{}', loc: {line: bodyLoc.line, column: bodyLoc.column + 2}}], indent: 0})
+		out.push({ linePart: [{ part: '{}', loc: { line: bodyLoc.line, column: bodyLoc.column + 2 } }], indent: 0 })
 		return out
 	}
 	//normal reconstruct
@@ -159,7 +159,7 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 	} else {
 		const additionalTokens = reconstructAdditionalTokens(loop)
 		return merge([
-			[{ linePart: [{part: 'repeat', loc: loop.location.start}], indent: 0 }],
+			[{ linePart: [{ part: 'repeat', loc: loop.location.start }], indent: 0 }],
 			body,
 			...additionalTokens
 		])
@@ -169,7 +169,7 @@ function reconstructRepeatLoop(loop: RRepeatLoop<ParentInformation>, body: Code,
 function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condition: Code, when: Code, otherwise: Code | undefined, configuration: ReconstructionConfiguration): Code {
 	const startPos = ifThenElse.location.start
 	const endPos = ifThenElse.location.end
-	const conditionPos = ifThenElse.condition.location? ifThenElse.condition.location.start : {line: 0, column: 0}
+	const conditionPos = ifThenElse.condition.location? ifThenElse.condition.location.start : { line: 0, column: 0 }
 	if(isSelected(configuration, ifThenElse)) {
 		return plain(getLexeme(ifThenElse), startPos)
 	}
@@ -179,27 +179,27 @@ function reconstructIfThenElse(ifThenElse: RIfThenElse<ParentInformation>, condi
 	}
 	if(otherwise.length === 0 && when.length === 0) {
 		return [
-			{ linePart: [{part: `if(${getLexeme(ifThenElse.condition)}) { }`, loc: startPos}], indent: 0 }
+			{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)}) { }`, loc: startPos }], indent: 0 }
 		]
 	} else if(otherwise.length === 0) {
 		return [
-			{ linePart: [{part: `if(${getLexeme(ifThenElse.condition)}) {`, loc: startPos}], indent: 0 },
+			{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)}) {`, loc: startPos }], indent: 0 },
 			...indentBy(removeExpressionListWrap(when), 1),
-			{ linePart: [{part: '}', loc: endPos}], indent: 0 }
+			{ linePart: [{ part: '}', loc: endPos }], indent: 0 }
 		]
 	} else if(when.length === 0) {
 		return [
-			{ linePart: [{part: `if(${getLexeme(ifThenElse.condition)}) { } else {`, loc: startPos}], indent: 0 },
+			{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)}) { } else {`, loc: startPos }], indent: 0 },
 			...indentBy(removeExpressionListWrap(otherwise), 1),
-			{ linePart: [{part: '}', loc: startPos}], indent: 0 }
+			{ linePart: [{ part: '}', loc: startPos }], indent: 0 }
 		]
 	} else {
 		return [
-			{ linePart: [{part: `if(${getLexeme(ifThenElse.condition)}) {`, loc: startPos}], indent: 0 },
+			{ linePart: [{ part: `if(${getLexeme(ifThenElse.condition)}) {`, loc: startPos }], indent: 0 },
 			...indentBy(removeExpressionListWrap(when), 1),
-			{ linePart: [{part: '} else {', loc: conditionPos}], indent: 0 },
+			{ linePart: [{ part: '} else {', loc: conditionPos }], indent: 0 },
 			...indentBy(removeExpressionListWrap(otherwise), 1),
-			{ linePart: [{part: '}', loc: endPos}], indent: 0 }
+			{ linePart: [{ part: '}', loc: endPos }], indent: 0 }
 		]
 	}
 }
@@ -211,14 +211,14 @@ function reconstructWhileLoop(loop: RWhileLoop<ParentInformation>, condition: Co
 	}
 	const additionalTokens = reconstructAdditionalTokens(loop)
 	const out = merge([
-		[{ linePart: [{part: `while(${getLexeme(loop.condition)})`, loc: start ?? loop.location.start}], indent: 0 }],
+		[{ linePart: [{ part: `while(${getLexeme(loop.condition)})`, loc: start ?? loop.location.start }], indent: 0 }],
 		...additionalTokens
 	])
 	if(body.length < 1) {
 		//this puts {} one space after while(...)
 		const hBody = out[out.length - 1].linePart
-		const bodyLoc = {line: hBody[hBody.length - 1].loc.line, column: hBody[hBody.length - 1].loc.column + hBody[hBody.length - 1].part.length}
-		out.push({linePart: [{part: '{}', loc: {line: bodyLoc.line, column: bodyLoc.column + 1}}], indent: 0})
+		const bodyLoc = { line: hBody[hBody.length - 1].loc.line, column: hBody[hBody.length - 1].loc.column + hBody[hBody.length - 1].part.length }
+		out.push({ linePart: [{ part: '{}', loc: { line: bodyLoc.line, column: bodyLoc.column + 1 } }], indent: 0 })
 	} else {
 		out.push(...body)
 	}
@@ -308,10 +308,12 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 	//body.length === 0 ? [{linePart: [{part: '', loc: startPos}], indent: 0}] : body.slice(1, body.length - 1)
 	const parameterLoc = definition.parameters.length === 0 ? startPos : definition.parameters[definition.parameters.length - 1].location.start
 
-	return merge([[{ linePart: [{part: `function(${parameters})`, loc: startPos}], indent: 0 }],
-					   reconstructedBody,
-					   plain(parameters, parameterLoc),
-					   ...additionalTokens])
+	return merge([
+		[{ linePart: [{ part: `function(${parameters})`, loc: startPos }], indent: 0 }],
+		reconstructedBody,
+		plain(parameters, parameterLoc),
+		...additionalTokens
+	])
 }
 
 function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: RFunctionCall<ParentInformation>): Code {

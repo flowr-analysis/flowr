@@ -1,11 +1,11 @@
-import type { ReconstructionResult} from './reconstruct'
+import type { ReconstructionResult } from './reconstruct'
 import { reconstructLogger, reconstructAstFolds } from './reconstruct'
-import {prettyPrintCodeToString, removeOuterExpressionListIfApplicable} from './helper'
+import { prettyPrintCodeToString, removeOuterExpressionListIfApplicable } from './helper'
 import { autoSelectLibrary } from './helper'
 import type { AutoSelectPredicate } from './helper'
 import type { Selection } from './helper'
 
-import type { NormalizedAst, RNode, ParentInformation} from '../r-bridge'
+import type { NormalizedAst, RNode, ParentInformation } from '../r-bridge'
 import { foldAstStateful } from '../r-bridge'
 import { LogLevel } from '../util/log'
 

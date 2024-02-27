@@ -34,8 +34,6 @@ import {
 	dataflowGraphToMermaidUrl,
 	dataflowGraphToQuads
 } from './print/dataflow-printer'
-import type {DataflowInformation} from '../dataflow/internal/info'
-import type {runAbstractInterpretation} from '../abstract-interpretation/processor'
 import { normalize } from '../r-bridge/lang-4.x/ast/parser/json/parser'
 
 /**

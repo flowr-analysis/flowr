@@ -1,4 +1,4 @@
-import type { NodeId, ParentInformation, RNode} from '../r-bridge'
+import type { NodeId, ParentInformation, RNode } from '../r-bridge'
 import { RType } from '../r-bridge'
 import type { SourcePosition } from '../util/range'
 import type { ReconstructionConfiguration } from './reconstruct'
@@ -18,12 +18,12 @@ export interface PrettyPrintLine {
  * Splits text on linebreak to create lineParts and encapsulates them in the Code type
  */
 export function plain(text: string, location: SourcePosition): Code {
-	const printLine: PrettyPrintLine = {linePart: [], indent: 0}
+	const printLine: PrettyPrintLine = { linePart: [], indent: 0 }
 	const split = text.split('\n')
 	let locationLine = location.line
 
 	for(const line of split) {
-		printLine.linePart.push({part: line, loc: { column: location.column, line: locationLine++ }})
+		printLine.linePart.push({ part: line, loc: { column: location.column, line: locationLine++ } })
 	}
 	return [printLine]
 }
@@ -41,7 +41,7 @@ export function merge(snipbits: Code[]): Code {
 			for(const part of line.linePart) {
 				const lineNumber = part.loc.line
 				if(buckets[lineNumber] === undefined) {	//may be necessary as empty elements count as undefined and we don't want to reassign filled buckets
-					buckets[lineNumber] = {linePart: [], indent: line.indent}
+					buckets[lineNumber] = { linePart: [], indent: line.indent }
 				}
 				buckets[lineNumber].linePart.push(part)
 			}

@@ -140,6 +140,12 @@ export const flowrCapabilities = {
 									description: '_Recognize and resolve calls like `f(x = 3)`, `foo::bar(x = 3, y = 4)`, ..._'
 								},
 								{
+									name:        'String Arguments',
+									id:          'string-arguments',
+									supported:   'fully',
+									description: '_Recognize and resolve calls like `f(\'x\' = 3)`, `foo::bar(\'x\' = 3, "y" = 4)`, ..._'
+								},
+								{
 									name:        'Resolve Arguments',
 									id:          'resolve-arguments',
 									supported:   'partially',

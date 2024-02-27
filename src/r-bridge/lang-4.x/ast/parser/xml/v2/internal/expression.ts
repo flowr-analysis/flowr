@@ -14,7 +14,8 @@ import { jsonReplacer } from '../../../../../../../util/json'
 import { tryNormalizeIfThen } from './control/if-then'
 import { tryNormalizeIfThenElse } from './control/if-then-else'
 import { tryNormalizeFor } from './loops/for'
-import { tryNormalizeFunctionCall } from './functions/call'
+import { tryNormalizeFunctionCall } from './functions/function-call'
+import { tryNormalizeFunctionDefinition } from './functions/function-definition'
 
 /**
  * Handles semicolons within _and_ braces at the start and end of the expression
@@ -74,7 +75,7 @@ function processBraces(braces: [start: XmlBasedJson, end: XmlBasedJson], process
 
 export function normalizeExpression(
 	config: NormalizeConfiguration,
-	tokens: XmlBasedJson[]
+	tokens: readonly XmlBasedJson[]
 ): RNode[] {
 	if(tokens.length === 0) {
 		// if there are no tokens, there is no expression to parse, and we can skip it!
@@ -121,32 +122,32 @@ const todo = (...x: unknown[]) => {
 function tryNormalizeElems(config: NormalizeConfiguration, tokens: readonly XmlBasedJson[]): RNode {
 	const length = tokens.length
 	if(length === 1) {
-		return normalizeSingleToken(config, tokens[0])
+		const res = normalizeSingleToken(config, tokens[0])
+		guard(res !== undefined, () => `expected to parse a single token, but received undefined for ${JSON.stringify(tokens[0])}`)
+		return res
 	} else if(length === 2) {
 		const unary = normalizeUnary(config, tokens as [XmlBasedJson, XmlBasedJson])
 		if(unary !== undefined) {
 			return unary
 		}
 	}
+
+	const ret = tryNormalizeFunctionCall(config, tokens) ?? tryNormalizeFunctionDefinition(config, tokens)
+	if(ret !== undefined) {
+		return ret
+	}
+
 	// otherwise, before we check for fixed-length constructs we have to check for the *second* element
 	// in case we have a function-call, access, ...
 	const second = getTokenType(tokens[1])
 
 	switch(second) {
-		case RawRType.ParenLeft: {
-			const ret = tryNormalizeFunctionCall(config, tokens as [XmlBasedJson, XmlBasedJson])
-			if(ret !== undefined) {
-				return ret
-			}
-			break
-		}
 		case RawRType.Dollar:
 		case RawRType.At:
 		case RawRType.BracketLeft:
 		case RawRType.DoubleBracketLeft:
 			return normalizeAccess(config, tokens, second)
 	}
-
 
 	switch(length) {
 		case 3:

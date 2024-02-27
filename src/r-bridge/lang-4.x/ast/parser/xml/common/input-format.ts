@@ -22,7 +22,7 @@ export type XmlBasedJson = Record<string, XmlBasedJsonValue>
 /**
  * A xml element in the json can either link to a string or another xml element
  */
-export type XmlBasedJsonValue = string | Record<string, unknown> | XmlBasedJson[]
+export type XmlBasedJsonValue = string | Record<string, unknown> | readonly XmlBasedJson[]
 
 /**
  * We expect all xml elements to have a name attached which represents their R token type.

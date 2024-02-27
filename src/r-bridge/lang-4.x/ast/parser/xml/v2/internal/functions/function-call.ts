@@ -14,13 +14,13 @@ import {
 } from '../../../../../model'
 import { tryToNormalizeArgument } from './argument'
 import type { SourceRange } from '../../../../../../../../util/range'
-import { normalizeExpression } from '../expression'
 import { parseLog } from '../../../../json/parser'
 import type { NormalizeConfiguration } from '../../data'
 import { normalizeString } from '../values/string'
 import { tryNormalizeSymbolNoNamespace, tryNormalizeSymbolWithNamespace } from '../values/symbol'
 import { expensiveTrace } from '../../../../../../../../util/log'
 import { normalizeLog } from '../../normalize'
+import { normalizeSingleToken } from '../single-element'
 
 /**
  * Tries to parse the given data as a function call.
@@ -52,7 +52,7 @@ export function tryNormalizeFunctionCall(config: NormalizeConfiguration, tokens:
 		result = parseNamedFunctionCall(config, symbolContent, tokens, location, content)
 	} else if(symbolContent.findIndex(x => getTokenType(x) === RawRType.SymbolFunctionCall) < 0) {
 		expensiveTrace(normalizeLog, () => `is not named function call, as the name is not of type ${RType.FunctionCall}, but: ${symbolContent.map(getTokenType).join(',')}`)
-		const mayResult = tryParseUnnamedFunctionCall(config, tokens, location, content)
+		const mayResult = tryParseUnnamedFunctionCall(config, symbolContent, tokens, location, content)
 		if(mayResult === undefined) {
 			return undefined
 		}
@@ -67,35 +67,33 @@ export function tryNormalizeFunctionCall(config: NormalizeConfiguration, tokens:
 function parseArguments(tokens: readonly XmlBasedJson[], config: NormalizeConfiguration): (RNode | undefined)[] {
 	const argContainer = tokens.slice(1)
 	guard(argContainer.length > 1 && getTokenType(argContainer[0]) === RawRType.ParenLeft && getTokenType(argContainer[argContainer.length - 1]) === RawRType.ParenRight, 'expected args in parenthesis')
-	const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => x.name === RawRType.Comma)
+	const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => getTokenType(x) === RawRType.Comma)
 	return splitArgumentsOnComma.map(x => {
 		parseLog.trace('trying to parse argument')
 		return tryToNormalizeArgument(config, x)
 	})
 }
 
-function tryParseUnnamedFunctionCall(config: NormalizeConfiguration, tokens: readonly XmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | undefined {
+function tryParseUnnamedFunctionCall(config: NormalizeConfiguration, symbolTokens: readonly XmlBasedJson[], tokens: readonly XmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | undefined {
 	// maybe remove symbol-content again because I just use the root expr of mapped with name
-	if(tokens.length < 3) {
+	if(symbolTokens.length !== 3) {
 		parseLog.trace('expected unnamed function call to have 3 elements [like (<func>)], but was not')
 		return undefined
 	}
 
-	parseLog.trace('Assuming structure to be a function call')
-
 	// we parse an expression to allow function calls
-	const calledFunction = normalizeExpression(config, [tokens[0]])
-	guard(calledFunction.length === 1, 'expected exactly one function call')
+	const calledFunction = normalizeSingleToken(config, symbolTokens[1])
+	guard(calledFunction !== undefined, 'expected called function to be parsed')
 	const parsedArguments = parseArguments(tokens, config)
 
 	return {
-		type:           RType.FunctionCall,
-		flavor:         'unnamed',
+		type:      RType.FunctionCall,
+		flavor:    'unnamed',
 		location,
-		lexeme:         content,
-		calledFunction: calledFunction[0],
-		arguments:      parsedArguments,
-		info:           {
+		lexeme:    content,
+		calledFunction,
+		arguments: parsedArguments,
+		info:      {
 			additionalTokens: [],
 			fullLexeme:       config.currentLexeme
 		}
@@ -124,8 +122,7 @@ function parseNamedFunctionCall(
 	} else {
 		functionName = symbolContent.length === 3 ? tryNormalizeSymbolWithNamespace(config, symbolContent) : tryNormalizeSymbolNoNamespace(config, symbolContent[0])
 	}
-	guard(functionName !== undefined, 'expected function name to be a symbol, yet received none')
-	guard((functionName).type === RType.Symbol, () => `expected function name to be a symbol, yet received ${JSON.stringify(functionName)}`)
+	guard(functionName?.type === RType.Symbol, () => `expected function name to be a symbol, yet received ${JSON.stringify(functionName)}`)
 
 	const parsedArguments = parseArguments(tokens, config)
 

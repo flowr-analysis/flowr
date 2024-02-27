@@ -12,7 +12,7 @@ import { normalizeBreak, normalizeNext } from '../loops'
 import { normalizeLineDirective } from '../other/line-directive'
 import type { RDelimiter } from '../../../../../model/nodes/info'
 
-function normalizeDelimiter(data: ParserData, elem: NamedXmlBasedJson): RDelimiter {
+function normalizeDelimiter(_data: ParserData, elem: NamedXmlBasedJson): RDelimiter {
 	const {
 		location,
 		content

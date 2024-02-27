@@ -5,7 +5,7 @@ import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/internal/
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argument, unnamedArgument } from '../../../_helper/environment-builder'
+import { argument, unnamedArgument, variable } from '../../../_helper/environment-builder'
 
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {
@@ -14,7 +14,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		const envWithFirstI = define(
-			{ nodeId: '0', scope: 'local', name: 'i', used: 'always', kind: 'variable', definedAt: '2' },
+			variable('i', '2', '0'),
 			LocalScope,
 			initializeCleanEnvironments()
 		)
@@ -51,7 +51,7 @@ describe('Function Call', withShell(shell => {
 				.definesOnCall('12', '4')
 		)
 		const envWithIAB = define(
-			{ nodeId: '10', scope: 'local', name: 'b', used: 'always', kind: 'variable', definedAt: '12' },
+			variable('b', '12', '10'),
 			LocalScope,
 			envWithIA
 		)
@@ -93,12 +93,12 @@ describe('Function Call', withShell(shell => {
 			pushLocalEnvironment(initializeCleanEnvironments()))
 
 		const envWithXDefinedForFunc = define(
-			{ nodeId: '6', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '8' },
+			variable('x', '8', '6'),
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 
 		const envWithLastXDefined = define(
-			{ nodeId: '9', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '11' },
+			variable('x', '11', '9'),
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments()))
 		const envWithIAndLargeA = define(
@@ -287,7 +287,7 @@ a()()`,
 			initializeCleanEnvironments()
 		)
 		const defWithAY = define(
-			{ nodeId: '5', scope: 'local', name: 'y', used: 'always', kind: 'variable', definedAt: '7' },
+			variable('y', '7', '5'),
 			LocalScope,
 			defWithA
 		)
@@ -382,7 +382,7 @@ a(,3)`, emptyGraph()
 			.call('5', 'foo', [argument('4')])
 			.use('4', unnamedArgument('4'))
 			.defineVariable('1', 'x')
-			.use('6', 'x', { environment: define({ nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '3' }, LocalScope, initializeCleanEnvironments()) })
+			.use('6', 'x', { environment: define(variable('x', '3', '1'), LocalScope, initializeCleanEnvironments()) })
 			.argument('5', '4')
 			.reads('4', '1')
 			.reads('6', '1')

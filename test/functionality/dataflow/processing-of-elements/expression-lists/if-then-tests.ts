@@ -3,6 +3,7 @@ import { assertDataflow, withShell } from '../../../_helper/shell'
 import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
+import { variable } from '../../../_helper/environment-builder'
 
 describe('Lists with if-then constructs', withShell(shell => {
 	for(const assign of [ '<-', '<<-', '=']) {
@@ -19,7 +20,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 							`x ${assign} 2\nif(x) { 1 } ${b.text}`,
 							emptyGraph()
 								.defineVariable('0', 'x', scope)
-								.use('3', 'x', { environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments()) })
+								.use('3', 'x', { environment: define(variable('x', '2', '0', scope), scope, initializeCleanEnvironments()) })
 								.reads('3', '0')
 						)
 						assertDataflow('read previous def in then',
@@ -27,7 +28,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 							`x ${assign} 2\nif(TRUE) { x } ${b.text}`,
 							emptyGraph()
 								.defineVariable('0', 'x', scope)
-								.use('4', 'x', { environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments()) })
+								.use('4', 'x', { environment: define(variable('x', '2', '0', scope), scope, initializeCleanEnvironments()) })
 								.reads('4', '0')
 						)
 					})
@@ -37,7 +38,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 					`x ${assign} 2\nif(FALSE) { 42 } else { x }`,
 					emptyGraph()
 						.defineVariable('0', 'x', scope)
-						.use('6', 'x', { environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments()) })
+						.use('6', 'x', { environment: define(variable('x', '2', '0', scope), scope, initializeCleanEnvironments()) })
 						.reads('6', '0')
 				)
 			})
@@ -51,7 +52,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 						`if(TRUE) { x ${assign} 2 }\nx`,
 						emptyGraph()
 							.defineVariable('1', 'x', scope)
-							.use('6', 'x', { environment: define({ nodeId: '1', name: 'x', scope, kind: 'variable', definedAt: '3', used: 'always' }, scope, initializeCleanEnvironments()) })
+							.use('6', 'x', { environment: define(variable('x', '3', '1', scope), scope, initializeCleanEnvironments()) })
 							.reads('6', '1')
 					)
 				}
@@ -60,12 +61,12 @@ describe('Lists with if-then constructs', withShell(shell => {
 					`if(FALSE) { 42 } else { x ${assign} 5 }\nx`,
 					emptyGraph()
 						.defineVariable('3', 'x', scope)
-						.use('8', 'x', { environment: define({ nodeId: '3', name: 'x', scope, kind: 'variable', definedAt: '5', used: 'always' }, scope, initializeCleanEnvironments()) })
+						.use('8', 'x', { environment: define(variable('x', '5', '3', scope), scope, initializeCleanEnvironments()) })
 						.reads('8', '3')
 				)
 
-				const whenEnvironment = define({ nodeId: '1', name: 'x', scope, kind: 'variable', definedAt: '3', used: 'maybe' }, scope, initializeCleanEnvironments())
-				const otherwiseEnvironment = define({ nodeId: '5', name: 'x', scope, kind: 'variable', definedAt: '7', used: 'maybe' }, scope, initializeCleanEnvironments())
+				const whenEnvironment = define(variable('x', '3', '1', scope, 'maybe'), scope, initializeCleanEnvironments())
+				const otherwiseEnvironment = define(variable('x', '7', '5', scope, 'maybe'), scope, initializeCleanEnvironments())
 
 				assertDataflow('def in then and else read afterward',
 					shell,

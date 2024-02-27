@@ -4,8 +4,8 @@ import type { DataflowScopeName } from '../../../src/dataflow/environments'
 import { LocalScope } from '../../../src/dataflow/environments/scopes'
 import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 
-export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
-	return { name, kind: 'variable', scope: LocalScope, used: 'always', nodeId: '_0', definedAt }
+export function variable(name: string, definedAt: NodeId, nodeId: NodeId = '_0', scope: DataflowScopeName = LocalScope, used: DataflowGraphEdgeAttribute = 'always'): IdentifierDefinition {
+	return { name, kind: 'variable', nodeId, definedAt, scope, used }
 }
 
 /**

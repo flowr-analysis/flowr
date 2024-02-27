@@ -3,6 +3,7 @@ import { initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
+import { variable } from '../../../_helper/environment-builder'
 
 describe('for', withShell(shell => {
 	assertDataflow('Single-vector for Loop',
@@ -10,13 +11,13 @@ describe('for', withShell(shell => {
 		'for(i in 0) i ',
 		emptyGraph()
 			.defineVariable('0', 'i')
-			.use('2', 'i', { when: 'maybe', environment: define({ nodeId: '0', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '4', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
+			.use('2', 'i', { when: 'maybe', environment: define(variable('i', '4', '0'), LocalScope, initializeCleanEnvironments()) })
 			.reads('2', '0', 'maybe')
 	)
 
 	describe('Potential redefinition with break', () => {
-		const withXDefined = define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())
-		const otherXDefined = define({ nodeId: '7', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'maybe' }, LocalScope, initializeCleanEnvironments())
+		const withXDefined = define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments())
+		const otherXDefined = define(variable('x', '9', '7', LocalScope, 'maybe'), LocalScope, initializeCleanEnvironments())
 		assertDataflow('Potential redefinition inside the same loop',
 			shell,
 			`repeat {
@@ -36,40 +37,34 @@ x`,
 		)
 	})
 
-	const envWithX = () => define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())
+	const envWithX = () => define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments())
 	assertDataflow('Read in for Loop',
 		shell,
 		'x <- 12\nfor(i in 1:10) x ',
 		emptyGraph()
 			.defineVariable('0', 'x')
 			.defineVariable('3', 'i', LocalScope, { environment: envWithX() })
-			.use('7', 'x', { when: 'maybe', environment: define({ nodeId: '3', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'always' }, LocalScope, envWithX()) })
+			.use('7', 'x', { when: 'maybe', environment: define(variable('i', '9', '3'), LocalScope, envWithX()) })
 			.reads('7', '0', 'maybe')
 	)
-	const envWithI = () => define({ nodeId: '0', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '8', used: 'always' }, LocalScope, initializeCleanEnvironments())
+	const envWithI = () => define(variable('i', '8', '0'), LocalScope, initializeCleanEnvironments())
 	assertDataflow('Read after for loop',
 		shell,
 		'for(i in 1:10) { x <- 12 }\n x',
 		emptyGraph()
 			.defineVariable('0', 'i')
 			.defineVariable('4', 'x', LocalScope, { when: 'maybe', environment: envWithI() })
-			.use('9', 'x', { environment: define({ nodeId: '4', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '6', used: 'maybe' }, LocalScope, envWithI()) })
+			.use('9', 'x', { environment: define(variable('x', '6', '4', LocalScope, 'maybe'), LocalScope, envWithI()) })
 			.reads('9', '4', 'maybe')
 	)
 
 
-	const envWithFirstX = () => define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())
-	const envInFor = () => define({ nodeId: '3', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '11', used: 'always' }, LocalScope,
-		envWithFirstX()
-	)
+	const envWithFirstX = () => define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments())
+	const envInFor = () => define(variable('i', '11', '3'), LocalScope, envWithFirstX())
 
-	const envOutFor = () => define({ nodeId: '3', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '11', used: 'always' }, LocalScope,
-		define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())
-	)
+	const envOutFor = () => define(variable('i', '11', '3'), LocalScope, define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments()))
 
-	const envWithSecondX = () => define({ nodeId: '7', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'maybe' }, LocalScope,
-		initializeCleanEnvironments()
-	)
+	const envWithSecondX = () => define(variable('x', '9', '7', LocalScope, 'maybe'), LocalScope, initializeCleanEnvironments())
 
 	assertDataflow('Read after for loop with outer def',
 		shell,
@@ -100,17 +95,9 @@ x`,
 			.sameDef('0', '7', 'maybe')
 	)
 
-	const envInLargeFor = () => define({ nodeId: '3', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '14', used: 'always' }, LocalScope,
-		envWithFirstX()
-	)
-
-	const envInLargeFor2 = () => define({ nodeId: '7', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'always' }, LocalScope,
-		envInLargeFor()
-	)
-
-	const envOutLargeFor = () => define({ nodeId: '10', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '12', used: 'maybe' }, LocalScope,
-		envInLargeFor()
-	)
+	const envInLargeFor = () => define(variable('i', '14', '3'), LocalScope, envWithFirstX())
+	const envInLargeFor2 = () => define(variable('x', '9', '7'), LocalScope, envInLargeFor())
+	const envOutLargeFor = () => define(variable('x', '12', '10', LocalScope, 'maybe'), LocalScope, envInLargeFor())
 
 	assertDataflow('Redefinition within loop',
 		shell,
@@ -135,16 +122,10 @@ x`,
 			.sameDef('7', '10') // both in same loop execution
 	)
 
-	const forLoopWithI = () => define({ nodeId: '0', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'always' }, LocalScope,
-		initializeCleanEnvironments()
-	)
+	const forLoopWithI = () => define(variable('i', '9', '0'), LocalScope, initializeCleanEnvironments())
+	const forLoopWithIAfter = () => define(variable('i', '9', '0', LocalScope, 'maybe'), LocalScope, initializeCleanEnvironments())
+	const forLoopAfterI = () => define(variable('i', '7', '5', LocalScope, 'maybe'), LocalScope, initializeCleanEnvironments())
 
-	const forLoopWithIAfter = () => define({ nodeId: '0', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'maybe' }, LocalScope,
-		initializeCleanEnvironments()
-	)
-	const forLoopAfterI = () => define({ nodeId: '5', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '7', used: 'maybe' }, LocalScope,
-		initializeCleanEnvironments()
-	)
 	assertDataflow('Redefinition within loop',
 		shell,
 		'for(i in 1:10) { i; i <- 12 }\n i',

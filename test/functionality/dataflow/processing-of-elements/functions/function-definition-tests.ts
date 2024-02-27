@@ -7,7 +7,7 @@ import {
 } from '../../../../../src/dataflow/environments'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argument, unnamedArgument } from '../../../_helper/environment-builder'
+import { argument, unnamedArgument, variable } from '../../../_helper/environment-builder'
 
 describe('Function Definition', withShell(shell => {
 	describe('Only functions', () => {
@@ -136,11 +136,7 @@ describe('Function Definition', withShell(shell => {
 				})
 				.use('3', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 		)
-		const envWithXDefined = define(
-			{ nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
-			LocalScope,
-			pushLocalEnvironment(initializeCleanEnvironments()))
-
+		const envWithXDefined = define(variable('x', '2', '0'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('local define with <- in function, read after', shell, 'function() { x <- 3; }; x',
 			emptyGraph()
 				.use('5', 'x')
@@ -172,10 +168,7 @@ describe('Function Definition', withShell(shell => {
 				.relates('2', '0')
 		)
 
-		const envWithXDefinedR = define(
-			{ nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
-			LocalScope,
-			pushLocalEnvironment(initializeCleanEnvironments()))
+		const envWithXDefinedR = define(variable('x', '2', '1'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('local define with -> in function, read after', shell, 'function() { 3 -> x; }; x',
 			emptyGraph()
 				.use('5', 'x')
@@ -191,10 +184,7 @@ describe('Function Definition', withShell(shell => {
 				.exit('2', '->', envWithXDefinedR, {}, false)
 				.relates('2', '1')
 		)
-		const envWithXDefinedGlobal = define(
-			{ nodeId: '0', scope: GlobalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
-			GlobalScope,
-			pushLocalEnvironment(initializeCleanEnvironments()))
+		const envWithXDefinedGlobal = define(variable('x', '2', '0', GlobalScope), GlobalScope, pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('global define with <<- in function, read after', shell, 'function() { x <<- 3; }; x',
 			emptyGraph()
 				.use('5', 'x')
@@ -212,10 +202,7 @@ describe('Function Definition', withShell(shell => {
 				.exit('2', '<<-', envWithXDefinedGlobal, {}, false)
 				.relates('2', '0')
 		)
-		const envWithXDefinedGlobalR = define(
-			{ nodeId: '1', scope: GlobalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
-			GlobalScope,
-			pushLocalEnvironment(initializeCleanEnvironments()))
+		const envWithXDefinedGlobalR = define(variable('x', '2', '1', GlobalScope), GlobalScope, pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('global define with ->> in function, read after', shell, 'function() { 3 ->> x; }; x',
 			emptyGraph()
 				.use('5', 'x')
@@ -233,22 +220,12 @@ describe('Function Definition', withShell(shell => {
 				.exit('2', '->>', envWithXDefinedGlobalR, {}, false)
 				.relates('2', '1')
 		)
-		const envDefXSingle = define(
-			{ nodeId: '3', scope: LocalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '5' },
-			LocalScope,
-			pushLocalEnvironment(initializeCleanEnvironments()))
+		const envDefXSingle = define(variable('x', '5', '3'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('shadow in body', shell, 'x <- 2; function() { x <- 3; x }; x',
 			emptyGraph()
 				.defineVariable('0', 'x')
 				.use('9', 'x', {
-					environment: define({
-						nodeId:    '0',
-						definedAt: '2',
-						used:      'always',
-						name:      'x',
-						scope:     LocalScope,
-						kind:      'variable'
-					}, LocalScope, initializeCleanEnvironments())
+					environment: define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments())
 				})
 				.reads('9', '0')
 				.defineFunction('8', '8', ['6'], {
@@ -259,7 +236,7 @@ describe('Function Definition', withShell(shell => {
 					graph:             new Set(['6', '3']),
 					environments:      envDefXSingle
 				})
-				.use('6', 'x', { environment: define({ nodeId: '3', definedAt: '5', used: 'always', name: 'x', scope: LocalScope, kind: 'variable' }, LocalScope, pushLocalEnvironment(initializeCleanEnvironments())) }, false)
+				.use('6', 'x', { environment: define(variable('x', '5', '3'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments())) }, false)
 				.defineVariable('3', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.reads('6', '3')
 		)
@@ -268,7 +245,7 @@ describe('Function Definition', withShell(shell => {
 				.defineVariable('0', 'x')
 				.use('9', 'x', {
 					environment: define(
-						{ nodeId: '0', scope: LocalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+						variable('x', '2', '0'),
 						LocalScope,
 						initializeCleanEnvironments())
 				})
@@ -284,14 +261,7 @@ describe('Function Definition', withShell(shell => {
 				.defineVariable('3', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.use('4', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.use('6', 'x', {
-					environment: define({
-						nodeId:    '3',
-						scope:     LocalScope,
-						name:      'x',
-						used:      'always',
-						kind:      'variable',
-						definedAt: '5'
-					}, LocalScope, pushLocalEnvironment(initializeCleanEnvironments())),
+					environment: define(variable('x', '5', '3'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments())),
 				}, false)
 				.reads('6', '3')
 				.definedBy('3', '4')
@@ -379,12 +349,12 @@ describe('Function Definition', withShell(shell => {
 			envWithFirstParam
 		)
 		const envWithBothParamFirstB = define(
-			{ nodeId: '6', scope: LocalScope, name: 'b', used: 'always', kind: 'variable', definedAt: '8' },
+			variable('b', '8', '6'),
 			LocalScope,
 			envWithBothParam
 		)
 		const envWithBothParamSecondB = define(
-			{ nodeId: '10', scope: LocalScope, name: 'b', used: 'always', kind: 'variable', definedAt: '12' },
+			variable('b', '12', '10'),
 			LocalScope,
 			envWithBothParam
 		)
@@ -453,12 +423,12 @@ describe('Function Definition', withShell(shell => {
 			pushLocalEnvironment(initializeCleanEnvironments())
 		)
 		const envWithFirstY = define(
-			{ nodeId: '5', scope: LocalScope, name: 'y', used: 'always', kind: 'variable', definedAt: '7' },
+			variable('y', '7', '5'),
 			LocalScope,
 			envWithG
 		)
 		const finalEnv = define(
-			{ nodeId: '15', scope: LocalScope, name: 'y', used: 'always', kind: 'variable', definedAt: '17' },
+			variable('y', '17', '15'),
 			LocalScope,
 			envWithG
 		)
@@ -543,7 +513,7 @@ describe('Function Definition', withShell(shell => {
 			withinNestedFunctionWithoutParam
 		)
 		const withinNestedFunctionWithDef = define(
-			{ nodeId: '4', scope: LocalScope, name: 'x', used: 'always', kind: 'variable', definedAt: '6' },
+			variable('x', '6', '4'),
 			LocalScope,
 			pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments()))
 		)
@@ -553,7 +523,7 @@ describe('Function Definition', withShell(shell => {
 			initializeCleanEnvironments()
 		)
 		const envWithAB = define(
-			{ nodeId: '14', scope: LocalScope, name: 'b', used: 'always', kind: 'variable', definedAt: '16' },
+			variable('b', '16', '14'),
 			LocalScope,
 			envWithA
 		)

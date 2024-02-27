@@ -4,7 +4,7 @@ import { BuiltIn, initializeCleanEnvironments, requestProviderFromFile, requestP
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { define } from '../../../../../src/dataflow/environments'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argument, unnamedArgument } from '../../../_helper/environment-builder'
+import { argument, unnamedArgument, variable } from '../../../_helper/environment-builder'
 
 describe('source', withShell(shell => {
 	// reset the source provider back to the default value after our tests
@@ -18,7 +18,7 @@ describe('source', withShell(shell => {
 	setSourceProvider(requestProviderFromText(sources))
 
 	const envWithSimpleN = define(
-		{ nodeId: 'simple-1:1-1:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-1:1-1:6-2' },
+		variable('N', 'simple-1:1-1:6-2', 'simple-1:1-1:6-0'),
 		LocalScope,
 		initializeCleanEnvironments()
 	)
@@ -40,18 +40,18 @@ describe('source', withShell(shell => {
 	assertDataflow('multiple source', shell, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)', emptyGraph()
 		.call('3', 'source', [argument('2')], { environment: initializeCleanEnvironments() })
 		.call('10', 'source', [argument('9')],
-			{ environment: define({ nodeId: '4', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: '6' }, LocalScope, initializeCleanEnvironments()) })
+			{ environment: define(variable('N', '6', '4'), LocalScope, initializeCleanEnvironments()) })
 		.call('14', 'cat', [argument('13')],
-			{ environment: define({ nodeId: 'simple-3:1-3:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-3:1-3:6-2' }, LocalScope, initializeCleanEnvironments()) })
+			{ environment: define(variable('N', 'simple-3:1-3:6-2', 'simple-3:1-3:6-0'), LocalScope, initializeCleanEnvironments()) })
 		.defineVariable('simple-3:1-3:6-0', 'N', LocalScope,
-			{ environment: define({ nodeId: '4', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: '6' }, LocalScope, initializeCleanEnvironments()) }
+			{ environment: define(variable('N', '6', '4'), LocalScope, initializeCleanEnvironments()) }
 		)
 		.defineVariable('simple-1:1-1:6-0', 'N')
 		.defineVariable('4', 'N', LocalScope, { environment: envWithSimpleN })
 		.use('2', unnamedArgument('2'))
-		.use('9', unnamedArgument('9'), { environment: define({ nodeId: '4', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: '6' }, LocalScope, initializeCleanEnvironments()) })
-		.use('13', unnamedArgument('13'), { environment: define({ nodeId: 'simple-3:1-3:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-3:1-3:6-2' }, LocalScope, initializeCleanEnvironments()) })
-		.use('12', 'N', { environment: define({ nodeId: 'simple-3:1-3:6-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-3:1-3:6-2' }, LocalScope, initializeCleanEnvironments()) })
+		.use('9', unnamedArgument('9'), { environment: define(variable('N', '6', '4'), LocalScope, initializeCleanEnvironments()) })
+		.use('13', unnamedArgument('13'), { environment: define(variable('N', 'simple-3:1-3:6-2', 'simple-3:1-3:6-0'), LocalScope, initializeCleanEnvironments()) })
+		.use('12', 'N', { environment: define(variable('N', 'simple-3:1-3:6-2', 'simple-3:1-3:6-0'), LocalScope, initializeCleanEnvironments()) })
 		.sameRead('3', '10')
 		.argument('3', '2')
 		.argument('14', '13')
@@ -66,7 +66,7 @@ describe('source', withShell(shell => {
 	)
 
 	const envWithConditionalN = define(
-		{ nodeId: 'simple-1:10-1:15-0', scope: 'local', name: 'N', used: 'always', kind: 'variable', definedAt: 'simple-1:10-1:15-2' },
+		variable('N', 'simple-1:10-1:15-2', 'simple-1:10-1:15-0'),
 		LocalScope,
 		initializeCleanEnvironments()
 	)
@@ -102,7 +102,7 @@ describe('source', withShell(shell => {
 
 	const recursive2Id = (id: number) => sourcedDeterministicCountingIdGenerator('recursive2', { start: { line: 2, column: 1 }, end: { line: 2, column: 6 } }, id)()
 	const envWithX = define(
-		{ nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '2' },
+		variable('x', '2', '0'),
 		LocalScope,
 		initializeCleanEnvironments()
 	)

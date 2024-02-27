@@ -10,7 +10,7 @@ import { appendEnvironments, define } from '../../../../../src/dataflow/environm
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argument, unnamedArgument } from '../../../_helper/environment-builder'
+import { argument, unnamedArgument, variable } from '../../../_helper/environment-builder'
 
 describe('Atomic (dataflow information)', withShell((shell) => {
 	describe('uninteresting leafs', () => {
@@ -398,7 +398,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 						`if (x <- 3) ${b.func('x')}`,
 						emptyGraph()
 							.defineVariable('0', 'x', LocalScope)
-							.use('3', 'x', { when: 'maybe', environment: define({ name: 'x', definedAt: '2', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0' }, LocalScope, initializeCleanEnvironments()) })
+							.use('3', 'x', { when: 'maybe', environment: define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments()) })
 							.reads('3', '0')
 					)
 				})
@@ -458,16 +458,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		}
 	})
 	describe('inline non-strict boolean operations', () => {
-		const environmentWithY = define(
-			{ name: 'y', nodeId: '0', kind: 'variable', definedAt: '2', scope: LocalScope, used: 'always' },
-			LocalScope,
-			initializeCleanEnvironments()
-		)
-		const environmentWithOtherY = define(
-			{ name: 'y', nodeId: '4', kind: 'variable', definedAt: '6', scope: LocalScope, used: 'always' },
-			LocalScope,
-			initializeCleanEnvironments()
-		)
+		const environmentWithY = define(variable('y', '2', '0'), LocalScope, initializeCleanEnvironments())
+		const environmentWithOtherY = define(variable('y', '6', '4'), LocalScope, initializeCleanEnvironments())
 		assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'y <- 15; x && (y <- 13); y',
 			emptyGraph()
 				.defineVariable('0', 'y')
@@ -490,7 +482,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				'for(i in 1:10) { i }',
 				emptyGraph()
 					.defineVariable('0', 'i')
-					.use('4', 'i', { when: 'maybe', environment: define({ name: 'i', definedAt: '6', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0' }, LocalScope, initializeCleanEnvironments()) })
+					.use('4', 'i', { when: 'maybe', environment: define(variable('i', '6', '0'), LocalScope, initializeCleanEnvironments()) })
 					.reads('4', '0', 'maybe')
 			)
 		})

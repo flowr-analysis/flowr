@@ -16,7 +16,7 @@ import {
 	RShell
 } from '../../../src/r-bridge'
 import { assert } from 'chai'
-import type { DataflowGraph} from '../../../src/dataflow'
+import type { DataflowGraph } from '../../../src/dataflow'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow'
 import type { SlicingCriteria } from '../../../src/slicing'
 import { testRequiresRVersion } from './version'
@@ -42,7 +42,6 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
 /**
  * produces a shell session for you, can be used within a `describe` block
  * @param fn       - function to use the shell
- * @param packages - packages to be ensured when the shell is created
  */
 export function withShell(fn: (shell: RShell) => void): () => void {
 	return function() {
@@ -70,14 +69,14 @@ function removeInformation<T extends Record<string, unknown>>(obj: T, includeTok
 function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected: RNode<Info>, includeTokens: boolean, message?: () => string): void {
 	const astCopy = removeInformation(ast, includeTokens)
 	const expectedCopy = removeInformation(expected, includeTokens)
-	 try {
-		 assert.deepStrictEqual(astCopy, expectedCopy)
-	 } catch(e) {
+	try {
+		assert.deepStrictEqual(astCopy, expectedCopy)
+	} catch(e) {
 		if(message) {
 			console.error(message())
 		}
 		throw e
-	 }
+	}
 }
 
 export const retrieveNormalizedAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RNodeWithParent> => {
@@ -92,13 +91,25 @@ export const retrieveNormalizedAst = async(shell: RShell, input: `file://${strin
 
 export interface TestConfiguration extends MergeableRecord {
 	/** the (inclusive) minimum version of R required to run this test, e.g., {@link MIN_VERSION_PIPE} */
-	minRVersion:            string | undefined,
-	needsNetworkConnection: boolean,
+	minRVersion:            string | undefined
+	needsPackages:          string[]
+	needsNetworkConnection: boolean
 }
 
 export const defaultTestConfiguration: TestConfiguration = {
 	minRVersion:            undefined,
-	needsNetworkConnection: false,
+	needsPackages:          [],
+	needsNetworkConnection: false
+}
+
+async function testRequiresPackages(shell: RShell, requiredPackages: string[], test: Mocha.Context) {
+	shell.tryToInjectHomeLibPath()
+	for(const pkg of requiredPackages) {
+		if(!await shell.isPackageInstalled(pkg)) {
+			console.warn(`Skipping test because package "${pkg}" is not installed (install it locally to get the tests to run).`)
+			test.skip()
+		}
+	}
 }
 
 export async function ensureConfig(shell: RShell, test: Mocha.Context, userConfig?: Partial<TestConfiguration>): Promise<void> {
@@ -108,6 +119,9 @@ export async function ensureConfig(shell: RShell, test: Mocha.Context, userConfi
 	}
 	if(config.minRVersion !== undefined) {
 		await testRequiresRVersion(shell, `>=${config.minRVersion}`, test)
+	}
+	if(config.needsPackages && config.needsPackages.length  > 0) {
+		await testRequiresPackages(shell, config.needsPackages, test)
 	}
 }
 
@@ -151,14 +165,14 @@ export function assertDataflow(name: string, shell: RShell, input: string, expec
 			getId:          deterministicCountingIdGenerator(startIndexForDeterministicIds),
 		}).allRemainingSteps()
 
-		const report: DifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got'})
+		const report: DifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got' })
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
 			guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`)
 		} catch(e) {
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected },
-				{ label: 'got', graph: info.dataflow.graph},
+				{ label: 'got', graph: info.dataflow.graph },
 				info.normalize.idMap,
 				`%% ${input.replace(/\n/g, '\n%% ')}\n`
 			)

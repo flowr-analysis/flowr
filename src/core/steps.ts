@@ -14,9 +14,11 @@
  */
 
 import type { MergeableRecord } from '../util/objects'
-import { retrieveCsvFromRCode } from '../r-bridge'
+import { retrieveParseDataFromRCode } from '../r-bridge'
 import { produceDataFlowGraph } from '../dataflow'
-import type { IStepPrinter} from './print/print'
+import { staticSlicing } from '../slicing'
+import { reconstructToCode } from '../reconstruct/main'
+import type { IStepPrinter } from './print/print'
 import { internalPrinter, StepOutputFormat } from './print/print'
 import {
 	normalizedAstToJson,
@@ -34,9 +36,7 @@ import {
 } from './print/dataflow-printer'
 import type {DataflowInformation} from '../dataflow/internal/info'
 import type {runAbstractInterpretation} from '../abstract-interpretation/processor'
-import {normalize} from '../r-bridge/lang-4.x/ast/parser/csv/parser'
-import {staticSlicing} from '../slicing'
-import {reconstructToCode} from '../reconstruct/main'
+import { normalize } from '../r-bridge/lang-4.x/ast/parser/json/parser'
 
 /**
  * This represents close a function that we know completely nothing about.
@@ -73,14 +73,14 @@ export interface IStep<
 export const STEPS_PER_FILE = {
 	'parse': {
 		description: 'Parse the given R code into an AST',
-		processor:   retrieveCsvFromRCode,
+		processor:   retrieveParseDataFromRCode,
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]: internalPrinter,
 			[StepOutputFormat.Json]:     text => text,
 			[StepOutputFormat.RdfQuads]: parseToQuads
 		}
-	} satisfies IStep<typeof retrieveCsvFromRCode>,
+	} satisfies IStep<typeof retrieveParseDataFromRCode>,
 	'normalize': {
 		description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
 		processor:   normalize,
@@ -104,15 +104,7 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.Mermaid]:    dataflowGraphToMermaid,
 			[StepOutputFormat.MermaidUrl]: dataflowGraphToMermaidUrl
 		}
-	} satisfies IStep<typeof produceDataFlowGraph>,
-	'ai': {
-		description: 'Run abstract interpretation',
-		processor:   (_, dfInfo: DataflowInformation) => dfInfo, // Use runAbstractInterpretation here when it's ready
-		required:    'once-per-file',
-		printer:     {
-			[StepOutputFormat.Internal]: internalPrinter
-		}
-	} satisfies IStep<typeof runAbstractInterpretation>
+	} satisfies IStep<typeof produceDataFlowGraph>
 } as const
 
 export const STEPS_PER_SLICE = {
@@ -135,7 +127,7 @@ export const STEPS_PER_SLICE = {
 } as const
 
 export const STEPS = { ...STEPS_PER_FILE, ...STEPS_PER_SLICE } as const
-export const LAST_PER_FILE_STEP = 'ai' as const
+export const LAST_PER_FILE_STEP = 'dataflow' as const
 export const LAST_STEP = 'reconstruct' as const
 
 export type StepName = keyof typeof STEPS

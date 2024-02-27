@@ -202,7 +202,7 @@ function identifyMayStatementType(node: RNodeWithParent) {
 
 function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformation, then: ControlFlowInformation, otherwise: ControlFlowInformation | undefined): ControlFlowInformation {
 	const graph = new ControlFlowGraph()
-	graph.addVertex({ id: ifNode.info.id, name: ifNode.type, type: identifyMayStatementType(ifNode)})
+	graph.addVertex({ id: ifNode.info.id, name: ifNode.type, type: identifyMayStatementType(ifNode) })
 	graph.addVertex({ id: ifNode.info.id + '-exit', name: 'if-exit', type: CfgVertexType.EndMarker })
 	graph.merge(condition.graph)
 	graph.merge(then.graph)

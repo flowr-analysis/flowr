@@ -1,7 +1,7 @@
 import type { ParentInformation, RSymbol } from '../../../r-bridge'
 import { RNa, RNull } from '../../../r-bridge'
 import { DataflowGraph } from '../../graph'
-import type { DataflowInformation} from '../info'
+import type { DataflowInformation } from '../info'
 import { initializeCleanInfo } from '../info'
 import type { DataflowProcessorInformation } from '../../processor'
 

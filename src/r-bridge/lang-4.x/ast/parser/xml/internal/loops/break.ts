@@ -2,9 +2,9 @@ import type { ParserData } from '../../data'
 import type { XmlBasedJson } from '../../input-format'
 import { executeHook } from '../../hooks'
 import { retrieveMetaStructure } from '../meta'
-import type { RBreak} from '../../../../model'
+import type { RBreak } from '../../../../model'
 import { RType } from '../../../../model'
-import {parseLog} from '../../../csv/parser'
+import { parseLog } from '../../../json/parser'
 
 export function normalizeBreak(data: ParserData, obj: XmlBasedJson): RBreak {
 	parseLog.debug(`[break] try: ${JSON.stringify(obj)}`)

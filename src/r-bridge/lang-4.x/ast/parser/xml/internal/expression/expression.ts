@@ -1,5 +1,5 @@
-import type { NamedXmlBasedJson, XmlBasedJson} from '../../input-format'
-import {childrenKey} from '../../input-format'
+import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
+import { childrenKey } from '../../input-format'
 import { getKeysGuarded } from '../../input-format'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import type { ParserData } from '../../data'
@@ -11,7 +11,7 @@ import { executeHook } from '../../hooks'
 import { tryNormalizeAccess } from '../access'
 import { normalizeComment } from '../other'
 import { partition } from '../../../../../../../util/arrays'
-import {parseLog} from '../../../csv/parser'
+import { parseLog } from '../../../json/parser'
 
 /**
  * Returns an expression list if there are multiple children, otherwise returns the single child directly with no expr wrapper

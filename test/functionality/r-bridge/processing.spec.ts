@@ -3,7 +3,7 @@ import { numVal } from '../_helper/ast-builder'
 import { rangeFrom } from '../../../src/util/range'
 import type {
 	RNodeWithParent,
-	NodeId} from '../../../src/r-bridge'
+	NodeId } from '../../../src/r-bridge'
 import {
 	RType,
 	decorateAst,

@@ -1,5 +1,3 @@
-import { parse } from 'csv-parse/sync'
-
 class ValueConversionError extends Error {
 	constructor(message: string) {
 		super(message)
@@ -16,6 +14,11 @@ export function ts2r<T>(value: T): string {
 	} else if(typeof value === 'string') {
 		return JSON.stringify(value)
 	} else if(typeof value === 'number') {
+		if(isNaN(value)) {
+			return RNa
+		} else if(!isFinite(value)) {
+			return RInf
+		}
 		return value.toString()
 	} else if(typeof value === 'boolean') {
 		return value ? 'TRUE' : 'FALSE'
@@ -84,6 +87,14 @@ export function number2ts(value: string): RNumberValue {
 	if(value === RInf) {
 		return {
 			num: Infinity,
+			complexNumber,
+			markedAsInt
+		}
+	}
+
+	if(value === RNa) {
+		return {
+			num: NaN,
 			complexNumber,
 			markedAsInt
 		}
@@ -159,7 +170,3 @@ export function isNA(value: string): value is (typeof RNa) {
 	return value === RNa
 }
 
-export function parseCSV(lines: string | string[]): string[][] {
-	const combined = typeof lines == 'string' ? lines : lines.join('\n')
-	return parse(combined, {skipEmptyLines: true}) as string[][]
-}

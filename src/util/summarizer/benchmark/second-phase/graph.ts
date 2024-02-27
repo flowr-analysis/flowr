@@ -16,7 +16,7 @@ export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath:
 
 	const data: BenchmarkGraphEntry[] = []
 
-	for(const { name, measurements} of [{ name: 'per-file', measurements: ultimate.commonMeasurements }, { name: 'per-slice', measurements: ultimate.perSliceMeasurements }]) {
+	for(const { name, measurements } of [{ name: 'per-file', measurements: ultimate.commonMeasurements }, { name: 'per-slice', measurements: ultimate.perSliceMeasurements }]) {
 		for(const [point, measurement] of measurements) {
 			if(point === 'close R session' || point === 'initialize R session') {
 				continue

@@ -1,5 +1,5 @@
 import type { DataflowInformation } from '../../info'
-import type { DataflowProcessorInformation} from '../../../processor'
+import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import { linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap } from '../../linker'
 import type { ParentInformation, RRepeatLoop } from '../../../../r-bridge'

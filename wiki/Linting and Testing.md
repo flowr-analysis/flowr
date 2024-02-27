@@ -164,7 +164,9 @@ npm run lint-local -- --fix
 
 ### Oh no, the linter fails
 
-By now, the rules should be rather stable and so, if the linter fails it is usually best if you (if necessary) read the respective [eslint](https://eslint.org/docs/latest/rules) description and fix the respective problem.
+By now, the rules should be rather stable and so, if the linter fails it is usually best if you (if necessary) read the respective description and fix the respective problem.
+Rules in this project cover general JavaScript issues [using regular ESLint](https://eslint.org/docs/latest/rules), TypeScript-specific issues [using typescript-eslint](https://typescript-eslint.io/rules/), and code formatting [with ESLint Stylistic](https://eslint.style/packages/default#rules).
+
 However, in case you think that the linter is wrong, please do not hesitate to open a [new issue](https://github.com/Code-Inspect/flowr/issues/new/choose).
 
 ### License Checker

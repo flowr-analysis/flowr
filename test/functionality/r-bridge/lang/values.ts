@@ -19,6 +19,12 @@ describe('Bidirectional Value Translation', () => {
 			assert.equal(ts2r(1), '1')
 			assert.equal(ts2r(1.1), '1.1')
 		})
+		it('Infinity and NaN', () => {
+			assert.equal(ts2r(Infinity), 'Inf')
+			assert.equal(ts2r(10 ** 1000), 'Inf')
+			assert.equal(ts2r(NaN), 'NA')
+			assert.equal(ts2r(Math.sqrt(-1)), 'NA')
+		})
 		it('strings', () => {
 			assert.equal(ts2r(''), '""', 'empty string')
 			assert.equal(ts2r('abc'), '"abc"')

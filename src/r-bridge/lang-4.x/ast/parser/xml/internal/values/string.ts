@@ -6,7 +6,7 @@ import { RType } from '../../../../model'
 import { executeHook } from '../../hooks'
 import type { ParserData } from '../../data'
 import { guard } from '../../../../../../../util/assert'
-import {parseLog} from '../../../csv/parser'
+import { parseLog } from '../../../json/parser'
 
 /**
  * Normalize the given object as a R string (see {@link string2ts}).

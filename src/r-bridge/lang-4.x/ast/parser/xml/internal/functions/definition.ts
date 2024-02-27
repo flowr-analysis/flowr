@@ -1,6 +1,6 @@
 import type { ParserData } from '../../data'
 import type { NamedXmlBasedJson } from '../../input-format'
-import type { RFunctionDefinition, RParameter} from '../../../../model'
+import type { RFunctionDefinition, RParameter } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { executeHook, executeUnknownHook } from '../../hooks'
 import { ensureExpressionList, retrieveMetaStructure } from '../meta'
@@ -9,7 +9,7 @@ import { splitArrayOn } from '../../../../../../../util/arrays'
 import { normalizeBasedOnType } from '../structure'
 import { tryNormalizeParameter } from './parameter'
 import { log } from '../../../../../../../util/log'
-import {parseLog} from '../../../csv/parser'
+import { parseLog } from '../../../json/parser'
 
 /**
  * Tries to parse the given data as a function definition.

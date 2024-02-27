@@ -1,16 +1,17 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
+import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
 describe('for', withShell(shell => {
 	assertDataflow('Single-vector for Loop',
 		shell,
 		'for(i in 0) i ',
-		new DataflowGraph()
-			.addVertex( { tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
-			.addVertex( { tag: 'use', id: '2', name: 'i', when: 'maybe', environment: define({ nodeId: '0', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '4', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-			.addEdge('2', '0', EdgeType.Reads, 'maybe')
+		emptyGraph()
+			.defineVariable('0', 'i')
+			.use('2', 'i', { when: 'maybe', environment: define({ nodeId: '0', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '4', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
+			.reads('2', '0', 'maybe')
 	)
 
 	describe('Potential redefinition with break', () => {
@@ -24,14 +25,14 @@ describe('for', withShell(shell => {
   x <- 3
 }
 x`,
-			new DataflowGraph()
-				.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
-				.addVertex( { tag: 'variable-definition', id: '7', name: 'x', scope: LocalScope, environment: withXDefined })
-				.addVertex( { tag: 'use', id: '3', name: 'z', scope: LocalScope, environment: withXDefined })
-				.addVertex( { tag: 'use', id: '12', name: 'x', when: 'always', environment: appendEnvironments(withXDefined, otherXDefined) })
-				.addEdge('12', '0', EdgeType.Reads, 'always')
-				.addEdge('12', '7', EdgeType.Reads, 'maybe')
-				.addEdge('0', '7', EdgeType.SameDefDef, 'maybe')
+			emptyGraph()
+				.defineVariable('0', 'x')
+				.defineVariable('7', 'x', LocalScope, { environment: withXDefined })
+				.use('3', 'z', { environment: withXDefined })
+				.use('12', 'x', { environment: appendEnvironments(withXDefined, otherXDefined) })
+				.reads('12', '0', 'always')
+				.reads('12', '7', 'maybe')
+				.sameDef('0', '7', 'maybe')
 		)
 	})
 
@@ -39,21 +40,21 @@ x`,
 	assertDataflow('Read in for Loop',
 		shell,
 		'x <- 12\nfor(i in 1:10) x ',
-		new DataflowGraph()
-			.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
-			.addVertex( { tag: 'variable-definition', id: '3', name: 'i', scope: LocalScope, environment: envWithX() })
-			.addVertex( { tag: 'use', id: '7', name: 'x', when: 'maybe', environment: define({ nodeId: '3', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'always' }, LocalScope, envWithX()) })
-			.addEdge('7', '0', EdgeType.Reads, 'maybe')
+		emptyGraph()
+			.defineVariable('0', 'x')
+			.defineVariable('3', 'i', LocalScope, { environment: envWithX() })
+			.use('7', 'x', { when: 'maybe', environment: define({ nodeId: '3', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'always' }, LocalScope, envWithX()) })
+			.reads('7', '0', 'maybe')
 	)
 	const envWithI = () => define({ nodeId: '0', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '8', used: 'always' }, LocalScope, initializeCleanEnvironments())
 	assertDataflow('Read after for loop',
 		shell,
 		'for(i in 1:10) { x <- 12 }\n x',
-		new DataflowGraph()
-			.addVertex( { tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
-			.addVertex( { tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, when: 'maybe', environment: envWithI() })
-			.addVertex( { tag: 'use', id: '9', name: 'x', environment: define({ nodeId: '4', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '6', used: 'maybe' }, LocalScope, envWithI()) })
-			.addEdge('9', '4', EdgeType.Reads, 'maybe')
+		emptyGraph()
+			.defineVariable('0', 'i')
+			.defineVariable('4', 'x', LocalScope, { when: 'maybe', environment: envWithI() })
+			.use('9', 'x', { environment: define({ nodeId: '4', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '6', used: 'maybe' }, LocalScope, envWithI()) })
+			.reads('9', '4', 'maybe')
 	)
 
 
@@ -73,30 +74,30 @@ x`,
 	assertDataflow('Read after for loop with outer def',
 		shell,
 		'x <- 9\nfor(i in 1:10) { x <- 12 }\n x',
-		new DataflowGraph()
-			.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
-			.addVertex( { tag: 'variable-definition', id: '3', name: 'i', scope: LocalScope, environment: envWithFirstX() })
-			.addVertex( { tag: 'variable-definition', id: '7', name: 'x', when: 'maybe', scope: LocalScope, environment: envInFor() })
-			.addVertex( { tag: 'use', id: '12', name: 'x', environment: appendEnvironments(envOutFor(), envWithSecondX()) })
-			.addEdge('12', '0', EdgeType.Reads, 'always')
-			.addEdge('12', '7', EdgeType.Reads, 'maybe')
-			.addEdge('0', '7', EdgeType.SameDefDef, 'maybe')
+		emptyGraph()
+			.defineVariable('0', 'x')
+			.defineVariable('3', 'i', LocalScope, { environment: envWithFirstX() })
+			.defineVariable('7', 'x', LocalScope, { when: 'maybe', environment: envInFor() })
+			.use('12', 'x', { environment: appendEnvironments(envOutFor(), envWithSecondX()) })
+			.reads('12', '0')
+			.reads('12', '7', 'maybe')
+			.sameDef('0', '7', 'maybe')
 	)
 	assertDataflow('Redefinition within loop',
 		shell,
 		'x <- 9\nfor(i in 1:10) { x <- x }\n x',
-		new DataflowGraph()
-			.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
-			.addVertex( { tag: 'variable-definition', id: '3', name: 'i', scope: LocalScope, environment: envWithFirstX()})
-			.addVertex( { tag: 'variable-definition', id: '7', name: 'x', scope: LocalScope, when: 'maybe', environment: envInFor() })
-			.addVertex( { tag: 'use', id: '8', name: 'x', when: 'maybe', environment: envInFor() })
-			.addVertex( { tag: 'use', id: '12', name: 'x', environment: appendEnvironments(envOutFor(), envWithSecondX()) })
-			.addEdge('12', '0', EdgeType.Reads, 'always')
-			.addEdge('12', '7', EdgeType.Reads, 'maybe')
-			.addEdge('8', '0', EdgeType.Reads, 'maybe')
-			.addEdge('8', '7', EdgeType.Reads, 'maybe')
-			.addEdge('7', '8', EdgeType.DefinedBy, 'always')
-			.addEdge('0', '7', EdgeType.SameDefDef, 'maybe')
+		emptyGraph()
+			.defineVariable('0', 'x')
+			.defineVariable('3', 'i', LocalScope, { environment: envWithFirstX() })
+			.defineVariable('7', 'x', LocalScope, { when: 'maybe', environment: envInFor() })
+			.use('8', 'x', { when: 'maybe', environment: envInFor() })
+			.use('12', 'x', { environment: appendEnvironments(envOutFor(), envWithSecondX()) })
+			.reads('12', '0')
+			.reads('12', '7', 'maybe')
+			.reads('8', '0', 'maybe')
+			.reads('8', '7', 'maybe')
+			.definedBy('7', '8')
+			.sameDef('0', '7', 'maybe')
 	)
 
 	const envInLargeFor = () => define({ nodeId: '3', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '14', used: 'always' }, LocalScope,
@@ -114,24 +115,24 @@ x`,
 	assertDataflow('Redefinition within loop',
 		shell,
 		'x <- 9\nfor(i in 1:10) { x <- x; x <- x }\n x',
-		new DataflowGraph()
-			.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope })
-			.addVertex( { tag: 'variable-definition', id: '3', name: 'i', scope: LocalScope, environment: envWithFirstX() })
-			.addVertex( { tag: 'variable-definition', id: '7', name: 'x', when: 'maybe', scope: LocalScope, environment: envInLargeFor() })
-			.addVertex( { tag: 'use', id: '8', name: 'x', when: 'maybe', environment: envInLargeFor() })
-			.addVertex( { tag: 'variable-definition', id: '10', name: 'x', when: 'maybe', scope: LocalScope, environment: envInLargeFor2() })
-			.addVertex( { tag: 'use', id: '11', name: 'x', when: 'always' /* this is wrong, but uncertainty is not fully supported in the impl atm.*/, environment: envInLargeFor2() })
-			.addVertex( { tag: 'use', id: '15', name: 'x', environment: appendEnvironments(envWithFirstX(), envOutLargeFor()) })
-			.addEdge('11', '7', EdgeType.Reads, 'always')// second x <- *x* always reads first *x* <- x
-			.addEdge('8', '0', EdgeType.Reads, 'maybe')
-			.addEdge('8', '10', EdgeType.Reads, 'maybe')
-			.addEdge('15', '0', EdgeType.Reads, 'always')
-			.addEdge('15', '10', EdgeType.Reads, 'maybe')
-			.addEdge('7', '8', EdgeType.DefinedBy, 'always')
-			.addEdge('10', '11', EdgeType.DefinedBy, 'always')
-			.addEdge('0', '7', EdgeType.SameDefDef, 'maybe')
-			.addEdge('0', '10', EdgeType.SameDefDef, 'maybe')
-			.addEdge('7', '10', EdgeType.SameDefDef, 'always') // both in same loop execution
+		emptyGraph()
+			.defineVariable('0', 'x')
+			.defineVariable('3', 'i', LocalScope, { environment: envWithFirstX() })
+			.defineVariable('7', 'x', LocalScope, { when: 'maybe', environment: envInLargeFor() })
+			.use('8', 'x', { when: 'maybe', environment: envInLargeFor() })
+			.defineVariable('10', 'x', LocalScope, { when: 'maybe', environment: envInLargeFor2() })
+			.use('11', 'x', /* this is wrong, but uncertainty is not fully supported in the impl atm.*/ { environment: envInLargeFor2() })
+			.use('15', 'x',{ environment: appendEnvironments(envWithFirstX(), envOutLargeFor()) })
+			.reads('11', '7')// second x <- *x* always reads first *x* <- x
+			.reads('8', '0', 'maybe')
+			.reads('8', '10', 'maybe')
+			.reads('15', '0')
+			.reads('15', '10', 'maybe')
+			.definedBy('7', '8')
+			.definedBy('10', '11')
+			.sameDef('0', '7', 'maybe')
+			.sameDef('0', '10', 'maybe')
+			.sameDef('7', '10') // both in same loop execution
 	)
 
 	const forLoopWithI = () => define({ nodeId: '0', name: 'i', scope: LocalScope, kind: 'variable', definedAt: '9', used: 'always' }, LocalScope,
@@ -147,14 +148,14 @@ x`,
 	assertDataflow('Redefinition within loop',
 		shell,
 		'for(i in 1:10) { i; i <- 12 }\n i',
-		new DataflowGraph()
-			.addVertex( { tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
-			.addVertex( { tag: 'variable-definition', id: '5', name: 'i', scope: LocalScope, when: 'maybe', environment: forLoopWithI() })
-			.addVertex( { tag: 'use', id: '4', name: 'i', when: 'maybe', environment: forLoopWithI() })
-			.addVertex( { tag: 'use', id: '10', name: 'i', environment: appendEnvironments(forLoopWithIAfter(), forLoopAfterI()) })
-			.addEdge('4', '0', EdgeType.Reads, 'maybe')
-			.addEdge('10', '5', EdgeType.Reads, 'maybe')
-			.addEdge('10', '0', EdgeType.Reads, 'maybe')
-			.addEdge('5', '0', EdgeType.SameDefDef, 'always')
+		emptyGraph()
+			.defineVariable('0', 'i')
+			.defineVariable('5', 'i', LocalScope, { when: 'maybe', environment: forLoopWithI() })
+			.use('4', 'i', { when: 'maybe', environment: forLoopWithI() })
+			.use('10', 'i', { environment: appendEnvironments(forLoopWithIAfter(), forLoopAfterI()) })
+			.reads('4', '0', 'maybe')
+			.reads('10', '5', 'maybe')
+			.reads('10', '0', 'maybe')
+			.sameDef('5', '0')
 	)
 }))

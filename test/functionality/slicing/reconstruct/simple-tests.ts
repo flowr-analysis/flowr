@@ -113,10 +113,10 @@ a <- foo({
 
     c <- 3
     })`, '0', `a <- foo({
-a <- b()
+    a <- b()
 
-c <- 3
-})`)
+    c <- 3
+    })`)
 		assertReconstructed('Reconstruct access in pipe', shell, `
 ls <- x[[1]] %>% st_cast()
 class(ls)`, '2', 'x[[1]]')

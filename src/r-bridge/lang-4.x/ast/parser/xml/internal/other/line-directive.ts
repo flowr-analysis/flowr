@@ -1,11 +1,11 @@
 import type { XmlBasedJson } from '../../input-format'
-import type { RComment, RLineDirective} from '../../../../model'
+import type { RComment, RLineDirective } from '../../../../model'
 import { RType } from '../../../../model'
 import { retrieveMetaStructure } from '../meta'
 import { guard } from '../../../../../../../util/assert'
 import { executeHook } from '../../hooks'
 import type { ParserData } from '../../data'
-import {parseLog} from '../../../csv/parser'
+import { parseLog } from '../../../json/parser'
 
 const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/
 

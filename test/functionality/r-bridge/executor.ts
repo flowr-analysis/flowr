@@ -1,7 +1,7 @@
-import {guard} from '../../../src/util/assert'
-import {assert} from 'chai'
+import { guard } from '../../../src/util/assert'
+import { assert } from 'chai'
 import semver from 'semver/preload'
-import {RShellExecutor} from '../../../src/r-bridge/shell-executor'
+import { RShellExecutor } from '../../../src/r-bridge/shell-executor'
 
 describe('RShellExecutor', function() {
 	it('R version', () => {

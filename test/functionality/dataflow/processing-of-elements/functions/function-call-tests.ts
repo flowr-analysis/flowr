@@ -24,7 +24,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithFirstI
 		)
-		assertDataflow(label('Calling function a', ['local-left-assignment', 'unnamed-arguments', 'normal', 'name-normal']), shell, 'i <- 4; a <- function(x) { x }\na(i)',
+		assertDataflow(label('Calling function a', ['local-left-assignment', 'unnamed-arguments', 'call-normal', 'name-normal']), shell, 'i <- 4; a <- function(x) { x }\na(i)',
 			emptyGraph()
 				.defineVariable('0', 'i')
 				.defineVariable('3', 'a', LocalScope, { environment: envWithFirstI })
@@ -59,7 +59,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithIA
 		)
-		assertDataflow(label('Calling function a with an indirection', ['local-left-assignment', 'unnamed-arguments', 'normal', 'name-normal']),
+		assertDataflow(label('Calling function a with an indirection', ['local-left-assignment', 'unnamed-arguments', 'call-normal', 'name-normal']),
 			shell,
 			'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
 			emptyGraph()
@@ -115,7 +115,7 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithFirstI
 		)
-		assertDataflow(label('Calling with a constant function', ['unnamed-arguments', 'normal', 'name-normal']), shell, `i <- 4
+		assertDataflow(label('Calling with a constant function', ['unnamed-arguments', 'call-normal', 'name-normal']), shell, `i <- 4
 a <- function(x) { x <- x; x <- 3; 1 }
 a(i)`, emptyGraph()
 			.defineVariable('0', 'i')

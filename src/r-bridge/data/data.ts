@@ -395,7 +395,7 @@ export const flowrCapabilities = {
 							capabilities: [
 								{
 									name:        'Normal',
-									id:          'normal',
+									id:          'normal-definition',
 									supported:   'fully',
 									description: '_Handle `function() 3`, ..._'
 								},

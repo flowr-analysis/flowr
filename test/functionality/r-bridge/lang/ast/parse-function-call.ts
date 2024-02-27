@@ -346,7 +346,7 @@ describe('Parse function calls', withShell(shell => {
 		)
 	})
 	describe('directly called functions', () => {
-		assertAst(label('Directly call with 2', ['anonymous-calls', 'numbers', 'name-normal', 'function-definitions']),
+		assertAst(label('Directly call with 2', ['anonymous-calls', 'numbers', 'name-normal', 'normal-definition']),
 			shell, '(function(x) { x })(2)', [
 				{
 					step:   NORMALIZE,
@@ -474,62 +474,105 @@ describe('Parse function calls', withShell(shell => {
 				ignoreAdditionalTokens: true
 			}
 		)
-		assertAst(
-			'Double call with only the second one being direct',
-			shell,
-			'a(1)(2)',
-			exprList({
-				type:           RType.FunctionCall,
-				flavor:         'unnamed',
-				location:       rangeFrom(1, 1, 1, 4),
-				lexeme:         'a(1)',
-				info:           {},
-				calledFunction: {
-					type:         RType.FunctionCall,
-					flavor:       'named',
-					functionName: {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 1, 1, 1),
-						lexeme:    'a',
-						content:   'a',
-						namespace: undefined,
-						info:      {}
-					},
-					location:  rangeFrom(1, 1, 1, 1),
-					lexeme:    'a',
-					arguments: [{
-						type:     RType.Argument,
-						location: rangeFrom(1, 3, 1, 3),
-						lexeme:   '1',
-						name:     undefined,
-						info:     {},
-						value:    {
-							type:     RType.Number,
-							location: rangeFrom(1, 3, 1, 3),
-							lexeme:   '1',
-							content:  numVal(1),
-							info:     {}
-						}
-					}],
-					info: {}
+		assertAst(label('Double call with only the second one being direct', ['anonymous-calls', 'numbers', 'name-normal', 'normal-definition']),
+			shell, 'a(1)(2)', [
+				{
+					step:   NORMALIZE,
+					wanted: exprList({
+						type:           RType.FunctionCall,
+						flavor:         'unnamed',
+						location:       rangeFrom(1, 1, 1, 4),
+						lexeme:         'a(1)',
+						info:           {},
+						calledFunction: {
+							type:         RType.FunctionCall,
+							flavor:       'named',
+							functionName: {
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 1, 1, 1),
+								lexeme:    'a',
+								content:   'a',
+								namespace: undefined,
+								info:      {}
+							},
+							location:  rangeFrom(1, 1, 1, 1),
+							lexeme:    'a',
+							arguments: [{
+								type:     RType.Argument,
+								location: rangeFrom(1, 3, 1, 3),
+								lexeme:   '1',
+								name:     undefined,
+								info:     {},
+								value:    {
+									type:     RType.Number,
+									location: rangeFrom(1, 3, 1, 3),
+									lexeme:   '1',
+									content:  numVal(1),
+									info:     {}
+								}
+							}],
+							info: {}
+						},
+						arguments: [
+							{
+								type:     RType.Argument,
+								location: rangeFrom(1, 6, 1, 6),
+								name:     undefined,
+								info:     {},
+								lexeme:   '2',
+								value:    {
+									type:     RType.Number,
+									location: rangeFrom(1, 6, 1, 6),
+									lexeme:   '2',
+									content:  numVal(2),
+									info:     {}
+								}
+							}
+						]
+					})
 				},
-				arguments: [
-					{
-						type:     RType.Argument,
-						location: rangeFrom(1, 6, 1, 6),
-						name:     undefined,
-						info:     {},
-						lexeme:   '2',
-						value:    {
-							type:     RType.Number,
-							location: rangeFrom(1, 6, 1, 6),
-							lexeme:   '2',
-							content:  numVal(2),
-							info:     {}
-						}
-					}
-				]
-			})
+				{
+					step:   DESUGAR_NORMALIZE,
+					wanted: exprList({
+						type:           RType.FunctionCall,
+						flavor:         'unnamed',
+						location:       rangeFrom(1, 1, 1, 4),
+						lexeme:         'a(1)',
+						info:           {},
+						calledFunction: {
+							type:         RType.FunctionCall,
+							flavor:       'named',
+							functionName: {
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 1, 1, 1),
+								lexeme:    'a',
+								content:   'a',
+								namespace: undefined,
+								info:      {}
+							},
+							location:  rangeFrom(1, 1, 1, 1),
+							lexeme:    'a',
+							arguments: [{
+								type:     RType.Number,
+								location: rangeFrom(1, 3, 1, 3),
+								lexeme:   '1',
+								content:  numVal(1),
+								info:     {}
+							}],
+							info: {}
+						},
+						arguments: [
+							{
+								type:     RType.Number,
+								location: rangeFrom(1, 6, 1, 6),
+								lexeme:   '2',
+								content:  numVal(2),
+								info:     {}
+							}
+						]
+					})
+				}
+			]
 		)
 	})
 	describe('functions with explicit namespacing', () => {

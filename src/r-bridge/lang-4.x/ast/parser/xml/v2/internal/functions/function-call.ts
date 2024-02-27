@@ -20,7 +20,7 @@ import { normalizeString } from '../values/string'
 import { tryNormalizeSymbolNoNamespace, tryNormalizeSymbolWithNamespace } from '../values/symbol'
 import { expensiveTrace } from '../../../../../../../../util/log'
 import { normalizeLog } from '../../normalize'
-import { normalizeSingleToken } from '../single-element'
+import { normalizeExpression } from '../expression'
 
 /**
  * Tries to parse the given data as a function call.
@@ -76,24 +76,24 @@ function parseArguments(tokens: readonly XmlBasedJson[], config: NormalizeConfig
 
 function tryParseUnnamedFunctionCall(config: NormalizeConfiguration, symbolTokens: readonly XmlBasedJson[], tokens: readonly XmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | undefined {
 	// maybe remove symbol-content again because I just use the root expr of mapped with name
-	if(symbolTokens.length !== 3) {
-		parseLog.trace('expected unnamed function call to have 3 elements [like (<func>)], but was not')
+	if(symbolTokens.length < 3) {
+		parseLog.trace('expected unnamed function call to have at least 3 elements [like (<func>)], but: ${symbolTokens.length}')
 		return undefined
 	}
 
 	// we parse an expression to allow function calls
-	const calledFunction = normalizeSingleToken(config, symbolTokens[1])
-	guard(calledFunction !== undefined, 'expected called function to be parsed')
+	const calledFunction = normalizeExpression(config, symbolTokens)
+	guard(calledFunction.length === 1, () => `expected exactly one function call, but ${calledFunction.length}`)
 	const parsedArguments = parseArguments(tokens, config)
 
 	return {
-		type:      RType.FunctionCall,
-		flavor:    'unnamed',
+		type:           RType.FunctionCall,
+		flavor:         'unnamed',
 		location,
-		lexeme:    content,
-		calledFunction,
-		arguments: parsedArguments,
-		info:      {
+		lexeme:         content,
+		calledFunction: calledFunction[0],
+		arguments:      parsedArguments,
+		info:           {
 			additionalTokens: [],
 			fullLexeme:       config.currentLexeme
 		}

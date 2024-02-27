@@ -153,7 +153,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.reads('1', '0'),
 				{ minRVersion: MIN_VERSION_PIPE }
 			)
-			assertDataflow(label('Nested calling', ['built-in-pipe-and-pipe-bind', 'normal', 'name-normal']), shell, 'x |> f() |> g()',
+			assertDataflow(label('Nested calling', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal']), shell, 'x |> f() |> g()',
 				emptyGraph()
 					.use('0', 'x')
 					.call('3', 'f', [
@@ -170,7 +170,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.reads('1', '0'),
 				{ minRVersion: MIN_VERSION_PIPE }
 			)
-			assertDataflow(label('Multi-Parameter function', ['built-in-pipe-and-pipe-bind', 'normal', 'name-normal', 'unnamed-arguments']), shell, 'x |> f(y,z)',
+			assertDataflow(label('Multi-Parameter function', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal', 'unnamed-arguments']), shell, 'x |> f(y,z)',
 				emptyGraph()
 					.use('0', 'x')
 					.call('7', 'f', [

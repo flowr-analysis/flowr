@@ -10,7 +10,7 @@ import { appendEnvironments, define } from '../../../../../src/dataflow/environm
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { unnamedArgument } from '../../../_helper/environment-builder'
+import { argument, unnamedArgument } from '../../../_helper/environment-builder'
 
 describe('Atomic (dataflow information)', withShell((shell) => {
 	describe('uninteresting leafs', () => {
@@ -132,9 +132,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('No parameter function', shell, 'x |> f()',
 				emptyGraph()
 					.use('0', 'x')
-					.call('3', 'f', [
-						{ name: unnamedArgument('1'), scope: LocalScope, nodeId: '1', used: 'always' }
-					])
+					.call('3', 'f', [argument('1')])
 					.use('1', unnamedArgument('1'))
 					.argument('3', '1')
 					.reads('1', '0'),
@@ -143,12 +141,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('Nested calling', shell, 'x |> f() |> g()',
 				emptyGraph()
 					.use('0', 'x')
-					.call('3', 'f', [
-						{ name: unnamedArgument('1'), scope: LocalScope, nodeId: '1', used: 'always' }
-					])
-					.call('7', 'g', [
-						{ name: unnamedArgument('5'), scope: LocalScope, nodeId: '5', used: 'always' }
-					])
+					.call('3', 'f', [argument('1')])
+					.call('7', 'g', [argument('5')])
 					.use('1', unnamedArgument('1'))
 					.use('5', unnamedArgument('5'))
 					.argument('3', '1')
@@ -160,11 +154,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('Multi-Parameter function', shell, 'x |> f(y,z)',
 				emptyGraph()
 					.use('0', 'x')
-					.call('7', 'f', [
-						{ name: unnamedArgument('1'), scope: LocalScope, nodeId: '1', used: 'always' },
-						{ name: unnamedArgument('4'), scope: LocalScope, nodeId: '4', used: 'always' },
-						{ name: unnamedArgument('6'), scope: LocalScope, nodeId: '6', used: 'always' }
-					])
+					.call('7', 'f', [argument('1'), argument('4'), argument('6')])
 					.use('1', unnamedArgument('1'))
 					.use('4', unnamedArgument('4'))
 					.use('6', unnamedArgument('6'))
@@ -339,9 +329,9 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				emptyGraph()
 					.defineVariable('0', 'a')
 					.call('9', 'foo', [
-						['x', { name: 'x', nodeId: '4', scope: LocalScope, used: 'always' }],
-						{ name: unnamedArgument('6'), nodeId: '6', scope: LocalScope, used: 'always' },
-						{ name: unnamedArgument('8'), nodeId: '8', scope: LocalScope, used: 'always' },
+						argument('4', 'x'),
+						argument('6'),
+						argument('8')
 					])
 					.use('4', 'x')
 					.use('5', 'y', { environment: environmentWithX })

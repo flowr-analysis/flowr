@@ -28,6 +28,31 @@ export function plain(text: string, location: SourcePosition): Code {
 	return [printLine]
 }
 
+export function plainSplit(text: string, location: SourcePosition): Code {
+	const printLine: PrettyPrintLine = { linePart: [], indent: 0 }
+	let i = 0
+	let token = ''
+	let currLoc = { line: location.line, column: location.column }
+	while(i < text.length) {
+		if(text[i] === ' ') {
+			if(!(token === '')) {
+				printLine.linePart.push({ part: token, loc: currLoc })
+			}
+			currLoc = { column: currLoc.column + token.length + 1, line: currLoc.line }
+			token = ''
+		} else if(text[i] === '\n') {
+			printLine.linePart.push({ part: token, loc: currLoc })
+			currLoc = { column: location.column, line: currLoc.line + 1 }
+			token = ''
+		} else {
+			token = token.concat(text[i])
+		}
+		i++
+	}
+	printLine.linePart.push({ part: token, loc: currLoc })
+	return [printLine]
+}
+
 /**
  * this function will merge up to n code pieces into a singular code piece, garanting that there are no duplicate lines and all lines are in order
  */

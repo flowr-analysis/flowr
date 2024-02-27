@@ -36,7 +36,8 @@ import {
 	isSelected,
 	removeExpressionListWrap,
 	getIndentString,
-	merge
+	merge,
+	plainSplit
 } from './helper'
 import type { SourcePosition, SourceRange } from '../util/range'
 
@@ -304,7 +305,7 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 
 	const parameters = reconstructParameters(definition.parameters).join(', ')
 	const additionalTokens = reconstructAdditionalTokens(definition)
-	const reconstructedBody = reconstructExpressionList(definition.body, [plain(getLexeme(definition.body), startPos)], configuration)
+	const reconstructedBody = reconstructExpressionList(definition.body, [plainSplit(getLexeme(definition.body), startPos)], configuration)
 	//body.length === 0 ? [{linePart: [{part: '', loc: startPos}], indent: 0}] : body.slice(1, body.length - 1)
 	const parameterLoc = definition.parameters.length === 0 ? startPos : definition.parameters[definition.parameters.length - 1].location.start
 

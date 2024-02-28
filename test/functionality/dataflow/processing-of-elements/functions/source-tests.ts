@@ -72,14 +72,8 @@ describe('source', withShell(shell => {
 	)
 	assertDataflow('conditional', shell, 'if (x) { source("simple") }\ncat(N)', emptyGraph()
 		.defineVariable('simple-1:10-1:15-0', 'N')
-		.call('4', 'source', [{
-			nodeId: '3', name: unnamedArgument('3'), scope: LocalScope, used: 'always' }
-		],
-		{ environment: initializeCleanEnvironments(), when: 'maybe' })
-		.call('10', 'cat',[{
-			nodeId: '9', name: unnamedArgument('9'), scope: LocalScope, used: 'always'
-		}],
-		{ environment: envWithConditionalN })
+		.call('4', 'source', [argument('3')], { environment: initializeCleanEnvironments(), when: 'maybe' })
+		.call('10', 'cat', [argument('9')], { environment: envWithConditionalN })
 		.use('0', 'x')
 		.use('8', 'N', { environment: envWithConditionalN })
 		.use('3', unnamedArgument('3'))
@@ -101,11 +95,8 @@ describe('source', withShell(shell => {
 	)
 
 	const recursive2Id = (id: number) => sourcedDeterministicCountingIdGenerator('recursive2', { start: { line: 2, column: 1 }, end: { line: 2, column: 6 } }, id)()
-	const envWithX = define(
-		variable('x', '2', '0'),
-		LocalScope,
-		initializeCleanEnvironments()
-	)
+	const envWithX = define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments())
+
 	assertDataflow('recursive source', shell, sources.recursive1, emptyGraph()
 		.call('6', 'source', [argument('5')], { environment: envWithX })
 		.call(recursive2Id(7), 'source', [argument(recursive2Id(6))], { environment: envWithX })
@@ -127,7 +118,7 @@ describe('source', withShell(shell => {
 
 	// we currently don't support (and ignore) source calls with non-constant arguments!
 	assertDataflow('non-constant source', shell, 'x <- "recursive1"\nsource(x)', emptyGraph()
-		.call('6', 'source',[argument('5')], { environment: envWithX })
+		.call('6', 'source', [argument('5')], { environment: envWithX })
 		.defineVariable('0', 'x')
 		.use('5', unnamedArgument('5'), { environment: envWithX })
 		.use('4', 'x', { environment: envWithX })

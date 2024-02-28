@@ -7,7 +7,7 @@ import {
 } from '../../../../../src/dataflow/environments'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argument, unnamedArgument, variable } from '../../../_helper/environment-builder'
+import { argument, parameter, rFunction, unnamedArgument, variable } from '../../../_helper/environment-builder'
 
 describe('Function Definition', withShell(shell => {
 	describe('Only functions', () => {
@@ -24,10 +24,7 @@ describe('Function Definition', withShell(shell => {
 				.use('0', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 		)
 
-		const envWithXDefined = define(
-			{ nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '1' },
-			LocalScope,
-			pushLocalEnvironment(initializeCleanEnvironments()))
+		const envWithXDefined = define(parameter('x', '1', '0'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('read of parameter', shell, 'function(x) { x }',
 			emptyGraph()
 				.defineFunction('4', '4', ['2'], {
@@ -89,21 +86,9 @@ describe('Function Definition', withShell(shell => {
 		})
 
 		const envWithoutParams = pushLocalEnvironment(initializeCleanEnvironments())
-		const envWithXParam = define(
-			{ nodeId: '0', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '1' },
-			LocalScope,
-			envWithoutParams
-		)
-		const envWithXYParam = define(
-			{ nodeId: '2', scope: 'local', name: 'y', used: 'always', kind: 'parameter', definedAt: '3' },
-			LocalScope,
-			envWithXParam
-		)
-		const envWithXYZParam = define(
-			{ nodeId: '4', scope: 'local', name: 'z', used: 'always', kind: 'parameter', definedAt: '5' },
-			LocalScope,
-			envWithXYParam
-		)
+		const envWithXParam = define(parameter('x', '1', '0'), LocalScope, envWithoutParams)
+		const envWithXYParam = define(parameter('y', '3', '2'), LocalScope, envWithXParam)
+		const envWithXYZParam = define(parameter('z', '5', '4'), LocalScope, envWithXYParam)
 
 		assertDataflow('read of one parameter', shell, 'function(x,y,z) y',
 			emptyGraph()
@@ -244,10 +229,7 @@ describe('Function Definition', withShell(shell => {
 			emptyGraph()
 				.defineVariable('0', 'x')
 				.use('9', 'x', {
-					environment: define(
-						variable('x', '2', '0'),
-						LocalScope,
-						initializeCleanEnvironments())
+					environment: define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments())
 				})
 				.reads('9', '0')
 				.defineFunction('8', '8', ['6'], {
@@ -268,10 +250,7 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Scoping of parameters', () => {
-		const envWithXDefined = define(
-			{ nodeId: '3', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '4' },
-			LocalScope,
-			pushLocalEnvironment(initializeCleanEnvironments()))
+		const envWithXDefined = define(parameter('x', '4', '3'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('parameter shadows', shell, 'x <- 3; function(x) { x }',
 			emptyGraph()
 				.defineVariable('0', 'x')
@@ -289,10 +268,7 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Access dot-dot-dot', () => {
-		const envWithParam = define(
-			{ nodeId: '0', scope: 'local', name: '...', used: 'always', kind: 'parameter', definedAt: '1' },
-			LocalScope,
-			pushLocalEnvironment(initializeCleanEnvironments()))
+		const envWithParam = define(parameter('...', '1', '0'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
 		assertDataflow('parameter shadows', shell, 'function(...) { ..11 }',
 			emptyGraph()
 				.defineFunction('4', '4', ['2'], {
@@ -309,16 +285,9 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Using named arguments', () => {
-		const envWithA = define(
-			{ nodeId: '0', scope: LocalScope, name: 'a', used: 'always', kind: 'parameter', definedAt: '2' },
-			LocalScope,
-			pushLocalEnvironment(initializeCleanEnvironments())
-		)
-		const envWithAB = define(
-			{ nodeId: '3', scope: LocalScope, name: 'b', used: 'always', kind: 'parameter', definedAt: '5' },
-			LocalScope,
-			envWithA
-		)
+		const envWithA = define(parameter('a', '2', '0'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
+		const envWithAB = define(parameter('b', '5', '3'), LocalScope, envWithA)
+
 		assertDataflow('Read first parameter', shell, 'function(a=3, b=a) { b }',
 			emptyGraph()
 				.defineFunction('8', '8', ['6'], {
@@ -338,26 +307,11 @@ describe('Function Definition', withShell(shell => {
 				.reads('6', '3')
 		)
 
-		const envWithFirstParam = define(
-			{ nodeId: '0', scope: LocalScope, name: 'a', used: 'always', kind: 'parameter', definedAt: '2' },
-			LocalScope,
-			pushLocalEnvironment(initializeCleanEnvironments())
-		)
-		const envWithBothParam = define(
-			{ nodeId: '3', scope: LocalScope, name: 'm', used: 'always', kind: 'parameter', definedAt: '5' },
-			LocalScope,
-			envWithFirstParam
-		)
-		const envWithBothParamFirstB = define(
-			variable('b', '8', '6'),
-			LocalScope,
-			envWithBothParam
-		)
-		const envWithBothParamSecondB = define(
-			variable('b', '12', '10'),
-			LocalScope,
-			envWithBothParam
-		)
+		const envWithFirstParam = define(parameter('a', '2', '0'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
+		const envWithBothParam = define(parameter('m', '5', '3'), LocalScope, envWithFirstParam)
+		const envWithBothParamFirstB = define(variable('b', '8', '6'), LocalScope, envWithBothParam)
+		const envWithBothParamSecondB = define(variable('b', '12', '10'), LocalScope, envWithBothParam)
+
 		assertDataflow('Read later definition', shell, 'function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }',
 			emptyGraph()
 				.defineFunction('17', '17', ['15'],{
@@ -386,16 +340,9 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Using special argument', () => {
-		const envWithA = define(
-			{ nodeId: '0', scope: LocalScope, name: 'a', used: 'always', kind: 'parameter', definedAt: '1' },
-			LocalScope,
-			pushLocalEnvironment(initializeCleanEnvironments())
-		)
-		const envWithASpecial = define(
-			{ nodeId: '2', scope: LocalScope, name: '...', used: 'always', kind: 'parameter', definedAt: '3' },
-			LocalScope,
-			envWithA
-		)
+		const envWithA = define(parameter('a', '1', '0'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
+		const envWithASpecial = define(parameter('...', '3', '2'), LocalScope, envWithA)
+
 		assertDataflow('Return ...', shell, 'function(a, ...) { foo(...) }',
 			emptyGraph()
 				.defineFunction('9', '9', ['7'], {
@@ -417,21 +364,9 @@ describe('Function Definition', withShell(shell => {
 		)
 	})
 	describe('Bind environment to correct exit point', () => {
-		const envWithG = define(
-			{ nodeId: '0', scope: LocalScope, name: 'g', used: 'always', kind: 'function', definedAt: '4' },
-			LocalScope,
-			pushLocalEnvironment(initializeCleanEnvironments())
-		)
-		const envWithFirstY = define(
-			variable('y', '7', '5'),
-			LocalScope,
-			envWithG
-		)
-		const finalEnv = define(
-			variable('y', '17', '15'),
-			LocalScope,
-			envWithG
-		)
+		const envWithG = define(rFunction('g', '4', '0'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
+		const envWithFirstY = define(variable('y', '7', '5'), LocalScope, envWithG)
+		const finalEnv = define(variable('y', '17', '15'), LocalScope, envWithG)
 		assertDataflow('Two possible exit points to bind y closure', shell, `function() {
   g <- function() { y }
   y <- 5
@@ -502,31 +437,14 @@ describe('Function Definition', withShell(shell => {
 	})
 
 	describe('Nested Function Definitions', () => {
-		const withXParameterInOuter = define(
-			{ nodeId: '1', scope: LocalScope, name: 'x', used: 'always', kind: 'function', definedAt: '9' },
-			LocalScope,
-			pushLocalEnvironment(initializeCleanEnvironments()))
+		const withXParameterInOuter = define(rFunction('x', '9', '1'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
 		const withinNestedFunctionWithoutParam = pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments()))
-		const withinNestedFunctionWithParam = define(
-			{ nodeId: '2', scope: LocalScope, name: 'x', used: 'always', kind: 'parameter', definedAt: '3' },
-			LocalScope,
-			withinNestedFunctionWithoutParam
-		)
-		const withinNestedFunctionWithDef = define(
-			variable('x', '6', '4'),
-			LocalScope,
-			pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments()))
-		)
-		const envWithA = define(
-			{ nodeId: '0', scope: LocalScope, name: 'a', used: 'always', kind: 'function', definedAt: '13' },
-			LocalScope,
-			initializeCleanEnvironments()
-		)
-		const envWithAB = define(
-			variable('b', '16', '14'),
-			LocalScope,
-			envWithA
-		)
+		const withinNestedFunctionWithParam = define(parameter('x', '3', '2'), LocalScope, withinNestedFunctionWithoutParam)
+		const withinNestedFunctionWithDef = define(variable('x', '6', '4'),
+			LocalScope, pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())))
+		const envWithA = define(rFunction('a', '13', '0'), LocalScope, initializeCleanEnvironments())
+		const envWithAB = define(variable('b', '16', '14'), LocalScope, envWithA)
+
 		assertDataflow('double nested functions', shell, 'a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a',
 			emptyGraph()
 				.defineVariable('0', 'a')

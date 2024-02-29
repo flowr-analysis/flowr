@@ -1,5 +1,5 @@
 import type { XmlBasedJson } from '../../common/input-format'
-import type { RNode } from '../../../../model'
+import type { RComment, RNode } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { normalizeLog } from '../normalize'
 import { expensiveTrace } from '../../../../../../../util/log'
@@ -16,21 +16,44 @@ import { tryNormalizeIfThenElse } from './control/if-then-else'
 import { tryNormalizeFor } from './loops/for'
 import { tryNormalizeFunctionCall } from './functions/function-call'
 import { tryNormalizeFunctionDefinition } from './functions/function-definition'
+import { normalizeComment } from './other'
+
+interface HandledExpressionList {
+	segments: XmlBasedJson[][]
+	comments: XmlBasedJson[]
+	braces:   undefined | [start: XmlBasedJson, end: XmlBasedJson]
+}
+
+function splitComments(tokens: readonly XmlBasedJson[]) {
+	const comments = []
+	const others = []
+	for(const elem of tokens) {
+		if(getTokenType(elem) === RawRType.Comment) {
+			comments.push(elem)
+		} else {
+			others.push(elem)
+		}
+	}
+	return { comments, others }
+}
+
 
 /**
  * Handles semicolons within _and_ braces at the start and end of the expression
- * @param tokens - The tokens to split
+ * @param raw - The tokens to split
  */
-function handleExpressionList(tokens: readonly XmlBasedJson[]): { segments: XmlBasedJson[][], braces: undefined | [start: XmlBasedJson, end: XmlBasedJson] } {
-	if(tokens.length === 0) {
-		return { segments: [], braces: undefined }
+function handleExpressionList(raw: readonly XmlBasedJson[]): HandledExpressionList {
+	if(raw.length === 0) {
+		return { segments: [], comments: [], braces: undefined }
 	}
+	const { comments, others: tokens } = splitComments(raw)
 	const first = getTokenType(tokens[0])
 	if(first === RawRType.BraceLeft) {
 		const endType = getTokenType(tokens[tokens.length - 1])
 		guard(endType === RawRType.BraceRight, () => `expected a brace at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`)
 		return {
 			segments: [tokens.slice(1, tokens.length - 1)],
+			comments,
 			braces:   [tokens[0], tokens[tokens.length - 1]]
 		}
 	} else if(first === RawRType.ParenLeft) {
@@ -38,6 +61,7 @@ function handleExpressionList(tokens: readonly XmlBasedJson[]): { segments: XmlB
 		guard(endType === RawRType.ParenRight, () => `expected a parenthesis at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`)
 		return {
 			segments: [tokens.slice(1, tokens.length - 1)],
+			comments,
 			braces:   [tokens[0], tokens[tokens.length - 1]]
 		}
 	} else {
@@ -60,19 +84,21 @@ function handleExpressionList(tokens: readonly XmlBasedJson[]): { segments: XmlB
 		if(last < tokens.length) {
 			segments.push(tokens.slice(last, tokens.length))
 		}
-		return { segments: segments, braces: undefined }
+		return { segments, comments, braces: undefined }
 	}
 }
 
 
-function processBraces(braces: [start: XmlBasedJson, end: XmlBasedJson], processed: RNode[]) : [RNode] {
+function processBraces(braces: [start: XmlBasedJson, end: XmlBasedJson], processed: RNode[], comments: RComment[]) : [RNode] {
 	const { location, content } = retrieveMetaStructure(braces[0])
 	return [{
-		type:         RType.FunctionCall,
-		lexeme:       content,
-		flavor:       'named',
+		type:   RType.FunctionCall,
+		lexeme: content,
+		flavor: 'named',
 		location,
-		info:         {},
+		info:   {
+			additionalTokens: comments,
+		},
 		functionName: {
 			type:      RType.Symbol,
 			info:      {},
@@ -96,17 +122,27 @@ export function normalizeExpression(
 
 	expensiveTrace(normalizeLog,() => `[expr] ${tokens.map(getTokenType).join(', ')}`)
 
+	let parsedComments: RComment[] = []
+
 	if(tokens.length > 1) {
 		// iterate over types, find all semicolons, and segment the tokens based on them.
 		// we could potentially optimize as not all expr may have semicolons but not for now
-		const { segments, braces } = handleExpressionList(tokens)
+		const { segments, braces, comments } = handleExpressionList(tokens)
+		parsedComments = comments.map(c => normalizeComment(config, c))
+		console.log('segments', parsedComments)
 
 		if(segments.length > 1 || braces) {
 			const processed = segments.flatMap(s => normalizeExpression(config, s))
 			if(braces) {
-				return processBraces(braces, processed)
-			} else {
+				return processBraces(braces, processed, parsedComments)
+			} else if(processed.length > 0) {
+				if(parsedComments) {
+					processed[0].info.additionalTokens ??= []
+					processed[0].info.additionalTokens.push(...parsedComments)
+				}
 				return processed
+			} else {
+				return parsedComments
 			}
 		}
 
@@ -117,7 +153,12 @@ export function normalizeExpression(
 		tokens = segments[0]
 	}
 
-	return [tryNormalizeElems(config, tokens)]
+	const elem = tryNormalizeElems(config, tokens)
+	if(parsedComments) {
+		elem.info.additionalTokens ??= []
+		elem.info.additionalTokens.push(...parsedComments)
+	}
+	return [elem]
 }
 
 const todo = (...x: unknown[]) => {

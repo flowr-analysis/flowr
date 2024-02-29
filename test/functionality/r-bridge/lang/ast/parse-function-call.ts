@@ -346,7 +346,7 @@ describe('Parse function calls', withShell(shell => {
 		)
 	})
 	describe('directly called functions', () => {
-		assertAst(label('Directly call with 2', ['anonymous-calls', 'numbers', 'name-normal', 'normal-definition']),
+		assertAst(label('Directly call with 2', ['call-anonymous', 'numbers', 'name-normal', 'normal-definition']),
 			shell, '(function(x) { x })(2)', [
 				{
 					step:   NORMALIZE,
@@ -474,7 +474,7 @@ describe('Parse function calls', withShell(shell => {
 				ignoreAdditionalTokens: true
 			}
 		)
-		assertAst(label('Double call with only the second one being direct', ['anonymous-calls', 'numbers', 'name-normal', 'normal-definition']),
+		assertAst(label('Double call with only the second one being direct', ['call-anonymous', 'numbers', 'name-normal', 'normal-definition']),
 			shell, 'a(1)(2)', [
 				{
 					step:   NORMALIZE,
@@ -576,75 +576,116 @@ describe('Parse function calls', withShell(shell => {
 		)
 	})
 	describe('functions with explicit namespacing', () => {
-		assertAst(
-			'x::f()',
-			shell,
-			'x::f()',
-			exprList({
-				type:         RType.FunctionCall,
-				flavor:       'named',
-				location:     rangeFrom(1, 1, 1, 4),
-				lexeme:       'x::f',
-				info:         {},
-				functionName: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 4, 1, 4),
-					lexeme:    'f',
-					content:   'f',
-					namespace: 'x',
-					info:      {}
-				},
-				arguments: [],
-			})
+		assertAst(label('x::f()', ['name-normal', 'call-normal', 'accessing-exported-names']),
+			shell, 'x::f()',
+			sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+				exprList({
+					type:         RType.FunctionCall,
+					flavor:       'named',
+					location:     rangeFrom(1, 1, 1, 4),
+					lexeme:       'x::f',
+					info:         {},
+					functionName: {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 4, 1, 4),
+						lexeme:    'f',
+						content:   'f',
+						namespace: 'x',
+						info:      {}
+					},
+					arguments: [],
+				})
+			)
 		)
 	})
 	describe('functions which are called as string', () => {
-		assertAst(
-			"'f'()",
-			shell,
-			"'f'()",
-			exprList({
-				type:         RType.FunctionCall,
-				flavor:       'named',
-				location:     rangeFrom(1, 1, 1, 3),
-				lexeme:       "'f'",
-				info:         {},
-				functionName: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 3),
-					lexeme:    "'f'",
-					content:   'f',
-					namespace: undefined,
-					info:      {}
-				},
-				arguments: [],
-			})
+		assertAst(label("'f'()", ['name-quoted', 'call-normal']),
+			shell, "'f'()",
+			sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+				exprList({
+					type:         RType.FunctionCall,
+					flavor:       'named',
+					location:     rangeFrom(1, 1, 1, 3),
+					lexeme:       "'f'",
+					info:         {},
+					functionName: {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 3),
+						lexeme:    "'f'",
+						content:   'f',
+						namespace: undefined,
+						info:      {}
+					},
+					arguments: [],
+				})
+			)
 		)
 	})
-	describe('Reserved wrong functions', () => {
-		assertAst(
-			'next()',
-			shell,
-			'next()',
-			exprList({
-				type:     RType.Next,
-				location: rangeFrom(1, 1, 1, 4),
-				lexeme:   'next',
-				info:     {}
-
-			})
+	describe('Next and break as functions', () => {
+		assertAst(label('next()', ['name-normal', 'call-normal', 'next']),
+			shell, 'next()', [
+				{
+					step:   NORMALIZE,
+					wanted: exprList({
+						type:     RType.Next,
+						location: rangeFrom(1, 1, 1, 4),
+						lexeme:   'next',
+						info:     {}
+					})
+				},
+				{
+					step:   DESUGAR_NORMALIZE,
+					wanted: exprList({
+						type:         RType.FunctionCall,
+						flavor:       'named',
+						location:     rangeFrom(1, 1, 1, 4),
+						lexeme:       'next',
+						info:         {},
+						functionName: {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 1, 1, 4),
+							lexeme:    'next',
+							content:   'next',
+							namespace: undefined,
+							info:      {}
+						},
+						arguments: []
+					})
+				}
+			]
 		)
-		assertAst(
-			'break()',
-			shell,
-			'break()',
-			exprList({
-				type:     RType.Break,
-				location: rangeFrom(1, 1, 1, 5),
-				lexeme:   'break',
-				info:     {}
+		assertAst(label('break()', ['name-normal', 'call-normal', 'break']),
+			shell, 'break()', [
+				{
+					step:   NORMALIZE,
+					wanted: exprList({
+						type:     RType.Break,
+						location: rangeFrom(1, 1, 1, 5),
+						lexeme:   'break',
+						info:     {}
 
-			})
+					})
+				},
+				{
+					step:   DESUGAR_NORMALIZE,
+					wanted: exprList({
+						type:         RType.FunctionCall,
+						flavor:       'named',
+						location:     rangeFrom(1, 1, 1, 5),
+						lexeme:       'break',
+						info:         {},
+						functionName: {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 1, 1, 5),
+							lexeme:    'break',
+							content:   'break',
+							namespace: undefined,
+							info:      {}
+						},
+						arguments: []
+					})
+				}
+			]
 		)
 	})
 })

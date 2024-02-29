@@ -11,10 +11,7 @@ import { guard } from '../../../../../../../util/assert'
 import { normalizeComment } from './other'
 import { normalizeLineDirective } from './other/line-directive'
 import { getTokenType } from '../../common/meta'
-
-const todo = (...x: unknown[]) => {
-	throw new Error('not implemented: ' + JSON.stringify(x))
-}
+import { normalizeNextAndBreak } from './loops/next-break'
 
 const SingleTokenHandler: Partial<Record<RawRType, typeof normalizeSingleToken>>  = {
 	[RawRType.NumericConst]:       normalizeNumber,
@@ -26,8 +23,9 @@ const SingleTokenHandler: Partial<Record<RawRType, typeof normalizeSingleToken>>
 	[RawRType.ExpressionList]:     normalizeExpressionList,
 	[RawRType.Expression]:         normalizeExpressionList,
 	[RawRType.ExprOfAssignOrHelp]: normalizeExpressionList,
-	[RawRType.Break]:              todo,
-	[RawRType.Next]:               todo,
+	[RawRType.Break]:              normalizeNextAndBreak,
+	[RawRType.Next]:               normalizeNextAndBreak,
+	[RawRType.SymbolFunctionCall]: tryNormalizeSymbolNoNamespace,
 	[RawRType.Symbol]:             tryNormalizeSymbolNoNamespace,
 	[RawRType.Slot]:               tryNormalizeSymbolNoNamespace,
 	[RawRType.NullConst]:          tryNormalizeSymbolNoNamespace

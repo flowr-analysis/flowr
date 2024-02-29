@@ -7,7 +7,7 @@ import type {
 	RNode,
 	RFunctionCall,
 	RUnnamedFunctionCall,
-	RNamedFunctionCall
+	RNamedFunctionCall, RSymbol, RString
 } from '../../../../../model'
 import {
 	RType, RawRType
@@ -16,8 +16,6 @@ import { tryToNormalizeArgument } from './argument'
 import type { SourceRange } from '../../../../../../../../util/range'
 import { parseLog } from '../../../../json/parser'
 import type { NormalizeConfiguration } from '../../data'
-import { normalizeString } from '../values/string'
-import { tryNormalizeSymbolNoNamespace, tryNormalizeSymbolWithNamespace } from '../values/symbol'
 import { expensiveTrace } from '../../../../../../../../util/log'
 import { normalizeLog } from '../../normalize'
 import { normalizeExpression } from '../expression'
@@ -45,20 +43,27 @@ export function tryNormalizeFunctionCall(config: NormalizeConfiguration, tokens:
 	const { unwrappedObj, content, location } = retrieveMetaStructure(tokens[0])
 	const symbolContent: XmlBasedJson[] = getKeyGuarded(unwrappedObj, childrenKey)
 
+	const symbols = normalizeExpression(config, symbolContent)
+	if(symbols.length !== 1) {
+		parseLog.trace(`expected exactly one symbol, but received ${symbols.length}`)
+		return undefined
+	}
+	const symbol = symbols[0]
+
 	let result: RFunctionCall
 
-	if(symbolContent.length === 1 && getTokenType(symbolContent[0]) === RawRType.StringConst) {
+	if(symbolContent.length === 1 && symbol.type === RType.String) {
 		// special handling when someone calls a function by string
-		result = parseNamedFunctionCall(config, symbolContent, tokens, location, content)
-	} else if(symbolContent.findIndex(x => getTokenType(x) === RawRType.SymbolFunctionCall) < 0) {
-		expensiveTrace(normalizeLog, () => `is not named function call, as the name is not of type ${RType.FunctionCall}, but: ${symbolContent.map(getTokenType).join(',')}`)
-		const mayResult = tryParseUnnamedFunctionCall(config, symbolContent, tokens, location, content)
+		result = parseNamedFunctionCall(config, symbol, tokens, location, content)
+	} else if(symbol.type !== RType.Symbol) {
+		expensiveTrace(normalizeLog, () => `is not named function call, as the name is not of type ${RType.Symbol}, but: ${symbolContent.map(getTokenType).join(',')}`)
+		const mayResult = tryParseUnnamedFunctionCall(config, symbol, tokens, location, content)
 		if(mayResult === undefined) {
 			return undefined
 		}
 		result = mayResult
 	} else {
-		result = parseNamedFunctionCall(config, symbolContent, tokens, location, content)
+		result = parseNamedFunctionCall(config, symbol, tokens, location, content)
 	}
 
 	return result
@@ -74,16 +79,7 @@ function parseArguments(tokens: readonly XmlBasedJson[], config: NormalizeConfig
 	})
 }
 
-function tryParseUnnamedFunctionCall(config: NormalizeConfiguration, symbolTokens: readonly XmlBasedJson[], tokens: readonly XmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | undefined {
-	// maybe remove symbol-content again because I just use the root expr of mapped with name
-	if(symbolTokens.length < 3) {
-		parseLog.trace('expected unnamed function call to have at least 3 elements [like (<func>)], but: ${symbolTokens.length}')
-		return undefined
-	}
-
-	// we parse an expression to allow function calls
-	const calledFunction = normalizeExpression(config, symbolTokens)
-	guard(calledFunction.length === 1, () => `expected exactly one function call, but ${calledFunction.length}`)
+function tryParseUnnamedFunctionCall(config: NormalizeConfiguration, calledFunction: RNode, tokens: readonly XmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | undefined {
 	const parsedArguments = parseArguments(tokens, config)
 
 	return {
@@ -91,7 +87,7 @@ function tryParseUnnamedFunctionCall(config: NormalizeConfiguration, symbolToken
 		flavor:         'unnamed',
 		location,
 		lexeme:         content,
-		calledFunction: calledFunction[0],
+		calledFunction: calledFunction,
 		arguments:      parsedArguments,
 		info:           {
 			additionalTokens: [],
@@ -103,24 +99,23 @@ function tryParseUnnamedFunctionCall(config: NormalizeConfiguration, symbolToken
 
 function parseNamedFunctionCall(
 	config: NormalizeConfiguration,
-	symbolContent: readonly XmlBasedJson[],
+	symbol: RSymbol | RString,
 	tokens: readonly XmlBasedJson[],
 	location: SourceRange,
 	content: string
 ): RNamedFunctionCall {
 	let functionName: RNode | undefined
-	if(symbolContent.length === 1 && getTokenType(symbolContent[0]) === RawRType.StringConst) {
-		const stringBase = normalizeString(config, symbolContent[0])
+	if(symbol.type === RType.String) {
 		functionName = {
 			type:      RType.Symbol,
 			namespace: undefined,
-			lexeme:    stringBase.lexeme,
-			info:      stringBase.info,
-			location:  stringBase.location,
-			content:   stringBase.content.str
+			lexeme:    symbol.lexeme,
+			info:      symbol.info,
+			location:  symbol.location,
+			content:   symbol.content.str
 		}
 	} else {
-		functionName = symbolContent.length === 3 ? tryNormalizeSymbolWithNamespace(config, symbolContent) : tryNormalizeSymbolNoNamespace(config, symbolContent[0])
+		functionName = symbol
 	}
 	guard(functionName?.type === RType.Symbol, () => `expected function name to be a symbol, yet received ${JSON.stringify(functionName)}`)
 

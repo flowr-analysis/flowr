@@ -167,7 +167,7 @@ export const flowrCapabilities = {
 						},
 						{
 							name:        'Anonymous Calls',
-							id:          'anonymous-calls',
+							id:          'call-anonymous',
 							supported:   'fully',
 							description: '_Recognize and resolve calls like `(function(x) x)(3)`, `factory(0)()`, ..._'
 						},

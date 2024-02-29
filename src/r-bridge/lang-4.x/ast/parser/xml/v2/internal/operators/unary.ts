@@ -1,6 +1,7 @@
 import type { XmlBasedJson } from '../../../common/input-format'
 import { retrieveMetaStructure } from '../../../common/meta'
 import type { RFunctionCall } from '../../../../../model'
+import { EmptyArgument } from '../../../../../model'
 import { RType } from '../../../../../model'
 import type { NormalizeConfiguration } from '../../data'
 import { normalizeSingleToken } from '../single-element'
@@ -29,7 +30,7 @@ export function normalizeUnary(config: NormalizeConfiguration, [operator, operan
 			lexeme:    content,
 			info:      {}
 		},
-		arguments: [normalizeSingleToken(config, operand)],
+		arguments: [normalizeSingleToken(config, operand) ?? EmptyArgument],
 		info:      {}
 	}
 }

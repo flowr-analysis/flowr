@@ -13,6 +13,7 @@ import { label } from '../../../_helper/label'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { unnamedArgument } from '../../../_helper/environment-builder'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
+import { OperatorDatabase } from '../../../../../src'
 
 describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {
@@ -103,7 +104,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			describe(`${opSuite.label} operations`, () => {
 				for(const op of opSuite.pool) {
 					const inputDifferent = `${op.str}x`
-					assertDataflow(label(`${op.str}x`, ['unary-operator', 'name-normal']), shell,
+					const opData = OperatorDatabase[op.str]
+					assertDataflow(label(`${op.str}x`, ['unary-operator', 'name-normal', ...opData.capabilities]), shell,
 						inputDifferent,
 						emptyGraph().use('0', 'x')
 					)
@@ -119,14 +121,14 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				for(const op of opSuite.pool) {
 					describe(`${op.str}`, () => {
 						const inputDifferent = `x ${op.str} y`
-						assertDataflow(label(`${inputDifferent} (different variables)`, ['binary-operator', 'name-normal']),
+						assertDataflow(label(`${inputDifferent} (different variables)`, ['binary-operator', 'infix-calls', 'function-calls', 'name-normal']),
 							shell,
 							inputDifferent,
 							emptyGraph().use('0', 'x').use('1', 'y')
 						)
 
 						const inputSame = `x ${op.str} x`
-						assertDataflow(label(`${inputSame} (same variables)`, ['binary-operator', 'name-normal']),
+						assertDataflow(label(`${inputSame} (same variables)`, ['binary-operator', 'infix-calls', 'function-calls', 'name-normal']),
 							shell,
 							inputSame,
 							emptyGraph()

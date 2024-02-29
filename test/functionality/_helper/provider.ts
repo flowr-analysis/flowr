@@ -93,14 +93,14 @@ export const RStringPool: { val: RStringValue, str: string }[] = [
 	{ str: '"\\U{10AFFE}"', val: { str: '\\U{10AFFE}', quotes: '"' } } // unicode 4
 ]
 
-export const RSymbolPool: { val: string, str: string, namespace: NamespaceIdentifier | undefined, symbolStart: number }[] = [
+export const RSymbolPool: { val: string, str: string, namespace: NamespaceIdentifier | undefined, symbolStart: number, internal?: boolean }[] = [
 	{ str: 'NA', val: RNa, namespace: undefined, symbolStart: 1 },
 	{ str: 'NULL', val: RNull, namespace: undefined, symbolStart: 1 },
 	{ str: 'x', val: 'x', namespace: undefined, symbolStart: 1 },
 	{ str: 'x.y', val: 'x.y', namespace: undefined, symbolStart: 1 },
 	{ str: 'x::y', val: 'y', namespace: 'x', symbolStart: 4 },
 	// ::: for non-exported?
-	{ str: 'x:::y', val: 'y', namespace: 'x', symbolStart: 5 }
+	{ str: 'x:::y', val: 'y', namespace: 'x', symbolStart: 5, internal: true }
 ]
 
 const canBeABinaryOp = (op: string): boolean => {

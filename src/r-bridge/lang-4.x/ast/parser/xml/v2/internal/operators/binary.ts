@@ -1,7 +1,11 @@
 import type { XmlBasedJson } from '../../../common/input-format'
 import { retrieveMetaStructure } from '../../../common/meta'
 import type {
-	RFunctionCall } from '../../../../../model'
+	RFunctionCall
+} from '../../../../../model'
+import {
+	EmptyArgument
+} from '../../../../../model'
 import {
 	RType
 } from '../../../../../model'
@@ -30,7 +34,7 @@ export function normalizeBinary(
 			lexeme:    content,
 			info:      {}
 		},
-		arguments: [normalizeSingleToken(config, lhs), normalizeSingleToken(config, rhs)],
+		arguments: [normalizeSingleToken(config, lhs) ?? EmptyArgument, normalizeSingleToken(config, rhs) ?? EmptyArgument],
 		info:      {}
 	}
 }

@@ -7,7 +7,8 @@ import type {
 	RNode,
 	RFunctionCall,
 	RUnnamedFunctionCall,
-	RNamedFunctionCall, RSymbol, RString
+	RNamedFunctionCall, RSymbol, RString } from '../../../../../model'
+import { EmptyArgument
 } from '../../../../../model'
 import {
 	RType, RawRType
@@ -88,7 +89,7 @@ function tryParseUnnamedFunctionCall(config: NormalizeConfiguration, calledFunct
 		location,
 		lexeme:         content,
 		calledFunction: calledFunction,
-		arguments:      parsedArguments,
+		arguments:      parsedArguments.map(x => x ?? EmptyArgument),
 		info:           {
 			additionalTokens: [],
 			fullLexeme:       config.currentLexeme
@@ -127,7 +128,7 @@ function parseNamedFunctionCall(
 		location,
 		lexeme:    content,
 		functionName,
-		arguments: parsedArguments,
+		arguments: parsedArguments.map(x => x ?? EmptyArgument),
 		info:      {
 			additionalTokens: [],
 			fullLexeme:       config.currentLexeme

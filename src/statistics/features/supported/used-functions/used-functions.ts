@@ -2,7 +2,7 @@ import type { Feature, FeatureProcessorInput } from '../../feature'
 import { appendStatisticsFile } from '../../../output'
 import type { Writable } from 'ts-essentials'
 import type { RNodeWithParent } from '../../../../r-bridge'
-import { RType, visitAst } from '../../../../r-bridge'
+import { RType, visitAst , EmptyArgument } from '../../../../r-bridge'
 import { EdgeType } from '../../../../dataflow/v1'
 import type {
 	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
@@ -44,7 +44,7 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
 }
 
 
-function classifyArguments(args: (RNodeWithParent | undefined)[], existing: Record<number, bigint | CommonSyntaxTypeCounts>) {
+function classifyArguments(args: (RNodeWithParent | typeof EmptyArgument)[], existing: Record<number, bigint | CommonSyntaxTypeCounts>) {
 	if(args.length === 0) {
 		(existing[0] as unknown as number)++
 		return
@@ -52,7 +52,7 @@ function classifyArguments(args: (RNodeWithParent | undefined)[], existing: Reco
 
 	let i = 1
 	for(const arg of args) {
-		if(arg === undefined) {
+		if(arg === EmptyArgument) {
 			(existing[0] as unknown as number)++
 			continue
 		}

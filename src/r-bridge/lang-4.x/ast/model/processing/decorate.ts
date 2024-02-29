@@ -14,6 +14,8 @@ import { guard } from '../../../../../util/assert'
 import type { SourceRange } from '../../../../../util/range'
 import { BiMap } from '../../../../../util/bimap'
 import { foldAst } from './fold'
+import {
+	EmptyArgument } from '../nodes'
 import type {
 	RArgument,
 	RBinaryOp,
@@ -335,7 +337,7 @@ function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RFunctionCall<OtherInfo>, functionName: RNodeWithParent<OtherInfo>, args: (RNodeWithParent<OtherInfo> | undefined)[]): RNodeWithParent<OtherInfo> => {
+	return (data: RFunctionCall<OtherInfo>, functionName: RNodeWithParent<OtherInfo>, args: (RNodeWithParent<OtherInfo> | typeof EmptyArgument)[]): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
 		let decorated: RFunctionCall<OtherInfo & ParentInformation>
 		if(data.flavor === 'named') {
@@ -350,7 +352,7 @@ function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		let idx = 0
 		for(const arg of args) {
 			idx++
-			if(arg !== undefined) {
+			if(arg !== EmptyArgument) {
 				const argInfo = arg.info
 				argInfo.parent = id
 				argInfo.index = idx

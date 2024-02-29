@@ -131,7 +131,7 @@ export const flowrCapabilities = {
 									name:        'Empty Arguments',
 									id:          'empty-arguments',
 									supported:   'fully',
-									description: '_Essentially a special form of an unnamed argument as in `a[]`, `foo::bar(3, ,42)`, ..._'
+									description: '_Essentially a special form of an unnamed argument as in `foo::bar(3, ,42)`, ..._'
 								},
 								{
 									name:        'Named Arguments',
@@ -528,10 +528,18 @@ export const flowrCapabilities = {
 							description: '_Recognize numbers like `3`, `3.14`, `NA`, float-hex, ..._'
 						},
 						{
-							name:        'Strings',
-							id:          'strings',
-							supported:   'fully',
-							description: "_Recognize strings like `\"a\"`, `'b'`, ..._"
+							name:         'Strings',
+							id:           'strings',
+							supported:    'fully',
+							description:  "_Recognize strings like `\"a\"`, `'b'`, ..._",
+							capabilities: [
+								{
+									name:        'Raw Strings',
+									id:          'raw-strings',
+									supported:   'fully',
+									description: '_Recognize raw strings like `r"(a)"`, ..._'
+								}
+							]
 						},
 						{
 							name:        'Logical',

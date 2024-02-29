@@ -1,6 +1,7 @@
 import type {  XmlBasedJson } from '../../../common/input-format'
 import { XmlParseError } from '../../../common/input-format'
 import type { RFunctionCall } from '../../../../../model'
+import { EmptyArgument } from '../../../../../model'
 import { RType, RawRType } from '../../../../../model'
 import { getTokenType, retrieveMetaStructure } from '../../../common/meta'
 import { normalizeSingleToken } from '../single-element'
@@ -37,7 +38,7 @@ export function tryNormalizeIfThen(
 		location,
 		lexeme:       content,
 		flavor:       'named',
-		arguments:    [parsedCondition, parsedThen],
+		arguments:    [parsedCondition ?? EmptyArgument, parsedThen ?? EmptyArgument],
 		functionName: {
 			type:      RType.Symbol,
 			location,

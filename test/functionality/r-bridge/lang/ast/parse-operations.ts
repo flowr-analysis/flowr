@@ -2,6 +2,7 @@ import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { RArithmeticBinaryOpPool, RLogicalBinaryOpPool, RUnaryOpPool } from '../../../_helper/provider'
 import type { RExpressionList } from '../../../../../src'
+import { OperatorDatabase } from '../../../../../src'
 import { ComparisonOperators, type RShell, RType } from '../../../../../src'
 import { rangeFrom } from '../../../../../src/util/range'
 import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
@@ -14,7 +15,8 @@ describe('Parse simple operations', withShell(shell => {
 				for(const op of opSuite.pool) {
 					const simpleInput = `${op.str}42`
 					const opOffset = op.str.length - 1
-					assertAst(label(`${simpleInput}`, ['unary-operator', 'numbers']),
+					const opData = OperatorDatabase[op.str]
+					assertAst(label(`${simpleInput}`, ['unary-operator', 'numbers', ...opData.capabilities]),
 						shell, simpleInput, [
 							{
 								step:   NORMALIZE,
@@ -136,7 +138,8 @@ describe('Parse simple operations', withShell(shell => {
 				describe(op, () => {
 					const simpleInput = `1 ${op} 1`
 					const opOffset = op.length - 1
-					assertAst(label(simpleInput, ['binary-operator', 'numbers']),
+					const opData = OperatorDatabase[op]
+					assertAst(label(simpleInput, ['binary-operator', 'infix-calls', 'function-calls', 'numbers', ...opData.capabilities]),
 						shell, simpleInput, [
 							{
 								step:   NORMALIZE,
@@ -204,7 +207,7 @@ describe('Parse simple operations', withShell(shell => {
 		})
 
 		describe('Intermixed with comments', () => {
-			assertAst(label('1 + # comment\n2', ['binary-operator', 'numbers', 'comments', 'newlines']),
+			assertAst(label('1 + # comment\n2', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'comments', 'newlines']),
 				shell, '1 + # comment\n2', [
 					{
 						step:   NORMALIZE,
@@ -296,7 +299,7 @@ describe('Parse simple operations', withShell(shell => {
 			)
 		})
 		describe('Using unknown special infix operator', () => {
-			assertAst(label('1 %xx% 2', ['binary-operator', 'numbers', 'special-operator']),
+			assertAst(label('1 %xx% 2', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'special-operator']),
 				shell, '1 %xx% 2', [
 					{
 						step:   NORMALIZE,
@@ -436,7 +439,8 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 	describe(`${op.str} (${op.flavor})`, () => {
 		const simpleInput = `1 ${op.str} 1`
 		const opOffset = op.str.length - 1
-		assertAst(label(simpleInput, ['binary-operator', 'numbers']),
+		const opData = OperatorDatabase[op.str]
+		assertAst(label(simpleInput, ['binary-operator', 'infix-calls', 'function-calls', 'numbers', ...opData.capabilities]),
 			shell, simpleInput, [
 				{
 					step:   NORMALIZE,
@@ -498,7 +502,7 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 			])
 
 
-		assertAst(label('Single Parenthesis', ['binary-operator', 'numbers', 'grouping']),
+		assertAst(label('Single Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
 			shell, `(1 ${op.str} 1) ${op.str} 42`, [
 				{
 					step:   NORMALIZE,
@@ -581,7 +585,7 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 				ignoreAdditionalTokens: true
 			})
 
-		assertAst(label('Multiple Parenthesis', ['binary-operator', 'numbers', 'grouping']),
+		assertAst(label('Multiple Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
 			shell, `(1 ${op.str} 1) ${op.str} (42)`, [
 				{
 					step:   NORMALIZE,
@@ -681,7 +685,7 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 
 		// exponentiation has a different behavior when nested without parenthesis
 		if(op.str !== '^' && op.str !== '**') {
-			assertAst(label('No Parenthesis', ['binary-operator', 'numbers', 'grouping']),
+			assertAst(label('No Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
 				shell, `1 ${op.str} 1 ${op.str} 42`, [
 					{
 						step:   NORMALIZE,
@@ -750,7 +754,7 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 				})
 		}
 
-		assertAst(label('Invert precedence', ['binary-operator', 'numbers', 'grouping']),
+		assertAst(label('Invert precedence', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
 			shell, `1 ${op.str} (1 ${op.str} 42)`, [
 				{
 					step:   NORMALIZE,

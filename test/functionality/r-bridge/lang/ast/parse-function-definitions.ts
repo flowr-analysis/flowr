@@ -49,7 +49,7 @@ describe('Parse function definitions', withShell(shell => {
 								namespace: undefined,
 								info:      {}
 							},
-							arguments: [],
+							arguments: []
 						}
 					})
 				}
@@ -57,7 +57,7 @@ describe('Parse function definitions', withShell(shell => {
 				ignoreAdditionalTokens: true
 			}
 		)
-		assertAst(label('No Args', ['normal-definition', 'name-normal', 'binary-operator', 'numbers', 'grouping']),
+		assertAst(label('No Args', ['normal-definition', 'name-normal', 'binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping']),
 			shell, 'function() { x + 2 * 3 }',[
 				{
 					step:   NORMALIZE,

@@ -3,6 +3,7 @@ import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import { define, overwriteEnvironments, resolveByName } from '../../../../common/environments'
 import type { ParentInformation, RFunctionCall } from '../../../../../r-bridge'
+import { EmptyArgument } from '../../../../../r-bridge'
 import { RType } from '../../../../../r-bridge'
 import { guard } from '../../../../../util/assert'
 import type { FunctionArgument } from '../../../index'
@@ -42,7 +43,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 	}
 
 	for(const arg of functionCall.arguments) {
-		if(arg === undefined) {
+		if(arg === EmptyArgument) {
 			callArgs.push('empty')
 			args.push(undefined)
 			continue

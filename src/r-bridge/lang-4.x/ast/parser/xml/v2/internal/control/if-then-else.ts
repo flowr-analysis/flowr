@@ -2,7 +2,7 @@ import type { XmlBasedJson } from '../../../common/input-format'
 import { tryNormalizeIfThen } from './if-then'
 import { getTokenType } from '../../../common/meta'
 import type { RFunctionCall } from '../../../../../model'
-import { RawRType } from '../../../../../model'
+import { EmptyArgument, RawRType } from '../../../../../model'
 import { guard } from '../../../../../../../../util/assert'
 import type { NormalizeConfiguration } from '../../data'
 import { normalizeSingleToken } from '../single-element'
@@ -34,6 +34,6 @@ export function tryNormalizeIfThenElse(
 
 	return {
 		...parsedIfThen,
-		arguments: [...parsedIfThen.arguments, parsedElse],
+		arguments: [...parsedIfThen.arguments.map(x => x ?? EmptyArgument), parsedElse ?? EmptyArgument],
 	}
 }

@@ -13,6 +13,8 @@ import type {
 	RNext,
 	RBreak,
 	RArgument } from '../../../../../model'
+import { EmptyArgument
+} from '../../../../../model'
 import {
 	RType, RawRType
 } from '../../../../../model'
@@ -126,7 +128,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 		location,
 		lexeme:         content,
 		calledFunction: calledFunction,
-		arguments:      parsedArguments,
+		arguments:      parsedArguments.map(x => x ?? EmptyArgument),
 		info:           {
 			fullRange:        data.currentRange,
 			additionalTokens: [],
@@ -162,7 +164,7 @@ function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJs
 		location,
 		lexeme:    content,
 		functionName,
-		arguments: parsedArguments,
+		arguments: parsedArguments.map(x => x ?? EmptyArgument),
 		info:      {
 			fullRange:        data.currentRange,
 			additionalTokens: [],

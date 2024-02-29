@@ -12,6 +12,7 @@ import chaiAsPromised from 'chai-as-promised'
 import { MIN_VERSION_RAW_STABLE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 import { prepareParsedData } from '../../../../../src/r-bridge/lang-4.x/ast/parser/json/format'
+import { label } from '../../../_helper/label'
 chai.use(chaiAsPromised)
 
 describe('CSV parsing', withShell(shell => {
@@ -55,10 +56,8 @@ describe('CSV parsing', withShell(shell => {
 describe('Constant Parsing',
 	withShell(shell => {
 		describe('parse empty', () => {
-			assertAst(
-				'nothing',
-				shell,
-				'',
+			assertAst(label('nothing', []),
+				shell, '',
 				sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
 					exprList()
 				)
@@ -74,10 +73,8 @@ describe('Constant Parsing',
 			describe('numbers', () => {
 				for(const number of RNumberPool) {
 					const range = rangeFrom(1, 1, 1, number.str.length)
-					assertAst(
-						number.str,
-						shell,
-						number.str,
+					assertAst(label(number.str, ['numbers']),
+						shell, number.str,
 						sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
 							exprList({
 								type:     RType.Number,
@@ -93,10 +90,9 @@ describe('Constant Parsing',
 			describe('strings', () => {
 				for(const string of RStringPool) {
 					const range = rangeFrom(1, 1, 1, string.str.length)
-					assertAst(
-						string.str,
-						shell,
-						string.str,
+					const raw = string.str.startsWith('r') || string.str.startsWith('R')
+					assertAst(label(string.str, ['strings', ...(raw ? ['raw-strings' as const] : [])]),
+						shell, string.str,
 						sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
 							exprList({
 								type:     RType.String,
@@ -108,23 +104,18 @@ describe('Constant Parsing',
 						),
 						{
 							// just a hackey way to not outright flag all
-							minRVersion: string.str.startsWith('r') || string.str.startsWith('R') ? MIN_VERSION_RAW_STABLE : undefined
+							minRVersion: raw ? MIN_VERSION_RAW_STABLE : undefined
 						}
 					)
 				}
 			})
 			describe('Symbols', () => {
 				for(const symbol of RSymbolPool) {
-					const range = rangeFrom(
-						1,
-						symbol.symbolStart,
-						1,
-						symbol.symbolStart + symbol.val.length - 1
-					)
-					assertAst(
-						symbol.str,
-						shell,
-						symbol.str,
+					const range = rangeFrom(1, symbol.symbolStart, 1, symbol.symbolStart + symbol.val.length - 1)
+					const exported = symbol.namespace !== undefined
+					const mapped = exported ? [symbol.internal ? 'accessing-internal-names' as const : 'accessing-exported-names' as const] : []
+					assertAst(label(symbol.str, ['name-normal', ...mapped]),
+						shell, symbol.str,
 						sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
 							exprList({
 								type:      RType.Symbol,
@@ -140,10 +131,8 @@ describe('Constant Parsing',
 			})
 			describe('logical', () => {
 				for(const [lexeme, content] of [['TRUE', true], ['FALSE', false]] as const) {
-					assertAst(
-						`${lexeme} as ${JSON.stringify(content)}`,
-						shell,
-						lexeme,
+					assertAst(label(`${lexeme} as ${JSON.stringify(content)}`, ['logical']),
+						shell, lexeme,
 						sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
 							exprList({
 								type:     RType.Logical,
@@ -157,10 +146,8 @@ describe('Constant Parsing',
 				}
 			})
 			describe('comments', () => {
-				assertAst(
-					'simple line comment',
-					shell,
-					'# Hello World',
+				assertAst(label('simple line comment', ['comments']),
+					shell, '# Hello World',
 					sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
 						exprList({
 							type:     RType.Comment,

@@ -10,6 +10,7 @@ import { getTokenType, retrieveMetaStructure } from '../../../common/meta'
 import { guard } from '../../../../../../../../util/assert'
 import type { NormalizeConfiguration } from '../../data'
 import type { RComment, RFunctionCall, RNode, RSymbol } from '../../../../../model'
+import { EmptyArgument } from '../../../../../model'
 import { RawRType, RType } from '../../../../../model'
 import { normalizeComment } from '../other'
 import { normalizeSingleToken } from '../single-element'
@@ -65,7 +66,7 @@ export function tryNormalizeFor(
 			namespace: undefined,
 			info:      {}
 		},
-		arguments: [parsedVariable, parsedVector, parseBody],
+		arguments: [parsedVariable, parsedVector, parseBody ?? EmptyArgument],
 		info:      {
 			additionalTokens: comments,
 			fullLexeme:       config.currentLexeme

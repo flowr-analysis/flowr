@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RType } from '../../../../../src'
+import { EmptyArgument, RType } from '../../../../../src'
 import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 import { InternalScope } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v2/internal/internal'
 import { label } from '../../../_helper/label'
@@ -191,7 +191,7 @@ describe('Parse value access', withShell(shell => {
 					})
 				}
 			])
-		assertAst(label('One Expression', ['name-normal', 'single-bracket-access', 'binary-operator', 'numbers']),
+		assertAst(label('One Expression', ['name-normal', 'single-bracket-access', 'binary-operator', 'infix-calls', 'function-calls', 'numbers']),
 			shell, 'a[x + 3]', [
 				{
 					step:   NORMALIZE,
@@ -450,7 +450,7 @@ describe('Parse value access', withShell(shell => {
 							info:      {},
 							location:  rangeFrom(1, 1, 1, 1),
 							namespace: undefined
-						}, undefined, {
+						}, EmptyArgument, {
 							type:     RType.Number,
 							location: rangeFrom(1, 4, 1, 4),
 							lexeme:   '2',
@@ -947,7 +947,7 @@ describe('Parse value access', withShell(shell => {
 							lexeme:   '5',
 							content:  numVal(5),
 							info:     {}
-						}, undefined, undefined]
+						}, EmptyArgument, EmptyArgument]
 					})
 				}
 			])

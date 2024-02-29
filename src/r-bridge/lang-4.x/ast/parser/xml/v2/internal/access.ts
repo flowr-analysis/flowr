@@ -2,6 +2,7 @@ import type { XmlBasedJson } from '../../common/input-format'
 import { XmlParseError } from '../../common/input-format'
 import { getTokenType, retrieveMetaStructure } from '../../common/meta'
 import type { RNode, RFunctionCall } from '../../../../model'
+import { EmptyArgument } from '../../../../model'
 import { RType, RawRType } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
@@ -63,9 +64,9 @@ export function normalizeAccess(configuration: NormalizeConfiguration, tokens: r
 				location
 			},
 			arguments: [
-				parsedAccessed,
+				parsedAccessed ?? EmptyArgument,
 				// normalize the symbol following
-				normalizeSingleToken(configuration, tokens[2])
+				normalizeSingleToken(configuration, tokens[2]) ?? EmptyArgument
 			],
 		}
 	}
@@ -95,9 +96,9 @@ export function normalizeAccess(configuration: NormalizeConfiguration, tokens: r
 			location
 		},
 		arguments: [
-			parsedAccessed,
+			parsedAccessed ?? EmptyArgument,
 			// normalize the symbol following
-			...parsedAccess
+			...parsedAccess.map(arg => arg ?? EmptyArgument)
 		],
 	}
 }

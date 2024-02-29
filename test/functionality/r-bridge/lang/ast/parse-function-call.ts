@@ -1,7 +1,7 @@
 import { assertAst, sameForSteps, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RType } from '../../../../../src'
+import { EmptyArgument, RType } from '../../../../../src'
 import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v1/internal'
 import { label } from '../../../_helper/label'
 import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
@@ -110,6 +110,71 @@ describe('Parse function calls', withShell(shell => {
 								content:  numVal(2),
 								info:     {}
 							}
+						],
+					})
+				}
+			]
+		)
+		assertAst(label('f(1,)', ['name-normal', 'call-normal', 'unnamed-arguments', 'numbers', 'empty-arguments']),
+			shell, 'f(1,)', [
+				{
+					step:   NORMALIZE,
+					wanted: exprList({
+						type:         RType.FunctionCall,
+						flavor:       'named',
+						location:     rangeFrom(1, 1, 1, 1),
+						lexeme:       'f',
+						info:         {},
+						functionName: {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 1, 1, 1),
+							lexeme:    'f',
+							content:   'f',
+							namespace: undefined,
+							info:      {}
+						},
+						arguments: [
+							{
+								type:     RType.Argument,
+								location: rangeFrom(1, 3, 1, 3),
+								name:     undefined,
+								info:     {},
+								lexeme:   '1',
+								value:    {
+									type:     RType.Number,
+									location: rangeFrom(1, 3, 1, 3),
+									lexeme:   '1',
+									content:  numVal(1),
+									info:     {}
+								}
+							}, EmptyArgument],
+					})
+				},
+				{
+					step:   DESUGAR_NORMALIZE,
+					wanted: exprList({
+						type:         RType.FunctionCall,
+						flavor:       'named',
+						location:     rangeFrom(1, 1, 1, 1),
+						lexeme:       'f',
+						info:         {},
+						functionName: {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 1, 1, 1),
+							lexeme:    'f',
+							content:   'f',
+							namespace: undefined,
+							info:      {}
+						},
+						arguments: [
+							{
+								type:     RType.Number,
+								location: rangeFrom(1, 3, 1, 3),
+								lexeme:   '1',
+								content:  numVal(1),
+								info:     {}
+							},
+							EmptyArgument
 						],
 					})
 				}

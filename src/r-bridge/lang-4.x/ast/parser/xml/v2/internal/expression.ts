@@ -23,6 +23,9 @@ import { tryNormalizeFunctionDefinition } from './functions/function-definition'
  * @param config - The normalizer config to use
  */
 function handleExpressionList(tokens: readonly XmlBasedJson[], config: NormalizeConfiguration): { segments: XmlBasedJson[][], braces: undefined | [start: XmlBasedJson, end: XmlBasedJson] } {
+	if(tokens.length === 0) {
+		return { segments: [], braces: undefined }
+	}
 	const first = getTokenType(tokens[0])
 	if(first === RawRType.BraceLeft) {
 		const endType = getTokenType(tokens[tokens.length - 1])

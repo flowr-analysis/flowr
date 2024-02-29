@@ -346,7 +346,7 @@ describe('Parse function calls', withShell(shell => {
 		)
 	})
 	describe('directly called functions', () => {
-		assertAst(label('Directly call with 2', ['call-anonymous', 'numbers', 'name-normal', 'normal-definition']),
+		assertAst(label('Directly call with 2', ['call-anonymous', 'formals-named', 'numbers', 'name-normal', 'normal-definition']),
 			shell, '(function(x) { x })(2)', [
 				{
 					step:   NORMALIZE,

@@ -297,57 +297,90 @@ describe('Parse simple operations', withShell(shell => {
 			)
 		})
 		describe('Using unknown special infix operator', () => {
-			assertAst(
-				'1 %xx% 2',
-				shell,
-				'1 %xx% 2',
-				exprList(
+			assertAst(label('1 %xx% 2', ['binary-operator', 'numbers', 'special-operator']),
+				shell, '1 %xx% 2', [
 					{
-						type:         RType.FunctionCall,
-						flavor:       'named',
-						infixSpecial: true,
-						info:         {},
-						lexeme:       '1 %xx% 2',
-						functionName: {
-							type:      RType.Symbol,
-							lexeme:    '%xx%',
-							content:   '%xx%',
-							namespace: undefined,
+						step:   NORMALIZE,
+						wanted: exprList({
+							type:         RType.FunctionCall,
+							flavor:       'named',
+							infixSpecial: true,
+							info:         {},
+							lexeme:       '1 %xx% 2',
+							functionName: {
+								type:      RType.Symbol,
+								lexeme:    '%xx%',
+								content:   '%xx%',
+								namespace: undefined,
+								location:  rangeFrom(1, 3, 1, 6),
+								info:      {}
+							},
 							location:  rangeFrom(1, 3, 1, 6),
-							info:      {}
-						},
-						location:  rangeFrom(1, 3, 1, 6),
-						arguments: [
-							{
-								type:     RType.Argument,
-								info:     {},
-								lexeme:   '1',
-								name:     undefined,
-								location: rangeFrom(1, 1, 1, 1),
-								value:    {
+							arguments: [
+								{
+									type:     RType.Argument,
+									info:     {},
+									lexeme:   '1',
+									name:     undefined,
+									location: rangeFrom(1, 1, 1, 1),
+									value:    {
+										type:     RType.Number,
+										content:  numVal(1),
+										info:     {},
+										lexeme:   '1',
+										location: rangeFrom(1, 1, 1, 1)
+									}
+								}, {
+									type:     RType.Argument,
+									info:     {},
+									lexeme:   '2',
+									name:     undefined,
+									location: rangeFrom(1, 8, 1, 8),
+									value:    {
+										type:     RType.Number,
+										content:  numVal(2),
+										info:     {},
+										lexeme:   '2',
+										location: rangeFrom(1, 8, 1, 8)
+									}
+								}
+							]
+						})
+					},
+					{
+						step:   DESUGAR_NORMALIZE,
+						wanted: exprList({
+							type:         RType.FunctionCall,
+							flavor:       'named',
+							info:         {},
+							lexeme:       '1 %xx% 2',
+							functionName: {
+								type:      RType.Symbol,
+								lexeme:    '%xx%',
+								content:   '%xx%',
+								namespace: undefined,
+								location:  rangeFrom(1, 3, 1, 6),
+								info:      {}
+							},
+							location:  rangeFrom(1, 3, 1, 6),
+							arguments: [
+								{
 									type:     RType.Number,
 									content:  numVal(1),
 									info:     {},
 									lexeme:   '1',
 									location: rangeFrom(1, 1, 1, 1)
-								}
-							}, {
-								type:     RType.Argument,
-								info:     {},
-								lexeme:   '2',
-								name:     undefined,
-								location: rangeFrom(1, 8, 1, 8),
-								value:    {
+								}, {
 									type:     RType.Number,
 									content:  numVal(2),
 									info:     {},
 									lexeme:   '2',
 									location: rangeFrom(1, 8, 1, 8)
 								}
-							}
-						]
+							]
+						})
 					}
-				)
+				]
 			)
 		})
 	})

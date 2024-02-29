@@ -129,7 +129,6 @@ export function normalizeExpression(
 		// we could potentially optimize as not all expr may have semicolons but not for now
 		const { segments, braces, comments } = handleExpressionList(tokens)
 		parsedComments = comments.map(c => normalizeComment(config, c))
-		console.log('segments', parsedComments)
 
 		if(segments.length > 1 || braces) {
 			const processed = segments.flatMap(s => normalizeExpression(config, s))

@@ -346,7 +346,7 @@ describe('Parse function calls', withShell(shell => {
 		)
 	})
 	describe('directly called functions', () => {
-		assertAst(label('Directly call with 2', ['call-anonymous', 'formals-named', 'numbers', 'name-normal', 'normal-definition']),
+		assertAst(label('Directly call with 2', ['call-anonymous', 'formals-named', 'numbers', 'name-normal', 'normal-definition', 'grouping']),
 			shell, '(function(x) { x })(2)', [
 				{
 					step:   NORMALIZE,
@@ -413,51 +413,66 @@ describe('Parse function calls', withShell(shell => {
 						lexeme:         '(function(x) { x })',
 						info:           {},
 						calledFunction: {
-							type:       RType.FunctionDefinition,
-							location:   rangeFrom(1, 2, 1, 9),
-							lexeme:     'function',
-							parameters: [{
-								type:         RType.Parameter,
-								location:     rangeFrom(1, 11, 1, 11),
-								special:      false,
-								lexeme:       'x',
-								defaultValue: undefined,
-								name:         {
-									type:      RType.Symbol,
-									location:  rangeFrom(1, 11, 1, 11),
-									lexeme:    'x',
-									content:   'x',
-									namespace: undefined,
-									info:      {}
-								},
-								info: {},
-							}],
-							body: {
-								type:         RType.FunctionCall,
-								flavor:       'named',
-								location:     rangeFrom(1, 14, 1, 14),
-								lexeme:       '{',
-								info:         {},
-								functionName: {
-									type:      RType.Symbol,
-									location:  rangeFrom(1, 14, 1, 14),
-									lexeme:    '{',
-									content:   '{',
-									namespace: undefined,
-									info:      {}
-								},
-								arguments: [
-									{
+							type:         RType.FunctionCall,
+							flavor:       'named',
+							lexeme:       '(',
+							location:     rangeFrom(1, 1, 1, 1),
+							info:         {},
+							functionName: {
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 1, 1, 1),
+								lexeme:    '(',
+								content:   '(',
+								namespace: undefined,
+								info:      {}
+							},
+							arguments: [{
+								type:       RType.FunctionDefinition,
+								location:   rangeFrom(1, 2, 1, 9),
+								lexeme:     'function',
+								parameters: [{
+									type:         RType.Parameter,
+									location:     rangeFrom(1, 11, 1, 11),
+									special:      false,
+									lexeme:       'x',
+									defaultValue: undefined,
+									name:         {
 										type:      RType.Symbol,
-										location:  rangeFrom(1, 16, 1, 16),
+										location:  rangeFrom(1, 11, 1, 11),
 										lexeme:    'x',
 										content:   'x',
 										namespace: undefined,
 										info:      {}
-									}
-								],
-							},
-							info: {}
+									},
+									info: {},
+								}],
+								body: {
+									type:         RType.FunctionCall,
+									flavor:       'named',
+									location:     rangeFrom(1, 14, 1, 14),
+									lexeme:       '{',
+									info:         {},
+									functionName: {
+										type:      RType.Symbol,
+										location:  rangeFrom(1, 14, 1, 14),
+										lexeme:    '{',
+										content:   '{',
+										namespace: undefined,
+										info:      {}
+									},
+									arguments: [
+										{
+											type:      RType.Symbol,
+											location:  rangeFrom(1, 16, 1, 16),
+											lexeme:    'x',
+											content:   'x',
+											namespace: undefined,
+											info:      {}
+										}
+									],
+								},
+								info: {}
+							}]
 						},
 						arguments: [
 							{

@@ -1,6 +1,6 @@
 import { retrieveNormalizedAst, withShell } from '../../../_helper/shell'
 import { assert } from 'chai'
-import { requestFromInput } from '../../../../../src/r-bridge'
+import { requestFromInput } from '../../../../../src'
 import { SteppingSlicer } from '../../../../../src/core/stepping-slicer'
 
 describe('Check hooks are called appropriately', withShell(shell => {

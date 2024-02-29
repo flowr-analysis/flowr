@@ -20,9 +20,8 @@ import { tryNormalizeFunctionDefinition } from './functions/function-definition'
 /**
  * Handles semicolons within _and_ braces at the start and end of the expression
  * @param tokens - The tokens to split
- * @param config - The normalizer config to use
  */
-function handleExpressionList(tokens: readonly XmlBasedJson[], config: NormalizeConfiguration): { segments: XmlBasedJson[][], braces: undefined | [start: XmlBasedJson, end: XmlBasedJson] } {
+function handleExpressionList(tokens: readonly XmlBasedJson[]): { segments: XmlBasedJson[][], braces: undefined | [start: XmlBasedJson, end: XmlBasedJson] } {
 	if(tokens.length === 0) {
 		return { segments: [], braces: undefined }
 	}
@@ -30,12 +29,17 @@ function handleExpressionList(tokens: readonly XmlBasedJson[], config: Normalize
 	if(first === RawRType.BraceLeft) {
 		const endType = getTokenType(tokens[tokens.length - 1])
 		guard(endType === RawRType.BraceRight, () => `expected a brace at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`)
-		const nested = handleExpressionList(tokens.slice(1, tokens.length - 1), config)
-		return { segments: nested.segments, braces: [tokens[0], tokens[tokens.length - 1]] }
+		return {
+			segments: [tokens.slice(1, tokens.length - 1)],
+			braces:   [tokens[0], tokens[tokens.length - 1]]
+		}
 	} else if(first === RawRType.ParenLeft) {
 		const endType = getTokenType(tokens[tokens.length - 1])
 		guard(endType === RawRType.ParenRight, () => `expected a parenthesis at the end of the expression list as well, but ${endType} :: ${JSON.stringify(tokens[tokens.length - 1], jsonReplacer)}`)
-		return handleExpressionList(tokens.slice(1, tokens.length - 1), config)
+		return {
+			segments: [tokens.slice(1, tokens.length - 1)],
+			braces:   [tokens[0], tokens[tokens.length - 1]]
+		}
 	} else {
 		let last = 0, i = 0
 		let lastType: RawRType | undefined = undefined
@@ -95,7 +99,7 @@ export function normalizeExpression(
 	if(tokens.length > 1) {
 		// iterate over types, find all semicolons, and segment the tokens based on them.
 		// we could potentially optimize as not all expr may have semicolons but not for now
-		const { segments, braces } = handleExpressionList(tokens, config)
+		const { segments, braces } = handleExpressionList(tokens)
 
 		if(segments.length > 1 || braces) {
 			const processed = segments.flatMap(s => normalizeExpression(config, s))

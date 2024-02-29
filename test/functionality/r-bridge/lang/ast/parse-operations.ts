@@ -67,8 +67,7 @@ describe('Parse simple operations', withShell(shell => {
 	})
 	describe('? question', () => {
 		assertAst(label('? x', ['unary-operator', 'built-in-help', 'name-normal']),
-			shell, '? x',
-			[
+			shell, '? x', [
 				{
 					step:   NORMALIZE,
 					wanted: exprList({
@@ -497,11 +496,6 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 					})
 				}
 			])
-
-		// exponentiation has a different behavior when nested without parenthesis
-		/*if(op.str !== '^' && op.str !== '**') {
-			precedenceTests.push({ input: `1 ${op.str} 1 ${op.str} 42`, offsetL: 0, offsetC: 0, offsetR: 0 })
-		}*/
 
 
 		assertAst(label('Single Parenthesis', ['binary-operator', 'numbers', 'grouping']),

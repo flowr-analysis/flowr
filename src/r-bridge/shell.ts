@@ -291,7 +291,6 @@ class RShellSession {
 	private readonly sessionStdOut: readline.Interface
 	private readonly sessionStdErr: readline.Interface
 	private readonly options:       DeepReadonly<RShellSessionOptions>
-	private readonly log:           Logger<ILogObj>
 	private collectionTimeout:      NodeJS.Timeout | undefined
 
 	public constructor(options: DeepReadonly<RShellSessionOptions>, log: Logger<ILogObj>) {
@@ -312,7 +311,6 @@ class RShellSession {
 			this.end()
 		})
 		this.options = options
-		this.log = log
 		// initialize the session
 		this.write(initCommand(this.options.eol))
 

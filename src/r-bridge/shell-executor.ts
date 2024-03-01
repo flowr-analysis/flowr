@@ -5,7 +5,7 @@ import { spawnSync } from 'child_process'
 import { ts2r } from './lang-4.x'
 import type { SemVer } from 'semver'
 import semver from 'semver/preload'
-import { expensiveTrace, log, LogLevel } from '../util/log'
+import { expensiveTrace, log } from '../util/log'
 import { initCommand } from './init'
 
 const executorLog = log.getSubLogger({ name: 'RShellExecutor' })
@@ -38,9 +38,7 @@ export class RShellExecutor {
 
 	public run(command: string, returnErr = false): string {
 		command += ';base::quit()'
-		if(executorLog.settings.minLevel <= LogLevel.Trace) {
-			executorLog.trace(`> ${JSON.stringify(command)}`)
-		}
+		expensiveTrace(executorLog, () => `> ${JSON.stringify(command)}`)
 
 		const returns = spawnSync(this.options.pathToRExecutable, this.options.commandLineOptions, {
 			env:         this.options.env,

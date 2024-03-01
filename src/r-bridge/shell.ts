@@ -9,6 +9,7 @@ import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
 import fs from 'fs'
 import type { DeepReadonly } from 'ts-essentials'
+import { initCommand } from './init'
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';
 
@@ -133,8 +134,6 @@ export class RShell {
 		this.log = log.getSubLogger({ name: this.options.sessionName })
 
 		this.session = new RShellSession(this.options, this.log)
-		// pre-attach the compiler and set default optimization level
-		this._sendCommand('compiler::setCompilerOptions(optimize=3)')
 		this.revive()
 	}
 
@@ -314,6 +313,8 @@ class RShellSession {
 		})
 		this.options = options
 		this.log = log
+		// initialize the session
+		this.write(initCommand(this.options.eol))
 
 		if(log.settings.minLevel <= LogLevel.Trace) {
 			this.bareSession.stdout.on('data', (data: Buffer) => {

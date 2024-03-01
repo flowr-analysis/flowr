@@ -6,15 +6,17 @@ import { ts2r } from './lang-4.x'
 import type { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { expensiveTrace, log, LogLevel } from '../util/log'
+import { initCommand } from './init'
 
 const executorLog = log.getSubLogger({ name: 'RShellExecutor' })
 
 export class RShellExecutor {
 	public readonly options:        Readonly<RShellExecutionOptions>
-	private readonly prerequisites: string[] = []
+	private readonly prerequisites: string[]
 
 	public constructor(options?: Partial<RShellExecutionOptions>) {
 		this.options = deepMergeObject(DEFAULT_R_SHELL_OPTIONS, options)
+		this.prerequisites = [initCommand(this.options.eol)]
 	}
 
 	public continueOnError(): this {

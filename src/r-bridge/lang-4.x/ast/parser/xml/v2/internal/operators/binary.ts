@@ -4,13 +4,13 @@ import type {
 	RFunctionCall
 } from '../../../../../model'
 import {
-	EmptyArgument
-} from '../../../../../model'
-import {
+	EmptyArgument,
 	RType
 } from '../../../../../model'
 import type { NormalizeConfiguration } from '../../data'
 import { normalizeSingleToken } from '../single-element'
+
+// TODO: shorthand combinations like `[<-` or `$<-` have to be handled with df as they are only available if `<-` has default def.
 
 /**
  * Parsing binary operations includes the pipe, even though the produced PIPE construct is not a binary operation,

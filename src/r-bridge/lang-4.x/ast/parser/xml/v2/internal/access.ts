@@ -23,7 +23,6 @@ import { InternalScope } from './internal'
 export function normalizeAccess(configuration: NormalizeConfiguration, tokens: readonly XmlBasedJson[], accessType: RawRType): RFunctionCall {
 	let closingLength = 0
 
-	// TODO: shorthand combinations like `[<-` or `$<-`
 	switch(accessType) {
 		case RawRType.Dollar:
 		case RawRType.At:

@@ -86,7 +86,7 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
 	}
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : ''
 	/* call the function with the request */
-	const command =`s <- Sys.time();flowr_get_ast(${request.request}=${JSON.stringify(request.content)}${suffix});cat((Sys.time() - s)*1000,"\n",file="out-log.txt",append=TRUE);`
+	const command =`flowr_get_ast(${request.request}=${JSON.stringify(request.content)}${suffix})`
 
 	if(shell instanceof RShellExecutor) {
 		return guardRetrievedOutput(shell.run(command), request)

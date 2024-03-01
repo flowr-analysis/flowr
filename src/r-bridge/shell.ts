@@ -174,7 +174,7 @@ export class RShell {
 		return result.length === 1 ? this.versionCache : null
 	}
 
-	public injectLibPaths(...paths: string[]): void {
+	public injectLibPaths(...paths: readonly string[]): void {
 		expensiveTrace(this.log, () => `injecting lib paths ${JSON.stringify(paths)}`)
 		this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
 	}
@@ -235,7 +235,7 @@ export class RShell {
    *
    * @see sendCommand
    */
-	public sendCommands(...commands: string[]): void {
+	public sendCommands(...commands: readonly string[]): void {
 		for(const element of commands) {
 			this.sendCommand(element)
 		}
@@ -263,8 +263,8 @@ export class RShell {
 	 * Additionally, this marks the directory for removal when the shell exits.
 	 */
 	public async obtainTmpDir(): Promise<string> {
-		this.sendCommand('temp <- tempdir()')
-		const [tempdir] = await this.sendCommandWithOutput(`cat(temp, ${ts2r(this.options.eol)})`)
+		this.sendCommand('temp<-tempdir()')
+		const [tempdir] = await this.sendCommandWithOutput(`cat(temp,${ts2r(this.options.eol)})`)
 		this.tempDirs.add(tempdir)
 		return tempdir
 	}
@@ -392,7 +392,7 @@ class RShellSession {
    * @returns true if the kill succeeds, false otherwise
    * @see RShell#close
    */
-	end(filesToUnlink?: string[]): boolean {
+	end(filesToUnlink?: readonly string[]): boolean {
 		if(filesToUnlink !== undefined) {
 			log.info(`unlinking ${filesToUnlink.length} files (${JSON.stringify(filesToUnlink)})`)
 			for(const f of filesToUnlink) {

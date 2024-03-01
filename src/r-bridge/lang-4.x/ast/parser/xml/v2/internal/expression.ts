@@ -217,11 +217,11 @@ function tryNormalizeElems(config: NormalizeConfiguration, tokens: readonly XmlB
 			return tryNormalizeSymbolWithNamespace(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
 				?? tryNormalizeFor(config, tokens[0], tokens[1], tokens[2])
 				?? normalizeBinary(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
-		case 5: // TODO: while
+		case 5:
 			return tryNormalizeIfThen(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson])
 				?? tryNormalizeWhile(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson])
 				?? todo(tokens)
-		case 7: // TODO: other cases?
+		case 7:
 			return tryNormalizeIfThenElse(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? todo(tokens)
 		default:
 			return todo(tokens)

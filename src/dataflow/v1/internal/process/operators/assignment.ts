@@ -1,9 +1,9 @@
 import type { NodeId, ParentInformation, RAssignmentOp, RNode } from '../../../../../r-bridge'
 import { collectAllIds, RType } from '../../../../../r-bridge'
-import type { DataflowInformation } from '../../info'
+import type { DataflowInformation } from '../../../../common/info'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
-import { EdgeType } from '../../../graph'
+import { EdgeType } from '../../../../common/graph'
 import type {
 	IdentifierDefinition,
 	IdentifierReference } from '../../../../common/environments'
@@ -13,7 +13,6 @@ import {
 } from '../../../../common/environments'
 import { log } from '../../../../../util/log'
 import { dataflowLogger } from '../../../index'
-import { GlobalScope, LocalScope } from '../../../../common/environments/scopes'
 
 export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)
@@ -46,17 +45,16 @@ export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & Paren
 		in:                readTargets,
 		out:               writeTargets,
 		graph:             nextGraph,
-		environments,
-		scope:             data.activeScope
+		environments
 	}
 }
 
 interface SourceAndTarget {
-	source: DataflowInformation
-	target: DataflowInformation
-	global: boolean
+	source:          DataflowInformation
+	target:          DataflowInformation
+	superAssignment: boolean
 	/** true if `->` or `->>` */
-	swap:   boolean
+	swap:            boolean
 }
 
 function identifySourceAndTarget<OtherInfo>(
@@ -66,7 +64,7 @@ function identifySourceAndTarget<OtherInfo>(
 ) : SourceAndTarget {
 	let source: DataflowInformation
 	let target: DataflowInformation
-	let global = false
+	let superAssignment = false
 	let swap = false
 
 	switch(op.lexeme) {
@@ -76,18 +74,18 @@ function identifySourceAndTarget<OtherInfo>(
 			[target, source] = [lhs, rhs]
 			break
 		case '<<-':
-			[target, source, global] = [lhs, rhs, true]
+			[target, source, superAssignment] = [lhs, rhs, true]
 			break
 		case '->':
 			[target, source, swap] = [rhs, lhs, true]
 			break
 		case '->>':
-			[target, source, global, swap] = [rhs, lhs, true, true]
+			[target, source, superAssignment, swap] = [rhs, lhs, true, true]
 			break
 		default:
 			throw new Error(`Unknown assignment operator ${JSON.stringify(op)}`)
 	}
-	return { source, target, global, swap }
+	return { source, target, superAssignment, swap }
 }
 
 function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation, global: boolean, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
@@ -96,7 +94,6 @@ function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInfo
 	for(const active of target.unknownReferences) {
 		writeNodes.push({
 			...active,
-			scope:     global ? GlobalScope : data.activeScope,
 			kind:      isFunctionDef ? 'function' : 'variable',
 			definedAt: op.info.id
 		})
@@ -111,11 +108,11 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
 ) {
 	// what is written/read additionally is based on lhs/rhs - assignments read written variables as well
 	const read = [...lhs.in, ...rhs.in]
-	const { source, target, global, swap } = identifySourceAndTarget(op, lhs, rhs)
+	const { source, target, superAssignment, swap } = identifySourceAndTarget(op, lhs, rhs)
 
 	const funcTypeCheck = swap ? op.lhs : op.rhs
 
-	const writeNodes = produceWrittenNodes(op, target, global, data, funcTypeCheck)
+	const writeNodes = produceWrittenNodes(op, target, superAssignment, data, funcTypeCheck)
 
 	if(writeNodes.length !== 1) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`)
@@ -126,7 +123,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		environments = define(write, global ? GlobalScope: LocalScope, environments)
+		environments = define(write, superAssignment, environments)
 	}
 	return {
 		readTargets:   [...source.unknownReferences, ...read, ...readFromSourceWritten],

@@ -1,5 +1,5 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
-import type { DataflowInformation } from '../../../../dataflow/v1/internal/info'
+import type { DataflowInformation } from '../../../../dataflow/common/info'
 import type { IPipelineStep } from '../../step'
 import type { DeepReadonly } from 'ts-essentials'
 import { PipelineStepStage } from '../../step'

@@ -3,13 +3,12 @@ import {
 	linkIngoingVariablesInSameScope,
 	produceNameSharedIdMap
 } from '../../linker'
-import type { DataflowInformation } from '../../info'
+import type { DataflowInformation } from '../../../../common/info'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import { appendEnvironments, define, makeAllMaybe, overwriteEnvironments } from '../../../../common/environments'
 import type { ParentInformation, RForLoop } from '../../../../../r-bridge'
-import { EdgeType } from '../../../graph'
-import { LocalScope } from '../../../../common/environments/scopes'
+import { EdgeType } from '../../../../common/graph'
 
 export function processForLoop<OtherInfo>(
 	loop: RForLoop<OtherInfo & ParentInformation>,
@@ -22,7 +21,7 @@ export function processForLoop<OtherInfo>(
 
 	const writtenVariable = variable.unknownReferences
 	for(const write of writtenVariable) {
-		headEnvironments = define({ ...write, used: 'always', definedAt: loop.info.id, kind: 'variable' }, LocalScope, headEnvironments)
+		headEnvironments = define({ ...write, used: 'always', definedAt: loop.info.id, kind: 'variable' }, false, headEnvironments)
 	}
 	data = { ...data, environments: headEnvironments }
 	const body = processDataflowFor(loop.body, data)
@@ -66,7 +65,6 @@ export function processForLoop<OtherInfo>(
 		in:                [...variable.in, ...[...nameIdShares.values()].flat()],
 		out:               outgoing,
 		graph:             nextGraph,
-		environments:      outEnvironments,
-		scope:             data.activeScope
+		environments:      outEnvironments
 	}
 }

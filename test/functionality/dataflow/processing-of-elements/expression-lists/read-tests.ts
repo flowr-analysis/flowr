@@ -1,8 +1,7 @@
-import type { NodeId } from '../../../../../src/r-bridge'
+import type { NodeId } from '../../../../../src'
 import { initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { define } from '../../../../../src/dataflow/common/environments'
-import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
 describe('Lists with variable references', withShell(shell => {
@@ -43,7 +42,7 @@ describe('Lists with variable references', withShell(shell => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
 			emptyGraph()
 				.defineVariable(id1, 'x')
-				.defineVariable(id2, 'x', LocalScope, { environment: define({ nodeId: id1, name: 'x', scope: LocalScope, kind: 'variable', definedAt, used: 'always' }, LocalScope, initializeCleanEnvironments()) })
+				.defineVariable(id2, 'x', { environment: define({ nodeId: id1, name: 'x', kind: 'variable', definedAt, used: 'always' }, false, initializeCleanEnvironments()) })
 				.sameDef(id1, id2)
 		assertDataflow('directly together', shell,
 			'x <- 1\nx <- 2',
@@ -70,8 +69,8 @@ describe('Lists with variable references', withShell(shell => {
 			'x <- 1\nx <- 3\n3\nx <- 9',
 			emptyGraph()
 				.defineVariable('0', 'x')
-				.defineVariable('3', 'x', LocalScope, { environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.defineVariable('7', 'x', LocalScope, { environment: define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
+				.defineVariable('3', 'x', { environment: define({ nodeId: '0', name: 'x', kind: 'variable', definedAt: '2', used: 'always' }, false, initializeCleanEnvironments()) })
+				.defineVariable('7', 'x', { environment: define({ nodeId: '3', name: 'x', kind: 'variable', definedAt: '5', used: 'always' }, false, initializeCleanEnvironments()) })
 				.sameDef('0', '3')
 				.sameDef('3', '7')
 		)
@@ -80,7 +79,7 @@ describe('Lists with variable references', withShell(shell => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
 			emptyGraph()
 				.defineVariable(id1, 'x')
-				.use(id2, 'x', { environment: define({ nodeId: id1, name: 'x', scope: LocalScope, kind: 'variable', definedAt, used: 'always' }, LocalScope, initializeCleanEnvironments()) })
+				.use(id2, 'x', { environment: define({ nodeId: id1, name: 'x', kind: 'variable', definedAt, used: 'always' }, false, initializeCleanEnvironments()) })
 				.reads(id2, id1)
 		assertDataflow('directly together', shell,
 			'x <- 1\nx',
@@ -102,8 +101,8 @@ describe('Lists with variable references', withShell(shell => {
 			'x <- 2; x <- 3; x',
 			emptyGraph()
 				.defineVariable('0', 'x')
-				.defineVariable('3', 'x', LocalScope,  { environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.use('6', 'x', { environment: define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
+				.defineVariable('3', 'x', { environment: define({ nodeId: '0', name: 'x', kind: 'variable', definedAt: '2', used: 'always' }, false, initializeCleanEnvironments()) })
+				.use('6', 'x', { environment: define({ nodeId: '3', name: 'x', kind: 'variable', definedAt: '5', used: 'always' }, false, initializeCleanEnvironments()) })
 				.reads('6', '3')
 				.sameDef('0', '3')
 		)
@@ -111,9 +110,9 @@ describe('Lists with variable references', withShell(shell => {
 			'x <- 2; x <- x; x',
 			emptyGraph()
 				.defineVariable('0', 'x')
-				.defineVariable('3', 'x', LocalScope, { environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.use('4', 'x' , { environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.use('6', 'x',  { environment: define({ nodeId: '3', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '5', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
+				.defineVariable('3', 'x', { environment: define({ nodeId: '0', name: 'x', kind: 'variable', definedAt: '2', used: 'always' }, false, initializeCleanEnvironments()) })
+				.use('4', 'x' , { environment: define({ nodeId: '0', name: 'x', kind: 'variable', definedAt: '2', used: 'always' }, false, initializeCleanEnvironments()) })
+				.use('6', 'x',  { environment: define({ nodeId: '3', name: 'x', kind: 'variable', definedAt: '5', used: 'always' }, false, initializeCleanEnvironments()) })
 				.reads('4', '0')
 				.definedBy('3', '4')
 				.sameDef('0', '3')
@@ -124,8 +123,8 @@ describe('Lists with variable references', withShell(shell => {
 			emptyGraph()
 				.defineVariable('0', 'x')
 				.use('1', 'x')
-				.defineVariable('3', 'x', LocalScope, { environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
-				.use('4', 'x', { environment: define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments()) })
+				.defineVariable('3', 'x', { environment: define({ nodeId: '0', name: 'x', kind: 'variable', definedAt: '2', used: 'always' }, false, initializeCleanEnvironments()) })
+				.use('4', 'x', { environment: define({ nodeId: '0', name: 'x', kind: 'variable', definedAt: '2', used: 'always' }, false, initializeCleanEnvironments()) })
 				.definedBy('0', '1')
 				.definedBy('3', '4')
 				.reads('4', '0')

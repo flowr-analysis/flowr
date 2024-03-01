@@ -1,6 +1,6 @@
 import type { MergeableRecord } from '../../../util/objects'
 import type { NodeId } from '../../../r-bridge'
-import type { DataflowScopeName, REnvironmentInformation } from '../../common/environments'
+import type { REnvironmentInformation } from '../environments'
 import type { DataflowGraphEdgeAttribute } from './edge'
 import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 
@@ -65,18 +65,10 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
  */
 export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVertexBase {
 	readonly tag: 'variable-definition'
-	/**
-	 * The scope in which the vertex is defined (can be global or local to the current environment).
-	 */
-	scope:        DataflowScopeName
 }
 
 export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVertexBase {
 	readonly tag: 'function-definition'
-	/**
-	 * The scope in which the vertex is defined (can be global or local to the current environment).
-	 */
-	scope:        DataflowScopeName
 	/**
 	 * The static subflow of the function definition, constructed within {@link processFunctionDefinition}.
 	 * If the vertex is (for example) a function, it can have a subgraph which is used as a template for each call.

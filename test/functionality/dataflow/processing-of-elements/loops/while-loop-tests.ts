@@ -1,6 +1,5 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
-import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { define } from '../../../../../src/dataflow/common/environments'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
@@ -15,13 +14,13 @@ describe('while', withShell(shell => {
 	)
 	assertDataflow('assignment in loop body', shell,
 		'while (TRUE) { x <- 3 }',
-		emptyGraph().defineVariable('1', 'x', LocalScope, { when: 'maybe' })
+		emptyGraph().defineVariable('1', 'x', { when: 'maybe' })
 	)
 	assertDataflow('def compare in loop', shell, 'while ((x <- x - 1) > 0) { x }',
 		emptyGraph()
 			.defineVariable('0', 'x')
 			.use('1', 'x')
-			.use('7', 'x', { when: 'maybe', environment: define({ name: 'x', nodeId: '0', definedAt: '4', used: 'always', kind: 'variable', scope: LocalScope }, LocalScope, initializeCleanEnvironments()) })
+			.use('7', 'x', { when: 'maybe', environment: define({ name: 'x', nodeId: '0', definedAt: '4', used: 'always', kind: 'variable' }, false, initializeCleanEnvironments()) })
 			.reads('7', '0', 'maybe')
 			.definedBy('0', '1')
 	)

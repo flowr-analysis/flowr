@@ -1,4 +1,4 @@
-import type { DataflowInformation } from '../../info'
+import type { DataflowInformation } from '../../../../common/info'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import type {
@@ -18,7 +18,6 @@ import type { NodeId, ParentInformation, RFunctionDefinition } from '../../../..
 import { collectAllIds } from '../../../../../r-bridge'
 import { retrieveExitPointsOfFunctionDefinition } from './exit-points'
 import { guard } from '../../../../../util/assert'
-import { LocalScope } from '../../../../common/environments/scopes'
 
 
 function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph: DataflowGraph, outEnvironment: REnvironmentInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>) {
@@ -35,7 +34,7 @@ function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph:
 				const node = subgraph.get(exitPoint, true)
 				const env = initializeCleanEnvironments()
 				env.current.memory = node === undefined ? outEnvironment.current.memory : node[0].environment.current.memory
-				const resolved = resolveByName(ingoing.name, data.activeScope, env)
+				const resolved = resolveByName(ingoing.name, env)
 				if(resolved === undefined) {
 					remainingIn.push(ingoing)
 					continue
@@ -72,7 +71,7 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 	// first we try to bind again within parameters - if we have it, fine
 	const remainingRead: IdentifierReference[] = []
 	for(const read of readInParameters) {
-		const resolved = resolveByName(read.name, LocalScope, parameterEnvs)
+		const resolved = resolveByName(read.name, parameterEnvs)
 		if(resolved !== undefined) {
 			for(const ref of resolved) {
 				parameters.addEdge(read, ref, EdgeType.Reads, 'always')
@@ -112,7 +111,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 		const processed = processDataflowFor(param, data)
 		subgraph.mergeWith(processed.graph)
 		const read = [...processed.in, ...processed.unknownReferences]
-		linkInputs(read, data.activeScope, data.environments, readInParameters, subgraph, false)
+		linkInputs(read, data.environments, readInParameters, subgraph, false)
 		data = { ...data, environments: overwriteEnvironments(data.environments, processed.environments) }
 	}
 	const paramsEnvironments = data.environments
@@ -126,7 +125,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 
 	const readInBody = [...body.in, ...body.unknownReferences]
 	// there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
-	const remainingRead = linkInputs(readInBody, data.activeScope, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */)
+	const remainingRead = linkInputs(readInBody, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */)
 
 	subgraph.mergeWith(body.graph)
 
@@ -136,7 +135,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 	for(const writeTarget of body.out) {
 		const writeName = writeTarget.name
 
-		const resolved = resolveByName(writeName, data.activeScope, paramsEnvironments)
+		const resolved = resolveByName(writeName, paramsEnvironments)
 		if(resolved !== undefined) {
 			// write-write
 			for(const target of resolved) {
@@ -156,8 +155,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 		in:                remainingRead,
 		out:               [],
 		graph:             new Set(subgraph.rootIds()),
-		environments:      outEnvironment,
-		scope:             data.activeScope
+		environments:      outEnvironment
 	}
 
 	const exitPoints = retrieveExitPointsOfFunctionDefinition(functionDefinition)
@@ -171,7 +169,6 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 		id:          functionDefinition.info.id,
 		name:        functionDefinition.info.id,
 		environment: popLocalEnvironment(outEnvironment),
-		scope:       data.activeScope,
 		when:        'always',
 		subflow:     flow,
 		exitPoints
@@ -181,8 +178,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 		in:                [],
 		out:               [],
 		graph,
-		environments:      originalEnvironments,
-		scope:             data.activeScope
+		environments:      originalEnvironments
 	}
 }
 

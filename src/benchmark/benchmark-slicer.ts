@@ -14,7 +14,7 @@ import {
 import type { IStoppableStopwatch } from './stopwatch'
 import { Measurements } from './stopwatch'
 import { guard } from '../util/assert'
-import type { DataflowInformation } from '../dataflow/v1/internal/info'
+import type { DataflowInformation } from '../dataflow/common/info'
 import type {
 	SlicingCriteria,
 	SlicingCriteriaFilter,

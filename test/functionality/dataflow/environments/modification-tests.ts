@@ -4,7 +4,6 @@ import { DefaultEnvironmentMemory, initializeCleanEnvironments } from '../../../
 import { guard } from '../../../../src/util/assert'
 import { expect } from 'chai'
 import { appendEnvironments, define, overwriteEnvironments } from '../../../../src/dataflow/common/environments'
-import { GlobalScope, LocalScope } from '../../../../src/dataflow/common/environments/scopes'
 import { variable } from '../../_helper/environment-builder'
 import { label } from '../../_helper/label'
 
@@ -23,9 +22,9 @@ describe('Modification', () => {
 	describe('Global', () => {
 		it(label('Different variables', ['global-scope', 'name-normal'], ['other']), () => {
 			let clean = initializeCleanEnvironments()
-			clean = define(variable('x', '_1'), GlobalScope, clean)
+			clean = define(variable('x', '_1'), true, clean)
 			let overwrite = initializeCleanEnvironments()
-			overwrite = define(variable('y', '_2'), GlobalScope, overwrite)
+			overwrite = define(variable('y', '_2'), true, overwrite)
 			const result = overwriteEnvironments(clean, overwrite)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2 + DefaultEnvironmentMemory.size)
@@ -35,9 +34,9 @@ describe('Modification', () => {
 
 		it(label('Same variables', ['global-scope'], ['other']), () => {
 			let clean = initializeCleanEnvironments()
-			clean = define(variable('x', '_1'), GlobalScope, clean)
+			clean = define(variable('x', '_1'), true, clean)
 			let overwrite = initializeCleanEnvironments()
-			overwrite = define(variable('x', '_2'), GlobalScope, overwrite)
+			overwrite = define(variable('x', '_2'), true, overwrite)
 			const result = overwriteEnvironments(clean, overwrite)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.current.memory, 'there should be only one definition for x').to.have.length(1 + DefaultEnvironmentMemory.size)
@@ -48,9 +47,9 @@ describe('Modification', () => {
 	describe('Local', () => {
 		it(label('Different variables', ['lexicographic-scope'], ['other']), () => {
 			let clean = initializeCleanEnvironments()
-			clean = define(variable('long', '_1'), LocalScope, clean)
+			clean = define(variable('long', '_1'), false, clean)
 			let overwrite = initializeCleanEnvironments()
-			overwrite = define(variable('short', '_2'), LocalScope, overwrite)
+			overwrite = define(variable('short', '_2'), false, overwrite)
 			const result = overwriteEnvironments(clean, overwrite)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0)
@@ -61,9 +60,9 @@ describe('Modification', () => {
 
 		it(label('Same variables', ['lexicographic-scope'], ['other']), () => {
 			let clean = initializeCleanEnvironments()
-			clean = define(variable('long', '_1'), LocalScope, clean)
+			clean = define(variable('long', '_1'), false, clean)
 			let overwrite = initializeCleanEnvironments()
-			overwrite = define(variable('long', '_2'), LocalScope, overwrite)
+			overwrite = define(variable('long', '_2'), false, overwrite)
 			const result = overwriteEnvironments(clean, overwrite)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0)
@@ -77,9 +76,9 @@ describe('Append', () => {
 	describe('Global', () => {
 		it(label('Different variables', ['global-scope', 'lexicographic-scope'], ['other']), () => {
 			let clean = initializeCleanEnvironments()
-			clean = define(variable('x', '_1'), GlobalScope, clean)
+			clean = define(variable('x', '_1'), true, clean)
 			let append = initializeCleanEnvironments()
-			append = define(variable('y', '_2'), GlobalScope, append)
+			append = define(variable('y', '_2'), true, append)
 			const result = appendEnvironments(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2 + DefaultEnvironmentMemory.size)
@@ -89,9 +88,9 @@ describe('Append', () => {
 
 		it(label('Same variables', ['global-scope', 'lexicographic-scope'], ['other']), () => {
 			let clean = initializeCleanEnvironments()
-			clean = define(variable('x', '_1'), GlobalScope, clean)
+			clean = define(variable('x', '_1'), true, clean)
 			let append = initializeCleanEnvironments()
-			append = define(variable('x', '_2'), GlobalScope, append)
+			append = define(variable('x', '_2'), true, append)
 			const result = appendEnvironments(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.current.memory, 'there should be only one symbol defined (for x)').to.have.length(1 + DefaultEnvironmentMemory.size)
@@ -102,9 +101,9 @@ describe('Append', () => {
 	describe('Local', () => {
 		it(label('Different variables', ['lexicographic-scope'], ['other']), () => {
 			let clean = initializeCleanEnvironments()
-			clean = define(variable('local-long', '_1'), LocalScope, clean)
+			clean = define(variable('local-long', '_1'), false, clean)
 			let append = initializeCleanEnvironments()
-			append = define(variable('local-short', '_2'), LocalScope, append)
+			append = define(variable('local-short', '_2'), false, append)
 			const result = appendEnvironments(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.level, 'neither definitions nor appends should produce new local scopes').to.be.equal(0)
@@ -115,9 +114,9 @@ describe('Append', () => {
 
 		it(label('Same variables', ['lexicographic-scope'], ['other']), () => {
 			let clean = initializeCleanEnvironments()
-			clean = define(variable('local-long', '_1'), LocalScope, clean)
+			clean = define(variable('local-long', '_1'), false, clean)
 			let append = initializeCleanEnvironments()
-			append = define(variable('local-long', '_2'), LocalScope, append)
+			append = define(variable('local-long', '_2'), false, append)
 			const result = appendEnvironments(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0)

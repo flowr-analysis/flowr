@@ -1,4 +1,4 @@
-import type { DataflowInformation } from '../../info'
+import type { DataflowInformation } from '../../../../common/info'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import { linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap } from '../../linker'
@@ -16,7 +16,6 @@ export function processRepeatLoop<OtherInfo>(loop: RRepeatLoop<OtherInfo & Paren
 		in:                [...body.in, ...body.unknownReferences],
 		out:               body.out,
 		environments:      body.environments,
-		scope:             data.activeScope,
 		graph:             body.graph
 	}
 }

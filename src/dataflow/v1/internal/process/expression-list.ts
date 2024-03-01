@@ -2,7 +2,7 @@
  * Processes a list of expressions joining their dataflow graphs accordingly.
  * @module
  */
-import { initializeCleanDataflowInformation, type DataflowInformation } from '../info'
+import { initializeCleanDataflowInformation, type DataflowInformation } from '../../../common/info'
 import type { NodeId, ParentInformation, RExpressionList } from '../../../../r-bridge'
 import { RType, visitAst } from '../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../processor'
@@ -16,8 +16,8 @@ import { makeAllMaybe,
 } from '../../../common/environments'
 import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../../util/defaultmap'
-import type { DataflowGraphVertexInfo } from '../../graph'
-import { DataflowGraph } from '../../graph'
+import type { DataflowGraphVertexInfo } from '../../../common/graph'
+import { DataflowGraph } from '../../../common/graph'
 import { dataflowLogger, EdgeType } from '../../index'
 import { guard } from '../../../../util/assert'
 
@@ -26,7 +26,7 @@ const dotDotDotAccess = /\.\.\d+/
 function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, data: DataflowProcessorInformation<OtherInfo>, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
 	const readName = dotDotDotAccess.test(read.name) ? '...' : read.name
 
-	const probableTarget = resolveByName(readName, data.activeScope, environments)
+	const probableTarget = resolveByName(readName, environments)
 
 	// record if at least one has not been defined
 	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId))) {
@@ -66,7 +66,7 @@ function processNextExpression<OtherInfo>(
 	for(const writeTarget of currentElement.out) {
 		const writeName = writeTarget.name
 
-		const resolved = resolveByName(writeName, data.activeScope, environments)
+		const resolved = resolveByName(writeName, environments)
 		if(resolved !== undefined) {
 			// write-write
 			for(const target of resolved) {
@@ -186,7 +186,6 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		in:                [...remainingRead.values()].flat(),
 		out,
 		environments,
-		scope:             data.activeScope,
 		graph:             nextGraph
 	}
 }

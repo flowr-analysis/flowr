@@ -5,9 +5,8 @@ import type {
 	FunctionArgument,
 	NamedFunctionArgument,
 	PositionalFunctionArgument
-} from '../graph'
+} from '../../common/graph'
 import type {
-	DataflowScopeName,
 	IdentifierReference,
 	REnvironmentInformation } from '../../common/environments'
 import {
@@ -21,7 +20,6 @@ import type { DecoratedAstMap, NodeId, ParentInformation, RParameter } from '../
 import { RType } from '../../../r-bridge'
 import { slicerLogger } from '../../../slicing'
 import { dataflowLogger, EdgeType } from '../index'
-import { LocalScope } from '../../common/environments/scopes'
 
 export function linkIngoingVariablesInSameScope(graph: DataflowGraph, references: IdentifierReference[]): void {
 	const nameIdShares = produceNameSharedIdMap(references)
@@ -152,7 +150,7 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 		if(info.environment !== undefined) {
 			// for each open ingoing reference, try to resolve it here, and if so add a read edge from the call to signal that it reads it
 			for(const ingoing of def.subflow.in) {
-				const defs = resolveByName(ingoing.name, LocalScope, info.environment)
+				const defs = resolveByName(ingoing.name, info.environment)
 				if(defs === undefined) {
 					continue
 				}
@@ -239,7 +237,6 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
  * This method links a set of read variables to definitions in an environment.
  *
  * @param referencesToLinkAgainstEnvironment - The set of references to link against the environment
- * @param scope                              - The scope in which the linking shall happen (probably the active scope of {@link DataflowProcessorInformation})
  * @param environmentInformation             - The environment information to link against
  * @param givenInputs                        - The existing list of inputs that might be extended
  * @param graph                              - The graph to enter the found links
@@ -247,11 +244,11 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
  *
  * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
  */
-export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReference[], scope: DataflowScopeName, environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
+export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
-		const probableTarget = resolveByName(bodyInput.name, scope, environmentInformation)
+		const probableTarget = resolveByName(bodyInput.name, environmentInformation)
 		if(probableTarget === undefined) {
-			log.trace(`found no target for ${bodyInput.name} in ${scope}`)
+			log.trace(`found no target for ${bodyInput.name}`)
 			if(maybeForRemaining) {
 				bodyInput.used = 'maybe'
 			}

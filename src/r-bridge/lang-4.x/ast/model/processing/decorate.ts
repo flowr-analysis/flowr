@@ -109,11 +109,11 @@ interface FoldInfo<OtherInfo> { idMap: DecoratedAstMap<OtherInfo>, getId: IdGene
  * Contains the normalized AST as a doubly linked tree
  * and a map from ids to nodes so that parent links can be chased easily.
  */
-export interface NormalizedAst<OtherInfo = ParentInformation> {
+export interface NormalizedAst<OtherInfo = ParentInformation, Node = RNode<OtherInfo & ParentInformation>> {
 	/** Bidirectional mapping of ids to the corresponding nodes and the other way */
 	idMap: DecoratedAstMap<OtherInfo>
 	/** The root of the AST with parent information */
-	ast:   RNodeWithParent<OtherInfo>
+	ast:   Node
 }
 
 /**

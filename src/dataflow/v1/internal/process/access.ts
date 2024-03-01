@@ -1,9 +1,9 @@
 import type { ParentInformation, RAccess } from '../../../../r-bridge'
-import type { DataflowInformation } from '../info'
+import type { DataflowInformation } from '../../../common/info'
 import type { DataflowProcessorInformation } from '../../processor'
 import { processDataflowFor } from '../../processor'
 import { makeAllMaybe } from '../../../common/environments'
-import { EdgeType } from '../../graph'
+import { EdgeType } from '../../../common/graph'
 
 export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const processedAccessed = processDataflowFor(node.accessed, data)
@@ -51,7 +51,6 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 		in:                ingoing,
 		out:               outgoing,
 		environments:      environments,
-		scope:             data.activeScope,
 		graph:             nextGraph
 	}
 }

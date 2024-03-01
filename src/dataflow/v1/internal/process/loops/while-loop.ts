@@ -1,4 +1,4 @@
-import type { DataflowInformation } from '../../info'
+import type { DataflowInformation } from '../../../../common/info'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import {
@@ -22,7 +22,7 @@ export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentI
 	const remainingInputs = linkInputs([
 		...makeAllMaybe(body.unknownReferences, nextGraph, finalEnvironments),
 		...makeAllMaybe(body.in, nextGraph, finalEnvironments)],
-	data.activeScope, environments, [...condition.in, ...condition.unknownReferences], nextGraph, true)
+	environments, [...condition.in, ...condition.unknownReferences], nextGraph, true)
 
 	linkCircularRedefinitionsWithinALoop(nextGraph, produceNameSharedIdMap(remainingInputs), body.out)
 
@@ -32,7 +32,6 @@ export function processWhileLoop<OtherInfo>(loop: RWhileLoop<OtherInfo & ParentI
 		out:               [...makeAllMaybe(body.out, nextGraph, finalEnvironments), ...condition.out],
 		graph:             nextGraph,
 		/* the body might not happen if the condition is false */
-		environments:      finalEnvironments,
-		scope:             data.activeScope
+		environments:      finalEnvironments
 	}
 }

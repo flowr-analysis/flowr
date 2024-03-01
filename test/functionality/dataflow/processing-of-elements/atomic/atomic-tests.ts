@@ -7,7 +7,6 @@ import { assertDataflow, sameForSteps, withShell } from '../../../_helper/shell'
 import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../../_helper/provider'
 import { appendEnvironments, define } from '../../../../../src/dataflow/common/environments'
-import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { label } from '../../../_helper/label'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
@@ -43,10 +42,14 @@ describe('Atomic (dataflow information)', withShell(shell => {
 	describe('access', () => {
 		describe('const access', () => {
 			assertDataflow(label('single constant', ['name-normal', 'numbers', 'single-bracket-access']),
-				shell,'a[2]',
-				emptyGraph().use('0', 'a', { when: 'maybe' })
-					.use('2', unnamedArgument('2'))
-					.reads('0', '2')
+				shell,'a[2]', [
+					{
+						step:   LEGACY_STATIC_DATAFLOW,
+						wanted: emptyGraph().use('0', 'a', { when: 'maybe' })
+							.use('2', unnamedArgument('2'))
+							.reads('0', '2')
+					}
+				]
 			)
 			assertDataflow(label('double constant', ['name-normal', 'numbers', 'double-bracket-access']),
 				shell, 'a[[2]]',
@@ -93,7 +96,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		assertDataflow(label('assign on access', ['name-normal', 'single-bracket-access', 'local-left-assignment']), shell,
 			'a[x] <- 5',
 			emptyGraph()
-				.defineVariable('0', 'a', LocalScope, { when: 'maybe' })
+				.defineVariable('0', 'a', { when: 'maybe' })
 				.use('1', 'x')
 				.use('2', unnamedArgument('2'))
 				.reads('0', '2')
@@ -150,7 +153,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				emptyGraph()
 					.use('0', 'x')
 					.call('3', 'f', [
-						{ name: unnamedArgument('1'), scope: LocalScope, nodeId: '1', used: 'always' }
+						{ name: unnamedArgument('1'), nodeId: '1', used: 'always' }
 					])
 					.use('1', unnamedArgument('1'))
 					.argument('3', '1')
@@ -161,10 +164,10 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				emptyGraph()
 					.use('0', 'x')
 					.call('3', 'f', [
-						{ name: unnamedArgument('1'), scope: LocalScope, nodeId: '1', used: 'always' }
+						{ name: unnamedArgument('1'), nodeId: '1', used: 'always' }
 					])
 					.call('7', 'g', [
-						{ name: unnamedArgument('5'), scope: LocalScope, nodeId: '5', used: 'always' }
+						{ name: unnamedArgument('5'), nodeId: '5', used: 'always' }
 					])
 					.use('1', unnamedArgument('1'))
 					.use('5', unnamedArgument('5'))
@@ -178,9 +181,9 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				emptyGraph()
 					.use('0', 'x')
 					.call('7', 'f', [
-						{ name: unnamedArgument('1'), scope: LocalScope, nodeId: '1', used: 'always' },
-						{ name: unnamedArgument('4'), scope: LocalScope, nodeId: '4', used: 'always' },
-						{ name: unnamedArgument('6'), scope: LocalScope, nodeId: '6', used: 'always' }
+						{ name: unnamedArgument('1'), nodeId: '1', used: 'always' },
+						{ name: unnamedArgument('4'), nodeId: '4', used: 'always' },
+						{ name: unnamedArgument('6'), nodeId: '6', used: 'always' }
 					])
 					.use('1', unnamedArgument('1'))
 					.use('4', unnamedArgument('4'))
@@ -202,14 +205,13 @@ describe('Atomic (dataflow information)', withShell(shell => {
 	describe('assignments', () => {
 		for(const op of RAssignmentOpPool) {
 			describe(`${op.str}`, () => {
-				const scope = op.str.length > 2 ? GlobalScope : LocalScope // love it
 				const swapSourceAndTarget = op.str === '->' || op.str === '->>'
 
 				const constantAssignment = swapSourceAndTarget ? `5 ${op.str} x` : `x ${op.str} 5`
 				assertDataflow(`${constantAssignment} (constant assignment)`,
 					shell,
 					constantAssignment,
-					emptyGraph().defineVariable(swapSourceAndTarget ? '1' : '0', 'x', scope)
+					emptyGraph().defineVariable(swapSourceAndTarget ? '1' : '0', 'x')
 				)
 
 				const variableAssignment = `x ${op.str} y`
@@ -217,11 +219,11 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				if(swapSourceAndTarget) {
 					dataflowGraph
 						.use('0', 'x')
-						.defineVariable('1', 'y', scope)
+						.defineVariable('1', 'y')
 						.definedBy('1', '0')
 				} else {
 					dataflowGraph
-						.defineVariable('0', 'x', scope)
+						.defineVariable('0', 'x')
 						.use('1', 'y')
 						.definedBy('0', '1')
 				}
@@ -237,11 +239,11 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				if(swapSourceAndTarget) {
 					circularGraph
 						.use('0', 'x')
-						.defineVariable('1', 'x', scope)
+						.defineVariable('1', 'x')
 						.definedBy('1', '0')
 				} else {
 					circularGraph
-						.defineVariable('0', 'x', scope)
+						.defineVariable('0', 'x')
 						.use('1', 'x')
 						.definedBy('0', '1')
 				}
@@ -289,8 +291,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			assertDataflow('nested global assignments', shell,
 				'x <<- y <<- z',
 				emptyGraph()
-					.defineVariable('0', 'x', GlobalScope)
-					.defineVariable('1', 'y', GlobalScope)
+					.defineVariable('0', 'x')
+					.defineVariable('1', 'y')
 					.use('2', 'z')
 					.definedBy('0', '1')
 					.definedBy('1', '2')
@@ -299,9 +301,9 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			assertDataflow('nested global mixed with local assignments', shell,
 				'x <<- y <- y2 <<- z',
 				emptyGraph()
-					.defineVariable('0', 'x', GlobalScope)
+					.defineVariable('0', 'x')
 					.defineVariable('1', 'y')
-					.defineVariable('2', 'y2', GlobalScope)
+					.defineVariable('2', 'y2')
 					.use('3', 'z')
 					.definedBy('0', '1')
 					.definedBy('0', '2')
@@ -319,26 +321,24 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					/* two for parenthesis necessary for precedence */
 					{ str: '->', defId: ['3', '4', '7'], readId: ['0','0','0'], swap: true }, { str: '->>', defId: ['3', '4', '7'], readId: ['0','0','0'], swap: true }] ) {
 					describe(`${assignment.str}`, () => {
-						const scope = assignment.str.length > 2 ? GlobalScope : LocalScope
-
 						for(const wrapper of [(x: string) => x, (x: string) => `{ ${x} }`]) {
 							const build = (a: string, b: string) => assignment.swap ? `(${wrapper(b)}) ${assignment.str} ${a}` : `${a} ${assignment.str} ${wrapper(b)}`
 
 							const repeatCode = build('x', 'repeat x')
 							assertDataflow(`"${repeatCode}"`, shell, repeatCode, emptyGraph()
-								.defineVariable(assignment.defId[0], 'x', scope)
+								.defineVariable(assignment.defId[0], 'x')
 								.use(assignment.readId[0], 'x')
 							)
 
 							const whileCode = build('x', 'while (x) 3')
 							assertDataflow(`"${whileCode}"`, shell, whileCode, emptyGraph()
-								.defineVariable(assignment.defId[1], 'x', scope)
+								.defineVariable(assignment.defId[1], 'x')
 								.use(assignment.readId[1], 'x'))
 
 							const forCode = build('x', 'for (x in 1:4) 3')
 							assertDataflow(`"${forCode}"`, shell, forCode,
 								emptyGraph()
-									.defineVariable(assignment.defId[2], 'x', scope)
+									.defineVariable(assignment.defId[2], 'x')
 									.defineVariable(assignment.readId[2], 'x')
 							)
 						}
@@ -348,8 +348,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		})
 		describe('assignment with function call', () => {
 			const environmentWithX = define(
-				{ name: 'x', nodeId: '4', kind: EdgeType.Argument, definedAt: '4', scope: LocalScope, used: 'always' },
-				LocalScope,
+				{ name: 'x', nodeId: '4', kind: EdgeType.Argument, definedAt: '4', used: 'always' },
+				false,
 				initializeCleanEnvironments()
 			)
 			assertDataflow('define call with multiple args should only be defined by the call-return',
@@ -358,9 +358,9 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				emptyGraph()
 					.defineVariable('0', 'a')
 					.call('9', 'foo', [
-						['x', { name: 'x', nodeId: '4', scope: LocalScope, used: 'always' }],
-						{ name: unnamedArgument('6'), nodeId: '6', scope: LocalScope, used: 'always' },
-						{ name: unnamedArgument('8'), nodeId: '8', scope: LocalScope, used: 'always' },
+						['x', { name: 'x', nodeId: '4', used: 'always' }],
+						{ name: unnamedArgument('6'), nodeId: '6', used: 'always' },
+						{ name: unnamedArgument('8'), nodeId: '8', used: 'always' },
 					])
 					.use('4', 'x')
 					.use('5', 'y', { environment: environmentWithX })
@@ -426,8 +426,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					assertDataflow('definition in if', shell,
 						`if (x <- 3) ${b.func('x')}`,
 						emptyGraph()
-							.defineVariable('0', 'x', LocalScope)
-							.use('3', 'x', { when: 'maybe', environment: define({ name: 'x', definedAt: '2', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0' }, LocalScope, initializeCleanEnvironments()) })
+							.defineVariable('0', 'x')
+							.use('3', 'x', { when: 'maybe', environment: define({ name: 'x', definedAt: '2', used: 'always', kind: 'variable', nodeId: '0' }, false, initializeCleanEnvironments()) })
 							.reads('3', '0')
 					)
 				})
@@ -488,19 +488,19 @@ describe('Atomic (dataflow information)', withShell(shell => {
 	})
 	describe('inline non-strict boolean operations', () => {
 		const environmentWithY = define(
-			{ name: 'y', nodeId: '0', kind: 'variable', definedAt: '2', scope: LocalScope, used: 'always' },
-			LocalScope,
+			{ name: 'y', nodeId: '0', kind: 'variable', definedAt: '2', used: 'always' },
+			false,
 			initializeCleanEnvironments()
 		)
 		const environmentWithOtherY = define(
-			{ name: 'y', nodeId: '4', kind: 'variable', definedAt: '6', scope: LocalScope, used: 'always' },
-			LocalScope,
+			{ name: 'y', nodeId: '4', kind: 'variable', definedAt: '6', used: 'always' },
+			false,
 			initializeCleanEnvironments()
 		)
 		assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'y <- 15; x && (y <- 13); y',
 			emptyGraph()
 				.defineVariable('0', 'y')
-				.defineVariable('4', 'y', LocalScope, { environment: environmentWithY })
+				.defineVariable('4', 'y', { environment: environmentWithY })
 				.use('3', 'x', { environment: environmentWithY })
 				.use('8', 'y', { environment: appendEnvironments(environmentWithY, environmentWithOtherY) })
 				.reads('8', '0')
@@ -519,7 +519,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				'for(i in 1:10) { i }',
 				emptyGraph()
 					.defineVariable('0', 'i')
-					.use('4', 'i', { when: 'maybe', environment: define({ name: 'i', definedAt: '6', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0' }, LocalScope, initializeCleanEnvironments()) })
+					.use('4', 'i', { when: 'maybe', environment: define({ name: 'i', definedAt: '6', used: 'always', kind: 'variable', nodeId: '0' }, false, initializeCleanEnvironments()) })
 					.reads('4', '0', 'maybe')
 			)
 		})

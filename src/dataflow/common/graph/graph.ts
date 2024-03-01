@@ -2,16 +2,16 @@ import { guard } from '../../../util/assert'
 import type { NodeId, NoInfo, RNodeWithParent } from '../../../r-bridge'
 import type {
 	IdentifierDefinition,
-	IdentifierReference } from '../../common/environments'
+	IdentifierReference } from '../environments'
 import {
 	cloneEnvironments,
 	initializeCleanEnvironments
-} from '../../common/environments'
+} from '../environments'
 import type { BiMap } from '../../../util/bimap'
 import { log } from '../../../util/log'
 import type { DataflowGraphEdge, DataflowGraphEdgeAttribute } from './edge'
 import { EdgeType } from './edge'
-import type { DataflowInformation } from '../internal/info'
+import type { DataflowInformation } from '../info'
 import {
 	diffOfDataflowGraphs,
 	equalExitPoints, equalFunctionArguments
@@ -333,18 +333,15 @@ export class DataflowGraph {
 	 */
 	public setDefinitionOfVertex(reference: IdentifierReference): void {
 		const got = this.get(reference.nodeId, true)
-		guard(got !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set definition scope to ${reference.scope}`)
+		guard(got !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`)
 		const [node] = got
 		if(node.tag === 'function-definition' || node.tag === 'variable-definition') {
-			guard(node.scope === reference.scope, () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
 			guard(node.when === reference.used || node.when === 'maybe' || reference.used === 'maybe', () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
-			node.scope = reference.scope
 			node.when = reference.used === 'maybe' ? 'maybe' : node.when
 		} else {
 			this.vertexInformation.set(reference.nodeId, {
 				...node,
-				tag:   'variable-definition',
-				scope: reference.scope,
+				tag: 'variable-definition'
 			})
 		}
 	}

@@ -21,7 +21,6 @@ import {
 } from '../../r-bridge'
 import { log, LogLevel } from '../../util/log'
 import objectHash from 'object-hash'
-import { LocalScope } from '../../dataflow/common/environments/scopes'
 import type { DecodedCriteria, SlicingCriteria } from '../criterion'
 import { convertAllSlicingCriteriaToIds } from '../criterion'
 import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/common/environments'
@@ -241,7 +240,7 @@ function sliceForCall(current: NodeToSlice, idMap: DecoratedAstMap, callerInfo: 
 	const activeEnvironment = retrieveActiveEnvironment(callerInfo, baseEnvironment)
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment)
 
-	const functionCallDefs = resolveByName(callerInfo.name, LocalScope, activeEnvironment)?.map(d => d.nodeId) ?? []
+	const functionCallDefs = resolveByName(callerInfo.name, activeEnvironment)?.map(d => d.nodeId) ?? []
 
 	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
 		if(outgoingEdge.types.has(EdgeType.Calls)) {
@@ -254,7 +253,7 @@ function sliceForCall(current: NodeToSlice, idMap: DecoratedAstMap, callerInfo: 
 	for(const [_, functionCallTarget] of functionCallTargets) {
 		// all those linked within the scopes of other functions are already linked when exiting a function definition
 		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
-			const defs = resolveByName(openIn.name, LocalScope, activeEnvironment)
+			const defs = resolveByName(openIn.name, activeEnvironment)
 			if(defs === undefined) {
 				continue
 			}

@@ -1,4 +1,4 @@
-import type { DataflowInformation } from '../dataflow/v1/internal/info'
+import type { DataflowInformation } from '../dataflow/common/info'
 import type { NodeId, NormalizedAst, ParentInformation, RNodeWithParent } from '../r-bridge'
 import { RType } from '../r-bridge'
 import { CfgVertexType, extractCFG } from '../util/cfg/cfg'

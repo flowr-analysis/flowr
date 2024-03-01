@@ -1,4 +1,4 @@
-import type { DataflowInformation } from '../../info'
+import type { DataflowInformation } from '../../../../common/info'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import { linkIngoingVariablesInSameScope } from '../../linker'
@@ -21,7 +21,6 @@ export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo 
 		in:                ingoing,
 		out:               [...lhs.out, ...rhs.out],
 		environments:      merger(lhs.environments, rhs.environments),
-		graph:             nextGraph,
-		scope:             data.activeScope,
+		graph:             nextGraph
 	}
 }

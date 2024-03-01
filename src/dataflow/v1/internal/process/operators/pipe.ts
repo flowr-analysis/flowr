@@ -1,4 +1,4 @@
-import type { DataflowInformation } from '../../info'
+import type { DataflowInformation } from '../../../../common/info'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import { linkIngoingVariablesInSameScope } from '../../linker'
@@ -34,7 +34,6 @@ export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInfo
 		functionCallNode.args.unshift({
 			nodeId: argId,
 			name:   `${UnnamedArgumentPrefix}${argId}`,
-			scope:  data.activeScope,
 			used:   'always'
 		})
 		nextGraph.addEdge(functionCallNode.id, argId, EdgeType.Argument, 'always')
@@ -45,7 +44,6 @@ export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInfo
 		in:                ingoing,
 		out:               [...lhs.out, ...rhs.out],
 		environments:      overwriteEnvironments(lhs.environments, rhs.environments),
-		graph:             nextGraph,
-		scope:             data.activeScope,
+		graph:             nextGraph
 	}
 }

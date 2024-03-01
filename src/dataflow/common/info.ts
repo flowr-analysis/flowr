@@ -1,6 +1,6 @@
-import { DataflowGraph } from '../graph'
-import type { REnvironmentInformation, IdentifierReference, DataflowScopeName } from '../../common/environments'
-import type { DataflowProcessorInformation } from '../processor'
+import { DataflowGraph } from './graph'
+import type { REnvironmentInformation, IdentifierReference } from './environments'
+import type { DataflowProcessorInformation } from '../v1/processor'
 
 /**
  * Continuously updated during the dataflow analysis to hold the current state.
@@ -12,20 +12,17 @@ export interface DataflowInformation {
 	in:                IdentifierReference[]
 	/** Nodes which are written to */
 	out:               IdentifierReference[]
-	/** The current scope during the fold */
-	scope:             DataflowScopeName
 	/** Current environments used for name resolution, probably updated on the next expression-list processing */
 	environments:      REnvironmentInformation
 	/** The current constructed dataflow graph */
 	graph:             DataflowGraph
 }
 
-export function initializeCleanDataflowInformation<T>(data: Pick<DataflowProcessorInformation<T>, 'activeScope' | 'environments'>): DataflowInformation {
+export function initializeCleanDataflowInformation<T>(data: Pick<DataflowProcessorInformation<T>, 'environments'>): DataflowInformation {
 	return {
 		unknownReferences: [],
 		in:                [],
 		out:               [],
-		scope:             data.activeScope,
 		environments:      data.environments,
 		graph:             new DataflowGraph()
 	}

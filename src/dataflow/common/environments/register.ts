@@ -1,8 +1,6 @@
 import { guard } from '../../../util/assert'
 import type { IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
 import { cloneEnvironments } from './environment'
-import type { DataflowScopeName } from './scopes'
-import { GlobalScope, LocalScope } from './scopes'
 
 function defInEnv(newEnvironments: IEnvironment, definition: IdentifierDefinition) {
 	const existing = newEnvironments.memory.get(definition.name)
@@ -18,12 +16,9 @@ function defInEnv(newEnvironments: IEnvironment, definition: IdentifierDefinitio
  * Insert the given `definition` --- defined within the given scope --- into the passed along `environments` will take care of propagation.
  * Does not modify the passed along `environments` in-place! It returns the new reference.
  */
-export function define(definition: IdentifierDefinition, withinScope: DataflowScopeName, environments: REnvironmentInformation): REnvironmentInformation {
+export function define(definition: IdentifierDefinition, superAssign: boolean, environments: REnvironmentInformation): REnvironmentInformation {
 	let newEnvironments = environments
-	if(withinScope === LocalScope) {
-		newEnvironments = cloneEnvironments(environments, false)
-		defInEnv(newEnvironments.current, definition)
-	} else if(withinScope === GlobalScope) {
+	if(superAssign) {
 		newEnvironments = cloneEnvironments(environments, true)
 		let current: IEnvironment | undefined = newEnvironments.current
 		let last = undefined
@@ -41,6 +36,9 @@ export function define(definition: IdentifierDefinition, withinScope: DataflowSc
 			guard(last !== undefined, () => `Could not find global scope for ${definition.name}`)
 			last.memory.set(definition.name, [definition])
 		}
+	} else {
+		newEnvironments = cloneEnvironments(environments, false)
+		defInEnv(newEnvironments.current, definition)
 	}
 	return newEnvironments
 }

@@ -2,12 +2,16 @@
  * Based on a two-way fold, this processor will automatically supply scope information
  */
 import type {
+	NoInfo,
 	NormalizedAst,
-	ParentInformation, RNode,
-	RNodeWithParent, RParseRequest
-} from '../../r-bridge'
-import type { DataflowInformation } from '../common/info'
-import type { REnvironmentInformation } from '../common/environments'
+	ParentInformation, RConstant,
+	RExpressionList, RFunctions,
+	RNode,
+	RNodeWithParent, ROther,
+	RParseRequest
+} from '../../../r-bridge'
+import type { REnvironmentInformation } from '../../common/environments'
+import type { DataflowInformation } from '../../common/info'
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	/**
@@ -38,11 +42,13 @@ export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherI
 
 type NodeWithKey<OtherInfo, Node extends RNode<OtherInfo & ParentInformation>, TypeKey> = Node['type'] extends TypeKey ? Node : never
 
+export type RNodeV2<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info> | RConstant<Info> | ROther<Info>
+
 /**
  * This way, a processor mapped to a {@link RType#Symbol} require a {@link RSymbol} as first parameter and so on.
  */
 export type DataflowProcessors<OtherInfo> = {
-	[key in RNode['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, RNodeWithParent<OtherInfo>, key>>
+	[key in RNodeV2['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, RNodeV2<OtherInfo & ParentInformation>, key>>
 }
 
 /**
@@ -57,6 +63,6 @@ export type DataflowProcessors<OtherInfo> = {
  * @param current - The current node to start processing from
  * @param data    - The initial information to be passed down
  */
-export function processDataflowFor<OtherInfo>(current: RNodeWithParent<OtherInfo>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
+export function processDataflowFor<OtherInfo>(current: RNodeV2<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	return data.processors[current.type](current as never, data)
 }

@@ -1,6 +1,5 @@
 import { DefaultEnvironmentMemory, Environment, initializeCleanEnvironments } from '../../../../src/dataflow/v1'
 import { expect } from 'chai'
-import { GlobalScope } from '../../../../src/dataflow/common/environments/scopes'
 import { label } from '../../_helper/label'
 
 describe('Initialization', () => {
@@ -8,7 +7,7 @@ describe('Initialization', () => {
 		const clean = initializeCleanEnvironments()
 		expect(clean.current,'there should be a current environment').to.be.not.undefined
 		expect(clean.current.memory, 'the current environment should have the default map').to.be.deep.equal(DefaultEnvironmentMemory)
-		expect(clean.current.name, 'the current environment must have the correct scope name').to.be.equal(GlobalScope)
+		expect(clean.current.name, 'the current environment must have the correct scope name').to.be.equal('global')
 		expect(clean.level, 'the level of the clean environment is predefined as 0').to.be.equal(0)
 	})
 	it(label('Clean creation should create independent new environments', ['lexicographic-scope'], ['other']), () => {

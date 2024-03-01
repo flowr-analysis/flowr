@@ -7,8 +7,6 @@
 import type { NodeId } from '../../../r-bridge'
 import type { DataflowGraph, DataflowGraphEdgeAttribute } from '../../v1'
 import { resolveByName } from './resolve-by-name'
-import type { DataflowScopeName } from './scopes'
-import { GlobalScope, LocalScope } from './scopes'
 import type { GenericDifferenceInformation } from '../../../util/diff'
 import { setDifference } from '../../../util/diff'
 import { jsonReplacer } from '../../../util/json'
@@ -37,7 +35,6 @@ export interface IdentifierDefinition extends IdentifierReference {
  */
 export interface IdentifierReference {
 	name:   Identifier,
-	scope:  DataflowScopeName,
 	/** Node which represents the reference in the AST */
 	nodeId: NodeId
 	/**
@@ -51,9 +48,6 @@ export function diffIdentifierReferences(a: IdentifierReference, b: IdentifierRe
 	if(a.name !== b.name) {
 		info.report.addComment(`${info.position}Different identifier names: ${a.name} vs. ${b.name}`)
 	}
-	if(a.scope !== b.scope) {
-		info.report.addComment(`${info.position}Different scopes: ${a.scope} vs. ${b.scope}`)
-	}
 	if(a.nodeId !== b.nodeId) {
 		info.report.addComment(`${info.position}Different nodeIds: ${a.nodeId} vs. ${b.nodeId}`)
 	}
@@ -65,7 +59,7 @@ export function diffIdentifierReferences(a: IdentifierReference, b: IdentifierRe
 
 function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference {
 	const node = graph.get(ref.nodeId, true)
-	const definitions = resolveByName(ref.name, LocalScope, environments)
+	const definitions = resolveByName(ref.name, environments)
 	for(const definition of definitions ?? []) {
 		if(definition.kind !== 'built-in-function') {
 			definition.used = 'maybe'
@@ -129,7 +123,6 @@ export interface REnvironmentInformation {
 export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition[]>([
 	['return', [{
 		kind:      'built-in-function',
-		scope:     GlobalScope,
 		used:      'always',
 		definedAt: BuiltIn,
 		name:      'return',
@@ -137,7 +130,6 @@ export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition
 	}]],
 	['cat', [{
 		kind:      'built-in-function',
-		scope:     GlobalScope,
 		used:      'always',
 		definedAt: BuiltIn,
 		name:      'cat',
@@ -145,7 +137,6 @@ export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition
 	}]],
 	['print', [{
 		kind:      'built-in-function',
-		scope:     GlobalScope,
 		used:      'always',
 		definedAt: BuiltIn,
 		name:      'print',
@@ -153,7 +144,6 @@ export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition
 	}]],
 	['source', [{
 		kind:      'built-in-function',
-		scope:     GlobalScope,
 		used:      'always',
 		definedAt: BuiltIn,
 		name:      'source',
@@ -162,7 +152,7 @@ export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition
 ])
 
 export function initializeCleanEnvironments(): REnvironmentInformation {
-	const global = new Environment(GlobalScope)
+	const global = new Environment('global')
 	// use a copy
 	global.memory = new Map<Identifier, IdentifierDefinition[]>(DefaultEnvironmentMemory)
 	return {
@@ -205,9 +195,6 @@ export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | u
 			}
 			if(aVal.nodeId !== bVal.nodeId) {
 				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`)
-			}
-			if(aVal.scope !== bVal.scope) {
-				info.report.addComment(`${info.position}Different scopes for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.scope} vs. ${info.rightname}: ${bVal.scope}`)
 			}
 			if(aVal.used !== bVal.used) {
 				info.report.addComment(`${info.position}Different used for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.used} vs. ${info.rightname}: ${bVal.used}`)

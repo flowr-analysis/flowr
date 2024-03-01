@@ -1,6 +1,6 @@
 import type { NormalizedAst, ParentInformation, RAssignmentOp, RBinaryOp, RParseRequest } from '../../r-bridge'
 import { RType, requestFingerprint } from '../../r-bridge'
-import type { DataflowInformation } from './internal/info'
+import type { DataflowInformation } from '../common/info'
 import type { DataflowProcessorInformation, DataflowProcessors } from './processor'
 import { processDataflowFor } from './processor'
 import { processUninterestingLeaf } from './internal/process/uninteresting-leaf'
@@ -15,13 +15,11 @@ import { processIfThenElse } from './internal/process/if-then-else'
 import { processFunctionCall } from './internal/process/functions/function-call'
 import { processFunctionDefinition } from './internal/process/functions/function-definition'
 import { processFunctionParameter } from './internal/process/functions/parameter'
-import type { DataflowScopeName } from '../common/environments'
 import { initializeCleanEnvironments } from '../common/environments'
 import { processFunctionArgument } from './internal/process/functions/argument'
 import { processAssignment } from './internal/process/operators/assignment'
 import { processAccess } from './internal/process/access'
 import { processPipeOperation } from './internal/process/operators/pipe'
-import { LocalScope } from '../common/environments/scopes'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
 export const processors: DataflowProcessors<any> = {
@@ -48,10 +46,9 @@ export const processors: DataflowProcessors<any> = {
 	[RType.ExpressionList]:     processExpressionList,
 }
 
-export function produceDataFlowGraph<OtherInfo>(request: RParseRequest, ast: NormalizedAst<OtherInfo & ParentInformation>, initialScope: DataflowScopeName = LocalScope): DataflowInformation {
+export function produceDataFlowGraph<OtherInfo>(request: RParseRequest, ast: NormalizedAst<OtherInfo & ParentInformation>): DataflowInformation {
 	return processDataflowFor<OtherInfo>(ast.ast, {
 		completeAst:    ast,
-		activeScope:    initialScope,
 		environments:   initializeCleanEnvironments(),
 		processors:     processors as DataflowProcessors<OtherInfo & ParentInformation>,
 		currentRequest: request,

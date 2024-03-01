@@ -1,5 +1,4 @@
 import type { NodeId } from '../../../src'
-import { LocalScope } from '../../../src/dataflow/common/environments/scopes'
 import type { DataflowFunctionFlowInformation, DataflowGraphEdgeAttribute, DataflowGraphExitPoint, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse, DataflowGraphVertexVariableDefinition, FunctionArgument, REnvironmentInformation } from '../../../src/dataflow/v1'
 import { DataflowGraph, EdgeType } from '../../../src/dataflow/v1'
 import { deepMergeObject } from '../../../src/util/objects'
@@ -29,8 +28,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		exitPoints: NodeId[], subflow: DataflowFunctionFlowInformation,
 		info?: Partial<DataflowGraphVertexFunctionDefinition>,
 		asRoot: boolean = true) {
-		const scope = (info && info.scope) ? info.scope : LocalScope
-		return this.addVertex(deepMergeObject({ tag: 'function-definition', id, name, subflow, exitPoints, scope }, info), asRoot)
+		return this.addVertex(deepMergeObject({ tag: 'function-definition', id, name, subflow, exitPoints }, info), asRoot)
 	}
 
 	/**
@@ -54,7 +52,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @param id - AST node ID
 	 * @param name - AST node text
-	 * @param env - Environment of the function we exit.
+	 * @param environment - Environment of the function we exit.
 	 * @param info - Additional/optional properties.
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
@@ -70,14 +68,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @param id - AST node ID
 	 * @param name - Variable name
-	 * @param scope - Scope (global/local/custom), defaults to local.
 	 * @param info - Additional/optional properties.
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public defineVariable(id: NodeId, name: string, scope: string = LocalScope,
+	public defineVariable(id: NodeId, name: string,
 		info?: Partial<DataflowGraphVertexVariableDefinition>, asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({ tag: 'variable-definition', id, name, scope }, info), asRoot)
+		return this.addVertex(deepMergeObject({ tag: 'variable-definition', id, name }, info), asRoot)
 	}
 
 	/**
@@ -172,7 +169,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
-	 * Adds an relation (E10) with from as exit point, and to as any other vertex.
+	 * Adds a relation (E10) with from as exit point, and to as any other vertex.
 	 *
 	 * @see reads for parameters.
 	 */

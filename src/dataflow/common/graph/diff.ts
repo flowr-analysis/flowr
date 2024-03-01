@@ -1,5 +1,5 @@
-import type { IdentifierReference } from '../../common/environments'
-import { diffIdentifierReferences, diffEnvironments } from '../../common/environments'
+import type { IdentifierReference } from '../environments'
+import { diffIdentifierReferences, diffEnvironments } from '../environments'
 import type { NodeId } from '../../../r-bridge'
 import type { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
 import { guard } from '../../../util/assert'
@@ -174,14 +174,6 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 		if(lInfo.name !== rInfo.name) {
 			ctx.report.addComment(`Vertex ${id} has different names. ${ctx.leftname}: ${lInfo.name} vs ${ctx.rightname}: ${rInfo.name}`)
 		}
-
-		if(lInfo.tag === 'variable-definition' || lInfo.tag === 'function-definition') {
-			guard(lInfo.tag === rInfo.tag, () => `node ${id} does not match on tag (${lInfo.tag} vs ${rInfo.tag})`)
-			if(lInfo.scope !== rInfo.scope) {
-				ctx.report.addComment(`Vertex ${id} has different scopes. ${ctx.leftname}: ${lInfo.scope} vs ${ctx.rightname}: ${rInfo.scope}`)
-			}
-		}
-
 		if(lInfo.when !== rInfo.when) {
 			ctx.report.addComment(`Vertex ${id} has different when. ${ctx.leftname}: ${lInfo.when} vs ${ctx.rightname}: ${rInfo.when}`)
 		}
@@ -200,9 +192,6 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 				ctx.report.addComment(`Vertex ${id} has different exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints, jsonReplacer)}`)
 			}
 
-			if(lInfo.subflow.scope !== rInfo.subflow.scope) {
-				ctx.report.addComment(`Vertex ${id} has different subflow scope. ${ctx.leftname}: ${JSON.stringify(lInfo.subflow, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.subflow, jsonReplacer)}`)
-			}
 			diffEnvironments(lInfo.subflow.environments, rInfo.subflow.environments, { ...ctx, position: `${ctx.position}Vertex ${id} (function definition) differs in subflow environments. ` })
 			setDifference(lInfo.subflow.graph, rInfo.subflow.graph, { ...ctx, position: `${ctx.position}Vertex ${id} differs in subflow graph. ` })
 		}

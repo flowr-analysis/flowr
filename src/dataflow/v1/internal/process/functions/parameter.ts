@@ -1,4 +1,4 @@
-import type { DataflowInformation } from '../../info'
+import type { DataflowInformation } from '../../../../common/info'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import type { IdentifierDefinition } from '../../../../common/environments'
@@ -6,8 +6,7 @@ import { define } from '../../../../common/environments'
 import type { ParentInformation, RParameter } from '../../../../../r-bridge'
 import { RType } from '../../../../../r-bridge'
 import { log } from '../../../../../util/log'
-import { EdgeType } from '../../../graph'
-import { LocalScope } from '../../../../common/environments/scopes'
+import { EdgeType } from '../../../../common/graph'
 
 export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const name = processDataflowFor(parameter.name, data)
@@ -18,15 +17,14 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		...n,
 		kind:      'parameter',
 		used:      'always',
-		definedAt: parameter.info.id,
-		scope:     LocalScope
+		definedAt: parameter.info.id
 	}))
 
 	let environments = name.environments
 	for(const writtenNode of writtenNodes) {
 		log.trace(`parameter ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' no default value'}`)
 		graph.setDefinitionOfVertex(writtenNode)
-		environments = define(writtenNode, LocalScope, environments)
+		environments = define(writtenNode, false, environments)
 
 		if(defaultValue !== undefined) {
 			if(parameter.defaultValue?.type === RType.FunctionDefinition) {
@@ -45,7 +43,6 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		in:                defaultValue === undefined ? [] : [...defaultValue.in, ...defaultValue.unknownReferences, ...name.in],
 		out:               [...(defaultValue?.out ?? []), ...name.out, ...name.unknownReferences],
 		graph:             graph,
-		environments:      environments,
-		scope:             data.activeScope
+		environments:      environments
 	}
 }

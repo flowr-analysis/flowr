@@ -3,7 +3,6 @@ import type { SourceRange } from '../range'
 import type {
 	DataflowFunctionFlowInformation,
 	DataflowGraph,
-	DataflowGraphEdgeAttribute,
 	DataflowGraphVertexInfo,
 	DataflowMap,
 	FunctionArgument,
@@ -15,7 +14,6 @@ import {
 } from '../../dataflow/v1'
 import { guard } from '../assert'
 import { jsonReplacer } from '../json'
-import type { DataflowScopeName } from '../../dataflow/common/environments'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
 
 
@@ -37,11 +35,6 @@ export function formatRange(range: SourceRange | undefined): string {
 	}
 
 	return `${range.start.line}.${range.start.column}-${range.end.line}.${range.end.column}`
-}
-
-function scopeToMermaid(scope: DataflowScopeName, when: DataflowGraphEdgeAttribute): string {
-	const whenText = when === 'always' ? '' : `, ${when}`
-	return `, *${scope.replace('<', '#lt;')}${whenText}*`
 }
 
 function createArtificialExitPoints(exitPoints: NodeId[], mermaid: MermaidGraph, dataflowIdMap: DataflowMap, idPrefix: string) {
@@ -128,13 +121,12 @@ function mermaidNodeBrackets(def: boolean, fCall: boolean) {
 function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap | undefined, mark: Set<NodeId> | undefined): void {
 	const def = info.tag === 'variable-definition' || info.tag === 'function-definition'
 	const fCall = info.tag === 'function-call'
-	const defText = def ? scopeToMermaid(info.scope, info.when) : ''
 	const { open, close } = mermaidNodeBrackets(def, fCall)
 
 	if(mermaid.includeEnvironments) {
 		mermaid.nodeLines.push(`    %% ${id}: ${JSON.stringify(info.environment, jsonReplacer)}`)
 	}
-	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name)} (${id}${defText})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
+	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name)} (${id})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''
 	}\`"${close}`)
 	if(mark?.has(id)) {

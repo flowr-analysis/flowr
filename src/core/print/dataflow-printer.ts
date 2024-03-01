@@ -1,7 +1,7 @@
 import { jsonReplacer } from '../../util/json'
-import type { DataflowInformation } from '../../dataflow/v1/internal/info'
+import type { DataflowInformation } from '../../dataflow/common/info'
 import type { QuadSerializationConfiguration } from '../../util/quads'
-import { df2quads } from '../../dataflow/v1/graph/quads'
+import { df2quads } from '../../dataflow/common/graph/quads'
 import { graphToMermaid, graphToMermaidUrl } from '../../util/mermaid'
 import type { DataflowMap } from '../../dataflow/v1'
 

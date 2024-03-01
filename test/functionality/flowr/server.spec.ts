@@ -91,9 +91,9 @@ describe('flowr', () => {
 
 			// this is hideous and only to unify the ids
 			const expected = JSON.stringify(results, jsonReplacer)
-				.replace(/"\.GlobalEnv","id":"\d+"/g, '')
+				.replace(/"global","id":"\d+"/g, '')
 			const got = JSON.stringify(response.results, jsonReplacer)
-				.replace(/"\.GlobalEnv","id":"\d+"/g, '')
+				.replace(/"global","id":"\d+"/g, '')
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer')
 		}))
 

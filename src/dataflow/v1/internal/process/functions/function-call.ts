@@ -1,15 +1,13 @@
-import type { DataflowInformation } from '../../info'
+import type { DataflowInformation } from '../../../../common/info'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import { define, overwriteEnvironments, resolveByName } from '../../../../common/environments'
 import type { ParentInformation, RFunctionCall } from '../../../../../r-bridge'
-import { EmptyArgument } from '../../../../../r-bridge'
-import { RType } from '../../../../../r-bridge'
+import { EmptyArgument, RType } from '../../../../../r-bridge'
 import { guard } from '../../../../../util/assert'
 import type { FunctionArgument } from '../../../index'
 import { DataflowGraph, dataflowLogger, EdgeType } from '../../../index'
 import { linkArgumentsOnCall } from '../../linker'
-import { LocalScope } from '../../../../common/environments/scopes'
 import { isSourceCall, processSourceCall } from './source'
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-'
@@ -68,7 +66,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		finalGraph.addEdge(functionRootId, processed.out[0], EdgeType.Argument, 'always')
 		// resolve reads within argument
 		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
-			const tryToResolve = resolveByName(ingoing.name, LocalScope, argEnv)
+			const tryToResolve = resolveByName(ingoing.name, argEnv)
 
 			if(tryToResolve === undefined) {
 				remainingReadInArgs.push(ingoing)
@@ -81,7 +79,7 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		if(arg.type as RType === RType.Argument && arg.name !== undefined) {
 			argEnv = define(
 				{ ...processed.out[0], definedAt: arg.info.id, kind: 'argument' },
-				LocalScope,
+				false,
 				argEnv
 			)
 		}
@@ -93,12 +91,11 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		name:        functionCallName,
 		environment: data.environments,
 		when:        'always',
-		scope:       data.activeScope,
 		args:        callArgs // same reference
 	})
 
 	const inIds = remainingReadInArgs
-	inIds.push({ nodeId: functionRootId, name: functionCallName, scope: data.activeScope, used: 'always' })
+	inIds.push({ nodeId: functionRootId, name: functionCallName, used: 'always' })
 
 	if(!named) {
 		if(functionCall.calledFunction.type === RType.FunctionDefinition) {
@@ -113,12 +110,11 @@ export function processFunctionCall<OtherInfo>(functionCall: RFunctionCall<Other
 		in:                inIds,
 		out:               functionName.out, // we do not keep argument out as it has been linked by the function
 		graph:             finalGraph,
-		environments:      finalEnv,
-		scope:             data.activeScope
+		environments:      finalEnv
 	}
 
 	// parse a source call and analyze the referenced code
-	if(isSourceCall(functionCallName, data.activeScope,finalEnv)) {
+	if(isSourceCall(functionCallName, finalEnv)) {
 		info = processSourceCall(functionCall, data, info)
 	}
 

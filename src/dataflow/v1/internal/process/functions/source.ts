@@ -2,10 +2,10 @@ import type { IdGenerator, NoInfo, NormalizedAst, ParentInformation, RArgument, 
 import { requestFingerprint, sourcedDeterministicCountingIdGenerator, requestProviderFromFile, RType, removeTokenMapQuotationMarks, retrieveParseDataFromRCode } from '../../../../../r-bridge'
 import { RShellExecutor } from '../../../../../r-bridge/shell-executor'
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import type { DataflowInformation } from '../../info'
+import type { DataflowInformation } from '../../../../common/info'
 import type { Identifier } from '../../../index'
 import { dataflowLogger } from '../../../index'
-import type { DataflowScopeName, REnvironmentInformation } from '../../../../common/environments'
+import type { REnvironmentInformation } from '../../../../common/environments'
 import { overwriteEnvironments, resolveByName } from '../../../../common/environments'
 import { getConfig } from '../../../../../config'
 import { normalize } from '../../../../../r-bridge/lang-4.x/ast/parser/json/parser'
@@ -16,8 +16,8 @@ export function setSourceProvider(provider: RParseRequestProvider): void {
 	sourceProvider = provider
 }
 
-export function isSourceCall(name: Identifier, scope: DataflowScopeName, environments: REnvironmentInformation): boolean {
-	const definitions = resolveByName(name, scope, environments)
+export function isSourceCall(name: Identifier, environments: REnvironmentInformation): boolean {
+	const definitions = resolveByName(name, environments)
 	if(definitions === undefined) {
 		return false
 	}

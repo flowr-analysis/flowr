@@ -5,9 +5,9 @@ import {
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { appendEnvironments, define } from '../../../../../src/dataflow/common/environments'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
-import { label } from '../../../_helper/label'
+import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
-describe(label('Lists with if-then constructs', 'local-left-assignment', 'local-equal-assignment', 'super-left-assignment', 'if', 'name-normal', 'numbers', 'grouping'), withShell(shell => {
+describe('Lists with if-then constructs', withShell(shell => {
 	for(const assign of [ '<-', '<<-', '=']) {
 		const scope = assign === '<<-' ? GlobalScope : LocalScope
 		describe(`using ${assign}`, () => {
@@ -20,28 +20,28 @@ describe(label('Lists with if-then constructs', 'local-left-assignment', 'local-
 						assertDataflow('read previous def in cond',
 							shell,
 							`x ${assign} 2\nif(x) { 1 } ${b.text}`,
-							new DataflowGraph()
-								.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: scope })
-								.addVertex( { tag: 'use', id: '3', name: 'x', environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments()) })
-								.addEdge('3', '0', EdgeType.Reads, 'always')
+							emptyGraph()
+								.defineVariable('0', 'x', scope)
+								.use('3', 'x', { environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments()) })
+								.reads('3', '0')
 						)
 						assertDataflow('read previous def in then',
 							shell,
 							`x ${assign} 2\nif(TRUE) { x } ${b.text}`,
-							new DataflowGraph()
-								.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: scope })
-								.addVertex( { tag: 'use', id: '4', name: 'x', when: 'always', environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments()) })
-								.addEdge('4', '0', EdgeType.Reads, 'always')
+							emptyGraph()
+								.defineVariable('0', 'x', scope)
+								.use('4', 'x', { environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments()) })
+								.reads('4', '0')
 						)
 					})
 				}
 				assertDataflow('read previous def in else',
 					shell,
 					`x ${assign} 2\nif(FALSE) { 42 } else { x }`,
-					new DataflowGraph()
-						.addVertex( { tag: 'variable-definition', id: '0', name: 'x', scope: scope })
-						.addVertex( { tag: 'use', id: '6', name: 'x', when: 'always', environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments()) })
-						.addEdge('6', '0', EdgeType.Reads, 'always')
+					emptyGraph()
+						.defineVariable('0', 'x', scope)
+						.use('6', 'x', { environment: define({ nodeId: '0', name: 'x', scope, kind: 'variable', definedAt: '2', used: 'always' }, scope, initializeCleanEnvironments()) })
+						.reads('6', '0')
 				)
 			})
 			describe('write within if', () => {
@@ -52,19 +52,19 @@ describe(label('Lists with if-then constructs', 'local-left-assignment', 'local-
 					assertDataflow(`${b.label} directly together`,
 						shell,
 						`if(TRUE) { x ${assign} 2 }\nx`,
-						new DataflowGraph()
-							.addVertex( { tag: 'variable-definition', id: '1', name: 'x', when: 'always', scope: scope })
-							.addVertex( { tag: 'use', id: '6', name: 'x', environment: define({ nodeId: '1', name: 'x', scope, kind: 'variable', definedAt: '3', used: 'always' }, scope, initializeCleanEnvironments()) })
-							.addEdge('6', '1', EdgeType.Reads, 'always')
+						emptyGraph()
+							.defineVariable('1', 'x', scope)
+							.use('6', 'x', { environment: define({ nodeId: '1', name: 'x', scope, kind: 'variable', definedAt: '3', used: 'always' }, scope, initializeCleanEnvironments()) })
+							.reads('6', '1')
 					)
 				}
 				assertDataflow('def in else read afterwards',
 					shell,
 					`if(FALSE) { 42 } else { x ${assign} 5 }\nx`,
-					new DataflowGraph()
-						.addVertex( { tag: 'variable-definition', id: '3', name: 'x', when: 'always', scope: scope })
-						.addVertex( { tag: 'use', id: '8', name: 'x', environment: define({ nodeId: '3', name: 'x', scope, kind: 'variable', definedAt: '5', used: 'always' }, scope, initializeCleanEnvironments()) })
-						.addEdge('8', '3', EdgeType.Reads, 'always')
+					emptyGraph()
+						.defineVariable('3', 'x', scope)
+						.use('8', 'x', { environment: define({ nodeId: '3', name: 'x', scope, kind: 'variable', definedAt: '5', used: 'always' }, scope, initializeCleanEnvironments()) })
+						.reads('8', '3')
 				)
 
 				const whenEnvironment = define({ nodeId: '1', name: 'x', scope, kind: 'variable', definedAt: '3', used: 'maybe' }, scope, initializeCleanEnvironments())
@@ -73,18 +73,18 @@ describe(label('Lists with if-then constructs', 'local-left-assignment', 'local-
 				assertDataflow('def in then and else read afterward',
 					shell,
 					`if(z) { x ${assign} 7 } else { x ${assign} 5 }\nx`,
-					new DataflowGraph()
-						.addVertex( { tag: 'use', id: '0', name: 'z', when: 'always', scope: scope })
-						.addVertex( { tag: 'variable-definition', id: '1', name: 'x', scope: scope, when: 'maybe' })
-						.addVertex( { tag: 'variable-definition', id: '5', name: 'x', scope: scope, when: 'maybe' })
-						.addVertex( { tag: 'use', id: '10', name: 'x', environment: appendEnvironments(whenEnvironment, otherwiseEnvironment) })
-						.addEdge('10', '1', EdgeType.Reads, 'maybe')
-						.addEdge('10', '5', EdgeType.Reads, 'maybe')
+					emptyGraph()
+						.use('0', 'z', { scope })
+						.defineVariable('1', 'x', scope, { when: 'maybe' })
+						.defineVariable('5', 'x', scope, { when: 'maybe' })
+						.use('10', 'x', { environment: appendEnvironments(whenEnvironment, otherwiseEnvironment) })
+						.reads('10', '1', 'maybe')
+						.reads('10', '5', 'maybe')
 				)
 			})
 		})
 	}
-	describe(label('Branch Coverage', 'local-left-assignment', 'if', 'numbers', 'name-normal', 'grouping'), () => {
+	describe('Branch Coverage', () => {
 		//All test related to branch coverage (testing the interaction between then end else block)
 		const envWithX = () => define({ nodeId: '0', name: 'x', scope: LocalScope, kind: 'variable', definedAt: '2', used: 'always' }, LocalScope, initializeCleanEnvironments())
 		const envThenBranch = () => define({ nodeId: '4', scope: LocalScope, name: 'x', used: 'maybe', kind: 'variable',definedAt: '6' }, LocalScope, initializeCleanEnvironments())

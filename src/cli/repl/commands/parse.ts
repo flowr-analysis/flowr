@@ -1,23 +1,24 @@
-import type { XmlBasedJson } from '../../../r-bridge'
-import { childrenKey } from '../../../r-bridge'
-import { attributesKey, contentKey } from '../../../r-bridge'
-import { getKeysGuarded, RawRType, requestFromInput } from '../../../r-bridge'
+import type {
+	XmlBasedJson,
+} from '../../../r-bridge'
 import {
-	extractLocation,
-	getTokenType,
-	objectWithArrUnwrap,
-} from '../../../r-bridge/lang-4.x/ast/parser/xml/internal'
+	getKeyGuarded,
+	RawRType,
+	requestFromInput
+} from '../../../r-bridge'
 import type { OutputFormatter } from '../../../statistics'
 import { FontStyles } from '../../../statistics'
 import type { ReplCommand } from './main'
-import { SteppingSlicer } from '../../../core'
 import { prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format'
 import { convertPreparedParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/parser'
+import { attributesKey, childrenKey, contentKey } from '../../../r-bridge/lang-4.x/ast/parser/xml'
+import { extractLocation, getTokenType, objectWithArrUnwrap } from '../../../r-bridge/lang-4.x/ast/parser/xml/common/meta'
+import { SteppingSlicer } from '../../../core/stepping-slicer'
 
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]
 
 function toDepthMap(xml: XmlBasedJson): DepthList {
-	const root = getKeysGuarded<XmlBasedJson>(xml, RawRType.ExpressionList)
+	const root = getKeyGuarded<XmlBasedJson>(xml, RawRType.ExpressionList)
 	const visit = [ { depth: 0, node: root } ]
 	const result: DepthList = []
 

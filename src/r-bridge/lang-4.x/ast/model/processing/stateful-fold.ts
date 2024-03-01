@@ -30,7 +30,8 @@ import type {
 	RModelFormulaBinaryOp,
 	RModelFormulaUnaryOp,
 	RLineDirective,
-	RPipe
+	RPipe } from '../nodes'
+import { EmptyArgument
 } from '../nodes'
 import type { RNode } from '../model'
 
@@ -83,7 +84,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 	functions: {
 		foldFunctionDefinition: (definition: RFunctionDefinition<Info>, params: Up[], body: Up, down: Down) => Up;
 		/** folds named and unnamed function calls */
-		foldFunctionCall:       (call: RFunctionCall<Info>, functionNameOrExpression: Up, args: (Up | undefined)[], down: Down) => Up;
+		foldFunctionCall:       (call: RFunctionCall<Info>, functionNameOrExpression: Up, args: (Up | typeof EmptyArgument)[], down: Down) => Up;
 		/** The `name` is `undefined` if the argument is unnamed, the value, if we have something like `x=,...` */
 		foldArgument:           (argument: RArgument<Info>, name: Up | undefined, value: Up | undefined, down: Down) => Up;
 		/** The `defaultValue` is `undefined` if the argument was not initialized with a default value */
@@ -126,7 +127,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 		case RType.RepeatLoop:
 			return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down)
 		case RType.FunctionCall:
-			return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.flavor === 'named' ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => param === undefined ? param : foldAstStateful(param, down, folds)), down)
+			return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.flavor === 'named' ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => param === EmptyArgument ? param : foldAstStateful(param, down, folds)), down)
 		case RType.FunctionDefinition:
 			return folds.functions.foldFunctionDefinition(ast, ast.parameters.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down)
 		case RType.Parameter:

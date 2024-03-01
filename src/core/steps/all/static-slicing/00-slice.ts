@@ -20,11 +20,12 @@ function processor(results: { dataflow?: DataflowInformation, normalize?: Normal
 }
 
 export const STATIC_SLICE = {
-	name:        'slice',
-	description: 'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
+	name:              'slice',
+	humanReadableName: 'static slice',
+	description:       'Calculate the actual static slice from the dataflow graph and the given slicing criteria',
 	processor,
-	executed:    PipelineStepStage.OncePerRequest,
-	printer:     {
+	executed:          PipelineStepStage.OncePerRequest,
+	printer:           {
 		[StepOutputFormat.Internal]: internalPrinter
 	},
 	dependencies:  [ 'dataflow' ],

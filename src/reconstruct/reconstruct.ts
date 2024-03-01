@@ -27,6 +27,7 @@ import type {
 import {
 	RType,
 	foldAstStateful
+	, EmptyArgument
 } from '../r-bridge'
 import { log, LogLevel } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
@@ -334,7 +335,7 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 
 }
 
-function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: RFunctionCall<ParentInformation>): Code {
+function reconstructSpecialInfixFunctionCall(args: (Code | typeof EmptyArgument)[], call: RFunctionCall<ParentInformation>): Code {
 	guard(args.length === 2, () => `infix special call must have exactly two arguments, got: ${args.length} (${JSON.stringify(args)})`)
 	guard(call.flavor === 'named', `infix special call must be named, got: ${call.flavor}`)
 	const lhs = args[0]
@@ -345,9 +346,9 @@ function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: R
 	}
 	// else if (rhs === undefined || rhs.length === 0) {
 	// if rhs is undefined we still  have to keep both now, but reconstruct manually :/
-	if(lhs !== undefined && lhs.length > 0) {
+	if(lhs !== EmptyArgument && lhs.length > 0) {
 		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n')
-		if(rhs !== undefined && rhs.length > 0) {
+		if(rhs !== EmptyArgument && rhs.length > 0) {
 			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n')
 			return plain(`${lhsText} ${call.functionName.content} ${rhsText}`)
 		} else {
@@ -357,7 +358,7 @@ function reconstructSpecialInfixFunctionCall(args: (Code | undefined)[], call: R
 	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`)
 }
 
-function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: (Code | undefined)[], configuration: ReconstructionConfiguration): Code {
+function reconstructFunctionCall(call: RFunctionCall<ParentInformation>, functionName: Code, args: (Code | typeof EmptyArgument)[], configuration: ReconstructionConfiguration): Code {
 	if(call.infixSpecial === true) {
 		return reconstructSpecialInfixFunctionCall(args, call)
 	}

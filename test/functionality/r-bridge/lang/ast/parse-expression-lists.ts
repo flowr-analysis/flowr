@@ -1,14 +1,15 @@
-import { assertAst, withShell } from '../../../_helper/shell'
+import { assertAst, sameForSteps, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RawRType, RType } from '../../../../../src/r-bridge'
+import { RawRType, RType } from '../../../../../src'
+import { label } from '../../../_helper/label'
+import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 
-describe('Parse expression lists',
-	withShell((shell) => {
-		describe('Expression lists with newlines and braces', () => {
-			// this is already covered by other tests, yet it is good to state it here explicitly (expr list is the default top-level token for R)
-			assertAst('"42" (single element)', shell,
-				'42',
+describe('Parse expression lists', withShell(shell => {
+	describe('Expression lists with newlines and braces', () => {
+		// this is already covered by other tests, yet it is good to state it here explicitly (expr list is the default top-level token for R)
+		assertAst(label('single element', ['numbers']),
+			shell, '42', sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
 				exprList({
 					type:     RType.Number,
 					location: rangeFrom(1, 1, 1, 2),
@@ -17,10 +18,10 @@ describe('Parse expression lists',
 					info:     {}
 				})
 			)
-			// the r standard does not seem to allow '\r\n' or '\n\r'
-			const twoLine = '42\na'
-			assertAst(`${JSON.stringify(twoLine)} (two lines)`, shell,
-				twoLine,
+		)
+		// the r standard does not seem to allow '\r\n' or '\n\r'
+		assertAst(label('two lines', ['name-normal', 'numbers', 'newlines']),
+			shell, '42\na', sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
 				exprList(
 					{
 						type:     RType.Number,
@@ -39,10 +40,42 @@ describe('Parse expression lists',
 					}
 				)
 			)
+		)
 
-			const manyLines = 'a\nb\nc\nd\nn2\nz\n'
-			assertAst(`${JSON.stringify(manyLines)} (many lines)`, shell,
-				manyLines,
+		assertAst(label('three lines', ['name-normal', 'numbers', 'newlines']),
+			shell, 'a\nb\nc', sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
+				exprList(
+					{
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 1, 1, 1),
+						lexeme:    'a',
+						content:   'a',
+						namespace: undefined,
+						info:      {}
+					},
+					{
+						type:      RType.Symbol,
+						location:  rangeFrom(2, 1, 2, 1),
+						namespace: undefined,
+						lexeme:    'b',
+						content:   'b',
+						info:      {}
+					},
+					{
+						type:      RType.Symbol,
+						location:  rangeFrom(3, 1, 3, 1),
+						lexeme:    'c',
+						content:   'c',
+						namespace: undefined,
+						info:      {}
+					},
+				)
+			)
+		)
+
+		assertAst(label('many lines', ['name-normal', 'numbers', 'newlines']),
+			shell, 'a\nb\nc\nd\nn2\nz\n',
+			sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
 				exprList(
 					{
 						type:      RType.Symbol,
@@ -92,58 +125,14 @@ describe('Parse expression lists',
 						content:   'z',
 						info:      {}
 					}
-				)
-			)
+				))
+		)
 
-			const twoLineWithBraces = '{ 42\na }'
-			assertAst(`${JSON.stringify(twoLineWithBraces)} (two lines with braces)`, shell,
-				twoLineWithBraces,
-				exprList({
-					type:     RType.ExpressionList,
-					location: rangeFrom(1, 1, 2, 3),
-					lexeme:   '{ 42\na }',
-					info:     {
-						additionalTokens: [
-							{
-								type:     RType.Delimiter,
-								subtype:  RawRType.BraceLeft,
-								location: rangeFrom(1, 1, 1, 1),
-								lexeme:   '{'
-							},
-							{
-								type:     RType.Delimiter,
-								subtype:  RawRType.BraceRight,
-								location: rangeFrom(2, 3, 2, 3),
-								lexeme:   '}'
-							}
-						]
-					},
-					children: [
-						{
-							type:     RType.Number,
-							location: rangeFrom(1, 3, 1, 4),
-							lexeme:   '42',
-							content:  numVal(42),
-							info:     {}
-						},
-						{
-							type:      RType.Symbol,
-							location:  rangeFrom(2, 1, 2, 1),
-							namespace: undefined,
-							lexeme:    'a',
-							content:   'a',
-							info:      {}
-						},
-					],
-				})
-			)
-
-			// { 42\na }{ x } seems to be illegal for R...
-			const multipleBraces = '{ 42\na }\n{ x }'
-			assertAst(`${JSON.stringify(multipleBraces)} (multiple braces)`, shell,
-				multipleBraces,
-				exprList(
-					{
+		assertAst(label('Two Lines With Braces', ['name-normal', 'numbers', 'grouping', 'newlines']),
+			shell, '{ 42\na }', [
+				{
+					step:   NORMALIZE,
+					wanted: exprList({
 						type:     RType.ExpressionList,
 						location: rangeFrom(1, 1, 2, 3),
 						lexeme:   '{ 42\na }',
@@ -180,148 +169,397 @@ describe('Parse expression lists',
 								info:      {}
 							},
 						],
-					},
-					{
-						type:      RType.Symbol,
-						location:  rangeFrom(3, 3, 3, 3),
-						namespace: undefined,
-						lexeme:    'x',
-						content:   'x',
-						info:      {
+					})
+				},
+				{
+					step:   DESUGAR_NORMALIZE,
+					wanted: exprList({
+						type:         RType.FunctionCall,
+						location:     rangeFrom(1, 1, 1, 1),
+						lexeme:       '{',
+						flavor:       'named',
+						functionName: {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 1, 1, 1),
+							namespace: undefined,
+							lexeme:    '{',
+							content:   '{',
+							info:      {}
+						},
+						info:      {},
+						arguments: [
+							{
+								type:     RType.Number,
+								location: rangeFrom(1, 3, 1, 4),
+								lexeme:   '42',
+								content:  numVal(42),
+								info:     {}
+							},
+							{
+								type:      RType.Symbol,
+								location:  rangeFrom(2, 1, 2, 1),
+								namespace: undefined,
+								lexeme:    'a',
+								content:   'a',
+								info:      {}
+							},
+						],
+					})
+				}
+			]
+		)
+
+		// { 42\na }{ x } seems to be illegal for R...
+		assertAst(label('Multiple Braces', ['name-normal', 'numbers', 'grouping', 'newlines']),
+			shell, '{ 42\na }\n{ x }',
+			[
+				{
+					step:   NORMALIZE,
+					wanted: exprList(
+						{
+							type:     RType.ExpressionList,
+							location: rangeFrom(1, 1, 2, 3),
+							lexeme:   '{ 42\na }',
+							info:     {
+								additionalTokens: [
+									{
+										type:     RType.Delimiter,
+										subtype:  RawRType.BraceLeft,
+										location: rangeFrom(1, 1, 1, 1),
+										lexeme:   '{'
+									},
+									{
+										type:     RType.Delimiter,
+										subtype:  RawRType.BraceRight,
+										location: rangeFrom(2, 3, 2, 3),
+										lexeme:   '}'
+									}
+								]
+							},
+							children: [
+								{
+									type:     RType.Number,
+									location: rangeFrom(1, 3, 1, 4),
+									lexeme:   '42',
+									content:  numVal(42),
+									info:     {}
+								},
+								{
+									type:      RType.Symbol,
+									location:  rangeFrom(2, 1, 2, 1),
+									namespace: undefined,
+									lexeme:    'a',
+									content:   'a',
+									info:      {}
+								},
+							],
+						},
+						{
+							type:      RType.Symbol,
+							location:  rangeFrom(3, 3, 3, 3),
+							namespace: undefined,
+							lexeme:    'x',
+							content:   'x',
+							info:      {
+								additionalTokens: [
+									{
+										type:     RType.Delimiter,
+										subtype:  RawRType.BraceLeft,
+										location: rangeFrom(3, 1, 3, 1),
+										lexeme:   '{'
+									},
+									{
+										type:     RType.Delimiter,
+										subtype:  RawRType.BraceRight,
+										location: rangeFrom(3, 5, 3, 5),
+										lexeme:   '}'
+									}
+								]
+							}
+						}
+					)
+				},
+				{
+					step:   DESUGAR_NORMALIZE,
+					wanted: exprList(
+						{
+							type:         RType.FunctionCall,
+							location:     rangeFrom(1, 1, 1, 1),
+							lexeme:       '{',
+							flavor:       'named',
+							functionName: {
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 1, 1, 1),
+								namespace: undefined,
+								lexeme:    '{',
+								content:   '{',
+								info:      {}
+							},
+							info:      {},
+							arguments: [
+								{
+									type:     RType.Number,
+									location: rangeFrom(1, 3, 1, 4),
+									lexeme:   '42',
+									content:  numVal(42),
+									info:     {}
+								},
+								{
+									type:      RType.Symbol,
+									location:  rangeFrom(2, 1, 2, 1),
+									namespace: undefined,
+									lexeme:    'a',
+									content:   'a',
+									info:      {}
+								},
+							],
+						},
+						{
+							type:         RType.FunctionCall,
+							location:     rangeFrom(3, 1, 3, 1),
+							lexeme:       '{',
+							flavor:       'named',
+							functionName: {
+								type:      RType.Symbol,
+								location:  rangeFrom(3, 1, 3, 1),
+								namespace: undefined,
+								lexeme:    '{',
+								content:   '{',
+								info:      {}
+							},
+							info:      {},
+							arguments: [
+								{
+									type:      RType.Symbol,
+									location:  rangeFrom(3, 3, 3, 3),
+									namespace: undefined,
+									lexeme:    'x',
+									content:   'x',
+									info:      {}
+								},
+							]
+						}
+					)
+				}
+			]
+		)
+	})
+
+	describe('Expression lists with semicolons', () => {
+		assertAst(label('Two Elements in Same Line', ['numbers', 'name-normal', 'semicolons']),
+			shell, '42;a',
+			[
+				{
+					step:   NORMALIZE,
+					wanted: {
+						type:   RType.ExpressionList,
+						lexeme: undefined,
+						info:   {
 							additionalTokens: [
 								{
 									type:     RType.Delimiter,
+									subtype:  RawRType.Semicolon,
+									location: rangeFrom(1, 3, 1, 3),
+									lexeme:   ';'
+								}
+							]
+						},
+						children: [
+							{
+								type:     RType.Number,
+								location: rangeFrom(1, 1, 1, 2),
+								lexeme:   '42',
+								content:  numVal(42),
+								info:     {}
+							},
+							{
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 4, 1, 4),
+								namespace: undefined,
+								lexeme:    'a',
+								content:   'a',
+								info:      {}
+							}
+						]
+					}
+				},
+				{
+					step:   DESUGAR_NORMALIZE,
+					wanted: {
+						type:     RType.ExpressionList,
+						lexeme:   undefined,
+						info:     {},
+						children: [
+							{
+								type:     RType.Number,
+								location: rangeFrom(1, 1, 1, 2),
+								lexeme:   '42',
+								content:  numVal(42),
+								info:     {}
+							},
+							{
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 4, 1, 4),
+								namespace: undefined,
+								lexeme:    'a',
+								content:   'a',
+								info:      {}
+							}
+						]
+					}
+				}
+			]
+		)
+
+		assertAst(label('Empty split with semicolon', ['numbers', 'semicolons', 'grouping']),
+			shell, '{ 3; }',
+			[
+				{
+					step:   NORMALIZE,
+					wanted: exprList({
+						type:     RType.Number,
+						location: rangeFrom(1, 3, 1, 3),
+						lexeme:   '3',
+						content:  numVal(3),
+						info:     {
+							additionalTokens: [
+								{
+									type:     RType.Delimiter,
+									subtype:  RawRType.Semicolon,
+									location: rangeFrom(1, 4, 1, 4),
+									lexeme:   ';'
+								},
+								{
+									type:     RType.Delimiter,
 									subtype:  RawRType.BraceLeft,
-									location: rangeFrom(3, 1, 3, 1),
+									location: rangeFrom(1, 1, 1, 1),
 									lexeme:   '{'
 								},
 								{
 									type:     RType.Delimiter,
 									subtype:  RawRType.BraceRight,
-									location: rangeFrom(3, 5, 3, 5),
+									location: rangeFrom(1, 6, 1, 6),
 									lexeme:   '}'
 								}
 							]
 						}
-					}
-				)
-			)
-		})
-
-		describe('Expression lists with semicolons', () => {
-			assertAst('"42;a" (two elements in same line)', shell,
-				'42;a',
+					})
+				},
 				{
-					type:   RType.ExpressionList,
-					lexeme: undefined,
-					info:   {
-						additionalTokens: [
-							{
-								type:     RType.Delimiter,
-								subtype:  RawRType.Semicolon,
-								location: rangeFrom(1, 3, 1, 3),
-								lexeme:   ';'
-							}
-						]
-					},
-					children: [
-						{
-							type:     RType.Number,
-							location: rangeFrom(1, 1, 1, 2),
-							lexeme:   '42',
-							content:  numVal(42),
-							info:     {}
-						},
-						{
+					step:   DESUGAR_NORMALIZE,
+					wanted: exprList({
+						type:         RType.FunctionCall,
+						location:     rangeFrom(1, 1, 1, 1),
+						lexeme:       '{',
+						flavor:       'named',
+						functionName: {
 							type:      RType.Symbol,
-							location:  rangeFrom(1, 4, 1, 4),
+							location:  rangeFrom(1, 1, 1, 1),
+							lexeme:    '{',
+							content:   '{',
 							namespace: undefined,
-							lexeme:    'a',
-							content:   'a',
 							info:      {}
-						}
-					]
+						},
+						info:      {},
+						arguments: [
+							{
+								type:     RType.Number,
+								location: rangeFrom(1, 3, 1, 3),
+								lexeme:   '3',
+								content:  numVal(3),
+								info:     {}
+							}
+						]
+					})
 				}
+			]
+		)
 
-			)
 
-			assertAst('"{ 3; }" (empty)', shell,
-				'{ 3; }',
-				exprList({
-					type:     RType.Number,
-					location: rangeFrom(1, 3, 1, 3),
-					lexeme:   '3',
-					content:  numVal(3),
-					info:     {
-						additionalTokens: [
+		assertAst(label('Inconsistent split with semicolon', ['numbers', 'semicolons', 'newlines']),
+			shell, '1\n2; 3\n4',
+			[
+				{
+					step:   NORMALIZE,
+					wanted: {
+						type:   RType.ExpressionList,
+						lexeme: undefined,
+						info:   {
+							additionalTokens: [
+								{
+									type:     RType.Delimiter,
+									subtype:  RawRType.Semicolon,
+									location: rangeFrom(2, 2, 2, 2),
+									lexeme:   ';'
+								}
+							]
+						},
+						children: [
 							{
-								type:     RType.Delimiter,
-								subtype:  RawRType.Semicolon,
-								location: rangeFrom(1, 4, 1, 4),
-								lexeme:   ';'
-							},
-							{
-								type:     RType.Delimiter,
-								subtype:  RawRType.BraceLeft,
+								type:     RType.Number,
 								location: rangeFrom(1, 1, 1, 1),
-								lexeme:   '{'
-							},
-							{
-								type:     RType.Delimiter,
-								subtype:  RawRType.BraceRight,
-								location: rangeFrom(1, 6, 1, 6),
-								lexeme:   '}'
+								lexeme:   '1',
+								content:  numVal(1),
+								info:     {}
+							}, {
+								type:     RType.Number,
+								location: rangeFrom(2, 1, 2, 1),
+								lexeme:   '2',
+								content:  numVal(2),
+								info:     {}
+							}, {
+								type:     RType.Number,
+								location: rangeFrom(2, 4, 2, 4),
+								lexeme:   '3',
+								content:  numVal(3),
+								info:     {}
+							}, {
+								type:     RType.Number,
+								location: rangeFrom(3, 1, 3, 1),
+								lexeme:   '4',
+								content:  numVal(4),
+								info:     {}
 							}
 						]
 					}
-				})
-			)
-
-
-			assertAst('Inconsistent split with semicolon', shell,
-				'1\n2; 3\n4',
+				},
 				{
-					type:   RType.ExpressionList,
-					lexeme: undefined,
-					info:   {
-						additionalTokens: [
+					step:   DESUGAR_NORMALIZE,
+					wanted: {
+						type:     RType.ExpressionList,
+						lexeme:   undefined,
+						info:     {},
+						children: [
 							{
-								type:     RType.Delimiter,
-								subtype:  RawRType.Semicolon,
-								location: rangeFrom(2, 2, 2, 2),
-								lexeme:   ';'
+								type:     RType.Number,
+								location: rangeFrom(1, 1, 1, 1),
+								lexeme:   '1',
+								content:  numVal(1),
+								info:     {}
+							}, {
+								type:     RType.Number,
+								location: rangeFrom(2, 1, 2, 1),
+								lexeme:   '2',
+								content:  numVal(2),
+								info:     {}
+							}, {
+								type:     RType.Number,
+								location: rangeFrom(2, 4, 2, 4),
+								lexeme:   '3',
+								content:  numVal(3),
+								info:     {}
+							}, {
+								type:     RType.Number,
+								location: rangeFrom(3, 1, 3, 1),
+								lexeme:   '4',
+								content:  numVal(4),
+								info:     {}
 							}
 						]
-					},
-					children: [
-						{
-							type:     RType.Number,
-							location: rangeFrom(1, 1, 1, 1),
-							lexeme:   '1',
-							content:  numVal(1),
-							info:     {}
-						}, {
-							type:     RType.Number,
-							location: rangeFrom(2, 1, 2, 1),
-							lexeme:   '2',
-							content:  numVal(2),
-							info:     {}
-						}, {
-							type:     RType.Number,
-							location: rangeFrom(2, 4, 2, 4),
-							lexeme:   '3',
-							content:  numVal(3),
-							info:     {}
-						}, {
-							type:     RType.Number,
-							location: rangeFrom(3, 1, 3, 1),
-							lexeme:   '4',
-							content:  numVal(4),
-							info:     {}
-						}
-					]
+					}
 				}
-			)
-		})
+			]
+		)
 	})
+})
 )

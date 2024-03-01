@@ -14,7 +14,8 @@ import type { IPipelineStep } from '../../step'
 import { PipelineStepStage } from '../../step'
 import type { DeepPartial, DeepReadonly } from 'ts-essentials'
 import type { ParseRequiredInput } from './00-parse'
-import { normalize } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser'
+import { normalize as normalizeV2 } from '../../../../r-bridge/lang-4.x/ast/parser/xml/v2/normalize'
+import { normalize as oldNormalize } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 
 export interface NormalizeRequiredInput extends ParseRequiredInput {
 	/** These hooks only make sense if you at least want to normalize the parsed R AST. They can augment the normalization process */
@@ -24,15 +25,16 @@ export interface NormalizeRequiredInput extends ParseRequiredInput {
 }
 
 function processor(results: { parse?: string }, input: Partial<NormalizeRequiredInput>) {
-	return normalize(results.parse as string, input.hooks, input.getId)
+	return oldNormalize(results.parse as string, input.hooks, input.getId)
 }
 
 export const NORMALIZE = {
-	name:        'normalize',
-	description: 'Normalize the AST to flowR\'s AST (first step of the normalization)',
+	name:              'normalize',
+	humanReadableName: 'v1 normalize',
+	description:       'Normalize the AST to flowR\'s AST',
 	processor,
-	executed:    PipelineStepStage.OncePerFile,
-	printer:     {
+	executed:          PipelineStepStage.OncePerFile,
+	printer:           {
 		[StepOutputFormat.Internal]:   internalPrinter,
 		[StepOutputFormat.Json]:       normalizedAstToJson,
 		[StepOutputFormat.RdfQuads]:   normalizedAstToQuads,
@@ -41,4 +43,28 @@ export const NORMALIZE = {
 	},
 	dependencies:  [ 'parse' ],
 	requiredInput: undefined as unknown as NormalizeRequiredInput
+} as const satisfies DeepReadonly<IPipelineStep<'normalize', typeof processor>>
+
+
+type DesugarNormalizeRequiredInput = Pick<NormalizeRequiredInput, 'getId'> & ParseRequiredInput
+
+function desugarProcessor(results: { parse?: string }, input: Partial<DesugarNormalizeRequiredInput>) {
+	return normalizeV2(results.parse as string, input.getId)
+}
+
+export const DESUGAR_NORMALIZE = {
+	name:              'normalize',
+	humanReadableName: 'v2 normalize',
+	description:       'Normalize the AST to flowR\'s AST (v2, with desugaring)',
+	processor:         desugarProcessor,
+	executed:          PipelineStepStage.OncePerFile,
+	printer:           {
+		[StepOutputFormat.Internal]:   internalPrinter,
+		[StepOutputFormat.Json]:       normalizedAstToJson,
+		[StepOutputFormat.RdfQuads]:   normalizedAstToQuads,
+		[StepOutputFormat.Mermaid]:    printNormalizedAstToMermaid,
+		[StepOutputFormat.MermaidUrl]: printNormalizedAstToMermaidUrl
+	},
+	dependencies:  [ 'parse' ],
+	requiredInput: undefined as unknown as DesugarNormalizeRequiredInput
 } as const satisfies DeepReadonly<IPipelineStep<'normalize', typeof processor>>

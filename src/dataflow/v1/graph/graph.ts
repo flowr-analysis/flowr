@@ -267,7 +267,6 @@ export class DataflowGraph {
 		return this
 	}
 
-
 	/**
 	 * Merges the other graph into *this* one (in-place). The return value is only for convenience.
 	 *

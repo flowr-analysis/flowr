@@ -2,7 +2,6 @@
  * Provides a top-level slicer that can be used to slice code *and* retrieve stats.
  * @module
  */
-
 import type {
 	NormalizedAst,
 	RParseRequestFromFile, RParseRequestFromText
@@ -34,9 +33,10 @@ import type {
 import fs from 'fs'
 import { log, LogLevel } from '../util/log'
 import type { MergeableRecord } from '../util/objects'
-import type { STEPS, StepResult } from '../core'
-import { LAST_STEP, SteppingSlicer } from '../core'
 import { withoutWhitespace } from '../util/strings'
+import { SteppingSlicer } from '../core/stepping-slicer'
+import type { StepResult, STEPS } from '../core/steps/steps'
+import { LAST_STEP } from '../core/steps/steps'
 
 export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' })
 

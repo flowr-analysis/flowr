@@ -116,8 +116,8 @@ export const flowrCapabilities = {
 							description: '_Recognize groups done with `(`, `{`, ... (more precisely, their default mapping to the primitive implementations)._'
 						},
 						{
-							name:         'Normal',
-							id:           'normal',
+							name:         'Normal Call',
+							id:           'call-normal',
 							supported:    'fully',
 							description:  '_Recognize and resolve calls like `f(x)`, `foo::bar(x, y)`, ..._',
 							capabilities: [
@@ -128,10 +128,22 @@ export const flowrCapabilities = {
 									description: '_Recognize and resolve calls like `f(3)`, `foo::bar(3, c(1,2))`, ..._'
 								},
 								{
+									name:        'Empty Arguments',
+									id:          'empty-arguments',
+									supported:   'fully',
+									description: '_Essentially a special form of an unnamed argument as in `foo::bar(3, ,42)`, ..._'
+								},
+								{
 									name:        'Named Arguments',
 									id:          'named-arguments',
 									supported:   'fully',
 									description: '_Recognize and resolve calls like `f(x = 3)`, `foo::bar(x = 3, y = 4)`, ..._'
+								},
+								{
+									name:        'String Arguments',
+									id:          'string-arguments',
+									supported:   'fully',
+									description: '_Recognize and resolve calls like `f(\'x\' = 3)`, `foo::bar(\'x\' = 3, "y" = 4)`, ..._'
 								},
 								{
 									name:        'Resolve Arguments',
@@ -155,7 +167,7 @@ export const flowrCapabilities = {
 						},
 						{
 							name:        'Anonymous Calls',
-							id:          'anonymous-calls',
+							id:          'call-anonymous',
 							supported:   'fully',
 							description: '_Recognize and resolve calls like `(function(x) x)(3)`, `factory(0)()`, ..._'
 						},
@@ -179,7 +191,7 @@ export const flowrCapabilities = {
 									name:        'Single Bracket Access',
 									id:          'single-bracket-access',
 									supported:   'fully',
-									description: '_Detect calls like `x[i]`, `x[i, b]` `x[[i]]`, ... This does not include the real separation of cells, which is handled extra._'
+									description: '_Detect calls like `x[i]`, `x[i, ,b]`, `x[3][y]`, ... This does not include the real separation of cells, which is handled extra._'
 								},
 								{
 									name:        'Double Bracket Access',
@@ -194,8 +206,8 @@ export const flowrCapabilities = {
 									description: '_Detect calls like `x$y`, `x$"y"`, `x$y$z`, ..._'
 								},
 								{
-									name:        'Slotted Access',
-									id:          'slotted-access',
+									name:        'Slot Access',
+									id:          'slot-access',
 									supported:   'fully',
 									description: '_Detect calls like `x@y`, `x@y@z`, ..._'
 								},
@@ -204,6 +216,12 @@ export const flowrCapabilities = {
 									id:          'access-with-argument-names',
 									supported:   'fully',
 									description: '_Detect calls like `x[i = 3]`, `x[[i=]]`, ..._'
+								},
+								{
+									name:        'Access with Empty',
+									id:          'access-with-empty',
+									supported:   'fully',
+									description: '_Detect calls like `x[]`, `x[2,,42]`, ..._'
 								},
 								{
 									name:        'Subsetting',
@@ -377,7 +395,7 @@ export const flowrCapabilities = {
 							capabilities: [
 								{
 									name:        'Normal',
-									id:          'normal',
+									id:          'normal-definition',
 									supported:   'fully',
 									description: '_Handle `function() 3`, ..._'
 								},
@@ -510,10 +528,18 @@ export const flowrCapabilities = {
 							description: '_Recognize numbers like `3`, `3.14`, `NA`, float-hex, ..._'
 						},
 						{
-							name:        'Strings',
-							id:          'strings',
-							supported:   'fully',
-							description: "_Recognize strings like `\"a\"`, `'b'`, ..._"
+							name:         'Strings',
+							id:           'strings',
+							supported:    'fully',
+							description:  "_Recognize strings like `\"a\"`, `'b'`, ..._",
+							capabilities: [
+								{
+									name:        'Raw Strings',
+									id:          'raw-strings',
+									supported:   'fully',
+									description: '_Recognize raw strings like `r"(a)"`, ..._'
+								}
+							]
 						},
 						{
 							name:        'Logical',
@@ -650,10 +676,28 @@ export const flowrCapabilities = {
 			]
 		},
 		{
-			name:        'Comments',
-			id:          'comments',
-			supported:   'fully',
-			description: '_Recognize comments like `# this is a comment`, ... and line-directives_'
+			name:         'Structure',
+			id:           'structure',
+			capabilities: [
+				{
+					name:        'Comments',
+					id:          'comments',
+					supported:   'fully',
+					description: '_Recognize comments like `# this is a comment`, ... and line-directives_'
+				},
+				{
+					name:        'Semicolons',
+					id:          'semicolons',
+					supported:   'fully',
+					description: '_Recognize and resolve semicolons like `a; b; c`, ..._'
+				},
+				{
+					name:        'Newlines',
+					id:          'newlines',
+					supported:   'fully',
+					description: '_Recognize and resolve newlines like `a\nb\nc`, ..._'
+				}
+			]
 		},
 		{
 			name:         'System, I/O, FFI, and Other Files',

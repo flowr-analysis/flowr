@@ -15,15 +15,16 @@ export interface ParseRequiredInput {
 }
 
 function processor(_results: unknown, input: Partial<ParseRequiredInput>) {
-	return retrieveParseDataFromRCode(input.request as RParseRequest, input.shell as RShell | RShellExecutor)
+	return retrieveParseDataFromRCode(input.request as RParseRequest, input.shell as RShell)
 }
 
 export const PARSE_WITH_R_SHELL_STEP = {
-	name:        'parse',
-	description: 'Parse the given R code into an AST',
+	name:              'parse',
+	humanReadableName: 'parse with R shell',
+	description:       'Parse the given R code into an AST',
 	processor,
-	executed:    PipelineStepStage.OncePerFile,
-	printer:     {
+	executed:          PipelineStepStage.OncePerFile,
+	printer:           {
 		[StepOutputFormat.Internal]: internalPrinter,
 		[StepOutputFormat.Json]:     text => text,
 		[StepOutputFormat.RdfQuads]: parseToQuads

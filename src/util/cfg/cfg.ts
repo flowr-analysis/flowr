@@ -16,7 +16,8 @@ import {
 	RFalse,
 	RoleInParent,
 	RTrue
-} from '../../r-bridge'
+	,
+	EmptyArgument } from '../../r-bridge'
 import type { MergeableRecord } from '../objects'
 import { setEquals } from '../set'
 import type { QuadSerializationConfiguration } from '../quads'
@@ -370,7 +371,7 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 	return { graph: graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [fn.info.id], entryPoints: [fn.info.id] }
 }
 
-function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | undefined)[]): ControlFlowInformation {
+function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation {
 	const graph = name.graph
 	const info = { graph, breaks: [...name.breaks], nexts: [...name.nexts], returns: [...name.returns], exitPoints: [call.info.id + '-exit'], entryPoints: [call.info.id] }
 
@@ -391,7 +392,7 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 	let lastArgExits: NodeId[] = [call.info.id + '-name']
 
 	for(const arg of args) {
-		if(arg === undefined) {
+		if(arg === EmptyArgument) {
 			continue
 		}
 		graph.merge(arg.graph)

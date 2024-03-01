@@ -5,6 +5,9 @@ import type {
 	RFunctionCall, RNodeWithParent, RSymbol
 } from '../../../r-bridge'
 import {
+	EmptyArgument
+} from '../../../r-bridge'
+import {
 	foldAst, isSpecialSymbol
 } from '../../../r-bridge'
 import type { SlicingCriteriaFilter } from '../collect-all'
@@ -52,8 +55,8 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 	foldExprList:   (_: unknown, a: NodeId[][]) => a.flat(),
 	functions:      {
 		foldFunctionDefinition: (_: unknown, a: NodeId[][], b: NodeId[]) => [...a.flat(),...b],
-		foldFunctionCall:       (c: RFunctionCall, a: NodeId[], b: (NodeId[] | undefined)[]) => {
-			const args = b.flatMap(b => b !== undefined ? b.flat() : [])
+		foldFunctionCall:       (c: RFunctionCall, a: NodeId[], b: (NodeId[] | typeof EmptyArgument)[]) => {
+			const args = b.flatMap(b => b !== EmptyArgument ? b.flat() : [])
 			if(c.flavor === 'named') {
 				return c.functionName.content === 'library' ? args.slice(1) : args
 			} else {

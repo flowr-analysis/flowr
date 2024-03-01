@@ -1,10 +1,11 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
+import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
 import { define, popLocalEnvironment, pushLocalEnvironment } from '../../../../../src/dataflow/common/environments'
-import { UnnamedArgumentPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/argument'
 import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/v1/internal/process/functions/function-call'
 import { LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
+import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
+import { unnamedArgument } from '../../../_helper/environment-builder'
 import { label } from '../../../_helper/label'
 
 describe('Function Call', withShell(shell => {
@@ -23,98 +24,77 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithFirstI
 		)
-		assertDataflow(label('Calling function a', 'local-left-assignment', 'unnamed-arguments', 'normal', 'name-normal'), shell, 'i <- 4; a <- function(x) { x }\na(i)',
-			new DataflowGraph()
-				.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
-				.addVertex({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
-				.addVertex({ tag: 'use', id: '11', name: 'i', environment: envWithIA })
-				.addVertex({ tag: 'use', id: '12', name: `${UnnamedArgumentPrefix}12`, environment: envWithIA })
-				.addVertex({
-					tag:         'function-call',
-					id:          '13',
-					name:        'a',
-					environment: envWithIA,
-					args:        [{
-						nodeId: '12', name: `${UnnamedArgumentPrefix}12`, scope: LocalScope, used: 'always'
-					}] })
-				.addVertex({
-					tag:         'function-definition',
-					id:          '8',
-					name:        '8',
-					scope:       LocalScope,
-					exitPoints:  [ '6' ],
-					environment: popLocalEnvironment(envWithXParamDefined),
-					subflow:     {
-						out:               [],
-						in:                [],
-						unknownReferences: [],
-						scope:             LocalScope,
-						environments:      envWithXParamDefined,
-						graph:             new Set(['4', '6']),
-					} })
-				.addVertex({ tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
-				.addVertex({ tag: 'use', id: '6', name: 'x', environment: envWithXParamDefined }, false)
-				.addEdge('6', '4', EdgeType.Reads, 'always')
-				.addEdge('11', '0', EdgeType.Reads, 'always')
-				.addEdge('3', '8', EdgeType.DefinedBy, 'always')
-				.addEdge('13', '12', EdgeType.Argument, 'always')
-				.addEdge('12', '11', EdgeType.Reads, 'always')
-				.addEdge('13', '3', EdgeType.Reads, 'always')
-				.addEdge('13', '8', EdgeType.Calls, 'always')
-				.addEdge('13', '6', EdgeType.Returns, 'always')
-				.addEdge('12', '4', EdgeType.DefinesOnCall, 'always')
+		assertDataflow(label('Calling function a', ['local-left-assignment', 'unnamed-arguments', 'call-normal', 'name-normal']), shell, 'i <- 4; a <- function(x) { x }\na(i)',
+			emptyGraph()
+				.defineVariable('0', 'i')
+				.defineVariable('3', 'a', LocalScope, { environment: envWithFirstI })
+				.use('11', 'i', { environment: envWithIA })
+				.use('12', unnamedArgument('12'), { environment: envWithIA })
+				.call('13', 'a', [{
+					nodeId: '12', name: unnamedArgument('12'), scope: LocalScope, used: 'always'
+				}],
+				{ environment: envWithIA })
+				.defineFunction('8', '8', ['6'], {
+					out:               [],
+					in:                [],
+					unknownReferences: [],
+					scope:             LocalScope,
+					environments:      envWithXParamDefined,
+					graph:             new Set(['4', '6']),
+				}, { environment: popLocalEnvironment(envWithXParamDefined) })
+				.defineVariable('4', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+				.use('6', 'x', { environment: envWithXParamDefined }, false)
+				.reads('6', '4')
+				.reads('11', '0')
+				.definedBy('3', '8')
+				.argument('13', '12')
+				.reads('12', '11')
+				.reads('13', '3')
+				.calls('13', '8')
+				.returns('13', '6')
+				.definesOnCall('12', '4')
 		)
 		const envWithIAB = define(
 			{ nodeId: '10', scope: 'local', name: 'b', used: 'always', kind: 'variable', definedAt: '12' },
 			LocalScope,
 			envWithIA
 		)
-		assertDataflow(label('Calling function a with an indirection', 'local-left-assignment', 'unnamed-arguments', 'normal', 'name-normal'), 
-			shell, 
+		assertDataflow(label('Calling function a with an indirection', ['local-left-assignment', 'unnamed-arguments', 'call-normal', 'name-normal']),
+			shell,
 			'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
-			new DataflowGraph()
-				.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
-				.addVertex({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
-				.addVertex({ tag: 'variable-definition', id: '10', name: 'b', scope: LocalScope, environment: envWithIA })
-				.addVertex({ tag: 'use', id: '11', name: 'a', scope: LocalScope, environment: envWithIA })
-				.addVertex({ tag: 'use', id: '14', name: 'i', environment: envWithIAB })
-				.addVertex({ tag: 'use', id: '15', name: `${UnnamedArgumentPrefix}15`, environment: envWithIAB })
-				.addVertex({
-					tag:         'function-call',
-					id:          '16',
-					name:        'b',
-					environment: envWithIAB,
-					args:        [{
-						nodeId: '15', name: `${UnnamedArgumentPrefix}15`, scope: LocalScope, used: 'always'
-					}] })
-				.addVertex({
-					tag:         'function-definition',
-					id:          '8',
-					name:        '8',
-					scope:       LocalScope,
-					exitPoints:  [ '6' ],
-					environment: popLocalEnvironment(envWithXParamDefined),
-					subflow:     {
-						out:               [],
-						in:                [],
-						unknownReferences: [],
-						scope:             LocalScope,
-						environments:      envWithXParamDefined,
-						graph:             new Set(['4', '6'])
-					} })
-				.addVertex({ tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
-				.addVertex({ tag: 'use', id: '6', name: 'x', environment: envWithXParamDefined }, false)
-				.addEdge('6', '4', EdgeType.Reads, 'always')
-				.addEdge('14', '0', EdgeType.Reads, 'always')
-				.addEdge('3', '8', EdgeType.DefinedBy, 'always')
-				.addEdge('10', '11', EdgeType.DefinedBy, 'always')
-				.addEdge('11', '3', EdgeType.Reads, 'always')
-				.addEdge('16', '15', EdgeType.Argument, 'always')
-				.addEdge('15', '14', EdgeType.Reads, 'always')
-				.addEdge('16', '10', EdgeType.Reads, 'always')
-				.addEdge('16', '8', EdgeType.Calls, 'always')
-				.addEdge('16', '6', EdgeType.Returns, 'always')
-				.addEdge('15', '4', EdgeType.DefinesOnCall, 'always')
+			emptyGraph()
+				.defineVariable('0', 'i')
+				.defineVariable('3', 'a', LocalScope, { environment: envWithFirstI })
+				.defineVariable('10', 'b', LocalScope, { environment: envWithIA })
+				.use('11', 'a', { environment: envWithIA })
+				.use('14', 'i', { environment: envWithIAB })
+				.use('15', unnamedArgument('15'), { environment: envWithIAB })
+				.call('16', 'b', [{
+					nodeId: '15', name: unnamedArgument('15'), scope: LocalScope, used: 'always'
+				}],
+				{ environment: envWithIAB })
+				.defineFunction('8', '8', ['6'], {
+					out:               [],
+					in:                [],
+					unknownReferences: [],
+					scope:             LocalScope,
+					environments:      envWithXParamDefined,
+					graph:             new Set(['4', '6'])
+				},
+				{ environment: popLocalEnvironment(envWithXParamDefined) })
+				.defineVariable('4', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+				.use('6', 'x', { environment: envWithXParamDefined }, false)
+				.reads('6', '4')
+				.reads('14', '0')
+				.definedBy('3', '8')
+				.definedBy('10', '11')
+				.reads('11', '3')
+				.argument('16', '15')
+				.reads('15', '14')
+				.reads('16', '10')
+				.calls('16', '8')
+				.returns('16', '6')
+				.definesOnCall('15', '4')
 		)
 		const envWithXConstDefined = define(
 			{ nodeId: '4', scope: 'local', name: 'x', used: 'always', kind: 'parameter', definedAt: '5' },
@@ -135,55 +115,46 @@ describe('Function Call', withShell(shell => {
 			LocalScope,
 			envWithFirstI
 		)
-		assertDataflow(label('Calling with a constant function', 'unnamed-arguments', 'normal', 'name-normal'), shell, `i <- 4
+		assertDataflow(label('Calling with a constant function', ['unnamed-arguments', 'call-normal', 'name-normal']), shell, `i <- 4
 a <- function(x) { x <- x; x <- 3; 1 }
-a(i)`, new DataflowGraph()
-			.addVertex({ tag: 'variable-definition', id: '0', name: 'i', scope: LocalScope })
-			.addVertex({ tag: 'variable-definition', id: '3', name: 'a', scope: LocalScope, environment: envWithFirstI })
-			.addVertex({ tag: 'use', id: '17', name: 'i', environment: envWithIAndLargeA })
-			.addVertex({ tag: 'use', id: '18', name: `${UnnamedArgumentPrefix}18`, environment: envWithIAndLargeA })
-			.addEdge('17', '0', EdgeType.Reads, 'always')
-			.addVertex({
-				tag:         'function-call',
-				id:          '19',
-				name:        'a',
-				environment: envWithIAndLargeA,
-				args:        [{
-					nodeId: '18', name: `${UnnamedArgumentPrefix}18`, scope: LocalScope, used: 'always'
-				}] })
-			.addVertex({
-				tag:         'function-definition',
-				id:          '14',
-				name:        '14',
-				environment: initializeCleanEnvironments(),
-				scope:       LocalScope,
-				exitPoints:  [ '12' ],
-				subflow:     {
-					out:               [],
-					in:                [],
-					unknownReferences: [],
-					scope:             LocalScope,
-					environments:      envWithLastXDefined,
-					graph:             new Set(['4', '6', '7', '9'])
-				} })
-			.addVertex({ tag: 'variable-definition', id: '4', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
-			.addVertex({ tag: 'variable-definition', id: '6', name: 'x', scope: LocalScope, environment: envWithXConstDefined }, false)
-			.addVertex({ tag: 'variable-definition', id: '9', name: 'x', scope: LocalScope, environment: envWithXDefinedForFunc }, false)
-			.addVertex({ tag: 'use', id: '7', name: 'x', environment: envWithXConstDefined }, false)
-			.addVertex({ tag: 'exit-point', id: '12', name: '1', environment: envWithLastXDefined }, false)
-			.addEdge('6', '7', EdgeType.DefinedBy, 'always')
-			.addEdge('7', '4', EdgeType.Reads, 'always')
-			.addEdge('6', '9', EdgeType.SameDefDef, 'always')
-			.addEdge('4', '9', EdgeType.SameDefDef, 'always')
-			.addEdge('4', '6', EdgeType.SameDefDef, 'always')
+a(i)`, emptyGraph()
+			.defineVariable('0', 'i')
+			.defineVariable('3', 'a', LocalScope, { environment: envWithFirstI })
+			.use('17', 'i', { environment: envWithIAndLargeA })
+			.use('18', unnamedArgument('18'), { environment: envWithIAndLargeA })
+			.reads('17', '0')
+			.call('19', 'a', [{
+				nodeId: '18', name: unnamedArgument('18'), scope: LocalScope, used: 'always'
+			}],
+			{ environment: envWithIAndLargeA })
+			.defineFunction('14', '14', ['12'], {
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				scope:             LocalScope,
+				environments:      envWithLastXDefined,
+				graph:             new Set(['4', '6', '7', '9'])
+			},
+			{ environment: initializeCleanEnvironments() }
+			)
+			.defineVariable('4', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+			.defineVariable('6', 'x', LocalScope, { environment: envWithXConstDefined }, false)
+			.defineVariable('9', 'x', LocalScope, { environment: envWithXDefinedForFunc }, false)
+			.use('7', 'x', { environment: envWithXConstDefined }, false)
+			.exit('12', '1', envWithLastXDefined, {}, false)
+			.definedBy('6', '7')
+			.reads('7', '4')
+			.sameDef('6', '9')
+			.sameDef('4', '9')
+			.sameDef('4', '6')
 
-			.addEdge('3', '14', EdgeType.DefinedBy, 'always')
-			.addEdge('19', '18', EdgeType.Argument, 'always')
-			.addEdge('18', '17', EdgeType.Reads, 'always')
-			.addEdge('19', '3', EdgeType.Reads, 'always')
-			.addEdge('19', '14', EdgeType.Calls, 'always')
-			.addEdge('19', '12', EdgeType.Returns, 'always')
-			.addEdge('18', '4', EdgeType.DefinesOnCall, 'always')
+			.definedBy('3', '14')
+			.argument('19', '18')
+			.reads('18', '17')
+			.reads('19', '3')
+			.calls('19', '14')
+			.returns('19', '12')
+			.definesOnCall('18', '4')
 		)
 	})
 
@@ -193,44 +164,32 @@ a(i)`, new DataflowGraph()
 			LocalScope,
 			pushLocalEnvironment(initializeCleanEnvironments())
 		)
-		const outGraph = new DataflowGraph()
-			.addVertex({
-				tag:  'function-call',
-				id:   '9',
-				name: `${UnnamedFunctionCallPrefix}9`,
-				args: [
-					{ nodeId: '8', name: `${UnnamedArgumentPrefix}8`, scope: LocalScope, used: 'always' }
-				]
-			})
-			.addVertex({
-				tag:         'function-definition',
-				id:          '6',
-				name:        '6',
-				environment: initializeCleanEnvironments(),
-				scope:       LocalScope,
-				exitPoints:  [ '4' ],
-				subflow:     {
-					out:               [],
-					in:                [],
-					unknownReferences: [],
-					scope:             LocalScope,
-					environments:      envWithXParameter,
-					graph:             new Set(['0', '2'])
-				}
-			})
-			.addVertex({ tag: 'variable-definition', id: '0', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
-			.addVertex({ tag: 'use', id: '2', name: 'x', environment: envWithXParameter }, false)
-			.addVertex({ tag: 'exit-point', id: '4', name: '+', environment: envWithXParameter }, false)
-			.addEdge('2', '4', EdgeType.Relates, 'always')
-			.addEdge('2', '0', EdgeType.Reads, 'always')
+		const outGraph = emptyGraph()
+			.call('9', `${UnnamedFunctionCallPrefix}9`,[
+				{ nodeId: '8', name: unnamedArgument('8'), scope: LocalScope, used: 'always' }
+			])
+			.defineFunction('6', '6', ['4'], {
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				scope:             LocalScope,
+				environments:      envWithXParameter,
+				graph:             new Set(['0', '2'])
+			},
+			{ environment: initializeCleanEnvironments() })
+			.defineVariable('0', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+			.use('2', 'x', { environment: envWithXParameter }, false)
+			.exit('4', '+', envWithXParameter , {}, false)
+			.relates('2', '4')
+			.reads('2', '0')
 
-			.addVertex({ tag: 'use', id: '8', name: `${UnnamedArgumentPrefix}8` })
-			.addEdge('9', '8', EdgeType.Argument, 'always')
-			.addEdge('9', '6', EdgeType.Calls, 'always')
-			.addEdge('9', '4', EdgeType.Returns, 'always')
-			.addEdge('8', '0', EdgeType.DefinesOnCall, 'always')
+			.use('8', unnamedArgument('8'))
+			.argument('9', '8')
+			.calls('9', '6')
+			.returns('9', '4')
+			.definesOnCall('8', '0')
 
-		assertDataflow(label('Calling with constant argument using lambda'), shell, '(\\(x) { x + 1 })(2)',
+		assertDataflow('Calling with constant argument using lambda', shell, '(\\(x) { x + 1 })(2)',
 			outGraph,
 			{ minRVersion: MIN_VERSION_LAMBDA }
 		)
@@ -246,142 +205,98 @@ a(i)`, new DataflowGraph()
 
 		assertDataflow('Calling a function which returns another', shell, `a <- function() { function() { 42 } }
 a()()`,
-		new DataflowGraph()
-			.addVertex({
-				tag:         'function-call',
-				id:          '9',
-				name:        `${UnnamedFunctionCallPrefix}9`,
-				environment: envWithADefined,
-				args:        []
-			})
-			.addVertex({
-				tag:         'function-call',
-				id:          '8',
-				name:        'a',
-				environment: envWithADefined,
-				args:        []
-			})
-			.addVertex({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
-			.addVertex({
-				tag:         'function-definition',
-				id:          '5',
-				name:        '5',
-				environment: initializeCleanEnvironments(),
-				scope:       LocalScope,
-				exitPoints:  [ '3' ],
-				subflow:     {
-					out:               [],
-					in:                [],
-					unknownReferences: [],
-					scope:             LocalScope,
-					environments:      pushLocalEnvironment(initializeCleanEnvironments()),
-					graph:             new Set(['3'])
-
-				}
-			})
-			.addVertex({
-				tag:         'function-definition',
-				id:          '3',
-				name:        '3',
-				environment: pushLocalEnvironment(initializeCleanEnvironments()),
-				scope:       LocalScope,
-				exitPoints:  [ '1' ],
-				subflow:     {
-					out:               [],
-					in:                [],
-					unknownReferences: [],
-					scope:             LocalScope,
-					environments:      pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
-					graph:             new Set()
-				}
-			}, false)
-
-			.addVertex({ tag: 'exit-point', id: '1', name: '42', environment: pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())) }, false)
-
-
-			.addEdge('9', '8', EdgeType.Calls, 'always')
-			.addEdge('8', '0', EdgeType.Reads, 'always')
-			.addEdge('0', '5', EdgeType.DefinedBy, 'always')
-			.addEdge('8', '5', EdgeType.Calls, 'always')
-			.addEdge('8', '3', EdgeType.Returns, 'always')
-			.addEdge('9', '3', EdgeType.Calls, 'always')
-			.addEdge('9', '1', EdgeType.Returns, 'always')
+		emptyGraph()
+			.call('9', `${UnnamedFunctionCallPrefix}9`, [],
+				{ environment: envWithADefined })
+			.call('8', 'a', [],
+				{ environment: envWithADefined })
+			.defineVariable('0', 'a')
+			.defineFunction('5', '5', ['3'], {
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				scope:             LocalScope,
+				environments:      pushLocalEnvironment(initializeCleanEnvironments()),
+				graph:             new Set(['3'])
+			},
+			{ environment: initializeCleanEnvironments() }
+			)
+			.defineFunction('3', '3', ['1'], {
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				scope:             LocalScope,
+				environments:      pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
+				graph:             new Set()
+			},
+			{ environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+			.exit('1', '42', pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())) , {}, false)
+			.calls('9', '8')
+			.reads('8', '0')
+			.definedBy('0', '5')
+			.calls('8', '5')
+			.returns('8', '3')
+			.calls('9', '3')
+			.returns('9', '1')
 		)
 	})
 
 	describe('Argument which is expression', () => {
 		assertDataflow('Calling with 1 + x', shell, 'foo(1 + x)',
-			new DataflowGraph()
-				.addVertex({ tag: 'function-call', id: '5', name: 'foo', environment: initializeCleanEnvironments(), args: [{ nodeId: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, used: 'always' }] })
-				.addVertex({ tag: 'use', id: '4', name: `${UnnamedArgumentPrefix}4` })
-				.addVertex({ tag: 'use', id: '2', name: 'x' })
-				.addEdge('4', '2', EdgeType.Reads, 'always')
-				.addEdge('5', '4', EdgeType.Argument, 'always')
+			emptyGraph()
+				.call('5', 'foo', [{ nodeId: '4', name: unnamedArgument('4'), scope: LocalScope, used: 'always' }], { environment: initializeCleanEnvironments() })
+				.use('4', unnamedArgument('4'))
+				.use('2', 'x')
+				.reads('4', '2')
+				.argument('5', '4')
 		)
 	})
 
 	describe('Argument which is anonymous function call', () => {
 		assertDataflow('Calling with a constant function', shell, 'f(function() { 3 })',
-			new DataflowGraph()
-				.addVertex({ tag: 'function-call', id: '5', name: 'f', environment: initializeCleanEnvironments(), args: [{ nodeId: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, used: 'always' }] })
-				.addVertex({ tag: 'use', id: '4', name: `${UnnamedArgumentPrefix}4` })
-				.addVertex({
-					tag:        'function-definition',
-					id:         '3',
-					name:       '3',
-					scope:      LocalScope,
-					exitPoints: [ '1' ],
-					subflow:    {
-						out:               [],
-						in:                [],
-						unknownReferences: [],
-						scope:             LocalScope,
-						environments:      pushLocalEnvironment(initializeCleanEnvironments()),
-						graph:             new Set()
-					} })
-				.addVertex({ tag: 'exit-point', id: '1', name: '3', environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
-
-				.addEdge('4', '3', EdgeType.Reads, 'always')
-				.addEdge('5', '4', EdgeType.Argument, 'always')
+			emptyGraph()
+				.call('5', 'f', [{ nodeId: '4', name: unnamedArgument('4'), scope: LocalScope, used: 'always' }], { environment: initializeCleanEnvironments() })
+				.use('4', unnamedArgument('4'))
+				.defineFunction('3', '3', ['1'], {
+					out:               [],
+					in:                [],
+					unknownReferences: [],
+					scope:             LocalScope,
+					environments:      pushLocalEnvironment(initializeCleanEnvironments()),
+					graph:             new Set()
+				})
+				.exit('1', '3', pushLocalEnvironment(initializeCleanEnvironments()) , {}, false)
+				.reads('4', '3')
+				.argument('5', '4')
 		)
 	})
 
 	describe('Multiple out refs in arguments', () => {
 		assertDataflow('Calling \'seq\'', shell, 'seq(1, length(pkgnames), by = stepsize)',
-			new DataflowGraph()
-				.addVertex({
-					tag:         'function-call',
-					id:          '11',
-					name:        'seq',
-					environment: initializeCleanEnvironments(),
-					args:        [
-						{ nodeId: '2', name: `${UnnamedArgumentPrefix}2`, scope: LocalScope, used: 'always' },
-						{ nodeId: '7', name: `${UnnamedArgumentPrefix}7`, scope: LocalScope, used: 'always' },
-						['by', { nodeId: '10', name: 'by', scope: LocalScope, used: 'always' }],
-					]
-				})
-				.addVertex({ tag: 'use', id: '2', name: `${UnnamedArgumentPrefix}2` })
-				.addVertex({ tag: 'use', id: '7', name: `${UnnamedArgumentPrefix}7` })
-				.addVertex({ tag: 'use', id: '10', name: 'by' })
-				.addEdge('11', '2', EdgeType.Argument, 'always')
-				.addEdge('11', '7', EdgeType.Argument, 'always')
-				.addEdge('11', '10', EdgeType.Argument, 'always')
-				.addVertex({ tag: 'use', id: '9', name: 'stepsize' })
-				.addEdge('10', '9', EdgeType.Reads, 'always')
-				.addVertex({
-					tag:         'function-call',
-					id:          '6',
-					name:        'length',
-					environment: initializeCleanEnvironments(),
-					args:        [
-						{ nodeId: '5', name: `${UnnamedArgumentPrefix}5`, scope: LocalScope, used: 'always' }
-					]
-				})
-				.addEdge('7', '6', EdgeType.Reads, 'always')
-				.addVertex({ tag: 'use', id: '5', name: `${UnnamedArgumentPrefix}5` })
-				.addEdge('6', '5', EdgeType.Argument, 'always')
-				.addVertex({ tag: 'use', id: '4', name: 'pkgnames' })
-				.addEdge('5', '4', EdgeType.Reads, 'always')
+			emptyGraph()
+				.call('11', 'seq', [
+					{ nodeId: '2', name: unnamedArgument('2'), scope: LocalScope, used: 'always' },
+					{ nodeId: '7', name: unnamedArgument('7'), scope: LocalScope, used: 'always' },
+					['by', { nodeId: '10', name: 'by', scope: LocalScope, used: 'always' }],
+				],
+				{ environment: initializeCleanEnvironments() })
+				.use('2', unnamedArgument('2'))
+				.use('7', unnamedArgument('7'))
+				.use('10', 'by')
+				.argument('11', '2')
+				.argument('11', '7')
+				.argument('11', '10')
+				.use('9', 'stepsize' )
+				.reads('10', '9')
+				.call('6', 'length', [
+					{ nodeId: '5', name: unnamedArgument('5'), scope: LocalScope, used: 'always' }
+				],
+				{ environment: initializeCleanEnvironments() })
+				.reads('7', '6')
+				.use('5', unnamedArgument('5'))
+				.argument('6', '5')
+				.use('4', 'pkgnames' )
+				.reads('5', '4')
 
 		)
 	})
@@ -400,42 +315,24 @@ a()()`,
 		)
 
 		assertDataflow('Late binding of y', shell, 'a <- function() { y }\ny <- 12\na()',
-			new DataflowGraph()
-				.addVertex({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
-				.addVertex({
-					tag:         'variable-definition',
-					id:          '5',
-					name:        'y',
-					scope:       LocalScope,
-					environment: defWithA })
-				.addVertex({
-					tag:         'function-call',
-					id:          '9',
-					name:        'a',
-					environment: defWithAY,
-					args:        []
+			emptyGraph()
+				.defineVariable('0', 'a')
+				.defineVariable('5', 'y', LocalScope, { environment: defWithA })
+				.call('9', 'a', [], { environment: defWithAY })
+				.defineFunction('3', '3', ['1'], {
+					out:               [],
+					in:                [{ nodeId: '1', name: 'y', scope: LocalScope, used: 'always' }],
+					unknownReferences: [],
+					scope:             LocalScope,
+					environments:      innerEnv,
+					graph:             new Set(['1'])
 				})
-				.addVertex({
-					tag:        'function-definition',
-					id:         '3',
-					name:       '3',
-					scope:      LocalScope,
-					exitPoints: [ '1' ],
-					subflow:    {
-						out:               [],
-						in:                [{ nodeId: '1', name: 'y', scope: LocalScope, used: 'always' }],
-						unknownReferences: [],
-						scope:             LocalScope,
-						environments:      innerEnv,
-						graph:             new Set(['1'])
-					} })
-				.addVertex({ tag: 'use', id: '1', name: 'y', scope: LocalScope, environment: innerEnv }, false)
-
-				.addEdge('0', '3', EdgeType.DefinedBy, 'always')
-				.addEdge('9', '3', EdgeType.Calls, 'always')
-				.addEdge('9', '0', EdgeType.Reads, 'always')
-				.addEdge('9', '1', EdgeType.Returns, 'always')
-				.addEdge('9', '5', EdgeType.Reads, 'always')
+				.use('1', 'y', { environment: innerEnv }, false)
+				.definedBy('0', '3')
+				.calls('9', '3')
+				.reads('9', '0')
+				.returns('9', '1')
+				.reads('9', '5')
 		)
 	})
 
@@ -456,46 +353,33 @@ a()()`,
 			initializeCleanEnvironments()
 		)
 		assertDataflow('Not giving first parameter', shell, `a <- function(x=3,y) { y }
-a(,3)`, new DataflowGraph()
-			.addVertex({
-				tag:         'function-call',
-				id:          '13',
-				name:        'a',
-				environment: withADefined,
-				args:        [
-					'empty',
-					{ nodeId: '12', name: `${UnnamedArgumentPrefix}12`, scope: LocalScope, used: 'always' }
-				]
-			})
-			.addVertex({ tag: 'variable-definition', id: '0', name: 'a', scope: LocalScope })
-			.addVertex({
-				tag:         'function-definition',
-				id:          '8',
-				scope:       LocalScope,
-				name:        '8',
-				exitPoints:  [ '6' ],
-				environment: popLocalEnvironment(withXYParameter),
-				subflow:     {
-					out:               [],
-					in:                [],
-					unknownReferences: [],
-					scope:             LocalScope,
-					environments:      withXYParameter,
-					graph:             new Set(['1', '4', '6'])
-				}
-			})
-			.addVertex({ tag: 'variable-definition', id: '1', name: 'x', scope: LocalScope, environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
-			.addVertex({ tag: 'variable-definition', id: '4', name: 'y', scope: LocalScope, environment: withXParameter }, false)
-			.addVertex({ tag: 'use', id: '6', name: 'y', scope: LocalScope, environment: withXYParameter }, false)
-			.addEdge('6', '4', EdgeType.Reads, 'always')
-
-			.addVertex({ tag: 'use', id: '12', name: `${UnnamedArgumentPrefix}12`, scope: LocalScope, environment: withADefined })
-			.addEdge('13', '0', EdgeType.Reads, 'always')
-			.addEdge('13', '8', EdgeType.Calls, 'always')
-			.addEdge('0', '8', EdgeType.DefinedBy, 'always')
-			.addEdge('13', '12', EdgeType.Argument, 'always')
-			.addEdge('13', '6', EdgeType.Returns, 'always')
-			.addEdge('12', '4', EdgeType.DefinesOnCall, 'always')
+a(,3)`, emptyGraph()
+			.call('13', 'a', [
+				'empty',
+				{ nodeId: '12', name: unnamedArgument('12'), scope: LocalScope, used: 'always' }
+			],
+			{ environment: withADefined })
+			.defineVariable('0', 'a')
+			.defineFunction('8', '8', ['6'], {
+				out:               [],
+				in:                [],
+				unknownReferences: [],
+				scope:             LocalScope,
+				environments:      withXYParameter,
+				graph:             new Set(['1', '4', '6'])
+			},
+			{ environment: popLocalEnvironment(withXYParameter) })
+			.defineVariable('1', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+			.defineVariable('4', 'y', LocalScope, { environment: withXParameter }, false)
+			.use('6', 'y', { environment: withXYParameter }, false)
+			.reads('6', '4')
+			.use('12', unnamedArgument('12'), { environment: withADefined })
+			.reads('13', '0')
+			.calls('13', '8')
+			.definedBy('0', '8')
+			.argument('13', '12')
+			.returns('13', '6')
+			.definesOnCall('12', '4')
 		)
 	})
 	describe('Reuse parameters in call', () => {
@@ -504,57 +388,31 @@ a(,3)`, new DataflowGraph()
 			LocalScope,
 			initializeCleanEnvironments()
 		)
-		assertDataflow('Not giving first argument', shell, 'a(x=3, x)', new DataflowGraph()
-			.addVertex({
-				tag:  'function-call',
-				id:   '6',
-				name: 'a',
-				args: [
-					['x', { nodeId: '3', name: 'x', scope: LocalScope, used: 'always' }],
-					{ nodeId: '5', name: `${UnnamedArgumentPrefix}5`, scope: LocalScope, used: 'always' },
-				]
-			})
-			.addVertex({ tag: 'use', id: '3', name: 'x', scope: LocalScope })
-			.addVertex({
-				tag:         'use',
-				id:          '5',
-				name:        `${UnnamedArgumentPrefix}5`,
-				scope:       LocalScope,
-				environment: envWithX
-			})
-			.addVertex({ tag: 'use', id: '4', name: 'x', environment: envWithX })
-			.addEdge('6', '3', EdgeType.Argument, 'always')
-			.addEdge('6', '5', EdgeType.Argument, 'always')
-			.addEdge('5', '4', EdgeType.Reads, 'always')
-			.addEdge('4', '3', EdgeType.Reads, 'always')
+		assertDataflow('Not giving first argument', shell, 'a(x=3, x)', emptyGraph()
+			.call('6', 'a', [
+				['x', { nodeId: '3', name: 'x', scope: LocalScope, used: 'always' }],
+				{ nodeId: '5', name: unnamedArgument('5'), scope: LocalScope, used: 'always' },
+			])
+			.use('3', 'x')
+			.use('5', unnamedArgument('5'), { environment: envWithX })
+			.use('4', 'x', { environment: envWithX })
+			.argument('6', '3')
+			.argument('6', '5')
+			.reads('5', '4')
+			.reads('4', '3')
 		)
 	})
 	describe('Define in parameters', () => {
-		assertDataflow('Support assignments in function calls', shell, 'foo(x <- 3); x', new DataflowGraph()
-			.addVertex({
-				tag:   'function-call',
-				id:    '5',
-				name:  'foo',
-				scope: LocalScope,
-				args:  [
-					{ nodeId: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope, used: 'always' }
-				]
-			})
-			.addVertex({ tag: 'use', id: '4', name: `${UnnamedArgumentPrefix}4`, scope: LocalScope })
-			.addVertex({ tag: 'variable-definition', id: '1', name: 'x', scope: LocalScope })
-			.addVertex({
-				tag:         'use',
-				id:          '6',
-				name:        'x',
-				scope:       LocalScope,
-				environment: define(
-					{ nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '3' },
-					LocalScope,
-					initializeCleanEnvironments()
-				) })
-			.addEdge('5', '4', EdgeType.Argument, 'always')
-			.addEdge('4', '1', EdgeType.Reads, 'always')
-			.addEdge('6', '1', EdgeType.Reads, 'always')
+		assertDataflow('Support assignments in function calls', shell, 'foo(x <- 3); x', emptyGraph()
+			.call('5', 'foo', [
+				{ nodeId: '4', name: unnamedArgument('4'), scope: LocalScope, used: 'always' }
+			])
+			.use('4', unnamedArgument('4'))
+			.defineVariable('1', 'x')
+			.use('6', 'x', { environment: define({ nodeId: '1', scope: 'local', name: 'x', used: 'always', kind: 'variable', definedAt: '3' }, LocalScope, initializeCleanEnvironments()) })
+			.argument('5', '4')
+			.reads('4', '1')
+			.reads('6', '1')
 		)
 	})
 }))

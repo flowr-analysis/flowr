@@ -71,10 +71,12 @@ export interface IPipelineStep<
 	// eslint-disable-next-line -- by default, we assume nothing about the function shape
 	Fn extends StepProcessingFunction = (...args: any[]) => any,
 > extends MergeableRecord, IPipelineStepOrder<Name> {
+	/** Human-readable name of this step */
+	readonly humanReadableName: string
 	/** Human-readable description of this step */
-	readonly description: string
+	readonly description:       string
 	/** The main processor that essentially performs the logic of this step */
-	readonly processor:   (...input: Parameters<Fn>) => ReturnType<Fn>
+	readonly processor:         (...input: Parameters<Fn>) => ReturnType<Fn>
 	/**
 	 * How to visualize the results of the respective step to the user?
 	 */

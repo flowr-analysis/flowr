@@ -133,6 +133,8 @@ export class RShell {
 		this.log = log.getSubLogger({ name: this.options.sessionName })
 
 		this.session = new RShellSession(this.options, this.log)
+		// pre-attach the compiler and set default optimization level
+		this._sendCommand('compiler::setCompilerOptions(optimize=3)')
 		this.revive()
 	}
 

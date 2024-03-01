@@ -1,6 +1,7 @@
 import type { NoInfo, RNode } from '../model'
 import { RType } from '../type'
 import { assertUnreachable } from '../../../../../util/assert'
+import { EmptyArgument } from '../nodes'
 
 
 /** Return `true` to stop visiting from this node (i.e., do not continue to visit this node *and* the children) */
@@ -94,10 +95,10 @@ class NodeVisitor<OtherInfo = NoInfo> {
 		this.onExit?.(node)
 	}
 
-	visit(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined)[] | undefined | null): void {
+	visit(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined | typeof EmptyArgument)[] | undefined | null): void {
 		if(Array.isArray(nodes)) {
 			for(const node of nodes) {
-				if(node) {
+				if(node && node !== EmptyArgument) {
 					this.visitSingle(node)
 				}
 			}

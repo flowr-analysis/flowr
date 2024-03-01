@@ -15,7 +15,7 @@ type ExtractAllIds<T extends FlowrCapability, Filter = FlowrCapability> =
 
 type Capabilities = (typeof flowrCapabilities)['capabilities'][number]
 export type FlowrCapabilityId = ExtractAllIds<Capabilities>
-export type SupportedFlowrCapabilityId = ExtractAllIds<Capabilities, { readonly supported: 'partial' | 'fully' }>
+export type SupportedFlowrCapabilityId = ExtractAllIds<Capabilities, { readonly supported: 'partially' | 'fully' }>
 
 type PathToCapability = readonly number[]
 

@@ -20,7 +20,7 @@ export type TailOfArray<T extends unknown[]> = T extends [infer _, ...infer Rest
  * // => [[], [], [], []]
  * ```
  */
-export function splitArrayOn<T>(arr: T[], predicate: (elem: T) => boolean): T[][] {
+export function splitArrayOn<T>(arr: readonly T[], predicate: (elem: T) => boolean): T[][] {
 	const result: T[][] = []
 	let current: T[] = []
 	let fired = false

@@ -3,8 +3,8 @@
  * Yet, some constructs (like for-loops) require the combination of statements, they are included as well.
  * This will not include functions!
  */
-import { assertDataflow, withShell } from '../../../_helper/shell'
-import { DataflowGraph, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
+import { assertDataflow, sameForSteps, withShell } from '../../../_helper/shell'
+import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../../_helper/provider'
 import { appendEnvironments, define } from '../../../../../src/dataflow/common/environments'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/common/environments/scopes'
@@ -14,6 +14,7 @@ import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { unnamedArgument } from '../../../_helper/environment-builder'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import { OperatorDatabase } from '../../../../../src'
+import { LEGACY_STATIC_DATAFLOW, V2_STATIC_DATAFLOW } from '../../../../../src/core/steps/all/core/20-dataflow'
 
 describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {
@@ -29,13 +30,14 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			['Inf', 'inf-and-nan'],
 			['NaN', 'inf-and-nan']
 		] as [string, SupportedFlowrCapabilityId][]) {
-			assertDataflow(label(input, [id]), shell, input, new DataflowGraph())
+			assertDataflow(label(input, [id]), shell, input, emptyGraph())
 		}
 	})
 
 	assertDataflow(label('simple variable', ['name-normal']), shell,
-		'xylophone',
-		emptyGraph().use('0', 'xylophone')
+		'xylophone', sameForSteps([LEGACY_STATIC_DATAFLOW, V2_STATIC_DATAFLOW],
+			emptyGraph().use('0', 'xylophone')
+		)
 	)
 
 	describe('access', () => {

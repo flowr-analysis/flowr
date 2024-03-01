@@ -39,8 +39,8 @@ export const LEGACY_STATIC_DATAFLOW = {
 	}
 } as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof legacyProcessor>>
 
-function v2Processor() {
-	return v2DataflowGraph()
+function v2Processor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequest }) {
+	return v2DataflowGraph(input.request as RParseRequest, results.normalize as NormalizedAst)
 }
 
 export const V2_STATIC_DATAFLOW = {

@@ -24,7 +24,7 @@ import { processPipeOperation } from './internal/process/operators/pipe'
 import { LocalScope } from '../common/environments/scopes'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
-const processors: DataflowProcessors<any> = {
+export const processors: DataflowProcessors<any> = {
 	[RType.Number]:             processUninterestingLeaf,
 	[RType.String]:             processUninterestingLeaf,
 	[RType.Logical]:            processUninterestingLeaf,

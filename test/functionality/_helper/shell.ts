@@ -27,13 +27,14 @@ import { createPipeline } from '../../../src/core/steps/pipeline'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../src/core/steps/all/core/00-parse'
 import { NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
-import type { DESUGAR_NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
+import { DESUGAR_NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
 import type { DataflowGraph } from '../../../src/dataflow/v1'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
 import { SteppingSlicer } from '../../../src/core/stepping-slicer'
 import { LAST_STEP } from '../../../src/core/steps/steps'
 import type { TestLabel } from './label'
 import { decorateLabelContext } from './label'
+import { V2_STATIC_DATAFLOW } from '../../../src/core/steps/all/core/20-dataflow'
 import { LEGACY_STATIC_DATAFLOW } from '../../../src/core/steps/all/core/20-dataflow'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
@@ -136,7 +137,7 @@ export async function ensureConfig(shell: RShell, test: Mocha.Context, userConfi
 /**
  * Comfort for {@link assertAst} to run the same test for multiple steps
  */
-export function sameForSteps<T>(steps: (typeof NORMALIZE | typeof DESUGAR_NORMALIZE)[], wanted: T): { step: typeof NORMALIZE | typeof DESUGAR_NORMALIZE, wanted: T }[] {
+export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T }[] {
 	return steps.map(step => ({ step, wanted }))
 }
 
@@ -185,32 +186,78 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 	})
 }
 
-export function assertDataflow(name: string | TestLabel, shell: RShell, input: string, expected: DataflowGraph, userConfig?: Partial<TestConfiguration>, startIndexForDeterministicIds = 0): void {
+export function assertDataflow(
+	name: string | TestLabel,
+	shell: RShell,
+	input: string,
+	expected: DataflowGraph | { step: typeof LEGACY_STATIC_DATAFLOW | typeof V2_STATIC_DATAFLOW, wanted: DataflowGraph }[],
+	userConfig?: Partial<TestConfiguration>,
+	startIndexForDeterministicIds = 0
+): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow'])
-	it(`${effectiveName} (input: ${JSON.stringify(input)})`, async function() {
-		await ensureConfig(shell, this, userConfig)
+	// TODO: remove non-array version after transition
+	if(!Array.isArray(expected)) {
+		it(`${effectiveName} (input: ${JSON.stringify(input)})`, async function() {
+			await ensureConfig(shell, this, userConfig)
 
-		const info = await new PipelineExecutor(createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW), {
-			shell,
-			request: requestFromInput(input),
-			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
-		}).allRemainingSteps()
+			const info = await new PipelineExecutor(createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW), {
+				shell,
+				request: requestFromInput(input),
+				getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
+			}).allRemainingSteps()
 
-		const report: DifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got' })
-		// with the try catch the diff graph is not calculated if everything is fine
-		try {
-			guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`)
-		} catch(e) {
-			const diff = diffGraphsToMermaidUrl(
-				{ label: 'expected', graph: expected },
-				{ label: 'got', graph: info.dataflow.graph },
-				info.normalize.idMap,
-				`%% ${input.replace(/\n/g, '\n%% ')}\n`
-			)
-			console.error('diff:\n', diff)
-			throw e
-		}
-	}).timeout('3min')
+			const report: DifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got' })
+			// with the try catch the diff graph is not calculated if everything is fine
+			try {
+				guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`)
+			} catch(e) {
+				const diff = diffGraphsToMermaidUrl(
+					{ label: 'expected', graph: expected },
+					{ label: 'got', graph: info.dataflow.graph },
+					info.normalize.idMap,
+					`%% ${input.replace(/\n/g, '\n%% ')}\n`
+				)
+				console.error('diff:\n', diff)
+				throw e
+			}
+		}).timeout('3min')
+	} else {
+		describe(`${effectiveName} (input: ${JSON.stringify(input)})`, () => {
+			for(const { step, wanted } of expected) {
+				it(`${step.humanReadableName}`, async function() {
+					await ensureConfig(shell, this, userConfig)
+
+					const info = await new PipelineExecutor(createPipeline(
+						PARSE_WITH_R_SHELL_STEP,
+						step.humanReadableName === V2_STATIC_DATAFLOW.humanReadableName ? DESUGAR_NORMALIZE : NORMALIZE, step
+					), {
+						shell,
+						request: requestFromInput(input),
+						getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
+					}).allRemainingSteps()
+
+					const report: DifferenceReport = wanted.equals(info.dataflow.graph, true, {
+						left:  'expected',
+						right: 'got'
+					})
+					// with the try catch the diff graph is not calculated if everything is fine
+					try {
+						guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`)
+					} catch(e) {
+						const diff = diffGraphsToMermaidUrl(
+							{ label: 'expected', graph: wanted },
+							{ label: 'got', graph: info.dataflow.graph },
+							info.normalize.idMap,
+							`%% ${input.replace(/\n/g, '\n%% ')}\n`
+						)
+						console.error('diff:\n', diff)
+						throw e
+					}
+
+				}).timeout('3min')
+			}
+		})
+	}
 }
 
 

@@ -23,20 +23,20 @@ foo(x, y)
 foo(x, 3)
     `, ['3@foo'], 'foo(x, 3)')
 		assertSliced('Multiple unknown calls sharing known def', shell, `
-x. <- function (x) { x }
+x. <- function(x) { x }
 foo(x, x.(y))
 foo(x, x.(3))
-    `, ['4@foo'], `x. <- function (x) { x }
+    `, ['4@foo'], `x. <- function(x) { x }
 foo(x, x.(3))`)
 		assertSliced('Using ...', shell, `
-f1 <- function (a,b) { c }
-f2 <- function (...) { f1(...) }
+f1 <- function(a, b) { c }
+f2 <- function(...) { f1(...) }
 x <- 3
 c <- 4
 y <- 3
 f2(1,x)
-    `, ['7@f2'], `f1 <- function (a,b) { c }
-f2 <- function (...) { f1(...) }
+    `, ['7@f2'], `f1 <- function(a, b) { c }
+f2 <- function(...) { f1(...) }
 x <- 3
 c <- 4
 f2(1,x)`)

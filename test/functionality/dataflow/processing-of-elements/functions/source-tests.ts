@@ -4,7 +4,7 @@ import { BuiltIn, initializeCleanEnvironments, requestProviderFromFile, requestP
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { define } from '../../../../../src/dataflow/environments'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argument, unnamedArgument, variable } from '../../../_helper/environment-builder'
+import { argumentInCall, unnamedArgument, variable } from '../../../_helper/environment-builder'
 
 describe('source', withShell(shell => {
 	// reset the source provider back to the default value after our tests
@@ -24,8 +24,8 @@ describe('source', withShell(shell => {
 	)
 	assertDataflow('simple source', shell, 'source("simple")\ncat(N)', emptyGraph()
 		.defineVariable('simple-1:1-1:6-0', 'N')
-		.call('3', 'source', [argument('2')], { environment: initializeCleanEnvironments() })
-		.call('7', 'cat', [argument('6')], { environment: envWithSimpleN })
+		.call('3', 'source', [argumentInCall('2')], { environment: initializeCleanEnvironments() })
+		.call('7', 'cat', [argumentInCall('6')], { environment: envWithSimpleN })
 		.use('5', 'N', { environment: envWithSimpleN })
 		.use('2', unnamedArgument('2'))
 		.use('6', unnamedArgument('6'), { environment: envWithSimpleN })
@@ -38,10 +38,10 @@ describe('source', withShell(shell => {
 	)
 
 	assertDataflow('multiple source', shell, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)', emptyGraph()
-		.call('3', 'source', [argument('2')], { environment: initializeCleanEnvironments() })
-		.call('10', 'source', [argument('9')],
+		.call('3', 'source', [argumentInCall('2')], { environment: initializeCleanEnvironments() })
+		.call('10', 'source', [argumentInCall('9')],
 			{ environment: define(variable('N', '6', '4'), LocalScope, initializeCleanEnvironments()) })
-		.call('14', 'cat', [argument('13')],
+		.call('14', 'cat', [argumentInCall('13')],
 			{ environment: define(variable('N', 'simple-3:1-3:6-2', 'simple-3:1-3:6-0'), LocalScope, initializeCleanEnvironments()) })
 		.defineVariable('simple-3:1-3:6-0', 'N', LocalScope,
 			{ environment: define(variable('N', '6', '4'), LocalScope, initializeCleanEnvironments()) }
@@ -72,8 +72,8 @@ describe('source', withShell(shell => {
 	)
 	assertDataflow('conditional', shell, 'if (x) { source("simple") }\ncat(N)', emptyGraph()
 		.defineVariable('simple-1:10-1:15-0', 'N')
-		.call('4', 'source', [argument('3')], { environment: initializeCleanEnvironments(), when: 'maybe' })
-		.call('10', 'cat', [argument('9')], { environment: envWithConditionalN })
+		.call('4', 'source', [argumentInCall('3')], { environment: initializeCleanEnvironments(), when: 'maybe' })
+		.call('10', 'cat', [argumentInCall('9')], { environment: envWithConditionalN })
 		.use('0', 'x')
 		.use('8', 'N', { environment: envWithConditionalN })
 		.use('3', unnamedArgument('3'))
@@ -88,7 +88,7 @@ describe('source', withShell(shell => {
 
 	// missing sources should just be ignored
 	assertDataflow('missing source', shell, 'source("missing")', emptyGraph()
-		.call('3', 'source',[argument('2')], { environment: initializeCleanEnvironments() })
+		.call('3', 'source',[argumentInCall('2')], { environment: initializeCleanEnvironments() })
 		.use('2', unnamedArgument('2'))
 		.argument('3', '2')
 		.reads('3', BuiltIn)
@@ -98,9 +98,9 @@ describe('source', withShell(shell => {
 	const envWithX = define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments())
 
 	assertDataflow('recursive source', shell, sources.recursive1, emptyGraph()
-		.call('6', 'source', [argument('5')], { environment: envWithX })
-		.call(recursive2Id(7), 'source', [argument(recursive2Id(6))], { environment: envWithX })
-		.call(recursive2Id(3), 'cat', [argument(recursive2Id(2))], { environment: envWithX })
+		.call('6', 'source', [argumentInCall('5')], { environment: envWithX })
+		.call(recursive2Id(7), 'source', [argumentInCall(recursive2Id(6))], { environment: envWithX })
+		.call(recursive2Id(3), 'cat', [argumentInCall(recursive2Id(2))], { environment: envWithX })
 		.defineVariable('0', 'x')
 		.use('5', unnamedArgument('5'), { environment: envWithX })
 		.use(recursive2Id(6), unnamedArgument(recursive2Id(6)), { environment: envWithX })
@@ -118,7 +118,7 @@ describe('source', withShell(shell => {
 
 	// we currently don't support (and ignore) source calls with non-constant arguments!
 	assertDataflow('non-constant source', shell, 'x <- "recursive1"\nsource(x)', emptyGraph()
-		.call('6', 'source', [argument('5')], { environment: envWithX })
+		.call('6', 'source', [argumentInCall('5')], { environment: envWithX })
 		.defineVariable('0', 'x')
 		.use('5', unnamedArgument('5'), { environment: envWithX })
 		.use('4', 'x', { environment: envWithX })

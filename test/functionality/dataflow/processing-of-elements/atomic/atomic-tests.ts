@@ -4,13 +4,13 @@
  * This will not include functions!
  */
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../../_helper/provider'
 import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argument, unnamedArgument, variable } from '../../../_helper/environment-builder'
+import { argument, argumentInCall, unnamedArgument, variable } from '../../../_helper/environment-builder'
 
 describe('Atomic (dataflow information)', withShell((shell) => {
 	describe('uninteresting leafs', () => {
@@ -132,7 +132,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('No parameter function', shell, 'x |> f()',
 				emptyGraph()
 					.use('0', 'x')
-					.call('3', 'f', [argument('1')])
+					.call('3', 'f', [argumentInCall('1')])
 					.use('1', unnamedArgument('1'))
 					.argument('3', '1')
 					.reads('1', '0'),
@@ -141,8 +141,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('Nested calling', shell, 'x |> f() |> g()',
 				emptyGraph()
 					.use('0', 'x')
-					.call('3', 'f', [argument('1')])
-					.call('7', 'g', [argument('5')])
+					.call('3', 'f', [argumentInCall('1')])
+					.call('7', 'g', [argumentInCall('5')])
 					.use('1', unnamedArgument('1'))
 					.use('5', unnamedArgument('5'))
 					.argument('3', '1')
@@ -154,7 +154,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('Multi-Parameter function', shell, 'x |> f(y,z)',
 				emptyGraph()
 					.use('0', 'x')
-					.call('7', 'f', [argument('1'), argument('4'), argument('6')])
+					.call('7', 'f', [argumentInCall('1'), argumentInCall('4'), argumentInCall('6')])
 					.use('1', unnamedArgument('1'))
 					.use('4', unnamedArgument('4'))
 					.use('6', unnamedArgument('6'))
@@ -321,7 +321,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		})
 		describe('assignment with function call', () => {
 			const environmentWithX = define(
-				{ name: 'x', nodeId: '4', kind: EdgeType.Argument, definedAt: '4', scope: LocalScope, used: 'always' },
+				argument('x', '4', '4'),
 				LocalScope,
 				initializeCleanEnvironments()
 			)
@@ -329,9 +329,9 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				emptyGraph()
 					.defineVariable('0', 'a')
 					.call('9', 'foo', [
-						argument('4', 'x'),
-						argument('6'),
-						argument('8')
+						argumentInCall('4', 'x'),
+						argumentInCall('6'),
+						argumentInCall('8')
 					])
 					.use('4', 'x')
 					.use('5', 'y', { environment: environmentWithX })

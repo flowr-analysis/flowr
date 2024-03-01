@@ -16,6 +16,10 @@ export function parameter(name: string, definedAt: NodeId, nodeId: NodeId, scope
 	return { name, kind: 'parameter', definedAt, nodeId, scope, used }
 }
 
+export function argument(name: string, definedAt: NodeId, nodeId: NodeId, scope: RScope = LocalScope, used: WhenUsed = 'always'): IdentifierDefinition {
+	return { name, kind: 'argument', definedAt, nodeId, scope, used }
+}
+
 /**
  * Provides a FunctionArgument to use with function call vertices.
  * @param nodeId - AST Node ID
@@ -23,7 +27,7 @@ export function parameter(name: string, definedAt: NodeId, nodeId: NodeId, scope
  * @param scope - optional; default is LocalScope
  * @param used - optional; default is always
  */
-export function argument(nodeId: NodeId, name?: string, scope: RScope = LocalScope, used: WhenUsed = 'always'): FunctionArgument {
+export function argumentInCall(nodeId: NodeId, name?: string, scope: RScope = LocalScope, used: WhenUsed = 'always'): FunctionArgument {
 	if(name === undefined) {
 		return { nodeId, name: unnamedArgument(nodeId), scope, used }
 	} else {

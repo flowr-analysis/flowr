@@ -26,13 +26,15 @@ import { guard } from '../../../src/util/assert'
 import { createPipeline } from '../../../src/core/steps/pipeline'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../src/core/steps/all/core/00-parse'
-import type { DESUGAR_NORMALIZE, NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
+import { NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
+import type { DESUGAR_NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
 import type { DataflowGraph } from '../../../src/dataflow/v1'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
 import { SteppingSlicer } from '../../../src/core/stepping-slicer'
 import { LAST_STEP } from '../../../src/core/steps/steps'
 import type { TestLabel } from './label'
 import { decorateLabelContext } from './label'
+import { LEGACY_STATIC_DATAFLOW } from '../../../src/core/steps/all/core/20-dataflow'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -188,11 +190,10 @@ export function assertDataflow(name: string | TestLabel, shell: RShell, input: s
 	it(`${effectiveName} (input: ${JSON.stringify(input)})`, async function() {
 		await ensureConfig(shell, this, userConfig)
 
-		const info = await new SteppingSlicer({
-			stepOfInterest: 'dataflow',
-			request:        requestFromInput(input),
+		const info = await new PipelineExecutor(createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW), {
 			shell,
-			getId:          deterministicCountingIdGenerator(startIndexForDeterministicIds),
+			request: requestFromInput(input),
+			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
 		}).allRemainingSteps()
 
 		const report: DifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got' })

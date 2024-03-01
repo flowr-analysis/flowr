@@ -242,6 +242,23 @@ export class RShell {
 	}
 
 	/**
+   * clears the R environment using the `rm` command.
+   */
+	public clearEnvironment(): void {
+		this.log.debug('clearing environment')
+		this._sendCommand('rm(list=ls())')
+	}
+
+	/**
+   * usually R will stop execution on errors, with this the R session will try to
+   * continue working!
+   */
+	public continueOnError(): void {
+		this.log.info('continue in case of Errors')
+		this._sendCommand('options(error=function() {})')
+	}
+
+	/**
 	 * Obtain the temporary directory used by R.
 	 * Additionally, this marks the directory for removal when the shell exits.
 	 */

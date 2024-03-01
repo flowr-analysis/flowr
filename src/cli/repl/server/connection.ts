@@ -193,7 +193,9 @@ export class FlowRServerConnection {
 		}
 
 		const request = requestResult.message
-		this.logger.info(`[${request.filetoken}] Received slice request with criteria ${JSON.stringify(request.criterion)}`)
+		if(this.logger.settings.minLevel >= LogLevel.Info) {
+			this.logger.info(`[${request.filetoken}] Received slice request with criteria ${JSON.stringify(request.criterion)}`)
+		}
 
 		const fileInformation = this.fileMap.get(request.filetoken)
 		if(!fileInformation) {

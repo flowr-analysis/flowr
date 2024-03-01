@@ -2,6 +2,7 @@ import type { NormalizedAst, DecoratedAstMap, NodeId, NoInfo, ParentInformation,
 import { RType } from '../../r-bridge'
 import { slicerLogger } from '../static'
 import type { SourcePosition } from '../../util/range'
+import { expensiveTrace } from '../../util/log'
 
 /** Either `line:column`, `line@variable-name`, or `$id` */
 export type SingleSlicingCriterion = `${number}:${number}` | `${number}@${string}` | `$${number}`
@@ -47,7 +48,7 @@ function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: Decora
 			continue // only consider those with position information
 		}
 
-		slicerLogger.trace(`can resolve id ${id} (${JSON.stringify(nodeInfo.location)}) for location ${JSON.stringify(location)}`)
+		expensiveTrace(slicerLogger, () => `can resolve id ${id} (${JSON.stringify(nodeInfo.location)}) for location ${JSON.stringify(location)}`)
 		// function calls have the same location as the symbol they refer to, so we need to prefer the function call
 		if(candidate !== undefined && nodeInfo.type !== RType.FunctionCall && nodeInfo.type !== RType.Argument || nodeInfo.type === RType.ExpressionList) {
 			continue
@@ -57,7 +58,7 @@ function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: Decora
 	}
 	const id = candidate?.info.id
 	if(id) {
-		slicerLogger.trace(`resolve id ${id} (${JSON.stringify(candidate?.info)}) for location ${JSON.stringify(location)}`)
+		expensiveTrace(slicerLogger, () =>`resolve id ${id} (${JSON.stringify(candidate?.info)}) for location ${JSON.stringify(location)}`)
 	}
 	return id
 }

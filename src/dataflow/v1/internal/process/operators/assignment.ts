@@ -11,7 +11,7 @@ import {
 	define,
 	overwriteEnvironments
 } from '../../../../common/environments'
-import { log } from '../../../../../util/log'
+import { log, LogLevel } from '../../../../../util/log'
 import { dataflowLogger } from '../../../index'
 
 export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
@@ -114,7 +114,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
 
 	const writeNodes = produceWrittenNodes(op, target, superAssignment, data, funcTypeCheck)
 
-	if(writeNodes.length !== 1) {
+	if(writeNodes.length !== 1 && log.settings.minLevel >= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`)
 	}
 

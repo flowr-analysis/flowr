@@ -1,8 +1,9 @@
 import { type ILogObj, type ISettingsParam, Logger } from 'tslog'
 import { createStream, type Options } from 'rotating-file-stream'
+import type { DeepReadonly } from 'ts-essentials'
 
-export function expensiveTrace(log: Logger<ILogObj>, supplier: () => string): void {
-	if(log.settings.minLevel > LogLevel.Trace) {
+export function expensiveTrace(log: DeepReadonly<Logger<ILogObj>>, supplier: () => string): void {
+	if(log.settings.minLevel >= LogLevel.Trace) {
 		log.trace(supplier())
 	}
 }

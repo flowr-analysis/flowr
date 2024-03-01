@@ -5,7 +5,7 @@ import { spawnSync } from 'child_process'
 import { ts2r } from './lang-4.x'
 import type { SemVer } from 'semver'
 import semver from 'semver/preload'
-import { log, LogLevel } from '../util/log'
+import { expensiveTrace, log, LogLevel } from '../util/log'
 
 const executorLog = log.getSubLogger({ name: 'RShellExecutor' })
 
@@ -30,7 +30,7 @@ export class RShellExecutor {
 
 	public usedRVersion(): SemVer | null{
 		const version = this.run(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
-		executorLog.trace(`raw version: ${JSON.stringify(version)}`)
+		expensiveTrace(executorLog, () => `raw version: ${JSON.stringify(version)}`)
 		return semver.coerce(version)
 	}
 

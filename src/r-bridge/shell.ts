@@ -3,7 +3,7 @@ import { deepMergeObject, type MergeableRecord } from '../util/objects'
 import { type ILogObj, type Logger } from 'tslog'
 import * as readline from 'node:readline'
 import { ts2r } from './lang-4.x'
-import { log, LogLevel } from '../util/log'
+import { expensiveTrace, log, LogLevel } from '../util/log'
 import type { SemVer } from 'semver'
 import semver from 'semver/preload'
 import { getPlatform } from '../util/os'
@@ -17,7 +17,7 @@ export interface CollectorTimeout extends MergeableRecord {
    * number of milliseconds to wait for the collection to finish
    */
 	ms:             number
-	/**
+	/*
    * if true, the timeout will reset whenever we receive new data
    */
 	resetOnNewData: boolean
@@ -170,13 +170,13 @@ export class RShell {
 		}
 		// retrieve raw version:
 		const result = await this.sendCommandWithOutput(`cat(paste0(R.version$major,".",R.version$minor), ${ts2r(this.options.eol)})`)
-		this.log.trace(`raw version: ${JSON.stringify(result)}`)
+		expensiveTrace(this.log, () => `raw version: ${JSON.stringify(result)}`)
 		this.versionCache = semver.coerce(result[0])
 		return result.length === 1 ? this.versionCache : null
 	}
 
 	public injectLibPaths(...paths: string[]): void {
-		this.log.debug(`injecting lib paths ${JSON.stringify(paths)}`)
+		expensiveTrace(this.log, () => `injecting lib paths ${JSON.stringify(paths)}`)
 		this._sendCommand(`.libPaths(c(.libPaths(), ${paths.map(ts2r).join(',')}))`)
 	}
 

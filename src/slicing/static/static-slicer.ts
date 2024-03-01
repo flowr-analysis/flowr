@@ -19,7 +19,7 @@ import {
 	collectAllIds,
 	RType
 } from '../../r-bridge'
-import { log, LogLevel } from '../../util/log'
+import { expensiveTrace, log } from '../../util/log'
 import objectHash from 'object-hash'
 import type { DecodedCriteria, SlicingCriteria } from '../criterion'
 import { convertAllSlicingCriteriaToIds } from '../criterion'
@@ -130,9 +130,7 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice')
 	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, ast)
 	const idMap = ast.idMap
-	if(slicerLogger.settings.minLevel <= LogLevel.Trace) {
-		slicerLogger.trace(`calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`)
-	}
+	expensiveTrace(slicerLogger, () =>`calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`)
 	const queue = new VisitingQueue(threshold)
 
 	// every node ships the call environment which registers the calling environment

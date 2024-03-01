@@ -31,7 +31,7 @@ import type {
 	SlicerStats
 } from './stats'
 import fs from 'fs'
-import { log, LogLevel } from '../util/log'
+import { expensiveTrace, log, LogLevel } from '../util/log'
 import type { MergeableRecord } from '../util/objects'
 import { withoutWhitespace } from '../util/strings'
 import { SteppingSlicer } from '../core/stepping-slicer'
@@ -174,7 +174,7 @@ export class BenchmarkSlicer {
    * @returns The per slice stats retrieved for this slicing criteria
    */
 	public async slice(...slicingCriteria: SlicingCriteria): Promise<BenchmarkSingleSliceStats> {
-		benchmarkLogger.trace(`try to slice for criteria ${JSON.stringify(slicingCriteria)}`)
+		expensiveTrace(benchmarkLogger, () => `try to slice for criteria ${JSON.stringify(slicingCriteria)}`)
 
 		this.guardActive()
 		guard(!this.perSliceMeasurements.has(slicingCriteria), 'do not slice the same criteria combination twice')
@@ -205,7 +205,7 @@ export class BenchmarkSlicer {
 
 		totalStopwatch.stop()
 
-		benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code}`)
+		expensiveTrace(benchmarkLogger, () => `Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code}`)
 		const results = this.stepper.getResults(false)
 
 		if(benchmarkLogger.settings.minLevel >= LogLevel.Info) {

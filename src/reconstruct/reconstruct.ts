@@ -37,7 +37,8 @@ import {
 	removeExpressionListWrap,
 	getIndentString,
 	merge,
-	plainSplit
+	plainSplit,
+	prettyPrintCodeToString
 } from './helper'
 import type { SourcePosition, SourceRange } from '../util/range'
 
@@ -79,10 +80,10 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 	}
 }
 
-function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: PrettyPrintLine[]): Code {
+function reconstructRawBinaryOperator(lhs: Code, n: string, rhs: Code): Code {
 	return [  // inline pretty print
 		...lhs.slice(0, lhs.length - 1),
-		{ linePart: [{ part: `${lhs[lhs.length - 1].linePart[lhs.length - 1].part} ${n} ${rhs[0].linePart[0].part}`, loc: lhs[lhs.length - 1].linePart[lhs.length - 1].loc }], indent: 0 },
+		{ linePart: [{ part: `${prettyPrintCodeToString([lhs[lhs.length - 1]])} ${n} ${prettyPrintCodeToString([rhs[0]])}`, loc: lhs[lhs.length - 1].linePart[lhs.length - 1].loc }], indent: 0 },
 		...indentBy(rhs.slice(1, rhs.length), 1)
 	]
 }
@@ -298,21 +299,13 @@ function reconstructFunctionDefinition(definition: RFunctionDefinition<ParentInf
 	}
 
 	const startPos = definition.location.start
-
-	if(isSelected(configuration, definition)) {
-		return plain(getLexeme(definition), startPos)
-	}
-
 	const parameters = reconstructParameters(definition.parameters).join(', ')
 	const additionalTokens = reconstructAdditionalTokens(definition)
-	const reconstructedBody = reconstructExpressionList(definition.body, [plainSplit(getLexeme(definition.body), startPos)], configuration)
 	//body.length === 0 ? [{linePart: [{part: '', loc: startPos}], indent: 0}] : body.slice(1, body.length - 1)
-	const parameterLoc = definition.parameters.length === 0 ? startPos : definition.parameters[definition.parameters.length - 1].location.start
 
 	return merge([
 		[{ linePart: [{ part: `function(${parameters})`, loc: startPos }], indent: 0 }],
-		reconstructedBody,
-		plain(parameters, parameterLoc),
+		body,
 		...additionalTokens
 	])
 }

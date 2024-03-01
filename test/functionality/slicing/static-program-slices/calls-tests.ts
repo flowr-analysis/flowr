@@ -1,7 +1,7 @@
 import { assertSliced, withShell } from '../../_helper/shell'
 
 describe('Calls', withShell(shell => {
-	describe.only('Simple Calls', () => {
+	describe('Simple Calls', () => {
 		const code = `i <- 4
 a <- function(x) { x }
 a(i)`
@@ -13,11 +13,11 @@ a <- function(x) { x <- 2; 1 }
 a(i)`
 		//currently fails, whole body gets reconstructed
 		assertSliced('Function call with constant function', shell, constFunction, ['3:1'], `i <- 4
-a <- function(x) { 1 }
+a <- function(x) {         1 }
 a(i)`)
 		//currently fails, whole body gets reconstructed
-		assertSliced('Slice function definition', shell, constFunction, ['2@a'], 'a <- function(x) { }')
-		assertSliced('Slice within function', shell, constFunction, ['2:20'], 'x <- 2;')
+		assertSliced('Slice function definition', shell, constFunction, ['2@a'], 'a <- function(x) {           }')
+		assertSliced('Slice within function', shell, constFunction, ['2:20'], 'x <- 2')
 		assertSliced('Multiple unknown calls', shell, `
 foo(x, y)
 foo(x, 3)

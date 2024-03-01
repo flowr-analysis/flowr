@@ -68,11 +68,11 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 
 	const subExpressions = expressions.filter(e => e.length > 0)
 
-	if(subExpressions.length === 0) {
-		return []
-	} else {
-		const additionalTokens = reconstructAdditionalTokens(exprList)
+	const additionalTokens = reconstructAdditionalTokens(exprList)
 
+	if(subExpressions.length === 0) {
+		return merge(additionalTokens)
+	} else {
 		return merge([
 			...subExpressions,
 			...additionalTokens
@@ -148,8 +148,8 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	return merge([out])
 }
 
-function reconstructAdditionalTokens(loop: RNodeWithParent): Code[] {
-	return loop.info.additionalTokens?.filter(t => t.lexeme && t.location)
+function reconstructAdditionalTokens(node: RNodeWithParent): Code[] {
+	return node.info.additionalTokens?.filter(t => t.lexeme && t.location)
 		.map(t => plain(t.lexeme as string, (t.location as SourceRange).start)) ?? []
 }
 

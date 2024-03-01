@@ -58,7 +58,7 @@ export function plainSplit(text: string, location: SourcePosition): Code {
  */
 export function merge(snipbits: Code[]): Code {
 	const buckets: PrettyPrintLine[] = []
-	const result:Code = []
+	const result: Code = []
 
 	//separate and group lineParts by lines
 	for(const code of snipbits) {

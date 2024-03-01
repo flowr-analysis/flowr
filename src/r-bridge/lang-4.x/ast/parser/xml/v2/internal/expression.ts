@@ -38,6 +38,35 @@ function splitComments(tokens: readonly XmlBasedJson[]) {
 }
 
 
+function splitExprs(tokens: readonly XmlBasedJson[]) {
+	let last = 0, i = 0
+	let lastExpr = false
+	const segments: XmlBasedJson[][] = []
+	const types = tokens.map(getTokenType)
+	for(const type of types) {
+		if(type === RawRType.Semicolon) {
+			segments.push(tokens.slice(last, i))
+			lastExpr = false
+			last = i + 1
+		} else {
+			const thisExpr = type === RawRType.Expression || type === RawRType.ExprOfAssignOrHelp
+			if(thisExpr && lastExpr) {
+				if(i > last) {
+					segments.push(tokens.slice(last, i))
+				}
+				segments.push([tokens[i]])
+				last = i + 1
+			}
+			lastExpr = thisExpr
+		}
+		i++
+	}
+	if(last < tokens.length) {
+		segments.push(tokens.slice(last, tokens.length))
+	}
+	return segments
+}
+
 /**
  * Handles semicolons within _and_ braces at the start and end of the expression
  * @param raw - The tokens to split
@@ -65,26 +94,7 @@ function handleExpressionList(raw: readonly XmlBasedJson[]): HandledExpressionLi
 			braces:   [tokens[0], tokens[tokens.length - 1]]
 		}
 	} else {
-		let last = 0, i = 0
-		let lastType: RawRType | undefined = undefined
-		const segments: XmlBasedJson[][] = []
-		const types = tokens.map(getTokenType)
-		for(const type of types) {
-			if(type === RawRType.Semicolon) {
-				segments.push(tokens.slice(last, i))
-				last = i + 1
-			} else if(type === RawRType.Expression && lastType === RawRType.Expression) {
-				segments.push(tokens.slice(last, i))
-				segments.push([tokens[i]])
-				last = i + 1
-			}
-			lastType = type
-			i++
-		}
-		if(last < tokens.length) {
-			segments.push(tokens.slice(last, tokens.length))
-		}
-		return { segments, comments, braces: undefined }
+		return { segments: splitExprs(tokens), comments, braces: undefined }
 	}
 }
 
@@ -120,7 +130,7 @@ export function normalizeExpression(
 		return []
 	}
 
-	expensiveTrace(normalizeLog,() => `[expr] ${tokens.map(getTokenType).join(', ')}`)
+	expensiveTrace(normalizeLog,() => `[expr] ${tokens.map(t => getTokenType(t) + ' - ' + retrieveMetaStructure(t).content).join(', ')}`)
 
 	let parsedComments: RComment[] = []
 

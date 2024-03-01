@@ -143,36 +143,27 @@ export function sameForSteps<T>(steps: (typeof NORMALIZE | typeof DESUGAR_NORMAL
  *
  * @see sameForSteps
  */
-export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: { step: typeof NORMALIZE | typeof DESUGAR_NORMALIZE, wanted: RExpressionList }[] | RExpressionList, userConfig?: Partial<TestConfiguration & {
+export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: { step: typeof NORMALIZE | typeof DESUGAR_NORMALIZE, wanted: RExpressionList }[], userConfig?: Partial<TestConfiguration & {
 	ignoreAdditionalTokens: boolean
 }>): Mocha.Suite | Mocha.Test {
 	const fullname = decorateLabelContext(name, ['desugar'])
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
-	if(Array.isArray(expected)) {
-		return describe(`${fullname} (input: ${input})`, () => {
-			for(const { step, wanted } of expected) {
-				it(`${step.humanReadableName}`, async function() {
-					await ensureConfig(shell, this, userConfig)
+	return describe(`${fullname} (input: ${input})`, () => {
+		for(const { step, wanted } of expected) {
+			it(`${step.humanReadableName}`, async function() {
+				await ensureConfig(shell, this, userConfig)
 
-					const pipeline = new PipelineExecutor(createPipeline(PARSE_WITH_R_SHELL_STEP, step), {
-						shell,
-						request: requestFromInput(input)
-					})
-					const result = await pipeline.allRemainingSteps()
-					const ast = result.normalize.ast
-
-					assertAstEqualIgnoreSourceInformation(ast, wanted, !userConfig?.ignoreAdditionalTokens, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(wanted)}`)
+				const pipeline = new PipelineExecutor(createPipeline(PARSE_WITH_R_SHELL_STEP, step), {
+					shell,
+					request: requestFromInput(input)
 				})
-			}
-		})
-	} else {
-		// TODO: remove just while migrating
-		return it(fullname === input ? fullname : `${fullname} (input: ${input})`, async function() {
-			await ensureConfig(shell, this, userConfig)
-			const ast = await retrieveNormalizedAst(shell, input)
-			assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
-		})
-	}
+				const result = await pipeline.allRemainingSteps()
+				const ast = result.normalize.ast
+
+				assertAstEqualIgnoreSourceInformation(ast, wanted, !userConfig?.ignoreAdditionalTokens, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(wanted)}`)
+			})
+		}
+	})
 }
 
 /** call within describeSession */

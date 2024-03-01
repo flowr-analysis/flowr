@@ -442,7 +442,7 @@ describe('Parse simple constructs', withShell(shell => {
 				ignoreAdditionalTokens: true
 			}
 			)
-			assertAst(label('for-loop with comment', ['for-loop', 'name-normal', 'numbers', 'built-in-sequencing', 'comments']), shell, `for(#a
+			assertAst(label('for-loop with comment', ['for-loop', 'name-normal', 'numbers', 'built-in-sequencing', 'comments', 'newlines']), shell, `for(#a
 				i#b
 				in#c
 				1:42#d
@@ -565,158 +565,337 @@ describe('Parse simple constructs', withShell(shell => {
 		})
 		describe('repeat', () => {
 			assertAst(label('Single instruction repeat', ['repeat-loop', 'numbers']),
-				shell, 'repeat 2', exprList({
-					type:     RType.RepeatLoop,
-					location: rangeFrom(1, 1, 1, 6),
-					lexeme:   'repeat',
-					info:     {},
-					body:     ensureExpressionList({
-						type:     RType.Number,
-						location: rangeFrom(1, 8, 1, 8),
-						lexeme:   '2',
-						content:  numVal(2),
-						info:     {}
-					})
-				}), {
+				shell, 'repeat 2', [
+					{
+						step:   NORMALIZE,
+						wanted: exprList({
+							type:     RType.RepeatLoop,
+							location: rangeFrom(1, 1, 1, 6),
+							lexeme:   'repeat',
+							info:     {},
+							body:     ensureExpressionList({
+								type:     RType.Number,
+								location: rangeFrom(1, 8, 1, 8),
+								lexeme:   '2',
+								content:  numVal(2),
+								info:     {}
+							})
+						})
+					},
+					{
+						step:   DESUGAR_NORMALIZE,
+						wanted: exprList({
+							type:     RType.RepeatLoop,
+							location: rangeFrom(1, 1, 1, 6),
+							lexeme:   'repeat',
+							info:     {},
+							body:     ensureExpressionList({
+								type:     RType.Number,
+								location: rangeFrom(1, 8, 1, 8),
+								lexeme:   '2',
+								content:  numVal(2),
+								info:     {}
+							})
+						})
+					}
+				], {
 					ignoreAdditionalTokens: true
 				})
-			assertAst(label('Two statement repeat', ['repeat-loop', 'numbers', 'grouping']),
-				shell, 'repeat { x; y }', exprList({
-					type:     RType.RepeatLoop,
-					location: rangeFrom(1, 1, 1, 6),
-					lexeme:   'repeat',
-					info:     {},
-					body:     {
-						type:     RType.ExpressionList,
-						location: rangeFrom(1, 8, 1, 15),
-						lexeme:   '{ x; y }',
-						info:     {},
-						children: [{
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 10, 1, 10),
-							namespace: undefined,
-							lexeme:    'x',
-							content:   'x',
-							info:      {},
-						}, {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 13, 1, 13),
-							namespace: undefined,
-							lexeme:    'y',
-							content:   'y',
-							info:      {}
-						}]
-					}
-				}), {
+			assertAst(label('Two statement repeat', ['repeat-loop', 'numbers', 'grouping', 'semicolons']),
+				shell, 'repeat { x; y }', [
+					{
+						step:   NORMALIZE,
+						wanted: exprList({
+							type:     RType.RepeatLoop,
+							location: rangeFrom(1, 1, 1, 6),
+							lexeme:   'repeat',
+							info:     {},
+							body:     {
+								type:     RType.ExpressionList,
+								location: rangeFrom(1, 8, 1, 15),
+								lexeme:   '{ x; y }',
+								info:     {},
+								children: [{
+									type:      RType.Symbol,
+									location:  rangeFrom(1, 10, 1, 10),
+									namespace: undefined,
+									lexeme:    'x',
+									content:   'x',
+									info:      {},
+								}, {
+									type:      RType.Symbol,
+									location:  rangeFrom(1, 13, 1, 13),
+									namespace: undefined,
+									lexeme:    'y',
+									content:   'y',
+									info:      {}
+								}]
+							}
+						})
+					},
+					{
+						step:   DESUGAR_NORMALIZE,
+						wanted: exprList({
+							type:     RType.RepeatLoop,
+							location: rangeFrom(1, 1, 1, 6),
+							lexeme:   'repeat',
+							info:     {},
+							body:     {
+								type:     RType.ExpressionList,
+								location: rangeFrom(1, 8, 1, 15),
+								lexeme:   '{ x; y }',
+								info:     {},
+								children: [{
+									type:      RType.Symbol,
+									location:  rangeFrom(1, 10, 1, 10),
+									namespace: undefined,
+									lexeme:    'x',
+									content:   'x',
+									info:      {},
+								}, {
+									type:      RType.Symbol,
+									location:  rangeFrom(1, 13, 1, 13),
+									namespace: undefined,
+									lexeme:    'y',
+									content:   'y',
+									info:      {}
+								}]
+							}
+						})
+					}], {
 					ignoreAdditionalTokens: true
 				})
 		})
 		describe('while', () => {
 			assertAst(label('while (TRUE) 42', ['while-loop', 'logical', 'numbers']),
-				shell, 'while (TRUE) 42', exprList({
-					type:      RType.WhileLoop,
-					location:  rangeFrom(1, 1, 1, 5),
-					lexeme:    'while',
-					info:      {},
-					condition: {
-						type:     RType.Logical,
-						location: rangeFrom(1, 8, 1, 11),
-						lexeme:   'TRUE',
-						content:  true,
-						info:     {}
+				shell, 'while (TRUE) 42', [
+					{
+						step:   NORMALIZE,
+						wanted: exprList({
+							type:      RType.WhileLoop,
+							location:  rangeFrom(1, 1, 1, 5),
+							lexeme:    'while',
+							info:      {},
+							condition: {
+								type:     RType.Logical,
+								location: rangeFrom(1, 8, 1, 11),
+								lexeme:   'TRUE',
+								content:  true,
+								info:     {}
+							},
+							body: ensureExpressionList({
+								type:     RType.Number,
+								location: rangeFrom(1, 14, 1, 15),
+								lexeme:   '42',
+								content:  numVal(42),
+								info:     {}
+							})
+						})
 					},
-					body: ensureExpressionList({
-						type:     RType.Number,
-						location: rangeFrom(1, 14, 1, 15),
-						lexeme:   '42',
-						content:  numVal(42),
-						info:     {}
-					})
-				}), {
+					{
+						step:   DESUGAR_NORMALIZE,
+						wanted: exprList({
+							type:      RType.WhileLoop,
+							location:  rangeFrom(1, 1, 1, 5),
+							lexeme:    'while',
+							info:      {},
+							condition: {
+								type:     RType.Logical,
+								location: rangeFrom(1, 8, 1, 11),
+								lexeme:   'TRUE',
+								content:  true,
+								info:     {}
+							},
+							body: ensureExpressionList({
+								type:     RType.Number,
+								location: rangeFrom(1, 14, 1, 15),
+								lexeme:   '42',
+								content:  numVal(42),
+								info:     {}
+							})
+						})
+					}
+				], {
 					ignoreAdditionalTokens: true
 				})
 
 			assertAst(label('Two statement while', ['while-loop', 'logical', 'grouping']),
-				shell, 'while (FALSE) { x; y }', exprList({
-					type:      RType.WhileLoop,
-					location:  rangeFrom(1, 1, 1, 5),
-					lexeme:    'while',
-					info:      {},
-					condition: {
-						type:     RType.Logical,
-						location: rangeFrom(1, 8, 1, 12),
-						lexeme:   'FALSE',
-						content:  false,
-						info:     {}
+				shell, 'while (FALSE) { x; y }', [
+					{
+						step:   NORMALIZE,
+						wanted: exprList({
+							type:      RType.WhileLoop,
+							location:  rangeFrom(1, 1, 1, 5),
+							lexeme:    'while',
+							info:      {},
+							condition: {
+								type:     RType.Logical,
+								location: rangeFrom(1, 8, 1, 12),
+								lexeme:   'FALSE',
+								content:  false,
+								info:     {}
+							},
+							body: ensureExpressionList({
+								type:     RType.ExpressionList,
+								location: rangeFrom(1, 15, 1, 22),
+								lexeme:   '{ x; y }',
+								info:     {},
+								children: [{
+									type:      RType.Symbol,
+									location:  rangeFrom(1, 17, 1, 17),
+									namespace: undefined,
+									lexeme:    'x',
+									content:   'x',
+									info:      {}
+								}, {
+									type:      RType.Symbol,
+									location:  rangeFrom(1, 20, 1, 20),
+									namespace: undefined,
+									lexeme:    'y',
+									content:   'y',
+									info:      {}
+								}]
+							})
+						})
 					},
-					body: ensureExpressionList({
-						type:     RType.ExpressionList,
-						location: rangeFrom(1, 15, 1, 22),
-						lexeme:   '{ x; y }',
-						info:     {},
-						children: [{
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 17, 1, 17),
-							namespace: undefined,
-							lexeme:    'x',
-							content:   'x',
-							info:      {}
-						}, {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 20, 1, 20),
-							namespace: undefined,
-							lexeme:    'y',
-							content:   'y',
-							info:      {}
-						}]
-					})
-				}), {
+					{
+						step:   DESUGAR_NORMALIZE,
+						wanted: exprList({
+							type:      RType.WhileLoop,
+							location:  rangeFrom(1, 1, 1, 5),
+							lexeme:    'while',
+							info:      {},
+							condition: {
+								type:     RType.Logical,
+								location: rangeFrom(1, 8, 1, 12),
+								lexeme:   'FALSE',
+								content:  false,
+								info:     {}
+							},
+							body: ensureExpressionList({
+								type:     RType.ExpressionList,
+								location: rangeFrom(1, 15, 1, 22),
+								lexeme:   '{ x; y }',
+								info:     {},
+								children: [{
+									type:      RType.Symbol,
+									location:  rangeFrom(1, 17, 1, 17),
+									namespace: undefined,
+									lexeme:    'x',
+									content:   'x',
+									info:      {}
+								}, {
+									type:      RType.Symbol,
+									location:  rangeFrom(1, 20, 1, 20),
+									namespace: undefined,
+									lexeme:    'y',
+									content:   'y',
+									info:      {}
+								}]
+							})
+						})
+					}
+				], {
 					ignoreAdditionalTokens: true
 				})
 		})
 		describe('break', () => {
 			assertAst(label('while (TRUE) break', ['while-loop', 'logical', 'break']),
-				shell, 'while (TRUE) break', exprList({
-					type:      RType.WhileLoop,
-					location:  rangeFrom(1, 1, 1, 5),
-					lexeme:    'while',
-					info:      {},
-					condition: {
-						type:     RType.Logical,
-						location: rangeFrom(1, 8, 1, 11),
-						lexeme:   'TRUE',
-						content:  true,
-						info:     {}
+				shell, 'while (TRUE) break', [
+					{
+						step:   NORMALIZE,
+						wanted: exprList({
+							type:      RType.WhileLoop,
+							location:  rangeFrom(1, 1, 1, 5),
+							lexeme:    'while',
+							info:      {},
+							condition: {
+								type:     RType.Logical,
+								location: rangeFrom(1, 8, 1, 11),
+								lexeme:   'TRUE',
+								content:  true,
+								info:     {}
+							},
+							body: ensureExpressionList({
+								type:     RType.Break,
+								location: rangeFrom(1, 14, 1, 18),
+								lexeme:   'break',
+								info:     {}
+							})
+						})
 					},
-					body: ensureExpressionList({
-						type:     RType.Break,
-						location: rangeFrom(1, 14, 1, 18),
-						lexeme:   'break',
-						info:     {}
-					})
-				}))
+					{
+						step:   DESUGAR_NORMALIZE,
+						wanted: exprList({
+							type:      RType.WhileLoop,
+							location:  rangeFrom(1, 1, 1, 5),
+							lexeme:    'while',
+							info:      {},
+							condition: {
+								type:     RType.Logical,
+								location: rangeFrom(1, 8, 1, 11),
+								lexeme:   'TRUE',
+								content:  true,
+								info:     {}
+							},
+							body: ensureExpressionList({
+								type:     RType.Break,
+								location: rangeFrom(1, 14, 1, 18),
+								lexeme:   'break',
+								info:     {}
+							})
+						})
+					}
+				])
 		})
 		describe('next', () => {
 			assertAst(label('Next in while', ['while-loop', 'next']),
-				shell, 'while (TRUE) next', exprList({
-					type:      RType.WhileLoop,
-					location:  rangeFrom(1, 1, 1, 5),
-					lexeme:    'while',
-					info:      {},
-					condition: {
-						type:     RType.Logical,
-						location: rangeFrom(1, 8, 1, 11),
-						lexeme:   'TRUE',
-						content:  true,
-						info:     {}
+				shell, 'while (TRUE) next', [
+					{
+						step:   NORMALIZE,
+						wanted: exprList({
+							type:      RType.WhileLoop,
+							location:  rangeFrom(1, 1, 1, 5),
+							lexeme:    'while',
+							info:      {},
+							condition: {
+								type:     RType.Logical,
+								location: rangeFrom(1, 8, 1, 11),
+								lexeme:   'TRUE',
+								content:  true,
+								info:     {}
+							},
+							body: ensureExpressionList({
+								type:     RType.Next,
+								location: rangeFrom(1, 14, 1, 17),
+								lexeme:   'next',
+								info:     {}
+							})
+						})
 					},
-					body: ensureExpressionList({
-						type:     RType.Next,
-						location: rangeFrom(1, 14, 1, 17),
-						lexeme:   'next',
-						info:     {}
-					})
-				}))
+					{
+						step:   DESUGAR_NORMALIZE,
+						wanted: exprList({
+							type:      RType.WhileLoop,
+							location:  rangeFrom(1, 1, 1, 5),
+							lexeme:    'while',
+							info:      {},
+							condition: {
+								type:     RType.Logical,
+								location: rangeFrom(1, 8, 1, 11),
+								lexeme:   'TRUE',
+								content:  true,
+								info:     {}
+							},
+							body: ensureExpressionList({
+								type:     RType.Next,
+								location: rangeFrom(1, 14, 1, 17),
+								lexeme:   'next',
+								info:     {}
+							})
+						})
+					}
+				])
 		})
 	})
 }))

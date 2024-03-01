@@ -585,17 +585,28 @@ describe('Parse simple constructs', withShell(shell => {
 					{
 						step:   DESUGAR_NORMALIZE,
 						wanted: exprList({
-							type:     RType.RepeatLoop,
-							location: rangeFrom(1, 1, 1, 6),
-							lexeme:   'repeat',
-							info:     {},
-							body:     ensureExpressionList({
-								type:     RType.Number,
-								location: rangeFrom(1, 8, 1, 8),
-								lexeme:   '2',
-								content:  numVal(2),
-								info:     {}
-							})
+							type:         RType.FunctionCall,
+							location:     rangeFrom(1, 1, 1, 6),
+							lexeme:       'repeat 2',
+							info:         {},
+							flavor:       'named',
+							functionName: {
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 1, 1, 6),
+								lexeme:    'repeat',
+								content:   'repeat',
+								namespace: undefined,
+								info:      {}
+							},
+							arguments: [
+								{
+									type:     RType.Number,
+									location: rangeFrom(1, 8, 1, 8),
+									lexeme:   '2',
+									content:  numVal(2),
+									info:     {}
+								}
+							]
 						})
 					}
 				], {
@@ -636,31 +647,49 @@ describe('Parse simple constructs', withShell(shell => {
 					{
 						step:   DESUGAR_NORMALIZE,
 						wanted: exprList({
-							type:     RType.RepeatLoop,
-							location: rangeFrom(1, 1, 1, 6),
-							lexeme:   'repeat',
-							info:     {},
-							body:     {
-								type:     RType.ExpressionList,
-								location: rangeFrom(1, 8, 1, 15),
-								lexeme:   '{ x; y }',
-								info:     {},
-								children: [{
+							type:         RType.FunctionCall,
+							location:     rangeFrom(1, 1, 1, 6),
+							lexeme:       'repeat { x; y }',
+							info:         {},
+							flavor:       'named',
+							functionName: {
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 1, 1, 6),
+								lexeme:    'repeat',
+								content:   'repeat',
+								namespace: undefined,
+								info:      {}
+							},
+							arguments: [{
+								type:         RType.FunctionCall,
+								location:     rangeFrom(1, 8, 1, 8),
+								lexeme:       '{',
+								info:         {},
+								flavor:       'named',
+								functionName: {
+									type:      RType.Symbol,
+									location:  rangeFrom(1, 8, 1, 8),
+									lexeme:    '{',
+									content:   '{',
+									namespace: undefined,
+									info:      {}
+								},
+								arguments: [{
 									type:      RType.Symbol,
 									location:  rangeFrom(1, 10, 1, 10),
-									namespace: undefined,
 									lexeme:    'x',
 									content:   'x',
-									info:      {},
+									namespace: undefined,
+									info:      {}
 								}, {
 									type:      RType.Symbol,
 									location:  rangeFrom(1, 13, 1, 13),
-									namespace: undefined,
 									lexeme:    'y',
 									content:   'y',
+									namespace: undefined,
 									info:      {}
 								}]
-							}
+							}]
 						})
 					}], {
 					ignoreAdditionalTokens: true
@@ -695,31 +724,42 @@ describe('Parse simple constructs', withShell(shell => {
 					{
 						step:   DESUGAR_NORMALIZE,
 						wanted: exprList({
-							type:      RType.WhileLoop,
-							location:  rangeFrom(1, 1, 1, 5),
-							lexeme:    'while',
-							info:      {},
-							condition: {
-								type:     RType.Logical,
-								location: rangeFrom(1, 8, 1, 11),
-								lexeme:   'TRUE',
-								content:  true,
-								info:     {}
+							type:         RType.FunctionCall,
+							location:     rangeFrom(1, 1, 1, 5),
+							lexeme:       'while',
+							info:         {},
+							flavor:       'named',
+							functionName: {
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 1, 1, 5),
+								lexeme:    'while',
+								content:   'while',
+								namespace: undefined,
+								info:      {}
 							},
-							body: ensureExpressionList({
-								type:     RType.Number,
-								location: rangeFrom(1, 14, 1, 15),
-								lexeme:   '42',
-								content:  numVal(42),
-								info:     {}
-							})
+							arguments: [
+								{
+									type:     RType.Logical,
+									location: rangeFrom(1, 8, 1, 11),
+									lexeme:   'TRUE',
+									content:  true,
+									info:     {}
+								},
+								{
+									type:     RType.Number,
+									location: rangeFrom(1, 14, 1, 15),
+									lexeme:   '42',
+									content:  numVal(42),
+									info:     {}
+								}
+							]
 						})
 					}
 				], {
 					ignoreAdditionalTokens: true
 				})
 
-			assertAst(label('Two statement while', ['while-loop', 'logical', 'grouping']),
+			assertAst(label('Two statement while', ['while-loop', 'logical', 'grouping', 'semicolons']),
 				shell, 'while (FALSE) { x; y }', [
 					{
 						step:   NORMALIZE,
@@ -761,38 +801,61 @@ describe('Parse simple constructs', withShell(shell => {
 					{
 						step:   DESUGAR_NORMALIZE,
 						wanted: exprList({
-							type:      RType.WhileLoop,
-							location:  rangeFrom(1, 1, 1, 5),
-							lexeme:    'while',
-							info:      {},
-							condition: {
-								type:     RType.Logical,
-								location: rangeFrom(1, 8, 1, 12),
-								lexeme:   'FALSE',
-								content:  false,
-								info:     {}
+							type:         RType.FunctionCall,
+							location:     rangeFrom(1, 1, 1, 5),
+							lexeme:       'while',
+							info:         {},
+							flavor:       'named',
+							functionName: {
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 1, 1, 5),
+								lexeme:    'while',
+								content:   'while',
+								namespace: undefined,
+								info:      {}
 							},
-							body: ensureExpressionList({
-								type:     RType.ExpressionList,
-								location: rangeFrom(1, 15, 1, 22),
-								lexeme:   '{ x; y }',
-								info:     {},
-								children: [{
-									type:      RType.Symbol,
-									location:  rangeFrom(1, 17, 1, 17),
-									namespace: undefined,
-									lexeme:    'x',
-									content:   'x',
-									info:      {}
-								}, {
-									type:      RType.Symbol,
-									location:  rangeFrom(1, 20, 1, 20),
-									namespace: undefined,
-									lexeme:    'y',
-									content:   'y',
-									info:      {}
-								}]
-							})
+							arguments: [
+								{
+									type:     RType.Logical,
+									location: rangeFrom(1, 8, 1, 12),
+									lexeme:   'FALSE',
+									content:  false,
+									info:     {}
+								},
+								{
+									type:         RType.FunctionCall,
+									location:     rangeFrom(1, 15, 1, 15),
+									lexeme:       '{',
+									info:         {},
+									flavor:       'named',
+									functionName: {
+										type:      RType.Symbol,
+										location:  rangeFrom(1, 15, 1, 15),
+										lexeme:    '{',
+										content:   '{',
+										namespace: undefined,
+										info:      {}
+									},
+									arguments: [
+										{
+											type:      RType.Symbol,
+											location:  rangeFrom(1, 17, 1, 17),
+											lexeme:    'x',
+											content:   'x',
+											namespace: undefined,
+											info:      {}
+										},
+										{
+											type:      RType.Symbol,
+											location:  rangeFrom(1, 20, 1, 20),
+											lexeme:    'y',
+											content:   'y',
+											namespace: undefined,
+											info:      {}
+										}
+									]
+								}
+							]
 						})
 					}
 				], {
@@ -827,23 +890,36 @@ describe('Parse simple constructs', withShell(shell => {
 					{
 						step:   DESUGAR_NORMALIZE,
 						wanted: exprList({
-							type:      RType.WhileLoop,
-							location:  rangeFrom(1, 1, 1, 5),
-							lexeme:    'while',
-							info:      {},
-							condition: {
-								type:     RType.Logical,
-								location: rangeFrom(1, 8, 1, 11),
-								lexeme:   'TRUE',
-								content:  true,
-								info:     {}
+							type:         RType.FunctionCall,
+							location:     rangeFrom(1, 1, 1, 5),
+							lexeme:       'while',
+							info:         {},
+							flavor:       'named',
+							functionName: {
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 1, 1, 5),
+								lexeme:    'while',
+								content:   'while',
+								namespace: undefined,
+								info:      {}
 							},
-							body: ensureExpressionList({
-								type:     RType.Break,
-								location: rangeFrom(1, 14, 1, 18),
-								lexeme:   'break',
-								info:     {}
-							})
+							arguments: [
+								{
+									type:     RType.Logical,
+									location: rangeFrom(1, 8, 1, 11),
+									lexeme:   'TRUE',
+									content:  true,
+									info:     {}
+								},
+								{
+									type:      RType.Symbol,
+									location:  rangeFrom(1, 14, 1, 18),
+									lexeme:    'break',
+									content:   'break',
+									namespace: undefined,
+									info:      {}
+								}
+							]
 						})
 					}
 				])
@@ -876,23 +952,36 @@ describe('Parse simple constructs', withShell(shell => {
 					{
 						step:   DESUGAR_NORMALIZE,
 						wanted: exprList({
-							type:      RType.WhileLoop,
-							location:  rangeFrom(1, 1, 1, 5),
-							lexeme:    'while',
-							info:      {},
-							condition: {
-								type:     RType.Logical,
-								location: rangeFrom(1, 8, 1, 11),
-								lexeme:   'TRUE',
-								content:  true,
-								info:     {}
+							type:         RType.FunctionCall,
+							location:     rangeFrom(1, 1, 1, 5),
+							lexeme:       'while',
+							info:         {},
+							flavor:       'named',
+							functionName: {
+								type:      RType.Symbol,
+								location:  rangeFrom(1, 1, 1, 5),
+								lexeme:    'while',
+								content:   'while',
+								namespace: undefined,
+								info:      {}
 							},
-							body: ensureExpressionList({
-								type:     RType.Next,
-								location: rangeFrom(1, 14, 1, 17),
-								lexeme:   'next',
-								info:     {}
-							})
+							arguments: [
+								{
+									type:     RType.Logical,
+									location: rangeFrom(1, 8, 1, 11),
+									lexeme:   'TRUE',
+									content:  true,
+									info:     {}
+								},
+								{
+									type:      RType.Symbol,
+									location:  rangeFrom(1, 14, 1, 17),
+									lexeme:    'next',
+									content:   'next',
+									namespace: undefined,
+									info:      {}
+								}
+							]
 						})
 					}
 				])

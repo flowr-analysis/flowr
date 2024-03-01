@@ -17,6 +17,7 @@ import { tryNormalizeFor } from './loops/for'
 import { tryNormalizeFunctionCall } from './functions/function-call'
 import { tryNormalizeFunctionDefinition } from './functions/function-definition'
 import { normalizeComment } from './other'
+import { tryNormalizeWhile } from './loops/while'
 
 interface HandledExpressionList {
 	segments: XmlBasedJson[][]
@@ -217,7 +218,9 @@ function tryNormalizeElems(config: NormalizeConfiguration, tokens: readonly XmlB
 				?? tryNormalizeFor(config, tokens[0], tokens[1], tokens[2])
 				?? normalizeBinary(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson])
 		case 5: // TODO: while
-			return tryNormalizeIfThen(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? todo(tokens)
+			return tryNormalizeIfThen(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson])
+				?? tryNormalizeWhile(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson])
+				?? todo(tokens)
 		case 7: // TODO: other cases?
 			return tryNormalizeIfThenElse(config, tokens as [XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson, XmlBasedJson]) ?? todo(tokens)
 		default:

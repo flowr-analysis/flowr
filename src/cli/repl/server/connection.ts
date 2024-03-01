@@ -70,7 +70,7 @@ export class FlowRServerConnection {
 			return
 		}
 		message = this.currentMessageBuffer + message
-		if(this.logger.settings.minLevel >= LogLevel.Debug) {
+		if(this.logger.settings.minLevel <= LogLevel.Debug) {
 			this.logger.debug(`[${this.name}] Received message: ${message}`)
 		}
 
@@ -193,7 +193,7 @@ export class FlowRServerConnection {
 		}
 
 		const request = requestResult.message
-		if(this.logger.settings.minLevel >= LogLevel.Info) {
+		if(this.logger.settings.minLevel <= LogLevel.Info) {
 			this.logger.info(`[${request.filetoken}] Received slice request with criteria ${JSON.stringify(request.criterion)}`)
 		}
 

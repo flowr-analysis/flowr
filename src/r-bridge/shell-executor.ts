@@ -36,7 +36,7 @@ export class RShellExecutor {
 
 	public run(command: string, returnErr = false): string {
 		command += ';base::quit()'
-		if(executorLog.settings.minLevel >= LogLevel.Trace) {
+		if(executorLog.settings.minLevel <= LogLevel.Trace) {
 			executorLog.trace(`> ${JSON.stringify(command)}`)
 		}
 

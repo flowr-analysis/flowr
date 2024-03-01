@@ -29,7 +29,7 @@ import {
 	foldAstStateful
 	, EmptyArgument
 } from '../r-bridge'
-import { log, LogLevel } from '../util/log'
+import { expensiveTrace, log, LogLevel } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
 import type { MergeableRecord } from '../util/objects'
 //
@@ -50,13 +50,7 @@ const getLexeme = (n: RNodeWithParent) => n.info.fullLexeme ?? n.lexeme ?? ''
 
 const reconstructAsLeaf = (leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code => {
 	const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf)
-	if(selectionHasLeaf) {
-		return foldToConst(leaf)
-	} else {
-		return []
-	}
-	// reconstructLogger.trace(`reconstructAsLeaf: ${leaf.info.id} (${selectionHasLeaf ? 'y' : 'n'}):  ${JSON.stringify(wouldBe)}`)
-	// return selectionHasLeaf ? wouldBe : []
+	return selectionHasLeaf ? foldToConst(leaf) : []
 }
 
 const foldToConst = (n: RNodeWithParent): Code => plain(getLexeme(n))
@@ -491,7 +485,7 @@ function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[], autoSe
  * @returns The number of times `autoSelectIf` triggered, as well as the reconstructed code itself.
  */
 export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Selection, autoSelectIf: AutoSelectPredicate = autoSelectLibrary): ReconstructionResult {
-	if(reconstructLogger.settings.minLevel >= LogLevel.Trace) {
+	if(reconstructLogger.settings.minLevel <= LogLevel.Trace) {
 		reconstructLogger.trace(`reconstruct ast with ids: ${JSON.stringify([...selection])}`)
 	}
 
@@ -508,9 +502,7 @@ export function reconstructToCode<Info>(ast: NormalizedAst<Info>, selection: Sel
 	// fold of the normalized ast
 	const result = foldAstStateful(ast.ast, { selection, autoSelectIf: autoSelectIfWrapper }, reconstructAstFolds)
 
-	if(reconstructLogger.settings.minLevel >= LogLevel.Trace) {
-		reconstructLogger.trace('reconstructed ast before string conversion: ', JSON.stringify(result))
-	}
+	expensiveTrace(reconstructLogger, () => `reconstructed ast before string conversion: ${JSON.stringify(result)}`)
 
 	return removeOuterExpressionListIfApplicable(result, autoSelected)
 }

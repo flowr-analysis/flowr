@@ -158,7 +158,7 @@ export class RShell {
    * will not do anything to alter input markers!
    */
 	public sendCommand(command: string): void {
-		if(this.log.settings.minLevel >= LogLevel.Trace) {
+		if(this.log.settings.minLevel <= LogLevel.Trace) {
 			this.log.trace(`> ${JSON.stringify(command)}`)
 		}
 		this._sendCommand(command)
@@ -211,9 +211,7 @@ export class RShell {
    */
 	public async sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]> {
 		const config = deepMergeObject(DEFAULT_OUTPUT_COLLECTOR_CONFIGURATION, addonConfig)
-		if(this.log.settings.minLevel >= LogLevel.Trace) {
-			this.log.trace(`> ${JSON.stringify(command)}`)
-		}
+		expensiveTrace(this.log, () => `> ${JSON.stringify(command)}`)
 
 		const output = await this.session.collectLinesUntil(config.from, {
 			predicate:       data => data === config.postamble,
@@ -221,7 +219,7 @@ export class RShell {
 		}, config.timeout, () => {
 			this._sendCommand(command)
 			if(config.from === 'stderr') {
-				this._sendCommand(`cat("${config.postamble}${this.options.eol}", file=stderr())`)
+				this._sendCommand(`cat("${config.postamble}${this.options.eol}",file=stderr())`)
 			} else {
 				this._sendCommand(`cat("${config.postamble}${this.options.eol}")`)
 			}
@@ -317,7 +315,7 @@ class RShellSession {
 		this.options = options
 		this.log = log
 
-		if(log.settings.minLevel >= LogLevel.Trace) {
+		if(log.settings.minLevel <= LogLevel.Trace) {
 			this.bareSession.stdout.on('data', (data: Buffer) => {
 				log.trace(`< ${data.toString()}`)
 			})

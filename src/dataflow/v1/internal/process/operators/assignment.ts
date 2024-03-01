@@ -114,7 +114,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
 
 	const writeNodes = produceWrittenNodes(op, target, superAssignment, data, funcTypeCheck)
 
-	if(writeNodes.length !== 1 && log.settings.minLevel >= LogLevel.Warn) {
+	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`)
 	}
 

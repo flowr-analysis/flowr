@@ -66,7 +66,7 @@ async function getSlice() {
 	}
 
 	const { stats, normalize, parse, tokenMap, dataflow } = slicer.finish()
-	if(log.settings.minLevel >= LogLevel.Info) {
+	if(log.settings.minLevel <= LogLevel.Info) {
 		const mappedCriteria = mappedSlices.map(c => `    ${c.criterion} => ${c.id} (${JSON.stringify(normalize.idMap.get(c.id)?.location)})`).join('\n')
 		log.info(`Mapped criteria:\n${mappedCriteria}`)
 	}

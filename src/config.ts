@@ -61,7 +61,7 @@ function parseConfigOptions(workingDirectory: string, configFile: string): Flowr
 				if(!validate.error) {
 					// assign default values to all config options except for the specified ones
 					const ret = deepMergeObject(defaultConfigOptions, parsed)
-					if(log.settings.minLevel >= LogLevel.Info) {
+					if(log.settings.minLevel <= LogLevel.Info) {
 						log.info(`Using config ${JSON.stringify(ret)} from ${configPath}`)
 					}
 					return ret
@@ -76,7 +76,7 @@ function parseConfigOptions(workingDirectory: string, configFile: string): Flowr
 		searchPath = getParentDirectory(searchPath)
 	} while(fs.existsSync(searchPath))
 
-	if(log.settings.minLevel >= LogLevel.Info) {
+	if(log.settings.minLevel <= LogLevel.Info) {
 		log.info(`Using default config ${JSON.stringify(defaultConfigOptions)}`)
 	}
 	return defaultConfigOptions

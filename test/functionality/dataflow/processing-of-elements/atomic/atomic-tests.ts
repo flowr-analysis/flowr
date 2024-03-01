@@ -33,7 +33,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		}
 	})
 
-	assertDataflow(label('simple variable', ['name-normal']), shell,
+	assertDataflow(label('Simple Variable', ['name-normal']), shell,
 		'xylophone', sameForSteps([LEGACY_STATIC_DATAFLOW, V2_STATIC_DATAFLOW],
 			emptyGraph().use('0', 'xylophone')
 		)
@@ -45,6 +45,12 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				shell,'a[2]', [
 					{
 						step:   LEGACY_STATIC_DATAFLOW,
+						wanted: emptyGraph().use('0', 'a', { when: 'maybe' })
+							.use('2', unnamedArgument('2'))
+							.reads('0', '2')
+					},
+					{
+						step:   V2_STATIC_DATAFLOW,
 						wanted: emptyGraph().use('0', 'a', { when: 'maybe' })
 							.use('2', unnamedArgument('2'))
 							.reads('0', '2')

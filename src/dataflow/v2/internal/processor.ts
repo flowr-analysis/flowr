@@ -48,7 +48,7 @@ export type RNodeV2<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info> |
  * This way, a processor mapped to a {@link RType#Symbol} require a {@link RSymbol} as first parameter and so on.
  */
 export type DataflowProcessors<OtherInfo> = {
-	[key in RNodeV2['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, RNodeV2<OtherInfo & ParentInformation>, key>>
+	[key in RNode['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, RNodeWithParent<OtherInfo>, key>>
 }
 
 /**
@@ -63,6 +63,6 @@ export type DataflowProcessors<OtherInfo> = {
  * @param current - The current node to start processing from
  * @param data    - The initial information to be passed down
  */
-export function processDataflowFor<OtherInfo>(current: RNodeV2<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
+export function processDataflowFor<OtherInfo>(current: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	return data.processors[current.type](current as never, data)
 }

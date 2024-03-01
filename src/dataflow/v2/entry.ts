@@ -1,11 +1,11 @@
 import type { DataflowInformation } from '../common/info'
 import { initializeCleanEnvironments } from '../common/environments'
-import { type DataflowProcessors, processDataflowFor } from '../v1/processor'
 import type { NormalizedAst, ParentInformation, RParseRequest } from '../../r-bridge'
 import { requestFingerprint } from '../../r-bridge'
-import { processors } from '../v1'
+import { processors } from './extractor'
+import type { DataflowProcessors } from './internal/processor'
+import { processDataflowFor } from './internal/processor'
 
-// TODO: move from legacy
 export function produceDataFlowGraph<OtherInfo>(request: RParseRequest, ast: NormalizedAst<OtherInfo & ParentInformation>): DataflowInformation {
 	return processDataflowFor<OtherInfo>(ast.ast, {
 		completeAst:    ast,

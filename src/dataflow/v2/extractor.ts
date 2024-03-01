@@ -1,38 +1,42 @@
-import {
-	type NormalizedAst,
-	type ParentInformation,
-	requestFingerprint,
-	type RParseRequest,
-	RType
-} from '../../r-bridge'
-import type { DataflowProcessors, RNodeV2 } from './internal/processor'
-import { processDataflowFor } from './internal/processor'
+import { RType } from '../../r-bridge'
+import type { DataflowProcessors } from './internal/processor'
 import { processUninterestingLeaf } from './internal/uninteresting-leaf'
-import { initializeCleanEnvironments } from '../common/environments'
+import { processExpressionList } from '../v1/internal/process/expression-list'
+import { processSymbol } from './internal/symbol'
+import { processFunctionCall } from './internal/function-call'
+import { processFunctionDefinition } from './internal/function-definition'
+import { processFunctionParameter } from './internal/parameter'
+import { processFunctionArgument } from './internal/argument'
 import type { DataflowInformation } from '../common/info'
 
+function error(): DataflowInformation {
+	throw new Error('Not implemented')
+}
+
+/* for each node which is not intendet by normalize, we provide the v1 processor as fallback */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
 export const processors: DataflowProcessors<any> = {
 	[RType.Number]:             processUninterestingLeaf,
 	[RType.String]:             processUninterestingLeaf,
 	[RType.Logical]:            processUninterestingLeaf,
-	[RType.Symbol]:             processUninterestingLeaf,
+	[RType.Access]:             error,
+	[RType.Symbol]:             processSymbol,
+	[RType.BinaryOp]:           error,
+	[RType.Pipe]:               error,
+	[RType.UnaryOp]:            error,
+	[RType.ForLoop]:            error,
+	[RType.WhileLoop]:          error,
+	[RType.RepeatLoop]:         error,
+	[RType.IfThenElse]:         error,
+	[RType.Break]:              error,
+	[RType.Next]:               error,
 	[RType.Comment]:            processUninterestingLeaf,
 	[RType.LineDirective]:      processUninterestingLeaf,
-	[RType.FunctionCall]:       processUninterestingLeaf,
-	[RType.FunctionDefinition]: processUninterestingLeaf,
-	[RType.Parameter]:          processUninterestingLeaf,
-	[RType.Argument]:           processUninterestingLeaf,
-	[RType.ExpressionList]:     processUninterestingLeaf
+	[RType.FunctionCall]:       processFunctionCall,
+	[RType.FunctionDefinition]: processFunctionDefinition,
+	[RType.Parameter]:          processFunctionParameter,
+	[RType.Argument]:           processFunctionArgument,
+	[RType.ExpressionList]:     processExpressionList,
 }
 
 
-export function produceDataFlowGraph<OtherInfo>(request: RParseRequest, ast: NormalizedAst<OtherInfo & ParentInformation, RNodeV2<OtherInfo & ParentInformation>>): DataflowInformation {
-	return processDataflowFor<OtherInfo>(ast.ast, {
-		completeAst:    ast,
-		environments:   initializeCleanEnvironments(),
-		processors:     processors as DataflowProcessors<OtherInfo & ParentInformation>,
-		currentRequest: request,
-		referenceChain: [requestFingerprint(request)]
-	})
-}

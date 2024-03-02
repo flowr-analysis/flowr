@@ -51,7 +51,7 @@ export class Measurements<T> {
 	}
 
 	/**
-   * Automatically call {@link Measurements#start | start} and the corresponding stop to measure the execution time of the given function.
+   * Automatically call {@link Measurements#start|start} and the corresponding stop to measure the execution time of the given function.
    * @see {@link measureAsync}
    */
 	public measure<Out>(key: T, fn: () => Out): Out {

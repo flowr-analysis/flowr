@@ -4,8 +4,8 @@ import { decorateAst, deterministicCountingIdGenerator, RawRType } from '../../m
 import type { Entry } from './format'
 import { prepareParsedData } from './format'
 import { log } from '../../../../../util/log'
-import type { ParserData, XmlBasedJson } from '../xml/v1'
-import { normalizeRootObjToAst } from '../xml/v1/internal'
+import type { ParserData, XmlBasedJson } from '../xml'
+import { normalizeRootObjToAst } from '../xml/internal'
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 

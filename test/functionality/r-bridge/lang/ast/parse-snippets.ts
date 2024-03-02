@@ -1,8 +1,7 @@
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { assertAst, withShell } from '../../../_helper/shell'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RType } from '../../../../../src'
-import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v1/internal'
+import { ensureExpressionList, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
 
 describe('Parse larger snippets', withShell((shell) => {

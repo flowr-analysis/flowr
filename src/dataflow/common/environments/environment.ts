@@ -7,9 +7,7 @@
 import type { NodeId } from '../../../r-bridge'
 import type { DataflowGraph, DataflowGraphEdgeAttribute } from '../../v1'
 import { resolveByName } from './resolve-by-name'
-import type { GenericDifferenceInformation } from '../../../util/diff'
-import { setDifference } from '../../../util/diff'
-import { jsonReplacer } from '../../../util/json'
+import type { DataflowInformation } from '../info'
 
 /** identifiers are branded to avoid confusion with other string-like types */
 export type Identifier = string & { __brand?: 'identifier' }
@@ -18,14 +16,22 @@ export type Identifier = string & { __brand?: 'identifier' }
 export const BuiltIn = 'built-in'
 
 
-/**
- * Stores the definition of an identifier within an {@link IEnvironment}
- */
-export interface IdentifierDefinition extends IdentifierReference {
-	kind:      'function' | 'variable' | 'parameter' | 'unknown' | 'built-in-function' | 'argument'
+interface InGraphIdentifierDefinition extends IdentifierReference {
+	kind:      'function' | 'variable' | 'parameter' | 'unknown' | 'argument'
 	/** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
 	definedAt: NodeId
 }
+
+interface BuiltInIdentifierDefinition extends IdentifierReference {
+	kind:      'built-in-function'
+	definedAt: typeof BuiltIn
+	process:   (node: NodeId, args: readonly DataflowInformation[], info: DataflowInformation) => DataflowInformation
+}
+
+/**
+ * Stores the definition of an identifier within an {@link IEnvironment}
+ */
+export type IdentifierDefinition = InGraphIdentifierDefinition | BuiltInIdentifierDefinition
 
 /**
  * Something like `a` in `b <- a`.
@@ -42,18 +48,6 @@ export interface IdentifierReference {
    * For example, if we can not detect `if(FALSE)`, this will be `maybe` even if we could statically determine, that the `then` branch is never executed.
    */
 	used:   DataflowGraphEdgeAttribute
-}
-
-export function diffIdentifierReferences(a: IdentifierReference, b: IdentifierReference, info: GenericDifferenceInformation): void {
-	if(a.name !== b.name) {
-		info.report.addComment(`${info.position}Different identifier names: ${a.name} vs. ${b.name}`)
-	}
-	if(a.nodeId !== b.nodeId) {
-		info.report.addComment(`${info.position}Different nodeIds: ${a.nodeId} vs. ${b.nodeId}`)
-	}
-	if(a.used !== b.used) {
-		info.report.addComment(`${info.position}Different used: ${a.used} vs. ${b.used}`)
-	}
 }
 
 
@@ -125,29 +119,41 @@ export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition
 		kind:      'built-in-function',
 		used:      'always',
 		definedAt: BuiltIn,
-		name:      'return',
-		nodeId:    BuiltIn
+		process:   (node, args, info) => {
+			return info
+		},
+		name:   'return',
+		nodeId: BuiltIn
 	}]],
 	['cat', [{
 		kind:      'built-in-function',
 		used:      'always',
 		definedAt: BuiltIn,
-		name:      'cat',
-		nodeId:    BuiltIn
+		process:   (node, args, info) => {
+			return info
+		},
+		name:   'cat',
+		nodeId: BuiltIn
 	}]],
 	['print', [{
 		kind:      'built-in-function',
 		used:      'always',
 		definedAt: BuiltIn,
-		name:      'print',
-		nodeId:    BuiltIn
+		process:   (node, args, info) => {
+			return info
+		},
+		name:   'print',
+		nodeId: BuiltIn
 	}]],
 	['source', [{
 		kind:      'built-in-function',
 		used:      'always',
 		definedAt: BuiltIn,
-		name:      'source',
-		nodeId:    BuiltIn
+		process:   (node, args, info) => {
+			return info
+		},
+		name:   'source',
+		nodeId: BuiltIn
 	}]]
 ])
 
@@ -162,75 +168,3 @@ export function initializeCleanEnvironments(): REnvironmentInformation {
 }
 
 
-export function diffEnvironment(a: IEnvironment | undefined, b: IEnvironment | undefined, info: GenericDifferenceInformation): void {
-	if(a === undefined || b === undefined) {
-		if(a !== b) {
-			info.report.addComment(`${info.position}Different environments. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
-		}
-		return
-	}
-	if(a.name !== b.name) {
-		info.report.addComment(`${info.position}Different environment names. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
-	}
-	if(a.memory.size !== b.memory.size) {
-		info.report.addComment(`${info.position}Different environment sizes. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
-		setDifference(new Set([...a.memory.keys()]), new Set([...b.memory.keys()]), { ...info, position: `${info.position}Key comparison. ` })
-	}
-	for(const [key, value] of a.memory) {
-		const value2 = b.memory.get(key)
-		if(value2 === undefined || value.length !== value2.length) {
-			info.report.addComment(`${info.position}Different definitions for ${key}. ${info.leftname}: ${JSON.stringify(value, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(value2, jsonReplacer)}`)
-			continue
-		}
-
-		// we sort both value arrays by their id so that we have no problems with differently ordered arrays (which have no impact)
-		const sorted = [...value].sort((a, b) => a.nodeId.localeCompare(b.nodeId))
-		const sorted2 = [...value2].sort((a, b) => a.nodeId.localeCompare(b.nodeId))
-
-		for(let i = 0; i < value.length; ++i) {
-			const aVal = sorted[i]
-			const bVal = sorted2[i]
-			if(aVal.name !== bVal.name) {
-				info.report.addComment(`${info.position}Different names for ${key}. ${info.leftname}: ${aVal.name} vs. ${info.rightname}: ${bVal.name}`)
-			}
-			if(aVal.nodeId !== bVal.nodeId) {
-				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`)
-			}
-			if(aVal.used !== bVal.used) {
-				info.report.addComment(`${info.position}Different used for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.used} vs. ${info.rightname}: ${bVal.used}`)
-			}
-			if(aVal.definedAt !== bVal.definedAt) {
-				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)
-			}
-			if(aVal.kind !== bVal.kind) {
-				info.report.addComment(`${info.position}Different kinds for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.kind} vs. ${info.rightname}: ${bVal.kind}`)
-			}
-		}
-	}
-	diffEnvironment(a.parent, b.parent, { ...info, position: `${info.position}Parents of ${a.id} & ${b.id}. ` })
-}
-
-export function diffEnvironments(a: REnvironmentInformation | undefined, b: REnvironmentInformation | undefined, info: GenericDifferenceInformation): void {
-	if(a === undefined || b === undefined) {
-		info.report.addComment(`${info.position}Different environments: ${JSON.stringify(a, jsonReplacer)} vs. ${JSON.stringify(b, jsonReplacer)}`)
-		return
-	}
-	diffEnvironment(a.current, b.current, info)
-}
-
-function cloneEnvironment(environment: IEnvironment, recurseParents: boolean): IEnvironment
-function cloneEnvironment(environment: IEnvironment | undefined, recurseParents: boolean): IEnvironment | undefined
-function cloneEnvironment(environment: IEnvironment | undefined, recurseParents: boolean): IEnvironment | undefined {
-	if(environment === undefined) {
-		return undefined
-	}
-	const clone = new Environment(environment.name, recurseParents ? cloneEnvironment(environment.parent, recurseParents) : environment.parent)
-	clone.memory = new Map(JSON.parse(JSON.stringify([...environment.memory])) as [Identifier, IdentifierDefinition[]][])
-	return clone
-}
-export function cloneEnvironments(environment: REnvironmentInformation, recurseParents = true): REnvironmentInformation {
-	return {
-		current: cloneEnvironment(environment.current, recurseParents),
-		level:   environment.level
-	}
-}

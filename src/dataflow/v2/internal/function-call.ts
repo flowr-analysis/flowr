@@ -32,6 +32,8 @@ export function processFunctionCall<OtherInfo>(
 
 	if(named) {
 		functionCallName = functionCall.functionName.content
+		const functionCallNamespace = functionCall.functionName.namespace
+		console.log('Calling Function', functionCallName, 'in namespace', functionCallNamespace)
 	} else {
 		functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`
 		// we know, that it calls the toplevel:

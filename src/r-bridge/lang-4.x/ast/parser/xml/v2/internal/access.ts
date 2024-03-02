@@ -2,14 +2,12 @@ import type { XmlBasedJson } from '../../common/input-format'
 import { XmlParseError } from '../../common/input-format'
 import { getTokenType, retrieveMetaStructure } from '../../common/meta'
 import type { RNode, RFunctionCall } from '../../../../model'
-import { EmptyArgument } from '../../../../model'
-import { RType, RawRType } from '../../../../model'
+import { EmptyArgument, RType, RawRType } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import type { NormalizeConfiguration } from '../data'
 import { normalizeSingleToken } from './single-element'
 import { tryToNormalizeArgument } from './functions/argument'
-import { InternalScope } from './internal'
 
 /**
  * Normalize the given data as access (e.g., indexing).
@@ -56,7 +54,7 @@ export function normalizeAccess(configuration: NormalizeConfiguration, tokens: r
 			flavor:       'named',
 			functionName: {
 				type:      RType.Symbol,
-				namespace: InternalScope,
+				namespace: undefined,
 				lexeme:    content,
 				info:      {},
 				content,
@@ -88,7 +86,7 @@ export function normalizeAccess(configuration: NormalizeConfiguration, tokens: r
 		flavor:       'named',
 		functionName: {
 			type:      RType.Symbol,
-			namespace: InternalScope,
+			namespace: undefined,
 			lexeme:    content,
 			info:      {},
 			content,

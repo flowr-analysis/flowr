@@ -43,11 +43,7 @@ function error(key: string, obj: XmlBasedJson) {
  * Single-key variant of {@link getKeysGuarded}. Will throw an {@link XmlParseError} if the key is not present.
  */
 export function getKeyGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, key: string): T {
-	const res = obj[key]
-	if(res === undefined) {
-		error(key, obj)
-	}
-	return res as T
+	return (obj[key] ?? error(key, obj)) as T
 }
 
 /**
@@ -56,11 +52,7 @@ export function getKeyGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ke
  *
  * @typeParam T - the type of the values to retrieve. Note, that this type is not checked at runtime.
  */
-export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ...keys: string[]): Record<string, T> {
-	const out = {} as Record<string, T>
-	for(const k of keys) {
-		out[k] = getKeyGuarded(obj, k)
-	}
-	return out
+export function getKeysGuarded<T extends XmlBasedJsonValue>(obj: XmlBasedJson, ...keys: readonly string[]): Record<string, T> {
+	return Object.fromEntries(keys.map(k => [k, getKeyGuarded(obj, k)] as const))
 }
 

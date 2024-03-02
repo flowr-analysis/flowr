@@ -1,4 +1,4 @@
-import { DefaultEnvironmentMemory, Environment, initializeCleanEnvironments } from '../../../../src/dataflow/v1'
+import { DefaultEnvironmentMemory, Environment, initializeCleanEnvironments } from '../../../../src/dataflow'
 import { expect } from 'chai'
 import { label } from '../../_helper/label'
 

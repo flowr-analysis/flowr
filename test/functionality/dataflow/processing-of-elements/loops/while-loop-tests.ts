@@ -1,6 +1,6 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
-import { define } from '../../../../../src/dataflow/common/environments'
+import { initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { define } from '../../../../../src/dataflow/environments'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
 describe('while', withShell(shell => {

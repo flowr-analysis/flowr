@@ -25,14 +25,14 @@ import { createPipeline } from '../../../src/core/steps/pipeline'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../src/core/steps/all/core/00-parse'
 import { NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
-import type { DataflowGraph } from '../../../src/dataflow/v1'
-import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
 import { SteppingSlicer } from '../../../src/core/stepping-slicer'
 import { LAST_STEP } from '../../../src/core/steps/steps'
 import type { TestLabel } from './label'
 import { decorateLabelContext } from './label'
-import { V2_STATIC_DATAFLOW } from '../../../src/core/steps/all/core/20-dataflow'
-import { LEGACY_STATIC_DATAFLOW } from '../../../src/core/steps/all/core/20-dataflow'
+import { STATIC_DATAFLOW } from '../../../src/core/steps/all/core/20-dataflow'
+import type { DataflowGraph } from '../../../src/dataflow'
+import { graphToMermaidUrl } from '../../../src/dataflow'
+import { diffGraphsToMermaidUrl } from '../../../src/dataflow'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {
@@ -182,78 +182,41 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 }
 
 
-const legacyDataflow = createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW)
-const newDataflow = createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, V2_STATIC_DATAFLOW)
+const legacyDataflow = createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, STATIC_DATAFLOW)
 
 export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
 	input: string,
-	expected: DataflowGraph | { step: typeof LEGACY_STATIC_DATAFLOW | typeof V2_STATIC_DATAFLOW, wanted: DataflowGraph }[],
+	expected: DataflowGraph,
 	userConfig?: Partial<TestConfiguration>,
 	startIndexForDeterministicIds = 0
 ): void {
 	const effectiveName = decorateLabelContext(name, ['dataflow'])
-	// TODO: remove non-array version after transition
-	if(!Array.isArray(expected)) {
-		it(`${effectiveName} (input: ${JSON.stringify(input)})`, async function() {
-			await ensureConfig(shell, this, userConfig)
+	it(`${effectiveName} (input: ${JSON.stringify(input)})`, async function() {
+		await ensureConfig(shell, this, userConfig)
 
-			const info = await new PipelineExecutor(legacyDataflow, {
-				shell,
-				request: requestFromInput(input),
-				getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
-			}).allRemainingSteps()
+		const info = await new PipelineExecutor(legacyDataflow, {
+			shell,
+			request: requestFromInput(input),
+			getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
+		}).allRemainingSteps()
 
-			const report: DifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got' })
-			// with the try catch the diff graph is not calculated if everything is fine
-			try {
-				guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`)
-			} catch(e) {
-				const diff = diffGraphsToMermaidUrl(
-					{ label: 'expected', graph: expected },
-					{ label: 'got', graph: info.dataflow.graph },
-					info.normalize.idMap,
-					`%% ${input.replace(/\n/g, '\n%% ')}\n`
-				)
-				console.error('diff:\n', diff)
-				throw e
-			}
-		}).timeout('3min')
-	} else {
-		describe(`${effectiveName} (input: ${JSON.stringify(input)})`, () => {
-			for(const { step, wanted } of expected) {
-				it(`${step.humanReadableName}`, async function() {
-					await ensureConfig(shell, this, userConfig)
-
-					const info = await new PipelineExecutor(step.humanReadableName === V2_STATIC_DATAFLOW.humanReadableName ? legacyDataflow : newDataflow, {
-						shell,
-						request: requestFromInput(input),
-						getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
-					}).allRemainingSteps()
-
-					const report: DifferenceReport = wanted.equals(info.dataflow.graph, true, {
-						left:  'expected',
-						right: 'got'
-					})
-					// with the try catch the diff graph is not calculated if everything is fine
-					try {
-						guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`)
-					} catch(e) {
-						const diff = diffGraphsToMermaidUrl(
-							{ label: 'expected', graph: wanted },
-							{ label: 'got', graph: info.dataflow.graph },
-							info.normalize.idMap,
-							`%% ${input.replace(/\n/g, '\n%% ')}\n`
-						)
-						console.error('diff:\n', diff)
-						throw e
-					}
-
-				}).timeout('3min')
-			}
-		})
-	}
+		const report: DifferenceReport = expected.equals(info.dataflow.graph, true, { left: 'expected', right: 'got' })
+		// with the try catch the diff graph is not calculated if everything is fine
+		try {
+			guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`)
+		} catch(e) {
+			const diff = diffGraphsToMermaidUrl(
+				{ label: 'expected', graph: expected },
+				{ label: 'got', graph: info.dataflow.graph },
+				info.normalize.idMap,
+				`%% ${input.replace(/\n/g, '\n%% ')}\n`
+			)
+			console.error('diff:\n', diff)
+			throw e
+		}
+	}).timeout('3min')
 }
 
 

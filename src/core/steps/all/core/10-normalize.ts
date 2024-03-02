@@ -26,7 +26,7 @@ function processor(results: { parse?: string }, input: Partial<NormalizeRequired
 
 export const NORMALIZE = {
 	name:              'normalize',
-	humanReadableName: 'v1 normalize',
+	humanReadableName: 'normalize',
 	description:       'Normalize the AST to flowR\'s AST',
 	processor,
 	executed:          PipelineStepStage.OncePerFile,

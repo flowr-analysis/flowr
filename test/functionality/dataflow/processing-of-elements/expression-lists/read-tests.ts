@@ -1,7 +1,7 @@
 import type { NodeId } from '../../../../../src'
-import { initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
+import { initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { define } from '../../../../../src/dataflow/common/environments'
+import { define } from '../../../../../src/dataflow/environments'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
 describe('Lists with variable references', withShell(shell => {

@@ -33,7 +33,7 @@ import {
 import type { StepProcessingFunction } from './steps/step'
 import { PARSE_WITH_R_SHELL_STEP } from './steps/all/core/00-parse'
 import { NORMALIZE } from './steps/all/core/10-normalize'
-import { LEGACY_STATIC_DATAFLOW } from './steps/all/core/20-dataflow'
+import { STATIC_DATAFLOW } from './steps/all/core/20-dataflow'
 import { STATIC_SLICE } from './steps/all/static-slicing/00-slice'
 import { NAIVE_RECONSTRUCT } from './steps/all/static-slicing/10-reconstruct'
 
@@ -89,7 +89,7 @@ export const STEPS_PER_FILE = {
 	} satisfies IStep<typeof NORMALIZE.processor>,
 	'dataflow': {
 		description: 'Construct the dataflow graph',
-		processor:   LEGACY_STATIC_DATAFLOW.processor,
+		processor:   STATIC_DATAFLOW.processor,
 		required:    'once-per-file',
 		printer:     {
 			[StepOutputFormat.Internal]:   internalPrinter,
@@ -98,7 +98,7 @@ export const STEPS_PER_FILE = {
 			[StepOutputFormat.Mermaid]:    dataflowGraphToMermaid,
 			[StepOutputFormat.MermaidUrl]: dataflowGraphToMermaidUrl
 		}
-	} satisfies IStep<typeof LEGACY_STATIC_DATAFLOW.processor>
+	} satisfies IStep<typeof STATIC_DATAFLOW.processor>
 } as const
 
 export const STEPS_PER_SLICE = {

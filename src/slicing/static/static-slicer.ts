@@ -3,12 +3,12 @@ import type {
 	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
 	REnvironmentInformation
-} from '../../dataflow/v1'
+} from '../../dataflow'
 import {
 	EdgeType,
 	graphToMermaidUrl,
 	initializeCleanEnvironments
-} from '../../dataflow/v1'
+} from '../../dataflow'
 import { guard } from '../../util/assert'
 import type {
 	DecoratedAstMap,
@@ -23,8 +23,8 @@ import { expensiveTrace, log } from '../../util/log'
 import objectHash from 'object-hash'
 import type { DecodedCriteria, SlicingCriteria } from '../criterion'
 import { convertAllSlicingCriteriaToIds } from '../criterion'
-import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/common/environments'
-import { getAllLinkedFunctionDefinitions } from '../../dataflow/v1/internal/linker'
+import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
+import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })
 

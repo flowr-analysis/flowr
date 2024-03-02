@@ -1,9 +1,9 @@
 import type { NodeId } from '../../../../src'
-import type { IEnvironment } from '../../../../src/dataflow/common/environments'
-import { DefaultEnvironmentMemory, initializeCleanEnvironments } from '../../../../src/dataflow/common/environments'
+import type { IEnvironment } from '../../../../src/dataflow/environments'
+import { DefaultEnvironmentMemory, initializeCleanEnvironments } from '../../../../src/dataflow/environments'
 import { guard } from '../../../../src/util/assert'
 import { expect } from 'chai'
-import { appendEnvironments, define, overwriteEnvironments } from '../../../../src/dataflow/common/environments'
+import { appendEnvironments, define, overwriteEnvironments } from '../../../../src/dataflow/environments'
 import { variable } from '../../_helper/environment-builder'
 import { label } from '../../_helper/label'
 

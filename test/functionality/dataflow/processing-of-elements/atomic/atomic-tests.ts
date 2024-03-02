@@ -3,16 +3,15 @@
  * Yet, some constructs (like for-loops) require the combination of statements, they are included as well.
  * This will not include functions!
  */
-import { assertDataflow, sameForSteps, withShell } from '../../../_helper/shell'
-import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
-import { appendEnvironments, define } from '../../../../../src/dataflow/common/environments'
+import { assertDataflow, withShell } from '../../../_helper/shell'
+import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { label } from '../../../_helper/label'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { unnamedArgument } from '../../../_helper/environment-builder'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import { OperatorDatabase } from '../../../../../src'
-import { LEGACY_STATIC_DATAFLOW, V2_STATIC_DATAFLOW } from '../../../../../src/core/steps/all/core/20-dataflow'
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider'
 import { startAndEndsWith } from '../../../../../src/util/strings'
 
@@ -35,9 +34,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 	})
 
 	assertDataflow(label('Simple Variable', ['name-normal']), shell,
-		'xylophone', sameForSteps([LEGACY_STATIC_DATAFLOW, V2_STATIC_DATAFLOW],
-			emptyGraph().use('0', 'xylophone')
-		)
+		'xylophone', emptyGraph().use('0', 'xylophone')
 	)
 
 	describe('access', () => {

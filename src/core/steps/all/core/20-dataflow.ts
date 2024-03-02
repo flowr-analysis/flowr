@@ -1,7 +1,6 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print'
 import type { IPipelineStep } from '../../step'
 import { PipelineStepStage } from '../../step'
-import { produceDataFlowGraph as legacyDataflowGraph } from '../../../../dataflow/v1'
 import {
 	dataflowGraphToJson,
 	dataflowGraphToMermaid,
@@ -10,7 +9,7 @@ import {
 } from '../../../print/dataflow-printer'
 import type { DeepReadonly } from 'ts-essentials'
 import type { NormalizedAst, RParseRequest } from '../../../../r-bridge'
-import { produceDataFlowGraph as v2DataflowGraph } from '../../../../dataflow/v2/entry'
+import { produceDataFlowGraph } from '../../../../dataflow'
 
 const staticDataflowCommon = {
 	name:        'dataflow',
@@ -27,25 +26,15 @@ const staticDataflowCommon = {
 } as const
 
 function legacyProcessor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequest }) {
-	return legacyDataflowGraph(input.request as RParseRequest, results.normalize as NormalizedAst)
+	return produceDataFlowGraph(input.request as RParseRequest, results.normalize as NormalizedAst)
 }
 
-export const LEGACY_STATIC_DATAFLOW = {
+export const STATIC_DATAFLOW = {
 	...staticDataflowCommon,
-	humanReadableName: 'v1 dataflow',
+	humanReadableName: 'dataflow',
 	processor:         legacyProcessor,
 	requiredInput:     {
 		request: undefined as unknown as RParseRequest
 	}
 } as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof legacyProcessor>>
 
-function v2Processor(results: { normalize?: NormalizedAst }, input: { request?: RParseRequest }) {
-	return v2DataflowGraph(input.request as RParseRequest, results.normalize as NormalizedAst)
-}
-
-export const V2_STATIC_DATAFLOW = {
-	...staticDataflowCommon,
-	humanReadableName: 'v2 dataflow',
-	processor:         v2Processor,
-	requiredInput:     {}
-} as const satisfies DeepReadonly<IPipelineStep<'dataflow', typeof v2Processor>>

@@ -3,7 +3,7 @@ import { appendStatisticsFile } from '../../../output'
 import type { Writable } from 'ts-essentials'
 import type { RNodeWithParent } from '../../../../r-bridge'
 import { RType, visitAst , EmptyArgument } from '../../../../r-bridge'
-import { EdgeType } from '../../../../dataflow/v1'
+import { EdgeType } from '../../../../dataflow'
 import type {
 	CommonSyntaxTypeCounts } from '../../common-syntax-probability'
 import {

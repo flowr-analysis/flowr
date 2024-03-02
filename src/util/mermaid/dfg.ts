@@ -7,11 +7,11 @@ import type {
 	DataflowMap,
 	FunctionArgument,
 	IdentifierReference
-} from '../../dataflow/v1'
+} from '../../dataflow'
 import {
 	BuiltIn,
 	EdgeType
-} from '../../dataflow/v1'
+} from '../../dataflow'
 import { guard } from '../assert'
 import { jsonReplacer } from '../json'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'

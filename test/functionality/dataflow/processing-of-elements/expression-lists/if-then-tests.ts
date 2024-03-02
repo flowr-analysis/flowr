@@ -1,9 +1,9 @@
 import {
 	DataflowGraph, EdgeType,
 	initializeCleanEnvironments
-} from '../../../../../src/dataflow/v1'
+} from '../../../../../src/dataflow'
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { appendEnvironments, define } from '../../../../../src/dataflow/common/environments'
+import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
 describe('Lists with if-then constructs', withShell(shell => {

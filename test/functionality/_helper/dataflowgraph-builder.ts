@@ -1,6 +1,6 @@
 import type { NodeId } from '../../../src'
-import type { DataflowFunctionFlowInformation, DataflowGraphEdgeAttribute, DataflowGraphExitPoint, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse, DataflowGraphVertexVariableDefinition, FunctionArgument, REnvironmentInformation } from '../../../src/dataflow/v1'
-import { DataflowGraph, EdgeType } from '../../../src/dataflow/v1'
+import type { DataflowFunctionFlowInformation, DataflowGraphEdgeAttribute, DataflowGraphExitPoint, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse, DataflowGraphVertexVariableDefinition, FunctionArgument, REnvironmentInformation } from '../../../src/dataflow'
+import { DataflowGraph, EdgeType } from '../../../src/dataflow'
 import { deepMergeObject } from '../../../src/util/objects'
 
 export function emptyGraph() {

@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../../src/core/steps/all/core/00-parse'
 import { allPermutations } from '../../../../src/util/arrays'
 import { NORMALIZE } from '../../../../src/core/steps/all/core/10-normalize'
-import { LEGACY_STATIC_DATAFLOW } from '../../../../src/core/steps/all/core/20-dataflow'
+import { STATIC_DATAFLOW } from '../../../../src/core/steps/all/core/20-dataflow'
 import { STATIC_SLICE } from '../../../../src/core/steps/all/static-slicing/00-slice'
 import { NAIVE_RECONSTRUCT } from '../../../../src/core/steps/all/static-slicing/10-reconstruct'
 
@@ -90,7 +90,7 @@ describe('Create Pipeline (includes dependency checks)', () => {
 			positive('default pipeline', [
 				PARSE_WITH_R_SHELL_STEP,
 				NORMALIZE,
-				LEGACY_STATIC_DATAFLOW,
+				STATIC_DATAFLOW,
 				STATIC_SLICE,
 				NAIVE_RECONSTRUCT
 			], ['parse', 'normalize', 'dataflow', 'slice', 'reconstruct'], 3)
@@ -150,9 +150,9 @@ describe('Create Pipeline (includes dependency checks)', () => {
 			positive('default pipeline with dataflow decoration', [
 				PARSE_WITH_R_SHELL_STEP,
 				NORMALIZE,
-				LEGACY_STATIC_DATAFLOW,
+				STATIC_DATAFLOW,
 				{
-					...LEGACY_STATIC_DATAFLOW,
+					...STATIC_DATAFLOW,
 					name:      'dataflow-decorator',
 					decorates: 'dataflow'
 				},

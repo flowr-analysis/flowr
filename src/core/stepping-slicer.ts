@@ -3,7 +3,7 @@ import type { Pipeline, PipelineOutput, PipelineStepOutputWithName } from './ste
 import { createPipeline } from './steps/pipeline'
 import { PARSE_WITH_R_SHELL_STEP } from './steps/all/core/00-parse'
 import { NORMALIZE } from './steps/all/core/10-normalize'
-import { LEGACY_STATIC_DATAFLOW } from './steps/all/core/20-dataflow'
+import { STATIC_DATAFLOW } from './steps/all/core/20-dataflow'
 import { STATIC_SLICE } from './steps/all/static-slicing/00-slice'
 import { NAIVE_RECONSTRUCT } from './steps/all/static-slicing/10-reconstruct'
 import { PipelineExecutor } from './pipeline-executor'
@@ -16,10 +16,10 @@ const legacyPipelines = {
 	// brrh, but who cares, it is legacy!
 	'parse':       createPipeline(PARSE_WITH_R_SHELL_STEP),
 	'normalize':   createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE),
-	'dataflow':    createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW),
-	'ai':          createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW),
-	'slice':       createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE),
-	'reconstruct': createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW, STATIC_SLICE, NAIVE_RECONSTRUCT)
+	'dataflow':    createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, STATIC_DATAFLOW),
+	'ai':          createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, STATIC_DATAFLOW),
+	'slice':       createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, STATIC_DATAFLOW, STATIC_SLICE),
+	'reconstruct': createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, STATIC_DATAFLOW, STATIC_SLICE, NAIVE_RECONSTRUCT)
 } as const
 
 type LegacyPipelineType<InterestedIn extends StepName> = typeof legacyPipelines[InterestedIn]

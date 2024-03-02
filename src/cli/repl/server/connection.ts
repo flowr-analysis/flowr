@@ -26,12 +26,12 @@ import { LogLevel } from '../../../util/log'
 import type { ControlFlowInformation } from '../../../util/cfg/cfg'
 import { cfg2quads, extractCFG } from '../../../util/cfg/cfg'
 import { printStepResult, StepOutputFormat } from '../../../core/print/print'
-import type { DataflowInformation } from '../../../dataflow/common/info'
+import type { DataflowInformation } from '../../../dataflow/info'
 import type { QuadSerializationConfiguration } from '../../../util/quads'
 import { defaultQuadIdGenerator } from '../../../util/quads'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse'
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize'
-import { LEGACY_STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow'
+import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow'
 import { SteppingSlicer } from '../../../core/stepping-slicer'
 import type { StepResults } from '../../../core/steps/output'
 import { LAST_STEP, STEPS_PER_SLICE } from '../../../core/steps/steps'
@@ -144,7 +144,7 @@ export class FlowRServerConnection {
 				results: {
 					parse:     await printStepResult(PARSE_WITH_R_SHELL_STEP, results.parse as string, StepOutputFormat.RdfQuads, config()),
 					normalize: await printStepResult(NORMALIZE, results.normalize as NormalizedAst, StepOutputFormat.RdfQuads, config()),
-					dataflow:  await printStepResult(LEGACY_STATIC_DATAFLOW, results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
+					dataflow:  await printStepResult(STATIC_DATAFLOW, results.dataflow as DataflowInformation, StepOutputFormat.RdfQuads, config())
 				}
 			})
 		} else {

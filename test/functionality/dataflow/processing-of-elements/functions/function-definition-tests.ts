@@ -1,10 +1,10 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { BuiltIn, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
+import { BuiltIn, initializeCleanEnvironments } from '../../../../../src/dataflow'
 import {
 	define,
 	popLocalEnvironment,
 	pushLocalEnvironment
-} from '../../../../../src/dataflow/common/environments'
+} from '../../../../../src/dataflow/environments'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { unnamedArgument } from '../../../_helper/environment-builder'
 

@@ -3,7 +3,7 @@ import type { Writable } from 'ts-essentials'
 import type { NodeId } from '../../../../r-bridge'
 import { isSpecialSymbol, RType, visitAst } from '../../../../r-bridge'
 import { appendStatisticsFile } from '../../../output'
-import { EdgeType } from '../../../../dataflow/v1'
+import { EdgeType } from '../../../../dataflow'
 import { postProcess } from './post-process'
 
 

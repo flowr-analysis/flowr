@@ -5,7 +5,7 @@ import type { SlicingCriteria } from '../../../../slicing'
 import { staticSlicing } from '../../../../slicing'
 import type { DeepReadonly } from 'ts-essentials'
 import type { NormalizeRequiredInput } from '../core/10-normalize'
-import type { DataflowInformation } from '../../../../dataflow/common/info'
+import type { DataflowInformation } from '../../../../dataflow/info'
 import type { NormalizedAst } from '../../../../r-bridge'
 
 export interface SliceRequiredInput extends NormalizeRequiredInput {

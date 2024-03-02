@@ -6,7 +6,6 @@ import type { DataflowInformation } from '../../common/info'
 import type { FunctionArgument } from '../../common/graph'
 import { EdgeType, DataflowGraph } from '../../common/graph'
 import { define, overwriteEnvironments, resolveByName } from '../../common/environments'
-import { guard } from '../../../util/assert'
 import { linkArgumentsOnCall } from '../../v1/internal/linker'
 import { isSourceCall, processSourceCall } from '../../v1/internal/process/functions/source'
 
@@ -17,6 +16,7 @@ export function processFunctionCall<OtherInfo>(
 	data:         DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	const named = functionCall.flavor === 'named'
+
 	const functionName = processDataflowFor(named ? functionCall.functionName : functionCall.calledFunction, data)
 
 	let finalEnv = functionName.environments
@@ -56,15 +56,18 @@ export function processFunctionCall<OtherInfo>(
 
 		finalGraph.mergeWith(processed.graph)
 
-		guard(processed.out.length > 0, () => `Argument ${JSON.stringify(arg)} has no out references, but needs one for the unnamed arg`)
-		if(arg.type !== RType.Argument || !arg.name) {
-			callArgs.push(processed.out[0])
-		} else {
-			callArgs.push([arg.name.content, processed.out[0]])
+		if(processed.out.length > 0 || processed.unknownReferences.length > 0) {
+			const ref = processed.out[0] ?? processed.unknownReferences[0]
+			if(arg.type !== RType.Argument || !arg.name) {
+				callArgs.push(ref)
+			} else {
+				callArgs.push([arg.name.content, ref])
+			}
+
+			// add an argument edge to the final graph
+			finalGraph.addEdge(functionRootId, ref, EdgeType.Argument, 'always')
 		}
 
-		// add an argument edge to the final graph
-		finalGraph.addEdge(functionRootId, processed.out[0], EdgeType.Argument, 'always')
 		// resolve reads within argument
 		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
 			const tryToResolve = resolveByName(ingoing.name, argEnv)

@@ -3,7 +3,6 @@ import { childrenKey, getKeyGuarded } from '../../../common/input-format'
 import type { ParserData } from '../../data'
 import { normalizeBasedOnType, splitComments } from '../structure'
 import { tryNormalizeFunctionCall, tryNormalizeFunctionDefinition } from '../functions'
-import { executeHook } from '../../hooks'
 import { tryNormalizeAccess } from '../access'
 import { normalizeComment } from '../other'
 import { partition } from '../../../../../../../../util/arrays'
@@ -20,7 +19,6 @@ import { parseLog } from '../../../../json/parser'
  */
 export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode {
 	parseLog.debug('Parsing expr')
-	obj = executeHook(data.hooks.expression.onExpression.before, data, obj)
 
 	const {
 		unwrappedObj,
@@ -58,12 +56,12 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 
 	const [delimiters, nodes] = partition(children, x => x.type === RType.Delimiter)
 
-	let result: RNode
 	if(nodes.length === 1) {
-		result = nodes[0] as RNode
+		const result = nodes[0] as RNode
 		result.info.additionalTokens = [...result.info.additionalTokens ?? [], ...delimiters]
+		return result
 	} else {
-		result = {
+		return {
 			type:     RType.ExpressionList,
 			location,
 			children: nodes as RNode[],
@@ -75,5 +73,4 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 			}
 		}
 	}
-	return executeHook(data.hooks.expression.onExpression.after, data, result)
 }

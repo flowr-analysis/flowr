@@ -1,6 +1,5 @@
 import type { NamedXmlBasedJson } from '../../../common/input-format'
 import type { ParserData } from '../../data'
-import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../../util/log'
 import { guard } from '../../../../../../../../util/assert'
 import { tryNormalizeSingleNode } from '../structure'
@@ -21,11 +20,10 @@ import { parseLog } from '../../../../json/parser'
  */
 export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson[]): RArgument | undefined {
 	parseLog.debug('[argument]')
-	objs = executeHook(data.hooks.functions.onArgument.before, data, objs)
 
 	if(objs.length < 1 || objs.length > 3) {
 		log.warn(`Either [expr|value], [SYMBOL_SUB, EQ_SUB], or [SYMBOL_SUB, EQ_SUB, expr], but got: ${objs.map(o => o.name).join(', ')}`)
-		return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
+		return undefined
 	}
 
 
@@ -53,12 +51,12 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 		parsedValue = parseWithValue(data, objs)
 	} else {
 		log.warn(`expected symbol or expr for argument, yet received ${objs.map(o => o.name).join(',')}`)
-		return executeUnknownHook(data.hooks.functions.onArgument.unknown, data, objs)
+		return undefined
 	}
 
 	guard(parsedValue !== undefined && parsedValue?.type !== RType.Delimiter, () => `[argument] parsed value must not be undefined, yet: ${JSON.stringify(objs)}`)
 
-	const result: RArgument = {
+	return {
 		type:   RType.Argument,
 		location,
 		lexeme: content,
@@ -70,8 +68,6 @@ export function tryToNormalizeArgument(data: ParserData, objs: NamedXmlBasedJson
 			additionalTokens: []
 		}
 	}
-
-	return executeHook(data.hooks.functions.onArgument.after, data, result)
 }
 
 function parseWithValue(data: ParserData, objs: NamedXmlBasedJson[]): RNode | RDelimiter | undefined | null{

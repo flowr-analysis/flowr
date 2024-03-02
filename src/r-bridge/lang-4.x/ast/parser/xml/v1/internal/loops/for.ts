@@ -13,7 +13,6 @@ import { tryNormalizeSymbol } from '../values'
 import { normalizeBasedOnType, splitComments, tryNormalizeSingleNode } from '../structure'
 import type { RComment, RForLoop, RNode, RSymbol } from '../../../../../model'
 import { RawRType, RType } from '../../../../../model'
-import { executeHook, executeUnknownHook } from '../../hooks'
 import { normalizeComment } from '../other'
 import { parseLog } from '../../../../json/parser'
 
@@ -26,7 +25,7 @@ export function tryNormalizeFor(
 	// funny, for does not use top-level parenthesis
 	if(forToken.name !== RawRType.For) {
 		parseLog.debug('encountered non-for token for supposed for-loop structure')
-		return executeUnknownHook(data.hooks.loops.onForLoop.unknown, data, { forToken, condition: head, body })
+		return undefined
 	} else if(head.name !== RawRType.ForCondition) {
 		throw new XmlParseError(`expected condition for for-loop but found ${JSON.stringify(head)}`)
 	} else if(body.name !== RawRType.Expression && body.name !== RawRType.ExprOfAssignOrHelp) {
@@ -35,9 +34,7 @@ export function tryNormalizeFor(
 
 	parseLog.debug('trying to parse for-loop')
 
-	const newParseData = { ...data, data, currentRange: undefined, currentLexeme: undefined };
-
-	({ forToken, condition: head, body } = executeHook(data.hooks.loops.onForLoop.before, data, { forToken, condition: head, body }))
+	const newParseData = { ...data, data, currentRange: undefined, currentLexeme: undefined }
 
 	const { variable: parsedVariable, vector: parsedVector, comments } =
     normalizeForHead(newParseData, head.content)
@@ -59,7 +56,7 @@ export function tryNormalizeFor(
 
 	const { location, content } = retrieveMetaStructure(forToken.content)
 
-	const result: RForLoop = {
+	return {
 		type:     RType.ForLoop,
 		variable: parsedVariable,
 		vector:   parsedVector,
@@ -72,7 +69,6 @@ export function tryNormalizeFor(
 		},
 		location
 	}
-	return executeHook(data.hooks.loops.onForLoop.after, data, result)
 }
 
 function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined, comments: RComment[] } {

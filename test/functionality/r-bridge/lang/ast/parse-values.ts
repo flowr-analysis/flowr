@@ -1,16 +1,11 @@
-import { assertAst, sameForSteps, withShell } from '../../../_helper/shell'
-import {
-	RNumberPool,
-	RStringPool,
-	RSymbolPool,
-} from '../../../_helper/provider'
+import { assertAst, withShell } from '../../../_helper/shell'
+import { RNumberPool, RStringPool, RSymbolPool } from '../../../_helper/provider'
 import { exprList } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
 import { retrieveParseDataFromRCode, RType } from '../../../../../src'
 import chai, { assert } from 'chai'
 import chaiAsPromised from 'chai-as-promised'
 import { MIN_VERSION_RAW_STABLE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
-import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 import { prepareParsedData } from '../../../../../src/r-bridge/lang-4.x/ast/parser/json/format'
 import { label } from '../../../_helper/label'
 chai.use(chaiAsPromised)
@@ -57,10 +52,7 @@ describe('Constant Parsing',
 	withShell(shell => {
 		describe('parse empty', () => {
 			assertAst(label('nothing', []),
-				shell, '',
-				sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
-					exprList()
-				)
+				shell, '', exprList()
 			)
 		})
 		describe('parse single', () => {
@@ -74,16 +66,13 @@ describe('Constant Parsing',
 				for(const number of RNumberPool) {
 					const range = rangeFrom(1, 1, 1, number.str.length)
 					assertAst(label(number.str, ['numbers']),
-						shell, number.str,
-						sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
-							exprList({
-								type:     RType.Number,
-								location: range,
-								lexeme:   number.str,
-								content:  number.val,
-								info:     {}
-							})
-						)
+						shell, number.str, exprList({
+							type:     RType.Number,
+							location: range,
+							lexeme:   number.str,
+							content:  number.val,
+							info:     {}
+						})
 					)
 				}
 			})
@@ -92,16 +81,13 @@ describe('Constant Parsing',
 					const range = rangeFrom(1, 1, 1, string.str.length)
 					const raw = string.str.startsWith('r') || string.str.startsWith('R')
 					assertAst(label(string.str, ['strings', ...(raw ? ['raw-strings' as const] : [])]),
-						shell, string.str,
-						sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
-							exprList({
-								type:     RType.String,
-								location: range,
-								lexeme:   string.str,
-								content:  string.val,
-								info:     {}
-							})
-						),
+						shell, string.str, exprList({
+							type:     RType.String,
+							location: range,
+							lexeme:   string.str,
+							content:  string.val,
+							info:     {}
+						}),
 						{
 							// just a hackey way to not outright flag all
 							minRVersion: raw ? MIN_VERSION_RAW_STABLE : undefined
@@ -115,48 +101,40 @@ describe('Constant Parsing',
 					const exported = symbol.namespace !== undefined
 					const mapped = exported ? [symbol.internal ? 'accessing-internal-names' as const : 'accessing-exported-names' as const] : []
 					assertAst(label(symbol.str, ['name-normal', ...mapped]),
-						shell, symbol.str,
-						sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
-							exprList({
-								type:      RType.Symbol,
-								namespace: symbol.namespace,
-								location:  range,
-								lexeme:    symbol.val,
-								content:   symbol.val,
-								info:      {}
-							})
-						)
+						shell, symbol.str, exprList({
+							type:      RType.Symbol,
+							namespace: symbol.namespace,
+							location:  range,
+							lexeme:    symbol.val,
+							content:   symbol.val,
+							info:      {}
+						})
 					)
 				}
 			})
 			describe('logical', () => {
 				for(const [lexeme, content] of [['TRUE', true], ['FALSE', false]] as const) {
 					assertAst(label(`${lexeme} as ${JSON.stringify(content)}`, ['logical']),
-						shell, lexeme,
-						sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
-							exprList({
-								type:     RType.Logical,
-								location: rangeFrom(1, 1, 1, lexeme.length),
-								lexeme,
-								content,
-								info:     {}
-							})
-						)
+						shell, lexeme, exprList({
+							type:     RType.Logical,
+							location: rangeFrom(1, 1, 1, lexeme.length),
+							lexeme,
+							content,
+							info:     {}
+						})
 					)
 				}
 			})
 			describe('comments', () => {
 				assertAst(label('simple line comment', ['comments']),
 					shell, '# Hello World',
-					sameForSteps([NORMALIZE, DESUGAR_NORMALIZE],
-						exprList({
-							type:     RType.Comment,
-							location: rangeFrom(1, 1, 1, 13),
-							lexeme:   '# Hello World',
-							content:  ' Hello World',
-							info:     {}
-						})
-					)
+					exprList({
+						type:     RType.Comment,
+						location: rangeFrom(1, 1, 1, 13),
+						lexeme:   '# Hello World',
+						content:  ' Hello World',
+						info:     {}
+					})
 				)
 			})
 		})

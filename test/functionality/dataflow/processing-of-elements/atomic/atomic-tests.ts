@@ -42,20 +42,9 @@ describe('Atomic (dataflow information)', withShell(shell => {
 	describe('access', () => {
 		describe('const access', () => {
 			assertDataflow(label('single constant', ['name-normal', 'numbers', 'single-bracket-access']),
-				shell,'a[2]', [
-					{
-						step:   LEGACY_STATIC_DATAFLOW,
-						wanted: emptyGraph().use('0', 'a', { when: 'maybe' })
-							.use('2', unnamedArgument('2'))
-							.reads('0', '2')
-					},
-					{
-						step:   V2_STATIC_DATAFLOW,
-						wanted: emptyGraph().use('1', 'a', { when: 'always' /* TODO: maybe */ })
-							.call('3', '[', [ { name: 'a', nodeId: '1', used: 'always' } ])
-							.argument('3', '1')
-					}
-				]
+				shell,'a[2]', emptyGraph().use('0', 'a', { when: 'maybe' })
+					.use('2', unnamedArgument('2'))
+					.reads('0', '2')
 			)
 			assertDataflow(label('double constant', ['name-normal', 'numbers', 'double-bracket-access']),
 				shell, 'a[[2]]',

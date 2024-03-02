@@ -3,7 +3,6 @@ import type { RComment } from '../../../../../model'
 import { RType } from '../../../../../model'
 import { retrieveMetaStructure } from '../../../common/meta'
 import { guard } from '../../../../../../../../util/assert'
-import { executeHook } from '../../hooks'
 import type { ParserData } from '../../data'
 import { parseLog } from '../../../../json/parser'
 
@@ -16,12 +15,11 @@ import { parseLog } from '../../../../json/parser'
  */
 export function normalizeComment(data: ParserData, obj: XmlBasedJson): RComment {
 	parseLog.debug('[comment]')
-	obj = executeHook(data.hooks.other.onComment.before, data, obj)
 
 	const { location, content } = retrieveMetaStructure(obj)
 	guard(content.startsWith('#'), 'comment must start with #')
 
-	const result: RComment = {
+	return {
 		type:    RType.Comment,
 		location,
 		content: content.slice(1),
@@ -32,5 +30,4 @@ export function normalizeComment(data: ParserData, obj: XmlBasedJson): RComment 
 			fullLexeme:       content
 		}
 	}
-	return executeHook(data.hooks.other.onComment.after, data, result)
 }

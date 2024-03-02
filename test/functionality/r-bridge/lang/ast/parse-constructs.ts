@@ -7,7 +7,6 @@ import { RType } from '../../../../../src'
 import { ensureExpressionList } from '../../../../../src/r-bridge/lang-4.x/ast/parser/xml/v1/internal'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import { label } from '../../../_helper/label'
-import { DESUGAR_NORMALIZE, NORMALIZE } from '../../../../../src/core/steps/all/core/10-normalize'
 
 interface IfThenSpacing {
 	str:          string
@@ -187,55 +186,26 @@ describe('Parse simple constructs', withShell(shell => {
 				describe(`${pool.name} variants`, () => {
 					for(const variant of pool.variants) {
 						const strNum = `${variant.num}`
-						assertAst(label(JSON.stringify(variant.str), variant.capabilities), shell, variant.str, [
-							{
-								step:   NORMALIZE,
-								wanted: exprList({
-									type:      RType.IfThenElse,
-									location:  rangeFrom(1, 1, 1, 2),
-									lexeme:    'if',
-									info:      {},
-									condition: {
-										type:     RType.Logical,
-										location: variant.locationTrue,
-										lexeme:   'TRUE',
-										content:  true,
-										info:     {}
-									},
-									then: ensureExpressionList({
-										type:     RType.Number,
-										location: variant.locationNum,
-										lexeme:   strNum,
-										content:  numVal(variant.num),
-										info:     {}
-									})
-								})
-							}, {
-								step:   DESUGAR_NORMALIZE,
-								wanted: exprList({
-									type:         RType.FunctionCall,
-									location:     rangeFrom(1, 1, 1, 2),
-									lexeme:       'if',
-									info:         {},
-									flavor:       'named',
-									functionName: {
-										type:      RType.Symbol,
-										location:  rangeFrom(1, 1, 1, 2),
-										lexeme:    'if',
-										content:   'if',
-										namespace: undefined,
-										info:      {}
-									},
-									arguments: [{
-										type:     RType.Logical,
-										location: variant.locationTrue,
-										lexeme:   'TRUE',
-										content:  true,
-										info:     {}
-									}, variant.then ]
-								})
-							}
-						], {
+						assertAst(label(JSON.stringify(variant.str), variant.capabilities), shell, variant.str, exprList({
+							type:      RType.IfThenElse,
+							location:  rangeFrom(1, 1, 1, 2),
+							lexeme:    'if',
+							info:      {},
+							condition: {
+								type:     RType.Logical,
+								location: variant.locationTrue,
+								lexeme:   'TRUE',
+								content:  true,
+								info:     {}
+							},
+							then: ensureExpressionList({
+								type:     RType.Number,
+								location: variant.locationNum,
+								lexeme:   strNum,
+								content:  numVal(variant.num),
+								info:     {}
+							})
+						}), {
 							ignoreAdditionalTokens: true
 						})
 					}
@@ -257,63 +227,33 @@ describe('Parse simple constructs', withShell(shell => {
 								const thenNum = `${ifThenVariant.num}`
 								const elseNum = `${elseVariant.num}`
 								const input = `${ifThenVariant.str}${elseVariant.str}`
-								assertAst(label(JSON.stringify(input), [...ifThenVariant.capabilities, ...elseVariant.capabilities]), shell, input, [
-									{
-										step: NORMALIZE,
-										wanted:
-									exprList({
-										type:      RType.IfThenElse,
-										location:  rangeFrom(1, 1, 1, 2),
-										lexeme:    'if',
-										info:      {},
-										condition: {
-											type:     RType.Logical,
-											location: ifThenVariant.locationTrue,
-											lexeme:   'TRUE',
-											content:  true,
-											info:     {}
-										},
-										then: ensureExpressionList({
-											type:     RType.Number,
-											location: ifThenVariant.locationNum,
-											lexeme:   thenNum,
-											content:  numVal(ifThenVariant.num),
-											info:     {}
-										}),
-										otherwise: ensureExpressionList({
-											type:     RType.Number,
-											location: addRanges(elseVariant.locationElse, ifThenVariant.end),
-											lexeme:   elseNum,
-											content:  numVal(elseVariant.num),
-											info:     {}
-										})
-									})
+								assertAst(label(JSON.stringify(input), [...ifThenVariant.capabilities, ...elseVariant.capabilities]), shell, input, exprList({
+									type:      RType.IfThenElse,
+									location:  rangeFrom(1, 1, 1, 2),
+									lexeme:    'if',
+									info:      {},
+									condition: {
+										type:     RType.Logical,
+										location: ifThenVariant.locationTrue,
+										lexeme:   'TRUE',
+										content:  true,
+										info:     {}
 									},
-									{
-										step:   DESUGAR_NORMALIZE,
-										wanted: exprList({
-											type:         RType.FunctionCall,
-											location:     rangeFrom(1, 1, 1, 2),
-											lexeme:       'if',
-											info:         {},
-											flavor:       'named',
-											functionName: {
-												type:      RType.Symbol,
-												location:  rangeFrom(1, 1, 1, 2),
-												lexeme:    'if',
-												content:   'if',
-												namespace: undefined,
-												info:      {}
-											},
-											arguments: [{
-												type:     RType.Logical,
-												location: ifThenVariant.locationTrue,
-												lexeme:   'TRUE',
-												content:  true,
-												info:     {}
-											}, ifThenVariant.then, elseVariant.otherwise(ifThenVariant.end) ]
-										})
-									}], {
+									then: ensureExpressionList({
+										type:     RType.Number,
+										location: ifThenVariant.locationNum,
+										lexeme:   thenNum,
+										content:  numVal(ifThenVariant.num),
+										info:     {}
+									}),
+									otherwise: ensureExpressionList({
+										type:     RType.Number,
+										location: addRanges(elseVariant.locationElse, ifThenVariant.end),
+										lexeme:   elseNum,
+										content:  numVal(elseVariant.num),
+										info:     {}
+									})
+								}), {
 									ignoreAdditionalTokens: true
 								})
 							}
@@ -325,137 +265,15 @@ describe('Parse simple constructs', withShell(shell => {
 	})
 	describe('loops', () => {
 		describe('for', () => {
-			assertAst(label('for(i in 1:10) 2', ['for-loop', 'name-normal', 'numbers', 'built-in-sequencing']), shell, 'for(i in 1:42)2', [
-				{
-					step:   NORMALIZE,
-					wanted: exprList({
-						type:     RType.ForLoop,
-						location: rangeFrom(1, 1, 1, 3),
-						lexeme:   'for',
-						info:     {},
-						variable: {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 5, 1, 5),
-							namespace: undefined,
-							lexeme:    'i',
-							content:   'i',
-							info:      {}
-						},
-						vector: {
-							type:     RType.BinaryOp,
-							flavor:   'arithmetic',
-							operator: ':',
-							location: rangeFrom(1, 11, 1, 11),
-							lexeme:   ':',
-							info:     {},
-							lhs:      {
-								type:     RType.Number,
-								location: rangeFrom(1, 10, 1, 10),
-								lexeme:   '1',
-								content:  numVal(1),
-								info:     {}
-							},
-							rhs: {
-								type:     RType.Number,
-								location: rangeFrom(1, 12, 1, 13),
-								lexeme:   '42',
-								content:  numVal(42),
-								info:     {}
-							}
-						},
-						body: ensureExpressionList({
-							type:     RType.Number,
-							location: rangeFrom(1, 15, 1, 15),
-							lexeme:   '2',
-							content:  numVal(2),
-							info:     {}
-						})
-					})
-				},
-				{
-					step:   DESUGAR_NORMALIZE,
-					wanted: exprList({
-						type:         RType.FunctionCall,
-						location:     rangeFrom(1, 1, 1, 3),
-						lexeme:       'for',
-						info:         {},
-						flavor:       'named',
-						functionName: {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 1, 1, 3),
-							lexeme:    'for',
-							content:   'for',
-							namespace: undefined,
-							info:      {}
-						},
-						arguments: [
-							{
-								type:      RType.Symbol,
-								location:  rangeFrom(1, 5, 1, 5),
-								lexeme:    'i',
-								content:   'i',
-								info:      {},
-								namespace: undefined
-							},
-							{
-								type:         RType.FunctionCall,
-								location:     rangeFrom(1, 11, 1, 11),
-								lexeme:       '1:42',
-								info:         {},
-								flavor:       'named',
-								functionName: {
-									type: 		   RType.Symbol,
-									location: 	rangeFrom(1, 11, 1, 11),
-									lexeme: 	  ':',
-									content: 	 ':',
-									namespace: undefined,
-									info: 		   {}
-								},
-								arguments: [
-									{
-										type:     RType.Number,
-										location: rangeFrom(1, 10, 1, 10),
-										lexeme:   '1',
-										content:  numVal(1),
-										info:     {}
-									},
-									{
-										type:     RType.Number,
-										location: rangeFrom(1, 12, 1, 13),
-										lexeme:   '42',
-										content:  numVal(42),
-										info:     {}
-									}
-								]
-							},
-							{
-								type:     RType.Number,
-								location: rangeFrom(1, 15, 1, 15),
-								lexeme:   '2',
-								content:  numVal(2),
-								info:     {}
-							}
-						]
-					})
-				}
-			], {
-				ignoreAdditionalTokens: true
-			}
-			)
-			assertAst(label('for-loop with comment', ['for-loop', 'name-normal', 'numbers', 'built-in-sequencing', 'comments', 'newlines']), shell, `for(#a
-				i#b
-				in#c
-				1:42#d
-			)
-			2`,[{
-				step:   NORMALIZE, wanted: exprList({
+			assertAst(label('for(i in 1:10) 2', ['for-loop', 'name-normal', 'numbers', 'built-in-sequencing']), shell, 'for(i in 1:42)2',
+				exprList({
 					type:     RType.ForLoop,
 					location: rangeFrom(1, 1, 1, 3),
 					lexeme:   'for',
 					info:     {},
 					variable: {
 						type:      RType.Symbol,
-						location:  rangeFrom(2, 33, 2, 33),
+						location:  rangeFrom(1, 5, 1, 5),
 						namespace: undefined,
 						lexeme:    'i',
 						content:   'i',
@@ -465,19 +283,19 @@ describe('Parse simple constructs', withShell(shell => {
 						type:     RType.BinaryOp,
 						flavor:   'arithmetic',
 						operator: ':',
-						location: rangeFrom(4, 34, 4, 34),
+						location: rangeFrom(1, 11, 1, 11),
 						lexeme:   ':',
 						info:     {},
 						lhs:      {
 							type:     RType.Number,
-							location: rangeFrom(4, 33, 4, 33),
+							location: rangeFrom(1, 10, 1, 10),
 							lexeme:   '1',
 							content:  numVal(1),
 							info:     {}
 						},
 						rhs: {
 							type:     RType.Number,
-							location: rangeFrom(4, 35, 4, 36),
+							location: rangeFrom(1, 12, 1, 13),
 							lexeme:   '42',
 							content:  numVal(42),
 							info:     {}
@@ -485,506 +303,223 @@ describe('Parse simple constructs', withShell(shell => {
 					},
 					body: ensureExpressionList({
 						type:     RType.Number,
-						location: rangeFrom(6, 25, 6, 25),
+						location: rangeFrom(1, 15, 1, 15),
 						lexeme:   '2',
 						content:  numVal(2),
 						info:     {}
 					})
-				})
-			},
-			{
-				step:   DESUGAR_NORMALIZE,
-				wanted: exprList({
-					type:         RType.FunctionCall,
-					location:     rangeFrom(1, 1, 1, 3),
-					lexeme:       'for',
-					info:         {},
-					flavor:       'named',
-					functionName: {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 1, 1, 3),
-						lexeme:    'for',
-						content:   'for',
-						namespace: undefined,
-						info:      {}
+				}), {
+					ignoreAdditionalTokens: true
+				}
+			)
+			assertAst(label('for-loop with comment', ['for-loop', 'name-normal', 'numbers', 'built-in-sequencing', 'comments', 'newlines']), shell, `for(#a
+				i#b
+				in#c
+				1:42#d
+			)
+			2`,exprList({
+				type:     RType.ForLoop,
+				location: rangeFrom(1, 1, 1, 3),
+				lexeme:   'for',
+				info:     {},
+				variable: {
+					type:      RType.Symbol,
+					location:  rangeFrom(2, 33, 2, 33),
+					namespace: undefined,
+					lexeme:    'i',
+					content:   'i',
+					info:      {}
+				},
+				vector: {
+					type:     RType.BinaryOp,
+					flavor:   'arithmetic',
+					operator: ':',
+					location: rangeFrom(4, 34, 4, 34),
+					lexeme:   ':',
+					info:     {},
+					lhs:      {
+						type:     RType.Number,
+						location: rangeFrom(4, 33, 4, 33),
+						lexeme:   '1',
+						content:  numVal(1),
+						info:     {}
 					},
-					arguments: [
-						{
-							type:      RType.Symbol,
-							location:  rangeFrom(2, 33, 2, 33),
-							lexeme:    'i',
-							content:   'i',
-							info:      {},
-							namespace: undefined
-						},
-						{
-							type:         RType.FunctionCall,
-							location:     rangeFrom(4, 34, 4, 34),
-							lexeme:       '1:42',
-							info:         {},
-							flavor:       'named',
-							functionName: {
-								type: 		   RType.Symbol,
-								location: 	rangeFrom(4, 34, 4, 34),
-								lexeme: 	  ':',
-								content: 	 ':',
-								namespace: undefined,
-								info: 		   {}
-							},
-							arguments: [
-								{
-									type:     RType.Number,
-									location: rangeFrom(4, 33, 4, 33),
-									lexeme:   '1',
-									content:  numVal(1),
-									info:     {}
-								},
-								{
-									type:     RType.Number,
-									location: rangeFrom(4, 35, 4, 36),
-									lexeme:   '42',
-									content:  numVal(42),
-									info:     {}
-								}
-							]
-						},
-						{
-							type:     RType.Number,
-							location: rangeFrom(6, 25, 6, 25),
-							lexeme:   '2',
-							content:  numVal(2),
-							info:     {}
-						}
-					]
+					rhs: {
+						type:     RType.Number,
+						location: rangeFrom(4, 35, 4, 36),
+						lexeme:   '42',
+						content:  numVal(42),
+						info:     {}
+					}
+				},
+				body: ensureExpressionList({
+					type:     RType.Number,
+					location: rangeFrom(6, 25, 6, 25),
+					lexeme:   '2',
+					content:  numVal(2),
+					info:     {}
 				})
-			}
-			], {
+			})	, {
 				ignoreAdditionalTokens: true
 			}
 			)
 		})
 		describe('repeat', () => {
 			assertAst(label('Single instruction repeat', ['repeat-loop', 'numbers']),
-				shell, 'repeat 2', [
-					{
-						step:   NORMALIZE,
-						wanted: exprList({
-							type:     RType.RepeatLoop,
-							location: rangeFrom(1, 1, 1, 6),
-							lexeme:   'repeat',
-							info:     {},
-							body:     ensureExpressionList({
-								type:     RType.Number,
-								location: rangeFrom(1, 8, 1, 8),
-								lexeme:   '2',
-								content:  numVal(2),
-								info:     {}
-							})
-						})
-					},
-					{
-						step:   DESUGAR_NORMALIZE,
-						wanted: exprList({
-							type:         RType.FunctionCall,
-							location:     rangeFrom(1, 1, 1, 6),
-							lexeme:       'repeat 2',
-							info:         {},
-							flavor:       'named',
-							functionName: {
-								type:      RType.Symbol,
-								location:  rangeFrom(1, 1, 1, 6),
-								lexeme:    'repeat',
-								content:   'repeat',
-								namespace: undefined,
-								info:      {}
-							},
-							arguments: [
-								{
-									type:     RType.Number,
-									location: rangeFrom(1, 8, 1, 8),
-									lexeme:   '2',
-									content:  numVal(2),
-									info:     {}
-								}
-							]
-						})
-					}
-				], {
+				shell, 'repeat 2', exprList({
+					type:     RType.RepeatLoop,
+					location: rangeFrom(1, 1, 1, 6),
+					lexeme:   'repeat',
+					info:     {},
+					body:     ensureExpressionList({
+						type:     RType.Number,
+						location: rangeFrom(1, 8, 1, 8),
+						lexeme:   '2',
+						content:  numVal(2),
+						info:     {}
+					})
+				}), {
 					ignoreAdditionalTokens: true
 				})
 			assertAst(label('Two statement repeat', ['repeat-loop', 'numbers', 'grouping', 'semicolons']),
-				shell, 'repeat { x; y }', [
-					{
-						step:   NORMALIZE,
-						wanted: exprList({
-							type:     RType.RepeatLoop,
-							location: rangeFrom(1, 1, 1, 6),
-							lexeme:   'repeat',
-							info:     {},
-							body:     {
-								type:     RType.ExpressionList,
-								location: rangeFrom(1, 8, 1, 15),
-								lexeme:   '{ x; y }',
-								info:     {},
-								children: [{
-									type:      RType.Symbol,
-									location:  rangeFrom(1, 10, 1, 10),
-									namespace: undefined,
-									lexeme:    'x',
-									content:   'x',
-									info:      {},
-								}, {
-									type:      RType.Symbol,
-									location:  rangeFrom(1, 13, 1, 13),
-									namespace: undefined,
-									lexeme:    'y',
-									content:   'y',
-									info:      {}
-								}]
-							}
-						})
-					},
-					{
-						step:   DESUGAR_NORMALIZE,
-						wanted: exprList({
-							type:         RType.FunctionCall,
-							location:     rangeFrom(1, 1, 1, 6),
-							lexeme:       'repeat { x; y }',
-							info:         {},
-							flavor:       'named',
-							functionName: {
-								type:      RType.Symbol,
-								location:  rangeFrom(1, 1, 1, 6),
-								lexeme:    'repeat',
-								content:   'repeat',
-								namespace: undefined,
-								info:      {}
-							},
-							arguments: [{
-								type:         RType.FunctionCall,
-								location:     rangeFrom(1, 8, 1, 8),
-								lexeme:       '{',
-								info:         {},
-								flavor:       'named',
-								functionName: {
-									type:      RType.Symbol,
-									location:  rangeFrom(1, 8, 1, 8),
-									lexeme:    '{',
-									content:   '{',
-									namespace: undefined,
-									info:      {}
-								},
-								arguments: [{
-									type:      RType.Symbol,
-									location:  rangeFrom(1, 10, 1, 10),
-									lexeme:    'x',
-									content:   'x',
-									namespace: undefined,
-									info:      {}
-								}, {
-									type:      RType.Symbol,
-									location:  rangeFrom(1, 13, 1, 13),
-									lexeme:    'y',
-									content:   'y',
-									namespace: undefined,
-									info:      {}
-								}]
-							}]
-						})
-					}], {
+				shell, 'repeat { x; y }', exprList({
+					type:     RType.RepeatLoop,
+					location: rangeFrom(1, 1, 1, 6),
+					lexeme:   'repeat',
+					info:     {},
+					body:     {
+						type:     RType.ExpressionList,
+						location: rangeFrom(1, 8, 1, 15),
+						lexeme:   '{ x; y }',
+						info:     {},
+						children: [{
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 10, 1, 10),
+							namespace: undefined,
+							lexeme:    'x',
+							content:   'x',
+							info:      {},
+						}, {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 13, 1, 13),
+							namespace: undefined,
+							lexeme:    'y',
+							content:   'y',
+							info:      {}
+						}]
+					}
+				}), {
 					ignoreAdditionalTokens: true
 				})
 		})
 		describe('while', () => {
 			assertAst(label('while (TRUE) 42', ['while-loop', 'logical', 'numbers']),
-				shell, 'while (TRUE) 42', [
-					{
-						step:   NORMALIZE,
-						wanted: exprList({
-							type:      RType.WhileLoop,
-							location:  rangeFrom(1, 1, 1, 5),
-							lexeme:    'while',
-							info:      {},
-							condition: {
-								type:     RType.Logical,
-								location: rangeFrom(1, 8, 1, 11),
-								lexeme:   'TRUE',
-								content:  true,
-								info:     {}
-							},
-							body: ensureExpressionList({
-								type:     RType.Number,
-								location: rangeFrom(1, 14, 1, 15),
-								lexeme:   '42',
-								content:  numVal(42),
-								info:     {}
-							})
-						})
+				shell, 'while (TRUE) 42', exprList({
+					type:      RType.WhileLoop,
+					location:  rangeFrom(1, 1, 1, 5),
+					lexeme:    'while',
+					info:      {},
+					condition: {
+						type:     RType.Logical,
+						location: rangeFrom(1, 8, 1, 11),
+						lexeme:   'TRUE',
+						content:  true,
+						info:     {}
 					},
-					{
-						step:   DESUGAR_NORMALIZE,
-						wanted: exprList({
-							type:         RType.FunctionCall,
-							location:     rangeFrom(1, 1, 1, 5),
-							lexeme:       'while',
-							info:         {},
-							flavor:       'named',
-							functionName: {
-								type:      RType.Symbol,
-								location:  rangeFrom(1, 1, 1, 5),
-								lexeme:    'while',
-								content:   'while',
-								namespace: undefined,
-								info:      {}
-							},
-							arguments: [
-								{
-									type:     RType.Logical,
-									location: rangeFrom(1, 8, 1, 11),
-									lexeme:   'TRUE',
-									content:  true,
-									info:     {}
-								},
-								{
-									type:     RType.Number,
-									location: rangeFrom(1, 14, 1, 15),
-									lexeme:   '42',
-									content:  numVal(42),
-									info:     {}
-								}
-							]
-						})
-					}
-				], {
+					body: ensureExpressionList({
+						type:     RType.Number,
+						location: rangeFrom(1, 14, 1, 15),
+						lexeme:   '42',
+						content:  numVal(42),
+						info:     {}
+					})
+				}), {
 					ignoreAdditionalTokens: true
 				})
 
 			assertAst(label('Two statement while', ['while-loop', 'logical', 'grouping', 'semicolons']),
-				shell, 'while (FALSE) { x; y }', [
-					{
-						step:   NORMALIZE,
-						wanted: exprList({
-							type:      RType.WhileLoop,
-							location:  rangeFrom(1, 1, 1, 5),
-							lexeme:    'while',
-							info:      {},
-							condition: {
-								type:     RType.Logical,
-								location: rangeFrom(1, 8, 1, 12),
-								lexeme:   'FALSE',
-								content:  false,
-								info:     {}
-							},
-							body: ensureExpressionList({
-								type:     RType.ExpressionList,
-								location: rangeFrom(1, 15, 1, 22),
-								lexeme:   '{ x; y }',
-								info:     {},
-								children: [{
-									type:      RType.Symbol,
-									location:  rangeFrom(1, 17, 1, 17),
-									namespace: undefined,
-									lexeme:    'x',
-									content:   'x',
-									info:      {}
-								}, {
-									type:      RType.Symbol,
-									location:  rangeFrom(1, 20, 1, 20),
-									namespace: undefined,
-									lexeme:    'y',
-									content:   'y',
-									info:      {}
-								}]
-							})
-						})
+				shell, 'while (FALSE) { x; y }', exprList({
+					type:      RType.WhileLoop,
+					location:  rangeFrom(1, 1, 1, 5),
+					lexeme:    'while',
+					info:      {},
+					condition: {
+						type:     RType.Logical,
+						location: rangeFrom(1, 8, 1, 12),
+						lexeme:   'FALSE',
+						content:  false,
+						info:     {}
 					},
-					{
-						step:   DESUGAR_NORMALIZE,
-						wanted: exprList({
-							type:         RType.FunctionCall,
-							location:     rangeFrom(1, 1, 1, 5),
-							lexeme:       'while',
-							info:         {},
-							flavor:       'named',
-							functionName: {
-								type:      RType.Symbol,
-								location:  rangeFrom(1, 1, 1, 5),
-								lexeme:    'while',
-								content:   'while',
-								namespace: undefined,
-								info:      {}
-							},
-							arguments: [
-								{
-									type:     RType.Logical,
-									location: rangeFrom(1, 8, 1, 12),
-									lexeme:   'FALSE',
-									content:  false,
-									info:     {}
-								},
-								{
-									type:         RType.FunctionCall,
-									location:     rangeFrom(1, 15, 1, 15),
-									lexeme:       '{',
-									info:         {},
-									flavor:       'named',
-									functionName: {
-										type:      RType.Symbol,
-										location:  rangeFrom(1, 15, 1, 15),
-										lexeme:    '{',
-										content:   '{',
-										namespace: undefined,
-										info:      {}
-									},
-									arguments: [
-										{
-											type:      RType.Symbol,
-											location:  rangeFrom(1, 17, 1, 17),
-											lexeme:    'x',
-											content:   'x',
-											namespace: undefined,
-											info:      {}
-										},
-										{
-											type:      RType.Symbol,
-											location:  rangeFrom(1, 20, 1, 20),
-											lexeme:    'y',
-											content:   'y',
-											namespace: undefined,
-											info:      {}
-										}
-									]
-								}
-							]
-						})
-					}
-				], {
+					body: ensureExpressionList({
+						type:     RType.ExpressionList,
+						location: rangeFrom(1, 15, 1, 22),
+						lexeme:   '{ x; y }',
+						info:     {},
+						children: [{
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 17, 1, 17),
+							namespace: undefined,
+							lexeme:    'x',
+							content:   'x',
+							info:      {}
+						}, {
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 20, 1, 20),
+							namespace: undefined,
+							lexeme:    'y',
+							content:   'y',
+							info:      {}
+						}]
+					})
+				}), {
 					ignoreAdditionalTokens: true
 				})
 		})
 		describe('break', () => {
 			assertAst(label('while (TRUE) break', ['while-loop', 'logical', 'break']),
-				shell, 'while (TRUE) break', [
-					{
-						step:   NORMALIZE,
-						wanted: exprList({
-							type:      RType.WhileLoop,
-							location:  rangeFrom(1, 1, 1, 5),
-							lexeme:    'while',
-							info:      {},
-							condition: {
-								type:     RType.Logical,
-								location: rangeFrom(1, 8, 1, 11),
-								lexeme:   'TRUE',
-								content:  true,
-								info:     {}
-							},
-							body: ensureExpressionList({
-								type:     RType.Break,
-								location: rangeFrom(1, 14, 1, 18),
-								lexeme:   'break',
-								info:     {}
-							})
-						})
+				shell, 'while (TRUE) break', exprList({
+					type:      RType.WhileLoop,
+					location:  rangeFrom(1, 1, 1, 5),
+					lexeme:    'while',
+					info:      {},
+					condition: {
+						type:     RType.Logical,
+						location: rangeFrom(1, 8, 1, 11),
+						lexeme:   'TRUE',
+						content:  true,
+						info:     {}
 					},
-					{
-						step:   DESUGAR_NORMALIZE,
-						wanted: exprList({
-							type:         RType.FunctionCall,
-							location:     rangeFrom(1, 1, 1, 5),
-							lexeme:       'while',
-							info:         {},
-							flavor:       'named',
-							functionName: {
-								type:      RType.Symbol,
-								location:  rangeFrom(1, 1, 1, 5),
-								lexeme:    'while',
-								content:   'while',
-								namespace: undefined,
-								info:      {}
-							},
-							arguments: [
-								{
-									type:     RType.Logical,
-									location: rangeFrom(1, 8, 1, 11),
-									lexeme:   'TRUE',
-									content:  true,
-									info:     {}
-								},
-								{
-									type:      RType.Symbol,
-									location:  rangeFrom(1, 14, 1, 18),
-									lexeme:    'break',
-									content:   'break',
-									namespace: undefined,
-									info:      {}
-								}
-							]
-						})
-					}
-				])
+					body: ensureExpressionList({
+						type:     RType.Break,
+						location: rangeFrom(1, 14, 1, 18),
+						lexeme:   'break',
+						info:     {}
+					})
+				})
+			)
 		})
 		describe('next', () => {
 			assertAst(label('Next in while', ['while-loop', 'next']),
-				shell, 'while (TRUE) next', [
-					{
-						step:   NORMALIZE,
-						wanted: exprList({
-							type:      RType.WhileLoop,
-							location:  rangeFrom(1, 1, 1, 5),
-							lexeme:    'while',
-							info:      {},
-							condition: {
-								type:     RType.Logical,
-								location: rangeFrom(1, 8, 1, 11),
-								lexeme:   'TRUE',
-								content:  true,
-								info:     {}
-							},
-							body: ensureExpressionList({
-								type:     RType.Next,
-								location: rangeFrom(1, 14, 1, 17),
-								lexeme:   'next',
-								info:     {}
-							})
-						})
+				shell, 'while (TRUE) next', exprList({
+					type:      RType.WhileLoop,
+					location:  rangeFrom(1, 1, 1, 5),
+					lexeme:    'while',
+					info:      {},
+					condition: {
+						type:     RType.Logical,
+						location: rangeFrom(1, 8, 1, 11),
+						lexeme:   'TRUE',
+						content:  true,
+						info:     {}
 					},
-					{
-						step:   DESUGAR_NORMALIZE,
-						wanted: exprList({
-							type:         RType.FunctionCall,
-							location:     rangeFrom(1, 1, 1, 5),
-							lexeme:       'while',
-							info:         {},
-							flavor:       'named',
-							functionName: {
-								type:      RType.Symbol,
-								location:  rangeFrom(1, 1, 1, 5),
-								lexeme:    'while',
-								content:   'while',
-								namespace: undefined,
-								info:      {}
-							},
-							arguments: [
-								{
-									type:     RType.Logical,
-									location: rangeFrom(1, 8, 1, 11),
-									lexeme:   'TRUE',
-									content:  true,
-									info:     {}
-								},
-								{
-									type:      RType.Symbol,
-									location:  rangeFrom(1, 14, 1, 17),
-									lexeme:    'next',
-									content:   'next',
-									namespace: undefined,
-									info:      {}
-								}
-							]
-						})
-					}
-				])
+					body: ensureExpressionList({
+						type:     RType.Next,
+						location: rangeFrom(1, 14, 1, 17),
+						lexeme:   'next',
+						info:     {}
+					})
+				})
+			)
 		})
 	})
 }))

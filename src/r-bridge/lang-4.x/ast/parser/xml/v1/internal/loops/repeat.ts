@@ -5,7 +5,6 @@ import { tryNormalizeSingleNode } from '../structure'
 import type { RRepeatLoop } from '../../../../../model'
 import { RawRType, RType } from '../../../../../model'
 import { guard } from '../../../../../../../../util/assert'
-import { executeHook, executeUnknownHook } from '../../hooks'
 import { parseLog } from '../../../../json/parser'
 
 /**
@@ -20,20 +19,17 @@ import { parseLog } from '../../../../json/parser'
 export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): RRepeatLoop | undefined {
 	if(repeatToken.name !== RawRType.Repeat) {
 		parseLog.debug('encountered non-repeat token for supposed repeat-loop structure')
-		return executeUnknownHook(data.hooks.loops.onRepeatLoop.unknown, data, { repeatToken, body })
+		return undefined
 	}
 
-	parseLog.debug('trying to parse repeat-loop');
-	({ repeatToken, body } = executeHook(data.hooks.loops.onRepeatLoop.before, data, { repeatToken, body }))
+	parseLog.debug('trying to parse repeat-loop')
 
 	const parseBody = tryNormalizeSingleNode(data, body)
 	guard(parseBody.type !== RType.Delimiter, () => `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(body)})`)
 
-	const {
-		location,
-		content
-	} = retrieveMetaStructure(repeatToken.content)
-	const result: RRepeatLoop = {
+	const { location, content } = retrieveMetaStructure(repeatToken.content)
+
+	return {
 		type:   RType.RepeatLoop,
 		location,
 		lexeme: content,
@@ -44,5 +40,4 @@ export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJ
 			fullLexeme:       data.currentLexeme
 		}
 	}
-	return executeHook(data.hooks.loops.onRepeatLoop.after, data, result)
 }

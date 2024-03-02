@@ -3,7 +3,6 @@ import { retrieveMetaStructure } from '../../../common/meta'
 import type { RNode, RParameter } from '../../../../../model'
 import { RType, RawRType } from '../../../../../model'
 import type { ParserData } from '../../data'
-import { executeHook, executeUnknownHook } from '../../hooks'
 import { log } from '../../../../../../../../util/log'
 import { guard } from '../../../../../../../../util/assert'
 import { tryNormalizeSingleNode } from '../structure'
@@ -21,25 +20,24 @@ import { parseLog } from '../../../../json/parser'
  */
 export function tryNormalizeParameter(data: ParserData, objs: NamedXmlBasedJson[]): RParameter | undefined {
 	parseLog.debug('[parameter]')
-	objs = executeHook(data.hooks.functions.onParameter.before, data, objs)
 
 	if(objs.length !== 1 && objs.length !== 3) {
 		log.warn(`Either [SYMBOL_FORMALS] or [SYMBOL_FORMALS, EQ_FORMALS, expr], but got: ${JSON.stringify(objs)}`)
-		return executeUnknownHook(data.hooks.functions.onParameter.unknown, data, objs)
+		return undefined
 	}
 
 
 	const symbol = objs[0]
 	if(symbol.name !== RawRType.SymbolFormals) {
 		log.warn(`expected symbol for parameter, yet received ${JSON.stringify(objs)}`)
-		return executeUnknownHook(data.hooks.functions.onParameter.unknown, data, objs)
+		return undefined
 	}
 
 	const defaultValue: RNode | RDelimiter | undefined = objs.length === 3 ? parseWithDefaultValue(data, objs) : undefined
 
 	const { location, content } = retrieveMetaStructure(symbol.content)
 
-	const result: RParameter = {
+	return {
 		type:    RType.Parameter,
 		location,
 		special: content === '...',
@@ -62,8 +60,6 @@ export function tryNormalizeParameter(data: ParserData, objs: NamedXmlBasedJson[
 			additionalTokens: defaultValue?.type === RType.Delimiter ? [defaultValue] : []
 		}
 	}
-
-	return executeHook(data.hooks.functions.onParameter.after, data, result)
 }
 
 function parseWithDefaultValue(data: ParserData, objs: NamedXmlBasedJson[]): RNode | RDelimiter {

@@ -1,8 +1,8 @@
 import { type RShell } from './shell'
-import type { XmlParserHooks, NormalizedAst } from './lang-4.x'
+import type { NormalizedAst } from './lang-4.x'
 import { ts2r } from './lang-4.x'
 import { startAndEndsWith } from '../util/strings'
-import type { AsyncOrSync, DeepPartial } from 'ts-essentials'
+import type { AsyncOrSync } from 'ts-essentials'
 import { guard } from '../util/assert'
 import { RShellExecutor } from './shell-executor'
 import objectHash from 'object-hash'
@@ -101,9 +101,9 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: (RShel
  * Uses {@link retrieveParseDataFromRCode} and returns the nicely formatted object-AST.
  * If successful, allows to further query the last result with {@link retrieveNumberOfRTokensOfLastParse}.
  */
-export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell, hooks?: DeepPartial<XmlParserHooks>): Promise<NormalizedAst> {
+export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell): Promise<NormalizedAst> {
 	const data = await retrieveParseDataFromRCode(request, shell)
-	return normalize(data, hooks)
+	return normalize(data)
 }
 
 /**

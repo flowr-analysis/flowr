@@ -3,7 +3,6 @@ import { retrieveMetaStructure } from '../../../common/meta'
 import { string2ts } from '../../../../../../values'
 import type { RString } from '../../../../../model'
 import { RType } from '../../../../../model'
-import { executeHook } from '../../hooks'
 import type { ParserData } from '../../data'
 import { guard } from '../../../../../../../../util/assert'
 import { parseLog } from '../../../../json/parser'
@@ -17,7 +16,6 @@ import { parseLog } from '../../../../json/parser'
  */
 export function normalizeString(data: ParserData, obj: XmlBasedJson): RString {
 	parseLog.debug('[string]')
-	obj = executeHook(data.hooks.values.onString.before, data, obj)
 
 	const { location, content } = retrieveMetaStructure(obj)
 
@@ -29,7 +27,7 @@ export function normalizeString(data: ParserData, obj: XmlBasedJson): RString {
 		stringContent = data.currentLexeme
 	}
 
-	const result: RString = {
+	return {
 		type:    RType.String,
 		location,
 		content: string2ts(stringContent),
@@ -40,5 +38,4 @@ export function normalizeString(data: ParserData, obj: XmlBasedJson): RString {
 			fullLexeme:       data.currentLexeme
 		}
 	}
-	return executeHook(data.hooks.values.onString.after, data, result)
 }

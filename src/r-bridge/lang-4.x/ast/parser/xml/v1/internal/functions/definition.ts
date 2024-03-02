@@ -2,7 +2,6 @@ import type { ParserData } from '../../data'
 import type { NamedXmlBasedJson } from '../../../common/input-format'
 import type { RFunctionDefinition, RParameter } from '../../../../../model'
 import { RawRType, RType } from '../../../../../model'
-import { executeHook, executeUnknownHook } from '../../hooks'
 import { ensureExpressionList, retrieveMetaStructure } from '../../../common/meta'
 import { guard, isNotUndefined } from '../../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../../util/arrays'
@@ -23,11 +22,10 @@ export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName:
 	const fnBase = mappedWithName[0]
 	if(fnBase.name !== RawRType.Function && fnBase.name !== RawRType.Lambda) {
 		parseLog.trace(`expected function definition to be identified by keyword, yet received ${fnBase.name}`)
-		return executeUnknownHook(data.hooks.functions.onFunctionDefinition.unknown, data, mappedWithName)
+		return undefined
 	}
 
 	parseLog.trace('trying to parse function definition')
-	mappedWithName = executeHook(data.hooks.functions.onFunctionDefinition.before, data, mappedWithName)
 
 	const { content, location } = retrieveMetaStructure(fnBase.content)
 
@@ -45,7 +43,7 @@ export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName:
 
 	if(parameters.some(p => p === undefined)) {
 		log.error(`function had unexpected unknown parameters: ${JSON.stringify(parameters.filter(isNotUndefined))}, aborting.`)
-		return executeUnknownHook(data.hooks.functions.onFunctionDefinition.unknown, data, mappedWithName)
+		return undefined
 	}
 
 	parseLog.trace(`function definition retained ${parameters.length} parameters after parsing, moving to body.`)
@@ -57,7 +55,7 @@ export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName:
 	guard(body.length === 1 && body[0].type !== RType.Delimiter, () => `expected function body to yield one normalized expression, but ${body.length}`)
 
 
-	const result: RFunctionDefinition = {
+	return {
 		type:       RType.FunctionDefinition,
 		location,
 		lexeme:     content,
@@ -69,5 +67,4 @@ export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName:
 			fullLexeme:       data.currentLexeme
 		}
 	}
-	return executeHook(data.hooks.functions.onFunctionDefinition.after, data, result)
 }

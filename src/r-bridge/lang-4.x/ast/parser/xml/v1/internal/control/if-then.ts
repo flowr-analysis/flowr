@@ -2,7 +2,6 @@ import type { NamedXmlBasedJson } from '../../../common/input-format'
 import { XmlParseError } from '../../../common/input-format'
 import { tryNormalizeSingleNode } from '../structure'
 import type { ParserData } from '../../data'
-import { executeHook, executeUnknownHook } from '../../hooks'
 import type { RIfThenElse } from '../../../../../model'
 import { RType, RawRType } from '../../../../../model'
 import { ensureExpressionList, retrieveMetaStructure } from '../../../common/meta'
@@ -23,14 +22,12 @@ export function tryNormalizeIfThen(
 	parseLog.trace('trying to parse if-then structure')
 	if(tokens[0].name !== RawRType.If) {
 		parseLog.debug('encountered non-if token for supposed if-then structure')
-		return executeUnknownHook(data.hooks.control.onIfThen.unknown, data, tokens)
+		return undefined
 	} else if(tokens[1].name !== RawRType.ParenLeft) {
 		throw new XmlParseError(`expected left-parenthesis for if but found ${JSON.stringify(tokens[1])}`)
 	} else if(tokens[3].name !== RawRType.ParenRight) {
 		throw new XmlParseError(`expected right-parenthesis for if but found ${JSON.stringify(tokens[3])}`)
 	}
-
-	tokens = executeHook(data.hooks.control.onIfThen.before, data, tokens)
 
 	const parsedCondition = tryNormalizeSingleNode(data, tokens[2])
 	const parsedThen = tryNormalizeSingleNode(data, tokens[4])
@@ -42,7 +39,7 @@ export function tryNormalizeIfThen(
 
 	const { location, content } = retrieveMetaStructure(tokens[0].content)
 
-	const result: RIfThenElse = {
+	return {
 		type:      RType.IfThenElse,
 		condition: parsedCondition,
 		then:      ensureExpressionList(parsedThen),
@@ -54,5 +51,4 @@ export function tryNormalizeIfThen(
 			fullLexeme:       data.currentLexeme
 		}
 	}
-	return executeHook(data.hooks.control.onIfThen.after, data, result)
 }

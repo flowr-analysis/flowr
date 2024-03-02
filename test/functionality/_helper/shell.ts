@@ -1,6 +1,5 @@
 import { it } from 'mocha'
 import { testRequiresNetworkConnection } from './network'
-import type { DeepPartial } from 'ts-essentials'
 import type {
 	DecoratedAstMap,
 	IdGenerator,
@@ -8,8 +7,7 @@ import type {
 	NoInfo,
 	RExpressionList,
 	RNode,
-	RNodeWithParent,
-	XmlParserHooks
+	RNodeWithParent
 } from '../../../src'
 import {
 	deterministicCountingIdGenerator, requestFromInput,
@@ -27,7 +25,6 @@ import { createPipeline } from '../../../src/core/steps/pipeline'
 import { PipelineExecutor } from '../../../src/core/pipeline-executor'
 import { PARSE_WITH_R_SHELL_STEP } from '../../../src/core/steps/all/core/00-parse'
 import { NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
-import { DESUGAR_NORMALIZE } from '../../../src/core/steps/all/core/10-normalize'
 import type { DataflowGraph } from '../../../src/dataflow/v1'
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/dataflow/v1'
 import { SteppingSlicer } from '../../../src/core/stepping-slicer'
@@ -88,13 +85,12 @@ function assertAstEqualIgnoreSourceInformation<Info>(ast: RNode<Info>, expected:
 	}
 }
 
-export const retrieveNormalizedAst = async(shell: RShell, input: `file://${string}` | string, hooks?: DeepPartial<XmlParserHooks>): Promise<RNodeWithParent> => {
+export const retrieveNormalizedAst = async(shell: RShell, input: `file://${string}` | string): Promise<RNodeWithParent> => {
 	const request = requestFromInput(input)
 	return (await new SteppingSlicer({
 		stepOfInterest: 'normalize',
 		shell,
-		request,
-		hooks
+		request
 	}).allRemainingSteps()).normalize.ast
 }
 
@@ -141,31 +137,30 @@ export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T 
 	return steps.map(step => ({ step, wanted }))
 }
 
+const normalizePipeline = createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE)
+
 /**
  * For a given input code this takes multiple ASTs depending on the respective normalizer step to run!
  *
  * @see sameForSteps
  */
-export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: { step: typeof NORMALIZE | typeof DESUGAR_NORMALIZE, wanted: RExpressionList }[], userConfig?: Partial<TestConfiguration & {
+export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration & {
 	ignoreAdditionalTokens: boolean
 }>): Mocha.Suite | Mocha.Test {
 	const fullname = decorateLabelContext(name, ['desugar'])
 	// the ternary operator is to support the legacy way I wrote these tests - by mirroring the input within the name
-	return describe(`${fullname} (input: ${input})`, () => {
-		for(const { step, wanted } of expected) {
-			it(`${step.humanReadableName}`, async function() {
-				await ensureConfig(shell, this, userConfig)
+	return it(`${fullname} (input: ${input})`, async function() {
+		await ensureConfig(shell, this, userConfig)
 
-				const pipeline = new PipelineExecutor(createPipeline(PARSE_WITH_R_SHELL_STEP, step), {
-					shell,
-					request: requestFromInput(input)
-				})
-				const result = await pipeline.allRemainingSteps()
-				const ast = result.normalize.ast
+		const pipeline = new PipelineExecutor(normalizePipeline, {
+			shell,
+			request: requestFromInput(input)
+		})
+		const result = await pipeline.allRemainingSteps()
+		const ast = result.normalize.ast
 
-				assertAstEqualIgnoreSourceInformation(ast, wanted, !userConfig?.ignoreAdditionalTokens, () => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(wanted)}`)
-			})
-		}
+		assertAstEqualIgnoreSourceInformation(ast, expected, !userConfig?.ignoreAdditionalTokens,
+			() => `got: ${JSON.stringify(ast)}, vs. expected: ${JSON.stringify(expected)}`)
 	})
 }
 
@@ -186,6 +181,10 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 	})
 }
 
+
+const legacyDataflow = createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW)
+const newDataflow = createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, V2_STATIC_DATAFLOW)
+
 export function assertDataflow(
 	name: string | TestLabel,
 	shell: RShell,
@@ -200,7 +199,7 @@ export function assertDataflow(
 		it(`${effectiveName} (input: ${JSON.stringify(input)})`, async function() {
 			await ensureConfig(shell, this, userConfig)
 
-			const info = await new PipelineExecutor(createPipeline(PARSE_WITH_R_SHELL_STEP, NORMALIZE, LEGACY_STATIC_DATAFLOW), {
+			const info = await new PipelineExecutor(legacyDataflow, {
 				shell,
 				request: requestFromInput(input),
 				getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)
@@ -227,10 +226,7 @@ export function assertDataflow(
 				it(`${step.humanReadableName}`, async function() {
 					await ensureConfig(shell, this, userConfig)
 
-					const info = await new PipelineExecutor(createPipeline(
-						PARSE_WITH_R_SHELL_STEP,
-						step.humanReadableName === V2_STATIC_DATAFLOW.humanReadableName ? DESUGAR_NORMALIZE : NORMALIZE, step
-					), {
+					const info = await new PipelineExecutor(step.humanReadableName === V2_STATIC_DATAFLOW.humanReadableName ? legacyDataflow : newDataflow, {
 						shell,
 						request: requestFromInput(input),
 						getId:   deterministicCountingIdGenerator(startIndexForDeterministicIds)

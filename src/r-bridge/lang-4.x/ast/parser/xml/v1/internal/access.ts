@@ -1,6 +1,5 @@
 import type { NamedXmlBasedJson } from '../../common/input-format'
 import type { ParserData } from '../data'
-import { executeHook, executeUnknownHook } from '../hooks'
 import { normalizeBasedOnType } from './structure'
 import { guard } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
@@ -20,11 +19,10 @@ import { parseLog } from '../../../json/parser'
  */
 export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RAccess | undefined {
 	parseLog.trace('trying to parse access')
-	mappedWithName = executeHook(data.hooks.onAccess.before, data, mappedWithName)
 
 	if(mappedWithName.length < 3) {
 		parseLog.trace('expected at least three elements are required to parse an access')
-		return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
+		return undefined
 	}
 
 	const accessOp = mappedWithName[1]
@@ -49,19 +47,19 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 			break
 		default:
 			parseLog.trace(`expected second element to be an access operator, yet received ${accessOp.name}`)
-			return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
+			return undefined
 	}
 
 	const accessed = mappedWithName[0]
 	if(accessed.name !== RawRType.Expression && accessed.name !== RawRType.ExprOfAssignOrHelp) {
 		parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${accessed.name}`)
-		return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
+		return undefined
 	}
 
 	const parsedAccessed = normalizeBasedOnType(data, [accessed])
 	if(parsedAccessed.length !== 1) {
 		parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${accessed.name}`)
-		return executeUnknownHook(data.hooks.onAccess.unknown, data, mappedWithName)
+		return undefined
 	}
 
 	const remaining = mappedWithName.slice(2, mappedWithName.length - closingLength)
@@ -94,7 +92,7 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 		content, location
 	} = retrieveMetaStructure(accessOp.content)
 
-	const result = {
+	return {
 		type:     RType.Access,
 		location,
 		lexeme:   content,
@@ -107,7 +105,6 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 			fullLexeme:       data.currentLexeme
 		}
 	} as RAccess
-	return executeHook(data.hooks.onAccess.after, data, result)
 }
 
 

@@ -18,7 +18,6 @@ import {
 	ModelFormulaOperatorsRAst, RawRType,
 	RType
 } from '../../../../../model'
-import { executeHook, executeUnknownHook } from '../../hooks'
 import { guard } from '../../../../../../../../util/assert'
 import { parseLog } from '../../../../json/parser'
 
@@ -49,14 +48,13 @@ export function tryNormalizeBinary(
 	} else if(operator.name === RawRType.Pipe) {
 		flavor = 'pipe'
 	} else {
-		return executeUnknownHook(data.hooks.operators.onBinary.unknown, data, { lhs, operator, rhs })
+		return undefined
 	}
 	return parseBinaryOp(data, flavor, lhs, operator, rhs)
 }
 
 function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special' | 'pipe', lhs: NamedXmlBasedJson, operator: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RFunctionCall | RBinaryOp | RPipe {
-	parseLog.debug(`[binary op] trying to parse ${flavor}`);
-	({ flavor, lhs, rhs, operator } = executeHook(data.hooks.operators.onBinary.before, data, { flavor, lhs, operator, rhs }))
+	parseLog.debug(`[binary op] trying to parse ${flavor}`)
 
 	ensureChildrenAreLhsAndRhsOrdered(lhs.content, rhs.content)
 	let parsedLhs = tryNormalizeSingleNode(data, lhs)
@@ -85,7 +83,7 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 		guard(parsedLhs.location !== undefined && parsedLhs.lexeme !== undefined && parsedRhs.location !== undefined && parsedRhs.lexeme !== undefined,
 			() => `special op lhs and rhs must have a locations and lexemes, but ${JSON.stringify(parsedLhs)} and ${JSON.stringify(parsedRhs)})`)
 		// parse as infix function call!
-		const result: RNamedFunctionCall = {
+		return {
 			type:         RType.FunctionCall,
 			flavor:       'named',
 			infixSpecial: true,
@@ -119,14 +117,12 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 			],
 			info: {}
 		}
-		return executeHook(data.hooks.operators.onBinary.after, data, result)
 	}
 
-	let result: RBinaryOp | RPipe
 	if(flavor === 'pipe') {
 		guard(parsedLhs.location !== undefined, () => `pipe lhs must have a location, but ${JSON.stringify(parsedLhs)})`)
 		guard(parsedLhs.lexeme !== undefined, () => `pipe lhs must have a full lexeme, but ${JSON.stringify(parsedLhs)})`)
-		result = {
+		return {
 			type: RType.Pipe,
 			location,
 			lhs:  {
@@ -146,7 +142,7 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 			}
 		}
 	} else {
-		result = {
+		return {
 			type:     RType.BinaryOp,
 			flavor,
 			location,
@@ -161,7 +157,6 @@ function parseBinaryOp(data: ParserData, flavor: BinaryOperatorFlavor | 'special
 			}
 		}
 	}
-	return executeHook(data.hooks.operators.onBinary.after, data, result)
 }
 
 function processLhsAndRhsForAssignment(opName: string, parsedLhs: RNode, parsedRhs: RNode): [RNode, RNode] {

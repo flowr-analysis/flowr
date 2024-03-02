@@ -3,7 +3,6 @@ import type { RComment, RLineDirective } from '../../../../../model'
 import { RType } from '../../../../../model'
 import { retrieveMetaStructure } from '../../../common/meta'
 import { guard } from '../../../../../../../../util/assert'
-import { executeHook } from '../../hooks'
 import type { ParserData } from '../../data'
 import { parseLog } from '../../../../json/parser'
 
@@ -19,15 +18,13 @@ const LineDirectiveRegex = /^#line\s+(\d+)\s+"([^"]+)"\s*$/
  */
 export function normalizeLineDirective(data: ParserData, obj: XmlBasedJson): RLineDirective | RComment {
 	parseLog.debug('[line-directive]')
-	obj = executeHook(data.hooks.other.onLineDirective.before, data, obj)
 
 	const { location, content } = retrieveMetaStructure(obj)
 	guard(content.startsWith('#line'), 'line directive must start with #line')
 	const match = LineDirectiveRegex.exec(content)
-	let result: RLineDirective | RComment
 	if(match === null) {
 		parseLog.debug(`[line-directive] does not match the regex ${LineDirectiveRegex.source} given ${JSON.stringify(content)}`)
-		result = {
+		return {
 			type:   RType.Comment,
 			location,
 			lexeme: content,
@@ -39,7 +36,7 @@ export function normalizeLineDirective(data: ParserData, obj: XmlBasedJson): RLi
 			content: content.slice(1)
 		}
 	} else {
-		result = {
+		return {
 			type:   RType.LineDirective,
 			location,
 			line:   parseInt(match[1]),
@@ -52,5 +49,4 @@ export function normalizeLineDirective(data: ParserData, obj: XmlBasedJson): RLi
 			}
 		}
 	}
-	return executeHook(data.hooks.other.onLineDirective.after, data, result)
 }

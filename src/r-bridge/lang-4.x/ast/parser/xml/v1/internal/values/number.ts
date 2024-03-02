@@ -5,7 +5,6 @@ import { retrieveMetaStructure } from '../../../common/meta'
 import type { RLogical, RSymbol, NoInfo, RNumber } from '../../../../../model'
 import { RType } from '../../../../../model'
 import type { ParserData } from '../../data'
-import { executeHook } from '../../hooks'
 import { parseLog } from '../../../../json/parser'
 
 /**
@@ -18,7 +17,6 @@ import { parseLog } from '../../../../json/parser'
  */
 export function normalizeNumber(data: ParserData, obj: XmlBasedJson): RNumber | RLogical | RSymbol<NoInfo, typeof RNa> {
 	parseLog.debug('[number]')
-	obj = executeHook(data.hooks.values.onNumber.before, data, obj)
 
 	const { location, content } = retrieveMetaStructure(obj)
 	const common = {
@@ -31,27 +29,25 @@ export function normalizeNumber(data: ParserData, obj: XmlBasedJson): RNumber | 
 		}
 	}
 
-	let result:  RNumber | RLogical | RSymbol<NoInfo, typeof RNa>
 	/* the special symbol */
 	if(isNA(content)) {
-		result = {
+		return {
 			...common,
 			namespace: undefined,
 			type:      RType.Symbol,
 			content
 		}
 	} else if(isBoolean(content)) {
-		result = {
+		return {
 			...common,
 			type:    RType.Logical,
 			content: boolean2ts(content)
 		}
 	} else {
-		result = {
+		return {
 			...common,
 			type:    RType.Number,
 			content: number2ts(content)
 		}
 	}
-	return executeHook(data.hooks.values.onNumber.after, data, result)
 }

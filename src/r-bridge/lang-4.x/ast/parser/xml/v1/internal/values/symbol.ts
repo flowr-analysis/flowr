@@ -4,7 +4,6 @@ import { retrieveMetaStructure } from '../../../common/meta'
 import type { RSymbol } from '../../../../../model'
 import { isSymbol, RType } from '../../../../../model'
 import type { ParserData } from '../../data'
-import { executeHook, executeUnknownHook } from '../../hooks'
 import { startAndEndsWith } from '../../../../../../../../util/strings'
 import { parseLog } from '../../../../json/parser'
 
@@ -21,7 +20,6 @@ import { parseLog } from '../../../../json/parser'
 export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]): RSymbol | undefined {
 	guard(objs.length > 0, 'to parse symbols we need at least one object to work on!')
 	parseLog.debug('trying to parse symbol')
-	objs = executeHook(data.hooks.values.onSymbol.before, data, objs)
 
 	let location, content, namespace
 
@@ -36,10 +34,10 @@ export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]):
 		content     = meta.content
 		namespace   = retrieveMetaStructure(objs[0].content).content
 	} else {
-		return executeUnknownHook(data.hooks.values.onSymbol.unknown, data, objs)
+		return undefined
 	}
 
-	const result: RSymbol = {
+	return {
 		type:    RType.Symbol,
 		namespace,
 		location,
@@ -52,6 +50,4 @@ export function tryNormalizeSymbol(data: ParserData, objs: NamedXmlBasedJson[]):
 			fullLexeme:       data.currentLexeme
 		}
 	}
-
-	return executeHook(data.hooks.values.onSymbol.after, data, result)
 }

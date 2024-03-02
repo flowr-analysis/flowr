@@ -18,7 +18,6 @@ import { EmptyArgument
 import {
 	RType, RawRType
 } from '../../../../../model'
-import { executeHook, executeUnknownHook } from '../../hooks'
 import { tryToNormalizeArgument } from './argument'
 import type { SourceRange } from '../../../../../../../../util/range'
 import { normalizeExpression } from '../expression'
@@ -37,7 +36,7 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 	const fnBase = mappedWithName[0]
 	if(fnBase.name !== RawRType.Expression && fnBase.name !== RawRType.ExprOfAssignOrHelp) {
 		parseLog.trace(`expected function call name to be wrapped an expression, yet received ${fnBase.name}`)
-		return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
+		return undefined
 	}
 
 	if(mappedWithName.length < 3 || mappedWithName[1].name !== RawRType.ParenLeft || mappedWithName[mappedWithName.length - 1].name !== RawRType.ParenRight) {
@@ -46,30 +45,22 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 	}
 
 	parseLog.trace('trying to parse function call')
-	mappedWithName = executeHook(data.hooks.functions.onFunctionCall.before, data, mappedWithName)
 
 	const { unwrappedObj, content, location } = retrieveMetaStructure(fnBase.content)
 	const symbolContent: XmlBasedJson[] = getKeyGuarded(unwrappedObj, childrenKey)
-
-	let result: RFunctionCall | RNext | RBreak
 
 	const namedSymbolContent = getWithTokenType(symbolContent)
 
 	if(namedSymbolContent.length === 1 && namedSymbolContent[0].name === RawRType.StringConst) {
 		// special handling when someone calls a function by string
-		result = parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content)
+		return parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content)
 	} else if(namedSymbolContent.findIndex(x => x.name === RawRType.SymbolFunctionCall) < 0) {
 		parseLog.trace(`is not named function call, as the name is not of type ${RType.FunctionCall}, but: ${namedSymbolContent.map(n => n.name).join(',')}`)
 		const mayResult = tryParseUnnamedFunctionCall(data, mappedWithName, location, content)
-		if(mayResult === undefined) {
-			return executeUnknownHook(data.hooks.functions.onFunctionCall.unknown, data, mappedWithName)
-		}
-		result = mayResult
+		return mayResult
 	} else {
-		result = parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content)
+		return parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content)
 	}
-
-	return executeHook(data.hooks.functions.onFunctionCall.after, data, result)
 }
 
 function parseArguments(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RArgument | undefined)[] {

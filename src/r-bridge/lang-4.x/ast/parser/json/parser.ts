@@ -1,21 +1,16 @@
-import type { DeepPartial } from 'ts-essentials'
 import { childrenKey, nameKey, attributesKey, contentKey } from '../xml'
 import type { IdGenerator, NoInfo, NormalizedAst } from '../../model'
 import { decorateAst, deterministicCountingIdGenerator, RawRType } from '../../model'
-import { deepMergeObject } from '../../../../../util/objects'
 import type { Entry } from './format'
 import { prepareParsedData } from './format'
 import { log } from '../../../../../util/log'
-import type { ParserData, XmlBasedJson, XmlParserHooks } from '../xml/v1'
-import { DEFAULT_PARSER_HOOKS } from '../xml/v1'
+import type { ParserData, XmlBasedJson } from '../xml/v1'
 import { normalizeRootObjToAst } from '../xml/v1/internal'
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
-export function normalize(jsonString: string, hooks?: DeepPartial<XmlParserHooks>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
-	const hooksWithDefaults = deepMergeObject(DEFAULT_PARSER_HOOKS, hooks) as XmlParserHooks
-
-	const data: ParserData = { hooks: hooksWithDefaults, currentRange: undefined, currentLexeme: undefined }
+export function normalize(jsonString: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
+	const data: ParserData = { currentRange: undefined, currentLexeme: undefined }
 	const object = convertPreparedParsedData(prepareParsedData(jsonString))
 
 	return decorateAst(normalizeRootObjToAst(data, object), getId)

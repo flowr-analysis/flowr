@@ -14,7 +14,6 @@ import {
 	ModelFormulaOperatorsRAst,
 	RType
 } from '../../../../../model'
-import { executeHook, executeUnknownHook } from '../../hooks'
 import { parseLog } from '../../../../json/parser'
 
 /**
@@ -36,14 +35,13 @@ export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson,
 	} else if(ModelFormulaOperatorsRAst.has(operator.name)) {
 		flavor = 'model formula'
 	} else {
-		return executeUnknownHook(data.hooks.operators.onUnary.unknown, data, { operator, operand })
+		return undefined
 	}
 	return parseUnaryOp(data, flavor, operator, operand)
 }
 
 function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
-	parseLog.debug(`[unary op] parse ${flavor}`); // <- semicolon sadly required for not miss-interpreting the destructuring match as call
-	({ flavor, operator, operand } = executeHook(data.hooks.operators.onUnary.before, data, { flavor, operator, operand }))
+	parseLog.debug(`[unary op] parse ${flavor}`) // <- semicolon sadly required for not miss-interpreting the destructuring match as call
 
 	const parsedOperand = tryNormalizeSingleNode(data, operand)
 
@@ -52,7 +50,7 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: N
 	const operationName = retrieveOpName(operator)
 	const { location, content } = retrieveMetaStructure(operator.content)
 
-	const result: RUnaryOp = {
+	return {
 		type:     RType.UnaryOp,
 		flavor,
 		location,
@@ -65,5 +63,4 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: N
 			fullLexeme:       data.currentLexeme
 		}
 	}
-	return executeHook(data.hooks.operators.onUnary.after, data, result)
 }

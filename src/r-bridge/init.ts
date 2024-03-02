@@ -13,7 +13,7 @@ export function initCommand(eol: string): string {
 		/* json conversion of the output, dataframe="values" allows us to receive a list of lists (which is more compact)!
 		 * so we do not depend on jsonlite and friends, we do so manually (:sparkles:)
 		 */
-		+ 'cat(paste0("[",flowr_output$line1,",",flowr_output$col1,",",flowr_output$line2,",",flowr_output$col2,",",flowr_output$id,",",flowr_output$parent,",",sapply(flowr_output$token,deparse),",",ifelse(flowr_output$terminal,"true","false"),",",sapply(flowr_output$text,deparse),"]",collapse=","));'
+		+ 'cat(paste0(sprintf("[%s,%s,%s,%s,%s,%s,%s,%s,%s]",flowr_output$line1,flowr_output$col1,flowr_output$line2,flowr_output$col2,flowr_output$id,flowr_output$parent,encodeString(flowr_output$token,quote="\\""),ifelse(flowr_output$terminal,"true","false"),encodeString(flowr_output$text,quote="\\"")),collapse=","))'
 		/* error handling (just produce the marker) */
-		+ `},error=function(e){cat("${ErrorMarker}")});cat(${ts2r(eol)})});`
+		+ `},error=function(e){cat("${ErrorMarker}")});cat(${ts2r(eol)})},options=compiler::setCompilerOptions(optimize=3));`
 }

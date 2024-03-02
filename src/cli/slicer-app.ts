@@ -33,7 +33,7 @@ const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'cr
 })
 
 async function getSlice() {
-	const slicer = new BenchmarkSlicer()
+	const slicer = new BenchmarkSlicer(1000)
 	guard(options.input !== undefined, 'input must be given')
 	guard(options.criterion !== undefined, 'a slicing criterion must be given')
 

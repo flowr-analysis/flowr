@@ -81,23 +81,24 @@ export class BenchmarkSlicer {
 	/** Measures all data that is recorded *once* per slicer (complete setup up to the dataflow graph creation) */
 	private readonly commonMeasurements = new Measurements<CommonSlicerMeasurements>()
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>()
-	private readonly shell: RShell
-	private stats:          SlicerStats | undefined
-	private loadedXml:      string | undefined
-	private dataflow:       DataflowInformation | undefined
-	private ai:             DataflowInformation | undefined
-	private normalizedAst:  NormalizedAst | undefined
-	private totalStopwatch: IStoppableStopwatch
+	private readonly shell:    RShell
+	private stats:             SlicerStats | undefined
+	private loadedXml:         string | undefined
+	private dataflow:          DataflowInformation | undefined
+	private normalizedAst:     NormalizedAst | undefined
+	private totalStopwatch:    IStoppableStopwatch
+	private readonly waitTime: number
 	private finished = false
 	// Yes this is dirty, but we know that we assign the stepper during the initialization and this saves us from having to check for nullability every time
-	private stepper:        SteppingSlicer = null as unknown as SteppingSlicer
+	private stepper:           SteppingSlicer = null as unknown as SteppingSlicer
 
-	constructor() {
+	constructor(waitTime = 0) {
 		this.totalStopwatch = this.commonMeasurements.start('total')
 		this.shell = this.commonMeasurements.measure(
 			'initialize R session',
 			() => new RShell()
 		)
+		this.waitTime = waitTime
 	}
 
 	/**
@@ -106,6 +107,8 @@ export class BenchmarkSlicer {
 	 */
 	public async init(request: RParseRequestFromFile | RParseRequestFromText) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice')
+		// wait so the R session can catch up and to measure the time	more fairly
+		await new Promise(resolve => setTimeout(resolve, this.waitTime))
 
 		this.stepper = new SteppingSlicer({
 			shell:          this.shell,
@@ -113,6 +116,7 @@ export class BenchmarkSlicer {
 			stepOfInterest: LAST_STEP,
 			criterion:      []
 		})
+
 
 		this.loadedXml = await this.measureCommonStep('parse', 'retrieve AST from R code')
 		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST')

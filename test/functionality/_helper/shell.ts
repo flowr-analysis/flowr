@@ -53,8 +53,8 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Conte
  */
 export function withShell(fn: (shell: RShell) => void): () => void {
 	return function() {
-		after(() => shell.close())
 		const shell = new RShell()
+		after(() => shell.close())
 		fn(shell)
 	}
 }

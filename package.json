@@ -47,6 +47,8 @@
     "timeout": 60000,
     "spec": "test/**/*.spec.ts",
     "source-map": true,
+    "recursive": true,
+    "exit": true,
     "produce-source-map": true
   },
   "nyc": {

@@ -5,6 +5,8 @@ import { linkIngoingVariablesInSameScope } from '../../linker'
 import type { ParentInformation, RBinaryOp } from '../../../../../r-bridge'
 import { appendEnvironments, overwriteEnvironments } from '../../../../common/environments'
 
+const logicalOperators = new Set(['&&', '||', '&', '|'])
+
 export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const lhs = processDataflowFor(op.lhs, data)
 	const rhs = processDataflowFor(op.rhs, data)
@@ -13,8 +15,7 @@ export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo 
 	const nextGraph = lhs.graph.mergeWith(rhs.graph)
 	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
-	// logical operations may not execute the right hand side (e.g., `FALSE && (x <- TRUE)`)
-	const merger = op.flavor === 'logical' ? appendEnvironments : overwriteEnvironments
+	const merger = logicalOperators.has(op.operator) ? appendEnvironments : overwriteEnvironments
 
 	return {
 		unknownReferences: [], // binary ops require reads as without assignments there is no definition

@@ -281,7 +281,6 @@ describe('Parse simple constructs', withShell(shell => {
 					},
 					vector: {
 						type:     RType.BinaryOp,
-						flavor:   'arithmetic',
 						operator: ':',
 						location: rangeFrom(1, 11, 1, 11),
 						lexeme:   ':',
@@ -332,7 +331,6 @@ describe('Parse simple constructs', withShell(shell => {
 				},
 				vector: {
 					type:     RType.BinaryOp,
-					flavor:   'arithmetic',
 					operator: ':',
 					location: rangeFrom(4, 34, 4, 34),
 					lexeme:   ':',

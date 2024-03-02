@@ -22,25 +22,15 @@ export const DefaultAllVariablesFilter: SlicingCriteriaFilter = {
 const onLeaf = () => []
 const onBinary = (_: unknown, lhs: NodeId[], rhs: NodeId[]) => [...lhs, ...rhs]
 const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId[]> = {
-	foldNumber:  onLeaf,
-	foldString:  onLeaf,
-	foldLogical: onLeaf,
-	foldSymbol:  (symbol: RSymbol<ParentInformation>) => isSpecialSymbol(symbol) ? [] : [symbol.info.id],
-	foldAccess:  (_: unknown, name: NodeId[], access: string | (null | NodeId[])[]) => Array.isArray(access) ? [...name, ...access.filter(isNotNull).flat()] : name,
-	binaryOp:    {
-		foldLogicalOp:    onBinary,
-		foldArithmeticOp: onBinary,
-		foldComparisonOp: onBinary,
-		foldAssignment:   onBinary,
-		foldPipe:         onBinary,
-		foldModelFormula: onBinary
-	},
-	unaryOp: {
-		foldLogicalOp:    (_: unknown, operator: NodeId[]) => operator,
-		foldArithmeticOp: (_: unknown, operator: NodeId[]) => operator,
-		foldModelFormula: (_: unknown, operator: NodeId[]) => operator
-	},
-	loop: {
+	foldNumber:   onLeaf,
+	foldString:   onLeaf,
+	foldLogical:  onLeaf,
+	foldSymbol:   (symbol: RSymbol<ParentInformation>) => isSpecialSymbol(symbol) ? [] : [symbol.info.id],
+	foldAccess:   (_: unknown, name: NodeId[], access: string | (null | NodeId[])[]) => Array.isArray(access) ? [...name, ...access.filter(isNotNull).flat()] : name,
+	foldBinaryOp: onBinary,
+	foldPipe:     onBinary,
+	foldUnaryOp:  (_: unknown, operator: NodeId[]) => operator,
+	loop:         {
 		foldFor:    (_: unknown, a: NodeId[], b: NodeId[], c: NodeId[]) => [...a,...b,...c],
 		foldWhile:  (_: unknown, a: NodeId[], b: NodeId[]) => [...a,...b],
 		foldRepeat: (_: unknown, a: NodeId[]) => a,
@@ -63,8 +53,8 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 				return [...a, ...args]
 			}
 		},
-		foldArgument:  (_: unknown, a: unknown, b: NodeId[] | undefined) => b ?? [],
-		foldParameter: (_: unknown, a: unknown, b: NodeId[] | undefined) => b ?? []
+		foldArgument:  (_: unknown, _a: unknown, b: NodeId[] | undefined) => b ?? [],
+		foldParameter: (_: unknown, _a: unknown, b: NodeId[] | undefined) => b ?? []
 	}
 }
 

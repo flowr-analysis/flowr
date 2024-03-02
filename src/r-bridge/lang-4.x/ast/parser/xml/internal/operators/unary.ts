@@ -1,19 +1,17 @@
 import type { ParserData } from '../../data'
 import type { NamedXmlBasedJson } from '../../input-format'
 import type {
-	RNode, RUnaryOp,
-	UnaryOperatorFlavor
+	RNode, RUnaryOp
 } from '../../../../model'
 import {
 	RType,
-	ArithmeticOperatorsRAst,
-	LogicalOperatorsRAst,
-	ModelFormulaOperatorsRAst
+	OperatorsInRAst
 } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { tryNormalizeSingleNode } from '../structure'
 import { retrieveMetaStructure, retrieveOpName } from '../../meta'
 import { guard } from '../../../../../../../util/assert'
+import { expensiveTrace } from '../../../../../../../util/log'
 
 
 /**
@@ -26,24 +24,16 @@ import { guard } from '../../../../../../../util/assert'
  * @returns The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
  */
 export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
-	parseLog.trace(`unary op for ${operator.name} ${operand.name}`)
-	let flavor: UnaryOperatorFlavor
-	// TODO: remove flavour
-	if(ArithmeticOperatorsRAst.has(operator.name)) {
-		flavor = 'arithmetic'
-	} else if(LogicalOperatorsRAst.has(operator.name)) {
-		flavor = 'logical'
-	} else if(ModelFormulaOperatorsRAst.has(operator.name)) {
-		flavor = 'model formula'
+	expensiveTrace(parseLog, () => `unary op for ${operator.name} ${operand.name}`)
+
+	if(OperatorsInRAst.has(operator.name)) {
+		return parseUnaryOp(data, operator, operand)
 	} else {
 		return undefined
 	}
-	return parseUnaryOp(data, flavor, operator, operand)
 }
 
-function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
-	parseLog.debug(`[unary op] parse ${flavor}`)
-
+function parseUnaryOp(data: ParserData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
 	const parsedOperand = tryNormalizeSingleNode(data, operand)
 
 	guard(parsedOperand.type !== RType.Delimiter, () => 'unexpected under-sided unary op')
@@ -53,7 +43,6 @@ function parseUnaryOp(data: ParserData, flavor: UnaryOperatorFlavor, operator: N
 
 	return {
 		type:     RType.UnaryOp,
-		flavor,
 		location,
 		operator: operationName,
 		lexeme:   content,

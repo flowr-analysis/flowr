@@ -111,7 +111,6 @@ describe('Parse value access', withShell(shell => {
 					value:    {
 						type:     RType.BinaryOp,
 						location: rangeFrom(1, 5, 1, 5),
-						flavor:   'arithmetic',
 						operator: '+',
 						lexeme:   '+',
 						info:     {},

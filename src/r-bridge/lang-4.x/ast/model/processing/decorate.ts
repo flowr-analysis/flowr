@@ -124,7 +124,7 @@ export interface NormalizedAst<OtherInfo = ParentInformation, Node = RNode<Other
  *
  * @typeParam OtherInfo - The original decoration of the ast nodes (probably is nothing as the id decoration is most likely the first step to be performed after extraction)
  *
- * @returns A {@link DecoratedAst | decorated AST} based on the input and the id provider.
+ * @returns A {@link DecoratedAst|decorated AST} based on the input and the id provider.
  */
 export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: IdGenerator<OtherInfo> = deterministicCountingIdGenerator(0)): NormalizedAst<OtherInfo & ParentInformation> {
 	const idMap: DecoratedAstMap<OtherInfo> = new BiMap<NodeId, RNodeWithParent<OtherInfo>>()
@@ -136,25 +136,15 @@ export function decorateAst<OtherInfo = NoInfo>(ast: RNode<OtherInfo>, getId: Id
 	const unaryOp = createFoldForUnaryOp(info)
 
 	const decoratedAst: RNodeWithParent<OtherInfo> = foldAst(ast, {
-		foldNumber:  foldLeaf,
-		foldString:  foldLeaf,
-		foldLogical: foldLeaf,
-		foldSymbol:  foldLeaf,
-		foldAccess:  createFoldForAccess(info),
-		binaryOp:    {
-			foldLogicalOp:    foldBinaryOp,
-			foldArithmeticOp: foldBinaryOp,
-			foldComparisonOp: foldBinaryOp,
-			foldAssignment:   foldBinaryOp,
-			foldPipe:         foldBinaryOp,
-			foldModelFormula: foldBinaryOp
-		},
-		unaryOp: {
-			foldArithmeticOp: unaryOp,
-			foldLogicalOp:    unaryOp,
-			foldModelFormula: unaryOp
-		},
-		other: {
+		foldNumber:   foldLeaf,
+		foldString:   foldLeaf,
+		foldLogical:  foldLeaf,
+		foldSymbol:   foldLeaf,
+		foldAccess:   createFoldForAccess(info),
+		foldBinaryOp: foldBinaryOp,
+		foldPipe:     foldBinaryOp,
+		foldUnaryOp:  unaryOp,
+		other:        {
 			foldComment:       foldLeaf,
 			foldLineDirective: foldLeaf
 		},

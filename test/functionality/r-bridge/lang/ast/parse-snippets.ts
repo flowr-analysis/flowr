@@ -23,7 +23,6 @@ max
     `, exprList(
 			{
 				type:     RType.BinaryOp,
-				flavor:   'assignment',
 				lexeme:   '<-',
 				operator: '<-',
 				location: rangeFrom(2, 3, 2, 4),
@@ -46,7 +45,6 @@ max
 			},
 			{
 				type:     RType.BinaryOp,
-				flavor:   'assignment',
 				lexeme:   '=',
 				operator: '=',
 				location: rangeFrom(3, 3, 3, 3),
@@ -74,7 +72,6 @@ max
 				info:      {},
 				condition: {
 					type:     RType.BinaryOp,
-					flavor:   'comparison',
 					lexeme:   '>',
 					operator: '>',
 					location: rangeFrom(4, 7, 4, 7),
@@ -104,7 +101,6 @@ max
 					children: [
 						{
 							type:     RType.BinaryOp,
-							flavor:   'assignment',
 							lexeme:   '<<-',
 							operator: '<<-',
 							location: rangeFrom(5, 7, 5, 9),
@@ -128,7 +124,6 @@ max
 						},
 						{
 							type:     RType.BinaryOp,
-							flavor:   'assignment',
 							lexeme:   '->',
 							operator: '->',
 							location: rangeFrom(6, 5, 6, 6),
@@ -153,7 +148,6 @@ max
 				},
 				otherwise: ensureExpressionList({
 					type:     RType.BinaryOp,
-					flavor:   'assignment',
 					lexeme:   '->>',
 					operator: '->>',
 					location: rangeFrom(8, 5, 8, 7),

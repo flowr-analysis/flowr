@@ -34,7 +34,6 @@ describe('Parse function definitions', withShell(shell => {
 				body:       ensureExpressionList({
 					type:     RType.BinaryOp,
 					location: rangeFrom(1, 16, 1, 16),
-					flavor:   'arithmetic',
 					lexeme:   '+',
 					operator: '+',
 					info:     {},
@@ -49,7 +48,6 @@ describe('Parse function definitions', withShell(shell => {
 					rhs: {
 						type:     RType.BinaryOp,
 						location: rangeFrom(1, 20, 1, 20),
-						flavor:   'arithmetic',
 						lexeme:   '*',
 						operator: '*',
 						info:     {},

@@ -132,25 +132,15 @@ export function emptyControlFlowInformation(): ControlFlowInformation {
 
 
 const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
-	foldNumber:  cfgLeaf(CfgVertexType.Expression),
-	foldString:  cfgLeaf(CfgVertexType.Expression),
-	foldLogical: cfgLeaf(CfgVertexType.Expression),
-	foldSymbol:  cfgLeaf(CfgVertexType.Expression),
-	foldAccess:  cfgAccess,
-	binaryOp:    {
-		foldLogicalOp:    cfgBinaryOp,
-		foldArithmeticOp: cfgBinaryOp,
-		foldComparisonOp: cfgBinaryOp,
-		foldAssignment:   cfgBinaryOp,
-		foldPipe:         cfgBinaryOp,
-		foldModelFormula: cfgBinaryOp
-	},
-	unaryOp: {
-		foldArithmeticOp: cfgUnaryOp,
-		foldLogicalOp:    cfgUnaryOp,
-		foldModelFormula: cfgUnaryOp
-	},
-	other: {
+	foldNumber:   cfgLeaf(CfgVertexType.Expression),
+	foldString:   cfgLeaf(CfgVertexType.Expression),
+	foldLogical:  cfgLeaf(CfgVertexType.Expression),
+	foldSymbol:   cfgLeaf(CfgVertexType.Expression),
+	foldAccess:   cfgAccess,
+	foldBinaryOp: cfgBinaryOp,
+	foldPipe:     cfgBinaryOp,
+	foldUnaryOp:  cfgUnaryOp,
+	other:        {
 		foldComment:       cfgIgnore,
 		foldLineDirective: cfgIgnore
 	},

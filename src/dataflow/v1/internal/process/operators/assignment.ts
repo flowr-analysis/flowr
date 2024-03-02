@@ -1,4 +1,4 @@
-import type { NodeId, ParentInformation, RAssignmentOp, RNode } from '../../../../../r-bridge'
+import type { NodeId, ParentInformation, RBinaryOp, RNode } from '../../../../../r-bridge'
 import { collectAllIds, RType } from '../../../../../r-bridge'
 import type { DataflowInformation } from '../../../../common/info'
 import type { DataflowProcessorInformation } from '../../../processor'
@@ -14,11 +14,11 @@ import {
 import { log, LogLevel } from '../../../../../util/log'
 import { dataflowLogger } from '../../../index'
 
-export function processAssignment<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
+export function processAssignment<OtherInfo>(op: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)
 	const lhs = processDataflowFor(op.lhs, data)
 	const rhs = processDataflowFor(op.rhs, data)
-	const { readTargets, newWriteNodes, writeTargets, environments, swap } = processReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs, data)
+	const { readTargets, newWriteNodes, writeTargets, environments, swap } = processReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs)
 	const nextGraph = lhs.graph.mergeWith(rhs.graph)
 
 	// deal with special cases based on the source node and the determined read targets
@@ -88,7 +88,7 @@ function identifySourceAndTarget<OtherInfo>(
 	return { source, target, superAssignment, swap }
 }
 
-function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInformation>, target: DataflowInformation, global: boolean, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
+function produceWrittenNodes<OtherInfo>(op: RBinaryOp<OtherInfo & ParentInformation>, target: DataflowInformation, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
 	const writeNodes: IdentifierDefinition[] = []
 	const isFunctionDef = functionTypeCheck.type === RType.FunctionDefinition
 	for(const active of target.unknownReferences) {
@@ -102,9 +102,8 @@ function produceWrittenNodes<OtherInfo>(op: RAssignmentOp<OtherInfo & ParentInfo
 }
 
 function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
-	op: RAssignmentOp<OtherInfo & ParentInformation>,
+	op: RBinaryOp<OtherInfo & ParentInformation>,
 	lhs: DataflowInformation, rhs: DataflowInformation,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ) {
 	// what is written/read additionally is based on lhs/rhs - assignments read written variables as well
 	const read = [...lhs.in, ...rhs.in]
@@ -112,7 +111,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
 
 	const funcTypeCheck = swap ? op.lhs : op.rhs
 
-	const writeNodes = produceWrittenNodes(op, target, superAssignment, data, funcTypeCheck)
+	const writeNodes = produceWrittenNodes(op, target, funcTypeCheck)
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`)

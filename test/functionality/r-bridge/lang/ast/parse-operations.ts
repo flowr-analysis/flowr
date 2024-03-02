@@ -1,39 +1,35 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
-import { RArithmeticBinaryOpPool, RLogicalBinaryOpPool, RUnaryOpPool } from '../../../_helper/provider'
+import { AssignmentOperators, BinaryOperatorPool, UnaryOperatorPool } from '../../../_helper/provider'
 import type { RExpressionList } from '../../../../../src'
 import { OperatorDatabase } from '../../../../../src'
-import { ComparisonOperators, type RShell, RType } from '../../../../../src'
+import { type RShell, RType } from '../../../../../src'
 import { rangeFrom } from '../../../../../src/util/range'
 import { label } from '../../../_helper/label'
+import { startAndEndsWith } from '../../../../../src/util/strings'
 
 describe('Parse simple operations', withShell(shell => {
 	describe('unary operations', () => {
-		for(const opSuite of RUnaryOpPool) {
-			describe(`${opSuite.label} operations`, () => {
-				for(const op of opSuite.pool) {
-					const simpleInput = `${op.str}42`
-					const opOffset = op.str.length - 1
-					const opData = OperatorDatabase[op.str]
-					assertAst(label(`${simpleInput}`, ['unary-operator', 'numbers', ...opData.capabilities]),
-						shell, simpleInput, exprList({
-							type:     RType.UnaryOp,
-							operator: op.str,
-							flavor:   op.flavor,
-							lexeme:   op.str,
-							location: rangeFrom(1, 1, 1, 1 + opOffset),
-							info:     {},
-							operand:  {
-								type:     RType.Number,
-								location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
-								lexeme:   '42',
-								content:  numVal(42),
-								info:     {}
-							},
-						})
-					)
-				}
-			})
+		for(const op of UnaryOperatorPool) {
+			const simpleInput = `${op}42`
+			const opOffset = op.length - 1
+			const opData = OperatorDatabase[op]
+			assertAst(label(`${simpleInput}`, ['unary-operator', 'numbers', ...opData.capabilities]),
+				shell, simpleInput, exprList({
+					type:     RType.UnaryOp,
+					operator: op,
+					lexeme:   op,
+					location: rangeFrom(1, 1, 1, 1 + opOffset),
+					info:     {},
+					operand:  {
+						type:     RType.Number,
+						location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
+						lexeme:   '42',
+						content:  numVal(42),
+						info:     {}
+					},
+				})
+			)
 		}
 	})
 	describe('? question', () => {
@@ -43,7 +39,6 @@ describe('Parse simple operations', withShell(shell => {
 				location: rangeFrom(1, 1, 1, 1),
 				operator: '?',
 				lexeme:   '?',
-				flavor:   'logical',
 				info:     {},
 				operand:  {
 					type:      RType.Symbol,
@@ -58,52 +53,9 @@ describe('Parse simple operations', withShell(shell => {
 	})
 
 	describe('binary operations', () => {
-		for(const opSuite of [
-			{ label: 'arithmetic', pool: RArithmeticBinaryOpPool },
-			{
-				label: 'logical',
-				pool:  RLogicalBinaryOpPool,
-			},
-		]) {
-			describe(`${opSuite.label} operations`, () => {
-				for(const op of opSuite.pool) {
-					describePrecedenceTestsForOp(op, shell)
-				}
-			})
+		for(const op of [...BinaryOperatorPool].filter(op => !startAndEndsWith(op, '%'))) {
+			describePrecedenceTestsForOp(op, shell)
 		}
-		describe('comparison operations', () => {
-			for(const op of ComparisonOperators) {
-				describe(op, () => {
-					const simpleInput = `1 ${op} 1`
-					const opOffset = op.length - 1
-					const opData = OperatorDatabase[op]
-					assertAst(label(simpleInput, ['binary-operator', 'infix-calls', 'function-calls', 'numbers', ...opData.capabilities]),
-						shell, simpleInput, exprList({
-							type:     RType.BinaryOp,
-							operator: op,
-							lexeme:   op,
-							flavor:   'comparison',
-							location: rangeFrom(1, 3, 1, 3 + opOffset),
-							info:     {},
-							lhs:      {
-								type:     RType.Number,
-								location: rangeFrom(1, 1, 1, 1),
-								lexeme:   '1',
-								content:  numVal(1),
-								info:     {}
-							},
-							rhs: {
-								type:     RType.Number,
-								location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
-								lexeme:   '1',
-								content:  numVal(1),
-								info:     {}
-							},
-						})
-					)
-				})
-			}
-		})
 
 		describe('Intermixed with comments', () => {
 			assertAst(label('1 + # comment\n2', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'comments', 'newlines']),
@@ -122,7 +74,6 @@ describe('Parse simple operations', withShell(shell => {
 						},
 						{
 							type:     RType.BinaryOp,
-							flavor:   'arithmetic',
 							info:     {},
 							lexeme:   '+',
 							operator: '+',
@@ -202,7 +153,7 @@ describe('Parse simple operations', withShell(shell => {
 )
 
 function normalizeGenerate(
-	op: typeof RArithmeticBinaryOpPool[number] | typeof RLogicalBinaryOpPool[number],
+	op: string,
 	opOffset: number,
 	offsetL: number,
 	offsetC: number,
@@ -210,16 +161,14 @@ function normalizeGenerate(
 ): RExpressionList {
 	return exprList({
 		type:     RType.BinaryOp,
-		operator: op.str,
-		lexeme:   op.str,
-		flavor:   op.flavor,
+		operator: op,
+		lexeme:   op,
 		location: rangeFrom(1, 7 + opOffset + offsetC, 1, 7 + 2 * opOffset + offsetC),
 		info:     {},
 		lhs:      {
 			type:     RType.BinaryOp,
-			operator: op.str,
-			lexeme:   op.str,
-			flavor:   op.flavor,
+			operator: op,
+			lexeme:   op,
 			location: rangeFrom(1, 3 + offsetL, 1, 3 + opOffset + offsetL),
 			info:     {},
 			lhs:      {
@@ -247,17 +196,18 @@ function normalizeGenerate(
 	})
 }
 
-function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number] | typeof RLogicalBinaryOpPool[number], shell: RShell): void {
-	describe(`${op.str} (${op.flavor})`, () => {
-		const simpleInput = `1 ${op.str} 1`
-		const opOffset = op.str.length - 1
-		const opData = OperatorDatabase[op.str]
+function describePrecedenceTestsForOp(op: string, shell: RShell): void {
+	const comparisonPrecedenceOperators = new Set(['<', '<=', '>', '>=', '==', '!=', '', '=='])
+
+	describe(`${op}`, () => {
+		const simpleInput = `1 ${op} 1`
+		const opOffset = op.length - 1
+		const opData = OperatorDatabase[op]
 		assertAst(label(simpleInput, ['binary-operator', 'infix-calls', 'function-calls', 'numbers', ...opData.capabilities]),
 			shell, simpleInput, exprList({
 				type:     RType.BinaryOp,
-				operator: op.str,
-				lexeme:   op.str,
-				flavor:   op.flavor,
+				operator: op,
+				lexeme:   op,
 				location: rangeFrom(1, 3, 1, 3 + opOffset),
 				info:     {},
 				lhs:      {
@@ -277,64 +227,63 @@ function describePrecedenceTestsForOp(op: typeof RArithmeticBinaryOpPool[number]
 			}
 			))
 
-
-		assertAst(label('Single Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
-			shell, `(1 ${op.str} 1) ${op.str} 42`, normalizeGenerate(op, opOffset, 1, 2, 2), {
-				ignoreAdditionalTokens: true
-			})
-
-		assertAst(label('Multiple Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
-			shell, `(1 ${op.str} 1) ${op.str} (42)`, normalizeGenerate(op, opOffset, 1, 2, 3), {
-				ignoreAdditionalTokens: true
-			})
-
-		// exponentiation has a different behavior when nested without parenthesis
-		if(op.str !== '^' && op.str !== '**') {
-			assertAst(label('No Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
-				shell, `1 ${op.str} 1 ${op.str} 42`, normalizeGenerate(op, opOffset, 0, 0, 0), {
+		if(!comparisonPrecedenceOperators.has(op)) {
+			assertAst(label('Single Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
+				shell, `(1 ${op} 1) ${op} 42`, normalizeGenerate(op, opOffset, 1, 2, 2), {
 					ignoreAdditionalTokens: true
 				})
-		}
 
-		assertAst(label('Invert precedence', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
-			shell, `1 ${op.str} (1 ${op.str} 42)`, exprList({
-				type:     RType.BinaryOp,
-				operator: op.str,
-				lexeme:   op.str,
-				flavor:   op.flavor,
-				location: rangeFrom(1, 3, 1, 3 + opOffset),
-				info:     {},
-				lhs:      {
-					type:     RType.Number,
-					location: rangeFrom(1, 1, 1, 1),
-					content:  numVal(1),
-					lexeme:   '1',
-					info:     {}
-				},
-				rhs: {
+			assertAst(label('Multiple Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
+				shell, `(1 ${op} 1) ${op} (42)`, normalizeGenerate(op, opOffset, 1, 2, 3), {
+					ignoreAdditionalTokens: true
+				})
+
+			// exponentiation and assignments has a different behavior when nested without parenthesis
+			if(op !== '^' && op !== '**' && !AssignmentOperators.includes(op)) {
+				assertAst(label('No Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
+					shell, `1 ${op} 1 ${op} 42`, normalizeGenerate(op, opOffset, 0, 0, 0), {
+						ignoreAdditionalTokens: true
+					})
+			}
+
+			assertAst(label('Invert precedence', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
+				shell, `1 ${op} (1 ${op} 42)`, exprList({
 					type:     RType.BinaryOp,
-					operator: op.str,
-					lexeme:   op.str,
-					flavor:   op.flavor,
-					location: rangeFrom(1, 8 + opOffset, 1, 8 + 2 * opOffset),
+					operator: op,
+					lexeme:   op,
+					location: rangeFrom(1, 3, 1, 3 + opOffset),
 					info:     {},
 					lhs:      {
 						type:     RType.Number,
-						location: rangeFrom(1, 6 + opOffset, 1, 6 + opOffset),
+						location: rangeFrom(1, 1, 1, 1),
 						content:  numVal(1),
 						lexeme:   '1',
 						info:     {}
 					},
 					rhs: {
-						type:     RType.Number,
-						location: rangeFrom(1, 10 + 2 * opOffset, 1, 11 + 2 * opOffset),
-						content:  numVal(42),
-						lexeme:   '42',
-						info:     {}
+						type:     RType.BinaryOp,
+						operator: op,
+						lexeme:   op,
+						location: rangeFrom(1, 8 + opOffset, 1, 8 + 2 * opOffset),
+						info:     {},
+						lhs:      {
+							type:     RType.Number,
+							location: rangeFrom(1, 6 + opOffset, 1, 6 + opOffset),
+							content:  numVal(1),
+							lexeme:   '1',
+							info:     {}
+						},
+						rhs: {
+							type:     RType.Number,
+							location: rangeFrom(1, 10 + 2 * opOffset, 1, 11 + 2 * opOffset),
+							content:  numVal(42),
+							lexeme:   '42',
+							info:     {}
+						}
 					}
-				}
-			}), {
-				ignoreAdditionalTokens: true
-			})
+				}), {
+					ignoreAdditionalTokens: true
+				})
+		}
 	})
 }

@@ -32,7 +32,7 @@ import {
 import { expensiveTrace, log, LogLevel } from '../util/log'
 import { guard, isNotNull } from '../util/assert'
 import type { MergeableRecord } from '../util/objects'
-//
+
 type Selection = Set<NodeId>
 interface PrettyPrintLine {
 	line:   string
@@ -410,26 +410,16 @@ export function autoSelectLibrary(node: RNode<ParentInformation>): boolean {
 // escalates with undefined if all are undefined
 const reconstructAstFolds: StatefulFoldFunctions<ParentInformation, ReconstructionConfiguration, Code> = {
 	// we just pass down the state information so everyone has them
-	down:        (_n, c) => c,
-	foldNumber:  reconstructAsLeaf,
-	foldString:  reconstructAsLeaf,
-	foldLogical: reconstructAsLeaf,
-	foldSymbol:  reconstructAsLeaf,
-	foldAccess:  reconstructFoldAccess,
-	binaryOp:    {
-		foldLogicalOp:    reconstructBinaryOp,
-		foldArithmeticOp: reconstructBinaryOp,
-		foldComparisonOp: reconstructBinaryOp,
-		foldAssignment:   reconstructBinaryOp,
-		foldPipe:         reconstructBinaryOp,
-		foldModelFormula: reconstructBinaryOp
-	},
-	unaryOp: {
-		foldArithmeticOp: reconstructUnaryOp,
-		foldLogicalOp:    reconstructUnaryOp,
-		foldModelFormula: reconstructUnaryOp
-	},
-	other: {
+	down:         (_n, c) => c,
+	foldNumber:   reconstructAsLeaf,
+	foldString:   reconstructAsLeaf,
+	foldLogical:  reconstructAsLeaf,
+	foldSymbol:   reconstructAsLeaf,
+	foldAccess:   reconstructFoldAccess,
+	foldBinaryOp: reconstructBinaryOp,
+	foldPipe:     reconstructBinaryOp,
+	foldUnaryOp:  reconstructUnaryOp,
+	other:        {
 		foldComment:       reconstructAsLeaf,
 		foldLineDirective: reconstructAsLeaf
 	},

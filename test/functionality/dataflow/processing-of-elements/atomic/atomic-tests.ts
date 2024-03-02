@@ -5,7 +5,6 @@
  */
 import { assertDataflow, sameForSteps, withShell } from '../../../_helper/shell'
 import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow/v1'
-import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../../_helper/provider'
 import { appendEnvironments, define } from '../../../../../src/dataflow/common/environments'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { label } from '../../../_helper/label'
@@ -14,6 +13,8 @@ import { unnamedArgument } from '../../../_helper/environment-builder'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import { OperatorDatabase } from '../../../../../src'
 import { LEGACY_STATIC_DATAFLOW, V2_STATIC_DATAFLOW } from '../../../../../src/core/steps/all/core/20-dataflow'
+import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider'
+import { startAndEndsWith } from '../../../../../src/util/strings'
 
 describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {
@@ -100,116 +101,53 @@ describe('Atomic (dataflow information)', withShell(shell => {
 	})
 
 	describe('unary operators', () => {
-		for(const opSuite of RUnaryOpPool) {
-			describe(`${opSuite.label} operations`, () => {
-				for(const op of opSuite.pool) {
-					const inputDifferent = `${op.str}x`
-					const opData = OperatorDatabase[op.str]
-					assertDataflow(label(`${op.str}x`, ['unary-operator', 'name-normal', ...opData.capabilities]), shell,
-						inputDifferent,
-						emptyGraph().use('0', 'x')
-					)
-				}
-			})
+		for(const op of UnaryOperatorPool) {
+			const inputDifferent = `${op}x`
+			const opData = OperatorDatabase[op]
+			assertDataflow(label(`${op}x`, ['unary-operator', 'name-normal', ...opData.capabilities]), shell,
+				inputDifferent,
+				emptyGraph().use('0', 'x')
+			)
 		}
 	})
 
 	// these will be more interesting whenever we have more information on the edges (like modification etc.)
 	describe('non-assignment binary operators', () => {
-		for(const opSuite of RNonAssignmentBinaryOpPool) {
-			describe(`${opSuite.label}`, () => {
-				for(const op of opSuite.pool) {
-					describe(`${op.str}`, () => {
-						const inputDifferent = `x ${op.str} y`
-						assertDataflow(label(`${inputDifferent} (different variables)`, ['binary-operator', 'infix-calls', 'function-calls', 'name-normal']),
-							shell,
-							inputDifferent,
-							emptyGraph().use('0', 'x').use('1', 'y')
-						)
+		for(const op of BinaryNonAssignmentOperators.filter(x => !startAndEndsWith(x, '%'))) {
+			describe(`${op}`, () => {
+				const inputDifferent = `x ${op} y`
+				assertDataflow(label(`${inputDifferent} (different variables)`, ['binary-operator', 'infix-calls', 'function-calls', 'name-normal']),
+					shell,
+					inputDifferent,
+					emptyGraph().use('0', 'x').use('1', 'y')
+				)
 
-						const inputSame = `x ${op.str} x`
-						assertDataflow(label(`${inputSame} (same variables)`, ['binary-operator', 'infix-calls', 'function-calls', 'name-normal']),
-							shell,
-							inputSame,
-							emptyGraph()
-								.use('0', 'x')
-								.use('1', 'x')
-								.sameRead('0', '1')
-						)
-					})
-				}
+				const inputSame = `x ${op} x`
+				assertDataflow(label(`${inputSame} (same variables)`, ['binary-operator', 'infix-calls', 'function-calls', 'name-normal']),
+					shell,
+					inputSame,
+					emptyGraph()
+						.use('0', 'x')
+						.use('1', 'x')
+						.sameRead('0', '1')
+				)
 			})
 		}
 	})
 
-	describe('Pipes', () => {
-		describe('Passing one argument', () => {
-			assertDataflow(label('No parameter function', ['built-in-pipe-and-pipe-bind']), shell, 'x |> f()',
-				emptyGraph()
-					.use('0', 'x')
-					.call('3', 'f', [
-						{ name: unnamedArgument('1'), nodeId: '1', used: 'always' }
-					])
-					.use('1', unnamedArgument('1'))
-					.argument('3', '1')
-					.reads('1', '0'),
-				{ minRVersion: MIN_VERSION_PIPE }
-			)
-			assertDataflow(label('Nested calling', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal']), shell, 'x |> f() |> g()',
-				emptyGraph()
-					.use('0', 'x')
-					.call('3', 'f', [
-						{ name: unnamedArgument('1'), nodeId: '1', used: 'always' }
-					])
-					.call('7', 'g', [
-						{ name: unnamedArgument('5'), nodeId: '5', used: 'always' }
-					])
-					.use('1', unnamedArgument('1'))
-					.use('5', unnamedArgument('5'))
-					.argument('3', '1')
-					.argument('7', '5')
-					.reads('5', '3')
-					.reads('1', '0'),
-				{ minRVersion: MIN_VERSION_PIPE }
-			)
-			assertDataflow(label('Multi-Parameter function', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal', 'unnamed-arguments']), shell, 'x |> f(y,z)',
-				emptyGraph()
-					.use('0', 'x')
-					.call('7', 'f', [
-						{ name: unnamedArgument('1'), nodeId: '1', used: 'always' },
-						{ name: unnamedArgument('4'), nodeId: '4', used: 'always' },
-						{ name: unnamedArgument('6'), nodeId: '6', used: 'always' }
-					])
-					.use('1', unnamedArgument('1'))
-					.use('4', unnamedArgument('4'))
-					.use('6', unnamedArgument('6'))
-					.use('0', 'x')
-					.use('3', 'y')
-					.use('5', 'z')
-					.argument('7', '1')
-					.argument('7', '4')
-					.argument('7', '6')
-					.reads('1', '0')
-					.reads('4', '3')
-					.reads('6', '5'),
-				{ minRVersion: MIN_VERSION_PIPE }
-			)
-		})
-	})
-
 	describe('assignments', () => {
-		for(const op of RAssignmentOpPool) {
-			describe(`${op.str}`, () => {
-				const swapSourceAndTarget = op.str === '->' || op.str === '->>'
+		for(const op of AssignmentOperators) {
+			describe(`${op}`, () => {
+				const swapSourceAndTarget = op === '->' || op === '->>'
 
-				const constantAssignment = swapSourceAndTarget ? `5 ${op.str} x` : `x ${op.str} 5`
+				const constantAssignment = swapSourceAndTarget ? `5 ${op} x` : `x ${op} 5`
 				assertDataflow(`${constantAssignment} (constant assignment)`,
 					shell,
 					constantAssignment,
 					emptyGraph().defineVariable(swapSourceAndTarget ? '1' : '0', 'x')
 				)
 
-				const variableAssignment = `x ${op.str} y`
+				const variableAssignment = `x ${op} y`
 				const dataflowGraph = emptyGraph()
 				if(swapSourceAndTarget) {
 					dataflowGraph
@@ -228,7 +166,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					dataflowGraph
 				)
 
-				const circularAssignment = `x ${op.str} x`
+				const circularAssignment = `x ${op} x`
 
 				const circularGraph = emptyGraph()
 				if(swapSourceAndTarget) {
@@ -371,6 +309,62 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			)
 		})
 	})
+
+	describe('Pipes', () => {
+		describe('Passing one argument', () => {
+			assertDataflow(label('No parameter function', ['built-in-pipe-and-pipe-bind']), shell, 'x |> f()',
+				emptyGraph()
+					.use('0', 'x')
+					.call('3', 'f', [
+						{ name: unnamedArgument('1'), nodeId: '1', used: 'always' }
+					])
+					.use('1', unnamedArgument('1'))
+					.argument('3', '1')
+					.reads('1', '0'),
+				{ minRVersion: MIN_VERSION_PIPE }
+			)
+			assertDataflow(label('Nested calling', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal']), shell, 'x |> f() |> g()',
+				emptyGraph()
+					.use('0', 'x')
+					.call('3', 'f', [
+						{ name: unnamedArgument('1'), nodeId: '1', used: 'always' }
+					])
+					.call('7', 'g', [
+						{ name: unnamedArgument('5'), nodeId: '5', used: 'always' }
+					])
+					.use('1', unnamedArgument('1'))
+					.use('5', unnamedArgument('5'))
+					.argument('3', '1')
+					.argument('7', '5')
+					.reads('5', '3')
+					.reads('1', '0'),
+				{ minRVersion: MIN_VERSION_PIPE }
+			)
+			assertDataflow(label('Multi-Parameter function', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal', 'unnamed-arguments']), shell, 'x |> f(y,z)',
+				emptyGraph()
+					.use('0', 'x')
+					.call('7', 'f', [
+						{ name: unnamedArgument('1'), nodeId: '1', used: 'always' },
+						{ name: unnamedArgument('4'), nodeId: '4', used: 'always' },
+						{ name: unnamedArgument('6'), nodeId: '6', used: 'always' }
+					])
+					.use('1', unnamedArgument('1'))
+					.use('4', unnamedArgument('4'))
+					.use('6', unnamedArgument('6'))
+					.use('0', 'x')
+					.use('3', 'y')
+					.use('5', 'z')
+					.argument('7', '1')
+					.argument('7', '4')
+					.argument('7', '6')
+					.reads('1', '0')
+					.reads('4', '3')
+					.reads('6', '5'),
+				{ minRVersion: MIN_VERSION_PIPE }
+			)
+		})
+	})
+
 
 	describe('if-then-else', () => {
 		// spacing issues etc. are dealt with within the parser, however, braces are not allowed to introduce scoping artifacts

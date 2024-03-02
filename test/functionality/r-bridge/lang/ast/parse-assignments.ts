@@ -1,22 +1,22 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
-import { RAssignmentOpPool } from '../../../_helper/provider'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RType } from '../../../../../src'
+import { OperatorDatabase, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
+import { AssignmentOperators } from '../../../_helper/provider'
 
 describe('Parse simple assignments',
 	withShell(shell => {
 		describe('Constant Assignments', () => {
-			for(const op of RAssignmentOpPool) {
-				const opOffset = op.str.length - 1
-				assertAst(label(`x ${op.str} 5`, ['binary-operator', 'infix-calls', 'function-calls', ...op.capabilities]),
-					shell, `x ${op.str} 5`,exprList({
+			for(const op of AssignmentOperators) {
+				const opOffset = op.length - 1
+				const data = OperatorDatabase[op]
+				assertAst(label(`x ${op} 5`, ['binary-operator', 'infix-calls', 'function-calls', ...data.capabilities]),
+					shell, `x ${op} 5`,exprList({
 						type:     RType.BinaryOp,
 						location: rangeFrom(1, 3, 1, 3 + opOffset),
-						flavor:   'assignment',
-						lexeme:   op.str,
-						operator: op.str,
+						lexeme:   op,
+						operator: op,
 						info:     {},
 						lhs:      {
 							type:      RType.Symbol,
@@ -44,7 +44,6 @@ describe('Parse simple assignments',
 				shell, '\'a\' <- 5', exprList({
 					type:     RType.BinaryOp,
 					location: rangeFrom(1, 5, 1, 6),
-					flavor:   'assignment',
 					lexeme:   '<-',
 					operator: '<-',
 					info:     {},
@@ -72,7 +71,6 @@ describe('Parse simple assignments',
 				shell, 'x <- { 2 * 3 }', exprList({
 					type:     RType.BinaryOp,
 					location: rangeFrom(1, 3, 1, 4),
-					flavor:   'assignment',
 					lexeme:   '<-',
 					operator: '<-',
 					info:     {},
@@ -87,7 +85,6 @@ describe('Parse simple assignments',
 					rhs: {
 						type:     RType.BinaryOp,
 						location: rangeFrom(1, 10, 1, 10),
-						flavor:   'arithmetic',
 						lexeme:   '*',
 						operator: '*',
 						info:     {},

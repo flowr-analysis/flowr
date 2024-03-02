@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert'
 import type { REnvironmentInformation, IEnvironment, IdentifierDefinition } from './environment'
-import { Environment } from './environment'
+import { BuiltInEnvironment, Environment } from './environment'
 
 function anyIsMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
 	if(values.length === 0) {
@@ -49,9 +49,9 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 		}
 	}
 
-	let parent: IEnvironment | undefined
+	let parent: IEnvironment
 	if(includeParent) {
-		parent = base.parent === undefined ? undefined : overwriteIEnvironmentWith(base.parent, next.parent)
+		parent = base.parent.id === BuiltInEnvironment.id ? BuiltInEnvironment : overwriteIEnvironmentWith(base.parent, next.parent)
 	} else {
 		parent = base.parent
 	}

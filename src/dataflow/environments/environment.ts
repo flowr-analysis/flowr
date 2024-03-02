@@ -78,7 +78,7 @@ export interface IEnvironment {
 	readonly id:   string
 	readonly name: string
 	/** Lexical parent of the environment, if any (can be manipulated by R code) */
-	parent?:       IEnvironment
+	parent:        IEnvironment
 	/**
    * Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions
    */
@@ -90,10 +90,10 @@ let environmentIdCounter = 0
 export class Environment implements IEnvironment {
 	readonly name: string
 	readonly id:   string = `${environmentIdCounter++}`
-	parent?:       IEnvironment
+	parent:        IEnvironment
 	memory:        Map<Identifier, IdentifierDefinition[]>
 
-	constructor(name: string, parent?: IEnvironment) {
+	constructor(name: string, parent: IEnvironment) {
 		this.name   = name
 		this.parent = parent
 		this.memory = new Map()
@@ -114,7 +114,7 @@ export interface REnvironmentInformation {
 	readonly level:   number
 }
 
-export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition[]>([
+export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
 	['return', [{
 		kind:      'built-in-function',
 		used:      'always',
@@ -157,10 +157,12 @@ export const DefaultEnvironmentMemory = new Map<Identifier, IdentifierDefinition
 	}]]
 ])
 
+/* the built-in environment is the root of all environments */
+export const BuiltInEnvironment = new Environment('built-in', undefined as unknown as IEnvironment)
+BuiltInEnvironment.memory = BuiltInMemory
+
 export function initializeCleanEnvironments(): REnvironmentInformation {
-	const global = new Environment('global')
-	// use a copy
-	global.memory = new Map<Identifier, IdentifierDefinition[]>(DefaultEnvironmentMemory)
+	const global = new Environment('global', BuiltInEnvironment)
 	return {
 		current: global,
 		level:   0

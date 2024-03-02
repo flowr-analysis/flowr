@@ -1,5 +1,6 @@
 import { guard } from '../../util/assert'
 import type { IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
+import { BuiltInEnvironment } from './environment'
 
 import { cloneEnvironments } from './clone'
 
@@ -21,7 +22,7 @@ export function define(definition: IdentifierDefinition, superAssign: boolean, e
 	let newEnvironments = environments
 	if(superAssign) {
 		newEnvironments = cloneEnvironments(environments, true)
-		let current: IEnvironment | undefined = newEnvironments.current
+		let current: IEnvironment = newEnvironments.current
 		let last = undefined
 		let found = false
 		do{
@@ -32,7 +33,7 @@ export function define(definition: IdentifierDefinition, superAssign: boolean, e
 			}
 			last = current
 			current = current.parent
-		} while(current !== undefined)
+		} while(current.id !== BuiltInEnvironment.id)
 		if(!found) {
 			guard(last !== undefined, () => `Could not find global scope for ${definition.name}`)
 			last.memory.set(definition.name, [definition])

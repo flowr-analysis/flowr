@@ -15,7 +15,7 @@ function test(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, tex
 }
 
 describe('Equal', () => {
-	const raw = (name: string, a: DataflowGraph, b: DataflowGraph, text: string, cmp: (x: boolean) => void) => {
+	function raw(name: string, a: DataflowGraph, b: DataflowGraph, text: string, cmp: (x: boolean) => void) {
 		return it(name, () => {
 			// as the comparison is relatively quick, we allow explicit checks for commutativity
 			test(cmp, a, b, 'a;b' + text)
@@ -24,7 +24,7 @@ describe('Equal', () => {
 	}
 
 	describe('Positive', () => {
-		const eq = (name: string, a: DataflowGraph, b: DataflowGraph) => {
+		function eq(name: string, a: DataflowGraph, b: DataflowGraph) {
 			raw(name, a, b, 'should be equal', x => assert.isTrue(x))
 		}
 
@@ -32,7 +32,7 @@ describe('Equal', () => {
 		eq('Same vertex', emptyGraph().use('0', 'x'), emptyGraph().use('0', 'x'))
 	})
 	describe('Negative', () => {
-		const neq = (name: string, a: DataflowGraph, b: DataflowGraph) => {
+		function neq(name: string, a: DataflowGraph, b: DataflowGraph) {
 			raw(name, a, b, 'should differ', x => assert.isFalse(x))
 		}
 		describe('More elements', () => {

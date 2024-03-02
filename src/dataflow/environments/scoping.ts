@@ -4,11 +4,8 @@ import { guard } from '../../util/assert'
 
 /** Add a new local environment scope to the stack, returns the modified variant - sharing the original environments in the stack (no deep-clone) */
 export function pushLocalEnvironment(base: REnvironmentInformation): REnvironmentInformation {
-	const local = new Environment('local')
-	local.parent = base.current
-
 	return {
-		current: local,
+		current: new Environment('local', base.current),
 		level:   base.level + 1
 	}
 }

@@ -24,7 +24,6 @@ export function processFunctionCall<OtherInfo>(
 	let argEnv = functionName.environments
 	const finalGraph = new DataflowGraph()
 	const callArgs: FunctionArgument[] = []
-	const args = []
 	const remainingReadInArgs = []
 
 	const functionRootId = functionCall.info.id
@@ -44,12 +43,10 @@ export function processFunctionCall<OtherInfo>(
 	for(const arg of functionCall.arguments) {
 		if(arg === EmptyArgument) {
 			callArgs.push('empty')
-			args.push(undefined)
 			continue
 		}
 
 		const processed = processDataflowFor(arg, { ...data, environments: argEnv })
-		args.push(processed)
 
 		finalEnv = overwriteEnvironments(finalEnv, processed.environments)
 		argEnv = overwriteEnvironments(argEnv, processed.environments)

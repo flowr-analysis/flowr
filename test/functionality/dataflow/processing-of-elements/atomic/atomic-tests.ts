@@ -51,9 +51,9 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					},
 					{
 						step:   V2_STATIC_DATAFLOW,
-						wanted: emptyGraph().use('0', 'a', { when: 'maybe' })
-							.use('2', unnamedArgument('2'))
-							.reads('0', '2')
+						wanted: emptyGraph().use('1', 'a', { when: 'always' /* TODO: maybe */ })
+							.call('3', '[', [ { name: 'a', nodeId: '1', used: 'always' } ])
+							.argument('3', '1')
 					}
 				]
 			)

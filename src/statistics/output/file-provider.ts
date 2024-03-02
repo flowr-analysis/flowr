@@ -1,7 +1,7 @@
 import path from 'path'
 import fs from 'fs'
 import { guard } from '../../util/assert'
-import { expensiveTrace, log, LogLevel } from '../../util/log'
+import { expensiveTrace, log } from '../../util/log'
 
 type FileDescriptor = number
 export type AppendFnType = string | number | symbol

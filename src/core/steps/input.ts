@@ -1,6 +1,5 @@
 import type { MergeableRecord } from '../../util/objects'
 import type { IdGenerator, NoInfo, RParseRequest, RShell } from '../../r-bridge'
-import type { DeepPartial } from 'ts-essentials'
 import type { AutoSelectPredicate, SlicingCriteria } from '../../slicing'
 import type { STEPS_PER_SLICE, StepName, STEPS_PER_FILE } from './steps'
 

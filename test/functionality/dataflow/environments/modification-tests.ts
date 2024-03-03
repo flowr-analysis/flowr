@@ -1,6 +1,6 @@
 import type { NodeId } from '../../../../src'
 import type { IEnvironment } from '../../../../src/dataflow'
-import { BuiltInMemory, initializeCleanEnvironments } from '../../../../src/dataflow'
+import { initializeCleanEnvironments } from '../../../../src/dataflow'
 import { guard } from '../../../../src/util/assert'
 import { expect } from 'chai'
 import { appendEnvironment, define, overwriteEnvironment } from '../../../../src/dataflow/environments'

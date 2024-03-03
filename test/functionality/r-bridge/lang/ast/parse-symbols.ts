@@ -1,4 +1,4 @@
-import { assertAst, sameForSteps, withShell } from '../../../_helper/shell'
+import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
 import { RType } from '../../../../../src'

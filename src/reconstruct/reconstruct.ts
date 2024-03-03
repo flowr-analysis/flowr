@@ -30,7 +30,7 @@ import {
 	, EmptyArgument
 } from '../r-bridge'
 import { expensiveTrace, log, LogLevel } from '../util/log'
-import { guard, isNotNull } from '../util/assert'
+import { guard } from '../util/assert'
 import type { MergeableRecord } from '../util/objects'
 
 type Selection = Set<NodeId>

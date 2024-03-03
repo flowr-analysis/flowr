@@ -126,8 +126,8 @@ export function number2ts(value: string): RNumberValue {
 
 export interface RStringValue {
 	str:    string
-	/** from the R-language definition a string is either delimited by a pair of single or double quotes */
-	quotes: '"' | '\''
+	/** from the R-language definition a string is either delimited by a pair of single or double quotes, 'none' strings are syntactically unquoted but treated as strings  */
+	quotes: '"' | '\'' | 'none'
 	/** a string is raw if prefixed with r */
 	flag?:  'raw'
 }

@@ -6,15 +6,15 @@ import type {
 	DataflowGraph,
 	DataflowGraphVertexInfo,
 	DataflowMap,
-	FunctionArgument,
-	IdentifierReference
+	FunctionArgument, IdentifierDefinition,
+	IdentifierReference, IEnvironment
 } from '../../dataflow'
 import {
+	BuiltInEnvironment,
 	BuiltIn,
 	EdgeType
 } from '../../dataflow'
 import { guard } from '../assert'
-import { jsonReplacer } from '../json'
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid'
 
 
@@ -119,13 +119,34 @@ function mermaidNodeBrackets(def: boolean, fCall: boolean) {
 	return { open, close }
 }
 
-function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap | undefined, mark: Set<NodeId> | undefined): void {
+function printIdentifier(id: IdentifierDefinition): string {
+	return `[${id.kind}] ${id.name} (${id.nodeId}, ${id.used} def. @${id.definedAt})`
+}
+
+function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
+	if(env === undefined) {
+		return ['??']
+	} else if(env.id === BuiltInEnvironment.id) {
+		return ['Built-in']
+	}
+	const lines = [...printEnvironmentToLines(env.parent), `${env.id}--${env.name}${'-'.repeat(40)}`]
+	const longestName = Math.max(...[...env.memory.keys()].map(x => x.length))
+	for(const [name, defs] of env.memory.entries()) {
+		const printName = `${name}:`
+		lines.push(`  ${printName.padEnd(longestName + 1, ' ')}: {${defs.map(printIdentifier).join(', ')}}`)
+	}
+	return lines
+}
+
+function vertexToMermaid(graph: DataflowGraph, info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap | undefined, mark: Set<NodeId> | undefined): void {
 	const def = info.tag === 'variable-definition' || info.tag === 'function-definition'
 	const fCall = info.tag === 'function-call'
 	const { open, close } = mermaidNodeBrackets(def, fCall)
 
 	if(mermaid.includeEnvironments) {
-		mermaid.nodeLines.push(`    %% ${id}: ${JSON.stringify(info.environment, jsonReplacer)}`)
+		mermaid.nodeLines.push(
+			`    %% Environment of ${id} [level: ${info.environment.level}]:`,
+			printEnvironmentToLines(info.environment.current).map(x => `    %% ${x}`).join('\n'))
 	}
 	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name)} (${id}, ${info.when})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''
@@ -159,7 +180,7 @@ function graphToMermaidGraph(rootIds: ReadonlySet<NodeId>, graph: DataflowGraph,
 
 	for(const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {
-			nodeToMermaid(graph, info, mermaid, id, idPrefix, dataflowIdMap, mark)
+			vertexToMermaid(graph, info, mermaid, id, idPrefix, dataflowIdMap, mark)
 		}
 	}
 	if(mermaid.hasBuiltIn) {

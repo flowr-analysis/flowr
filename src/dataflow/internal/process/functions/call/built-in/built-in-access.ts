@@ -1,7 +1,6 @@
 import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
-import { EmptyArgument } from '../../../../../../r-bridge'
+import { RType, EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
-import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments'
 import { dataflowLogger } from '../../../../../index'
@@ -14,7 +13,6 @@ export function processAccess<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-
 	if(args.length < 2) {
 		dataflowLogger.warn(`Access ${name.content} has less than 2 arguments, skipping`)
 		return processKnownFunctionCall(name, args, rootId, data)
@@ -26,9 +24,28 @@ export function processAccess<OtherInfo>(
 	// if we are here we know we are processing a built-in
 	if(name.content === '[' || name.content === '[[') {
 		information = processKnownFunctionCall(name, args, rootId, data)
+	} else if(args.length === 2) {
+		// if the argument is a symbol we convert it to a string for this perspective
+		let arg = args[1]
+		guard(arg !== EmptyArgument, () => `Access ${name.content} has no argument, impossible!`)
+		if(arg.value?.type === RType.Symbol) {
+			arg = {
+				...arg,
+				value: {
+					type:     RType.String,
+					info:     arg.value.info,
+					lexeme:   arg.value.lexeme,
+					location: arg.value.location,
+					content:  {
+						quotes: 'none',
+						str:    arg.value.lexeme
+					}
+				}
+			}
+		}
+		information = processKnownFunctionCall(name, [head, arg], rootId, data)
 	} else {
-		// we ignore the arguments here as they are not used in the access
-		information = processDataflowFor(head, data)
+		throw new Error(`Access ${name.content} did not match a handler with ${args.length} arguments`)
 	}
 
 	return {

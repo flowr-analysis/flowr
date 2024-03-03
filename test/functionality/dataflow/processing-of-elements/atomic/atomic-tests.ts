@@ -37,8 +37,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		'xylophone', emptyGraph().use('0', 'xylophone')
 	)
 
-	describe('access', () => {
-		describe('const access', () => {
+	describe('Access', () => {
+		describe('Access with Constant', () => {
 			assertDataflow(label('single constant', ['name-normal', 'numbers', 'single-bracket-access']),
 				shell,'a[2]', emptyGraph().use('0', 'a', { when: 'maybe' })
 					.use('3-accessed', unnamedArgument('3-accessed'))
@@ -53,18 +53,43 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.reads('3-accessed', '0')
 			)
 			assertDataflow(label('double constant', ['name-normal', 'numbers', 'double-bracket-access']),
-				shell, 'a[[2]]',
-				emptyGraph().use('0', 'a', { when: 'maybe' })
+				shell, 'a[[2]]', emptyGraph().use('0', 'a', { when: 'maybe' })
+					.use('3-accessed', unnamedArgument('3-accessed'))
 					.use('2', unnamedArgument('2'))
-					.reads('0', '2')
+					.call('3', '[[', [
+						{ name: unnamedArgument('3-accessed'), nodeId: '3-accessed', used: 'always' },
+						{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
+					])
+					.argument('3', '3-accessed')
+					.argument('3', '2')
+					.reads('3', BuiltIn)
+					.reads('3-accessed', '0')
 			)
 			assertDataflow(label('dollar constant', ['name-normal', 'dollar-access']),
-				shell, 'a$b',
-				emptyGraph().use('0', 'a', { when: 'maybe' })
+				shell, 'a$b', emptyGraph().use('0', 'a', { when: 'maybe' })
+					.use('3-accessed', unnamedArgument('3-accessed'))
+					.use('2', unnamedArgument('2'))
+					.call('3', '$', [
+						{ name: unnamedArgument('3-accessed'), nodeId: '3-accessed', used: 'always' },
+						{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
+					])
+					.argument('3', '3-accessed')
+					.argument('3', '2')
+					.reads('3', BuiltIn)
+					.reads('3-accessed', '0')
 			)
 			assertDataflow(label('at constant', ['name-normal', 'slot-access']),
-				shell, 'a@b',
-				emptyGraph().use('0', 'a', { when: 'maybe' })
+				shell, 'a@b', emptyGraph().use('0', 'a', { when: 'maybe' })
+					.use('3-accessed', unnamedArgument('3-accessed'))
+					.use('2', unnamedArgument('2'))
+					.call('3', '@', [
+						{ name: unnamedArgument('3-accessed'), nodeId: '3-accessed', used: 'always' },
+						{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
+					])
+					.argument('3', '3-accessed')
+					.argument('3', '2')
+					.reads('3', BuiltIn)
+					.reads('3-accessed', '0')
 			)
 			assertDataflow(label('chained constant', ['name-normal', 'numbers', 'single-bracket-access']), shell,
 				'a[2][3]',

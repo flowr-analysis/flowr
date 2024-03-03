@@ -1,13 +1,38 @@
 import type { NamedXmlBasedJson } from '../input-format'
 import type { ParserData } from '../data'
-import { normalizeBasedOnType } from './structure'
+import { normalizeBasedOnType, tryNormalizeSingleNode } from './structure'
 import { tryToNormalizeArgument } from './functions/argument'
 import { parseLog } from '../../json/parser'
 import type { RAccess, RArgument, RNode } from '../../../model'
-import { RType, RawRType } from '../../../model'
+import { EmptyArgument, RawRType, RType } from '../../../model'
 import { splitArrayOn } from '../../../../../../util/arrays'
 import { guard } from '../../../../../../util/assert'
 import { retrieveMetaStructure } from '../meta'
+
+function normalizeAbstractArgument(x: readonly NamedXmlBasedJson[], data: ParserData, operator: '$' | '@' | '[' | '[['): RArgument | typeof EmptyArgument {
+	if(x.length === 0) {
+		return EmptyArgument
+	} else if(x.length !== 1 || x[0].name === RawRType.Expression) {
+		const gotAccess = tryToNormalizeArgument(data, x)
+		guard(gotAccess !== undefined, () => `expected one access result in access as argument, yet received ${JSON.stringify(gotAccess)} for ${JSON.stringify([operator, x])}`)
+		return gotAccess
+	} else {
+		const node = tryNormalizeSingleNode(data, x[0]) as RNode
+		guard(node.type !== RType.ExpressionList, () => `expected expression list to be parsed as argument, yet received ${JSON.stringify(node)} for ${JSON.stringify(x)}`)
+		return {
+			type:     RType.Argument,
+			location: node.location,
+			lexeme:   node.lexeme,
+			name:     undefined,
+			value:    node,
+			info:     {
+				fullRange:        node.location,
+				fullLexeme:       node.lexeme,
+				additionalTokens: []
+			}
+		}
+	}
+}
 
 /**
  * Tries to normalize the given data as access (e.g., indexing).
@@ -68,25 +93,9 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 
 	const splitAccessOnComma = splitArrayOn(remaining, x => x.name === RawRType.Comma)
 
-	const parsedAccess: (RNode | null)[] = splitAccessOnComma.map(x => {
-		if(x.length === 0) {
-			parseLog.trace('record empty access')
-			return null
-		}
-		parseLog.trace('trying to parse access')
-		const gotAccess = parseAccessArgument(operator, data, x)
-		guard(gotAccess !== undefined, () => `expected one access result in access as argument, yet received ${JSON.stringify(gotAccess)} for ${JSON.stringify([operator, x])}`)
-		return gotAccess
+	const parsedAccess: (RArgument | typeof EmptyArgument)[] = splitAccessOnComma.map(x => {
+		return normalizeAbstractArgument(x, data, operator)
 	})
-
-	let resultingAccess: (RNode | null)[] | string = parsedAccess
-
-	if(operator === '@' || operator === '$') {
-		guard(parsedAccess.length === 1, () => `expected one access result in access with ${JSON.stringify(operator)}, yet received ${JSON.stringify(parsedAccess)}`)
-		const first = parsedAccess[0]
-		guard(first !== null && (first.type === RType.Symbol || first.type === RType.String || first.type === RType.Logical), () => `${JSON.stringify(operator)} requires one symbol, yet received ${JSON.stringify(parsedAccess)}`)
-		resultingAccess = first.type === RType.String ? first.content.str : first.lexeme
-	}
 
 	const { content, location } = retrieveMetaStructure(accessOp.content)
 
@@ -96,24 +105,11 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 		lexeme:   content,
 		accessed: parsedAccessed[0],
 		operator,
-		access:   resultingAccess,
+		access:   parsedAccess,
 		info:     {
 			fullRange:        data.currentRange,
 			additionalTokens: [],
 			fullLexeme:       data.currentLexeme
 		}
 	} as RAccess
-}
-
-
-function parseAccessArgument(operator: RAccess['operator'], data: ParserData, elements: NamedXmlBasedJson[]): RArgument | RNode | undefined {
-	// within access the content is *not* wrapped within another expression, that means if we have a SYMBOL_SUB we can directly parse the argument,
-	// otherwise we have to add the expression layer
-	// console.log('parseAccessArgument', elements.map(x => x.name))
-	if(operator === '@' || operator === '$') {
-		const parse = normalizeBasedOnType(data, elements)
-		return parse.length !== 1 ? undefined : parse[0] as RNode
-	} else {
-		return tryToNormalizeArgument(data, elements)
-	}
 }

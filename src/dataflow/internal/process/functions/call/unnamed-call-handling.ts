@@ -26,7 +26,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		finalEnv,
 		callArgs,
 		remainingReadInArgs
-	} = processAllArguments(functionName, functionCall, data, finalGraph, functionRootId)
+	} = processAllArguments(functionName, functionCall.arguments, data, finalGraph, functionRootId)
 
 	finalGraph.addVertex({
 		tag:         'function-call',

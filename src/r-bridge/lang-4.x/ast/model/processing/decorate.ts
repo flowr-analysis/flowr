@@ -217,7 +217,7 @@ function createFoldForUnaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForAccess<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>, accessed: RNodeWithParent<OtherInfo>, access: string | (RNodeWithParent<OtherInfo> | null)[]): RNodeWithParent<OtherInfo> => {
+	return (data: RNode<OtherInfo>, accessed: RNodeWithParent<OtherInfo>, access: readonly (RNodeWithParent<OtherInfo> | typeof EmptyArgument)[]): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, accessed, access } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
@@ -228,7 +228,7 @@ function createFoldForAccess<OtherInfo>(info: FoldInfo<OtherInfo>) {
 			let idx = 0 // the first oe will be skipped in the first iter
 			for(const acc of access) {
 				idx++
-				if(acc !== null) {
+				if(acc !== EmptyArgument) {
 					const curInfo = acc.info
 					curInfo.parent = id
 					curInfo.index = idx
@@ -327,7 +327,7 @@ function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForFunctionCall<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RFunctionCall<OtherInfo>, functionName: RNodeWithParent<OtherInfo>, args: (RNodeWithParent<OtherInfo> | typeof EmptyArgument)[]): RNodeWithParent<OtherInfo> => {
+	return (data: RFunctionCall<OtherInfo>, functionName: RNodeWithParent<OtherInfo>, args: readonly (RNodeWithParent<OtherInfo> | typeof EmptyArgument)[]): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
 		let decorated: RFunctionCall<OtherInfo & ParentInformation>
 		if(data.flavor === 'named') {

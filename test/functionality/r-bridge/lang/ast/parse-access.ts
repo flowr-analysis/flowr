@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { RType } from '../../../../../src'
+import { EmptyArgument, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
 
 describe('Parse value access', withShell(shell => {
@@ -192,7 +192,7 @@ describe('Parse value access', withShell(shell => {
 					content:   'a',
 					info:      {}
 				},
-				access: [null, {
+				access: [EmptyArgument, {
 					type:     RType.Argument,
 					location: rangeFrom(1, 4, 1, 4),
 					lexeme:   '2',
@@ -434,7 +434,6 @@ describe('Parse value access', withShell(shell => {
 					info:      {}
 				},
 				access: [{
-
 					type:     RType.Argument,
 					location: rangeFrom(1, 4, 1, 4),
 					lexeme:   '5',
@@ -447,7 +446,7 @@ describe('Parse value access', withShell(shell => {
 						content:  numVal(5),
 						info:     {}
 					}
-				}, null, null]
+				}, EmptyArgument, EmptyArgument]
 			})
 		)
 	})
@@ -467,7 +466,21 @@ describe('Parse value access', withShell(shell => {
 					content:   'c',
 					info:      {}
 				},
-				access: 'x'
+				access: [{
+					type:     RType.Argument,
+					location: rangeFrom(1, 3, 1, 3),
+					lexeme:   'x',
+					name:     undefined,
+					info:     {},
+					value:    {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 3, 1, 3),
+						namespace: undefined,
+						lexeme:    'x',
+						content:   'x',
+						info:      {}
+					}
+				}]
 			})
 		)
 		assertAst(label('Slot based access', ['name-normal', 'slot-access']),
@@ -485,7 +498,21 @@ describe('Parse value access', withShell(shell => {
 					content:   'd',
 					info:      {}
 				},
-				access: 'y'
+				access: [{
+					type:     RType.Argument,
+					location: rangeFrom(1, 3, 1, 3),
+					lexeme:   'y',
+					name:     undefined,
+					info:     {},
+					value:    {
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 3, 1, 3),
+						namespace: undefined,
+						lexeme:    'y',
+						content:   'y',
+						info:      {}
+					}
+				}]
 			})
 		)
 	})

@@ -1,8 +1,11 @@
 import type { Base, Location, NoInfo, RNode } from '../model'
 import type { RType } from '../type'
 import type { RSymbol } from './r-symbol'
+import type { RArgument } from './r-argument'
 
 export const EmptyArgument = '<>' as const
+
+export type RFunctionArgument<Info = NoInfo> = RArgument<Info> | typeof EmptyArgument
 
 /**
  * Calls of functions like `a()` and `foo(42, "hello")`.
@@ -10,11 +13,11 @@ export const EmptyArgument = '<>' as const
  * @see RUnnamedFunctionCall
  */
 export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location {
-	readonly type:   RType.FunctionCall;
-	readonly flavor: 'named';
-	functionName:    RSymbol<Info>;
-	/** arguments can be undefined, for example when calling as `a(1, ,3)` */
-	arguments:       (RNode<Info> | typeof EmptyArgument)[];
+	readonly type:      RType.FunctionCall;
+	readonly flavor:    'named';
+	functionName:       RSymbol<Info>;
+	/** arguments can be empty, for example when calling as `a(1, ,3)` */
+	readonly arguments: readonly RFunctionArgument<Info>[];
 }
 
 
@@ -24,13 +27,13 @@ export interface RNamedFunctionCall<Info = NoInfo> extends Base<Info>, Location 
  * @see RNamedFunctionCall
  */
 export interface RUnnamedFunctionCall<Info = NoInfo> extends Base<Info>, Location {
-	readonly type:   RType.FunctionCall;
-	readonly flavor: 'unnamed';
-	calledFunction:  RNode<Info>; /* can be either a function definition or another call that returns a function etc. */
+	readonly type:      RType.FunctionCall;
+	readonly flavor:    'unnamed';
+	calledFunction:     RNode<Info>; /* can be either a function definition or another call that returns a function etc. */
 	/** marks function calls like `3 %xx% 4` which have been written in special infix notation; deprecated in v2 */
-	infixSpecial?:   boolean;
+	infixSpecial?:      boolean;
 	/** arguments can be undefined, for example when calling as `a(1, ,3)` */
-	arguments:       (RNode<Info> | typeof EmptyArgument)[];
+	readonly arguments: readonly RFunctionArgument<Info>[];
 }
 
 export type RFunctionCall<Info = NoInfo> = RNamedFunctionCall<Info> | RUnnamedFunctionCall<Info>;

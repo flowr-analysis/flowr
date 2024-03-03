@@ -1,4 +1,15 @@
-import type { IdGenerator, NoInfo, NormalizedAst, ParentInformation, RArgument, RFunctionCall, RParseRequest, RParseRequestProvider } from '../../../../../../r-bridge'
+import type {
+	IdGenerator, NodeId,
+	NoInfo,
+	NormalizedAst,
+	ParentInformation, RFunctionArgument,
+	RParseRequest,
+	RParseRequestProvider,
+	RSymbol
+} from '../../../../../../r-bridge'
+import {
+	EmptyArgument
+} from '../../../../../../r-bridge'
 import { requestFingerprint, sourcedDeterministicCountingIdGenerator, requestProviderFromFile, RType, removeTokenMapQuotationMarks, retrieveParseDataFromRCode } from '../../../../../../r-bridge'
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor'
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor'
@@ -14,15 +25,21 @@ export function setSourceProvider(provider: RParseRequestProvider): void {
 	sourceProvider = provider
 }
 
-export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation): DataflowInformation {
-	const sourceFile = functionCall.arguments[0] as RArgument<ParentInformation> | undefined
+export function processSourceCall<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	information: DataflowInformation
+): DataflowInformation {
+	const sourceFile = args[0]
 
 	if(getConfig().ignoreSourceCalls) {
 		dataflowLogger.info(`Skipping source call ${JSON.stringify(sourceFile)} (disabled in config file)`)
 		return information
 	}
 
-	if(sourceFile?.value?.type == RType.String) {
+	if(sourceFile !== EmptyArgument && sourceFile?.value?.type == RType.String) {
 		const path = removeTokenMapQuotationMarks(sourceFile.lexeme)
 		const request = sourceProvider.createRequest(path)
 
@@ -32,7 +49,7 @@ export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherIn
 			return information
 		}
 
-		return sourceRequest(request, data, information, sourcedDeterministicCountingIdGenerator(path, functionCall.location))
+		return sourceRequest(request, data, information, sourcedDeterministicCountingIdGenerator(path, name.location))
 	} else {
 		dataflowLogger.info(`Non-constant argument ${JSON.stringify(sourceFile)} for source is currently not supported, skipping`)
 		return information

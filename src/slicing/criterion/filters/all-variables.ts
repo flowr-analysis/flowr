@@ -26,7 +26,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 	foldString:   onLeaf,
 	foldLogical:  onLeaf,
 	foldSymbol:   (symbol: RSymbol<ParentInformation>) => isSpecialSymbol(symbol) ? [] : [symbol.info.id],
-	foldAccess:   (_: unknown, name: NodeId[], access: string | (null | NodeId[])[]) => Array.isArray(access) ? [...name, ...access.filter(isNotNull).flat()] : name,
+	foldAccess:   (_: unknown, name: NodeId[], access: readonly (typeof EmptyArgument | NodeId[])[]) => [...name, ...access.filter(isNotNull).flat()],
 	foldBinaryOp: onBinary,
 	foldPipe:     onBinary,
 	foldUnaryOp:  (_: unknown, operator: NodeId[]) => operator,

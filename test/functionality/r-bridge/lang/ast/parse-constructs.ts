@@ -2,9 +2,8 @@ import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import type { SourceRange } from '../../../../../src/util/range'
 import { addRanges, rangeFrom } from '../../../../../src/util/range'
-import type { RNode } from '../../../../../src'
-import { ensureExpressionList } from '../../../../../src'
-import { RType } from '../../../../../src'
+import type { RArgument, RNode } from '../../../../../src'
+import { ensureExpressionList, RType } from '../../../../../src'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import { label } from '../../../_helper/label'
 
@@ -85,23 +84,37 @@ const IfThenSpacingVariants: IfThenSpacing[] = [
 	},
 ]
 
-function inBrace(location: SourceRange, content: RNode): RNode {
+function inBrace(location: SourceRange, content: RNode): RArgument {
 	return {
-		type:         RType.FunctionCall,
+		type:   RType.Argument,
 		location,
-		lexeme:       '{',
-		flavor:       'named',
-		info:         {},
-		functionName: {
-			type:      RType.Symbol,
+		lexeme: '{',
+		content,
+		info:   {},
+		name:   undefined,
+		value:  {
+			type:         RType.FunctionCall,
 			location,
-			lexeme:    '{',
-			content:   '{',
-			namespace: undefined,
-			info:      {}
-		},
-		arguments: [content]
-	}
+			lexeme:       '{',
+			flavor:       'named',
+			info:         {},
+			functionName: {
+				type:      RType.Symbol,
+				location,
+				lexeme:    '{',
+				content:   '{',
+				namespace: undefined,
+				info:      {}
+			},
+			arguments: [content.type === RType.Argument ? content : {
+				type:     RType.Argument,
+				location: content.location ?? location,
+				lexeme:   content.lexeme ?? '',
+				info:     {},
+				name:     undefined,
+				value:    content
+			}]
+		} }
 }
 
 const IfThenBraceVariants: IfThenSpacing[] = [{

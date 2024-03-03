@@ -1,4 +1,4 @@
-import type { ParentInformation, RNamedFunctionCall } from '../../../../../r-bridge'
+import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowInformation } from '../../../../info'
@@ -6,23 +6,27 @@ import { DataflowGraph } from '../../../../graph'
 import { dataflowLogger } from '../../../../index'
 import { processAllArguments } from './common'
 
-export function processKnownFunctionCall<OtherInfo>(functionCall: RNamedFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
-	const functionName = processDataflowFor(functionCall.functionName, data)
+export function processKnownFunctionCall<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): DataflowInformation {
+	const functionName = processDataflowFor(name, data)
 
 	const finalGraph = new DataflowGraph()
-	const functionRootId = functionCall.info.id
-	const functionCallName = functionCall.functionName.content
-	dataflowLogger.debug(`Using ${functionRootId} (name: ${functionCallName}) as root for the named function call`)
+	const functionCallName = name.content
+	dataflowLogger.debug(`Using ${rootId} (name: ${functionCallName}) as root for the named function call`)
 
 	const {
 		finalEnv,
 		callArgs,
 		remainingReadInArgs
-	} = processAllArguments(functionName, functionCall, data, finalGraph, functionRootId)
+	} = processAllArguments(functionName, args, data, finalGraph, rootId)
 
 	finalGraph.addVertex({
 		tag:         'function-call',
-		id:          functionRootId,
+		id:          rootId,
 		name:        functionCallName,
 		environment: data.environment,
 		when:        'always',
@@ -30,7 +34,7 @@ export function processKnownFunctionCall<OtherInfo>(functionCall: RNamedFunction
 	})
 
 	const inIds = remainingReadInArgs
-	inIds.push({ nodeId: functionRootId, name: functionCallName, used: 'always' })
+	inIds.push({ nodeId: rootId, name: functionCallName, used: 'always' })
 
 	return {
 		unknownReferences: [],

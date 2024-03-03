@@ -4,7 +4,7 @@
  *
  * @module
  */
-import type { NodeId, ParentInformation, RNamedFunctionCall } from '../../r-bridge'
+import type { NodeId, ParentInformation, RArgument, RFunctionArgument, RSymbol } from '../../r-bridge'
 import type { DataflowGraph, DataflowGraphEdgeAttribute } from '../'
 import { resolveByName } from './resolve-by-name'
 import type { DataflowInformation } from '../info'
@@ -26,9 +26,11 @@ interface InGraphIdentifierDefinition extends IdentifierReference {
 
 
 type BuiltInIdentifierProcessor = <OtherInfo>(
-		node: RNamedFunctionCall<OtherInfo & ParentInformation>,
-		data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-		info: DataflowInformation
+		name:   RSymbol<OtherInfo & ParentInformation>,
+		args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+		rootId: NodeId,
+		data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
+		info:   DataflowInformation
 	) => DataflowInformation
 
 interface BuiltInIdentifierDefinition extends IdentifierReference {

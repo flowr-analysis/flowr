@@ -95,15 +95,16 @@ class NodeVisitor<OtherInfo = NoInfo> {
 		this.onExit?.(node)
 	}
 
-	visit(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined | typeof EmptyArgument)[] | undefined | null): void {
+	visit(nodes: RNode<OtherInfo> | readonly (RNode<OtherInfo> | null | undefined | typeof EmptyArgument)[] | undefined | null): void {
 		if(Array.isArray(nodes)) {
-			for(const node of nodes) {
+			const n = nodes as (RNode<OtherInfo> | null | undefined | typeof EmptyArgument)[]
+			for(const node of n) {
 				if(node && node !== EmptyArgument) {
 					this.visitSingle(node)
 				}
 			}
 		} else if(nodes) {
-			this.visitSingle(nodes)
+			this.visitSingle(nodes as RNode<OtherInfo>)
 		}
 	}
 

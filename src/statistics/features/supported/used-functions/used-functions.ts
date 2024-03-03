@@ -1,7 +1,7 @@
 import type { Feature, FeatureProcessorInput } from '../../feature'
 import { appendStatisticsFile } from '../../../output'
 import type { Writable } from 'ts-essentials'
-import type { RNodeWithParent } from '../../../../r-bridge'
+import type { ParentInformation, RFunctionArgument, RNodeWithParent } from '../../../../r-bridge'
 import { RType, visitAst , EmptyArgument } from '../../../../r-bridge'
 import { EdgeType } from '../../../../dataflow'
 import type {
@@ -44,7 +44,7 @@ export const usedFunctions: Feature<FunctionUsageInfo> = {
 }
 
 
-function classifyArguments(args: (RNodeWithParent | typeof EmptyArgument)[], existing: Record<number, bigint | CommonSyntaxTypeCounts>) {
+function classifyArguments<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], existing: Record<number, bigint | CommonSyntaxTypeCounts>) {
 	if(args.length === 0) {
 		(existing[0] as unknown as number)++
 		return

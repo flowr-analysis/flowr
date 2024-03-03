@@ -1,5 +1,5 @@
 import type { DataflowInformation } from '../../../../info'
-import type { NodeId, ParentInformation, RFunctionCall } from '../../../../../r-bridge'
+import type { NodeId, ParentInformation, RFunctionArgument } from '../../../../../r-bridge'
 import { EmptyArgument, RType } from '../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
@@ -10,7 +10,7 @@ import { guard } from '../../../../../util/assert'
 
 export function processAllArguments<OtherInfo>(
 	functionName: DataflowInformation,
-	functionCall: RFunctionCall<OtherInfo & ParentInformation>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	finalGraph: DataflowGraph,
 	functionRootId: NodeId
@@ -19,17 +19,17 @@ export function processAllArguments<OtherInfo>(
 	// arg env contains the environments with other args defined
 	let argEnv = functionName.environment
 	const callArgs: FunctionArgument[] = []
-	const args = []
+	const processedArguments = []
 	const remainingReadInArgs = []
-	for(const arg of functionCall.arguments) {
+	for(const arg of args) {
 		if(arg === EmptyArgument) {
 			callArgs.push('empty')
-			args.push(undefined)
+			processedArguments.push(undefined)
 			continue
 		}
 
 		const processed = processDataflowFor(arg, { ...data, environment: argEnv })
-		args.push(processed)
+		processedArguments.push(processed)
 
 		finalEnv = overwriteEnvironment(finalEnv, processed.environment)
 		argEnv = overwriteEnvironment(argEnv, processed.environment)

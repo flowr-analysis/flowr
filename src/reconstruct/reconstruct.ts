@@ -255,18 +255,17 @@ function reconstructParameters(parameters: RParameter<ParentInformation>[]): str
 	})
 }
 
+function isNotEmptyArgument(a: Code | typeof EmptyArgument): a is Code {
+	return a !== EmptyArgument
+}
 
-function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: string | (Code | null)[], configuration: ReconstructionConfiguration): Code {
+function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: readonly (Code | typeof EmptyArgument)[], configuration: ReconstructionConfiguration): Code {
 	if(isSelected(configuration, node)) {
 		return plain(getLexeme(node))
 	}
 
 	if(accessed.length === 0) {
-		if(typeof access === 'string') {
-			return []
-		} else {
-			return access.filter(isNotNull).flat()
-		}
+		return access.filter(isNotEmptyArgument).flat()
 	}
 
 	return plain(getLexeme(node))

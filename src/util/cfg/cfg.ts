@@ -476,7 +476,7 @@ function cfgBinaryOp(binOp: RBinaryOp<ParentInformation> | RPipe<ParentInformati
 	return result
 }
 
-function cfgAccess(access: RAccess<ParentInformation>, name: ControlFlowInformation, accessors: string | (ControlFlowInformation | null)[]): ControlFlowInformation {
+function cfgAccess(access: RAccess<ParentInformation>, name: ControlFlowInformation, accessors: readonly (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation {
 	const result = name
 	const graph = result.graph
 	graph.addVertex({ id: access.info.id, name: access.type, type: CfgVertexType.Expression })
@@ -489,11 +489,8 @@ function cfgAccess(access: RAccess<ParentInformation>, name: ControlFlowInformat
 	}
 	result.entryPoints = [access.info.id]
 	result.exitPoints = [access.info.id + '-exit']
-	if(typeof accessors === 'string') {
-		return result
-	}
 	for(const accessor of accessors) {
-		if(accessor === null) {
+		if(accessor === EmptyArgument) {
 			continue
 		}
 		graph.merge(accessor.graph)

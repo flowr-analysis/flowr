@@ -45,7 +45,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 	foldString:   (str: RString<Info>, down: Down) => Up;
 	foldLogical:  (logical: RLogical<Info>, down: Down) => Up;
 	foldSymbol:   (symbol: RSymbol<Info>, down: Down) => Up;
-	foldAccess:   (node: RAccess<Info>, name: Up, access: string | (null | Up)[], down: Down) => Up;
+	foldAccess:   (node: RAccess<Info>, name: Up, access: readonly (typeof EmptyArgument | Up)[], down: Down) => Up;
 	foldBinaryOp: (op: RBinaryOp<Info>, lhs: Up, rhs: Up, down: Down) => Up;
 	foldPipe:     (op: RPipe<Info>, lhs: Up, rhs: Up, down: Down) => Up;
 	foldUnaryOp:  (op: RUnaryOp<Info>, operand: Up, down: Down) => Up;
@@ -101,8 +101,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 		case RType.UnaryOp:
 			return folds.foldUnaryOp(ast, foldAstStateful(ast.operand, down, folds), down)
 		case RType.Access:
-			// TODO: abstract away from operators
-			return folds.foldAccess(ast, foldAstStateful(ast.accessed, down, folds), ast.operator === '[' || ast.operator === '[[' ? ast.access.map(access => access === null ? null : foldAstStateful(access, down, folds)) : ast.access as string, down)
+			return folds.foldAccess(ast, foldAstStateful(ast.accessed, down, folds), ast.access.map(access => access === EmptyArgument ? EmptyArgument : foldAstStateful(access, down, folds)), down)
 		case RType.ForLoop:
 			return folds.loop.foldFor(ast, foldAstStateful(ast.variable, down, folds), foldAstStateful(ast.vector, down, folds), foldAstStateful(ast.body, down, folds), down)
 		case RType.WhileLoop:

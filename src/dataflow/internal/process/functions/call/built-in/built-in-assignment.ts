@@ -11,7 +11,7 @@ import {
 import { RType, EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import type { DataflowGraph, IdentifierReference } from '../../../../../index'
+import type { IdentifierReference } from '../../../../../index'
 import { dataflowLogger, EdgeType, type IdentifierDefinition } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'

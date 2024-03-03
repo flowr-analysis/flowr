@@ -18,6 +18,7 @@ import { expensiveTrace } from '../../util/log'
  *
  * @returns A list of possible definitions of the identifier (one if the definition location is exactly and always known), or `undefined` if the identifier is undefined in the current scope/with the current environment information.
  */
+// TODO: optimize this to just have a hash-map updated on scope change but flattened in a single map
 export function resolveByName(name: Identifier, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
 	expensiveTrace(dataflowLogger, () => `Resolving local identifier ${name} (local stack size: ${environment.level})`)
 

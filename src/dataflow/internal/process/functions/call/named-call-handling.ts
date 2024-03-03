@@ -8,10 +8,10 @@ export function processNamedFunctionCall<OtherInfo>(
 	functionCall: RNamedFunctionCall<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const resolved = resolveByName(functionCall.functionName.content, data.environment) ?? []
-
 	// TODO: always?
 	let information = processKnownFunctionCall(functionCall, data)
+
+	const resolved = resolveByName(functionCall.functionName.content, data.environment) ?? []
 	for(const resolvedFunction of resolved) {
 		if(resolvedFunction.kind === 'built-in-function') {
 			information = resolvedFunction.processor(functionCall, data, information)

@@ -88,7 +88,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point) or is it nested (e.g., as part of a function definition)
 	 */
 	public use(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({ tag: 'use', id, name }, info), asRoot)
+		return this.addVertex(deepMergeObject({ tag: 'use', id, name, when: undefined, environment: undefined }, info), asRoot)
 	}
 
 	/**
@@ -103,7 +103,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/**
-	 * Adds a defined-by edge (E2), with from as defined variable, and to as
+	 * Adds a defined-by edge (E2), with from as defined variable, and to
 	 * as a variable/function contributing to its definition.
 	 *
 	 * @see reads for parameters.

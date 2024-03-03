@@ -4,7 +4,7 @@
  * This will not include functions!
  */
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
+import { BuiltIn, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { appendEnvironment, define } from '../../../../../src/dataflow/environments'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { label } from '../../../_helper/label'
@@ -41,8 +41,16 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		describe('const access', () => {
 			assertDataflow(label('single constant', ['name-normal', 'numbers', 'single-bracket-access']),
 				shell,'a[2]', emptyGraph().use('0', 'a', { when: 'maybe' })
+					.use('3-accessed', unnamedArgument('3-accessed'))
 					.use('2', unnamedArgument('2'))
-					.reads('0', '2')
+					.call('3', '[', [
+						{ name: unnamedArgument('3-accessed'), nodeId: '3-accessed', used: 'always' },
+						{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
+					])
+					.argument('3', '3-accessed')
+					.argument('3', '2')
+					.reads('3', BuiltIn)
+					.reads('3-accessed', '0')
 			)
 			assertDataflow(label('double constant', ['name-normal', 'numbers', 'double-bracket-access']),
 				shell, 'a[[2]]',

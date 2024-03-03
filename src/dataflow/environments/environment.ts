@@ -9,9 +9,9 @@ import type { DataflowGraph, DataflowGraphEdgeAttribute } from '../'
 import { resolveByName } from './resolve-by-name'
 import type { DataflowInformation } from '../info'
 import type { DataflowProcessorInformation } from '../processor'
-import { processSourceCall } from '../internal/process/functions/call/built-in/source'
+import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source'
 import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling'
-import { processAccess } from '../internal/process/functions/call/built-in/access'
+import { processAccess } from '../internal/process/functions/call/built-in/built-in-access'
 
 export type Identifier = string & { __brand?: 'identifier' }
 
@@ -62,7 +62,7 @@ export interface IdentifierReference {
 }
 
 
-function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference {
+export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference {
 	const node = graph.get(ref.nodeId, true)
 	const definitions = resolveByName(ref.name, environments)
 	for(const definition of definitions ?? []) {

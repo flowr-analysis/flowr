@@ -1,4 +1,5 @@
 import type { NodeId } from '../../r-bridge'
+import { EmptyArgument } from '../../r-bridge'
 import type { SourceRange } from '../range'
 import type {
 	DataflowFunctionFlowInformation,
@@ -31,7 +32,7 @@ interface MermaidGraph {
 
 export function formatRange(range: SourceRange | undefined): string {
 	if(range === undefined) {
-		return '??'
+		return '??-??'
 	}
 
 	return `${range.start.line}.${range.start.column}-${range.end.line}.${range.end.column}`
@@ -75,11 +76,11 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: Dataflo
 }
 
 
-function printArg(arg: IdentifierReference | '<value>' | 'empty' | undefined): string {
+function printArg(arg: IdentifierReference | '<value>' | 'empty' | typeof EmptyArgument | undefined): string {
 	if(arg === 'empty') {
 		return ''
 	}
-	if(arg === undefined || arg === '<value>') {
+	if(arg === undefined || arg === '<value>' || arg === EmptyArgument) {
 		return '??'
 	}
 	return `${arg.nodeId}`
@@ -126,7 +127,7 @@ function nodeToMermaid(graph: DataflowGraph, info: DataflowGraphVertexInfo, merm
 	if(mermaid.includeEnvironments) {
 		mermaid.nodeLines.push(`    %% ${id}: ${JSON.stringify(info.environment, jsonReplacer)}`)
 	}
-	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name)} (${id})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
+	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name)} (${id}, ${info.when})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''
 	}\`"${close}`)
 	if(mark?.has(id)) {

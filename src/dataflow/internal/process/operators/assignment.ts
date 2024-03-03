@@ -1,6 +1,5 @@
 import type { NodeId, ParentInformation, RBinaryOp, RNode } from '../../../../r-bridge'
-import { collectAllIds } from '../../../../r-bridge'
-import { RType } from '../../../../r-bridge'
+import { RType, collectAllIds } from '../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import { dataflowLogger } from '../../../index'
@@ -84,8 +83,8 @@ function identifySourceAndTarget<OtherInfo>(
 	return { source, target, superAssignment, swap }
 }
 
-function produceWrittenNodes<OtherInfo>(op: RBinaryOp<OtherInfo & ParentInformation>, target: DataflowInformation, functionTypeCheck: RNode<ParentInformation>): IdentifierDefinition[] {
-	const isFunctionDef = functionTypeCheck.type === RType.FunctionDefinition
+function produceWrittenNodes<OtherInfo>(op: RBinaryOp<OtherInfo & ParentInformation>, target: DataflowInformation, source: RNode<ParentInformation>): IdentifierDefinition[] {
+	const isFunctionDef = source.type === RType.FunctionDefinition
 	return target.unknownReferences.map(ref => ({
 		...ref,
 		kind:      isFunctionDef ? 'function' : 'variable',
@@ -104,6 +103,7 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
 	const funcTypeCheck = swap ? op.lhs : op.rhs
 
 	const writeNodes = produceWrittenNodes(op, target, funcTypeCheck)
+	console.log(writeNodes)
 
 	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`)

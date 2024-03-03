@@ -120,7 +120,7 @@ function mermaidNodeBrackets(def: boolean, fCall: boolean) {
 }
 
 function printIdentifier(id: IdentifierDefinition): string {
-	return `[${id.kind}] ${id.name} (${id.nodeId}, ${id.used} def. @${id.definedAt})`
+	return `${id.name} (${id.nodeId}, ${id.kind}, ${id.used} def. @${id.definedAt})`
 }
 
 function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
@@ -133,7 +133,7 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	const longestName = Math.max(...[...env.memory.keys()].map(x => x.length))
 	for(const [name, defs] of env.memory.entries()) {
 		const printName = `${name}:`
-		lines.push(`  ${printName.padEnd(longestName + 1, ' ')}: {${defs.map(printIdentifier).join(', ')}}`)
+		lines.push(`  ${printName.padEnd(longestName + 1, ' ')} {${defs.map(printIdentifier).join(', ')}}`)
 	}
 	return lines
 }

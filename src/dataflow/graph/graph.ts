@@ -188,7 +188,7 @@ export class DataflowGraph {
    * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
    * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
    * <p>
-   * If you omit the last argument but set promote, this will make the edge `maybe` if at least one of the {@link IdentifierReference | references} or {@link DataflowGraphVertexInfo | nodes} has a used flag of `maybe`.
+   * If you omit the last argument but set promote, this will make the edge `maybe` if at least one of the {@link IdentifierReference|references} or {@link DataflowGraphVertexInfo|nodes} has a used flag of `maybe`.
    * Promote will probably only be used internally and not by tests etc.
    */
 	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, type: EdgeType, attribute?: DataflowGraphEdgeAttribute, promote= false): this {

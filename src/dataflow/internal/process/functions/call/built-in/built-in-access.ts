@@ -3,7 +3,7 @@ import { RType, EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments'
-import { dataflowLogger } from '../../../../../index'
+import { dataflowLogger, EdgeType } from '../../../../../index'
 import { guard } from '../../../../../../util/assert'
 import { processKnownFunctionCall } from '../known-call-handling'
 
@@ -47,6 +47,8 @@ export function processAccess<OtherInfo>(
 	} else {
 		throw new Error(`Access ${name.content} did not match a handler with ${args.length} arguments`)
 	}
+
+	information.graph.addEdge(name.info.id, head.info.id, EdgeType.Returns, 'always', true)
 
 	return {
 		...information,

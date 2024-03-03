@@ -1,4 +1,5 @@
 import type { NormalizedAst, ParentInformation, RBinaryOp, RParseRequest } from '../r-bridge'
+import { OperatorDatabase } from '../r-bridge'
 import { RType, requestFingerprint } from '../r-bridge'
 import type { DataflowInformation } from './info'
 import type { DataflowProcessorInformation, DataflowProcessors } from './processor'
@@ -58,7 +59,7 @@ export function produceDataFlowGraph<OtherInfo>(request: RParseRequest, ast: Nor
 
 export function processBinaryOp<OtherInfo>(node: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	// TODO: move to env check
-	if(node.operator === '<-' || node.operator === '<<-' || node.operator === '=' || node.operator === '->' || node.operator === '->>' || node.operator === ':=') {
+	if(OperatorDatabase[node.operator].usedAs === 'assignment') {
 		return processAssignment(node, data)
 	} else {
 		return processNonAssignmentBinaryOp(node, data)

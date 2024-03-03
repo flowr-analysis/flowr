@@ -83,7 +83,7 @@ export class BenchmarkSlicer {
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>()
 	private readonly shell:    RShell
 	private stats:             SlicerStats | undefined
-	private loadedXml:         string | undefined
+	private loadedData:        string | undefined
 	private dataflow:          DataflowInformation | undefined
 	private normalizedAst:     NormalizedAst | undefined
 	private totalStopwatch:    IStoppableStopwatch
@@ -92,7 +92,7 @@ export class BenchmarkSlicer {
 	// Yes this is dirty, but we know that we assign the stepper during the initialization and this saves us from having to check for nullability every time
 	private stepper:           SteppingSlicer = null as unknown as SteppingSlicer
 
-	constructor(waitTime = 0) {
+	constructor(waitTime = 750) {
 		this.totalStopwatch = this.commonMeasurements.start('total')
 		this.shell = this.commonMeasurements.measure(
 			'initialize R session',
@@ -117,8 +117,8 @@ export class BenchmarkSlicer {
 			criterion:      []
 		})
 
+		this.loadedData = await this.measureCommonStep('parse', 'retrieve AST from R code')
 
-		this.loadedXml = await this.measureCommonStep('parse', 'retrieve AST from R code')
 		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST')
 		this.dataflow = await this.measureCommonStep('dataflow', 'produce dataflow information')
 
@@ -294,7 +294,7 @@ export class BenchmarkSlicer {
 		this.stats.commonMeasurements = this.commonMeasurements.get()
 		return {
 			stats:     this.stats,
-			parse:     this.loadedXml as string,
+			parse:     this.loadedData as string,
 			dataflow:  this.dataflow as DataflowInformation,
 			normalize: this.normalizedAst as NormalizedAst
 		}

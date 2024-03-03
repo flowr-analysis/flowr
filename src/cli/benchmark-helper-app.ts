@@ -44,7 +44,7 @@ async function benchmark() {
 
 	const request: RParseRequestFromFile = { request: 'file', content: options.input }
 
-	const slicer = new BenchmarkSlicer(1000)
+	const slicer = new BenchmarkSlicer()
 	try {
 		await slicer.init(request)
 

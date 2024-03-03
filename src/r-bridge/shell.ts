@@ -312,7 +312,7 @@ class RShellSession {
 		})
 		this.options = options
 		// initialize the session
-		this.write(initCommand(this.options.eol))
+		this.writeLine(initCommand(options.eol))
 
 		if(log.settings.minLevel <= LogLevel.Trace) {
 			this.bareSession.stdout.on('data', (data: Buffer) => {

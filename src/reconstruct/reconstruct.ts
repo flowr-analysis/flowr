@@ -266,6 +266,8 @@ function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code,
 
 	if(accessed.length === 0) {
 		return access.filter(isNotEmptyArgument).flat()
+	} else if(access.every(a => a === EmptyArgument || a.length === 0)) {
+		return accessed
 	}
 
 	return plain(getLexeme(node))

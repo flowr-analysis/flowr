@@ -17,6 +17,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 		name:  undefined,
 		value: node.accessed
 	}
+	data.completeAst.idMap.set(accessed.info.id, accessed)
 	return processNamedFunctionCall({
 		type:      RType.Symbol,
 		info:      node.info,

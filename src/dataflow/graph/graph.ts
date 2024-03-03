@@ -196,7 +196,6 @@ export class DataflowGraph {
 		const toId = typeof to === 'object' ? to.nodeId : to
 
 		if(fromId === toId) {
-			log.trace(`ignoring self-edge from ${fromId} to ${toId} (${type}, ${attribute ?? '?'}, ${promote ? 'y' : 'n'})`)
 			return this
 		}
 

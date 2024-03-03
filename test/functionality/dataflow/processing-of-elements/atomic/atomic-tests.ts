@@ -92,33 +92,86 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.reads('3-accessed', '0')
 			)
 			assertDataflow(label('chained constant', ['name-normal', 'numbers', 'single-bracket-access']), shell,
-				'a[2][3]',
-				emptyGraph().use('0', 'a', { when: 'maybe' })
+				'a[2][3]', emptyGraph().use('0', 'a', { when: 'maybe' })
+					.use('3-accessed', unnamedArgument('3-accessed'))
 					.use('2', unnamedArgument('2'))
-					.reads('0', '2')
+					.call('3', '[', [
+						{ name: unnamedArgument('3-accessed'), nodeId: '3-accessed', used: 'always' },
+						{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
+					])
+					.argument('3', '3-accessed')
+					.argument('3', '2')
+					.reads('3', BuiltIn)
+					.reads('3-accessed', '0')
+				// and now the outer access
+					.call('6', '[', [
+						{ name: unnamedArgument('6-accessed'), nodeId: '6-accessed', used: 'always' },
+						{ name: unnamedArgument('5'), nodeId: '5', used: 'always' }
+					])
+					.use( '6-accessed', unnamedArgument('6-accessed'))
 					.use('5', unnamedArgument('5'))
-					.reads('0', '5')
+					.argument('6', '6-accessed')
+					.argument('6', '5')
+					.reads('6', BuiltIn)
+					.reads('6-accessed', '3')
+					.reads('6-accessed', '0')
 			)
 			assertDataflow(label('chained mixed constant', ['dollar-access', 'single-bracket-access', 'name-normal', 'numbers']), shell,
-				'a[2]$a',
-				emptyGraph().use('0', 'a', { when: 'maybe' })
+				'a[2]$a', emptyGraph().use('0', 'a', { when: 'maybe' })
+					.use('3-accessed', unnamedArgument('3-accessed'))
 					.use('2', unnamedArgument('2'))
-					.reads('0', '2')
+					.call('3', '[', [
+						{ name: unnamedArgument('3-accessed'), nodeId: '3-accessed', used: 'always' },
+						{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
+					])
+					.argument('3', '3-accessed')
+					.argument('3', '2')
+					.reads('3', BuiltIn)
+					.reads('3-accessed', '0')
+					// and now the outer access
+					.call('6', '$', [
+						{ name: unnamedArgument('6-accessed'), nodeId: '6-accessed', used: 'always' },
+						{ name: unnamedArgument('5'), nodeId: '5', used: 'always' }
+					])
+					.use( '6-accessed', unnamedArgument('6-accessed'))
+					.use('5', unnamedArgument('5'))
+					.argument('6', '6-accessed')
+					.argument('6', '5')
+					.reads('6', BuiltIn)
+					.reads('6-accessed', '3')
+					.reads('6-accessed', '0')
 			)
 		})
 		assertDataflow(label('chained bracket access with variables', ['name-normal', 'single-bracket-access']), shell,
-			'a[x][y]',
-			emptyGraph()
-				.use('0', 'a', { when: 'maybe' })
-				.use('1', 'x')
-				.use('4', 'y')
+			'a[x][y]', emptyGraph().use('0', 'a', { when: 'maybe' })
+				.use('3-accessed', unnamedArgument('3-accessed'))
 				.use('2', unnamedArgument('2'))
-				.use('5', unnamedArgument('5'))
-				.reads('0', '2')
-				.reads('0', '5')
+				.use('1', 'x')
 				.reads('2', '1')
+				.call('3', '[', [
+					{ name: unnamedArgument('3-accessed'), nodeId: '3-accessed', used: 'always' },
+					{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
+				])
+				.argument('3', '3-accessed')
+				.argument('3', '2')
+				.reads('3', BuiltIn)
+				.reads('3-accessed', '0')
+				// and now the outer access
+				.call('6', '[', [
+					{ name: unnamedArgument('6-accessed'), nodeId: '6-accessed', used: 'always' },
+					{ name: unnamedArgument('5'), nodeId: '5', used: 'always' }
+				])
+				.use( '6-accessed', unnamedArgument('6-accessed'))
+				.use('5', unnamedArgument('5'))
+				.use('4', 'y')
 				.reads('5', '4')
+				.argument('6', '6-accessed')
+				.argument('6', '5')
+				.reads('6', BuiltIn)
+				.reads('6-accessed', '3')
+				.reads('6-accessed', '0')
 		)
+		// TODO: replacement function
 		assertDataflow(label('assign on access', ['name-normal', 'single-bracket-access', 'local-left-assignment']), shell,
 			'a[x] <- 5',
 			emptyGraph()

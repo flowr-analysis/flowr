@@ -252,7 +252,7 @@ a[3]
 print(a[2])
     `
 		assertSliced('Must include function shell', shell, code, ['3@a'], `a <- list(1,2,3,4)
-a[3]`)
+a`)
 	})
 	describe('Global vs. local definitions', () => {
 		const localCode = `

@@ -39,7 +39,7 @@ export function processNamedFunctionCall<OtherInfo>(
 		}
 	}
 	if(defaultProcessor) {
-		information = mergeInformation(information, processKnownFunctionCall(name, args, rootId, data))
+		information = mergeInformation(information, processKnownFunctionCall(name, args, rootId, data).information)
 	}
 
 

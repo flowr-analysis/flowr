@@ -65,5 +65,5 @@ export function processAllArguments<OtherInfo>(
 			)
 		}
 	}
-	return { finalEnv, callArgs, remainingReadInArgs }
+	return { finalEnv, callArgs, remainingReadInArgs, processedArguments }
 }

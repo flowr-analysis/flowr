@@ -11,41 +11,41 @@ export function processAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: { treatIndicesAsString: boolean }
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Access ${name.content} has less than 2 arguments, skipping`)
-		return processKnownFunctionCall(name, args, rootId, data)
+		return processKnownFunctionCall(name, args, rootId, data).information
 	}
 	const head = args[0]
 	guard(head !== EmptyArgument, () => `Access ${name.content} has no source, impossible!`)
 
 	let information: DataflowInformation
-	// if we are here we know we are processing a built-in
-	if(name.content === '[' || name.content === '[[') {
-		information = processKnownFunctionCall(name, args, rootId, data)
-	} else if(args.length === 2) {
+	if(!config.treatIndicesAsString) {
+		information = processKnownFunctionCall(name, args, rootId, data).information
+	} else {
+		const newArgs = [...args]
 		// if the argument is a symbol we convert it to a string for this perspective
-		let arg = args[1]
-		guard(arg !== EmptyArgument, () => `Access ${name.content} has no argument, impossible!`)
-		if(arg.value?.type === RType.Symbol) {
-			arg = {
-				...arg,
-				value: {
-					type:     RType.String,
-					info:     arg.value.info,
-					lexeme:   arg.value.lexeme,
-					location: arg.value.location,
-					content:  {
-						quotes: 'none',
-						str:    arg.value.lexeme
+		for(let i = 1; i < newArgs.length; i++) {
+			const arg = newArgs[i]
+			if(arg !== EmptyArgument && arg.value?.type === RType.Symbol) {
+				newArgs[i] = {
+					...arg,
+					value: {
+						type:     RType.String,
+						info:     arg.value.info,
+						lexeme:   arg.value.lexeme,
+						location: arg.value.location,
+						content:  {
+							quotes: 'none',
+							str:    arg.value.lexeme
+						}
 					}
 				}
 			}
 		}
-		information = processKnownFunctionCall(name, [head, arg], rootId, data)
-	} else {
-		throw new Error(`Access ${name.content} did not match a handler with ${args.length} arguments`)
+		information = processKnownFunctionCall(name, newArgs, rootId, data).information
 	}
 
 	information.graph.addEdge(name.info.id, head.info.id, EdgeType.Returns, 'always', true)

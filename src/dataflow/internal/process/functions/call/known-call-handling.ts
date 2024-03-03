@@ -11,7 +11,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
-): DataflowInformation {
+): { information: DataflowInformation, processedArguments: readonly (DataflowInformation | undefined)[] }{
 	const functionName = processDataflowFor(name, data)
 
 	const finalGraph = new DataflowGraph()
@@ -21,7 +21,8 @@ export function processKnownFunctionCall<OtherInfo>(
 	const {
 		finalEnv,
 		callArgs,
-		remainingReadInArgs
+		remainingReadInArgs,
+		processedArguments
 	} = processAllArguments(functionName, args, data, finalGraph, rootId)
 
 	finalGraph.addVertex({
@@ -37,10 +38,13 @@ export function processKnownFunctionCall<OtherInfo>(
 	inIds.push({ nodeId: rootId, name: functionCallName, used: 'always' })
 
 	return {
-		unknownReferences: [],
-		in:                inIds,
-		out:               functionName.out, // we do not keep argument out as it has been linked by the function
-		graph:             finalGraph,
-		environment:       finalEnv
+		information: {
+			unknownReferences: [],
+			in:                inIds,
+			out:               functionName.out, // we do not keep argument out as it has been linked by the function
+			graph:             finalGraph,
+			environment:       finalEnv
+		},
+		processedArguments
 	}
 }

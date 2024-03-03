@@ -32,7 +32,7 @@ export function processSourceCall<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const information = processKnownFunctionCall(name, args, rootId, data)
+	const information = processKnownFunctionCall(name, args, rootId, data).information
 
 	const sourceFile = args[0]
 

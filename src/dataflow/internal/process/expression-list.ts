@@ -11,7 +11,7 @@ import type {
 	IdentifierReference, IEnvironment,
 	REnvironmentInformation } from '../../environments'
 import { makeAllMaybe,
-	overwriteEnvironments, popLocalEnvironment,
+	overwriteEnvironment, popLocalEnvironment,
 	resolveByName
 } from '../../environments'
 import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../linker'
@@ -53,20 +53,20 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 function processNextExpression<OtherInfo>(
 	currentElement: DataflowInformation,
 	data: DataflowProcessorInformation<OtherInfo>,
-	environments: REnvironmentInformation,
+	environment: REnvironmentInformation,
 	listEnvironments: Set<NodeId>,
 	remainingRead: Map<string, IdentifierReference[]>,
 	nextGraph: DataflowGraph
 ) {
 	// all inputs that have not been written until know, are read!
 	for(const read of [...currentElement.in, ...currentElement.unknownReferences]) {
-		linkReadNameToWriteIfPossible(read, data, environments, listEnvironments, remainingRead, nextGraph)
+		linkReadNameToWriteIfPossible(read, data, environment, listEnvironments, remainingRead, nextGraph)
 	}
 	// add same variable reads for deferred if they are read previously but not dependent
 	for(const writeTarget of currentElement.out) {
 		const writeName = writeTarget.name
 
-		const resolved = resolveByName(writeName, environments)
+		const resolved = resolveByName(writeName, environment)
 		if(resolved !== undefined) {
 			// write-write
 			for(const target of resolved) {
@@ -78,14 +78,14 @@ function processNextExpression<OtherInfo>(
 
 function updateSideEffectsForCalledFunctions(calledEnvs: {
 	functionCall: NodeId;
-	called:       DataflowGraphVertexInfo[]
-}[], environments: REnvironmentInformation, nextGraph: DataflowGraph) {
+	called:       readonly DataflowGraphVertexInfo[]
+}[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph) {
 	for(const { functionCall, called } of calledEnvs) {
 		for(const calledFn of called) {
 			guard(calledFn.tag === 'function-definition', 'called function must call a function definition')
 			// only merge the environments they have in common
 			let environment = calledFn.environment
-			while(environment.level > environments.level) {
+			while(environment.level > inputEnvironment.level) {
 				environment = popLocalEnvironment(environment)
 			}
 			// update alle definitions to be defined at this function call
@@ -101,10 +101,10 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 				current = current.parent
 			}
 			// we update all definitions to be linked with the corresponding function call
-			environments = overwriteEnvironments(environments, environment)
+			inputEnvironment = overwriteEnvironment(inputEnvironment, environment)
 		}
 	}
-	return environments
+	return inputEnvironment
 }
 
 export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
@@ -114,7 +114,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		return initializeCleanDataflowInformation(data)
 	}
 
-	let environments = data.environments
+	let environment = data.environment
 	// used to detect if a "write" happens within the same expression list
 	const listEnvironments: Set<NodeId> = new Set<NodeId>()
 
@@ -128,7 +128,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 	for(const expression of expressions) {
 		dataflowLogger.trace(`processing expression ${++expressionCounter} of ${expressions.length}`)
 		// use the current environments for processing
-		data = { ...data, environments }
+		data = { ...data, environment: environment }
 		const processed = processDataflowFor(expression, data)
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
 		if(!foundNextOrBreak) {
@@ -144,9 +144,9 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		// update the environments for the next iteration with the previous writes
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
 		if(foundNextOrBreak) {
-			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environments)
-			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environments)
-			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environments)
+			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment)
+			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment)
+			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment)
 		}
 
 		nextGraph.mergeWith(processed.graph)
@@ -154,20 +154,20 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 
 		dataflowLogger.trace(`expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`)
 
-		processNextExpression(processed, data, environments, listEnvironments, remainingRead, nextGraph)
+		processNextExpression(processed, data, environment, listEnvironments, remainingRead, nextGraph)
 		const functionCallIds = [...processed.graph.vertices(true)]
 			.filter(([_,info]) => info.tag === 'function-call')
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, functionCallIds, processed.graph)
 
 		if(foundNextOrBreak) {
-			environments = overwriteEnvironments(environments, processed.environments)
+			environment = overwriteEnvironment(environment, processed.environment)
 		} else {
-			environments = processed.environments
+			environment = processed.environment
 		}
 
 		// if the called function has global redefinitions, we have to keep them within our environment
-		environments = updateSideEffectsForCalledFunctions(calledEnvs, environments, nextGraph)
+		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph)
 
 		for(const { nodeId } of processed.out) {
 			listEnvironments.add(nodeId)
@@ -185,7 +185,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		unknownReferences: [],
 		in:                [...remainingRead.values()].flat(),
 		out,
-		environments,
+		environment:       environment,
 		graph:             nextGraph
 	}
 }

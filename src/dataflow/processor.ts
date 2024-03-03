@@ -14,7 +14,7 @@ export interface DataflowProcessorInformation<OtherInfo> {
    * Correctly contains pushed local scopes introduced by `function` scopes.
    * Will by default *not* contain any symbol-bindings introduces along the way, they have to be decorated when moving up the tree.
    */
-	readonly environments:   REnvironmentInformation
+	readonly environment:    REnvironmentInformation
 	/**
    * Other processors to be called by the given functions
    */

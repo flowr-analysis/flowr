@@ -3,7 +3,7 @@ import type { IEnvironment } from '../../../../src/dataflow'
 import { BuiltInMemory, initializeCleanEnvironments } from '../../../../src/dataflow'
 import { guard } from '../../../../src/util/assert'
 import { expect } from 'chai'
-import { appendEnvironments, define, overwriteEnvironments } from '../../../../src/dataflow/environments'
+import { appendEnvironment, define, overwriteEnvironment } from '../../../../src/dataflow/environments'
 import { variable } from '../../_helper/environment-builder'
 import { label } from '../../_helper/label'
 
@@ -25,7 +25,7 @@ describe('Modification', () => {
 			clean = define(variable('x', '_1'), true, clean)
 			let overwrite = initializeCleanEnvironments()
 			overwrite = define(variable('y', '_2'), true, overwrite)
-			const result = overwriteEnvironments(clean, overwrite)
+			const result = overwriteEnvironment(clean, overwrite)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2)
 			existsDefinedAt('x', ['_1'], result.current, 'globals must be defined locally as well')
@@ -37,7 +37,7 @@ describe('Modification', () => {
 			clean = define(variable('x', '_1'), true, clean)
 			let overwrite = initializeCleanEnvironments()
 			overwrite = define(variable('x', '_2'), true, overwrite)
-			const result = overwriteEnvironments(clean, overwrite)
+			const result = overwriteEnvironment(clean, overwrite)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.current.memory, 'there should be only one definition for x').to.have.length(1)
 			existsDefinedAt('x', ['_2'], result.current)
@@ -50,7 +50,7 @@ describe('Modification', () => {
 			clean = define(variable('long', '_1'), false, clean)
 			let overwrite = initializeCleanEnvironments()
 			overwrite = define(variable('short', '_2'), false, overwrite)
-			const result = overwriteEnvironments(clean, overwrite)
+			const result = overwriteEnvironment(clean, overwrite)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0)
 			expect(result.current.memory, 'there should be two definitions for long and short').to.have.length(2)
@@ -63,7 +63,7 @@ describe('Modification', () => {
 			clean = define(variable('long', '_1'), false, clean)
 			let overwrite = initializeCleanEnvironments()
 			overwrite = define(variable('long', '_2'), false, overwrite)
-			const result = overwriteEnvironments(clean, overwrite)
+			const result = overwriteEnvironment(clean, overwrite)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0)
 			expect(result.current.memory, 'there should be only one definition for long').to.have.length(1)
@@ -79,7 +79,7 @@ describe('Append', () => {
 			clean = define(variable('x', '_1'), true, clean)
 			let append = initializeCleanEnvironments()
 			append = define(variable('y', '_2'), true, append)
-			const result = appendEnvironments(clean, append)
+			const result = appendEnvironment(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2)
 			existsDefinedAt('x', ['_1'], result.current, 'globals must be defined locally as well')
@@ -91,7 +91,7 @@ describe('Append', () => {
 			clean = define(variable('x', '_1'), true, clean)
 			let append = initializeCleanEnvironments()
 			append = define(variable('x', '_2'), true, append)
-			const result = appendEnvironments(clean, append)
+			const result = appendEnvironment(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.current.memory, 'there should be only one symbol defined (for x)').to.have.length(1)
 			existsDefinedAt('x', ['_1', '_2'], result.current)
@@ -104,7 +104,7 @@ describe('Append', () => {
 			clean = define(variable('local-long', '_1'), false, clean)
 			let append = initializeCleanEnvironments()
 			append = define(variable('local-short', '_2'), false, append)
-			const result = appendEnvironments(clean, append)
+			const result = appendEnvironment(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.level, 'neither definitions nor appends should produce new local scopes').to.be.equal(0)
 			expect(result.current.memory, 'there should be two definitions for local-long and local-short').to.have.length(2)
@@ -117,7 +117,7 @@ describe('Append', () => {
 			clean = define(variable('local-long', '_1'), false, clean)
 			let append = initializeCleanEnvironments()
 			append = define(variable('local-long', '_2'), false, append)
-			const result = appendEnvironments(clean, append)
+			const result = appendEnvironment(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0)
 			expect(result.current.memory, 'there should be only one definition for local-long').to.have.length(1)

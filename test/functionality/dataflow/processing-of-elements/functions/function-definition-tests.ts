@@ -17,7 +17,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [{ nodeId: '0', used: 'always', name: 'x' }],
 					graph:             new Set(['0']),
-					environments:      pushLocalEnvironment(initializeCleanEnvironments())
+					environment:       pushLocalEnvironment(initializeCleanEnvironments())
 				})
 				.use('0', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 		)
@@ -33,7 +33,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['0', '2']),
-					environments:      envWithXDefined
+					environment:       envWithXDefined
 				})
 				.defineVariable('0', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.use('2', 'x', { environment: envWithXDefined }, false)
@@ -46,7 +46,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['4', '5', '3', '0']),
-					environments:      envWithXDefined
+					environment:       envWithXDefined
 				})
 				.defineVariable('0', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.use('3', 'x', { environment: envWithXDefined }, false)
@@ -70,7 +70,7 @@ describe('Function Definition', withShell(shell => {
 						unknownReferences: [],
 						in:                [],
 						graph:             new Set(['5', '6', '4', '0']),
-						environments:      envWithXDefined
+						environment:       envWithXDefined
 					})
 					.defineVariable('0', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 					.use('4', 'x', { environment: envWithXDefined }, false)
@@ -111,7 +111,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['0', '2', '4', '6']),
-					environments:      envWithXYZParam
+					environment:       envWithXYZParam
 				})
 				.defineVariable('0', 'x', { environment: envWithoutParams }, false)
 				.defineVariable('2', 'y', { environment: envWithXParam }, false)
@@ -129,7 +129,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [ { nodeId: '3', name: 'x', used: 'always' } ],
 					graph:             new Set(['3']),
-					environments:      pushLocalEnvironment(initializeCleanEnvironments())
+					environment:       pushLocalEnvironment(initializeCleanEnvironments())
 				})
 				.use('3', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 		)
@@ -146,7 +146,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['0']),
-					environments:      envWithXDefined
+					environment:       envWithXDefined
 				})
 				.defineVariable('0', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.exit('2', '<-', envWithXDefined, {}, false)
@@ -160,7 +160,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['0']),
-					environments:      envWithXDefined
+					environment:       envWithXDefined
 				})
 				.defineVariable('0', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.exit('2', '=', envWithXDefined, {}, false)
@@ -179,7 +179,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['1']),
-					environments:      envWithXDefinedR
+					environment:       envWithXDefinedR
 				})
 				.defineVariable('1', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.exit('2', '->', envWithXDefinedR, {}, false)
@@ -197,7 +197,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['0']),
-					environments:      envWithXDefinedGlobal
+					environment:       envWithXDefinedGlobal
 				},
 				{ environment: popLocalEnvironment(envWithXDefinedGlobal) }
 				)
@@ -217,7 +217,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['1']),
-					environments:      envWithXDefinedGlobalR
+					environment:       envWithXDefinedGlobalR
 				},
 				{ environment: popLocalEnvironment(envWithXDefinedGlobalR) }
 				)
@@ -247,7 +247,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['6', '3']),
-					environments:      envDefXSingle
+					environment:       envDefXSingle
 				})
 				.use('6', 'x', { environment: define({ nodeId: '3', definedAt: '5', used: 'always', name: 'x', kind: 'variable' }, false, pushLocalEnvironment(initializeCleanEnvironments())) }, false)
 				.defineVariable('3', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
@@ -268,7 +268,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [ { nodeId: '4', used: 'always', name: 'x' } ],
 					graph:             new Set(['3', '4', '6']),
-					environments:      envDefXSingle
+					environment:       envDefXSingle
 				})
 				.defineVariable('3', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.use('4', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
@@ -298,7 +298,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['3', '5']),
-					environments:      envWithXDefined
+					environment:       envWithXDefined
 				})
 				.defineVariable('3', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.use('5', 'x', { environment: envWithXDefined }, false)
@@ -317,7 +317,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['0', '2']),
-					environments:      envWithParam
+					environment:       envWithParam
 				})
 				.defineVariable('0', '...', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.use('2', '..11', { environment: envWithParam }, false)
@@ -341,7 +341,7 @@ describe('Function Definition', withShell(shell => {
 					out:               [],
 					unknownReferences: [],
 					in:                [],
-					environments:      envWithAB,
+					environment:       envWithAB,
 					graph:             new Set(['0', '3', '4', '6'])
 				})
 				.defineVariable('0', 'a', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
@@ -379,7 +379,7 @@ describe('Function Definition', withShell(shell => {
 					out:               [],
 					unknownReferences: [],
 					in:                [],
-					environments:      envWithBothParamSecondB,
+					environment:       envWithBothParamSecondB,
 					graph:             new Set(['0', '3', '10', '6', '1', '9', '13'])
 				})
 				.defineVariable('0', 'a', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
@@ -416,7 +416,7 @@ describe('Function Definition', withShell(shell => {
 					out:               [],
 					unknownReferences: [],
 					in:                [],
-					environments:      envWithASpecial,
+					environment:       envWithASpecial,
 					graph:             new Set(['0', '2', '5', '7', '6'])
 				})
 				.defineVariable('0', 'a', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
@@ -460,7 +460,7 @@ describe('Function Definition', withShell(shell => {
 				out:               [],
 				unknownReferences: [],
 				in:                [ { nodeId: '8', name: 'z', used: 'always' } ],
-				environments:      finalEnv,
+				environment:       finalEnv,
 				graph:             new Set(['0', '5', '15', '8', '10', '18', '11', '12', '3'])
 			})
 			.defineVariable('0', 'g', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
@@ -477,7 +477,7 @@ describe('Function Definition', withShell(shell => {
 				out:               [],
 				unknownReferences: [],
 				in:                [],
-				environments:      pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
+				environment:       pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
 				graph:             new Set(['1'])
 			},
 			{ environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
@@ -507,8 +507,8 @@ describe('Function Definition', withShell(shell => {
 						name:   'x',
 						used:   'always'
 					}],
-					graph:        new Set(['0']),
-					environments: pushLocalEnvironment(initializeCleanEnvironments())
+					graph:       new Set(['0']),
+					environment: pushLocalEnvironment(initializeCleanEnvironments())
 				})
 				.use('0', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 		)
@@ -551,7 +551,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [],
 					graph:             new Set(['10', '1', '8']),
-					environments:      withXParameterInOuter
+					environment:       withXParameterInOuter
 				})
 				.definedBy('0', '12')
 
@@ -565,8 +565,8 @@ describe('Function Definition', withShell(shell => {
 						name:   'x',
 						used:   'always'
 					}],
-					graph:        new Set(['5', '4', '2']),
-					environments: withinNestedFunctionWithDef
+					graph:       new Set(['5', '4', '2']),
+					environment: withinNestedFunctionWithDef
 				},
 				{ environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
 				.reads('10', '1')

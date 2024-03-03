@@ -1,14 +1,14 @@
-import type { IdGenerator, NoInfo, NormalizedAst, ParentInformation, RArgument, RFunctionCall, RParseRequest, RParseRequestProvider } from '../../../../r-bridge'
-import { requestFingerprint, sourcedDeterministicCountingIdGenerator, requestProviderFromFile, RType, removeTokenMapQuotationMarks, retrieveParseDataFromRCode } from '../../../../r-bridge'
-import { RShellExecutor } from '../../../../r-bridge/shell-executor'
-import { type DataflowProcessorInformation, processDataflowFor } from '../../../processor'
-import type { DataflowInformation } from '../../../info'
-import type { Identifier } from '../../../index'
-import { dataflowLogger } from '../../../index'
-import type { REnvironmentInformation } from '../../../environments'
-import { overwriteEnvironments, resolveByName } from '../../../environments'
-import { getConfig } from '../../../../config'
-import { normalize } from '../../../../r-bridge/lang-4.x/ast/parser/json/parser'
+import type { IdGenerator, NoInfo, NormalizedAst, ParentInformation, RArgument, RFunctionCall, RParseRequest, RParseRequestProvider } from '../../../../../../r-bridge'
+import { requestFingerprint, sourcedDeterministicCountingIdGenerator, requestProviderFromFile, RType, removeTokenMapQuotationMarks, retrieveParseDataFromRCode } from '../../../../../../r-bridge'
+import { RShellExecutor } from '../../../../../../r-bridge/shell-executor'
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor'
+import type { DataflowInformation } from '../../../../../info'
+import type { Identifier } from '../../../../../index'
+import { dataflowLogger } from '../../../../../index'
+import type { REnvironmentInformation } from '../../../../../environments'
+import { overwriteEnvironment, resolveByName } from '../../../../../environments'
+import { getConfig } from '../../../../../../config'
+import { normalize } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 
 let sourceProvider = requestProviderFromFile()
 
@@ -66,7 +66,7 @@ export function sourceRequest<OtherInfo>(request: RParseRequest, data: DataflowP
 		dataflow = processDataflowFor(normalized.ast, {
 			...data,
 			currentRequest: request,
-			environments:   information.environments,
+			environment:    information.environment,
 			referenceChain: [...data.referenceChain, requestFingerprint(request)]
 		})
 	} catch(e) {
@@ -76,7 +76,7 @@ export function sourceRequest<OtherInfo>(request: RParseRequest, data: DataflowP
 
 	// update our graph with the sourced file's information
 	const newInformation = { ...information }
-	newInformation.environments = overwriteEnvironments(information.environments, dataflow.environments)
+	newInformation.environment = overwriteEnvironment(information.environment, dataflow.environment)
 	newInformation.graph.mergeWith(dataflow.graph)
 	// this can be improved, see issue #628
 	for(const [k, v] of normalized.idMap) {

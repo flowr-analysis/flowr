@@ -13,7 +13,7 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.content, used: 'always' } ],
 		in:                [],
 		out:               [],
-		environments:      data.environments,
-		graph:             new DataflowGraph().addVertex({ tag: 'use', id: symbol.info.id, name: symbol.content, environment: data.environments })
+		environment:       data.environment,
+		graph:             new DataflowGraph().addVertex({ tag: 'use', id: symbol.info.id, name: symbol.content, environment: data.environment })
 	}
 }

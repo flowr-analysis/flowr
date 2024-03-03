@@ -5,9 +5,9 @@ import type {
 	REnvironmentInformation
 } from './environment'
 import {
-	BuiltInEnvironment
+	BuiltInEnvironment,
+	Environment
 } from './environment'
-import { Environment } from './environment'
 
 function cloneEnvironment(environment: IEnvironment, recurseParents: boolean): IEnvironment
 function cloneEnvironment(environment: IEnvironment | undefined, recurseParents: boolean): IEnvironment | undefined {
@@ -21,7 +21,7 @@ function cloneEnvironment(environment: IEnvironment | undefined, recurseParents:
 	return clone
 }
 
-export function cloneEnvironments(environment: REnvironmentInformation, recurseParents = true): REnvironmentInformation {
+export function cloneEnvironmentInformation(environment: REnvironmentInformation, recurseParents = true): REnvironmentInformation {
 	return {
 		current: cloneEnvironment(environment.current, recurseParents),
 		level:   environment.level

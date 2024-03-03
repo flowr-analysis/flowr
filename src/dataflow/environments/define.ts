@@ -2,7 +2,7 @@ import { guard } from '../../util/assert'
 import type { IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
 import { BuiltInEnvironment } from './environment'
 
-import { cloneEnvironments } from './clone'
+import { cloneEnvironmentInformation } from './clone'
 
 function defInEnv(newEnvironments: IEnvironment, definition: IdentifierDefinition) {
 	const existing = newEnvironments.memory.get(definition.name)
@@ -18,11 +18,11 @@ function defInEnv(newEnvironments: IEnvironment, definition: IdentifierDefinitio
  * Insert the given `definition` --- defined within the given scope --- into the passed along `environments` will take care of propagation.
  * Does not modify the passed along `environments` in-place! It returns the new reference.
  */
-export function define(definition: IdentifierDefinition, superAssign: boolean, environments: REnvironmentInformation): REnvironmentInformation {
-	let newEnvironments = environments
+export function define(definition: IdentifierDefinition, superAssign: boolean, environment: REnvironmentInformation): REnvironmentInformation {
+	let newEnvironment
 	if(superAssign) {
-		newEnvironments = cloneEnvironments(environments, true)
-		let current: IEnvironment = newEnvironments.current
+		newEnvironment = cloneEnvironmentInformation(environment, true)
+		let current: IEnvironment = newEnvironment.current
 		let last = undefined
 		let found = false
 		do{
@@ -39,8 +39,8 @@ export function define(definition: IdentifierDefinition, superAssign: boolean, e
 			last.memory.set(definition.name, [definition])
 		}
 	} else {
-		newEnvironments = cloneEnvironments(environments, false)
-		defInEnv(newEnvironments.current, definition)
+		newEnvironment = cloneEnvironmentInformation(environment, false)
+		defInEnv(newEnvironment.current, definition)
 	}
-	return newEnvironments
+	return newEnvironment
 }

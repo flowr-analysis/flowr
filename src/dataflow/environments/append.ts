@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert'
 import type { REnvironmentInformation, IEnvironment, IdentifierDefinition } from './environment'
-import { Environment, BuiltInEnvironment } from './environment'
+import { BuiltInEnvironment, Environment } from './environment'
 
 function uniqueMergeValues(old: IdentifierDefinition[], value: readonly IdentifierDefinition[]): IdentifierDefinition[] {
 	const result = old
@@ -37,11 +37,11 @@ function appendIEnvironmentWith(base: IEnvironment | undefined, next: IEnvironme
 /**
  * Adds all writes of `next` to `base` (i.e., the operations of `next` *might* happen).
  */
-export function appendEnvironments(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation
-export function appendEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation
-export function appendEnvironments(base: undefined, next: undefined): undefined
-export function appendEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined
-export function appendEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
+export function appendEnvironment(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation
+export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation
+export function appendEnvironment(base: undefined, next: undefined): undefined
+export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined
+export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
 	if(base === undefined) {
 		return next
 	} else if(next === undefined) {

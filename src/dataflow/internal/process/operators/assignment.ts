@@ -7,14 +7,14 @@ import { dataflowLogger } from '../../../index'
 import { EdgeType } from '../../../graph'
 import type { DataflowInformation } from '../../../info'
 import type { IdentifierDefinition, IdentifierReference } from '../../../environments'
-import { define, overwriteEnvironments } from '../../../environments'
+import { define, overwriteEnvironment } from '../../../environments'
 import { log, LogLevel } from '../../../../util/log'
 
 export function processAssignment<OtherInfo>(op: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)
 	const lhs = processDataflowFor(op.lhs, data)
 	const rhs = processDataflowFor(op.rhs, data)
-	const { readTargets, newWriteNodes, writeTargets, environments, swap } = processReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs)
+	const { readTargets, newWriteNodes, writeTargets, environment, swap } = processReadAndWriteForAssignmentBasedOnOp(op, lhs, rhs)
 	const nextGraph = lhs.graph.mergeWith(rhs.graph)
 
 	// deal with special cases based on the source node and the determined read targets
@@ -41,7 +41,7 @@ export function processAssignment<OtherInfo>(op: RBinaryOp<OtherInfo & ParentInf
 		in:                readTargets,
 		out:               writeTargets,
 		graph:             nextGraph,
-		environments
+		environment:       environment
 	}
 }
 
@@ -110,16 +110,16 @@ function processReadAndWriteForAssignmentBasedOnOp<OtherInfo>(
 	}
 
 	const readFromSourceWritten = source.out
-	let environments = overwriteEnvironments(source.environments, target.environments)
+	let environment = overwriteEnvironment(source.environment, target.environment)
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		environments = define(write, superAssignment, environments)
+		environment = define(write, superAssignment, environment)
 	}
 	return {
 		readTargets:   [...source.unknownReferences, ...read, ...readFromSourceWritten],
 		writeTargets:  [...writeNodes, ...target.out, ...readFromSourceWritten],
-		environments:  environments,
+		environment:   environment,
 		newWriteNodes: writeNodes,
 		swap
 	}

@@ -1,11 +1,13 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { define, popLocalEnvironment, pushLocalEnvironment } from '../../../../../src/dataflow/environments'
-import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/internal/process/functions/function-call'
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { unnamedArgument } from '../../../_helper/environment-builder'
 import { label } from '../../../_helper/label'
+import {
+	UnnamedFunctionCallPrefix
+} from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling'
 
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {
@@ -37,7 +39,7 @@ describe('Function Call', withShell(shell => {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
-					environments:      envWithXParamDefined,
+					environment:       envWithXParamDefined,
 					graph:             new Set(['4', '6']),
 				}, { environment: popLocalEnvironment(envWithXParamDefined) })
 				.defineVariable('4', 'x', { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
@@ -75,7 +77,7 @@ describe('Function Call', withShell(shell => {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
-					environments:      envWithXParamDefined,
+					environment:       envWithXParamDefined,
 					graph:             new Set(['4', '6'])
 				},
 				{ environment: popLocalEnvironment(envWithXParamDefined) })
@@ -128,7 +130,7 @@ a(i)`, emptyGraph()
 				out:               [],
 				in:                [],
 				unknownReferences: [],
-				environments:      envWithLastXDefined,
+				environment:       envWithLastXDefined,
 				graph:             new Set(['4', '6', '7', '9'])
 			},
 			{ environment: initializeCleanEnvironments() }
@@ -168,7 +170,7 @@ a(i)`, emptyGraph()
 				out:               [],
 				in:                [],
 				unknownReferences: [],
-				environments:      envWithXParameter,
+				environment:       envWithXParameter,
 				graph:             new Set(['0', '2'])
 			},
 			{ environment: initializeCleanEnvironments() })
@@ -210,7 +212,7 @@ a()()`,
 				out:               [],
 				in:                [],
 				unknownReferences: [],
-				environments:      pushLocalEnvironment(initializeCleanEnvironments()),
+				environment:       pushLocalEnvironment(initializeCleanEnvironments()),
 				graph:             new Set(['3'])
 			},
 			{ environment: initializeCleanEnvironments() }
@@ -219,7 +221,7 @@ a()()`,
 				out:               [],
 				in:                [],
 				unknownReferences: [],
-				environments:      pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
+				environment:       pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
 				graph:             new Set()
 			},
 			{ environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
@@ -254,7 +256,7 @@ a()()`,
 					out:               [],
 					in:                [],
 					unknownReferences: [],
-					environments:      pushLocalEnvironment(initializeCleanEnvironments()),
+					environment:       pushLocalEnvironment(initializeCleanEnvironments()),
 					graph:             new Set()
 				})
 				.exit('1', '3', pushLocalEnvironment(initializeCleanEnvironments()) , {}, false)
@@ -315,7 +317,7 @@ a()()`,
 					out:               [],
 					in:                [{ nodeId: '1', name: 'y', used: 'always' }],
 					unknownReferences: [],
-					environments:      innerEnv,
+					environment:       innerEnv,
 					graph:             new Set(['1'])
 				})
 				.use('1', 'y', { environment: innerEnv }, false)
@@ -355,7 +357,7 @@ a(,3)`, emptyGraph()
 				out:               [],
 				in:                [],
 				unknownReferences: [],
-				environments:      withXYParameter,
+				environment:       withXYParameter,
 				graph:             new Set(['1', '4', '6'])
 			},
 			{ environment: popLocalEnvironment(withXYParameter) })

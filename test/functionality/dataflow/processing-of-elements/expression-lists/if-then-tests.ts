@@ -3,7 +3,7 @@ import {
 	initializeCleanEnvironments
 } from '../../../../../src/dataflow'
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
+import { appendEnvironment, define } from '../../../../../src/dataflow/environments'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 
 describe('Lists with if-then constructs', withShell(shell => {
@@ -76,7 +76,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 						.use('0', 'z', { scope })
 						.defineVariable('1', 'x', { when: 'maybe' })
 						.defineVariable('5', 'x', { when: 'maybe' })
-						.use('10', 'x', { environment: appendEnvironments(whenEnvironment, otherwiseEnvironment) })
+						.use('10', 'x', { environment: appendEnvironment(whenEnvironment, otherwiseEnvironment) })
 						.reads('10', '1', 'maybe')
 						.reads('10', '5', 'maybe')
 				)
@@ -112,8 +112,8 @@ describe('Lists with if-then constructs', withShell(shell => {
 				.addVertex( { tag: 'variable-definition', id: '0', name: 'x' })
 				.addVertex( { tag: 'use', id: '3', name: 'r', environment: envWithX() } )
 				.addVertex( { tag: 'variable-definition', id: '4', name: 'x', environment: envWithX(), when: 'maybe' } )
-				.addVertex( { tag: 'use', id: '10', name: 'x', environment: appendEnvironments(envWithSecondXMaybe(), envWithXMaybe()) })
-				.addVertex( { tag: 'variable-definition', id: '9', name: 'y', environment: appendEnvironments(envWithSecondXMaybe(), envWithXMaybe()) })
+				.addVertex( { tag: 'use', id: '10', name: 'x', environment: appendEnvironment(envWithSecondXMaybe(), envWithXMaybe()) })
+				.addVertex( { tag: 'variable-definition', id: '9', name: 'y', environment: appendEnvironment(envWithSecondXMaybe(), envWithXMaybe()) })
 				.addEdge('0', '4', EdgeType.SameDefDef, 'maybe')
 				.addEdge('10', '0', EdgeType.Reads, 'maybe')
 				.addEdge('10', '4', EdgeType.Reads, 'maybe')
@@ -125,9 +125,9 @@ describe('Lists with if-then constructs', withShell(shell => {
 		const envWithXElseMaybe = () => define({ nodeId: '14', name: 'x', kind: 'variable', definedAt: '16', used: 'maybe' }, false, initializeCleanEnvironments())
 		const envWithYMaybeBeforeIf = () => define({ nodeId: '3', name: 'y', kind: 'variable', definedAt: '5', used: 'maybe' }, false, initializeCleanEnvironments())
 		const envWithYMaybeInThen = () => define({ nodeId: '10', name: 'y', kind: 'variable', definedAt: '12', used: 'maybe' }, false, initializeCleanEnvironments())
-		const envForYAfterIf = () => appendEnvironments(envWithYMaybeBeforeIf(), envWithYMaybeInThen())
-		const envForXAfterIf = () => appendEnvironments(envWithXThenMaybe(), envWithXElseMaybe())
-		const envDirectlyAfterIf = () => appendEnvironments(envForYAfterIf(), envForXAfterIf())
+		const envForYAfterIf = () => appendEnvironment(envWithYMaybeBeforeIf(), envWithYMaybeInThen())
+		const envForXAfterIf = () => appendEnvironment(envWithXThenMaybe(), envWithXElseMaybe())
+		const envDirectlyAfterIf = () => appendEnvironment(envForYAfterIf(), envForXAfterIf())
 		const envWithW = () => define({ nodeId: '19', name: 'w', kind: 'variable', definedAt: '21', used: 'always' }, false, initializeCleanEnvironments())
 		//const envFirstYReassignment = () => appendEnvironments(envWithXThen(), envWithY())
 		assertDataflow('assignment if multiple variables with else',
@@ -136,14 +136,14 @@ describe('Lists with if-then constructs', withShell(shell => {
 			new DataflowGraph()
 				.addVertex({ tag: 'variable-definition', id: '0', name: 'x' })
 				.addVertex({ tag: 'variable-definition', id: '3', name: 'y', environment: envWithX() })
-				.addVertex({ tag: 'use', id: '6', name: 'r', environment: appendEnvironments(envWithX(), envWithY()) })
-				.addVertex({ tag: 'variable-definition', id: '7', name: 'x', environment: appendEnvironments(envWithX(),envWithY()), when: 'maybe' })
-				.addVertex({ tag: 'variable-definition', id: '10', name: 'y', environment: appendEnvironments(envWithXThen(), envWithY()), when: 'maybe' })
-				.addVertex({ tag: 'variable-definition', id: '14', name: 'x', environment: appendEnvironments(envWithX(),envWithY()), when: 'maybe' })
+				.addVertex({ tag: 'use', id: '6', name: 'r', environment: appendEnvironment(envWithX(), envWithY()) })
+				.addVertex({ tag: 'variable-definition', id: '7', name: 'x', environment: appendEnvironment(envWithX(),envWithY()), when: 'maybe' })
+				.addVertex({ tag: 'variable-definition', id: '10', name: 'y', environment: appendEnvironment(envWithXThen(), envWithY()), when: 'maybe' })
+				.addVertex({ tag: 'variable-definition', id: '14', name: 'x', environment: appendEnvironment(envWithX(),envWithY()), when: 'maybe' })
 				.addVertex({ tag: 'use', id: '20', name: 'x', environment: envDirectlyAfterIf() })
-				.addVertex({ tag: 'use', id: '23', name: 'y', environment: appendEnvironments(envDirectlyAfterIf(), envWithW()) })
+				.addVertex({ tag: 'use', id: '23', name: 'y', environment: appendEnvironment(envDirectlyAfterIf(), envWithW()) })
 				.addVertex({ tag: 'variable-definition', id: '19', name: 'w', environment: envDirectlyAfterIf() })
-				.addVertex({ tag: 'variable-definition', id: '22', name: 'z', environment: appendEnvironments(envDirectlyAfterIf(), envWithW()) })
+				.addVertex({ tag: 'variable-definition', id: '22', name: 'z', environment: appendEnvironment(envDirectlyAfterIf(), envWithW()) })
 				.addEdge('20', '7', EdgeType.Reads, 'maybe')
 				.addEdge('20', '14', EdgeType.Reads, 'maybe')
 				.addEdge('23', '3', EdgeType.Reads, 'maybe')
@@ -162,8 +162,8 @@ describe('Lists with if-then constructs', withShell(shell => {
 				.addVertex( { tag: 'variable-definition', id: '0', name: 'x' })
 				.addVertex( { tag: 'use', id: '3', name: 'r', environment: envWithX() } )
 				.addVertex( { tag: 'variable-definition', id: '5', name: 'x', environment: envWithX(), when: 'maybe' } )
-				.addVertex( { tag: 'use', id: '11', name: 'x', environment: appendEnvironments(envWithElseXMaybe(), envWithXMaybe()) })
-				.addVertex( { tag: 'variable-definition', id: '10', name: 'y', environment: appendEnvironments(envWithElseXMaybe(), envWithXMaybe()) })
+				.addVertex( { tag: 'use', id: '11', name: 'x', environment: appendEnvironment(envWithElseXMaybe(), envWithXMaybe()) })
+				.addVertex( { tag: 'variable-definition', id: '10', name: 'y', environment: appendEnvironment(envWithElseXMaybe(), envWithXMaybe()) })
 				.addEdge('0', '5', EdgeType.SameDefDef, 'maybe')
 				.addEdge('11', '0', EdgeType.Reads, 'maybe')
 				.addEdge('11', '5', EdgeType.Reads, 'maybe')

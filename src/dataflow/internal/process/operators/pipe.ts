@@ -4,7 +4,7 @@ import { processDataflowFor } from '../../../processor'
 import { linkIngoingVariablesInSameScope } from '../../linker'
 import type { ParentInformation, RPipe } from '../../../../r-bridge'
 import { RType } from '../../../../r-bridge'
-import { overwriteEnvironments } from '../../../environments'
+import { overwriteEnvironment } from '../../../environments'
 import { dataflowLogger, EdgeType, graphToMermaidUrl } from '../../../index'
 import { guard } from '../../../../util/assert'
 import { UnnamedArgumentPrefix } from '../functions/argument'
@@ -43,7 +43,7 @@ export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInfo
 		unknownReferences: [],
 		in:                ingoing,
 		out:               [...lhs.out, ...rhs.out],
-		environments:      overwriteEnvironments(lhs.environments, rhs.environments),
+		environment:       overwriteEnvironment(lhs.environment, rhs.environment),
 		graph:             nextGraph
 	}
 }

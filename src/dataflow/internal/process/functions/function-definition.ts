@@ -6,7 +6,7 @@ import type {
 	REnvironmentInformation } from '../../../environments'
 import {
 	initializeCleanEnvironments,
-	overwriteEnvironments,
+	overwriteEnvironment,
 	popLocalEnvironment,
 	pushLocalEnvironment,
 	resolveByName
@@ -52,10 +52,10 @@ function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph:
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	let env = initializeCleanEnvironments()
-	for(let i = 0; i < data.environments.level + 1 /* add another env */; i++) {
+	for(let i = 0; i < data.environment.level + 1 /* add another env */; i++) {
 		env = pushLocalEnvironment(env)
 	}
-	return { ...data, environments: env }
+	return { ...data, environment: env }
 }
 
 /**
@@ -100,7 +100,7 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 export function processFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	dataflowLogger.trace(`Processing function definition with id ${functionDefinition.info.id}`)
 
-	const originalEnvironments = data.environments
+	const originalEnvironment = data.environment
 	// within a function def we do not pass on the outer binds as they could be overwritten when called
 	data = prepareFunctionEnvironment(data)
 
@@ -111,14 +111,14 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 		const processed = processDataflowFor(param, data)
 		subgraph.mergeWith(processed.graph)
 		const read = [...processed.in, ...processed.unknownReferences]
-		linkInputs(read, data.environments, readInParameters, subgraph, false)
-		data = { ...data, environments: overwriteEnvironments(data.environments, processed.environments) }
+		linkInputs(read, data.environment, readInParameters, subgraph, false)
+		data = { ...data, environment: overwriteEnvironment(data.environment, processed.environment) }
 	}
-	const paramsEnvironments = data.environments
+	const paramsEnvironments = data.environment
 
 	const body = processDataflowFor(functionDefinition.body, data)
 	// as we know, that parameters can not duplicate, we overwrite their environments (which is the correct behavior, if someone uses non-`=` arguments in functions)
-	const bodyEnvironment = body.environments
+	const bodyEnvironment = body.environment
 
 
 	readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, body)
@@ -144,7 +144,8 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 		}
 	}
 
-	const outEnvironment = overwriteEnvironments(paramsEnvironments, bodyEnvironment)
+	const outEnvironment = overwriteEnvironment(paramsEnvironments, bodyEnvironment)
+
 	for(const read of remainingRead) {
 		subgraph.addVertex({ tag: 'use', id: read.nodeId, name: read.name, environment: outEnvironment, when: 'maybe' })
 	}
@@ -155,7 +156,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 		in:                remainingRead,
 		out:               [],
 		graph:             new Set(subgraph.rootIds()),
-		environments:      outEnvironment
+		environment:       outEnvironment
 	}
 
 	const exitPoints = retrieveExitPointsOfFunctionDefinition(functionDefinition)
@@ -178,7 +179,7 @@ export function processFunctionDefinition<OtherInfo>(functionDefinition: RFuncti
 		in:                [],
 		out:               [],
 		graph,
-		environments:      originalEnvironments
+		environment:       originalEnvironment
 	}
 }
 

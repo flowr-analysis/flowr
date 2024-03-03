@@ -23,7 +23,7 @@ import { expensiveTrace, log } from '../../util/log'
 import objectHash from 'object-hash'
 import type { DecodedCriteria, SlicingCriteria } from '../criterion'
 import { convertAllSlicingCriteriaToIds } from '../criterion'
-import { overwriteEnvironments, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
+import { overwriteEnvironment, pushLocalEnvironment, resolveByName } from '../../dataflow/environments'
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker'
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' })
@@ -223,7 +223,7 @@ function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvi
 		}
 	}
 
-	return overwriteEnvironments(baseEnvironment, callerEnvironment)
+	return overwriteEnvironment(baseEnvironment, callerEnvironment)
 }
 
 //// returns the new threshold hit count

@@ -2,14 +2,14 @@ import type { DataflowInformation } from '../../info'
 import type { DataflowProcessorInformation } from '../../processor'
 import { processDataflowFor } from '../../processor'
 import type { IdentifierReference } from '../../environments'
-import { appendEnvironments, makeAllMaybe } from '../../environments'
+import { appendEnvironment, makeAllMaybe } from '../../environments'
 import { linkIngoingVariablesInSameScope } from '../linker'
 import type { ParentInformation, RIfThenElse } from '../../../r-bridge'
 
 export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const cond = processDataflowFor(ifThen.condition, data)
 
-	data = { ...data, environments: cond.environments }
+	data = { ...data, environment: cond.environment }
 
 	let then: DataflowInformation | undefined
 	let makeThenMaybe = false
@@ -31,9 +31,9 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
 
 	const nextGraph = cond.graph.mergeWith(then?.graph).mergeWith(otherwise?.graph)
 
-	const thenEnvironment = then?.environments ?? cond.environments
+	const thenEnvironment = then?.environment ?? cond.environment
 	// if there is no "else" case we have to recover whatever we had before as it may be not executed
-	const finalEnvironment = appendEnvironments(thenEnvironment, otherwise ? otherwise.environments : cond.environments)
+	const finalEnvironment = appendEnvironment(thenEnvironment, otherwise ? otherwise.environment : cond.environment)
 
 	// again within an if-then-else we consider all actives to be read
 	const ingoing: IdentifierReference[] = [
@@ -59,7 +59,7 @@ export function processIfThenElse<OtherInfo>(ifThen: RIfThenElse<OtherInfo & Par
 		unknownReferences: [],
 		in:                ingoing,
 		out:               outgoing,
-		environments:      finalEnvironment,
+		environment:       finalEnvironment,
 		graph:             nextGraph
 	}
 }

@@ -10,7 +10,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 	const nextGraph = processedAccessed.graph
 	const outgoing = processedAccessed.out
 	const ingoing = processedAccessed.in
-	let environments = processedAccessed.environments
+	let environment = processedAccessed.environment
 
 	const accessedNodes = processedAccessed.unknownReferences
 
@@ -19,7 +19,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 			if(!access?.value) {
 				continue
 			}
-			data = { ...data, environments }
+			data = { ...data, environment: environment }
 			const processedAccess = processDataflowFor(access, data)
 
 			nextGraph.mergeWith(processedAccess.graph)
@@ -31,7 +31,7 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
 				}
 			}
 			ingoing.push(...processedAccess.in, ...processedAccess.unknownReferences)
-			environments = processedAccess.environments
+			environment = processedAccess.environment
 		}
 	}
 
@@ -47,10 +47,10 @@ export function processAccess<OtherInfo>(node: RAccess<OtherInfo & ParentInforma
      * ```
      * the read for a will use both accesses as potential definitions and not just the last one!
      */
-		unknownReferences: makeAllMaybe(processedAccessed.unknownReferences, nextGraph, environments),
+		unknownReferences: makeAllMaybe(processedAccessed.unknownReferences, nextGraph, environment),
 		in:                ingoing,
 		out:               outgoing,
-		environments:      environments,
+		environment:       environment,
 		graph:             nextGraph
 	}
 }

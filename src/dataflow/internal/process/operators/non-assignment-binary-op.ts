@@ -3,7 +3,7 @@ import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
 import { linkIngoingVariablesInSameScope } from '../../linker'
 import type { ParentInformation, RBinaryOp } from '../../../../r-bridge'
-import { appendEnvironments, overwriteEnvironments } from '../../../environments'
+import { appendEnvironment, overwriteEnvironment } from '../../../environments'
 
 const logicalOperators = new Set(['&&', '||', '&', '|'])
 
@@ -15,13 +15,13 @@ export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo 
 	const nextGraph = lhs.graph.mergeWith(rhs.graph)
 	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
-	const merger = logicalOperators.has(op.operator) ? appendEnvironments : overwriteEnvironments
+	const merger = logicalOperators.has(op.operator) ? appendEnvironment : overwriteEnvironment
 
 	return {
 		unknownReferences: [], // binary ops require reads as without assignments there is no definition
 		in:                ingoing,
 		out:               [...lhs.out, ...rhs.out],
-		environments:      merger(lhs.environments, rhs.environments),
+		environment:       merger(lhs.environment, rhs.environment),
 		graph:             nextGraph
 	}
 }

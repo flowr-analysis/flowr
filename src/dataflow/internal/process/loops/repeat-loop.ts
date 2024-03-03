@@ -15,7 +15,7 @@ export function processRepeatLoop<OtherInfo>(loop: RRepeatLoop<OtherInfo & Paren
 		unknownReferences: [],
 		in:                [...body.in, ...body.unknownReferences],
 		out:               body.out,
-		environments:      body.environments,
+		environment:       body.environment,
 		graph:             body.graph
 	}
 }

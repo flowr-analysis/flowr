@@ -30,7 +30,7 @@ export function processFunctionArgument<OtherInfo>(
 
 	const argContent = argument.name?.content
 	const argumentName = argContent ?? `${UnnamedArgumentPrefix}${argument.info.id}`
-	graph.addVertex({ tag: 'use', id: argument.info.id, name: argumentName, environment: data.environments, when: 'always' })
+	graph.addVertex({ tag: 'use', id: argument.info.id, name: argumentName, environment: data.environment, when: 'always' })
 
 	const ingoingRefs = [...value?.unknownReferences ?? [], ...value?.in ?? [], ...(name === undefined ? [] : [...name.in])]
 
@@ -48,6 +48,6 @@ export function processFunctionArgument<OtherInfo>(
 		// , ...value.out, ...(name?.out ?? [])
 		out:               [ { name: argumentName, nodeId: argument.info.id, used: 'always' } ],
 		graph:             graph,
-		environments:      value?.environments ?? data.environments
+		environment:       value?.environment ?? data.environment
 	}
 }

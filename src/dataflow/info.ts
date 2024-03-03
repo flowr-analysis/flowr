@@ -1,6 +1,6 @@
 import { DataflowGraph } from './graph'
 import type { REnvironmentInformation, IdentifierReference } from './environments'
-import type { DataflowProcessorInformation } from '../dataflow/processor'
+import type { DataflowProcessorInformation } from './processor'
 
 /**
  * Continuously updated during the dataflow analysis to hold the current state.
@@ -13,17 +13,17 @@ export interface DataflowInformation {
 	/** Nodes which are written to */
 	out:               IdentifierReference[]
 	/** Current environments used for name resolution, probably updated on the next expression-list processing */
-	environments:      REnvironmentInformation
+	environment:       REnvironmentInformation
 	/** The current constructed dataflow graph */
 	graph:             DataflowGraph
 }
 
-export function initializeCleanDataflowInformation<T>(data: Pick<DataflowProcessorInformation<T>, 'environments'>): DataflowInformation {
+export function initializeCleanDataflowInformation<T>(data: Pick<DataflowProcessorInformation<T>, 'environment'>): DataflowInformation {
 	return {
 		unknownReferences: [],
 		in:                [],
 		out:               [],
-		environments:      data.environments,
+		environment:       data.environment,
 		graph:             new DataflowGraph()
 	}
 }

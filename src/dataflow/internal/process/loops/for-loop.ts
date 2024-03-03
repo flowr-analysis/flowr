@@ -6,7 +6,7 @@ import {
 import type { DataflowInformation } from '../../../info'
 import type { DataflowProcessorInformation } from '../../../processor'
 import { processDataflowFor } from '../../../processor'
-import { appendEnvironments, define, makeAllMaybe, overwriteEnvironments } from '../../../environments'
+import { appendEnvironment, define, makeAllMaybe, overwriteEnvironment } from '../../../environments'
 import type { ParentInformation, RForLoop } from '../../../../r-bridge'
 import { EdgeType } from '../../../graph'
 
@@ -16,23 +16,23 @@ export function processForLoop<OtherInfo>(
 ): DataflowInformation {
 	const variable = processDataflowFor(loop.variable, data)
 	const vector = processDataflowFor(loop.vector, data)
-	let headEnvironments = overwriteEnvironments(vector.environments, variable.environments)
+	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment)
 	const headGraph= variable.graph.mergeWith(vector.graph)
 
 	const writtenVariable = variable.unknownReferences
 	for(const write of writtenVariable) {
 		headEnvironments = define({ ...write, used: 'always', definedAt: loop.info.id, kind: 'variable' }, false, headEnvironments)
 	}
-	data = { ...data, environments: headEnvironments }
+	data = { ...data, environment: headEnvironments }
 	const body = processDataflowFor(loop.body, data)
 
 	const nextGraph = headGraph.mergeWith(body.graph)
 
-	const outEnvironments = appendEnvironments(headEnvironments, body.environments)
+	const outEnvironment = appendEnvironment(headEnvironments, body.environment)
 
 	// again within an if-then-else we consider all actives to be read
 	// currently i add it at the end, but is this correct?
-	const ingoing = [...vector.in, ...makeAllMaybe(body.in, nextGraph, outEnvironments), ...vector.unknownReferences, ...makeAllMaybe(body.unknownReferences, nextGraph, outEnvironments)]
+	const ingoing = [...vector.in, ...makeAllMaybe(body.in, nextGraph, outEnvironment), ...vector.unknownReferences, ...makeAllMaybe(body.unknownReferences, nextGraph, outEnvironment)]
 
 
 	// now we have to bind all open reads with the given name to the locally defined writtenVariable!
@@ -53,7 +53,7 @@ export function processForLoop<OtherInfo>(
 		nextGraph.setDefinitionOfVertex(write)
 	}
 
-	const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph, outEnvironments)]
+	const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph, outEnvironment)]
 
 	linkIngoingVariablesInSameScope(nextGraph, ingoing)
 
@@ -65,6 +65,6 @@ export function processForLoop<OtherInfo>(
 		in:                [...variable.in, ...[...nameIdShares.values()].flat()],
 		out:               outgoing,
 		graph:             nextGraph,
-		environments:      outEnvironments
+		environment:       outEnvironment
 	}
 }

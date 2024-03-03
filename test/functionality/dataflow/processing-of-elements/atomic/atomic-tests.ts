@@ -5,7 +5,7 @@
  */
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
-import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
+import { appendEnvironment, define } from '../../../../../src/dataflow/environments'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { label } from '../../../_helper/label'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
@@ -488,7 +488,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				.defineVariable('0', 'y')
 				.defineVariable('4', 'y', { environment: environmentWithY })
 				.use('3', 'x', { environment: environmentWithY })
-				.use('8', 'y', { environment: appendEnvironments(environmentWithY, environmentWithOtherY) })
+				.use('8', 'y', { environment: appendEnvironment(environmentWithY, environmentWithOtherY) })
 				.reads('8', '0')
 				.reads('8', '4')
 				.sameDef('0', '4')

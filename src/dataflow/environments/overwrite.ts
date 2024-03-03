@@ -1,6 +1,7 @@
 import { guard } from '../../util/assert'
 import type { REnvironmentInformation, IEnvironment, IdentifierDefinition } from './environment'
-import { BuiltInEnvironment, Environment } from './environment'
+import { BuiltInEnvironment } from './environment'
+import { Environment } from './environment'
 
 function anyIsMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
 	if(values.length === 0) {
@@ -62,15 +63,15 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 }
 
 
-export function overwriteEnvironments(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation
-export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation
-export function overwriteEnvironments(base: undefined, next: undefined): undefined
-export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined
+export function overwriteEnvironment(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation
+export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation
+export function overwriteEnvironment(base: undefined, next: undefined): undefined
+export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined
 /**
  * Assumes, that all definitions within next replace those within base (given the same name).
- * <b>But</b> if all definitions within next are maybe, then they are appended to the base definitions (updating them to be `maybe` from now on as well), similar to {@link appendEnvironments}.
+ * <b>But</b> if all definitions within next are maybe, then they are appended to the base definitions (updating them to be `maybe` from now on as well), similar to {@link appendEnvironment}.
  */
-export function overwriteEnvironments(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
+export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
 	if(base === undefined) {
 		return next
 	} else if(next === undefined) {

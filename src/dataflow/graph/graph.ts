@@ -4,7 +4,7 @@ import type {
 	IdentifierDefinition,
 	IdentifierReference } from '../environments'
 import {
-	cloneEnvironments,
+	cloneEnvironmentInformation,
 	initializeCleanEnvironments
 } from '../environments'
 import type { BiMap } from '../../util/bimap'
@@ -164,7 +164,7 @@ export class DataflowGraph {
 		}
 
 		// keep a clone of the original environment
-		const environment = vertex.environment === undefined ? DataflowGraph.DEFAULT_ENVIRONMENT : cloneEnvironments(vertex.environment)
+		const environment = vertex.environment === undefined ? DataflowGraph.DEFAULT_ENVIRONMENT : cloneEnvironmentInformation(vertex.environment)
 
 		this.vertexInformation.set(vertex.id, {
 			...vertex,

@@ -1,5 +1,5 @@
 import type { IdentifierReference } from '../environments'
-import { diffIdentifierReferences, diffEnvironments } from '../environments'
+import { diffIdentifierReferences, diffEnvironmentInformation } from '../environments'
 import type { NodeId } from '../../r-bridge'
 import type { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
 import { guard } from '../../util/assert'
@@ -178,7 +178,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 			ctx.report.addComment(`Vertex ${id} has different when. ${ctx.leftname}: ${lInfo.when} vs ${ctx.rightname}: ${rInfo.when}`)
 		}
 
-		diffEnvironments(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environments. ` })
+		diffEnvironmentInformation(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environments. ` })
 
 		if(lInfo.tag === 'function-call') {
 			guard(rInfo.tag === 'function-call', 'otherInfo must be a function call as well')
@@ -192,7 +192,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 				ctx.report.addComment(`Vertex ${id} has different exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints, jsonReplacer)}`)
 			}
 
-			diffEnvironments(lInfo.subflow.environments, rInfo.subflow.environments, { ...ctx, position: `${ctx.position}Vertex ${id} (function definition) differs in subflow environments. ` })
+			diffEnvironmentInformation(lInfo.subflow.environment, rInfo.subflow.environment, { ...ctx, position: `${ctx.position}Vertex ${id} (function definition) differs in subflow environments. ` })
 			setDifference(lInfo.subflow.graph, rInfo.subflow.graph, { ...ctx, position: `${ctx.position}Vertex ${id} differs in subflow graph. ` })
 		}
 	}

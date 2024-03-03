@@ -20,11 +20,11 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		definedAt: parameter.info.id
 	}))
 
-	let environments = name.environments
+	let environment = name.environment
 	for(const writtenNode of writtenNodes) {
 		log.trace(`parameter ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' no default value'}`)
 		graph.setDefinitionOfVertex(writtenNode)
-		environments = define(writtenNode, false, environments)
+		environment = define(writtenNode, false, environment)
 
 		if(defaultValue !== undefined) {
 			if(parameter.defaultValue?.type === RType.FunctionDefinition) {
@@ -43,6 +43,6 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		in:                defaultValue === undefined ? [] : [...defaultValue.in, ...defaultValue.unknownReferences, ...name.in],
 		out:               [...(defaultValue?.out ?? []), ...name.out, ...name.unknownReferences],
 		graph:             graph,
-		environments:      environments
+		environment:       environment
 	}
 }

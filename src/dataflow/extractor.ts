@@ -12,7 +12,7 @@ import { processRepeatLoop } from './internal/process/loops/repeat-loop'
 import { processForLoop } from './internal/process/loops/for-loop'
 import { processWhileLoop } from './internal/process/loops/while-loop'
 import { processIfThenElse } from './internal/process/if-then-else'
-import { processFunctionCall } from './internal/process/functions/function-call'
+import { processFunctionCall } from './internal/process/functions/call/default-call-handling'
 import { processFunctionDefinition } from './internal/process/functions/function-definition'
 import { processFunctionParameter } from './internal/process/functions/parameter'
 import { initializeCleanEnvironments } from './environments'
@@ -49,7 +49,7 @@ export const processors: DataflowProcessors<any> = {
 export function produceDataFlowGraph<OtherInfo>(request: RParseRequest, ast: NormalizedAst<OtherInfo & ParentInformation>): DataflowInformation {
 	return processDataflowFor<OtherInfo>(ast.ast, {
 		completeAst:    ast,
-		environments:   initializeCleanEnvironments(),
+		environment:    initializeCleanEnvironments(),
 		processors,
 		currentRequest: request,
 		referenceChain: [requestFingerprint(request)]

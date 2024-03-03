@@ -18,6 +18,7 @@ import { dataflowLogger } from '../../../../../index'
 import { overwriteEnvironment } from '../../../../../environments'
 import { getConfig } from '../../../../../../config'
 import { normalize } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser'
+import { processKnownFunctionCall } from '../known-call-handling'
 
 let sourceProvider = requestProviderFromFile()
 
@@ -29,9 +30,10 @@ export function processSourceCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	information: DataflowInformation
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
+	const information = processKnownFunctionCall(name, args, rootId, data)
+
 	const sourceFile = args[0]
 
 	if(getConfig().ignoreSourceCalls) {

@@ -4,13 +4,14 @@
  *
  * @module
  */
-import type { NodeId, ParentInformation, RArgument, RFunctionArgument, RSymbol } from '../../r-bridge'
+import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../r-bridge'
 import type { DataflowGraph, DataflowGraphEdgeAttribute } from '../'
 import { resolveByName } from './resolve-by-name'
 import type { DataflowInformation } from '../info'
 import type { DataflowProcessorInformation } from '../processor'
 import { processSourceCall } from '../internal/process/functions/call/built-in/source'
 import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling'
+import { processAccess } from '../internal/process/functions/call/built-in/access'
 
 export type Identifier = string & { __brand?: 'identifier' }
 
@@ -29,8 +30,7 @@ type BuiltInIdentifierProcessor = <OtherInfo>(
 		name:   RSymbol<OtherInfo & ParentInformation>,
 		args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 		rootId: NodeId,
-		data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-		info:   DataflowInformation
+		data:   DataflowProcessorInformation<OtherInfo & ParentInformation>
 	) => DataflowInformation
 
 interface BuiltInIdentifierDefinition extends IdentifierReference {
@@ -126,7 +126,11 @@ export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
 	simpleBuiltInFunction('return', processKnownFunctionCall),
 	simpleBuiltInFunction('cat', processKnownFunctionCall),
 	simpleBuiltInFunction('print', processKnownFunctionCall),
-	simpleBuiltInFunction('source', processSourceCall)
+	simpleBuiltInFunction('source', processSourceCall),
+	simpleBuiltInFunction('[', processAccess),
+	simpleBuiltInFunction('[[', processAccess),
+	simpleBuiltInFunction('$', processAccess),
+	simpleBuiltInFunction('@', processAccess)
 ])
 /* the built-in environment is the root of all environments */
 export const BuiltInEnvironment = new Environment('built-in', undefined as unknown as IEnvironment)

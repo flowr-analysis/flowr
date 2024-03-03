@@ -3,54 +3,35 @@ import { EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import { EdgeType } from '../../../../../graph'
 import { makeAllMaybe } from '../../../../../environments'
 import { dataflowLogger } from '../../../../../index'
 import { guard } from '../../../../../../util/assert'
+import { processKnownFunctionCall } from '../known-call-handling'
 
 export function processAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	information: DataflowInformation
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
+
 	if(args.length < 2) {
 		dataflowLogger.warn(`Access ${name.content} has less than 2 arguments, skipping`)
-		return information
+		return processKnownFunctionCall(name, args, rootId, data)
 	}
 	guard(args[0] !== EmptyArgument, () => `Access ${name.content} has no source, impossible!`)
 
-	const processedAccessed = processDataflowFor(args[0], data)
-	const nextGraph = processedAccessed.graph
-	const outgoing = processedAccessed.out
-	const ingoing = processedAccessed.in
-	let environment = processedAccessed.environment
-
-	const accessedNodes = processedAccessed.unknownReferences
-
+	let information: DataflowInformation | undefined
+	// if we are here we know we are processing a built-in
 	if(name.content === '[' || name.content === '[[') {
-		for(const access of args.slice(1)) {
-			if(access === EmptyArgument) {
-				continue
-			}
-			data = { ...data, environment: environment }
-			const processedAccess = processDataflowFor(access, data)
-
-			nextGraph.mergeWith(processedAccess.graph)
-			// outgoing.push()
-			// we link to *out* instead of *in*, as access uses arguments for parsing and the arguments are defined
-			for(const newIn of [...processedAccess.out, ...processedAccess.unknownReferences]) {
-				for(const accessedNode of accessedNodes) {
-					nextGraph.addEdge(accessedNode, newIn, EdgeType.Reads, 'always')
-				}
-			}
-			ingoing.push(...processedAccess.in, ...processedAccess.unknownReferences)
-			environment = processedAccess.environment
-		}
+		information = processKnownFunctionCall(name, args, rootId, data)
+	} else {
+		// we ignore the arguments here as they are not used in the access
+		information = processDataflowFor(args[0], data)
 	}
 
 	return {
+		...information,
 		/*
      * keep active nodes in case of assignments etc.
      * We make them maybe as a kind of hack.
@@ -62,10 +43,6 @@ export function processAccess<OtherInfo>(
      * ```
      * the read for a will use both accesses as potential definitions and not just the last one!
      */
-		unknownReferences: makeAllMaybe(processedAccessed.unknownReferences, nextGraph, environment),
-		in:                ingoing,
-		out:               outgoing,
-		environment:       environment,
-		graph:             nextGraph
+		unknownReferences: makeAllMaybe(information.unknownReferences, information.graph, information.environment)
 	}
 }

@@ -1,21 +1,13 @@
 import { guard } from '../../util/assert'
 import type { NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
-import type {
-	IdentifierDefinition,
-	IdentifierReference } from '../environments'
-import {
-	cloneEnvironmentInformation,
-	initializeCleanEnvironments
-} from '../environments'
+import type { IdentifierDefinition, IdentifierReference } from '../environments'
+import { cloneEnvironmentInformation, initializeCleanEnvironments } from '../environments'
 import type { BiMap } from '../../util/bimap'
 import { log } from '../../util/log'
 import type { DataflowGraphEdge, DataflowGraphEdgeAttribute } from './edge'
 import { EdgeType } from './edge'
 import type { DataflowInformation } from '../info'
-import {
-	diffOfDataflowGraphs,
-	equalExitPoints, equalFunctionArguments
-} from './diff'
+import { diffOfDataflowGraphs, equalExitPoints, equalFunctionArguments } from './diff'
 import type {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,

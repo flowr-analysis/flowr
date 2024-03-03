@@ -11,7 +11,7 @@ import {
 import { RType, EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import type { IdentifierReference } from '../../../../../index'
+import type { DataflowGraph, IdentifierReference } from '../../../../../index'
 import { dataflowLogger, EdgeType, type IdentifierDefinition } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
@@ -52,12 +52,13 @@ export function processAssignment<OtherInfo>(
 
 	const { source, target } = extractSourceAndTarget(effectiveArgs, name)
 
+	let result = information
 	if(target?.type === RType.FunctionCall) {
 		console.log(`TODO: check replacement function with ${source.lexeme}`)
 	} else if(target.type === RType.Symbol) {
-		processAssignmentToSymbol(config.superAssignment ?? false, source, target, processedArguments as [DataflowInformation, DataflowInformation], rootId, data, information)
+		result = processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, processedArguments as [DataflowInformation, DataflowInformation], rootId, data, result)
 	}
-	return information
+	return result
 }
 
 function produceWrittenNodes(rootId: NodeId, target: DataflowInformation, isFunctionDef: boolean): IdentifierDefinition[] {
@@ -70,6 +71,7 @@ function produceWrittenNodes(rootId: NodeId, target: DataflowInformation, isFunc
 
 function processAssignmentToSymbol<OtherInfo>(
 	superAssignment: boolean,
+	name: RSymbol<OtherInfo & ParentInformation>,
 	source: RNode<OtherInfo & ParentInformation>,
 	target: RSymbol<OtherInfo & ParentInformation>,
 	[targetArg, sourceArg]: [DataflowInformation, DataflowInformation],
@@ -78,7 +80,6 @@ function processAssignmentToSymbol<OtherInfo>(
 	information: DataflowInformation
 ) {
 	const isFunctionDef = source.type === RType.FunctionDefinition
-	console.log(' symbol', target.lexeme, 'with source', source.lexeme, 'and is function def', isFunctionDef, 'and super assignment', superAssignment)
 
 	const writeNodes = produceWrittenNodes(rootId, targetArg, isFunctionDef)
 
@@ -87,7 +88,7 @@ function processAssignmentToSymbol<OtherInfo>(
 	}
 
 	const readFromSourceWritten = sourceArg.out
-	const readTargets = [...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in, ...readFromSourceWritten]
+	const readTargets: IdentifierReference[] = [{ nodeId: name.info.id, name: name.content, used: 'always' }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
 	const writeTargets = [...writeNodes, ...targetArg.out, ...readFromSourceWritten]
 
 	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment)
@@ -101,13 +102,15 @@ function processAssignmentToSymbol<OtherInfo>(
 		if(isFunctionDef) {
 			information.graph.addEdge(write, target.info.id, EdgeType.DefinedBy, 'always', true)
 		} else {
-			const impactReadTargets = determineImpactOfSource(source, readTargets)
+			const impactReadTargets = determineImpactOfSource<OtherInfo>(source, information, data, readTargets)
 
 			for(const read of impactReadTargets) {
 				information.graph.addEdge(write, read, EdgeType.DefinedBy, undefined, true)
 			}
 		}
 	}
+
+	information.graph.addEdge(name.info.id, target.info.id, EdgeType.Returns, 'always', true)
 
 	return {
 		unknownReferences: [],
@@ -119,11 +122,11 @@ function processAssignmentToSymbol<OtherInfo>(
 }
 
 /**
- * TODO: switch to returns edge!
+ * TODO: switch to track returns edge!
  * Some R-constructs like loops are known to return values completely independent of their input (loops return an invisible `NULL`).
  * This returns only those of `readTargets` that actually impact the target.
  */
-function determineImpactOfSource<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, readTargets: readonly IdentifierReference[]): Set<IdentifierReference> {
+function determineImpactOfSource<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, info: DataflowInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, readTargets: readonly IdentifierReference[]): Set<IdentifierReference> {
 	// collect all ids from the source but stop at Loops, function calls, definitions and everything which links its own return
 	// for loops this is necessary as they *always* return an invisible null, for function calls we do not know if they do
 	// yet, we need to keep the ids of these elements

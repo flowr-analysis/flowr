@@ -130,6 +130,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 		// use the current environments for processing
 		data = { ...data, environment: environment }
 		const processed = processDataflowFor(expression, data)
+
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- seems to be a bug in eslint
 		if(!foundNextOrBreak) {
 			visitAst(expression, n => {

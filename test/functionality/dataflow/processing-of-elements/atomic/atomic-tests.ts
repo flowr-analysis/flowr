@@ -4,6 +4,7 @@
  * This will not include functions!
  */
 import { assertDataflow, withShell } from '../../../_helper/shell'
+import type { FunctionArgument } from '../../../../../src/dataflow'
 import { BuiltIn, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { appendEnvironment, define } from '../../../../../src/dataflow/environments'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
@@ -218,20 +219,46 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		}
 	})
 
-	describe('assignments', () => {
+	describe('Assignments Operators', () => {
 		for(const op of AssignmentOperators) {
 			describe(`${op}`, () => {
 				const swapSourceAndTarget = op === '->' || op === '->>'
+				const id = swapSourceAndTarget ? '1' : '0'
+
+				let args: FunctionArgument[] = [
+					{ name: unnamedArgument('0-accessed'), nodeId: '0-accessed', used: 'always' },
+					{ name: unnamedArgument('1-accessed'), nodeId: '1-accessed', used: 'always' }
+				]
+				if(swapSourceAndTarget) {
+					args = args.reverse()
+				}
 
 				const constantAssignment = swapSourceAndTarget ? `5 ${op} x` : `x ${op} 5`
 				assertDataflow(`${constantAssignment} (constant assignment)`,
 					shell,
-					constantAssignment,
-					emptyGraph().defineVariable(swapSourceAndTarget ? '1' : '0', 'x')
+					constantAssignment, emptyGraph()
+						.defineVariable(id, 'x')
+						.call('2', op, args)
+						.use('0-accessed', unnamedArgument('0-accessed'))
+						.use('1-accessed', unnamedArgument('1-accessed'))
+						.argument('2', '0-accessed')
+						.argument('2', '1-accessed')
+						.reads(`${id}-accessed`, id)
+						.reads('2',  BuiltIn)
+						.returns('2', id)
 				)
 
 				const variableAssignment = `x ${op} y`
 				const dataflowGraph = emptyGraph()
+					.call('2', op, args)
+					.use('0-accessed', unnamedArgument('0-accessed'))
+					.use('1-accessed', unnamedArgument('1-accessed'))
+					.argument('2', '0-accessed')
+					.argument('2', '1-accessed')
+					.reads('1-accessed', '1')
+					.reads('0-accessed', '0')
+					.reads('2',  BuiltIn)
+					.returns('2', id)
 				if(swapSourceAndTarget) {
 					dataflowGraph
 						.use('0', 'x')
@@ -252,6 +279,15 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				const circularAssignment = `x ${op} x`
 
 				const circularGraph = emptyGraph()
+					.call('2', op, args)
+					.use('0-accessed', unnamedArgument('0-accessed'))
+					.use('1-accessed', unnamedArgument('1-accessed'))
+					.argument('2', '0-accessed')
+					.argument('2', '1-accessed')
+					.reads('1-accessed', '1')
+					.reads('0-accessed', '0')
+					.reads('2',  BuiltIn)
+					.returns('2', id)
 				if(swapSourceAndTarget) {
 					circularGraph
 						.use('0', 'x')
@@ -271,7 +307,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				)
 			})
 		}
-		describe('nested assignments', () => {
+		describe('Nested Assignments', () => {
 			assertDataflow('"x <- y <- 1"', shell,
 				'x <- y <- 1',
 				emptyGraph()

@@ -3,8 +3,8 @@ import type { NodeId, ParentInformation, RFunctionCall } from '../../../../../r-
 import { EmptyArgument, RType } from '../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
-import type { DataflowGraph } from '../../../../graph'
-import { EdgeType, type FunctionArgument } from '../../../../graph'
+import type { DataflowGraph, FunctionArgument } from '../../../../graph'
+import { EdgeType } from '../../../../graph'
 import { define, overwriteEnvironment, resolveByName } from '../../../../environments'
 import { guard } from '../../../../../util/assert'
 

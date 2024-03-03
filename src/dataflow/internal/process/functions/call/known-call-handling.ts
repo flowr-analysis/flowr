@@ -32,13 +32,11 @@ export function processKnownFunctionCall<OtherInfo>(functionCall: RNamedFunction
 	const inIds = remainingReadInArgs
 	inIds.push({ nodeId: functionRootId, name: functionCallName, used: 'always' })
 
-	const info: DataflowInformation = {
+	return {
 		unknownReferences: [],
 		in:                inIds,
 		out:               functionName.out, // we do not keep argument out as it has been linked by the function
 		graph:             finalGraph,
 		environment:       finalEnv
 	}
-
-	return info
 }

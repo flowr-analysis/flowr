@@ -177,11 +177,17 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
  * Returns the called functions within the current graph, which can be used to merge the environments with the call.
  * Furthermore, it links the corresponding arguments.
  */
-export function linkFunctionCalls(graph: DataflowGraph, idMap: DecoratedAstMap, functionCalls: [NodeId, DataflowGraphVertexInfo][], thisGraph: DataflowGraph): { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] {
+export function linkFunctionCalls(
+	graph: DataflowGraph,
+	idMap: DecoratedAstMap,
+	functionCalls: readonly [NodeId, DataflowGraphVertexInfo][],
+	thisGraph: DataflowGraph
+): { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] {
 	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = []
 	for(const [id, info] of functionCalls) {
 		guard(info.tag === 'function-call', () => `encountered non-function call in function call linkage ${JSON.stringify(info)}`)
 
+		// TODO: others
 		if(info.name === 'return') {
 			specialReturnFunction(info, graph, id)
 			graph.addEdge(id, BuiltIn, EdgeType.Calls, 'always')

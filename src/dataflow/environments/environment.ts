@@ -4,10 +4,13 @@
  *
  * @module
  */
-import type { NodeId } from '../../r-bridge'
+import type { NodeId, ParentInformation, RNamedFunctionCall } from '../../r-bridge'
 import type { DataflowGraph, DataflowGraphEdgeAttribute } from '../'
 import { resolveByName } from './resolve-by-name'
 import type { DataflowInformation } from '../info'
+import type { DataflowProcessorInformation } from '../processor'
+import { processSourceCall } from '../internal/process/functions/call/built-in/source'
+import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling'
 
 export type Identifier = string & { __brand?: 'identifier' }
 
@@ -21,10 +24,17 @@ interface InGraphIdentifierDefinition extends IdentifierReference {
 	definedAt: NodeId
 }
 
+
+type BuiltInIdentifierProcessor = <OtherInfo>(
+		node: RNamedFunctionCall<OtherInfo & ParentInformation>,
+		data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+		info: DataflowInformation
+	) => DataflowInformation
+
 interface BuiltInIdentifierDefinition extends IdentifierReference {
 	kind:      'built-in-function'
 	definedAt: typeof BuiltIn
-	process:   (node: NodeId, args: readonly DataflowInformation[], info: DataflowInformation) => DataflowInformation
+	processor: BuiltInIdentifierProcessor
 }
 
 /**
@@ -99,47 +109,22 @@ export class Environment implements IEnvironment {
 	}
 }
 
-export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
-	['return', [{
+function simpleBuiltInFunction(name: Identifier, processor: BuiltInIdentifierProcessor): [Identifier, BuiltInIdentifierDefinition[]] {
+	return [name, [{
 		kind:      'built-in-function',
 		used:      'always',
 		definedAt: BuiltIn,
-		process:   (node, args, info) => {
-			return info
-		},
-		name:   'return',
-		nodeId: BuiltIn
-	}]],
-	['cat', [{
-		kind:      'built-in-function',
-		used:      'always',
-		definedAt: BuiltIn,
-		process:   (node, args, info) => {
-			return info
-		},
-		name:   'cat',
-		nodeId: BuiltIn
-	}]],
-	['print', [{
-		kind:      'built-in-function',
-		used:      'always',
-		definedAt: BuiltIn,
-		process:   (node, args, info) => {
-			return info
-		},
-		name:   'print',
-		nodeId: BuiltIn
-	}]],
-	['source', [{
-		kind:      'built-in-function',
-		used:      'always',
-		definedAt: BuiltIn,
-		process:   (node, args, info) => {
-			return info
-		},
-		name:   'source',
-		nodeId: BuiltIn
+		processor,
+		name,
+		nodeId: 	  BuiltIn
 	}]]
+}
+
+export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
+	simpleBuiltInFunction('return', processKnownFunctionCall),
+	simpleBuiltInFunction('cat', processKnownFunctionCall),
+	simpleBuiltInFunction('print', processKnownFunctionCall),
+	simpleBuiltInFunction('source', processSourceCall)
 ])
 /* the built-in environment is the root of all environments */
 export const BuiltInEnvironment = new Environment('built-in', undefined as unknown as IEnvironment)

@@ -12,6 +12,7 @@ import type { DataflowProcessorInformation } from '../processor'
 import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling'
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access'
 import { processAssignment } from '../internal/process/functions/call/built-in/built-in-assignment'
+import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source'
 
 export type Identifier = string & { __brand?: 'identifier' }
 
@@ -144,7 +145,8 @@ function simpleBuiltInFunction<Config, Proc extends BuiltInIdentifierProcessorWi
 }
 
 export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
-	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, {},'return', 'cat', 'print', 'source'),
+	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { },'return', 'cat', 'print'),
+	...simpleBuiltInFunction(processSourceCall, { }, 'source'),
 	...simpleBuiltInFunction(processAccess, { treatIndicesAsString: false },'[', '[['),
 	...simpleBuiltInFunction(processAccess, { treatIndicesAsString: true },'$', '@'),
 	...simpleBuiltInFunction(processAssignment, { },'<-', ':=', '=', 'assign', 'delayedAssign'),

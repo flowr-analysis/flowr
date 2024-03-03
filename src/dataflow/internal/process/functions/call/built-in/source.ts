@@ -3,10 +3,8 @@ import { requestFingerprint, sourcedDeterministicCountingIdGenerator, requestPro
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor'
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import type { Identifier } from '../../../../../index'
 import { dataflowLogger } from '../../../../../index'
-import type { REnvironmentInformation } from '../../../../../environments'
-import { overwriteEnvironment, resolveByName } from '../../../../../environments'
+import { overwriteEnvironment } from '../../../../../environments'
 import { getConfig } from '../../../../../../config'
 import { normalize } from '../../../../../../r-bridge/lang-4.x/ast/parser/json/parser'
 
@@ -14,19 +12,6 @@ let sourceProvider = requestProviderFromFile()
 
 export function setSourceProvider(provider: RParseRequestProvider): void {
 	sourceProvider = provider
-}
-
-export function isSourceCall(name: Identifier, environments: REnvironmentInformation): boolean {
-	const definitions = resolveByName(name, environments)
-	if(definitions === undefined) {
-		return false
-	}
-	// fail if there are multiple definitions because then we must treat the complete import as a maybe because it might do something different
-	if(definitions.length !== 1) {
-		return false
-	}
-	const def = definitions[0]
-	return def.name == 'source' && def.kind == 'built-in-function'
 }
 
 export function processSourceCall<OtherInfo>(functionCall: RFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation): DataflowInformation {

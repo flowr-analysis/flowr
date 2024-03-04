@@ -4,15 +4,15 @@
  *
  * @module
  */
-import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../r-bridge'
-import type { DataflowGraph, DataflowGraphEdgeAttribute } from '../'
-import { resolveByName } from './resolve-by-name'
-import type { DataflowInformation } from '../info'
-import type { DataflowProcessorInformation } from '../processor'
-import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling'
-import { processAccess } from '../internal/process/functions/call/built-in/built-in-access'
-import { processAssignment } from '../internal/process/functions/call/built-in/built-in-assignment'
-import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source'
+import {EmptyArgument, NodeId, ParentInformation, RFunctionArgument, RSymbol} from '../../r-bridge'
+import {DataflowGraph, DataflowGraphEdgeAttribute, EdgeType} from '../'
+import {resolveByName} from './resolve-by-name'
+import type {DataflowInformation} from '../info'
+import type {DataflowProcessorInformation} from '../processor'
+import {processKnownFunctionCall} from '../internal/process/functions/call/known-call-handling'
+import {processAccess} from '../internal/process/functions/call/built-in/built-in-access'
+import {processAssignment} from '../internal/process/functions/call/built-in/built-in-assignment'
+import {processSourceCall} from '../internal/process/functions/call/built-in/built-in-source'
 
 export type Identifier = string & { __brand?: 'identifier' }
 
@@ -124,9 +124,17 @@ function defaultBuiltInFunctionProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: { returnsNthArgument?: number }
 ): DataflowInformation {
-	return processKnownFunctionCall(name, args, rootId, data).information
+	const res = processKnownFunctionCall(name, args, rootId, data).information
+	if(config.returnsNthArgument !== undefined) {
+		const arg = args[config.returnsNthArgument]
+		if(arg !== EmptyArgument) {
+			res.graph.addEdge(rootId, arg.info.id, EdgeType.Returns, 'always', true)
+		}
+	}
+	return res
 }
 
 function simpleBuiltInFunction<Config, Proc extends BuiltInIdentifierProcessorWithConfig<Config>>(
@@ -145,7 +153,8 @@ function simpleBuiltInFunction<Config, Proc extends BuiltInIdentifierProcessorWi
 }
 
 export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
-	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { },'return', 'cat', 'print'),
+	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { },'cat' /* returns null */),
+	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { returnsNthArgument: 1 },'return', 'print'),
 	...simpleBuiltInFunction(processSourceCall, { }, 'source'),
 	...simpleBuiltInFunction(processAccess, { treatIndicesAsString: false },'[', '[['),
 	...simpleBuiltInFunction(processAccess, { treatIndicesAsString: true },'$', '@'),

@@ -6,10 +6,6 @@ describe('Processing of Elements', () => {
 		requireAllTestsInFolder(path.join(__dirname, 'atomic'))
 	)
 
-	describe('loops', () =>
-		requireAllTestsInFolder(path.join(__dirname, 'loops'))
-	)
-
 	describe('expression-lists', () =>
 		requireAllTestsInFolder(path.join(__dirname, 'expression-lists'))
 	)

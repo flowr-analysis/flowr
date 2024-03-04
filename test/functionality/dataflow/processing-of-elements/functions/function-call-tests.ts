@@ -1,17 +1,16 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { initializeCleanEnvironments } from '../../../../../src/dataflow/environments'
 import { define, popLocalEnvironment, pushLocalEnvironment } from '../../../../../src/dataflow/environments'
 import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/internal/process/functions/function-call'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argument, argumentInCall, parameter, rFunction, unnamedArgument, variable } from '../../../_helper/environment-builder'
+import { argument, argumentInCall, globalEnvironment, parameter, rFunction, unnamedArgument, variable } from '../../../_helper/environment-builder'
 
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {
-		const envWithXParamDefined = define(parameter('x', '5', '4'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
-		const envWithFirstI = define(variable('i', '2', '0'), LocalScope, initializeCleanEnvironments())
-		const envWithIA = define(rFunction('a', '9', '3'), LocalScope, envWithFirstI)
+		const envWithXParamDefined = define(parameter('x', '5', '4'), LocalScope, pushLocalEnvironment(globalEnvironment()))
+		const envWithFirstI = globalEnvironment().addDefinition(variable('i', '2', '0'))
+		const envWithIA = envWithFirstI.addDefinition(rFunction('a', '9', '3'))
 
 		assertDataflow('Calling function a', shell, 'i <- 4; a <- function(x) { x }\na(i)',
 			emptyGraph()
@@ -28,7 +27,7 @@ describe('Function Call', withShell(shell => {
 					environments:      envWithXParamDefined,
 					graph:             new Set(['4', '6']),
 				}, { environment: popLocalEnvironment(envWithXParamDefined) })
-				.defineVariable('4', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+				.defineVariable('4', 'x', LocalScope, { environment: pushLocalEnvironment(globalEnvironment()) }, false)
 				.use('6', 'x', { environment: envWithXParamDefined }, false)
 				.reads('6', '4')
 				.reads('11', '0')
@@ -40,7 +39,7 @@ describe('Function Call', withShell(shell => {
 				.returns('13', '6')
 				.definesOnCall('12', '4')
 		)
-		const envWithIAB = define(variable('b', '12', '10'), LocalScope, envWithIA)
+		const envWithIAB = envWithIA.addDefinition(variable('b', '12', '10'))
 		assertDataflow('Calling function a with an indirection', shell, 'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
 			emptyGraph()
 				.defineVariable('0', 'i')
@@ -59,7 +58,7 @@ describe('Function Call', withShell(shell => {
 					graph:             new Set(['4', '6'])
 				}, 
 				{ environment: popLocalEnvironment(envWithXParamDefined) })
-				.defineVariable('4', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+				.defineVariable('4', 'x', LocalScope, { environment: pushLocalEnvironment(globalEnvironment()) }, false)
 				.use('6', 'x', { environment: envWithXParamDefined }, false)
 				.reads('6', '4')
 				.reads('14', '0')
@@ -73,11 +72,11 @@ describe('Function Call', withShell(shell => {
 				.returns('16', '6')
 				.definesOnCall('15', '4')
 		)
-		const envWithXConstDefined = define(parameter('x', '5' , '4'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
+		const envWithXConstDefined = define(parameter('x', '5' , '4'), LocalScope, pushLocalEnvironment(globalEnvironment()))
 
-		const envWithXDefinedForFunc = define(variable('x', '8', '6'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
-		const envWithLastXDefined = define(variable('x', '11', '9'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
-		const envWithIAndLargeA = define(rFunction('a', '15', '3'), LocalScope, envWithFirstI)
+		const envWithXDefinedForFunc = define(variable('x', '8', '6'), LocalScope, pushLocalEnvironment(globalEnvironment()))
+		const envWithLastXDefined = define(variable('x', '11', '9'), LocalScope, pushLocalEnvironment(globalEnvironment()))
+		const envWithIAndLargeA = envWithFirstI.addDefinition(rFunction('a', '15', '3'))
 
 		assertDataflow('Calling with a constant function', shell, `i <- 4
 a <- function(x) { x <- x; x <- 3; 1 }
@@ -96,9 +95,9 @@ a(i)`, emptyGraph()
 				environments:      envWithLastXDefined,
 				graph:             new Set(['4', '6', '7', '9'])
 			},
-			{ environment: initializeCleanEnvironments() }
+			{ environment: globalEnvironment() }
 			)
-			.defineVariable('4', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+			.defineVariable('4', 'x', LocalScope, { environment: pushLocalEnvironment(globalEnvironment()) }, false)
 			.defineVariable('6', 'x', LocalScope, { environment: envWithXConstDefined }, false)
 			.defineVariable('9', 'x', LocalScope, { environment: envWithXDefinedForFunc }, false)
 			.use('7', 'x', { environment: envWithXConstDefined }, false)
@@ -120,7 +119,7 @@ a(i)`, emptyGraph()
 	})
 
 	describe('Directly calling a function', () => {
-		const envWithXParameter = define(parameter('x', '1' , '0'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
+		const envWithXParameter = globalEnvironment().addEnvironment([parameter('x', '1', '0')])
 		const outGraph = emptyGraph()
 			.call('9', `${UnnamedFunctionCallPrefix}9`,[argumentInCall('8')])
 			.defineFunction('6', '6', ['4'], {
@@ -131,8 +130,8 @@ a(i)`, emptyGraph()
 				environments:      envWithXParameter,
 				graph:             new Set(['0', '2'])
 			},
-			{ environment: initializeCleanEnvironments() })
-			.defineVariable('0', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+			{ environment: globalEnvironment() })
+			.defineVariable('0', 'x', LocalScope, { environment: pushLocalEnvironment(globalEnvironment()) }, false)
 			.use('2', 'x', { environment: envWithXParameter }, false)
 			.exit('4', '+', envWithXParameter , {}, false)
 			.relates('2', '4')
@@ -152,7 +151,7 @@ a(i)`, emptyGraph()
 			outGraph
 		)
 
-		const envWithADefined = define(rFunction('a', '6', '0'), LocalScope, initializeCleanEnvironments())
+		const envWithADefined = globalEnvironment().addDefinition(rFunction('a', '6', '0'))
 
 		assertDataflow('Calling a function which returns another', shell, `a <- function() { function() { 42 } }
 a()()`,
@@ -165,21 +164,21 @@ a()()`,
 				in:                [],
 				unknownReferences: [],
 				scope:             LocalScope,
-				environments:      pushLocalEnvironment(initializeCleanEnvironments()),
+				environments:      pushLocalEnvironment(globalEnvironment()),
 				graph:             new Set(['3'])
 			},
-			{ environment: initializeCleanEnvironments() }
+			{ environment: globalEnvironment() }
 			)
 			.defineFunction('3', '3', ['1'], {
 				out:               [],
 				in:                [],
 				unknownReferences: [],
 				scope:             LocalScope,
-				environments:      pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())),
+				environments:      pushLocalEnvironment(pushLocalEnvironment(globalEnvironment())),
 				graph:             new Set()
 			},
-			{ environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
-			.exit('1', '42', pushLocalEnvironment(pushLocalEnvironment(initializeCleanEnvironments())), {}, false)
+			{ environment: pushLocalEnvironment(globalEnvironment()) }, false)
+			.exit('1', '42', pushLocalEnvironment(pushLocalEnvironment(globalEnvironment())), {}, false)
 			.calls('9', '8')
 			.reads('8', '0')
 			.definedBy('0', '5')
@@ -193,7 +192,7 @@ a()()`,
 	describe('Argument which is expression', () => {
 		assertDataflow('Calling with 1 + x', shell, 'foo(1 + x)',
 			emptyGraph()
-				.call('5', 'foo', [argumentInCall('4')], { environment: initializeCleanEnvironments() })
+				.call('5', 'foo', [argumentInCall('4')], { environment: globalEnvironment() })
 				.use('4', unnamedArgument('4'))
 				.use('2', 'x')
 				.reads('4', '2')
@@ -204,17 +203,17 @@ a()()`,
 	describe('Argument which is anonymous function call', () => {
 		assertDataflow('Calling with a constant function', shell, 'f(function() { 3 })',
 			emptyGraph()
-				.call('5', 'f', [argumentInCall('4')], { environment: initializeCleanEnvironments() })
+				.call('5', 'f', [argumentInCall('4')], { environment: globalEnvironment() })
 				.use('4', unnamedArgument('4'))
 				.defineFunction('3', '3', ['1'], {
 					out:               [],
 					in:                [],
 					unknownReferences: [],
 					scope:             LocalScope,
-					environments:      pushLocalEnvironment(initializeCleanEnvironments()),
+					environments:      pushLocalEnvironment(globalEnvironment()),
 					graph:             new Set()
 				})
-				.exit('1', '3', pushLocalEnvironment(initializeCleanEnvironments()) , {}, false)
+				.exit('1', '3', pushLocalEnvironment(globalEnvironment()) , {}, false)
 				.reads('4', '3')
 				.argument('5', '4')
 		)
@@ -223,7 +222,7 @@ a()()`,
 	describe('Multiple out refs in arguments', () => {
 		assertDataflow('Calling \'seq\'', shell, 'seq(1, length(pkgnames), by = stepsize)',
 			emptyGraph()
-				.call('11', 'seq', [argumentInCall('2'), argumentInCall('7'), argumentInCall('10', 'by')],{ environment: initializeCleanEnvironments() })
+				.call('11', 'seq', [argumentInCall('2'), argumentInCall('7'), argumentInCall('10', 'by')],{ environment: globalEnvironment() })
 				.use('2', unnamedArgument('2'))
 				.use('7', unnamedArgument('7'))
 				.use('10', 'by')
@@ -232,7 +231,7 @@ a()()`,
 				.argument('11', '10')
 				.use('9', 'stepsize' )
 				.reads('10', '9')
-				.call('6', 'length', [argumentInCall('5')], { environment: initializeCleanEnvironments() })
+				.call('6', 'length', [argumentInCall('5')], { environment: globalEnvironment() })
 				.reads('7', '6')
 				.use('5', unnamedArgument('5'))
 				.argument('6', '5')
@@ -243,9 +242,9 @@ a()()`,
 	})
 
 	describe('Late function bindings', () => {
-		const innerEnv = pushLocalEnvironment(initializeCleanEnvironments())
-		const defWithA = define(rFunction('a', '4', '0'), LocalScope, initializeCleanEnvironments())
-		const defWithAY = define(variable('y', '7', '5'), LocalScope, defWithA)
+		const innerEnv = pushLocalEnvironment(globalEnvironment())
+		const defWithA = globalEnvironment().addDefinition(rFunction('a', '4', '0'))
+		const defWithAY = defWithA.addDefinition(variable('y', '7', '5'))
 
 		assertDataflow('Late binding of y', shell, 'a <- function() { y }\ny <- 12\na()',
 			emptyGraph()
@@ -270,9 +269,10 @@ a()()`,
 	})
 
 	describe('Deal with empty calls', () => {
-		const withXParameter = define(parameter('x', '3', '1'), LocalScope, pushLocalEnvironment(initializeCleanEnvironments()))
-		const withXYParameter = define(parameter('y', '5' , '4'), LocalScope, withXParameter)
-		const withADefined = define(rFunction('a', '9', '0'), LocalScope, initializeCleanEnvironments())
+		const withXParameter = globalEnvironment()
+			.addEnvironment([parameter('x', '3', '1')])
+		const withXYParameter = withXParameter.addDefinition(parameter('y', '5' , '4'))
+		const withADefined = globalEnvironment().addDefinition(rFunction('a', '9', '0'))
 
 		assertDataflow('Not giving first parameter', shell, `a <- function(x=3,y) { y }
 a(,3)`, emptyGraph()
@@ -291,7 +291,7 @@ a(,3)`, emptyGraph()
 				graph:             new Set(['1', '4', '6'])
 			},
 			{ environment: popLocalEnvironment(withXYParameter) })
-			.defineVariable('1', 'x', LocalScope, { environment: pushLocalEnvironment(initializeCleanEnvironments()) }, false)
+			.defineVariable('1', 'x', LocalScope, { environment: pushLocalEnvironment(globalEnvironment()) }, false)
 			.defineVariable('4', 'y', LocalScope, { environment: withXParameter }, false)
 			.use('6', 'y', { environment: withXYParameter }, false)
 			.reads('6', '4')
@@ -305,7 +305,7 @@ a(,3)`, emptyGraph()
 		)
 	})
 	describe('Reuse parameters in call', () => {
-		const envWithX = define(argument('x', '3', '3'), LocalScope, initializeCleanEnvironments())
+		const envWithX = globalEnvironment().addDefinition(argument('x', '3', '3'))
 		assertDataflow('Not giving first argument', shell, 'a(x=3, x)', emptyGraph()
 			.call('6', 'a', [argumentInCall('3', 'x'), argumentInCall('5')])
 			.use('3', 'x')
@@ -322,7 +322,7 @@ a(,3)`, emptyGraph()
 			.call('5', 'foo', [argumentInCall('4')])
 			.use('4', unnamedArgument('4'))
 			.defineVariable('1', 'x')
-			.use('6', 'x', { environment: define(variable('x', '3', '1'), LocalScope, initializeCleanEnvironments()) })
+			.use('6', 'x', { environment: globalEnvironment().addDefinition(variable('x', '3', '1')) })
 			.argument('5', '4')
 			.reads('4', '1')
 			.reads('6', '1')

@@ -1,7 +1,7 @@
 import type { NodeId } from '../../../src/r-bridge'
-import type { DataflowGraphEdgeAttribute as WhenUsed, FunctionArgument, IdentifierDefinition } from '../../../src/dataflow'
-import type { DataflowScopeName as RScope } from '../../../src/dataflow/environments'
-import { LocalScope } from '../../../src/dataflow/environments/scopes'
+import type { DataflowGraphEdgeAttribute as WhenUsed, FunctionArgument, IdentifierDefinition, REnvironmentInformation, IEnvironment } from '../../../src/dataflow'
+import { define, Environment, initializeCleanEnvironments, pushLocalEnvironment, type DataflowScopeName as RScope } from '../../../src/dataflow/environments'
+import { GlobalScope, LocalScope } from '../../../src/dataflow/environments/scopes'
 import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 
 export function variable(name: string, definedAt: NodeId, nodeId: NodeId = '_0', scope: RScope = LocalScope, used: WhenUsed = 'always'): IdentifierDefinition {
@@ -37,4 +37,43 @@ export function argumentInCall(nodeId: NodeId, name?: string, scope: RScope = Lo
 
 export function unnamedArgument(id: NodeId) {
 	return `${UnnamedArgumentPrefix}${id}`
+}
+
+/**
+ * The constant global environment.
+ */
+export const globalEnvironment = () => new EnvironmentBuilder()
+
+/**
+ * EnvironmentBuilder extends REnvironmentInformation with builder pattern methods.
+ */
+export class EnvironmentBuilder implements REnvironmentInformation {
+	/**
+	 * Use global environment.
+	 */
+	current: Environment = new Environment(GlobalScope)
+	/**
+	 * Level is 0.
+	 */
+	level:   number = 0
+
+	/**
+	 * Adds definitions to the current environment.
+	 * @param def - Definition to add.
+	 */
+	addDefinition(def: IdentifierDefinition) {
+		return define(def, def.scope, this) as EnvironmentBuilder
+	}
+
+	/**
+	 * Adds a new, local environment on the environment stack and returns it.
+	 * @param definitions - Definitions to add to the local environment.
+	 */
+	addEnvironment(definitions: IdentifierDefinition[] = []): EnvironmentBuilder {
+		let newEnvironment = pushLocalEnvironment(this) as EnvironmentBuilder
+		for(const def of definitions) {
+			newEnvironment = newEnvironment.addDefinition(def)
+		}
+		return newEnvironment
+	}
 }

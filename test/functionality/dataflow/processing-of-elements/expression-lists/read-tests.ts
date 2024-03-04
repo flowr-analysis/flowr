@@ -1,10 +1,8 @@
 import type { NodeId } from '../../../../../src/r-bridge'
-import { initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { define } from '../../../../../src/dataflow/environments'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { variable } from '../../../_helper/environment-builder'
+import { globalEnvironment, variable } from '../../../_helper/environment-builder'
 
 describe('Lists with variable references', withShell(shell => {
 	describe('read-read same variable', () => {
@@ -44,7 +42,7 @@ describe('Lists with variable references', withShell(shell => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
 			emptyGraph()
 				.defineVariable(id1, 'x')
-				.defineVariable(id2, 'x', LocalScope, { environment: define(variable('x', definedAt, id1), LocalScope, initializeCleanEnvironments()) })
+				.defineVariable(id2, 'x', LocalScope, { environment: globalEnvironment().addDefinition(variable('x', definedAt, id1)) })
 				.sameDef(id1, id2)
 		assertDataflow('directly together', shell,
 			'x <- 1\nx <- 2',
@@ -71,8 +69,8 @@ describe('Lists with variable references', withShell(shell => {
 			'x <- 1\nx <- 3\n3\nx <- 9',
 			emptyGraph()
 				.defineVariable('0', 'x')
-				.defineVariable('3', 'x', LocalScope, { environment: define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments()) })
-				.defineVariable('7', 'x', LocalScope, { environment: define(variable('x', '5', '3'), LocalScope, initializeCleanEnvironments()) })
+				.defineVariable('3', 'x', LocalScope, { environment: globalEnvironment().addDefinition(variable('x', '2', '0')) })
+				.defineVariable('7', 'x', LocalScope, { environment: globalEnvironment().addDefinition(variable('x', '5', '3')) })
 				.sameDef('0', '3')
 				.sameDef('3', '7')
 		)
@@ -81,7 +79,7 @@ describe('Lists with variable references', withShell(shell => {
 		const sameGraph = (id1: NodeId, id2: NodeId, definedAt: NodeId) =>
 			emptyGraph()
 				.defineVariable(id1, 'x')
-				.use(id2, 'x', { environment: define(variable('x', definedAt, id1), LocalScope, initializeCleanEnvironments()) })
+				.use(id2, 'x', { environment: globalEnvironment().addDefinition(variable('x', definedAt, id1)) })
 				.reads(id2, id1)
 		assertDataflow('directly together', shell,
 			'x <- 1\nx',
@@ -103,8 +101,8 @@ describe('Lists with variable references', withShell(shell => {
 			'x <- 2; x <- 3; x',
 			emptyGraph()
 				.defineVariable('0', 'x')
-				.defineVariable('3', 'x', LocalScope,  { environment: define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments()) })
-				.use('6', 'x', { environment: define(variable('x', '5', '3'), LocalScope, initializeCleanEnvironments()) })
+				.defineVariable('3', 'x', LocalScope,  { environment: globalEnvironment().addDefinition(variable('x', '2', '0')) })
+				.use('6', 'x', { environment: globalEnvironment().addDefinition(variable('x', '5', '3')) })
 				.reads('6', '3')
 				.sameDef('0', '3')
 		)
@@ -112,9 +110,9 @@ describe('Lists with variable references', withShell(shell => {
 			'x <- 2; x <- x; x',
 			emptyGraph()
 				.defineVariable('0', 'x')
-				.defineVariable('3', 'x', LocalScope, { environment: define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments()) })
-				.use('4', 'x' , { environment: define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments()) })
-				.use('6', 'x',  { environment: define(variable('x', '5', '3'), LocalScope, initializeCleanEnvironments()) })
+				.defineVariable('3', 'x', LocalScope, { environment: globalEnvironment().addDefinition(variable('x', '2', '0')) })
+				.use('4', 'x' , { environment: globalEnvironment().addDefinition(variable('x', '2', '0')) })
+				.use('6', 'x',  { environment: globalEnvironment().addDefinition(variable('x', '5', '3')) })
 				.reads('4', '0')
 				.definedBy('3', '4')
 				.sameDef('0', '3')
@@ -125,8 +123,8 @@ describe('Lists with variable references', withShell(shell => {
 			emptyGraph()
 				.defineVariable('0', 'x')
 				.use('1', 'x')
-				.defineVariable('3', 'x', LocalScope, { environment: define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments()) })
-				.use('4', 'x', { environment: define(variable('x', '2', '0'), LocalScope, initializeCleanEnvironments()) })
+				.defineVariable('3', 'x', LocalScope, { environment: globalEnvironment().addDefinition(variable('x', '2', '0')) })
+				.use('4', 'x', { environment: globalEnvironment().addDefinition(variable('x', '2', '0')) })
 				.definedBy('0', '1')
 				.definedBy('3', '4')
 				.reads('4', '0')

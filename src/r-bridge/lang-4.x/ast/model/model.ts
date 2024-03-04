@@ -58,7 +58,7 @@ interface Source {
 }
 
 /**
- * Provides the common base of all {@link RNode | RNodes}.
+ * Provides the common base of all {@link RNode|RNodes}.
  *
  * @typeParam Info       - can be used to store additional information about the node
  * @typeParam LexemeType - the type of the lexeme, probably always a `string` or `string | undefined`

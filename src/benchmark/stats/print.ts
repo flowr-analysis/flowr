@@ -85,7 +85,7 @@ function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string 
 
 /**
  * Converts the given stats to a human-readable string.
- * You may have to {@link summarizeSlicerStats | summarize} the stats first.
+ * You may have to {@link summarizeSlicerStats|summarize} the stats first.
  */
 export function stats2string(stats: SummarizedSlicerStats): string {
 	let result = `

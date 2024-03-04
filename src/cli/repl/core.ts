@@ -73,7 +73,7 @@ export async function replProcessAnswer(output: ReplOutput, expr: string, shell:
  * - Starting with anything else, indicating default R code to be directly executed. If you kill the underlying shell, that is on you! </li>
  *
  * @param shell       - The shell to use, if you do not pass one it will automatically create a new one with the `revive` option set to 'always'
- * @param rl          - A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput | `output` } interface.
+ * @param rl          - A potentially customized readline interface to be used for the repl to *read* from the user, we write the output with the {@link ReplOutput|`output` } interface.
  *                      If you want to provide a custom one but use the same `completer`, refer to {@link replCompleter}.
  *                      For the default arguments, see {@link DEFAULT_REPL_READLINE_CONFIGURATION}.
  * @param output      - Defines two methods that every function in the repl uses to output its data.

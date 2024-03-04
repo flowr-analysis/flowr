@@ -1,6 +1,6 @@
 import type { NodeId } from '../../../src/r-bridge'
-import type { DataflowGraphEdgeAttribute as WhenUsed, FunctionArgument, IdentifierDefinition, REnvironmentInformation, IEnvironment } from '../../../src/dataflow'
-import { define, Environment, initializeCleanEnvironments, pushLocalEnvironment, type DataflowScopeName as RScope } from '../../../src/dataflow/environments'
+import type { DataflowGraphEdgeAttribute as WhenUsed, FunctionArgument, IdentifierDefinition, REnvironmentInformation } from '../../../src/dataflow'
+import { define, Environment, pushLocalEnvironment, type DataflowScopeName as RScope } from '../../../src/dataflow/environments'
 import { GlobalScope, LocalScope } from '../../../src/dataflow/environments/scopes'
 import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 

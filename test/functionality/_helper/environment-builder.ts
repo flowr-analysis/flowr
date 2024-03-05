@@ -1,6 +1,6 @@
 import type { NodeId } from '../../../src/r-bridge'
 import type { DataflowGraphEdgeAttribute as WhenUsed, FunctionArgument, IdentifierDefinition, REnvironmentInformation, Identifier } from '../../../src/dataflow'
-import { DefaultEnvironmentMemory, define, Environment, pushLocalEnvironment, type DataflowScopeName as RScope } from '../../../src/dataflow/environments'
+import { appendEnvironments, DefaultEnvironmentMemory, define, Environment, popLocalEnvironment, pushLocalEnvironment, type DataflowScopeName as RScope } from '../../../src/dataflow/environments'
 import { GlobalScope, LocalScope } from '../../../src/dataflow/environments/scopes'
 import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 
@@ -86,5 +86,23 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 			newEnvironment = define(def, def.scope, newEnvironment)
 		}
 		return new EnvironmentBuilder(newEnvironment.current, newEnvironment.level)
+	}
+
+	/**
+	 * Pops the last environment (must be local) from the environment stack.
+	 */
+	pop(): EnvironmentBuilder {
+		const underlyingEnv = popLocalEnvironment(this)
+		return new EnvironmentBuilder(underlyingEnv.current, underlyingEnv.level)
+	}
+
+	/**
+	 * Appends the writes in other to the given environment
+	 * (i.e. those _may_ happen).
+	 * @param other - The next environment.
+	 */
+	appendWritesOf(other: REnvironmentInformation) {
+		const appendedEnv = appendEnvironments(this, other)
+		return new EnvironmentBuilder(appendedEnv.current, appendedEnv.level)
 	}
 }

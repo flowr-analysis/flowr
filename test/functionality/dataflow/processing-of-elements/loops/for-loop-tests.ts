@@ -1,5 +1,4 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { appendEnvironments } from '../../../../../src/dataflow/environments'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { clearEnvironment, variable } from '../../../_helper/environment-builder'
@@ -29,7 +28,7 @@ x`,
 				.defineVariable('0', 'x')
 				.defineVariable('7', 'x', LocalScope, { environment: withXDefined })
 				.use('3', 'z', { environment: withXDefined })
-				.use('12', 'x', { environment: appendEnvironments(withXDefined, otherXDefined) })
+				.use('12', 'x', { environment: withXDefined.appendWritesOf(otherXDefined) })
 				.reads('12', '0', 'always')
 				.reads('12', '7', 'maybe')
 				.sameDef('0', '7', 'maybe')
@@ -70,7 +69,7 @@ x`,
 			.defineVariable('0', 'x')
 			.defineVariable('3', 'i', LocalScope, { environment: envWithFirstX() })
 			.defineVariable('7', 'x', LocalScope, { when: 'maybe', environment: envInFor() })
-			.use('12', 'x', { environment: appendEnvironments(envOutFor(), envWithSecondX()) })
+			.use('12', 'x', { environment: envOutFor().appendWritesOf(envWithSecondX()) })
 			.reads('12', '0')
 			.reads('12', '7', 'maybe')
 			.sameDef('0', '7', 'maybe')
@@ -83,7 +82,7 @@ x`,
 			.defineVariable('3', 'i', LocalScope, { environment: envWithFirstX() })
 			.defineVariable('7', 'x', LocalScope, { when: 'maybe', environment: envInFor() })
 			.use('8', 'x', { when: 'maybe', environment: envInFor() })
-			.use('12', 'x', { environment: appendEnvironments(envOutFor(), envWithSecondX()) })
+			.use('12', 'x', { environment: envOutFor().appendWritesOf(envWithSecondX()) })
 			.reads('12', '0')
 			.reads('12', '7', 'maybe')
 			.reads('8', '0', 'maybe')
@@ -106,7 +105,7 @@ x`,
 			.use('8', 'x', { when: 'maybe', environment: envInLargeFor() })
 			.defineVariable('10', 'x', LocalScope, { when: 'maybe', environment: envInLargeFor2() })
 			.use('11', 'x', /* this is wrong, but uncertainty is not fully supported in the impl atm.*/ { environment: envInLargeFor2() })
-			.use('15', 'x',{ environment: appendEnvironments(envWithFirstX(), envOutLargeFor()) })
+			.use('15', 'x',{ environment: envWithFirstX().appendWritesOf(envOutLargeFor()) })
 			.reads('11', '7')// second x <- *x* always reads first *x* <- x
 			.reads('8', '0', 'maybe')
 			.reads('8', '10', 'maybe')
@@ -130,7 +129,7 @@ x`,
 			.defineVariable('0', 'i')
 			.defineVariable('5', 'i', LocalScope, { when: 'maybe', environment: forLoopWithI() })
 			.use('4', 'i', { when: 'maybe', environment: forLoopWithI() })
-			.use('10', 'i', { environment: appendEnvironments(forLoopWithIAfter(), forLoopAfterI()) })
+			.use('10', 'i', { environment: forLoopWithIAfter().appendWritesOf(forLoopAfterI()) })
 			.reads('4', '0', 'maybe')
 			.reads('10', '5', 'maybe')
 			.reads('10', '0', 'maybe')

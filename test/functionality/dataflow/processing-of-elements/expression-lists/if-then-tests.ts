@@ -1,5 +1,4 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { appendEnvironments } from '../../../../../src/dataflow/environments'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { clearEnvironment, variable } from '../../../_helper/environment-builder'
@@ -74,7 +73,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 						.use('0', 'z', { scope })
 						.defineVariable('1', 'x', scope, { when: 'maybe' })
 						.defineVariable('5', 'x', scope, { when: 'maybe' })
-						.use('10', 'x', { environment: appendEnvironments(whenEnvironment, otherwiseEnvironment) })
+						.use('10', 'x', { environment: whenEnvironment.appendWritesOf(otherwiseEnvironment) })
 						.reads('10', '1', 'maybe')
 						.reads('10', '5', 'maybe')
 				)

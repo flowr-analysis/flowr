@@ -1,5 +1,4 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { popLocalEnvironment } from '../../../../../src/dataflow/environments'
 import { UnnamedFunctionCallPrefix } from '../../../../../src/dataflow/internal/process/functions/function-call'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
@@ -26,7 +25,7 @@ describe('Function Call', withShell(shell => {
 					scope:             LocalScope,
 					environments:      envWithXParamDefined,
 					graph:             new Set(['4', '6']),
-				}, { environment: popLocalEnvironment(envWithXParamDefined) })
+				}, { environment: envWithXParamDefined.pop() })
 				.defineVariable('4', 'x', LocalScope, { environment: clearEnvironment().push() }, false)
 				.use('6', 'x', { environment: envWithXParamDefined }, false)
 				.reads('6', '4')
@@ -57,7 +56,7 @@ describe('Function Call', withShell(shell => {
 					environments:      envWithXParamDefined,
 					graph:             new Set(['4', '6'])
 				}, 
-				{ environment: popLocalEnvironment(envWithXParamDefined) })
+				{ environment: envWithXParamDefined.pop() })
 				.defineVariable('4', 'x', LocalScope, { environment: clearEnvironment().push() }, false)
 				.use('6', 'x', { environment: envWithXParamDefined }, false)
 				.reads('6', '4')
@@ -289,7 +288,7 @@ a(,3)`, emptyGraph()
 				environments:      withXYParameter,
 				graph:             new Set(['1', '4', '6'])
 			},
-			{ environment: popLocalEnvironment(withXYParameter) })
+			{ environment: withXYParameter.pop() })
 			.defineVariable('1', 'x', LocalScope, { environment: clearEnvironment().push() }, false)
 			.defineVariable('4', 'y', LocalScope, { environment: withXParameter }, false)
 			.use('6', 'y', { environment: withXYParameter }, false)

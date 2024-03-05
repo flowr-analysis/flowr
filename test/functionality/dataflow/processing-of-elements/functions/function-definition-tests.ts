@@ -1,8 +1,5 @@
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { BuiltIn } from '../../../../../src/dataflow'
-import {
-	popLocalEnvironment
-} from '../../../../../src/dataflow/environments'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
 import { argumentInCall, clearEnvironment, parameter, rFunction, unnamedArgument, variable } from '../../../_helper/environment-builder'
@@ -179,7 +176,7 @@ describe('Function Definition', withShell(shell => {
 					graph:             new Set(['0']),
 					environments:      envWithXDefinedGlobal
 				},
-				{ environment: popLocalEnvironment(envWithXDefinedGlobal) }
+				{ environment: envWithXDefinedGlobal.pop() }
 				)
 				.defineVariable('0', 'x', GlobalScope, { environment: clearEnvironment().push() }, false)
 				.exit('2', '<<-', envWithXDefinedGlobal, {}, false)
@@ -197,7 +194,7 @@ describe('Function Definition', withShell(shell => {
 					graph:             new Set(['1']),
 					environments:      envWithXDefinedGlobalR
 				},
-				{ environment: popLocalEnvironment(envWithXDefinedGlobalR) }
+				{ environment: envWithXDefinedGlobalR.pop() }
 				)
 				.defineVariable('1', 'x', GlobalScope, { environment: clearEnvironment().push() }, false)
 				.exit('2', '->>', envWithXDefinedGlobalR, {}, false)

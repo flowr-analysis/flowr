@@ -1,6 +1,6 @@
 import type { NodeId } from '../../../src/r-bridge'
-import type { DataflowGraphEdgeAttribute as WhenUsed, FunctionArgument, IdentifierDefinition, REnvironmentInformation } from '../../../src/dataflow'
-import { define, Environment, pushLocalEnvironment, type DataflowScopeName as RScope } from '../../../src/dataflow/environments'
+import type { DataflowGraphEdgeAttribute as WhenUsed, FunctionArgument, IdentifierDefinition, REnvironmentInformation, Identifier } from '../../../src/dataflow'
+import { DefaultEnvironmentMemory, define, Environment, pushLocalEnvironment, type DataflowScopeName as RScope } from '../../../src/dataflow/environments'
 import { GlobalScope, LocalScope } from '../../../src/dataflow/environments/scopes'
 import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 
@@ -40,9 +40,14 @@ export function unnamedArgument(id: NodeId) {
 }
 
 /**
- * The constant global environment.
+ * The constant global environment with all pre-defined functions.
  */
-export const globalEnvironment = () => new EnvironmentBuilder()
+export const clearEnvironment = () => {
+	const builtIns = new Map<Identifier, IdentifierDefinition[]>(DefaultEnvironmentMemory)
+	const globalEnv = new Environment(GlobalScope)
+	globalEnv.memory = builtIns
+	return new EnvironmentBuilder(globalEnv, 0)
+}
 
 /**
  * EnvironmentBuilder extends REnvironmentInformation with builder pattern methods.
@@ -51,29 +56,35 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	/**
 	 * Use global environment.
 	 */
-	current: Environment = new Environment(GlobalScope)
+	current: Environment
 	/**
 	 * Level is 0.
 	 */
-	level:   number = 0
+	level:   number
+
+	constructor(env: Environment, level: number) {
+		this.current = env
+		this.level = level
+	}
 
 	/**
 	 * Adds definitions to the current environment.
 	 * @param def - Definition to add.
 	 */
-	addDefinition(def: IdentifierDefinition) {
-		return define(def, def.scope, this) as EnvironmentBuilder
+	define(def: IdentifierDefinition) {
+		const envWithDefinition = define(def, def.scope, this)
+		return new EnvironmentBuilder(envWithDefinition.current, envWithDefinition.level)
 	}
 
 	/**
 	 * Adds a new, local environment on the environment stack and returns it.
 	 * @param definitions - Definitions to add to the local environment.
 	 */
-	addEnvironment(definitions: IdentifierDefinition[] = []): EnvironmentBuilder {
-		let newEnvironment = pushLocalEnvironment(this) as EnvironmentBuilder
+	push(definitions: IdentifierDefinition[] = []): EnvironmentBuilder {
+		let newEnvironment = pushLocalEnvironment(this)
 		for(const def of definitions) {
-			newEnvironment = newEnvironment.addDefinition(def)
+			newEnvironment = define(def, def.scope, newEnvironment)
 		}
-		return newEnvironment
+		return new EnvironmentBuilder(newEnvironment.current, newEnvironment.level)
 	}
 }

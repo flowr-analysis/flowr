@@ -140,15 +140,15 @@ export function diffFunctionArguments(a: false | FunctionArgument[], b: false | 
 		if(Array.isArray(aArg) && Array.isArray(bArg)) {
 			// must have same name
 			if(aArg[0] !== bArg[0]) {
-				ctx.report.addComment(`${ctx.position}In the ${i}th argument (of ${ctx.leftname}, named) the name differs: ${aArg[0]} vs ${bArg[0]}.`)
+				ctx.report.addComment(`${ctx.position }In argument #${i} (of ${ctx.leftname}, named) the name differs: ${aArg[0]} vs ${bArg[0]}.`)
 				continue
 			}
 			diffFunctionArgumentsReferences(aArg[1], bArg[1], {
 				...ctx,
-				position: `${ctx.position} In the ${i}th argument (of ${ctx.leftname}, named). `
+				position: `${ctx.position} In argument #${i} (of ${ctx.leftname}, named). `
 			})
 		} else {
-			diffFunctionArgumentsReferences(aArg as PositionalFunctionArgument, bArg as PositionalFunctionArgument, { ...ctx, position: `${ctx.position} In the ${i}th argument (of ${ctx.leftname}, unnamed).` })
+			diffFunctionArgumentsReferences(aArg as PositionalFunctionArgument, bArg as PositionalFunctionArgument, { ...ctx, position: `${ctx.position} In argument #${i} (of ${ctx.leftname}, unnamed).` })
 		}
 	}
 }

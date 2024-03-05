@@ -10,7 +10,7 @@ export function toUnnamedArgument<OtherInfo>(node: RNode<OtherInfo & ParentInfor
 		location: node.location ?? rangeFrom(-1, -1, -1, -1),
 		info:     {
 			...node.info,
-			id: node.info.id + '-accessed'
+			id: node.info.id + '-arg'
 		},
 		name:  undefined,
 		value: node

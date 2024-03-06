@@ -42,7 +42,7 @@ export function unnamedArgument(id: NodeId) {
 /**
  * The constant global environment with all pre-defined functions.
  */
-export const clearEnvironment = () => {
+export const defaultEnvironment = () => {
 	const builtIns = new Map<Identifier, IdentifierDefinition[]>(DefaultEnvironmentMemory)
 	const globalEnv = new Environment(GlobalScope)
 	globalEnv.memory = builtIns
@@ -71,7 +71,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * Adds definitions to the current environment.
 	 * @param def - Definition to add.
 	 */
-	define(def: IdentifierDefinition) {
+	defineEnv(def: IdentifierDefinition) {
 		const envWithDefinition = define(def, def.scope, this)
 		return new EnvironmentBuilder(envWithDefinition.current, envWithDefinition.level)
 	}
@@ -80,7 +80,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * Adds a new, local environment on the environment stack and returns it.
 	 * @param definitions - Definitions to add to the local environment.
 	 */
-	push(definitions: IdentifierDefinition[] = []): EnvironmentBuilder {
+	pushEnv(definitions: IdentifierDefinition[] = []): EnvironmentBuilder {
 		let newEnvironment = pushLocalEnvironment(this)
 		for(const def of definitions) {
 			newEnvironment = define(def, def.scope, newEnvironment)
@@ -91,7 +91,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	/**
 	 * Pops the last environment (must be local) from the environment stack.
 	 */
-	pop(): EnvironmentBuilder {
+	popEnv(): EnvironmentBuilder {
 		const underlyingEnv = popLocalEnvironment(this)
 		return new EnvironmentBuilder(underlyingEnv.current, underlyingEnv.level)
 	}

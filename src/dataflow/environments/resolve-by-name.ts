@@ -9,6 +9,7 @@ import {
 } from './environment'
 import { dataflowLogger } from '../index'
 import { expensiveTrace } from '../../util/log'
+import {Ternary} from "../../util/logic";
 
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.
@@ -33,4 +34,31 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 
 	dataflowLogger.trace(`Unable to find identifier ${name} in stack, can be built-in`)
 	return current.memory.get(name)
+}
+
+export function resolvesToBuiltInConstant(name: Identifier | undefined, environment: REnvironmentInformation, wantedValue: unknown): Ternary {
+	if(name === undefined) {
+		return 'never'
+	}
+	const definition = resolveByName(name, environment)
+
+	if(definition === undefined) {
+		return 'never'
+	}
+
+	let all = true
+	let some = false
+	for(const def of definition) {
+		if(def.kind === 'built-in-value' && def.value === wantedValue) {
+			some = true
+		} else {
+			all = false
+		}
+	}
+
+	if(all) {
+		return 'always'
+	} else {
+		return some ? 'maybe' : 'never'
+	}
 }

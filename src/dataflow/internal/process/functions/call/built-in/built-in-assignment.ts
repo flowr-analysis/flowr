@@ -6,27 +6,22 @@ import type {
 	RSymbol
 } from '../../../../../../r-bridge'
 import {
-	collectAllIds
+	collectAllIds, RType
 } from '../../../../../../r-bridge'
-import { RType, EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import type { IdentifierReference } from '../../../../../index'
-import { dataflowLogger, EdgeType, type IdentifierDefinition } from '../../../../../index'
+import type { IdentifierReference, IdentifierDefinition } from '../../../../../index'
+import { dataflowLogger, EdgeType  } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
 import { log, LogLevel } from '../../../../../../util/log'
 import { define, overwriteEnvironment } from '../../../../../environments'
+import {unpackArgument} from "../argument/unpack-argument";
 
 function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>) {
-	const sourceArg = args[1]
-	const targetArg = args[0]
+	const source = unpackArgument(args[1])
+	const target = unpackArgument(args[0])
 
-	guard(sourceArg !== EmptyArgument, () => `Assignment ${name.content} has no source, impossible!`)
-	guard(targetArg !== EmptyArgument, () => `Assignment ${name.content} has no target, impossible!`)
-
-	const source = sourceArg.value
-	const target = targetArg.value
 	guard(source !== undefined, () => `Assignment ${name.content} has no source, impossible!`)
 	guard(target !== undefined, () => `Assignment ${name.content} has no target, impossible!`)
 

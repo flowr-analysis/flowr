@@ -13,6 +13,7 @@ import {processKnownFunctionCall} from '../internal/process/functions/call/known
 import {processAccess} from '../internal/process/functions/call/built-in/built-in-access'
 import {processAssignment} from '../internal/process/functions/call/built-in/built-in-assignment'
 import {processSourceCall} from '../internal/process/functions/call/built-in/built-in-source'
+import {processIfThenElse} from "../internal/process/functions/call/built-in/built-in-if-then-else";
 
 export type Identifier = string & { __brand?: 'identifier' }
 
@@ -48,10 +49,16 @@ interface BuiltInIdentifierDefinition extends IdentifierReference {
 	processor: BuiltInIdentifierProcessor
 }
 
+interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {
+	kind:      'built-in-value'
+	definedAt: typeof BuiltIn
+	value:     T
+}
+
 /**
  * Stores the definition of an identifier within an {@link IEnvironment}
  */
-export type IdentifierDefinition = InGraphIdentifierDefinition | BuiltInIdentifierDefinition
+export type IdentifierDefinition = InGraphIdentifierDefinition | BuiltInIdentifierDefinition | BuiltInIdentifierConstant
 
 /**
  * Something like `a` in `b <- a`.
@@ -152,12 +159,29 @@ function simpleBuiltInFunction<Config, Proc extends BuiltInIdentifierProcessorWi
 	}]])
 }
 
+
+function simpleBuiltInConstant<T>(name: Identifier, value: T): [Identifier, BuiltInIdentifierConstant<T>[]] {
+	return [name, [{
+		kind:      'built-in-value',
+		used:      'always',
+		definedAt: BuiltIn,
+		value,
+		name,
+		nodeId: BuiltIn
+	}]]
+}
+
 export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
+	simpleBuiltInConstant('NULL', null),
+	simpleBuiltInConstant('NA', null),
+	simpleBuiltInConstant('TRUE', true), simpleBuiltInConstant('T', true),
+	simpleBuiltInConstant('FALSE', false), simpleBuiltInConstant('F', false),
 	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { },'cat' /* returns null */),
 	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { returnsNthArgument: 1 },'return', 'print'),
 	...simpleBuiltInFunction(processSourceCall, { }, 'source'),
 	...simpleBuiltInFunction(processAccess, { treatIndicesAsString: false },'[', '[['),
 	...simpleBuiltInFunction(processAccess, { treatIndicesAsString: true },'$', '@'),
+	...simpleBuiltInFunction(processIfThenElse, { },'if'),
 	...simpleBuiltInFunction(processAssignment, { },'<-', ':=', '=', 'assign', 'delayedAssign'),
 	...simpleBuiltInFunction(processAssignment, { superAssignment: true },'<<-'),
 	...simpleBuiltInFunction(processAssignment, { swapSourceAndTarget: true },'->'),

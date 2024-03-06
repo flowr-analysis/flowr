@@ -4,7 +4,7 @@ import type { DataflowProcessorInformation } from '../../../processor'
 import { dataflowLogger } from '../../../index'
 import type { DataflowInformation } from '../../../info'
 import { processNamedFunctionCall } from '../functions/call/named-call-handling'
-import { toUnnamedArgument } from '../functions/call/make-argument'
+import { toUnnamedArgument } from '../functions/call/argument/make-argument'
 
 export function processAssignment<OtherInfo>(op: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)

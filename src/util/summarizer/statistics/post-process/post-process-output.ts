@@ -1,11 +1,11 @@
 import type { FeatureKey, FeatureSelection } from '../../../../statistics'
-import { ALL_FEATURES } from '../../../../statistics'
+import { ALL_FEATURES , ColorEffect, Colors, defaultStatisticsFileSuffix, FontStyles, formatter } from '../../../../statistics'
 import path from 'path'
 import { log } from '../../../log'
 import fs from 'fs'
 import type { ClusterContextIdMap, ClusterReport } from './clusterer'
 import { clusterStatisticsOutput } from './clusterer'
-import { ColorEffect, Colors, defaultStatisticsFileSuffix, FontStyles, formatter } from '../../../../statistics'
+
 import type { NodeId } from '../../../../r-bridge'
 import { deterministicCountingIdGenerator } from '../../../../r-bridge'
 import { DefaultMap } from '../../../defaultmap'

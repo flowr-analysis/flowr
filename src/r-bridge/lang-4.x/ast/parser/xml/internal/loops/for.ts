@@ -1,6 +1,6 @@
 import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
-import { childrenKey } from '../../input-format'
-import { getKeysGuarded, XmlParseError } from '../../input-format'
+import { childrenKey , getKeysGuarded, XmlParseError } from '../../input-format'
+
 import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../meta'
 import { guard } from '../../../../../../../util/assert'
 import type { ParserData } from '../../data'

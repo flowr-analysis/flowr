@@ -1,11 +1,12 @@
 import type { DeepPartial } from 'ts-essentials'
-import type { XmlBasedJson, XmlParserHooks } from '../xml'
-import { nameKey } from '../xml'
-import { attributesKey, contentKey } from '../xml'
-import { childrenKey } from '../xml'
-import { DEFAULT_PARSER_HOOKS, type ParserData } from '../xml'
-import type { IdGenerator, NoInfo } from '../../model'
-import { decorateAst, deterministicCountingIdGenerator, type NormalizedAst } from '../../model'
+import type { XmlBasedJson, XmlParserHooks , type ParserData } from '../xml'
+import { nameKey , DEFAULT_PARSER_HOOKS , attributesKey, contentKey , childrenKey } from '../xml'
+
+
+
+import { decorateAst, deterministicCountingIdGenerator } from '../../model'
+import type { IdGenerator, NoInfo , type NormalizedAst } from '../../model'
+
 import { deepMergeObject } from '../../../../../util/objects'
 import type { Entry } from './format'
 import { RootId, prepareParsedData } from './format'

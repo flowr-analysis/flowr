@@ -1,6 +1,6 @@
 import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
-import { childrenKey } from '../../input-format'
-import { getKeysGuarded } from '../../input-format'
+import { childrenKey , getKeysGuarded } from '../../input-format'
+
 import { guard } from '../../../../../../../util/assert'
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import { splitArrayOn } from '../../../../../../../util/arrays'

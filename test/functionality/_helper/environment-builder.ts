@@ -8,18 +8,6 @@ export function variable(name: string, definedAt: NodeId, nodeId: NodeId = '_0',
 	return { name, kind: 'variable', nodeId, definedAt, scope, used }
 }
 
-export function rFunction(name: string, definedAt: NodeId, nodeId: NodeId, scope: RScope = LocalScope, used: WhenUsed = 'always'): IdentifierDefinition {
-	return { name, kind: 'function', definedAt, nodeId, scope, used }
-}
-
-export function parameter(name: string, definedAt: NodeId, nodeId: NodeId, scope: RScope = LocalScope, used: WhenUsed = 'always'): IdentifierDefinition {
-	return { name, kind: 'parameter', definedAt, nodeId, scope, used }
-}
-
-export function argument(name: string, definedAt: NodeId, nodeId: NodeId, scope: RScope = LocalScope, used: WhenUsed = 'always'): IdentifierDefinition {
-	return { name, kind: 'argument', definedAt, nodeId, scope, used }
-}
-
 /**
  * Provides a FunctionArgument to use with function call vertices.
  * @param nodeId - AST Node ID
@@ -68,6 +56,54 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	}
 
 	/**
+	 * Defines a new argument in the top environment.
+	 * @param name - Argument name
+	 * @param definedAt - AST Node Id of definition
+	 * @param nodeId - AST Node ID of usage
+	 * @param scope - local (default) or optional
+	 * @param used - always (default) or optional
+	 */
+	defineArgument(name: string, definedAt: NodeId, nodeId: NodeId, scope: RScope = LocalScope, used: WhenUsed = 'always') {
+		return this.defineEnv({ name, kind: 'argument', definedAt, nodeId, scope, used })
+	}
+
+	/**
+	 * Defines a new function in the top environment.
+	 * @param name - Function name
+	 * @param definedAt - AST Node Id of definition
+	 * @param nodeId - AST Node ID of usage
+	 * @param scope - local (default) or optional
+	 * @param used - always (default) or optional
+	 */
+	defineFunction(name: string, definedAt: NodeId, nodeId: NodeId, scope: RScope = LocalScope, used: WhenUsed = 'always') {
+		return this.defineEnv({ name, kind: 'function', definedAt, nodeId, scope, used })
+	}
+
+	/**
+	 * Defines a new parameter in the top environment.
+	 * @param name - Parameter name
+	 * @param definedAt - AST Node Id of definition
+	 * @param nodeId - AST Node ID of usage
+	 * @param scope - local (default) or optional
+	 * @param used - always (default) or optional
+	 */
+	defineParameter(name: string, definedAt: NodeId, nodeId: NodeId, scope: RScope = LocalScope, used: WhenUsed = 'always') {
+		return this.defineEnv({ name, kind: 'parameter', definedAt, nodeId, scope, used })
+	}
+
+	/**
+	 * Defines a new parameter in the top environment.
+	 * @param name - Variable name
+	 * @param definedAt - AST Node Id of definition
+	 * @param nodeId - AST Node ID of usage; optional
+	 * @param scope - local (default) or optional
+	 * @param used - always (default) or optional
+	 */
+	defineVariable(name: string, definedAt: NodeId, nodeId: NodeId = '_0', scope: RScope = LocalScope, used: WhenUsed = 'always') {
+		return this.defineEnv({ name, kind: 'variable', definedAt, nodeId, scope, used })
+	}
+
+	/**
 	 * Adds definitions to the current environment.
 	 * @param def - Definition to add.
 	 */
@@ -80,11 +116,8 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * Adds a new, local environment on the environment stack and returns it.
 	 * @param definitions - Definitions to add to the local environment.
 	 */
-	pushEnv(definitions: IdentifierDefinition[] = []): EnvironmentBuilder {
-		let newEnvironment = pushLocalEnvironment(this)
-		for(const def of definitions) {
-			newEnvironment = define(def, def.scope, newEnvironment)
-		}
+	pushEnv(): EnvironmentBuilder {
+		const newEnvironment = pushLocalEnvironment(this)
 		return new EnvironmentBuilder(newEnvironment.current, newEnvironment.level)
 	}
 

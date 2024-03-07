@@ -16,7 +16,7 @@ describe('Resolve', () => {
 		})
 		it('Locally with global distract', () => {
 			let env = defaultEnvironment()
-				.defineEnv(variable('x', '_2', '_1', GlobalScope))
+				.defineVariable('x', '_2', '_1', GlobalScope)
 			const xVar = variable('x', '_1')
 			env = env.defineEnv(xVar)
 			const result = resolveByName('x', LocalScope , env)

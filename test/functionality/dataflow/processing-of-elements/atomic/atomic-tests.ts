@@ -8,7 +8,7 @@ import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argument, argumentInCall, defaultEnvironment, unnamedArgument, variable } from '../../../_helper/environment-builder'
+import { argumentInCall, defaultEnvironment, unnamedArgument } from '../../../_helper/environment-builder'
 
 describe('Atomic (dataflow information)', withShell((shell) => {
 	describe('uninteresting leafs', () => {
@@ -318,8 +318,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			})
 		})
 		describe('assignment with function call', () => {
-			const environmentWithX = defaultEnvironment()
-				.defineEnv(argument('x', '4', '4'))
+			const environmentWithX = defaultEnvironment().defineArgument('x', '4', '4')
 			assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'a <- foo(x=3,y,z)',
 				emptyGraph()
 					.defineVariable('0', 'a')
@@ -393,7 +392,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 						`if (x <- 3) ${b.func('x')}`,
 						emptyGraph()
 							.defineVariable('0', 'x', LocalScope)
-							.use('3', 'x', { when: 'maybe', environment: defaultEnvironment().defineEnv(variable('x', '2', '0')) })
+							.use('3', 'x', { when: 'maybe', environment: defaultEnvironment().defineVariable('x', '2', '0') })
 							.reads('3', '0')
 					)
 				})
@@ -453,8 +452,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		}
 	})
 	describe('inline non-strict boolean operations', () => {
-		const environmentWithY = defaultEnvironment().defineEnv(variable('y', '2', '0'))
-		const environmentWithOtherY = defaultEnvironment().defineEnv(variable('y', '6', '4'))
+		const environmentWithY = defaultEnvironment().defineVariable('y', '2', '0')
+		const environmentWithOtherY = defaultEnvironment().defineVariable('y', '6', '4')
 		assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'y <- 15; x && (y <- 13); y',
 			emptyGraph()
 				.defineVariable('0', 'y')
@@ -477,7 +476,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				'for(i in 1:10) { i }',
 				emptyGraph()
 					.defineVariable('0', 'i')
-					.use('4', 'i', { when: 'maybe', environment: defaultEnvironment().defineEnv(variable('i', '6', '0')) })
+					.use('4', 'i', { when: 'maybe', environment: defaultEnvironment().defineVariable('i', '6', '0') })
 					.reads('4', '0', 'maybe')
 			)
 		})

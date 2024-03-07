@@ -3,7 +3,7 @@ import { setSourceProvider } from '../../../../../src/dataflow/internal/process/
 import { BuiltIn, requestProviderFromFile, requestProviderFromText, sourcedDeterministicCountingIdGenerator } from '../../../../../src'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argumentInCall, defaultEnvironment, unnamedArgument, variable } from '../../../_helper/environment-builder'
+import { argumentInCall, defaultEnvironment, unnamedArgument } from '../../../_helper/environment-builder'
 
 describe('source', withShell(shell => {
 	// reset the source provider back to the default value after our tests
@@ -16,7 +16,7 @@ describe('source', withShell(shell => {
 	}
 	setSourceProvider(requestProviderFromText(sources))
 
-	const envWithSimpleN = defaultEnvironment().defineEnv(variable('N', 'simple-1:1-1:6-2', 'simple-1:1-1:6-0'))
+	const envWithSimpleN = defaultEnvironment().defineVariable('N', 'simple-1:1-1:6-2', 'simple-1:1-1:6-0')
 	assertDataflow('simple source', shell, 'source("simple")\ncat(N)', emptyGraph()
 		.defineVariable('simple-1:1-1:6-0', 'N')
 		.call('3', 'source', [argumentInCall('2')], { environment: defaultEnvironment() })
@@ -35,18 +35,18 @@ describe('source', withShell(shell => {
 	assertDataflow('multiple source', shell, 'source("simple")\nN <- 0\nsource("simple")\ncat(N)', emptyGraph()
 		.call('3', 'source', [argumentInCall('2')], { environment: defaultEnvironment() })
 		.call('10', 'source', [argumentInCall('9')],
-			{ environment: defaultEnvironment().defineEnv(variable('N', '6', '4')) })
+			{ environment: defaultEnvironment().defineVariable('N', '6', '4') })
 		.call('14', 'cat', [argumentInCall('13')],
-			{ environment: defaultEnvironment().defineEnv(variable('N', 'simple-3:1-3:6-2', 'simple-3:1-3:6-0')) })
+			{ environment: defaultEnvironment().defineVariable('N', 'simple-3:1-3:6-2', 'simple-3:1-3:6-0') })
 		.defineVariable('simple-3:1-3:6-0', 'N', LocalScope,
-			{ environment: defaultEnvironment().defineEnv(variable('N', '6', '4')) }
+			{ environment: defaultEnvironment().defineVariable('N', '6', '4') }
 		)
 		.defineVariable('simple-1:1-1:6-0', 'N')
 		.defineVariable('4', 'N', LocalScope, { environment: envWithSimpleN })
 		.use('2', unnamedArgument('2'))
-		.use('9', unnamedArgument('9'), { environment: defaultEnvironment().defineEnv(variable('N', '6', '4')) })
-		.use('13', unnamedArgument('13'), { environment: defaultEnvironment().defineEnv(variable('N', 'simple-3:1-3:6-2', 'simple-3:1-3:6-0')) })
-		.use('12', 'N', { environment: defaultEnvironment().defineEnv(variable('N', 'simple-3:1-3:6-2', 'simple-3:1-3:6-0')) })
+		.use('9', unnamedArgument('9'), { environment: defaultEnvironment().defineVariable('N', '6', '4') })
+		.use('13', unnamedArgument('13'), { environment: defaultEnvironment().defineVariable('N', 'simple-3:1-3:6-2', 'simple-3:1-3:6-0') })
+		.use('12', 'N', { environment: defaultEnvironment().defineVariable('N', 'simple-3:1-3:6-2', 'simple-3:1-3:6-0') })
 		.sameRead('3', '10')
 		.argument('3', '2')
 		.argument('14', '13')
@@ -60,7 +60,7 @@ describe('source', withShell(shell => {
 		.sameDef('4', 'simple-1:1-1:6-0')
 	)
 
-	const envWithConditionalN = defaultEnvironment().defineEnv(variable('N', 'simple-1:10-1:15-2', 'simple-1:10-1:15-0'))
+	const envWithConditionalN = defaultEnvironment().defineVariable('N', 'simple-1:10-1:15-2', 'simple-1:10-1:15-0')
 	assertDataflow('conditional', shell, 'if (x) { source("simple") }\ncat(N)', emptyGraph()
 		.defineVariable('simple-1:10-1:15-0', 'N')
 		.call('4', 'source', [argumentInCall('3')], { environment: defaultEnvironment(), when: 'maybe' })
@@ -86,7 +86,7 @@ describe('source', withShell(shell => {
 	)
 
 	const recursive2Id = (id: number) => sourcedDeterministicCountingIdGenerator('recursive2', { start: { line: 2, column: 1 }, end: { line: 2, column: 6 } }, id)()
-	const envWithX = defaultEnvironment().defineEnv(variable('x', '2', '0'))
+	const envWithX = defaultEnvironment().defineVariable('x', '2', '0')
 
 	assertDataflow('recursive source', shell, sources.recursive1, emptyGraph()
 		.call('6', 'source', [argumentInCall('5')], { environment: envWithX })

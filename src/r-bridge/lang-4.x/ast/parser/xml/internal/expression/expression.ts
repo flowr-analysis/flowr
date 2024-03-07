@@ -1,6 +1,6 @@
 import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
-import { childrenKey } from '../../input-format'
-import { getKeysGuarded } from '../../input-format'
+import { childrenKey , getKeysGuarded } from '../../input-format'
+
 import { getWithTokenType, retrieveMetaStructure } from '../meta'
 import type { ParserData } from '../../data'
 import { normalizeBasedOnType, splitComments } from '../structure'

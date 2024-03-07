@@ -1,6 +1,6 @@
 import type { NormalizedAst, ParentInformation, RAssignmentOp, RBinaryOp, RParseRequest } from '../r-bridge'
-import { requestFingerprint } from '../r-bridge'
-import { RType } from '../r-bridge'
+import { requestFingerprint , RType } from '../r-bridge'
+
 import type { DataflowInformation } from './internal/info'
 import type { DataflowProcessorInformation, DataflowProcessors } from './processor'
 import { processDataflowFor } from './processor'

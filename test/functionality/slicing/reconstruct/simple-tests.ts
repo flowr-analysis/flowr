@@ -8,7 +8,8 @@ describe('Simple', withShell(shell => {
 			'{ x <- 5 }',
 			'{ x <- 5; y <- 9 }'
 		]) {
-			assertReconstructed(code, shell, code, '0', code.includes(';') ? 'x <- 5;' : 'x <- 5')
+			//some tests fail due to removed semicollons, here it is intensional but it later causes troubles
+			assertReconstructed(code, shell, code, '0', 'x <- 5')
 		}
 	})
 	describe('Nested Assignments', () => {
@@ -37,7 +38,9 @@ describe('Simple', withShell(shell => {
 		describe('repeat', () => {
 			const pool: [string, string | string[], string][] = [
 				['repeat { x }', '0', 'repeat { x }'],
-				['repeat { x <- 5; y <- 9 }', '0', 'repeat { x <- 5;        }'],
+				//semicollon removed
+				['repeat { x <- 5; y <- 9 }', '0', 'repeat { x <- 5         }'],
+				//semicollon has to stay, otherwise the statement loses information
 				['repeat { x <- 5; y <- 9 }', ['0', '1', '4'], 'repeat { x <- 5;      9 }']
 			]
 			for(const [code, id, expected] of pool) {
@@ -51,14 +54,15 @@ describe('Simple', withShell(shell => {
 			const pool: [string, string | string[], string][] = [
 				['while(TRUE) { x }', '1', 'while(TRUE) { x }'],
 				['while(TRUE) { x <- 5 }', '1', 'while(TRUE) { x <- 5 }'],
-				['while(TRUE) { x <- 5; y <- 9 }', '1', 'while(TRUE) { x <- 5;        }'],
-				['while(TRUE) { x <- 5; y <- 9 }', '0', 'while(TRUE) {}'],
-				['while(TRUE) { x <- 5; y <- 9 }', ['0', '1'], 'while(TRUE) { x <- 5;        }'],
-				['while(TRUE) { x <- 5; y <- 9 }', ['0', '1', '2'], 'while(TRUE) { x <- 5;        }'],
-				['while(TRUE) { x <- 5; y <- 9 }', ['0', '4'], 'while(TRUE) {       ; y <- 9 }'],
+				['while(TRUE) { x <- 5; y <- 9 }', '1', 'while(TRUE) { x <- 5         }'],
+				['while(TRUE) { x <- 5; y <- 9 }', '0', 'while(TRUE) {                }'],
+				['while(TRUE) { x <- 5; y <- 9 }', ['0', '1'], 'while(TRUE) { x <- 5         }'],
+				['while(TRUE) { x <- 5; y <- 9 }', ['0', '1', '2'], 'while(TRUE) { x <- 5         }'],
+				['while(TRUE) { x <- 5; y <- 9 }', ['0', '4'], 'while(TRUE) {         y <- 9 }'],
+				//semicollon has to stay, otherwise the statement loses information
 				['while(TRUE) { x <- 5; y <- 9 }', ['0', '1', '4'], 'while(TRUE) { x <- 5; y <- 9 }',],
 				['while(TRUE) {\n    x <- 5\n    y <- 9\n}', ['0', '1', '4'], 'while(TRUE) {\n    x <- 5\n    y <- 9\n}'],
-				['while(x + 2 > 3) { x <- 0 }', ['0'], 'while(x + 2 > 3) {}'],
+				['while(x + 2 > 3) { x <- 0 }', ['0'], 'while(x + 2 > 3) {        }'],
 				['while(x + 2 > 3) { x <- 0 }', ['5'], 'while(x + 2 > 3) { x <- 0 }'],
 				['while(x + 2 > 3) { x <- 0 }', ['0', '5'], 'while(x + 2 > 3) { x <- 0 }']
 			]
@@ -76,7 +80,7 @@ describe('Simple', withShell(shell => {
       }
     `
 			const pool: [string, string | string[], string][] = [
-				[largeFor, '0', 'for (i in 1:20) {}'],
+				[largeFor, '0', 'for (i in 1:20) {\n}'],
 				[largeFor, '4', 'for (i in 1:20) {\n  y <- 9\n}'],
 				[largeFor, ['0', '4'], 'for (i in 1:20) {\n  y <- 9\n}'],
 				[largeFor, ['0', '4', '7'], `for (i in 1:20) {
@@ -96,10 +100,12 @@ describe('Simple', withShell(shell => {
 
 		describe('function definition', () => {
 			const testCases: {name: string, case: string, argument: [string], expected: string}[] = [
+				//this test does not reconstruct the function
 				{ name: 'simple function', case: 'a <- function (x) { x <- 2 }', argument: ['0'], expected: 'a <- function (x) { x <- 2 }' },
 				{ name: 'function body extracted', case: 'a <- function (x) { x <- 2 }', argument: ['5'], expected: 'x <- 2' },
+				//this test does not reconstruct the function
 				{ name: 'multi-line function', case: 'a <- function (x) { x <- 2;\nx + 4 }', argument: ['0'], expected: 'a <- function (x) { x <- 2;\nx + 4 }' },
-				{ name: 'only one function body extracted', case: 'a <- function (x) { x <- 2; x + 4 }', argument: ['5'], expected: 'x <- 2;' }
+				{ name: 'only one function body extracted', case: 'a <- function (x) { x <- 2; x + 4 }', argument: ['5'], expected: 'x <- 2' }
 			]
 			for(const test of testCases) {
 				assertReconstructed(test.name, shell, test.case, test.argument, test.expected)

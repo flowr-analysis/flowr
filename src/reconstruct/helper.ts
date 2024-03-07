@@ -27,7 +27,6 @@ export function plain(text: string, location: SourcePosition): Code {
 	}
 	return [printLine]
 }
-
 export function plainSplit(text: string, location: SourcePosition): Code {
 	const printLine: PrettyPrintLine = { linePart: [], indent: 0 }
 	let i = 0

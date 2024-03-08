@@ -62,6 +62,7 @@ describe('Parse simple operations', withShell(shell => {
 				shell, '1 + # comment\n2', exprList({ // hoist children
 					type:     RType.ExpressionList,
 					location: rangeFrom(1, 1, 2, 1),
+					braces:   undefined, /* TODO: change! */
 					info:     {},
 					lexeme:   '1 + # comment\n2',
 					children: [

@@ -291,7 +291,7 @@ function createFoldForWhileLoop<OtherInfo>(info: FoldInfo<OtherInfo>) {
 function createFoldForIfThenElse<OtherInfo>(info: FoldInfo<OtherInfo>) {
 	return (data: RNode<OtherInfo>, condition: RNodeWithParent<OtherInfo>, then: RNodeWithParent<OtherInfo>, otherwise?: RNodeWithParent<OtherInfo>): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
-		const decorated = { ...data, info: { ...data.info, id, parent: undefined },  condition, then, otherwise } as RNodeWithParent<OtherInfo>
+		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, condition, then, otherwise } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)
 		const condInfo = condition.info
 		condInfo.parent = id
@@ -311,7 +311,7 @@ function createFoldForIfThenElse<OtherInfo>(info: FoldInfo<OtherInfo>) {
 }
 
 function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
-	return (data: RNode<OtherInfo>, children: RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
+	return (data: RNode<OtherInfo>, children: readonly RNodeWithParent<OtherInfo>[]): RNodeWithParent<OtherInfo> => {
 		const id = info.getId(data)
 		const decorated = { ...data, info: { ...data.info, id, parent: undefined }, children } as RNodeWithParent<OtherInfo>
 		info.idMap.set(id, decorated)

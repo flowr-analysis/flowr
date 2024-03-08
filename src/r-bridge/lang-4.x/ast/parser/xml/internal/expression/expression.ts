@@ -5,7 +5,7 @@ import type { RNode } from '../../../../model'
 import { RType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { getWithTokenType, retrieveMetaStructure } from '../../meta'
-import { normalizeBasedOnType, splitComments } from '../structure'
+import { normalizeElements, splitComments } from '../structure'
 import { tryNormalizeFunctionCall, tryNormalizeFunctionDefinition } from '../functions'
 import { tryNormalizeAccess } from '../access'
 import { normalizeComment } from '../other'
@@ -48,7 +48,7 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 	}
 
 
-	const children = normalizeBasedOnType(childData, childrenSource)
+	const children = normalizeElements(childData, childrenSource)
 
 	const [delimiters, nodes] = partition(children, x => x.type === RType.Delimiter)
 
@@ -59,6 +59,7 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 	} else {
 		return {
 			type:     RType.ExpressionList,
+			braces:   undefined, /* TODO: change */
 			location,
 			children: nodes as RNode[],
 			lexeme:   content,

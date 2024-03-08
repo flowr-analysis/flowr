@@ -401,6 +401,7 @@ describe('Parse simple constructs', withShell(shell => {
 					body:     {
 						type:     RType.ExpressionList,
 						location: rangeFrom(1, 8, 1, 15),
+						braces:   undefined, /* TODO: change */
 						lexeme:   '{ x; y }',
 						info:     {},
 						children: [{
@@ -464,6 +465,7 @@ describe('Parse simple constructs', withShell(shell => {
 					body: ensureExpressionList({
 						type:     RType.ExpressionList,
 						location: rangeFrom(1, 15, 1, 22),
+						braces:   undefined, /* TODO: change */
 						lexeme:   '{ x; y }',
 						info:     {},
 						children: [{

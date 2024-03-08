@@ -8,7 +8,7 @@ import { ensureExpressionList, retrieveMetaStructure } from '../../meta'
 import { guard, isNotUndefined } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { tryNormalizeParameter } from './parameter'
-import { normalizeBasedOnType } from '../structure'
+import { normalizeElements } from '../structure'
 
 /**
  * Tries to parse the given data as a function definition.
@@ -51,7 +51,7 @@ export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName:
 	const bodyStructure = mappedWithName.slice(closingParenIndex + 1)
 	guard(bodyStructure.length === 1, () => `expected function body to be unique, yet received ${bodyStructure.length}`)
 
-	const body = normalizeBasedOnType(data, bodyStructure)
+	const body = normalizeElements(data, bodyStructure)
 	guard(body.length === 1 && body[0].type !== RType.Delimiter, () => `expected function body to yield one normalized expression, but ${body.length}`)
 
 

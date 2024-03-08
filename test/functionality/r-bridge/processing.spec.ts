@@ -18,9 +18,10 @@ describe('Assign unique Ids and Parents', withShell((shell) => {
 		}
 		// decided to test with ast parsing, as we are dependent on these changes in reality
 		describe('Single nodes (leafs)', () => {
-			const exprList = (...children: RNodeWithParent[]): RNodeWithParent => ({
+			const exprList = (...children: readonly RNodeWithParent[]): RNodeWithParent => ({
 				type:   RType.ExpressionList,
 				lexeme: undefined,
+				braces: undefined,
 				info:   {
 					parent: undefined,
 					id:     '1',

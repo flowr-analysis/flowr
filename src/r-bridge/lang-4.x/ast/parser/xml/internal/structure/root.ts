@@ -5,7 +5,7 @@ import type { RExpressionList, RNode } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { assureTokenType } from '../../meta'
 import type { RDelimiter } from '../../../../model/nodes/info'
-import { normalizeBasedOnType } from './elements'
+import { normalizeElements } from './elements'
 import { log } from '../../../../../../../util/log'
 import { partition } from '../../../../../../../util/arrays'
 
@@ -22,7 +22,7 @@ export function normalizeRootObjToAst(
 	if(childrenKey in exprContent) {
 		const children = getKeyGuarded<XmlBasedJson[]>(exprContent, childrenKey)
 
-		parsedChildren = normalizeBasedOnType(data, children)
+		parsedChildren = normalizeElements(data, children)
 	} else {
 		log.debug('no children found, assume empty input')
 	}
@@ -32,6 +32,7 @@ export function normalizeRootObjToAst(
 	return {
 		type:     RType.ExpressionList,
 		children: nodes as RNode[],
+		braces:   undefined,
 		lexeme:   undefined,
 		info:     {
 			fullRange:        data.currentRange,

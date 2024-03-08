@@ -72,7 +72,7 @@ export interface Base<Info, LexemeType = string> extends MergeableRecord {
 }
 
 export interface WithChildren<Info, Children extends Base<Info, string | undefined>> {
-	children: Children[]
+	children: readonly Children[]
 }
 
 /**

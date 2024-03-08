@@ -127,6 +127,7 @@ describe('Parse expression lists', withShell(shell => {
 			shell, '{ 42\na }', exprList({
 				type:     RType.ExpressionList,
 				location: rangeFrom(1, 1, 2, 3),
+				braces:   undefined, /* TODO: change */
 				lexeme:   '{ 42\na }',
 				info:     {
 					additionalTokens: [
@@ -170,6 +171,7 @@ describe('Parse expression lists', withShell(shell => {
 				{
 					type:     RType.ExpressionList,
 					location: rangeFrom(1, 1, 2, 3),
+					braces:   undefined, /* TODO: change */
 					lexeme:   '{ 42\na }',
 					info:     {
 						additionalTokens: [
@@ -238,6 +240,7 @@ describe('Parse expression lists', withShell(shell => {
 			{
 				type:   RType.ExpressionList,
 				lexeme: undefined,
+				braces: undefined, /* TODO: change */
 				info:   {
 					additionalTokens: [
 						{
@@ -305,6 +308,7 @@ describe('Parse expression lists', withShell(shell => {
 			{
 				type:   RType.ExpressionList,
 				lexeme: undefined,
+				braces: undefined, /* TODO: change */
 				info:   {
 					additionalTokens: [
 						{

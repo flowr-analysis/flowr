@@ -95,6 +95,7 @@ max
 				},
 				then: {
 					type:     RType.ExpressionList,
+					braces:   undefined, /* TODO: change! */
 					lexeme:   '{\n  max <<- a\n  i ->2\n}',
 					location: rangeFrom(4, 11, 7, 1),
 					info:     {},

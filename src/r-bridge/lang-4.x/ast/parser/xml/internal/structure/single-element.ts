@@ -12,7 +12,7 @@ import { normalizeNumber, normalizeString, tryNormalizeSymbol } from '../values'
 import { normalizeBreak, normalizeNext } from '../loops'
 import { guard } from '../../../../../../../util/assert'
 
-export function normalizeDelimiter(_data: ParserData, elem: NamedXmlBasedJson): RDelimiter {
+export function normalizeDelimiter(elem: NamedXmlBasedJson): RDelimiter {
 	const { location, content } = retrieveMetaStructure(elem.content)
 	return {
 		type:    RType.Delimiter,
@@ -37,7 +37,7 @@ export function tryNormalizeSingleNode(data: ParserData, elem: NamedXmlBasedJson
 		case RawRType.ParenRight:
 		case RawRType.BraceLeft:
 		case RawRType.BraceRight:
-			return normalizeDelimiter(data, elem)
+			return normalizeDelimiter(elem)
 		case RawRType.Comment:
 			return normalizeComment(data, elem.content)
 		case RawRType.LineDirective:

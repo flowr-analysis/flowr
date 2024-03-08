@@ -15,6 +15,7 @@ describe('Parse function definitions', withShell(shell => {
 				info:       {},
 				body:       {
 					type:     RType.ExpressionList,
+					braces:   undefined, /* TODO: change */
 					location: rangeFrom(1, 12, 1, 14),
 					lexeme:   '{ }',
 					children: [],
@@ -82,6 +83,7 @@ describe('Parse function definitions', withShell(shell => {
 				info:       {},
 				body:       {
 					type:     RType.ExpressionList,
+					braces:   undefined, /* TODO: change */
 					location: rangeFrom(1, 13, 1, 15),
 					lexeme:   '{ }',
 					children: [],
@@ -125,6 +127,7 @@ describe('Parse function definitions', withShell(shell => {
 				info:       {},
 				body:       ensureExpressionList({
 					type:     RType.ExpressionList,
+					braces:   undefined, /* TODO: change */
 					location: rangeFrom(1, 15, 1, 17),
 					lexeme:   '{ }',
 					children: [],
@@ -148,6 +151,7 @@ describe('Parse function definitions', withShell(shell => {
 				body: {
 					type:     RType.ExpressionList,
 					location: rangeFrom(1, 18, 1, 20),
+					braces:   undefined, /* TODO: change */
 					lexeme:   '{ }',
 					children: [],
 					info:     {}
@@ -199,6 +203,7 @@ describe('Parse function definitions', withShell(shell => {
 				info: {},
 				body: {
 					type:     RType.ExpressionList,
+					braces:   undefined, /* TODO: change */
 					location: rangeFrom(1, 15, 1, 17),
 					lexeme:   '{ }',
 					children: [],

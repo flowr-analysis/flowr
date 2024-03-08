@@ -1,6 +1,6 @@
 import type { NamedXmlBasedJson } from '../input-format'
 import type { ParserData } from '../data'
-import { normalizeBasedOnType, tryNormalizeSingleNode } from './structure'
+import { normalizeElements, tryNormalizeSingleNode } from './structure'
 import { tryToNormalizeArgument } from './functions/argument'
 import { parseLog } from '../../json/parser'
 import type { RAccess, RArgument, RNode } from '../../../model'
@@ -81,7 +81,7 @@ export function tryNormalizeAccess(data: ParserData, mappedWithName: NamedXmlBas
 		return undefined
 	}
 
-	const parsedAccessed = normalizeBasedOnType(data, [accessed])
+	const parsedAccessed = normalizeElements(data, [accessed])
 	if(parsedAccessed.length !== 1) {
 		parseLog.trace(`expected accessed element to be wrapped an expression, yet received ${accessed.name}`)
 		return undefined

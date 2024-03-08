@@ -104,11 +104,11 @@ export function ensureChildrenAreLhsAndRhsOrdered(first: XmlBasedJson, second: X
 	}
 }
 
-// TODO: separte from call to `{`
 export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<Info> {
 	if(node.type !== RType.ExpressionList) {
 		return {
 			type:     RType.ExpressionList,
+			braces:   undefined, /* TODO: change */
 			location: node.location,
 			info:     node.info,
 			lexeme:   undefined,

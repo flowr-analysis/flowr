@@ -2,7 +2,7 @@ This page focuses on the features presented by *flowR* and how to use them.
 If you have never used *flowR* before, please refer to the [setup](https://github.com/Code-Inspect/flowr/wiki/Setup) wiki page first, for instructions on how to install *flowR*.
 
 <!-- TOC -->
-- [*flowR's* Modules](#flowrs-modules)
+- [*flowR*'s Modules](#flowrs-modules)
 - [Using *flowR*](#using-flowr)
   - [The Read-Eval-Print Loop (REPL)](#the-read-eval-print-loop-repl)
   - [The Server](#the-server)
@@ -14,7 +14,7 @@ If you have never used *flowR* before, please refer to the [setup](https://githu
   - [Export RDF N-Quads](#export-rdf-n-quads)
 <!-- TOC -->
 
-## *flowR's* Modules
+## *flowR*'s Modules
 
 ```mermaid
 flowchart TD

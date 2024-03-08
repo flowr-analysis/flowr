@@ -6,7 +6,7 @@
 
 ## ⭐ Getting Started
 
-To get started with _flowR_, please check out the [Overview](https://github.com/Code-Inspect/flowr/wiki/Overview). The [Setup](https://github.com/Code-Inspect/flowr/wiki/Setup) wiki page explains how you can download and setup _flowR_ on your system. Vor Visual Studio Code, please see the [marketplace entry](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr). With docker&nbsp;🐳️, the following line should be enough (and drop you directly into the REPL):
+To get started with _flowR_, please check out the [Overview](https://github.com/Code-Inspect/flowr/wiki/Overview). The [Setup](https://github.com/Code-Inspect/flowr/wiki/Setup) wiki page explains how you can download and setup _flowR_ on your system. For Visual Studio Code, please see the [marketplace entry](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr). With docker&nbsp;🐳️, the following line should be enough (and drop you directly into the REPL):
 
 ```shell
 docker run -it --rm eagleoutice/flowr

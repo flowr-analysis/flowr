@@ -1,4 +1,12 @@
-import {DecoratedAstMap, EmptyArgument, ParentInformation, RNode, RUnnamedArgument, RType} from '../../../../../../r-bridge'
+import {
+	DecoratedAstMap,
+	EmptyArgument,
+	ParentInformation,
+	RNode,
+	RUnnamedArgument,
+	RType,
+	RNodeWithParent
+} from '../../../../../../r-bridge'
 import { rangeFrom } from '../../../../../../util/range'
 
 export function toUnnamedArgument<OtherInfo>(
@@ -22,4 +30,9 @@ export function toUnnamedArgument<OtherInfo>(
 	}
 	idMap.set(arg.info.id, node)
 	return arg
+}
+
+export function toUnnamedArguments<OtherInfo>(nodes: (RNode<OtherInfo & ParentInformation> | undefined)[],
+								   idMap: DecoratedAstMap<OtherInfo>) {
+	return nodes.map(n => toUnnamedArgument(n, idMap))
 }

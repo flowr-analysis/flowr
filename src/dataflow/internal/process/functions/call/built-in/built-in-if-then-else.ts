@@ -12,6 +12,7 @@ import { processKnownFunctionCall } from '../known-call-handling'
 import {linkIngoingVariablesInSameScope} from "../../../../linker";
 import {unpackArgument} from "../argument/unpack-argument";
 
+// TODO handle (, {, ...
 export function processIfThenElse<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
@@ -37,6 +38,7 @@ export function processIfThenElse<OtherInfo>(
 
 	let then: DataflowInformation | undefined
 	let makeThenMaybe = false
+	// TODO: defer this to abstract interpretation
 	const conditionIsFalse = resolvesToBuiltInConstant(unpackedArgs[0]?.lexeme, data.environment, false)
 	const conditionIsTrue = resolvesToBuiltInConstant(unpackedArgs[0]?.lexeme, data.environment, true)
 	if(conditionIsFalse !== 'always') {

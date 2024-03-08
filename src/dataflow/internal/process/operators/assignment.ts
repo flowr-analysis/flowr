@@ -7,7 +7,6 @@ import { processNamedFunctionCall } from '../functions/call/named-call-handling'
 import { toUnnamedArgument } from '../functions/call/argument/make-argument'
 
 export function processAssignment<OtherInfo>(op: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
-	dataflowLogger.trace(`Processing assignment with id ${op.info.id}`)
 	const lhs = toUnnamedArgument(op.lhs, data.completeAst.idMap)
 	const rhs = toUnnamedArgument(op.rhs, data.completeAst.idMap)
 

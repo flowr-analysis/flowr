@@ -177,6 +177,8 @@ export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
 	simpleBuiltInConstant('NA', null),
 	simpleBuiltInConstant('TRUE', true), simpleBuiltInConstant('T', true),
 	simpleBuiltInConstant('FALSE', false), simpleBuiltInConstant('F', false),
+	// maybe map to a control flow function?
+	simpleBuiltInConstant('break', 'break'), simpleBuiltInConstant('next', 'next'),
 	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { },'cat' /* returns null */),
 	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { returnsNthArgument: 1 },'return', 'print'),
 	...simpleBuiltInFunction(processSourceCall, { }, 'source'),

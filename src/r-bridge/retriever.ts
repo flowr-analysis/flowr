@@ -11,7 +11,7 @@ import { ErrorMarker } from './init'
 
 export interface RParseRequestFromFile {
 	readonly request:  'file';
-	/** The path to the file (absolute paths are probably best here */
+	/** The path to the file (absolute paths are probably best here) */
 	readonly  content: string;
 }
 

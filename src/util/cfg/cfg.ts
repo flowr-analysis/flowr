@@ -524,24 +524,25 @@ function cfgUnaryOp(unary: RNodeWithParent, operand: ControlFlowInformation): Co
 
 
 function cfgExprList(_node: RNodeWithParent, expressions: ControlFlowInformation[]): ControlFlowInformation {
-	const result: ControlFlowInformation = { graph: new ControlFlowGraph(), breaks: [], nexts: [], returns: [], exitPoints: [], entryPoints: [] }
-	let first = true
+	const exitPoint: NodeId = _node.info.id + '-exit'
+	const result: ControlFlowInformation = { graph: new ControlFlowGraph(), breaks: [], nexts: [], returns: [], exitPoints: [exitPoint], entryPoints: [_node.info.id] }
+	result.graph.addVertex({ id: _node.info.id, name: _node.type, type: CfgVertexType.Statement})
+	result.graph.addVertex({ id: exitPoint, name: 'exprlist-exit', type: CfgVertexType.EndMarker})
+	let previousExitPoints: NodeId[] = [_node.info.id]
 	for(const expression of expressions) {
-		if(first) {
-			result.entryPoints = expression.entryPoints
-			first = false
-		} else {
-			for(const previousExitPoint of result.exitPoints) {
-				for(const entryPoint of expression.entryPoints) {
-					result.graph.addEdge(entryPoint, previousExitPoint, { label: 'FD' })
-				}
+		for(const previousExitPoint of previousExitPoints) {
+			for(const entryPoint of expression.entryPoints) {
+				result.graph.addEdge(entryPoint, previousExitPoint, { label: 'FD' })
 			}
 		}
 		result.graph.merge(expression.graph)
 		result.breaks.push(...expression.breaks)
 		result.nexts.push(...expression.nexts)
 		result.returns.push(...expression.returns)
-		result.exitPoints = expression.exitPoints
+		previousExitPoints = expression.exitPoints
+	}
+	for(const exitPoint of previousExitPoints) {
+		result.graph.addEdge(_node.info.id + '-exit', exitPoint, { label: 'FD' })
 	}
 	return result
 }

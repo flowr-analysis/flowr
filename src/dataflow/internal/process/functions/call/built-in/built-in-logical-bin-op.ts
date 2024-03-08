@@ -21,7 +21,6 @@ import { unpackArgument } from '../argument/unpack-argument'
 
 export function processSpecialBinOp<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	/* we expect them to be ordered in the sense that we have (source, target): `<source> <- <target>` */
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,

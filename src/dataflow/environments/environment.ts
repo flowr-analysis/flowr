@@ -17,6 +17,7 @@ import { processAssignment } from '../internal/process/functions/call/built-in/b
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source'
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else'
 import { processSpecialBinOp } from '../internal/process/functions/call/built-in/built-in-logical-bin-op'
+import {processPipe} from "../internal/process/functions/call/built-in/built-in-pipe";
 
 export type Identifier = string & { __brand?: 'identifier' }
 
@@ -192,6 +193,7 @@ export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
 	...simpleBuiltInFunction(processAssignment, { swapSourceAndTarget: true },'->'),
 	...simpleBuiltInFunction(processAssignment, { superAssignment: true , swapSourceAndTarget: true },'->>'),
 	...simpleBuiltInFunction(processSpecialBinOp, { lazy: true }, '&&', '||', '&', '|'),
+	...simpleBuiltInFunction(processPipe, { }, '|>')
 ])
 /* the built-in environment is the root of all environments */
 export const BuiltInEnvironment = new Environment('built-in', undefined as unknown as IEnvironment)

@@ -1,12 +1,10 @@
-import type { NormalizedAst, ParentInformation, RBinaryOp, RParseRequest } from '../r-bridge'
-import { OperatorDatabase } from '../r-bridge'
+import type { NormalizedAst, ParentInformation, RParseRequest } from '../r-bridge'
 import { RType, requestFingerprint } from '../r-bridge'
 import type { DataflowInformation } from './info'
-import type { DataflowProcessorInformation, DataflowProcessors } from './processor'
+import type { DataflowProcessors } from './processor'
 import { processDataflowFor } from './processor'
 import { processUninterestingLeaf } from './internal/process/uninteresting-leaf'
 import { processSymbol } from './internal/process/symbol'
-import { processNonAssignmentBinaryOp } from './internal/process/operators/non-assignment-binary-op'
 import { processUnaryOp } from './internal/process/operators/unary-op'
 import { processExpressionList } from './internal/process/expression-list'
 import { processRepeatLoop } from './internal/process/loops/repeat-loop'
@@ -18,9 +16,8 @@ import { processFunctionDefinition } from './internal/process/functions/function
 import { processFunctionParameter } from './internal/process/functions/parameter'
 import { initializeCleanEnvironments } from './environments'
 import { processFunctionArgument } from './internal/process/functions/argument'
-import { processAssignment } from './internal/process/operators/assignment'
+import { processBinaryOp } from './internal/process/operators/binary-op'
 import { processAccess } from './internal/process/access'
-import { processPipeOperation } from './internal/process/operators/pipe'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
 export const processors: DataflowProcessors<any> = {
@@ -30,7 +27,7 @@ export const processors: DataflowProcessors<any> = {
 	[RType.Access]:             processAccess,
 	[RType.Symbol]:             processSymbol,
 	[RType.BinaryOp]:           processBinaryOp,
-	[RType.Pipe]:               processPipeOperation,
+	[RType.Pipe]:               processBinaryOp,
 	[RType.UnaryOp]:            processUnaryOp,
 	[RType.ForLoop]:            processForLoop,
 	[RType.WhileLoop]:          processWhileLoop,
@@ -55,13 +52,4 @@ export function produceDataFlowGraph<OtherInfo>(request: RParseRequest, ast: Nor
 		currentRequest: request,
 		referenceChain: [requestFingerprint(request)]
 	})
-}
-
-export function processBinaryOp<OtherInfo>(node: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
-	// TODO: move to env check
-	if(OperatorDatabase[node.operator].usedAs === 'assignment') {
-		return processAssignment(node, data)
-	} else {
-		return processNonAssignmentBinaryOp(node, data)
-	}
 }

@@ -33,7 +33,7 @@ export function toUnnamedArgument<OtherInfo>(
 	return arg
 }
 
-export function toUnnamedArguments<OtherInfo>(nodes: (RNode<OtherInfo & ParentInformation> | undefined)[],
+export function toUnnamedArguments<OtherInfo>(nodes: readonly (RNode<OtherInfo & ParentInformation> | undefined)[],
 								   idMap: DecoratedAstMap<OtherInfo>) {
 	return nodes.map(n => toUnnamedArgument(n, idMap))
 }

@@ -1,21 +1,22 @@
-import type { Base, Location, ParentInformation, RNode } from '../../../r-bridge'
+import type { Base, EmptyArgument, Location, ParentInformation, RNode } from '../../../r-bridge'
 import { RType } from '../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../processor'
 import type { DataflowInformation } from '../../info'
 import { processNamedFunctionCall } from './functions/call/named-call-handling'
-import { toUnnamedArguments } from './functions/call/argument/make-argument'
+import { wrapArgumentsUnnamed } from './functions/call/argument/make-argument'
 
-export function processOperator<OtherInfo>(
+export function processAsNamedCall<OtherInfo>(
 	op: RNode<OtherInfo & ParentInformation> & Base<OtherInfo> & Location,
-	args: readonly (RNode<OtherInfo & ParentInformation> | undefined)[],
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	name: string,
+	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[]
 ): DataflowInformation {
 	return processNamedFunctionCall({
 		type:      RType.Symbol,
 		info:      op.info,
-		content:   op.lexeme,
+		content:   name,
 		lexeme:    op.lexeme,
 		location:  op.location,
 		namespace: undefined
-	}, toUnnamedArguments(args, data.completeAst.idMap), op.info.id, data)
+	}, wrapArgumentsUnnamed(args, data.completeAst.idMap), op.info.id, data)
 }

@@ -32,13 +32,13 @@ export interface DataflowProcessorInformation<OtherInfo> {
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation
 
-type NodeWithKey<OtherInfo, Node extends RNode<OtherInfo & ParentInformation>, TypeKey> = Node['type'] extends TypeKey ? Node : never
+type NodeWithKey<OtherInfo, Key> = RNode<OtherInfo & ParentInformation> & { type: Key }
 
 /**
  * This way, a processor mapped to a {@link RType#Symbol} require a {@link RSymbol} as first parameter and so on.
  */
 export type DataflowProcessors<OtherInfo> = {
-	[key in RNode['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, RNodeWithParent<OtherInfo>, key>>
+	[key in RNode['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, key>>
 }
 
 /**
@@ -51,8 +51,11 @@ export type DataflowProcessors<OtherInfo> = {
  * Now this method can be called recursively within the other processors to parse the dataflow for nodes that you can not narrow down.
  *
  * @param current - The current node to start processing from
- * @param data    - The initial information to be passed down
+ * @param data    - The initial (/current) information to be passed down
  */
-export function processDataflowFor<OtherInfo>(current: RNodeWithParent<OtherInfo>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
-	return data.processors[current.type](current as never, data)
+export function processDataflowFor<OtherInfo>(
+	current: RNode<OtherInfo & ParentInformation>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): DataflowInformation {
+	return (data.processors[current.type] as DataflowProcessor<OtherInfo & ParentInformation, typeof current>)(current, data)
 }

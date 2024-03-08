@@ -2,7 +2,8 @@ import type {
 	DecoratedAstMap,
 	ParentInformation,
 	RNode,
-	RUnnamedArgument } from '../../../../../../r-bridge'
+	RUnnamedArgument
+} from '../../../../../../r-bridge'
 import {
 	EmptyArgument,
 	RType
@@ -32,9 +33,9 @@ export function toUnnamedArgument<OtherInfo>(
 	return arg
 }
 
-export function toUnnamedArguments<OtherInfo>(
-	nodes: readonly (RNode<OtherInfo & ParentInformation> | undefined)[],
+export function wrapArgumentsUnnamed<OtherInfo>(
+	nodes: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[],
 	idMap: DecoratedAstMap<OtherInfo>
 ) {
-	return nodes.map(n => toUnnamedArgument(n, idMap))
+	return nodes.map(n => n === EmptyArgument || n?.type === RType.Argument ? n : toUnnamedArgument(n, idMap))
 }

@@ -16,7 +16,7 @@ import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
 import { log, LogLevel } from '../../../../../../util/log'
 import { define, overwriteEnvironment } from '../../../../../environments'
-import {unpackArgument} from "../argument/unpack-argument";
+import { unpackArgument } from '../argument/unpack-argument'
 
 function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>) {
 	const source = unpackArgument(args[1])

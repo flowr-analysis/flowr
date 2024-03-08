@@ -15,8 +15,8 @@ import { dataflowLogger, EdgeType  } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
 import { log, LogLevel } from '../../../../../../util/log'
-import {appendEnvironment, define, overwriteEnvironment} from '../../../../../environments'
-import {unpackArgument} from "../argument/unpack-argument";
+import { appendEnvironment, define, overwriteEnvironment } from '../../../../../environments'
+import { unpackArgument } from '../argument/unpack-argument'
 
 
 export function processSpecialBinOp<OtherInfo>(
@@ -29,7 +29,7 @@ export function processSpecialBinOp<OtherInfo>(
 ): DataflowInformation {
 	if(!config.lazy) {
 		return processKnownFunctionCall(name, args, rootId, data).information
-	} else if (args.length != 2) {
+	} else if(args.length != 2) {
 		dataflowLogger.warn(`Logical bin-op ${name.content} has something else than 2 arguments, skipping`)
 		return processKnownFunctionCall(name, args, rootId, data).information
 	}
@@ -40,6 +40,6 @@ export function processSpecialBinOp<OtherInfo>(
 
 	return {
 		...information,
-		environment:       appendEnvironment(lhs.environment, rhs.environment)
+		environment: appendEnvironment(lhs.environment, rhs.environment)
 	}
 }

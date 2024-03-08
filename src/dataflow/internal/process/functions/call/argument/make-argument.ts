@@ -1,9 +1,10 @@
-import {
+import type {
 	DecoratedAstMap,
-	EmptyArgument,
 	ParentInformation,
 	RNode,
-	RUnnamedArgument,
+	RUnnamedArgument } from '../../../../../../r-bridge'
+import {
+	EmptyArgument,
 	RType,
 	RNodeWithParent
 } from '../../../../../../r-bridge'

@@ -1,5 +1,6 @@
-import type {NodeId, ParentInformation, RFunctionArgument, RNode, RSymbol} from '../../../../../../r-bridge'
-import {DataflowProcessorInformation, processDataflowFor} from '../../../../../processor'
+import type { NodeId, ParentInformation, RFunctionArgument, RNode, RSymbol } from '../../../../../../r-bridge'
+import type { DataflowProcessorInformation } from '../../../../../processor'
+import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import {
 	appendEnvironment,
@@ -9,8 +10,8 @@ import {
 } from '../../../../../environments'
 import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
-import {linkIngoingVariablesInSameScope} from "../../../../linker";
-import {unpackArgument} from "../argument/unpack-argument";
+import { linkIngoingVariablesInSameScope } from '../../../../linker'
+import { unpackArgument } from '../argument/unpack-argument'
 
 // TODO handle (, {, ...
 export function processIfThenElse<OtherInfo>(

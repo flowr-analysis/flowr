@@ -9,7 +9,7 @@ import {
 } from './environment'
 import { dataflowLogger } from '../index'
 import { expensiveTrace } from '../../util/log'
-import {Ternary} from "../../util/logic";
+import type { Ternary } from '../../util/logic'
 
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.

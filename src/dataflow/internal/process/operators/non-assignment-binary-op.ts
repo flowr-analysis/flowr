@@ -1,8 +1,9 @@
 import type { DataflowInformation } from '../../../info'
 import type { DataflowProcessorInformation } from '../../../processor'
-import {ParentInformation, RBinaryOp, RType} from '../../../../r-bridge'
-import {toUnnamedArgument} from "../functions/call/argument/make-argument";
-import {processNamedFunctionCall} from "../functions/call/named-call-handling";
+import type { ParentInformation, RBinaryOp } from '../../../../r-bridge'
+import { RType } from '../../../../r-bridge'
+import { toUnnamedArgument } from '../functions/call/argument/make-argument'
+import { processNamedFunctionCall } from '../functions/call/named-call-handling'
 
 export function processNonAssignmentBinaryOp<OtherInfo>(op: RBinaryOp<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const lhs = toUnnamedArgument(op.lhs, data.completeAst.idMap)

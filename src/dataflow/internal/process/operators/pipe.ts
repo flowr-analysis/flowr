@@ -9,6 +9,7 @@ import { dataflowLogger, EdgeType, graphToMermaidUrl } from '../../../index'
 import { guard } from '../../../../util/assert'
 import { UnnamedArgumentPrefix } from '../functions/argument'
 
+// TODO: make this a special bin op handler
 export function processPipeOperation<OtherInfo>(op: RPipe<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const lhs = processDataflowFor(op.lhs, data)
 	const rhs = processDataflowFor(op.rhs, data)

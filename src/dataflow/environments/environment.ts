@@ -4,17 +4,19 @@
  *
  * @module
  */
-import {EmptyArgument, NodeId, ParentInformation, RFunctionArgument, RSymbol} from '../../r-bridge'
-import {DataflowGraph, DataflowGraphEdgeAttribute, EdgeType} from '../'
-import {resolveByName} from './resolve-by-name'
-import type {DataflowInformation} from '../info'
-import type {DataflowProcessorInformation} from '../processor'
-import {processKnownFunctionCall} from '../internal/process/functions/call/known-call-handling'
-import {processAccess} from '../internal/process/functions/call/built-in/built-in-access'
-import {processAssignment} from '../internal/process/functions/call/built-in/built-in-assignment'
-import {processSourceCall} from '../internal/process/functions/call/built-in/built-in-source'
-import {processIfThenElse} from "../internal/process/functions/call/built-in/built-in-if-then-else";
-import {processSpecialBinOp} from "../internal/process/functions/call/built-in/built-in-logical-bin-op";
+import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../r-bridge'
+import { EmptyArgument } from '../../r-bridge'
+import type { DataflowGraph, DataflowGraphEdgeAttribute } from '../'
+import { EdgeType } from '../'
+import { resolveByName } from './resolve-by-name'
+import type { DataflowInformation } from '../info'
+import type { DataflowProcessorInformation } from '../processor'
+import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling'
+import { processAccess } from '../internal/process/functions/call/built-in/built-in-access'
+import { processAssignment } from '../internal/process/functions/call/built-in/built-in-assignment'
+import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source'
+import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else'
+import { processSpecialBinOp } from '../internal/process/functions/call/built-in/built-in-logical-bin-op'
 
 export type Identifier = string & { __brand?: 'identifier' }
 
@@ -168,7 +170,7 @@ function simpleBuiltInConstant<T>(name: Identifier, value: T): [Identifier, Buil
 		definedAt: BuiltIn,
 		value,
 		name,
-		nodeId: BuiltIn
+		nodeId:    BuiltIn
 	}]]
 }
 

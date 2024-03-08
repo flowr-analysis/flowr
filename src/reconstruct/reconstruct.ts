@@ -68,11 +68,11 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 
 	const subExpressions = expressions.filter(e => e.length > 0)
 
-	const additionalTokens = reconstructAdditionalTokens(exprList)
 
 	if(subExpressions.length === 0) {
-		return merge(additionalTokens)
+		return []
 	} else {
+		const additionalTokens = reconstructAdditionalTokens(exprList)
 		return merge([
 			...subExpressions,
 			...additionalTokens
@@ -129,6 +129,11 @@ function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, v
 	const vectorLocation: SourcePosition = loop.vector.location? loop.vector.location.start : vector[0].linePart[0].loc
 	vectorLocation.column -= 1 //somehow the vector is consistently one space to late
 	const reconstructedVector = plain(getLexeme(loop.vector), vectorLocation)
+
+	if(variable.length === 0 && vector.length === 0 && body.length === 0) {
+		return []
+	}
+
 	const out = merge([
 		[{ linePart: [{ part: 'for', loc: start ?? loop.location.start }], indent: 0 }],
 		[{ linePart: [{ part: getLexeme(loop.variable), loc: loop.variable.location.start }], indent: 0 }],
@@ -239,7 +244,8 @@ function reconstructParameters(parameters: RParameter<ParentInformation>[]): str
 }
 
 function reconstructFoldAccess(node: RAccess<ParentInformation>, accessed: Code, access: string | (Code | null)[], configuration: ReconstructionConfiguration): Code {
-	const start = node.location.start
+	const start = node.info.fullRange?.start ?? node.location.start
+
 	if(isSelected(configuration, node)) {
 		return plain(getLexeme(node), start)
 	}

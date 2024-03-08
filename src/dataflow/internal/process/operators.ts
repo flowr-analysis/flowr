@@ -2,7 +2,7 @@ import type { Base, EmptyArgument, Location, ParentInformation, RNode } from '..
 import { RType } from '../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../processor'
 import type { DataflowInformation } from '../../info'
-import { processNamedFunctionCall } from './functions/call/named-call-handling'
+import { processNamedCall } from './functions/call/named-call-handling'
 import { wrapArgumentsUnnamed } from './functions/call/argument/make-argument'
 
 export function processAsNamedCall<OtherInfo>(
@@ -11,7 +11,7 @@ export function processAsNamedCall<OtherInfo>(
 	name: string,
 	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[]
 ): DataflowInformation {
-	return processNamedFunctionCall({
+	return processNamedCall({
 		type:      RType.Symbol,
 		info:      op.info,
 		content:   name,

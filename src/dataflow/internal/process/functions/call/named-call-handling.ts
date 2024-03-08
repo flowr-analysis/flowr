@@ -21,7 +21,7 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 	}
 }
 
-export function processNamedFunctionCall<OtherInfo>(
+export function processNamedCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,

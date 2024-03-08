@@ -279,7 +279,7 @@ export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReferen
  * ```
  * `x_2` must get a read marker to `x_1` as `x_1` is the active redefinition in the second loop iteration.
  */
-export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openIns: NameIdMap, outgoing: IdentifierReference[]): void {
+export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openIns: NameIdMap, outgoing: readonly IdentifierReference[]): void {
 	// first we preprocess out so that only the last definition of a given identifier survives
 	// this implicitly assumes that the outgoing references are ordered
 	const lastOutgoing = new Map<string, IdentifierReference>()

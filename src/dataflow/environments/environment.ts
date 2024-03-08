@@ -99,7 +99,7 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 	return { ...ref, used: 'maybe' }
 }
 
-export function makeAllMaybe(references: IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference[] {
+export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference[] {
 	if(references === undefined) {
 		return []
 	}

@@ -23,7 +23,7 @@ import { guard } from '../../../util/assert'
 
 
 const dotDotDotAccess = /\.\.\d+/
-function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, data: DataflowProcessorInformation<OtherInfo>, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
+function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
 	const readName = dotDotDotAccess.test(read.name) ? '...' : read.name
 
 	const probableTarget = resolveByName(readName, environments)
@@ -52,7 +52,6 @@ function linkReadNameToWriteIfPossible<OtherInfo>(read: IdentifierReference, dat
 
 function processNextExpression<OtherInfo>(
 	currentElement: DataflowInformation,
-	data: DataflowProcessorInformation<OtherInfo>,
 	environment: REnvironmentInformation,
 	listEnvironments: Set<NodeId>,
 	remainingRead: Map<string, IdentifierReference[]>,
@@ -60,7 +59,7 @@ function processNextExpression<OtherInfo>(
 ) {
 	// all inputs that have not been written until know, are read!
 	for(const read of [...currentElement.in, ...currentElement.unknownReferences]) {
-		linkReadNameToWriteIfPossible(read, data, environment, listEnvironments, remainingRead, nextGraph)
+		linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph)
 	}
 	// add same variable reads for deferred if they are read previously but not dependent
 	for(const writeTarget of currentElement.out) {
@@ -155,7 +154,7 @@ export function processExpressionList<OtherInfo>(exprList: RExpressionList<Other
 
 		dataflowLogger.trace(`expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`)
 
-		processNextExpression(processed, data, environment, listEnvironments, remainingRead, nextGraph)
+		processNextExpression(processed, environment, listEnvironments, remainingRead, nextGraph)
 		const functionCallIds = [...processed.graph.vertices(true)]
 			.filter(([_,info]) => info.tag === 'function-call')
 

@@ -7,11 +7,11 @@ import type { DataflowProcessorInformation } from './processor'
  */
 export interface DataflowInformation {
 	/** Nodes that have not been identified as read or write and will be so on higher */
-	unknownReferences: IdentifierReference[]
+	unknownReferences: readonly IdentifierReference[]
 	/** Nodes which are read */
-	in:                IdentifierReference[]
+	in:                readonly IdentifierReference[]
 	/** Nodes which are written to */
-	out:               IdentifierReference[]
+	out:               readonly IdentifierReference[]
 	/** Current environments used for name resolution, probably updated on the next expression-list processing */
 	environment:       REnvironmentInformation
 	/** The current constructed dataflow graph */

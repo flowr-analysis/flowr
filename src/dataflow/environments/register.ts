@@ -10,6 +10,7 @@ import { guard } from '../../util/assert'
  */
 export function define(definition: IdentifierDefinition, withinScope: DataflowScopeName, environments: REnvironmentInformation): REnvironmentInformation {
 	let newEnvironments = environments
+	guard(withinScope === definition.scope, 'Mismatching scopes')
 	if(withinScope === LocalScope) {
 		newEnvironments = cloneEnvironments(environments, false)
 		newEnvironments.current.memory.set(definition.name, [definition])

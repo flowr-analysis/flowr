@@ -1,8 +1,7 @@
-import { initializeCleanEnvironments } from '../../../../../src/dataflow'
-import { define } from '../../../../../src/dataflow/environments'
 import { LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { assertDataflow, withShell } from '../../../_helper/shell'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
+import { defaultEnvironment } from '../../../_helper/environment-builder'
 
 describe('while', withShell(shell => {
 	assertDataflow('simple constant while', shell,
@@ -21,7 +20,7 @@ describe('while', withShell(shell => {
 		emptyGraph()
 			.defineVariable('0', 'x')
 			.use('1', 'x')
-			.use('7', 'x', { when: 'maybe', environment: define({ name: 'x', nodeId: '0', definedAt: '4', used: 'always', kind: 'variable', scope: LocalScope }, LocalScope, initializeCleanEnvironments()) })
+			.use('7', 'x', { when: 'maybe', environment: defaultEnvironment().defineVariable('x', '0', '4') })
 			.reads('7', '0', 'maybe')
 			.definedBy('0', '1')
 	)

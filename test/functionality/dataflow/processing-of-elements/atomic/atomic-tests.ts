@@ -4,13 +4,11 @@
  * This will not include functions!
  */
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import { EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
 import { RAssignmentOpPool, RNonAssignmentBinaryOpPool, RUnaryOpPool } from '../../../_helper/provider'
-import { appendEnvironments, define } from '../../../../../src/dataflow/environments'
 import { GlobalScope, LocalScope } from '../../../../../src/dataflow/environments/scopes'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { unnamedArgument } from '../../../_helper/environment-builder'
+import { argumentInCall, defaultEnvironment, unnamedArgument } from '../../../_helper/environment-builder'
 
 describe('Atomic (dataflow information)', withShell((shell) => {
 	describe('uninteresting leafs', () => {
@@ -77,7 +75,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		assertDataflow('assign on access', shell,
 			'a[x] <- 5',
 			emptyGraph()
-				.defineVariable('0', 'a', LocalScope, { when: 'maybe' })
+				.defineVariable('0', 'a', LocalScope,  { when: 'maybe' })
 				.use('1', 'x')
 				.use('2', unnamedArgument('2'))
 				.reads('0', '2')
@@ -132,9 +130,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('No parameter function', shell, 'x |> f()',
 				emptyGraph()
 					.use('0', 'x')
-					.call('3', 'f', [
-						{ name: unnamedArgument('1'), scope: LocalScope, nodeId: '1', used: 'always' }
-					])
+					.call('3', 'f', [argumentInCall('1')])
 					.use('1', unnamedArgument('1'))
 					.argument('3', '1')
 					.reads('1', '0'),
@@ -143,12 +139,8 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('Nested calling', shell, 'x |> f() |> g()',
 				emptyGraph()
 					.use('0', 'x')
-					.call('3', 'f', [
-						{ name: unnamedArgument('1'), scope: LocalScope, nodeId: '1', used: 'always' }
-					])
-					.call('7', 'g', [
-						{ name: unnamedArgument('5'), scope: LocalScope, nodeId: '5', used: 'always' }
-					])
+					.call('3', 'f', [argumentInCall('1')])
+					.call('7', 'g', [argumentInCall('5')])
 					.use('1', unnamedArgument('1'))
 					.use('5', unnamedArgument('5'))
 					.argument('3', '1')
@@ -160,11 +152,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			assertDataflow('Multi-Parameter function', shell, 'x |> f(y,z)',
 				emptyGraph()
 					.use('0', 'x')
-					.call('7', 'f', [
-						{ name: unnamedArgument('1'), scope: LocalScope, nodeId: '1', used: 'always' },
-						{ name: unnamedArgument('4'), scope: LocalScope, nodeId: '4', used: 'always' },
-						{ name: unnamedArgument('6'), scope: LocalScope, nodeId: '6', used: 'always' }
-					])
+					.call('7', 'f', [argumentInCall('1'), argumentInCall('4'), argumentInCall('6')])
 					.use('1', unnamedArgument('1'))
 					.use('4', unnamedArgument('4'))
 					.use('6', unnamedArgument('6'))
@@ -330,18 +318,14 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 			})
 		})
 		describe('assignment with function call', () => {
-			const environmentWithX = define(
-				{ name: 'x', nodeId: '4', kind: EdgeType.Argument, definedAt: '4', scope: LocalScope, used: 'always' },
-				LocalScope,
-				initializeCleanEnvironments()
-			)
+			const environmentWithX = defaultEnvironment().defineArgument('x', '4', '4')
 			assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'a <- foo(x=3,y,z)',
 				emptyGraph()
 					.defineVariable('0', 'a')
 					.call('9', 'foo', [
-						['x', { name: 'x', nodeId: '4', scope: LocalScope, used: 'always' }],
-						{ name: unnamedArgument('6'), nodeId: '6', scope: LocalScope, used: 'always' },
-						{ name: unnamedArgument('8'), nodeId: '8', scope: LocalScope, used: 'always' },
+						argumentInCall('4', 'x'),
+						argumentInCall('6'),
+						argumentInCall('8')
 					])
 					.use('4', 'x')
 					.use('5', 'y', { environment: environmentWithX })
@@ -408,7 +392,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 						`if (x <- 3) ${b.func('x')}`,
 						emptyGraph()
 							.defineVariable('0', 'x', LocalScope)
-							.use('3', 'x', { when: 'maybe', environment: define({ name: 'x', definedAt: '2', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0' }, LocalScope, initializeCleanEnvironments()) })
+							.use('3', 'x', { when: 'maybe', environment: defaultEnvironment().defineVariable('x', '0', '2') })
 							.reads('3', '0')
 					)
 				})
@@ -468,22 +452,14 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		}
 	})
 	describe('inline non-strict boolean operations', () => {
-		const environmentWithY = define(
-			{ name: 'y', nodeId: '0', kind: 'variable', definedAt: '2', scope: LocalScope, used: 'always' },
-			LocalScope,
-			initializeCleanEnvironments()
-		)
-		const environmentWithOtherY = define(
-			{ name: 'y', nodeId: '4', kind: 'variable', definedAt: '6', scope: LocalScope, used: 'always' },
-			LocalScope,
-			initializeCleanEnvironments()
-		)
+		const environmentWithY = defaultEnvironment().defineVariable('y', '0', '2')
+		const environmentWithOtherY = defaultEnvironment().defineVariable('y', '4', '6')
 		assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'y <- 15; x && (y <- 13); y',
 			emptyGraph()
 				.defineVariable('0', 'y')
-				.defineVariable('4', 'y', LocalScope, { environment: environmentWithY })
+				.defineVariable('4', 'y', LocalScope,  { environment: environmentWithY })
 				.use('3', 'x', { environment: environmentWithY })
-				.use('8', 'y', { environment: appendEnvironments(environmentWithY, environmentWithOtherY) })
+				.use('8', 'y', { environment: environmentWithY.appendWritesOf(environmentWithOtherY) })
 				.reads('8', '0')
 				.reads('8', '4')
 				.sameDef('0', '4')
@@ -500,7 +476,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				'for(i in 1:10) { i }',
 				emptyGraph()
 					.defineVariable('0', 'i')
-					.use('4', 'i', { when: 'maybe', environment: define({ name: 'i', definedAt: '6', used: 'always', kind: 'variable', scope: LocalScope, nodeId: '0' }, LocalScope, initializeCleanEnvironments()) })
+					.use('4', 'i', { when: 'maybe', environment: defaultEnvironment().defineVariable('i', '0', '6') })
 					.reads('4', '0', 'maybe')
 			)
 		})

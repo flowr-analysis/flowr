@@ -5,8 +5,7 @@ import type {
 	RUnnamedArgument } from '../../../../../../r-bridge'
 import {
 	EmptyArgument,
-	RType,
-	RNodeWithParent
+	RType
 } from '../../../../../../r-bridge'
 import { rangeFrom } from '../../../../../../util/range'
 
@@ -33,7 +32,9 @@ export function toUnnamedArgument<OtherInfo>(
 	return arg
 }
 
-export function toUnnamedArguments<OtherInfo>(nodes: readonly (RNode<OtherInfo & ParentInformation> | undefined)[],
-								   idMap: DecoratedAstMap<OtherInfo>) {
+export function toUnnamedArguments<OtherInfo>(
+	nodes: readonly (RNode<OtherInfo & ParentInformation> | undefined)[],
+	idMap: DecoratedAstMap<OtherInfo>
+) {
 	return nodes.map(n => toUnnamedArgument(n, idMap))
 }

@@ -2,21 +2,14 @@ import type {
 	NodeId,
 	ParentInformation,
 	RFunctionArgument,
-	RNode,
 	RSymbol
-} from '../../../../../../r-bridge'
-import {
-	collectAllIds, RType
 } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import type { IdentifierReference, IdentifierDefinition } from '../../../../../index'
-import { dataflowLogger, EdgeType  } from '../../../../../index'
+import { dataflowLogger  } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
-import { log, LogLevel } from '../../../../../../util/log'
-import { appendEnvironment, define, overwriteEnvironment } from '../../../../../environments'
-import { unpackArgument } from '../argument/unpack-argument'
+import { appendEnvironment } from '../../../../../environments'
 
 
 export function processSpecialBinOp<OtherInfo>(

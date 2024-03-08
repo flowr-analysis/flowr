@@ -5,24 +5,27 @@ import {addDomains, subtractDomains} from '../../domain'
 export const operators: BinOpOperators = {
 	'assignment': (lhs, rhs, node) => {
 		return {
-			id:      lhs.id,
-			domain:  rhs.domain,
-			astNode: node.lhs,
+			nodeId:       lhs.nodeId,
+			expressionId: node.info.id,
+			domain:       rhs.domain,
+			astNode:      node.lhs,
 		}
 	},
 	'arithmetic': (lhs, rhs, node) => {
 		switch(node.operator) {
 			case '+':
 				return {
-					id:      node.info.id,
-					domain:  addDomains(lhs.domain, rhs.domain),
-					astNode: node,
+					nodeId:       node.info.id,
+					expressionId: node.info.id,
+					domain:       addDomains(lhs.domain, rhs.domain),
+					astNode:      node,
 				}
 			case '-':
 				return {
-					id:      node.info.id,
-					domain:  subtractDomains(lhs.domain, rhs.domain),
-					astNode: node,
+					nodeId:       node.info.id,
+					expressionId: node.info.id,
+					domain:       subtractDomains(lhs.domain, rhs.domain),
+					astNode:      node,
 				}
 			default:
 				guard(false, `Unknown binary operator ${node.operator}`)

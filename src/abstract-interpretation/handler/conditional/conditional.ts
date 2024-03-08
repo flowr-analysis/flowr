@@ -24,9 +24,10 @@ export class Conditional implements Handler<AINode> {
 		guard(this.then !== undefined, `No then-branch found for conditional ${this.node.info.id}`)
 		guard(this.else !== undefined, `No else-branch found for conditional ${this.node.info.id}`)
 		return {
-			id:      this.node.info.id,
-			domain:  this.condition.domain,
-			astNode: this.node,
+			nodeId:       this.node.info.id,
+			expressionId: this.node.info.id,
+			domain:       this.condition.domain,
+			astNode:      this.node,
 		}
 		// guard(false, 'Not implemented yet')
 	}

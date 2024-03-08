@@ -13,9 +13,12 @@ import {log} from '../util/log'
 export const aiLogger = log.getSubLogger({name: 'abstract-interpretation'})
 
 export interface AINode {
-	readonly id:      NodeId
-	readonly domain:  Domain
-	readonly astNode: RNodeWithParent<ParentInformation>
+	// The ID of the node that logically holds the domain
+	readonly nodeId:       NodeId
+	// The ID of the whole expression that the domain was calculated from
+	readonly expressionId: NodeId
+	readonly domain:       Domain
+	readonly astNode:      RNodeWithParent<ParentInformation>
 }
 
 class Stack<ElementType> {
@@ -58,16 +61,18 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 			operationStack.push(new Conditional(astNode)).enter()
 		} else if(astNode?.type === RType.Symbol) {
 			operationStack.peek()?.next({
-				id:      astNode.info.id,
-				domain:  getDomainOfDfgChild(node.id, dfg, nodeMap),
-				astNode: astNode,
+				nodeId:       astNode.info.id,
+				expressionId: astNode.info.id,
+				domain:       getDomainOfDfgChild(node.id, dfg, nodeMap),
+				astNode:      astNode,
 			})
 		} else if(astNode?.type === RType.Number){
 			const num = astNode.content.num
 			operationStack.peek()?.next({
-				id:      astNode.info.id,
-				domain:  Domain.fromScalar(num),
-				astNode: astNode,
+				nodeId:       astNode.info.id,
+				expressionId: astNode.info.id,
+				domain:       Domain.fromScalar(num),
+				astNode:      astNode,
 			})
 		} else if(node.type === CfgVertexType.EndMarker) {
 			const operation = operationStack.pop()
@@ -75,8 +80,8 @@ export function runAbstractInterpretation(ast: NormalizedAst, dfg: DataflowInfor
 				return
 			}
 			const operationResult = operation.exit()
-			guard(!nodeMap.has(operationResult.id), `Domain for ID ${operationResult.id} already exists`)
-			nodeMap.set(operationResult.id, operationResult)
+			guard(!nodeMap.has(operationResult.nodeId), `Domain for ID ${operationResult.nodeId} already exists`)
+			nodeMap.set(operationResult.nodeId, operationResult)
 			operationStack.peek()?.next(operationResult)
 		} else {
 			aiLogger.warn(`Unknown node type ${node.type}`)

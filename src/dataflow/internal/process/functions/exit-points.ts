@@ -17,8 +17,8 @@ interface ExitPointsInformation {
 }
 
 // TODO: wir wollen exit points für alle expression lists nicht nur für function definitions -> wir schlagen alle mit einer klappe :3
-export function retrieveExitPointsOfFunctionDefinition<OtherInfo>(functionDefinition: RFunctionDefinition<OtherInfo & ParentInformation>): NodeId[] {
-	const exitPoints = visitExitPoints(functionDefinition.body)
+export function retrieveExitPointsOfFunctionDefinition<OtherInfo>(body: RNode<OtherInfo & ParentInformation>): NodeId[] {
+	const exitPoints = visitExitPoints(body)
 	return exitPoints.knownIds.concat(exitPoints.potentialIds)
 }
 

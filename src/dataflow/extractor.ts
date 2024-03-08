@@ -7,7 +7,6 @@ import { processUninterestingLeaf } from './internal/process/uninteresting-leaf'
 import { processSymbol } from './internal/process/symbol'
 import { processExpressionList } from './internal/process/expression-list'
 import { processFunctionCall } from './internal/process/functions/call/default-call-handling'
-import { processFunctionDefinition } from './internal/process/functions/function-definition'
 import { processFunctionParameter } from './internal/process/functions/parameter'
 import { initializeCleanEnvironments } from './environments'
 import { processFunctionArgument } from './internal/process/functions/argument'
@@ -32,7 +31,7 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.Break]:              (n, d) => processAsNamedCall(n, d, n.lexeme, []),
 	[RType.Next]:               (n, d) => processAsNamedCall(n, d, n.lexeme, []),
 	[RType.FunctionCall]:       processFunctionCall,
-	[RType.FunctionDefinition]: processFunctionDefinition, /* TODO */
+	[RType.FunctionDefinition]: (n, d) => processAsNamedCall(n, d, n.lexeme, [...n.parameters, n.body]),
 	[RType.Parameter]:          processFunctionParameter,
 	[RType.Argument]:           processFunctionArgument,
 	[RType.ExpressionList]:     processExpressionList /* TODO */

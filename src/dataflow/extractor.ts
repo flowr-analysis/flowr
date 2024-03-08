@@ -12,7 +12,6 @@ import { initializeCleanEnvironments } from './environments'
 import { processFunctionArgument } from './internal/process/functions/argument'
 import { processAsNamedCall } from './internal/process/operators'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- allows type adaption without re-creation
 export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.Number]:             processUninterestingLeaf,
 	[RType.String]:             processUninterestingLeaf,

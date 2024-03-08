@@ -160,7 +160,7 @@ export function normalizeBasedOnType(
 		log.trace(`found ${splitOnSemicolon.length} expressions by semicolon-split, parsing them separately`)
 		const flattened = []
 		let i = 0
-		let semis = []
+		const semis = []
 		for(const sub of splitOnSemicolon) {
 			const result = normalizeBasedOnType(data, sub)
 			const semi = semiColons[i++]
@@ -174,7 +174,7 @@ export function normalizeBasedOnType(
 				if(semi) {
 					if(result.length > 0) {
 						const last = result[result.length - 1] as RNode
-						last.info.additionalTokens ??= [];
+						last.info.additionalTokens ??= []
 						last.info.additionalTokens?.push(semi)
 					} else {
 						semis.push(semi)

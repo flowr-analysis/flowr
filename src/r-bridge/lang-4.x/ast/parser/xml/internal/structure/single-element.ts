@@ -32,6 +32,7 @@ function normalizeDelimiter(_data: ParserData, elem: NamedXmlBasedJson): RDelimi
  */
 export function tryNormalizeSingleNode(data: ParserData, elem: NamedXmlBasedJson): RNode | RDelimiter {
 	switch(elem.name) {
+		// TODO: handle as unary op
 		case RawRType.ParenLeft:
 		case RawRType.ParenRight:
 		case RawRType.BraceLeft:

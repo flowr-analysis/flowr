@@ -1,4 +1,4 @@
-import type { ParentInformation, RForLoop } from '../../../../../../r-bridge'
+import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
@@ -9,29 +9,44 @@ import {
 	produceNameSharedIdMap
 } from '../../../../linker'
 import { EdgeType } from '../../../../../graph'
+import { dataflowLogger } from '../../../../../index'
+import { processKnownFunctionCall } from '../known-call-handling'
+import { unpackArgument } from '../argument/unpack-argument'
+import { guard } from '../../../../../../util/assert'
 
 export function processForLoop<OtherInfo>(
-	loop: RForLoop<OtherInfo & ParentInformation>,
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const variable = processDataflowFor(loop.variable, data)
-	const vector = processDataflowFor(loop.vector, data)
+	if(args.length !== 3) {
+		dataflowLogger.warn(`For-Loop ${name.content} does not have 3 arguments, skipping`)
+		return processKnownFunctionCall(name, args, rootId, data).information
+	}
+
+	const [variableArg, vectorArg, bodyArg] = args.map(unpackArgument)
+
+	guard(variableArg !== undefined && vectorArg !== undefined && bodyArg !== undefined, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`)
+
+	const variable = processDataflowFor(variableArg, data)
+	const vector = processDataflowFor(vectorArg, data)
 	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment)
 	const headGraph= variable.graph.mergeWith(vector.graph)
 
 	const writtenVariable = variable.unknownReferences
 	for(const write of writtenVariable) {
-		headEnvironments = define({ ...write, used: 'always', definedAt: loop.info.id, kind: 'variable' }, false, headEnvironments)
+		headEnvironments = define({ ...write, used: 'always', definedAt: name.info.id, kind: 'variable' }, false, headEnvironments)
 	}
 	data = { ...data, environment: headEnvironments }
-	const body = processDataflowFor(loop.body, data)
+	const body = processDataflowFor(bodyArg, data)
 
 	const nextGraph = headGraph.mergeWith(body.graph)
 
 	const outEnvironment = appendEnvironment(headEnvironments, body.environment)
 
 	// again within an if-then-else we consider all actives to be read
-	// currently i add it at the end, but is this correct?
+	// currently I add it at the end, but is this correct?
 	const ingoing = [...vector.in, ...makeAllMaybe(body.in, nextGraph, outEnvironment), ...vector.unknownReferences, ...makeAllMaybe(body.unknownReferences, nextGraph, outEnvironment)]
 
 

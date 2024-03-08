@@ -18,6 +18,9 @@ import { processSourceCall } from '../internal/process/functions/call/built-in/b
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else'
 import { processSpecialBinOp } from '../internal/process/functions/call/built-in/built-in-logical-bin-op'
 import { processPipe } from '../internal/process/functions/call/built-in/built-in-pipe'
+import { processForLoop } from '../internal/process/functions/call/built-in/built-in-for-loop'
+import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-for-repeat'
+import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-for-while'
 
 export type Identifier = string & { __brand?: 'identifier' }
 
@@ -193,7 +196,10 @@ export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
 	...simpleBuiltInFunction(processAssignment, { swapSourceAndTarget: true },'->'),
 	...simpleBuiltInFunction(processAssignment, { superAssignment: true , swapSourceAndTarget: true },'->>'),
 	...simpleBuiltInFunction(processSpecialBinOp, { lazy: true }, '&&', '||', '&', '|'),
-	...simpleBuiltInFunction(processPipe, { }, '|>')
+	...simpleBuiltInFunction(processPipe, { }, '|>'),
+	...simpleBuiltInFunction(processForLoop, { }, 'for'),
+	...simpleBuiltInFunction(processRepeatLoop, { }, 'repeat'),
+	...simpleBuiltInFunction(processWhileLoop, { }, 'while')
 ])
 /* the built-in environment is the root of all environments */
 export const BuiltInEnvironment = new Environment('built-in', undefined as unknown as IEnvironment)

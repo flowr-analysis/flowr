@@ -2,7 +2,7 @@ This page focuses on the features presented by *flowR* and how to use them.
 If you have never used *flowR* before, please refer to the [setup](https://github.com/Code-Inspect/flowr/wiki/Setup) wiki page first, for instructions on how to install *flowR*.
 
 <!-- TOC -->
-- [FlowR's Modules](#flowrs-modules)
+- [*flowR*'s Modules](#flowrs-modules)
 - [Using *flowR*](#using-flowr)
   - [The Read-Eval-Print Loop (REPL)](#the-read-eval-print-loop-repl)
   - [The Server](#the-server)
@@ -14,7 +14,7 @@ If you have never used *flowR* before, please refer to the [setup](https://githu
   - [Export RDF N-Quads](#export-rdf-n-quads)
 <!-- TOC -->
 
-## FlowR's Modules
+## *flowR*'s Modules
 
 ```mermaid
 flowchart TD
@@ -64,10 +64,12 @@ The following sections explain how to use these features.
 
 ## Using *flowR*
 
-*flowR* has two main ways to operate:
+*flowR* itself has two main ways to operate:
 
 - as a server which processes analysis and slicing requests (`--server` option)
 - as a read-eval-print loop (REPL) that can be accessed directly from the command line (default option)
+
+Besides these there is a [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) that allows you to use *flowR* directly from within the editor.
 
 🐳️ If you use the docker-version, simply starting the docker container in interactive mode drops you right into the REPL (`docker run -it --rm eagleoutice/flowr:latest`), while launching with the `--server` argument starts the server (`docker run -it --rm eagleoutice/flowr:latest --server`).\
 ⚒️ If you compile the *flowR* sources yourself, you can access *flowR* by first building the sources (`npm run build`) and executing then the root script (`node dist/src/flowr.js`).

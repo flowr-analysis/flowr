@@ -13,7 +13,6 @@ import { getWithTokenType, retrieveMetaStructure } from '../../meta'
 import { expensiveTrace, log } from '../../../../../../../util/log'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { normalizeComment } from '../other'
-import { tryNormalizeGroup } from '../operators/grouping'
 
 function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBasedJson[], data: ParserData): (RNode | RDelimiter)[] {
 	if(mappedWithName.length === 1) {
@@ -36,33 +35,28 @@ function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: NamedXmlBase
 			return [repeatLoop]
 		}
 	} else if(mappedWithName.length === 3) {
-		const group = tryNormalizeGroup(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson])
-		if(group !== undefined) {
-			return [group]
+		const binary = tryNormalizeBinary(
+			data,
+			mappedWithName[0],
+			mappedWithName[1],
+			mappedWithName[2]
+		)
+		if(binary !== undefined) {
+			return [binary]
 		} else {
-			const binary = tryNormalizeBinary(
+			const forLoop = tryNormalizeFor(
 				data,
 				mappedWithName[0],
 				mappedWithName[1],
 				mappedWithName[2]
 			)
-			if(binary !== undefined) {
-				return [binary]
+			if(forLoop !== undefined) {
+				return [forLoop]
 			} else {
-				const forLoop = tryNormalizeFor(
-					data,
-					mappedWithName[0],
-					mappedWithName[1],
-					mappedWithName[2]
-				)
-				if(forLoop !== undefined) {
-					return [forLoop]
-				} else {
 				// could be a symbol with namespace information
-					const symbol = tryNormalizeSymbol(data, mappedWithName)
-					if(symbol !== undefined) {
-						return [symbol]
-					}
+				const symbol = tryNormalizeSymbol(data, mappedWithName)
+				if(symbol !== undefined) {
+					return [symbol]
 				}
 			}
 		}

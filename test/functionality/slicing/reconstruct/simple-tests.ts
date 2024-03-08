@@ -97,20 +97,29 @@ describe('Simple', withShell(shell => {
 				assertReconstructed(`${JSON.stringify(id)}: ${code}`, shell, code, id, expected)
 			}
 		})
+	})
 
-		describe('function definition', () => {
-			const testCases: {name: string, case: string, argument: [string], expected: string}[] = [
-				//this test does not reconstruct the function
-				{ name: 'simple function', case: 'a <- function (x) { x <- 2 }', argument: ['0'], expected: 'a <- function (x) { x <- 2 }' },
-				{ name: 'function body extracted', case: 'a <- function (x) { x <- 2 }', argument: ['5'], expected: 'x <- 2' },
-				//this test does not reconstruct the function
-				{ name: 'multi-line function', case: 'a <- function (x) { x <- 2;\nx + 4 }', argument: ['0'], expected: 'a <- function (x) { x <- 2;\nx + 4 }' },
-				{ name: 'only one function body extracted', case: 'a <- function (x) { x <- 2; x + 4 }', argument: ['5'], expected: 'x <- 2' }
-			]
-			for(const test of testCases) {
-				assertReconstructed(test.name, shell, test.case, test.argument, test.expected)
-			}
-		})
+	describe('function definition', () => {
+		const testCases: {name: string, case: string, argument: [string], expected: string}[] = [
+			//this test does not reconstruct the function
+			{ name: 'simple function', case: 'a <- function (x) { x <- 2 }', argument: ['0'], expected: 'a <- function (x) { x <- 2 }' },
+			{ name: 'function body extracted', case: 'a <- function (x) { x <- 2 }', argument: ['5'], expected: 'x <- 2' },
+			//this test does not reconstruct the function
+			{ name: 'multi-line function', case: 'a <- function (x) { x <- 2;\nx + 4 }', argument: ['0'], expected: 'a <- function (x) { x <- 2;\nx + 4 }' },
+			{ name: 'only one function body extracted', case: 'a <- function (x) { x <- 2; x + 4 }', argument: ['5'], expected: 'x <- 2' }
+		]
+		for(const test of testCases) {
+			assertReconstructed(test.name, shell, test.case, test.argument, test.expected)
+		}
+	})
+
+	describe.only('Branches', () => {
+		const testCases: {name: string, case: string, argument: [string], expected: string}[] = [
+			{ name: 'simple if statement', case: 'if(TRUE) { x <- 3 } else { x <- 4}', argument: ['2@x'], expected: 'if(TRUE) { x <- 3 }' }
+		]
+		for(const test of testCases) {
+			assertReconstructed(test.name, shell, test.case, test.argument, test.expected)
+		}
 	})
 	describe('Failures in practice', () => {
 		assertReconstructed('Reconstruct expression list in call', shell, `

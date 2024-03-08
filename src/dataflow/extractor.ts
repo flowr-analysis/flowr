@@ -33,7 +33,7 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.FunctionDefinition]: (n, d) => processAsNamedCall(n, d, n.lexeme, [...n.parameters, n.body]),
 	[RType.Parameter]:          processFunctionParameter,
 	[RType.Argument]:           processFunctionArgument,
-	[RType.ExpressionList]:     processExpressionList /* TODO */
+	[RType.ExpressionList]:     processExpressionList
 }
 
 export function produceDataFlowGraph<OtherInfo>(request: RParseRequest, ast: NormalizedAst<OtherInfo & ParentInformation>): DataflowInformation {

@@ -186,7 +186,8 @@ export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
 	// maybe map to a control flow function?
 	simpleBuiltInConstant('break', 'break'), simpleBuiltInConstant('next', 'next'),
 	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { },'cat' /* returns null */),
-	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { returnsNthArgument: 1 },'return', 'print'),
+	// TODO: fix handling of '{'
+	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { returnsNthArgument: 1 },'return', 'print', '(', '{'),
 	...simpleBuiltInFunction(processSourceCall, { }, 'source'),
 	...simpleBuiltInFunction(processAccess, { treatIndicesAsString: false },'[', '[['),
 	...simpleBuiltInFunction(processAccess, { treatIndicesAsString: true },'$', '@'),

@@ -4,7 +4,7 @@ import { appendEnvironments, DefaultEnvironmentMemory, define, Environment, popL
 import { GlobalScope, LocalScope } from '../../../src/dataflow/environments/scopes'
 import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
 
-export function variable(name: string, definedAt: NodeId, nodeId: NodeId = '_0', scope: RScope = LocalScope, used: WhenUsed = 'always'): IdentifierDefinition {
+export function variable(name: string, nodeId: NodeId, definedAt: NodeId = nodeId, scope: RScope = LocalScope, used: WhenUsed = 'always'): IdentifierDefinition {
 	return { name, kind: 'variable', nodeId, definedAt, scope, used }
 }
 
@@ -58,48 +58,48 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	/**
 	 * Defines a new argument in the top environment.
 	 * @param name - Argument name
-	 * @param definedAt - AST Node Id of definition
 	 * @param nodeId - AST Node ID of usage
+	 * @param definedAt - AST Node Id of definition
 	 * @param scope - local (default) or optional
 	 * @param used - always (default) or optional
 	 */
-	defineArgument(name: string, definedAt: NodeId, nodeId: NodeId, scope: RScope = LocalScope, used: WhenUsed = 'always') {
+	defineArgument(name: string, nodeId: NodeId, definedAt: NodeId, scope: RScope = LocalScope, used: WhenUsed = 'always') {
 		return this.defineEnv({ name, kind: 'argument', definedAt, nodeId, scope, used })
 	}
 
 	/**
 	 * Defines a new function in the top environment.
 	 * @param name - Function name
-	 * @param definedAt - AST Node Id of definition
 	 * @param nodeId - AST Node ID of usage
+	 * @param definedAt - AST Node Id of definition
 	 * @param scope - local (default) or optional
 	 * @param used - always (default) or optional
 	 */
-	defineFunction(name: string, definedAt: NodeId, nodeId: NodeId, scope: RScope = LocalScope, used: WhenUsed = 'always') {
+	defineFunction(name: string, nodeId: NodeId, definedAt: NodeId, scope: RScope = LocalScope, used: WhenUsed = 'always') {
 		return this.defineEnv({ name, kind: 'function', definedAt, nodeId, scope, used })
 	}
 
 	/**
 	 * Defines a new parameter in the top environment.
 	 * @param name - Parameter name
-	 * @param definedAt - AST Node Id of definition
 	 * @param nodeId - AST Node ID of usage
+	 * @param definedAt - AST Node Id of definition
 	 * @param scope - local (default) or optional
 	 * @param used - always (default) or optional
 	 */
-	defineParameter(name: string, definedAt: NodeId, nodeId: NodeId, scope: RScope = LocalScope, used: WhenUsed = 'always') {
+	defineParameter(name: string, nodeId: NodeId, definedAt: NodeId, scope: RScope = LocalScope, used: WhenUsed = 'always') {
 		return this.defineEnv({ name, kind: 'parameter', definedAt, nodeId, scope, used })
 	}
 
 	/**
 	 * Defines a new parameter in the top environment.
 	 * @param name - Variable name
-	 * @param definedAt - AST Node Id of definition
-	 * @param nodeId - AST Node ID of usage; optional
+	 * @param nodeId - AST Node Id of usage
+	 * @param definedAt - AST Node ID of definition
 	 * @param scope - local (default) or optional
 	 * @param used - always (default) or optional
 	 */
-	defineVariable(name: string, definedAt: NodeId, nodeId: NodeId = '_0', scope: RScope = LocalScope, used: WhenUsed = 'always') {
+	defineVariable(name: string, nodeId: NodeId, definedAt: NodeId = nodeId, scope: RScope = LocalScope, used: WhenUsed = 'always') {
 		return this.defineEnv({ name, kind: 'variable', definedAt, nodeId, scope, used })
 	}
 

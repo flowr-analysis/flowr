@@ -20,7 +20,7 @@ describe('while', withShell(shell => {
 		emptyGraph()
 			.defineVariable('0', 'x')
 			.use('1', 'x')
-			.use('7', 'x', { when: 'maybe', environment: defaultEnvironment().defineVariable('x', '4', '0') })
+			.use('7', 'x', { when: 'maybe', environment: defaultEnvironment().defineVariable('x', '0', '4') })
 			.reads('7', '0', 'maybe')
 			.definedBy('0', '1')
 	)

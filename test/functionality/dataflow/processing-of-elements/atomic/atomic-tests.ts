@@ -75,7 +75,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		assertDataflow('assign on access', shell,
 			'a[x] <- 5',
 			emptyGraph()
-				.defineVariable('0', 'a', LocalScope, { when: 'maybe' })
+				.defineVariable('0', 'a', LocalScope,  { when: 'maybe' })
 				.use('1', 'x')
 				.use('2', unnamedArgument('2'))
 				.reads('0', '2')
@@ -392,7 +392,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 						`if (x <- 3) ${b.func('x')}`,
 						emptyGraph()
 							.defineVariable('0', 'x', LocalScope)
-							.use('3', 'x', { when: 'maybe', environment: defaultEnvironment().defineVariable('x', '2', '0') })
+							.use('3', 'x', { when: 'maybe', environment: defaultEnvironment().defineVariable('x', '0', '2') })
 							.reads('3', '0')
 					)
 				})
@@ -452,12 +452,12 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 		}
 	})
 	describe('inline non-strict boolean operations', () => {
-		const environmentWithY = defaultEnvironment().defineVariable('y', '2', '0')
-		const environmentWithOtherY = defaultEnvironment().defineVariable('y', '6', '4')
+		const environmentWithY = defaultEnvironment().defineVariable('y', '0', '2')
+		const environmentWithOtherY = defaultEnvironment().defineVariable('y', '4', '6')
 		assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'y <- 15; x && (y <- 13); y',
 			emptyGraph()
 				.defineVariable('0', 'y')
-				.defineVariable('4', 'y', LocalScope, { environment: environmentWithY })
+				.defineVariable('4', 'y', LocalScope,  { environment: environmentWithY })
 				.use('3', 'x', { environment: environmentWithY })
 				.use('8', 'y', { environment: environmentWithY.appendWritesOf(environmentWithOtherY) })
 				.reads('8', '0')
@@ -476,7 +476,7 @@ describe('Atomic (dataflow information)', withShell((shell) => {
 				'for(i in 1:10) { i }',
 				emptyGraph()
 					.defineVariable('0', 'i')
-					.use('4', 'i', { when: 'maybe', environment: defaultEnvironment().defineVariable('i', '6', '0') })
+					.use('4', 'i', { when: 'maybe', environment: defaultEnvironment().defineVariable('i', '0', '6') })
 					.reads('4', '0', 'maybe')
 			)
 		})

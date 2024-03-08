@@ -67,8 +67,8 @@ describe('Modification', () => {
 describe('Append', () => {
 	describe('Global', () => {
 		it('Different variables', () => {
-			const clean = defaultEnvironment().defineVariable('x', '_1', '_1', GlobalScope)
-			const append = defaultEnvironment().defineVariable('y', '_2', '_2', GlobalScope)
+			const clean = defaultEnvironment().defineVariable('x', '_1', '_1',  GlobalScope)
+			const append = defaultEnvironment().defineVariable('y', '_2', '_2',  GlobalScope)
 			const result = appendEnvironments(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2 + DefaultEnvironmentMemory.size)
@@ -77,8 +77,8 @@ describe('Append', () => {
 		})
 
 		it('Same variables', () => {
-			const clean = defaultEnvironment().defineVariable('x', '_1', '_1', GlobalScope)
-			const append = defaultEnvironment().defineVariable('x', '_2', '_2', GlobalScope)
+			const clean = defaultEnvironment().defineVariable('x', '_1', '_1',  GlobalScope)
+			const append = defaultEnvironment().defineVariable('x', '_2', '_2',  GlobalScope)
 			const result = appendEnvironments(clean, append)
 			expect(result, 'there should be a result').to.be.not.undefined
 			expect(result.current.memory, 'there should be only one symbol defined (for x)').to.have.length(1 + DefaultEnvironmentMemory.size)

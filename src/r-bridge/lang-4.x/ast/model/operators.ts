@@ -88,3 +88,5 @@ export const Operators: readonly string[] = Object.keys(OperatorDatabase)
 
 // '**' will be treated as '^'
 export const OperatorsInRAst = buildOperatorRAstCollection(Operators)
+export const UnaryOperatorsInRAst = buildOperatorRAstCollection(Operators.filter(op => OperatorDatabase[op].arity === OperatorArity.Unary))
+export const GroupingOperatorsInRAst = new Set(['(', '{'])

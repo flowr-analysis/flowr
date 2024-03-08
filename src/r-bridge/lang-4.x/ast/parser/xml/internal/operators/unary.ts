@@ -1,11 +1,10 @@
 import type { ParserData } from '../../data'
 import type { NamedXmlBasedJson } from '../../input-format'
 import type {
-	RNode, RUnaryOp
-} from '../../../../model'
+	RNode, RUnaryOp } from '../../../../model'
 import {
 	RType,
-	OperatorsInRAst
+	UnaryOperatorsInRAst
 } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { tryNormalizeSingleNode } from '../structure'
@@ -15,7 +14,7 @@ import { expensiveTrace } from '../../../../../../../util/log'
 
 
 /**
- * Parses the construct as a {@link RUnaryOp} (automatically identifies the flavor).
+ * Parses the construct as a {@link RUnaryOp}.
  *
  * @param data     - The data used by the parser (see {@link ParserData})
  * @param operator - The operator token
@@ -26,7 +25,7 @@ import { expensiveTrace } from '../../../../../../../util/log'
 export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
 	expensiveTrace(parseLog, () => `unary op for ${operator.name} ${operand.name}`)
 
-	if(OperatorsInRAst.has(operator.name)) {
+	if(UnaryOperatorsInRAst.has(operator.name)) {
 		return parseUnaryOp(data, operator, operand)
 	} else {
 		return undefined

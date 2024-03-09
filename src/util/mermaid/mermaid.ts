@@ -10,10 +10,9 @@ export function escapeMarkdown(text: string): string {
 export function mermaidCodeToUrl(code: string): string {
 	const obj = {
 		code,
-		mermaid:       {},
-		updateEditor:  false,
-		autoSync:      true,
-		updateDiagram: false
+		mermaid: {
+			autoSync: true
+		}
 	}
 	return `https://mermaid.live/edit#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}`
 }

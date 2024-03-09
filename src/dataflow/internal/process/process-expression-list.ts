@@ -20,7 +20,7 @@ import type { DataflowGraphVertexInfo } from '../../graph'
 import { DataflowGraph } from '../../graph'
 import { dataflowLogger, EdgeType } from '../../index'
 import { guard } from '../../../util/assert'
-import { processAsNamedCall } from './operators'
+import { processAsNamedCall } from './process-named-call'
 
 
 const dotDotDotAccess = /\.\.\d+/

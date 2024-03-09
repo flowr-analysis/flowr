@@ -8,7 +8,7 @@ import type {
 import {
 	initializeCleanEnvironments
 } from '../../../src/dataflow'
-import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/argument'
+import { UnnamedArgumentPrefix } from '../../../src/dataflow/internal/process/functions/process-argument'
 import {
 	appendEnvironment,
 	define,

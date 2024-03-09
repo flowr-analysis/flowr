@@ -11,7 +11,7 @@ import { dataflowLogger, EdgeType, graphToMermaidUrl } from '../../../../../inde
 import { processKnownFunctionCall } from '../known-call-handling'
 import { guard } from '../../../../../../util/assert'
 import { unpackArgument } from '../argument/unpack-argument'
-import { UnnamedArgumentPrefix } from '../../argument'
+import { UnnamedArgumentPrefix } from '../../process-argument'
 
 
 export function processPipe<OtherInfo>(

@@ -17,7 +17,7 @@ import { guard } from '../../../../../../util/assert'
 import { log, LogLevel } from '../../../../../../util/log'
 import { define, overwriteEnvironment } from '../../../../../environments'
 import { unpackArgument } from '../argument/unpack-argument'
-import { processAsNamedCall } from '../../../operators'
+import { processAsNamedCall } from '../../../process-named-call'
 
 export function processAssignment<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

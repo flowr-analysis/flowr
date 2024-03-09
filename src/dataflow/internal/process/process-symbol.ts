@@ -3,7 +3,7 @@ import { RNa, RNull } from '../../../r-bridge'
 import { DataflowGraph } from '../../graph'
 import { type DataflowInformation } from '../../info'
 import type { DataflowProcessorInformation } from '../../processor'
-import { processValue } from './value'
+import { processValue } from './process-value'
 
 export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	if(symbol.content === RNull || symbol.content === RNa) {

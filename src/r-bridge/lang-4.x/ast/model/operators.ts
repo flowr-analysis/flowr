@@ -20,10 +20,9 @@ export const enum OperatorArity {
 
 export type OperatorWrittenAs = 'infix' | 'prefix';
 export type OperatorUsedAs = 'assignment' | 'operation' | 'access';
-export type OperatorName = string;
 
 export interface OperatorInformationValue extends MergeableRecord {
-	name:                 OperatorName;
+	name:                 string;
 	stringUsedInRAst:     RawRType | `%${string}%`;
 	stringUsedInternally: string;
 	// precedence: number // handled by R
@@ -88,5 +87,4 @@ export const Operators: readonly string[] = Object.keys(OperatorDatabase)
 
 // '**' will be treated as '^'
 export const OperatorsInRAst = buildOperatorRAstCollection(Operators)
-export const UnaryOperatorsInRAst = buildOperatorRAstCollection(Operators.filter(op => OperatorDatabase[op].arity === OperatorArity.Unary))
-export const GroupingOperatorsInRAst = new Set(['(', '{'])
+export const UnaryOperatorsInRAst = buildOperatorRAstCollection(Operators.filter(op => OperatorDatabase[op].arity !== OperatorArity.Both))

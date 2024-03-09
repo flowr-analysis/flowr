@@ -148,6 +148,7 @@ registerBuiltInFunctions(processAssignment,       { swapSourceAndTarget: true },
 registerBuiltInFunctions(processAssignment,       { superAssignment: true, swapSourceAndTarget: true }, '->>')
 registerBuiltInFunctions(processSpecialBinOp,     { lazy: true },                                       '&&', '||', '&', '|')
 registerBuiltInFunctions(processPipe,             {},                                                   '|>')
+/** TODO: handle null return: in general support quote and friends! */
 registerBuiltInFunctions(processForLoop,          {},                                                   'for')
 registerBuiltInFunctions(processRepeatLoop,       {},                                                   'repeat')
 registerBuiltInFunctions(processWhileLoop,        {},                                                   'while')

@@ -1,8 +1,9 @@
 import type {
+	Base, Location,
 	NodeId,
 	ParentInformation,
 	RFunctionArgument,
-	RNode, RString,
+	RNode, RNodeWithParent, RString,
 	RSymbol, RUnnamedArgument
 } from '../../../../../../r-bridge'
 import {
@@ -18,6 +19,18 @@ import { log, LogLevel } from '../../../../../../util/log'
 import { define, overwriteEnvironment } from '../../../../../environments'
 import { unpackArgument } from '../argument/unpack-argument'
 import { processAsNamedCall } from '../../../process-named-call'
+import { toUnnamedArgument } from '../argument/make-argument'
+
+function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, name: string): RSymbol<OtherInfo & ParentInformation> {
+	return {
+		type:      RType.Symbol,
+		info:      target.info,
+		content:   prefix + name,
+		lexeme:    target.lexeme,
+		location:  target.location,
+		namespace: undefined
+	}
+}
 
 export function processAssignment<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -35,26 +48,22 @@ export function processAssignment<OtherInfo>(
 	const effectiveArgs = config.swapSourceAndTarget ? [args[1], args[0]] : args
 	const { target, source } = extractSourceAndTarget(effectiveArgs, name)
 
-
-	if(target.type === RType.FunctionCall && target.flavor === 'named') {
-		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`)
-		return processAsNamedCall({
-			type:      RType.Symbol,
-			info:      target.info,
-			content:   target.functionName.content + name.content,
-			lexeme:    target.lexeme,
-			location:  target.location,
-			namespace: undefined
-		}, data, target.lexeme, [...target.arguments, source])
-	} else if(target.type === RType.Symbol) {
+	if(target.type === RType.Symbol) {
 		const res = processKnownFunctionCall(name, effectiveArgs, rootId, data)
 		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, res.processedArguments as [DataflowInformation, DataflowInformation], rootId, data, res.information)
+	} else if(target.type === RType.FunctionCall && target.flavor === 'named') {
+		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`)
+		const replacement = toReplacementSymbol(target, target.functionName.content, name.content)
+		return processAsNamedCall(replacement, data, replacement.content, [...target.arguments, source])
+	} else if(target.type === RType.Access) {
+		dataflowLogger.debug(`Assignment ${name.content} has an access as target => replacement function ${target.lexeme}`)
+		const replacement = toReplacementSymbol(target, target.operator, name.content)
+		return processAsNamedCall(replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source])
 	} else if(target.type === RType.String) {
 		return processAssignmentToString(target, effectiveArgs, name, rootId, data, config, source)
 	}
 
 	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type}, skipping`)
-
 	return processKnownFunctionCall(name, effectiveArgs, rootId, data).information
 }
 

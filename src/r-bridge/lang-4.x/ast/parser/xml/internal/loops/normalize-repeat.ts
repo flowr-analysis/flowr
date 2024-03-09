@@ -1,22 +1,22 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
 import type { RRepeatLoop } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { normalizeSingleNode } from '../structure'
 import { guard } from '../../../../../../../util/assert'
-import { ensureExpressionList, retrieveMetaStructure } from '../../meta'
+import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta'
 
 /**
  * Try to parse the construct as a {@link RRepeatLoop}.
  *
- * @param data - The data used by the parser (see {@link ParserData})
+ * @param data - The data used by the parser (see {@link NormalizerData})
  * @param repeatToken - Token which represents the `repeat` keyword
  * @param bodyToken - The `body` of the repeat-loop
  *
  * @returns The parsed {@link RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
  */
-export function tryNormalizeRepeat(data: ParserData, [repeatToken, bodyToken]: [NamedXmlBasedJson, NamedXmlBasedJson]): RRepeatLoop | undefined {
+export function tryNormalizeRepeat(data: NormalizerData, [repeatToken, bodyToken]: [NamedXmlBasedJson, NamedXmlBasedJson]): RRepeatLoop | undefined {
 	if(repeatToken.name !== RawRType.Repeat) {
 		parseLog.debug('encountered non-repeat token for supposed repeat-loop structure')
 		return undefined

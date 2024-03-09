@@ -4,7 +4,7 @@ import type { SourceRange } from '../../../../../util/range'
 /**
  * Contains all information populated and present during parsing and normalization of the R AST.
  */
-export interface ParserData extends MergeableRecord {
+export interface NormalizerData extends MergeableRecord {
 	/**
    * The currently active source range during parsing, i.e. the full range of the current element.
    */

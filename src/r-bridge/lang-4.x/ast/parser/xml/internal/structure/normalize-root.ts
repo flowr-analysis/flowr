@@ -1,17 +1,17 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { XmlBasedJson } from '../../input-format'
 import { childrenKey, getKeyGuarded } from '../../input-format'
 import type { RExpressionList, RNode } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
-import { assureTokenType } from '../../meta'
+import { assureTokenType } from '../../normalize-meta'
 import type { RDelimiter } from '../../../../model/nodes/info'
-import { normalizeExpressions } from './elements'
+import { normalizeExpressions } from './normalize-expressions'
 import { log } from '../../../../../../../util/log'
 import { partition } from '../../../../../../../util/arrays'
 
 
 export function normalizeRootObjToAst(
-	data: ParserData,
+	data: NormalizerData,
 	obj: XmlBasedJson
 ): RExpressionList {
 	const exprContent = getKeyGuarded<XmlBasedJson>(obj, RawRType.ExpressionList)

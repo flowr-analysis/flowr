@@ -1,23 +1,23 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
 import type { RFunctionDefinition, RParameter } from '../../../../model'
 import { RType , RawRType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { ensureExpressionList, retrieveMetaStructure } from '../../meta'
+import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta'
 import { guard, isNotUndefined } from '../../../../../../../util/assert'
 import { splitArrayOn } from '../../../../../../../util/arrays'
-import { tryNormalizeParameter } from './parameter'
+import { tryNormalizeParameter } from './normalize-parameter'
 import { normalizeExpressions } from '../structure'
 
 /**
  * Tries to parse the given data as a function definition.
  *
- * @param data - The data used by the parser (see {@link ParserData})
+ * @param data - The data used by the parser (see {@link NormalizerData})
  * @param mappedWithName - The json object to extract the meta-information from
  *
  * @returns The parsed {@link RFunctionDefinition} or `undefined` if the given construct is not a function definition
  */
-export function tryNormalizeFunctionDefinition(data: ParserData, mappedWithName: readonly NamedXmlBasedJson[]): RFunctionDefinition | undefined {
+export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithName: readonly NamedXmlBasedJson[]): RFunctionDefinition | undefined {
 	const fnBase = mappedWithName[0]
 	if(fnBase.name !== RawRType.Function && fnBase.name !== RawRType.Lambda) {
 		parseLog.trace(`expected function definition to be identified by keyword, yet received ${fnBase.name}`)

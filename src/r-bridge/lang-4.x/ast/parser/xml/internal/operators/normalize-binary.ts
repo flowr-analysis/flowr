@@ -1,4 +1,4 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
 import { XmlParseError } from '../../input-format'
 import type {
@@ -12,7 +12,7 @@ import {
 	OperatorDatabase
 } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../meta'
+import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../normalize-meta'
 import { normalizeSingleNode } from '../structure'
 import { guard } from '../../../../../../../util/assert'
 import { expensiveTrace } from '../../../../../../../util/log'
@@ -24,7 +24,7 @@ import { startAndEndsWith } from '../../../../../../../util/strings'
  * to ensure it is handled separately from the others (especially in the combination of a pipe bind)
  */
 export function tryNormalizeBinary(
-	data: ParserData,
+	data: NormalizerData,
 	[lhs, operator, rhs]: [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson]
 ): RNode | undefined {
 	expensiveTrace(parseLog, () => `binary op for ${lhs.name} [${operator.name}] ${rhs.name}`)
@@ -35,7 +35,7 @@ export function tryNormalizeBinary(
 	}
 }
 
-function parseBinaryOp(data: ParserData, lhs: NamedXmlBasedJson, operator: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RFunctionCall | RBinaryOp | RPipe {
+function parseBinaryOp(data: NormalizerData, lhs: NamedXmlBasedJson, operator: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RFunctionCall | RBinaryOp | RPipe {
 	ensureChildrenAreLhsAndRhsOrdered(lhs.content, rhs.content)
 	let parsedLhs = normalizeSingleNode(data, lhs)
 	let parsedRhs = normalizeSingleNode(data, rhs)

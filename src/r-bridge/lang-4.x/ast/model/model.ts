@@ -1,7 +1,7 @@
 import type { SourceRange } from '../../../../util/range'
 import type { RType } from './type'
 import type { MergeableRecord } from '../../../../util/objects'
-import type { RNa, RNull } from '../../values'
+import type { RNa, RNull } from '../../convert-values'
 import type {
 	RExpressionList,
 	RNumber,

@@ -1,24 +1,24 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
 import { childrenKey, getKeyGuarded } from '../../input-format'
 import type { RNode } from '../../../../model'
 import { RType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { getWithTokenType, retrieveMetaStructure } from '../../meta'
+import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta'
 import { normalizeExpressions, splitComments } from '../structure'
 import { tryNormalizeFunctionCall, tryNormalizeFunctionDefinition } from '../functions'
-import { tryNormalizeAccess } from '../access'
+import { tryNormalizeAccess } from '../normalize-access'
 import { normalizeComment } from '../other'
 import { partition } from '../../../../../../../util/arrays'
 
 /**
  * Returns an expression list if there are multiple children, otherwise returns the single child directly with no expr wrapper
  *
- * @param data - The data used by the parser (see {@link ParserData})
+ * @param data - The data used by the parser (see {@link NormalizerData})
  * @param obj  - The json object to extract the meta-information from
  */
-export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode {
-	parseLog.debug('Parsing expr')
+export function normalizeExpression(data: NormalizerData, obj: XmlBasedJson): RNode {
+	parseLog.debug('[expr]')
 
 	const { unwrappedObj, content, location } = retrieveMetaStructure(obj)
 
@@ -27,7 +27,7 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 
 	const { others, comments } = splitComments(typed)
 
-	const childData: ParserData = { ...data, currentRange: location, currentLexeme: content }
+	const childData: NormalizerData = { ...data, currentRange: location, currentLexeme: content }
 
 	const maybeFunctionCall = tryNormalizeFunctionCall(childData, others)
 	if(maybeFunctionCall !== undefined) {

@@ -1,10 +1,10 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { RNode, RParameter } from '../../../../model'
 import { RType, RawRType } from '../../../../model'
 import type { NamedXmlBasedJson } from '../../input-format'
 import { parseLog } from '../../../json/parser'
 import type { RDelimiter } from '../../../../model/nodes/info'
-import { retrieveMetaStructure } from '../../meta'
+import { retrieveMetaStructure } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
 import { normalizeSingleNode } from '../structure'
 
@@ -12,12 +12,12 @@ import { normalizeSingleNode } from '../structure'
  * Either parses `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]` as a parameter of a function definition in R.
  * Probably directly called by the function definition parser as otherwise, we do not expect to find parameters.
  *
- * @param data - The data used by the parser (see {@link ParserData})
+ * @param data - The data used by the parser (see {@link NormalizerData})
  * @param objs - Either `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
  *
  * @returns The parsed parameter or `undefined` if the given object is not a parameter.
  */
-export function tryNormalizeParameter(data: ParserData, objs: readonly NamedXmlBasedJson[]): RParameter | undefined {
+export function tryNormalizeParameter(data: NormalizerData, objs: readonly NamedXmlBasedJson[]): RParameter | undefined {
 	parseLog.debug('[parameter]')
 
 	if(objs.length !== 1 && objs.length !== 3) {
@@ -61,7 +61,7 @@ export function tryNormalizeParameter(data: ParserData, objs: readonly NamedXmlB
 	}
 }
 
-function parseWithDefaultValue(data: ParserData, objs: readonly NamedXmlBasedJson[]): RNode | RDelimiter {
+function parseWithDefaultValue(data: NormalizerData, objs: readonly NamedXmlBasedJson[]): RNode | RDelimiter {
 	guard(objs[1].name === RawRType.EqualFormals, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`)
 	guard(objs[2].name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression but: ${JSON.stringify(objs)}`)
 	return normalizeSingleNode(data, objs[2])

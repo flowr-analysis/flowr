@@ -4,13 +4,13 @@ import { decorateAst, deterministicCountingIdGenerator, RawRType } from '../../m
 import type { Entry } from './format'
 import { prepareParsedData } from './format'
 import { log } from '../../../../../util/log'
-import type { ParserData, XmlBasedJson } from '../xml'
+import type { NormalizerData, XmlBasedJson } from '../xml'
 import { normalizeRootObjToAst } from '../xml/internal'
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' })
 
 export function normalize(jsonString: string, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)): NormalizedAst {
-	const data: ParserData = { currentRange: undefined, currentLexeme: undefined }
+	const data: NormalizerData = { currentRange: undefined, currentLexeme: undefined }
 	const object = convertPreparedParsedData(prepareParsedData(jsonString))
 
 	return decorateAst(normalizeRootObjToAst(data, object), getId)

@@ -1,10 +1,10 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { XmlBasedJson } from '../../input-format'
 import type { NoInfo, RLogical, RNumber, RSymbol } from '../../../../model'
 import { RType } from '../../../../model'
-import type { RNa } from '../../../../../values'
-import { number2ts, boolean2ts, isBoolean, isNA } from '../../../../../values'
-import { retrieveMetaStructure } from '../../meta'
+import type { RNa } from '../../../../../convert-values'
+import { number2ts, boolean2ts, isBoolean, isNA } from '../../../../../convert-values'
+import { retrieveMetaStructure } from '../../normalize-meta'
 
 
 /**
@@ -12,10 +12,10 @@ import { retrieveMetaStructure } from '../../meta'
  * and special values.
  * This requires you to check the corresponding name beforehand.
  *
- * @param data - The data used by the parser (see {@link ParserData})
+ * @param data - The data used by the parser (see {@link NormalizerData})
  * @param obj  - The json object to extract the meta-information from
  */
-export function normalizeNumber(data: ParserData, obj: XmlBasedJson): RNumber | RLogical | RSymbol<NoInfo, typeof RNa> {
+export function normalizeNumber(data: NormalizerData, obj: XmlBasedJson): RNumber | RLogical | RSymbol<NoInfo, typeof RNa> {
 	const { location, content } = retrieveMetaStructure(obj)
 	const common = {
 		location,

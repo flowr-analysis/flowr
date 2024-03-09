@@ -1,14 +1,14 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { XmlBasedJson } from '../../input-format'
 import type { RBreak } from '../../../../model'
 import { RType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { expensiveTrace } from '../../../../../../../util/log'
-import { retrieveMetaStructure } from '../../meta'
+import { retrieveMetaStructure } from '../../normalize-meta'
 
 
-export function normalizeBreak(data: ParserData, obj: XmlBasedJson): RBreak {
-	expensiveTrace(parseLog, () => `[break] try: ${JSON.stringify(obj)}`)
+export function normalizeBreak(data: NormalizerData, obj: XmlBasedJson): RBreak {
+	expensiveTrace(parseLog, () => `[break] ${JSON.stringify(obj)}`)
 
 	const { location, content } = retrieveMetaStructure(obj)
 

@@ -1,36 +1,27 @@
-import { getWithTokenType, retrieveMetaStructure } from '../../meta'
-import type { ParserData } from '../../data'
+import { getWithTokenType } from '../../normalize-meta'
+import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
 import { XmlParseError } from '../../input-format'
 import type { RDelimiter } from '../../../../model/nodes/info'
 import type { RNode } from '../../../../model'
-import { RawRType, RType } from '../../../../model'
+import { RawRType } from '../../../../model'
 import { normalizeComment } from '../other'
-import { normalizeLineDirective } from '../other/line-directive'
+import { normalizeLineDirective } from '../other/normalize-line-directive'
 import { normalizeExpression } from '../expression'
 import { normalizeNumber, normalizeString, tryNormalizeSymbol } from '../values'
 import { normalizeBreak, normalizeNext } from '../loops'
 import { guard } from '../../../../../../../util/assert'
-
-export function normalizeDelimiter(elem: NamedXmlBasedJson): RDelimiter {
-	const { location, content } = retrieveMetaStructure(elem.content)
-	return {
-		type:    RType.Delimiter,
-		location,
-		lexeme:  content,
-		subtype: elem.name
-	}
-}
+import { normalizeDelimiter } from './normalize-delimiter'
 
 /**
  * Parses a single structure in the ast based on its type (e.g., a string, a number, a symbol, ...)
  *
- * @param data - The data used by the parser (see {@link ParserData})
+ * @param data - The data used by the parser (see {@link NormalizerData})
  * @param elem - The element to parse
  *
  * @returns The parsed element as an `RNode` or an `RDelimiter` if it is such.
  */
-export function normalizeSingleNode(data: ParserData, elem: NamedXmlBasedJson): RNode | RDelimiter {
+export function normalizeSingleNode(data: NormalizerData, elem: NamedXmlBasedJson): RNode | RDelimiter {
 	switch(elem.name) {
 		// TODO: handle as unary op
 		case RawRType.ParenLeft:

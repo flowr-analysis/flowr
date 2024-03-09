@@ -1,14 +1,14 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
 import { XmlParseError } from '../../input-format'
 import type { RWhileLoop } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { normalizeSingleNode } from '../structure'
-import { ensureExpressionList, retrieveMetaStructure } from '../../meta'
+import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta'
 
 export function tryNormalizeWhile(
-	data: ParserData,
+	data: NormalizerData,
 	[whileToken, leftParen, condition, rightParen, body]: [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson]
 ): RWhileLoop | undefined {
 	if(whileToken.name !== RawRType.While) {

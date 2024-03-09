@@ -1,19 +1,19 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
 import type { RIfThenElse } from '../../../../model'
 import { RType , RawRType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { tryNormalizeIfThen } from './if-then'
+import { tryNormalizeIfThen } from './normalize-if-then'
 import { guard } from '../../../../../../../util/assert'
 import { normalizeSingleNode } from '../structure'
-import { ensureExpressionList } from '../../meta'
+import { ensureExpressionList } from '../../normalize-meta'
 
 
 /**
  * Try to parse the construct as a {@link RIfThenElse}.
  */
 export function tryNormalizeIfThenElse(
-	data: ParserData,
+	data: NormalizerData,
 	tokens: [
 		ifToken:    NamedXmlBasedJson,
 		leftParen:  NamedXmlBasedJson,

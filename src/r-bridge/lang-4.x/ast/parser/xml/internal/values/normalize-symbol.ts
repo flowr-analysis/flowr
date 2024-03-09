@@ -1,10 +1,10 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson } from '../../input-format'
 import type { RSymbol } from '../../../../model'
 import { RType, isSymbol } from '../../../../model'
 import { guard } from '../../../../../../../util/assert'
 import { parseLog } from '../../../json/parser'
-import { retrieveMetaStructure } from '../../meta'
+import { retrieveMetaStructure } from '../../normalize-meta'
 import { startAndEndsWith } from '../../../../../../../util/strings'
 
 /**
@@ -12,12 +12,12 @@ import { startAndEndsWith } from '../../../../../../../util/strings'
  * <p>
  * The special symbols `T` and `F` are parsed as logic values.
  *
- * @param data - The data used by the parser (see {@link ParserData})
+ * @param data - The data used by the parser (see {@link NormalizerData})
  * @param objs - The json object to extract the meta-information from
  *
  * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  */
-export function tryNormalizeSymbol(data: ParserData, objs: readonly NamedXmlBasedJson[]): RSymbol | undefined {
+export function tryNormalizeSymbol(data: NormalizerData, objs: readonly NamedXmlBasedJson[]): RSymbol | undefined {
 	guard(objs.length > 0, 'to parse symbols we need at least one object to work on!')
 	parseLog.debug('trying to parse symbol')
 

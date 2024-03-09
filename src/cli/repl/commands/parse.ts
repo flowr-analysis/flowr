@@ -12,7 +12,7 @@ import type { ReplCommand } from './main'
 import { prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format'
 import { convertPreparedParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/parser'
 import { attributesKey, childrenKey, contentKey } from '../../../r-bridge/lang-4.x/ast/parser/xml'
-import { extractLocation, getTokenType, objectWithArrUnwrap } from '../../../r-bridge/lang-4.x/ast/parser/xml/meta'
+import { extractLocation, getTokenType, objectWithArrUnwrap } from '../../../r-bridge/lang-4.x/ast/parser/xml/normalize-meta'
 import { SteppingSlicer } from '../../../core/stepping-slicer'
 
 type DepthList =  { depth: number, node: XmlBasedJson, leaf: boolean }[]

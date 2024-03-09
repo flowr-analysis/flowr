@@ -1,19 +1,19 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { XmlBasedJson } from '../../input-format'
 import type { RString } from '../../../../model'
 import { RType } from '../../../../model'
-import { retrieveMetaStructure } from '../../meta'
+import { retrieveMetaStructure } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
-import { string2ts } from '../../../../../values'
+import { string2ts } from '../../../../../convert-values'
 
 /**
  * Normalize the given object as a R string (see {@link string2ts}).
  * This requires you to check the corresponding name beforehand.
  *
- * @param data - The data used by the parser (see {@link ParserData})
+ * @param data - The data used by the parser (see {@link NormalizerData})
  * @param obj  - The json object to extract the meta-information from
  */
-export function normalizeString(data: ParserData, obj: XmlBasedJson): RString {
+export function normalizeString(data: NormalizerData, obj: XmlBasedJson): RString {
 	const { location, content } = retrieveMetaStructure(obj)
 
 	// based on https://www.rdocumentation.org/packages/utils/versions/3.6.2/topics/getParseData we do not get strings with 1000 characters or more within the text field.

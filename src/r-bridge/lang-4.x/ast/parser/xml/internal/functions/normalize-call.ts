@@ -1,4 +1,4 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
 import { childrenKey, getKeyGuarded } from '../../input-format'
 import type {
@@ -12,10 +12,10 @@ import type {
 } from '../../../../model'
 import { RawRType, RType, EmptyArgument } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { getWithTokenType, retrieveMetaStructure } from '../../meta'
+import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta'
 import { splitArrayOn } from '../../../../../../../util/arrays'
 import { guard } from '../../../../../../../util/assert'
-import { tryToNormalizeArgument } from './argument'
+import { tryToNormalizeArgument } from './normalize-argument'
 import type { SourceRange } from '../../../../../../../util/range'
 import { normalizeExpression } from '../expression'
 import { normalizeString, tryNormalizeSymbol } from '../values'
@@ -23,13 +23,13 @@ import { normalizeString, tryNormalizeSymbol } from '../values'
 /**
  * Tries to parse the given data as a function call.
  *
- * @param data           - The data used by the parser (see {@link ParserData})
+ * @param data           - The data used by the parser (see {@link NormalizerData})
  * @param mappedWithName - The json object to extract the meta-information from
  *
  * @returns The parsed {@link RFunctionCall} (either named or unnamed) or `undefined` if the given construct is not a function call
  * May return a {@link RNext} or {@link RBreak} as `next()` and `break()` work as such.
  */
-export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | RNext | RBreak | undefined {
+export function tryNormalizeFunctionCall(data: NormalizerData, mappedWithName: NamedXmlBasedJson[]): RFunctionCall | RNext | RBreak | undefined {
 	const fnBase = mappedWithName[0]
 	if(fnBase.name !== RawRType.Expression && fnBase.name !== RawRType.ExprOfAssignOrHelp) {
 		parseLog.trace(`expected function call name to be wrapped an expression, yet received ${fnBase.name}`)
@@ -60,7 +60,7 @@ export function tryNormalizeFunctionCall(data: ParserData, mappedWithName: Named
 	}
 }
 
-function parseArguments(mappedWithName: readonly NamedXmlBasedJson[], data: ParserData): (RArgument | undefined)[] {
+function parseArguments(mappedWithName: readonly NamedXmlBasedJson[], data: NormalizerData): (RArgument | undefined)[] {
 	const argContainer = mappedWithName.slice(1)
 	guard(argContainer.length > 1 && argContainer[0].name === RawRType.ParenLeft && argContainer[argContainer.length - 1].name === RawRType.ParenRight, 'expected args in parenthesis')
 	const splitArgumentsOnComma = splitArrayOn(argContainer.slice(1, argContainer.length - 1), x => x.name === RawRType.Comma)
@@ -70,7 +70,7 @@ function parseArguments(mappedWithName: readonly NamedXmlBasedJson[], data: Pars
 	})
 }
 
-function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | RNext | RBreak | undefined {
+function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RUnnamedFunctionCall | RNext | RBreak | undefined {
 	// maybe remove symbol-content again because I just use the root expr of mapped with name
 	if(mappedWithName.length < 3) {
 		parseLog.trace('expected unnamed function call to have 3 elements [like (<func>)], but was not')
@@ -126,7 +126,7 @@ function tryParseUnnamedFunctionCall(data: ParserData, mappedWithName: NamedXmlB
 }
 
 
-function parseNamedFunctionCall(data: ParserData, symbolContent: NamedXmlBasedJson[], mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RNamedFunctionCall {
+function parseNamedFunctionCall(data: NormalizerData, symbolContent: NamedXmlBasedJson[], mappedWithName: NamedXmlBasedJson[], location: SourceRange, content: string): RNamedFunctionCall {
 	let functionName: RNode | undefined
 	if(symbolContent.length === 1 && symbolContent[0].name === RawRType.StringConst) {
 		const stringBase = normalizeString(data, symbolContent[0].content)

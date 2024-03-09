@@ -1,18 +1,18 @@
-import type { ParserData } from '../../data'
+import type { NormalizerData } from '../../normalizer-data'
 import type { NamedXmlBasedJson, XmlBasedJson } from '../../input-format'
 import { XmlParseError, childrenKey, getKeyGuarded } from '../../input-format'
 import { RType, RawRType } from '../../../../model'
 import type { RComment, RForLoop, RNode, RSymbol } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { normalizeExpressions, splitComments, normalizeSingleNode } from '../structure'
-import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../../meta'
+import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../../normalize-meta'
 import { guard } from '../../../../../../../util/assert'
 import { tryNormalizeSymbol } from '../values'
 import { normalizeComment } from '../other'
 
 
 export function tryNormalizeFor(
-	data: ParserData,
+	data: NormalizerData,
 	[forToken, head, body]: [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson]
 ): RForLoop | undefined {
 	// funny, for does not use top-level parenthesis
@@ -64,7 +64,7 @@ export function tryNormalizeFor(
 	}
 }
 
-function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined, comments: RComment[] } {
+function normalizeForHead(data: NormalizerData, forCondition: XmlBasedJson): { variable: RSymbol | undefined, vector: RNode | undefined, comments: RComment[] } {
 	// must have a child which is `in`, a variable on the left, and a vector on the right
 	const children: NamedXmlBasedJson[] = getKeyGuarded<XmlBasedJson[]>(forCondition, childrenKey).map(content => ({ name: getTokenType(content), content }))
 	const { comments, others } = splitComments(children)

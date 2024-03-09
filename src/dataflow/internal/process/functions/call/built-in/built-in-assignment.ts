@@ -21,11 +21,12 @@ import { unpackArgument } from '../argument/unpack-argument'
 import { processAsNamedCall } from '../../../process-named-call'
 import { toUnnamedArgument } from '../argument/make-argument'
 
-function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, name: string): RSymbol<OtherInfo & ParentInformation> {
+function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
 		type:      RType.Symbol,
 		info:      target.info,
-		content:   prefix + name,
+		/* they are all mapped to <- in R, but we mark super as well */
+		content:   `${prefix}${superAssignment ? '<<-' : '<-'}`,
 		lexeme:    target.lexeme,
 		location:  target.location,
 		namespace: undefined
@@ -52,12 +53,13 @@ export function processAssignment<OtherInfo>(
 		const res = processKnownFunctionCall(name, effectiveArgs, rootId, data)
 		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, res.processedArguments as [DataflowInformation, DataflowInformation], rootId, data, res.information)
 	} else if(target.type === RType.FunctionCall && target.flavor === 'named') {
+		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
 		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`)
-		const replacement = toReplacementSymbol(target, target.functionName.content, name.content)
+		const replacement = toReplacementSymbol(target, target.functionName.content, config.superAssignment ?? false)
 		return processAsNamedCall(replacement, data, replacement.content, [...target.arguments, source])
 	} else if(target.type === RType.Access) {
 		dataflowLogger.debug(`Assignment ${name.content} has an access as target => replacement function ${target.lexeme}`)
-		const replacement = toReplacementSymbol(target, target.operator, name.content)
+		const replacement = toReplacementSymbol(target, target.operator, config.superAssignment ?? false)
 		return processAsNamedCall(replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source])
 	} else if(target.type === RType.String) {
 		return processAssignmentToString(target, effectiveArgs, name, rootId, data, config, source)

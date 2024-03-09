@@ -76,17 +76,18 @@ export class DataflowGraphBuilder extends DataflowGraph {
 		return this
 	}
 
+	/* automatically adds argument links if they do not already exist */
 	private addArgumentLinks(id: NodeId, args: FunctionArgument[]) {
 		for(const arg of args) {
 			if(arg === 'empty') {
 				continue
 			}
 			if(Array.isArray(arg)) {
-				if(arg[1] !== '<value>') {
+				if(arg[1] !== '<value>' && !this.hasNode(arg[1].nodeId, true)) {
 					this.use(arg[1].nodeId, arg[1].name, { when: arg[1].used })
 					this.argument(id, arg[1].nodeId, arg[1].used)
 				}
-			} else if(arg !== '<value>') {
+			} else if(arg !== '<value>'&& !this.hasNode(arg.nodeId, true)) {
 				this.use(arg.nodeId, arg.name, { when: arg.used })
 				this.argument(id, arg.nodeId, arg.used)
 				if(arg.nodeId.endsWith('-arg')) {

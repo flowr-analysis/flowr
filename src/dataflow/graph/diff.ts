@@ -65,7 +65,7 @@ function diffOutgoingEdges(ctx: DataflowDiffContext): void {
 	const lEdges = new Map(ctx.left.edges())
 	const rEdges = new Map(ctx.right.edges())
 	if(lEdges.size !== rEdges.size) {
-		ctx.report.addComment(`Detected different number of edges! ${ctx.leftname} has ${lEdges.size}, ${ctx.rightname} has ${rEdges.size}`)
+		ctx.report.addComment(`Detected different number of edges! ${ctx.leftname} has ${lEdges.size} (${JSON.stringify(lEdges, jsonReplacer)}), ${ctx.rightname} has ${rEdges.size} ${JSON.stringify(rEdges, jsonReplacer)}`)
 	}
 
 	for(const [id, edge] of lEdges) {

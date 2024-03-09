@@ -84,24 +84,21 @@ export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierP
 /* registers all combinations of replacements */
 export function registerReplacementFunctions(
 	standardConfig: {makeMaybe?: boolean},
-	normalAssignments: readonly Identifier[],
-	superAssignments: readonly Identifier[],
+	assignments: readonly ('<-' | '<<-')[],
 	...prefixes: readonly Identifier[]
 ): void {
-	for(const [superAssignment, names] of [[false, normalAssignments], [true, superAssignments]] as const) {
-		for(const name of names) {
-			for(const prefix of prefixes) {
-				const effectiveName = `${prefix}${name}`
-				guard(!BuiltInMemory.has(effectiveName), `Built-in ${effectiveName} already defined`)
-				BuiltInMemory.set(effectiveName, [{
-					kind:      'built-in-function',
-					used:      'always',
-					definedAt: BuiltIn,
-					processor: (name, args, rootId, data) => processReplacementFunction(name, args, rootId, data, { ...standardConfig, superAssignment }),
-					name:      effectiveName,
-					nodeId:    BuiltIn
-				}])
-			}
+	for(const assignment of assignments) {
+		for(const prefix of prefixes) {
+			const effectiveName = `${prefix}${assignment}`
+			guard(!BuiltInMemory.has(effectiveName), `Built-in ${effectiveName} already defined`)
+			BuiltInMemory.set(effectiveName, [{
+				kind:      'built-in-function',
+				used:      'always',
+				definedAt: BuiltIn,
+				processor: (name, args, rootId, data) => processReplacementFunction(name, args, rootId, data, { ...standardConfig, assignmentOperator: assignment }),
+				name:      effectiveName,
+				nodeId:    BuiltIn
+			}])
 		}
 	}
 }
@@ -152,6 +149,5 @@ registerBuiltInFunctions(processPipe,             {},                           
 registerBuiltInFunctions(processForLoop,          {},                                                   'for')
 registerBuiltInFunctions(processRepeatLoop,       {},                                                   'repeat')
 registerBuiltInFunctions(processWhileLoop,        {},                                                   'while')
-registerBuiltInFunctions(processReplacementFunction, { })
-registerReplacementFunctions({ makeMaybe: false }, ['<-', '=', '->'], ['<<-', '->>'], 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames')
-registerReplacementFunctions({ makeMaybe: true },  ['<-', '=', '->'], ['<<-', '->>'], '[', '[[', '$', '@')
+/* they are all mapped to `<-` but we separate super assignments */
+registerReplacementFunctions({ makeMaybe: true },  ['<-', '<<-'], '[', '[[', '$', '@', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames')

@@ -14,7 +14,6 @@ import { expensiveTrace, log } from '../../../../../../../util/log'
 import { normalizeComment } from '../other'
 import { guard } from '../../../../../../../util/assert'
 import { jsonReplacer } from '../../../../../../../util/json'
-import { normalizeExpression } from '../expression'
 
 function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: readonly NamedXmlBasedJson[], data: ParserData): (RNode | RDelimiter)[] {
 	let result: RNode | RDelimiter | undefined = undefined
@@ -130,6 +129,7 @@ function processBraces([start, end]: [start: NamedXmlBasedJson, end: NamedXmlBas
 		children: processed,
 		braces:   [ normalizeDelimiter(start), normalizeDelimiter(end) ],
 		lexeme:   undefined,
+		location: undefined,
 		info:     {
 			additionalTokens: comments,
 		}
@@ -137,7 +137,7 @@ function processBraces([start, end]: [start: NamedXmlBasedJson, end: NamedXmlBas
 
 }
 
-export function normalizeElements(
+export function normalizeExpressions(
 	data: ParserData,
 	tokens: readonly XmlBasedJson[] | readonly NamedXmlBasedJson[]
 ): (RNode | RDelimiter)[] {
@@ -159,7 +159,8 @@ export function normalizeElements(
 		parsedComments = comments.map(c => normalizeComment(data, c.content))
 
 		if(segments.length > 1 || braces) {
-			const processed = segments.flatMap(xs => xs.map(s => normalizeExpression(data, s.content)))
+			const processed = segments.flatMap(s => normalizeExpressions(data, s)) as RNode[]
+			guard(!processed.some(x => (x as RNode | RDelimiter).type === RType.Delimiter), () => `expected no delimiter tokens in ${JSON.stringify(processed)}`)
 			if(braces) {
 				return [processBraces(braces, processed, parsedComments)]
 			} else if(processed.length > 0) {

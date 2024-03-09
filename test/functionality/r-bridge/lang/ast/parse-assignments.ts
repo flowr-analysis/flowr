@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { OperatorDatabase, RType } from '../../../../../src'
+import { OperatorDatabase, RawRType, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
 import { AssignmentOperators } from '../../../_helper/provider'
 
@@ -83,25 +83,42 @@ describe('Parse simple assignments',
 						info:      {}
 					},
 					rhs: {
-						type:     RType.BinaryOp,
-						location: rangeFrom(1, 10, 1, 10),
-						lexeme:   '*',
-						operator: '*',
+						type:     RType.ExpressionList,
+						lexeme:   undefined,
+						location: undefined,
 						info:     {},
-						lhs:      {
-							type:     RType.Number,
-							location: rangeFrom(1, 8, 1, 8),
-							lexeme:   '2',
-							content:  numVal(2),
-							info:     {}
-						},
-						rhs: {
-							type:     RType.Number,
-							location: rangeFrom(1, 12, 1, 12),
-							lexeme:   '3',
-							content:  numVal(3),
-							info:     {}
-						}
+						braces:   [{
+							type:     RType.Delimiter,
+							lexeme:   '{',
+							location: rangeFrom(1, 6, 1, 6),
+							subtype:  RawRType.BraceLeft
+						}, {
+							type:     RType.Delimiter,
+							lexeme:   '}',
+							location: rangeFrom(1, 14, 1, 14),
+							subtype:  RawRType.BraceRight
+						}],
+						children: [{
+							type:     RType.BinaryOp,
+							location: rangeFrom(1, 10, 1, 10),
+							lexeme:   '*',
+							operator: '*',
+							info:     {},
+							lhs:      {
+								type:     RType.Number,
+								location: rangeFrom(1, 8, 1, 8),
+								lexeme:   '2',
+								content:  numVal(2),
+								info:     {}
+							},
+							rhs: {
+								type:     RType.Number,
+								location: rangeFrom(1, 12, 1, 12),
+								lexeme:   '3',
+								content:  numVal(3),
+								info:     {}
+							}
+						}]
 					},
 				}), {
 					ignoreAdditionalTokens: true

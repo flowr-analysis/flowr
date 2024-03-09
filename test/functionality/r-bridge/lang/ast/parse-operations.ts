@@ -1,9 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { AssignmentOperators, BinaryOperatorPool, UnaryOperatorPool } from '../../../_helper/provider'
-import type { RExpressionList } from '../../../../../src'
-import { OperatorDatabase } from '../../../../../src'
-import { type RShell, RType } from '../../../../../src'
+import { OperatorDatabase, RawRType, type RShell, RType } from '../../../../../src'
 import { rangeFrom } from '../../../../../src/util/range'
 import { label } from '../../../_helper/label'
 import { startAndEndsWith } from '../../../../../src/util/strings'
@@ -52,7 +50,7 @@ describe('Parse simple operations', withShell(shell => {
 		)
 	})
 
-	describe('binary operations', () => {
+	describe('Binary Operations', () => {
 		for(const op of [...BinaryOperatorPool].filter(op => !startAndEndsWith(op, '%'))) {
 			describePrecedenceTestsForOp(op, shell)
 		}
@@ -62,7 +60,7 @@ describe('Parse simple operations', withShell(shell => {
 				shell, '1 + # comment\n2', exprList({ // hoist children
 					type:     RType.ExpressionList,
 					location: rangeFrom(1, 1, 2, 1),
-					braces:   undefined, /* TODO: change! */
+					braces:   undefined,
 					info:     {},
 					lexeme:   '1 + # comment\n2',
 					children: [
@@ -153,50 +151,6 @@ describe('Parse simple operations', withShell(shell => {
 })
 )
 
-function normalizeGenerate(
-	op: string,
-	opOffset: number,
-	offsetL: number,
-	offsetC: number,
-	offsetR: number
-): RExpressionList {
-	return exprList({
-		type:     RType.BinaryOp,
-		operator: op,
-		lexeme:   op,
-		location: rangeFrom(1, 7 + opOffset + offsetC, 1, 7 + 2 * opOffset + offsetC),
-		info:     {},
-		lhs:      {
-			type:     RType.BinaryOp,
-			operator: op,
-			lexeme:   op,
-			location: rangeFrom(1, 3 + offsetL, 1, 3 + opOffset + offsetL),
-			info:     {},
-			lhs:      {
-				type:     RType.Number,
-				location: rangeFrom(1, 1 + offsetL, 1, 1 + offsetL),
-				lexeme:   '1',
-				content:  numVal(1),
-				info:     {}
-			},
-			rhs: {
-				type:     RType.Number,
-				location: rangeFrom(1, 5 + opOffset + offsetL, 1, 5 + opOffset + offsetL),
-				lexeme:   '1',
-				content:  numVal(1),
-				info:     {}
-			}
-		},
-		rhs: {
-			type:     RType.Number,
-			location: rangeFrom(1, 9 + 2 * opOffset + offsetR, 1, 10 + 2 * opOffset + offsetR),
-			lexeme:   '42',
-			content:  numVal(42),
-			info:     {}
-		}
-	})
-}
-
 function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 	const comparisonPrecedenceOperators = new Set(['<', '<=', '>', '>=', '==', '!=', '', '=='])
 
@@ -229,20 +183,178 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 			))
 
 		if(!comparisonPrecedenceOperators.has(op)) {
-			assertAst(label('Single Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
-				shell, `(1 ${op} 1) ${op} 42`, normalizeGenerate(op, opOffset, 1, 2, 2), {
-					ignoreAdditionalTokens: true
-				})
+			let [offsetL, offsetC, offsetR] = [1, 2, 2]
 
+			assertAst(label('Single Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
+				shell, `(1 ${op} 1) ${op} 42`, exprList({
+					type:     RType.BinaryOp,
+					operator: op,
+					lexeme:   op,
+					location: rangeFrom(1, 7 + opOffset + offsetC, 1, 7 + 2 * opOffset + offsetC),
+					info:     {},
+					lhs:      {
+						type:     RType.ExpressionList,
+						location: undefined,
+						braces:   [{
+							type:     RType.Delimiter,
+							location: rangeFrom(1, 1, 1, 1),
+							lexeme:   '(',
+							subtype:  RawRType.ParenLeft
+						}, {
+							type:     RType.Delimiter,
+							location: rangeFrom(1, 6 + opOffset + offsetL, 1, 6 + opOffset + offsetL),
+							lexeme:   ')',
+							subtype:  RawRType.ParenRight
+						}],
+						lexeme:   undefined,
+						info:     {},
+						children: [{
+							type:     RType.BinaryOp,
+							operator: op,
+							lexeme:   op,
+							location: rangeFrom(1, 3 + offsetL, 1, 3 + opOffset + offsetL),
+							info:     {},
+							lhs:      {
+								type:     RType.Number,
+								location: rangeFrom(1, 1 + offsetL, 1, 1 + offsetL),
+								lexeme:   '1',
+								content:  numVal(1),
+								info:     {}
+							},
+							rhs: {
+								type:     RType.Number,
+								location: rangeFrom(1, 5 + opOffset + offsetL, 1, 5 + opOffset + offsetL),
+								lexeme:   '1',
+								content:  numVal(1),
+								info:     {}
+							}
+						}]
+					},
+					rhs: {
+						type:     RType.Number,
+						location: rangeFrom(1, 9 + 2 * opOffset + offsetR, 1, 10 + 2 * opOffset + offsetR),
+						lexeme:   '42',
+						content:  numVal(42),
+						info:     {}
+					}
+				}), {
+					ignoreAdditionalTokens: true
+				});
+
+			([offsetL, offsetC, offsetR] = [1, 2, 3])
 			assertAst(label('Multiple Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
-				shell, `(1 ${op} 1) ${op} (42)`, normalizeGenerate(op, opOffset, 1, 2, 3), {
+				shell, `(1 ${op} 1) ${op} (42)`, exprList({
+					type:     RType.BinaryOp,
+					operator: op,
+					lexeme:   op,
+					location: rangeFrom(1, 7 + opOffset + offsetC, 1, 7 + 2 * opOffset + offsetC),
+					info:     {},
+					lhs:      {
+						type:     RType.ExpressionList,
+						location: undefined,
+						braces:   [{
+							type:     RType.Delimiter,
+							location: rangeFrom(1, 1, 1, 1),
+							lexeme:   '(',
+							subtype:  RawRType.ParenLeft
+						}, {
+							type:     RType.Delimiter,
+							location: rangeFrom(1, 6 + opOffset + offsetL, 1, 6 + opOffset + offsetL),
+							lexeme:   ')',
+							subtype:  RawRType.ParenRight
+						}],
+						lexeme:   undefined,
+						info:     {},
+						children: [{
+							type:     RType.BinaryOp,
+							operator: op,
+							lexeme:   op,
+							location: rangeFrom(1, 3 + offsetL, 1, 3 + opOffset + offsetL),
+							info:     {},
+							lhs:      {
+								type:     RType.Number,
+								location: rangeFrom(1, 1 + offsetL, 1, 1 + offsetL),
+								lexeme:   '1',
+								content:  numVal(1),
+								info:     {}
+							},
+							rhs: {
+								type:     RType.Number,
+								location: rangeFrom(1, 5 + opOffset + offsetL, 1, 5 + opOffset + offsetL),
+								lexeme:   '1',
+								content:  numVal(1),
+								info:     {}
+							}
+						}]
+					},
+					rhs: {
+						type:     RType.ExpressionList,
+						location: undefined,
+						braces:   [{
+							type:     RType.Delimiter,
+							location: rangeFrom(1, 8 + 2 * opOffset + offsetR, 1, 8 + 2 * opOffset + offsetR),
+							lexeme:   '(',
+							subtype:  RawRType.ParenLeft
+						}, {
+							type:     RType.Delimiter,
+							location: rangeFrom(1, 11 + 2 * opOffset + offsetR, 1, 11 + 2 * opOffset + offsetR),
+							lexeme:   ')',
+							subtype:  RawRType.ParenRight
+						}],
+						lexeme:   undefined,
+						info:     {},
+						children: [{
+							type:     RType.Number,
+							location: rangeFrom(1, 9 + 2 * opOffset + offsetR, 1, 10 + 2 * opOffset + offsetR),
+							lexeme:   '42',
+							content:  numVal(42),
+							info:     {}
+						}]
+					}
+				}), {
 					ignoreAdditionalTokens: true
 				})
 
 			// exponentiation and assignments has a different behavior when nested without parenthesis
 			if(op !== '^' && op !== '**' && !AssignmentOperators.includes(op)) {
+				[offsetL, offsetC, offsetR] = [0, 0, 0]
+
 				assertAst(label('No Parenthesis', ['binary-operator', 'infix-calls', 'function-calls', 'numbers', 'grouping', ...opData.capabilities]),
-					shell, `1 ${op} 1 ${op} 42`, normalizeGenerate(op, opOffset, 0, 0, 0), {
+					shell, `1 ${op} 1 ${op} 42`, exprList({
+						type:     RType.BinaryOp,
+						operator: op,
+						lexeme:   op,
+						location: rangeFrom(1, 7 + opOffset + offsetC, 1, 7 + 2 * opOffset + offsetC),
+						info:     {},
+						lhs:      {
+							type:     RType.BinaryOp,
+							operator: op,
+							lexeme:   op,
+							location: rangeFrom(1, 3 + offsetL, 1, 3 + opOffset + offsetL),
+							info:     {},
+							lhs:      {
+								type:     RType.Number,
+								location: rangeFrom(1, 1 + offsetL, 1, 1 + offsetL),
+								lexeme:   '1',
+								content:  numVal(1),
+								info:     {}
+							},
+							rhs: {
+								type:     RType.Number,
+								location: rangeFrom(1, 5 + opOffset + offsetL, 1, 5 + opOffset + offsetL),
+								lexeme:   '1',
+								content:  numVal(1),
+								info:     {}
+							}
+						},
+						rhs: {
+							type:     RType.Number,
+							location: rangeFrom(1, 9 + 2 * opOffset + offsetR, 1, 10 + 2 * opOffset + offsetR),
+							lexeme:   '42',
+							content:  numVal(42),
+							info:     {}
+						}
+					}), {
 						ignoreAdditionalTokens: true
 					})
 			}
@@ -262,25 +374,42 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						info:     {}
 					},
 					rhs: {
-						type:     RType.BinaryOp,
-						operator: op,
-						lexeme:   op,
-						location: rangeFrom(1, 8 + opOffset, 1, 8 + 2 * opOffset),
+						type:     RType.ExpressionList,
+						location: undefined,
+						lexeme:   undefined,
 						info:     {},
-						lhs:      {
-							type:     RType.Number,
-							location: rangeFrom(1, 6 + opOffset, 1, 6 + opOffset),
-							content:  numVal(1),
-							lexeme:   '1',
-							info:     {}
-						},
-						rhs: {
-							type:     RType.Number,
-							location: rangeFrom(1, 10 + 2 * opOffset, 1, 11 + 2 * opOffset),
-							content:  numVal(42),
-							lexeme:   '42',
-							info:     {}
-						}
+						braces:   [{
+							type:     RType.Delimiter,
+							location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
+							lexeme:   '(',
+							subtype:  RawRType.ParenLeft
+						}, {
+							type:     RType.Delimiter,
+							location: rangeFrom(1, 12 + 2*opOffset, 1, 12 + 2*opOffset),
+							lexeme:   ')',
+							subtype:  RawRType.ParenRight
+						}],
+						children: [{
+							type:     RType.BinaryOp,
+							operator: op,
+							lexeme:   op,
+							location: rangeFrom(1, 8 + opOffset, 1, 8 + 2 * opOffset),
+							info:     {},
+							lhs:      {
+								type:     RType.Number,
+								location: rangeFrom(1, 6 + opOffset, 1, 6 + opOffset),
+								content:  numVal(1),
+								lexeme:   '1',
+								info:     {}
+							},
+							rhs: {
+								type:     RType.Number,
+								location: rangeFrom(1, 10 + 2 * opOffset, 1, 11 + 2 * opOffset),
+								content:  numVal(42),
+								lexeme:   '42',
+								info:     {}
+							}
+						}]
 					}
 				}), {
 					ignoreAdditionalTokens: true

@@ -1,7 +1,7 @@
 import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal, parameter } from '../../../_helper/ast-builder'
 import { rangeFrom } from '../../../../../src/util/range'
-import { ensureExpressionList, RType } from '../../../../../src'
+import { RawRType, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
 
 describe('Parse function definitions', withShell(shell => {
@@ -14,10 +14,20 @@ describe('Parse function definitions', withShell(shell => {
 				parameters: [],
 				info:       {},
 				body:       {
-					type:     RType.ExpressionList,
-					braces:   undefined, /* TODO: change */
-					location: rangeFrom(1, 12, 1, 14),
-					lexeme:   '{ }',
+					type:   RType.ExpressionList,
+					braces: [{
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 12, 1, 12),
+						lexeme:   '{',
+						subtype:  RawRType.BraceLeft
+					}, {
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 14, 1, 14),
+						lexeme:   '}',
+						subtype:  RawRType.BraceRight
+					}],
+					location: undefined,
+					lexeme:   undefined,
 					children: [],
 					info:     {}
 				}
@@ -32,42 +42,59 @@ describe('Parse function definitions', withShell(shell => {
 				lexeme:     'function',
 				parameters: [],
 				info:       {},
-				body:       ensureExpressionList({
-					type:     RType.BinaryOp,
-					location: rangeFrom(1, 16, 1, 16),
-					lexeme:   '+',
-					operator: '+',
+				body:       {
+					type:     RType.ExpressionList,
+					location: undefined,
+					lexeme:   undefined,
 					info:     {},
-					lhs:      {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 14, 1, 14),
-						lexeme:    'x',
-						content:   'x',
-						namespace: undefined,
-						info:      {}
-					},
-					rhs: {
+					braces:   [{
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 12, 1, 12),
+						lexeme:   '{',
+						subtype:  RawRType.BraceLeft
+					}, {
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 24, 1, 24),
+						lexeme:   '}',
+						subtype:  RawRType.BraceRight
+					}],
+					children: [{
 						type:     RType.BinaryOp,
-						location: rangeFrom(1, 20, 1, 20),
-						lexeme:   '*',
-						operator: '*',
+						location: rangeFrom(1, 16, 1, 16),
+						lexeme:   '+',
+						operator: '+',
 						info:     {},
 						lhs:      {
-							type:     RType.Number,
-							location: rangeFrom(1, 18, 1, 18),
-							lexeme:   '2',
-							content:  numVal(2),
-							info:     {}
+							type:      RType.Symbol,
+							location:  rangeFrom(1, 14, 1, 14),
+							lexeme:    'x',
+							content:   'x',
+							namespace: undefined,
+							info:      {}
 						},
 						rhs: {
-							type:     RType.Number,
-							location: rangeFrom(1, 22, 1, 22),
-							lexeme:   '3',
-							content:  numVal(3),
-							info:     {}
+							type:     RType.BinaryOp,
+							location: rangeFrom(1, 20, 1, 20),
+							lexeme:   '*',
+							operator: '*',
+							info:     {},
+							lhs:      {
+								type:     RType.Number,
+								location: rangeFrom(1, 18, 1, 18),
+								lexeme:   '2',
+								content:  numVal(2),
+								info:     {}
+							},
+							rhs: {
+								type:     RType.Number,
+								location: rangeFrom(1, 22, 1, 22),
+								lexeme:   '3',
+								content:  numVal(3),
+								info:     {}
+							}
 						}
-					}
-				})
+					}]
+				}
 			}), {
 				ignoreAdditionalTokens: true
 			}
@@ -82,10 +109,20 @@ describe('Parse function definitions', withShell(shell => {
 				parameters: [parameter('x', rangeFrom(1, 10, 1, 10))],
 				info:       {},
 				body:       {
-					type:     RType.ExpressionList,
-					braces:   undefined, /* TODO: change */
-					location: rangeFrom(1, 13, 1, 15),
-					lexeme:   '{ }',
+					type:   RType.ExpressionList,
+					braces: [{
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 13, 1, 13),
+						lexeme:   '{',
+						subtype:  RawRType.BraceLeft
+					}, {
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 15, 1, 15),
+						lexeme:   '}',
+						subtype:  RawRType.BraceRight
+					}],
+					location: undefined,
+					lexeme:   undefined,
 					children: [],
 					info:     {}
 				}
@@ -104,35 +141,62 @@ describe('Parse function definitions', withShell(shell => {
 					parameter('b', rangeFrom(1, 16, 1, 16))
 				],
 				info: {},
-				body: ensureExpressionList({
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 21, 1, 21),
-					lexeme:    'b',
-					content:   'b',
-					namespace: undefined,
-					info:      {}
-				})
+				body: {
+					type:     RType.ExpressionList,
+					location: undefined,
+					lexeme:   undefined,
+					info:     {},
+					braces:   [{
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 19, 1, 19),
+						lexeme:   '{',
+						subtype:  RawRType.BraceLeft
+					}, {
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 23, 1, 23),
+						lexeme:   '}',
+						subtype:  RawRType.BraceRight
+					}],
+					children: [{
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 21, 1, 21),
+						lexeme:    'b',
+						content:   'b',
+						namespace: undefined,
+						info:      {}
+					}]
+				}
 			}), {
 				ignoreAdditionalTokens: true
 			}
 		)
 	})
-	describe('with special parameters (...)', () => {
-		assertAst(label('As single arg', ['normal-definition', 'formals-dot-dot-dot', 'grouping']),
+	describe('With Special Parameters (...)', () => {
+		assertAst(label('As Single Argument', ['normal-definition', 'formals-dot-dot-dot', 'grouping']),
 			shell, 'function(...) { }', exprList({
 				type:       RType.FunctionDefinition,
 				location:   rangeFrom(1, 1, 1, 8),
 				lexeme:     'function',
 				parameters: [parameter('...', rangeFrom(1, 10, 1, 12), undefined, true)],
 				info:       {},
-				body:       ensureExpressionList({
-					type:     RType.ExpressionList,
-					braces:   undefined, /* TODO: change */
-					location: rangeFrom(1, 15, 1, 17),
-					lexeme:   '{ }',
+				body:       {
+					type:   RType.ExpressionList,
+					braces: [{
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 15, 1, 15),
+						lexeme:   '{',
+						subtype:  RawRType.BraceLeft
+					}, {
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 17, 1, 17),
+						lexeme:   '}',
+						subtype:  RawRType.BraceRight
+					}],
+					location: undefined,
+					lexeme:   undefined,
 					children: [],
 					info:     {}
-				})
+				}
 			}), {
 				ignoreAdditionalTokens: true
 			}
@@ -150,9 +214,19 @@ describe('Parse function definitions', withShell(shell => {
 				info: {},
 				body: {
 					type:     RType.ExpressionList,
-					location: rangeFrom(1, 18, 1, 20),
-					braces:   undefined, /* TODO: change */
-					lexeme:   '{ }',
+					location: undefined,
+					braces:   [{
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 18, 1, 18),
+						lexeme:   '{',
+						subtype:  RawRType.BraceLeft
+					}, {
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 20, 1, 20),
+						lexeme:   '}',
+						subtype:  RawRType.BraceRight
+					}],
+					lexeme:   undefined,
 					children: [],
 					info:     {}
 				}
@@ -172,21 +246,38 @@ describe('Parse function definitions', withShell(shell => {
 					parameter('...', rangeFrom(1, 18, 1, 20), undefined, true)
 				],
 				info: {},
-				body: ensureExpressionList({
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 25, 1, 27),
-					lexeme:    '...',
-					content:   '...',
-					namespace: undefined,
-					info:      {}
-				})
+				body: {
+					type:     RType.ExpressionList,
+					location: undefined,
+					lexeme:   undefined,
+					info:     {},
+					braces:   [{
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 23, 1, 23),
+						lexeme:   '{',
+						subtype:  RawRType.BraceLeft
+					}, {
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 29, 1, 29),
+						lexeme:   '}',
+						subtype:  RawRType.BraceRight
+					}],
+					children: [{
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 25, 1, 27),
+						lexeme:    '...',
+						content:   '...',
+						namespace: undefined,
+						info:      {}
+					}]
+				}
 			}), {
 				ignoreAdditionalTokens: true
 			}
 		)
 	})
-	describe('With named parameters', () => {
-		assertAst(label('one parameter', ['normal-definition', 'formals-named', 'formals-default', 'grouping', 'name-normal', 'numbers']),
+	describe('With Named Parameters', () => {
+		assertAst(label('One Parameter', ['normal-definition', 'formals-named', 'formals-default', 'grouping', 'name-normal', 'numbers']),
 			shell, 'function(x=3) { }', exprList({
 				type:       RType.FunctionDefinition,
 				location:   rangeFrom(1, 1, 1, 8),
@@ -202,10 +293,20 @@ describe('Parse function definitions', withShell(shell => {
 				],
 				info: {},
 				body: {
-					type:     RType.ExpressionList,
-					braces:   undefined, /* TODO: change */
-					location: rangeFrom(1, 15, 1, 17),
-					lexeme:   '{ }',
+					type:   RType.ExpressionList,
+					braces: [{
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 15, 1, 15),
+						lexeme:   '{',
+						subtype:  RawRType.BraceLeft
+					}, {
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 17, 1, 17),
+						lexeme:   '}',
+						subtype:  RawRType.BraceRight
+					}],
+					location: undefined,
+					lexeme:   undefined,
 					children: [],
 					info:     {}
 				}
@@ -214,7 +315,7 @@ describe('Parse function definitions', withShell(shell => {
 			}
 		)
 
-		assertAst(label('multiple parameter', ['normal-definition', 'formals-named', 'formals-default', 'grouping', 'name-normal', 'numbers', 'name-normal', 'strings']),
+		assertAst(label('Multiple Parameter', ['normal-definition', 'formals-named', 'formals-default', 'grouping', 'name-normal', 'numbers', 'name-normal', 'strings']),
 			shell, 'function(a, x=3, huhu="hehe") { x }', exprList({
 				type:       RType.FunctionDefinition,
 				location:   rangeFrom(1, 1, 1, 8),
@@ -237,14 +338,31 @@ describe('Parse function definitions', withShell(shell => {
 					})
 				],
 				info: {},
-				body: ensureExpressionList({
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 33, 1, 33),
-					lexeme:    'x',
-					content:   'x',
-					namespace: undefined,
-					info:      {}
-				})
+				body: {
+					type:     RType.ExpressionList,
+					lexeme:   undefined,
+					location: undefined,
+					info:     {},
+					braces:   [{
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 31, 1, 31),
+						lexeme:   '{',
+						subtype:  RawRType.BraceLeft
+					}, {
+						type:     RType.Delimiter,
+						location: rangeFrom(1, 35, 1, 35),
+						lexeme:   '}',
+						subtype:  RawRType.BraceRight
+					}],
+					children: [{
+						type:      RType.Symbol,
+						location:  rangeFrom(1, 33, 1, 33),
+						lexeme:    'x',
+						content:   'x',
+						namespace: undefined,
+						info:      {}
+					}]
+				}
 			}), {
 				ignoreAdditionalTokens: true
 			}

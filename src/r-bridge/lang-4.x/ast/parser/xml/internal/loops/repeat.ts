@@ -12,11 +12,11 @@ import { ensureExpressionList, retrieveMetaStructure } from '../../meta'
  *
  * @param data - The data used by the parser (see {@link ParserData})
  * @param repeatToken - Token which represents the `repeat` keyword
- * @param body - The `body` of the repeat-loop
+ * @param bodyToken - The `body` of the repeat-loop
  *
  * @returns The parsed {@link RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
  */
-export function tryNormalizeRepeat(data: ParserData, [repeatToken, body]: [NamedXmlBasedJson, NamedXmlBasedJson]): RRepeatLoop | undefined {
+export function tryNormalizeRepeat(data: ParserData, [repeatToken, bodyToken]: [NamedXmlBasedJson, NamedXmlBasedJson]): RRepeatLoop | undefined {
 	if(repeatToken.name !== RawRType.Repeat) {
 		parseLog.debug('encountered non-repeat token for supposed repeat-loop structure')
 		return undefined
@@ -24,8 +24,8 @@ export function tryNormalizeRepeat(data: ParserData, [repeatToken, body]: [Named
 
 	parseLog.debug('trying to parse repeat-loop')
 
-	const parseBody = normalizeSingleNode(data, body)
-	guard(parseBody.type !== RType.Delimiter, () => `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(body)})`)
+	const parseBody = normalizeSingleNode(data, bodyToken)
+	guard(parseBody.type !== RType.Delimiter, () => `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(bodyToken)})`)
 
 	const { location, content } = retrieveMetaStructure(repeatToken.content)
 

@@ -16,17 +16,22 @@ export interface SourceRange {
 }
 
 /**
- * at the moment this does not ensure ordering of start and end!
+ * This does not ensure ordering of start and end!
+ *
+ * @param sl - start line
+ * @param sc - start column
+ * @param el - end line
+ * @param ec - end column
  */
-export function rangeFrom(line1: number | string, col1: number | string, line2: number | string, col2: number | string): SourceRange {
+export function rangeFrom(sl: number | string, sc: number | string, el: number | string, ec: number | string): SourceRange {
 	return {
 		start: {
-			line:   Number(line1),
-			column: Number(col1)
+			line:   Number(sl),
+			column: Number(sc)
 		},
 		end: {
-			line:   Number(line2),
-			column: Number(col2)
+			line:   Number(el),
+			column: Number(ec)
 		}
 	}
 }

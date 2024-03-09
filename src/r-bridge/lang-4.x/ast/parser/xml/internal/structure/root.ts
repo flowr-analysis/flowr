@@ -5,7 +5,7 @@ import type { RExpressionList, RNode } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { assureTokenType } from '../../meta'
 import type { RDelimiter } from '../../../../model/nodes/info'
-import { normalizeElements } from './elements'
+import { normalizeExpressions } from './elements'
 import { log } from '../../../../../../../util/log'
 import { partition } from '../../../../../../../util/arrays'
 
@@ -22,7 +22,7 @@ export function normalizeRootObjToAst(
 	if(childrenKey in exprContent) {
 		const children = getKeyGuarded<XmlBasedJson[]>(exprContent, childrenKey)
 
-		parsedChildren = normalizeElements(data, children)
+		parsedChildren = normalizeExpressions(data, children)
 	} else {
 		log.debug('no children found, assume empty input')
 	}

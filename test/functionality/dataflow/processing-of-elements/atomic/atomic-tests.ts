@@ -194,7 +194,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		)
 	})
 
-	describe('unary operators', () => {
+	describe('Unary Operators', () => {
 		for(const op of UnaryOperatorPool) {
 			const inputDifferent = `${op}x`
 			const opData = OperatorDatabase[op]

@@ -126,25 +126,23 @@ describe('Parse expression lists', withShell(shell => {
 		assertAst(label('Two Lines With Braces', ['name-normal', 'numbers', 'grouping', 'newlines']),
 			shell, '{ 42\na }', exprList({
 				type:     RType.ExpressionList,
-				location: rangeFrom(1, 1, 2, 3),
-				braces:   undefined, /* TODO: change */
-				lexeme:   '{ 42\na }',
-				info:     {
-					additionalTokens: [
-						{
-							type:     RType.Delimiter,
-							subtype:  RawRType.BraceLeft,
-							location: rangeFrom(1, 1, 1, 1),
-							lexeme:   '{'
-						},
-						{
-							type:     RType.Delimiter,
-							subtype:  RawRType.BraceRight,
-							location: rangeFrom(2, 3, 2, 3),
-							lexeme:   '}'
-						}
-					]
-				},
+				location: undefined,
+				braces:   [
+					{
+						type:     RType.Delimiter,
+						subtype:  RawRType.BraceLeft,
+						location: rangeFrom(1, 1, 1, 1),
+						lexeme:   '{'
+					},
+					{
+						type:     RType.Delimiter,
+						subtype:  RawRType.BraceRight,
+						location: rangeFrom(2, 3, 2, 3),
+						lexeme:   '}'
+					}
+				],
+				lexeme:   undefined,
+				info:     { },
 				children: [
 					{
 						type:     RType.Number,
@@ -170,25 +168,23 @@ describe('Parse expression lists', withShell(shell => {
 			shell, '{ 42\na }\n{ x }', exprList(
 				{
 					type:     RType.ExpressionList,
-					location: rangeFrom(1, 1, 2, 3),
-					braces:   undefined, /* TODO: change */
-					lexeme:   '{ 42\na }',
-					info:     {
-						additionalTokens: [
-							{
-								type:     RType.Delimiter,
-								subtype:  RawRType.BraceLeft,
-								location: rangeFrom(1, 1, 1, 1),
-								lexeme:   '{'
-							},
-							{
-								type:     RType.Delimiter,
-								subtype:  RawRType.BraceRight,
-								location: rangeFrom(2, 3, 2, 3),
-								lexeme:   '}'
-							}
-						]
-					},
+					location: undefined,
+					braces:   [
+						{
+							type:     RType.Delimiter,
+							subtype:  RawRType.BraceLeft,
+							location: rangeFrom(1, 1, 1, 1),
+							lexeme:   '{'
+						},
+						{
+							type:     RType.Delimiter,
+							subtype:  RawRType.BraceRight,
+							location: rangeFrom(2, 3, 2, 3),
+							lexeme:   '}'
+						}
+					],
+					lexeme:   undefined,
+					info:     { },
 					children: [
 						{
 							type:     RType.Number,
@@ -208,27 +204,31 @@ describe('Parse expression lists', withShell(shell => {
 					],
 				},
 				{
-					type:      RType.Symbol,
-					location:  rangeFrom(3, 3, 3, 3),
-					namespace: undefined,
-					lexeme:    'x',
-					content:   'x',
-					info:      {
-						additionalTokens: [
-							{
-								type:     RType.Delimiter,
-								subtype:  RawRType.BraceLeft,
-								location: rangeFrom(3, 1, 3, 1),
-								lexeme:   '{'
-							},
-							{
-								type:     RType.Delimiter,
-								subtype:  RawRType.BraceRight,
-								location: rangeFrom(3, 5, 3, 5),
-								lexeme:   '}'
-							}
-						]
-					}
+					type:     RType.ExpressionList,
+					location: undefined,
+					info:     {},
+					lexeme:   undefined,
+					braces:   [
+						{
+							type:     RType.Delimiter,
+							subtype:  RawRType.BraceLeft,
+							location: rangeFrom(3, 1, 3, 1),
+							lexeme:   '{'
+						},
+						{
+							type:     RType.Delimiter,
+							subtype:  RawRType.BraceRight,
+							location: rangeFrom(3, 5, 3, 5),
+							lexeme:   '}'
+						}],
+					children: [{
+						type:      RType.Symbol,
+						location:  rangeFrom(3, 3, 3, 3),
+						namespace: undefined,
+						lexeme:    'x',
+						content:   'x',
+						info:      {}
+					}]
 				}
 			)
 		)
@@ -238,19 +238,10 @@ describe('Parse expression lists', withShell(shell => {
 		assertAst(label('Two Elements in Same Line', ['numbers', 'name-normal', 'semicolons']),
 			shell, '42;a',
 			{
-				type:   RType.ExpressionList,
-				lexeme: undefined,
-				braces: undefined, /* TODO: change */
-				info:   {
-					additionalTokens: [
-						{
-							type:     RType.Delimiter,
-							subtype:  RawRType.Semicolon,
-							location: rangeFrom(1, 3, 1, 3),
-							lexeme:   ';'
-						}
-					]
-				},
+				type:     RType.ExpressionList,
+				lexeme:   undefined,
+				braces:   undefined,
+				info:     { },
 				children: [
 					{
 						type:     RType.Number,
@@ -273,32 +264,31 @@ describe('Parse expression lists', withShell(shell => {
 
 		assertAst(label('Empty split with semicolon', ['numbers', 'semicolons', 'grouping']),
 			shell, '{ 3; }', exprList({
-				type:     RType.Number,
-				location: rangeFrom(1, 3, 1, 3),
-				lexeme:   '3',
-				content:  numVal(3),
-				info:     {
-					additionalTokens: [
-						{
-							type:     RType.Delimiter,
-							subtype:  RawRType.Semicolon,
-							location: rangeFrom(1, 4, 1, 4),
-							lexeme:   ';'
-						},
-						{
-							type:     RType.Delimiter,
-							subtype:  RawRType.BraceLeft,
-							location: rangeFrom(1, 1, 1, 1),
-							lexeme:   '{'
-						},
-						{
-							type:     RType.Delimiter,
-							subtype:  RawRType.BraceRight,
-							location: rangeFrom(1, 6, 1, 6),
-							lexeme:   '}'
-						}
-					]
-				}
+				type:     RType.ExpressionList,
+				lexeme:   undefined,
+				info:     {},
+				location: undefined,
+				braces:   [
+					{
+						type:     RType.Delimiter,
+						subtype:  RawRType.BraceLeft,
+						location: rangeFrom(1, 1, 1, 1),
+						lexeme:   '{'
+					},
+					{
+						type:     RType.Delimiter,
+						subtype:  RawRType.BraceRight,
+						location: rangeFrom(1, 6, 1, 6),
+						lexeme:   '}'
+					}
+				],
+				children: [{
+					type:     RType.Number,
+					location: rangeFrom(1, 3, 1, 3),
+					lexeme:   '3',
+					content:  numVal(3),
+					info:     {}
+				}]
 			})
 		)
 
@@ -306,19 +296,10 @@ describe('Parse expression lists', withShell(shell => {
 		assertAst(label('Inconsistent split with semicolon', ['numbers', 'semicolons', 'newlines']),
 			shell, '1\n2; 3\n4',
 			{
-				type:   RType.ExpressionList,
-				lexeme: undefined,
-				braces: undefined, /* TODO: change */
-				info:   {
-					additionalTokens: [
-						{
-							type:     RType.Delimiter,
-							subtype:  RawRType.Semicolon,
-							location: rangeFrom(2, 2, 2, 2),
-							lexeme:   ';'
-						}
-					]
-				},
+				type:     RType.ExpressionList,
+				lexeme:   undefined,
+				braces:   undefined,
+				info:     { },
 				children: [
 					{
 						type:     RType.Number,

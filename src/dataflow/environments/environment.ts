@@ -139,11 +139,11 @@ function defaultBuiltInFunctionProcessor<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { returnsNthArgument?: number }
+	config: { returnsNthArgument?: number | 'last' }
 ): DataflowInformation {
 	const res = processKnownFunctionCall(name, args, rootId, data).information
 	if(config.returnsNthArgument !== undefined) {
-		const arg = args[config.returnsNthArgument]
+		const arg = config.returnsNthArgument === 'last' ? args[args.length - 1] : args[config.returnsNthArgument]
 		if(arg !== EmptyArgument) {
 			res.graph.addEdge(rootId, arg.info.id, EdgeType.Returns, 'always', true)
 		}
@@ -186,8 +186,8 @@ export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
 	// maybe map to a control flow function?
 	simpleBuiltInConstant('break', 'break'), simpleBuiltInConstant('next', 'next'),
 	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { },'cat' /* returns null */),
-	// TODO: fix handling of '{'
-	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { returnsNthArgument: 1 },'return', 'print', '(', '{'),
+	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { returnsNthArgument: 1 },'return', 'print', '('),
+	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { returnsNthArgument: 'last' as const },'{'),
 	...simpleBuiltInFunction(processSourceCall, { }, 'source'),
 	...simpleBuiltInFunction(processAccess, { treatIndicesAsString: false },'[', '[['),
 	...simpleBuiltInFunction(processAccess, { treatIndicesAsString: true },'$', '@'),

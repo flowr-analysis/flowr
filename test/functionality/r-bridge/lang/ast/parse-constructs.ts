@@ -2,8 +2,8 @@ import { assertAst, withShell } from '../../../_helper/shell'
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import type { SourceRange } from '../../../../../src/util/range'
 import { addRanges, rangeFrom } from '../../../../../src/util/range'
-import type { RArgument, RNode } from '../../../../../src'
-import { ensureExpressionList, RType } from '../../../../../src'
+import type { RExpressionList, RNode } from '../../../../../src'
+import { ensureExpressionList, RawRType, RType } from '../../../../../src'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import { label } from '../../../_helper/label'
 
@@ -84,37 +84,25 @@ const IfThenSpacingVariants: IfThenSpacing[] = [
 	},
 ]
 
-function inBrace(location: SourceRange, content: RNode): RArgument {
+function inBrace(start: SourceRange, end: SourceRange, content: RNode): RExpressionList {
 	return {
-		type:   RType.Argument,
-		location,
-		lexeme: '{',
-		content,
-		info:   {},
-		name:   undefined,
-		value:  {
-			type:         RType.FunctionCall,
-			location,
-			lexeme:       '{',
-			flavor:       'named',
-			info:         {},
-			functionName: {
-				type:      RType.Symbol,
-				location,
-				lexeme:    '{',
-				content:   '{',
-				namespace: undefined,
-				info:      {}
-			},
-			arguments: [content.type === RType.Argument ? content : {
-				type:     RType.Argument,
-				location: content.location ?? location,
-				lexeme:   content.lexeme ?? '',
-				info:     {},
-				name:     undefined,
-				value:    content
-			}]
-		} }
+		type:     RType.ExpressionList,
+		location: undefined,
+		lexeme:   undefined,
+		info:     {},
+		braces:   [{
+			type:     RType.Delimiter,
+			lexeme:   '{',
+			location: start,
+			subtype:  RawRType.BraceLeft
+		}, {
+			type:     RType.Delimiter,
+			lexeme:   '}',
+			location: end,
+			subtype:  RawRType.BraceRight
+		}],
+		children: [content]
+	}
 }
 
 const IfThenBraceVariants: IfThenSpacing[] = [{
@@ -122,14 +110,14 @@ const IfThenBraceVariants: IfThenSpacing[] = [{
 	locationTrue: rangeFrom(1, 4, 1, 7),
 	num:          1,
 	locationNum:  rangeFrom(1,10,1,10),
-	then:         inBrace(rangeFrom(1, 9, 1, 9), { type: RType.Number, location: rangeFrom(1, 10, 1, 10), lexeme: '1', content: numVal(1), info: {} }),
+	then:         inBrace(rangeFrom(1, 9, 1, 9), rangeFrom(1, 11, 1, 11), { type: RType.Number, location: rangeFrom(1, 10, 1, 10), lexeme: '1', content: numVal(1), info: {} }),
 	end:          rangeFrom(1, 11, 1, 11),
 	capabilities: ['if', 'logical', 'numbers', 'grouping']
 }, {
 	str:          'if(TRUE){42}',
 	locationTrue: rangeFrom(1, 4, 1, 7),
 	locationNum:  rangeFrom(1, 10, 1, 11),
-	then:         inBrace(rangeFrom(1, 9, 1, 9), { type: RType.Number, location: rangeFrom(1, 10, 1, 11), lexeme: '42', content: numVal(42), info: {} }),
+	then:         inBrace(rangeFrom(1, 9, 1, 9), rangeFrom(1, 12, 1, 12), { type: RType.Number, location: rangeFrom(1, 10, 1, 11), lexeme: '42', content: numVal(42), info: {} }),
 	num:          42,
 	end:          rangeFrom(1, 12, 1, 12),
 	capabilities: ['if', 'logical', 'numbers', 'grouping']
@@ -137,9 +125,11 @@ const IfThenBraceVariants: IfThenSpacing[] = [{
 	str:          'if(TRUE){{{1}}}',
 	locationTrue: rangeFrom(1, 4, 1, 7),
 	locationNum:  rangeFrom(1, 12, 1, 12),
-	then:         inBrace(rangeFrom(1, 9, 1, 9),
-		inBrace(rangeFrom(1, 10, 1, 10),
-			inBrace(rangeFrom(1, 11, 1, 11), { type: RType.Number, location: rangeFrom(1, 12, 1, 12), lexeme: '1', content: numVal(1), info: {} })
+	then:         inBrace(rangeFrom(1, 9, 1, 9), rangeFrom(1, 15, 1, 15),
+		inBrace(rangeFrom(1, 10, 1, 10), rangeFrom(1, 14, 1, 14),
+			inBrace(rangeFrom(1, 11, 1, 11), rangeFrom(1, 13, 1, 13),
+				{ type: RType.Number, location: rangeFrom(1, 12, 1, 12), lexeme: '1', content: numVal(1), info: {} }
+			)
 		)
 	),
 	num:          1,
@@ -174,15 +164,20 @@ const ElseSpacingVariants: ElseSpacing[] = [{
 const ElseBracesVariants: ElseSpacing[] = [{
 	str:          ' else {2}',
 	locationElse: rangeFrom(0, 8, 0, 8),
-	otherwise: 	  off => inBrace(addRanges(off, rangeFrom(0, 7, 0, 7)), { type: RType.Number, location: addRanges(off, rangeFrom(0, 8, 0, 8)), lexeme: '2', content: numVal(2), info: {} }),
+	otherwise: 	  off => inBrace(
+		addRanges(off, rangeFrom(0, 7, 0, 7)), addRanges(off, rangeFrom(0, 9, 0, 9)),
+		{ type: RType.Number, location: addRanges(off, rangeFrom(0, 8, 0, 8)), lexeme: '2', content: numVal(2), info: {} }
+	),
 	num:          2,
 	capabilities: ['if', 'numbers', 'grouping']
 }, {
 	str:          ' else {{{42}}}',
 	locationElse: rangeFrom(0, 10, 0, 11),
-	otherwise:    off => inBrace(addRanges(off, rangeFrom(0, 7, 0, 7)),
-		inBrace(addRanges(off, rangeFrom(0, 8, 0, 8)),
-			inBrace(addRanges(off, rangeFrom(0, 9, 0, 9)), { type: RType.Number, location: addRanges(off, rangeFrom(0, 10, 0, 11)), lexeme: '42', content: numVal(42), info: {} })
+	otherwise:    off => inBrace(addRanges(off, rangeFrom(0, 7, 0, 7)), addRanges(off, rangeFrom(0, 14, 0, 14)),
+		inBrace(addRanges(off, rangeFrom(0, 8, 0, 8)), addRanges(off, rangeFrom(0, 13, 0, 13)),
+			inBrace(addRanges(off, rangeFrom(0, 9, 0, 9)), addRanges(off, rangeFrom(0, 12, 0, 12)),
+				{ type: RType.Number, location: addRanges(off, rangeFrom(0, 10, 0, 11)), lexeme: '42', content: numVal(42), info: {} }
+			)
 		)
 	),
 	num:          42,
@@ -198,7 +193,6 @@ describe('Parse simple constructs', withShell(shell => {
 			}]) {
 				describe(`${pool.name} variants`, () => {
 					for(const variant of pool.variants) {
-						const strNum = `${variant.num}`
 						assertAst(label(JSON.stringify(variant.str), variant.capabilities), shell, variant.str, exprList({
 							type:      RType.IfThenElse,
 							location:  rangeFrom(1, 1, 1, 2),
@@ -211,13 +205,7 @@ describe('Parse simple constructs', withShell(shell => {
 								content:  true,
 								info:     {}
 							},
-							then: ensureExpressionList({
-								type:     RType.Number,
-								location: variant.locationNum,
-								lexeme:   strNum,
-								content:  numVal(variant.num),
-								info:     {}
-							})
+							then: ensureExpressionList(variant.then)
 						}), {
 							ignoreAdditionalTokens: true
 						})
@@ -237,8 +225,6 @@ describe('Parse simple constructs', withShell(shell => {
 					describe(`if-then: ${ifThenPool.name}, else: ${elsePool.name}`, () => {
 						for(const elseVariant of elsePool.variants) {
 							for(const ifThenVariant of ifThenPool.variants) {
-								const thenNum = `${ifThenVariant.num}`
-								const elseNum = `${elseVariant.num}`
 								const input = `${ifThenVariant.str}${elseVariant.str}`
 								assertAst(label(JSON.stringify(input), [...ifThenVariant.capabilities, ...elseVariant.capabilities]), shell, input, exprList({
 									type:      RType.IfThenElse,
@@ -252,20 +238,8 @@ describe('Parse simple constructs', withShell(shell => {
 										content:  true,
 										info:     {}
 									},
-									then: ensureExpressionList({
-										type:     RType.Number,
-										location: ifThenVariant.locationNum,
-										lexeme:   thenNum,
-										content:  numVal(ifThenVariant.num),
-										info:     {}
-									}),
-									otherwise: ensureExpressionList({
-										type:     RType.Number,
-										location: addRanges(elseVariant.locationElse, ifThenVariant.end),
-										lexeme:   elseNum,
-										content:  numVal(elseVariant.num),
-										info:     {}
-									})
+									then:      ensureExpressionList(ifThenVariant.then),
+									otherwise: ensureExpressionList(elseVariant.otherwise(ifThenVariant.end))
 								}), {
 									ignoreAdditionalTokens: true
 								})
@@ -392,7 +366,7 @@ describe('Parse simple constructs', withShell(shell => {
 				}), {
 					ignoreAdditionalTokens: true
 				})
-			assertAst(label('Two statement repeat', ['repeat-loop', 'numbers', 'grouping', 'semicolons']),
+			assertAst(label('Two Statement Repeat', ['repeat-loop', 'numbers', 'grouping', 'semicolons']),
 				shell, 'repeat { x; y }', exprList({
 					type:     RType.RepeatLoop,
 					location: rangeFrom(1, 1, 1, 6),
@@ -400,9 +374,19 @@ describe('Parse simple constructs', withShell(shell => {
 					info:     {},
 					body:     {
 						type:     RType.ExpressionList,
-						location: rangeFrom(1, 8, 1, 15),
-						braces:   undefined, /* TODO: change */
-						lexeme:   '{ x; y }',
+						location: undefined,
+						lexeme:   undefined,
+						braces:   [{
+							type:     RType.Delimiter,
+							lexeme:   '{',
+							location: rangeFrom(1, 8, 1, 8),
+							subtype:  RawRType.BraceLeft
+						}, {
+							type:     RType.Delimiter,
+							lexeme:   '}',
+							location: rangeFrom(1, 15, 1, 15),
+							subtype:  RawRType.BraceRight
+						}],
 						info:     {},
 						children: [{
 							type:      RType.Symbol,
@@ -462,11 +446,21 @@ describe('Parse simple constructs', withShell(shell => {
 						content:  false,
 						info:     {}
 					},
-					body: ensureExpressionList({
+					body: {
 						type:     RType.ExpressionList,
-						location: rangeFrom(1, 15, 1, 22),
-						braces:   undefined, /* TODO: change */
-						lexeme:   '{ x; y }',
+						location: undefined,
+						lexeme:   undefined,
+						braces:   [{
+							type:     RType.Delimiter,
+							lexeme:   '{',
+							location: rangeFrom(1, 15, 1, 15),
+							subtype:  RawRType.BraceLeft
+						}, {
+							type:     RType.Delimiter,
+							lexeme:   '}',
+							location: rangeFrom(1, 22, 1, 22),
+							subtype:  RawRType.BraceRight
+						}],
 						info:     {},
 						children: [{
 							type:      RType.Symbol,
@@ -483,7 +477,7 @@ describe('Parse simple constructs', withShell(shell => {
 							content:   'y',
 							info:      {}
 						}]
-					})
+					}
 				}), {
 					ignoreAdditionalTokens: true
 				})

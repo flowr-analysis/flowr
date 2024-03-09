@@ -4,7 +4,7 @@ import { XmlParseError, childrenKey, getKeyGuarded } from '../../input-format'
 import { RType, RawRType } from '../../../../model'
 import type { RComment, RForLoop, RNode, RSymbol } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { normalizeElements, splitComments, normalizeSingleNode } from '../structure'
+import { normalizeExpressions, splitComments, normalizeSingleNode } from '../structure'
 import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../../meta'
 import { guard } from '../../../../../../../util/assert'
 import { tryNormalizeSymbol } from '../values'
@@ -75,7 +75,7 @@ function normalizeForHead(data: ParserData, forCondition: XmlBasedJson): { varia
 	guard(variable !== undefined, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
 	guard((variable as RNode).type === RType.Symbol, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`)
 
-	const vector = normalizeElements(data, [others[inPosition + 1]])
+	const vector = normalizeExpressions(data, [others[inPosition + 1]])
 	guard(vector.length === 1 && vector[0].type !== RType.Delimiter, () => `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`)
 	const parsedComments = comments.map(c => normalizeComment(data, c.content))
 

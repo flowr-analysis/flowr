@@ -1,10 +1,10 @@
 import { exprList, numVal } from '../../../_helper/ast-builder'
 import { assertAst, withShell } from '../../../_helper/shell'
 import { rangeFrom } from '../../../../../src/util/range'
-import { ensureExpressionList, RType } from '../../../../../src'
+import { RawRType, RType } from '../../../../../src'
 import { label } from '../../../_helper/label'
 
-describe('Parse larger snippets', withShell((shell) => {
+describe('Parse Larger Snippets', withShell((shell) => {
 	describe('if-then, assignments, symbols, and comparisons', () => {
 		assertAst(label('Manual max function', [
 			'name-normal', 'local-left-assignment', 'local-equal-assignment', 'local-right-assignment', 'super-left-assignment',
@@ -94,10 +94,20 @@ max
 					},
 				},
 				then: {
-					type:     RType.ExpressionList,
-					braces:   undefined, /* TODO: change! */
-					lexeme:   '{\n  max <<- a\n  i ->2\n}',
-					location: rangeFrom(4, 11, 7, 1),
+					type:   RType.ExpressionList,
+					braces: [{
+						type:     RType.Delimiter,
+						lexeme:   '{',
+						location: rangeFrom(4, 11, 4, 11),
+						subtype:  RawRType.BraceLeft
+					}, {
+						type:     RType.Delimiter,
+						lexeme:   '}',
+						location: rangeFrom(7, 1, 7, 1),
+						subtype:  RawRType.BraceRight
+					}],
+					lexeme:   undefined,
+					location: undefined,
 					info:     {},
 					children: [
 						{
@@ -147,29 +157,46 @@ max
 						},
 					],
 				},
-				otherwise: ensureExpressionList({
-					type:     RType.BinaryOp,
-					lexeme:   '->>',
-					operator: '->>',
-					location: rangeFrom(8, 5, 8, 7),
+				otherwise: {
+					type:     RType.ExpressionList,
+					location: undefined,
+					lexeme:   undefined,
 					info:     {},
-					lhs:      {
-						type:      RType.Symbol,
-						lexeme:    'b',
-						namespace: undefined,
-						content:   'b',
-						location:  rangeFrom(8, 3, 8, 3),
-						info:      {}
-					},
-					rhs: {
-						type:      RType.Symbol,
-						lexeme:    'max',
-						namespace: undefined,
-						content:   'max',
-						location:  rangeFrom(8, 9, 8, 11),
-						info:      {}
-					},
-				}),
+					braces:   [{
+						type:     RType.Delimiter,
+						lexeme:   '{',
+						location: rangeFrom(7, 8, 7, 8),
+						subtype:  RawRType.BraceLeft
+					}, {
+						type:     RType.Delimiter,
+						lexeme:   '}',
+						location: rangeFrom(9, 1, 9, 1),
+						subtype:  RawRType.BraceRight
+					}],
+					children: [{
+						type:     RType.BinaryOp,
+						lexeme:   '->>',
+						operator: '->>',
+						location: rangeFrom(8, 5, 8, 7),
+						info:     {},
+						lhs:      {
+							type:      RType.Symbol,
+							lexeme:    'b',
+							namespace: undefined,
+							content:   'b',
+							location:  rangeFrom(8, 3, 8, 3),
+							info:      {}
+						},
+						rhs: {
+							type:      RType.Symbol,
+							lexeme:    'max',
+							namespace: undefined,
+							content:   'max',
+							location:  rangeFrom(8, 9, 8, 11),
+							info:      {}
+						},
+					}]
+				},
 			},
 			{
 				type:      RType.Symbol,

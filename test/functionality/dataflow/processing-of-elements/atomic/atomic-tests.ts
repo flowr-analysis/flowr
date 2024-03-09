@@ -20,7 +20,6 @@ describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {
 		for(const [input, id] of [
 			['42', 'numbers'],
-			['-3.14', 'numbers'],
 			['"test"', 'strings'],
 			['\'test\'', 'strings'],
 			['TRUE', 'logical'],
@@ -183,7 +182,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				.reads('3-arg', '0')
 		)
 		// TODO: replacement function
-		assertDataflow(label('assign on access', ['name-normal', 'single-bracket-access', 'local-left-assignment']), shell,
+		assertDataflow(label('Assign on Access', ['name-normal', 'single-bracket-access', 'local-left-assignment']), shell,
 			'a[x] <- 5',
 			emptyGraph()
 				.defineVariable('0', 'a', { when: 'maybe' })

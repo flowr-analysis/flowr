@@ -14,6 +14,7 @@ import { processForLoop } from '../internal/process/functions/call/built-in/buil
 import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-for-repeat'
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-for-while'
 import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier'
+import { guard } from '../../util/assert'
 
 export const BuiltIn = 'built-in'
 
@@ -44,7 +45,7 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 	value:     T
 }
 
-function defaultBuiltInFunctionProcessor<OtherInfo>(
+function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
@@ -61,59 +62,66 @@ function defaultBuiltInFunctionProcessor<OtherInfo>(
 	return res
 }
 
-function simpleBuiltInFunction<Config, Proc extends BuiltInIdentifierProcessorWithConfig<Config>>(
+export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierProcessorWithConfig<Config>>(
 	processor: Proc,
 	config: Config,
-	...names: Identifier[]
-): [Identifier, BuiltInIdentifierDefinition[]][] {
-	return names.map(name => [name, [{
-		kind:      'built-in-function',
-		used:      'always',
-		definedAt: BuiltIn,
-		processor: (name, args, rootId, data) => processor(name, args, rootId, data, config),
-		name,
-		nodeId:    BuiltIn
-	}]])
+	...names: readonly Identifier[]
+): void {
+	for(const name of names) {
+		guard(!BuiltInMemory.has(name), `Built-in ${name} already defined`)
+		BuiltInMemory.set(name, [{
+			kind:      'built-in-function',
+			used:      'always',
+			definedAt: BuiltIn,
+			processor: (name, args, rootId, data) => processor(name, args, rootId, data, config),
+			name,
+			nodeId:    BuiltIn
+		}])
+	}
 }
 
-function builtInFunctions(...names: Identifier[]): [Identifier, BuiltInIdentifierDefinition[]][] {
-	return simpleBuiltInFunction(defaultBuiltInFunctionProcessor, {}, ...names)
+function registerSimpleFunctions(...names: readonly Identifier[]): void {
+	registerBuiltInFunctions(defaultBuiltInProcessor, {}, ...names)
 }
 
-function simpleBuiltInConstant<T>(name: Identifier, value: T): [Identifier, BuiltInIdentifierConstant<T>[]] {
-	return [name, [{
+function registerBuiltInConstant<T>(name: Identifier, value: T): void {
+	guard(!BuiltInMemory.has(name), `Built-in ${name} already defined`)
+	BuiltInMemory.set(name, [{
 		kind:      'built-in-value',
 		used:      'always',
 		definedAt: BuiltIn,
 		value,
 		name,
 		nodeId:    BuiltIn
-	}]]
+	}])
 }
 
-export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
-	simpleBuiltInConstant('NULL', null),
-	simpleBuiltInConstant('NA', null),
-	simpleBuiltInConstant('TRUE', true), simpleBuiltInConstant('T', true),
-	simpleBuiltInConstant('FALSE', false), simpleBuiltInConstant('F', false),
-	// maybe map to a control flow function?
-	simpleBuiltInConstant('break', 'break'), simpleBuiltInConstant('next', 'next'),
-	...builtInFunctions('~', '+', '-', '*', '/', '^', '!', '?', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%', '%*%', ':'),
-	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, {}, 'cat' /* returns null */),
-	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { returnsNthArgument: 1 }, 'return', 'print', '('),
-	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { returnsNthArgument: 'last' as const }, '{'),
-	...simpleBuiltInFunction(processSourceCall, {}, 'source'),
-	...simpleBuiltInFunction(processAccess, { treatIndicesAsString: false }, '[', '[['),
-	...simpleBuiltInFunction(processAccess, { treatIndicesAsString: true }, '$', '@'),
-	...simpleBuiltInFunction(processIfThenElse, {}, 'if'),
-	...simpleBuiltInFunction(processAssignment, {}, '<-', ':=', '=', 'assign', 'delayedAssign'),
-	...simpleBuiltInFunction(processAssignment, { superAssignment: true }, '<<-'),
-	...simpleBuiltInFunction(processAssignment, { swapSourceAndTarget: true }, '->'),
-	...simpleBuiltInFunction(processAssignment, { superAssignment: true, swapSourceAndTarget: true }, '->>'),
-	...simpleBuiltInFunction(processSpecialBinOp, { lazy: true }, '&&', '||', '&', '|'),
-	...simpleBuiltInFunction(processPipe, {}, '|>'),
-	...simpleBuiltInFunction(processForLoop, {}, 'for'),
-	...simpleBuiltInFunction(processRepeatLoop, {}, 'repeat'),
-	...simpleBuiltInFunction(processWhileLoop, {}, 'while')
-])
+export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>()
+
+registerBuiltInConstant('NULL', null)
+registerBuiltInConstant('NA', null)
+registerBuiltInConstant('TRUE', true)
+registerBuiltInConstant('T', true)
+registerBuiltInConstant('FALSE', false)
+registerBuiltInConstant('F', false)
+// maybe map to a control flow function?
+registerBuiltInConstant('break', 'break')
+registerBuiltInConstant('next', 'next')
+registerSimpleFunctions('~', '+', '-', '*', '/', '^', '!', '?', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%', '%*%', ':')
+registerBuiltInFunctions(defaultBuiltInProcessor, {},                                                   'cat') /* returns null */
+registerBuiltInFunctions(defaultBuiltInProcessor, { returnsNthArgument: 1 },                            'return', 'print', '(')
+registerBuiltInFunctions(defaultBuiltInProcessor, { returnsNthArgument: 'last' as const },              '{')
+registerBuiltInFunctions(processSourceCall,       {},                                                   'source')
+registerBuiltInFunctions(processAccess,           { treatIndicesAsString: false },                      '[', '[[')
+registerBuiltInFunctions(processAccess,           { treatIndicesAsString: true },                       '$', '@')
+registerBuiltInFunctions(processIfThenElse,       {},                                                   'if')
+registerBuiltInFunctions(processAssignment,       {},                                                   '<-', ':=', '=', 'assign', 'delayedAssign')
+registerBuiltInFunctions(processAssignment,       { superAssignment: true },                            '<<-')
+registerBuiltInFunctions(processAssignment,       { swapSourceAndTarget: true },                        '->')
+registerBuiltInFunctions(processAssignment,       { superAssignment: true, swapSourceAndTarget: true }, '->>')
+registerBuiltInFunctions(processSpecialBinOp,     { lazy: true },                                       '&&', '||', '&', '|')
+registerBuiltInFunctions(processPipe,             {},                                                   '|>')
+registerBuiltInFunctions(processForLoop,          {},                                                   'for')
+registerBuiltInFunctions(processRepeatLoop,       {},                                                   'repeat')
+registerBuiltInFunctions(processWhileLoop,        {},                                                   'while')
 

@@ -2,7 +2,6 @@ import type { IdentifierReference } from '../environments'
 import { diffIdentifierReferences, diffEnvironmentInformation } from '../environments'
 import type { NodeId } from '../../r-bridge'
 import type { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
-import { guard } from '../../util/assert'
 import type {
 	GenericDifferenceInformation,
 	WriteableDifferenceReport, DifferenceReport
@@ -181,19 +180,34 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 		diffEnvironmentInformation(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environments. ` })
 
 		if(lInfo.tag === 'function-call') {
-			guard(rInfo.tag === 'function-call', 'otherInfo must be a function call as well')
-			diffFunctionArguments(lInfo.args, rInfo.args, { ...ctx, position: `${ctx.position}Vertex ${id} (function call) differs in arguments. ` })
+			if(rInfo.tag !== 'function-call') {
+				ctx.report.addComment(`Vertex ${id} has different tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`)
+			} else {
+				diffFunctionArguments(lInfo.args, rInfo.args, {
+					...ctx,
+					position: `${ctx.position}Vertex ${id} (function call) differs in arguments. `
+				})
+			}
 		}
 
 		if(lInfo.tag === 'function-definition') {
-			guard(rInfo.tag === 'function-definition', 'otherInfo must be a function definition as well')
+			if(rInfo.tag !== 'function-definition') {
+				ctx.report.addComment(`Vertex ${id} has different tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`)
+			} else {
 
-			if(!equalExitPoints(lInfo.exitPoints, rInfo.exitPoints)) {
-				ctx.report.addComment(`Vertex ${id} has different exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints, jsonReplacer)}`)
+				if(!equalExitPoints(lInfo.exitPoints, rInfo.exitPoints)) {
+					ctx.report.addComment(`Vertex ${id} has different exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints, jsonReplacer)}`)
+				}
+
+				diffEnvironmentInformation(lInfo.subflow.environment, rInfo.subflow.environment, {
+					...ctx,
+					position: `${ctx.position}Vertex ${id} (function definition) differs in subflow environments. `
+				})
+				setDifference(lInfo.subflow.graph, rInfo.subflow.graph, {
+					...ctx,
+					position: `${ctx.position}Vertex ${id} differs in subflow graph. `
+				})
 			}
-
-			diffEnvironmentInformation(lInfo.subflow.environment, rInfo.subflow.environment, { ...ctx, position: `${ctx.position}Vertex ${id} (function definition) differs in subflow environments. ` })
-			setDifference(lInfo.subflow.graph, rInfo.subflow.graph, { ...ctx, position: `${ctx.position}Vertex ${id} differs in subflow graph. ` })
 		}
 	}
 }

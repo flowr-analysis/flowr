@@ -2,7 +2,7 @@ import type {
 	NodeId,
 	ParentInformation,
 	RFunctionArgument,
-	RNode,
+	RNode, RString,
 	RSymbol, RUnnamedArgument
 } from '../../../../../../r-bridge'
 import {
@@ -33,8 +33,8 @@ export function processAssignment<OtherInfo>(
 	}
 
 	const effectiveArgs = config.swapSourceAndTarget ? [args[1], args[0]] : args
-
 	const { target, source } = extractSourceAndTarget(effectiveArgs, name)
+
 
 	if(target.type === RType.FunctionCall && target.flavor === 'named') {
 		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`)
@@ -50,22 +50,7 @@ export function processAssignment<OtherInfo>(
 		const res = processKnownFunctionCall(name, effectiveArgs, rootId, data)
 		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, res.processedArguments as [DataflowInformation, DataflowInformation], rootId, data, res.information)
 	} else if(target.type === RType.String) {
-		const symbol: RSymbol<OtherInfo & ParentInformation> = {
-			type:      RType.Symbol,
-			info:      target.info,
-			content:   target.lexeme,
-			lexeme:    target.lexeme,
-			location:  target.location,
-			namespace: undefined
-		}
-
-		// treat first argument to Symbol
-		const mappedArgs = [{
-			...(effectiveArgs[0] as RUnnamedArgument<OtherInfo & ParentInformation>),
-			value: symbol
-		}, effectiveArgs[1]]
-		const res = processKnownFunctionCall(name, mappedArgs, rootId, data)
-		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, symbol, res.processedArguments as [DataflowInformation, DataflowInformation], rootId, data, res.information)
+		return processAssignmentToString(target, effectiveArgs, name, rootId, data, config, source)
 	}
 
 	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type}, skipping`)
@@ -89,6 +74,25 @@ function produceWrittenNodes(rootId: NodeId, target: DataflowInformation, isFunc
 		kind:      isFunctionDef ? 'function' : 'variable',
 		definedAt: rootId
 	}))
+}
+
+function processAssignmentToString<OtherInfo>(target: RString<OtherInfo & ParentInformation>, effectiveArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, config: {
+	superAssignment?:     boolean;
+	swapSourceAndTarget?: boolean
+}, source: RNode<OtherInfo & ParentInformation>) {
+	const symbol: RSymbol<OtherInfo & ParentInformation> = {
+		type:      RType.Symbol,
+		info:      target.info,
+		content:   target.lexeme,
+		lexeme:    target.lexeme,
+		location:  target.location,
+		namespace: undefined
+	}
+
+	// treat first argument to Symbol
+	const mappedArgs = [{ ...(effectiveArgs[0] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }, effectiveArgs[1]]
+	const res = processKnownFunctionCall(name, mappedArgs, rootId, data)
+	return processAssignmentToSymbol(config.superAssignment ?? false, name, source, symbol, res.processedArguments as [DataflowInformation, DataflowInformation], rootId, data, res.information)
 }
 
 function processAssignmentToSymbol<OtherInfo>(

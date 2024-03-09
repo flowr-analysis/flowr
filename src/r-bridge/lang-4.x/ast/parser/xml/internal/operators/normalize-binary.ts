@@ -3,13 +3,12 @@ import type { NamedXmlBasedJson } from '../../input-format'
 import { XmlParseError } from '../../input-format'
 import type {
 	RBinaryOp, RFunctionCall,
-	RNode, RPipe, RSymbol
+	RNode, RPipe
 } from '../../../../model'
 import {
 	RType,
 	OperatorsInRAst,
-	RawRType,
-	OperatorDatabase
+	RawRType
 } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../normalize-meta'
@@ -37,22 +36,14 @@ export function tryNormalizeBinary(
 
 function parseBinaryOp(data: NormalizerData, lhs: NamedXmlBasedJson, operator: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RFunctionCall | RBinaryOp | RPipe {
 	ensureChildrenAreLhsAndRhsOrdered(lhs.content, rhs.content)
-	let parsedLhs = normalizeSingleNode(data, lhs)
-	let parsedRhs = normalizeSingleNode(data, rhs)
+	const parsedLhs = normalizeSingleNode(data, lhs)
+	const parsedRhs = normalizeSingleNode(data, rhs)
 
 	if(parsedLhs.type === RType.Delimiter || parsedRhs.type === RType.Delimiter) {
 		throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, operator, rhs])}`)
 	}
 
 	const operationName = retrieveOpName(operator)
-
-	// special support for strings in assignments
-	// TODO: move to df
-	if(OperatorDatabase[operationName]?.usedAs === 'assignment') {
-		[parsedLhs, parsedRhs] = processLhsAndRhsForAssignment(operationName, parsedLhs, parsedRhs)
-	}
-
-
 
 	const { location, content } = retrieveMetaStructure(operator.content)
 
@@ -131,23 +122,4 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedXmlBasedJson, operator: N
 			}
 		}
 	}
-}
-
-function processLhsAndRhsForAssignment(opName: string, parsedLhs: RNode, parsedRhs: RNode): [RNode, RNode] {
-	const isRhs = opName === '->' || opName === '->>'
-	const assigned = isRhs ? parsedRhs : parsedLhs
-	if(assigned.type !== RType.String) {
-		return [parsedLhs, parsedRhs]
-	}
-
-	// update the assigned value to be parsed as a symbol
-	const result: RSymbol = {
-		type:      RType.Symbol,
-		lexeme:    assigned.lexeme,
-		location:  assigned.location,
-		content:   assigned.content.str,
-		namespace: undefined,
-		info:      assigned.info
-	}
-	return isRhs ? [parsedLhs, result] : [result, parsedRhs]
 }

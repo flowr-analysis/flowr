@@ -147,9 +147,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	const { open, close } = mermaidNodeBrackets(def, fCall)
 
 	if(mermaid.includeEnvironments) {
-		if(info.environment.level === 0 && info.environment.current.memory.size === 0) {
-			mermaid.nodeLines.push(`    %% Environment of ${id} is only [Built-in]`)
-		} else {
+		if(info.environment.level > 0 || info.environment.current.memory.size !== 0) {
 			mermaid.nodeLines.push(
 				`    %% Environment of ${id} [level: ${info.environment.level}]:`,
 				printEnvironmentToLines(info.environment.current).map(x => `    %% ${x}`).join('\n'))

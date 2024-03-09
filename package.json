@@ -144,7 +144,8 @@
       "check-file",
       "@stylistic",
       "@stylistic/js",
-      "@stylistic/ts"
+      "@stylistic/ts",
+      "import"
     ],
     "rules": {
       "@stylistic/js/object-curly-spacing": [
@@ -316,7 +317,8 @@
         "error",
         "1tbs"
       ],
-      "@stylistic/js/new-parens": "error"
+      "@stylistic/js/new-parens": "error",
+      "import/no-duplicates": "error"
     }
   },
   "release-it": {

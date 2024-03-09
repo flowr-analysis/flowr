@@ -29,5 +29,3 @@ export function parameter(name: string, location: SourceRange, defaultValue?: RN
 		info: emptyInfo
 	}
 }
-
-

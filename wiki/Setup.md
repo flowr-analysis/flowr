@@ -1,11 +1,16 @@
-There are two main ways to use *flowR*.
-You can download and build it from source, or download the accompanying docker image.
+There are several ways to use *flowR*.
+You can download and build it from source, download the accompanying docker image, or use its Visual Studio Code extension.
 
 <!-- TOC -->
+- [🗒️ Using the Visual Studio Code Extension](#️-using-the-visual-studio-code-extension)
 - [🐳️ Using the Docker Image](#️-using-the-docker-image)
 - [⚒️ Building From Scratch](#️-building-from-scratch)
 - [📜 Developing for *flowR*](#-developing-for-flowr)
 <!-- TOC -->
+
+## 🗒️ Using the Visual Studio Code Extension
+
+The easiest way to use *flowR* is to install the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr). Please check out the marketplace entry for more information.
 
 ## 🐳️ Using the Docker Image
 

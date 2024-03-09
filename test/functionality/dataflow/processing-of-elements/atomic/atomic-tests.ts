@@ -4,16 +4,15 @@
  * This will not include functions!
  */
 import { assertDataflow, withShell } from '../../../_helper/shell'
-import type { FunctionArgument } from '../../../../../src/dataflow'
-import { BuiltIn, EdgeType, initializeCleanEnvironments } from '../../../../../src/dataflow'
-import { appendEnvironment, define } from '../../../../../src/dataflow/environments'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { label } from '../../../_helper/label'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { unnamedArgument } from '../../../_helper/environment-builder'
-import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
-import { OperatorDatabase } from '../../../../../src'
+import { argumentInCall, defaultEnvironment, unnamedArgument } from '../../../_helper/environment-builder'
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider'
+import { OperatorDatabase } from '../../../../../src'
+import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
+import type { FunctionArgument } from '../../../../../src/dataflow'
+import { BuiltIn } from '../../../../../src/dataflow'
 import { startAndEndsWith } from '../../../../../src/util/strings'
 
 describe('Atomic (dataflow information)', withShell(shell => {
@@ -228,6 +227,51 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		}
 	})
 
+	describe('Pipes', () => {
+		describe('Passing one argument', () => {
+			assertDataflow('No parameter function', shell, 'x |> f()',
+				emptyGraph()
+					.use('0', 'x')
+					.call('3', 'f', [argumentInCall('1')])
+					.use('1', unnamedArgument('1'))
+					.argument('3', '1')
+					.reads('1', '0'),
+				{ minRVersion: MIN_VERSION_PIPE }
+			)
+			assertDataflow('Nested calling', shell, 'x |> f() |> g()',
+				emptyGraph()
+					.use('0', 'x')
+					.call('3', 'f', [argumentInCall('1')])
+					.call('7', 'g', [argumentInCall('5')])
+					.use('1', unnamedArgument('1'))
+					.use('5', unnamedArgument('5'))
+					.argument('3', '1')
+					.argument('7', '5')
+					.reads('5', '3')
+					.reads('1', '0'),
+				{ minRVersion: MIN_VERSION_PIPE }
+			)
+			assertDataflow('Multi-Parameter function', shell, 'x |> f(y,z)',
+				emptyGraph()
+					.use('0', 'x')
+					.call('7', 'f', [argumentInCall('1'), argumentInCall('4'), argumentInCall('6')])
+					.use('1', unnamedArgument('1'))
+					.use('4', unnamedArgument('4'))
+					.use('6', unnamedArgument('6'))
+					.use('0', 'x')
+					.use('3', 'y')
+					.use('5', 'z')
+					.argument('7', '1')
+					.argument('7', '4')
+					.argument('7', '6')
+					.reads('1', '0')
+					.reads('4', '3')
+					.reads('6', '5'),
+				{ minRVersion: MIN_VERSION_PIPE }
+			)
+		})
+	})
+
 	describe('Assignments Operators', () => {
 		for(const op of AssignmentOperators) {
 			describe(`${op}`, () => {
@@ -413,20 +457,14 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			})
 		})
 		describe('assignment with function call', () => {
-			const environmentWithX = define(
-				{ name: 'x', nodeId: '4', kind: EdgeType.Argument, definedAt: '4', used: 'always' },
-				false,
-				initializeCleanEnvironments()
-			)
-			assertDataflow('define call with multiple args should only be defined by the call-return',
-				shell,
-				'a <- foo(x=3,y,z)',
+			const environmentWithX = defaultEnvironment().defineArgument('x', '4', '4')
+			assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'a <- foo(x=3,y,z)',
 				emptyGraph()
 					.defineVariable('0', 'a')
 					.call('9', 'foo', [
-						['x', { name: 'x', nodeId: '4', used: 'always' }],
-						{ name: unnamedArgument('6'), nodeId: '6', used: 'always' },
-						{ name: unnamedArgument('8'), nodeId: '8', used: 'always' },
+						argumentInCall('4', 'x'),
+						argumentInCall('6'),
+						argumentInCall('8')
 					])
 					.use('4', 'x')
 					.use('5', 'y', { environment: environmentWithX })
@@ -549,7 +587,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 						`if (x <- 3) ${b.func('x')}`,
 						emptyGraph()
 							.defineVariable('0', 'x')
-							.use('3', 'x', { when: 'maybe', environment: define({ name: 'x', definedAt: '2', used: 'always', kind: 'variable', nodeId: '0' }, false, initializeCleanEnvironments()) })
+							.use('3', 'x', { when: 'maybe', environment: defaultEnvironment().defineVariable('x', '0', '2') })
 							.reads('3', '0')
 					)
 				})
@@ -609,22 +647,14 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		}
 	})
 	describe('inline non-strict boolean operations', () => {
-		const environmentWithY = define(
-			{ name: 'y', nodeId: '0', kind: 'variable', definedAt: '2', used: 'always' },
-			false,
-			initializeCleanEnvironments()
-		)
-		const environmentWithOtherY = define(
-			{ name: 'y', nodeId: '4', kind: 'variable', definedAt: '6', used: 'always' },
-			false,
-			initializeCleanEnvironments()
-		)
+		const environmentWithY = defaultEnvironment().defineVariable('y', '0', '2')
+		const environmentWithOtherY = defaultEnvironment().defineVariable('y', '4', '6')
 		assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'y <- 15; x && (y <- 13); y',
 			emptyGraph()
 				.defineVariable('0', 'y')
 				.defineVariable('4', 'y', { environment: environmentWithY })
 				.use('3', 'x', { environment: environmentWithY })
-				.use('8', 'y', { environment: appendEnvironment(environmentWithY, environmentWithOtherY) })
+				.use('8', 'y', { environment: environmentWithY.appendWritesOf(environmentWithOtherY) })
 				.reads('8', '0')
 				.reads('8', '4')
 				.sameDef('0', '4')
@@ -641,7 +671,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				'for(i in 1:10) { i }',
 				emptyGraph()
 					.defineVariable('0', 'i')
-					.use('4', 'i', { when: 'maybe', environment: define({ name: 'i', definedAt: '6', used: 'always', kind: 'variable', nodeId: '0' }, false, initializeCleanEnvironments()) })
+					.use('4', 'i', { when: 'maybe', environment: defaultEnvironment().defineVariable('i', '0', '6') })
 					.reads('4', '0', 'maybe')
 			)
 		})

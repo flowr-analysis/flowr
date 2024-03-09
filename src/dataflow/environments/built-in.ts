@@ -15,6 +15,7 @@ import { processRepeatLoop } from '../internal/process/functions/call/built-in/b
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-for-while'
 import type { Identifier, IdentifierDefinition, IdentifierReference } from './identifier'
 import { guard } from '../../util/assert'
+import { processReplacementFunction } from '../internal/process/functions/call/built-in/built-in-replacement'
 
 export const BuiltIn = 'built-in'
 
@@ -80,6 +81,32 @@ export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierP
 	}
 }
 
+/* registers all combinations of replacements */
+export function registerReplacementFunctions(
+	standardConfig: {makeMaybe?: boolean},
+	normalAssignments: readonly Identifier[],
+	superAssignments: readonly Identifier[],
+	...prefixes: readonly Identifier[]
+): void {
+	for(const [superAssignment, names] of [[false, normalAssignments], [true, superAssignments]] as const) {
+		for(const name of names) {
+			for(const prefix of prefixes) {
+				const effectiveName = `${prefix}${name}`
+				guard(!BuiltInMemory.has(effectiveName), `Built-in ${name} already defined`)
+				BuiltInMemory.set(effectiveName, [{
+					kind:      'built-in-function',
+					used:      'always',
+					definedAt: BuiltIn,
+					processor: (name, args, rootId, data) => processReplacementFunction(name, args, rootId, data, { ...standardConfig, superAssignment }),
+					name:      effectiveName,
+					nodeId:    BuiltIn
+				}])
+			}
+		}
+	}
+}
+
+
 function registerSimpleFunctions(...names: readonly Identifier[]): void {
 	registerBuiltInFunctions(defaultBuiltInProcessor, {}, ...names)
 }
@@ -124,4 +151,6 @@ registerBuiltInFunctions(processPipe,             {},                           
 registerBuiltInFunctions(processForLoop,          {},                                                   'for')
 registerBuiltInFunctions(processRepeatLoop,       {},                                                   'repeat')
 registerBuiltInFunctions(processWhileLoop,        {},                                                   'while')
-
+registerBuiltInFunctions(processReplacementFunction, { })
+registerReplacementFunctions({ makeMaybe: false }, ['<-', '=', '->'], ['<<-', '->>'], 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames')
+registerReplacementFunctions({ makeMaybe: true },  ['<-', '=', '->'], ['<<-', '->>'], '[', '[[', '$', '@')

@@ -45,7 +45,7 @@ export function processAssignment<OtherInfo>(
 			lexeme:    target.lexeme,
 			location:  target.location,
 			namespace: undefined
-		}, data, target.lexeme, effectiveArgs)
+		}, data, target.lexeme, [...target.arguments, source])
 	} else if(target.type === RType.Symbol) {
 		const res = processKnownFunctionCall(name, effectiveArgs, rootId, data)
 		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, res.processedArguments as [DataflowInformation, DataflowInformation], rootId, data, res.information)

@@ -6,8 +6,7 @@ import type {
 } from '../../../r-bridge'
 import {
 	EmptyArgument
-} from '../../../r-bridge'
-import {
+	,
 	foldAst, isSpecialSymbol
 } from '../../../r-bridge'
 import type { SlicingCriteriaFilter } from '../collect-all'

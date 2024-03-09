@@ -50,7 +50,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 }
 
 
-function processNextExpression<OtherInfo>(
+function processNextExpression(
 	currentElement: DataflowInformation,
 	environment: REnvironmentInformation,
 	listEnvironments: Set<NodeId>,

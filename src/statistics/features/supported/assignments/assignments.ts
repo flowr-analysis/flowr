@@ -6,8 +6,7 @@ import type {
 } from '../../../../r-bridge'
 import {
 	OperatorDatabase
-} from '../../../../r-bridge'
-import {
+	,
 	RType,
 	visitAst
 } from '../../../../r-bridge'

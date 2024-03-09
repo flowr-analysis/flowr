@@ -2,7 +2,7 @@ import type {
 	NodeId,
 	ParentInformation,
 	RExpressionList,
-	RFunctionDefinition, RIfThenElse, RLoopConstructs,
+	RIfThenElse, RLoopConstructs,
 	RNode } from '../../../../r-bridge'
 import {
 	RType

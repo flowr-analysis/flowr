@@ -8,13 +8,12 @@ import type {
 	RExpressionList,
 	RNode,
 	RNodeWithParent
-} from '../../../src'
+	, SlicingCriteria } from '../../../src'
 import {
 	deterministicCountingIdGenerator, requestFromInput,
 	RShell
 } from '../../../src'
 import { assert } from 'chai'
-import type { SlicingCriteria } from '../../../src'
 import { testRequiresRVersion } from './version'
 import type { MergeableRecord } from '../../../src/util/objects'
 import { deepMergeObject } from '../../../src/util/objects'
@@ -31,8 +30,7 @@ import type { TestLabel } from './label'
 import { decorateLabelContext } from './label'
 import { STATIC_DATAFLOW } from '../../../src/core/steps/all/core/20-dataflow'
 import type { DataflowGraph } from '../../../src/dataflow'
-import { graphToMermaidUrl } from '../../../src/dataflow'
-import { diffGraphsToMermaidUrl } from '../../../src/dataflow'
+import { graphToMermaidUrl , diffGraphsToMermaidUrl } from '../../../src/dataflow'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {

@@ -8,7 +8,8 @@ import type {
 } from '../graph'
 import type {
 	IdentifierReference,
-	REnvironmentInformation } from '../environments'
+	REnvironmentInformation
+} from '../environments'
 import {
 	BuiltIn,
 	resolveByName
@@ -47,22 +48,6 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
 		}
 	}
 }
-
-function specialReturnFunction(info: DataflowGraphVertexFunctionCall, graph: DataflowGraph, id: NodeId) {
-	if(info.args.length > 1) {
-		dataflowLogger.error(`expected up to one argument for return, but got ${info.args.length}`)
-	}
-	for(const arg of info.args) {
-		if(Array.isArray(arg)) {
-			if(arg[1] !== '<value>') {
-				graph.addEdge(id, arg[1], EdgeType.Returns, 'always')
-			}
-		} else if(arg !== '<value>') {
-			graph.addEdge(id, arg, EdgeType.Returns, 'always')
-		}
-	}
-}
-
 
 export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
 	const nameArgMap = new Map<string, IdentifierReference | '<value>'>(args.filter(Array.isArray) as NamedFunctionArgument[])
@@ -186,13 +171,6 @@ export function linkFunctionCalls(
 	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = []
 	for(const [id, info] of functionCalls) {
 		guard(info.tag === 'function-call', () => `encountered non-function call in function call linkage ${JSON.stringify(info)}`)
-
-		// TODO: others
-		if(info.name === 'return') {
-			specialReturnFunction(info, graph, id)
-			graph.addEdge(id, BuiltIn, EdgeType.Calls, 'always')
-			continue
-		}
 		linkFunctionCall(graph, id, info, idMap, thisGraph, calledFunctionDefinitions)
 	}
 	return calledFunctionDefinitions

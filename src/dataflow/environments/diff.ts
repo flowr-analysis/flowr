@@ -1,7 +1,8 @@
 import type { GenericDifferenceInformation } from '../../util/diff'
 import { setDifference } from '../../util/diff'
-import type { IdentifierReference, IEnvironment, REnvironmentInformation } from './environment'
+import type { IEnvironment, REnvironmentInformation } from './environment'
 import { jsonReplacer } from '../../util/json'
+import type { IdentifierReference } from './identifier'
 
 export function diffIdentifierReferences(a: IdentifierReference, b: IdentifierReference, info: GenericDifferenceInformation): void {
 	if(a.name !== b.name) {

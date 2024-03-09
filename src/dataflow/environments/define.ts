@@ -1,8 +1,9 @@
 import { guard } from '../../util/assert'
-import type { IdentifierDefinition, IEnvironment, REnvironmentInformation } from './environment'
 import { BuiltInEnvironment } from './environment'
+import type { IEnvironment, REnvironmentInformation } from './environment'
 
 import { cloneEnvironmentInformation } from './clone'
+import type { IdentifierDefinition } from './identifier'
 
 function defInEnv(newEnvironments: IEnvironment, definition: IdentifierDefinition) {
 	const existing = newEnvironments.memory.get(definition.name)

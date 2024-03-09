@@ -12,8 +12,8 @@ import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } 
 import { OperatorDatabase } from '../../../../../src'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import type { FunctionArgument } from '../../../../../src/dataflow'
-import { BuiltIn } from '../../../../../src/dataflow'
 import { startAndEndsWith } from '../../../../../src/util/strings'
+import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
 
 describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {

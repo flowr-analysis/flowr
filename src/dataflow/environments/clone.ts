@@ -1,13 +1,12 @@
 import type {
-	Identifier,
-	IdentifierDefinition,
 	IEnvironment,
 	REnvironmentInformation
 } from './environment'
 import {
-	BuiltInEnvironment,
-	Environment
+	Environment,
+	BuiltInEnvironment
 } from './environment'
+import type { Identifier, IdentifierDefinition } from './identifier'
 
 function cloneEnvironment(environment: IEnvironment, recurseParents: boolean): IEnvironment
 function cloneEnvironment(environment: IEnvironment | undefined, recurseParents: boolean): IEnvironment | undefined {

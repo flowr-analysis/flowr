@@ -1,6 +1,4 @@
 import type {
-	Identifier,
-	IdentifierDefinition,
 	IEnvironment,
 	REnvironmentInformation
 } from './environment'
@@ -10,6 +8,7 @@ import {
 import { dataflowLogger } from '../index'
 import { expensiveTrace } from '../../util/log'
 import type { Ternary } from '../../util/logic'
+import type { Identifier, IdentifierDefinition } from './identifier'
 
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.

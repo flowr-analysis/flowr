@@ -45,6 +45,12 @@ export interface DataflowGraphExitPoint extends DataflowGraphVertexBase {
 	readonly tag: 'exit-point'
 }
 
+export interface DataflowGraphValue extends DataflowGraphVertexBase {
+	readonly tag:  'value'
+	readonly name: ''
+	/* currently without containing the 'real' value as it is part of the normalized AST as well */
+}
+
 /**
  * Arguments required to construct a vertex which represents the usage of a variable in the dataflow graph.
  */
@@ -81,5 +87,5 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	exitPoints:   NodeId[]
 }
 
-export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphExitPoint | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall
+export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphExitPoint | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall | DataflowGraphValue
 export type DataflowGraphVertexInfo = Required<DataflowGraphVertexArgument>

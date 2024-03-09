@@ -11,11 +11,12 @@ import { processFunctionParameter } from './internal/process/functions/parameter
 import { initializeCleanEnvironments } from './environments'
 import { processFunctionArgument } from './internal/process/functions/argument'
 import { processAsNamedCall } from './internal/process/operators'
+import { processValue } from './internal/process/value'
 
 export const processors: DataflowProcessors<ParentInformation> = {
-	[RType.Number]:             processUninterestingLeaf,
-	[RType.String]:             processUninterestingLeaf,
-	[RType.Logical]:            processUninterestingLeaf,
+	[RType.Number]:             processValue,
+	[RType.String]:             processValue,
+	[RType.Logical]:            processValue,
 	[RType.Comment]:            processUninterestingLeaf,
 	[RType.LineDirective]:      processUninterestingLeaf,
 	[RType.Symbol]:             processSymbol,

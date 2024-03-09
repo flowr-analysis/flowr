@@ -98,7 +98,7 @@ function diffFunctionArgumentsReferences(a: IdentifierReference | '<value>', b: 
 	diffIdentifierReferences(a, b, ctx)
 }
 
-export function equalExitPoints(a: NodeId[] | undefined, b: NodeId[] | undefined): boolean {
+export function equalExitPoints(a: readonly NodeId[] | undefined, b: readonly NodeId[] | undefined): boolean {
 	if(a === undefined || b === undefined) {
 		return a === b
 	}
@@ -113,7 +113,7 @@ export function equalExitPoints(a: NodeId[] | undefined, b: NodeId[] | undefined
 	return true
 }
 
-export function equalFunctionArguments(a: false | FunctionArgument[], b: false | FunctionArgument[]): boolean {
+export function equalFunctionArguments(a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[]): boolean {
 	const ctx: GenericDifferenceInformation = {
 		report:    new DataflowDifferenceReport(),
 		leftname:  'left',
@@ -124,7 +124,7 @@ export function equalFunctionArguments(a: false | FunctionArgument[], b: false |
 	return ctx.report.isEqual()
 }
 
-export function diffFunctionArguments(a: false | FunctionArgument[], b: false | FunctionArgument[], ctx: GenericDifferenceInformation): void {
+export function diffFunctionArguments(a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[], ctx: GenericDifferenceInformation): void {
 	if(a === false || b === false) {
 		if(a !== b) {
 			ctx.report.addComment(`${ctx.position}${ctx.leftname}: ${JSON.stringify(a, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(b, jsonReplacer)}`)

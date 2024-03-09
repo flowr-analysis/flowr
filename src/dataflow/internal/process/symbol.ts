@@ -1,12 +1,13 @@
 import type { ParentInformation, RSymbol } from '../../../r-bridge'
 import { RNa, RNull } from '../../../r-bridge'
 import { DataflowGraph } from '../../graph'
-import { initializeCleanDataflowInformation, type DataflowInformation } from '../../info'
+import { type DataflowInformation } from '../../info'
 import type { DataflowProcessorInformation } from '../../processor'
+import { processValue } from './value'
 
 export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	if(symbol.content === RNull || symbol.content === RNa) {
-		return initializeCleanDataflowInformation(data)
+		return processValue(symbol, data)
 	}
 
 	return {

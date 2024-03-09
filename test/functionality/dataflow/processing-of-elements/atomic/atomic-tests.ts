@@ -13,7 +13,7 @@ import { OperatorDatabase } from '../../../../../src'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
 import type { FunctionArgument } from '../../../../../src/dataflow'
 import { startAndEndsWith } from '../../../../../src/util/strings'
-import { BuiltIn } from '../../../../../src/dataflow/environments/built-in'
+import { BuiltIn } from '../../../../../src/dataflow'
 
 describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {
@@ -28,7 +28,9 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			['Inf', 'inf-and-nan'],
 			['NaN', 'inf-and-nan']
 		] as [string, SupportedFlowrCapabilityId][]) {
-			assertDataflow(label(input, [id]), shell, input, emptyGraph())
+			assertDataflow(label(input, [id]), shell, input,
+				emptyGraph().constant('0')
+			)
 		}
 	})
 
@@ -229,7 +231,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		for(const op of AssignmentOperators) {
 			describe(`${op}`, () => {
 				const swapSourceAndTarget = op === '->' || op === '->>'
-				const id = swapSourceAndTarget ? '1' : '0'
+				const [variableId, constantId] = swapSourceAndTarget ? ['1', '0'] : ['0', '1']
 
 				let args: FunctionArgument[] = [argumentInCall('0-arg'), argumentInCall('1-arg')]
 				if(swapSourceAndTarget) {
@@ -238,36 +240,24 @@ describe('Atomic (dataflow information)', withShell(shell => {
 
 				const constantAssignment = swapSourceAndTarget ? `5 ${op} x` : `x ${op} 5`
 				assertDataflow(`${constantAssignment} (constant assignment)`,
-					shell,
-					constantAssignment, emptyGraph()
-						.defineVariable(id, 'x')
-						.call('2', op, args)
-						.reads(`${id}-arg`, id)
-						.reads('2',  BuiltIn)
-						.returns('2', id)
+					shell, constantAssignment,
+					emptyGraph()
+						.call('2', op, args, { reads: [BuiltIn], returns: [variableId] })
+						.defineVariable(variableId, 'x', { definedBy: [constantId] })
+						.constant(constantId)
 				)
 
 				const variableAssignment = `x ${op} y`
 				const dataflowGraph = emptyGraph()
-					.call('2', op, args)
-					.use('0-arg', unnamedArgument('0-arg'))
-					.use('1-arg', unnamedArgument('1-arg'))
-					.argument('2', '0-arg')
-					.argument('2', '1-arg')
-					.reads('1-arg', '1')
-					.reads('0-arg', '0')
-					.reads('2',  BuiltIn)
-					.returns('2', id)
+					.call('2', op, args, { reads: [BuiltIn], returns: [variableId] })
 				if(swapSourceAndTarget) {
 					dataflowGraph
 						.use('0', 'x')
-						.defineVariable('1', 'y')
-						.definedBy('1', '0')
+						.defineVariable('1', 'y', { definedBy: ['0'] })
 				} else {
 					dataflowGraph
-						.defineVariable('0', 'x')
+						.defineVariable('0', 'x', { definedBy: ['1'] })
 						.use('1', 'y')
-						.definedBy('0', '1')
 				}
 				assertDataflow(`${variableAssignment} (variable assignment)`,
 					shell,
@@ -286,7 +276,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.reads('1-arg', '1')
 					.reads('0-arg', '0')
 					.reads('2',  BuiltIn)
-					.returns('2', id)
+					.returns('2', variableId)
 				if(swapSourceAndTarget) {
 					circularGraph
 						.use('0', 'x')

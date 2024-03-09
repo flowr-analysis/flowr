@@ -1,5 +1,5 @@
 import type { NodeId } from '../../../src'
-import type { DataflowFunctionFlowInformation, DataflowGraphEdgeAttribute, DataflowGraphExitPoint, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse, DataflowGraphVertexVariableDefinition, FunctionArgument, REnvironmentInformation } from '../../../src/dataflow'
+import type { DataflowFunctionFlowInformation, DataflowGraphEdgeAttribute, DataflowGraphExitPoint, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse, FunctionArgument, REnvironmentInformation } from '../../../src/dataflow'
 import { DataflowGraph, EdgeType } from '../../../src/dataflow'
 import { deepMergeObject } from '../../../src/util/objects'
 
@@ -111,8 +111,14 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineVariable(id: NodeId, name: string,
-		info?: Partial<DataflowGraphVertexVariableDefinition>, asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({ tag: 'variable-definition', id, name }, info), asRoot)
+		info?: { when?: DataflowGraphEdgeAttribute, environment?: REnvironmentInformation, definedBy?: NodeId[]}, asRoot: boolean = true) {
+		this.addVertex({ tag: 'variable-definition', id, name, when: info?.when ?? 'always', environment: info?.environment }, asRoot)
+		if(info?.definedBy) {
+			for(const def of info.definedBy) {
+				this.definedBy(id, def)
+			}
+		}
+		return this
 	}
 
 	/**
@@ -127,6 +133,18 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public use(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
 		return this.addVertex(deepMergeObject({ tag: 'use', id, name, when: undefined, environment: undefined }, info), asRoot)
+	}
+
+
+	/**
+	 * Adds a vertex for a constant value (V6).
+	 *
+	 * @param id - AST node ID
+	 * @param asRoot - should the vertex be part of the root vertex set of the graph
+	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
+	 */
+	public constant(id: NodeId, asRoot: boolean = true) {
+		return this.addVertex({ tag: 'value', name: '', id, when: undefined, environment: undefined }, asRoot)
 	}
 
 	/**

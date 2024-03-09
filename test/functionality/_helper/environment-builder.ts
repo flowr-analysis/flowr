@@ -24,9 +24,10 @@ export function variable(name: string, definedAt: NodeId): IdentifierDefinition 
  * Provides a FunctionArgument to use with function call vertices.
  * @param nodeId - AST Node ID
  * @param name - optional; can be removed for unnamed arguments
- * @param used - optional; default is always
+ * @param options - optional allows to give further options
  */
-export function argumentInCall(nodeId: NodeId, name?: string, used: DataflowGraphEdgeAttribute = 'always'): FunctionArgument {
+export function argumentInCall(nodeId: NodeId, name?: string, options?: { used?: DataflowGraphEdgeAttribute }): FunctionArgument {
+	const used = options?.used ?? 'always'
 	if(name === undefined) {
 		return { nodeId, name: unnamedArgument(nodeId), used }
 	} else {

@@ -77,6 +77,10 @@ export class DataflowGraphBuilder extends DataflowGraph {
 			} else if(arg !== '<value>') {
 				this.use(arg.nodeId, arg.name, { when: arg.used })
 				this.argument(id, arg.nodeId, arg.used)
+				if(arg.nodeId.endsWith('-arg')) {
+					const withoutSuffix = arg.nodeId.slice(0, -4)
+					this.reads(arg.nodeId, withoutSuffix)
+				}
 			}
 		}
 	}

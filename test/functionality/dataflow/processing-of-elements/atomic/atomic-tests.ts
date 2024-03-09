@@ -192,20 +192,24 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			const opData = OperatorDatabase[op]
 			assertDataflow(label(`${op}x`, ['unary-operator', 'name-normal', ...opData.capabilities]), shell,
 				inputDifferent,
-				emptyGraph().use('0', 'x')
+				emptyGraph()
+					.call('1', op, [argumentInCall('0-arg')], { reads: [BuiltIn] })
+					.use('0', 'x')
 			)
 		}
 	})
 
 	// these will be more interesting whenever we have more information on the edges (like modification etc.)
-	describe('non-assignment binary operators', () => {
+	describe('Non-Assignment Binary Operators', () => {
 		for(const op of BinaryNonAssignmentOperators.filter(x => !startAndEndsWith(x, '%'))) {
 			describe(`${op}`, () => {
 				const inputDifferent = `x ${op} y`
 				assertDataflow(label(`${inputDifferent} (different variables)`, ['binary-operator', 'infix-calls', 'function-calls', 'name-normal']),
 					shell,
 					inputDifferent,
-					emptyGraph().use('0', 'x').use('1', 'y')
+					emptyGraph()
+						.call('2', op, [argumentInCall('0-arg'), argumentInCall('1-arg')], { reads: [BuiltIn] })
+						.use('0', 'x').use('1', 'y')
 				)
 
 				const inputSame = `x ${op} x`
@@ -213,8 +217,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					shell,
 					inputSame,
 					emptyGraph()
-						.use('0', 'x')
-						.use('1', 'x')
+						.call('2', op, [argumentInCall('0-arg'), argumentInCall('1-arg')], { reads: [BuiltIn] })
+						.use('0', 'x').use('1', 'x')
 						.sameRead('0', '1')
 				)
 			})

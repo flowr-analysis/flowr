@@ -166,6 +166,10 @@ function simpleBuiltInFunction<Config, Proc extends BuiltInIdentifierProcessorWi
 	}]])
 }
 
+function builtInFunctions(...names: Identifier[]): [Identifier, BuiltInIdentifierDefinition[]][] {
+	return simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { }, ...names)
+}
+
 
 function simpleBuiltInConstant<T>(name: Identifier, value: T): [Identifier, BuiltInIdentifierConstant<T>[]] {
 	return [name, [{
@@ -185,6 +189,7 @@ export const BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>([
 	simpleBuiltInConstant('FALSE', false), simpleBuiltInConstant('F', false),
 	// maybe map to a control flow function?
 	simpleBuiltInConstant('break', 'break'), simpleBuiltInConstant('next', 'next'),
+	...builtInFunctions('~', '+', '-', '*', '/', '^', '!', '?', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%', '%*%', ':'),
 	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { },'cat' /* returns null */),
 	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { returnsNthArgument: 1 },'return', 'print', '('),
 	...simpleBuiltInFunction(defaultBuiltInFunctionProcessor, { returnsNthArgument: 'last' as const },'{'),

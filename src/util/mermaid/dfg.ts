@@ -6,12 +6,15 @@ import type {
 	DataflowGraph,
 	DataflowGraphVertexInfo,
 	DataflowMap,
-	FunctionArgument, IdentifierDefinition,
-	IdentifierReference, IEnvironment
+	FunctionArgument,
+	IdentifierDefinition,
+	IdentifierReference,
+	IEnvironment
 } from '../../dataflow'
 import {
-	BuiltInEnvironment,
 	BuiltIn,
+	BuiltInEnvironment,
+	CONSTANT_NAME,
 	EdgeType
 } from '../../dataflow'
 import { guard } from '../assert'
@@ -148,7 +151,7 @@ function vertexToMermaid(graph: DataflowGraph, info: DataflowGraphVertexInfo, me
 			`    %% Environment of ${id} [level: ${info.environment.level}]:`,
 			printEnvironmentToLines(info.environment.current).map(x => `    %% ${x}`).join('\n'))
 	}
-	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name)} (${id}, ${info.when})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
+	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name === CONSTANT_NAME ? '' : info.name)} (${id}, ${info.when})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''
 	}\`"${close}`)
 	if(mark?.has(id)) {

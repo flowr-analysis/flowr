@@ -6,6 +6,9 @@ import type {
 	NamedFunctionArgument,
 	PositionalFunctionArgument
 } from '../graph'
+import {
+	CONSTANT_NAME
+} from '../graph'
 import type {
 	IdentifierReference,
 	REnvironmentInformation
@@ -38,8 +41,8 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 }
 
 export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, nameIdShares: DefaultMap<string, IdentifierReference[]>) {
-	for(const ids of nameIdShares.values()) {
-		if(ids.length <= 1) {
+	for(const [name, ids] of nameIdShares.entries()) {
+		if(ids.length <= 1 || name === CONSTANT_NAME) {
 			continue
 		}
 		const base = ids[0]

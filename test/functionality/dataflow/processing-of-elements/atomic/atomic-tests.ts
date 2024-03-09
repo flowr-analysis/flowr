@@ -41,107 +41,48 @@ describe('Atomic (dataflow information)', withShell(shell => {
 	describe('Access', () => {
 		describe('Access with Constant', () => {
 			assertDataflow(label('Single Constant', ['name-normal', 'numbers', 'single-bracket-access']),
-				shell,'a[2]', emptyGraph().use('0', 'a', { when: 'maybe' })
-					.call('3', '[', [
-						{ name: unnamedArgument('0-arg'), nodeId: '0-arg', used: 'always' },
-						{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
-					], { returns: ['0-arg'], reads: [BuiltIn] })
-					.reads('0-arg', '0')
+				shell,'a[2]', emptyGraph()
+					.call('3', '[', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
+					.use('0', 'a', { when: 'maybe' })
+					.constant('1').reads('2', '1')
 			)
 			assertDataflow(label('double constant', ['name-normal', 'numbers', 'double-bracket-access']),
 				shell, 'a[[2]]', emptyGraph().use('0', 'a', { when: 'maybe' })
-					.use('0-arg', unnamedArgument('0-arg'))
-					.use('2', unnamedArgument('2'))
-					.call('3', '[[', [
-						{ name: unnamedArgument('0-arg'), nodeId: '0-arg', used: 'always' },
-						{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
-					])
-					.returns('3', '0-arg')
-					.argument('3', '0-arg')
-					.argument('3', '2')
-					.reads('3', BuiltIn)
-					.reads('0-arg', '0')
+					.call('3', '[[', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
+					.use('0', 'a', { when: 'maybe' })
+					.constant('1').reads('2', '1')
 			)
 			assertDataflow(label('dollar constant', ['name-normal', 'dollar-access']),
-				shell, 'a$b', emptyGraph().use('0', 'a', { when: 'maybe' })
-					.use('0-arg', unnamedArgument('0-arg'))
-					.use('2', unnamedArgument('2'))
-					.call('3', '$', [
-						{ name: unnamedArgument('0-arg'), nodeId: '0-arg', used: 'always' },
-						{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
-					])
-					.returns('3', '0-arg')
-					.argument('3', '0-arg')
-					.argument('3', '2')
-					.reads('3', BuiltIn)
-					.reads('0-arg', '0')
+				shell, 'a$b', emptyGraph()
+					.call('3', '$', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
+					.use('0', 'a', { when: 'maybe' })
+					.constant('1').reads('2', '1')
 			)
 			assertDataflow(label('at constant', ['name-normal', 'slot-access']),
-				shell, 'a@b', emptyGraph().use('0', 'a', { when: 'maybe' })
-					.use('0-arg', unnamedArgument('0-arg'))
-					.use('2', unnamedArgument('2'))
-					.call('3', '@', [
-						{ name: unnamedArgument('0-arg'), nodeId: '0-arg', used: 'always' },
-						{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
-					])
-					.returns('3', '0-arg')
-					.argument('3', '0-arg')
-					.argument('3', '2')
-					.reads('3', BuiltIn)
-					.reads('0-arg', '0')
+				shell, 'a@b', emptyGraph()
+					.call('3', '@', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
+					.use('0', 'a', { when: 'maybe' })
+					.constant('1').reads('2', '1')
 			)
 			assertDataflow(label('chained constant', ['name-normal', 'numbers', 'single-bracket-access']), shell,
-				'a[2][3]', emptyGraph().use('0', 'a', { when: 'maybe' })
-					.use('0-arg', unnamedArgument('0-arg'))
-					.use('2', unnamedArgument('2'))
-					.call('3', '[', [
-						{ name: unnamedArgument('0-arg'), nodeId: '0-arg', used: 'always' },
-						{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
-					])
-					.returns('3', '0-arg')
-					.argument('3', '0-arg')
-					.argument('3', '2')
-					.reads('3', BuiltIn)
-					.reads('0-arg', '0')
+				'a[2][3]', emptyGraph()
+					.call('3', '[', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
+					.use('0', 'a', { when: 'maybe' })
+					.constant('1').reads('2', '1')
 				// and now the outer access
-					.call('6', '[', [
-						{ name: unnamedArgument('3-arg'), nodeId: '3-arg', used: 'always' },
-						{ name: unnamedArgument('5'), nodeId: '5', used: 'always' }
-					])
-					.returns('6', '3-arg')
-					.use( '3-arg', unnamedArgument('3-arg'))
-					.use('5', unnamedArgument('5'))
-					.argument('6', '3-arg')
-					.argument('6', '5')
-					.reads('6', BuiltIn)
-					.reads('3-arg', '3')
+					.call('6', '[', [argumentInCall('3-arg'), argumentInCall('5')], { returns: ['3-arg'], reads: [BuiltIn] })
+					.constant('4').reads('5', '4')
 					.reads('3-arg', '0')
+
 			)
 			assertDataflow(label('chained mixed constant', ['dollar-access', 'single-bracket-access', 'name-normal', 'numbers']), shell,
-				'a[2]$a', emptyGraph().use('0', 'a', { when: 'maybe' })
-					.use('0-arg', unnamedArgument('0-arg'))
-					.use('2', unnamedArgument('2'))
-					.call('3', '[', [
-						{ name: unnamedArgument('0-arg'), nodeId: '0-arg', used: 'always' },
-						{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
-					])
-					.returns('3', '0-arg')
-					.argument('3', '0-arg')
-					.argument('3', '2')
-					.reads('3', BuiltIn)
-					.reads('0-arg', '0')
+				'a[2]$a', emptyGraph()
+					.call('3', '[', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
+					.use('0', 'a', { when: 'maybe' })
+					.constant('1').reads('2', '1')
 					// and now the outer access
-					.call('6', '$', [
-						{ name: unnamedArgument('3-arg'), nodeId: '3-arg', used: 'always' },
-						{ name: unnamedArgument('5'), nodeId: '5', used: 'always' }
-					])
-					.returns('6', '3-arg')
-					.use( '3-arg', unnamedArgument('3-arg'))
-					.use('5', unnamedArgument('5'))
-					.argument('6', '3-arg')
-					.argument('6', '5')
-					.reads('6', BuiltIn)
-					.reads('3-arg', '3')
+					.call('6', '$', [argumentInCall('3-arg'), argumentInCall('5')], { returns: ['3-arg'], reads: [BuiltIn] })
+					.constant('4').reads('5', '4')
 					.reads('3-arg', '0')
 			)
 		})
@@ -176,7 +117,6 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				.reads('3-arg', '3')
 				.reads('3-arg', '0')
 		)
-		// TODO: replacement function
 		assertDataflow(label('Assign on Access', ['name-normal', 'single-bracket-access', 'local-left-assignment']), shell,
 			'a[x] <- 5',
 			emptyGraph()

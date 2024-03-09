@@ -45,9 +45,10 @@ export interface DataflowGraphExitPoint extends DataflowGraphVertexBase {
 	readonly tag: 'exit-point'
 }
 
+export const CONSTANT_NAME = '__@@C@@__'
 export interface DataflowGraphValue extends DataflowGraphVertexBase {
 	readonly tag:  'value'
-	readonly name: ''
+	readonly name: typeof CONSTANT_NAME
 	/* currently without containing the 'real' value as it is part of the normalized AST as well */
 }
 

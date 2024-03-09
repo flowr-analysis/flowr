@@ -1,6 +1,18 @@
 import type { NodeId } from '../../../src'
-import type { DataflowFunctionFlowInformation, DataflowGraphEdgeAttribute, DataflowGraphExitPoint, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse, FunctionArgument, REnvironmentInformation } from '../../../src/dataflow'
-import { DataflowGraph, EdgeType } from '../../../src/dataflow'
+import type {
+	DataflowFunctionFlowInformation,
+	DataflowGraphEdgeAttribute,
+	DataflowGraphExitPoint,
+	DataflowGraphVertexFunctionDefinition,
+	DataflowGraphVertexUse,
+	FunctionArgument,
+	REnvironmentInformation
+} from '../../../src/dataflow'
+import {
+	CONSTANT_NAME,
+	DataflowGraph,
+	EdgeType
+} from '../../../src/dataflow'
 import { deepMergeObject } from '../../../src/util/objects'
 
 export function emptyGraph() {
@@ -144,7 +156,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public constant(id: NodeId, asRoot: boolean = true) {
-		return this.addVertex({ tag: 'value', name: '', id, when: undefined, environment: undefined }, asRoot)
+		return this.addVertex({ tag: 'value', name: CONSTANT_NAME, id, when: undefined, environment: undefined }, asRoot)
 	}
 
 	/**

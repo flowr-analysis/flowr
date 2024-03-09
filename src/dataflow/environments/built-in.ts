@@ -92,7 +92,7 @@ export function registerReplacementFunctions(
 		for(const name of names) {
 			for(const prefix of prefixes) {
 				const effectiveName = `${prefix}${name}`
-				guard(!BuiltInMemory.has(effectiveName), `Built-in ${name} already defined`)
+				guard(!BuiltInMemory.has(effectiveName), `Built-in ${effectiveName} already defined`)
 				BuiltInMemory.set(effectiveName, [{
 					kind:      'built-in-function',
 					used:      'always',

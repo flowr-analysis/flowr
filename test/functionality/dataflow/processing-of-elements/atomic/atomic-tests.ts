@@ -97,6 +97,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				.use('4', 'y').reads('5', '4')
 				.reads('3-arg', '0')
 		)
+		// TODO: replacement has to happen in normalization as it is probably indepedentent of def. of `<-`?
 		assertDataflow(label('Assign on Access', ['name-normal', 'single-bracket-access', 'local-left-assignment']), shell,
 			'a[x] <- 5',
 			emptyGraph()

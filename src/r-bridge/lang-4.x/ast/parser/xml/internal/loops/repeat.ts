@@ -3,7 +3,7 @@ import type { NamedXmlBasedJson } from '../../input-format'
 import type { RRepeatLoop } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { tryNormalizeSingleNode } from '../structure'
+import { normalizeSingleNode } from '../structure'
 import { guard } from '../../../../../../../util/assert'
 import { ensureExpressionList, retrieveMetaStructure } from '../../meta'
 
@@ -16,7 +16,7 @@ import { ensureExpressionList, retrieveMetaStructure } from '../../meta'
  *
  * @returns The parsed {@link RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
  */
-export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJson, body: NamedXmlBasedJson): RRepeatLoop | undefined {
+export function tryNormalizeRepeat(data: ParserData, [repeatToken, body]: [NamedXmlBasedJson, NamedXmlBasedJson]): RRepeatLoop | undefined {
 	if(repeatToken.name !== RawRType.Repeat) {
 		parseLog.debug('encountered non-repeat token for supposed repeat-loop structure')
 		return undefined
@@ -24,7 +24,7 @@ export function tryNormalizeRepeat(data: ParserData, repeatToken: NamedXmlBasedJ
 
 	parseLog.debug('trying to parse repeat-loop')
 
-	const parseBody = tryNormalizeSingleNode(data, body)
+	const parseBody = normalizeSingleNode(data, body)
 	guard(parseBody.type !== RType.Delimiter, () => `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(body)})`)
 
 	const { location, content } = retrieveMetaStructure(repeatToken.content)

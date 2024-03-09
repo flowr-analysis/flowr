@@ -6,7 +6,7 @@ import { parseLog } from '../../../json/parser'
 import type { RDelimiter } from '../../../../model/nodes/info'
 import { retrieveMetaStructure } from '../../meta'
 import { guard } from '../../../../../../../util/assert'
-import { tryNormalizeSingleNode } from '../structure'
+import { normalizeSingleNode } from '../structure'
 
 /**
  * Either parses `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]` as a parameter of a function definition in R.
@@ -64,5 +64,5 @@ export function tryNormalizeParameter(data: ParserData, objs: readonly NamedXmlB
 function parseWithDefaultValue(data: ParserData, objs: readonly NamedXmlBasedJson[]): RNode | RDelimiter {
 	guard(objs[1].name === RawRType.EqualFormals, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`)
 	guard(objs[2].name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression but: ${JSON.stringify(objs)}`)
-	return tryNormalizeSingleNode(data, objs[2])
+	return normalizeSingleNode(data, objs[2])
 }

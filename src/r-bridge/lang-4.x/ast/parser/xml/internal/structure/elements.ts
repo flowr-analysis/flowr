@@ -3,7 +3,7 @@ import type { ParserData } from '../../data'
 import type { RComment, RExpressionList, RNode } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import type { RDelimiter } from '../../../../model/nodes/info'
-import { normalizeDelimiter, tryNormalizeSingleNode } from './single-element'
+import { normalizeDelimiter, normalizeSingleNode } from './single-element'
 import { tryNormalizeBinary, tryNormalizeUnary } from '../operators'
 import { tryNormalizeFor, tryNormalizeRepeat, tryNormalizeWhile } from '../loops'
 import { tryNormalizeSymbol } from '../values'
@@ -17,91 +17,31 @@ import { jsonReplacer } from '../../../../../../../util/json'
 import { normalizeExpression } from '../expression'
 
 function normalizeMappedWithoutSemicolonBasedOnType(mappedWithName: readonly NamedXmlBasedJson[], data: ParserData): (RNode | RDelimiter)[] {
-	if(mappedWithName.length === 1) {
-		return [tryNormalizeSingleNode(data, mappedWithName[0])]
-	} else if(mappedWithName.length === 2) {
-		const unaryOp = tryNormalizeUnary(
-			data,
-			mappedWithName[0],
-			mappedWithName[1]
-		)
-		if(unaryOp !== undefined) {
-			return [unaryOp]
-		}
-		const repeatLoop = tryNormalizeRepeat(
-			data,
-			mappedWithName[0],
-			mappedWithName[1]
-		)
-		if(repeatLoop !== undefined) {
-			return [repeatLoop]
-		}
-	} else if(mappedWithName.length === 3) {
-		const binary = tryNormalizeBinary(
-			data,
-			mappedWithName[0],
-			mappedWithName[1],
-			mappedWithName[2]
-		)
-		if(binary !== undefined) {
-			return [binary]
-		} else {
-			const forLoop = tryNormalizeFor(
-				data,
-				mappedWithName[0],
-				mappedWithName[1],
-				mappedWithName[2]
-			)
-			if(forLoop !== undefined) {
-				return [forLoop]
-			} else {
-				// could be a symbol with namespace information
-				const symbol = tryNormalizeSymbol(data, mappedWithName)
-				if(symbol !== undefined) {
-					return [symbol]
-				}
-			}
-		}
-	} else if(mappedWithName.length === 5) {
-		const ifThen = tryNormalizeIfThen(data, [
-			mappedWithName[0],
-			mappedWithName[1],
-			mappedWithName[2],
-			mappedWithName[3],
-			mappedWithName[4]
-		])
-		if(ifThen !== undefined) {
-			return [ifThen]
-		} else {
-			const whileLoop = tryNormalizeWhile(
-				data,
-				mappedWithName[0],
-				mappedWithName[1],
-				mappedWithName[2],
-				mappedWithName[3],
-				mappedWithName[4]
-			)
-			if(whileLoop !== undefined) {
-				return [whileLoop]
-			}
-		}
-	} else if(mappedWithName.length === 7) {
-		const ifThenElse = tryNormalizeIfThenElse(data, [
-			mappedWithName[0],
-			mappedWithName[1],
-			mappedWithName[2],
-			mappedWithName[3],
-			mappedWithName[4],
-			mappedWithName[5],
-			mappedWithName[6]
-		])
-		if(ifThenElse !== undefined) {
-			return [ifThenElse]
-		}
+	let result: RNode | RDelimiter | undefined = undefined
+	switch(mappedWithName.length) {
+		case 1:
+			result = normalizeSingleNode(data, mappedWithName[0])
+			break
+		case 2:
+			result = tryNormalizeUnary(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson])
+				?? tryNormalizeRepeat(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson])
+			break
+		case 3:
+			result = tryNormalizeBinary(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson])
+				?? tryNormalizeFor(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson])
+				?? tryNormalizeSymbol(data, mappedWithName)
+			break
+		case 5:
+			result = tryNormalizeIfThen(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson])
+				?? tryNormalizeWhile(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson])
+			break
+		case 7:
+			result = tryNormalizeIfThenElse(data, mappedWithName as [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson])
+			break
 	}
 
 	// otherwise perform default parsing
-	return parseNodesWithUnknownType(data, mappedWithName)
+	return result !== undefined ? [result] : parseNodesWithUnknownType(data, mappedWithName)
 }
 
 interface HandledExpressionList {
@@ -248,7 +188,7 @@ export function parseNodesWithUnknownType(data: ParserData, mappedWithName: read
 	const parsedNodes: (RNode | RDelimiter)[] = []
 	// used to indicate the new root node of this set of nodes
 	for(const elem of mappedWithName) {
-		const retrieved = tryNormalizeSingleNode(data, elem)
+		const retrieved = normalizeSingleNode(data, elem)
 		parsedNodes.push(retrieved)
 	}
 	return parsedNodes

@@ -1,6 +1,6 @@
 import type { NamedXmlBasedJson } from '../input-format'
 import type { ParserData } from '../data'
-import { normalizeElements, tryNormalizeSingleNode } from './structure'
+import { normalizeElements, normalizeSingleNode } from './structure'
 import { tryToNormalizeArgument } from './functions/argument'
 import { parseLog } from '../../json/parser'
 import type { RAccess, RArgument, RNode } from '../../../model'
@@ -17,7 +17,7 @@ function normalizeAbstractArgument(x: readonly NamedXmlBasedJson[], data: Parser
 		guard(gotAccess !== undefined, () => `expected one access result in access as argument, yet received ${JSON.stringify(gotAccess)} for ${JSON.stringify([operator, x])}`)
 		return gotAccess
 	} else {
-		const node = tryNormalizeSingleNode(data, x[0]) as RNode
+		const node = normalizeSingleNode(data, x[0]) as RNode
 		guard(node.type !== RType.ExpressionList, () => `expected expression list to be parsed as argument, yet received ${JSON.stringify(node)} for ${JSON.stringify(x)}`)
 		return {
 			type:     RType.Argument,

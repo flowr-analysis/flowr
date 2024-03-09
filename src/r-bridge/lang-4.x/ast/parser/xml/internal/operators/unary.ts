@@ -7,7 +7,7 @@ import {
 	UnaryOperatorsInRAst
 } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { tryNormalizeSingleNode } from '../structure'
+import { normalizeSingleNode } from '../structure'
 import { retrieveMetaStructure, retrieveOpName } from '../../meta'
 import { guard } from '../../../../../../../util/assert'
 import { expensiveTrace } from '../../../../../../../util/log'
@@ -22,7 +22,7 @@ import { expensiveTrace } from '../../../../../../../util/log'
  *
  * @returns The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
  */
-export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RNode | undefined {
+export function tryNormalizeUnary(data: ParserData, [operator, operand]: [NamedXmlBasedJson, NamedXmlBasedJson]): RNode | undefined {
 	expensiveTrace(parseLog, () => `unary op for ${operator.name} ${operand.name}`)
 
 	if(UnaryOperatorsInRAst.has(operator.name)) {
@@ -33,7 +33,7 @@ export function tryNormalizeUnary(data: ParserData, operator: NamedXmlBasedJson,
 }
 
 function parseUnaryOp(data: ParserData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
-	const parsedOperand = tryNormalizeSingleNode(data, operand)
+	const parsedOperand = normalizeSingleNode(data, operand)
 
 	guard(parsedOperand.type !== RType.Delimiter, () => 'unexpected under-sided unary op')
 

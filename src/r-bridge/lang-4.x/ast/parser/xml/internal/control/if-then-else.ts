@@ -6,7 +6,7 @@ import { RawRType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { tryNormalizeIfThen } from './if-then'
 import { guard } from '../../../../../../../util/assert'
-import { tryNormalizeSingleNode } from '../structure'
+import { normalizeSingleNode } from '../structure'
 import { ensureExpressionList } from '../../meta'
 
 
@@ -34,7 +34,7 @@ export function tryNormalizeIfThenElse(
 	parseLog.trace('if-then part successful, now parsing else part')
 	guard(tokens[5].name === RawRType.Else, () => `expected else token for if-then-else but found ${JSON.stringify(tokens[5])}`)
 
-	const parsedElse = tryNormalizeSingleNode(data, tokens[6])
+	const parsedElse = normalizeSingleNode(data, tokens[6])
 	guard(parsedElse.type !== RType.Delimiter, () => `unexpected missing else-part of if-then-else, received ${JSON.stringify([parsedIfThen, parsedElse])} for ${JSON.stringify(tokens)}`)
 
 	return {

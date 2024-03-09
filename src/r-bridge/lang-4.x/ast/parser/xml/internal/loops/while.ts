@@ -4,16 +4,12 @@ import { XmlParseError } from '../../input-format'
 import type { RWhileLoop } from '../../../../model'
 import { RawRType, RType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { tryNormalizeSingleNode } from '../structure'
+import { normalizeSingleNode } from '../structure'
 import { ensureExpressionList, retrieveMetaStructure } from '../../meta'
 
 export function tryNormalizeWhile(
 	data: ParserData,
-	whileToken: NamedXmlBasedJson,
-	leftParen: NamedXmlBasedJson,
-	condition: NamedXmlBasedJson,
-	rightParen: NamedXmlBasedJson,
-	body: NamedXmlBasedJson
+	[whileToken, leftParen, condition, rightParen, body]: [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson]
 ): RWhileLoop | undefined {
 	if(whileToken.name !== RawRType.While) {
 		parseLog.debug(
@@ -37,8 +33,8 @@ export function tryNormalizeWhile(
 	parseLog.debug('trying to parse while-loop')
 
 
-	const parsedCondition = tryNormalizeSingleNode(data, condition)
-	const parseBody = tryNormalizeSingleNode(data, body)
+	const parsedCondition = normalizeSingleNode(data, condition)
+	const parseBody = normalizeSingleNode(data, body)
 
 	if(parsedCondition.type === RType.Delimiter || parseBody.type === RType.Delimiter) {
 		throw new XmlParseError(

@@ -4,7 +4,7 @@ import { XmlParseError, childrenKey, getKeyGuarded } from '../../input-format'
 import { RType, RawRType } from '../../../../model'
 import type { RComment, RForLoop, RNode, RSymbol } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { normalizeElements, splitComments, tryNormalizeSingleNode } from '../structure'
+import { normalizeElements, splitComments, normalizeSingleNode } from '../structure'
 import { ensureExpressionList, getTokenType, retrieveMetaStructure } from '../../meta'
 import { guard } from '../../../../../../../util/assert'
 import { tryNormalizeSymbol } from '../values'
@@ -13,9 +13,7 @@ import { normalizeComment } from '../other'
 
 export function tryNormalizeFor(
 	data: ParserData,
-	forToken: NamedXmlBasedJson,
-	head: NamedXmlBasedJson,
-	body: NamedXmlBasedJson
+	[forToken, head, body]: [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson]
 ): RForLoop | undefined {
 	// funny, for does not use top-level parenthesis
 	if(forToken.name !== RawRType.For) {
@@ -33,7 +31,7 @@ export function tryNormalizeFor(
 
 	const { variable: parsedVariable, vector: parsedVector, comments } =
     normalizeForHead(newParseData, head.content)
-	const parseBody = tryNormalizeSingleNode(newParseData, body)
+	const parseBody = normalizeSingleNode(newParseData, body)
 
 	if(
 		parsedVariable === undefined ||

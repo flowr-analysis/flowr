@@ -5,7 +5,7 @@ import { RawRType, RType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { retrieveMetaStructure } from '../../meta'
 import type { RDelimiter } from '../../../../model/nodes/info'
-import { tryNormalizeSingleNode } from '../structure'
+import { normalizeSingleNode } from '../structure'
 import { guard } from '../../../../../../../util/assert'
 
 
@@ -34,7 +34,7 @@ export function tryToNormalizeArgument(data: ParserData, objs: readonly NamedXml
 	let name: RSymbol | undefined
 	if(symbolOrExpr.name === RawRType.Expression) {
 		name = undefined
-		parsedValue = tryNormalizeSingleNode(data, symbolOrExpr)
+		parsedValue = normalizeSingleNode(data, symbolOrExpr)
 	} else if(symbolOrExpr.name === RawRType.SymbolSub || symbolOrExpr.name === RawRType.StringConst) {
 		name =    {
 			type:      RType.Symbol,
@@ -73,5 +73,5 @@ export function tryToNormalizeArgument(data: ParserData, objs: readonly NamedXml
 function parseWithValue(data: ParserData, objs: readonly NamedXmlBasedJson[]): RNode | RDelimiter | undefined | null{
 	guard(objs[1].name === RawRType.EqualSub, () => `[arg-default] second element of parameter must be ${RawRType.EqualFormals}, but: ${JSON.stringify(objs)}`)
 	guard(objs.length === 2 || objs[2].name === RawRType.Expression, () => `[arg-default] third element of parameter must be an Expression or undefined (for 'x=') but: ${JSON.stringify(objs)}`)
-	return objs[2] ? tryNormalizeSingleNode(data, objs[2]) : null
+	return objs[2] ? normalizeSingleNode(data, objs[2]) : null
 }

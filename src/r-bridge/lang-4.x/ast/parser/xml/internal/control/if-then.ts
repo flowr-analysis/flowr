@@ -5,7 +5,7 @@ import type { RIfThenElse } from '../../../../model'
 import { RType } from '../../../../model'
 import { RawRType } from '../../../../model'
 import { parseLog } from '../../../json/parser'
-import { tryNormalizeSingleNode } from '../structure'
+import { normalizeSingleNode } from '../structure'
 import { ensureExpressionList, retrieveMetaStructure } from '../../meta'
 
 
@@ -31,8 +31,8 @@ export function tryNormalizeIfThen(
 		throw new XmlParseError(`expected right-parenthesis for if but found ${JSON.stringify(tokens[3])}`)
 	}
 
-	const parsedCondition = tryNormalizeSingleNode(data, tokens[2])
-	const parsedThen = tryNormalizeSingleNode(data, tokens[4])
+	const parsedCondition = normalizeSingleNode(data, tokens[2])
+	const parsedThen = normalizeSingleNode(data, tokens[4])
 
 
 	if(parsedCondition.type === RType.Delimiter || parsedThen.type === RType.Delimiter) {

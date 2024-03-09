@@ -13,7 +13,7 @@ import {
 } from '../../../../model'
 import { parseLog } from '../../../json/parser'
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../meta'
-import { tryNormalizeSingleNode } from '../structure'
+import { normalizeSingleNode } from '../structure'
 import { guard } from '../../../../../../../util/assert'
 import { expensiveTrace } from '../../../../../../../util/log'
 import { startAndEndsWith } from '../../../../../../../util/strings'
@@ -25,9 +25,7 @@ import { startAndEndsWith } from '../../../../../../../util/strings'
  */
 export function tryNormalizeBinary(
 	data: ParserData,
-	lhs: NamedXmlBasedJson,
-	operator: NamedXmlBasedJson,
-	rhs: NamedXmlBasedJson
+	[lhs, operator, rhs]: [NamedXmlBasedJson, NamedXmlBasedJson, NamedXmlBasedJson]
 ): RNode | undefined {
 	expensiveTrace(parseLog, () => `binary op for ${lhs.name} [${operator.name}] ${rhs.name}`)
 	if(operator.name === RawRType.Special || OperatorsInRAst.has(operator.name) || operator.name === RawRType.Pipe) {
@@ -39,8 +37,8 @@ export function tryNormalizeBinary(
 
 function parseBinaryOp(data: ParserData, lhs: NamedXmlBasedJson, operator: NamedXmlBasedJson, rhs: NamedXmlBasedJson): RFunctionCall | RBinaryOp | RPipe {
 	ensureChildrenAreLhsAndRhsOrdered(lhs.content, rhs.content)
-	let parsedLhs = tryNormalizeSingleNode(data, lhs)
-	let parsedRhs = tryNormalizeSingleNode(data, rhs)
+	let parsedLhs = normalizeSingleNode(data, lhs)
+	let parsedRhs = normalizeSingleNode(data, rhs)
 
 	if(parsedLhs.type === RType.Delimiter || parsedRhs.type === RType.Delimiter) {
 		throw new XmlParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, operator, rhs])}`)

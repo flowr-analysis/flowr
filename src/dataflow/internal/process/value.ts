@@ -9,6 +9,6 @@ export function processValue<OtherInfo>(value: RNodeWithParent, data: DataflowPr
 		in:                [{ nodeId: value.info.id, used: 'always', name: CONSTANT_NAME }],
 		out:               [],
 		environment:       data.environment,
-		graph:             new DataflowGraph().addVertex({ tag: 'value', id: value.info.id, name: CONSTANT_NAME, environment: data.environment, value: value.content })
+		graph:             new DataflowGraph().addVertex({ tag: 'value', id: value.info.id, name: CONSTANT_NAME, value: value.content })
 	}
 }

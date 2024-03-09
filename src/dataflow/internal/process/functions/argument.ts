@@ -30,7 +30,7 @@ export function processFunctionArgument<OtherInfo>(
 
 	const argContent = argument.name?.content
 	const argumentName = argContent ?? `${UnnamedArgumentPrefix}${argument.info.id}`
-	graph.addVertex({ tag: 'use', id: argument.info.id, name: argumentName, environment: data.environment, when: 'always' })
+	graph.addVertex({ tag: 'use', id: argument.info.id, name: argumentName, when: 'always' })
 
 	const ingoingRefs = [...value?.unknownReferences ?? [], ...value?.in ?? [], ...(name === undefined ? [] : [...name.in])]
 

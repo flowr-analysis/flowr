@@ -141,15 +141,19 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	return lines
 }
 
-function vertexToMermaid(graph: DataflowGraph, info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap | undefined, mark: Set<NodeId> | undefined): void {
+function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap | undefined, mark: Set<NodeId> | undefined): void {
 	const def = info.tag === 'variable-definition' || info.tag === 'function-definition'
 	const fCall = info.tag === 'function-call'
 	const { open, close } = mermaidNodeBrackets(def, fCall)
 
 	if(mermaid.includeEnvironments) {
-		mermaid.nodeLines.push(
-			`    %% Environment of ${id} [level: ${info.environment.level}]:`,
-			printEnvironmentToLines(info.environment.current).map(x => `    %% ${x}`).join('\n'))
+		if(info.environment.level === 0 && info.environment.current.memory.size === 0) {
+			mermaid.nodeLines.push(`    %% Environment of ${id} is only [Built-in]`)
+		} else {
+			mermaid.nodeLines.push(
+				`    %% Environment of ${id} [level: ${info.environment.level}]:`,
+				printEnvironmentToLines(info.environment.current).map(x => `    %% ${x}`).join('\n'))
+		}
 	}
 	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name === CONSTANT_NAME ? '' : info.name)} (${id}, ${info.when})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''
@@ -183,7 +187,7 @@ function graphToMermaidGraph(rootIds: ReadonlySet<NodeId>, graph: DataflowGraph,
 
 	for(const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {
-			vertexToMermaid(graph, info, mermaid, id, idPrefix, dataflowIdMap, mark)
+			vertexToMermaid(info, mermaid, id, idPrefix, dataflowIdMap, mark)
 		}
 	}
 	if(mermaid.hasBuiltIn) {

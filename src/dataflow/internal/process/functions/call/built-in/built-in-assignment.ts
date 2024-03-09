@@ -17,16 +17,7 @@ import { guard } from '../../../../../../util/assert'
 import { log, LogLevel } from '../../../../../../util/log'
 import { define, overwriteEnvironment } from '../../../../../environments'
 import { unpackArgument } from '../argument/unpack-argument'
-
-function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>) {
-	const source = unpackArgument(args[1])
-	const target = unpackArgument(args[0])
-
-	guard(source !== undefined, () => `Assignment ${name.content} has no source, impossible!`)
-	guard(target !== undefined, () => `Assignment ${name.content} has no target, impossible!`)
-
-	return { source, target }
-}
+import { processAsNamedCall } from '../../../operators'
 
 export function processAssignment<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -43,17 +34,36 @@ export function processAssignment<OtherInfo>(
 
 	const effectiveArgs = config.swapSourceAndTarget ? [args[1], args[0]] : args
 
-	const { information, processedArguments } = processKnownFunctionCall(name, effectiveArgs, rootId, data)
-
 	const { source, target } = extractSourceAndTarget(effectiveArgs, name)
 
-	let result = information
-	if(target?.type === RType.FunctionCall) {
-		console.log(`TODO: check replacement function with ${source.lexeme}`)
+	if(target.type === RType.FunctionCall && target.flavor === 'named') {
+		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`)
+		return processAsNamedCall({
+			type:      RType.Symbol,
+			info:      target.info,
+			content:   target.functionName.content + name.content,
+			lexeme:    target.lexeme,
+			location:  target.location,
+			namespace: undefined
+		}, data, target.lexeme, effectiveArgs)
 	} else if(target.type === RType.Symbol) {
-		result = processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, processedArguments as [DataflowInformation, DataflowInformation], rootId, data, result)
+		const res = processKnownFunctionCall(name, effectiveArgs, rootId, data)
+		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, res.processedArguments as [DataflowInformation, DataflowInformation], rootId, data, res.information)
 	}
-	return result
+
+	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type}, skipping`)
+
+	return processKnownFunctionCall(name, effectiveArgs, rootId, data).information
+}
+
+function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], name: RSymbol<OtherInfo & ParentInformation>) {
+	const source = unpackArgument(args[1])
+	const target = unpackArgument(args[0])
+
+	guard(source !== undefined, () => `Assignment ${name.content} has no source, impossible!`)
+	guard(target !== undefined, () => `Assignment ${name.content} has no target, impossible!`)
+
+	return { source, target }
 }
 
 function produceWrittenNodes(rootId: NodeId, target: DataflowInformation, isFunctionDef: boolean): IdentifierDefinition[] {

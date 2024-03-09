@@ -38,18 +38,12 @@ describe('Atomic (dataflow information)', withShell(shell => {
 
 	describe('Access', () => {
 		describe('Access with Constant', () => {
-			assertDataflow(label('single constant', ['name-normal', 'numbers', 'single-bracket-access']),
+			assertDataflow(label('Single Constant', ['name-normal', 'numbers', 'single-bracket-access']),
 				shell,'a[2]', emptyGraph().use('0', 'a', { when: 'maybe' })
-					.use('0-arg', unnamedArgument('0-arg'))
-					.use('2', unnamedArgument('2'))
 					.call('3', '[', [
 						{ name: unnamedArgument('0-arg'), nodeId: '0-arg', used: 'always' },
 						{ name: unnamedArgument('2'), nodeId: '2', used: 'always' }
-					])
-					.returns('3', '0-arg')
-					.argument('3', '0-arg')
-					.argument('3', '2')
-					.reads('3', BuiltIn)
+					], { returns: ['0-arg'], reads: [BuiltIn] })
 					.reads('0-arg', '0')
 			)
 			assertDataflow(label('double constant', ['name-normal', 'numbers', 'double-bracket-access']),

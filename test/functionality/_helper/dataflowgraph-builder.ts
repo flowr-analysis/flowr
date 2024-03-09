@@ -1,5 +1,5 @@
 import type { NodeId } from '../../../src'
-import type { DataflowFunctionFlowInformation, DataflowGraphEdgeAttribute, DataflowGraphExitPoint, DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse, DataflowGraphVertexVariableDefinition, FunctionArgument, REnvironmentInformation } from '../../../src/dataflow'
+import type { DataflowFunctionFlowInformation, DataflowGraphEdgeAttribute, DataflowGraphExitPoint, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexUse, DataflowGraphVertexVariableDefinition, FunctionArgument, REnvironmentInformation } from '../../../src/dataflow'
 import { DataflowGraph, EdgeType } from '../../../src/dataflow'
 import { deepMergeObject } from '../../../src/util/objects'
 
@@ -42,9 +42,43 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public call(id: NodeId, name: string, args: FunctionArgument[],
-		info?: Partial<DataflowGraphVertexFunctionCall>,
+		info?: {
+			returns?:     NodeId[],
+			reads?:       NodeId[],
+			environment?: REnvironmentInformation,
+			when?:        DataflowGraphEdgeAttribute
+		},
 		asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({ tag: 'function-call', id, name, args }, info), asRoot)
+		this.addVertex({ tag: 'function-call', id, name, args, environment: info?.environment, when: info?.when }, asRoot)
+		this.addArgumentLinks(id, args)
+		if(info?.returns) {
+			for(const ret of info.returns) {
+				this.returns(id, ret)
+			}
+		}
+		if(info?.reads) {
+			for(const call of info.reads) {
+				this.reads(id, call)
+			}
+		}
+		return this
+	}
+
+	private addArgumentLinks(id: NodeId, args: FunctionArgument[]) {
+		for(const arg of args) {
+			if(arg === 'empty') {
+				continue
+			}
+			if(Array.isArray(arg)) {
+				if(arg[1] !== '<value>') {
+					this.use(arg[1].nodeId, arg[1].name, { when: arg[1].used })
+					this.argument(id, arg[1].nodeId, arg[1].used)
+				}
+			} else if(arg !== '<value>') {
+				this.use(arg.nodeId, arg.name, { when: arg.used })
+				this.argument(id, arg.nodeId, arg.used)
+			}
+		}
 	}
 
 	/**

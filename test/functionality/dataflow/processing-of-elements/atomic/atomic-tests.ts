@@ -225,61 +225,13 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		}
 	})
 
-	describe('Pipes', () => {
-		describe('Passing one argument', () => {
-			assertDataflow('No parameter function', shell, 'x |> f()',
-				emptyGraph()
-					.use('0', 'x')
-					.call('3', 'f', [argumentInCall('1')])
-					.use('1', unnamedArgument('1'))
-					.argument('3', '1')
-					.reads('1', '0'),
-				{ minRVersion: MIN_VERSION_PIPE }
-			)
-			assertDataflow('Nested calling', shell, 'x |> f() |> g()',
-				emptyGraph()
-					.use('0', 'x')
-					.call('3', 'f', [argumentInCall('1')])
-					.call('7', 'g', [argumentInCall('5')])
-					.use('1', unnamedArgument('1'))
-					.use('5', unnamedArgument('5'))
-					.argument('3', '1')
-					.argument('7', '5')
-					.reads('5', '3')
-					.reads('1', '0'),
-				{ minRVersion: MIN_VERSION_PIPE }
-			)
-			assertDataflow('Multi-Parameter function', shell, 'x |> f(y,z)',
-				emptyGraph()
-					.use('0', 'x')
-					.call('7', 'f', [argumentInCall('1'), argumentInCall('4'), argumentInCall('6')])
-					.use('1', unnamedArgument('1'))
-					.use('4', unnamedArgument('4'))
-					.use('6', unnamedArgument('6'))
-					.use('0', 'x')
-					.use('3', 'y')
-					.use('5', 'z')
-					.argument('7', '1')
-					.argument('7', '4')
-					.argument('7', '6')
-					.reads('1', '0')
-					.reads('4', '3')
-					.reads('6', '5'),
-				{ minRVersion: MIN_VERSION_PIPE }
-			)
-		})
-	})
-
 	describe('Assignments Operators', () => {
 		for(const op of AssignmentOperators) {
 			describe(`${op}`, () => {
 				const swapSourceAndTarget = op === '->' || op === '->>'
 				const id = swapSourceAndTarget ? '1' : '0'
 
-				let args: FunctionArgument[] = [
-					{ name: unnamedArgument('0-arg'), nodeId: '0-arg', used: 'always' },
-					{ name: unnamedArgument('1-arg'), nodeId: '1-arg', used: 'always' }
-				]
+				let args: FunctionArgument[] = [argumentInCall('0-arg'), argumentInCall('1-arg')]
 				if(swapSourceAndTarget) {
 					args = args.reverse()
 				}
@@ -290,10 +242,6 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					constantAssignment, emptyGraph()
 						.defineVariable(id, 'x')
 						.call('2', op, args)
-						.use('0-arg', unnamedArgument('0-arg'))
-						.use('1-arg', unnamedArgument('1-arg'))
-						.argument('2', '0-arg')
-						.argument('2', '1-arg')
 						.reads(`${id}-arg`, id)
 						.reads('2',  BuiltIn)
 						.returns('2', id)

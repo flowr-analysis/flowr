@@ -3,7 +3,7 @@ import type {
 	ParentInformation,
 	RFunctionArgument,
 	RNode,
-	RSymbol
+	RSymbol, RUnnamedArgument
 } from '../../../../../../r-bridge'
 import {
 	collectAllIds, RType
@@ -34,7 +34,7 @@ export function processAssignment<OtherInfo>(
 
 	const effectiveArgs = config.swapSourceAndTarget ? [args[1], args[0]] : args
 
-	const { source, target } = extractSourceAndTarget(effectiveArgs, name)
+	const { target, source } = extractSourceAndTarget(effectiveArgs, name)
 
 	if(target.type === RType.FunctionCall && target.flavor === 'named') {
 		dataflowLogger.debug(`Assignment ${name.content} has a function call as target => replacement function ${target.lexeme}`)
@@ -49,6 +49,23 @@ export function processAssignment<OtherInfo>(
 	} else if(target.type === RType.Symbol) {
 		const res = processKnownFunctionCall(name, effectiveArgs, rootId, data)
 		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, target, res.processedArguments as [DataflowInformation, DataflowInformation], rootId, data, res.information)
+	} else if(target.type === RType.String) {
+		const symbol: RSymbol<OtherInfo & ParentInformation> = {
+			type:      RType.Symbol,
+			info:      target.info,
+			content:   target.lexeme,
+			lexeme:    target.lexeme,
+			location:  target.location,
+			namespace: undefined
+		}
+
+		// treat first argument to Symbol
+		const mappedArgs = [{
+			...(effectiveArgs[0] as RUnnamedArgument<OtherInfo & ParentInformation>),
+			value: symbol
+		}, effectiveArgs[1]]
+		const res = processKnownFunctionCall(name, mappedArgs, rootId, data)
+		return processAssignmentToSymbol(config.superAssignment ?? false, name, source, symbol, res.processedArguments as [DataflowInformation, DataflowInformation], rootId, data, res.information)
 	}
 
 	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type}, skipping`)
@@ -107,7 +124,7 @@ function processAssignmentToSymbol<OtherInfo>(
 		if(isFunctionDef) {
 			information.graph.addEdge(write, target.info.id, EdgeType.DefinedBy, 'always', true)
 		} else {
-			const impactReadTargets = determineImpactOfSource<OtherInfo>(source, information, data, readTargets)
+			const impactReadTargets = determineImpactOfSource<OtherInfo>(source, readTargets)
 
 			for(const read of impactReadTargets) {
 				information.graph.addEdge(write, read, EdgeType.DefinedBy, undefined, true)
@@ -131,7 +148,10 @@ function processAssignmentToSymbol<OtherInfo>(
  * Some R-constructs like loops are known to return values completely independent of their input (loops return an invisible `NULL`).
  * This returns only those of `readTargets` that actually impact the target.
  */
-function determineImpactOfSource<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, info: DataflowInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, readTargets: readonly IdentifierReference[]): Set<IdentifierReference> {
+function determineImpactOfSource<OtherInfo>(
+	source: RNode<OtherInfo & ParentInformation>,
+	readTargets: readonly IdentifierReference[]
+): Set<IdentifierReference> {
 	// collect all ids from the source but stop at Loops, function calls, definitions and everything which links its own return
 	// for loops this is necessary as they *always* return an invisible null, for function calls we do not know if they do
 	// yet, we need to keep the ids of these elements

@@ -29,9 +29,9 @@ export type XmlBasedJsonValue = string | Record<string, unknown> | readonly XmlB
  */
 export interface NamedXmlBasedJson {
 	/** corresponds to the R token type */
-	name:    RawRType,
+	readonly name:    RawRType,
 	/** remaining content (e.g., children, ...) */
-	content: XmlBasedJson
+	readonly content: XmlBasedJson
 }
 
 

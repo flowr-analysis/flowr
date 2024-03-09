@@ -35,7 +35,7 @@ export function tryNormalizeUnary(data: ParserData, [operator, operand]: [NamedX
 function parseUnaryOp(data: ParserData, operator: NamedXmlBasedJson, operand: NamedXmlBasedJson): RUnaryOp {
 	const parsedOperand = normalizeSingleNode(data, operand)
 
-	guard(parsedOperand.type !== RType.Delimiter, () => 'unexpected under-sided unary op')
+	guard(parsedOperand.type !== RType.Delimiter, 'unexpected under-sided unary op')
 
 	const operationName = retrieveOpName(operator)
 	const { location, content } = retrieveMetaStructure(operator.content)

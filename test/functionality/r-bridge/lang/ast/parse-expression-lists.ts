@@ -127,7 +127,7 @@ describe('Parse expression lists', withShell(shell => {
 			shell, '{ 42\na }', exprList({
 				type:     RType.ExpressionList,
 				location: undefined,
-				braces:   [
+				grouping: [
 					{
 						type:     RType.Delimiter,
 						subtype:  RawRType.BraceLeft,
@@ -169,7 +169,7 @@ describe('Parse expression lists', withShell(shell => {
 				{
 					type:     RType.ExpressionList,
 					location: undefined,
-					braces:   [
+					grouping: [
 						{
 							type:     RType.Delimiter,
 							subtype:  RawRType.BraceLeft,
@@ -208,7 +208,7 @@ describe('Parse expression lists', withShell(shell => {
 					location: undefined,
 					info:     {},
 					lexeme:   undefined,
-					braces:   [
+					grouping: [
 						{
 							type:     RType.Delimiter,
 							subtype:  RawRType.BraceLeft,
@@ -240,7 +240,7 @@ describe('Parse expression lists', withShell(shell => {
 			{
 				type:     RType.ExpressionList,
 				lexeme:   undefined,
-				braces:   undefined,
+				grouping: undefined,
 				info:     { },
 				children: [
 					{
@@ -268,7 +268,7 @@ describe('Parse expression lists', withShell(shell => {
 				lexeme:   undefined,
 				info:     {},
 				location: undefined,
-				braces:   [
+				grouping: [
 					{
 						type:     RType.Delimiter,
 						subtype:  RawRType.BraceLeft,
@@ -298,7 +298,7 @@ describe('Parse expression lists', withShell(shell => {
 			{
 				type:     RType.ExpressionList,
 				lexeme:   undefined,
-				braces:   undefined,
+				grouping: undefined,
 				info:     { },
 				children: [
 					{

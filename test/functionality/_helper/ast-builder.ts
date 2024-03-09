@@ -5,7 +5,7 @@ import type { SourceRange } from '../../../src/util/range'
 const emptyInfo = { fullRange: undefined, additionalTokens: [], fullLexeme: undefined }
 
 export function exprList(...children: RNode[]): RExpressionList {
-	return { type: RType.ExpressionList, children, lexeme: undefined, info: emptyInfo, braces: undefined, location: undefined }
+	return { type: RType.ExpressionList, children, lexeme: undefined, info: emptyInfo, grouping: undefined, location: undefined }
 }
 export function numVal(value: number, markedAsInt = false, complexNumber = false): RNumberValue {
 	return { num: value, markedAsInt, complexNumber }

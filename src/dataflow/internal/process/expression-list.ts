@@ -20,6 +20,7 @@ import type { DataflowGraphVertexInfo } from '../../graph'
 import { DataflowGraph } from '../../graph'
 import { dataflowLogger, EdgeType } from '../../index'
 import { guard } from '../../../util/assert'
+import { processAsNamedCall } from './operators'
 
 
 const dotDotDotAccess = /\.\.\d+/
@@ -108,6 +109,19 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 
 export function processExpressionList<OtherInfo>(exprList: RExpressionList<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const expressions = exprList.children
+
+	if(exprList.grouping !== undefined) {
+		const start = exprList.grouping[0]
+		return processAsNamedCall({
+			type:      RType.Symbol,
+			info:      exprList.info,
+			content:   start.lexeme,
+			lexeme:    start.lexeme,
+			location:  start.location,
+			namespace: undefined
+		}, data, start.lexeme, expressions)
+	}
+
 	dataflowLogger.trace(`processing expression list with ${expressions.length} expressions`)
 	if(expressions.length === 0) {
 		return initializeCleanDataflowInformation(data)

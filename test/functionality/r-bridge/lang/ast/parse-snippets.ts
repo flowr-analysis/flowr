@@ -94,8 +94,8 @@ max
 					},
 				},
 				then: {
-					type:   RType.ExpressionList,
-					braces: [{
+					type:     RType.ExpressionList,
+					grouping: [{
 						type:     RType.Delimiter,
 						lexeme:   '{',
 						location: rangeFrom(4, 11, 4, 11),
@@ -162,7 +162,7 @@ max
 					location: undefined,
 					lexeme:   undefined,
 					info:     {},
-					braces:   [{
+					grouping: [{
 						type:     RType.Delimiter,
 						lexeme:   '{',
 						location: rangeFrom(7, 8, 7, 8),

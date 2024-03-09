@@ -90,7 +90,7 @@ function inBrace(start: SourceRange, end: SourceRange, content: RNode): RExpress
 		location: undefined,
 		lexeme:   undefined,
 		info:     {},
-		braces:   [{
+		grouping: [{
 			type:     RType.Delimiter,
 			lexeme:   '{',
 			location: start,
@@ -161,7 +161,7 @@ const ElseSpacingVariants: ElseSpacing[] = [{
 	capabilities: ['if', 'numbers']
 }]
 
-const ElseBracesVariants: ElseSpacing[] = [{
+const ElsegroupingVariants: ElseSpacing[] = [{
 	str:          ' else {2}',
 	locationElse: rangeFrom(0, 8, 0, 8),
 	otherwise: 	  off => inBrace(
@@ -187,7 +187,7 @@ const ElseBracesVariants: ElseSpacing[] = [{
 describe('Parse simple constructs', withShell(shell => {
 	describe('if', () => {
 		describe('if-then', () => {
-			for(const pool of [{ name: 'braces', variants: IfThenBraceVariants }, {
+			for(const pool of [{ name: 'grouping', variants: IfThenBraceVariants }, {
 				name:     'spacing',
 				variants: IfThenSpacingVariants
 			}]) {
@@ -214,11 +214,11 @@ describe('Parse simple constructs', withShell(shell => {
 			}
 		})
 		describe('if-then-else', () => {
-			for(const elsePool of [{ name: 'braces', variants: ElseBracesVariants }, {
+			for(const elsePool of [{ name: 'grouping', variants: ElsegroupingVariants }, {
 				name:     'spacing',
 				variants: ElseSpacingVariants
 			}]) {
-				for(const ifThenPool of [{ name: 'braces', variants: IfThenBraceVariants }, {
+				for(const ifThenPool of [{ name: 'grouping', variants: IfThenBraceVariants }, {
 					name:     'spacing',
 					variants: IfThenSpacingVariants
 				}]) {
@@ -376,7 +376,7 @@ describe('Parse simple constructs', withShell(shell => {
 						type:     RType.ExpressionList,
 						location: undefined,
 						lexeme:   undefined,
-						braces:   [{
+						grouping: [{
 							type:     RType.Delimiter,
 							lexeme:   '{',
 							location: rangeFrom(1, 8, 1, 8),
@@ -450,7 +450,7 @@ describe('Parse simple constructs', withShell(shell => {
 						type:     RType.ExpressionList,
 						location: undefined,
 						lexeme:   undefined,
-						braces:   [{
+						grouping: [{
 							type:     RType.Delimiter,
 							lexeme:   '{',
 							location: rangeFrom(1, 15, 1, 15),

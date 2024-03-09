@@ -127,7 +127,7 @@ function processBraces([start, end]: [start: NamedXmlBasedJson, end: NamedXmlBas
 	return {
 		type:     RType.ExpressionList,
 		children: processed,
-		braces:   [ normalizeDelimiter(start), normalizeDelimiter(end) ],
+		grouping: [ normalizeDelimiter(start), normalizeDelimiter(end) ],
 		lexeme:   undefined,
 		location: undefined,
 		info:     {

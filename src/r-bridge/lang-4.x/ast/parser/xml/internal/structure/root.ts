@@ -32,7 +32,7 @@ export function normalizeRootObjToAst(
 	return {
 		type:     RType.ExpressionList,
 		children: nodes as RNode[],
-		braces:   undefined,
+		grouping: undefined,
 		lexeme:   undefined,
 		info:     {
 			fullRange:        data.currentRange,

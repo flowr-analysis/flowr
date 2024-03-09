@@ -60,7 +60,7 @@ describe('Parse simple operations', withShell(shell => {
 				shell, '1 + # comment\n2', exprList({ // hoist children
 					type:     RType.ExpressionList,
 					location: rangeFrom(1, 1, 2, 1),
-					braces:   undefined,
+					grouping: undefined,
 					info:     {},
 					lexeme:   '1 + # comment\n2',
 					children: [
@@ -195,7 +195,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 					lhs:      {
 						type:     RType.ExpressionList,
 						location: undefined,
-						braces:   [{
+						grouping: [{
 							type:     RType.Delimiter,
 							location: rangeFrom(1, 1, 1, 1),
 							lexeme:   '(',
@@ -252,7 +252,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 					lhs:      {
 						type:     RType.ExpressionList,
 						location: undefined,
-						braces:   [{
+						grouping: [{
 							type:     RType.Delimiter,
 							location: rangeFrom(1, 1, 1, 1),
 							lexeme:   '(',
@@ -290,7 +290,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 					rhs: {
 						type:     RType.ExpressionList,
 						location: undefined,
-						braces:   [{
+						grouping: [{
 							type:     RType.Delimiter,
 							location: rangeFrom(1, 8 + 2 * opOffset + offsetR, 1, 8 + 2 * opOffset + offsetR),
 							lexeme:   '(',
@@ -378,7 +378,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						location: undefined,
 						lexeme:   undefined,
 						info:     {},
-						braces:   [{
+						grouping: [{
 							type:     RType.Delimiter,
 							location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
 							lexeme:   '(',

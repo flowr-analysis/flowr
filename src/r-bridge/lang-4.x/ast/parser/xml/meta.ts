@@ -108,7 +108,7 @@ export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<I
 	if(node.type !== RType.ExpressionList) {
 		return {
 			type:     RType.ExpressionList,
-			braces:   undefined,
+			grouping: undefined,
 			location: node.location,
 			info:     node.info,
 			lexeme:   undefined,

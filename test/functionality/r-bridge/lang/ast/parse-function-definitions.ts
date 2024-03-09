@@ -14,8 +14,8 @@ describe('Parse function definitions', withShell(shell => {
 				parameters: [],
 				info:       {},
 				body:       {
-					type:   RType.ExpressionList,
-					braces: [{
+					type:     RType.ExpressionList,
+					grouping: [{
 						type:     RType.Delimiter,
 						location: rangeFrom(1, 12, 1, 12),
 						lexeme:   '{',
@@ -47,7 +47,7 @@ describe('Parse function definitions', withShell(shell => {
 					location: undefined,
 					lexeme:   undefined,
 					info:     {},
-					braces:   [{
+					grouping: [{
 						type:     RType.Delimiter,
 						location: rangeFrom(1, 12, 1, 12),
 						lexeme:   '{',
@@ -109,8 +109,8 @@ describe('Parse function definitions', withShell(shell => {
 				parameters: [parameter('x', rangeFrom(1, 10, 1, 10))],
 				info:       {},
 				body:       {
-					type:   RType.ExpressionList,
-					braces: [{
+					type:     RType.ExpressionList,
+					grouping: [{
 						type:     RType.Delimiter,
 						location: rangeFrom(1, 13, 1, 13),
 						lexeme:   '{',
@@ -146,7 +146,7 @@ describe('Parse function definitions', withShell(shell => {
 					location: undefined,
 					lexeme:   undefined,
 					info:     {},
-					braces:   [{
+					grouping: [{
 						type:     RType.Delimiter,
 						location: rangeFrom(1, 19, 1, 19),
 						lexeme:   '{',
@@ -180,8 +180,8 @@ describe('Parse function definitions', withShell(shell => {
 				parameters: [parameter('...', rangeFrom(1, 10, 1, 12), undefined, true)],
 				info:       {},
 				body:       {
-					type:   RType.ExpressionList,
-					braces: [{
+					type:     RType.ExpressionList,
+					grouping: [{
 						type:     RType.Delimiter,
 						location: rangeFrom(1, 15, 1, 15),
 						lexeme:   '{',
@@ -215,7 +215,7 @@ describe('Parse function definitions', withShell(shell => {
 				body: {
 					type:     RType.ExpressionList,
 					location: undefined,
-					braces:   [{
+					grouping: [{
 						type:     RType.Delimiter,
 						location: rangeFrom(1, 18, 1, 18),
 						lexeme:   '{',
@@ -251,7 +251,7 @@ describe('Parse function definitions', withShell(shell => {
 					location: undefined,
 					lexeme:   undefined,
 					info:     {},
-					braces:   [{
+					grouping: [{
 						type:     RType.Delimiter,
 						location: rangeFrom(1, 23, 1, 23),
 						lexeme:   '{',
@@ -293,8 +293,8 @@ describe('Parse function definitions', withShell(shell => {
 				],
 				info: {},
 				body: {
-					type:   RType.ExpressionList,
-					braces: [{
+					type:     RType.ExpressionList,
+					grouping: [{
 						type:     RType.Delimiter,
 						location: rangeFrom(1, 15, 1, 15),
 						lexeme:   '{',
@@ -343,7 +343,7 @@ describe('Parse function definitions', withShell(shell => {
 					lexeme:   undefined,
 					location: undefined,
 					info:     {},
-					braces:   [{
+					grouping: [{
 						type:     RType.Delimiter,
 						location: rangeFrom(1, 31, 1, 31),
 						lexeme:   '{',

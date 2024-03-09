@@ -59,7 +59,7 @@ export function normalizeExpression(data: ParserData, obj: XmlBasedJson): RNode 
 	} else {
 		return {
 			type:     RType.ExpressionList,
-			braces:   undefined,
+			grouping: undefined,
 			location,
 			children: nodes as RNode[],
 			lexeme:   content,

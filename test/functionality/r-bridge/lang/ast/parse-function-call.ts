@@ -267,7 +267,7 @@ describe('Parse function calls', withShell(shell => {
 					location: undefined,
 					lexeme:   undefined,
 					info:     {},
-					braces:   [{
+					grouping: [{
 						type:     RType.Delimiter,
 						location: rangeFrom(1, 1, 1, 1),
 						lexeme:   '(',
@@ -303,7 +303,7 @@ describe('Parse function calls', withShell(shell => {
 							location: undefined,
 							lexeme:   undefined,
 							info:     {},
-							braces:   [{
+							grouping: [{
 								type:     RType.Delimiter,
 								location: rangeFrom(1, 14, 1, 14),
 								lexeme:   '{',

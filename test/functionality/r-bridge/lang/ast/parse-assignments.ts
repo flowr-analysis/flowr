@@ -87,7 +87,7 @@ describe('Parse simple assignments',
 						lexeme:   undefined,
 						location: undefined,
 						info:     {},
-						braces:   [{
+						grouping: [{
 							type:     RType.Delimiter,
 							lexeme:   '{',
 							location: rangeFrom(1, 6, 1, 6),

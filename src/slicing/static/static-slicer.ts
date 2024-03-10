@@ -7,13 +7,8 @@ import type {
 import { BuiltIn, shouldTraverseEdge, EdgeType, initializeCleanEnvironments } from '../../dataflow'
 import { guard } from '../../util/assert'
 import type {
-	DecoratedAstMap,
 	NodeId,
-	NormalizedAst,
-	RNodeWithParent } from '../../r-bridge'
-import {
-	collectAllIds,
-	RType
+	NormalizedAst
 } from '../../r-bridge'
 import { expensiveTrace, log } from '../../util/log'
 import objectHash from 'object-hash'
@@ -125,7 +120,6 @@ class VisitingQueue {
 export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, criteria: SlicingCriteria, threshold = 75): Readonly<SliceResult> {
 	guard(criteria.length > 0, 'must have at least one seed id to calculate slice')
 	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, ast)
-	const idMap = ast.idMap
 	expensiveTrace(slicerLogger, () =>`calculating slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`)
 	const queue = new VisitingQueue(threshold)
 
@@ -165,40 +159,12 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 				queue.add(target, baseEnvironment, baseEnvFingerprint, true)
 			}
 		}
-		for(const controlFlowDependency of addControlDependencies(currentVertex.id, idMap)) {
-			queue.add(controlFlowDependency, baseEnvironment, baseEnvFingerprint, false)
-		}
 	}
 
 	// slicerLogger.trace(`static slicing produced: ${JSON.stringify([...seen])}`)
 	return { ...queue.status(), decodedCriteria }
 }
 
-
-function addAllFrom(current: RNodeWithParent, collected: Set<NodeId>) {
-	for(const id of collectAllIds(current)) {
-		collected.add(id)
-	}
-}
-
-function addControlDependencies(source: NodeId, ast: DecoratedAstMap): Set<NodeId> {
-	const start = ast.get(source)
-
-	const collected = new Set<NodeId>()
-
-	let current = start
-	while(current !== undefined) {
-		if(current.type === RType.IfThenElse || current.type === RType.WhileLoop) {
-			addAllFrom(current.condition, collected)
-		} else if(current.type === RType.ForLoop) {
-			addAllFrom(current.variable, collected)
-			// vector not needed, if required, it is linked by defined-by
-		}
-		// nothing to do for repeat and rest!
-		current = current.info.parent ? ast.get(current.info.parent) : undefined
-	}
-	return collected
-}
 
 function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment

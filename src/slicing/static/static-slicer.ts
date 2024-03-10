@@ -2,8 +2,11 @@ import type {
 	DataflowGraph,
 	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo,
-	REnvironmentInformation } from '../../dataflow'
-import { shouldTraverseEdge
+	REnvironmentInformation
+} from '../../dataflow'
+import {
+	BuiltIn
+	, shouldTraverseEdge
 	,
 	EdgeType,
 	initializeCleanEnvironments
@@ -192,13 +195,11 @@ function addControlDependencies(source: NodeId, ast: DecoratedAstMap): Set<NodeI
 
 	let current = start
 	while(current !== undefined) {
-		if(current.type === RType.IfThenElse) {
-			addAllFrom(current.condition, collected)
-		} else if(current.type === RType.WhileLoop) {
+		if(current.type === RType.IfThenElse || current.type === RType.WhileLoop) {
 			addAllFrom(current.condition, collected)
 		} else if(current.type === RType.ForLoop) {
 			addAllFrom(current.variable, collected)
-			// vector not needed, if required, it is  linked by defined-by
+			// vector not needed, if required, it is linked by defined-by
 		}
 		// nothing to do for repeat and rest!
 		current = current.info.parent ? ast.get(current.info.parent) : undefined
@@ -233,7 +234,7 @@ function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexInfo,
 	const activeEnvironment = retrieveActiveEnvironment(callerInfo, baseEnvironment)
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment)
 
-	const functionCallDefs = resolveByName(callerInfo.name, activeEnvironment)?.map(d => d.nodeId) ?? []
+	const functionCallDefs = resolveByName(callerInfo.name, activeEnvironment)?.filter(d => d.definedAt !== BuiltIn)?.map(d => d.nodeId) ?? []
 
 	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
 		if(outgoingEdge.types.has(EdgeType.Calls)) {

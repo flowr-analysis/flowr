@@ -1,5 +1,5 @@
 export function escapeMarkdown(text: string): string {
-	return text.replaceAll(/([+*])/g, '\\$1').replaceAll('"', '\'\'')
+	return text.replaceAll(/([+*<>])/g, '\\$1').replaceAll('"', '\'\'')
 }
 
 /**

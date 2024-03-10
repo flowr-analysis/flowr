@@ -87,11 +87,13 @@ function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow
 function printArg(arg: IdentifierReference | '<value>' | 'empty' | typeof EmptyArgument | undefined): string {
 	if(arg === 'empty') {
 		return ''
-	}
-	if(arg === undefined || arg === '<value>' || arg === EmptyArgument) {
+	} else if(arg === undefined || arg === '<value>') {
 		return '??'
+	} else if(arg === EmptyArgument) {
+		return '[empty]'
+	} else {
+		return `${arg.nodeId}`
 	}
-	return `${arg.nodeId}`
 }
 function displayFunctionArgMapping(argMapping: FunctionArgument[]): string {
 	const result = []

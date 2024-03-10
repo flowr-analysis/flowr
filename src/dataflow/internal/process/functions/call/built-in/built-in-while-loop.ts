@@ -34,8 +34,8 @@ export function processWhileLoop<OtherInfo>(
 
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: name.info.id, name: name.lexeme }, ...addControlEdges(remainingInputs, name.info.id, information.graph)],
-		out:               addControlEdges([...makeAllMaybe(body.out, information.graph, information.environment), ...condition.out], name.info.id, information.graph),
+		in:                [{ nodeId: name.info.id, name: name.lexeme }, ...addControlEdges(remainingInputs, name.info.id, information.environment, information.graph)],
+		out:               addControlEdges([...makeAllMaybe(body.out, information.graph, information.environment), ...condition.out], name.info.id, information.environment, information.graph),
 		graph:             information.graph,
 		environment:       information.environment
 	}

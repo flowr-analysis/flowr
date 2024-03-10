@@ -30,7 +30,7 @@ import { decorateLabelContext } from './label'
 import { STATIC_DATAFLOW } from '../../../src/core/steps/all/core/20-dataflow'
 import { graphToMermaidUrl, diffGraphsToMermaidUrl } from '../../../src/dataflow'
 import type { DataflowDifferenceReport, DataflowGraph  , ProblematicDiffInfo } from '../../../src/dataflow'
-import { printAsBuilder } from './dataflow/builder-printer'
+import { printAsBuilder } from './dataflow/dataflow-builder-printer'
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: Mocha.Context) => void | Promise<void>): Mocha.Test => {
 	return it(msg, async function(): Promise<void> {

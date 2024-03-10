@@ -5,7 +5,7 @@ import type { DataflowProcessorInformation } from '../../../../processor'
 import { processDataflowFor } from '../../../../processor'
 import type { DataflowGraph, FunctionArgument } from '../../../../graph'
 import { EdgeType } from '../../../../graph'
-import type { IdentifierReference } from '../../../../environments'
+import type { IdentifierReference, REnvironmentInformation } from '../../../../environments'
 import { define, overwriteEnvironment, resolveByName } from '../../../../environments'
 import { guard } from '../../../../../util/assert'
 
@@ -70,15 +70,25 @@ export function processAllArguments<OtherInfo>(
 }
 
 
-export function addControlEdges(ref: readonly IdentifierReference[], controlDep: NodeId, graph: DataflowGraph): IdentifierReference[] {
+function addControlDependencies(cDs: NodeId[] | undefined, controlDep: NodeId) {
+	return cDs && !cDs.includes(controlDep) ? [...cDs, controlDep] : [controlDep]
+}
+
+export function addControlEdges(ref: readonly IdentifierReference[], controlDep: NodeId, env: REnvironmentInformation, graph: DataflowGraph): IdentifierReference[] {
 	const out: IdentifierReference[] = new Array<IdentifierReference>(ref.length)
 	for(let i = 0; i < ref.length; i++) {
 		const r = ref[i]
+		if(r.name) {
+			const definitions = resolveByName(r.name, env)
+			for(const definition of definitions ?? []) {
+				definition.controlDependency = addControlDependencies(definition.controlDependency, controlDep)
+			}
+		}
 		const node = graph.get(r.nodeId, true)
 		if(node) {
-			node[0].controlDependency = node[0].controlDependency ? [controlDep, ...node[0].controlDependency] : [controlDep]
+			node[0].controlDependency = addControlDependencies(node[0].controlDependency, controlDep)
 		}
-		out[i] = { ...r, controlDependency: r.controlDependency ? [controlDep, ...r.controlDependency] : [controlDep] }
+		out[i] = { ...r, controlDependency: addControlDependencies(r.controlDependency, controlDep) }
 	}
 	return out
 }

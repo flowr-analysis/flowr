@@ -8,7 +8,7 @@ describe('Resolve', () => {
 	describe('ByName', () => {
 		it(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope'], ['other']), () => {
 			const xVar = variable('x', '_1')
-			const env = defaultEnv().defineEnv(xVar)
+			const env = defaultEnv().defineInEnv(xVar)
 			const result = resolveByName('x', env)
 			guard(result !== undefined, 'there should be a result')
 			expect(result, 'there should be exactly one definition for x').to.have.length(1)
@@ -18,7 +18,7 @@ describe('Resolve', () => {
 			let env = defaultEnv()
 				.defineVariable('x', '_2', '_1')
 			const xVar = variable('x', '_1')
-			env = env.defineEnv(xVar)
+			env = env.defineInEnv(xVar)
 			const result = resolveByName('x', env)
 			guard(result !== undefined, 'there should be a result')
 			expect(result, 'there should be exactly one definition for x').to.have.length(1)

@@ -189,7 +189,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:red,color:red,stroke-width:4px;`)
 			} else if(edge.types.has('CD')) {
-				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:lightgray,color:lightgray,stroke-width:3px;`)
+				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray,color:gray;`)
 			}
 			if(target === BuiltIn) {
 				mermaid.hasBuiltIn = true

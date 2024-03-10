@@ -3,6 +3,7 @@ import { setDifference } from '../../util/diff'
 import type { IEnvironment, REnvironmentInformation } from './environment'
 import { jsonReplacer } from '../../util/json'
 import type { IdentifierReference } from './identifier'
+import { arrayEqual } from '../../util/arrays'
 
 export function diffIdentifierReferences<Report extends WriteableDifferenceReport>(a: IdentifierReference | undefined, b: IdentifierReference | undefined, info: GenericDifferenceInformation<Report>): void {
 	if(a === undefined || b === undefined) {
@@ -43,8 +44,8 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 			if(aVal.nodeId !== bVal.nodeId) {
 				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`)
 			}
-			if(aVal.controlDependency !== bVal.controlDependency) {
-				info.report.addComment(`${info.position}Different used for ${key} (${aVal.nodeId}). ${info.leftname}: ${JSON.stringify(aVal.controlDependency)} vs. ${info.rightname}: ${JSON.stringify(bVal.controlDependency)}`)
+			if(!arrayEqual(aVal.controlDependency, bVal.controlDependency)) {
+				info.report.addComment(`${info.position}Different controlDependency for ${key} (${aVal.nodeId}). ${info.leftname}: ${JSON.stringify(aVal.controlDependency)} vs. ${info.rightname}: ${JSON.stringify(bVal.controlDependency)}`)
 			}
 			if(aVal.definedAt !== bVal.definedAt) {
 				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)
@@ -64,7 +65,7 @@ export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEn
 		return
 	}
 	if(a.name !== b.name) {
-		info.report.addComment(`${info.position}Different environment names. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)
+		info.report.addComment(`${info.position}Different environment names. ${info.leftname}: ${a.name}  vs. ${info.rightname}: ${b.name}`)
 	}
 	if(a.memory.size !== b.memory.size) {
 		info.report.addComment(`${info.position}Different environment sizes. ${info.leftname}: ${JSON.stringify(a, jsonReplacer)} vs. ${info.rightname}: ${JSON.stringify(b, jsonReplacer)}`)

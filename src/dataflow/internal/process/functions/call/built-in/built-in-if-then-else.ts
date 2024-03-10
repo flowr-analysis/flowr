@@ -1,4 +1,5 @@
-import type { NodeId, ParentInformation, RFunctionArgument, RNode, RSymbol } from '../../../../../../r-bridge'
+import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
+import { EmptyArgument } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
@@ -19,12 +20,12 @@ export function processIfThenElse<OtherInfo>(
 		return processKnownFunctionCall(name, args, rootId, data).information
 	}
 
-	if(args[0] === undefined) {
-		dataflowLogger.warn(`If-then-else ${name.content} has undefined condition in ${JSON.stringify(args)}, skipping`)
+	const [condArg, thenArg, otherwiseArg] = args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation> | undefined]
+
+	if(condArg === EmptyArgument || thenArg === EmptyArgument) {
+		dataflowLogger.warn(`If-then-else ${name.content} has empty condition or then case in ${JSON.stringify(args)}, skipping`)
 		return processKnownFunctionCall(name, args, rootId, data).information
 	}
-
-	const [condArg, thenArg, otherwiseArg] = args as [RNode<OtherInfo & ParentInformation>, RNode<OtherInfo & ParentInformation>, RNode<OtherInfo & ParentInformation> | undefined]
 
 	const cond = processDataflowFor(condArg, data)
 
@@ -45,7 +46,7 @@ export function processIfThenElse<OtherInfo>(
 
 	let otherwise: DataflowInformation | undefined
 	let makeOtherwiseMaybe = false
-	if(otherwiseArg !== undefined  && conditionIsTrue !== 'always') {
+	if(otherwiseArg !== undefined && otherwiseArg !== EmptyArgument && conditionIsTrue !== 'always') {
 		otherwise = processDataflowFor(otherwiseArg, data)
 		if(conditionIsFalse !== 'always') {
 			makeOtherwiseMaybe = true
@@ -83,8 +84,8 @@ export function processIfThenElse<OtherInfo>(
 
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: rootId, name: name.content }, ...addControlEdges(ingoing, name.info.id, nextGraph)],
-		out:               addControlEdges(outgoing, name.info.id, nextGraph),
+		in:                [{ nodeId: rootId, name: name.content }, ...addControlEdges(ingoing, name.info.id, finalEnvironment, nextGraph)],
+		out:               addControlEdges(outgoing, name.info.id, finalEnvironment, nextGraph),
 		environment:       finalEnvironment,
 		graph:             nextGraph
 	}

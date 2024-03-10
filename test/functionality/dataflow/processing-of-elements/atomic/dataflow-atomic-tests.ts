@@ -7,7 +7,7 @@ import { assertDataflow, withShell } from '../../../_helper/shell'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { label } from '../../../_helper/label'
 import { emptyGraph } from '../../../_helper/dataflow/dataflowgraph-builder'
-import { argumentInCall, unnamedArgument } from '../../../_helper/dataflow/environment-builder'
+import { argumentInCall, defaultEnv, unnamedArgument } from '../../../_helper/dataflow/environment-builder'
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider'
 import { EmptyArgument, OperatorDatabase } from '../../../../../src'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
@@ -457,68 +457,113 @@ describe('Atomic (dataflow information)', withShell(shell => {
 	describe('if-then-else', () => {
 		// spacing issues etc. are dealt with within the parser, however, braces are not allowed to introduce scoping artifacts
 		describe('if-then, no else', () => {
-			assertDataflow(label('completely constant', ['if', 'logical', 'numbers']),
+			assertDataflow(label('Completely Constant', ['if', 'logical', 'numbers']),
 				shell, 'if (TRUE) 1',
 				emptyGraph()
-					.use('2-arg', unnamedArgument('2-arg'))
+					.use('2-arg', unnamedArgument('2-arg'), { controlDependency: ['3'] })
 					.reads('2-arg', '1')
 					.argument('3', '2-arg')
-					.call('3', 'if', [argumentInCall('0-arg'), argumentInCall('2-arg'), EmptyArgument], { returns: [], reads: [BuiltIn] })
+					.call('3', 'if', [argumentInCall('0-arg', { controlDependency: ['3'] }), argumentInCall('2-arg', { controlDependency: ['3'] }), EmptyArgument], { returns: [], reads: [BuiltIn] })
 					.argument('3', '0-arg')
-					.constant('0')
-					.constant('1')
+					.constant('0', { controlDependency: ['3'] })
+					.constant('1', { controlDependency: ['3'] })
 			)
 			assertDataflow(label('compare cond.', ['if', 'logical', 'numbers', ...OperatorDatabase['>'].capabilities]),
 				shell, 'if (x > 5) 1',
 				emptyGraph()
-					.use('0', 'x')
-					.use('4-arg', unnamedArgument('4-arg'))
+					.use('0', 'x', { controlDependency: ['5'] })
+					.use('4-arg', unnamedArgument('4-arg'), { controlDependency: ['5'] })
 					.reads('4-arg', '3')
-					.call('2', '>', [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: [], reads: [BuiltIn] })
+					.call('2', '>', [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: [], reads: [BuiltIn], controlDependency: ['5'] })
 					.argument('2', ['0-arg', '1-arg'])
 					.argument('5', '4-arg')
-					.call('5', 'if', [argumentInCall('2-arg'), argumentInCall('4-arg'), EmptyArgument], { returns: [], reads: [BuiltIn] })
+					.call('5', 'if', [argumentInCall('2-arg', { controlDependency: ['5'] }), argumentInCall('4-arg', { controlDependency: ['5'] }), EmptyArgument], { returns: [], reads: [BuiltIn] })
 					.argument('5', '2-arg')
 					.constant('1', { controlDependency: ['5'] })
 					.reads('2-arg', ['0', '1'])
-					.constant('3')
+					.constant('3', { controlDependency: ['5'] })
 			)
-			assertDataflow('compare cond. symbol in then',
+			assertDataflow(label('compare cond. symbol in then', ['if', 'logical', 'numbers', 'name-normal', ...OperatorDatabase['>'].capabilities]),
 				shell, 'if (x > 5) y',
-				emptyGraph().use('0', 'x')
-					.use('3', 'y', { controlDependency: [] })
-			)
-			assertDataflow('all variables', shell,
-				'if (x > y) z',
 				emptyGraph()
-					.use('0', 'x')
-					.use('1', 'y')
-					.use('3', 'z', { controlDependency: [] })
+					.use('0', 'x', { controlDependency: ['5'] })
+					.use('3', 'y', { controlDependency: ['5'] })
+					.use('4-arg', unnamedArgument('4-arg'), { controlDependency: ['5'] })
+					.reads('4-arg', '3')
+					.call('2', '>', [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: [], reads: [BuiltIn], controlDependency: ['5'] })
+					.argument('2', ['0-arg', '1-arg'])
+					.argument('5', '4-arg')
+					.call('5', 'if', [argumentInCall('2-arg', { controlDependency: ['5'] }), argumentInCall('4-arg', { controlDependency: ['5'] }), EmptyArgument], { returns: [], reads: [BuiltIn] })
+					.argument('5', '2-arg')
+					.constant('1', { controlDependency: ['5'] })
+					.reads('2-arg', ['0', '1'])
 			)
-			assertDataflow('all variables, some same', shell,
-				'if (x > y) x',
+			assertDataflow(label('all variables', ['if', 'logical', 'name-normal', ...OperatorDatabase['>'].capabilities]),
+				shell, 'if (x > y) z',
 				emptyGraph()
-					.use('0', 'x')
-					.use('1', 'y')
-					.use('3', 'x', { controlDependency: [] })
+					.use('0', 'x', { controlDependency: ['5'] })
+					.use('1', 'y', { controlDependency: ['5'] })
+					.use('3', 'z', { controlDependency: ['5'] })
+					.use('4-arg', unnamedArgument('4-arg'), { controlDependency: ['5'] })
+					.reads('4-arg', '3')
+					.call('2', '>', [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: [], reads: [BuiltIn], controlDependency: ['5'] })
+					.argument('2', ['0-arg', '1-arg'])
+					.argument('5', '4-arg')
+					.call('5', 'if', [argumentInCall('2-arg', { controlDependency: ['5'] }), argumentInCall('4-arg', { controlDependency: ['5'] }), EmptyArgument], { returns: [], reads: [BuiltIn] })
+					.argument('5', '2-arg')
+					.reads('2-arg', ['0', '1'])
+			)
+			assertDataflow(label('all variables, some same', ['if', 'logical', 'name-normal', ...OperatorDatabase['>'].capabilities]),
+				shell, 'if (x > y) x',
+				emptyGraph()
+					.use('0', 'x', { controlDependency: ['5'] })
 					.sameRead('0', '3')
+					.use('1', 'y', { controlDependency: ['5'] })
+					.use('3', 'x', { controlDependency: ['5'] })
+					.sameRead('3', '0')
+					.use('4-arg', unnamedArgument('4-arg'), { controlDependency: ['5'] })
+					.reads('4-arg', '3')
+					.call('2', '>', [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: [], reads: [BuiltIn], controlDependency: ['5'] })
+					.argument('2', ['0-arg', '1-arg'])
+					.argument('5', '4-arg')
+					.call('5', 'if', [argumentInCall('2-arg', { controlDependency: ['5'] }), argumentInCall('4-arg', { controlDependency: ['5'] }), EmptyArgument], { returns: [], reads: [BuiltIn] })
+					.argument('5', '2-arg')
+					.reads('2-arg', ['0', '1'])
 			)
-			assertDataflow('all same variables', shell,
-				'if (x > x) x',
+			assertDataflow(label('all same variables', ['if', 'logical', 'name-normal', ...OperatorDatabase['>'].capabilities]),
+				shell, 'if (x > x) x',
 				emptyGraph()
-					.use('0', 'x')
-					.use('1', 'x')
-					.use('3', 'x', { controlDependency: [] })
-					.sameRead('0', '1')
+					.use('0', 'x', { controlDependency: ['5'] })
+					.sameRead('0', ['1', '3'])
+					.use('1', 'x', { controlDependency: ['5'] })
 					// theoretically, they just have to be connected, so 0 is just hardcoded
-					.sameRead('0', '3')
+					.sameRead('1', '0')
+					.use('3', 'x', { controlDependency: ['5'] })
+					.sameRead('3', '0')
+					.use('4-arg', unnamedArgument('4-arg'), { controlDependency: ['5'] })
+					.reads('4-arg', '3')
+					.call('2', '>', [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: [], reads: [BuiltIn], controlDependency: ['5'] })
+					.argument('2', ['0-arg', '1-arg'])
+					.argument('5', '4-arg')
+					.call('5', 'if', [argumentInCall('2-arg', { controlDependency: ['5'] }), argumentInCall('4-arg', { controlDependency: ['5'] }), EmptyArgument], { returns: [], reads: [BuiltIn] })
+					.argument('5', '2-arg')
+					.reads('2-arg', ['0', '1'])
 			)
-			assertDataflow('definition in if', shell,
-				'if (x <- 3) x',
+			assertDataflow(label('definition in if', ['if', 'logical', 'name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities]),
+				shell, 'if (x <- 3) x',
 				emptyGraph()
-					.defineVariable('0', 'x')
-					.use('3', 'x', { controlDependency: [] })
+					.use('3', 'x', { controlDependency: ['5'] })
 					.reads('3', '0')
+					.use('4-arg', unnamedArgument('4-arg'), { controlDependency: ['5'] })
+					.reads('4-arg', '3')
+					.call('2', '<-', [argumentInCall('0-arg'), argumentInCall('1-arg', { controlDependency: ['5'] })], { returns: ['0'], reads: [BuiltIn], controlDependency: ['5'], environment: defaultEnv() })
+					.argument('2', ['1-arg', '0-arg'])
+					.argument('5', '4-arg')
+					.call('5', 'if', [argumentInCall('2-arg', { controlDependency: ['5'] }), argumentInCall('4-arg', { controlDependency: ['5'] }), EmptyArgument], { returns: [], reads: [BuiltIn], environment: defaultEnv().defineVariable('x', '0', '2', ['5']) })
+					.argument('5', '2-arg')
+					.constant('1', { controlDependency: ['5'] })
+					.defineVariable('0', 'x', { definedBy: ['1'] })
+					.reads('2-arg', ['1', '0'])
 			)
 		})
 

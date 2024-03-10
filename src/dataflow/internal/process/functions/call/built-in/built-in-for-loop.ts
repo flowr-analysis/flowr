@@ -9,7 +9,6 @@ import {
 	linkIngoingVariablesInSameScope,
 	produceNameSharedIdMap
 } from '../../../../linker'
-import type { DataflowGraph } from '../../../../../graph'
 import { EdgeType } from '../../../../../graph'
 import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
@@ -81,8 +80,8 @@ export function processForLoop<OtherInfo>(
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
-		in:                [{ nodeId: rootId, name: name.content }, ...addControlEdges([...variable.in, ...[...nameIdShares.values()].flat()], name.info.id, nextGraph)],
-		out:               addControlEdges(outgoing, name.info.id, nextGraph),
+		in:                [{ nodeId: rootId, name: name.content }, ...addControlEdges([...variable.in, ...[...nameIdShares.values()].flat()], name.info.id, outEnvironment, nextGraph)],
+		out:               addControlEdges(outgoing, name.info.id, outEnvironment, nextGraph),
 		graph:             nextGraph,
 		environment:       outEnvironment
 	}

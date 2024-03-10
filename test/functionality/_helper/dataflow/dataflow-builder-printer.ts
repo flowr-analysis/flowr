@@ -7,17 +7,16 @@ import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexInfo,
 	DataflowGraphVertexUse,
-	FunctionArgument
+	FunctionArgument,
+	REnvironmentInformation
 } from '../../../../src/dataflow'
-import {
-	BuiltIn,
-	EdgeType
-} from '../../../../src/dataflow'
+import { EdgeType } from '../../../../src/dataflow'
 import type { NodeId } from '../../../../src'
 import { EmptyArgument } from '../../../../src'
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert'
 import { DefaultMap } from '../../../../src/util/defaultmap'
-import { UnnamedArgumentPrefix } from '../../../../src/dataflow/internal/process/functions/process-argument'
+import { EnvironmentBuilderPrinter } from './environment-builder-printer'
+import { wrap } from './printer'
 
 
 /** we add the node id to allow convenience sorting if we want that in the future (or grouping or, ...) */
@@ -25,7 +24,7 @@ type Lines = [NodeId, string][]
 
 
 export function printAsBuilder(graph: DataflowGraph): string {
-	return new BuilderPrinter(graph).print()
+	return new DataflowBuilderPrinter(graph).print()
 }
 
 const EdgeTypeFnMap: Record<EdgeType, string | undefined> = {
@@ -43,7 +42,7 @@ const EdgeTypeFnMap: Record<EdgeType, string | undefined> = {
 	[EdgeType.SideEffectOnCall]: undefined
 }
 
-class BuilderPrinter {
+class DataflowBuilderPrinter {
 	private lines:           Lines = []
 	private graph:           DataflowGraph
 	private rootIds:         Set<NodeId>
@@ -112,7 +111,7 @@ class BuilderPrinter {
 			wrap(id),
 			wrap(vertex.name),
 			`[${vertex.args.map(a => this.processArgumentInCall(vertex.id, a)).join(', ')}]`,
-			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${this.getControlDependencySuffix(vertex.controlDependency, ', ', '') ?? ''} }`,
+			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${this.getControlDependencySuffix(vertex.controlDependency, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
 			this.asRootArg(id)
 		])
 	}
@@ -245,6 +244,14 @@ class BuilderPrinter {
 		return undefined
 	}
 
+	private getEnvironmentSuffix(env: REnvironmentInformation | undefined, prefix: string = '{ ', suffix: string = ' }'): string | undefined {
+		if(env === undefined) {
+			return undefined
+		}
+		const printed = new EnvironmentBuilderPrinter(env).print()
+		return printed === '' ? undefined : `${prefix}environment: ${printed}${suffix}`
+	}
+
 	private processEdges(id: NodeId): void {
 		const outgoing = this.groupEdgeTypesFrom(id)
 		if(!outgoing) {
@@ -283,18 +290,6 @@ class BuilderPrinter {
 	public print(): string {
 		this.process()
 		return 'emptyGraph()\n' + this.lines.map(([, line]) => line).join('\n')
-	}
-}
-
-function wrap(id: string): string {
-	if(id === EmptyArgument) {
-		return 'EmptyArgument'
-	} else if(id === BuiltIn) {
-		return 'BuiltIn'
-	} else if(id.startsWith(UnnamedArgumentPrefix)) {
-		return `unnamedArgument('${id.slice(UnnamedArgumentPrefix.length)}')`
-	} else {
-		return `'${id}'`
 	}
 }
 

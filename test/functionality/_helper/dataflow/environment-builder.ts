@@ -66,7 +66,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param controlDependency - Control dependencies
 	 */
 	defineArgument(name: string, nodeId: NodeId, definedAt: NodeId, controlDependency: NodeId[] | undefined = undefined) {
-		return this.defineEnv({ name, kind: 'argument', definedAt, nodeId, controlDependency })
+		return this.defineInEnv({ name, kind: 'argument', definedAt, nodeId, controlDependency })
 	}
 
 	/**
@@ -77,7 +77,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param controlDependency - Control dependencies
 	 */
 	defineFunction(name: string, nodeId: NodeId, definedAt: NodeId, controlDependency: NodeId[] | undefined = undefined) {
-		return this.defineEnv({ name, kind: 'function', definedAt, nodeId,  controlDependency })
+		return this.defineInEnv({ name, kind: 'function', definedAt, nodeId,  controlDependency })
 	}
 
 	/**
@@ -88,7 +88,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param controlDependency - Control dependencies
 	 * */
 	defineParameter(name: string, nodeId: NodeId, definedAt: NodeId, controlDependency: NodeId[] | undefined = undefined) {
-		return this.defineEnv({ name, kind: 'parameter', definedAt, nodeId, controlDependency: controlDependency })
+		return this.defineInEnv({ name, kind: 'parameter', definedAt, nodeId, controlDependency: controlDependency })
 	}
 
 	/**
@@ -99,7 +99,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param controlDependency - Control dependencies
 	 */
 	defineVariable(name: string, nodeId: NodeId, definedAt: NodeId = nodeId, controlDependency: NodeId[] | undefined = undefined) {
-		return this.defineEnv({ name, kind: 'variable', definedAt, nodeId, controlDependency })
+		return this.defineInEnv({ name, kind: 'variable', definedAt, nodeId, controlDependency })
 	}
 
 	/**
@@ -107,7 +107,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param def - Definition to add.
 	 * @param superAssignment - If true, the definition is treated as if defined by a super assignment.
 	 */
-	defineEnv(def: IdentifierDefinition, superAssignment = false) {
+	defineInEnv(def: IdentifierDefinition, superAssignment = false) {
 		const envWithDefinition = define(def, superAssignment, this)
 		return new EnvironmentBuilder(envWithDefinition.current, envWithDefinition.level)
 	}

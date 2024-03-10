@@ -4,7 +4,7 @@ import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './b
 export type Identifier = string & { __brand?: 'identifier' }
 
 interface InGraphIdentifierDefinition extends IdentifierReference {
-	kind:      'function' | 'variable' | 'parameter' | 'unknown' | 'argument'
+	kind:      'function' | 'variable' | 'parameter' | 'argument'
 	/** The assignment (or whatever, like `assign` function call) node which ultimately defined this identifier */
 	definedAt: NodeId
 }

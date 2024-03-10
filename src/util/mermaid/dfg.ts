@@ -128,7 +128,7 @@ function mermaidNodeBrackets(def: boolean, fCall: boolean) {
 }
 
 function printIdentifier(id: IdentifierDefinition): string {
-	return `${id.name} (${id.nodeId}, ${id.kind},${id.controlDependency? ' {' + id.controlDependency.join(',') + '}' : ''} def. @${id.definedAt})`
+	return `${id.name} (${id.nodeId}, ${id.kind},${id.controlDependency? ' {' + id.controlDependency.join(',') + '},' : ''} def. @${id.definedAt})`
 }
 
 function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
@@ -158,7 +158,9 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 				printEnvironmentToLines(info.environment.current).map(x => `    %% ${x}`).join('\n'))
 		}
 	}
-	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapeMarkdown(info.name === CONSTANT_NAME ? '' : info.name)} (${id}${info.controlDependency? ', ' + info.controlDependency.join(',') : ''})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
+	const escapedName = escapeMarkdown(info.name === CONSTANT_NAME ? '' : info.name)
+	const deps = info.controlDependency ? ', :maybe:' + info.controlDependency.join(',') : ''
+	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''
 	}\`"${close}`)
 	if(mark?.has(id)) {

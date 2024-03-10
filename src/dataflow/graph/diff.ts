@@ -1,10 +1,10 @@
 import type { IdentifierReference } from '../environments'
 import { diffIdentifierReferences, diffEnvironmentInformation } from '../environments'
 import type { NodeId } from '../../r-bridge'
-import type { DataflowGraph , FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
+import type { DataflowGraph, FunctionArgument, OutgoingEdges, PositionalFunctionArgument } from './graph'
 import type {
 	GenericDifferenceInformation,
-	WriteableDifferenceReport, DifferenceReport
+	WriteableDifferenceReport
 } from '../../util/diff'
 import {
 	setDifference
@@ -245,7 +245,7 @@ export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: Outgoing
 
 	if(lEdges.size !== rEdges.size) {
 		ctx.report.addComment(
-			`Vertex ${id} differs in number of outgoing edges. ${ctx.leftname}: ${JSON.stringify(lEdges, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rEdges, jsonReplacer)}`,
+			`Vertex ${id} differs in number of outgoing edges. ${ctx.leftname}: [${[...lEdges.keys()].join(',')}] vs ${ctx.rightname}: [${[...rEdges.keys()].join(',')}] `,
 			{ tag: 'vertex', id }
 		)
 	}

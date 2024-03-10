@@ -200,6 +200,9 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 			if(rInfo.tag !== 'function-call') {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`)
 			} else {
+				if(lInfo.onlyBuiltin !== rInfo.onlyBuiltin) {
+					ctx.report.addComment(`Vertex ${id} differs in onlyBuiltin. ${ctx.leftname}: ${lInfo.onlyBuiltin} vs ${ctx.rightname}: ${rInfo.onlyBuiltin}`, { tag: 'vertex', id })
+				}
 				diffFunctionArguments(lInfo.id, lInfo.args, rInfo.args, {
 					...ctx,
 					position: `${ctx.position}Vertex ${id} (function call) differs in arguments. `

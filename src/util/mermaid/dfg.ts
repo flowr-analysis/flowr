@@ -111,15 +111,18 @@ function encodeEdge(from: string, to: string, types: Set<EdgeType>): string {
 }
 
 
-function mermaidNodeBrackets(def: boolean, fCall: boolean) {
+function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: string, close: string } {
 	let open: string
 	let close: string
-	if(def) {
+	if(tag === 'function-definition' || tag === 'variable-definition') {
 		open = '['
 		close = ']'
-	} else if(fCall) {
+	} else if(tag === 'function-call') {
 		open = '[['
 		close = ']]'
+	} else if(tag === 'value') {
+		open = '{{'
+		close = '}}'
 	} else {
 		open = '(['
 		close = '])'
@@ -146,10 +149,14 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	return lines
 }
 
+function recoverConstantName(dataflowIdMap: DataflowMap | undefined, info: DataflowGraphVertexInfo): string {
+	const node = dataflowIdMap?.get(info.id)
+	return node ? `[${node.type}] ${node.lexeme ?? '??'}` : '??'
+}
+
 function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, dataflowIdMap: DataflowMap | undefined, mark: Set<NodeId> | undefined): void {
-	const def = info.tag === 'variable-definition' || info.tag === 'function-definition'
 	const fCall = info.tag === 'function-call'
-	const { open, close } = mermaidNodeBrackets(def, fCall)
+	const { open, close } = mermaidNodeBrackets(info.tag)
 
 	if(info.environment && mermaid.includeEnvironments) {
 		if(info.environment.level > 0 || info.environment.current.memory.size !== 0) {
@@ -158,7 +165,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 				printEnvironmentToLines(info.environment.current).map(x => `    %% ${x}`).join('\n'))
 		}
 	}
-	const escapedName = escapeMarkdown(info.name === CONSTANT_NAME ? '' : info.name)
+	const escapedName = escapeMarkdown(info.name === CONSTANT_NAME ? recoverConstantName(dataflowIdMap, info) : info.name)
 	const deps = info.controlDependency ? ', :maybe:' + info.controlDependency.join(',') : ''
 	mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps})\n      *${formatRange(dataflowIdMap?.get(id)?.location)}*${
 		fCall ? displayFunctionArgMapping(info.args) : ''

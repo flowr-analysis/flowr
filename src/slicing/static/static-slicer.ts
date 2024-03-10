@@ -169,7 +169,6 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 		}
 	}
 
-	// slicerLogger.trace(`static slicing produced: ${JSON.stringify([...seen])}`)
 	return { ...queue.status(), decodedCriteria }
 }
 

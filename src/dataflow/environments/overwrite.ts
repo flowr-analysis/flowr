@@ -3,24 +3,14 @@ import type { REnvironmentInformation, IEnvironment } from './environment'
 import { BuiltInEnvironment , Environment } from './environment'
 import type { IdentifierDefinition } from './identifier'
 
-function anyIsMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
+function anyIsMaybeOrEmpty(values: readonly IdentifierDefinition[]): boolean {
 	if(values.length === 0) {
 		return true
 	}
-	const attr = values[0].controlDependency
-	if(attr !== undefined) {
-		return true
-	}
-	let same = true
-	for(let i = 1; i < values.length; i++) {
-		const used = values[i].controlDependency
-		if(used !== undefined) {
+	for(const val of values) {
+		if(val.controlDependency !== undefined) {
 			return true
 		}
-		same = false
-	}
-	if(!same) {
-		throw new Error('all values must have either a maybe or are all the same')
 	}
 	return false
 }
@@ -30,7 +20,7 @@ export function overwriteIEnvironmentWith(base: IEnvironment | undefined, next: 
 	guard(base.name === next.name, 'cannot overwrite environments with different names')
 	const map = new Map(base.memory)
 	for(const [key, values] of next.memory) {
-		const hasMaybe = anyIsMaybeGuardingSame(values)
+		const hasMaybe = anyIsMaybeOrEmpty(values)
 		if(hasMaybe) {
 			const old = map.get(key)
 			// we need to make a copy to avoid side effects for old reference in other environments

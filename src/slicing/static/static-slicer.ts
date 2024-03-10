@@ -153,6 +153,9 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 		}
 
 		for(const [target, edge] of currentEdges) {
+			if(target === BuiltIn) {
+				continue
+			}
 			if(shouldTraverseEdge(edge.types)) {
 				queue.add(target, baseEnvironment, baseEnvFingerprint, false)
 			} else if(edge.types.has(EdgeType.SideEffectOnCall)) {
@@ -215,7 +218,7 @@ function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexInfo,
 			if(defs === undefined) {
 				continue
 			}
-			for(const def of defs) {
+			for(const def of defs.filter(d => d.nodeId !== BuiltIn)) {
 				queue.add(def.nodeId, baseEnvironment, baseEnvPrint, current.onlyForSideEffects)
 			}
 		}

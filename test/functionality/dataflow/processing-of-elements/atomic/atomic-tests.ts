@@ -160,10 +160,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				const swapSourceAndTarget = op === '->' || op === '->>'
 				const [variableId, constantId] = swapSourceAndTarget ? ['1', '0'] : ['0', '1']
 
-				let args: FunctionArgument[] = [argumentInCall('0-arg'), argumentInCall('1-arg')]
-				if(swapSourceAndTarget) {
-					args = args.reverse()
-				}
+				const args: FunctionArgument[] = [argumentInCall('0-arg'), argumentInCall('1-arg')]
 
 				const constantAssignment = swapSourceAndTarget ? `5 ${op} x` : `x ${op} 5`
 				assertDataflow(`${constantAssignment} (constant assignment)`,
@@ -227,21 +224,26 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			assertDataflow('"x <- y <- 1"', shell,
 				'x <- y <- 1',
 				emptyGraph()
-					.defineVariable('0', 'x')
-					.defineVariable('1', 'y')
-					.use('0-arg', unnamedArgument('0-arg'))
-					.use('1-arg', unnamedArgument('1-arg'))
-					.call('2', '<-', [
-						{ name: unnamedArgument('0-arg'), nodeId: '0-arg', used: 'always' },
-						{ name: unnamedArgument('1-arg'), nodeId: '1-arg', used: 'always' }
-					])
+					.defineVariable('0', 'x', { definedBy: ['3', '2'] })
+					.defineVariable('1', 'y', { definedBy: ['2'] })
+					.constant('2')
+					.call('3', '<-', [argumentInCall('1-arg'), argumentInCall('2-arg')], { returns: ['1'], reads: [BuiltIn] })
+					.call('4', '<-', [argumentInCall('0-arg'), argumentInCall('3-arg')], { returns: ['0'], reads: [BuiltIn] })
+					.reads('3-arg', '1')
+					.reads('3-arg', '2')
+					.sameRead('3', '4')
 			)
 			assertDataflow('"1 -> x -> y"', shell,
 				'1 -> x -> y',
 				emptyGraph()
-					.defineVariable('1', 'x')
-					.defineVariable('3', 'y')
-					.definedBy('3', '1')
+					.defineVariable('1', 'x', { definedBy: ['0'] })
+					.defineVariable('3', 'y', { definedBy: ['2', '0'] })
+					.constant('0')
+					.call('2', '->', [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: ['1'], reads: [BuiltIn] })
+					.call('4', '->', [argumentInCall('0-arg'), argumentInCall('3-arg')], { returns: ['0'], reads: [BuiltIn] })
+					.reads('3-arg', '1')
+					.reads('3-arg', '2')
+					.sameRead('3', '4')
 			)
 			// still by indirection (even though y is overwritten?)
 			assertDataflow('"x <- 1 -> y"', shell,

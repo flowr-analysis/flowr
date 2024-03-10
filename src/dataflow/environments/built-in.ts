@@ -56,7 +56,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	const res = processKnownFunctionCall(name, args, rootId, data).information
 	if(config.returnsNthArgument !== undefined) {
 		const arg = config.returnsNthArgument === 'last' ? args[args.length - 1] : args[config.returnsNthArgument]
-		if(arg !== EmptyArgument) {
+		if(arg !== undefined && arg !== EmptyArgument) {
 			res.graph.addEdge(rootId, arg.info.id, { type: EdgeType.Returns, attribute: 'always' }, true)
 		}
 	}
@@ -133,7 +133,7 @@ registerBuiltInConstant('break', 'break')
 registerBuiltInConstant('next', 'next')
 registerSimpleFunctions('~', '+', '-', '*', '/', '^', '!', '?', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%', '%*%', ':')
 registerBuiltInFunctions(defaultBuiltInProcessor, {},                                                   'cat') /* returns null */
-registerBuiltInFunctions(defaultBuiltInProcessor, { returnsNthArgument: 1 },                            'return', 'print', '(')
+registerBuiltInFunctions(defaultBuiltInProcessor, { returnsNthArgument: 0 },                            'return', 'print', '(')
 registerBuiltInFunctions(defaultBuiltInProcessor, { returnsNthArgument: 'last' as const },              '{')
 registerBuiltInFunctions(processSourceCall,       {},                                                   'source')
 registerBuiltInFunctions(processAccess,           { treatIndicesAsString: false },                      '[', '[[')

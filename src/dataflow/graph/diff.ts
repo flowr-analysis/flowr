@@ -10,9 +10,20 @@ import {
 	setDifference
 } from '../../util/diff'
 import { jsonReplacer } from '../../util/json'
+import type { DataflowGraphEdge } from './edge'
+import type { DataflowGraphVertexInfo } from './vertex'
+
+export type DiffState = 'added' | 'removed' | 'changed'
+
+export interface DiffEdge extends DataflowGraphEdge {
+	state: DiffState
+}
+
+export type DiffVertex = DataflowGraphVertexInfo & { state: DiffState }
 
 class DataflowDifferenceReport implements WriteableDifferenceReport {
-	_comments: string[] | undefined      = undefined
+	_comments:  string[] | undefined      = undefined
+	_diffGraph: DataflowGraph | undefined = undefined
 
 	addComment(comment: string): void {
 		if(this._comments === undefined) {

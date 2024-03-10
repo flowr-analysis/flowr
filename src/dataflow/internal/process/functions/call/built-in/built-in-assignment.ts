@@ -143,17 +143,17 @@ function processAssignmentToSymbol<OtherInfo>(
 		information.graph.setDefinitionOfVertex(write)
 
 		if(isFunctionDef) {
-			information.graph.addEdge(write, target.info.id, EdgeType.DefinedBy, 'always', true)
+			information.graph.addEdge(write, target.info.id, { type: EdgeType.DefinedBy, attribute: 'always' }, true)
 		} else {
 			const impactReadTargets = determineImpactOfSource<OtherInfo>(source, readTargets)
 
 			for(const read of impactReadTargets) {
-				information.graph.addEdge(write, read, EdgeType.DefinedBy, undefined, true)
+				information.graph.addEdge(write, read, { type: EdgeType.DefinedBy }, true)
 			}
 		}
 	}
 
-	information.graph.addEdge(name.info.id, target.info.id, EdgeType.Returns, 'always', true)
+	information.graph.addEdge(name.info.id, target.info.id, { type: EdgeType.Returns, attribute: 'always' }, true)
 
 	return {
 		unknownReferences: [],

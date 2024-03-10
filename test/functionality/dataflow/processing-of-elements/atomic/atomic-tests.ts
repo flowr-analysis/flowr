@@ -249,9 +249,14 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			assertDataflow('"x <- 1 -> y"', shell,
 				'x <- 1 -> y',
 				emptyGraph()
-					.defineVariable('0', 'x')
-					.defineVariable('2', 'y')
-					.definedBy('0', '2')
+					.defineVariable('0', 'x', { definedBy: ['3', '2'], environment: defaultEnv().defineVariable('y', '1', '3') })
+					.defineVariable('1', 'y', { definedBy: ['2'] })
+					.constant('2')
+					.call('3', '<-', [argumentInCall('1-arg'), argumentInCall('2-arg')], { returns: ['1'], reads: [BuiltIn] })
+					.call('4', '->', [argumentInCall('0-arg'), argumentInCall('3-arg')], { returns: ['0'], reads: [BuiltIn] })
+					.reads('3-arg', '1')
+					.reads('3-arg', '2')
+					.sameRead('3', '4')
 			)
 			assertDataflow('"x <- y <- z"', shell,
 				'x <- y <- z',
@@ -275,6 +280,34 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			)
 			assertDataflow('nested global mixed with local assignments', shell,
 				'x <<- y <- y2 <<- z',
+				emptyGraph()
+					.defineVariable('0', 'x')
+					.defineVariable('1', 'y')
+					.defineVariable('2', 'y2')
+					.use('3', 'z')
+					.definedBy('0', '1')
+					.definedBy('0', '2')
+					.definedBy('0', '3')
+					.definedBy('1', '2')
+					.definedBy('1', '3')
+					.definedBy('2', '3')
+			)
+			assertDataflow('Use Assignment on Target Side', shell,
+				'a[x] <- x <- 3',
+				emptyGraph()
+					.defineVariable('0', 'x')
+					.defineVariable('1', 'y')
+					.defineVariable('2', 'y2')
+					.use('3', 'z')
+					.definedBy('0', '1')
+					.definedBy('0', '2')
+					.definedBy('0', '3')
+					.definedBy('1', '2')
+					.definedBy('1', '3')
+					.definedBy('2', '3')
+			)
+			assertDataflow('Use Assignment on Target Side (inv)', shell,
+				'3 -> x -> a[x]',
 				emptyGraph()
 					.defineVariable('0', 'x')
 					.defineVariable('1', 'y')

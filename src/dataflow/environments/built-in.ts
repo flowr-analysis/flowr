@@ -57,7 +57,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(config.returnsNthArgument !== undefined) {
 		const arg = config.returnsNthArgument === 'last' ? args[args.length - 1] : args[config.returnsNthArgument]
 		if(arg !== EmptyArgument) {
-			res.graph.addEdge(rootId, arg.info.id, EdgeType.Returns, 'always', true)
+			res.graph.addEdge(rootId, arg.info.id, { type: EdgeType.Returns, attribute: 'always' }, true)
 		}
 	}
 	return res

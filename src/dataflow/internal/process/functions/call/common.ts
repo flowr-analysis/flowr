@@ -44,7 +44,7 @@ export function processAllArguments<OtherInfo>(
 		}
 
 		// add an argument edge to the final graph
-		finalGraph.addEdge(functionRootId, processed.out[0], EdgeType.Argument, 'always')
+		finalGraph.addEdge(functionRootId, processed.out[0], { type: EdgeType.Argument, attribute: 'always' })
 		// resolve reads within argument
 		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
 			const tryToResolve = resolveByName(ingoing.name, argEnv)
@@ -53,7 +53,7 @@ export function processAllArguments<OtherInfo>(
 				remainingReadInArgs.push(ingoing)
 			} else {
 				for(const resolved of tryToResolve) {
-					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads, 'always')
+					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, { type: EdgeType.Reads, attribute: 'always' })
 				}
 			}
 		}

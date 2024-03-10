@@ -51,7 +51,7 @@ export function processPipe<OtherInfo>(
 			name:   `${UnnamedArgumentPrefix}${argId}`,
 			used:   'always'
 		})
-		information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument, 'always')
+		information.graph.addEdge(functionCallNode.id, argId, { type: EdgeType.Argument, attribute: 'always' })
 	}
 
 	return information

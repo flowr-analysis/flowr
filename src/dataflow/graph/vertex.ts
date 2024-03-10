@@ -4,7 +4,7 @@ import type { REnvironmentInformation } from '../environments'
 import type { DataflowGraphEdgeAttribute } from './edge'
 import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 
-export type DataflowGraphVertices = Map<NodeId, DataflowGraphVertexInfo>
+export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>
 
 /**
  * Arguments required to construct a vertex in the dataflow graph.
@@ -85,7 +85,7 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	 * All exist points of the function definitions.
 	 * In other words: last expressions/return calls
 	 */
-	exitPoints:   NodeId[]
+	exitPoints:   readonly NodeId[]
 }
 
 export type DataflowGraphVertexArgument = DataflowGraphVertexUse | DataflowGraphExitPoint | DataflowGraphVertexVariableDefinition | DataflowGraphVertexFunctionDefinition | DataflowGraphVertexFunctionCall | DataflowGraphValue

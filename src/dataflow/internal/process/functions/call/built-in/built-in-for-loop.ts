@@ -55,13 +55,13 @@ export function processForLoop<OtherInfo>(
 
 	for(const write of writtenVariable) {
 		for(const link of [...vector.in, ...vector.unknownReferences]) {
-			nextGraph.addEdge(write.nodeId, link.nodeId, EdgeType.DefinedBy, 'always', true)
+			nextGraph.addEdge(write.nodeId, link.nodeId, { type: EdgeType.DefinedBy, attribute: 'always' }, true)
 		}
 
 		const name = write.name
 		const readIdsToLink = nameIdShares.get(name)
 		for(const readId of readIdsToLink) {
-			nextGraph.addEdge(readId.nodeId, write.nodeId, EdgeType.Reads, 'always', true)
+			nextGraph.addEdge(readId.nodeId, write.nodeId, { type: EdgeType.Reads, attribute: 'always' }, true)
 		}
 		// now, we remove the name from the id shares as they are no longer needed
 		nameIdShares.delete(name)

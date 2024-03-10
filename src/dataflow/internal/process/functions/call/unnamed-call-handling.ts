@@ -18,7 +18,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	const functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`
 	dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`)
 	// we know, that it calls the toplevel:
-	finalGraph.addEdge(functionRootId, functionCall.calledFunction.info.id, EdgeType.Calls, 'always')
+	finalGraph.addEdge(functionRootId, functionCall.calledFunction.info.id, { type: EdgeType.Calls, attribute: 'always' })
 	// keep the defined function
 	finalGraph.mergeWith(functionName.graph)
 

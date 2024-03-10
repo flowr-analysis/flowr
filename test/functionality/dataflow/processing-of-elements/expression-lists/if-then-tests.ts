@@ -1,5 +1,4 @@
 import {
-	DataflowGraph, EdgeType,
 	initializeCleanEnvironments
 } from '../../../../../src/dataflow'
 import { assertDataflow, withShell } from '../../../_helper/shell'
@@ -90,34 +89,34 @@ describe('Lists with if-then constructs', withShell(shell => {
 		assertDataflow('assignment both branches in if',
 			shell,
 			'x <- 1\nif(r) { x <- 2 } else { x <- 3}\n y <- x',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex( { tag: 'variable-definition', id: '0', name: 'x' })
 				.addVertex( { tag: 'use', id: '3', name: 'r',environment: envWithX() } )
 				.addVertex( { tag: 'variable-definition', id: '4', name: 'x', environment: envWithX(), when: 'maybe' } )
 				.addVertex( { tag: 'variable-definition', id: '8', name: 'x', environment: envWithX(), when: 'maybe' } )
 				.addVertex( { tag: 'use', id: '14', name: 'x', environment: define({ nodeId: '8',name: 'x', used: 'maybe',kind: 'variable',definedAt: '10' }, false, envThenBranch()) })
 				.addVertex( { tag: 'variable-definition', id: '13', name: 'y', environment: define({ nodeId: '8',name: 'x', used: 'maybe',kind: 'variable',definedAt: '10' }, false, envThenBranch()) })
-				.addEdge('0', '8', EdgeType.SameDefDef, 'maybe')
-				.addEdge('0', '4', EdgeType.SameDefDef, 'maybe')
-				.addEdge('14', '4', EdgeType.Reads, 'maybe')
-				.addEdge('14', '8', EdgeType.Reads, 'maybe')
-				.addEdge('13', '14', EdgeType.DefinedBy, 'always')
+				.sameDef('0', '8', 'maybe')
+				.sameDef('0', '4', 'maybe')
+				.reads('14', '4', 'maybe')
+				.reads('14', '8', 'maybe')
+				.definedBy('13', '14', 'always')
 		)
 		const envWithXMaybe = () => define({ nodeId: '0', name: 'x', kind: 'variable', definedAt: '2', used: 'maybe' }, false, initializeCleanEnvironments())
 		const envWithSecondXMaybe = () => define({ nodeId: '4', name: 'x', kind: 'variable', definedAt: '6', used: 'maybe' }, false, initializeCleanEnvironments())
 		assertDataflow('assignment if one branch',
 			shell,
 			'x <- 1\nif(r) { x <- 2 } \n y <- x',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex( { tag: 'variable-definition', id: '0', name: 'x' })
 				.addVertex( { tag: 'use', id: '3', name: 'r', environment: envWithX() } )
 				.addVertex( { tag: 'variable-definition', id: '4', name: 'x', environment: envWithX(), when: 'maybe' } )
 				.addVertex( { tag: 'use', id: '10', name: 'x', environment: appendEnvironment(envWithSecondXMaybe(), envWithXMaybe()) })
 				.addVertex( { tag: 'variable-definition', id: '9', name: 'y', environment: appendEnvironment(envWithSecondXMaybe(), envWithXMaybe()) })
-				.addEdge('0', '4', EdgeType.SameDefDef, 'maybe')
-				.addEdge('10', '0', EdgeType.Reads, 'maybe')
-				.addEdge('10', '4', EdgeType.Reads, 'maybe')
-				.addEdge('9', '10', EdgeType.DefinedBy, 'always')
+				.sameDef('0', '4', 'maybe')
+				.reads('10', '0', 'maybe')
+				.reads('10', '4', 'maybe')
+				.definedBy('9', '10', 'always')
 		)
 		const envWithY = () => define({ nodeId: '3', name: 'y', kind: 'variable', definedAt: '5', used: 'always' }, false, initializeCleanEnvironments())
 		const envWithXThen = () => define({ nodeId: '7', name: 'x', kind: 'variable', definedAt: '9', used: 'always' }, false, initializeCleanEnvironments())
@@ -133,7 +132,7 @@ describe('Lists with if-then constructs', withShell(shell => {
 		assertDataflow('assignment if multiple variables with else',
 			shell,
 			'x <- 1 \n y <- 2 \n if(r){ x <- 3 \n y <- 4} else {x <- 5} \n w <- x \n z <- y',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex({ tag: 'variable-definition', id: '0', name: 'x' })
 				.addVertex({ tag: 'variable-definition', id: '3', name: 'y', environment: envWithX() })
 				.addVertex({ tag: 'use', id: '6', name: 'r', environment: appendEnvironment(envWithX(), envWithY()) })
@@ -144,30 +143,30 @@ describe('Lists with if-then constructs', withShell(shell => {
 				.addVertex({ tag: 'use', id: '23', name: 'y', environment: appendEnvironment(envDirectlyAfterIf(), envWithW()) })
 				.addVertex({ tag: 'variable-definition', id: '19', name: 'w', environment: envDirectlyAfterIf() })
 				.addVertex({ tag: 'variable-definition', id: '22', name: 'z', environment: appendEnvironment(envDirectlyAfterIf(), envWithW()) })
-				.addEdge('20', '7', EdgeType.Reads, 'maybe')
-				.addEdge('20', '14', EdgeType.Reads, 'maybe')
-				.addEdge('23', '3', EdgeType.Reads, 'maybe')
-				.addEdge('23', '10', EdgeType.Reads, 'maybe')
-				.addEdge('19', '20', EdgeType.DefinedBy, 'always')
-				.addEdge('22', '23', EdgeType.DefinedBy, 'always')
-				.addEdge('7', '0', EdgeType.SameDefDef, 'maybe')
-				.addEdge('14', '0', EdgeType.SameDefDef, 'maybe')
-				.addEdge('10', '3', EdgeType.SameDefDef, 'maybe')
+				.reads('20', '7',  'maybe')
+				.reads('20', '14',  'maybe')
+				.reads('23', '3',  'maybe')
+				.reads('23', '10',  'maybe')
+				.definedBy('19', '20', 'always')
+				.definedBy('22', '23', 'always')
+				.sameDef('7', '0', 'maybe')
+				.sameDef('14', '0', 'maybe')
+				.sameDef('10', '3', 'maybe')
 		)
 		const envWithElseXMaybe = () => define({ nodeId: '5', name: 'x', kind: 'variable', definedAt: '7', used: 'maybe' }, false, initializeCleanEnvironments())
 		assertDataflow('assignment in else block',
 			shell,
 			'x <- 1 \n if(r){} else{x <- 2} \n y <- x',
-			new DataflowGraph()
+			emptyGraph()
 				.addVertex( { tag: 'variable-definition', id: '0', name: 'x' })
 				.addVertex( { tag: 'use', id: '3', name: 'r', environment: envWithX() } )
 				.addVertex( { tag: 'variable-definition', id: '5', name: 'x', environment: envWithX(), when: 'maybe' } )
 				.addVertex( { tag: 'use', id: '11', name: 'x', environment: appendEnvironment(envWithElseXMaybe(), envWithXMaybe()) })
 				.addVertex( { tag: 'variable-definition', id: '10', name: 'y', environment: appendEnvironment(envWithElseXMaybe(), envWithXMaybe()) })
-				.addEdge('0', '5', EdgeType.SameDefDef, 'maybe')
-				.addEdge('11', '0', EdgeType.Reads, 'maybe')
-				.addEdge('11', '5', EdgeType.Reads, 'maybe')
-				.addEdge('10', '11', EdgeType.DefinedBy, 'always')
+				.sameDef('0', '5', 'maybe')
+				.reads('11', '0', 'maybe')
+				.reads('11', '5', 'maybe')
+				.definedBy('10', '11', 'always')
 		)
 	})
 }))

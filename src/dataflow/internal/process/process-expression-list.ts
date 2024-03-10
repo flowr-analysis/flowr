@@ -46,7 +46,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 
 	for(const target of probableTarget) {
 		// we can stick with maybe even if readId.attribute is always
-		nextGraph.addEdge(read, target, EdgeType.Reads, undefined, true)
+		nextGraph.addEdge(read, target, { type: EdgeType.Reads }, true)
 	}
 }
 
@@ -70,7 +70,7 @@ function processNextExpression(
 		if(resolved !== undefined) {
 			// write-write
 			for(const target of resolved) {
-				nextGraph.addEdge(target, writeTarget, EdgeType.SameDefDef, undefined, true)
+				nextGraph.addEdge(target, writeTarget, { type: EdgeType.SameDefDef }, true)
 			}
 		}
 	}
@@ -94,7 +94,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
 						if(def.kind !== 'built-in-function') {
-							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall, def.used)
+							nextGraph.addEdge(def.nodeId, functionCall, { type: EdgeType.SideEffectOnCall, attribute: def.used })
 						}
 					}
 				}

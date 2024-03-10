@@ -89,7 +89,7 @@ export function processFunctionDefinition<OtherInfo>(
 		if(resolved !== undefined) {
 			// write-write
 			for(const target of resolved) {
-				subgraph.addEdge(target, writeTarget, EdgeType.SameDefDef, undefined, true)
+				subgraph.addEdge(target, writeTarget, { type: EdgeType.SameDefDef }, true)
 			}
 		}
 	}
@@ -156,7 +156,7 @@ function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph:
 				}
 				dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${name.info.id}`)
 				for(const ref of resolved) {
-					subgraph.addEdge(ingoing, ref, EdgeType.Reads, exitPoints.length > 1 ? 'maybe' : 'always')
+					subgraph.addEdge(ingoing, ref, { type: EdgeType.Reads, attribute: exitPoints.length > 1 ? 'maybe' : 'always' })
 				}
 			}
 		}
@@ -189,7 +189,7 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 		const resolved = resolveByName(read.name, parameterEnvs)
 		if(resolved !== undefined) {
 			for(const ref of resolved) {
-				parameters.addEdge(read, ref, EdgeType.Reads, 'always')
+				parameters.addEdge(read, ref, { type: EdgeType.Reads, attribute: 'always' })
 			}
 			continue
 		}
@@ -202,11 +202,11 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 			continue
 		}
 		if(writingOuts[0].used === 'always') {
-			parameters.addEdge(read, writingOuts[0], EdgeType.Reads, 'always')
+			parameters.addEdge(read, writingOuts[0], { type: EdgeType.Reads, attribute: 'always' })
 			continue
 		}
 		for(const out of writingOuts) {
-			parameters.addEdge(read, out, EdgeType.Reads, 'maybe')
+			parameters.addEdge(read, out, { type: EdgeType.Reads, attribute: 'maybe' })
 		}
 	}
 	return remainingRead
@@ -228,7 +228,7 @@ function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowG
 		const allIds = [...collectAllIds(nodeInAst)].filter(id => graph.get(id, true) !== undefined)
 		for(const relatedId of allIds) {
 			if(relatedId !== exitPoint) {
-				graph.addEdge(exitPoint, relatedId, EdgeType.Relates, 'always')
+				graph.addEdge(exitPoint, relatedId, { type: EdgeType.Relates, attribute: 'always' })
 			}
 		}
 	}

@@ -48,7 +48,7 @@ export function processAccess<OtherInfo>(
 		information = processKnownFunctionCall(name, newArgs, rootId, data).information
 	}
 
-	information.graph.addEdge(name.info.id, head.info.id, EdgeType.Returns, 'always', true)
+	information.graph.addEdge(name.info.id, head.info.id, { type: EdgeType.Returns, attribute: 'always' }, true)
 
 	return {
 		...information,

@@ -168,7 +168,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @param when - always (default), or maybe
 	 */
 	public reads(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, EdgeType.Reads, when)
+		return this.addEdge(from, to, { type: EdgeType.Reads, attribute: when })
 	}
 
 	/**
@@ -178,7 +178,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public definedBy(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, EdgeType.DefinedBy, when)
+		return this.addEdge(from, to, { type: EdgeType.DefinedBy, attribute: when })
 	}
 
 	/**
@@ -188,7 +188,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public sameRead(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, EdgeType.SameReadRead, when)
+		return this.addEdge(from, to, { type: EdgeType.SameReadRead, attribute: when })
 	}
 
 	/**
@@ -198,7 +198,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public sameDef(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, EdgeType.SameDefDef, when)
+		return this.addEdge(from, to, { type: EdgeType.SameDefDef, attribute: when })
 	}
 
 	/**
@@ -207,7 +207,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public calls(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, EdgeType.Calls, when)
+		return this.addEdge(from, to, { type: EdgeType.Calls, attribute: when })
 	}
 
 	/**
@@ -216,7 +216,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public returns(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, EdgeType.Returns, when)
+		return this.addEdge(from, to, { type: EdgeType.Returns, attribute: when })
 	}
 
 	/**
@@ -225,7 +225,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public definesOnCall(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, EdgeType.DefinesOnCall, when)
+		return this.addEdge(from, to, { type: EdgeType.DefinesOnCall, attribute: when })
 	}
 
 	/**
@@ -234,7 +234,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public argument(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, EdgeType.Argument, when)
+		return this.addEdge(from, to, { type: EdgeType.Argument, attribute: when })
 	}
 
 	/**
@@ -243,6 +243,6 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @see reads for parameters.
 	 */
 	public relates(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, EdgeType.Relates, when)
+		return this.addEdge(from, to, { type: EdgeType.Relates, attribute: when })
 	}
 }

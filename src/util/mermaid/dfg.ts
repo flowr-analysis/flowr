@@ -41,7 +41,7 @@ export function formatRange(range: SourceRange | undefined): string {
 	return `${range.start.line}.${range.start.column}-${range.end.line}.${range.end.column}`
 }
 
-function createArtificialExitPoints(exitPoints: NodeId[], mermaid: MermaidGraph, dataflowIdMap: DataflowMap, idPrefix: string) {
+function createArtificialExitPoints(exitPoints: readonly NodeId[], mermaid: MermaidGraph, dataflowIdMap: DataflowMap, idPrefix: string) {
 	for(const exitPoint of exitPoints) {
 		if(!mermaid.rootGraph.hasNode(exitPoint, true)) {
 			const node = dataflowIdMap.get(exitPoint)
@@ -52,7 +52,7 @@ function createArtificialExitPoints(exitPoints: NodeId[], mermaid: MermaidGraph,
 	}
 }
 
-function subflowToMermaid(nodeId: NodeId, exitPoints: NodeId[], subflow: DataflowFunctionFlowInformation | undefined, dataflowIdMap: DataflowMap | undefined, mermaid: MermaidGraph, idPrefix = ''): void {
+function subflowToMermaid(nodeId: NodeId, exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation | undefined, dataflowIdMap: DataflowMap | undefined, mermaid: MermaidGraph, idPrefix = ''): void {
 	if(subflow === undefined) {
 		return
 	}

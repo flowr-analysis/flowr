@@ -24,7 +24,7 @@ export function processAllArguments<OtherInfo>(
 	const remainingReadInArgs = []
 	for(const arg of args) {
 		if(arg === EmptyArgument) {
-			callArgs.push('empty')
+			callArgs.push(EmptyArgument)
 			processedArguments.push(undefined)
 			continue
 		}
@@ -70,9 +70,15 @@ export function processAllArguments<OtherInfo>(
 }
 
 
-export function addControlEdges(ref: readonly IdentifierReference[], controlDep: NodeId): IdentifierReference[] {
-	return ref.map(r => ({
-		...r,
-		controlDependency: r.controlDependency ? [controlDep, ...r.controlDependency] : [controlDep]
-	}))
+export function addControlEdges(ref: readonly IdentifierReference[], controlDep: NodeId, graph: DataflowGraph): IdentifierReference[] {
+	const out: IdentifierReference[] = new Array<IdentifierReference>(ref.length)
+	for(let i = 0; i < ref.length; i++) {
+		const r = ref[i]
+		const node = graph.get(r.nodeId, true)
+		if(node) {
+			node[0].controlDependency = node[0].controlDependency ? [controlDep, ...node[0].controlDependency] : [controlDep]
+		}
+		out[i] = { ...r, controlDependency: r.controlDependency ? [controlDep, ...r.controlDependency] : [controlDep] }
+	}
+	return out
 }

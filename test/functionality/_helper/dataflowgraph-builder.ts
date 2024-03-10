@@ -1,4 +1,5 @@
 import type { NodeId } from '../../../src'
+import { EmptyArgument } from '../../../src'
 import type {
 	DataflowFunctionFlowInformation,
 	DataflowGraphVertexUse,
@@ -6,6 +7,8 @@ import type {
 	REnvironmentInformation
 } from '../../../src/dataflow'
 import {
+	BuiltIn
+	,
 	CONSTANT_NAME,
 	DataflowGraph,
 	EdgeType
@@ -52,14 +55,26 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public call(id: NodeId, name: string, args: FunctionArgument[],
 		info?: {
-			returns?:           NodeId[],
-			reads?:             NodeId[],
+			returns?:           readonly NodeId[],
+			reads?:             readonly NodeId[],
 			onlyBuiltIn?:       boolean,
 			environment?:       REnvironmentInformation,
 			controlDependency?: NodeId[]
 		},
 		asRoot: boolean = true) {
-		this.addVertex({ tag: 'function-call', id, name, args, environment: info?.environment, controlDependency: info?.controlDependency, onlyBuiltin: info?.onlyBuiltIn ?? false }, asRoot)
+		const onlyBuiltInAuto = info?.reads?.length === 1 && info?.reads[0] === BuiltIn
+		const argsWithoutControlDependency: FunctionArgument[] = args.map((a: FunctionArgument) => {
+			if(a === EmptyArgument) {
+				return a
+			} else if(Array.isArray(a) && a[1] !== '<value>') {
+				return [a[0], { ...a[1], controlDependency: undefined }] as const
+			} else if(a !== '<value>') {
+				return { ...a, controlDependency: undefined } as const
+			} else {
+				return a
+			}
+		})
+		this.addVertex({ tag: 'function-call', id, name, args: argsWithoutControlDependency, environment: info?.environment, controlDependency: info?.controlDependency, onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false }, asRoot)
 		this.addArgumentLinks(id, args)
 		if(info?.returns) {
 			for(const ret of info.returns) {
@@ -77,7 +92,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	/* automatically adds argument links if they do not already exist */
 	private addArgumentLinks(id: NodeId, args: readonly FunctionArgument[]) {
 		for(const arg of args) {
-			if(arg === 'empty') {
+			if(arg === EmptyArgument) {
 				continue
 			}
 			if(Array.isArray(arg)) {
@@ -150,11 +165,12 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * Adds a vertex for a constant value (V6).
 	 *
 	 * @param id - AST node ID
+	 * @param options - Additional/optional properties;
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public constant(id: NodeId, asRoot: boolean = true) {
-		return this.addVertex({ tag: 'value', name: CONSTANT_NAME, id, controlDependency: undefined, environment: undefined }, asRoot)
+	public constant(id: NodeId, options?: { controlDependency?: NodeId[] }, asRoot: boolean = true) {
+		return this.addVertex({ tag: 'value', name: CONSTANT_NAME, id, controlDependency: options?.controlDependency, environment: undefined }, asRoot)
 	}
 
 	/**
@@ -163,7 +179,13 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @param from - Vertex/NodeId
 	 * @param to   - see from
 	 */
-	public reads(from: NodeId, to: NodeId) {
+	public reads(from: NodeId, to: NodeId | NodeId[]) {
+		if(Array.isArray(to)) {
+			for(const t of to) {
+				this.reads(from, t)
+			}
+			return this
+		}
 		return this.addEdge(from, to, { type: EdgeType.Reads })
 	}
 

@@ -82,8 +82,8 @@ export function processIfThenElse<OtherInfo>(
 
 	return {
 		unknownReferences: [],
-		in:                addControlEdges(ingoing, name.info.id),
-		out:               addControlEdges(outgoing, name.info.id),
+		in:                addControlEdges(ingoing, name.info.id, nextGraph),
+		out:               addControlEdges(outgoing, name.info.id, nextGraph),
 		environment:       finalEnvironment,
 		graph:             nextGraph
 	}

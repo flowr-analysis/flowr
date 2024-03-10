@@ -7,7 +7,7 @@ import type {
 	RSymbol, RUnnamedArgument
 } from '../../../../../../r-bridge'
 import {
-	collectAllIds, RType
+	RType
 } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
@@ -112,6 +112,11 @@ function processAssignmentToString<OtherInfo>(target: RString<OtherInfo & Parent
 	return processAssignmentToSymbol(config.superAssignment ?? false, name, source, symbol, getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]), rootId, data, res.information)
 }
 
+function checkFunctionDef<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, sourceInfo: DataflowInformation) {
+	const vertex = sourceInfo.graph.get(source.info.id)
+	return vertex?.[0].tag === 'function-definition'
+}
+
 function processAssignmentToSymbol<OtherInfo>(
 	superAssignment: boolean,
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -122,7 +127,7 @@ function processAssignmentToSymbol<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	information: DataflowInformation
 ) {
-	const isFunctionDef = source.type === RType.FunctionDefinition
+	const isFunctionDef = checkFunctionDef(source, sourceArg)
 
 	const writeNodes = produceWrittenNodes(rootId, targetArg, isFunctionDef)
 
@@ -139,18 +144,8 @@ function processAssignmentToSymbol<OtherInfo>(
 	// install assigned variables in environment
 	for(const write of writeNodes) {
 		information.environment = define(write, superAssignment, information.environment)
-
 		information.graph.setDefinitionOfVertex(write)
-
-		if(isFunctionDef) {
-			information.graph.addEdge(write, target.info.id, { type: EdgeType.DefinedBy })
-		} else {
-			const impactReadTargets = determineImpactOfSource<OtherInfo>(source, readTargets)
-
-			for(const read of impactReadTargets) {
-				information.graph.addEdge(write, read, { type: EdgeType.DefinedBy })
-			}
-		}
+		information.graph.addEdge(write, source.info.id, { type: EdgeType.DefinedBy })
 	}
 
 	information.graph.addEdge(name.info.id, target.info.id, { type: EdgeType.Returns })
@@ -164,33 +159,3 @@ function processAssignmentToSymbol<OtherInfo>(
 	}
 }
 
-/**
- * TODO: switch to track returns edge!
- * Some R-constructs like loops are known to return values completely independent of their input (loops return an invisible `NULL`).
- * This returns only those of `readTargets` that actually impact the target.
- */
-function determineImpactOfSource<OtherInfo>(
-	source: RNode<OtherInfo & ParentInformation>,
-	readTargets: readonly IdentifierReference[]
-): Set<IdentifierReference> {
-	// collect all ids from the source but stop at Loops, function calls, definitions and everything which links its own return
-	// for loops this is necessary as they *always* return an invisible null, for function calls we do not know if they do
-	// yet, we need to keep the ids of these elements
-	const keepEndIds: NodeId[] = []
-	const allIds = new Set(collectAllIds(source, n => {
-		if(n.type === RType.FunctionCall || n.type === RType.FunctionDefinition) {
-			keepEndIds.push(n.info.id)
-			return true
-		}
-		return n.type === RType.ForLoop || n.type === RType.WhileLoop || n.type === RType.RepeatLoop
-	})
-	)
-	for(const id of keepEndIds) {
-		allIds.add(id)
-	}
-	if(allIds.size === 0) {
-		return new Set()
-	} else {
-		return new Set(readTargets.filter(ref => allIds.has(ref.nodeId)))
-	}
-}

@@ -1,6 +1,5 @@
 import type { NodeId, ParentInformation, RFunctionArgument, RSymbol } from '../../../../../../r-bridge'
 import type { DataflowProcessorInformation } from '../../../../../processor'
-import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
 import {
 	linkCircularRedefinitionsWithinALoop,
@@ -8,7 +7,6 @@ import {
 } from '../../../../linker'
 import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
-import { unpackArgument } from '../argument/unpack-argument'
 import { guard } from '../../../../../../util/assert'
 
 export function processRepeatLoop<OtherInfo>(
@@ -22,21 +20,13 @@ export function processRepeatLoop<OtherInfo>(
 		return processKnownFunctionCall(name, args, rootId, data).information
 	}
 
-	const [bodyArg] = args.map(unpackArgument)
+	const { information, processedArguments } = processKnownFunctionCall(name, args, rootId, data)
 
-	guard(bodyArg !== undefined, () => `repeat-Loop ${JSON.stringify(args)} has missing arguments! Bad!`)
+	const body = processedArguments[0]
+	guard(body !== undefined, () => `Repeat-Loop ${name.content} has no body, impossible!`)
 
-	const body = processDataflowFor(bodyArg, data)
-
-	const graph = body.graph
 	const namedIdShares = produceNameSharedIdMap([...body.in, ...body.unknownReferences])
-	linkCircularRedefinitionsWithinALoop(graph, namedIdShares, body.out)
+	linkCircularRedefinitionsWithinALoop(information.graph, namedIdShares, body.out)
 
-	return {
-		unknownReferences: [],
-		in:                [...body.in, ...body.unknownReferences],
-		out:               body.out,
-		environment:       body.environment,
-		graph:             body.graph
-	}
+	return information
 }

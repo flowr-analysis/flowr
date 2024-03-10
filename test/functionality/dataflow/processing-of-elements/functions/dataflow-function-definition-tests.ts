@@ -64,7 +64,7 @@ describe('Function Definition', withShell(shell => {
 					})
 					.defineVariable('0', 'x', { },  false)
 					.use('4', 'x', { }, false)
-					.call('6', 'return', [argumentInCall('5', 'x')], { environment: envWithXDefined }, false)
+					.call('6', 'return', [argumentInCall('5', { name: 'x' })], { environment: envWithXDefined }, false)
 					.use('5', 'x', { }, false)
 					.reads('6', BuiltIn)
 					.calls('6', BuiltIn)
@@ -402,10 +402,7 @@ describe('Function Definition', withShell(shell => {
 
 	describe('Nested Function Definitions', () => {
 		const withXParameterInOuter = defaultEnv().pushEnv().defineFunction('x', '1', '9')
-		const withinNestedFunctionWithoutParam = defaultEnv().pushEnv().pushEnv()
-		const withinNestedFunctionWithParam = withinNestedFunctionWithoutParam.defineParameter('x', '2', '3')
 		const withinNestedFunctionWithDef = defaultEnv().pushEnv().pushEnv().defineVariable('x', '4', '6')
-		const envWithA = defaultEnv().defineFunction('a', '0', '13')
 
 		assertDataflow('double nested functions', shell, 'a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a',
 			emptyGraph()

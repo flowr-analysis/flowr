@@ -7,7 +7,7 @@ import { assertDataflow, withShell } from '../../../_helper/shell'
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions'
 import { label } from '../../../_helper/label'
 import { emptyGraph } from '../../../_helper/dataflowgraph-builder'
-import { argumentInCall, defaultEnv, unnamedArgument } from '../../../_helper/environment-builder'
+import { argumentInCall, unnamedArgument } from '../../../_helper/environment-builder'
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider'
 import { OperatorDatabase } from '../../../../../src'
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data'
@@ -86,7 +86,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.reads('3-arg', '0')
 			)
 		})
-		assertDataflow(label('Chained bracket access with variables', ['name-normal', 'single-bracket-access']), shell,
+		assertDataflow(label('Chained bracket access wi...OperatorDatabase[\'<-\'].capabilitiesth variables', ['name-normal', 'single-bracket-access']), shell,
 			'a[x][y]', emptyGraph()
 				.call('3', '[', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
 				.use('0', 'a', { controlDependency: [] })
@@ -97,7 +97,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				.use('4', 'y').reads('5', '4')
 				.reads('3-arg', '0')
 		)
-		assertDataflow(label('Assign on Access', ['name-normal', 'single-bracket-access', 'local-left-assignment']), shell,
+		assertDataflow(label('Assign on Access', ['name-normal', 'single-bracket-access', ...OperatorDatabase['<-'].capabilities, 'replacement-functions']), shell,
 			'a[x] <- 5',
 			emptyGraph()
 				.use('0-arg', unnamedArgument('0-arg'), { controlDependency: [] })
@@ -163,7 +163,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				const args: FunctionArgument[] = [argumentInCall('0-arg'), argumentInCall('1-arg')]
 
 				const constantAssignment = swapSourceAndTarget ? `5 ${op} x` : `x ${op} 5`
-				assertDataflow(`${constantAssignment} (constant assignment)`,
+				assertDataflow(label(`${constantAssignment} (constant assignment)`, ['name-normal', ...OperatorDatabase[op].capabilities, 'numbers']),
 					shell, constantAssignment,
 					emptyGraph()
 						.call('2', op, args, { reads: [BuiltIn], returns: [variableId] })
@@ -192,15 +192,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				const circularAssignment = `x ${op} x`
 
 				const circularGraph = emptyGraph()
-					.call('2', op, args)
-					.use('0-arg', unnamedArgument('0-arg'))
-					.use('1-arg', unnamedArgument('1-arg'))
-					.argument('2', '0-arg')
-					.argument('2', '1-arg')
-					.reads('1-arg', '1')
-					.reads('0-arg', '0')
-					.reads('2',  BuiltIn)
-					.returns('2', variableId)
+					.call('2', op, args, { reads: [BuiltIn], returns: [variableId] })
 				if(swapSourceAndTarget) {
 					circularGraph
 						.use('0', 'x')
@@ -213,18 +205,17 @@ describe('Atomic (dataflow information)', withShell(shell => {
 						.definedBy('0', '1')
 				}
 
-				assertDataflow(`${circularAssignment} (circular assignment)`,
-					shell,
-					circularAssignment,
+				assertDataflow(label(`${circularAssignment} (circular assignment)`, ['name-normal', ...OperatorDatabase[op].capabilities, 'return-value-of-assignments']),
+					shell, circularAssignment,
 					circularGraph
 				)
 			})
 		}
 		describe('Nested Assignments', () => {
-			assertDataflow('"x <- y <- 1"',
+			assertDataflow(label('"x <- y <- 1"', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments']),
 				shell, 'x <- y <- 1',
 				emptyGraph()
-					.defineVariable('0', 'x', { definedBy: ['3', '2'] })
+					.defineVariable('0', 'x', { definedBy: ['3'] })
 					.defineVariable('1', 'y', { definedBy: ['2'] })
 					.constant('2')
 					.call('3', '<-', [argumentInCall('1-arg'), argumentInCall('2-arg')], { returns: ['1'], reads: [BuiltIn] })
@@ -233,11 +224,11 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.reads('3-arg', '2')
 					.sameRead('3', '4')
 			)
-			assertDataflow('"1 -> x -> y"',
+			assertDataflow(label('"1 -> x -> y"', ['name-normal', 'numbers', 'local-right-assignment', 'return-value-of-assignments']),
 				shell, '1 -> x -> y',
 				emptyGraph()
 					.defineVariable('1', 'x', { definedBy: ['0'] })
-					.defineVariable('3', 'y', { definedBy: ['2', '0'] })
+					.defineVariable('3', 'y', { definedBy: ['2'] })
 					.constant('0')
 					.call('2', '->', [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: ['1'], reads: [BuiltIn] })
 					.call('4', '->', [argumentInCall('2-arg'), argumentInCall('3-arg')], { returns: ['3'], reads: [BuiltIn] })
@@ -245,113 +236,131 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					.reads('2-arg', '1')
 					.sameRead('2', '4')
 			)
-			// still by indirection (even though y is overwritten?)
-			assertDataflow('"x <- 1 -> y"', shell,
-				'x <- 1 -> y',
+			assertDataflow(label('"x <- 1 -> y"', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'local-right-assignment', 'return-value-of-assignments']),
+				shell, 'x <- 1 -> y',
 				emptyGraph()
-					.defineVariable('0', 'x', { definedBy: ['3', '2'] })
+					.defineVariable('0', 'x', { definedBy: ['3'] })
+					.defineVariable('2', 'y', { definedBy: ['1'] })
+					.constant('1')
+					.call('3', '->', [argumentInCall('1-arg'), argumentInCall('2-arg')], { returns: ['2'], reads: [BuiltIn] })
+					.call('4', '<-', [argumentInCall('0-arg'), argumentInCall('3-arg')], { returns: ['0'], reads: [BuiltIn] })
+					.reads('3-arg', '1')
+					.reads('3-arg', '2')
+			)
+			assertDataflow(label('"x <- y <- z"', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments']),
+				shell, 'x <- y <- z',
+				emptyGraph()
+					.defineVariable('0', 'x', { definedBy: ['3'] })
 					.defineVariable('1', 'y', { definedBy: ['2'] })
-					.constant('2')
+					.use('2', 'z')
 					.call('3', '<-', [argumentInCall('1-arg'), argumentInCall('2-arg')], { returns: ['1'], reads: [BuiltIn] })
-					.call('4', '->', [argumentInCall('0-arg'), argumentInCall('3-arg')], { returns: ['0'], reads: [BuiltIn] })
+					.call('4', '<-', [argumentInCall('0-arg'), argumentInCall('3-arg')], { returns: ['0'], reads: [BuiltIn] })
 					.reads('3-arg', '1')
 					.reads('3-arg', '2')
 					.sameRead('3', '4')
 			)
-			assertDataflow('"x <- y <- z"', shell,
-				'x <- y <- z',
+			assertDataflow(label('Nested Global Assignments', ['name-normal', ...OperatorDatabase['<<-'].capabilities, 'return-value-of-assignments']),
+				shell, 'x <<- y <<- z',
 				emptyGraph()
-					.defineVariable('0', 'x')
-					.defineVariable('1', 'y')
+					.defineVariable('0', 'x', { definedBy: ['3'] })
+					.defineVariable('1', 'y', { definedBy: ['2'] })
 					.use('2', 'z')
-					.definedBy('0', '1')
-					.definedBy('1', '2')
-					.definedBy('0', '2')
+					.call('3', '<<-', [argumentInCall('1-arg'), argumentInCall('2-arg')], { returns: ['1'], reads: [BuiltIn] })
+					.call('4', '<<-', [argumentInCall('0-arg'), argumentInCall('3-arg')], { returns: ['0'], reads: [BuiltIn] })
+					.reads('3-arg', '1')
+					.reads('3-arg', '2')
+					.sameRead('3', '4')
 			)
-			assertDataflow('nested global assignments', shell,
-				'x <<- y <<- z',
+			assertDataflow(label('Nested Global Mixed with Local Assignments', ['name-normal', ...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments']),
+				shell, 'x <<- y <- y2 <<- z',
 				emptyGraph()
-					.defineVariable('0', 'x')
-					.defineVariable('1', 'y')
-					.use('2', 'z')
-					.definedBy('0', '1')
-					.definedBy('1', '2')
-					.definedBy('0', '2')
-			)
-			assertDataflow('nested global mixed with local assignments', shell,
-				'x <<- y <- y2 <<- z',
-				emptyGraph()
-					.defineVariable('0', 'x')
-					.defineVariable('1', 'y')
-					.defineVariable('2', 'y2')
+					.defineVariable('0', 'x',  { definedBy: ['5'] })
+					.defineVariable('1', 'y',  { definedBy: ['4'] })
+					.defineVariable('2', 'y2', { definedBy: ['3'] })
 					.use('3', 'z')
-					.definedBy('0', '1')
-					.definedBy('0', '2')
-					.definedBy('0', '3')
-					.definedBy('1', '2')
-					.definedBy('1', '3')
-					.definedBy('2', '3')
+					.call('4', '<<-', [argumentInCall('2-arg'), argumentInCall('3-arg')], { returns: ['2'], reads: [BuiltIn] })
+					.call('5', '<-',  [argumentInCall('1-arg'), argumentInCall('4-arg')], { returns: ['1'], reads: [BuiltIn] })
+					.call('6', '<<-', [argumentInCall('0-arg'), argumentInCall('5-arg')], { returns: ['0'], reads: [BuiltIn] })
+					.sameRead('4', '6')
+					.reads('5-arg', ['3', '4', '1'])
+					.reads('4-arg', ['2', '3'])
 			)
-			assertDataflow('Use Assignment on Target Side', shell,
-				'a[x] <- x <- 3',
+			assertDataflow(label('Use Assignment on Target Side', ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments']),
+				shell, 'a[x] <- x <- 3',
 				emptyGraph()
-					.defineVariable('0', 'x')
-					.defineVariable('1', 'y')
-					.defineVariable('2', 'y2')
-					.use('3', 'z')
-					.definedBy('0', '1')
-					.definedBy('0', '2')
-					.definedBy('0', '3')
-					.definedBy('1', '2')
-					.definedBy('1', '3')
-					.definedBy('2', '3')
+					.use('1', 'x')
+					.use('0-arg', unnamedArgument('0-arg'), { controlDependency: [] }).argument('3', '0-arg')
+					.reads('0-arg', '0')
+					.use('6-arg', unnamedArgument('6-arg'), { controlDependency: [] }).argument('3', '6-arg')
+					.reads('6-arg', ['6', '5', '4'])
+					.call('3', '[<-', [argumentInCall('0-arg'), argumentInCall('2'), argumentInCall('6-arg')], { returns: ['0'], reads: [BuiltIn] })
+					.reads('2', '1')
+					.call('6', '<-', [argumentInCall('4-arg'), argumentInCall('5-arg')], { returns: ['4'], reads: [BuiltIn] })
+					.constant('5')
+					.defineVariable('4', 'x', { definedBy: ['5'] })
+					.defineVariable('0', 'a', { definedBy: ['6'], controlDependency: [] })
 			)
-			assertDataflow('Use Assignment on Target Side (inv)', shell,
-				'3 -> x -> a[x]',
+			assertDataflow(label('Use Assignment on Target Side (inv)', ['numbers', 'single-bracket-access', 'replacement-functions', 'name-normal', 'local-right-assignment', 'return-value-of-assignments']),
+				shell, '3 -> x -> a[x]',
 				emptyGraph()
-					.defineVariable('0', 'x')
-					.defineVariable('1', 'y')
-					.defineVariable('2', 'y2')
-					.use('3', 'z')
-					.definedBy('0', '1')
-					.definedBy('0', '2')
-					.definedBy('0', '3')
-					.definedBy('1', '2')
-					.definedBy('1', '3')
-					.definedBy('2', '3')
+					.use('3-arg', unnamedArgument('3-arg'), { controlDependency: [] }).argument('6', '3-arg')
+					.reads('3-arg', '3')
+					.use('2-arg', unnamedArgument('2-arg'), { controlDependency: [] }).argument('6', '2-arg')
+					.reads('2-arg', ['0', '1', '2'])
+					.use('4', 'x')
+					.call('2', '->', [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: ['1'], reads: [BuiltIn] })
+					.reads('5', '4')
+					.call('6', '[<-', [argumentInCall('3-arg'), argumentInCall('5'), argumentInCall('2-arg')], { returns: ['3'], reads: [BuiltIn] })
+					.constant('0')
+					.defineVariable('1', 'x', { definedBy: ['0'] })
+					.defineVariable('3', 'a', { definedBy: ['2'], controlDependency: [] })
 			)
 		})
 
-		describe('known impact assignments', () => {
-			describe('loops return invisible null', () => {
-				for(const assignment of [ { str: '<-', defId: ['0','0','0'], readId: ['1','1','1'], swap: false },
-					{ str: '<<-', defId: ['0','0','0'], readId: ['1','1','1'], swap: false }, { str: '=', defId: ['0','0','0'], readId: ['1','1','1'], swap: false },
-					/* two for parenthesis necessary for precedence */
-					{ str: '->', defId: ['3', '4', '7'], readId: ['0','0','0'], swap: true }, { str: '->>', defId: ['3', '4', '7'], readId: ['0','0','0'], swap: true }] ) {
-					describe(`${assignment.str}`, () => {
-						for(const wrapper of [(x: string) => x, (x: string) => `{ ${x} }`]) {
-							const build = (a: string, b: string) => assignment.swap ? `(${wrapper(b)}) ${assignment.str} ${a}` : `${a} ${assignment.str} ${wrapper(b)}`
+		describe('Known Impact Assignments', () => {
+			describe('Loops Return Invisible Null', () => {
+				describe('With <-', () => {
+					assertDataflow(label('Repeat', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments', 'repeat-loop']),
+						shell, 'x <- repeat x',
+						emptyGraph()
+							.use('2-arg', unnamedArgument('2-arg'))
+							.argument('3', '2-arg')
+							.call('3', 'repeat', [argumentInCall('2-arg')], { returns: [], reads: [BuiltIn] })
+							.use('1', 'x')
+							.call('4', '<-', [argumentInCall('0-arg'), argumentInCall('3-arg')], { returns: ['0'], reads: [BuiltIn] })
+							.reads('3-arg', '1')
+							.reads('2-arg', '1')
+							.defineVariable('0', 'x', { definedBy: ['3'] })
+					)
 
-							const repeatCode = build('x', 'repeat x')
-							assertDataflow(`"${repeatCode}"`, shell, repeatCode, emptyGraph()
-								.defineVariable(assignment.defId[0], 'x')
-								.use(assignment.readId[0], 'x')
-							)
+					assertDataflow(label('While', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments', 'while-loop', 'numbers']),
+						shell, 'x <- while (x) 3',
+						emptyGraph()
+							.use('3-arg', unnamedArgument('3-arg'), { controlDependency: ['4'] })
+							.argument('4', '3-arg')
+							.call('4', 'while', [argumentInCall('1-arg', { controlDependency: ['4'] }), argumentInCall('3-arg', { controlDependency: ['4'] })], { returns: [], reads: [BuiltIn] })
+							.use('1', 'x', { controlDependency: ['4'] })
+							.constant('2', { controlDependency: ['4'] })
+							.call('5', '<-', [argumentInCall('0-arg'), argumentInCall('4-arg')], { returns: ['0'], reads: [BuiltIn] })
+							.reads('4-arg', ['1', '2', '4'])
+							.reads('3-arg', '2')
+							.defineVariable('0', 'x', { definedBy: ['4'] })
+					)
 
-							const whileCode = build('x', 'while (x) 3')
-							assertDataflow(`"${whileCode}"`, shell, whileCode, emptyGraph()
-								.defineVariable(assignment.defId[1], 'x')
-								.use(assignment.readId[1], 'x'))
-
-							const forCode = build('x', 'for (x in 1:4) 3')
-							assertDataflow(`"${forCode}"`, shell, forCode,
-								emptyGraph()
-									.defineVariable(assignment.defId[2], 'x')
-									.defineVariable(assignment.readId[2], 'x')
-							)
-						}
-					})
-				}
+					assertDataflow(label('For', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'return-value-of-assignments', 'for-loop', 'numbers', 'built-in-sequencing']),
+						shell, 'x <- for (i in 1:4) 3',
+						emptyGraph()
+							.use('3-arg', unnamedArgument('3-arg'), { controlDependency: ['4'] })
+							.argument('4', '3-arg')
+							.call('4', 'for', [argumentInCall('1-arg', { controlDependency: ['4'] }), argumentInCall('3-arg', { controlDependency: ['4'] })], { returns: [], reads: [BuiltIn] })
+							.use('1', 'x', { controlDependency: ['4'] })
+							.constant('2', { controlDependency: ['4'] })
+							.call('5', '<-', [argumentInCall('0-arg'), argumentInCall('4-arg')], { returns: ['0'], reads: [BuiltIn] })
+							.reads('4-arg', ['1', '2', '4'])
+							.reads('3-arg', '2')
+							.defineVariable('0', 'x', { definedBy: ['4'] })
+					)
+				})
 			})
 		})
 		describe('assignment with function call', () => {
@@ -359,7 +368,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				emptyGraph()
 					.defineVariable('0', 'a')
 					.call('9', 'foo', [
-						argumentInCall('4', 'x'),
+						argumentInCall('4', { name: 'x' }),
 						argumentInCall('6'),
 						argumentInCall('8')
 					])

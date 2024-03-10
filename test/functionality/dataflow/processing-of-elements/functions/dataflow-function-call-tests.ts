@@ -5,6 +5,7 @@ import { argumentInCall, defaultEnv, unnamedArgument } from '../../../_helper/en
 import {
 	UnnamedFunctionCallPrefix
 } from '../../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling'
+import { EmptyArgument } from '../../../../../src'
 
 describe('Function Call', withShell(shell => {
 	describe('Calling previously defined functions', () => {
@@ -212,7 +213,7 @@ a()()`,
 	describe('Multiple out refs in arguments', () => {
 		assertDataflow('Calling \'seq\'', shell, 'seq(1, length(pkgnames), by = stepsize)',
 			emptyGraph()
-				.call('11', 'seq', [argumentInCall('2'), argumentInCall('7'), argumentInCall('10', 'by')],{ environment: defaultEnv() })
+				.call('11', 'seq', [argumentInCall('2'), argumentInCall('7'), argumentInCall('10', { name: 'by' })],{ environment: defaultEnv() })
 				.use('2', unnamedArgument('2'))
 				.use('7', unnamedArgument('7'))
 				.use('10', 'by')
@@ -266,7 +267,7 @@ a()()`,
 		assertDataflow('Not giving first parameter', shell, `a <- function(x=3,y) { y }
 a(,3)`, emptyGraph()
 			.call('13', 'a', [
-				'empty',
+				EmptyArgument,
 				{ nodeId: '12', name: unnamedArgument('12') }
 			],
 			{ environment: withADefined })
@@ -294,7 +295,7 @@ a(,3)`, emptyGraph()
 	})
 	describe('Reuse parameters in call', () => {
 		assertDataflow('Not giving first argument', shell, 'a(x=3, x)', emptyGraph()
-			.call('6', 'a', [argumentInCall('3', 'x'), argumentInCall('5')])
+			.call('6', 'a', [argumentInCall('3', { name: 'x' }), argumentInCall('5')])
 			.use('3', 'x')
 			.use('5', unnamedArgument('5'))
 			.use('4', 'x')

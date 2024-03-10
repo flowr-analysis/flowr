@@ -18,14 +18,13 @@ export function variable(name: string, definedAt: NodeId): IdentifierDefinition 
 /**
  * Provides a FunctionArgument to use with function call vertices.
  * @param nodeId - AST Node ID
- * @param name - optional; can be removed for unnamed arguments
  * @param options - optional allows to give further options
  */
-export function argumentInCall(nodeId: NodeId, name?: string, options?: { controlDependency?: NodeId[] }): FunctionArgument {
-	if(name === undefined) {
+export function argumentInCall(nodeId: NodeId, options?: { name?: string, controlDependency?: NodeId[] }): FunctionArgument {
+	if(options?.name === undefined) {
 		return { nodeId, name: unnamedArgument(nodeId), controlDependency: options?.controlDependency }
 	} else {
-		return [name, { nodeId, name, controlDependency: options?.controlDependency }]
+		return [options.name, { nodeId, name: options.name, controlDependency: options?.controlDependency }]
 	}
 }
 

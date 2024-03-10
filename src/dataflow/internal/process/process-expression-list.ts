@@ -17,7 +17,7 @@ import { makeAllMaybe,
 import { linkFunctionCalls, linkReadVariablesInSameScopeWithNames } from '../linker'
 import { DefaultMap } from '../../../util/defaultmap'
 import type { DataflowGraphVertexInfo } from '../../graph'
-import { DataflowGraph } from '../../graph'
+import { CONSTANT_NAME , DataflowGraph } from '../../graph'
 import { dataflowLogger, EdgeType } from '../../index'
 import { guard } from '../../../util/assert'
 import { processAsNamedCall } from './process-named-call'
@@ -25,10 +25,7 @@ import { processAsNamedCall } from './process-named-call'
 
 const dotDotDotAccess = /\.\.\d+/
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
-	if(!read.name) {
-		return
-	}
-	const readName = dotDotDotAccess.test(read.name) ? '...' : read.name
+	const readName = read.name && dotDotDotAccess.test(read.name) ? '...' : read.name ?? CONSTANT_NAME
 
 	const probableTarget = resolveByName(readName, environments)
 

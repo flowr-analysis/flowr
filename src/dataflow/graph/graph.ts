@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert'
-import type { NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
+import type { EmptyArgument, NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
 import type { IdentifierDefinition, IdentifierReference } from '../environments'
 import { cloneEnvironmentInformation, initializeCleanEnvironments } from '../environments'
 import type { BiMap } from '../../util/bimap'
@@ -15,7 +15,6 @@ import type {
 	DataflowGraphVertexInfo,
 	DataflowGraphVertices
 } from './vertex'
-import type { DifferenceReport } from '../../util/diff'
 import { arrayEqual } from '../../util/arrays'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
@@ -27,7 +26,7 @@ export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph'>
 
 export type NamedFunctionArgument = [string, IdentifierReference | '<value>']
 export type PositionalFunctionArgument = IdentifierReference | '<value>'
-export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | 'empty'
+export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument
 
 type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'controlDependency'>  | IdentifierDefinition
 

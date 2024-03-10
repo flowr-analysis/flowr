@@ -75,7 +75,7 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
  */
 export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVertexBase {
 	readonly tag:          'variable-definition'
-	readonly environment?: REnvironmentInformation
+	readonly environment?: undefined
 }
 
 export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVertexBase {

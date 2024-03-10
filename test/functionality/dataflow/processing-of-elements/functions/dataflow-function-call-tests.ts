@@ -15,7 +15,7 @@ describe('Function Call', withShell(shell => {
 		assertDataflow('Calling function a', shell, 'i <- 4; a <- function(x) { x }\na(i)',
 			emptyGraph()
 				.defineVariable('0', 'i')
-				.defineVariable('3', 'a', { environment: envWithFirstI })
+				.defineVariable('3', 'a')
 				.use('11', 'i')
 				.use('12', unnamedArgument('12'))
 				.call('13', 'a', [argumentInCall('12')], { environment: envWithIA })
@@ -26,7 +26,7 @@ describe('Function Call', withShell(shell => {
 					environment:       envWithXParamDefined,
 					graph:             new Set(['4', '6']),
 				}, { environment: envWithXParamDefined.popEnv() })
-				.defineVariable('4', 'x', { environment: defaultEnv().pushEnv() },  false)
+				.defineVariable('4', 'x', { },  false)
 				.use('6', 'x', { }, false)
 				.reads('6', '4')
 				.reads('11', '0')
@@ -42,8 +42,8 @@ describe('Function Call', withShell(shell => {
 		assertDataflow('Calling function a with an indirection', shell, 'i <- 4; a <- function(x) { x }\nb <- a\nb(i)',
 			emptyGraph()
 				.defineVariable('0', 'i')
-				.defineVariable('3', 'a', { environment: envWithFirstI })
-				.defineVariable('10', 'b', { environment: envWithIA })
+				.defineVariable('3', 'a')
+				.defineVariable('10', 'b')
 				.use('11', 'a')
 				.use('14', 'i')
 				.use('15', unnamedArgument('15'))
@@ -56,7 +56,7 @@ describe('Function Call', withShell(shell => {
 					graph:             new Set(['4', '6'])
 				},
 				{ environment: envWithXParamDefined.popEnv() })
-				.defineVariable('4', 'x', { environment: defaultEnv().pushEnv() },  false)
+				.defineVariable('4', 'x', { },  false)
 				.use('6', 'x', { }, false)
 				.reads('6', '4')
 				.reads('14', '0')
@@ -70,8 +70,6 @@ describe('Function Call', withShell(shell => {
 				.returns('16', '6')
 				.definesOnCall('15', '4')
 		)
-		const envWithXConstDefined = defaultEnv().pushEnv().defineParameter('x', '4', '5')
-		const envWithXDefinedForFunc = defaultEnv().pushEnv().defineVariable('x', '6', '8')
 		const envWithLastXDefined = defaultEnv().pushEnv().defineVariable('x', '9', '11')
 		const envWithIAndLargeA = envWithFirstI.defineFunction('a', '3', '15')
 
@@ -79,7 +77,7 @@ describe('Function Call', withShell(shell => {
 a <- function(x) { x <- x; x <- 3; 1 }
 a(i)`, emptyGraph()
 			.defineVariable('0', 'i')
-			.defineVariable('3', 'a', { environment: envWithFirstI })
+			.defineVariable('3', 'a')
 			.use('17', 'i')
 			.use('18', unnamedArgument('18'))
 			.reads('17', '0')
@@ -93,9 +91,9 @@ a(i)`, emptyGraph()
 			},
 			{ environment: defaultEnv() }
 			)
-			.defineVariable('4', 'x', { environment: defaultEnv().pushEnv() },  false)
-			.defineVariable('6', 'x', { environment: envWithXConstDefined },  false)
-			.defineVariable('9', 'x', { environment: envWithXDefinedForFunc },  false)
+			.defineVariable('4', 'x', { },  false)
+			.defineVariable('6', 'x', { },  false)
+			.defineVariable('9', 'x', { },  false)
 			.use('7', 'x', { }, false)
 			.exit('12', '1', { environment: envWithLastXDefined }, false)
 			.definedBy('6', '7')
@@ -126,7 +124,7 @@ a(i)`, emptyGraph()
 				graph:             new Set(['0', '2'])
 			},
 			{ environment: defaultEnv() })
-			.defineVariable('0', 'x', { environment: defaultEnv().pushEnv() },  false)
+			.defineVariable('0', 'x', { },  false)
 			.use('2', 'x', { }, false)
 			.exit('4', '+', { environment: envWithXParameter }, false)
 			.relates('2', '4')
@@ -241,7 +239,7 @@ a()()`,
 		assertDataflow('Late binding of y', shell, 'a <- function() { y }\ny <- 12\na()',
 			emptyGraph()
 				.defineVariable('0', 'a')
-				.defineVariable('5', 'y', { environment: defWithA })
+				.defineVariable('5', 'y')
 				.call('9', 'a', [], { environment: defWithAY })
 				.defineFunction('3', '3', ['1'], {
 					out:               [],
@@ -281,8 +279,8 @@ a(,3)`, emptyGraph()
 				graph:             new Set(['1', '4', '6'])
 			},
 			{ environment: withXYParameter.popEnv() })
-			.defineVariable('1', 'x', { environment: defaultEnv().pushEnv() },  false)
-			.defineVariable('4', 'y', { environment: withXParameter },  false)
+			.defineVariable('1', 'x', { },false)
+			.defineVariable('4', 'y', { },false)
 			.use('6', 'y', { }, false)
 			.reads('6', '4')
 			.use('12', unnamedArgument('12'))

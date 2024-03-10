@@ -224,7 +224,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			assertDataflow('"x <- y <- 1"',
 				shell, 'x <- y <- 1',
 				emptyGraph()
-					.defineVariable('0', 'x', { definedBy: ['3', '2'], environment: defaultEnv().defineVariable('y', '1', '3') })
+					.defineVariable('0', 'x', { definedBy: ['3', '2'] })
 					.defineVariable('1', 'y', { definedBy: ['2'] })
 					.constant('2')
 					.call('3', '<-', [argumentInCall('1-arg'), argumentInCall('2-arg')], { returns: ['1'], reads: [BuiltIn] })
@@ -237,7 +237,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				shell, '1 -> x -> y',
 				emptyGraph()
 					.defineVariable('1', 'x', { definedBy: ['0'] })
-					.defineVariable('3', 'y', { definedBy: ['2', '0'], environment: defaultEnv().defineVariable('x', '1', '2') })
+					.defineVariable('3', 'y', { definedBy: ['2', '0'] })
 					.constant('0')
 					.call('2', '->', [argumentInCall('0-arg'), argumentInCall('1-arg')], { returns: ['1'], reads: [BuiltIn] })
 					.call('4', '->', [argumentInCall('2-arg'), argumentInCall('3-arg')], { returns: ['3'], reads: [BuiltIn] })
@@ -249,7 +249,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			assertDataflow('"x <- 1 -> y"', shell,
 				'x <- 1 -> y',
 				emptyGraph()
-					.defineVariable('0', 'x', { definedBy: ['3', '2'], environment: defaultEnv().defineVariable('y', '1', '3') })
+					.defineVariable('0', 'x', { definedBy: ['3', '2'] })
 					.defineVariable('1', 'y', { definedBy: ['2'] })
 					.constant('2')
 					.call('3', '<-', [argumentInCall('1-arg'), argumentInCall('2-arg')], { returns: ['1'], reads: [BuiltIn] })
@@ -544,11 +544,10 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		}
 	})
 	describe('inline non-strict boolean operations', () => {
-		const environmentWithY = defaultEnv().defineVariable('y', '0', '2')
 		assertDataflow('define call with multiple args should only be defined by the call-return', shell, 'y <- 15; x && (y <- 13); y',
 			emptyGraph()
 				.defineVariable('0', 'y')
-				.defineVariable('4', 'y', { environment: environmentWithY })
+				.defineVariable('4', 'y', { })
 				.use('3', 'x')
 				.use('8', 'y')
 				.reads('8', '0')

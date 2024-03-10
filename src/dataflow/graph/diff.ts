@@ -178,20 +178,20 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 		}
 		const [rInfo] = rInfoMay
 		if(lInfo.tag !== rInfo.tag) {
-			ctx.report.addComment(`Vertex ${id} has different tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`)
+			ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`)
 		}
 		if(lInfo.name !== rInfo.name) {
-			ctx.report.addComment(`Vertex ${id} has different names. ${ctx.leftname}: ${lInfo.name} vs ${ctx.rightname}: ${rInfo.name}`)
+			ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${lInfo.name} vs ${ctx.rightname}: ${rInfo.name}`)
 		}
 		if(!arrayEqual(lInfo.controlDependency, rInfo.controlDependency)) {
-			ctx.report.addComment(`Vertex ${id} has different controlDependency. ${ctx.leftname}: ${JSON.stringify(lInfo.controlDependency)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.controlDependency)}`)
+			ctx.report.addComment(`Vertex ${id} differs in controlDependency. ${ctx.leftname}: ${JSON.stringify(lInfo.controlDependency)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.controlDependency)}`)
 		}
 
 		diffEnvironmentInformation(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environment. ` })
 
 		if(lInfo.tag === 'function-call') {
 			if(rInfo.tag !== 'function-call') {
-				ctx.report.addComment(`Vertex ${id} has different tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`)
+				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`)
 			} else {
 				diffFunctionArguments(lInfo.args, rInfo.args, {
 					...ctx,
@@ -202,11 +202,11 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 
 		if(lInfo.tag === 'function-definition') {
 			if(rInfo.tag !== 'function-definition') {
-				ctx.report.addComment(`Vertex ${id} has different tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`)
+				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`)
 			} else {
 
 				if(!arrayEqual(lInfo.exitPoints, rInfo.exitPoints)) {
-					ctx.report.addComment(`Vertex ${id} has different exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints, jsonReplacer)}`)
+					ctx.report.addComment(`Vertex ${id} differs in exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints, jsonReplacer)}`)
 				}
 
 				diffEnvironmentInformation(lInfo.subflow.environment, rInfo.subflow.environment, {
@@ -231,7 +231,7 @@ export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: Outgoing
 	}
 
 	if(lEdges.size !== rEdges.size) {
-		ctx.report.addComment(`Vertex ${id} has different number of outgoing edges. ${ctx.leftname}: ${JSON.stringify(lEdges, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rEdges, jsonReplacer)}`)
+		ctx.report.addComment(`Vertex ${id} differs in number of outgoing edges. ${ctx.leftname}: ${JSON.stringify(lEdges, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rEdges, jsonReplacer)}`)
 	}
 	// order independent compare
 	for(const [target, edge] of lEdges) {
@@ -241,10 +241,10 @@ export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: Outgoing
 			continue
 		}
 		if(edge.types.size !== otherEdge.types.size) {
-			ctx.report.addComment(`Target of ${id}->${target} in ${ctx.leftname} has different number of edge types: ${JSON.stringify([...edge.types])} vs ${JSON.stringify([...otherEdge.types])}`)
+			ctx.report.addComment(`Target of ${id}->${target} in ${ctx.leftname} differs in number of edge types: ${JSON.stringify([...edge.types])} vs ${JSON.stringify([...otherEdge.types])}`)
 		}
 		if([...edge.types].some(e => !otherEdge.types.has(e))) {
-			ctx.report.addComment(`Target of ${id}->${target} in ${ctx.leftname} has different edge types: ${JSON.stringify([...edge.types])} vs ${JSON.stringify([...otherEdge.types])}`)
+			ctx.report.addComment(`Target of ${id}->${target} in ${ctx.leftname} differs in edge types: ${JSON.stringify([...edge.types])} vs ${JSON.stringify([...otherEdge.types])}`)
 		}
 	}
 }

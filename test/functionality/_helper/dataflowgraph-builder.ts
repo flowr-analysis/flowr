@@ -121,8 +121,8 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineVariable(id: NodeId, name: string,
-		info?: { controlDependency?: NodeId[], environment?: REnvironmentInformation, definedBy?: NodeId[]}, asRoot: boolean = true) {
-		this.addVertex({ tag: 'variable-definition', id, name, controlDependency: info?.controlDependency, environment: info?.environment }, asRoot)
+		info?: { controlDependency?: NodeId[], definedBy?: NodeId[]}, asRoot: boolean = true) {
+		this.addVertex({ tag: 'variable-definition', id, name, controlDependency: info?.controlDependency }, asRoot)
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
 				this.definedBy(id, def)

@@ -39,11 +39,9 @@ describe('source', withShell(shell => {
 			{ environment: defaultEnv().defineVariable('N', '4', '6') })
 		.call('14', 'cat', [argumentInCall('13')],
 			{ environment: defaultEnv().defineVariable('N', 'simple-3:1-3:6-0', 'simple-3:1-3:6-2') })
-		.defineVariable('simple-3:1-3:6-0', 'N',
-			{ environment: defaultEnv().defineVariable('N', '4', '6') }
-		)
+		.defineVariable('simple-3:1-3:6-0', 'N')
 		.defineVariable('simple-1:1-1:6-0', 'N')
-		.defineVariable('4', 'N', { environment: envWithSimpleN })
+		.defineVariable('4', 'N')
 		.use('2', unnamedArgument('2'))
 		.use('9', unnamedArgument('9'))
 		.use('13', unnamedArgument('13'))

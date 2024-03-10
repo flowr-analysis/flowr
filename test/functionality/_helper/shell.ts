@@ -209,7 +209,7 @@ export function assertDataflow(
 				{ label: 'expected', graph: expected },
 				{ label: 'got', graph: info.dataflow.graph },
 				info.normalize.idMap,
-				`%% ${input.replace(/\n/g, '\n%% ')}\n`
+				`%% ${input.replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') ?? '' + '\n'
 			)
 			console.error('diff:\n', diff)
 			throw e

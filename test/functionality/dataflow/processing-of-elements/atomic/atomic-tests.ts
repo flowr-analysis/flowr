@@ -43,31 +43,31 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			assertDataflow(label('Single Constant', ['name-normal', 'numbers', 'single-bracket-access']),
 				shell,'a[2]', emptyGraph()
 					.call('3', '[', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
-					.use('0', 'a', { when: 'maybe' })
+					.use('0', 'a', { controlDependency: [] })
 					.constant('1').reads('2', '1')
 			)
 			assertDataflow(label('double constant', ['name-normal', 'numbers', 'double-bracket-access']),
-				shell, 'a[[2]]', emptyGraph().use('0', 'a', { when: 'maybe' })
+				shell, 'a[[2]]', emptyGraph().use('0', 'a', { controlDependency: [] })
 					.call('3', '[[', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
-					.use('0', 'a', { when: 'maybe' })
+					.use('0', 'a', { controlDependency: [] })
 					.constant('1').reads('2', '1')
 			)
 			assertDataflow(label('dollar constant', ['name-normal', 'dollar-access']),
 				shell, 'a$b', emptyGraph()
 					.call('3', '$', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
-					.use('0', 'a', { when: 'maybe' })
+					.use('0', 'a', { controlDependency: [] })
 					.constant('1').reads('2', '1')
 			)
 			assertDataflow(label('at constant', ['name-normal', 'slot-access']),
 				shell, 'a@b', emptyGraph()
 					.call('3', '@', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
-					.use('0', 'a', { when: 'maybe' })
+					.use('0', 'a', { controlDependency: [] })
 					.constant('1').reads('2', '1')
 			)
 			assertDataflow(label('chained constant', ['name-normal', 'numbers', 'single-bracket-access']), shell,
 				'a[2][3]', emptyGraph()
 					.call('3', '[', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
-					.use('0', 'a', { when: 'maybe' })
+					.use('0', 'a', { controlDependency: [] })
 					.constant('1').reads('2', '1')
 				// and now the outer access
 					.call('6', '[', [argumentInCall('3-arg'), argumentInCall('5')], { returns: ['3-arg'], reads: [BuiltIn] })
@@ -78,7 +78,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 			assertDataflow(label('chained mixed constant', ['dollar-access', 'single-bracket-access', 'name-normal', 'numbers']), shell,
 				'a[2]$a', emptyGraph()
 					.call('3', '[', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
-					.use('0', 'a', { when: 'maybe' })
+					.use('0', 'a', { controlDependency: [] })
 					.constant('1').reads('2', '1')
 					// and now the outer access
 					.call('6', '$', [argumentInCall('3-arg'), argumentInCall('5')], { returns: ['3-arg'], reads: [BuiltIn] })
@@ -89,7 +89,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		assertDataflow(label('Chained bracket access with variables', ['name-normal', 'single-bracket-access']), shell,
 			'a[x][y]', emptyGraph()
 				.call('3', '[', [argumentInCall('0-arg'), argumentInCall('2')], { returns: ['0-arg'], reads: [BuiltIn] })
-				.use('0', 'a', { when: 'maybe' })
+				.use('0', 'a', { controlDependency: [] })
 				.use('1', 'x')
 				.reads('2', '1')
 				// and now the outer access
@@ -100,8 +100,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 		assertDataflow(label('Assign on Access', ['name-normal', 'single-bracket-access', 'local-left-assignment']), shell,
 			'a[x] <- 5',
 			emptyGraph()
-				.use('0-arg', unnamedArgument('0-arg'), { when: 'maybe' })
-				.use('4-arg', unnamedArgument('4-arg'), { when: 'maybe' })
+				.use('0-arg', unnamedArgument('0-arg'), { controlDependency: [] })
+				.use('4-arg', unnamedArgument('4-arg'), { controlDependency: [] })
 				.argument('3', '0-arg')
 				.argument('3', '4-arg')
 				.reads('4-arg', '4')
@@ -110,7 +110,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				.constant('4')
 				.definedBy('0', '4')
 				.reads('2', '1')
-				.defineVariable('0', 'a', { when: 'maybe' })
+				.defineVariable('0', 'a', { controlDependency: [] })
 				.use('1', 'x')
 		)
 	})
@@ -384,7 +384,7 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				emptyGraph()
 					.use('0', 'x')
 					.call('3', 'f', [
-						{ name: unnamedArgument('1'), nodeId: '1', used: 'always' }
+						{ name: unnamedArgument('1'), nodeId: '1' }
 					])
 					.use('1', unnamedArgument('1'))
 					.argument('3', '1')
@@ -395,10 +395,10 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				emptyGraph()
 					.use('0', 'x')
 					.call('3', 'f', [
-						{ name: unnamedArgument('1'), nodeId: '1', used: 'always' }
+						{ name: unnamedArgument('1'), nodeId: '1' }
 					])
 					.call('7', 'g', [
-						{ name: unnamedArgument('5'), nodeId: '5', used: 'always' }
+						{ name: unnamedArgument('5'), nodeId: '5' }
 					])
 					.use('1', unnamedArgument('1'))
 					.use('5', unnamedArgument('5'))
@@ -412,9 +412,9 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				emptyGraph()
 					.use('0', 'x')
 					.call('7', 'f', [
-						{ name: unnamedArgument('1'), nodeId: '1', used: 'always' },
-						{ name: unnamedArgument('4'), nodeId: '4', used: 'always' },
-						{ name: unnamedArgument('6'), nodeId: '6', used: 'always' }
+						{ name: unnamedArgument('1'), nodeId: '1' },
+						{ name: unnamedArgument('4'), nodeId: '4' },
+						{ name: unnamedArgument('6'), nodeId: '6' }
 					])
 					.use('1', unnamedArgument('1'))
 					.use('4', unnamedArgument('4'))
@@ -453,38 +453,38 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					assertDataflow('compare cond. symbol in then', shell,
 						`if (x > 5) ${b.func('y')}`,
 						emptyGraph().use('0', 'x')
-							.use('3', 'y', { when: 'maybe' })
+							.use('3', 'y', { controlDependency: [] })
 					)
 					assertDataflow('all variables', shell,
 						`if (x > y) ${b.func('z')}`,
 						emptyGraph()
 							.use('0', 'x')
 							.use('1', 'y')
-							.use('3', 'z', { when: 'maybe' })
+							.use('3', 'z', { controlDependency: [] })
 					)
 					assertDataflow('all variables, some same', shell,
 						`if (x > y) ${b.func('x')}`,
 						emptyGraph()
 							.use('0', 'x')
 							.use('1', 'y')
-							.use('3', 'x', { when: 'maybe' })
-							.sameRead('0', '3', 'maybe')
+							.use('3', 'x', { controlDependency: [] })
+							.sameRead('0', '3')
 					)
 					assertDataflow('all same variables', shell,
 						`if (x > x) ${b.func('x')}`,
 						emptyGraph()
 							.use('0', 'x')
 							.use('1', 'x')
-							.use('3', 'x', { when: 'maybe' })
+							.use('3', 'x', { controlDependency: [] })
 							.sameRead('0', '1')
 							// theoretically, they just have to be connected, so 0 is just hardcoded
-							.sameRead('0', '3', 'maybe')
+							.sameRead('0', '3')
 					)
 					assertDataflow('definition in if', shell,
 						`if (x <- 3) ${b.func('x')}`,
 						emptyGraph()
 							.defineVariable('0', 'x')
-							.use('3', 'x', { when: 'maybe' })
+							.use('3', 'x', { controlDependency: [] })
 							.reads('3', '0')
 					)
 				})
@@ -500,44 +500,44 @@ describe('Atomic (dataflow information)', withShell(shell => {
 					)
 					assertDataflow('compare cond. symbol in then', shell,
 						'if (x > 5) { y } else { 42 }',
-						emptyGraph().use('0', 'x').use('3', 'y', { when: 'maybe' })
+						emptyGraph().use('0', 'x').use('3', 'y', { controlDependency: [] })
 					)
 					assertDataflow('compare cond. symbol in then & else', shell,
 						'if (x > 5) { y } else { z }',
 						emptyGraph()
 							.use('0', 'x')
-							.use('3', 'y', { when: 'maybe' })
-							.use('5', 'z', { when: 'maybe' })
+							.use('3', 'y', { controlDependency: [] })
+							.use('5', 'z', { controlDependency: [] })
 					)
 					assertDataflow('all variables', shell,
 						'if (x > y) { z } else { a }',
 						emptyGraph()
 							.use('0', 'x')
 							.use('1', 'y')
-							.use('3', 'z', { when: 'maybe' })
-							.use('5', 'a', { when: 'maybe' })
+							.use('3', 'z', { controlDependency: [] })
+							.use('5', 'a', { controlDependency: [] })
 					)
 					assertDataflow('all variables, some same', shell,
 						'if (y > x) { x } else { y }',
 						emptyGraph()
 							.use('0', 'y')
 							.use('1', 'x')
-							.use('3', 'x', { when: 'maybe' })
-							.use('5', 'y', { when: 'maybe' })
-							.sameRead('1', '3', 'maybe')
-							.sameRead('0', '5', 'maybe')
+							.use('3', 'x', { controlDependency: [] })
+							.use('5', 'y', { controlDependency: [] })
+							.sameRead('1', '3')
+							.sameRead('0', '5')
 					)
 					assertDataflow('all same variables', shell,
 						'if (x > x) { x } else { x }',
 						emptyGraph()
 							.use('0', 'x')
 							.use('1', 'x')
-							.use('3', 'x', { when: 'maybe' })
-							.use('5', 'x', { when: 'maybe' })
+							.use('3', 'x', { controlDependency: [] })
+							.use('5', 'x', { controlDependency: [] })
 							// 0 is just hardcoded, they actually just have to be connected
 							.sameRead('0', '1')
-							.sameRead('0', '3', 'maybe')
-							.sameRead('0', '5', 'maybe')
+							.sameRead('0', '3')
+							.sameRead('0', '5')
 					)
 				})
 			})
@@ -567,8 +567,8 @@ describe('Atomic (dataflow information)', withShell(shell => {
 				'for(i in 1:10) { i }',
 				emptyGraph()
 					.defineVariable('0', 'i')
-					.use('4', 'i', { when: 'maybe' })
-					.reads('4', '0', 'maybe')
+					.use('4', 'i', { controlDependency: [] })
+					.reads('4', '0')
 			)
 		})
 

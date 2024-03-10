@@ -4,13 +4,7 @@ import type {
 	DataflowGraphVertexInfo,
 	REnvironmentInformation
 } from '../../dataflow'
-import {
-	BuiltIn
-	, shouldTraverseEdge
-	,
-	EdgeType,
-	initializeCleanEnvironments
-} from '../../dataflow'
+import { BuiltIn, shouldTraverseEdge, EdgeType, initializeCleanEnvironments } from '../../dataflow'
 import { guard } from '../../util/assert'
 import type {
 	DecoratedAstMap,
@@ -161,7 +155,6 @@ export function staticSlicing(dataflowGraph: DataflowGraph, ast: NormalizedAst, 
 		const [currentVertex, currentEdges] = currentInfo
 
 		if(currentVertex.tag === 'function-call' && !currentVertex.onlyBuiltin && !current.onlyForSideEffects) {
-			slicerLogger.trace(`${baseId} is a function call`)
 			sliceForCall(current, currentVertex, dataflowGraph, queue)
 		}
 
@@ -207,7 +200,7 @@ function addControlDependencies(source: NodeId, ast: DecoratedAstMap): Set<NodeI
 	return collected
 }
 
-function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvironment: REnvironmentInformation) {
+function retrieveActiveEnvironment(callerInfo: DataflowGraphVertexInfo, baseEnvironment: REnvironmentInformation): REnvironmentInformation {
 	let callerEnvironment = callerInfo.environment
 
 	if(baseEnvironment.level !== callerEnvironment.level) {
@@ -247,7 +240,7 @@ function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexInfo,
 	for(const [_, functionCallTarget] of functionCallTargets) {
 		// all those linked within the scopes of other functions are already linked when exiting a function definition
 		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
-			const defs = resolveByName(openIn.name, activeEnvironment)
+			const defs = openIn.name ? resolveByName(openIn.name, activeEnvironment) : undefined
 			if(defs === undefined) {
 				continue
 			}

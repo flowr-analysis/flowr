@@ -162,3 +162,18 @@ export function array2bag<T>(arr: T[]): Map<T, number> {
 	}
 	return result
 }
+
+export function arrayEqual<T>(a: readonly T[] | undefined, b: readonly T[] | undefined): boolean {
+	if(a === undefined || b === undefined) {
+		return a === b
+	}
+	if(a.length !== b.length) {
+		return false
+	}
+	for(let i = 0; i < a.length; ++i) {
+		if(a[i] !== b[i]) {
+			return false
+		}
+	}
+	return true
+}

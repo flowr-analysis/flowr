@@ -8,18 +8,18 @@ describe('while', withShell(shell => {
 	)
 	assertDataflow('using variable in body', shell,
 		'while (TRUE) x',
-		emptyGraph().use('1', 'x', { when: 'maybe' })
+		emptyGraph().use('1', 'x', { controlDependency: [] })
 	)
 	assertDataflow('assignment in loop body', shell,
 		'while (TRUE) { x <- 3 }',
-		emptyGraph().defineVariable('1', 'x', { when: 'maybe' })
+		emptyGraph().defineVariable('1', 'x', { controlDependency: [] })
 	)
 	assertDataflow('def compare in loop', shell, 'while ((x <- x - 1) > 0) { x }',
 		emptyGraph()
 			.defineVariable('0', 'x')
 			.use('1', 'x')
-			.use('7', 'x', { when: 'maybe' })
-			.reads('7', '0', 'maybe')
+			.use('7', 'x', { controlDependency: [] })
+			.reads('7', '0')
 			.definedBy('0', '1')
 	)
 	assertDataflow('Endless while loop',
@@ -32,6 +32,6 @@ describe('while', withShell(shell => {
 		'while(x) y',
 		emptyGraph()
 			.use('0', 'x')
-			.use('1', 'y', { when: 'maybe' })
+			.use('1', 'y', { controlDependency: [] })
 	)
 }))

@@ -25,6 +25,9 @@ import { processAsNamedCall } from './process-named-call'
 
 const dotDotDotAccess = /\.\.\d+/
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string, IdentifierReference[]>, nextGraph: DataflowGraph) {
+	if(!read.name) {
+		return
+	}
 	const readName = dotDotDotAccess.test(read.name) ? '...' : read.name
 
 	const probableTarget = resolveByName(readName, environments)
@@ -46,7 +49,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 
 	for(const target of probableTarget) {
 		// we can stick with maybe even if readId.attribute is always
-		nextGraph.addEdge(read, target, { type: EdgeType.Reads }, true)
+		nextGraph.addEdge(read, target, { type: EdgeType.Reads })
 	}
 }
 
@@ -66,11 +69,11 @@ function processNextExpression(
 	for(const writeTarget of currentElement.out) {
 		const writeName = writeTarget.name
 
-		const resolved = resolveByName(writeName, environment)
+		const resolved = writeName ? resolveByName(writeName, environment) : undefined
 		if(resolved !== undefined) {
 			// write-write
 			for(const target of resolved) {
-				nextGraph.addEdge(target, writeTarget, { type: EdgeType.SameDefDef }, true)
+				nextGraph.addEdge(target, writeTarget, { type: EdgeType.SameDefDef })
 			}
 		}
 	}
@@ -94,7 +97,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
 						if(def.kind !== 'built-in-function') {
-							nextGraph.addEdge(def.nodeId, functionCall, { type: EdgeType.SideEffectOnCall, attribute: def.used })
+							nextGraph.addEdge(def.nodeId, functionCall, { type: EdgeType.SideEffectOnCall })
 						}
 					}
 				}

@@ -52,7 +52,7 @@ describe('Equal', () => {
 				neq('Source Id', emptyGraph().reads('2', '1'), rhs)
 				neq('Target Id', emptyGraph().reads('0', '2'), rhs)
 				neq('Type', emptyGraph().calls('0', '1'), rhs)
-				neq('Attribute', emptyGraph().reads('0', '1', 'maybe'), rhs)
+				neq('Attribute', emptyGraph().reads('0', '1'), rhs)
 			})
 		})
 	})

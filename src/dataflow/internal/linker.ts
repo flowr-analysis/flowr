@@ -35,7 +35,9 @@ export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 export function produceNameSharedIdMap(references: IdentifierReference[]): NameIdMap {
 	const nameIdShares = new DefaultMap<string, IdentifierReference[]>(() => [])
 	for(const reference of references) {
-		nameIdShares.get(reference.name).push(reference)
+		if(reference.name) {
+			nameIdShares.get(reference.name).push(reference)
+		}
 	}
 	return nameIdShares
 }
@@ -47,7 +49,7 @@ export function linkReadVariablesInSameScopeWithNames(graph: DataflowGraph, name
 		}
 		const base = ids[0]
 		for(let i = 1; i < ids.length; i++) {
-			graph.addEdge(base.nodeId, ids[i].nodeId, { type: EdgeType.SameReadRead, attribute: 'always' }, true)
+			graph.addEdge(base.nodeId, ids[i].nodeId, { type: EdgeType.SameReadRead })
 		}
 	}
 }
@@ -71,11 +73,11 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 		const param = nameParamMap.get(name)
 		if(param !== undefined) {
 			dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`)
-			graph.addEdge(arg.nodeId, param.name.info.id, { type: EdgeType.DefinesOnCall, attribute: 'always' })
+			graph.addEdge(arg.nodeId, param.name.info.id, { type: EdgeType.DefinesOnCall })
 			matchedParameters.add(name)
 		} else if(specialDotParameter !== undefined) {
 			dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`)
-			graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, { type: EdgeType.DefinesOnCall, attribute: 'always' })
+			graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, { type: EdgeType.DefinesOnCall })
 		}
 	}
 
@@ -91,7 +93,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 		if(remainingParameter.length <= i) {
 			if(specialDotParameter !== undefined) {
 				dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to dot-dot-dot parameter`)
-				graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, { type: EdgeType.DefinesOnCall, attribute: 'always' })
+				graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, { type: EdgeType.DefinesOnCall })
 			} else {
 				dataflowLogger.error(`skipping argument ${i} as there is no corresponding parameter - R should block that`)
 			}
@@ -99,7 +101,7 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 		}
 		const param = remainingParameter[i]
 		dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to parameter "${param.name.content}"`)
-		graph.addEdge(arg.nodeId, param.name.info.id, { type: EdgeType.DefinesOnCall, attribute: 'always' })
+		graph.addEdge(arg.nodeId, param.name.info.id, { type: EdgeType.DefinesOnCall })
 	}
 }
 
@@ -138,22 +140,22 @@ function linkFunctionCall(graph: DataflowGraph, id: NodeId, info: DataflowGraphV
 		if(info.environment !== undefined) {
 			// for each open ingoing reference, try to resolve it here, and if so add a read edge from the call to signal that it reads it
 			for(const ingoing of def.subflow.in) {
-				const defs = resolveByName(ingoing.name, info.environment)
+				const defs = ingoing.name ? resolveByName(ingoing.name, info.environment) : undefined
 				if(defs === undefined) {
 					continue
 				}
 				for(const def of defs) {
-					graph.addEdge(id, def, { type: EdgeType.Reads, attribute: 'always' })
+					graph.addEdge(id, def, { type: EdgeType.Reads })
 				}
 			}
 		}
 
 		const exitPoints = def.exitPoints
 		for(const exitPoint of exitPoints) {
-			graph.addEdge(id, exitPoint, { type: EdgeType.Returns, attribute: 'always' })
+			graph.addEdge(id, exitPoint, { type: EdgeType.Returns })
 		}
 		dataflowLogger.trace(`recording expression-list-level call from ${info.name} to ${def.name}`)
-		graph.addEdge(id, def.id, { type: EdgeType.Calls, attribute: 'always' })
+		graph.addEdge(id, def.id, { type: EdgeType.Calls })
 		linkFunctionCallArguments(def.id, idMap, def.name, id, info.args, graph)
 	}
 	if(thisGraph.isRoot(id)) {
@@ -233,17 +235,18 @@ export function getAllLinkedFunctionDefinitions(functionDefinitionReadIds: Set<N
  */
 export function linkInputs(referencesToLinkAgainstEnvironment: IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
-		const probableTarget = resolveByName(bodyInput.name, environmentInformation)
+		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation) : undefined
 		if(probableTarget === undefined) {
 			log.trace(`found no target for ${bodyInput.name}`)
 			if(maybeForRemaining) {
-				bodyInput.used = 'maybe'
+				/* TODO? */
+				bodyInput.controlDependency = []
 			}
 			givenInputs.push(bodyInput)
 		} else {
 			for(const target of probableTarget) {
 				// we can stick with maybe even if readId.attribute is always
-				graph.addEdge(bodyInput, target, { type: EdgeType.Reads }, true)
+				graph.addEdge(bodyInput, target, { type: EdgeType.Reads })
 			}
 		}
 	}
@@ -265,13 +268,15 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 	// this implicitly assumes that the outgoing references are ordered
 	const lastOutgoing = new Map<string, IdentifierReference>()
 	for(const out of outgoing) {
-		lastOutgoing.set(out.name, out)
+		if(out.name) {
+			lastOutgoing.set(out.name, out)
+		}
 	}
 	for(const [name, targets] of openIns.entries()) {
 		for(const out of lastOutgoing.values()) {
 			if(out.name === name) {
 				for(const target of targets) {
-					graph.addEdge(target.nodeId, out.nodeId, { type: EdgeType.Reads, attribute: 'maybe' })
+					graph.addEdge(target.nodeId, out.nodeId, { type: EdgeType.Reads })
 				}
 			}
 		}

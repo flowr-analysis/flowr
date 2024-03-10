@@ -1,7 +1,6 @@
 import type { MergeableRecord } from '../../util/objects'
 import type { NodeId } from '../../r-bridge'
 import type { REnvironmentInformation } from '../environments'
-import type { DataflowGraphEdgeAttribute } from './edge'
 import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 
 export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>
@@ -17,24 +16,23 @@ interface DataflowGraphVertexBase extends MergeableRecord {
 	/**
 	 * Used to identify and separate different types of vertices.
 	 */
-	readonly tag: string
+	readonly tag:      string
 	/**
 	 * The id of the node (the id assigned by the {@link ParentInformation} decoration)
 	 */
-	id:           NodeId
+	id:                NodeId
 	/**
 	 * The name of the node, usually the variable name
 	 */
-	name:         string
+	name:              string
 	/**
 	 * The environment in which the vertex is set.
 	 */
-	environment?: REnvironmentInformation | undefined
+	environment?:      REnvironmentInformation | undefined
 	/**
-	 * Is this node part of every local execution trace or only in some.
-	 * If you do not provide an explicit value, this will default to `always`.
+	 * See {@link IdentifierReference}
 	 */
-	when?:        DataflowGraphEdgeAttribute
+	controlDependency: NodeId[] |undefined
 }
 
 /**

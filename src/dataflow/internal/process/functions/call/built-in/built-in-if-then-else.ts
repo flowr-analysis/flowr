@@ -2,23 +2,17 @@ import type { NodeId, ParentInformation, RFunctionArgument, RNode, RSymbol } fro
 import type { DataflowProcessorInformation } from '../../../../../processor'
 import { processDataflowFor } from '../../../../../processor'
 import type { DataflowInformation } from '../../../../../info'
-import {
-	appendEnvironment,
-	type IdentifierReference,
-	makeAllMaybe,
-	resolvesToBuiltInConstant
-} from '../../../../../environments'
+import { appendEnvironment, type IdentifierReference, makeAllMaybe, resolvesToBuiltInConstant } from '../../../../../environments'
 import { dataflowLogger } from '../../../../../index'
 import { processKnownFunctionCall } from '../known-call-handling'
 import { linkIngoingVariablesInSameScope } from '../../../../linker'
 import { unpackArgument } from '../argument/unpack-argument'
 
-// TODO handle (, {, ...
 export function processIfThenElse<OtherInfo>(
-	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	name:   RSymbol<OtherInfo & ParentInformation>,
+	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	if(args.length !== 2 && args.length !== 3) {
 		dataflowLogger.warn(`If-then-else ${name.content} has something different from 2 or 3 arguments, skipping`)
@@ -39,7 +33,8 @@ export function processIfThenElse<OtherInfo>(
 
 	let then: DataflowInformation | undefined
 	let makeThenMaybe = false
-	// TODO: defer this to abstract interpretation
+
+	// we should defer this to the abstract interpretation
 	const conditionIsFalse = resolvesToBuiltInConstant(unpackedArgs[0]?.lexeme, data.environment, false)
 	const conditionIsTrue = resolvesToBuiltInConstant(unpackedArgs[0]?.lexeme, data.environment, true)
 	if(conditionIsFalse !== 'always') {

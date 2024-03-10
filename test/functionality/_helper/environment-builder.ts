@@ -1,10 +1,5 @@
 import type { NodeId } from '../../../src'
-import type {
-	DataflowGraphEdgeAttribute,
-	FunctionArgument,
-	IdentifierDefinition, REnvironmentInformation
-	, Environment
-} from '../../../src/dataflow'
+import type { FunctionArgument, IdentifierDefinition, REnvironmentInformation, Environment } from '../../../src/dataflow'
 import {
 	initializeCleanEnvironments
 } from '../../../src/dataflow'
@@ -17,7 +12,7 @@ import {
 } from '../../../src/dataflow/environments'
 
 export function variable(name: string, definedAt: NodeId): IdentifierDefinition {
-	return { name, kind: 'variable', used: 'always', nodeId: '_0', definedAt }
+	return { name, kind: 'variable', nodeId: '_0', definedAt }
 }
 
 /**
@@ -26,12 +21,11 @@ export function variable(name: string, definedAt: NodeId): IdentifierDefinition 
  * @param name - optional; can be removed for unnamed arguments
  * @param options - optional allows to give further options
  */
-export function argumentInCall(nodeId: NodeId, name?: string, options?: { used?: DataflowGraphEdgeAttribute }): FunctionArgument {
-	const used = options?.used ?? 'always'
+export function argumentInCall(nodeId: NodeId, name?: string, options?: { controlDependency?: NodeId[] }): FunctionArgument {
 	if(name === undefined) {
-		return { nodeId, name: unnamedArgument(nodeId), used }
+		return { nodeId, name: unnamedArgument(nodeId), controlDependency: options?.controlDependency }
 	} else {
-		return [name, { nodeId, name, used }]
+		return [name, { nodeId, name, controlDependency: options?.controlDependency }]
 	}
 }
 
@@ -70,10 +64,10 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param name - Argument name
 	 * @param nodeId - AST Node ID of usage
 	 * @param definedAt - AST Node ID of definition
-	 * @param used - always (default) or optional
+	 * @param controlDependency - Control dependencies
 	 */
-	defineArgument(name: string, nodeId: NodeId, definedAt: NodeId, used: DataflowGraphEdgeAttribute = 'always') {
-		return this.defineEnv({ name, kind: 'argument', definedAt, nodeId, used })
+	defineArgument(name: string, nodeId: NodeId, definedAt: NodeId, controlDependency: NodeId[] | undefined = undefined) {
+		return this.defineEnv({ name, kind: 'argument', definedAt, nodeId, controlDependency })
 	}
 
 	/**
@@ -81,32 +75,32 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param name - Function name
 	 * @param nodeId - AST Node ID of usage
 	 * @param definedAt - AST Node ID of definition
-	 * @param used - always (default) or optional
+	 * @param controlDependency - Control dependencies
 	 */
-	defineFunction(name: string, nodeId: NodeId, definedAt: NodeId, used: DataflowGraphEdgeAttribute = 'always') {
-		return this.defineEnv({ name, kind: 'function', definedAt, nodeId,  used })
+	defineFunction(name: string, nodeId: NodeId, definedAt: NodeId, controlDependency: NodeId[] | undefined = undefined) {
+		return this.defineEnv({ name, kind: 'function', definedAt, nodeId,  controlDependency })
 	}
 
 	/**
 	 * Defines a new parameter in the top environment.
 	 * @param name - Parameter name
 	 * @param nodeId - AST Node ID of usage
-	 * @param definedAt - AST Node Id of definition
-	 * @param used - always (default) or optional
-	 */
-	defineParameter(name: string, nodeId: NodeId, definedAt: NodeId, used: DataflowGraphEdgeAttribute = 'always') {
-		return this.defineEnv({ name, kind: 'parameter', definedAt, nodeId, used })
+	 * @param definedAt - AST Node ID of definition
+	 * @param controlDependency - Control dependencies
+	 * */
+	defineParameter(name: string, nodeId: NodeId, definedAt: NodeId, controlDependency: NodeId[] | undefined = undefined) {
+		return this.defineEnv({ name, kind: 'parameter', definedAt, nodeId, controlDependency: controlDependency })
 	}
 
 	/**
 	 * Defines a new parameter in the top environment.
 	 * @param name - Variable name
-	 * @param nodeId - AST Node Id of usage
+	 * @param nodeId - AST Node ID of usage
 	 * @param definedAt - AST Node ID of definition
-	 * @param used - always (default) or optional
+	 * @param controlDependency - Control dependencies
 	 */
-	defineVariable(name: string, nodeId: NodeId, definedAt: NodeId = nodeId, used: DataflowGraphEdgeAttribute = 'always') {
-		return this.defineEnv({ name, kind: 'variable', definedAt, nodeId, used })
+	defineVariable(name: string, nodeId: NodeId, definedAt: NodeId = nodeId, controlDependency: NodeId[] | undefined = undefined) {
+		return this.defineEnv({ name, kind: 'variable', definedAt, nodeId, controlDependency })
 	}
 
 	/**
@@ -121,7 +115,6 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 
 	/**
 	 * Adds a new, local environment on the environment stack and returns it.
-	 * @param definitions - Definitions to add to the local environment.
 	 */
 	pushEnv(): EnvironmentBuilder {
 		const newEnvironment = pushLocalEnvironment(this)

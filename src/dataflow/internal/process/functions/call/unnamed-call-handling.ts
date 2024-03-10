@@ -18,7 +18,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	const functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`
 	dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`)
 	// we know, that it calls the toplevel:
-	finalGraph.addEdge(functionRootId, functionCall.calledFunction.info.id, { type: EdgeType.Calls, attribute: 'always' })
+	finalGraph.addEdge(functionRootId, functionCall.calledFunction.info.id, { type: EdgeType.Calls })
 	// keep the defined function
 	finalGraph.mergeWith(functionName.graph)
 
@@ -29,18 +29,18 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	} = processAllArguments(functionName, functionCall.arguments, data, finalGraph, functionRootId)
 
 	finalGraph.addVertex({
-		tag:         'function-call',
-		id:          functionRootId,
-		name:        functionCallName,
-		environment: data.environment,
+		tag:               'function-call',
+		id:                functionRootId,
+		name:              functionCallName,
+		environment:       data.environment,
 		/* can never be a direct built-in-call */
-		onlyBuiltin: false,
-		when:        'always',
-		args:        callArgs // same reference
+		onlyBuiltin:       false,
+		controlDependency: undefined,
+		args:              callArgs // same reference
 	})
 
 	const inIds = remainingReadInArgs
-	inIds.push({ nodeId: functionRootId, name: functionCallName, used: 'always' })
+	inIds.push({ nodeId: functionRootId, name: functionCallName })
 
 	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
 		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph)

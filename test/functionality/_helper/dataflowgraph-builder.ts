@@ -1,9 +1,6 @@
 import type { NodeId } from '../../../src'
 import type {
 	DataflowFunctionFlowInformation,
-	DataflowGraphEdgeAttribute,
-	DataflowGraphExitPoint,
-	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexUse,
 	FunctionArgument,
 	REnvironmentInformation
@@ -38,9 +35,9 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public defineFunction(id: NodeId, name: string,
 		exitPoints: readonly NodeId[], subflow: DataflowFunctionFlowInformation,
-		info?: Partial<DataflowGraphVertexFunctionDefinition>,
+		info?: { environment?: REnvironmentInformation, controlDependency?: NodeId[] },
 		asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({ tag: 'function-definition', id, name, subflow, exitPoints }, info), asRoot)
+		return this.addVertex({ tag: 'function-definition', id, name, subflow, exitPoints, controlDependency: info?.controlDependency, environment: info?.environment }, asRoot)
 	}
 
 	/**
@@ -55,14 +52,14 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 */
 	public call(id: NodeId, name: string, args: FunctionArgument[],
 		info?: {
-			returns?:     NodeId[],
-			reads?:       NodeId[],
-			onlyBuiltIn?: boolean,
-			environment?: REnvironmentInformation,
-			when?:        DataflowGraphEdgeAttribute
+			returns?:           NodeId[],
+			reads?:             NodeId[],
+			onlyBuiltIn?:       boolean,
+			environment?:       REnvironmentInformation,
+			controlDependency?: NodeId[]
 		},
 		asRoot: boolean = true) {
-		this.addVertex({ tag: 'function-call', id, name, args, environment: info?.environment, when: info?.when, onlyBuiltin: info?.onlyBuiltIn ?? false }, asRoot)
+		this.addVertex({ tag: 'function-call', id, name, args, environment: info?.environment, controlDependency: info?.controlDependency, onlyBuiltin: info?.onlyBuiltIn ?? false }, asRoot)
 		this.addArgumentLinks(id, args)
 		if(info?.returns) {
 			for(const ret of info.returns) {
@@ -78,19 +75,19 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	}
 
 	/* automatically adds argument links if they do not already exist */
-	private addArgumentLinks(id: NodeId, args: FunctionArgument[]) {
+	private addArgumentLinks(id: NodeId, args: readonly FunctionArgument[]) {
 		for(const arg of args) {
 			if(arg === 'empty') {
 				continue
 			}
 			if(Array.isArray(arg)) {
-				if(arg[1] !== '<value>' && !this.hasNode(arg[1].nodeId, true)) {
-					this.use(arg[1].nodeId, arg[1].name, { when: arg[1].used })
-					this.argument(id, arg[1].nodeId, arg[1].used)
+				if(arg[1] !== '<value>' && arg[1].name !== undefined && !this.hasNode(arg[1].nodeId, true)) {
+					this.use(arg[1].nodeId, arg[1].name, { controlDependency: arg[1].controlDependency })
+					this.argument(id, arg[1].nodeId)
 				}
-			} else if(arg !== '<value>'&& !this.hasNode(arg.nodeId, true)) {
-				this.use(arg.nodeId, arg.name, { when: arg.used })
-				this.argument(id, arg.nodeId, arg.used)
+			} else if(arg !== '<value>'&& arg.name !== undefined && !this.hasNode(arg.nodeId, true)) {
+				this.use(arg.nodeId, arg.name, { controlDependency: arg.controlDependency })
+				this.argument(id, arg.nodeId)
 				if(arg.nodeId.endsWith('-arg')) {
 					const withoutSuffix = arg.nodeId.slice(0, -4)
 					this.reads(arg.nodeId, withoutSuffix)
@@ -104,15 +101,14 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @param id - AST node ID
 	 * @param name - AST node text
-	 * @param environment - Environment of the function we exit.
 	 * @param info - Additional/optional properties.
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
-	public exit(id: NodeId, name: string, environment?: REnvironmentInformation,
-		info?: Partial<DataflowGraphExitPoint>,
+	public exit(id: NodeId, name: string,
+		info?: { environment?: REnvironmentInformation, controlDependency?: NodeId[] },
 		asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({ tag: 'exit-point', id, environment, name }, info), asRoot)
+		return this.addVertex({ tag: 'exit-point', id, environment: info?.environment, name, controlDependency: info?.controlDependency }, asRoot)
 	}
 
 	/**
@@ -121,12 +117,12 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * @param id - AST node ID
 	 * @param name - Variable name
 	 * @param info - Additional/optional properties.
-	 * @param asRoot - should the vertex be part of the root vertex set of the graph
+	 * @param asRoot - Should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineVariable(id: NodeId, name: string,
-		info?: { when?: DataflowGraphEdgeAttribute, environment?: REnvironmentInformation, definedBy?: NodeId[]}, asRoot: boolean = true) {
-		this.addVertex({ tag: 'variable-definition', id, name, when: info?.when ?? 'always', environment: info?.environment }, asRoot)
+		info?: { controlDependency?: NodeId[], environment?: REnvironmentInformation, definedBy?: NodeId[]}, asRoot: boolean = true) {
+		this.addVertex({ tag: 'variable-definition', id, name, controlDependency: info?.controlDependency, environment: info?.environment }, asRoot)
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
 				this.definedBy(id, def)
@@ -146,7 +142,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point) or is it nested (e.g., as part of a function definition)
 	 */
 	public use(id: NodeId, name: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
-		return this.addVertex(deepMergeObject({ tag: 'use', id, name, when: undefined, environment: undefined }, info), asRoot)
+		return this.addVertex(deepMergeObject({ tag: 'use', id, name, controlDependency: undefined, environment: undefined }, info), asRoot)
 	}
 
 
@@ -158,7 +154,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public constant(id: NodeId, asRoot: boolean = true) {
-		return this.addVertex({ tag: 'value', name: CONSTANT_NAME, id, when: undefined, environment: undefined }, asRoot)
+		return this.addVertex({ tag: 'value', name: CONSTANT_NAME, id, controlDependency: undefined, environment: undefined }, asRoot)
 	}
 
 	/**
@@ -166,10 +162,9 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @param from - Vertex/NodeId
 	 * @param to   - see from
-	 * @param when - always (default), or maybe
 	 */
-	public reads(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, { type: EdgeType.Reads, attribute: when })
+	public reads(from: NodeId, to: NodeId) {
+		return this.addEdge(from, to, { type: EdgeType.Reads })
 	}
 
 	/**
@@ -178,8 +173,8 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public definedBy(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, { type: EdgeType.DefinedBy, attribute: when })
+	public definedBy(from: NodeId, to: NodeId) {
+		return this.addEdge(from, to, { type: EdgeType.DefinedBy })
 	}
 
 	/**
@@ -188,8 +183,8 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public sameRead(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, { type: EdgeType.SameReadRead, attribute: when })
+	public sameRead(from: NodeId, to: NodeId) {
+		return this.addEdge(from, to, { type: EdgeType.SameReadRead })
 	}
 
 	/**
@@ -198,8 +193,8 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public sameDef(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, { type: EdgeType.SameDefDef, attribute: when })
+	public sameDef(from: NodeId, to: NodeId) {
+		return this.addEdge(from, to, { type: EdgeType.SameDefDef })
 	}
 
 	/**
@@ -207,8 +202,8 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public calls(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, { type: EdgeType.Calls, attribute: when })
+	public calls(from: NodeId, to: NodeId) {
+		return this.addEdge(from, to, { type: EdgeType.Calls })
 	}
 
 	/**
@@ -216,8 +211,8 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public returns(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, { type: EdgeType.Returns, attribute: when })
+	public returns(from: NodeId, to: NodeId) {
+		return this.addEdge(from, to, { type: EdgeType.Returns })
 	}
 
 	/**
@@ -225,8 +220,8 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public definesOnCall(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, { type: EdgeType.DefinesOnCall, attribute: when })
+	public definesOnCall(from: NodeId, to: NodeId) {
+		return this.addEdge(from, to, { type: EdgeType.DefinesOnCall })
 	}
 
 	/**
@@ -234,8 +229,8 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public argument(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, { type: EdgeType.Argument, attribute: when })
+	public argument(from: NodeId, to: NodeId) {
+		return this.addEdge(from, to, { type: EdgeType.Argument })
 	}
 
 	/**
@@ -243,7 +238,7 @@ export class DataflowGraphBuilder extends DataflowGraph {
 	 *
 	 * @see reads for parameters.
 	 */
-	public relates(from: NodeId, to: NodeId, when: DataflowGraphEdgeAttribute = 'always') {
-		return this.addEdge(from, to, { type: EdgeType.Relates, attribute: when })
+	public relates(from: NodeId, to: NodeId) {
+		return this.addEdge(from, to, { type: EdgeType.Relates })
 	}
 }

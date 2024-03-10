@@ -57,7 +57,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(config.returnsNthArgument !== undefined) {
 		const arg = config.returnsNthArgument === 'last' ? args[args.length - 1] : args[config.returnsNthArgument]
 		if(arg !== undefined && arg !== EmptyArgument) {
-			res.graph.addEdge(rootId, arg.info.id, { type: EdgeType.Returns, attribute: 'always' }, true)
+			res.graph.addEdge(rootId, arg.info.id, { type: EdgeType.Returns })
 		}
 	}
 	return res
@@ -72,7 +72,6 @@ export function registerBuiltInFunctions<Config, Proc extends BuiltInIdentifierP
 		guard(!BuiltInMemory.has(name), `Built-in ${name} already defined`)
 		BuiltInMemory.set(name, [{
 			kind:      'built-in-function',
-			used:      'always',
 			definedAt: BuiltIn,
 			processor: (name, args, rootId, data) => processor(name, args, rootId, data, config),
 			name,
@@ -93,7 +92,6 @@ export function registerReplacementFunctions(
 			guard(!BuiltInMemory.has(effectiveName), `Built-in ${effectiveName} already defined`)
 			BuiltInMemory.set(effectiveName, [{
 				kind:      'built-in-function',
-				used:      'always',
 				definedAt: BuiltIn,
 				processor: (name, args, rootId, data) => processReplacementFunction(name, args, rootId, data, { ...standardConfig, assignmentOperator: assignment }),
 				name:      effectiveName,
@@ -112,7 +110,6 @@ function registerBuiltInConstant<T>(name: Identifier, value: T): void {
 	guard(!BuiltInMemory.has(name), `Built-in ${name} already defined`)
 	BuiltInMemory.set(name, [{
 		kind:      'built-in-value',
-		used:      'always',
 		definedAt: BuiltIn,
 		value,
 		name,

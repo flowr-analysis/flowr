@@ -16,7 +16,6 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 	const writtenNodes: IdentifierDefinition[] = name.unknownReferences.map(n => ({
 		...n,
 		kind:      'parameter',
-		used:      'always',
 		definedAt: parameter.info.id
 	}))
 
@@ -28,11 +27,11 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 
 		if(defaultValue !== undefined) {
 			if(parameter.defaultValue?.type === RType.FunctionDefinition) {
-				graph.addEdge(writtenNode, parameter.defaultValue.info.id, { type: EdgeType.DefinedBy, attribute: 'maybe' /* default arguments can be overridden! */ })
+				graph.addEdge(writtenNode, parameter.defaultValue.info.id, { type: EdgeType.DefinedBy })
 			} else {
 				const definedBy = [...defaultValue.in, ...defaultValue.unknownReferences]
 				for(const node of definedBy) {
-					graph.addEdge(writtenNode, node, { type: EdgeType.DefinedBy, attribute: 'maybe' /* default arguments can be overridden! */ })
+					graph.addEdge(writtenNode, node, { type: EdgeType.DefinedBy })
 				}
 			}
 		}

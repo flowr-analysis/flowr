@@ -85,11 +85,11 @@ export function processFunctionDefinition<OtherInfo>(
 	for(const writeTarget of body.out) {
 		const writeName = writeTarget.name
 
-		const resolved = resolveByName(writeName, paramsEnvironments)
+		const resolved = writeName ? resolveByName(writeName, paramsEnvironments) : undefined
 		if(resolved !== undefined) {
 			// write-write
 			for(const target of resolved) {
-				subgraph.addEdge(target, writeTarget, { type: EdgeType.SameDefDef }, true)
+				subgraph.addEdge(target, writeTarget, { type: EdgeType.SameDefDef })
 			}
 		}
 	}
@@ -97,7 +97,15 @@ export function processFunctionDefinition<OtherInfo>(
 	const outEnvironment = overwriteEnvironment(paramsEnvironments, bodyEnvironment)
 
 	for(const read of remainingRead) {
-		subgraph.addVertex({ tag: 'use', id: read.nodeId, name: read.name, environment: undefined, when: 'maybe' })
+		if(read.name) {
+			subgraph.addVertex({
+				tag:               'use',
+				id:                read.nodeId,
+				name:              read.name,
+				environment:       undefined,
+				controlDependency: []
+			})
+		}
 	}
 
 
@@ -116,12 +124,12 @@ export function processFunctionDefinition<OtherInfo>(
 
 	const graph = new DataflowGraph().mergeWith(subgraph, false)
 	graph.addVertex({
-		tag:         'function-definition',
-		id:          name.info.id,
-		name:        name.info.id,
-		environment: popLocalEnvironment(outEnvironment),
-		when:        'always',
-		subflow:     flow,
+		tag:               'function-definition',
+		id:                name.info.id,
+		name:              name.info.id,
+		environment:       popLocalEnvironment(outEnvironment),
+		controlDependency: undefined,
+		subflow:           flow,
 		exitPoints
 	})
 	return {
@@ -149,14 +157,14 @@ function updateNestedFunctionClosures<OtherInfo>(exitPoints: NodeId[], subgraph:
 				const node = subgraph.get(exitPoint, true)
 				const env = initializeCleanEnvironments()
 				env.current.memory = node === undefined ? outEnvironment.current.memory : node[0].environment?.current.memory ?? outEnvironment.current.memory
-				const resolved = resolveByName(ingoing.name, env)
+				const resolved = ingoing.name ? resolveByName(ingoing.name, env) : undefined
 				if(resolved === undefined) {
 					remainingIn.push(ingoing)
 					continue
 				}
 				dataflowLogger.trace(`Found ${resolved.length} references to open ref ${id} in closure of function definition ${name.info.id}`)
 				for(const ref of resolved) {
-					subgraph.addEdge(ingoing, ref, { type: EdgeType.Reads, attribute: exitPoints.length > 1 ? 'maybe' : 'always' })
+					subgraph.addEdge(ingoing, ref, { type: EdgeType.Reads })
 				}
 			}
 		}
@@ -182,14 +190,14 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
  * <p>
  * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers a first definitions</b>
  */
-function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParameters: IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation): IdentifierReference[] {
+function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParameters: readonly IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation): IdentifierReference[] {
 	// first we try to bind again within parameters - if we have it, fine
 	const remainingRead: IdentifierReference[] = []
 	for(const read of readInParameters) {
-		const resolved = resolveByName(read.name, parameterEnvs)
+		const resolved = read.name ? resolveByName(read.name, parameterEnvs) : undefined
 		if(resolved !== undefined) {
 			for(const ref of resolved) {
-				parameters.addEdge(read, ref, { type: EdgeType.Reads, attribute: 'always' })
+				parameters.addEdge(read, ref, { type: EdgeType.Reads })
 			}
 			continue
 		}
@@ -201,12 +209,12 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 			remainingRead.push(read)
 			continue
 		}
-		if(writingOuts[0].used === 'always') {
-			parameters.addEdge(read, writingOuts[0], { type: EdgeType.Reads, attribute: 'always' })
+		if(writingOuts[0].controlDependency === undefined) {
+			parameters.addEdge(read, writingOuts[0], { type: EdgeType.Reads })
 			continue
 		}
 		for(const out of writingOuts) {
-			parameters.addEdge(read, out, { type: EdgeType.Reads, attribute: 'maybe' })
+			parameters.addEdge(read, out, { type: EdgeType.Reads })
 		}
 	}
 	return remainingRead
@@ -223,12 +231,12 @@ function linkExitPointsInGraph<OtherInfo>(exitPoints: string[], graph: DataflowG
 		const nodeInAst = idMap.get(exitPoint)
 
 		guard(nodeInAst !== undefined, `Could not find exit point node with id ${exitPoint} in ast`)
-		graph.addVertex({ tag: 'exit-point', id: exitPoint, name: `${nodeInAst.lexeme ?? '??'}`, when: 'always', environment })
+		graph.addVertex({ tag: 'exit-point', id: exitPoint, name: `${nodeInAst.lexeme ?? '??'}`, environment, controlDependency: undefined })
 
 		const allIds = [...collectAllIds(nodeInAst)].filter(id => graph.get(id, true) !== undefined)
 		for(const relatedId of allIds) {
 			if(relatedId !== exitPoint) {
-				graph.addEdge(exitPoint, relatedId, { type: EdgeType.Relates, attribute: 'always' })
+				graph.addEdge(exitPoint, relatedId, { type: EdgeType.Relates })
 			}
 		}
 	}

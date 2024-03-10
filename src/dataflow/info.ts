@@ -6,16 +6,17 @@ import type { DataflowProcessorInformation } from './processor'
  * Continuously updated during the dataflow analysis to hold the current state.
  */
 export interface DataflowInformation {
-	/** Nodes that have not been identified as read or write and will be so on higher */
+	/** References that have not been identified as read or write and will be so on higher */
 	unknownReferences: readonly IdentifierReference[]
-	/** Nodes which are read */
+	/** References which are read */
 	in:                readonly IdentifierReference[]
-	/** Nodes which are written to */
+	/** References which are written to */
 	out:               readonly IdentifierReference[]
+
 	/** Current environments used for name resolution, probably updated on the next expression-list processing */
-	environment:       REnvironmentInformation
+	environment: REnvironmentInformation
 	/** The current constructed dataflow graph */
-	graph:             DataflowGraph
+	graph:       DataflowGraph
 }
 
 export function initializeCleanDataflowInformation<T>(data: Pick<DataflowProcessorInformation<T>, 'environment'>): DataflowInformation {

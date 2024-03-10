@@ -36,7 +36,7 @@ export function processForLoop<OtherInfo>(
 
 	const writtenVariable = variable.unknownReferences
 	for(const write of writtenVariable) {
-		headEnvironments = define({ ...write, used: 'always', definedAt: name.info.id, kind: 'variable' }, false, headEnvironments)
+		headEnvironments = define({ ...write, definedAt: name.info.id, kind: 'variable' }, false, headEnvironments)
 	}
 	data = { ...data, environment: headEnvironments }
 	const body = processDataflowFor(bodyArg, data)
@@ -55,17 +55,19 @@ export function processForLoop<OtherInfo>(
 
 	for(const write of writtenVariable) {
 		for(const link of [...vector.in, ...vector.unknownReferences]) {
-			nextGraph.addEdge(write.nodeId, link.nodeId, { type: EdgeType.DefinedBy, attribute: 'always' }, true)
+			nextGraph.addEdge(write.nodeId, link.nodeId, { type: EdgeType.DefinedBy })
 		}
 
 		const name = write.name
-		const readIdsToLink = nameIdShares.get(name)
-		for(const readId of readIdsToLink) {
-			nextGraph.addEdge(readId.nodeId, write.nodeId, { type: EdgeType.Reads, attribute: 'always' }, true)
+		if(name) {
+			const readIdsToLink = nameIdShares.get(name)
+			for(const readId of readIdsToLink) {
+				nextGraph.addEdge(readId.nodeId, write.nodeId, { type: EdgeType.Reads })
+			}
+			// now, we remove the name from the id shares as they are no longer needed
+			nameIdShares.delete(name)
+			nextGraph.setDefinitionOfVertex(write)
 		}
-		// now, we remove the name from the id shares as they are no longer needed
-		nameIdShares.delete(name)
-		nextGraph.setDefinitionOfVertex(write)
 	}
 
 	const outgoing = [...variable.out, ...writtenVariable, ...makeAllMaybe(body.out, nextGraph, outEnvironment)]

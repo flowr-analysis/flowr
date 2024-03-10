@@ -7,20 +7,17 @@ function anyIsMaybeGuardingSame(values: IdentifierDefinition[]): boolean {
 	if(values.length === 0) {
 		return true
 	}
-	const attr = values[0].used
-	if(attr === 'maybe') {
+	const attr = values[0].controlDependency
+	if(attr !== undefined) {
 		return true
 	}
 	let same = true
 	for(let i = 1; i < values.length; i++) {
-		const used = values[i].used
-		if(used === 'maybe') {
+		const used = values[i].controlDependency
+		if(used !== undefined) {
 			return true
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- in case we want to add more attributes in the future
-		if(used !== attr) {
-			same = false
-		}
+		same = false
 	}
 	if(!same) {
 		throw new Error('all values must have either a maybe or are all the same')

@@ -12,16 +12,17 @@ import { BuiltInMemory } from './built-in'
 
 export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference {
 	const node = graph.get(ref.nodeId, true)
-	const definitions = resolveByName(ref.name, environments)
+	const definitions = ref.name ? resolveByName(ref.name, environments) : undefined
 	for(const definition of definitions ?? []) {
 		if(definition.kind !== 'built-in-function') {
-			definition.used = 'maybe'
+			/* TODO: add cd */
+			definition.controlDependency = []
 		}
 	}
 	if(node) {
-		node[0].when = 'maybe'
+		node[0].controlDependency = []
 	}
-	return { ...ref, used: 'maybe' }
+	return { ...ref, controlDependency: [] }
 }
 
 export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation): IdentifierReference[] {

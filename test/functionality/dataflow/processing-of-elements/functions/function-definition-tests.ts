@@ -10,7 +10,7 @@ describe('Function Definition', withShell(shell => {
 				.defineFunction('2', '2', ['0'], {
 					out:               [],
 					unknownReferences: [],
-					in:                [{ nodeId: '0', used: 'always', name: 'x' }],
+					in:                [{ nodeId: '0', name: 'x' }],
 					graph:             new Set(['0']),
 					environment:       defaultEnv().pushEnv()
 				})
@@ -103,7 +103,7 @@ describe('Function Definition', withShell(shell => {
 				.defineFunction('5', '5', ['3'], {
 					out:               [],
 					unknownReferences: [],
-					in:                [ { nodeId: '3', name: 'x', used: 'always' } ],
+					in:                [ { nodeId: '3', name: 'x' } ],
 					graph:             new Set(['3']),
 					environment:       defaultEnv().pushEnv()
 				})
@@ -121,7 +121,7 @@ describe('Function Definition', withShell(shell => {
 					environment:       envWithXDefined
 				})
 				.defineVariable('0', 'x', { environment: defaultEnv().pushEnv() },  false)
-				.exit('2', '<-', envWithXDefined, {}, false)
+				.exit('2', '<-', { environment: envWithXDefined }, false)
 				.relates('2', '0')
 		)
 		assertDataflow('local define with = in function, read after', shell, 'function() { x = 3; }; x',
@@ -135,7 +135,7 @@ describe('Function Definition', withShell(shell => {
 					environment:       envWithXDefined
 				})
 				.defineVariable('0', 'x', { environment: defaultEnv().pushEnv() },  false)
-				.exit('2', '=', envWithXDefined, {}, false)
+				.exit('2', '=', { environment: envWithXDefined }, false)
 				.relates('2', '0')
 		)
 
@@ -151,7 +151,7 @@ describe('Function Definition', withShell(shell => {
 					environment:       envWithXDefinedR
 				})
 				.defineVariable('1', 'x', { environment: defaultEnv().pushEnv() },  false)
-				.exit('2', '->', envWithXDefinedR, {}, false)
+				.exit('2', '->', { environment: envWithXDefinedR }, false)
 				.relates('2', '1')
 		)
 		const envWithXDefinedGlobal = defaultEnv().pushEnv().defineVariable('x', '0', '2')
@@ -168,7 +168,7 @@ describe('Function Definition', withShell(shell => {
 				{ environment: envWithXDefinedGlobal.popEnv() }
 				)
 				.defineVariable('0', 'x', { environment: defaultEnv().pushEnv() })
-				.exit('2', '<<-', envWithXDefinedGlobal, {}, false)
+				.exit('2', '<<-', { environment: envWithXDefinedGlobal }, false)
 				.relates('2', '0')
 		)
 		const envWithXDefinedGlobalR = defaultEnv().pushEnv().defineVariable('x', '1', '2')
@@ -185,7 +185,7 @@ describe('Function Definition', withShell(shell => {
 				{ environment: envWithXDefinedGlobalR.popEnv() }
 				)
 				.defineVariable('1', 'x', { environment: defaultEnv().pushEnv() },  false)
-				.exit('2', '->>', envWithXDefinedGlobalR, {}, false)
+				.exit('2', '->>', { environment: envWithXDefinedGlobalR }, false)
 				.relates('2', '1')
 		)
 		const envDefXSingle = defaultEnv().pushEnv().defineVariable('x', '3', '5')
@@ -213,7 +213,7 @@ describe('Function Definition', withShell(shell => {
 				.defineFunction('8', '8', ['6'], {
 					out:               [],
 					unknownReferences: [],
-					in:                [ { nodeId: '4', used: 'always', name: 'x' } ],
+					in:                [ { nodeId: '4', name: 'x' } ],
 					graph:             new Set(['3', '4', '6']),
 					environment:       envDefXSingle
 				})
@@ -275,7 +275,7 @@ describe('Function Definition', withShell(shell => {
 				.use('4', 'a', { }, false)
 				.use('6', 'b', { }, false)
 				.reads('4', '0')
-				.definedBy('3', '4', 'maybe' /* default values can be overridden */)
+				.definedBy('3', '4')
 				.reads('6', '3')
 		)
 
@@ -300,12 +300,12 @@ describe('Function Definition', withShell(shell => {
 				.use('1', 'b', { }, false)
 				.use('9', 'a', { }, false)
 				.use('13', 'a', { }, false)
-				.exit('15', '+', envWithBothParamSecondB, {}, false)
+				.exit('15', '+', { environment: envWithBothParamSecondB }, false)
 				.relates('15', '13')
 				.sameRead('13', '9')
 				.reads('9', '0')
 				.reads('13', '0')
-				.definedBy('0', '1', 'maybe')
+				.definedBy('0', '1')
 				.reads('1', '6')
 				.sameDef('10', '6')
 		)
@@ -349,7 +349,7 @@ describe('Function Definition', withShell(shell => {
 			.defineFunction('20', '20', ['12', '18'], {
 				out:               [],
 				unknownReferences: [],
-				in:                [ { nodeId: '8', name: 'z', used: 'always' } ],
+				in:                [ { nodeId: '8', name: 'z' } ],
 				environment:       finalEnv,
 				graph:             new Set(['0', '5', '15', '8', '10', '18', '11', '12', '3'])
 			})
@@ -360,7 +360,7 @@ describe('Function Definition', withShell(shell => {
 			.use('10', 'g', { }, false)
 			.use('18', 'g', { }, false)
 			.use('11', unnamedArgument('11'), { }, false)
-			.call('12', 'return', [argumentInCall('11')], { when: 'maybe', environment: envWithFirstY }, false)
+			.call('12', 'return', [argumentInCall('11')], { controlDependency: [], environment: envWithFirstY }, false)
 			.defineFunction('3', '3', ['1'], {
 				out:               [],
 				unknownReferences: [],
@@ -370,15 +370,15 @@ describe('Function Definition', withShell(shell => {
 			},
 			{ environment: defaultEnv().pushEnv() }, false)
 			.definedBy('0', '3')
-			.reads('1', '5', 'maybe')
-			.reads('1', '15', 'maybe')
+			.reads('1', '5')
+			.reads('1', '15')
 			.reads('18', '0')
 			.reads('10', '0')
 			.reads('11', '10')
 			.argument('12', '11')
 			.returns('12', '11')
-			.reads('12', BuiltIn, 'maybe')
-			.calls('12', BuiltIn, 'maybe')
+			.reads('12', BuiltIn)
+			.calls('12', BuiltIn)
 			.sameDef('5', '15')
 			.use('1', 'y', { }, false)
 		)
@@ -392,8 +392,7 @@ describe('Function Definition', withShell(shell => {
 					unknownReferences: [],
 					in:                [{
 						nodeId: '0',
-						name:   'x',
-						used:   'always'
+						name:   'x'
 					}],
 					graph:       new Set(['0']),
 					environment: defaultEnv().pushEnv()
@@ -408,14 +407,13 @@ describe('Function Definition', withShell(shell => {
 		const withinNestedFunctionWithParam = withinNestedFunctionWithoutParam.defineParameter('x', '2', '3')
 		const withinNestedFunctionWithDef = defaultEnv().pushEnv().pushEnv().defineVariable('x', '4', '6')
 		const envWithA = defaultEnv().defineFunction('a', '0', '13')
-		const envWithAB = envWithA.defineVariable('b', '14', '16')
 
 		assertDataflow('double nested functions', shell, 'a <- function() { x <- function(x) { x <- b }; x }; b <- 3; a',
 			emptyGraph()
 				.defineVariable('0', 'a')
 				.defineVariable('14', 'b',  { environment: envWithA })
 				.use('17', 'a', { })
-				.reads('17', '0', 'always')
+				.reads('17', '0')
 				.defineFunction('12', '12', ['10'], {
 					out:               [],
 					unknownReferences: [],
@@ -430,20 +428,16 @@ describe('Function Definition', withShell(shell => {
 				.defineFunction('8', '8', ['6'], {
 					out:               [],
 					unknownReferences: [],
-					in:                [{
-						nodeId: '5',
-						name:   'x',
-						used:   'always'
-					}],
-					graph:       new Set(['5', '4', '2']),
-					environment: withinNestedFunctionWithDef
+					in:                [{ nodeId: '5', name: 'x' }],
+					graph:             new Set(['5', '4', '2']),
+					environment:       withinNestedFunctionWithDef
 				},
 				{ environment: defaultEnv().pushEnv() }, false)
 				.reads('10', '1')
 				.definedBy('1', '8')
 
 				.use('5', 'b', { }, false)
-				.exit('6', '<-', withinNestedFunctionWithDef, {}, false)
+				.exit('6', '<-', { environment: withinNestedFunctionWithDef }, false)
 				.relates('6', '4')
 				.relates('6', '5')
 				.defineVariable('4', 'x', { environment: withinNestedFunctionWithParam },  false)

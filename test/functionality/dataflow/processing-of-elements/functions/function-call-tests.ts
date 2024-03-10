@@ -97,7 +97,7 @@ a(i)`, emptyGraph()
 			.defineVariable('6', 'x', { environment: envWithXConstDefined },  false)
 			.defineVariable('9', 'x', { environment: envWithXDefinedForFunc },  false)
 			.use('7', 'x', { }, false)
-			.exit('12', '1', envWithLastXDefined, {}, false)
+			.exit('12', '1', { environment: envWithLastXDefined }, false)
 			.definedBy('6', '7')
 			.reads('7', '4')
 			.sameDef('6', '9')
@@ -128,7 +128,7 @@ a(i)`, emptyGraph()
 			{ environment: defaultEnv() })
 			.defineVariable('0', 'x', { environment: defaultEnv().pushEnv() },  false)
 			.use('2', 'x', { }, false)
-			.exit('4', '+', envWithXParameter , {}, false)
+			.exit('4', '+', { environment: envWithXParameter }, false)
 			.relates('2', '4')
 			.reads('2', '0')
 
@@ -171,7 +171,7 @@ a()()`,
 				graph:             new Set()
 			},
 			{ environment: defaultEnv().pushEnv() }, false)
-			.exit('1', '42', defaultEnv().pushEnv().pushEnv(), {}, false)
+			.exit('1', '42', { environment: defaultEnv().pushEnv().pushEnv() }, false)
 			.calls('9', '8')
 			.reads('8', '0')
 			.definedBy('0', '5')
@@ -205,7 +205,7 @@ a()()`,
 					environment:       defaultEnv().pushEnv(),
 					graph:             new Set()
 				})
-				.exit('1', '3', defaultEnv().pushEnv() , {}, false)
+				.exit('1', '3', { environment: defaultEnv().pushEnv() }, false)
 				.reads('4', '3')
 				.argument('5', '4')
 		)
@@ -245,7 +245,7 @@ a()()`,
 				.call('9', 'a', [], { environment: defWithAY })
 				.defineFunction('3', '3', ['1'], {
 					out:               [],
-					in:                [{ nodeId: '1', name: 'y', used: 'always' }],
+					in:                [{ nodeId: '1', name: 'y' }],
 					unknownReferences: [],
 					environment:       innerEnv,
 					graph:             new Set(['1'])
@@ -269,7 +269,7 @@ a()()`,
 a(,3)`, emptyGraph()
 			.call('13', 'a', [
 				'empty',
-				{ nodeId: '12', name: unnamedArgument('12'), used: 'always' }
+				{ nodeId: '12', name: unnamedArgument('12') }
 			],
 			{ environment: withADefined })
 			.defineVariable('0', 'a')

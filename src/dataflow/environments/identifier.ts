@@ -1,5 +1,4 @@
 import type { NodeId } from '../../r-bridge'
-import type { DataflowGraphEdgeAttribute } from '../graph'
 import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in'
 
 export type Identifier = string & { __brand?: 'identifier' }
@@ -17,17 +16,17 @@ export type IdentifierDefinition = InGraphIdentifierDefinition | BuiltInIdentifi
 
 /**
  * Something like `a` in `b <- a`.
- * Without any surrounding information, `a` will produce the
- * identifier reference `a` in the current scope (like the global environment).
+ * Without any surrounding information, `a` will produce the identifier reference `a`.
  * Similarly, `b` will create a reference.
  */
 export interface IdentifierReference {
-	name:   Identifier,
 	/** Node which represents the reference in the AST */
-	nodeId: NodeId
+	readonly nodeId:    NodeId
+	/** Name the reference is identified by (e.g., the name of the variable), undefined if the reference is "artificial" (e.g., anonymous) */
+	readonly name:      Identifier | undefined,
 	/**
-	 * Is this reference used in every execution path of the program or only if some of them. This can be too-conservative regarding `maybe`.
-	 * For example, if we can not detect `if(FALSE)`, this will be `maybe` even if we could statically determine, that the `then` branch is never executed.
+	 * If the reference is only effective if, e.g. an if-then-else condition is true, this references the root of the `if`.
+	 * As a hackey intermediate solution (until we have pointer-analysis), an empty array may indicate a `maybe` which is due to pointer access (e.g., in `a[x] <- 3`).
 	 */
-	used:   DataflowGraphEdgeAttribute
+	controlDependency?: NodeId[]
 }

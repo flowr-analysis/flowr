@@ -15,7 +15,7 @@ export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentIn
 
 	for(const ref of ingoingBeforeArgs) {
 		// link against the root reference currently I do not know how to deal with nested function calls otherwise
-		graph.addEdge(root.info.id, ref, { type: EdgeType.Reads, attribute: 'always' })
+		graph.addEdge(root.info.id, ref, { type: EdgeType.Reads })
 	}
 }
 
@@ -30,12 +30,12 @@ export function processFunctionArgument<OtherInfo>(
 
 	const argContent = argument.name?.content
 	const argumentName = argContent ?? `${UnnamedArgumentPrefix}${argument.info.id}`
-	graph.addVertex({ tag: 'use', id: argument.info.id, name: argumentName, when: 'always' })
+	graph.addVertex({ tag: 'use', id: argument.info.id, name: argumentName, controlDependency: undefined })
 
 	const ingoingRefs = [...value?.unknownReferences ?? [], ...value?.in ?? [], ...(name === undefined ? [] : [...name.in])]
 
 	if(argument.value?.type === RType.FunctionDefinition) {
-		graph.addEdge(argument.info.id, argument.value.info.id, { type: EdgeType.Reads, attribute: 'always' })
+		graph.addEdge(argument.info.id, argument.value.info.id, { type: EdgeType.Reads })
 	} else {
 		// we only need to link against those which are not already bound to another function call argument
 		linkReadsForArgument(argument, [...ingoingRefs, ...value?.out ?? [] /* value may perform definitions */], graph)
@@ -46,7 +46,7 @@ export function processFunctionArgument<OtherInfo>(
 		// active nodes of the name will be lost as they are only used to reference the corresponding parameter
 		in:                ingoingRefs,
 		// , ...value.out, ...(name?.out ?? [])
-		out:               [ { name: argumentName, nodeId: argument.info.id, used: 'always' } ],
+		out:               [ { name: argumentName, nodeId: argument.info.id } ],
 		graph:             graph,
 		environment:       value?.environment ?? data.environment
 	}

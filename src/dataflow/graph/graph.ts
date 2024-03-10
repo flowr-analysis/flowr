@@ -3,11 +3,10 @@ import type { NodeId, NoInfo, RNodeWithParent } from '../../r-bridge'
 import type { IdentifierDefinition, IdentifierReference } from '../environments'
 import { cloneEnvironmentInformation, initializeCleanEnvironments } from '../environments'
 import type { BiMap } from '../../util/bimap'
-import { log } from '../../util/log'
-import type { DataflowGraphEdge, DataflowGraphEdgeAttribute } from './edge'
+import type { DataflowGraphEdge } from './edge'
 import { EdgeType } from './edge'
 import type { DataflowInformation } from '../info'
-import { diffOfDataflowGraphs, equalExitPoints, equalFunctionArguments } from './diff'
+import { diffOfDataflowGraphs, equalFunctionArguments } from './diff'
 import type {
 	DataflowGraphVertexArgument,
 	DataflowGraphVertexFunctionCall,
@@ -16,6 +15,7 @@ import type {
 	DataflowGraphVertices
 } from './vertex'
 import type { DifferenceReport } from '../../util/diff'
+import { arrayEqual } from '../../util/arrays'
 
 /** Used to get an entry point for every id, after that it allows reference-chasing of the graph */
 export type DataflowMap<OtherInfo=NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
@@ -28,7 +28,7 @@ export type NamedFunctionArgument = [string, IdentifierReference | '<value>']
 export type PositionalFunctionArgument = IdentifierReference | '<value>'
 export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | 'empty'
 
-type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'used'>  | IdentifierDefinition
+type ReferenceForEdge = Pick<IdentifierReference, 'nodeId' | 'controlDependency'>  | IdentifierDefinition
 
 
 /**
@@ -48,7 +48,7 @@ function extractEdgeIds(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceF
 	return { fromId, toId }
 }
 
-type EdgeData<Edge extends DataflowGraphEdge> = Omit<Edge, 'from' | 'to' | 'types' | 'attribute'> & { type: EdgeType, attribute?: DataflowGraphEdgeAttribute }
+type EdgeData<Edge extends DataflowGraphEdge> = Omit<Edge, 'from' | 'to' | 'types' | 'attribute'> & { type: EdgeType }
 
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
@@ -159,7 +159,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, asRoot = true): this {
 		const oldVertex = this.vertexInformation.get(vertex.id)
 		if(oldVertex !== undefined) {
-			guard(oldVertex.name === vertex.name, `vertex names must match for the same id if added, but: ${oldVertex.name} vs ${vertex.name}`)
+			guard(oldVertex.name === vertex.name, `vertex names must match for the same id if added, but: ${JSON.stringify(oldVertex.name)} vs ${JSON.stringify(vertex.name)}`)
 			return this
 		}
 
@@ -168,7 +168,7 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 
 		this.vertexInformation.set(vertex.id, {
 			...vertex,
-			when: vertex.when ?? 'always',
+			when: vertex.controlDependency ?? 'always',
 			environment
 		} as unknown as Vertex)
 		if(asRoot) {
@@ -182,28 +182,22 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 	/** {@inheritDoc} */
 	public addEdge(from: ReferenceForEdge, to: ReferenceForEdge, edgeInfo: EdgeData<Edge>): this
 	/** {@inheritDoc} */
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>, promote?: boolean): this
+	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>): this
 	/**
    * Will insert a new edge into the graph,
    * if the direction of the edge is of no importance (`same-read-read` or `same-def-def`), source
    * and target will be sorted so that `from` has the lower, and `to` the higher id (default ordering).
-   * <p>
-   * If you omit the last argument but set promote, this will make the edge `maybe` if at least one of the {@link IdentifierReference|references} or {@link DataflowGraphVertexInfo|nodes} has a used flag of `maybe`.
-   * Promote will probably only be used internally and not by tests etc.
    */
-	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>, promote = false): this {
+	public addEdge(from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, edgeInfo: EdgeData<Edge>): this {
 		const { fromId, toId } = extractEdgeIds(from, to)
-		const { type, attribute, ...rest } = edgeInfo
+		const { type, ...rest } = edgeInfo
 
 		if(fromId === toId) {
 			return this
 		}
 
-		const effectiveAttribute = promote ? this.promoteEdgeAttribute(attribute, from, to, fromId, toId) : attribute
-		guard(effectiveAttribute !== undefined, 'attribute must be set')
-
 		/* we now that we pass all required arguments */
-		const edge = { types: new Set([type]), attribute: effectiveAttribute, ...rest } as unknown as Edge
+		const edge = { types: new Set([type]), ...rest } as unknown as Edge
 
 		const existingFrom = this.edgeInformation.get(fromId)
 		const edgeInFrom = existingFrom?.get(toId)
@@ -216,11 +210,6 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 			}
 			this.installEdge(type, toId, fromId, edge)
 		} else {
-			if(attribute === 'maybe') {
-				// as the data is shared, we can just set it for one direction
-				edgeInFrom.attribute = 'maybe'
-			}
-
 			if(!edgeInFrom.types.has(type)) {
 				// adding the type
 				edgeInFrom.types.add(type)
@@ -252,26 +241,6 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 				existingTo.set(fromId, otherEdge)
 			}
 		}
-	}
-
-	private promoteEdgeAttribute(attribute: DataflowGraphEdgeAttribute | undefined, from: NodeId | ReferenceForEdge, to: NodeId | ReferenceForEdge, fromId: NodeId, toId: NodeId) {
-		attribute ??= (from as ReferenceForEdge).used === 'maybe' ? 'maybe' : (to as ReferenceForEdge).used
-
-		// reduce the load on attribute checks
-		if(attribute !== 'maybe') {
-			const fromInfo = this.get(fromId, true)
-			if(fromInfo?.[0].when === 'maybe') {
-				log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
-				attribute = 'maybe'
-			} else {
-				const toInfo = this.get(toId, true)
-				if(toInfo?.[0].when === 'maybe') {
-					log.trace(`automatically promoting edge from ${fromId} to ${toId} as maybe because at least one of the nodes is maybe`)
-					attribute = 'maybe'
-				}
-			}
-		}
-		return attribute
 	}
 
 	/**
@@ -314,9 +283,6 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 						existing.set(target, edge)
 					} else {
 						get.types = new Set([...get.types, ...edge.types])
-						if(edge.attribute === 'maybe') {
-							get.attribute = 'maybe'
-						}
 					}
 				}
 			}
@@ -343,13 +309,10 @@ export class DataflowGraph<Vertex extends DataflowGraphVertexInfo = DataflowGrap
 		guard(got !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`)
 		const [node] = got
 		if(node.tag === 'function-definition' || node.tag === 'variable-definition') {
-			guard(node.when === reference.used || node.when === 'maybe' || reference.used === 'maybe', () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
-			node.when = reference.used === 'maybe' ? 'maybe' : node.when
+			guard(node.controlDependency === reference.controlDependency || node.controlDependency !== undefined || reference.controlDependency !== undefined, () => `node ${JSON.stringify(node)} must not be previously defined at position or have same scope for ${JSON.stringify(reference)}`)
+			node.controlDependency = reference.controlDependency
 		} else {
-			this.vertexInformation.set(reference.nodeId, {
-				...node,
-				tag: 'variable-definition'
-			})
+			this.vertexInformation.set(reference.nodeId, { ...node, tag: 'variable-definition' })
 		}
 	}
 }
@@ -365,7 +328,7 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 		guard(equalFunctionArguments(current.args, (next as DataflowGraphVertexFunctionCall).args), 'nodes to be joined for the same id must have the same function call information')
 	} else if(current.tag === 'function-definition') {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope')
-		guard(equalExitPoints(current.exitPoints, (next as DataflowGraphVertexFunctionDefinition).exitPoints), 'nodes to be joined must have same exist points')
+		guard(arrayEqual(current.exitPoints, (next as DataflowGraphVertexFunctionDefinition).exitPoints), 'nodes to be joined must have same exist points')
 	}
 
 	// make a copy

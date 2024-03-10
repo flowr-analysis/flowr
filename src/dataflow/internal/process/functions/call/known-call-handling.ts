@@ -30,18 +30,18 @@ export function processKnownFunctionCall<OtherInfo>(
 	} = processAllArguments(functionName, processArgs, data, finalGraph, rootId)
 
 	finalGraph.addVertex({
-		tag:         'function-call',
-		id:          rootId,
-		name:        functionCallName,
-		environment: data.environment,
+		tag:               'function-call',
+		id:                rootId,
+		name:              functionCallName,
+		environment:       data.environment,
 		/* will be overwritten accordingly */
-		onlyBuiltin: false,
-		when:        'always',
-		args:        reverseOrder ? callArgs.toReversed() : callArgs
+		onlyBuiltin:       false,
+		controlDependency: undefined,
+		args:              reverseOrder ? callArgs.toReversed() : callArgs
 	})
 
 	const inIds = remainingReadInArgs
-	inIds.push({ nodeId: rootId, name: functionCallName, used: 'always' })
+	inIds.push({ nodeId: rootId, name: functionCallName })
 
 	return {
 		information: {

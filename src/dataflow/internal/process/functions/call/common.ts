@@ -44,16 +44,16 @@ export function processAllArguments<OtherInfo>(
 		}
 
 		// add an argument edge to the final graph
-		finalGraph.addEdge(functionRootId, processed.out[0], { type: EdgeType.Argument, attribute: 'always' })
+		finalGraph.addEdge(functionRootId, processed.out[0], { type: EdgeType.Argument })
 		// resolve reads within argument
 		for(const ingoing of [...processed.in, ...processed.unknownReferences]) {
-			const tryToResolve = resolveByName(ingoing.name, argEnv)
+			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv) : undefined
 
 			if(tryToResolve === undefined) {
 				remainingReadInArgs.push(ingoing)
 			} else {
 				for(const resolved of tryToResolve) {
-					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, { type: EdgeType.Reads, attribute: 'always' })
+					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, { type: EdgeType.Reads })
 				}
 			}
 		}

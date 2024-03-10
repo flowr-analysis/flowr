@@ -11,8 +11,9 @@ import {
 	setDifference
 } from '../../util/diff'
 import { jsonReplacer } from '../../util/json'
-import type { DataflowGraphEdge, DataflowGraphEdgeAttribute, EdgeType } from './edge'
+import type { DataflowGraphEdge, EdgeType } from './edge'
 import type { DataflowGraphVertexInfo } from './vertex'
+import { arrayEqual } from '../../util/arrays'
 
 export type DiffState = 'added' | 'removed' | 'changed'
 
@@ -38,8 +39,8 @@ class DataflowDifferenceReport implements WriteableDifferenceReport {
 		this._diffGraph.addVertex({ ...info, state })
 	}
 
-	addDiffEdge(state: DiffState, from: NodeId, to: NodeId, type: EdgeType, attribute: DataflowGraphEdgeAttribute): void {
-		this._diffGraph.addEdge(from, to, { type, attribute, state })
+	addDiffEdge(state: DiffState, from: NodeId, to: NodeId, type: EdgeType): void {
+		this._diffGraph.addEdge(from, to, { type, state })
 	}
 
 	comments(): readonly string[] | undefined {
@@ -121,21 +122,6 @@ function diffFunctionArgumentsReferences(a: IdentifierReference | '<value>', b: 
 	diffIdentifierReferences(a, b, ctx)
 }
 
-export function equalExitPoints(a: readonly NodeId[] | undefined, b: readonly NodeId[] | undefined): boolean {
-	if(a === undefined || b === undefined) {
-		return a === b
-	}
-	if(a.length !== b.length) {
-		return false
-	}
-	for(let i = 0; i < a.length; ++i) {
-		if(a[i] !== b[i]) {
-			return false
-		}
-	}
-	return true
-}
-
 export function equalFunctionArguments(a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[]): boolean {
 	const ctx: GenericDifferenceInformation<DataflowDifferenceReport> = {
 		report:    new DataflowDifferenceReport(),
@@ -197,8 +183,8 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 		if(lInfo.name !== rInfo.name) {
 			ctx.report.addComment(`Vertex ${id} has different names. ${ctx.leftname}: ${lInfo.name} vs ${ctx.rightname}: ${rInfo.name}`)
 		}
-		if(lInfo.when !== rInfo.when) {
-			ctx.report.addComment(`Vertex ${id} has different when. ${ctx.leftname}: ${lInfo.when} vs ${ctx.rightname}: ${rInfo.when}`)
+		if(!arrayEqual(lInfo.controlDependency, rInfo.controlDependency)) {
+			ctx.report.addComment(`Vertex ${id} has different controlDependency. ${ctx.leftname}: ${JSON.stringify(lInfo.controlDependency)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.controlDependency)}`)
 		}
 
 		diffEnvironmentInformation(lInfo.environment, rInfo.environment, { ...ctx, position: `${ctx.position}Vertex ${id} differs in environment. ` })
@@ -219,7 +205,7 @@ export function diffVertices(ctx: DataflowDiffContext): void {
 				ctx.report.addComment(`Vertex ${id} has different tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`)
 			} else {
 
-				if(!equalExitPoints(lInfo.exitPoints, rInfo.exitPoints)) {
+				if(!arrayEqual(lInfo.exitPoints, rInfo.exitPoints)) {
 					ctx.report.addComment(`Vertex ${id} has different exit points. ${ctx.leftname}: ${JSON.stringify(lInfo.exitPoints, jsonReplacer)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.exitPoints, jsonReplacer)}`)
 				}
 
@@ -259,9 +245,6 @@ export function diffEdges(ctx: DataflowDiffContext, id: NodeId, lEdges: Outgoing
 		}
 		if([...edge.types].some(e => !otherEdge.types.has(e))) {
 			ctx.report.addComment(`Target of ${id}->${target} in ${ctx.leftname} has different edge types: ${JSON.stringify([...edge.types])} vs ${JSON.stringify([...otherEdge.types])}`)
-		}
-		if(edge.attribute !== otherEdge.attribute) {
-			ctx.report.addComment(`Target of ${id}->${target} in ${ctx.leftname} has different attributes: ${JSON.stringify(edge.attribute)} vs ${JSON.stringify(otherEdge.attribute)}`)
 		}
 	}
 }

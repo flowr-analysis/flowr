@@ -131,7 +131,7 @@ function processAssignmentToSymbol<OtherInfo>(
 	}
 
 	const readFromSourceWritten = sourceArg.out
-	const readTargets: IdentifierReference[] = [{ nodeId: name.info.id, name: name.content, used: 'always' }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
+	const readTargets: IdentifierReference[] = [{ nodeId: name.info.id, name: name.content }, ...sourceArg.unknownReferences, ...sourceArg.in, ...targetArg.in.filter(i => i.nodeId !== target.info.id), ...readFromSourceWritten]
 	const writeTargets = [...writeNodes, ...targetArg.out, ...readFromSourceWritten]
 
 	information.environment = overwriteEnvironment(targetArg.environment, sourceArg.environment)
@@ -143,17 +143,17 @@ function processAssignmentToSymbol<OtherInfo>(
 		information.graph.setDefinitionOfVertex(write)
 
 		if(isFunctionDef) {
-			information.graph.addEdge(write, target.info.id, { type: EdgeType.DefinedBy, attribute: 'always' }, true)
+			information.graph.addEdge(write, target.info.id, { type: EdgeType.DefinedBy })
 		} else {
 			const impactReadTargets = determineImpactOfSource<OtherInfo>(source, readTargets)
 
 			for(const read of impactReadTargets) {
-				information.graph.addEdge(write, read, { type: EdgeType.DefinedBy }, true)
+				information.graph.addEdge(write, read, { type: EdgeType.DefinedBy })
 			}
 		}
 	}
 
-	information.graph.addEdge(name.info.id, target.info.id, { type: EdgeType.Returns, attribute: 'always' }, true)
+	information.graph.addEdge(name.info.id, target.info.id, { type: EdgeType.Returns })
 
 	return {
 		unknownReferences: [],

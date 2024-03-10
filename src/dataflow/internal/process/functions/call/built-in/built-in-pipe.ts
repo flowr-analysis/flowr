@@ -48,10 +48,9 @@ export function processPipe<OtherInfo>(
 		dataflowLogger.trace(`Linking pipe arg ${argId} as first argument of ${rhs.info.id}`)
 		functionCallNode.args.unshift({
 			nodeId: argId,
-			name:   `${UnnamedArgumentPrefix}${argId}`,
-			used:   'always'
+			name:   `${UnnamedArgumentPrefix}${argId}`
 		})
-		information.graph.addEdge(functionCallNode.id, argId, { type: EdgeType.Argument, attribute: 'always' })
+		information.graph.addEdge(functionCallNode.id, argId, { type: EdgeType.Argument })
 	}
 
 	return information

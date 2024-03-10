@@ -5,11 +5,11 @@ import type { IEnvironment, REnvironmentInformation } from './environment'
 import { cloneEnvironmentInformation } from './clone'
 import type { IdentifierDefinition } from './identifier'
 
-function defInEnv(newEnvironments: IEnvironment, definition: IdentifierDefinition) {
-	const existing = newEnvironments.memory.get(definition.name)
+function defInEnv(newEnvironments: IEnvironment, name: string, definition: IdentifierDefinition) {
+	const existing = newEnvironments.memory.get(name)
 	// check if it is maybe or not
-	if(existing === undefined || definition.used === 'always') {
-		newEnvironments.memory.set(definition.name, [definition])
+	if(existing === undefined || definition.controlDependency === undefined) {
+		newEnvironments.memory.set(name, [definition])
 	} else {
 		existing.push(definition)
 	}
@@ -20,6 +20,8 @@ function defInEnv(newEnvironments: IEnvironment, definition: IdentifierDefinitio
  * Does not modify the passed along `environments` in-place! It returns the new reference.
  */
 export function define(definition: IdentifierDefinition, superAssign: boolean, environment: REnvironmentInformation): REnvironmentInformation {
+	const name = definition.name
+	guard(name !== undefined, () => `Name must be defined, but isn't for ${JSON.stringify(definition)}`)
 	let newEnvironment
 	if(superAssign) {
 		newEnvironment = cloneEnvironmentInformation(environment, true)
@@ -27,8 +29,8 @@ export function define(definition: IdentifierDefinition, superAssign: boolean, e
 		let last = undefined
 		let found = false
 		do{
-			if(current.memory.has(definition.name)) {
-				current.memory.set(definition.name, [definition])
+			if(current.memory.has(name)) {
+				current.memory.set(name, [definition])
 				found = true
 				break
 			}
@@ -36,12 +38,12 @@ export function define(definition: IdentifierDefinition, superAssign: boolean, e
 			current = current.parent
 		} while(current.id !== BuiltInEnvironment.id)
 		if(!found) {
-			guard(last !== undefined, () => `Could not find global scope for ${definition.name}`)
-			last.memory.set(definition.name, [definition])
+			guard(last !== undefined, () => `Could not find global scope for ${name}`)
+			last.memory.set(name, [definition])
 		}
 	} else {
 		newEnvironment = cloneEnvironmentInformation(environment, false)
-		defInEnv(newEnvironment.current, definition)
+		defInEnv(newEnvironment.current, name, definition)
 	}
 	return newEnvironment
 }

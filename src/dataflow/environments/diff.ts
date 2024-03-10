@@ -11,8 +11,8 @@ export function diffIdentifierReferences<Report extends WriteableDifferenceRepor
 	if(a.nodeId !== b.nodeId) {
 		info.report.addComment(`${info.position}Different nodeIds: ${a.nodeId} vs. ${b.nodeId}`)
 	}
-	if(a.used !== b.used) {
-		info.report.addComment(`${info.position}Different used: ${a.used} vs. ${b.used}`)
+	if(a.controlDependency !== b.controlDependency) {
+		info.report.addComment(`${info.position}Different used: ${a.controlDependency} vs. ${b.controlDependency}`)
 	}
 }
 
@@ -37,8 +37,8 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 			if(aVal.nodeId !== bVal.nodeId) {
 				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`)
 			}
-			if(aVal.used !== bVal.used) {
-				info.report.addComment(`${info.position}Different used for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.used} vs. ${info.rightname}: ${bVal.used}`)
+			if(aVal.controlDependency !== bVal.controlDependency) {
+				info.report.addComment(`${info.position}Different used for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.controlDependency} vs. ${info.rightname}: ${bVal.controlDependency}`)
 			}
 			if(aVal.definedAt !== bVal.definedAt) {
 				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`)
